@@ -25,7 +25,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -73,11 +72,6 @@ type CDSPackage struct {
 	datab     []byte
 	id        []byte
 	GetHasher GetHasher
-}
-
-// resets data
-func (ccpack *CDSPackage) reset() {
-	*ccpack = CDSPackage{GetHasher: factory.GetDefault()}
 }
 
 // GetId gets the fingerprint of the chaincode based on package computation
@@ -136,10 +130,6 @@ func (ccpack *CDSPackage) getCDSData(cds *pb.ChaincodeDeploymentSpec) ([]byte, [
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, nil, nil, err
-	}
-
-	if err = factory.InitFactories(nil); err != nil {
-		return nil, nil, nil, fmt.Errorf("Internal error, BCCSP could not be initialized : %s", err)
 	}
 
 	//compute hashes now
@@ -219,8 +209,6 @@ func (ccpack *CDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 
 //InitFromBuffer sets the buffer if valid and returns ChaincodeData
 func (ccpack *CDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
-	//incase ccpack is reused
-	ccpack.reset()
 
 	depSpec := &pb.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(buf, depSpec)
@@ -244,8 +232,6 @@ func (ccpack *CDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
 
 //InitFromFS returns the chaincode and its package from the file system
 func (ccpack *CDSPackage) InitFromPath(ccNameVersion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
-	//incase ccpack is reused
-	ccpack.reset()
 
 	buf, err := GetChaincodePackageFromPath(ccNameVersion, path)
 	if err != nil {

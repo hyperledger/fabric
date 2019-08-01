@@ -117,7 +117,9 @@ type CCCacheSupport interface {
 
 // CCInfoFSImpl provides the implementation for CC on the FS and the access to it
 // It implements CCCacheSupport
-type CCInfoFSImpl struct{}
+type CCInfoFSImpl struct {
+	GetHasher GetHasher
+}
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
 // It calls GetChaincodeFromPath with the chaincodeInstallPath
@@ -142,9 +144,9 @@ func (cifs *CCInfoFSImpl) GetChaincodeDepSpec(ccNameVersion string) (*pb.Chainco
 }
 
 // GetChaincodeFromPath this is a wrapper for hiding package implementation.
-func (*CCInfoFSImpl) GetChaincodeFromPath(ccNameVersion string, path string) (CCPackage, error) {
+func (cifs *CCInfoFSImpl) GetChaincodeFromPath(ccNameVersion string, path string) (CCPackage, error) {
 	// try raw CDS
-	cccdspack := &CDSPackage{GetHasher: factory.GetDefault()}
+	cccdspack := &CDSPackage{GetHasher: cifs.GetHasher}
 	_, _, err := cccdspack.InitFromPath(ccNameVersion, path)
 	if err != nil {
 		// try signed CDS
@@ -165,12 +167,12 @@ func (*CCInfoFSImpl) GetChaincodeInstallPath() string {
 
 // PutChaincode is a wrapper for putting raw ChaincodeDeploymentSpec
 //using CDSPackage. This is only used in UTs
-func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error) {
+func (cifs *CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error) {
 	buf, err := proto.Marshal(depSpec)
 	if err != nil {
 		return nil, err
 	}
-	cccdspack := &CDSPackage{GetHasher: factory.GetDefault()}
+	cccdspack := &CDSPackage{GetHasher: cifs.GetHasher}
 	if _, err := cccdspack.InitFromBuffer(buf); err != nil {
 		return nil, err
 	}
@@ -233,7 +235,7 @@ func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, 
 
 // ccInfoFSStorageMgr is the storage manager used either by the cache or if the
 // cache is bypassed
-var ccInfoFSProvider = &CCInfoFSImpl{}
+var ccInfoFSProvider = &CCInfoFSImpl{GetHasher: factory.GetDefault()}
 
 // ccInfoCache is the cache instance itself
 var ccInfoCache = NewCCInfoCache(ccInfoFSProvider)

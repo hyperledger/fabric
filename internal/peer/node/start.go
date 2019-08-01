@@ -301,7 +301,7 @@ func serve(args []string) error {
 	}
 
 	packageProvider := &persistence.PackageProvider{
-		LegacyPP: &ccprovider.CCInfoFSImpl{},
+		LegacyPP: &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()},
 	}
 
 	// legacyMetadataManager collects metadata information from the legacy
@@ -502,7 +502,7 @@ func serve(args []string) error {
 				ChaincodePackageLocator: &persistence.ChaincodePackageLocator{
 					ChaincodeDir: chaincodeInstallPath,
 				},
-				LegacyCCPackageLocator: &ccprovider.CCInfoFSImpl{},
+				LegacyCCPackageLocator: &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()},
 			},
 		},
 	}
