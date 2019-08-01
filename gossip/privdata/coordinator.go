@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	vsccErrors "github.com/hyperledger/fabric/common/errors"
 	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
@@ -116,12 +117,12 @@ type Fetcher interface {
 	fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtDataContainer, error)
 }
 
-//go:generate mockery -dir ./ -name AppCapabilities -case underscore -output mocks/
-// AppCapabilities defines the capabilities for the application portion of a channel
-type AppCapabilities interface {
-	// StorePvtDataOfInvalidTx() returns true if the peer needs to store the pvtData of
-	// invalid transactions.
-	StorePvtDataOfInvalidTx() bool
+//go:generate mockery -dir ./ -name CapabilityProvider -case underscore -output mocks/
+
+// CapabilityProvider contains functions to retrieve capability information for a channel
+type CapabilityProvider interface {
+	// Capabilities defines the capabilities for the application portion of this channel
+	Capabilities() channelconfig.ApplicationCapabilities
 }
 
 // Support encapsulates set of interfaces to
@@ -133,7 +134,7 @@ type Support struct {
 	committer.Committer
 	TransientStore
 	Fetcher
-	AppCapabilities
+	CapabilityProvider
 }
 
 type coordinator struct {
@@ -716,7 +717,8 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		privateRWsetsInBlock: privateRWsetsInBlock,
 		coordinator:          c,
 	}
-	txList, err := data.forEachTxn(c.Support.StorePvtDataOfInvalidTx(), txsFilter, bi.inspectTransaction)
+	storePvtDataOfInvalidTx := c.Support.CapabilityProvider.Capabilities().StorePvtDataOfInvalidTx()
+	txList, err := data.forEachTxn(storePvtDataOfInvalidTx, txsFilter, bi.inspectTransaction)
 	if err != nil {
 		return nil, err
 	}
@@ -893,7 +895,8 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 
 	seqs2Namespaces := aggregatedCollections(make(map[seqAndDataModel]map[string][]*rwset.CollectionPvtReadWriteSet))
 	data := blockData(blockAndPvtData.Block.Data.Data)
-	data.forEachTxn(c.Support.StorePvtDataOfInvalidTx(), make(txValidationFlags, len(data)),
+	storePvtDataOfInvalidTx := c.Support.CapabilityProvider.Capabilities().StorePvtDataOfInvalidTx()
+	data.forEachTxn(storePvtDataOfInvalidTx, make(txValidationFlags, len(data)),
 		func(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, _ []*peer.Endorsement) error {
 			item, exists := blockAndPvtData.PvtData[seqInBlock]
 			if !exists {
