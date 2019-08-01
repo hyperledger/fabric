@@ -636,11 +636,18 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 
 	for itr.Next() {
 		dataKeyBytes := itr.Key()
-		if v11Format(dataKeyBytes) {
+		v11Fmt, err := v11Format(dataKeyBytes)
+		if err != nil {
+			return nil, err
+		}
+		if v11Fmt {
 			return v11RetrievePvtdata(itr, filter)
 		}
 		dataValueBytes := itr.Value()
-		dataKey := decodeDatakey(dataKeyBytes)
+		dataKey, err := decodeDatakey(dataKeyBytes)
+		if err != nil {
+			return nil, err
+		}
 		expired, err := isExpired(dataKey.nsCollBlk, s.btlPolicy, lastCommittedBlock)
 		if err != nil {
 			return nil, err
@@ -831,7 +838,10 @@ func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 	for itr.Next() {
 		expiryKeyBytes := itr.Key()
 		expiryValueBytes := itr.Value()
-		expiryKey := decodeExpiryKey(expiryKeyBytes)
+		expiryKey, err := decodeExpiryKey(expiryKeyBytes)
+		if err != nil {
+			return nil, err
+		}
 		expiryValue, err := decodeExpiryValue(expiryValueBytes)
 		if err != nil {
 			return nil, err
