@@ -35,7 +35,7 @@ conditional_packages=(
 # obtain packages changed since some git refspec
 packages_diff() {
     git -C "${GOPATH}/src/github.com/hyperledger/fabric" diff --no-commit-id --name-only -r "${1:-HEAD}" |
-        grep '.go$' | \
+        (grep '.go$' || true) | \
         sed 's%/[^/]*$%%' | sort -u | \
         awk '{print "github.com/hyperledger/fabric/"$1}'
 }
@@ -147,7 +147,7 @@ main() {
     fi
 
     # default behavior is to run all tests
-    local package_spec=${TEST_PKGS:-github.com/hyperledger/fabric/...}
+    local -a package_spec=("${TEST_PKGS:-github.com/hyperledger/fabric/...}")
 
     # extra exclusions for ppc and s390x
     if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then
@@ -156,11 +156,13 @@ main() {
 
     # when running a "verify" job, only test packages that have changed
     if [ "${JOB_TYPE}" = "VERIFY" ]; then
+        package_spec=()
+
         # first check for uncommitted changes
-        package_spec=$(packages_diff HEAD | grep -Ev '/vendor(/|$)')
-        if [ -z "${package_spec}" ]; then
+        while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && package_spec+=("$pkg"); done < <(packages_diff HEAD | grep -Ev '/vendor(/|$)' || true)
+        if [ "${#package_spec[@]}" -eq 0 ]; then
             # next check for changes in the latest commit
-            package_spec=$(packages_diff HEAD^ | grep -Ev '/vendor(/|$)')
+            while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && package_spec+=("$pkg"); done < <(packages_diff HEAD^ | grep -Ev '/vendor(/|$)' || true)
         fi
     fi
 
@@ -171,7 +173,7 @@ main() {
 
     # expand the package spec into an array of packages
     local -a packages
-    while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && packages+=("$pkg"); done < <(list_and_filter "${package_spec}")
+    while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && packages+=("$pkg"); done < <(list_and_filter "${package_spec[@]}")
     while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && packages+=("$pkg"); done < <(list_and_filter_conditional)
 
     if [ "${#packages[@]}" -eq 0 ]; then
