@@ -27,6 +27,15 @@ import (
 // seems like a good step.
 
 const (
+	// PreferredChaincodePackageMetadataFile is the first name we check
+	// for the chaincode metadata before falling back to ChaincodePackageMetadataFile
+	// The latter will be removed before release
+	PreferredChaincodePackageMetadataFile = "metadata.json"
+
+	// CodePackageFile is the expected location of the code package in the
+	// top level of the chaincode package
+	CodePackageFile = "code.tar.gz"
+
 	// ChaincodePackageMetadataFile contains the name
 	// of the file that contains metadata for a chaincode pacakge.
 	ChaincodePackageMetadataFile = "Chaincode-Package-Metadata.json"
@@ -103,21 +112,32 @@ func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, erro
 			return nil, errors.Wrapf(err, "could not read %s from tar", header.Name)
 		}
 
-		if header.Name == ChaincodePackageMetadataFile {
+		switch header.Name {
+
+		case PreferredChaincodePackageMetadataFile:
 			ccPackageMetadata = &ChaincodePackageMetadata{}
 			err := json.Unmarshal(fileBytes, ccPackageMetadata)
 			if err != nil {
 				return nil, errors.Wrapf(err, "could not unmarshal %s as json", ChaincodePackageMetadataFile)
 			}
 
-			continue
+		case ChaincodePackageMetadataFile:
+			// XXX this is a temporary compatibility hack to allow the SDKs a few days to transition
+			// to the new filename without breaking everything
+			if ccPackageMetadata != nil {
+				// We must have already loaded the metadata from the preferred location
+				continue
+			}
+			ccPackageMetadata = &ChaincodePackageMetadata{}
+			err := json.Unmarshal(fileBytes, ccPackageMetadata)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not unmarshal %s as json", ChaincodePackageMetadataFile)
+			}
+		case CodePackageFile:
+			codePackage = fileBytes
+		default:
+			logger.Warningf("Encountered unexpected file '%s' in top level of chaincode package", header.Name)
 		}
-
-		if codePackage != nil {
-			return nil, errors.Errorf("found too many files in archive, cannot identify which file is the code-package")
-		}
-
-		codePackage = fileBytes
 	}
 
 	if codePackage == nil {
@@ -125,7 +145,7 @@ func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, erro
 	}
 
 	if ccPackageMetadata == nil {
-		return nil, errors.Errorf("did not find any package metadata (missing %s)", ChaincodePackageMetadataFile)
+		return nil, errors.Errorf("did not find any package metadata (missing %s)", PreferredChaincodePackageMetadataFile)
 	}
 
 	if err := validateLabel(ccPackageMetadata.Label); err != nil {

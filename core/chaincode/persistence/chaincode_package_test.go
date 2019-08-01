@@ -77,11 +77,11 @@ var _ = Describe("ChaincodePackageParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err).To(MatchError("did not find any package metadata (missing Chaincode-Package-Metadata.json)"))
+				Expect(err).To(MatchError("did not find any package metadata (missing metadata.json)"))
 			})
 		})
 
-		Context("when the chaincode package metadata is missing", func() {
+		Context("when the chaincode package metadata is corrupt", func() {
 			It("fails", func() {
 				data, err := ioutil.ReadFile("testdata/bad-metadata.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
@@ -127,7 +127,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err).To(MatchError("tar entry fake-code-package.link is not a regular file, type 50"))
+				Expect(err).To(MatchError("tar entry code.tar.gz is not a regular file, type 50"))
 			})
 		})
 
@@ -142,12 +142,12 @@ var _ = Describe("ChaincodePackageParser", func() {
 		})
 
 		Context("when the tar has too many entries", func() {
-			It("fails", func() {
+			It("logs a warning but otherwise allows it", func() {
 				data, err := ioutil.ReadFile("testdata/too-many-files.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err).To(MatchError("found too many files in archive, cannot identify which file is the code-package"))
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 
