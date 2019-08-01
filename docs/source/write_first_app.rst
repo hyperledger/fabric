@@ -34,9 +34,8 @@ We’ll go through three principle steps:
   .. image:: images/AppConceptsOverview.png
 
   **2. Learning about a sample smart contract, FabCar.**
-  We use a smart contract written in **JavaScript**. We’ll
-  inspect the smart contract to learn about the transactions within them, and
-  how they are used by applications to query and update the ledger.
+  We’ll inspect the smart contract to learn about the transactions within them,
+  and how they are used by applications to query and update the ledger.
 
   **3. Develop a sample application which uses FabCar.** Our application will
   use the FabCar smart contract to query and update car assets on the ledger.
@@ -92,9 +91,16 @@ Launch the network
 .. note:: This next section requires you to be in the ``fabcar``
           subdirectory within your local clone of the ``fabric-samples`` repo.
 
+          This tutorial demonstrates the JavaScript versions of the ``FabCar``
+          smart contract and application, but the ``fabric-samples`` repo also
+          contains Java and TypeScript versions of this sample. To try the
+          Java or TypeScript versions, change the ``javascript`` argument
+          for ``./startFabric.sh`` below to either ``java`` or ``typescript``
+          and follow the instructions written to the terminal.
+
 Launch your network using the ``startFabric.sh`` shell script. This command will
 spin up a blockchain network comprising peers, orderers, certificate
-authorities and more.  It will also install and instantiate a javascript version
+authorities and more.  It will also install and instantiate a JavaScript version
 of the ``FabCar`` smart contract which will be used by our application to access
 the ledger. We'll learn more about these components as we go through the
 tutorial.
