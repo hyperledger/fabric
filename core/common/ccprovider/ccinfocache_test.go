@@ -26,7 +26,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,7 +37,17 @@ func getDepSpec(name string, path string, version string, initArgs [][]byte) (*p
 	gz := gzip.NewWriter(codePackageBytes)
 	tw := tar.NewWriter(gz)
 
-	err := util.WriteBytesToPackage("src/garbage.go", []byte(name+path+version), tw)
+	payload := []byte(name + path + version)
+	err := tw.WriteHeader(&tar.Header{
+		Name: "src/garbage.go",
+		Size: int64(len(payload)),
+		Mode: 0100644,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tw.Write(payload)
 	if err != nil {
 		return nil, err
 	}
