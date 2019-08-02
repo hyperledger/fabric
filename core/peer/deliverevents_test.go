@@ -380,7 +380,7 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 
 			metrics := deliver.NewMetrics(&disabled.Provider{})
 			server := &DeliverServer{
-				DeliverHandler:        deliver.NewHandler(chainManager, time.Second, false, metrics),
+				DeliverHandler:        deliver.NewHandler(chainManager, time.Second, false, metrics, false),
 				PolicyCheckerProvider: defaultPolicyCheckerProvider,
 			}
 

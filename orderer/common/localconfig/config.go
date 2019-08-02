@@ -105,7 +105,8 @@ type SASLPlain struct {
 // Authentication contains configuration parameters related to authenticating
 // client messages.
 type Authentication struct {
-	TimeWindow time.Duration
+	TimeWindow         time.Duration
+	NoExpirationChecks bool
 }
 
 // Profile contains configuration for Go pprof profiling.

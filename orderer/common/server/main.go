@@ -173,7 +173,14 @@ func Main() {
 	)
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
-	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
+	server := NewServer(
+		manager,
+		metricsProvider,
+		&conf.Debug,
+		conf.General.Authentication.TimeWindow,
+		mutualTLS,
+		conf.General.Authentication.NoExpirationChecks,
+	)
 
 	logger.Infof("Starting %s", metadata.GetVersionInfo())
 	go handleSignals(addPlatformSignals(map[os.Signal]func(){
@@ -658,7 +665,7 @@ func initializeMultichannelRegistrar(
 
 	consenters := make(map[string]consensus.Consenter)
 
-	registrar := multichannel.NewRegistrar(lf, signer, metricsProvider, callbacks...)
+	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, callbacks...)
 
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics

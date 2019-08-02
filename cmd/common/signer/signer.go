@@ -39,6 +39,10 @@ type Signer struct {
 	Creator []byte
 }
 
+func (si *Signer) Serialize() ([]byte, error) {
+	return si.Creator, nil
+}
+
 // NewSigner creates a new Signer out of the given configuration
 func NewSigner(conf Config) (*Signer, error) {
 	sId, err := serializeIdentity(conf.IdentityPath, conf.MSPID)

@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -91,6 +92,7 @@ type ledgerResources struct {
 
 // Registrar serves as a point of access and control for the individual channel resources.
 type Registrar struct {
+	config localconfig.TopLevel
 	lock   sync.RWMutex
 	chains map[string]*ChainSupport
 
@@ -126,12 +128,14 @@ func configTx(reader blockledger.Reader) *cb.Envelope {
 
 // NewRegistrar produces an instance of a *Registrar.
 func NewRegistrar(
+	config localconfig.TopLevel,
 	ledgerFactory blockledger.Factory,
 	signer identity.SignerSerializer,
 	metricsProvider metrics.Provider,
 	callbacks ...channelconfig.BundleActor,
 ) *Registrar {
 	r := &Registrar{
+		config:             config,
 		chains:             make(map[string]*ChainSupport),
 		ledgerFactory:      ledgerFactory,
 		signer:             signer,
@@ -174,7 +178,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 			chain.Processor = msgprocessor.NewSystemChannel(
 				chain,
 				r.templator,
-				msgprocessor.CreateSystemChannelFilters(r, chain, chain.MetadataValidator),
+				msgprocessor.CreateSystemChannelFilters(r.config, r, chain, chain.MetadataValidator),
 			)
 
 			// Retrieve genesis block to log its hash. See FAB-5450 for the purpose

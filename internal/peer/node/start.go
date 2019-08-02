@@ -388,6 +388,7 @@ func serve(args []string) error {
 			coreConfig.AuthenticationTimeWindow,
 			mutualTLS,
 			metrics,
+			false,
 		),
 		PolicyCheckerProvider: policyCheckerProvider,
 	}
