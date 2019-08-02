@@ -12,9 +12,9 @@ excluded_packages=(
     "/integration(/|$)"
 )
 
-# regexes for packages that must be run serially
+# packages that must be run serially
 serial_packages=(
-    "github.com/hyperledger/fabric/gossip"
+    "github.com/hyperledger/fabric/gossip/..."
 )
 
 # packages which need to be tested with build tag pluginsenabled
@@ -32,6 +32,29 @@ conditional_packages=(
     "github.com/hyperledger/fabric/gossip/..."
 )
 
+# join array elements by the specified string
+join_by() {
+    local IFS="$1"; shift
+    [ "$#" -ne 0 ] && echo "$*"
+}
+
+contains_element() {
+    local key="$1"; shift
+
+    for e in "$@"; do [ "$e" == "$key" ] && return 0; done
+    return 1
+}
+
+# create a grep regex from the provide package spec
+package_filter() {
+    local -a filter
+    if [ "${#@}" -ne 0 ]; then
+        while IFS= read -r pkg; do [ -n "$pkg" ] && filter+=("$pkg"); done < <(go list -f '^{{ .ImportPath }}$' "${@}")
+    fi
+
+    join_by '|' "${filter[@]}"
+}
+
 # obtain packages changed since some git refspec
 packages_diff() {
     git -C "${GOPATH}/src/github.com/hyperledger/fabric" diff --no-commit-id --name-only -r "${1:-HEAD}" |
@@ -40,17 +63,28 @@ packages_diff() {
         awk '{print "github.com/hyperledger/fabric/"$1}'
 }
 
-join_by() {
-    local IFS="$1"; shift; echo "$*"
+# obtain list of changed packages for verification
+changed_packages() {
+    local -a changed
+
+    # first check for uncommitted changes
+    while IFS= read -r pkg; do changed+=("$pkg"); done < <(packages_diff HEAD | grep -Ev '/vendor(/|$)' || true)
+    if [ "${#changed[@]}" -eq 0 ]; then
+        # next check for changes in the latest commit
+        while IFS= read -r pkg; do changed+=("$pkg"); done < <(packages_diff HEAD^ | grep -Ev '/vendor(/|$)' || true)
+    fi
+
+    join_by $'\n' "${changed[@]}"
 }
 
 # "go list" packages and filter out excluded packages
 list_and_filter() {
-    local excluded filter
+    local excluded conditional filter
 
     excluded=("${excluded_packages[@]}")
-    if [ "${#conditional_packages[@]}" -ne 0 ]; then
-        while IFS=$'\n' read -r pkg; do [ -n "$pkg" ] && excluded+=("$pkg"); done < <(go list -f '{{ .ImportPath }}$' "${conditional_packages[@]}")
+    conditional=$(package_filter "${conditional_packages[@]}")
+    if [ -n "$conditional" ]; then
+        excluded+=("$conditional")
     fi
 
     filter=$(join_by '|' "${excluded[@]}")
@@ -62,19 +96,19 @@ list_and_filter() {
 }
 
 # list conditional packages that have been changed
-list_and_filter_conditional() {
-    local -a additional_packages=()
+list_changed_conditional() {
+    [ "${#conditional_packages[@]}" -eq 0 ] && return 0
 
-    if [ "${#conditional_packages[@]}" -ne 0 ]; then
-        local changed_packages
-        changed_packages=$(packages_diff)
-        for pkg in $(go list "${conditional_packages[@]}"); do
-            local dep_regexp
-            dep_regexp="$(go list -f '{{ join .Deps "$|" }}' "$pkg")"
-            echo "${changed_packages}" | grep -qE "$dep_regexp" && additional_packages+=("$pkg")
-            echo "${changed_packages}" | grep -qE "$pkg\$" && additional_packages+=("$pkg")
-        done
-    fi
+    local changed
+    changed=$(changed_packages)
+
+    local -a additional_packages
+    for pkg in $(go list "${conditional_packages[@]}"); do
+        local dep_regexp
+        dep_regexp=$(go list -f '{{ join .Deps "$|" }}' "$pkg")
+        echo "${changed}" | grep -qE "$dep_regexp" && additional_packages+=("$pkg")
+        echo "${changed}" | grep -qE "$pkg\$" && additional_packages+=("$pkg")
+    done
 
     join_by $'\n' "${additional_packages[@]}"
 }
@@ -82,7 +116,7 @@ list_and_filter_conditional() {
 # remove packages that must be tested serially
 parallel_test_packages() {
     local filter
-    filter=$(join_by '|' "${serial_packages[@]}")
+    filter=$(package_filter "${serial_packages[@]}")
     if [ -n "$filter" ]; then
         join_by $'\n' "$@" | grep -Ev "$filter" || true
     else
@@ -93,7 +127,7 @@ parallel_test_packages() {
 # get packages that must be tested serially
 serial_test_packages() {
     local filter
-    filter=$(join_by '|' "${serial_packages[@]}")
+    filter=$(package_filter "${serial_packages[@]}")
     if [ -n "$filter" ]; then
         join_by $'\n' "$@" | grep -E "$filter" || true
     else
@@ -110,7 +144,7 @@ run_tests() {
     fi
 
     local -a race_flags=()
-    if [[ "$(uname -m)" == "x86_64" ]]; then
+    if [ "$(uname -m)" == "x86_64" ]; then
         export GORACE=atexit_sleep_ms=0 # reduce overhead of race
         race_flags+=("-race")
     fi
@@ -120,13 +154,13 @@ run_tests() {
 
     time {
         local -a serial
-        while IFS=$'\n' read -r pkg; do [ -n "$pkg" ] && serial+=("$pkg"); done < <(serial_test_packages "$@")
+        while IFS= read -r pkg; do serial+=("$pkg"); done < <(serial_test_packages "$@")
         if [ "${#serial[@]}" -ne 0 ]; then
             go test "${flags[@]}" -tags "$GO_TAGS" "${serial[@]}" -short -p 1 -timeout=20m
         fi
 
         local -a parallel
-        while IFS=$'\n' read -r pkg; do [ -n "$pkg" ] && parallel+=("$pkg"); done < <(parallel_test_packages "$@")
+        while IFS= read -r pkg; do parallel+=("$pkg"); done < <(parallel_test_packages "$@")
         if [ "${#parallel[@]}" -ne 0 ]; then
             go test "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "${parallel[@]}" -short -timeout=20m
         fi
@@ -146,24 +180,18 @@ main() {
         export GOCACHE="${GOPATH}/src/github.com/hyperledger/fabric/.build/go-cache"
     fi
 
-    # default behavior is to run all tests
-    local -a package_spec=("${TEST_PKGS:-github.com/hyperledger/fabric/...}")
-
-    # extra exclusions for ppc and s390x
+    # explicit exclusions for ppc and s390x
     if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then
         excluded_packages+=("github.com/hyperledger/fabric/core/chaincode/platforms/java")
     fi
 
+    # default behavior is to run all tests
+    local -a package_spec=("${TEST_PKGS:-github.com/hyperledger/fabric/...}")
+
     # when running a "verify" job, only test packages that have changed
     if [ "${JOB_TYPE}" = "VERIFY" ]; then
         package_spec=()
-
-        # first check for uncommitted changes
-        while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && package_spec+=("$pkg"); done < <(packages_diff HEAD | grep -Ev '/vendor(/|$)' || true)
-        if [ "${#package_spec[@]}" -eq 0 ]; then
-            # next check for changes in the latest commit
-            while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && package_spec+=("$pkg"); done < <(packages_diff HEAD^ | grep -Ev '/vendor(/|$)' || true)
-        fi
+        while IFS= read -r pkg; do package_spec+=("$pkg"); done < <(changed_packages)
     fi
 
     # run everything when profiling
@@ -171,23 +199,27 @@ main() {
         conditional_packages=()
     fi
 
-    # expand the package spec into an array of packages
-    local -a packages
-    while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && packages+=("$pkg"); done < <(list_and_filter "${package_spec[@]}")
-    while IFS=$'\n'; read -r pkg; do [ -n "$pkg" ] && packages+=("$pkg"); done < <(list_and_filter_conditional)
+    # expand the package specs into arrays of packages
+    local -a candidates packages packages_with_plugins packages_with_pkcs11
+    while IFS= read -r pkg; do candidates+=("$pkg"); done < <(go list "${package_spec[@]}")
+    while IFS= read -r pkg; do packages+=("$pkg"); done < <(list_and_filter "${package_spec[@]}")
+    while IFS= read -r pkg; do contains_element "$pkg" "${candidates[@]}" && packages+=("$pkg"); done < <(list_changed_conditional)
+    while IFS= read -r pkg; do contains_element "$pkg" "${packages[@]}" && packages_with_plugins+=("$pkg"); done < <(list_and_filter "${plugin_packages[@]}")
+    while IFS= read -r pkg; do contains_element "$pkg" "${packages[@]}" && packages_with_pkcs11+=("$pkg"); done < <(list_and_filter "${pkcs11_packages[@]}")
 
-    if [ "${#packages[@]}" -eq 0 ]; then
+    local all_packages=( "${packages[@]}" "${packages_with_pkcs11[@]}" "${packages_with_pkcs11[@]}" )
+    if [ "${#all_packages[@]}" -eq 0 ]; then
         echo "Nothing to test!!!"
     elif [ "${JOB_TYPE}" = "PROFILE" ]; then
         echo "mode: set" > profile.cov
-        run_tests_with_coverage "${packages[@]}"
-        GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${plugin_packages[@]}"
-        GO_TAGS="${GO_TAGS} pkcs11" run_tests_with_coverage "${pkcs11_packages[@]}"
+        [ "${#packages}" -eq 0 ] || run_tests_with_coverage "${packages[@]}"
+        [ "${#packages_with_plugins}" -eq 0 ] || GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${packages_with_plugins[@]}"
+        [ "${#packages_with_pkcs11}" -eq 0 ] || GO_TAGS="${GO_TAGS} pkcs11" run_tests_with_coverage "${packages_with_pkcs11[@]}"
         gocov convert profile.cov | gocov-xml > report.xml
     else
-        run_tests "${packages[@]}"
-        GO_TAGS="${GO_TAGS} pluginsenabled" run_tests "${plugin_packages[@]}"
-        GO_TAGS="${GO_TAGS} pkcs11" run_tests "${pkcs11_packages[@]}"
+        [ "${#packages}" -eq 0 ] || run_tests "${packages[@]}"
+        [ "${#packages_with_plugins}" -eq 0 ] || GO_TAGS="${GO_TAGS} pluginsenabled" run_tests "${packages_with_plugins[@]}"
+        [ "${#packages_with_pkcs11}" -eq 0 ] || GO_TAGS="${GO_TAGS} pkcs11" run_tests "${packages_with_pkcs11[@]}"
     fi
 }
 
