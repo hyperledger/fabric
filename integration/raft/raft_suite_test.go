@@ -50,7 +50,7 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 func StartPort() int {
-	return integration.RaftBasePort + (GinkgoParallelNode()-1)*100
+	return integration.RaftBasePort.StartPortForNode()
 }
 
 func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {

@@ -46,5 +46,5 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 func StartPort() int {
-	return integration.GossipBasePort + (GinkgoParallelNode()-1)*100
+	return integration.GossipBasePort.StartPortForNode()
 }

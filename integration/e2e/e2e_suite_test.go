@@ -50,7 +50,7 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 func StartPort() int {
-	return integration.E2EBasePort + (GinkgoParallelNode()-1)*100
+	return integration.E2EBasePort.StartPortForNode()
 }
 
 type DatagramReader struct {

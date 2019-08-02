@@ -66,7 +66,7 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 func StartPort() int {
-	return integration.LifecyclePort + (GinkgoParallelNode()-1)*100
+	return integration.LifecyclePort.StartPortForNode()
 }
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, initialQueryResult int) {

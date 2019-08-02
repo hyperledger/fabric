@@ -47,7 +47,7 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 func StartPort() int {
-	return integration.TokenBasePort + (GinkgoParallelNode()-1)*100
+	return integration.TokenBasePort.StartPortForNode()
 }
 
 func ToHex(q uint64) string {
