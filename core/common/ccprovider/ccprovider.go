@@ -151,7 +151,7 @@ func (cifs *CCInfoFSImpl) GetChaincodeFromPath(ccNameVersion string, path string
 	_, _, err := cccdspack.InitFromPath(ccNameVersion, path)
 	if err != nil {
 		// try signed CDS
-		ccscdspack := &SignedCDSPackage{}
+		ccscdspack := &SignedCDSPackage{GetHasher: cifs.GetHasher}
 		_, _, err = ccscdspack.InitFromPath(ccNameVersion, path)
 		if err != nil {
 			return nil, err
@@ -275,7 +275,7 @@ func GetCCPackage(buf []byte, bccsp bccsp.BCCSP) (CCPackage, error) {
 	}
 
 	// try signed CDS
-	scds := &SignedCDSPackage{}
+	scds := &SignedCDSPackage{GetHasher: bccsp}
 	if ccdata, err := scds.InitFromBuffer(buf); err != nil {
 		scds = nil
 	} else {

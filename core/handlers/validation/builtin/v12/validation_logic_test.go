@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -80,7 +81,11 @@ func processSignedCDS(cds *peer.ChaincodeDeploymentSpec, policy *common.Signatur
 
 	b := protoutil.MarshalOrPanic(env)
 
-	ccpack := &ccprovider.SignedCDSPackage{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, fmt.Errorf("could not create bootBCCSP %s", err)
+	}
+	ccpack := &ccprovider.SignedCDSPackage{GetHasher: cryptoProvider}
 	cd, err := ccpack.InitFromBuffer(b)
 	if err != nil {
 		return nil, fmt.Errorf("error owner creating package %s", err)

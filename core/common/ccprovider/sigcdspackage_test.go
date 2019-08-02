@@ -27,7 +27,11 @@ func processSignedCDS(cds *pb.ChaincodeDeploymentSpec, policy *common.SignatureP
 
 	b := protoutil.MarshalOrPanic(env)
 
-	ccpack := &SignedCDSPackage{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("could not create bootBCCSP %s", cryptoProvider)
+	}
+	ccpack := &SignedCDSPackage{GetHasher: cryptoProvider}
 	cd, err := ccpack.InitFromBuffer(b)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error owner creating package %s", err)
