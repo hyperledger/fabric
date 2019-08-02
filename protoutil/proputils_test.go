@@ -469,7 +469,7 @@ func TestProposalResponse(t *testing.T) {
 	if prBack.Response.Status != 200 ||
 		string(prBack.Endorsement.Signature) != "signature" ||
 		string(prBack.Endorsement.Endorser) != "endorser" ||
-		bytes.Compare(prBack.Payload, prpBytes) != 0 {
+		!bytes.Equal(prBack.Payload, prpBytes) {
 		t.Fatalf("Invalid ProposalResponse after unmarshalling")
 		return
 	}
@@ -521,12 +521,12 @@ func TestEnvelope(t *testing.T) {
 		t.Fatalf("response staus don't match")
 		return
 	}
-	if bytes.Compare(act2.Response.Payload, response.Payload) != 0 {
+	if !bytes.Equal(act2.Response.Payload, response.Payload) {
 		t.Fatalf("response payload don't match")
 		return
 	}
 
-	if bytes.Compare(act2.Results, result) != 0 {
+	if !bytes.Equal(act2.Results, result) {
 		t.Fatalf("results don't match")
 		return
 	}
@@ -549,7 +549,7 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	if bytes.Compare(sh.Creator, signerSerialized) != 0 {
+	if !bytes.Equal(sh.Creator, signerSerialized) {
 		t.Fatalf("creator does not match")
 		return
 	}
@@ -577,12 +577,12 @@ func TestEnvelope(t *testing.T) {
 		t.Fatalf("response staus don't match")
 		return
 	}
-	if bytes.Compare(ca.Response.Payload, response.Payload) != 0 {
+	if !bytes.Equal(ca.Response.Payload, response.Payload) {
 		t.Fatalf("response payload don't match")
 		return
 	}
 
-	if bytes.Compare(ca.Results, result) != 0 {
+	if !bytes.Equal(ca.Results, result) {
 		t.Fatalf("results don't match")
 		return
 	}

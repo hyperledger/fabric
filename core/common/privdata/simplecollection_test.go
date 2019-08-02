@@ -43,7 +43,7 @@ func (id *mockIdentity) ExpiresAt() time.Time {
 }
 
 func (id *mockIdentity) SatisfiesPrincipal(p *mb.MSPPrincipal) error {
-	if bytes.Compare(id.idBytes, p.Principal) == 0 {
+	if bytes.Equal(id.idBytes, p.Principal) {
 		return nil
 	}
 	return errors.New("Principals do not match")
@@ -66,7 +66,7 @@ func (id *mockIdentity) GetOrganizationalUnits() []*msp.OUIdentifier {
 }
 
 func (id *mockIdentity) Verify(msg []byte, sig []byte) error {
-	if bytes.Compare(sig, []byte("badsigned")) == 0 {
+	if bytes.Equal(sig, []byte("badsigned")) {
 		return errors.New("Invalid signature")
 	}
 	return nil

@@ -355,7 +355,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		}
 
 		// ensure that the proposal hash matches
-		if bytes.Compare(pHash, prp.ProposalHash) != 0 {
+		if !bytes.Equal(pHash, prp.ProposalHash) {
 			return errors.New("proposal hash does not match")
 		}
 	}

@@ -37,11 +37,10 @@ func (id *mockIdentity) ExpiresAt() time.Time {
 }
 
 func (id *mockIdentity) SatisfiesPrincipal(p *mb.MSPPrincipal) error {
-	if bytes.Compare(id.idBytes, p.Principal) == 0 {
-		return nil
-	} else {
+	if !bytes.Equal(id.idBytes, p.Principal) {
 		return errors.New("Principals do not match")
 	}
+	return nil
 }
 
 func (id *mockIdentity) GetIdentifier() *msp.IdentityIdentifier {
@@ -61,11 +60,10 @@ func (id *mockIdentity) GetOrganizationalUnits() []*msp.OUIdentifier {
 }
 
 func (id *mockIdentity) Verify(msg []byte, sig []byte) error {
-	if bytes.Compare(sig, invalidSignature) == 0 {
+	if bytes.Equal(sig, invalidSignature) {
 		return errors.New("Invalid signature")
-	} else {
-		return nil
 	}
+	return nil
 }
 
 func (id *mockIdentity) Serialize() ([]byte, error) {

@@ -410,7 +410,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainid, &pb.ChaincodeSpec{}, id)
 	var args [][]byte
 	if len(collectionConfigBytes) > 0 {
-		if bytes.Compare(collectionConfigBytes, []byte("nil")) == 0 {
+		if bytes.Equal(collectionConfigBytes, []byte("nil")) {
 			args = [][]byte{[]byte("deploy"), []byte("test"), cdsBytes, nil, []byte("escc"), []byte("vscc"), nil}
 		} else {
 			args = [][]byte{[]byte("deploy"), []byte("test"), cdsBytes, nil, []byte("escc"), []byte("vscc"), collectionConfigBytes}
@@ -636,7 +636,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 		newCdsBytes := protoutil.MarshalOrPanic(newCds)
 
 		if len(collectionConfigBytes) > 0 {
-			if bytes.Compare(collectionConfigBytes, []byte("nil")) == 0 {
+			if bytes.Equal(collectionConfigBytes, []byte("nil")) {
 				args = [][]byte{[]byte("upgrade"), []byte("test"), newCdsBytes, nil, []byte("escc"), []byte("vscc"), nil}
 			} else {
 				args = [][]byte{[]byte("upgrade"), []byte("test"), newCdsBytes, nil, []byte("escc"), []byte("vscc"), collectionConfigBytes}

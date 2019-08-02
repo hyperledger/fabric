@@ -165,7 +165,7 @@ func CreateSignedTx(
 		return nil, err
 	}
 
-	if bytes.Compare(signerBytes, shdr.Creator) != 0 {
+	if !bytes.Equal(signerBytes, shdr.Creator) {
 		return nil, errors.New("signer must be the same as the one referenced in the header")
 	}
 
@@ -187,7 +187,7 @@ func CreateSignedTx(
 			continue
 		}
 
-		if bytes.Compare(a1, r.Payload) != 0 {
+		if !bytes.Equal(a1, r.Payload) {
 			return nil, errors.New("ProposalResponsePayloads do not match")
 		}
 	}
