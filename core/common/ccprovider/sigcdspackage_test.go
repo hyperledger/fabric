@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -266,7 +267,10 @@ func TestSigCDSGetCCPackage(t *testing.T) {
 
 	b := protoutil.MarshalOrPanic(env)
 
-	ccpack, err := GetCCPackage(b)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	ccpack, err := GetCCPackage(b, cryptoProvider)
 	if err != nil {
 		t.Fatalf("failed to get CCPackage %s", err)
 		return
@@ -300,7 +304,9 @@ func TestInvalidSigCDSGetCCPackage(t *testing.T) {
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
 	b := protoutil.MarshalOrPanic(cds)
-	ccpack, err := GetCCPackage(b)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	ccpack, err := GetCCPackage(b, cryptoProvider)
 	if err != nil {
 		t.Fatalf("failed to get CCPackage %s", err)
 	}

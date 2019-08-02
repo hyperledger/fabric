@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -188,7 +189,7 @@ func (cifs *CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCP
 type DirEnumerator func(string) ([]os.FileInfo, error)
 
 // ChaincodeExtractor extracts chaincode from a given path
-type ChaincodeExtractor func(ccNameVersion string, path string) (CCPackage, error)
+type ChaincodeExtractor func(ccNameVersion string, path string, getHasher GetHasher) (CCPackage, error)
 
 // ListInstalledChaincodes retrieves the installed chaincodes
 func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) ([]chaincode.InstalledChaincode, error) {
@@ -217,7 +218,7 @@ func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, 
 		ccName := f.Name()[:i]      // Everything before the separator
 		ccVersion := f.Name()[i+1:] // Everything after the separator
 
-		ccPackage, err := ccFromPath(ccName+":"+ccVersion, dir)
+		ccPackage, err := ccFromPath(ccName+":"+ccVersion, dir, cifs.GetHasher)
 		if err != nil {
 			ccproviderLogger.Warning("Failed obtaining chaincode information about", ccName, ccVersion, ":", err)
 			return nil, errors.Wrapf(err, "failed obtaining information about %s, version %s", ccName, ccVersion)
@@ -261,9 +262,9 @@ func GetChaincodeData(ccNameVersion string) (*ChaincodeData, error) {
 
 // GetCCPackage tries each known package implementation one by one
 // till the right package is found
-func GetCCPackage(buf []byte) (CCPackage, error) {
+func GetCCPackage(buf []byte, bccsp bccsp.BCCSP) (CCPackage, error) {
 	// try raw CDS
-	cds := &CDSPackage{GetHasher: factory.GetDefault()}
+	cds := &CDSPackage{GetHasher: bccsp}
 	if ccdata, err := cds.InitFromBuffer(buf); err != nil {
 		cds = nil
 	} else {

@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/internal/peer/common"
@@ -236,7 +237,7 @@ func getPackageFromFile(ccPkgFile string) (proto.Message, *pb.ChaincodeDeploymen
 	}
 
 	// the bytes should be a valid package (CDS or SignedCDS)
-	ccpack, err := ccprovider.GetCCPackage(ccPkgBytes)
+	ccpack, err := ccprovider.GetCCPackage(ccPkgBytes, factory.GetDefault())
 	if err != nil {
 		return nil, nil, err
 	}
