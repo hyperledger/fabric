@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
@@ -72,17 +73,20 @@ func TestVerifyBlockSignature(t *testing.T) {
 			PolicyManagerVal:     policyMgr,
 		},
 	}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	cs := &ChainSupport{
 		ledgerResources: &ledgerResources{
 			configResources: &configResources{
 				mutableResources: ms,
+				bccsp:            cryptoProvider,
 			},
 		},
 	}
 
 	// Scenario I: Policy manager isn't initialized
 	// and thus policy cannot be found
-	err := cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
+	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
 	assert.EqualError(t, err, "policy /Channel/Orderer/BlockValidation wasn't found")
 
 	// Scenario II: Policy manager finds policy, but it evaluates
@@ -123,18 +127,21 @@ func TestConsensusMetadataValidation(t *testing.T) {
 		},
 		newConsensusMetadataVal: newConsensusMetadata,
 	}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	mv := &msgprocessormocks.FakeMetadataValidator{}
 	cs := &ChainSupport{
 		ledgerResources: &ledgerResources{
 			configResources: &configResources{
 				mutableResources: ms,
+				bccsp:            cryptoProvider,
 			},
 		},
 		MetadataValidator: mv,
 	}
 
 	// case 1: valid consensus metadata update
-	_, err := cs.ProposeConfigUpdate(&common.Envelope{})
+	_, err = cs.ProposeConfigUpdate(&common.Envelope{})
 	assert.NoError(t, err)
 
 	// validate arguments to ValidateConsensusMetadata

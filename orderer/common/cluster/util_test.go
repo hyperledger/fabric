@@ -519,10 +519,12 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 		block, err := test.MakeGenesisBlock("mychannel")
 		assert.NoError(t, err)
 
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
 		// For a block that doesn't have per org endpoints,
 		// we take the global endpoints
 		injectGlobalOrdererEndpoint(t, block, "globalEndpoint")
-		endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block)
+		endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block, cryptoProvider)
 		assert.NoError(t, err)
 		assert.Len(t, endpointConfig, 1)
 		assert.Equal(t, "globalEndpoint", endpointConfig[0].Endpoint)
@@ -555,8 +557,9 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 		assert.NoError(t, err)
 		caBytes := msps["SampleOrg"].GetTLSRootCerts()[0]
 
+		assert.NoError(t, err)
 		injectAdditionalTLSCAEndpointPair(t, block, "anotherEndpoint", caBytes, "fooOrg")
-		endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block)
+		endpointConfig, err := cluster.EndpointconfigFromConfigBlock(block, cryptoProvider)
 		assert.NoError(t, err)
 		// And ensure that the endpoints that are taken, are the per org ones.
 		assert.Len(t, endpointConfig, 2)
@@ -581,14 +584,17 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 }
 
 func TestEndpointconfigFromConfigBlockFailures(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	t.Run("nil block", func(t *testing.T) {
-		certs, err := cluster.EndpointconfigFromConfigBlock(nil)
+		certs, err := cluster.EndpointconfigFromConfigBlock(nil, cryptoProvider)
 		assert.Nil(t, certs)
 		assert.EqualError(t, err, "nil block")
 	})
 
 	t.Run("nil block data", func(t *testing.T) {
-		certs, err := cluster.EndpointconfigFromConfigBlock(&common.Block{})
+		certs, err := cluster.EndpointconfigFromConfigBlock(&common.Block{}, cryptoProvider)
 		assert.Nil(t, certs)
 		assert.EqualError(t, err, "block data is nil")
 	})
@@ -596,7 +602,7 @@ func TestEndpointconfigFromConfigBlockFailures(t *testing.T) {
 	t.Run("no envelope", func(t *testing.T) {
 		certs, err := cluster.EndpointconfigFromConfigBlock(&common.Block{
 			Data: &common.BlockData{},
-		})
+		}, cryptoProvider)
 		assert.Nil(t, certs)
 		assert.EqualError(t, err, "envelope index out of bounds")
 	})
@@ -606,7 +612,7 @@ func TestEndpointconfigFromConfigBlockFailures(t *testing.T) {
 			Data: &common.BlockData{
 				Data: [][]byte{{}},
 			},
-		})
+		}, cryptoProvider)
 		assert.Nil(t, certs)
 		assert.EqualError(t, err, "failed extracting bundle from envelope: envelope header cannot be nil")
 	})
@@ -775,9 +781,11 @@ func TestBlockVerifierAssembler(t *testing.T) {
 	group, err := encoder.NewChannelGroup(config)
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
 	t.Run("Good config envelope", func(t *testing.T) {
-		bva := &cluster.BlockVerifierAssembler{}
+		bva := &cluster.BlockVerifierAssembler{BCCSP: cryptoProvider}
 		verifier, err := bva.VerifierFromConfig(&common.ConfigEnvelope{
 			Config: &common.Config{
 				ChannelGroup: group,
@@ -789,7 +797,7 @@ func TestBlockVerifierAssembler(t *testing.T) {
 	})
 
 	t.Run("Bad config envelope", func(t *testing.T) {
-		bva := &cluster.BlockVerifierAssembler{}
+		bva := &cluster.BlockVerifierAssembler{BCCSP: cryptoProvider}
 		_, err := bva.VerifierFromConfig(&common.ConfigEnvelope{}, "mychannel")
 		assert.EqualError(t, err, "failed extracting bundle from envelope: channelconfig Config cannot be nil")
 	})

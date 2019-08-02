@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
@@ -116,6 +117,9 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 	goodConfigBlock := &common.Block{}
 	assert.NoError(t, proto.Unmarshal(blockBytes, goodConfigBlock))
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	for _, testCase := range []struct {
 		name            string
 		height          uint64
@@ -180,7 +184,7 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 			cs.BlockByIndex[cs.HeightVal-1] = testCase.blockAtHeight
 			cs.BlockByIndex[42] = testCase.lastConfigBlock
 
-			certs, err := EndpointconfigFromFromSupport(cs)
+			certs, err := EndpointconfigFromFromSupport(cs, cryptoProvider)
 			if testCase.expectedError == "" {
 				assert.NotNil(t, certs)
 				assert.NoError(t, err)
@@ -226,7 +230,10 @@ func TestNewBlockPuller(t *testing.T) {
 		},
 	}
 
-	bp, err := newBlockPuller(cs, dialer, localconfig.Cluster{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	bp, err := newBlockPuller(cs, dialer, localconfig.Cluster{}, cryptoProvider)
 	assert.NoError(t, err)
 	assert.NotNil(t, bp)
 
@@ -257,7 +264,7 @@ func TestNewBlockPuller(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			testCase.dialer.Config.SecOpts.Certificate = testCase.certificate
-			bp, err := newBlockPuller(testCase.cs, testCase.dialer, localconfig.Cluster{})
+			bp, err := newBlockPuller(testCase.cs, testCase.dialer, localconfig.Cluster{}, cryptoProvider)
 			assert.Nil(t, bp)
 			assert.EqualError(t, err, testCase.expectedError)
 		})

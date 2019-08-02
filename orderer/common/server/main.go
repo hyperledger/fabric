@@ -292,7 +292,7 @@ func createReplicator(
 	logger := flogging.MustGetLogger("orderer.common.cluster")
 
 	vl := &verifierLoader{
-		verifierFactory: &cluster.BlockVerifierAssembler{Logger: logger},
+		verifierFactory: &cluster.BlockVerifierAssembler{Logger: logger, BCCSP: factory.GetDefault()},
 		onFailure: func(block *cb.Block) {
 			protolator.DeepMarshalJSON(os.Stdout, block)
 		},
@@ -314,7 +314,7 @@ func createReplicator(
 		LoadVerifier:       vl.loadVerifier,
 		Logger:             logger,
 		VerifiersByChannel: verifiersByChannel,
-		VerifierFactory:    &cluster.BlockVerifierAssembler{Logger: logger},
+		VerifierFactory:    &cluster.BlockVerifierAssembler{Logger: logger, BCCSP: factory.GetDefault()},
 	}
 
 	ledgerFactory := &ledgerFactory{

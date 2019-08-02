@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -349,12 +350,12 @@ type VerifierRetriever interface {
 }
 
 // BlockPullerFromConfigBlock returns a BlockPuller that doesn't verify signatures on blocks.
-func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifierRetriever VerifierRetriever) (*BlockPuller, error) {
+func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifierRetriever VerifierRetriever, bccsp bccsp.BCCSP) (*BlockPuller, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
 
-	endpoints, err := EndpointconfigFromConfigBlock(block)
+	endpoints, err := EndpointconfigFromConfigBlock(block, bccsp)
 	if err != nil {
 		return nil, err
 	}

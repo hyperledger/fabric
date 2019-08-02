@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -33,12 +34,12 @@ import (
 )
 
 // EndpointconfigFromFromSupport extracts TLS CA certificates and endpoints from the ConsenterSupport
-func EndpointconfigFromFromSupport(support consensus.ConsenterSupport) ([]cluster.EndpointCriteria, error) {
+func EndpointconfigFromFromSupport(support consensus.ConsenterSupport, bccsp bccsp.BCCSP) ([]cluster.EndpointCriteria, error) {
 	lastConfigBlock, err := lastConfigBlockFromSupport(support)
 	if err != nil {
 		return nil, err
 	}
-	endpointconf, err := cluster.EndpointconfigFromConfigBlock(lastConfigBlock)
+	endpointconf, err := cluster.EndpointconfigFromConfigBlock(lastConfigBlock, bccsp)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,9 @@ func lastConfigBlockFromSupport(support consensus.ConsenterSupport) (*common.Blo
 // newBlockPuller creates a new block puller
 func newBlockPuller(support consensus.ConsenterSupport,
 	baseDialer *cluster.PredicateDialer,
-	clusterConfig localconfig.Cluster) (BlockPuller, error) {
+	clusterConfig localconfig.Cluster,
+	bccsp bccsp.BCCSP,
+) (BlockPuller, error) {
 
 	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
 		return cluster.VerifyBlocks(blocks, support)
@@ -74,7 +77,7 @@ func newBlockPuller(support consensus.ConsenterSupport,
 	stdDialer.Config.SecOpts.VerifyCertificate = nil
 
 	// Extract the TLS CA certs and endpoints from the configuration,
-	endpoints, err := EndpointconfigFromFromSupport(support)
+	endpoints, err := EndpointconfigFromFromSupport(support, bccsp)
 	if err != nil {
 		return nil, err
 	}

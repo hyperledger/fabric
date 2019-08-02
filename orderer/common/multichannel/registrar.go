@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -67,10 +68,11 @@ type mutableResources interface {
 
 type configResources struct {
 	mutableResources
+	bccsp bccsp.BCCSP
 }
 
 func (cr *configResources) CreateBundle(channelID string, config *cb.Config) (*channelconfig.Bundle, error) {
-	return channelconfig.NewBundle(channelID, config, factory.GetDefault())
+	return channelconfig.NewBundle(channelID, config, cr.bccsp)
 }
 
 func (cr *configResources) Update(bndl *channelconfig.Bundle) {
@@ -295,6 +297,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 	return &ledgerResources{
 		configResources: &configResources{
 			mutableResources: channelconfig.NewBundleSource(bundle, r.callbacks...),
+			bccsp:            factory.GetDefault(),
 		},
 		ReadWriter: ledger,
 	}
