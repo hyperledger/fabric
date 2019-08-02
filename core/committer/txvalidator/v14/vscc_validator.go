@@ -12,7 +12,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
@@ -311,14 +310,12 @@ func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (ccprovider.Chainco
 // GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, vscc and policy from lscc
 func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (*sysccprovider.ChaincodeInstance, *sysccprovider.ChaincodeInstance, []byte, error) {
 	cc := &sysccprovider.ChaincodeInstance{
-		ChainID:          chdr.ChannelId,
-		ChaincodeName:    ccID,
-		ChaincodeVersion: coreUtil.GetSysCCVersion(),
+		ChainID:       chdr.ChannelId,
+		ChaincodeName: ccID,
 	}
 	vscc := &sysccprovider.ChaincodeInstance{
-		ChainID:          chdr.ChannelId,
-		ChaincodeName:    "vscc",                     // default vscc for system chaincodes
-		ChaincodeVersion: coreUtil.GetSysCCVersion(), // Get vscc version
+		ChainID:       chdr.ChannelId,
+		ChaincodeName: "vscc", // default vscc for system chaincodes
 	}
 	var policy []byte
 	var err error
