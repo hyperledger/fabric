@@ -16,10 +16,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-type BuiltinSCCs struct{}
+// BuiltinSCCs are special system chaincodes, differentiated from other (plugin)
+// system chaincodes.  These chaincodes do not need to be initialized in '_lifecycle'
+// and may be invoked without a channel context.  It is expected that '_lifecycle'
+// will eventually be the only builtin SCCs.
+// Note, this field should only be used on _endorsement_ side, never in validation
+// as it might change.
+type BuiltinSCCs map[string]struct{}
 
-func (BuiltinSCCs) IsSysCC(name string) bool {
-	return name == "lscc" || name == "cscc" || name == "qscc" || name == "_lifecycle"
+func (bccs BuiltinSCCs) IsSysCC(name string) bool {
+	_, ok := bccs[name]
+	return ok
 }
 
 // Provider implements sysccprovider.SystemChaincodeProvider

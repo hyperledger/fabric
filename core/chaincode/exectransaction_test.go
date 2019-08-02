@@ -109,7 +109,8 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	ca, _ := tlsgen.NewCA()
 	pr := platforms.NewRegistry(&golang.Platform{})
 	mockAclProvider := &mock.ACLProvider{}
-	lsccImpl := lscc.New(scc.BuiltinSCCs{}, sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	builtinSCCs := map[string]struct{}{"lscc": {}}
+	lsccImpl := lscc.New(builtinSCCs, sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &cm.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 		switch name {
@@ -183,7 +184,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		Lifecycle:              ml,
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
-		SystemCCProvider:       scc.BuiltinSCCs{},
+		BuiltinSCCs:            builtinSCCs,
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -48,11 +49,6 @@ type Registry interface {
 // An Invoker invokes chaincode.
 type Invoker interface {
 	Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInput) (*pb.ChaincodeMessage, error)
-}
-
-// SystemCCProvider provides system chaincode metadata.
-type SystemCCProvider interface {
-	IsSysCC(name string) bool
 }
 
 // TransactionRegistry tracks active transactions for each channel.
@@ -137,8 +133,8 @@ type Handler struct {
 	TXContexts ContextRegistry
 	// activeTransactions holds active transaction identifiers.
 	ActiveTransactions TransactionRegistry
-	// SystemCCProvider provides access to system chaincode metadata
-	SystemCCProvider SystemCCProvider
+	// BuiltinSCCs can be used to determine if a name is associated with a system chaincode
+	BuiltinSCCs scc.BuiltinSCCs
 	// InstantiationPolicyChecker is used to evaluate the chaincode instantiation policies.
 	InstantiationPolicyChecker InstantiationPolicyChecker
 	// QueryResponeBuilder is used to build query responses
@@ -356,7 +352,7 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 	// - an application chaincode
 	//   (and we still need to determine whether the invoker can invoke it)
 
-	if h.SystemCCProvider.IsSysCC(ccIns.ChaincodeName) {
+	if h.BuiltinSCCs.IsSysCC(ccIns.ChaincodeName) {
 		// Allow this call
 		return nil
 	}
@@ -1017,7 +1013,7 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 	// If targetInstance is not an SCC, isValidTxSim should be called which will return an err.
 	// We do not want to propagate calls to user CCs when the original call was to a SCC
 	// without a channel context (ie, no ledger context).
-	if !h.SystemCCProvider.IsSysCC(targetInstance.ChaincodeName) {
+	if !h.BuiltinSCCs.IsSysCC(targetInstance.ChaincodeName) {
 		// normal path - UCC invocation with an empty ("") channel: isValidTxSim will return an error
 		return h.isValidTxSim("", txid, "could not get valid transaction")
 	}
@@ -1193,7 +1189,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	version := h.SystemCCVersion
 	var idBytes []byte
 	requiresInit := false
-	if !h.SystemCCProvider.IsSysCC(targetInstance.ChaincodeName) {
+	if !h.BuiltinSCCs.IsSysCC(targetInstance.ChaincodeName) {
 		// if its a user chaincode, get the details
 		cd, err := h.DefinitionGetter.ChaincodeDefinition(targetInstance.ChainID, targetInstance.ChaincodeName, txParams.TXSimulator)
 		if err != nil {

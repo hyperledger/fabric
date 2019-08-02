@@ -85,11 +85,6 @@ type transactionRegistry interface {
 	chaincode.TransactionRegistry
 }
 
-//go:generate counterfeiter -o mock/system_chaincode_provider.go --fake-name SystemCCProvider . systemCCProvider
-type systemCCProvider interface {
-	chaincode.SystemCCProvider
-}
-
 //go:generate counterfeiter -o mock/acl_provider.go --fake-name ACLProvider . aclProvider
 type aclProvider interface {
 	chaincode.ACLProvider

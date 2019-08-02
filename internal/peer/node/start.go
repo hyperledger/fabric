@@ -415,7 +415,14 @@ func serve(args []string) error {
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
-	lsccInst := lscc.New(scc.BuiltinSCCs{}, sccp, aclProvider, peerInstance.GetMSPIDs, policyChecker)
+	builtinSCCs := map[string]struct{}{
+		"lscc":       {},
+		"qscc":       {},
+		"cscc":       {},
+		"_lifecycle": {},
+	}
+
+	lsccInst := lscc.New(builtinSCCs, sccp, aclProvider, peerInstance.GetMSPIDs, policyChecker)
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
@@ -523,7 +530,7 @@ func serve(args []string) error {
 		Lifecycle:              chaincodeEndorsementInfo,
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
-		SystemCCProvider:       scc.BuiltinSCCs{},
+		BuiltinSCCs:            builtinSCCs,
 		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
@@ -576,6 +583,7 @@ func serve(args []string) error {
 		ChaincodeSupport: chaincodeSupport,
 		SysCCProvider:    sccp,
 		ACLProvider:      aclProvider,
+		BuiltinSCCs:      builtinSCCs,
 	}
 	endorsementPluginsByName := reg.Lookup(library.Endorsement).(map[string]endorsement2.PluginFactory)
 	validationPluginsByName := reg.Lookup(library.Validation).(map[string]validation.PluginFactory)

@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/internal/ccmetadata"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -124,16 +125,12 @@ type MSPIDsGetter func(string) []string
 
 //---------- the LSCC -----------------
 
-type IsSysCCChecker interface {
-	IsSysCC(name string) bool
-}
-
 // LifeCycleSysCC implements chaincode lifecycle and policies around it
 type LifeCycleSysCC struct {
 	// aclProvider is responsible for access control evaluation
 	ACLProvider aclmgmt.ACLProvider
 
-	IsSysCCChecker IsSysCCChecker
+	BuiltinSCCs scc.BuiltinSCCs
 
 	// SCCProvider is the interface which is passed into system chaincodes
 	// to access other parts of the system
@@ -153,19 +150,19 @@ type LifeCycleSysCC struct {
 // New creates a new instance of the LSCC
 // Typically there is only one of these per peer
 func New(
-	sccC IsSysCCChecker,
+	builtinSCCs scc.BuiltinSCCs,
 	sccp sysccprovider.SystemChaincodeProvider,
 	ACLProvider aclmgmt.ACLProvider,
 	getMSPIDs MSPIDsGetter,
 	policyChecker policy.PolicyChecker,
 ) *LifeCycleSysCC {
 	return &LifeCycleSysCC{
-		IsSysCCChecker: sccC,
-		Support:        &supportImpl{GetMSPIDs: getMSPIDs},
-		PolicyChecker:  policyChecker,
-		SCCProvider:    sccp,
-		ACLProvider:    ACLProvider,
-		GetMSPIDs:      getMSPIDs,
+		BuiltinSCCs:   builtinSCCs,
+		Support:       &supportImpl{GetMSPIDs: getMSPIDs},
+		PolicyChecker: policyChecker,
+		SCCProvider:   sccp,
+		ACLProvider:   ACLProvider,
+		GetMSPIDs:     getMSPIDs,
 	}
 }
 
@@ -623,7 +620,7 @@ func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 		return err
 	}
 
-	if lscc.IsSysCCChecker.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
+	if lscc.BuiltinSCCs.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
 		return errors.Errorf("cannot install: %s is the name of a system chaincode", cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 

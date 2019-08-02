@@ -36,17 +36,6 @@ type SystemChaincodeProvider struct {
 		result1 ledger.QueryExecutor
 		result2 error
 	}
-	IsSysCCStub        func(string) bool
-	isSysCCMutex       sync.RWMutex
-	isSysCCArgsForCall []struct {
-		arg1 string
-	}
-	isSysCCReturns struct {
-		result1 bool
-	}
-	isSysCCReturnsOnCall map[int]struct {
-		result1 bool
-	}
 	PolicyManagerStub        func(string) (policies.Manager, bool)
 	policyManagerMutex       sync.RWMutex
 	policyManagerArgsForCall []struct {
@@ -190,66 +179,6 @@ func (fake *SystemChaincodeProvider) GetQueryExecutorForLedgerReturnsOnCall(i in
 	}{result1, result2}
 }
 
-func (fake *SystemChaincodeProvider) IsSysCC(arg1 string) bool {
-	fake.isSysCCMutex.Lock()
-	ret, specificReturn := fake.isSysCCReturnsOnCall[len(fake.isSysCCArgsForCall)]
-	fake.isSysCCArgsForCall = append(fake.isSysCCArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("IsSysCC", []interface{}{arg1})
-	fake.isSysCCMutex.Unlock()
-	if fake.IsSysCCStub != nil {
-		return fake.IsSysCCStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.isSysCCReturns
-	return fakeReturns.result1
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCCallCount() int {
-	fake.isSysCCMutex.RLock()
-	defer fake.isSysCCMutex.RUnlock()
-	return len(fake.isSysCCArgsForCall)
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCCalls(stub func(string) bool) {
-	fake.isSysCCMutex.Lock()
-	defer fake.isSysCCMutex.Unlock()
-	fake.IsSysCCStub = stub
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCArgsForCall(i int) string {
-	fake.isSysCCMutex.RLock()
-	defer fake.isSysCCMutex.RUnlock()
-	argsForCall := fake.isSysCCArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCReturns(result1 bool) {
-	fake.isSysCCMutex.Lock()
-	defer fake.isSysCCMutex.Unlock()
-	fake.IsSysCCStub = nil
-	fake.isSysCCReturns = struct {
-		result1 bool
-	}{result1}
-}
-
-func (fake *SystemChaincodeProvider) IsSysCCReturnsOnCall(i int, result1 bool) {
-	fake.isSysCCMutex.Lock()
-	defer fake.isSysCCMutex.Unlock()
-	fake.IsSysCCStub = nil
-	if fake.isSysCCReturnsOnCall == nil {
-		fake.isSysCCReturnsOnCall = make(map[int]struct {
-			result1 bool
-		})
-	}
-	fake.isSysCCReturnsOnCall[i] = struct {
-		result1 bool
-	}{result1}
-}
-
 func (fake *SystemChaincodeProvider) PolicyManager(arg1 string) (policies.Manager, bool) {
 	fake.policyManagerMutex.Lock()
 	ret, specificReturn := fake.policyManagerReturnsOnCall[len(fake.policyManagerArgsForCall)]
@@ -320,8 +249,6 @@ func (fake *SystemChaincodeProvider) Invocations() map[string][][]interface{} {
 	defer fake.getApplicationConfigMutex.RUnlock()
 	fake.getQueryExecutorForLedgerMutex.RLock()
 	defer fake.getQueryExecutorForLedgerMutex.RUnlock()
-	fake.isSysCCMutex.RLock()
-	defer fake.isSysCCMutex.RUnlock()
 	fake.policyManagerMutex.RLock()
 	defer fake.policyManagerMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

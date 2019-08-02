@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/scc"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -56,6 +57,7 @@ type Lifecycle interface {
 type ChaincodeSupport struct {
 	ACLProvider            ACLProvider
 	AppConfig              ApplicationConfigRetriever
+	BuiltinSCCs            scc.BuiltinSCCs
 	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	ExecuteTimeout         time.Duration
 	HandlerMetrics         *HandlerMetrics
@@ -65,7 +67,6 @@ type ChaincodeSupport struct {
 	Lifecycle              Lifecycle
 	Peer                   *peer.Peer
 	Runtime                Runtime
-	SystemCCProvider       SystemCCProvider
 	TotalQueryLimit        int
 	UserRunsCC             bool
 }
@@ -123,7 +124,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		ACLProvider:                cs.ACLProvider,
 		TXContexts:                 NewTransactionContexts(),
 		ActiveTransactions:         NewActiveTransactions(),
-		SystemCCProvider:           cs.SystemCCProvider,
+		BuiltinSCCs:                cs.BuiltinSCCs,
 		SystemCCVersion:            util.GetSysCCVersion(),
 		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
 		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
@@ -209,7 +210,7 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
 func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	if cs.SystemCCProvider.IsSysCC(cccid.Name) {
+	if cs.BuiltinSCCs.IsSysCC(cccid.Name) {
 		return cs.invokeSystem(txParams, cccid, input)
 	}
 

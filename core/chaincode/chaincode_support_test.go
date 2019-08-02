@@ -177,7 +177,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	globalConfig := GlobalConfig()
 	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
-	lsccImpl := lscc.New(scc.BuiltinSCCs{}, sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	lsccImpl := lscc.New(map[string]struct{}{"lscc": {}}, sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 		switch name {
@@ -242,7 +242,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		Lifecycle:              ml,
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
-		SystemCCProvider:       scc.BuiltinSCCs{},
+		BuiltinSCCs:            map[string]struct{}{"lscc": {}},
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
@@ -1029,8 +1029,8 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	defer cleanup()
 
 	h := Handler{
-		TXContexts:       NewTransactionContexts(),
-		SystemCCProvider: &scc.BuiltinSCCs{},
+		TXContexts:  NewTransactionContexts(),
+		BuiltinSCCs: map[string]struct{}{"lscc": {}},
 	}
 
 	txid := "1"
@@ -1224,7 +1224,7 @@ func TestCCFramework(t *testing.T) {
 	initializeCC(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	//chaincode support should not allow dups
-	handler := &Handler{chaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, SystemCCProvider: chaincodeSupport.SystemCCProvider}
+	handler := &Handler{chaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, BuiltinSCCs: chaincodeSupport.BuiltinSCCs}
 	if err := chaincodeSupport.HandlerRegistry.Register(handler); err == nil {
 		t.Fatalf("expected re-register to fail")
 	}
