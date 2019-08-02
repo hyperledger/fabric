@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -291,13 +290,18 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, peerConnection *ccint
 		tw := tar.NewWriter(gw)
 
 		// Note, we goofily base64 encode 2 of the TLS artifacts but not the other for strange historical reasons
-		cutil.WriteBytesToPackage(TLSClientKeyPath, []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientKey)), tw)
-		cutil.WriteBytesToPackage(TLSClientCertPath, []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientCert)), tw)
-		cutil.WriteBytesToPackage(TLSClientRootCertPath, peerConnection.TLSConfig.RootCert, tw)
+		err = addFiles(tw, map[string][]byte{
+			TLSClientKeyPath:      []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientKey)),
+			TLSClientCertPath:     []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientCert)),
+			TLSClientRootCertPath: peerConnection.TLSConfig.RootCert,
+		})
+		if err != nil {
+			return fmt.Errorf("error writing files to upload to Docker instance into a temporary tar blob: %s", err)
+		}
 
 		// Write the tar file out
 		if err := tw.Close(); err != nil {
-			return fmt.Errorf("Error writing files to upload to Docker instance into a temporary tar blob: %s", err)
+			return fmt.Errorf("error writing files to upload to Docker instance into a temporary tar blob: %s", err)
 		}
 
 		gw.Close()
@@ -320,6 +324,26 @@ func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, peerConnection *ccint
 	}
 
 	dockerLogger.Debugf("Started container %s", containerName)
+	return nil
+}
+
+func addFiles(tw *tar.Writer, contents map[string][]byte) error {
+	for name, payload := range contents {
+		err := tw.WriteHeader(&tar.Header{
+			Name: name,
+			Size: int64(len(payload)),
+			Mode: 0100644,
+		})
+		if err != nil {
+			return err
+		}
+
+		_, err = tw.Write(payload)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
