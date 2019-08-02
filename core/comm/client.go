@@ -106,6 +106,13 @@ func (client *GRPCClient) parseSecureOptions(opts *SecureOptions) error {
 				"are required when using mutual TLS")
 		}
 	}
+
+	if opts.TimeShift > 0 {
+		client.tlsConfig.Time = func() time.Time {
+			return time.Now().Add((-1) * opts.TimeShift)
+		}
+	}
+
 	return nil
 }
 

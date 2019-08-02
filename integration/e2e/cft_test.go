@@ -7,6 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/hex"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -351,6 +358,113 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Expect(sess.Wait(network.EventuallyTimeout).ExitCode()).To(Equal(1))
 		})
 	})
+
+	When("orderer TLS certificates expire", func() {
+		It("is still possible to recover", func() {
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, 33000, components)
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			peer = network.Peer("Org1", "peer1")
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			ordererDomain := network.Organization(o1.Organization).Domain
+
+			ordererTLSCACertPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
+				ordererDomain, "tlsca", fmt.Sprintf("tlsca.%s-cert.pem", ordererDomain))
+			ordererTLSCACert, err := ioutil.ReadFile(ordererTLSCACertPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			ordererTLSCAKeyPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
+				ordererDomain, "tlsca", privateKeyFileName(ordererTLSCACert))
+
+			ordererTLSCAKey, err := ioutil.ReadFile(ordererTLSCAKeyPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			serverTLSCerts := make(map[string][]byte)
+			for _, orderer := range []*nwo.Orderer{o1, o2, o3} {
+				tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.crt")
+				serverTLSCerts[tlsCertPath], err = ioutil.ReadFile(tlsCertPath)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			By("Expiring orderer TLS certificates")
+			for filePath, certPEM := range serverTLSCerts {
+				expiredCert, earlyMadeCACert := expireCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey)
+				err = ioutil.WriteFile(filePath, expiredCert, 600)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = ioutil.WriteFile(ordererTLSCACertPath, earlyMadeCACert, 600)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			By("Regenerating config")
+			sess, err := network.ConfigTxGen(commands.OutputBlock{
+				ChannelID:   network.SystemChannel.Name,
+				Profile:     network.SystemChannel.Profile,
+				ConfigPath:  network.RootDir,
+				OutputBlock: network.OutputBlockPath(network.SystemChannel.Name),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+			By("Running the orderer nodes")
+			o1Runner := network.OrdererRunner(o1)
+			o2Runner := network.OrdererRunner(o2)
+			o3Runner := network.OrdererRunner(o3)
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready()).Should(BeClosed())
+			Eventually(o2Proc.Ready()).Should(BeClosed())
+			Eventually(o3Proc.Ready()).Should(BeClosed())
+
+			By("Waiting for TLS handshakes to fail")
+			Eventually(o1Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("tls: bad certificate"))
+			Eventually(o2Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("tls: bad certificate"))
+			Eventually(o3Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("tls: bad certificate"))
+
+			By("Killing orderers")
+			o1Proc.Signal(syscall.SIGTERM)
+			o2Proc.Signal(syscall.SIGTERM)
+			o3Proc.Signal(syscall.SIGTERM)
+
+			By("Launching orderers again")
+			o1Runner = network.OrdererRunner(o1)
+			o2Runner = network.OrdererRunner(o2)
+			o3Runner = network.OrdererRunner(o3)
+
+			for i, runner := range []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner} {
+				// Switch between the general port and the cluster listener port
+				port := network.OrdererPort(network.Orderers[i], nwo.ListenPort)
+				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", port))
+				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", network.ReservePort()))
+				runner.Command.Env = append(runner.Command.Env, "ORDERER_GENERAL_CLUSTER_TLSHANDSHAKETIMESHIFT=90s")
+				runner.Command.Env = append(runner.Command.Env, "ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1")
+				tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(network.Orderers[i]), "server.crt")
+				tlsKeyPath := filepath.Join(network.OrdererLocalTLSDir(network.Orderers[i]), "server.key")
+				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", tlsCertPath))
+				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", tlsKeyPath))
+				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_ROOTCAS=%s", ordererTLSCACertPath))
+				runner.Command.Env = append(runner.Command.Env, "ORDERER_METRICS_PROVIDER=disabled")
+			}
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready()).Should(BeClosed())
+			Eventually(o2Proc.Ready()).Should(BeClosed())
+			Eventually(o3Proc.Ready()).Should(BeClosed())
+
+			By("Waiting for a leader to be elected")
+			findLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
+
+		})
+	})
 })
 
 func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
@@ -429,4 +543,53 @@ func findLeader(ordererRunners []*ginkgomon.Runner) int {
 	}
 
 	return firstLeader
+}
+
+func expireCertificate(certPEM, caCertPEM, caKeyPEM []byte) (expiredcertPEM []byte, earlyMadeCACertPEM []byte) {
+	keyAsDER, _ := pem.Decode(caKeyPEM)
+	caKeyWithoutType, err := x509.ParsePKCS8PrivateKey(keyAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+	caKey := caKeyWithoutType.(*ecdsa.PrivateKey)
+
+	caCertAsDER, _ := pem.Decode(caCertPEM)
+	caCert, err := x509.ParseCertificate(caCertAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	certAsDER, _ := pem.Decode(certPEM)
+	cert, err := x509.ParseCertificate(certAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	cert.Raw = nil
+	caCert.Raw = nil
+	// The certificate was made 1 hour ago
+	cert.NotBefore = time.Now().Add((-1) * time.Hour)
+	// As well as the CA certificate
+	caCert.NotBefore = time.Now().Add((-1) * time.Hour)
+	// The certificate expires now
+	cert.NotAfter = time.Now()
+
+	// The CA signs the certificate
+	certBytes, err := x509.CreateCertificate(rand.Reader, cert, caCert, cert.PublicKey, caKey)
+	Expect(err).NotTo(HaveOccurred())
+
+	// The CA signs its own certificate
+	caCertBytes, err := x509.CreateCertificate(rand.Reader, caCert, caCert, caCert.PublicKey, caKey)
+	Expect(err).NotTo(HaveOccurred())
+
+	expiredcertPEM = pem.EncodeToMemory(&pem.Block{Bytes: certBytes, Type: "CERTIFICATE"})
+	earlyMadeCACertPEM = pem.EncodeToMemory(&pem.Block{Bytes: caCertBytes, Type: "CERTIFICATE"})
+	return
+}
+
+func privateKeyFileName(certAsPEM []byte) string {
+	certAsDER, _ := pem.Decode(certAsPEM)
+	cert, err := x509.ParseCertificate(certAsDER.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	ecPubKey := cert.PublicKey.(*ecdsa.PublicKey)
+	keyAsBytes := elliptic.Marshal(ecPubKey.Curve, ecPubKey.X, ecPubKey.Y)
+	hash := sha256.New()
+	hash.Write(keyAsBytes)
+	ski := hash.Sum(nil)
+	return fmt.Sprintf("%s_sk", hex.EncodeToString(ski))
 }

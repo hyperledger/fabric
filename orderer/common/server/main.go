@@ -364,6 +364,7 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 		Logger:             generalConf.Logger,
 		KaOpts:             generalConf.KaOpts,
 		SecOpts: &comm.SecureOptions{
+			TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
 			CipherSuites:      comm.DefaultTLSCipherSuites,
 			ClientRootCAs:     clientRootCAs,
 			RequireClientCert: true,
@@ -419,6 +420,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool,
 	}
 
 	cc.SecOpts = &comm.SecureOptions{
+		TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
 		RequireClientCert: true,
 		CipherSuites:      comm.DefaultTLSCipherSuites,
 		ServerRootCAs:     serverRootCAs,
