@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -159,7 +158,7 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = cutil.WriteBytesToPackage("Chaincode-Package-Metadata.json", metadataBytes, tw)
+	err = writeBytesToPackage(tw, "Chaincode-Package-Metadata.json", metadataBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "error writing package metadata to tar")
 	}
@@ -171,7 +170,7 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 
 	codePackageName := "Code-Package.tar.gz"
 
-	err = cutil.WriteBytesToPackage(codePackageName, codeBytes, tw)
+	err = writeBytesToPackage(tw, codePackageName, codeBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "error writing package code bytes to tar")
 	}
@@ -185,6 +184,24 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 	}
 
 	return payload.Bytes(), nil
+}
+
+func writeBytesToPackage(tw *tar.Writer, name string, payload []byte) error {
+	err := tw.WriteHeader(&tar.Header{
+		Name: name,
+		Size: int64(len(payload)),
+		Mode: 0100644,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = tw.Write(payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // PackageMetadata holds the path and type for a chaincode package
