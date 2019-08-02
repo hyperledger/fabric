@@ -74,7 +74,7 @@ func TestDeploy(t *testing.T) {
 	doneC := make(chan struct{})
 	close(doneC)
 	csh.LaunchInProcReturns(doneC)
-	p.DeploySysCCs(csh)
+	p.DeploySysCCs("latest", csh)
 	gt.Expect(csh.LaunchInProcCallCount()).To(gomega.Equal(2))
 	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal(ccintf.CCID("invokableExternalButNotCC2CC:latest")))
 	gt.Expect(csh.LaunchInProcArgsForCall(1)).To(gomega.Equal(ccintf.CCID("invokableCC2CCButNotExternal:latest")))

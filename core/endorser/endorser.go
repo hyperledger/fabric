@@ -91,6 +91,7 @@ type Endorser struct {
 	distributePrivateData privateDataDistributor
 	s                     Support
 	PlatformRegistry      *packaging.Registry
+	SysCCVersion          string
 	PvtRWSetAssembler
 	Metrics *EndorserMetrics
 }
@@ -105,13 +106,14 @@ type validateResult struct {
 }
 
 // NewEndorserServer creates and returns a new Endorser server instance.
-func NewEndorserServer(privDist privateDataDistributor, s Support, pr *packaging.Registry, metricsProv metrics.Provider) *Endorser {
+func NewEndorserServer(privDist privateDataDistributor, s Support, pr *packaging.Registry, metricsProv metrics.Provider, sysCCVersion string) *Endorser {
 	e := &Endorser{
 		distributePrivateData: privDist,
 		s:                     s,
 		PlatformRegistry:      pr,
 		PvtRWSetAssembler:     &rwSetAssembler{},
 		Metrics:               NewEndorserMetrics(metricsProv),
+		SysCCVersion:          sysCCVersion,
 	}
 	return e
 }
@@ -322,7 +324,7 @@ func (e *Endorser) endorseProposal(_ context.Context, chainID string, txid strin
 	if isSysCC {
 		// if we want to allow mixed fabric levels we should
 		// set syscc version to ""
-		ccid.Version = util.GetSysCCVersion()
+		ccid.Version = e.SysCCVersion
 	} else {
 		ccid.Version = cd.CCVersion()
 	}

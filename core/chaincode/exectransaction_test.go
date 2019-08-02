@@ -117,8 +117,8 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		case "lscc":
 			return &ccprovider.ChaincodeContainerInfo{
 				Name:      "lscc",
-				Version:   util.GetSysCCVersion(),
-				PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
+				Version:   "latest",
+				PackageID: persistence.PackageID("lscc:latest"),
 			}, nil
 		default:
 			return &ccprovider.ChaincodeContainerInfo{
@@ -185,6 +185,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
 		BuiltinSCCs:            builtinSCCs,
+		SystemCCVersion:        "latest",
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
@@ -192,7 +193,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 
 	sccp.RegisterSysCC(lsccImpl)
 
-	sccp.DeploySysCCs(chaincodeSupport)
+	sccp.DeploySysCCs("latest", chaincodeSupport)
 
 	for _, id := range chainIDs {
 		if err = peer.CreateMockChannel(peerInstance, id); err != nil {
@@ -254,7 +255,7 @@ func endTxSimulationCDS(peerInstance *peer.Peer, chainID string, txsim ledger.Tx
 	// get lscc ChaincodeID
 	lsccid := &pb.ChaincodeID{
 		Name:    "lscc",
-		Version: util.GetSysCCVersion(),
+		Version: "latest",
 	}
 
 	// get a proposal - we need it to get a transaction
@@ -401,7 +402,7 @@ func getDeployLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec, ccp *com
 			return nil, err
 		}
 	}
-	sysCCVers := util.GetSysCCVersion()
+	sysCCVers := "latest"
 
 	invokeInput := &pb.ChaincodeInput{Args: [][]byte{
 		[]byte("deploy"), // function name
@@ -481,7 +482,7 @@ func deploy2(chainID string, cccid *ccprovider.CCContext, chaincodeDeploymentSpe
 	//ignore existence errors
 	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
 
-	sysCCVers := util.GetSysCCVersion()
+	sysCCVers := "latest"
 	lsccid := &ccprovider.CCContext{
 		Name:    cis.ChaincodeSpec.ChaincodeId.Name,
 		Version: sysCCVers,

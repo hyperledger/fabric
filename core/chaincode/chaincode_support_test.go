@@ -190,8 +190,8 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		case "lscc":
 			return &ccprovider.ChaincodeContainerInfo{
 				Name:      "lscc",
-				Version:   util.GetSysCCVersion(),
-				PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
+				Version:   "latest",
+				PackageID: persistence.PackageID("lscc:latest"),
 			}, nil
 		default:
 			return nil, errors.New("oh-bother-no-chaincode-info")
@@ -243,13 +243,14 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
 		BuiltinSCCs:            map[string]struct{}{"lscc": {}},
+		SystemCCVersion:        "latest",
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
 
 	sccp.RegisterSysCC(lsccImpl)
 
-	sccp.DeploySysCCs(chaincodeSupport)
+	sccp.DeploySysCCs("latest", chaincodeSupport)
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {
@@ -425,7 +426,7 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *ccpro
 
 	b := protoutil.MarshalOrPanic(cds)
 
-	sysCCVers := util.GetSysCCVersion()
+	sysCCVers := "latest"
 
 	//wrap the deployment in an invocation spec to lscc...
 	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(txParams.ChannelID), b}}}}
@@ -702,7 +703,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	txid = util.GenerateUUID()
 	txParams, txsim = startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	sysCCVers := util.GetSysCCVersion()
+	sysCCVers := "latest"
 	//call a callable system CC, a regular cc, a regular but different cc on a different chain, a regular but same cc on a different chain,  and an uncallable system cc and expect an error inthe last one
 	respSet := &mockpeer.MockResponseSet{
 		DoneFunc:  errorFunc,

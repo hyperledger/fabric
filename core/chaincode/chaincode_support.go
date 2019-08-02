@@ -67,6 +67,7 @@ type ChaincodeSupport struct {
 	Lifecycle              Lifecycle
 	Peer                   *peer.Peer
 	Runtime                Runtime
+	SystemCCVersion        string
 	TotalQueryLimit        int
 	UserRunsCC             bool
 }
@@ -125,7 +126,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		TXContexts:                 NewTransactionContexts(),
 		ActiveTransactions:         NewActiveTransactions(),
 		BuiltinSCCs:                cs.BuiltinSCCs,
-		SystemCCVersion:            util.GetSysCCVersion(),
+		SystemCCVersion:            cs.SystemCCVersion,
 		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
 		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
 		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),
@@ -246,9 +247,9 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 func (cs *ChaincodeSupport) invokeSystem(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
 	// FIXME: remove this once _lifecycle has definitions for all system chaincodes (FAB-14628)
 	ccci := &ccprovider.ChaincodeContainerInfo{
-		Version:   util.GetSysCCVersion(),
+		Version:   cs.SystemCCVersion,
 		Name:      cccid.Name,
-		PackageID: persistence.PackageID(cccid.Name + ":" + util.GetSysCCVersion()),
+		PackageID: persistence.PackageID(cccid.Name + ":" + cs.SystemCCVersion),
 	}
 
 	h, err := cs.Launch(txParams.ChannelID, ccci)

@@ -34,7 +34,6 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/cclifecycle"
@@ -415,6 +414,12 @@ func serve(args []string) error {
 		Whitelist: scc.GlobalWhitelist(),
 	}
 
+	// sysCCVersion is a concept we're probably better off without.
+	// This should probably be set as a constant, that is not build dependent.
+	// As it stands, this forces different versions of peer chaincode _lifecycle
+	// to be incompatible.
+	sysCCVersion := metadata.Version
+
 	builtinSCCs := map[string]struct{}{
 		"lscc":       {},
 		"qscc":       {},
@@ -426,7 +431,7 @@ func serve(args []string) error {
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
-		PackageID:       ccintf.CCID(lifecycle.LifecycleNamespace + ":" + util.GetSysCCVersion()),
+		PackageID:       ccintf.CCID(lifecycle.LifecycleNamespace + ":" + sysCCVersion),
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
@@ -531,6 +536,7 @@ func serve(args []string) error {
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
 		BuiltinSCCs:            builtinSCCs,
+		SystemCCVersion:        sysCCVersion,
 		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
@@ -597,7 +603,7 @@ func serve(args []string) error {
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
-	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, packagingRegistry, metricsProvider)
+	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, packagingRegistry, metricsProvider, sysCCVersion)
 
 	// register prover grpc service
 	err = registerProverService(peerInstance, peerServer, aclProvider, signingIdentity)
@@ -606,7 +612,7 @@ func serve(args []string) error {
 	}
 
 	// deploy system chaincodes
-	sccp.DeploySysCCs(chaincodeSupport)
+	sccp.DeploySysCCs(sysCCVersion, chaincodeSupport)
 	logger.Infof("Deployed system chaincodes")
 
 	// register the lifecycleMetadataManager to get updates from the legacy
