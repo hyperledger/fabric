@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 syntax = "proto3";
 
 import "common/common.proto";
+import "ledger/rwset/rwset.proto";
 import "peer/chaincode_event.proto";
 import "peer/transaction.proto";
 
@@ -46,12 +47,20 @@ message FilteredChaincodeAction {
     ChaincodeEvent chaincode_event = 1;
 }
 
+// BlockAndPrivateData contains Block and a map from tx_seq_in_block to rwset.TxPvtReadWriteSet
+message BlockAndPrivateData {
+    common.Block block = 1;
+    // map from tx_seq_in_block to rwset.TxPvtReadWriteSet
+    map<uint64, rwset.TxPvtReadWriteSet> private_data_map = 2;
+}
+
 // DeliverResponse
 message DeliverResponse {
     oneof Type {
         common.Status status = 1;
         common.Block block = 2;
         FilteredBlock filtered_block = 3;
+        BlockAndPrivateData block_and_private_data = 4;
     }
 }
 
@@ -61,9 +70,14 @@ service Deliver {
     // then a stream of block replies is received
     rpc Deliver (stream common.Envelope) returns (stream DeliverResponse) {
     }
-    // deliver first requires an Envelope of type ab.DELIVER_SEEK_INFO with
+    // deliverFiltered first requires an Envelope of type ab.DELIVER_SEEK_INFO with
     // Payload data as a marshaled orderer.SeekInfo message,
     // then a stream of **filtered** block replies is received
     rpc DeliverFiltered (stream common.Envelope) returns (stream DeliverResponse) {
+    }
+    // deliverWithPrivateData first requires an Envelope of type ab.DELIVER_SEEK_INFO with
+    // Payload data as a marshaled orderer.SeekInfo message,
+    // then a stream of block and private data replies is received
+    rpc DeliverWithPrivateData (stream common.Envelope) returns (stream DeliverResponse) {
     }
 }

@@ -2,9 +2,9 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	peer "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 type DeliverServer struct {
@@ -28,6 +28,17 @@ type DeliverServer struct {
 		result1 error
 	}
 	deliverFilteredReturnsOnCall map[int]struct {
+		result1 error
+	}
+	DeliverWithPrivateDataStub        func(peer.Deliver_DeliverWithPrivateDataServer) error
+	deliverWithPrivateDataMutex       sync.RWMutex
+	deliverWithPrivateDataArgsForCall []struct {
+		arg1 peer.Deliver_DeliverWithPrivateDataServer
+	}
+	deliverWithPrivateDataReturns struct {
+		result1 error
+	}
+	deliverWithPrivateDataReturnsOnCall map[int]struct {
 		result1 error
 	}
 	invocations      map[string][][]interface{}
@@ -154,6 +165,66 @@ func (fake *DeliverServer) DeliverFilteredReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *DeliverServer) DeliverWithPrivateData(arg1 peer.Deliver_DeliverWithPrivateDataServer) error {
+	fake.deliverWithPrivateDataMutex.Lock()
+	ret, specificReturn := fake.deliverWithPrivateDataReturnsOnCall[len(fake.deliverWithPrivateDataArgsForCall)]
+	fake.deliverWithPrivateDataArgsForCall = append(fake.deliverWithPrivateDataArgsForCall, struct {
+		arg1 peer.Deliver_DeliverWithPrivateDataServer
+	}{arg1})
+	fake.recordInvocation("DeliverWithPrivateData", []interface{}{arg1})
+	fake.deliverWithPrivateDataMutex.Unlock()
+	if fake.DeliverWithPrivateDataStub != nil {
+		return fake.DeliverWithPrivateDataStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.deliverWithPrivateDataReturns
+	return fakeReturns.result1
+}
+
+func (fake *DeliverServer) DeliverWithPrivateDataCallCount() int {
+	fake.deliverWithPrivateDataMutex.RLock()
+	defer fake.deliverWithPrivateDataMutex.RUnlock()
+	return len(fake.deliverWithPrivateDataArgsForCall)
+}
+
+func (fake *DeliverServer) DeliverWithPrivateDataCalls(stub func(peer.Deliver_DeliverWithPrivateDataServer) error) {
+	fake.deliverWithPrivateDataMutex.Lock()
+	defer fake.deliverWithPrivateDataMutex.Unlock()
+	fake.DeliverWithPrivateDataStub = stub
+}
+
+func (fake *DeliverServer) DeliverWithPrivateDataArgsForCall(i int) peer.Deliver_DeliverWithPrivateDataServer {
+	fake.deliverWithPrivateDataMutex.RLock()
+	defer fake.deliverWithPrivateDataMutex.RUnlock()
+	argsForCall := fake.deliverWithPrivateDataArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *DeliverServer) DeliverWithPrivateDataReturns(result1 error) {
+	fake.deliverWithPrivateDataMutex.Lock()
+	defer fake.deliverWithPrivateDataMutex.Unlock()
+	fake.DeliverWithPrivateDataStub = nil
+	fake.deliverWithPrivateDataReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *DeliverServer) DeliverWithPrivateDataReturnsOnCall(i int, result1 error) {
+	fake.deliverWithPrivateDataMutex.Lock()
+	defer fake.deliverWithPrivateDataMutex.Unlock()
+	fake.DeliverWithPrivateDataStub = nil
+	if fake.deliverWithPrivateDataReturnsOnCall == nil {
+		fake.deliverWithPrivateDataReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deliverWithPrivateDataReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *DeliverServer) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -161,6 +232,8 @@ func (fake *DeliverServer) Invocations() map[string][][]interface{} {
 	defer fake.deliverMutex.RUnlock()
 	fake.deliverFilteredMutex.RLock()
 	defer fake.deliverFilteredMutex.RUnlock()
+	fake.deliverWithPrivateDataMutex.RLock()
+	defer fake.deliverWithPrivateDataMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

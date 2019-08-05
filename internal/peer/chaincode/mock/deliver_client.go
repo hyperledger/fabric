@@ -38,6 +38,20 @@ type PeerDeliverClient struct {
 		result1 peer.Deliver_DeliverFilteredClient
 		result2 error
 	}
+	DeliverWithPrivateDataStub        func(context.Context, ...grpc.CallOption) (peer.Deliver_DeliverWithPrivateDataClient, error)
+	deliverWithPrivateDataMutex       sync.RWMutex
+	deliverWithPrivateDataArgsForCall []struct {
+		arg1 context.Context
+		arg2 []grpc.CallOption
+	}
+	deliverWithPrivateDataReturns struct {
+		result1 peer.Deliver_DeliverWithPrivateDataClient
+		result2 error
+	}
+	deliverWithPrivateDataReturnsOnCall map[int]struct {
+		result1 peer.Deliver_DeliverWithPrivateDataClient
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -170,6 +184,70 @@ func (fake *PeerDeliverClient) DeliverFilteredReturnsOnCall(i int, result1 peer.
 	}{result1, result2}
 }
 
+func (fake *PeerDeliverClient) DeliverWithPrivateData(arg1 context.Context, arg2 ...grpc.CallOption) (peer.Deliver_DeliverWithPrivateDataClient, error) {
+	fake.deliverWithPrivateDataMutex.Lock()
+	ret, specificReturn := fake.deliverWithPrivateDataReturnsOnCall[len(fake.deliverWithPrivateDataArgsForCall)]
+	fake.deliverWithPrivateDataArgsForCall = append(fake.deliverWithPrivateDataArgsForCall, struct {
+		arg1 context.Context
+		arg2 []grpc.CallOption
+	}{arg1, arg2})
+	fake.recordInvocation("DeliverWithPrivateData", []interface{}{arg1, arg2})
+	fake.deliverWithPrivateDataMutex.Unlock()
+	if fake.DeliverWithPrivateDataStub != nil {
+		return fake.DeliverWithPrivateDataStub(arg1, arg2...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.deliverWithPrivateDataReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *PeerDeliverClient) DeliverWithPrivateDataCallCount() int {
+	fake.deliverWithPrivateDataMutex.RLock()
+	defer fake.deliverWithPrivateDataMutex.RUnlock()
+	return len(fake.deliverWithPrivateDataArgsForCall)
+}
+
+func (fake *PeerDeliverClient) DeliverWithPrivateDataCalls(stub func(context.Context, ...grpc.CallOption) (peer.Deliver_DeliverWithPrivateDataClient, error)) {
+	fake.deliverWithPrivateDataMutex.Lock()
+	defer fake.deliverWithPrivateDataMutex.Unlock()
+	fake.DeliverWithPrivateDataStub = stub
+}
+
+func (fake *PeerDeliverClient) DeliverWithPrivateDataArgsForCall(i int) (context.Context, []grpc.CallOption) {
+	fake.deliverWithPrivateDataMutex.RLock()
+	defer fake.deliverWithPrivateDataMutex.RUnlock()
+	argsForCall := fake.deliverWithPrivateDataArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *PeerDeliverClient) DeliverWithPrivateDataReturns(result1 peer.Deliver_DeliverWithPrivateDataClient, result2 error) {
+	fake.deliverWithPrivateDataMutex.Lock()
+	defer fake.deliverWithPrivateDataMutex.Unlock()
+	fake.DeliverWithPrivateDataStub = nil
+	fake.deliverWithPrivateDataReturns = struct {
+		result1 peer.Deliver_DeliverWithPrivateDataClient
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *PeerDeliverClient) DeliverWithPrivateDataReturnsOnCall(i int, result1 peer.Deliver_DeliverWithPrivateDataClient, result2 error) {
+	fake.deliverWithPrivateDataMutex.Lock()
+	defer fake.deliverWithPrivateDataMutex.Unlock()
+	fake.DeliverWithPrivateDataStub = nil
+	if fake.deliverWithPrivateDataReturnsOnCall == nil {
+		fake.deliverWithPrivateDataReturnsOnCall = make(map[int]struct {
+			result1 peer.Deliver_DeliverWithPrivateDataClient
+			result2 error
+		})
+	}
+	fake.deliverWithPrivateDataReturnsOnCall[i] = struct {
+		result1 peer.Deliver_DeliverWithPrivateDataClient
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *PeerDeliverClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -177,6 +255,8 @@ func (fake *PeerDeliverClient) Invocations() map[string][][]interface{} {
 	defer fake.deliverMutex.RUnlock()
 	fake.deliverFilteredMutex.RLock()
 	defer fake.deliverFilteredMutex.RUnlock()
+	fake.deliverWithPrivateDataMutex.RLock()
+	defer fake.deliverWithPrivateDataMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
