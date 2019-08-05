@@ -106,6 +106,7 @@ func TestHistory(t *testing.T) {
 	store1, err := provider.OpenBlockStore(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
+	assert.Equal(t, "history", env.testHistoryDB.Name())
 
 	bg, gb := testutil.NewBlockGenerator(t, ledger1id, false)
 	assert.NoError(t, store1.AddBlock(gb))
@@ -517,6 +518,12 @@ func TestHistoryWithBlockNumber256(t *testing.T) {
 	}
 	assert.Equal(t, 256, numEntries)
 	assert.Equal(t, "value256", valueInBlock256)
+}
+
+func TestName(t *testing.T) {
+	env := newTestHistoryEnv(t)
+	defer env.cleanup()
+	assert.Equal(t, "history", env.testHistoryDB.Name())
 }
 
 func testutilVerifyResults(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, key string, expectedVals []string) {

@@ -1609,3 +1609,11 @@ func checkPvtdataTestQueryResults(t *testing.T, qe ledger.QueryExecutor, ns, col
 	assert.Equal(t, expectedMetadata, committedMetadata)
 	t.Logf("key=%s, value=%s, metadata=%s", key, committedVal, committedMetadata)
 }
+
+func TestName(t *testing.T) {
+	testEnv := testEnvsMap[levelDBtestEnvName]
+	testEnv.init(t, "testLedger", nil)
+	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr()
+	assert.Equal(t, "state", txMgr.Name())
+}

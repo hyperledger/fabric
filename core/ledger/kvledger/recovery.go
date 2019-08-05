@@ -25,6 +25,8 @@ type recoverable interface {
 	ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error)
 	// CommitLostBlock recommits the block
 	CommitLostBlock(block *ledger.BlockAndPvtData) error
+	// Name returns the name of the database: either state or history
+	Name() string
 }
 
 type recoverer struct {

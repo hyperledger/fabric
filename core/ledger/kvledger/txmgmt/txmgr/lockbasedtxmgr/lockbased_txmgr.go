@@ -525,6 +525,11 @@ func (txmgr *LockBasedTxMgr) ShouldRecover(lastAvailableBlock uint64) (bool, uin
 	return savepoint.BlockNum != lastAvailableBlock, savepoint.BlockNum + 1, nil
 }
 
+// Name returns the name of the database that manages all active states.
+func (txmgr *LockBasedTxMgr) Name() string {
+	return "state"
+}
+
 // CommitLostBlock implements method in interface kvledger.Recoverer
 func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	block := blockAndPvtdata.Block
