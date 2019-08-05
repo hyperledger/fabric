@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/pkg/errors"
 )
 
@@ -67,7 +66,7 @@ func NewRegistry(platformTypes ...Platform) *Registry {
 	}
 	return &Registry{
 		Platforms:     platforms,
-		PackageWriter: PackageWriterWrapper(cutil.WriteBytesToPackage),
+		PackageWriter: PackageWriterWrapper(writeBytesToPackage),
 	}
 }
 
@@ -148,7 +147,25 @@ func (r *Registry) StreamDockerBuild(ccType, path string, codePackage []byte, in
 		return errors.Wrap(err, "docker build failed")
 	}
 
-	return cutil.WriteBytesToPackage("binpackage.tar", output.Bytes(), tw)
+	return writeBytesToPackage("binpackage.tar", output.Bytes(), tw)
+}
+
+func writeBytesToPackage(name string, payload []byte, tw *tar.Writer) error {
+	err := tw.WriteHeader(&tar.Header{
+		Name: name,
+		Size: int64(len(payload)),
+		Mode: 0100644,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = tw.Write(payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Registry) GenerateDockerBuild(ccType, path, name, version string, codePackage []byte, client *docker.Client) (io.Reader, error) {
