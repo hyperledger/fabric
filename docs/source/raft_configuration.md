@@ -122,8 +122,15 @@ used to further fine tune the cluster communication or replication mechanisms:
    To recover from such a scenario, it is possible to make TLS handshakes
    between ordering nodes consider the time to be shifted backwards a given
    amount that is configured to `TLSHandshakeTimeShift`.
-   It only effects ordering nodes that use a separate gRPC server for their
-   intra-cluster communication (via `general.cluster.ListenPort` and `general.cluster.ListenAddress`).
+   In order to be as uninvasive as possible, this configuration option
+   only effects ordering nodes that use a separate gRPC server for their
+   intra-cluster communication.
+   If your cluster is communicating via the same gRPC server that is used
+   to service clients and peers, you need to first reconfigure your orderer
+   by additionally setting `general.cluster.ListenPort`, `general.cluster.ListenAddress`,
+   `ServerCertificate` and `ServerPrivateKey`, and then restarting the orderer
+   in order for the new configuration to take effect.
+
 
 
 **Consensus parameters:**
