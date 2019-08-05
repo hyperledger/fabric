@@ -213,7 +213,16 @@ need to approve the chaincode definition according to the default policy. When
 committing a channel definition, you need to target enough peer organizations in
 the channel to satisfy your LifecycleEndorsement policy.
 
-  ![Committing the chaincode definition to the channel](lifecycle/Lifecycle-commit.png)
+You can also set the ``Channel/Application/LifecycleEndorsement`` policy to be a
+signature policy and explicitly specify the set of organizations on the channel
+that can approve a chaincode definition. This allows you to create a channel where
+a select number of organizations act as chaincode administrators and govern the
+business logic used by the channel. You can also use a signature policy if your
+channel has a large number Idemix organizations, which cannot approve
+chaincode definitions or endorse chaincode and may prevent the channel from
+reaching a majority as a result.
+
+![Committing the chaincode definition to the channel](lifecycle/Lifecycle-commit.png)
 
 *One organization administrator from Org1 or Org2 commits the chaincode definition
 to the channel. The definition on the channel does not include the packageID.*

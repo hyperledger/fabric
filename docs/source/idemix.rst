@@ -158,10 +158,34 @@ For an example of setting an affiliation in the Java SDK see this `sample <https
 For an example of using the CID library in go chaincode to retrieve attributes,
 see this `go chaincode <https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/fixture/sdkintegration/gocc/sampleIdemix/src/github.com/example_cc/example_cc.go#L88>`_.
 
+Idemix organizations cannot be used to endorse a chaincode or approve a chaincode
+definition. This needs to be taken into account when you set the
+LifecycleEndorsement and Endorsement policies on your channels. For more
+information, see the limitations section below.
+
 Current limitations
 -------------------
 
 The current version of Idemix does have a few limitations.
+
+* **Idemix organizations and endorsement policies**
+
+  Idemix organizations cannot be used to endorse a chaincode transaction or
+  approve a chaincode definition. By default, the
+  ``Channel/Application/LifecycleEndorsement`` and
+  ``Channel/Application/Endorsement`` policies will require signatures from a
+  majority of organizations active on the channel. This implies that a channel
+  that contains a large number of Idemix organizations may not be able to
+  reach the majority needed to fulfill the default policy. For example, if a
+  channel has two MSP Organizations and two Idemix organizations, the channel
+  policy will require that three out of four organizations approve a chaincode
+  definition to commit that definition to the channel. Because Idemix
+  organizations cannot approve a chaincode definition, the policy will only be
+  able to validate two out of four signatures.
+
+  If your channel contains a sufficient number of Idemix organizations to affect
+  the endorsement policy, you can use a signature policy to explicitly specify
+  the required MSP organizations.
 
 * **Fixed set of attributes**
 
