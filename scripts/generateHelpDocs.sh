@@ -65,13 +65,6 @@ generateHelpText \
         docs/wrappers/peer_channel_postscript.md \
         "${commands[@]}"
 
-commands=("peer logging" "peer logging getlevel" "peer logging revertlevels" "peer logging setlevel")
-generateHelpText \
-        docs/source/commands/peerlogging.md \
-        docs/wrappers/peer_logging_preamble.md \
-        docs/wrappers/peer_logging_postscript.md \
-        "${commands[@]}"
-
 commands=("peer node start" "peer node reset" "peer node rollback")
 generateHelpText \
         docs/source/commands/peernode.md \
