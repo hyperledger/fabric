@@ -75,6 +75,7 @@ type Cluster struct {
 	ReplicationMaxRetries                int
 	SendBufferSize                       int
 	CertExpirationWarningThreshold       time.Duration
+	TLSHandshakeTimeShift                time.Duration
 }
 
 // Keepalive contains configuration for gRPC servers.
