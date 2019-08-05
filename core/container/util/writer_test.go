@@ -10,6 +10,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -20,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_WriteFileToPackage(t *testing.T) {
+func TestWriteFileToPackage(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "utiltest")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
@@ -28,8 +30,6 @@ func Test_WriteFileToPackage(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)
-	err = WriteFileToPackage("blah", "", tw)
-	assert.Error(t, err, "Expected error writing non existent file to package")
 
 	// Create a file and write it to tar writer
 	filename := "test.txt"
@@ -42,11 +42,6 @@ func Test_WriteFileToPackage(t *testing.T) {
 	assert.NoError(t, err, "Error returned by WriteFileToPackage while writing existing file")
 	tw.Close()
 	gw.Close()
-
-	// tar writer is closed. Call WriteFileToPackage again, this should
-	// return an error
-	err = WriteFileToPackage(filePath, "", tw)
-	assert.Error(t, err, "Expected error writing using a closed writer")
 
 	// Read the file from the archive and check the name and file content
 	r := bytes.NewReader(buf.Bytes())
@@ -64,75 +59,44 @@ func Test_WriteFileToPackage(t *testing.T) {
 	assert.Equal(t, 5, n)
 	assert.True(t, err == nil || err == io.EOF, "Error reading file from the archive") // go1.10 returns io.EOF
 	assert.Equal(t, filecontent, string(b), "file content from archive does not equal original content")
+
+	t.Run("non existent file", func(t *testing.T) {
+		tw := tar.NewWriter(&bytes.Buffer{})
+		err := WriteFileToPackage("missing-file", "", tw)
+		assert.Error(t, err, "expected error writing a non existent file")
+		assert.Contains(t, err.Error(), "missing-file")
+	})
+
+	t.Run("closed tar writer", func(t *testing.T) {
+		tw := tar.NewWriter(&bytes.Buffer{})
+		tw.Close()
+		err := WriteFileToPackage(filePath, "test.txt", tw)
+		assert.EqualError(t, err, fmt.Sprintf("failed to write header for %s: archive/tar: write after close", filePath))
+	})
+
+	t.Run("stream write failure", func(t *testing.T) {
+		failWriter := &failingWriter{failAt: 514}
+		tw := tar.NewWriter(failWriter)
+		err := WriteFileToPackage(filePath, "test.txt", tw)
+		assert.EqualError(t, err, fmt.Sprintf("failed to write %s as test.txt: failed-the-write", filePath))
+	})
 }
 
-func Test_WriteStreamToPackage(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "utiltest")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+type failingWriter struct {
+	written int
+	failAt  int
+}
 
-	tarw := tar.NewWriter(bytes.NewBuffer(nil))
-	input := bytes.NewReader([]byte("hello"))
-
-	// Error case 1
-	err = WriteStreamToPackage(nil, "nonexistentpath", "", tarw)
-	assert.Error(t, err, "Expected error getting info of non existent file")
-
-	// Error case 2
-	err = WriteStreamToPackage(input, tempDir, "", tarw)
-	assert.Error(t, err, "Expected error copying to the tar writer (tarw)")
-
-	tarw.Close()
-
-	// Error case 3
-	err = WriteStreamToPackage(input, tempDir, "", tarw)
-	assert.Error(t, err, "Expected error copying to closed tar writer (tarw)")
-
-	// Success case
-	buf := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(buf)
-	tw := tar.NewWriter(gw)
-
-	// Create a file and write it to tar writer
-	filename := "test.txt"
-	filecontent := "hello"
-	filePath := filepath.Join(tempDir, filename)
-	err = ioutil.WriteFile(filePath, bytes.NewBufferString(filecontent).Bytes(), 0600)
-	assert.NoError(t, err, "Error creating file %s", filePath)
-
-	// Read the file into a stream
-	var b []byte
-	b, err = ioutil.ReadFile(filePath)
-	assert.NoError(t, err, "Error reading file %s", filePath)
-	is := bytes.NewReader(b)
-
-	// Write contents of the file stream to tar writer
-	err = WriteStreamToPackage(is, filePath, filename, tw)
-	assert.NoError(t, err, "Error copying file to the tar writer (tw)")
-
-	// Close the writers
-	tw.Close()
-	gw.Close()
-
-	// Read the file from the archive and check the name and file content
-	br := bytes.NewReader(buf.Bytes())
-	gr, err := gzip.NewReader(br)
-	defer gr.Close()
-	assert.NoError(t, err, "Error creating a gzip reader")
-	tr := tar.NewReader(gr)
-	header, err := tr.Next()
-	assert.NoError(t, err, "Error getting the file from the tar")
-	assert.Equal(t, filename, header.Name, "filename read from archive does not match what was added")
-
-	b1 := make([]byte, 5)
-	n, err := tr.Read(b1)
-	assert.Equal(t, 5, n)
-	assert.True(t, err == nil || err == io.EOF, "Error reading file from the archive") // go1.10 returns io.EOF
-	assert.Equal(t, filecontent, string(b), "file content from archive does not equal original content")
+func (f *failingWriter) Write(b []byte) (int, error) {
+	f.written += len(b)
+	if f.written < f.failAt {
+		return len(b), nil
+	}
+	return 0, errors.New("failed-the-write")
 }
 
 // Success case 1: with include file types and without exclude dir
-func Test_WriteFolderToTarPackage1(t *testing.T) {
+func TestWriteFolderToTarPackage1(t *testing.T) {
 	srcPath := filepath.Join("testdata", "sourcefiles")
 	filePath := "src/src/Hello.java"
 	includeFileTypes := map[string]bool{
@@ -148,7 +112,7 @@ func Test_WriteFolderToTarPackage1(t *testing.T) {
 }
 
 // Success case 2: with exclude dir and no include file types
-func Test_WriteFolderToTarPackage2(t *testing.T) {
+func TestWriteFolderToTarPackage2(t *testing.T) {
 	srcPath := filepath.Join("testdata", "sourcefiles")
 	tarBytes := createTestTar(t, srcPath, []string{"src"}, nil, nil)
 
@@ -157,7 +121,7 @@ func Test_WriteFolderToTarPackage2(t *testing.T) {
 }
 
 // Success case 3: with chaincode metadata in META-INF directory
-func Test_WriteFolderToTarPackage3(t *testing.T) {
+func TestWriteFolderToTarPackage3(t *testing.T) {
 	srcPath := filepath.Join("testdata", "sourcefiles")
 	filePath := "META-INF/statedb/couchdb/indexes/indexOwner.json"
 
@@ -169,7 +133,7 @@ func Test_WriteFolderToTarPackage3(t *testing.T) {
 }
 
 // Success case 4: with chaincode metadata in META-INF directory, pass trailing slash in srcPath
-func Test_WriteFolderToTarPackage4(t *testing.T) {
+func TestWriteFolderToTarPackage4(t *testing.T) {
 	srcPath := filepath.Join("testdata", "sourcefiles") + string(filepath.Separator)
 	filePath := "META-INF/statedb/couchdb/indexes/indexOwner.json"
 
@@ -181,7 +145,7 @@ func Test_WriteFolderToTarPackage4(t *testing.T) {
 }
 
 // Success case 5: with hidden files in META-INF directory (hidden files get ignored)
-func Test_WriteFolderToTarPackage5(t *testing.T) {
+func TestWriteFolderToTarPackage5(t *testing.T) {
 	srcPath := filepath.Join("testdata", "sourcefiles")
 	filePath := "META-INF/.hiddenfile"
 
@@ -195,7 +159,7 @@ func Test_WriteFolderToTarPackage5(t *testing.T) {
 }
 
 // Failure case 1: no files in directory
-func Test_WriteFolderToTarPackageFailure1(t *testing.T) {
+func TestWriteFolderToTarPackageFailure1(t *testing.T) {
 	srcPath, err := ioutil.TempDir("", "utiltest")
 	require.NoError(t, err)
 	defer os.RemoveAll(srcPath)
@@ -208,7 +172,7 @@ func Test_WriteFolderToTarPackageFailure1(t *testing.T) {
 }
 
 // Failure case 2: with invalid chaincode metadata in META-INF directory
-func Test_WriteFolderToTarPackageFailure2(t *testing.T) {
+func TestWriteFolderToTarPackageFailure2(t *testing.T) {
 	srcPath := filepath.Join("testdata", "BadMetadataInvalidIndex")
 	buf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(buf)
@@ -223,7 +187,7 @@ func Test_WriteFolderToTarPackageFailure2(t *testing.T) {
 }
 
 // Failure case 3: with unexpected content in META-INF directory
-func Test_WriteFolderToTarPackageFailure3(t *testing.T) {
+func TestWriteFolderToTarPackageFailure3(t *testing.T) {
 	srcPath := filepath.Join("testdata", "BadMetadataUnexpectedFolderContent")
 	buf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(buf)
