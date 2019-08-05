@@ -13,7 +13,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/pkg/errors"
 )
 
 // stateEP implements the KeyEndorsementPolicy
@@ -96,7 +95,7 @@ func (s *stateEP) setMSPIDsFromSP(sp *common.SignaturePolicyEnvelope) error {
 			msprole := &msp.MSPRole{}
 			err := proto.Unmarshal(identity.Principal, msprole)
 			if err != nil {
-				return errors.Wrapf(err, "error unmarshaling msp principal")
+				return fmt.Errorf("error unmarshaling msp principal: %s", err)
 			}
 			s.orgs[msprole.GetMspIdentifier()] = msprole.GetRole()
 		}

@@ -28,7 +28,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim/ext/attrmgr"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/pkg/errors"
 )
 
 // GetID returns the ID associated with the invoking identity.  This ID
@@ -127,10 +126,10 @@ func (c *clientIdentityImpl) AssertAttributeValue(attrName, attrValue string) er
 		return err
 	}
 	if !ok {
-		return errors.Errorf("Attribute '%s' was not found", attrName)
+		return fmt.Errorf("attribute '%s' was not found", attrName)
 	}
 	if val != attrValue {
-		return errors.Errorf("Attribute '%s' equals '%s', not '%s'", attrName, val, attrValue)
+		return fmt.Errorf("attribute '%s' equals '%s', not '%s'", attrName, val, attrValue)
 	}
 	return nil
 }
@@ -153,18 +152,18 @@ func (c *clientIdentityImpl) init() error {
 	if block == nil {
 		err := c.getAttributesFromIdemix()
 		if err != nil {
-			return errors.WithMessage(err, "identity bytes are neither X509 PEM format nor an idemix credential")
+			return fmt.Errorf("identity bytes are neither X509 PEM format nor an idemix credential: %s", err)
 		}
 		return nil
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return errors.WithMessage(err, "failed to parse certificate")
+		return fmt.Errorf("failed to parse certificate: %s", err)
 	}
 	c.cert = cert
 	attrs, err := attrmgr.New().GetAttributesFromCert(cert)
 	if err != nil {
-		return errors.WithMessage(err, "failed to get attributes from the transaction invoker's certificate")
+		return fmt.Errorf("failed to get attributes from the transaction invoker's certificate: %s", err)
 	}
 	c.attrs = attrs
 	return nil
@@ -176,11 +175,11 @@ func (c *clientIdentityImpl) getIdentity() (*msp.SerializedIdentity, error) {
 	sid := &msp.SerializedIdentity{}
 	creator, err := c.stub.GetCreator()
 	if err != nil || creator == nil {
-		return nil, errors.WithMessage(err, "failed to get transaction invoker's identity from the chaincode stub")
+		return nil, fmt.Errorf("failed to get transaction invoker's identity from the chaincode stub: %s", err)
 	}
 	err = proto.Unmarshal(creator, sid)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal transaction invoker's identity")
+		return nil, fmt.Errorf("failed to unmarshal transaction invoker's identity: %s", err)
 	}
 	return sid, nil
 }
@@ -189,7 +188,7 @@ func (c *clientIdentityImpl) getAttributesFromIdemix() error {
 	creator, err := c.stub.GetCreator()
 	attrs, err := attrmgr.New().GetAttributesFromIdemix(creator)
 	if err != nil {
-		return errors.WithMessage(err, "failed to get attributes from the transaction invoker's idemix credential")
+		return fmt.Errorf("failed to get attributes from the transaction invoker's idemix credential: %s", err)
 	}
 	c.attrs = attrs
 	return nil

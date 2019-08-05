@@ -26,11 +26,11 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -95,7 +95,7 @@ func (mgr *Mgr) ProcessAttributeRequests(requests []AttributeRequest, attributes
 		attrsMap[name] = attr.GetValue()
 	}
 	if len(missingRequiredAttrs) > 0 {
-		return nil, errors.Errorf("The following required attributes are missing: %+v",
+		return nil, fmt.Errorf("the following required attributes are missing: %+v",
 			missingRequiredAttrs)
 	}
 	return attrs, nil
@@ -105,7 +105,7 @@ func (mgr *Mgr) ProcessAttributeRequests(requests []AttributeRequest, attributes
 func (mgr *Mgr) AddAttributesToCert(attrs *Attributes, cert *x509.Certificate) error {
 	buf, err := json.Marshal(attrs)
 	if err != nil {
-		return errors.Wrap(err, "Failed to marshal attributes")
+		return fmt.Errorf("failed to marshal attributes: %s", err)
 	}
 	ext := pkix.Extension{
 		Id:       AttrOID,
@@ -128,7 +128,7 @@ func (mgr *Mgr) GetAttributesFromCert(cert *x509.Certificate) (*Attributes, erro
 	if buf != nil {
 		err := json.Unmarshal(buf, attrs)
 		if err != nil {
-			return nil, errors.Wrap(err, "Failed to unmarshal attributes from certificate")
+			return nil, fmt.Errorf("failed to unmarshal attributes from certificate: %s", err)
 		}
 	}
 	return attrs, nil
@@ -142,12 +142,12 @@ func (mgr *Mgr) GetAttributesFromIdemix(creator []byte) (*Attributes, error) {
 	sid := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(creator, sid)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal transaction invoker's identity")
+		return nil, fmt.Errorf("failed to unmarshal transaction invoker's identity: %s", err)
 	}
 	idemixID := &msp.SerializedIdemixIdentity{}
 	err = proto.Unmarshal(sid.IdBytes, idemixID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal transaction invoker's idemix identity")
+		return nil, fmt.Errorf("failed to unmarshal transaction invoker's idemix identity: %s", err)
 	}
 	// Unmarshal into attributes object
 	attrs := &Attributes{
@@ -157,14 +157,14 @@ func (mgr *Mgr) GetAttributesFromIdemix(creator []byte) (*Attributes, error) {
 	ou := &msp.OrganizationUnit{}
 	err = proto.Unmarshal(idemixID.Ou, ou)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal transaction invoker's ou")
+		return nil, fmt.Errorf("failed to unmarshal transaction invoker's ou: %s", err)
 	}
 	attrs.Attrs["ou"] = ou.OrganizationalUnitIdentifier
 
 	role := &msp.MSPRole{}
 	err = proto.Unmarshal(idemixID.Role, role)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal transaction invoker's role")
+		return nil, fmt.Errorf("failed to unmarshal transaction invoker's role: %s", err)
 	}
 	var roleStr string
 	switch role.Role {
