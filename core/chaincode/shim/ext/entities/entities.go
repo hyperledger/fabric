@@ -8,10 +8,11 @@ package entities
 
 import (
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/pkg/errors"
 )
 
 /**********************/
@@ -62,7 +63,7 @@ func NewAES256EncrypterEntity(ID string, b bccsp.BCCSP, key, IV []byte) (*BCCSPE
 
 	k, err := b.KeyImport(key, &bccsp.AES256ImportKeyOpts{Temporary: true})
 	if err != nil {
-		return nil, errors.WithMessage(err, "bccspInst.KeyImport failed")
+		return nil, fmt.Errorf("bccspInst.KeyImport failed: %s", err)
 	}
 
 	return NewEncrypterEntity(ID, b, k, &bccsp.AESCBCPKCS7ModeOpts{IV: IV}, &bccsp.AESCBCPKCS7ModeOpts{})
@@ -111,7 +112,7 @@ func NewECDSASignerEntity(ID string, b bccsp.BCCSP, signKeyBytes []byte) (*BCCSP
 
 	signKey, err := b.KeyImport(bl.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
 	if err != nil {
-		return nil, errors.WithMessage(err, "bccspInst.KeyImport failed")
+		return nil, fmt.Errorf("bccspInst.KeyImport failed: %s", err)
 	}
 
 	return NewSignerEntity(ID, b, signKey, nil, &bccsp.SHA256Opts{})
@@ -130,7 +131,7 @@ func NewECDSAVerifierEntity(ID string, b bccsp.BCCSP, signKeyBytes []byte) (*BCC
 
 	signKey, err := b.KeyImport(bl.Bytes, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: true})
 	if err != nil {
-		return nil, errors.WithMessage(err, "bccspInst.KeyImport failed")
+		return nil, fmt.Errorf("bccspInst.KeyImport failed: %s", err)
 	}
 
 	return NewSignerEntity(ID, b, signKey, nil, &bccsp.SHA256Opts{})
@@ -171,7 +172,7 @@ func NewAES256EncrypterECDSASignerEntity(ID string, b bccsp.BCCSP, encKeyBytes, 
 
 	encKey, err := b.KeyImport(encKeyBytes, &bccsp.AES256ImportKeyOpts{Temporary: true})
 	if err != nil {
-		return nil, errors.WithMessage(err, "bccspInst.KeyImport failed")
+		return nil, fmt.Errorf("bccspInst.KeyImport failed: %s", err)
 	}
 
 	bl, _ := pem.Decode(signKeyBytes)
@@ -181,7 +182,7 @@ func NewAES256EncrypterECDSASignerEntity(ID string, b bccsp.BCCSP, encKeyBytes, 
 
 	signKey, err := b.KeyImport(bl.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
 	if err != nil {
-		return nil, errors.WithMessage(err, "bccspInst.KeyImport failed")
+		return nil, fmt.Errorf("bccspInst.KeyImport failed: %s", err)
 	}
 
 	return NewEncrypterSignerEntity(ID, b, encKey, signKey, &bccsp.AESCBCPKCS7ModeOpts{}, &bccsp.AESCBCPKCS7ModeOpts{}, nil, &bccsp.SHA256Opts{})
@@ -260,7 +261,7 @@ func (pe *BCCSPEncrypterEntity) Public() (Entity, error) {
 
 	if !pe.EKey.Symmetric() {
 		if eKeyPub, err = pe.EKey.PublicKey(); err != nil {
-			return nil, errors.WithMessage(err, "public error, eKey.PublicKey returned")
+			return nil, fmt.Errorf("public error, eKey.PublicKey failed: %s", err)
 		}
 	}
 
@@ -289,7 +290,7 @@ func (e *BCCSPSignerEntity) Public() (Entity, error) {
 
 	if !e.SKey.Symmetric() {
 		if sKeyPub, err = e.SKey.PublicKey(); err != nil {
-			return nil, errors.WithMessage(err, "public error, sKey.PublicKey returned")
+			return nil, fmt.Errorf("public error, sKey.PublicKey failed: %s", err)
 		}
 	}
 
@@ -307,7 +308,7 @@ func (e *BCCSPSignerEntity) Public() (Entity, error) {
 func (e *BCCSPSignerEntity) Sign(msg []byte) ([]byte, error) {
 	h, err := e.BCCSP.Hash(msg, e.HOpts)
 	if err != nil {
-		return nil, errors.WithMessage(err, "sign error: bccsp.Hash returned")
+		return nil, fmt.Errorf("sign error: bccsp.Hash failed: %s", err)
 	}
 
 	return e.BCCSP.Sign(e.SKey, h, e.SOpts)
@@ -316,7 +317,7 @@ func (e *BCCSPSignerEntity) Sign(msg []byte) ([]byte, error) {
 func (e *BCCSPSignerEntity) Verify(signature, msg []byte) (bool, error) {
 	h, err := e.BCCSP.Hash(msg, e.HOpts)
 	if err != nil {
-		return false, errors.WithMessage(err, "sign error: bccsp.Hash returned")
+		return false, fmt.Errorf("sign error: bccsp.Hash failed: %s", err)
 	}
 
 	return e.BCCSP.Verify(e.SKey, signature, h, e.SOpts)
@@ -328,13 +329,13 @@ func (pe *BCCSPEncrypterSignerEntity) Public() (Entity, error) {
 
 	if !pe.EKey.Symmetric() {
 		if eKeyPub, err = pe.EKey.PublicKey(); err != nil {
-			return nil, errors.WithMessage(err, "public error, eKey.PublicKey returned")
+			return nil, fmt.Errorf("public error, eKey.PublicKey failed: %s", err)
 		}
 	}
 
 	sKeyPub, err := pe.SKey.PublicKey()
 	if err != nil {
-		return nil, errors.WithMessage(err, "public error, sKey.PublicKey returned")
+		return nil, fmt.Errorf("public error, sKey.PublicKey failed: %s", err)
 	}
 
 	return &BCCSPEncrypterSignerEntity{

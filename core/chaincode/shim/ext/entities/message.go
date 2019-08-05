@@ -8,8 +8,8 @@ package entities
 
 import (
 	"encoding/json"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
 // SignedMessage is a simple struct that contains space
@@ -35,11 +35,11 @@ func (m *SignedMessage) Sign(signer Signer) error {
 	m.Sig = nil
 	bytes, err := json.Marshal(m)
 	if err != nil {
-		return errors.Wrap(err, "sign error: json.Marshal returned")
+		return fmt.Errorf("sign error: json.Marshal failed: %s", err)
 	}
 	sig, err := signer.Sign(bytes)
 	if err != nil {
-		return errors.WithMessage(err, "sign error: signer.Sign returned")
+		return fmt.Errorf("sign error: signer.Sign failed: %s", err)
 	}
 	m.Sig = sig
 
@@ -60,7 +60,7 @@ func (m *SignedMessage) Verify(verifier Signer) (bool, error) {
 
 	bytes, err := json.Marshal(m)
 	if err != nil {
-		return false, errors.Wrap(err, "sign error: json.Marshal returned")
+		return false, fmt.Errorf("sign error: json.Marshal failed: %s", err)
 	}
 
 	return verifier.Verify(sig, bytes)
