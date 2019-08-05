@@ -46,20 +46,11 @@ type Store interface {
 	// GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
 	// most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
 	GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error)
-	// Prepare prepares the Store for committing the pvt data and storing both eligible and ineligible
+	// Commit commits the pvt data as well as both the eligible and ineligible
 	// missing private data --- `eligible` denotes that the missing private data belongs to a collection
 	// for which this peer is a member; `ineligible` denotes that the missing private data belong to a
 	// collection for which this peer is not a member.
-	// This call does not commit the pvt data and store missing private data. Subsequently, the caller
-	// is expected to call either `Commit` or `Rollback` function. Return from this should ensure
-	// that enough preparation is done such that `Commit` function invoked afterwards can commit the
-	// data and the store is capable of surviving a crash between this function call and the next
-	// invoke to the `Commit`
-	Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error
-	// Commit commits the pvt data passed in the previous invoke to the `Prepare` function
-	Commit() error
-	// Rollback rolls back the pvt data passed in the previous invoke to the `Prepare` function
-	Rollback() error
+	Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error
 	// ProcessCollsEligibilityEnabled notifies the store when the peer becomes eligible to receive data for an
 	// existing collection. Parameter 'committingBlk' refers to the block number that contains the corresponding
 	// collection upgrade transaction and the parameter 'nsCollMap' contains the collections for which the peer
@@ -80,8 +71,6 @@ type Store interface {
 	IsEmpty() (bool, error)
 	// LastCommittedBlockHeight returns the height of the last committed block
 	LastCommittedBlockHeight() (uint64, error)
-	// HasPendingBatch returns if the store has a pending batch
-	HasPendingBatch() (bool, error)
 	// Shutdown stops the store
 	Shutdown()
 }

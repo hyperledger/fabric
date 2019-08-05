@@ -39,7 +39,6 @@ type store struct {
 
 	isEmpty            bool
 	lastCommittedBlock uint64
-	batchPending       bool
 	purgerLock         sync.Mutex
 	collElgProcSync    *collElgProcSync
 	// After committing the pvtdata of old blocks,
@@ -135,8 +134,8 @@ func (p *provider) OpenStore(ledgerid string) (Store, error) {
 		return nil, err
 	}
 	s.launchCollElgProc()
-	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d], batchPending [%t]",
-		s.isEmpty, s.lastCommittedBlock, s.batchPending)
+	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d]",
+		s.isEmpty, s.lastCommittedBlock)
 	return s, nil
 }
 
@@ -154,9 +153,27 @@ func (s *store) initState() error {
 	if s.isEmpty, s.lastCommittedBlock, err = s.getLastCommittedBlockNum(); err != nil {
 		return err
 	}
-	if s.batchPending, err = s.hasPendingCommit(); err != nil {
+
+	// TODO: FAB-16298 -- the concept of pendingBatch is no longer valid
+	// for pvtdataStore. We can remove it v2.1. We retain the concept in
+	// v2.0 to allow rolling upgrade from v142 to v2.0
+	batchPending, err := s.hasPendingCommit()
+	if err != nil {
 		return err
 	}
+
+	if batchPending {
+		committingBlockNum := s.nextBlockNum()
+		batch := leveldbhelper.NewUpdateBatch()
+		batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(committingBlockNum))
+		batch.Delete(pendingCommitKey)
+		if err := s.db.WriteBatch(batch, true); err != nil {
+			return err
+		}
+		s.isEmpty = false
+		s.lastCommittedBlock = committingBlockNum
+	}
+
 	if blist, err = s.getLastUpdatedOldBlocksList(); err != nil {
 		return err
 	}
@@ -172,11 +189,7 @@ func (s *store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 }
 
 // Prepare implements the function in the interface `Store`
-func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error {
-	if s.batchPending {
-		return &ErrIllegalCall{`A pending batch exists as result of last invoke to "Prepare" call.
-			 Invoke "Commit" or "Rollback" on the pending batch before invoking "Prepare" function`}
-	}
+func (s *store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error {
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
 		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, received block number=%d", expectedBlockNum, blockNum)}
@@ -215,65 +228,17 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvt
 		batch.Put(keyBytes, valBytes)
 	}
 
-	batch.Put(pendingCommitKey, emptyValue)
-	if err := s.db.WriteBatch(batch, true); err != nil {
-		return err
-	}
-	s.batchPending = true
-	logger.Debugf("Saved %d private data write sets for block [%d]", len(pvtData), blockNum)
-	return nil
-}
-
-// Commit implements the function in the interface `Store`
-func (s *store) Commit() error {
-	if !s.batchPending {
-		return &ErrIllegalCall{"No pending batch to commit"}
-	}
 	committingBlockNum := s.nextBlockNum()
 	logger.Debugf("Committing private data for block [%d]", committingBlockNum)
-	batch := leveldbhelper.NewUpdateBatch()
-	batch.Delete(pendingCommitKey)
 	batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(committingBlockNum))
 	if err := s.db.WriteBatch(batch, true); err != nil {
 		return err
 	}
-	s.batchPending = false
+
 	s.isEmpty = false
 	atomic.StoreUint64(&s.lastCommittedBlock, committingBlockNum)
 	logger.Debugf("Committed private data for block [%d]", committingBlockNum)
 	s.performPurgeIfScheduled(committingBlockNum)
-	return nil
-}
-
-// Rollback implements the function in the interface `Store`
-// This deletes the existing data entries and eligible missing data entries.
-// However, this does not delete ineligible missing data entires as the next try
-// would have exact same entries and will overwrite those. This also leaves the
-// existing expiry entires as is because, most likely they will also get overwritten
-// per new data entries. Even if some of the expiry entries does not get overwritten,
-// (because of some data may be missing next time), the additional expiry entries are just
-// a Noop
-func (s *store) Rollback() error {
-	if !s.batchPending {
-		return &ErrIllegalCall{"No pending batch to rollback"}
-	}
-	blkNum := s.nextBlockNum()
-	batch := leveldbhelper.NewUpdateBatch()
-	itr := s.db.GetIterator(datakeyRange(blkNum))
-	for itr.Next() {
-		batch.Delete(itr.Key())
-	}
-	itr.Release()
-	itr = s.db.GetIterator(eligibleMissingdatakeyRange(blkNum))
-	for itr.Next() {
-		batch.Delete(itr.Key())
-	}
-	itr.Release()
-	batch.Delete(pendingCommitKey)
-	if err := s.db.WriteBatch(batch, true); err != nil {
-		return err
-	}
-	s.batchPending = false
 	return nil
 }
 
@@ -679,9 +644,16 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	return blockPvtdata, nil
 }
 
+// TODO: FAB-16297 -- Remove init() as it is no longer needed. The private data feature
+// became stable from v1.2 onwards. To allow the initiation of pvtdata store with non-zero
+// block height (mainly during a rolling upgrade from an existing v1.1 network to v1.2),
+// we introduced pvtdata init() function which would take the height of block store and
+// set it as a height of pvtdataStore. From v2.0 onwards, it is no longer needed as we do
+// not support a rolling upgrade from v1.1 to v2.0
+
 // InitLastCommittedBlock implements the function in the interface `Store`
 func (s *store) InitLastCommittedBlock(blockNum uint64) error {
-	if !(s.isEmpty && !s.batchPending) {
+	if !s.isEmpty {
 		return &ErrIllegalCall{"The private data store is not empty. InitLastCommittedBlock() function call is not allowed"}
 	}
 	batch := leveldbhelper.NewUpdateBatch()
@@ -931,11 +903,6 @@ func (s *store) LastCommittedBlockHeight() (uint64, error) {
 	return atomic.LoadUint64(&s.lastCommittedBlock) + 1, nil
 }
 
-// HasPendingBatch implements the function in the interface `Store`
-func (s *store) HasPendingBatch() (bool, error) {
-	return s.batchPending, nil
-}
-
 // IsEmpty implements the function in the interface `Store`
 func (s *store) IsEmpty() (bool, error) {
 	return s.isEmpty, nil
@@ -953,6 +920,9 @@ func (s *store) nextBlockNum() uint64 {
 	return atomic.LoadUint64(&s.lastCommittedBlock) + 1
 }
 
+// TODO: FAB-16298 -- the concept of pendingBatch is no longer valid
+// for pvtdataStore. We can remove it v2.1. We retain the concept in
+// v2.0 to allow rolling upgrade from v142 to v2.0
 func (s *store) hasPendingCommit() (bool, error) {
 	var v []byte
 	var err error
