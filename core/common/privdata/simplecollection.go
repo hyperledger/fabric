@@ -31,6 +31,14 @@ type SimpleCollectionPersistenceConfigs struct {
 	blockToLive uint64
 }
 
+// NewSimpleCollection returns a simple collection object based on a given
+// StaticCollectionConfig proto that has all the necessary information
+func NewSimpleCollection(collectionConfig *common.StaticCollectionConfig, deserializer msp.IdentityDeserializer) (*SimpleCollection, error) {
+	sc := &SimpleCollection{}
+	err := sc.Setup(collectionConfig, deserializer)
+	return sc, err
+}
+
 // CollectionID returns the collection's ID
 func (sc *SimpleCollection) CollectionID() string {
 	return sc.name

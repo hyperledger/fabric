@@ -91,6 +91,51 @@ func (md *mockDeserializer) IsWellFormed(_ *mb.SerializedIdentity) error {
 	return nil
 }
 
+func TestNewSimpleCollectionWithBadConfig(t *testing.T) {
+	// set up simple collection with nil collection config
+	_, err := NewSimpleCollection(nil, &mockDeserializer{})
+	assert.Error(t, err)
+
+	// create static collection config with faulty policy
+	collectionConfig := &pb.StaticCollectionConfig{
+		Name:              "test collection",
+		RequiredPeerCount: 1,
+		MemberOrgsPolicy:  getBadAccessPolicy([]string{"peer0", "peer1"}, 3),
+	}
+	_, err = NewSimpleCollection(collectionConfig, &mockDeserializer{})
+	assert.Error(t, err)
+	assert.EqualError(t, err, "failed constructing policy object out of collection policy config: identity index out of range, requested 3, but identities length is 2")
+}
+
+func TestNewSimpleCollectionWithGoodConfig(t *testing.T) {
+	// create member access policy
+	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
+
+	// create static collection config
+	collectionConfig := &pb.StaticCollectionConfig{
+		Name:              "test collection",
+		RequiredPeerCount: 1,
+		MemberOrgsPolicy:  accessPolicy,
+	}
+
+	// set up simple collection with valid data
+	sc, err := NewSimpleCollection(collectionConfig, &mockDeserializer{})
+	assert.NoError(t, err)
+
+	// check name
+	assert.True(t, sc.CollectionID() == "test collection")
+
+	// check members
+	members := sc.MemberOrgs()
+	assert.True(t, members[0] == "signer0")
+	assert.True(t, members[1] == "signer1")
+
+	// check required peer count
+	assert.True(t, sc.RequiredPeerCount() == 1)
+}
+
 func TestSetupWithBadConfig(t *testing.T) {
 	// set up simple collection with invalid data
 	var sc SimpleCollection
