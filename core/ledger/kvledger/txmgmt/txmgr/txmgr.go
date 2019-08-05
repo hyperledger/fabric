@@ -35,6 +35,7 @@ type TxMgr interface {
 	Commit() error
 	Rollback()
 	Shutdown()
+	Name() string
 }
 
 // TxStatInfo encapsulates information about a transaction

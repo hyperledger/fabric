@@ -199,6 +199,11 @@ func (h *historyDB) ShouldRecover(lastAvailableBlock uint64) (bool, uint64, erro
 	return savepoint.BlockNum != lastAvailableBlock, savepoint.BlockNum + 1, nil
 }
 
+// Name returns the name of the database that manages historical states.
+func (historyDB *historyDB) Name() string {
+	return "history"
+}
+
 // CommitLostBlock implements method in interface kvledger.Recoverer
 func (h *historyDB) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	block := blockAndPvtdata.Block
