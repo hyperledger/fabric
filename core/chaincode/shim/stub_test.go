@@ -14,14 +14,21 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
 
+func toChaincodeArgs(args ...string) [][]byte {
+	ccArgs := make([][]byte, len(args))
+	for i, a := range args {
+		ccArgs[i] = []byte(a)
+	}
+	return ccArgs
+}
+
 func TestNewChaincodeStub(t *testing.T) {
-	expectedArgs := util.ToChaincodeArgs("function", "arg1", "arg2")
+	expectedArgs := toChaincodeArgs("function", "arg1", "arg2")
 	expectedDecorations := map[string][]byte{"decoration-key": []byte("decoration-value")}
 	expectedCreator := []byte("signature-header-creator")
 	expectedTransient := map[string][]byte{"key": []byte("value")}
