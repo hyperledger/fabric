@@ -307,21 +307,21 @@ var _ = Describe("Release interoperability", func() {
 					callerDefOld = nwo.Chaincode{
 						Name:    "caller",
 						Version: "0.0",
-						Path:    "github.com/hyperledger/fabric/integration/e2e/lifecycle/chaincode/caller/cmd",
+						Path:    "github.com/hyperledger/fabric/integration/lifecycle/chaincode/caller/cmd",
 						Ctor:    `{"Args":[""]}`,
 						Policy:  ccEP,
 					}
 					calleeDefOld = nwo.Chaincode{
 						Name:    "callee",
 						Version: "0.0",
-						Path:    "github.com/hyperledger/fabric/integration/e2e/lifecycle/chaincode/callee/cmd",
+						Path:    "github.com/hyperledger/fabric/integration/lifecycle/chaincode/callee/cmd",
 						Ctor:    `{"Args":[""]}`,
 						Policy:  ccEP,
 					}
 					callerDefNew = nwo.Chaincode{
 						Name:            "caller",
 						Version:         "0.0",
-						Path:            "github.com/hyperledger/fabric/integration/e2e/lifecycle/chaincode/caller/cmd",
+						Path:            "github.com/hyperledger/fabric/integration/lifecycle/chaincode/caller/cmd",
 						Lang:            "golang",
 						PackageFile:     filepath.Join(tempDir, "caller.tar.gz"),
 						SignaturePolicy: ccEP,
@@ -333,7 +333,7 @@ var _ = Describe("Release interoperability", func() {
 					calleeDefNew = nwo.Chaincode{
 						Name:            "callee",
 						Version:         "0.0",
-						Path:            "github.com/hyperledger/fabric/integration/e2e/lifecycle/chaincode/callee/cmd",
+						Path:            "github.com/hyperledger/fabric/integration/lifecycle/chaincode/callee/cmd",
 						Lang:            "golang",
 						PackageFile:     filepath.Join(tempDir, "callee.tar.gz"),
 						SignaturePolicy: ccEP,
