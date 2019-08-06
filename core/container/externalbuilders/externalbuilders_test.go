@@ -99,8 +99,8 @@ var _ = Describe("Externalbuilders", func() {
 			It("iterates over all detectors and chooses the one that matches", func() {
 				instance, err := detector.Build(ccci, codePackageBytes)
 				Expect(err).NotTo(HaveOccurred())
-				defer instance.(*externalbuilders.Instance).BuildContext.Cleanup()
-				Expect(instance.(*externalbuilders.Instance).Builder).To(Equal(&externalbuilders.Builder{Location: "testdata"}))
+				instance.BuildContext.Cleanup()
+				Expect(instance.Builder.Name()).To(Equal("testdata"))
 			})
 
 			Context("when the build context cannot be created", func() {

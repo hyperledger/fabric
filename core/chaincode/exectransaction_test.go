@@ -47,7 +47,6 @@ import (
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
@@ -140,7 +139,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	containerRuntime := &ContainerRuntime{
 		CACert: ca.CertBytes(),
 		ContainerRouter: &container.Router{
-			ExternalVM: &externalbuilders.Detector{},
 			DockerVM: &dockercontroller.DockerVM{
 				PeerID:       "",
 				NetworkID:    "",

@@ -19,7 +19,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 
 	"github.com/pkg/errors"
@@ -62,7 +61,7 @@ func (d *Detector) Detect(buildContext *BuildContext) *Builder {
 	return nil
 }
 
-func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (container.Instance, error) {
+func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (*Instance, error) {
 	if len(d.Builders) == 0 {
 		// A small optimization, especially while the launcher feature is under development
 		// let's not explode the build package out into the filesystem unless there are
