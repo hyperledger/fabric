@@ -149,16 +149,22 @@ The following metrics are currently exported for consumption by Prometheus.
 | deliver_blocks_sent                                 | counter   | The number of blocks sent by the deliver service.          | channel          |                                                             |
 |                                                     |           |                                                            +------------------+-------------------------------------------------------------+
 |                                                     |           |                                                            | filtered         |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | data_type        |                                                             |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
 | deliver_requests_completed                          | counter   | The number of deliver requests that have been completed.   | channel          |                                                             |
 |                                                     |           |                                                            +------------------+-------------------------------------------------------------+
 |                                                     |           |                                                            | filtered         |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | data_type        |                                                             |
 |                                                     |           |                                                            +------------------+-------------------------------------------------------------+
 |                                                     |           |                                                            | success          |                                                             |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
 | deliver_requests_received                           | counter   | The number of deliver requests that have been received.    | channel          |                                                             |
 |                                                     |           |                                                            +------------------+-------------------------------------------------------------+
 |                                                     |           |                                                            | filtered         |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | data_type        |                                                             |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
 | deliver_streams_closed                              | counter   | The number of GRPC streams that have been closed for the   |                  |                                                             |
 |                                                     |           | deliver service.                                           |                  |                                                             |
@@ -421,11 +427,11 @@ associated with the metric.
 | couchdb.processing_time.%{database}.%{function_name}.%{result}                          | histogram | Time taken in seconds for the function to complete request |
 |                                                                                         |           | to CouchDB                                                 |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| deliver.blocks_sent.%{channel}.%{filtered}                                              | counter   | The number of blocks sent by the deliver service.          |
+| deliver.blocks_sent.%{channel}.%{filtered}.%{data_type}                                 | counter   | The number of blocks sent by the deliver service.          |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| deliver.requests_completed.%{channel}.%{filtered}.%{success}                            | counter   | The number of deliver requests that have been completed.   |
+| deliver.requests_completed.%{channel}.%{filtered}.%{data_type}.%{success}               | counter   | The number of deliver requests that have been completed.   |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| deliver.requests_received.%{channel}.%{filtered}                                        | counter   | The number of deliver requests that have been received.    |
+| deliver.requests_received.%{channel}.%{filtered}.%{data_type}                           | counter   | The number of deliver requests that have been received.    |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | deliver.streams_closed                                                                  | counter   | The number of GRPC streams that have been closed for the   |
 |                                                                                         |           | deliver service.                                           |

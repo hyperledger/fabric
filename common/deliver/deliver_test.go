@@ -179,6 +179,7 @@ var _ = Describe("Deliver", func() {
 			fakePolicyChecker = &mock.PolicyChecker{}
 			fakeReceiver = &mock.Receiver{}
 			fakeResponseSender = &mock.ResponseSender{}
+			fakeResponseSender.DataTypeReturns("block")
 
 			fakeInspector = &mock.Inspector{}
 
@@ -369,7 +370,7 @@ var _ = Describe("Deliver", func() {
 
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(5))
 				for i := 0; i < 5; i++ {
-					b := fakeResponseSender.SendBlockResponseArgsForCall(i)
+					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
 					Expect(b).To(Equal(&cb.Block{
 						Header: &cb.BlockHeader{Number: 995 + uint64(i)},
 					}))
@@ -387,6 +388,7 @@ var _ = Describe("Deliver", func() {
 				Expect(labelValues).To(Equal([]string{
 					"channel", "chain-id",
 					"filtered", "false",
+					"data_type", "block",
 				}))
 
 				Expect(fakeBlocksSent.AddCallCount()).To(Equal(5))
@@ -397,6 +399,7 @@ var _ = Describe("Deliver", func() {
 					Expect(labelValues).To(Equal([]string{
 						"channel", "chain-id",
 						"filtered", "false",
+						"data_type", "block",
 					}))
 				}
 
@@ -407,6 +410,7 @@ var _ = Describe("Deliver", func() {
 				Expect(labelValues).To(Equal([]string{
 					"channel", "chain-id",
 					"filtered", "false",
+					"data_type", "block",
 					"success", "true",
 				}))
 			})
@@ -427,7 +431,7 @@ var _ = Describe("Deliver", func() {
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(1))
 
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
-				b := fakeResponseSender.SendBlockResponseArgsForCall(0)
+				b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(0)
 				Expect(b).To(Equal(&cb.Block{
 					Header: &cb.BlockHeader{Number: 100},
 				}))
@@ -458,7 +462,7 @@ var _ = Describe("Deliver", func() {
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(2))
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(2))
 				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
-					b := fakeResponseSender.SendBlockResponseArgsForCall(i)
+					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
 					Expect(b).To(Equal(&cb.Block{
 						Header: &cb.BlockHeader{Number: uint64(i + 1)},
 					}))
@@ -489,7 +493,7 @@ var _ = Describe("Deliver", func() {
 				Expect(fakeBlockIterator.NextCallCount()).To(Equal(1))
 				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
 				for i := 0; i < fakeResponseSender.SendBlockResponseCallCount(); i++ {
-					b := fakeResponseSender.SendBlockResponseArgsForCall(i)
+					b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(i)
 					Expect(b).To(Equal(&cb.Block{
 						Header: &cb.BlockHeader{Number: uint64(i)},
 					}))
@@ -503,6 +507,7 @@ var _ = Describe("Deliver", func() {
 			BeforeEach(func() {
 				fakeResponseSender = &mock.FilteredResponseSender{}
 				fakeResponseSender.IsFilteredReturns(true)
+				fakeResponseSender.DataTypeReturns("filtered_block")
 				server.ResponseSender = fakeResponseSender
 			})
 
@@ -527,6 +532,7 @@ var _ = Describe("Deliver", func() {
 					Expect(labelValues).To(Equal([]string{
 						"channel", "chain-id",
 						"filtered", "false",
+						"data_type", "filtered_block",
 					}))
 				})
 			})
@@ -542,6 +548,7 @@ var _ = Describe("Deliver", func() {
 				Expect(labelValues).To(Equal([]string{
 					"channel", "chain-id",
 					"filtered", "true",
+					"data_type", "filtered_block",
 				}))
 
 				Expect(fakeBlocksSent.AddCallCount()).To(Equal(1))
@@ -551,6 +558,7 @@ var _ = Describe("Deliver", func() {
 				Expect(labelValues).To(Equal([]string{
 					"channel", "chain-id",
 					"filtered", "true",
+					"data_type", "filtered_block",
 				}))
 
 				Expect(fakeRequestsCompleted.AddCallCount()).To(Equal(1))
@@ -560,6 +568,66 @@ var _ = Describe("Deliver", func() {
 				Expect(labelValues).To(Equal([]string{
 					"channel", "chain-id",
 					"filtered", "true",
+					"data_type", "filtered_block",
+					"success", "true",
+				}))
+			})
+		})
+
+		Context("when blocks with private data are requested", func() {
+			var (
+				fakeResponseSender *mock.PrivateDataResponseSender
+			)
+
+			BeforeEach(func() {
+				fakeResponseSender = &mock.PrivateDataResponseSender{}
+				fakeResponseSender.DataTypeReturns("block_and_pvtdata")
+				server.ResponseSender = fakeResponseSender
+			})
+
+			It("handles the request and returns private data for all collections", func() {
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeResponseSender.DataTypeCallCount()).To(Equal(1))
+				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(1))
+				b, _, _, _ := fakeResponseSender.SendBlockResponseArgsForCall(0)
+				Expect(b).To(Equal(&cb.Block{
+					Header: &cb.BlockHeader{Number: 100},
+				}))
+			})
+
+			It("records requests received, blocks sent, and requests completed with the privatedata label set to true", func() {
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeRequestsReceived.AddCallCount()).To(Equal(1))
+				Expect(fakeRequestsReceived.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
+				Expect(fakeRequestsReceived.WithCallCount()).To(Equal(1))
+				labelValues := fakeRequestsReceived.WithArgsForCall(0)
+				Expect(labelValues).To(Equal([]string{
+					"channel", "chain-id",
+					"filtered", "false",
+					"data_type", "block_and_pvtdata",
+				}))
+
+				Expect(fakeBlocksSent.AddCallCount()).To(Equal(1))
+				Expect(fakeBlocksSent.WithCallCount()).To(Equal(1))
+				Expect(fakeBlocksSent.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
+				labelValues = fakeBlocksSent.WithArgsForCall(0)
+				Expect(labelValues).To(Equal([]string{
+					"channel", "chain-id",
+					"filtered", "false",
+					"data_type", "block_and_pvtdata",
+				}))
+
+				Expect(fakeRequestsCompleted.AddCallCount()).To(Equal(1))
+				Expect(fakeRequestsCompleted.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
+				Expect(fakeRequestsCompleted.WithCallCount()).To(Equal(1))
+				labelValues = fakeRequestsCompleted.WithArgsForCall(0)
+				Expect(labelValues).To(Equal([]string{
+					"channel", "chain-id",
+					"filtered", "false",
+					"data_type", "block_and_pvtdata",
 					"success", "true",
 				}))
 			})
@@ -817,6 +885,7 @@ var _ = Describe("Deliver", func() {
 				Expect(labelValues).To(Equal([]string{
 					"channel", "chain-id",
 					"filtered", "false",
+					"data_type", "block",
 				}))
 
 				Expect(fakeBlocksSent.AddCallCount()).To(Equal(0))
@@ -829,6 +898,7 @@ var _ = Describe("Deliver", func() {
 				Expect(labelValues).To(Equal([]string{
 					"channel", "chain-id",
 					"filtered", "false",
+					"data_type", "block",
 					"success", "false",
 				}))
 			})
