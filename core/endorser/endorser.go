@@ -213,28 +213,14 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 		return nil, nil, nil, nil, err
 	}
 
-	var cdLedger ccprovider.ChaincodeDefinition
+	cdLedger, err := e.s.GetChaincodeDefinition(txParams.ChannelID, cid.Name, txParams.TXSimulator)
+	if err != nil {
+		return nil, nil, nil, nil, errors.WithMessagef(err, "make sure the chaincode %s has been successfully defined on channel %s and try again", cid.Name, txParams.ChannelID)
+	}
 
-	// TODO: remove the block below (with if/else) since it's actually
-	//       no longer required: the chaincode support will already be
-	//       looking up the chaincode definition; we just need to push
-	//       the verification of the instantiation policy away from here
-	//       where we have the chaincode definition ready.
-	//       Also: idBytes is currently unused so we can remove it.
-	var idBytes []byte
-	requiresInit := false
-	if !e.s.IsSysCC(cid.Name) {
-		cdLedger, err = e.s.GetChaincodeDefinition(txParams.ChannelID, cid.Name, txParams.TXSimulator)
-		if err != nil {
-			return nil, nil, nil, nil, errors.WithMessagef(err, "make sure the chaincode %s has been successfully defined on channel %s and try again", cid.Name, txParams.ChannelID)
-		}
-		idBytes = cdLedger.Hash()
-
-		err = e.s.CheckInstantiationPolicy(cid.Name, cdLedger.CCVersion(), cdLedger)
-		if err != nil {
-			return nil, nil, nil, nil, err
-		}
-		requiresInit = cdLedger.RequiresInit()
+	err = e.s.CheckInstantiationPolicy(cid.Name, cdLedger.CCVersion(), cdLedger)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	// ---3. execute the proposal and get simulation results
@@ -242,7 +228,7 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 	var pubSimResBytes []byte
 	var res *pb.Response
 	var ccevent *pb.ChaincodeEvent
-	res, ccevent, err = e.callChaincode(txParams, idBytes, requiresInit, cis.ChaincodeSpec.Input, cid)
+	res, ccevent, err = e.callChaincode(txParams, cdLedger.Hash(), cdLedger.RequiresInit(), cis.ChaincodeSpec.Input, cid)
 	if err != nil {
 		endorserLogger.Errorf("[%s][%s] failed to invoke chaincode %s, error: %+v", txParams.ChannelID, shorttxid(txParams.TxID), cid, err)
 		return nil, nil, nil, nil, err
@@ -292,19 +278,11 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 }
 
 // endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(_ context.Context, chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
+func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
 	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), ccid)
 	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
 
-	isSysCC := cd == nil
-	// 1) extract the name of the escc that is requested to endorse this chaincode
-	var escc string
-	// ie, "lscc" or system chaincodes
-	if isSysCC {
-		escc = "escc"
-	} else {
-		escc = cd.Endorsement()
-	}
+	escc := cd.Endorsement()
 
 	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", chainID, shorttxid(txid), ccid, escc)
 
@@ -318,14 +296,7 @@ func (e *Endorser) endorseProposal(_ context.Context, chainID string, txid strin
 		}
 	}
 
-	// set version of executing chaincode
-	if isSysCC {
-		// if we want to allow mixed fabric levels we should
-		// set syscc version to ""
-		ccid.Version = util.GetSysCCVersion()
-	} else {
-		ccid.Version = cd.CCVersion()
-	}
+	ccid.Version = cd.CCVersion()
 
 	ctx := Context{
 		PluginName:     escc,
@@ -519,7 +490,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		pResp = &pb.ProposalResponse{Response: res}
 	} else {
 		// Note: To endorseProposal(), we pass the released txsim. Hence, an error would occur if we try to use this txsim
-		pResp, err = e.endorseProposal(ctx, chainID, txid, signedProp, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId, txsim, cd)
+		pResp, err = e.endorseProposal(chainID, txid, signedProp, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId, txsim, cd)
 
 		// if error, capture endorsement failure metric
 		meterLabels := []string{

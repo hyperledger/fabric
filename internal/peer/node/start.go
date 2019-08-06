@@ -34,7 +34,6 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/cclifecycle"
@@ -411,22 +410,32 @@ func serve(args []string) error {
 	// create chaincode specific tls CA
 	authenticator := accesscontrol.NewAuthenticator(ca)
 
-	sccp := &scc.Provider{
-		Peer:      peerInstance,
-		Whitelist: scc.GlobalWhitelist(),
+	// sysCCVersion is a concept we're probably better off without.
+	// This should probably be set as a constant, that is not build dependent.
+	// As it stands, this forces different versions of peer chaincode _lifecycle
+	// to be incompatible.
+	sysCCVersion := metadata.Version
+
+	builtinSCCs := map[string]struct{}{
+		"lscc":       {},
+		"qscc":       {},
+		"cscc":       {},
+		"_lifecycle": {},
 	}
 
-	lsccInst := lscc.New(sccp, aclProvider, peerInstance.GetMSPIDs, policyChecker)
+	lsccInst := lscc.New(builtinSCCs, &lscc.PeerShim{Peer: peerInstance}, aclProvider, peerInstance.GetMSPIDs, policyChecker)
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
-		PackageID:       ccintf.CCID(lifecycle.LifecycleNamespace + ":" + util.GetSysCCVersion()),
+		PackageID:       ccintf.CCID(lifecycle.LifecycleNamespace + ":" + sysCCVersion),
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
-		LegacyImpl: lsccInst,
-		Resources:  lifecycleResources,
-		Cache:      lifecycleCache,
+		LegacyImpl:   lsccInst,
+		Resources:    lifecycleResources,
+		Cache:        lifecycleCache,
+		BuiltinSCCs:  builtinSCCs,
+		SysCCVersion: sysCCVersion,
 	}
 
 	lifecycleFunctions := &lifecycle.ExternalFunctions{
@@ -524,7 +533,7 @@ func serve(args []string) error {
 		Lifecycle:              chaincodeEndorsementInfo,
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
-		SystemCCProvider:       sccp,
+		BuiltinSCCs:            builtinSCCs,
 		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
@@ -547,11 +556,6 @@ func serve(args []string) error {
 		qsccInst = scc.Throttle(maxConcurrency, qsccInst)
 	}
 
-	//Now that chaincode is initialized, register all system chaincodes.
-	sccs := scc.CreatePluginSysCCs(sccp)
-	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, sccs...) {
-		sccp.RegisterSysCC(cc)
-	}
 	pb.RegisterChaincodeSupportServer(ccSrv.Server(), ccSupSrv)
 
 	// start the chaincode specific gRPC listening service
@@ -575,8 +579,8 @@ func serve(args []string) error {
 		SignerSerializer: signingIdentity,
 		Peer:             peerInstance,
 		ChaincodeSupport: chaincodeSupport,
-		SysCCProvider:    sccp,
 		ACLProvider:      aclProvider,
+		BuiltinSCCs:      builtinSCCs,
 	}
 	endorsementPluginsByName := reg.Lookup(library.Endorsement).(map[string]endorsement2.PluginFactory)
 	validationPluginsByName := reg.Lookup(library.Validation).(map[string]validation.PluginFactory)
@@ -599,7 +603,15 @@ func serve(args []string) error {
 	}
 
 	// deploy system chaincodes
-	sccp.DeploySysCCs(chaincodeSupport)
+	sccs := scc.CreatePluginSysCCs()
+	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, sccs...) {
+		if enabled, ok := chaincodeConfig.SCCWhitelist[cc.Name()]; !ok || !enabled {
+			logger.Infof("not deploying chaincode %s as it is not enabled", cc.Name())
+			continue
+		}
+		scc.DeploySysCC(cc, sysCCVersion, chaincodeSupport)
+	}
+
 	logger.Infof("Deployed system chaincodes")
 
 	// register the lifecycleMetadataManager to get updates from the legacy

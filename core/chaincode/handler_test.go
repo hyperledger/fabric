@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/scc"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -32,7 +33,7 @@ var _ = Describe("Handler", func() {
 		fakeTransactionRegistry        *mock.TransactionRegistry
 		fakeContextRegistry            *fake.ContextRegistry
 		fakeChatStream                 *mock.ChaincodeStream
-		fakeSystemCCProvider           *mock.SystemCCProvider
+		builtinSCCs                    scc.BuiltinSCCs
 		fakeTxSimulator                *mock.TxSimulator
 		fakeHistoryQueryExecutor       *mock.HistoryQueryExecutor
 		fakeQueryResponseBuilder       *fake.QueryResponseBuilder
@@ -61,7 +62,6 @@ var _ = Describe("Handler", func() {
 		fakeTransactionRegistry.AddReturns(true)
 
 		fakeChatStream = &mock.ChaincodeStream{}
-		fakeSystemCCProvider = &mock.SystemCCProvider{}
 
 		fakeTxSimulator = &mock.TxSimulator{}
 		fakeHistoryQueryExecutor = &mock.HistoryQueryExecutor{}
@@ -106,6 +106,8 @@ var _ = Describe("Handler", func() {
 		fakeExecuteTimeouts = &metricsfakes.Counter{}
 		fakeExecuteTimeouts.WithReturns(fakeExecuteTimeouts)
 
+		builtinSCCs = map[string]struct{}{}
+
 		chaincodeMetrics := &chaincode.HandlerMetrics{
 			ShimRequestsReceived:  fakeShimRequestsReceived,
 			ShimRequestsCompleted: fakeShimRequestsCompleted,
@@ -122,8 +124,7 @@ var _ = Describe("Handler", func() {
 			InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
 			QueryResponseBuilder:       fakeQueryResponseBuilder,
 			Registry:                   fakeHandlerRegistry,
-			SystemCCProvider:           fakeSystemCCProvider,
-			SystemCCVersion:            "system-cc-version",
+			BuiltinSCCs:                builtinSCCs,
 			TXContexts:                 fakeContextRegistry,
 			UUIDGenerator: chaincode.UUIDGeneratorFunc(func() string {
 				return "generated-query-id"
@@ -416,60 +417,46 @@ var _ = Describe("Handler", func() {
 					incomingMessage.ChannelId = ""
 				})
 
-				It("checks if the target is system chaincode", func() {
+				It("validates the transaction context", func() {
+					txContext.TXSimulator = nil
 					handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
 
-					Expect(fakeSystemCCProvider.IsSysCCCallCount()).To(Equal(1))
-					name := fakeSystemCCProvider.IsSysCCArgsForCall(0)
-					Expect(name).To(Equal("target-chaincode-name"))
+					Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
+					msg := fakeChatStream.SendArgsForCall(0)
+					Expect(msg).To(Equal(&pb.ChaincodeMessage{
+						Type:    pb.ChaincodeMessage_ERROR,
+						Payload: []byte("INVOKE_CHAINCODE failed: transaction ID: tx-id: could not get valid transaction"),
+						Txid:    "tx-id",
+					}))
 				})
 
-				Context("when the target chaincode is not system chaincode", func() {
+				Context("when the target is system chaincode", func() {
 					BeforeEach(func() {
-						fakeSystemCCProvider.IsSysCCReturns(false)
+						builtinSCCs["target-chaincode-name"] = struct{}{}
 					})
 
-					It("validates the transaction context", func() {
+					It("gets the transaction context without validation", func() {
 						txContext.TXSimulator = nil
 						handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
 
+						Expect(fakeContextRegistry.GetCallCount()).To(Equal(1))
 						Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 						msg := fakeChatStream.SendArgsForCall(0)
-						Expect(msg).To(Equal(&pb.ChaincodeMessage{
-							Type:    pb.ChaincodeMessage_ERROR,
-							Payload: []byte("INVOKE_CHAINCODE failed: transaction ID: tx-id: could not get valid transaction"),
-							Txid:    "tx-id",
-						}))
+						Expect(msg).To(Equal(expectedResponse))
 					})
 
-					Context("when the target is system chaincode", func() {
-						BeforeEach(func() {
-							fakeSystemCCProvider.IsSysCCReturns(true)
-						})
-
-						It("gets the transaction context without validation", func() {
-							txContext.TXSimulator = nil
+					Context("and the transaction context is missing", func() {
+						It("returns an error", func() {
+							fakeContextRegistry.GetReturns(nil)
 							handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
 
-							Expect(fakeContextRegistry.GetCallCount()).To(Equal(1))
 							Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 							msg := fakeChatStream.SendArgsForCall(0)
-							Expect(msg).To(Equal(expectedResponse))
-						})
-
-						Context("and the transaction context is missing", func() {
-							It("returns an error", func() {
-								fakeContextRegistry.GetReturns(nil)
-								handler.HandleTransaction(incomingMessage, fakeMessageHandler.Handle)
-
-								Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
-								msg := fakeChatStream.SendArgsForCall(0)
-								Expect(msg).To(Equal(&pb.ChaincodeMessage{
-									Type:    pb.ChaincodeMessage_ERROR,
-									Payload: []byte("INVOKE_CHAINCODE failed: transaction ID: tx-id: failed to get transaction context"),
-									Txid:    "tx-id",
-								}))
-							})
+							Expect(msg).To(Equal(&pb.ChaincodeMessage{
+								Type:    pb.ChaincodeMessage_ERROR,
+								Payload: []byte("INVOKE_CHAINCODE failed: transaction ID: tx-id: failed to get transaction context"),
+								Txid:    "tx-id",
+							}))
 						})
 					})
 				})
@@ -2197,15 +2184,6 @@ var _ = Describe("Handler", func() {
 			fakeInvoker.InvokeReturns(responseMessage, nil)
 		})
 
-		It("checks if the target is a system chaincode", func() {
-			_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(fakeSystemCCProvider.IsSysCCCallCount() >= 1).To(BeTrue())
-			name := fakeSystemCCProvider.IsSysCCArgsForCall(0)
-			Expect(name).To(Equal("target-chaincode-name"))
-		})
-
 		It("evaluates the access control policy", func() {
 			_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 			Expect(err).NotTo(HaveOccurred())
@@ -2331,7 +2309,7 @@ var _ = Describe("Handler", func() {
 
 		Context("when the target is a system chaincode", func() {
 			BeforeEach(func() {
-				fakeSystemCCProvider.IsSysCCReturns(true)
+				builtinSCCs["target-chaincode-name"] = struct{}{}
 			})
 
 			It("does not perform acl checks", func() {
@@ -2340,22 +2318,9 @@ var _ = Describe("Handler", func() {
 
 				Expect(fakeACLProvider.CheckACLCallCount()).To(Equal(0))
 			})
-
-			It("uses the system chaincode version", func() {
-				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(fakeInvoker.InvokeCallCount()).To(Equal(1))
-				_, cccid, _ := fakeInvoker.InvokeArgsForCall(0)
-				Expect(cccid.Version).To(Equal("system-cc-version"))
-			})
 		})
 
 		Context("when the target is not a system chaincode", func() {
-			BeforeEach(func() {
-				fakeSystemCCProvider.IsSysCCReturns(false)
-			})
-
 			It("gets the chaincode definition", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 				Expect(err).NotTo(HaveOccurred())

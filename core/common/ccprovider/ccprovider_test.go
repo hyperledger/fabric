@@ -123,9 +123,6 @@ func TestChaincodeData(t *testing.T) {
 	assert.Equal(t, cd.Endorsement(), "Escc")
 	assert.Equal(t, cd.Hash(), []byte("Id"))
 	assert.Equal(t, cd.RequiresInit(), false)
-	pl, po := cd.Validation()
-	assert.Equal(t, pl, "Vscc")
-	assert.Equal(t, po, []byte("Policy"))
 }
 
 func TestGetChaincodeInstallPath(t *testing.T) {

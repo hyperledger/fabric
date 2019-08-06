@@ -73,11 +73,6 @@ import (
 //initialize peer and start up. If security==enabled, login as vp
 func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
-	sccp := &scc.Provider{
-		Peer:      peerInstance,
-		Whitelist: scc.GlobalWhitelist(),
-	}
-
 	grpcServer := grpc.NewServer()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -109,15 +104,16 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	ca, _ := tlsgen.NewCA()
 	pr := platforms.NewRegistry(&golang.Platform{})
 	mockAclProvider := &mock.ACLProvider{}
-	lsccImpl := lscc.New(sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	builtinSCCs := map[string]struct{}{"lscc": {}}
+	lsccImpl := lscc.New(builtinSCCs, &lscc.PeerShim{Peer: peerInstance}, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &cm.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 		switch name {
 		case "lscc":
 			return &ccprovider.ChaincodeContainerInfo{
 				Name:      "lscc",
-				Version:   util.GetSysCCVersion(),
-				PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
+				Version:   "latest",
+				PackageID: persistence.PackageID("lscc:latest"),
 			}, nil
 		default:
 			return &ccprovider.ChaincodeContainerInfo{
@@ -183,15 +179,13 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		Lifecycle:              ml,
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
-		SystemCCProvider:       sccp,
+		BuiltinSCCs:            builtinSCCs,
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
-	sccp.RegisterSysCC(lsccImpl)
-
-	sccp.DeploySysCCs(chaincodeSupport)
+	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)
 
 	for _, id := range chainIDs {
 		if err = peer.CreateMockChannel(peerInstance, id); err != nil {
@@ -253,7 +247,7 @@ func endTxSimulationCDS(peerInstance *peer.Peer, chainID string, txsim ledger.Tx
 	// get lscc ChaincodeID
 	lsccid := &pb.ChaincodeID{
 		Name:    "lscc",
-		Version: util.GetSysCCVersion(),
+		Version: "latest",
 	}
 
 	// get a proposal - we need it to get a transaction
@@ -400,7 +394,7 @@ func getDeployLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec, ccp *com
 			return nil, err
 		}
 	}
-	sysCCVers := util.GetSysCCVersion()
+	sysCCVers := "latest"
 
 	invokeInput := &pb.ChaincodeInput{Args: [][]byte{
 		[]byte("deploy"), // function name
@@ -480,7 +474,7 @@ func deploy2(chainID string, cccid *ccprovider.CCContext, chaincodeDeploymentSpe
 	//ignore existence errors
 	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
 
-	sysCCVers := util.GetSysCCVersion()
+	sysCCVers := "latest"
 	lsccid := &ccprovider.CCContext{
 		Name:    cis.ChaincodeSpec.ChaincodeId.Name,
 		Version: sysCCVers,

@@ -54,12 +54,7 @@ func New(
 }
 
 func (e *PeerConfiger) Name() string              { return "cscc" }
-func (e *PeerConfiger) Path() string              { return "github.com/hyperledger/fabric/core/scc/cscc" }
-func (e *PeerConfiger) InitArgs() [][]byte        { return nil }
 func (e *PeerConfiger) Chaincode() shim.Chaincode { return e }
-func (e *PeerConfiger) InvokableExternal() bool   { return true }
-func (e *PeerConfiger) InvokableCC2CC() bool      { return false }
-func (e *PeerConfiger) Enabled() bool             { return true }
 
 // PeerConfiger implements the configuration handler for the peer. For every
 // configuration transaction coming in from the ordering service, the

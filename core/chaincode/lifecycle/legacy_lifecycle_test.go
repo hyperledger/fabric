@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/scc"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
@@ -29,6 +30,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeQueryExecutor *mock.SimpleQueryExecutor
 		fakeCache         *mock.ChaincodeInfoCache
 		testInfo          *lifecycle.LocalChaincodeInfo
+		builtinSCCs       scc.BuiltinSCCs
 	)
 
 	BeforeEach(func() {
@@ -43,6 +45,8 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeQueryExecutor.GetStateStub = func(namespace, key string) ([]byte, error) {
 			return fakePublicState.GetState(key)
 		}
+
+		builtinSCCs = map[string]struct{}{}
 
 		err := resources.Serializer.Serialize(lifecycle.NamespacesName,
 			"name",
@@ -77,9 +81,11 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeCache.ChaincodeInfoReturns(testInfo, nil)
 
 		cei = &lifecycle.ChaincodeEndorsementInfo{
-			LegacyImpl: fakeLegacyImpl,
-			Resources:  resources,
-			Cache:      fakeCache,
+			LegacyImpl:   fakeLegacyImpl,
+			Resources:    resources,
+			Cache:        fakeCache,
+			BuiltinSCCs:  builtinSCCs,
+			SysCCVersion: "test-syscc-version",
 		}
 
 	})
@@ -182,12 +188,26 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			def, err := cei.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(def).To(Equal(&lifecycle.LegacyDefinition{
-				Name:                "name",
-				Version:             "version",
-				EndorsementPlugin:   "endorsement-plugin",
-				ValidationPlugin:    "validation-plugin",
-				ValidationParameter: []byte("validation-parameter"),
+				Name:              "name",
+				Version:           "version",
+				EndorsementPlugin: "endorsement-plugin",
 			}))
+		})
+
+		Context("when the chaincode is a builtin system chaincode", func() {
+			BeforeEach(func() {
+				builtinSCCs["test-syscc-name"] = struct{}{}
+			})
+
+			It("returns a static definition", func() {
+				res, err := cei.ChaincodeDefinition("channel-id", "test-syscc-name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(Equal(&lifecycle.LegacyDefinition{
+					Name:              "test-syscc-name",
+					Version:           "test-syscc-version",
+					EndorsementPlugin: "escc",
+				}))
+			})
 		})
 
 		Context("when the cache returns an error", func() {
@@ -242,6 +262,22 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			}))
 		})
 
+		Context("when the chaincode is a builtin system chaincode", func() {
+			BeforeEach(func() {
+				builtinSCCs["test-syscc-name"] = struct{}{}
+			})
+
+			It("returns a static definition", func() {
+				res, err := cei.ChaincodeContainerInfo("channel-id", "test-syscc-name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(Equal(&ccprovider.ChaincodeContainerInfo{
+					Name:      "test-syscc-name",
+					Version:   "test-syscc-version",
+					PackageID: "test-syscc-name:test-syscc-version",
+				}))
+			})
+		})
+
 		Context("when the definition does not exist in the new lifecycle", func() {
 			var (
 				legacyContainerInfo *ccprovider.ChaincodeContainerInfo
@@ -288,13 +324,11 @@ var _ = Describe("LegacyDefinition", func() {
 
 	BeforeEach(func() {
 		ld = &lifecycle.LegacyDefinition{
-			Name:                "name",
-			Version:             "version",
-			HashField:           []byte("hash"),
-			EndorsementPlugin:   "endorsement-plugin",
-			ValidationPlugin:    "validation-plugin",
-			ValidationParameter: []byte("validation-parameter"),
-			RequiresInitField:   true,
+			Name:              "name",
+			Version:           "version",
+			HashField:         []byte("hash"),
+			EndorsementPlugin: "endorsement-plugin",
+			RequiresInitField: true,
 		}
 	})
 
@@ -325,14 +359,6 @@ var _ = Describe("LegacyDefinition", func() {
 	Describe("RequiresInit", func() {
 		It("returns the endorsment init required field", func() {
 			Expect(ld.RequiresInit()).To(BeTrue())
-		})
-	})
-
-	Describe("Validation", func() {
-		It("returns the validation plugin name and parameter", func() {
-			validationPlugin, validationParameter := ld.Validation()
-			Expect(validationPlugin).To(Equal("validation-plugin"))
-			Expect(validationParameter).To(Equal([]byte("validation-parameter")))
 		})
 	})
 })

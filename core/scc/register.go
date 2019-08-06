@@ -9,6 +9,6 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 // CreatePluginSysCCs creates all of the system chaincodes which are compiled into fabric
-func CreatePluginSysCCs(p *Provider) []SelfDescribingSysCC {
+func CreatePluginSysCCs() []SelfDescribingSysCC {
 	return nil
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
@@ -268,7 +267,7 @@ func (v *VsccValidatorImpl) VSCCValidateTxForCC(ctx *Context) error {
 	return &commonerrors.VSCCEndorsementPolicyError{Err: err}
 }
 
-func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (ccprovider.ChaincodeDefinition, error) {
+func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (*ccprovider.ChaincodeData, error) {
 	l := v.cr.Ledger()
 	if l == nil {
 		return nil, errors.New("nil ledger instance")
@@ -311,14 +310,12 @@ func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (ccprovider.Chainco
 // GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, vscc and policy from lscc
 func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (*sysccprovider.ChaincodeInstance, *sysccprovider.ChaincodeInstance, []byte, error) {
 	cc := &sysccprovider.ChaincodeInstance{
-		ChainID:          chdr.ChannelId,
-		ChaincodeName:    ccID,
-		ChaincodeVersion: coreUtil.GetSysCCVersion(),
+		ChainID:       chdr.ChannelId,
+		ChaincodeName: ccID,
 	}
 	vscc := &sysccprovider.ChaincodeInstance{
-		ChainID:          chdr.ChannelId,
-		ChaincodeName:    "vscc",                     // default vscc for system chaincodes
-		ChaincodeVersion: coreUtil.GetSysCCVersion(), // Get vscc version
+		ChainID:       chdr.ChannelId,
+		ChaincodeName: "vscc", // default vscc for system chaincodes
 	}
 	var policy []byte
 	var err error
@@ -334,9 +331,9 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 			logger.Errorf(msg)
 			return nil, nil, nil, err
 		}
-		cc.ChaincodeName = cd.CCName()
-		cc.ChaincodeVersion = cd.CCVersion()
-		vscc.ChaincodeName, policy = cd.Validation()
+		cc.ChaincodeName = cd.Name
+		cc.ChaincodeVersion = cd.Version
+		vscc.ChaincodeName, policy = cd.Vscc, cd.Policy
 	} else {
 		// when we are validating a system CC, we use the default
 		// VSCC and a default policy that requires one signature

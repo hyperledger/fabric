@@ -156,34 +156,9 @@ func (scc *SCC) Name() string {
 	return LifecycleNamespace
 }
 
-// Path returns "github.com/hyperledger/fabric/core/chaincode/lifecycle"
-func (scc *SCC) Path() string {
-	return "github.com/hyperledger/fabric/core/chaincode/lifecycle"
-}
-
-// InitArgs returns nil
-func (scc *SCC) InitArgs() [][]byte {
-	return nil
-}
-
 // Chaincode returns a reference to itself
 func (scc *SCC) Chaincode() shim.Chaincode {
 	return scc
-}
-
-// InvokableExternal returns true
-func (scc *SCC) InvokableExternal() bool {
-	return true
-}
-
-// InvokableCC2CC returns true
-func (scc *SCC) InvokableCC2CC() bool {
-	return true
-}
-
-// Enabled returns true
-func (scc *SCC) Enabled() bool {
-	return true
 }
 
 // Init is mostly useless for system chaincodes and always returns success

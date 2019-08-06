@@ -39,8 +39,8 @@ type SupportImpl struct {
 	identity.SignerSerializer
 	Peer             PeerOperations
 	ChaincodeSupport *chaincode.ChaincodeSupport
-	SysCCProvider    *scc.Provider
 	ACLProvider      aclmgmt.ACLProvider
+	BuiltinSCCs      scc.BuiltinSCCs
 }
 
 func (s *SupportImpl) NewQueryCreator(channel string) (QueryCreator, error) {
@@ -107,7 +107,7 @@ func (s *SupportImpl) GetLedgerHeight(channelID string) (uint64, error) {
 // IsSysCC returns true if the name matches a system chaincode's
 // system chaincode names are system, chain wide
 func (s *SupportImpl) IsSysCC(name string) bool {
-	return s.SysCCProvider.IsSysCC(name)
+	return s.BuiltinSCCs.IsSysCC(name)
 }
 
 // GetChaincode returns the CCPackage from the fs

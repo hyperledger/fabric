@@ -151,11 +151,6 @@ func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.Chainc
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
-	sccp := &scc.Provider{
-		Peer:      peerInstance,
-		Whitelist: scc.GlobalWhitelist(),
-	}
-
 	tempdir, err := ioutil.TempDir("", "cc-support-test")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temporary directory: %s", err))
@@ -177,7 +172,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	globalConfig := GlobalConfig()
 	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
-	lsccImpl := lscc.New(sccp, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	lsccImpl := lscc.New(map[string]struct{}{"lscc": {}}, &lscc.PeerShim{Peer: peerInstance}, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 		switch name {
@@ -190,8 +185,8 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		case "lscc":
 			return &ccprovider.ChaincodeContainerInfo{
 				Name:      "lscc",
-				Version:   util.GetSysCCVersion(),
-				PackageID: persistence.PackageID("lscc:" + util.GetSysCCVersion()),
+				Version:   "latest",
+				PackageID: persistence.PackageID("lscc:latest"),
 			}, nil
 		default:
 			return nil, errors.New("oh-bother-no-chaincode-info")
@@ -242,14 +237,12 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		Lifecycle:              ml,
 		Peer:                   peerInstance,
 		Runtime:                containerRuntime,
-		SystemCCProvider:       sccp,
+		BuiltinSCCs:            map[string]struct{}{"lscc": {}},
 		TotalQueryLimit:        globalConfig.TotalQueryLimit,
 		UserRunsCC:             userRunsCC,
 	}
 
-	sccp.RegisterSysCC(lsccImpl)
-
-	sccp.DeploySysCCs(chaincodeSupport)
+	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {
@@ -425,7 +418,7 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *ccpro
 
 	b := protoutil.MarshalOrPanic(cds)
 
-	sysCCVers := util.GetSysCCVersion()
+	sysCCVers := "latest"
 
 	//wrap the deployment in an invocation spec to lscc...
 	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(txParams.ChannelID), b}}}}
@@ -702,7 +695,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	txid = util.GenerateUUID()
 	txParams, txsim = startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	sysCCVers := util.GetSysCCVersion()
+	sysCCVers := "latest"
 	//call a callable system CC, a regular cc, a regular but different cc on a different chain, a regular but same cc on a different chain,  and an uncallable system cc and expect an error inthe last one
 	respSet := &mockpeer.MockResponseSet{
 		DoneFunc:  errorFunc,
@@ -1029,10 +1022,8 @@ func TestGetTxContextFromHandler(t *testing.T) {
 	defer cleanup()
 
 	h := Handler{
-		TXContexts: NewTransactionContexts(),
-		SystemCCProvider: &scc.Provider{
-			Peer: peerInstance,
-		},
+		TXContexts:  NewTransactionContexts(),
+		BuiltinSCCs: map[string]struct{}{"lscc": {}},
 	}
 
 	txid := "1"
@@ -1226,7 +1217,7 @@ func TestCCFramework(t *testing.T) {
 	initializeCC(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	//chaincode support should not allow dups
-	handler := &Handler{chaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, SystemCCProvider: chaincodeSupport.SystemCCProvider}
+	handler := &Handler{chaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, BuiltinSCCs: chaincodeSupport.BuiltinSCCs}
 	if err := chaincodeSupport.HandlerRegistry.Register(handler); err == nil {
 		t.Fatalf("expected re-register to fail")
 	}

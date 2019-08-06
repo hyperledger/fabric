@@ -24,18 +24,15 @@ const (
 
 // PluginConfig SCC plugin configuration
 type PluginConfig struct {
-	Enabled           bool   `mapstructure:"enabled" yaml:"enabled"`
-	Name              string `mapstructure:"name" yaml:"name"`
-	Path              string `mapstructure:"path" yaml:"path"`
-	InvokableExternal bool   `mapstructure:"invokableExternal" yaml:"invokableExternal"`
-	InvokableCC2CC    bool   `mapstructure:"invokableCC2CC" yaml:"invokableCC2CC"`
+	Name string `mapstructure:"name" yaml:"name"`
+	Path string `mapstructure:"path" yaml:"path"`
 }
 
 var once sync.Once
 var sccPlugins []*SystemChaincode
 
 // loadSysCCs reads system chaincode plugin configuration and loads them
-func loadSysCCs(p *Provider) []*SystemChaincode {
+func loadSysCCs() []*SystemChaincode {
 	once.Do(func() {
 		var config []*PluginConfig
 		err := mapstructure.Decode(viper.Get("chaincode.systemPlugins"), &config)
@@ -52,15 +49,11 @@ func loadSysCCsWithConfig(configs []*PluginConfig) {
 	for _, conf := range configs {
 		plugin := loadPlugin(conf.Path)
 		chaincode := &SystemChaincode{
-			Enabled:           conf.Enabled,
-			Name:              conf.Name,
-			Path:              conf.Path,
-			Chaincode:         *plugin,
-			InvokableExternal: conf.InvokableExternal,
-			InvokableCC2CC:    conf.InvokableCC2CC,
+			Name:      conf.Name,
+			Chaincode: *plugin,
 		}
 		sccPlugins = append(sccPlugins, chaincode)
-		sysccLogger.Infof("Successfully loaded SCC %s from path %s", chaincode.Name, chaincode.Path)
+		sysccLogger.Infof("Successfully loaded SCC %s from path %s", chaincode.Name, conf.Path)
 	}
 }
 

@@ -10,9 +10,9 @@ SPDX-License-Identifier: Apache-2.0
 package scc
 
 // CreatePluginSysCCs creates all of the system chaincodes which are loaded by plugin
-func CreatePluginSysCCs(p *Provider) []SelfDescribingSysCC {
+func CreatePluginSysCCs() []SelfDescribingSysCC {
 	var sdscs []SelfDescribingSysCC
-	for _, pscc := range loadSysCCs(p) {
+	for _, pscc := range loadSysCCs() {
 		sdscs = append(sdscs, &SysCCWrapper{SCC: pscc})
 	}
 	return sdscs

@@ -15,10 +15,10 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/scc"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -57,6 +57,7 @@ type Lifecycle interface {
 type ChaincodeSupport struct {
 	ACLProvider            ACLProvider
 	AppConfig              ApplicationConfigRetriever
+	BuiltinSCCs            scc.BuiltinSCCs
 	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	ExecuteTimeout         time.Duration
 	HandlerMetrics         *HandlerMetrics
@@ -66,7 +67,6 @@ type ChaincodeSupport struct {
 	Lifecycle              Lifecycle
 	Peer                   *peer.Peer
 	Runtime                Runtime
-	SystemCCProvider       sysccprovider.SystemChaincodeProvider
 	TotalQueryLimit        int
 	UserRunsCC             bool
 }
@@ -124,8 +124,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		ACLProvider:                cs.ACLProvider,
 		TXContexts:                 NewTransactionContexts(),
 		ActiveTransactions:         NewActiveTransactions(),
-		SystemCCProvider:           cs.SystemCCProvider,
-		SystemCCVersion:            util.GetSysCCVersion(),
+		BuiltinSCCs:                cs.BuiltinSCCs,
 		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
 		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
 		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),
@@ -210,10 +209,6 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
 func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	if cs.SystemCCProvider.IsSysCC(cccid.Name) {
-		return cs.invokeSystem(txParams, cccid, input)
-	}
-
 	// go to _lifecycle to retrieve information about the chaincode
 	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
 	if err != nil {
@@ -241,22 +236,6 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid
 	}
 
 	return cs.execute(cctype, txParams, cccid, input, h)
-}
-
-func (cs *ChaincodeSupport) invokeSystem(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	// FIXME: remove this once _lifecycle has definitions for all system chaincodes (FAB-14628)
-	ccci := &ccprovider.ChaincodeContainerInfo{
-		Version:   util.GetSysCCVersion(),
-		Name:      cccid.Name,
-		PackageID: persistence.PackageID(cccid.Name + ":" + util.GetSysCCVersion()),
-	}
-
-	h, err := cs.Launch(txParams.ChannelID, ccci)
-	if err != nil {
-		return nil, err
-	}
-
-	return cs.execute(pb.ChaincodeMessage_TRANSACTION, txParams, cccid, input, h)
 }
 
 func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (bool, error) {

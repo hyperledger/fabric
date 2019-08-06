@@ -564,9 +564,6 @@ chaincode:
       # example configuration:
       # - enabled: true
       #   name: myscc
-      #   path: /opt/lib/myscc.so
-      #   invokableExternal: true
-      #   invokableCC2CC: true
 
     # Logging section for the chaincode container
     logging:

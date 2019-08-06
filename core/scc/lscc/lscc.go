@@ -12,7 +12,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -21,7 +23,9 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/internal/ccmetadata"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -129,6 +133,8 @@ type LifeCycleSysCC struct {
 	// aclProvider is responsible for access control evaluation
 	ACLProvider aclmgmt.ACLProvider
 
+	BuiltinSCCs scc.BuiltinSCCs
+
 	// SCCProvider is the interface which is passed into system chaincodes
 	// to access other parts of the system
 	SCCProvider sysccprovider.SystemChaincodeProvider
@@ -144,15 +150,48 @@ type LifeCycleSysCC struct {
 	GetMSPIDs MSPIDsGetter
 }
 
+// PeerShim adapts the peer instance for use with LSCC by providing methods
+// previously provided by the scc provider.  If the lscc code weren't all getting
+// deleted soon, it would probably be worth rewriting it to use these APIs directly
+// rather that go through this shim, but it will be gone soon.
+type PeerShim struct {
+	Peer *peer.Peer
+}
+
+// GetQueryExecutorForLedger returns a query executor for the specified channel
+func (p *PeerShim) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
+	l := p.Peer.GetLedger(cid)
+	if l == nil {
+		return nil, fmt.Errorf("Could not retrieve ledger for channel %s", cid)
+	}
+
+	return l.NewQueryExecutor()
+}
+
+// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
+// and whether the Application config exists
+func (p *PeerShim) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
+	return p.Peer.GetApplicationConfig(cid)
+}
+
+// Returns the policy manager associated to the passed channel
+// and whether the policy manager exists
+func (p *PeerShim) PolicyManager(channelID string) (policies.Manager, bool) {
+	m := p.Peer.GetPolicyManager(channelID)
+	return m, (m != nil)
+}
+
 // New creates a new instance of the LSCC
 // Typically there is only one of these per peer
 func New(
+	builtinSCCs scc.BuiltinSCCs,
 	sccp sysccprovider.SystemChaincodeProvider,
 	ACLProvider aclmgmt.ACLProvider,
 	getMSPIDs MSPIDsGetter,
 	policyChecker policy.PolicyChecker,
 ) *LifeCycleSysCC {
 	return &LifeCycleSysCC{
+		BuiltinSCCs:   builtinSCCs,
 		Support:       &supportImpl{GetMSPIDs: getMSPIDs},
 		PolicyChecker: policyChecker,
 		SCCProvider:   sccp,
@@ -162,12 +201,7 @@ func New(
 }
 
 func (lscc *LifeCycleSysCC) Name() string              { return "lscc" }
-func (lscc *LifeCycleSysCC) Path() string              { return "github.com/hyperledger/fabric/core/scc/lscc" }
-func (lscc *LifeCycleSysCC) InitArgs() [][]byte        { return nil }
 func (lscc *LifeCycleSysCC) Chaincode() shim.Chaincode { return lscc }
-func (lscc *LifeCycleSysCC) InvokableExternal() bool   { return true }
-func (lscc *LifeCycleSysCC) InvokableCC2CC() bool      { return true }
-func (lscc *LifeCycleSysCC) Enabled() bool             { return true }
 
 func (lscc *LifeCycleSysCC) ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
 	chaincodeDataBytes, err := qe.GetState("lscc", chaincodeName)
@@ -615,7 +649,7 @@ func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 		return err
 	}
 
-	if lscc.SCCProvider.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
+	if lscc.BuiltinSCCs.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
 		return errors.Errorf("cannot install: %s is the name of a system chaincode", cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
