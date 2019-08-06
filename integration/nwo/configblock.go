@@ -199,7 +199,7 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 	defer os.RemoveAll(tempDir)
 
 	currentBlockNumber := CurrentConfigBlockNumber(n, submitter, orderer, channel)
-	computeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
+	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
 	Eventually(func() bool {
 		sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
@@ -231,7 +231,7 @@ func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, cu
 	updateFile := filepath.Join(tempDir, "update.pb")
 	defer os.RemoveAll(tempDir)
 
-	computeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
+	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
 	//session should not return with a zero exit code nor with a success response
 	sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
@@ -244,7 +244,7 @@ func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, cu
 	return sess
 }
 
-func computeUpdateOrdererConfig(updateFile string, n *Network, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
+func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
 	// compute update
 	configUpdate, err := update.Compute(current, updated)
 	Expect(err).NotTo(HaveOccurred())

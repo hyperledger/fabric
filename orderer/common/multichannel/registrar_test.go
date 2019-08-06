@@ -20,6 +20,7 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -126,7 +127,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
 		assert.Panics(t, func() {
-			NewRegistrar(lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
+			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
 		}, "Should have panicked when starting without a system chain")
 	})
 
@@ -146,7 +147,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
 		assert.Panics(t, func() {
-			NewRegistrar(lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
+			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
 		}, "Two system channels should have caused panic")
 	})
 
@@ -157,7 +158,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{})
 		manager.Initialize(consenters)
 
 		chainSupport := manager.GetChain("Fake")
@@ -181,7 +182,7 @@ func TestCreateChain(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{})
 		manager.Initialize(consenters)
 
 		ledger, err := lf.GetOrCreate("mychannel")
@@ -220,7 +221,7 @@ func TestCreateChain(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{})
 		manager.Initialize(consenters)
 		orglessChannelConf := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 		orglessChannelConf.Application.Organizations = nil
@@ -384,7 +385,7 @@ func TestBroadcastChannelSupportRejection(t *testing.T) {
 
 		ledgerFactory, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChainID, genesisBlockSys)
 		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
-		registrar := NewRegistrar(ledgerFactory, mockCrypto(), &disabled.Provider{})
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{})
 		registrar.Initialize(mockConsenters)
 		randomValue := 1
 		configTx := makeConfigTx(genesisconfig.TestChainID, randomValue)
