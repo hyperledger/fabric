@@ -167,7 +167,6 @@ chaincode:
     cscc:       enable
     lscc:       enable
     qscc:       enable
-  systemPlugins:
   logging:
     level:  info
     shim:   warning

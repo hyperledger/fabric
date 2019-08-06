@@ -36,7 +36,6 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    chaincode
    chaincode4ade
    chaincode4noah
-   systemchaincode
    couchdb_tutorial
    videos
 
