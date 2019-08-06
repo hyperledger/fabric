@@ -9,6 +9,7 @@ package externalbuilders
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -36,12 +37,10 @@ func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
 }
 
 func (i *Instance) Stop() error {
-	// TODO
 	return errors.Errorf("stop is not implemented for external builders yet")
 }
 
 func (i *Instance) Wait() (int, error) {
-	// TODO
 	// Unimplemented, so, wait forever
 	select {}
 }
@@ -150,26 +149,18 @@ func (bc *BuildContext) Cleanup() {
 
 type Builder struct {
 	Location string
+	Logger   *flogging.FabricLogger
 }
 
 func (b *Builder) Detect(buildContext *BuildContext) bool {
 	detect := filepath.Join(b.Location, "bin", "detect")
-	cmd := exec.Cmd{
-		Path: detect,
-		Args: []string{
-			"detect", // the first arg is the binary name we are invoking as
-			"--package-id", string(buildContext.CCCI.PackageID),
-			// XXX long term, do we want to include path and type?
-			// the whole idea of detect was to determine these things, I thought
-			// same goes for other builder functions like Build
-			"--path", buildContext.CCCI.Path,
-			"--type", buildContext.CCCI.Type,
-			"--source", buildContext.SourceDir,
-		},
-
-		// TODO wire the stderr of the process back to the peer logs
-		// same goes for other builder functions like Build
-	}
+	cmd := NewCommand(
+		detect,
+		"--package-id", string(buildContext.CCCI.PackageID),
+		"--path", buildContext.CCCI.Path,
+		"--type", buildContext.CCCI.Type,
+		"--source", buildContext.SourceDir,
+	)
 
 	err := cmd.Run()
 	if err != nil {
@@ -184,17 +175,14 @@ func (b *Builder) Detect(buildContext *BuildContext) bool {
 
 func (b *Builder) Build(buildContext *BuildContext) error {
 	build := filepath.Join(b.Location, "bin", "build")
-	cmd := exec.Cmd{
-		Path: build,
-		Args: []string{
-			"build", // the first arg is the binary name we are invoking as
-			"--package-id", string(buildContext.CCCI.PackageID),
-			"--path", buildContext.CCCI.Path,
-			"--type", buildContext.CCCI.Type,
-			"--source", buildContext.SourceDir,
-			"--output", buildContext.OutputDir,
-		},
-	}
+	cmd := NewCommand(
+		build,
+		"--package-id", string(buildContext.CCCI.PackageID),
+		"--path", buildContext.CCCI.Path,
+		"--type", buildContext.CCCI.Type,
+		"--source", buildContext.SourceDir,
+		"--output", buildContext.OutputDir,
+	)
 
 	err := cmd.Run()
 	if err != nil {
@@ -233,18 +221,15 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 	}
 
 	launch := filepath.Join(b.Location, "bin", "launch")
-	cmd := exec.Cmd{
-		Path: launch,
-		Args: []string{
-			"launch", // the first arg is the binary name we are invoking as
-			"--package-id", string(buildContext.CCCI.PackageID),
-			"--path", buildContext.CCCI.Path,
-			"--type", buildContext.CCCI.Type,
-			"--source", buildContext.SourceDir,
-			"--output", buildContext.OutputDir,
-			"--artifacts", buildContext.LaunchDir,
-		},
-	}
+	cmd := NewCommand(
+		launch,
+		"--package-id", string(buildContext.CCCI.PackageID),
+		"--path", buildContext.CCCI.Path,
+		"--type", buildContext.CCCI.Type,
+		"--source", buildContext.SourceDir,
+		"--output", buildContext.OutputDir,
+		"--artifacts", buildContext.LaunchDir,
+	)
 
 	err = cmd.Run()
 	if err != nil {
@@ -258,4 +243,17 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 // for identification purposes.
 func (b *Builder) Name() string {
 	return filepath.Base(b.Location)
+}
+
+// NewCommand creates an exec.Cmd that is configured to prune the calling
+// environment down to LD_LIBRARY_PATH, LIBPATH, PATH, and TMPDIR environment
+// variables.
+func NewCommand(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	for _, key := range []string{"LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"} {
+		if val, ok := os.LookupEnv(key); ok {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
+		}
+	}
+	return cmd
 }
