@@ -102,22 +102,9 @@ func Main() {
 	sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
 	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
 
-	clusterType := isClusterType(clusterBootBlock)
-
 	signer, signErr := loadLocalMSP(conf).GetDefaultSigningIdentity()
 	if signErr != nil {
 		logger.Panicf("Failed to get local MSP identity: %s", signErr)
-	}
-
-	clusterClientConfig := initializeClusterClientConfig(conf, clusterType, bootstrapBlock)
-	clusterDialer := &cluster.PredicateDialer{
-		Config: clusterClientConfig,
-	}
-
-	r := createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
-	// Only clusters that are equipped with a recent config block can replicate.
-	if clusterType && conf.General.GenesisMethod == "file" {
-		r.replicateIfNeeded(bootstrapBlock)
 	}
 
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
@@ -131,30 +118,54 @@ func Main() {
 		clientRootCAs:         serverConfig.SecOpts.ClientRootCAs,
 	}
 
+	// configure following artifacts properly if orderer is of cluster type
+	var r *replicationInitiator
 	clusterServerConfig := serverConfig
-	clusterGRPCServer := grpcServer
+	clusterGRPCServer := grpcServer // by default, cluster shares the same grpc server
+	var clusterClientConfig comm.ClientConfig
+	var clusterDialer *cluster.PredicateDialer
+
+	var reuseGrpcListener bool
+	typ := consensusType(bootstrapBlock)
+	var serversToUpdate []*comm.GRPCServer
+
+	clusterType := isClusterType(clusterBootBlock)
 	if clusterType {
-		clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, grpcServer, ioutil.ReadFile)
+		logger.Infof("Setting up cluster for orderer type %s", typ)
+		clusterClientConfig = initializeClusterClientConfig(conf)
+		clusterDialer = &cluster.PredicateDialer{
+			Config: clusterClientConfig,
+		}
+
+		r = createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
+		// Only clusters that are equipped with a recent config block can replicate.
+		if conf.General.GenesisMethod == "file" {
+			r.replicateIfNeeded(bootstrapBlock)
+		}
+
+		if reuseGrpcListener = reuseListener(conf, typ); !reuseGrpcListener {
+			clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
+		}
+
+		// If we have a separate gRPC server for the cluster,
+		// we need to update its TLS CA certificate pool.
+		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
 	}
 
-	var servers = []*comm.GRPCServer{grpcServer}
-	// If we have a separate gRPC server for the cluster, we need to update its TLS
-	// CA certificate pool too.
-	if clusterGRPCServer != grpcServer {
-		servers = append(servers, clusterGRPCServer)
+	// if cluster is reusing client-facing server, then it is already
+	// appended to serversToUpdate at this point.
+	if grpcServer.MutualTLSRequired() && !reuseGrpcListener {
+		serversToUpdate = append(serversToUpdate, grpcServer)
 	}
 
 	tlsCallback := func(bundle *channelconfig.Bundle) {
-		// only need to do this if mutual TLS is required or if the orderer node is part of a cluster
-		if grpcServer.MutualTLSRequired() || clusterType {
-			logger.Debug("Executing callback to update root CAs")
-			caMgr.updateTrustedRoots(bundle, servers...)
-			if clusterType {
-				caMgr.updateClusterDialer(
-					clusterDialer,
-					clusterClientConfig.SecOpts.ServerRootCAs,
-				)
-			}
+		logger.Debug("Executing callback to update root CAs")
+		caMgr.updateTrustedRoots(bundle, serversToUpdate...)
+		if clusterType {
+			caMgr.updateClusterDialer(
+				clusterDialer,
+				clusterClientConfig.SecOpts.ServerRootCAs,
+			)
 		}
 	}
 
@@ -192,7 +203,7 @@ func Main() {
 		},
 	}))
 
-	if clusterGRPCServer != grpcServer {
+	if !reuseGrpcListener {
 		logger.Info("Starting cluster listener on", clusterGRPCServer.Address())
 		go clusterGRPCServer.Start()
 	}
@@ -201,6 +212,29 @@ func Main() {
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Info("Beginning to serve requests")
 	grpcServer.Start()
+}
+
+func reuseListener(conf *localconfig.TopLevel, typ string) bool {
+	clusterConf := conf.General.Cluster
+	// If listen address is not configured, and the TLS certificate isn't configured,
+	// it means we use the general listener of the node.
+	if clusterConf.ListenPort == 0 && clusterConf.ServerCertificate == "" && clusterConf.ListenAddress == "" && clusterConf.ServerPrivateKey == "" {
+		logger.Info("Cluster listener is not configured, defaulting to use the general listener on port", conf.General.ListenPort)
+
+		if !conf.General.TLS.Enabled {
+			logger.Panicf("TLS is required for running ordering nodes of type %s.", typ)
+		}
+
+		return true
+	}
+
+	// Else, one of the above is defined, so all 4 properties should be defined.
+	if clusterConf.ListenPort == 0 || clusterConf.ServerCertificate == "" || clusterConf.ListenAddress == "" || clusterConf.ServerPrivateKey == "" {
+		logger.Panic("Options: General.Cluster.ListenPort, General.Cluster.ListenAddress, General.Cluster.ServerCertificate," +
+			" General.Cluster.ServerPrivateKey, should be defined altogether.")
+	}
+
+	return false
 }
 
 // Extract system channel last config block
@@ -334,23 +368,9 @@ func handleSignals(handlers map[os.Signal]func()) {
 
 type loadPEMFunc func(string) ([]byte, error)
 
-// configureClusterListener gets a ServerConfig and a GRPCServer, and:
-// 1) If the TopLevel configuration states that the cluster configuration for the cluster gRPC service is missing, returns them back.
-// 2) Else, returns a new ServerConfig and a new gRPC server (with its own TLS listener on a different port).
-func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.ServerConfig, generalSrv *comm.GRPCServer, loadPEM loadPEMFunc) (comm.ServerConfig, *comm.GRPCServer) {
+// configureClusterListener returns a new ServerConfig and a new gRPC server (with its own TLS listener).
+func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.ServerConfig, loadPEM loadPEMFunc) (comm.ServerConfig, *comm.GRPCServer) {
 	clusterConf := conf.General.Cluster
-	// If listen address is not configured, or the TLS certificate isn't configured,
-	// it means we use the general listener of the node.
-	if clusterConf.ListenPort == 0 && clusterConf.ServerCertificate == "" && clusterConf.ListenAddress == "" && clusterConf.ServerPrivateKey == "" {
-		logger.Info("Cluster listener is not configured, defaulting to use the general listener on port", conf.General.ListenPort)
-		return generalConf, generalSrv
-	}
-
-	// Else, one of the above is defined, so all 4 properties should be defined.
-	if clusterConf.ListenPort == 0 || clusterConf.ServerCertificate == "" || clusterConf.ListenAddress == "" || clusterConf.ServerPrivateKey == "" {
-		logger.Panic("Options: General.Cluster.ListenPort, General.Cluster.ListenAddress, General.Cluster.ServerCertificate," +
-			" General.Cluster.ServerPrivateKey, should be defined altogether.")
-	}
 
 	cert, err := loadPEM(clusterConf.ServerCertificate)
 	if err != nil {
@@ -401,10 +421,7 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 	return serverConf, srv
 }
 
-func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool, bootstrapBlock *cb.Block) comm.ClientConfig {
-	if clusterType && !conf.General.TLS.Enabled {
-		logger.Panicf("TLS is required for running ordering nodes of type %s.", consensusType(bootstrapBlock))
-	}
+func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig {
 	cc := comm.ClientConfig{
 		AsyncConnect: true,
 		KaOpts:       comm.DefaultKeepaliveOptions,
@@ -412,7 +429,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool,
 		SecOpts:      comm.SecureOptions{},
 	}
 
-	if (!conf.General.TLS.Enabled) || conf.General.Cluster.ClientCertificate == "" {
+	if conf.General.Cluster.ClientCertificate == "" {
 		return cc
 	}
 
