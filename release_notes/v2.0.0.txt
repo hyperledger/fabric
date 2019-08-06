@@ -1,5 +1,5 @@
-v2.0.0-alpha Release Notes - April 9, 2019
-------------------------------------------
+v2.0.0 Release Notes - RELEASE DATE TBD
+---------------------------------------
 
 What's New in Hyperledger Fabric v2.0
 -------------------------------------
@@ -7,22 +7,14 @@ What's New in Hyperledger Fabric v2.0
 The following major features are included in the v2.0.0 Alpha release:
 
 FAB-11237 - Improved chaincode lifecycle
-The Fabric 2.0 Alpha introduces decentralized governance for chaincode, with a
+Fabric 2.0 introduces decentralized governance for chaincode, with a
 new process for installing a chaincode on your peers and starting it on a
 channel. The new Fabric chaincode lifecycle allows multiple organizations to
 come to agreement on the parameters of a chaincode, such as the chaincode
 endorsement policy, before it can be used to interact with the ledger.
 
-FAB-11144 - Native token support
-The Fabric 2.0 Alpha provides users the ability to easily represent assets
-as tokens on Fabric channels. FabToken is a token management system that uses
-an Unspent Transaction Output (UTXO) model to issue, transfer, and redeem tokens
-using the identity and membership infrastructure provided by Hyperledger Fabric.
-A new 'token' command line interface is included as a way to drive token transactions
-without an application.
-
 FAB-6135 - Raft Consensus
-Introduced in v1.4.1 and v2.0.0 Alpha, the ordering service now provides
+Introduced in v1.4.1 and v2.0.0, the ordering service now provides
 an option to use the Raft Consensus algorithm. Raft is a crash fault tolerant
 (CFT) ordering service based on an implementation of Raft protocol in etcd.
 
@@ -41,14 +33,6 @@ FAB-12908 CouchDB health check
 
 Changes, Known Issues, and Workarounds
 --------------------------------------
-
-FAB-11237 - Improved chaincode lifecycle
-The new Fabric chaincode lifecycle in the v2.0.0 Alpha release is not yet feature
-complete. Specifically, be aware of the following limitations in the Alpha release:
-- CouchDB indexes are not yet supported
-- Chaincodes defined with the new lifecycle are not yet discoverable via service discovery
-These limitations will be resolved after the Alpha release.
-
 
 FAB-11096 - Docker images with Alpine Linux
 Bash is no longer available in Fabric images. Utilize Alpine's built-in
@@ -70,6 +54,19 @@ installing chaincode by using different SDKs. To workaround the problem,
 package the chaincode prior to installation and instantiation, by using
 the "peer chaincode package" command.
 
+FAB-15366 Logger removed from chaincode shim
+Chaincodes that used the shim's NewLogger() will need to shift to a new
+logging mechanism. Chaincode logging is intended to be the responsibility
+of the application developer. As such it should be handled using tools and
+libraries that make the most sense to the chaincode developer and the
+application in general. Chaincode developers can forward STDOUT and STDERR
+from the chaincode container to the peer container by setting
+`CORE_VM_DOCKER_ATTACHSTDOUT=true`. While not recommended for production,
+once enabled, each chaincode will receive its own logging channel and
+STDOUT and STDERR will be integrated in the peers log on a per-line basis.
+A production grade approach would be to run a log aggregation service and
+forward your logs to the aggregation service.
+
 Known Vulnerabilities
 ---------------------
 FAB-8664 - Peer should detect and react when its org has been removed
@@ -84,8 +81,7 @@ Other improvements and fixes
 ----------------------------
 FAB-13471 - Fix for multiple chaincode upgrades in a single block
 FAB-14687 - Fix memory leak in gossip message store
-Updated to Go version 1.11.5
-Updated baseimage version to 0.4.15 for third party dependencies.
+Updated to Go version 1.12.5
 
 For the full list of improvements and fixes, refer to the release change log:
-https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v200-alpha
+https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v200
