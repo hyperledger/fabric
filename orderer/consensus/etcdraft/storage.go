@@ -345,24 +345,30 @@ func (rs *RaftStorage) gc() {
 func (rs *RaftStorage) purgeWAL() {
 	retain := rs.snapshotIndex[0]
 
-	walFiles, err := fileutil.ReadDir(rs.walDir)
-	if err != nil {
-		rs.lg.Errorf("Failed to read WAL directory %s: %s", rs.walDir, err)
-	}
-
 	var files []string
-	for _, f := range walFiles {
-		if !strings.HasSuffix(f, ".wal") {
-			continue
+	err := filepath.Walk(rs.walDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !strings.HasSuffix(path, ".wal") {
+			return nil
 		}
 
 		var seq, index uint64
+		_, f := filepath.Split(path)
 		fmt.Sscanf(f, "%016x-%016x.wal", &seq, &index)
+
+		// Only purge WAL with index lower than oldest snapshot.
+		// filepath.SkipDir seizes Walk without returning error.
 		if index >= retain {
-			break
+			return filepath.SkipDir
 		}
 
-		files = append(files, filepath.Join(rs.walDir, f))
+		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		rs.lg.Errorf("Failed to read WAL directory %s: %s", rs.walDir, err)
 	}
 
 	if len(files) <= 1 {
@@ -375,22 +381,22 @@ func (rs *RaftStorage) purgeWAL() {
 }
 
 func (rs *RaftStorage) purgeSnap() {
-	snapFiles, err := fileutil.ReadDir(rs.snapDir)
-	if err != nil {
-		rs.lg.Errorf("Failed to read Snapshot directory %s: %s", rs.snapDir, err)
-	}
-
 	var files []string
-	for _, f := range snapFiles {
-		if !strings.HasSuffix(f, ".snap") {
-			if strings.HasPrefix(f, ".broken") {
-				rs.lg.Warnf("Found broken snapshot file %s, it can be removed manually", f)
-			}
-
-			continue
+	err := filepath.Walk(rs.snapDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if strings.HasSuffix(path, ".snap") {
+			files = append(files, path)
+		} else if strings.HasSuffix(path, ".broken") {
+			rs.lg.Warnf("Found broken snapshot file %s, it can be removed manually", path)
 		}
 
-		files = append(files, filepath.Join(rs.snapDir, f))
+		return nil
+	})
+	if err != nil {
+		rs.lg.Errorf("Failed to read Snapshot directory %s: %s", rs.snapDir, err)
+		return
 	}
 
 	l := len(files)
