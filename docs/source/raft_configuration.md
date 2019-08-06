@@ -281,6 +281,22 @@ If for some reason the rotation of the TLS certificates has started but cannot
 complete in all channels, it is advised to rotate TLS certificates back to
 what they were and attempt the rotation later.
 
+### Certificate expiration related authentication
+Whenever a client with an identity that has an expiration date (such as an identity based on an x509 certificate)
+sends a transaction to the orderer, the orderer checks whether its identity has expired, and if
+so, rejects the transaction submission.
+
+However, it is possible to configure the orderer to ignore expiration of identities via enabling
+the `General.Authentication.NoExpirationChecks` configuration option in the `orderer.yaml`.
+
+This should be done only under extreme circumstances, where the certificates of the administrators
+have expired, and due to this it is not possible to send configuration updates to replace the administrator
+certificates with renewed ones, because the config transactions signed by the existing administrators
+are now rejected because they have expired.
+After updating the channel it is recommended to change back to the default configuration which enforces
+expiration checks on identities.
+
+
 ## Metrics
 
 For a description of the Operations Service and how to set it up, check out
