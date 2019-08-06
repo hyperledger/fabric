@@ -18,9 +18,7 @@ serial_packages=(
 )
 
 # packages which need to be tested with build tag pluginsenabled
-plugin_packages=(
-    "github.com/hyperledger/fabric/core/scc"
-)
+plugin_packages=()
 
 # packages which need to be tested with build tag pkcs11
 pkcs11_packages=(

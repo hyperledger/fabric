@@ -556,15 +556,6 @@ chaincode:
         vscc: enable
         qscc: enable
 
-    # System chaincode plugins:
-    # System chaincodes can be loaded as shared objects compiled as Go plugins.
-    # See examples/plugins/scc for an example.
-    # Plugins must be white listed in the chaincode.system section above.
-    systemPlugins:
-      # example configuration:
-      # - enabled: true
-      #   name: myscc
-
     # Logging section for the chaincode container
     logging:
       # Default level for all loggers within the chaincode container
