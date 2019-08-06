@@ -16,7 +16,6 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -537,6 +536,7 @@ func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.Conf
 		Logger:    bva.Logger,
 		PolicyMgr: policyMgr,
 		Channel:   channel,
+		BCCSP:     bva.BCCSP,
 	}, nil
 }
 
@@ -545,6 +545,7 @@ type BlockValidationPolicyVerifier struct {
 	Logger    *flogging.FabricLogger
 	Channel   string
 	PolicyMgr policies.Manager
+	BCCSP     bccsp.BCCSP
 }
 
 // VerifyBlockSignature verifies the signed data associated to a block, optionally with the given config envelope.
@@ -552,7 +553,7 @@ func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*protoutil.Si
 	policyMgr := bv.PolicyMgr
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {
-		bundle, err := channelconfig.NewBundle(bv.Channel, envelope.Config, factory.GetDefault())
+		bundle, err := channelconfig.NewBundle(bv.Channel, envelope.Config, bv.BCCSP)
 		if err != nil {
 			buff := &bytes.Buffer{}
 			protolator.DeepMarshalJSON(buff, envelope.Config)
