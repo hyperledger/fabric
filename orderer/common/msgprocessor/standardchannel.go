@@ -71,6 +71,7 @@ func CreateStandardChannelFilters(filterSupport channelconfig.Resources, config 
 
 	if !config.General.Authentication.NoExpirationChecks {
 		expirationRule := NewExpirationRejectRule(filterSupport)
+		// In case of DoS, expiration is inserted before SigFilter, so it is evaluated first
 		rules = append(rules[:2], append([]Rule{expirationRule}, rules[2:]...)...)
 	}
 
