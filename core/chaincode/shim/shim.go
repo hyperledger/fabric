@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
@@ -27,7 +26,6 @@ const (
 	maxUnicodeRuneValue   = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
 	compositeKeyNamespace = "\x00"
 	emptyKeySubstitute    = "\x01"
-	connectTimeout        = 3 * time.Second
 )
 
 //this separates the chaincode stream interface establishment
@@ -50,7 +48,7 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 		return nil, err
 	}
 
-	conn, err := internal.NewClientConn(*peerAddress, conf.TLS, conf.KaOpts, connectTimeout)
+	conn, err := internal.NewClientConn(*peerAddress, conf.TLS, conf.KaOpts)
 	if err != nil {
 		return nil, err
 	}
