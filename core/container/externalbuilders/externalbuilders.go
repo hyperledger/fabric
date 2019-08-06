@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilders
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -52,6 +53,7 @@ func (d *Detector) Detect(buildContext *BuildContext) *Builder {
 	for _, builderLocation := range d.Builders {
 		builder := &Builder{
 			Location: builderLocation,
+			Logger:   logger.Named(filepath.Base(builderLocation)),
 		}
 		if builder.Detect(buildContext) {
 			return builder
@@ -161,7 +163,7 @@ func (b *Builder) Detect(buildContext *BuildContext) bool {
 		"--source", buildContext.SourceDir,
 	)
 
-	err := cmd.Run()
+	err := RunCommand(b.Logger, cmd)
 	if err != nil {
 		logger.Debugf("Detection for builder '%s' failed: %s", b.Name(), err)
 		// XXX, we probably also want to differentiate between a 'not detected'
@@ -183,9 +185,9 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 		"--output", buildContext.OutputDir,
 	)
 
-	err := cmd.Run()
+	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Errorf("builder '%s' failed: %s", b.Name(), err)
+		return errors.Wrapf(err, "builder '%s' failed", b.Name())
 	}
 
 	return nil
@@ -230,9 +232,9 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 		"--artifacts", buildContext.LaunchDir,
 	)
 
-	err = cmd.Run()
+	err = RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Errorf("builder '%s' failed: %s", b.Name(), err)
+		return errors.Wrapf(err, "builder '%s' failed", b.Name())
 	}
 
 	return nil
@@ -255,4 +257,35 @@ func NewCommand(name string, args ...string) *exec.Cmd {
 		}
 	}
 	return cmd
+}
+
+func RunCommand(logger *flogging.FabricLogger, cmd *exec.Cmd) error {
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	is := bufio.NewReader(stderr)
+	for done := false; !done; {
+		// read output line by line
+		line, err := is.ReadString('\n')
+		switch err {
+		case nil:
+			logger.Info(strings.TrimSuffix(line, "\n"))
+		case io.EOF:
+			if len(line) > 0 {
+				logger.Info(line)
+			}
+			done = true
+		default:
+			logger.Error("error reading command output", err)
+			return err
+		}
+	}
+
+	return cmd.Wait()
 }
