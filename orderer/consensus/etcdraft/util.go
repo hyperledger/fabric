@@ -57,6 +57,35 @@ func (mc *MembershipChanges) Rotated() bool {
 	return len(mc.AddedNodes) == 1 && len(mc.RemovedNodes) == 1
 }
 
+// UnacceptableQuorumLoss returns true if membership change will result in avoidable quorum loss,
+// given current number of active nodes in cluster. Avoidable means that more nodes can be started
+// to prevent quorum loss. Sometimes, quorum loss is inevitable, for example expanding 1-node cluster.
+func (mc *MembershipChanges) UnacceptableQuorumLoss(active []uint64) bool {
+	activeMap := make(map[uint64]struct{})
+	for _, i := range active {
+		activeMap[i] = struct{}{}
+	}
+
+	isCFT := len(mc.NewConsenters) > 2 // if resulting cluster cannot tolerate any fault, quorum loss is inevitable
+	quorum := len(mc.NewConsenters)/2 + 1
+
+	switch {
+	case mc.ConfChange != nil && mc.ConfChange.Type == raftpb.ConfChangeAddNode: // Add
+		return isCFT && len(active) < quorum
+
+	case mc.RotatedNode != raft.None: // Rotate
+		delete(activeMap, mc.RotatedNode)
+		return isCFT && len(activeMap) < quorum
+
+	case mc.ConfChange != nil && mc.ConfChange.Type == raftpb.ConfChangeRemoveNode: // Remove
+		delete(activeMap, mc.ConfChange.NodeID)
+		return len(activeMap) < quorum
+
+	default: // No change
+		return false
+	}
+}
+
 // EndpointconfigFromFromSupport extracts TLS CA certificates and endpoints from the ConsenterSupport
 func EndpointconfigFromFromSupport(support consensus.ConsenterSupport) ([]cluster.EndpointCriteria, error) {
 	lastConfigBlock, err := lastConfigBlockFromSupport(support)

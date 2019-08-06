@@ -146,6 +146,7 @@ type Chain struct {
 	channelID string
 
 	lastKnownLeader uint64
+	ActiveNodes     atomic.Value
 
 	submitC  chan *submit
 	applyC   chan apply
@@ -299,6 +300,7 @@ func NewChain(
 
 	disseminator := &Disseminator{RPC: c.rpc}
 	disseminator.UpdateMetadata(nil) // initialize
+	c.ActiveNodes.Store([]uint64{})
 
 	c.Node = &node{
 		chainID:      c.channelID,
@@ -315,6 +317,7 @@ func NewChain(
 			id:     c.raftID,
 			sender: disseminator,
 			gauge:  c.Metrics.ActiveNodes,
+			active: &c.ActiveNodes,
 			logger: c.logger,
 		},
 	}
@@ -456,6 +459,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	}
 
 	c.Metrics.ActiveNodes.Set(float64(len(clusterMetadata.ActiveNodes)))
+	c.ActiveNodes.Store(clusterMetadata.ActiveNodes)
 
 	return nil
 }
@@ -1288,9 +1292,17 @@ func (c *Chain) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []b
 	// create the dummy parameters for ComputeMembershipChanges
 	dummyOldBlockMetadata, _ := ReadBlockMetadata(nil, oldMetadata)
 	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
-	_, err = ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters)
+	changes, err := ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters)
+	if err != nil {
+		return err
+	}
 
-	return err
+	active := c.ActiveNodes.Load().([]uint64)
+	if changes.UnacceptableQuorumLoss(active) {
+		return errors.Errorf("%d out of %d nodes are alive, configuration will result in quorum loss", len(active), len(dummyOldConsentersMap))
+	}
+
+	return nil
 }
 
 func (c *Chain) suspectEviction() bool {
