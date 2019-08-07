@@ -8,9 +8,11 @@ package externalbuilders_test
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -85,17 +87,11 @@ var _ = Describe("Externalbuilders", func() {
 	})
 
 	Describe("Detector", func() {
-		var (
-			detector *externalbuilders.Detector
-		)
+		var detector *externalbuilders.Detector
 
 		BeforeEach(func() {
 			detector = &externalbuilders.Detector{
-				[]string{
-					"bad1",
-					"testdata",
-					"bad2",
-				},
+				[]string{"bad1", "testdata", "bad2"},
 			}
 		})
 
@@ -161,71 +157,89 @@ var _ = Describe("Externalbuilders", func() {
 		AfterEach(func() {
 			buildContext.Cleanup()
 		})
-		Describe("Builder", func() {
-			Describe("Detect", func() {
-				It("detects when the package is handled by the external builder", func() {
+
+		Describe("Detect", func() {
+			It("detects when the package is handled by the external builder", func() {
+				result := builder.Detect(buildContext)
+				Expect(result).To(BeTrue())
+			})
+
+			Context("when the builder does not support the package", func() {
+				BeforeEach(func() {
+					buildContext.CCCI.PackageID = "unsupported-package-id"
+				})
+
+				It("returns false", func() {
 					result := builder.Detect(buildContext)
-					Expect(result).To(BeTrue())
-				})
-
-				Context("when the builder does not support the package", func() {
-					BeforeEach(func() {
-						buildContext.CCCI.PackageID = "unsupported-package-id"
-					})
-
-					It("returns false", func() {
-						result := builder.Detect(buildContext)
-						Expect(result).To(BeFalse())
-					})
+					Expect(result).To(BeFalse())
 				})
 			})
+		})
 
-			Describe("Build", func() {
-				It("builds the package by invoking external builder", func() {
+		Describe("Build", func() {
+			It("builds the package by invoking external builder", func() {
+				err := builder.Build(buildContext)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			Context("when the builder exits with a non-zero status", func() {
+				BeforeEach(func() {
+					buildContext.CCCI.PackageID = "unsupported-package-id"
+				})
+
+				It("returns an error", func() {
 					err := builder.Build(buildContext)
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				Context("when the builder exits with a non-zero status", func() {
-					BeforeEach(func() {
-						buildContext.CCCI.PackageID = "unsupported-package-id"
-					})
-
-					It("returns an error", func() {
-						err := builder.Build(buildContext)
-						Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
-					})
+					Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
 				})
 			})
+		})
 
-			Describe("Launch", func() {
-				It("launches the package by invoking external builder", func() {
-					err := builder.Launch(buildContext, &ccintf.PeerConnection{
-						Address: "fake-peer-address",
-						TLSConfig: &ccintf.TLSConfig{
-							ClientCert: []byte("fake-client-cert"),
-							ClientKey:  []byte("fake-client-key"),
-							RootCert:   []byte("fake-root-cert"),
-						},
-					})
-					Expect(err).NotTo(HaveOccurred())
+		Describe("Launch", func() {
+			It("launches the package by invoking external builder", func() {
+				err := builder.Launch(buildContext, &ccintf.PeerConnection{
+					Address: "fake-peer-address",
+					TLSConfig: &ccintf.TLSConfig{
+						ClientCert: []byte("fake-client-cert"),
+						ClientKey:  []byte("fake-client-key"),
+						RootCert:   []byte("fake-root-cert"),
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
 
-					data1, err := ioutil.ReadFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"))
-					Expect(err).NotTo(HaveOccurred())
-					Expect(data1).To(Equal([]byte(`{"PeerAddress":"fake-peer-address","ClientCert":"ZmFrZS1jbGllbnQtY2VydA==","ClientKey":"ZmFrZS1jbGllbnQta2V5","RootCert":"ZmFrZS1yb290LWNlcnQ="}`)))
+				data1, err := ioutil.ReadFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(data1).To(MatchJSON(`{"PeerAddress":"fake-peer-address","ClientCert":"ZmFrZS1jbGllbnQtY2VydA==","ClientKey":"ZmFrZS1jbGllbnQta2V5","RootCert":"ZmFrZS1yb290LWNlcnQ="}`))
+			})
+
+			Context("when the builder exits with a non-zero status", func() {
+				BeforeEach(func() {
+					buildContext.CCCI.PackageID = "unsupported-package-id"
 				})
 
-				Context("when the builder exits with a non-zero status", func() {
-					BeforeEach(func() {
-						buildContext.CCCI.PackageID = "unsupported-package-id"
-					})
-
-					It("returns an error", func() {
-						err := builder.Build(buildContext)
-						Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
-					})
+				It("returns an error", func() {
+					err := builder.Build(buildContext)
+					Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
 				})
 			})
+		})
+	})
+
+	Describe("NewCommand", func() {
+		It("only propagates expected variables", func() {
+			var expectedEnv []string
+			for _, key := range []string{"LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"} {
+				if val, ok := os.LookupEnv(key); ok {
+					expectedEnv = append(expectedEnv, fmt.Sprintf("%s=%s", key, val))
+				}
+			}
+
+			cmd := externalbuilders.NewCommand("/usr/bin/env")
+			Expect(cmd.Env).To(ConsistOf(expectedEnv))
+
+			output, err := cmd.CombinedOutput()
+			Expect(err).NotTo(HaveOccurred())
+			env := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
+			Expect(env).To(ConsistOf(expectedEnv))
 		})
 	})
 })
