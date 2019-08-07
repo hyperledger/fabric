@@ -46,6 +46,13 @@ type Chaincode struct {
 	ChannelConfigPolicy string
 }
 
+func (c *Chaincode) SetPackageIDFromPackageFile() {
+	fileBytes, err := ioutil.ReadFile(c.PackageFile)
+	Expect(err).NotTo(HaveOccurred())
+	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(fileBytes))
+	c.PackageID = c.Label + ":" + hashStr
+}
+
 // DeployChaincode is a helper that will install chaincode to all peers that
 // are connected to the specified channel, approve the chaincode on one of the
 // peers of each organization in the network, commit the chaincode definition
@@ -127,10 +134,7 @@ func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer)
 	}
 
 	// we set the PackageID so that we can pass it to the approve step
-	filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
-	Expect(err).NotTo(HaveOccurred())
-	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
-	chaincode.PackageID = chaincode.Label + ":" + hashStr
+	chaincode.SetPackageIDFromPackageFile()
 
 	// install on all peers
 	InstallChaincode(n, chaincode, peers...)

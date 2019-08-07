@@ -17,7 +17,6 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -257,10 +256,7 @@ var _ = Describe("EndToEndACL", func() {
 		nwo.PackageChaincode(network, chaincode, org1Peer0)
 
 		// we set the PackageID so that we can pass it to the approve step
-		filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
-		Expect(err).NotTo(HaveOccurred())
-		hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
-		chaincode.PackageID = chaincode.Label + ":" + hashStr
+		chaincode.SetPackageIDFromPackageFile()
 
 		//
 		// when the ACL policy for _lifecycle/InstallChaincode is not satisfied
