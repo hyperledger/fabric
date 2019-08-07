@@ -72,9 +72,22 @@ func (rs *responseSender) SendBlockResponse(block *cb.Block) error {
 }
 
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
-func NewServer(r *multichannel.Registrar, metricsProvider metrics.Provider, debug *localconfig.Debug, timeWindow time.Duration, mutualTLS bool) ab.AtomicBroadcastServer {
+func NewServer(
+	r *multichannel.Registrar,
+	metricsProvider metrics.Provider,
+	debug *localconfig.Debug,
+	timeWindow time.Duration,
+	mutualTLS bool,
+	expirationCheckDisabled bool,
+) ab.AtomicBroadcastServer {
 	s := &server{
-		dh: deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS, deliver.NewMetrics(metricsProvider)),
+		dh: deliver.NewHandler(
+			deliverSupport{Registrar: r},
+			timeWindow,
+			mutualTLS,
+			deliver.NewMetrics(metricsProvider),
+			expirationCheckDisabled,
+		),
 		bh: &broadcast.Handler{
 			SupportRegistrar: broadcastSupport{Registrar: r},
 			Metrics:          broadcast.NewMetrics(metricsProvider),

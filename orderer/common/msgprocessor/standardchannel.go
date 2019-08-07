@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -56,13 +57,19 @@ func NewStandardChannel(support StandardChannelSupport, filters *RuleSet) *Stand
 //
 // In maintenance mode, require the signature of /Channel/Orderer/Writer. This will filter out configuration
 // changes that are not related to consensus-type migration (e.g on /Channel/Application).
-func CreateStandardChannelFilters(filterSupport channelconfig.Resources) *RuleSet {
-	return NewRuleSet([]Rule{
+func CreateStandardChannelFilters(filterSupport channelconfig.Resources, config localconfig.TopLevel) *RuleSet {
+	rules := []Rule{
 		EmptyRejectRule,
-		NewExpirationRejectRule(filterSupport),
 		NewSizeFilter(filterSupport),
 		NewSigFilter(policies.ChannelWriters, policies.ChannelOrdererWriters, filterSupport),
-	})
+	}
+
+	if !config.General.Authentication.NoExpirationChecks {
+		expirationRule := NewExpirationRejectRule(filterSupport)
+		rules = append(rules[:2], append([]Rule{expirationRule}, rules[2:]...)...)
+	}
+
+	return NewRuleSet(rules)
 }
 
 // ClassifyMsg inspects the message to determine which type of processing is necessary

@@ -87,10 +87,11 @@ func (inspector InspectorFunc) Inspect(ctx context.Context, p proto.Message) err
 
 // Handler handles server requests.
 type Handler struct {
-	ChainManager     ChainManager
-	TimeWindow       time.Duration
-	BindingInspector Inspector
-	Metrics          *Metrics
+	ExpirationCheckFunc func(identityBytes []byte) time.Time
+	ChainManager        ChainManager
+	TimeWindow          time.Duration
+	BindingInspector    Inspector
+	Metrics             *Metrics
 }
 
 //go:generate counterfeiter -o mock/receiver.go -fake-name Receiver . Receiver
@@ -133,12 +134,17 @@ func ExtractChannelHeaderCertHash(msg proto.Message) []byte {
 }
 
 // NewHandler creates an implementation of the Handler interface.
-func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metrics *Metrics) *Handler {
+func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metrics *Metrics, expirationCheckDisabled bool) *Handler {
+	expirationCheck := crypto.ExpiresAt
+	if expirationCheckDisabled {
+		expirationCheck = noExpiration
+	}
 	return &Handler{
-		ChainManager:     cm,
-		TimeWindow:       timeWindow,
-		BindingInspector: InspectorFunc(comm.NewBindingInspector(mutualTLS, ExtractChannelHeaderCertHash)),
-		Metrics:          metrics,
+		ChainManager:        cm,
+		TimeWindow:          timeWindow,
+		BindingInspector:    InspectorFunc(comm.NewBindingInspector(mutualTLS, ExtractChannelHeaderCertHash)),
+		Metrics:             metrics,
+		ExpirationCheckFunc: expirationCheck,
 	}
 }
 
@@ -247,7 +253,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	default:
 	}
 
-	accessControl, err := NewSessionAC(chain, envelope, srv.PolicyChecker, chdr.ChannelId, crypto.ExpiresAt)
+	accessControl, err := NewSessionAC(chain, envelope, srv.PolicyChecker, chdr.ChannelId, h.ExpirationCheckFunc)
 	if err != nil {
 		logger.Warningf("[channel: %s] failed to create access control object due to %s", chdr.ChannelId, err)
 		return cb.Status_BAD_REQUEST, nil
@@ -362,4 +368,8 @@ func (h *Handler) validateChannelHeader(ctx context.Context, chdr *cb.ChannelHea
 	}
 
 	return nil
+}
+
+func noExpiration(_ []byte) time.Time {
+	return time.Time{}
 }

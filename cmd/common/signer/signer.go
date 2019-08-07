@@ -16,7 +16,9 @@ import (
 	"math/big"
 
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	proto_utils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
@@ -37,6 +39,17 @@ type Config struct {
 type Signer struct {
 	key     *ecdsa.PrivateKey
 	Creator []byte
+}
+
+func (si *Signer) NewSignatureHeader() (*common.SignatureHeader, error) {
+	nonce, err := crypto.GetRandomNonce()
+	if err != nil {
+		return nil, err
+	}
+	return &common.SignatureHeader{
+		Creator: si.Creator,
+		Nonce:   nonce,
+	}, nil
 }
 
 // NewSigner creates a new Signer out of the given configuration

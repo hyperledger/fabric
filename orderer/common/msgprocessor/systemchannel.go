@@ -17,6 +17,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/pkg/errors"
 )
 
@@ -45,14 +46,19 @@ func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTem
 //
 // In maintenance mode, require the signature of /Channel/Orderer/Writers. This will filter out configuration
 // changes that are not related to consensus-type migration (e.g on /Channel/Application).
-func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources channelconfig.Resources) *RuleSet {
-	return NewRuleSet([]Rule{
+func CreateSystemChannelFilters(chainCreator ChainCreator, ledgerResources channelconfig.Resources, config localconfig.TopLevel) *RuleSet {
+	rules := []Rule{
 		EmptyRejectRule,
-		NewExpirationRejectRule(ledgerResources),
 		NewSizeFilter(ledgerResources),
 		NewSigFilter(policies.ChannelWriters, policies.ChannelOrdererWriters, ledgerResources),
 		NewSystemChannelFilter(ledgerResources, chainCreator),
-	})
+	}
+
+	if !config.General.Authentication.NoExpirationChecks {
+		expirationRule := NewExpirationRejectRule(ledgerResources)
+		rules = append(rules[:2], append([]Rule{expirationRule}, rules[2:]...)...)
+	}
+	return NewRuleSet(rules)
 }
 
 // ProcessNormalMsg handles normal messages, rejecting them if they are not bound for the system channel ID
