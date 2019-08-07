@@ -20,6 +20,7 @@ import (
 	"encoding/asn1"
 	"fmt"
 	"hash"
+	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -49,12 +50,23 @@ type testConfig struct {
 }
 
 func TestMain(m *testing.M) {
-	ks, err := sw.NewFileBasedKeyStore(nil, os.TempDir(), false)
+	os.Exit(testMain(m))
+}
+
+func testMain(m *testing.M) int {
+	tmpDir, err := ioutil.TempDir("", "pkcs11_ks")
 	if err != nil {
-		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
-		os.Exit(-1)
+		fmt.Printf("Failed to create keystore directory [%s]\n", err)
+		return -1
 	}
-	currentKS = ks
+	defer os.RemoveAll(tmpDir)
+
+	keyStore, err := sw.NewFileBasedKeyStore(nil, tmpDir, false)
+	if err != nil {
+		fmt.Printf("Failed initiliazing KeyStore [%s]\n", err)
+		return -1
+	}
+	currentKS = keyStore
 
 	lib, pin, label := FindPKCS11Lib()
 	tests := []testConfig{
@@ -77,28 +89,28 @@ func TestMain(m *testing.M) {
 		Label:   label,
 		Pin:     pin,
 	}
+
 	for _, config := range tests {
-		var err error
 		currentTestConfig = config
 
 		opts.HashFamily = config.hashFamily
 		opts.SecLevel = config.securityLevel
 		opts.SoftVerify = config.softVerify
 		opts.Immutable = config.immutable
-		fmt.Printf("Immutable = [%v]", opts.Immutable)
-		currentBCCSP, err = New(opts, currentKS)
+		fmt.Printf("Immutable = [%v]\n", opts.Immutable)
+		currentBCCSP, err = New(opts, keyStore)
 		if err != nil {
-			fmt.Printf("Failed initiliazing BCCSP at [%+v]: [%s]", opts, err)
-			os.Exit(-1)
+			fmt.Printf("Failed initiliazing BCCSP at [%+v] \n%s\n", opts, err)
+			return -1
 		}
 
 		ret := m.Run()
 		if ret != 0 {
-			fmt.Printf("Failed testing at [%+v]", opts)
-			os.Exit(-1)
+			fmt.Printf("Failed testing at [%+v]\n", opts)
+			return -1
 		}
 	}
-	os.Exit(0)
+	return 0
 }
 
 func TestNew(t *testing.T) {
