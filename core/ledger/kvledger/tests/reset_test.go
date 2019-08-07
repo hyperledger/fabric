@@ -10,8 +10,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -151,4 +154,35 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 		r.pvtdataShouldContain(0, "cc1", "coll1", "key1", "value1") // key1 should still exist in the pvtdata storage
 		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
 	})
+}
+
+func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
+	env := newEnv(defaultConfig, t)
+	defer env.cleanup()
+	// populate ledgers with sample data
+	dataHelper := newSampleDataHelper(t)
+
+	// create ledgers and pouplate with sample data
+	h := newTestHelperCreateLgr("ledger-1", t)
+	dataHelper.populateLedger(h)
+	dataHelper.verifyLedgerContent(h)
+	closeLedgerMgmt()
+
+	// Reset All kv ledgers
+	blockstorePath := ledgerconfig.GetBlockStorePath()
+	err := fsblkstorage.ResetBlockStore(blockstorePath)
+	assert.NoError(t, err)
+	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB
+	env.verifyRebuilablesExist(rebuildable)
+	rebuildable = rebuildableBlockIndex
+	env.verifyRebuilableDoesNotExist(rebuildable)
+	initLedgerMgmt()
+	preResetHt, err := kvledger.LoadPreResetHeight()
+	t.Logf("preResetHt = %#v", preResetHt)
+	_, err = ledgermgmt.OpenLedger("ledger-1")
+	assert.Error(t, err)
+	// populateLedger() stores 8 block in total
+	assert.EqualError(t, err, "the state database [height=9] is ahead of the block store [height=1]. "+
+		"This is possible when the state database is not dropped after a ledger reset/rollback. "+
+		"The state database can safely be dropped and will be rebuilt up to block store height upon the next peer start.")
 }

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -161,6 +162,21 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 		recoverFlag, firstBlockNum, err := recoverable.ShouldRecover(lastAvailableBlockNum)
 		if err != nil {
 			return err
+		}
+
+		// During ledger reset/rollback, the state database must be dropped. If the state database
+		// uses goleveldb, the reset/rollback code itself drop the DB. If it uses couchDB, the
+		// DB must be dropped manually. Hence, we compare (only for the stateDB) the height
+		// of the state DB and block store to ensure that the state DB is dropped.
+
+		// firstBlockNum is nothing but the nextBlockNum expected by the state DB.
+		// In otherwords, the firstBlockNum is nothing but the height of stateDB.
+		if firstBlockNum > lastAvailableBlockNum+1 {
+			dbName := recoverable.Name()
+			return fmt.Errorf("the %s database [height=%d] is ahead of the block store [height=%d]. "+
+				"This is possible when the %s database is not dropped after a ledger reset/rollback. "+
+				"The %s database can safely be dropped and will be rebuilt up to block store height upon the next peer start.",
+				dbName, firstBlockNum, lastAvailableBlockNum+1, dbName, dbName)
 		}
 		if recoverFlag {
 			recoverers = append(recoverers, &recoverer{firstBlockNum, recoverable})
