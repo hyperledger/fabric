@@ -900,7 +900,7 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1019,7 +1019,7 @@ func TestValidateDeployNOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
