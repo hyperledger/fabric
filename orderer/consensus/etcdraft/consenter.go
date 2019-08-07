@@ -59,7 +59,7 @@ type Config struct {
 	EvictionSuspicion string // Duration threshold that the node samples in order to suspect its eviction from the channel.
 }
 
-// Consenter implements etddraft consenter
+// Consenter implements etcdraft consenter
 type Consenter struct {
 	CreateChain           func(chainName string)
 	InactiveChainRegistry InactiveChainRegistry
