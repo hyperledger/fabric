@@ -210,6 +210,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 					Client:   client,
 				},
 			},
+			PackageProvider: &PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
 		},
 	}
 	if !globalConfig.TLSEnabled {
@@ -219,11 +220,10 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	metricsProviders := &disabled.Provider{}
 	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
 	chaincodeLauncher := &RuntimeLauncher{
-		Metrics:         NewLaunchMetrics(metricsProviders),
-		PackageProvider: &PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
-		Runtime:         containerRuntime,
-		Registry:        chaincodeHandlerRegistry,
-		StartupTimeout:  globalConfig.StartupTimeout,
+		Metrics:        NewLaunchMetrics(metricsProviders),
+		Runtime:        containerRuntime,
+		Registry:       chaincodeHandlerRegistry,
+		StartupTimeout: globalConfig.StartupTimeout,
 	}
 	chaincodeSupport := &ChaincodeSupport{
 		ACLProvider:            mockAclProvider,
@@ -918,21 +918,16 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo) error {
 		handlerRegistry.Ready(ccintf.CCID("testcc:0"))
 		return nil
 	}
 
-	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
-	fakePackageProvider := &mock.PackageProvider{}
-	fakePackageProvider.GetChaincodeCodePackageReturns(code, nil)
-
 	launcher := &RuntimeLauncher{
-		Runtime:         fakeRuntime,
-		Registry:        handlerRegistry,
-		StartupTimeout:  10 * time.Second,
-		PackageProvider: fakePackageProvider,
-		Metrics:         NewLaunchMetrics(&disabled.Provider{}),
+		Runtime:        fakeRuntime,
+		Registry:       handlerRegistry,
+		StartupTimeout: 10 * time.Second,
+		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -952,21 +947,16 @@ func TestStartAndWaitSuccess(t *testing.T) {
 //test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo) error {
 		time.Sleep(time.Second)
 		return nil
 	}
 
-	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
-	fakePackageProvider := &mock.PackageProvider{}
-	fakePackageProvider.GetChaincodeCodePackageReturns(code, nil)
-
 	launcher := &RuntimeLauncher{
-		Runtime:         fakeRuntime,
-		Registry:        NewHandlerRegistry(false),
-		StartupTimeout:  500 * time.Millisecond,
-		PackageProvider: fakePackageProvider,
-		Metrics:         NewLaunchMetrics(&disabled.Provider{}),
+		Runtime:        fakeRuntime,
+		Registry:       NewHandlerRegistry(false),
+		StartupTimeout: 500 * time.Millisecond,
+		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{
@@ -985,20 +975,15 @@ func TestStartAndWaitTimeout(t *testing.T) {
 //test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo, _ []byte) error {
+	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo) error {
 		return errors.New("Bad lunch; upset stomach")
 	}
 
-	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
-	fakePackageProvider := &mock.PackageProvider{}
-	fakePackageProvider.GetChaincodeCodePackageReturns(code, nil)
-
 	launcher := &RuntimeLauncher{
-		Runtime:         fakeRuntime,
-		Registry:        NewHandlerRegistry(false),
-		StartupTimeout:  10 * time.Second,
-		PackageProvider: fakePackageProvider,
-		Metrics:         NewLaunchMetrics(&disabled.Provider{}),
+		Runtime:        fakeRuntime,
+		Registry:       NewHandlerRegistry(false),
+		StartupTimeout: 10 * time.Second,
+		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
 	ccci := &ccprovider.ChaincodeContainerInfo{

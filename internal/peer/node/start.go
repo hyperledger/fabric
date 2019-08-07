@@ -503,8 +503,9 @@ func serve(args []string) error {
 		CertGenerator: authenticator,
 		PeerAddress:   ccEndpoint,
 		ContainerRouter: &container.Router{
-			DockerVM:   dockerVM,
-			ExternalVM: externalVM,
+			DockerVM:        dockerVM,
+			ExternalVM:      externalVM,
+			PackageProvider: packageProvider,
 		},
 	}
 
@@ -514,11 +515,10 @@ func serve(args []string) error {
 	}
 
 	chaincodeLauncher := &chaincode.RuntimeLauncher{
-		Metrics:         chaincode.NewLaunchMetrics(opsSystem.Provider),
-		PackageProvider: packageProvider,
-		Registry:        chaincodeHandlerRegistry,
-		Runtime:         containerRuntime,
-		StartupTimeout:  chaincodeConfig.StartupTimeout,
+		Metrics:        chaincode.NewLaunchMetrics(opsSystem.Provider),
+		Registry:       chaincodeHandlerRegistry,
+		Runtime:        containerRuntime,
+		StartupTimeout: chaincodeConfig.StartupTimeout,
 	}
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{

@@ -8,11 +8,10 @@ import (
 )
 
 type Runtime struct {
-	StartStub        func(*ccprovider.ChaincodeContainerInfo, []byte) error
+	StartStub        func(*ccprovider.ChaincodeContainerInfo) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 []byte
 	}
 	startReturns struct {
 		result1 error
@@ -48,22 +47,16 @@ type Runtime struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Runtime) Start(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) error {
-	var arg2Copy []byte
-	if arg2 != nil {
-		arg2Copy = make([]byte, len(arg2))
-		copy(arg2Copy, arg2)
-	}
+func (fake *Runtime) Start(arg1 *ccprovider.ChaincodeContainerInfo) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
 		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 []byte
-	}{arg1, arg2Copy})
-	fake.recordInvocation("Start", []interface{}{arg1, arg2Copy})
+	}{arg1})
+	fake.recordInvocation("Start", []interface{}{arg1})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
-		return fake.StartStub(arg1, arg2)
+		return fake.StartStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
@@ -78,17 +71,17 @@ func (fake *Runtime) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *Runtime) StartCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) error) {
+func (fake *Runtime) StartCalls(stub func(*ccprovider.ChaincodeContainerInfo) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *Runtime) StartArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
+func (fake *Runtime) StartArgsForCall(i int) *ccprovider.ChaincodeContainerInfo {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1
 }
 
 func (fake *Runtime) StartReturns(result1 error) {

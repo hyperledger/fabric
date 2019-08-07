@@ -34,7 +34,7 @@ const (
 
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
-	Start(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error
+	Start(ccci *ccprovider.ChaincodeContainerInfo) error
 	Stop(ccci *ccprovider.ChaincodeContainerInfo) error
 	Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, error)
 }

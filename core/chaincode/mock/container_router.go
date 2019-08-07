@@ -9,11 +9,10 @@ import (
 )
 
 type ContainerRouter struct {
-	BuildStub        func(*ccprovider.ChaincodeContainerInfo, []byte) error
+	BuildStub        func(*ccprovider.ChaincodeContainerInfo) error
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
 		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 []byte
 	}
 	buildReturns struct {
 		result1 error
@@ -61,22 +60,16 @@ type ContainerRouter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ContainerRouter) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) error {
-	var arg2Copy []byte
-	if arg2 != nil {
-		arg2Copy = make([]byte, len(arg2))
-		copy(arg2Copy, arg2)
-	}
+func (fake *ContainerRouter) Build(arg1 *ccprovider.ChaincodeContainerInfo) error {
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
 		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 []byte
-	}{arg1, arg2Copy})
-	fake.recordInvocation("Build", []interface{}{arg1, arg2Copy})
+	}{arg1})
+	fake.recordInvocation("Build", []interface{}{arg1})
 	fake.buildMutex.Unlock()
 	if fake.BuildStub != nil {
-		return fake.BuildStub(arg1, arg2)
+		return fake.BuildStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
@@ -91,17 +84,17 @@ func (fake *ContainerRouter) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *ContainerRouter) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) error) {
+func (fake *ContainerRouter) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo) error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *ContainerRouter) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
+func (fake *ContainerRouter) BuildArgsForCall(i int) *ccprovider.ChaincodeContainerInfo {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	argsForCall := fake.buildArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1
 }
 
 func (fake *ContainerRouter) BuildReturns(result1 error) {

@@ -22,14 +22,13 @@ import (
 
 var _ = Describe("RuntimeLauncher", func() {
 	var (
-		fakePackageProvider *mock.PackageProvider
-		fakeRuntime         *mock.Runtime
-		fakeRegistry        *fake.LaunchRegistry
-		launchState         *chaincode.LaunchState
-		fakeLaunchDuration  *metricsfakes.Histogram
-		fakeLaunchFailures  *metricsfakes.Counter
-		fakeLaunchTimeouts  *metricsfakes.Counter
-		exitedCh            chan int
+		fakeRuntime        *mock.Runtime
+		fakeRegistry       *fake.LaunchRegistry
+		launchState        *chaincode.LaunchState
+		fakeLaunchDuration *metricsfakes.Histogram
+		fakeLaunchFailures *metricsfakes.Counter
+		fakeLaunchTimeouts *metricsfakes.Counter
+		exitedCh           chan int
 
 		ccci *ccprovider.ChaincodeContainerInfo
 
@@ -42,7 +41,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRegistry.LaunchingReturns(launchState, false)
 
 		fakeRuntime = &mock.Runtime{}
-		fakeRuntime.StartStub = func(*ccprovider.ChaincodeContainerInfo, []byte) error {
+		fakeRuntime.StartStub = func(*ccprovider.ChaincodeContainerInfo) error {
 			launchState.Notify(nil)
 			return nil
 		}
@@ -51,9 +50,6 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRuntime.WaitStub = func(*ccprovider.ChaincodeContainerInfo) (int, error) {
 			return <-waitExitCh, nil
 		}
-
-		fakePackageProvider = &mock.PackageProvider{}
-		fakePackageProvider.GetChaincodeCodePackageReturns([]byte("code-package"), nil)
 
 		fakeLaunchDuration = &metricsfakes.Histogram{}
 		fakeLaunchDuration.WithReturns(fakeLaunchDuration)
@@ -76,11 +72,10 @@ var _ = Describe("RuntimeLauncher", func() {
 		}
 
 		runtimeLauncher = &chaincode.RuntimeLauncher{
-			Runtime:         fakeRuntime,
-			Registry:        fakeRegistry,
-			PackageProvider: fakePackageProvider,
-			StartupTimeout:  5 * time.Second,
-			Metrics:         launchMetrics,
+			Runtime:        fakeRuntime,
+			Registry:       fakeRegistry,
+			StartupTimeout: 5 * time.Second,
+			Metrics:        launchMetrics,
 		}
 	})
 
@@ -102,9 +97,8 @@ var _ = Describe("RuntimeLauncher", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeRuntime.StartCallCount()).To(Equal(1))
-		ccciArg, codePackage := fakeRuntime.StartArgsForCall(0)
+		ccciArg := fakeRuntime.StartArgsForCall(0)
 		Expect(ccciArg).To(Equal(ccci))
-		Expect(codePackage).To(Equal([]byte("code-package")))
 	})
 
 	It("waits for the launch to complete", func() {
@@ -213,7 +207,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 	Context("when handler registration fails", func() {
 		BeforeEach(func() {
-			fakeRuntime.StartStub = func(*ccprovider.ChaincodeContainerInfo, []byte) error {
+			fakeRuntime.StartStub = func(*ccprovider.ChaincodeContainerInfo) error {
 				launchState.Notify(errors.New("papaya"))
 				return nil
 			}

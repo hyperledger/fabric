@@ -50,11 +50,19 @@ func (UninitializedInstance) Wait() (int, error) {
 	return 0, errors.Errorf("instance has not yet been built, cannot wait")
 }
 
+//go:generate counterfeiter -o mock/package_provider.go --fake-name PackageProvider . PackageProvider
+
+// PackageProvider gets chaincode packages from the filesystem.
+type PackageProvider interface {
+	GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error)
+}
+
 type Router struct {
-	ExternalVM VM
-	DockerVM   VM
-	containers map[ccintf.CCID]Instance
-	mutex      sync.Mutex
+	ExternalVM      VM
+	DockerVM        VM
+	containers      map[ccintf.CCID]Instance
+	PackageProvider PackageProvider
+	mutex           sync.Mutex
 }
 
 func (r *Router) getInstance(ccid ccintf.CCID) Instance {
@@ -76,7 +84,12 @@ func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 	return vm
 }
 
-func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) error {
+func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo) error {
+	codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci)
+	if err != nil {
+		return errors.WithMessage(err, "get chaincode package failed")
+	}
+
 	instance, err := r.ExternalVM.Build(ccci, codePackage)
 
 	externalErr := err
