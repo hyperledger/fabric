@@ -414,12 +414,15 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		cs.Resources = bundle
 	}
 
+	cp := &capabilityProvider{}
+
 	cs.bundleSource = channelconfig.NewBundleSource(
 		bundle,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
 		peerSingletonCallback,
+		cp.updateChannelConfig,
 	)
 
 	vcs := struct {
@@ -460,6 +463,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 	if err != nil {
 		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
 	}
+
 	csStoreSupport := &CollectionSupport{
 		PeerLedger: ledger,
 	}
@@ -476,7 +480,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		Store:                store,
 		Cs:                   simpleCollectionStore,
 		IdDeserializeFactory: csStoreSupport,
-		Capabilities:         cs.Application.Capabilities(),
+		CapabilityProvider:   cp,
 	})
 
 	chains.Lock()
@@ -842,4 +846,25 @@ func (*configSupport) GetChannelConfig(channel string) cc.Config {
 		return nil
 	}
 	return chain.cs.bundleSource.ConfigtxValidator()
+}
+
+type capabilityProvider struct {
+	lock   sync.Mutex
+	bundle *channelconfig.Bundle
+}
+
+func (cp *capabilityProvider) Capabilities() channelconfig.ApplicationCapabilities {
+	cp.lock.Lock()
+	defer cp.lock.Unlock()
+	ac, ok := cp.bundle.ApplicationConfig()
+	if !ok {
+		return nil
+	}
+	return ac.Capabilities()
+}
+
+func (cp *capabilityProvider) updateChannelConfig(bundle *channelconfig.Bundle) {
+	cp.lock.Lock()
+	defer cp.lock.Unlock()
+	cp.bundle = bundle
 }
