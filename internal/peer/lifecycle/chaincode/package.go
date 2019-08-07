@@ -158,7 +158,7 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = writeBytesToPackage(tw, "Chaincode-Package-Metadata.json", metadataBytes)
+	err = writeBytesToPackage(tw, "metadata.json", metadataBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "error writing package metadata to tar")
 	}
