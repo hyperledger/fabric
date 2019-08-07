@@ -203,7 +203,7 @@ func Main() {
 		},
 	}))
 
-	if !reuseGrpcListener {
+	if !reuseGrpcListener && clusterType {
 		logger.Info("Starting cluster listener on", clusterGRPCServer.Address())
 		go clusterGRPCServer.Start()
 	}
