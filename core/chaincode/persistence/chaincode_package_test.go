@@ -162,3 +162,147 @@ var _ = Describe("ChaincodePackageParser", func() {
 		})
 	})
 })
+
+var _ = Describe("ChaincodePackageLocator", func() {
+	var (
+		locator *persistence.ChaincodePackageLocator
+	)
+
+	BeforeEach(func() {
+		locator = &persistence.ChaincodePackageLocator{
+			ChaincodeDir: "/fake-dir",
+		}
+	})
+
+	Describe("ChaincodePackageStreamer", func() {
+		It("creates a ChaincodePackageStreamer for the given packageID", func() {
+			streamer := locator.ChaincodePackageStreamer("test-package")
+			Expect(streamer).To(Equal(&persistence.ChaincodePackageStreamer{
+				PackagePath: "/fake-dir/test-package.bin",
+			}))
+		})
+	})
+})
+
+var _ = Describe("ChaincodePackageStreamer", func() {
+	var (
+		streamer *persistence.ChaincodePackageStreamer
+	)
+
+	BeforeEach(func() {
+		streamer = &persistence.ChaincodePackageStreamer{
+			PackagePath: "testdata/good-package.tar.gz",
+		}
+	})
+
+	Describe("Metadata", func() {
+		It("reads the metadata from the package", func() {
+			md, err := streamer.Metadata()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
+				Type:  "Fake-Type",
+				Path:  "Fake-Path",
+				Label: "Real-Label",
+			}))
+		})
+
+		Context("when the metadata file cannot be found", func() {
+			BeforeEach(func() {
+				streamer.PackagePath = "testdata/missing-metadata.tar.gz"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := streamer.Metadata()
+				Expect(err).To(MatchError("could not get metadata file: did not find file 'metadata.json' in package"))
+			})
+		})
+
+		Context("when the metadata file cannot be parsed", func() {
+			BeforeEach(func() {
+				streamer.PackagePath = "testdata/bad-metadata.tar.gz"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := streamer.Metadata()
+				Expect(err).To(MatchError("could not parse metadata file: invalid character '\\n' in string literal"))
+			})
+		})
+	})
+
+	Describe("Code", func() {
+		It("reads a file from the package", func() {
+			code, err := streamer.Code()
+			Expect(err).NotTo(HaveOccurred())
+			codeBytes, err := ioutil.ReadAll(code)
+			code.Close()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(codeBytes).To(Equal([]byte("package")))
+		})
+
+		Context("when the file cannot be found because the code is not a regular file", func() {
+			BeforeEach(func() {
+				streamer.PackagePath = "testdata/missing-codepackage.tar.gz"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := streamer.Code()
+				Expect(err).To(MatchError("could not get code package: did not find file 'code.tar.gz' in package"))
+			})
+		})
+	})
+
+	Describe("File", func() {
+		It("reads a file from the package", func() {
+			code, err := streamer.File("code.tar.gz")
+			Expect(err).NotTo(HaveOccurred())
+			codeBytes, err := ioutil.ReadAll(code)
+			code.Close()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(codeBytes).To(Equal([]byte("package")))
+		})
+
+		Context("when the file is not a regular file", func() {
+			BeforeEach(func() {
+				streamer.PackagePath = "testdata/non-regular-file.tar.gz"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := streamer.File("code.tar.gz")
+				Expect(err).To(MatchError("tar entry code.tar.gz is not a regular file, type 50"))
+			})
+		})
+
+		Context("when the code cannot be found because the archive is corrupt", func() {
+			BeforeEach(func() {
+				streamer.PackagePath = "testdata/bad-archive.tar.gz"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := streamer.File("code.tar.gz")
+				Expect(err).To(MatchError("could not open chaincode package at 'testdata/bad-archive.tar.gz': open testdata/bad-archive.tar.gz: no such file or directory"))
+			})
+		})
+
+		Context("when the code cannot be found because the header is corrupt", func() {
+			BeforeEach(func() {
+				streamer.PackagePath = "testdata/corrupted-header.tar.gz"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := streamer.File("code.tar.gz")
+				Expect(err).To(MatchError("error inspecting next tar header: flate: corrupt input before offset 86"))
+			})
+		})
+
+		Context("when the code cannot be found because the gzip is corrupt", func() {
+			BeforeEach(func() {
+				streamer.PackagePath = "testdata/corrupted-gzip.tar.gz"
+			})
+
+			It("wraps and returns the error", func() {
+				_, err := streamer.File("code.tar.gz")
+				Expect(err).To(MatchError("error reading as gzip stream: unexpected EOF"))
+			})
+		})
+	})
+})
