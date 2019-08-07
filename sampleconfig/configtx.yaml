@@ -92,17 +92,26 @@ Capabilities:
         # Prior to enabling V1.4.2 channel capabilities, ensure that all
         # orderers and peers on a channel are at v1.4.2 or later.
         V1_4_2: true
+        # V1.3 for Channel enables the new non-backwards compatible
+        # features and fixes of fabric v1.3
+        V1_3: false
+        # V1.1 for Channel enables the new non-backwards compatible
+        # features and fixes of fabric v1.1
+        V1_1: false
 
     # Orderer capabilities apply only to the orderers, and may be safely
     # used with prior release peers.
     # Set the value of the capability to true to require it.
     Orderer: &OrdererCapabilities
-        # V1.1 for Orderer is a catchall flag for behavior which has been
-        # determined to be desired for all orderers running at the v1.1.x
+        # V1.4.2 for Orderer is a catchall flag for behavior which has been
+        # determined to be desired for all orderers running at the v1.4.2
         # level, but which would be incompatible with orderers from prior releases.
-        # Prior to enabling V1.1 orderer capabilities, ensure that all
-        # orderers on a channel are at v1.1.0 or later.
-        V1_1: true
+        # Prior to enabling V1.4.2 orderer capabilities, ensure that all
+        # orderers on a channel are at v1.4.2 or later.
+        V1_4_2: true
+        # V1.1 for Orderer enables the new non-backwards compatible
+        # features and fixes of fabric v1.1
+        V1_1: false
 
     # Application capabilities apply only to the peer network, and may be safely
     # used with prior release orderers.
