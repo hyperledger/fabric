@@ -125,12 +125,7 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, idBytes
 		logger.Infof("[%s][%s] Exit chaincode: %s (%dms)", txParams.ChannelID, shorttxid(txParams.TxID), cid, elapsedMilliseconds)
 	}(time.Now())
 
-	var err error
-	var res *pb.Response
-	var ccevent *pb.ChaincodeEvent
-
-	// is this a system chaincode
-	res, ccevent, err = e.s.Execute(txParams, txParams.ChannelID, cid.Name, txParams.TxID, idBytes, requiresInit, txParams.SignedProp, txParams.Proposal, input)
+	res, ccevent, err := e.s.Execute(txParams, txParams.ChannelID, cid.Name, txParams.TxID, idBytes, requiresInit, txParams.SignedProp, txParams.Proposal, input)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -224,56 +219,59 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 	}
 
 	// ---3. execute the proposal and get simulation results
-	var simResult *ledger.TxSimulationResults
-	var pubSimResBytes []byte
-	var res *pb.Response
-	var ccevent *pb.ChaincodeEvent
-	res, ccevent, err = e.callChaincode(txParams, cdLedger.Hash(), cdLedger.RequiresInit(), cis.ChaincodeSpec.Input, cid)
+	res, ccevent, err := e.callChaincode(txParams, cdLedger.Hash(), cdLedger.RequiresInit(), cis.ChaincodeSpec.Input, cid)
 	if err != nil {
 		endorserLogger.Errorf("[%s][%s] failed to invoke chaincode %s, error: %+v", txParams.ChannelID, shorttxid(txParams.TxID), cid, err)
 		return nil, nil, nil, nil, err
 	}
 
-	if txParams.TXSimulator != nil {
-		if simResult, err = txParams.TXSimulator.GetTxSimulationResults(); err != nil {
-			txParams.TXSimulator.Done()
-			return nil, nil, nil, nil, err
+	if txParams.TXSimulator == nil {
+		return cdLedger, res, nil, ccevent, nil
+	}
+
+	// Note, this is a little goofy, as if there is private data, Done() gets called
+	// early, so this is invoked multiple times, but that is how the code worked before
+	// this change, so, should be safe.  Long term, let's move the Done up to the create.
+	defer txParams.TXSimulator.Done()
+
+	simResult, err := txParams.TXSimulator.GetTxSimulationResults()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	if simResult.PvtSimulationResults != nil {
+		if cid.Name == "lscc" {
+			// TODO: remove once we can store collection configuration outside of LSCC
+			return nil, nil, nil, nil, errors.New("Private data is forbidden to be used in instantiate")
 		}
-
-		if simResult.PvtSimulationResults != nil {
-			if cid.Name == "lscc" {
-				// TODO: remove once we can store collection configuration outside of LSCC
-				txParams.TXSimulator.Done()
-				return nil, nil, nil, nil, errors.New("Private data is forbidden to be used in instantiate")
-			}
-			pvtDataWithConfig, err := e.AssemblePvtRWSet(txParams.ChannelID, simResult.PvtSimulationResults, txParams.TXSimulator, e.s.GetDeployedCCInfoProvider())
-			// To read collection config need to read collection updates before
-			// releasing the lock, hence txParams.TXSimulator.Done()  moved down here
-			txParams.TXSimulator.Done()
-
-			if err != nil {
-				return nil, nil, nil, nil, errors.WithMessage(err, "failed to obtain collections config")
-			}
-			endorsedAt, err := e.s.GetLedgerHeight(txParams.ChannelID)
-			if err != nil {
-				return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprint("failed to obtain ledger height for channel", txParams.ChannelID))
-			}
-			// Add ledger height at which transaction was endorsed,
-			// `endorsedAt` is obtained from the block storage and at times this could be 'endorsement Height + 1'.
-			// However, since we use this height only to select the configuration (3rd parameter in distributePrivateData) and
-			// manage transient store purge for orphaned private writesets (4th parameter in distributePrivateData), this works for now.
-			// Ideally, ledger should add support in the simulator as a first class function `GetHeight()`.
-			pvtDataWithConfig.EndorsedAt = endorsedAt
-			if err := e.distributePrivateData(txParams.ChannelID, txParams.TxID, pvtDataWithConfig, endorsedAt); err != nil {
-				return nil, nil, nil, nil, err
-			}
-		}
-
+		pvtDataWithConfig, err := e.AssemblePvtRWSet(txParams.ChannelID, simResult.PvtSimulationResults, txParams.TXSimulator, e.s.GetDeployedCCInfoProvider())
+		// To read collection config need to read collection updates before
+		// releasing the lock, hence txParams.TXSimulator.Done()  moved down here
 		txParams.TXSimulator.Done()
-		if pubSimResBytes, err = simResult.GetPubSimulationBytes(); err != nil {
+
+		if err != nil {
+			return nil, nil, nil, nil, errors.WithMessage(err, "failed to obtain collections config")
+		}
+		endorsedAt, err := e.s.GetLedgerHeight(txParams.ChannelID)
+		if err != nil {
+			return nil, nil, nil, nil, errors.WithMessage(err, fmt.Sprint("failed to obtain ledger height for channel", txParams.ChannelID))
+		}
+		// Add ledger height at which transaction was endorsed,
+		// `endorsedAt` is obtained from the block storage and at times this could be 'endorsement Height + 1'.
+		// However, since we use this height only to select the configuration (3rd parameter in distributePrivateData) and
+		// manage transient store purge for orphaned private writesets (4th parameter in distributePrivateData), this works for now.
+		// Ideally, ledger should add support in the simulator as a first class function `GetHeight()`.
+		pvtDataWithConfig.EndorsedAt = endorsedAt
+		if err := e.distributePrivateData(txParams.ChannelID, txParams.TxID, pvtDataWithConfig, endorsedAt); err != nil {
 			return nil, nil, nil, nil, err
 		}
 	}
+
+	pubSimResBytes, err := simResult.GetPubSimulationBytes()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
 	return cdLedger, res, pubSimResBytes, ccevent, nil
 }
 
