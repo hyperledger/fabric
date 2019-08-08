@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("ledgerstorage")
@@ -287,7 +286,7 @@ func (s *Store) init() error {
 	if initialized, err = s.initPvtdataStoreFromExistingBlockchain(); err != nil || initialized {
 		return err
 	}
-	return s.syncPvtdataStoreWithBlockStore()
+	return s.commitPendingBatchInPvtdataStore()
 }
 
 // initPvtdataStoreFromExistingBlockchain updates the initial state of the pvtdata store
@@ -317,14 +316,10 @@ func (s *Store) initPvtdataStoreFromExistingBlockchain() (bool, error) {
 	return false, nil
 }
 
-// syncPvtdataStoreWithBlockStore checks whether the block storage and pvt data store are in sync
-// this is called when the store instance is constructed and handed over for the use.
-// this check whether there is a pending batch (possibly from a previous system crash)
-// of pvt data that was not committed. If a pending batch exists, the check is made
-// whether the associated block was successfully committed in the block storage (before the crash)
-// or not. If the block was committed, the private data batch is committed
-// otherwise, the pvt data batch is rolledback
-func (s *Store) syncPvtdataStoreWithBlockStore() error {
+// commitPendingBatchInPvtdataStore checks whether there is a pending batch
+// (possibly from a previous system crash) of pvt data that was not committed.
+// If a pending batch exists, the batch is committed.
+func (s *Store) commitPendingBatchInPvtdataStore() error {
 	var pendingPvtbatch bool
 	var err error
 	if pendingPvtbatch, err = s.pvtdataStore.HasPendingBatch(); err != nil {
@@ -333,25 +328,12 @@ func (s *Store) syncPvtdataStoreWithBlockStore() error {
 	if !pendingPvtbatch {
 		return nil
 	}
-	var bcInfo *common.BlockchainInfo
-	var pvtdataStoreHt uint64
 
-	if bcInfo, err = s.GetBlockchainInfo(); err != nil {
-		return err
-	}
-	if pvtdataStoreHt, err = s.pvtdataStore.LastCommittedBlockHeight(); err != nil {
-		return err
-	}
-
-	if bcInfo.Height == pvtdataStoreHt {
-		return s.pvtdataStore.Rollback()
-	}
-
-	if bcInfo.Height == pvtdataStoreHt+1 {
-		return s.pvtdataStore.Commit()
-	}
-
-	return errors.Errorf("This is not expected. blockStoreHeight=%d, pvtdataStoreHeight=%d", bcInfo.Height, pvtdataStoreHt)
+	// we can safetly commit the pending batch as gossip would avoid
+	// fetching pvtData if already exist in the local pvtdataStore.
+	// when the pvtdataStore height is greater than the blockstore,
+	// pvtdata reconciler will not fetch any missing pvtData.
+	return s.pvtdataStore.Commit()
 }
 
 func constructPvtdataMap(pvtdata []*ledger.TxPvtData) map[uint64]*ledger.TxPvtData {

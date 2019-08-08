@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
-	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	lutil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/rwset"
@@ -192,29 +191,72 @@ func TestCrashAfterPvtdataStorePreparation(t *testing.T) {
 	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash, nil)
 	store.Shutdown()
 	provider.Close()
+
+	// restart the store
 	provider = NewProvider(metricsProvider)
 	store, err = provider.Open("testLedger")
 	assert.NoError(t, err)
 	store.Init(btlPolicyForSampleData())
 
-	// When starting the storage after a crash, there should not be a trace of last block write
-	_, err = store.GetPvtDataByNum(blokNumAtCrash, nil)
-	_, ok := err.(*pvtdatastorage.ErrOutOfRange)
-	assert.True(t, ok)
-
-	//we should be able to write the last block again
-	assert.NoError(t, store.CommitWithPvtData(dataAtCrash))
 	pvtdata, err := store.GetPvtDataByNum(blokNumAtCrash, nil)
 	assert.NoError(t, err)
 	constructed := constructPvtdataMap(pvtdata)
-	for k, v := range dataAtCrash.PvtData {
-		ov, ok := constructed[k]
-		assert.True(t, ok)
-		assert.Equal(t, v.SeqInBlock, ov.SeqInBlock)
-		assert.True(t, proto.Equal(v.WriteSet, ov.WriteSet))
+	testVerifyPvtData(t, dataAtCrash.PvtData, constructed)
+
+	//we should be able to write the last block again
+	assert.NoError(t, store.CommitWithPvtData(dataAtCrash))
+	blkAndPvtdata, err := store.GetPvtDataAndBlockByNum(blokNumAtCrash, nil)
+	assert.NoError(t, err)
+	assert.True(t, proto.Equal(dataAtCrash.Block, blkAndPvtdata.Block))
+	testVerifyPvtData(t, dataAtCrash.PvtData, constructed)
+}
+
+func TestCrashAfterPvtdataStorePreparationWithReset(t *testing.T) {
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+	provider := NewProvider(metricsProvider)
+	defer provider.Close()
+	store, err := provider.Open("testLedger")
+	store.Init(btlPolicyForSampleData())
+	defer store.Shutdown()
+	assert.NoError(t, err)
+
+	sampleData := sampleDataWithPvtdataForAllTxs(t)
+	dataBeforeCrash := sampleData[0:3]
+	dataAtCrash := sampleData[3]
+
+	for _, sampleDatum := range dataBeforeCrash {
+		assert.NoError(t, store.CommitWithPvtData(sampleDatum))
 	}
-	for k, v := range constructed {
-		ov, ok := dataAtCrash.PvtData[k]
+	blokNumAtCrash := dataAtCrash.Block.Header.Number
+	var pvtdataAtCrash []*ledger.TxPvtData
+	for _, p := range dataAtCrash.PvtData {
+		pvtdataAtCrash = append(pvtdataAtCrash, p)
+	}
+	// Only call Prepare on pvt data store and mimic a crash
+	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash, nil)
+	store.Shutdown()
+	provider.Close()
+
+	// reset the block store to the genesis block
+	fsblkstorage.ResetBlockStore(ledgerconfig.GetBlockStorePath())
+
+	// restart the store
+	provider = NewProvider(metricsProvider)
+	store, err = provider.Open("testLedger")
+	assert.NoError(t, err)
+	store.Init(btlPolicyForSampleData())
+
+	pvtdata, err := store.GetPvtDataByNum(blokNumAtCrash, nil)
+	assert.NoError(t, err)
+	constructed := constructPvtdataMap(pvtdata)
+	testVerifyPvtData(t, dataAtCrash.PvtData, constructed)
+}
+
+func testVerifyPvtData(t *testing.T, blkPvtdata ledger.TxPvtDataMap, pvtdata ledger.TxPvtDataMap) {
+	assert.Equal(t, len(blkPvtdata), len(pvtdata))
+	for k, v := range blkPvtdata {
+		ov, ok := pvtdata[k]
 		assert.True(t, ok)
 		assert.Equal(t, v.SeqInBlock, ov.SeqInBlock)
 		assert.True(t, proto.Equal(v.WriteSet, ov.WriteSet))
@@ -250,14 +292,67 @@ func TestCrashBeforePvtdataStoreCommit(t *testing.T) {
 	store.BlockStore.AddBlock(dataAtCrash.Block)
 	store.Shutdown()
 	provider.Close()
+
 	provider = NewProvider(metricsProvider)
 	store, err = provider.Open("testLedger")
 	assert.NoError(t, err)
 	store.Init(btlPolicyForSampleData())
+
+	pvtdata, err := store.GetPvtDataByNum(blokNumAtCrash, nil)
+	assert.NoError(t, err)
+	constructed := constructPvtdataMap(pvtdata)
+	testVerifyPvtData(t, dataAtCrash.PvtData, constructed)
+
+	// both the block and pvtData should exist
 	blkAndPvtdata, err := store.GetPvtDataAndBlockByNum(blokNumAtCrash, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, dataAtCrash.MissingPvtData, blkAndPvtdata.MissingPvtData)
 	assert.True(t, proto.Equal(dataAtCrash.Block, blkAndPvtdata.Block))
+	testVerifyPvtData(t, dataAtCrash.PvtData, blkAndPvtdata.PvtData)
+}
+
+func TestCrashBeforePvtdataStoreCommitWithReset(t *testing.T) {
+	testEnv := newTestEnv(t)
+	defer testEnv.cleanup()
+	provider := NewProvider(metricsProvider)
+	defer provider.Close()
+	store, err := provider.Open("testLedger")
+	store.Init(btlPolicyForSampleData())
+	defer store.Shutdown()
+	assert.NoError(t, err)
+
+	sampleData := sampleDataWithPvtdataForAllTxs(t)
+	dataBeforeCrash := sampleData[0:3]
+	dataAtCrash := sampleData[3]
+
+	for _, sampleDatum := range dataBeforeCrash {
+		assert.NoError(t, store.CommitWithPvtData(sampleDatum))
+	}
+	blokNumAtCrash := dataAtCrash.Block.Header.Number
+	var pvtdataAtCrash []*ledger.TxPvtData
+	for _, p := range dataAtCrash.PvtData {
+		pvtdataAtCrash = append(pvtdataAtCrash, p)
+	}
+
+	// Mimic a crash just short of calling the final commit on pvtdata store
+	// After starting the store again, the block and the pvtdata should be available
+	store.pvtdataStore.Prepare(blokNumAtCrash, pvtdataAtCrash, nil)
+	store.BlockStore.AddBlock(dataAtCrash.Block)
+	store.Shutdown()
+	provider.Close()
+
+	// reset the block store to the genesis block
+	fsblkstorage.ResetBlockStore(ledgerconfig.GetBlockStorePath())
+
+	provider = NewProvider(metricsProvider)
+	store, err = provider.Open("testLedger")
+	assert.NoError(t, err)
+	store.Init(btlPolicyForSampleData())
+
+	pvtdata, err := store.GetPvtDataByNum(blokNumAtCrash, nil)
+	assert.NoError(t, err)
+	constructed := constructPvtdataMap(pvtdata)
+	testVerifyPvtData(t, dataAtCrash.PvtData, constructed)
 }
 
 func TestAddAfterPvtdataStoreError(t *testing.T) {
