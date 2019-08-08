@@ -564,8 +564,8 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 	es.ProcessProposal(context.Background(), getSignedProp("chaincode-name", "chaincode-version", t))
 
 	t.Logf("contents:\n%s", buf.Contents())
-	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Entry chaincode: name:"chaincode-name" version:"chaincode-version"`))
-	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Exit chaincode: name:"chaincode-name" version:"chaincode-version"  (.*ms)`))
+	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Entry chaincode: chaincode-name`))
+	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Exit chaincode: chaincode-name (.*ms)`))
 }
 
 func TestEndorserLSCC(t *testing.T) {
@@ -728,7 +728,7 @@ func TestSimulateProposal(t *testing.T) {
 		},
 	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	_, _, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, nil)
+	_, _, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, "")
 	assert.Error(t, err)
 }
 
