@@ -296,16 +296,16 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 }
 
 //InitFromFS returns the chaincode and its package from the file system
-func (ccpack *SignedCDSPackage) InitFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
-	return ccpack.InitFromPath(ccname, ccversion, chaincodeInstallPath)
+func (ccpack *SignedCDSPackage) InitFromFS(ccNameVersion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+	return ccpack.InitFromPath(ccNameVersion, chaincodeInstallPath)
 }
 
 //InitFromPath returns the chaincode and its package from the file system
-func (ccpack *SignedCDSPackage) InitFromPath(ccname string, ccversion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+func (ccpack *SignedCDSPackage) InitFromPath(ccNameVersion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
 	//incase ccpack is reused
 	ccpack.reset()
 
-	buf, err := GetChaincodePackageFromPath(ccname, ccversion, path)
+	buf, err := GetChaincodePackageFromPath(ccNameVersion, path)
 	if err != nil {
 		return nil, nil, err
 	}

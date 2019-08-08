@@ -1276,7 +1276,7 @@ func (s *MockSupport) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) er
 	return s.PutChaincodeToLocalStorageErr
 }
 
-func (s *MockSupport) GetChaincodeFromLocalStorage(ccname string, ccversion string) (ccprovider.CCPackage, error) {
+func (s *MockSupport) GetChaincodeFromLocalStorage(ccNameVersion string) (ccprovider.CCPackage, error) {
 	return s.GetChaincodeFromLocalStorageRv, s.GetChaincodeFromLocalStorageErr
 }
 

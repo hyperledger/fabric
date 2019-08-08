@@ -289,7 +289,7 @@ type PackageProviderWrapper struct {
 }
 
 func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	return p.FS.GetChaincodeCodePackage(ccci.Name, ccci.Version)
+	return p.FS.GetChaincodeCodePackage(ccci.Name + ":" + ccci.Version)
 }
 
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {

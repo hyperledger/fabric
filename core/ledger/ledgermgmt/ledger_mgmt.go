@@ -220,5 +220,5 @@ func (p *chaincodeInfoProviderImpl) GetDeployedChaincodeInfo(chainid string,
 
 // RetrieveChaincodeArtifacts implements function in the interface cceventmgmt.ChaincodeInfoProvider
 func (p *chaincodeInfoProviderImpl) RetrieveChaincodeArtifacts(chaincodeDefinition *cceventmgmt.ChaincodeDefinition) (installed bool, dbArtifactsTar []byte, err error) {
-	return ccprovider.ExtractStatedbArtifactsForChaincode(chaincodeDefinition.Name, chaincodeDefinition.Version)
+	return ccprovider.ExtractStatedbArtifactsForChaincode(chaincodeDefinition.Name + ":" + chaincodeDefinition.Version)
 }

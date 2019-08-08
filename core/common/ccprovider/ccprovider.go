@@ -90,8 +90,8 @@ func isPrintable(name string) bool {
 }
 
 // GetChaincodePackage returns the chaincode package from the file system
-func GetChaincodePackageFromPath(ccname string, ccversion string, ccInstallPath string) ([]byte, error) {
-	path := fmt.Sprintf("%s/%s.%s", ccInstallPath, ccname, ccversion)
+func GetChaincodePackageFromPath(ccNameVersion string, ccInstallPath string) ([]byte, error) {
+	path := fmt.Sprintf("%s/%s", ccInstallPath, strings.ReplaceAll(ccNameVersion, ":", "."))
 	var ccbytes []byte
 	var err error
 	if ccbytes, err = ioutil.ReadFile(path); err != nil {
@@ -113,7 +113,7 @@ func ChaincodePackageExists(ccname string, ccversion string) (bool, error) {
 
 type CCCacheSupport interface {
 	// GetChaincode is needed by the cache to get chaincode data
-	GetChaincode(ccname string, ccversion string) (CCPackage, error)
+	GetChaincode(ccNameVersion string) (CCPackage, error)
 }
 
 // CCInfoFSImpl provides the implementation for CC on the FS and the access to it
@@ -122,12 +122,12 @@ type CCInfoFSImpl struct{}
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
 // It calls GetChaincodeFromPath with the chaincodeInstallPath
-func (cifs *CCInfoFSImpl) GetChaincode(ccname string, ccversion string) (CCPackage, error) {
-	return cifs.GetChaincodeFromPath(ccname, ccversion, chaincodeInstallPath)
+func (cifs *CCInfoFSImpl) GetChaincode(ccNameVersion string) (CCPackage, error) {
+	return cifs.GetChaincodeFromPath(ccNameVersion, chaincodeInstallPath)
 }
 
-func (cifs *CCInfoFSImpl) GetChaincodeCodePackage(ccname, ccversion string) ([]byte, error) {
-	ccpack, err := cifs.GetChaincode(ccname, ccversion)
+func (cifs *CCInfoFSImpl) GetChaincodeCodePackage(ccNameVersion string) ([]byte, error) {
+	ccpack, err := cifs.GetChaincode(ccNameVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -135,14 +135,14 @@ func (cifs *CCInfoFSImpl) GetChaincodeCodePackage(ccname, ccversion string) ([]b
 }
 
 // GetChaincodeFromPath this is a wrapper for hiding package implementation.
-func (*CCInfoFSImpl) GetChaincodeFromPath(ccname string, ccversion string, path string) (CCPackage, error) {
+func (*CCInfoFSImpl) GetChaincodeFromPath(ccNameVersion string, path string) (CCPackage, error) {
 	// try raw CDS
 	cccdspack := &CDSPackage{}
-	_, _, err := cccdspack.InitFromPath(ccname, ccversion, path)
+	_, _, err := cccdspack.InitFromPath(ccNameVersion, path)
 	if err != nil {
 		// try signed CDS
 		ccscdspack := &SignedCDSPackage{}
-		_, _, err = ccscdspack.InitFromPath(ccname, ccversion, path)
+		_, _, err = ccscdspack.InitFromPath(ccNameVersion, path)
 		if err != nil {
 			return nil, err
 		}
@@ -179,7 +179,7 @@ func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackag
 type DirEnumerator func(string) ([]os.FileInfo, error)
 
 // ChaincodeExtractor extracts chaincode from a given path
-type ChaincodeExtractor func(ccname string, ccversion string, path string) (CCPackage, error)
+type ChaincodeExtractor func(ccNameVersion string, path string) (CCPackage, error)
 
 // ListInstalledChaincodes retrieves the installed chaincodes
 func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) ([]chaincode.InstalledChaincode, error) {
@@ -208,7 +208,7 @@ func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, 
 		ccName := f.Name()[:i]      // Everything before the separator
 		ccVersion := f.Name()[i+1:] // Everything after the separator
 
-		ccPackage, err := ccFromPath(ccName, ccVersion, dir)
+		ccPackage, err := ccFromPath(ccName+":"+ccVersion, dir)
 		if err != nil {
 			ccproviderLogger.Warning("Failed obtaining chaincode information about", ccName, ccVersion, ":", err)
 			return nil, errors.Wrapf(err, "failed obtaining information about %s, version %s", ccName, ccVersion)
@@ -232,8 +232,8 @@ var ccInfoFSProvider = &CCInfoFSImpl{}
 var ccInfoCache = NewCCInfoCache(ccInfoFSProvider)
 
 // GetChaincodeFromFS retrieves chaincode information from the file system
-func GetChaincodeFromFS(ccname string, ccversion string) (CCPackage, error) {
-	return ccInfoFSProvider.GetChaincode(ccname, ccversion)
+func GetChaincodeFromFS(ccNameVersion string) (CCPackage, error) {
+	return ccInfoFSProvider.GetChaincode(ccNameVersion)
 }
 
 // PutChaincodeIntoFS puts chaincode information in the file system (and
@@ -245,13 +245,13 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 }
 
 // GetChaincodeData gets chaincode data from cache if there's one
-func GetChaincodeData(ccname string, ccversion string) (*ChaincodeData, error) {
-	ccproviderLogger.Debugf("Getting chaincode data for <%s, %s> from cache", ccname, ccversion)
-	return ccInfoCache.GetChaincodeData(ccname, ccversion)
+func GetChaincodeData(ccNameVersion string) (*ChaincodeData, error) {
+	ccproviderLogger.Debugf("Getting chaincode data for <%s> from cache", ccNameVersion)
+	return ccInfoCache.GetChaincodeData(ccNameVersion)
 }
 
-func CheckInstantiationPolicy(name, version string, cdLedger *ChaincodeData) error {
-	ccdata, err := GetChaincodeData(name, version)
+func CheckInstantiationPolicy(nameVersion string, cdLedger *ChaincodeData) error {
+	ccdata, err := GetChaincodeData(nameVersion)
 	if err != nil {
 		return err
 	}
@@ -270,7 +270,7 @@ func CheckInstantiationPolicy(name, version string, cdLedger *ChaincodeData) err
 	// https://jira.hyperledger.org/browse/FAB-3156
 	if ccdata.InstantiationPolicy != nil {
 		if !bytes.Equal(ccdata.InstantiationPolicy, cdLedger.InstantiationPolicy) {
-			return fmt.Errorf("Instantiation policy mismatch for cc %s/%s", name, version)
+			return fmt.Errorf("Instantiation policy mismatch for cc %s", nameVersion)
 		}
 	}
 
@@ -342,7 +342,7 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 		if len(fileNameArray) == 2 {
 			ccname := fileNameArray[0]
 			ccversion := fileNameArray[1]
-			ccpack, err := GetChaincodeFromFS(ccname, ccversion)
+			ccpack, err := GetChaincodeFromFS(ccname + ":" + ccversion)
 			if err != nil {
 				// either chaincode on filesystem has been tampered with or
 				// _lifecycle chaincode files exist in the chaincodes directory.

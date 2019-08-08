@@ -145,7 +145,7 @@ type PackageProviderWrapper struct {
 }
 
 func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	return p.FS.GetChaincodeCodePackage(ccci.Name, ccci.Version)
+	return p.FS.GetChaincodeCodePackage(string(ccci.PackageID))
 }
 
 //initialize peer and start up. If security==enabled, login as vp

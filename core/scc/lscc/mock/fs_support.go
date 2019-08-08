@@ -22,11 +22,10 @@ type FileSystemSupport struct {
 	checkInstantiationPolicyReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetChaincodeFromLocalStorageStub        func(string, string) (ccprovider.CCPackage, error)
+	GetChaincodeFromLocalStorageStub        func(string) (ccprovider.CCPackage, error)
 	getChaincodeFromLocalStorageMutex       sync.RWMutex
 	getChaincodeFromLocalStorageArgsForCall []struct {
 		arg1 string
-		arg2 string
 	}
 	getChaincodeFromLocalStorageReturns struct {
 		result1 ccprovider.CCPackage
@@ -144,17 +143,16 @@ func (fake *FileSystemSupport) CheckInstantiationPolicyReturnsOnCall(i int, resu
 	}{result1}
 }
 
-func (fake *FileSystemSupport) GetChaincodeFromLocalStorage(arg1 string, arg2 string) (ccprovider.CCPackage, error) {
+func (fake *FileSystemSupport) GetChaincodeFromLocalStorage(arg1 string) (ccprovider.CCPackage, error) {
 	fake.getChaincodeFromLocalStorageMutex.Lock()
 	ret, specificReturn := fake.getChaincodeFromLocalStorageReturnsOnCall[len(fake.getChaincodeFromLocalStorageArgsForCall)]
 	fake.getChaincodeFromLocalStorageArgsForCall = append(fake.getChaincodeFromLocalStorageArgsForCall, struct {
 		arg1 string
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("GetChaincodeFromLocalStorage", []interface{}{arg1, arg2})
+	}{arg1})
+	fake.recordInvocation("GetChaincodeFromLocalStorage", []interface{}{arg1})
 	fake.getChaincodeFromLocalStorageMutex.Unlock()
 	if fake.GetChaincodeFromLocalStorageStub != nil {
-		return fake.GetChaincodeFromLocalStorageStub(arg1, arg2)
+		return fake.GetChaincodeFromLocalStorageStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -169,17 +167,17 @@ func (fake *FileSystemSupport) GetChaincodeFromLocalStorageCallCount() int {
 	return len(fake.getChaincodeFromLocalStorageArgsForCall)
 }
 
-func (fake *FileSystemSupport) GetChaincodeFromLocalStorageCalls(stub func(string, string) (ccprovider.CCPackage, error)) {
+func (fake *FileSystemSupport) GetChaincodeFromLocalStorageCalls(stub func(string) (ccprovider.CCPackage, error)) {
 	fake.getChaincodeFromLocalStorageMutex.Lock()
 	defer fake.getChaincodeFromLocalStorageMutex.Unlock()
 	fake.GetChaincodeFromLocalStorageStub = stub
 }
 
-func (fake *FileSystemSupport) GetChaincodeFromLocalStorageArgsForCall(i int) (string, string) {
+func (fake *FileSystemSupport) GetChaincodeFromLocalStorageArgsForCall(i int) string {
 	fake.getChaincodeFromLocalStorageMutex.RLock()
 	defer fake.getChaincodeFromLocalStorageMutex.RUnlock()
 	argsForCall := fake.getChaincodeFromLocalStorageArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1
 }
 
 func (fake *FileSystemSupport) GetChaincodeFromLocalStorageReturns(result1 ccprovider.CCPackage, result2 error) {

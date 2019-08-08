@@ -25,13 +25,13 @@ type TarFileEntry struct {
 // ExtractStatedbArtifactsAsTarbytes extracts the statedb artifacts from the code package tar and create a statedb artifact tar.
 // The state db artifacts are expected to contain state db specific artifacts such as index specification in the case of couchdb.
 // This function is intended to be used during chaincode instantiate/upgrade so that statedb artifacts can be created.
-func ExtractStatedbArtifactsForChaincode(ccname, ccversion string) (installed bool, statedbArtifactsTar []byte, err error) {
-	ccpackage, err := GetChaincodeFromFS(ccname, ccversion)
+func ExtractStatedbArtifactsForChaincode(ccNameVersion string) (installed bool, statedbArtifactsTar []byte, err error) {
+	ccpackage, err := GetChaincodeFromFS(ccNameVersion)
 	if err != nil {
 		// TODO for now, we assume that an error indicates that the chaincode is not installed on the peer.
 		// However, we need a way to differentiate between the 'not installed' and a general error so that on general error,
 		// we can abort the chaincode instantiate/upgrade/install operation.
-		ccproviderLogger.Infof("Error while loading installation package for ccname=%s, ccversion=%s. Err=%s", ccname, ccversion, err)
+		ccproviderLogger.Infof("Error while loading installation package for ccNameVersion=%s Err=%s", ccNameVersion, err)
 		return false, nil, nil
 	}
 

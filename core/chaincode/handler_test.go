@@ -2337,9 +2337,8 @@ var _ = Describe("Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(fakeInstantiationPolicyChecker.CheckInstantiationPolicyCallCount()).To(Equal(1))
-				name, version, cd := fakeInstantiationPolicyChecker.CheckInstantiationPolicyArgsForCall(0)
-				Expect(name).To(Equal("target-chaincode-name"))
-				Expect(version).To(Equal("target-chaincode-version"))
+				nameVersion, cd := fakeInstantiationPolicyChecker.CheckInstantiationPolicyArgsForCall(0)
+				Expect(nameVersion).To(Equal("target-chaincode-data-name:target-chaincode-version"))
 				Expect(cd).To(Equal(targetDefinition))
 
 			})

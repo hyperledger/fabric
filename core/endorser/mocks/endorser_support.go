@@ -114,7 +114,7 @@ func (s *MockSupport) CheckACL(signedProp *pb.SignedProposal, chdr *common.Chann
 	return s.CheckACLErr
 }
 
-func (s *MockSupport) CheckInstantiationPolicy(name, version string, cd ccprovider.ChaincodeDefinition) error {
+func (s *MockSupport) CheckInstantiationPolicy(nameVersion string, cd ccprovider.ChaincodeDefinition) error {
 	return s.CheckInstantiationPolicyError
 }
 

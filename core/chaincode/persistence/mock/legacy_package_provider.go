@@ -9,11 +9,10 @@ import (
 )
 
 type LegacyPackageProvider struct {
-	GetChaincodeCodePackageStub        func(string, string) ([]byte, error)
+	GetChaincodeCodePackageStub        func(string) ([]byte, error)
 	getChaincodeCodePackageMutex       sync.RWMutex
 	getChaincodeCodePackageArgsForCall []struct {
 		arg1 string
-		arg2 string
 	}
 	getChaincodeCodePackageReturns struct {
 		result1 []byte
@@ -52,17 +51,16 @@ type LegacyPackageProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LegacyPackageProvider) GetChaincodeCodePackage(arg1 string, arg2 string) ([]byte, error) {
+func (fake *LegacyPackageProvider) GetChaincodeCodePackage(arg1 string) ([]byte, error) {
 	fake.getChaincodeCodePackageMutex.Lock()
 	ret, specificReturn := fake.getChaincodeCodePackageReturnsOnCall[len(fake.getChaincodeCodePackageArgsForCall)]
 	fake.getChaincodeCodePackageArgsForCall = append(fake.getChaincodeCodePackageArgsForCall, struct {
 		arg1 string
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("GetChaincodeCodePackage", []interface{}{arg1, arg2})
+	}{arg1})
+	fake.recordInvocation("GetChaincodeCodePackage", []interface{}{arg1})
 	fake.getChaincodeCodePackageMutex.Unlock()
 	if fake.GetChaincodeCodePackageStub != nil {
-		return fake.GetChaincodeCodePackageStub(arg1, arg2)
+		return fake.GetChaincodeCodePackageStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -77,17 +75,17 @@ func (fake *LegacyPackageProvider) GetChaincodeCodePackageCallCount() int {
 	return len(fake.getChaincodeCodePackageArgsForCall)
 }
 
-func (fake *LegacyPackageProvider) GetChaincodeCodePackageCalls(stub func(string, string) ([]byte, error)) {
+func (fake *LegacyPackageProvider) GetChaincodeCodePackageCalls(stub func(string) ([]byte, error)) {
 	fake.getChaincodeCodePackageMutex.Lock()
 	defer fake.getChaincodeCodePackageMutex.Unlock()
 	fake.GetChaincodeCodePackageStub = stub
 }
 
-func (fake *LegacyPackageProvider) GetChaincodeCodePackageArgsForCall(i int) (string, string) {
+func (fake *LegacyPackageProvider) GetChaincodeCodePackageArgsForCall(i int) string {
 	fake.getChaincodeCodePackageMutex.RLock()
 	defer fake.getChaincodeCodePackageMutex.RUnlock()
 	argsForCall := fake.getChaincodeCodePackageArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1
 }
 
 func (fake *LegacyPackageProvider) GetChaincodeCodePackageReturns(result1 []byte, result2 error) {

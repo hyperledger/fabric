@@ -41,5 +41,5 @@ func (m *MockChaincodeDefinition) RequiresInit() bool {
 }
 
 func (m *MockChaincodeDefinition) CCID() string {
-	panic("bespoke mocks are the worst")
+	return m.NameRv + ":" + m.VersionRv
 }

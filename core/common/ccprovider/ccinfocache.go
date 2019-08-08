@@ -40,13 +40,11 @@ func NewCCInfoCache(cs CCCacheSupport) *ccInfoCacheImpl {
 	}
 }
 
-func (c *ccInfoCacheImpl) GetChaincodeData(ccname string, ccversion string) (*ChaincodeData, error) {
+func (c *ccInfoCacheImpl) GetChaincodeData(ccNameVersion string) (*ChaincodeData, error) {
 	// c.cache is guaranteed to be non-nil
 
-	key := ccname + "/" + ccversion
-
 	c.RLock()
-	ccdata, in := c.cache[key]
+	ccdata, in := c.cache[ccNameVersion]
 	c.RUnlock()
 
 	if !in {
@@ -54,15 +52,15 @@ func (c *ccInfoCacheImpl) GetChaincodeData(ccname string, ccversion string) (*Ch
 
 		// the chaincode data is not in the cache
 		// try to look it up from the file system
-		ccpack, err := c.cacheSupport.GetChaincode(ccname, ccversion)
+		ccpack, err := c.cacheSupport.GetChaincode(ccNameVersion)
 		if err != nil || ccpack == nil {
-			return nil, fmt.Errorf("cannot retrieve package for chaincode %s/%s, error %s", ccname, ccversion, err)
+			return nil, fmt.Errorf("cannot retrieve package for chaincode %ss, error %s", ccNameVersion, err)
 		}
 
 		// we have a non-nil ChaincodeData, put it in the cache
 		c.Lock()
 		ccdata = ccpack.GetChaincodeData()
-		c.cache[key] = ccdata
+		c.cache[ccNameVersion] = ccdata
 		c.Unlock()
 	}
 

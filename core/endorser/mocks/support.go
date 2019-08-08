@@ -26,12 +26,11 @@ type Support struct {
 	checkACLReturnsOnCall map[int]struct {
 		result1 error
 	}
-	CheckInstantiationPolicyStub        func(string, string, ccprovider.ChaincodeDefinition) error
+	CheckInstantiationPolicyStub        func(string, ccprovider.ChaincodeDefinition) error
 	checkInstantiationPolicyMutex       sync.RWMutex
 	checkInstantiationPolicyArgsForCall []struct {
 		arg1 string
-		arg2 string
-		arg3 ccprovider.ChaincodeDefinition
+		arg2 ccprovider.ChaincodeDefinition
 	}
 	checkInstantiationPolicyReturns struct {
 		result1 error
@@ -292,18 +291,17 @@ func (fake *Support) CheckACLReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Support) CheckInstantiationPolicy(arg1 string, arg2 string, arg3 ccprovider.ChaincodeDefinition) error {
+func (fake *Support) CheckInstantiationPolicy(arg1 string, arg2 ccprovider.ChaincodeDefinition) error {
 	fake.checkInstantiationPolicyMutex.Lock()
 	ret, specificReturn := fake.checkInstantiationPolicyReturnsOnCall[len(fake.checkInstantiationPolicyArgsForCall)]
 	fake.checkInstantiationPolicyArgsForCall = append(fake.checkInstantiationPolicyArgsForCall, struct {
 		arg1 string
-		arg2 string
-		arg3 ccprovider.ChaincodeDefinition
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("CheckInstantiationPolicy", []interface{}{arg1, arg2, arg3})
+		arg2 ccprovider.ChaincodeDefinition
+	}{arg1, arg2})
+	fake.recordInvocation("CheckInstantiationPolicy", []interface{}{arg1, arg2})
 	fake.checkInstantiationPolicyMutex.Unlock()
 	if fake.CheckInstantiationPolicyStub != nil {
-		return fake.CheckInstantiationPolicyStub(arg1, arg2, arg3)
+		return fake.CheckInstantiationPolicyStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -318,17 +316,17 @@ func (fake *Support) CheckInstantiationPolicyCallCount() int {
 	return len(fake.checkInstantiationPolicyArgsForCall)
 }
 
-func (fake *Support) CheckInstantiationPolicyCalls(stub func(string, string, ccprovider.ChaincodeDefinition) error) {
+func (fake *Support) CheckInstantiationPolicyCalls(stub func(string, ccprovider.ChaincodeDefinition) error) {
 	fake.checkInstantiationPolicyMutex.Lock()
 	defer fake.checkInstantiationPolicyMutex.Unlock()
 	fake.CheckInstantiationPolicyStub = stub
 }
 
-func (fake *Support) CheckInstantiationPolicyArgsForCall(i int) (string, string, ccprovider.ChaincodeDefinition) {
+func (fake *Support) CheckInstantiationPolicyArgsForCall(i int) (string, ccprovider.ChaincodeDefinition) {
 	fake.checkInstantiationPolicyMutex.RLock()
 	defer fake.checkInstantiationPolicyMutex.RUnlock()
 	argsForCall := fake.checkInstantiationPolicyArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Support) CheckInstantiationPolicyReturns(result1 error) {

@@ -71,7 +71,7 @@ type Support interface {
 
 	// CheckInstantiationPolicy returns an error if the instantiation in the supplied
 	// ChaincodeDefinition differs from the instantiation policy stored on the ledger
-	CheckInstantiationPolicy(name, version string, cd ccprovider.ChaincodeDefinition) error
+	CheckInstantiationPolicy(nameVersion string, cd ccprovider.ChaincodeDefinition) error
 
 	// GetChaincodeDeploymentSpecFS returns the deploymentspec for a chaincode from the fs
 	GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error)
@@ -218,7 +218,7 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, cid 
 		return nil, nil, nil, nil, errors.WithMessagef(err, "make sure the chaincode %s has been successfully defined on channel %s and try again", cid.Name, txParams.ChannelID)
 	}
 
-	err = e.s.CheckInstantiationPolicy(cid.Name, cdLedger.CCVersion(), cdLedger)
+	err = e.s.CheckInstantiationPolicy(cdLedger.CCID(), cdLedger)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

@@ -67,14 +67,14 @@ type ContextRegistry interface {
 
 // InstantiationPolicyChecker is used to evaluate instantiation policies.
 type InstantiationPolicyChecker interface {
-	CheckInstantiationPolicy(name, version string, cd *ccprovider.ChaincodeData) error
+	CheckInstantiationPolicy(nameVersion string, cd *ccprovider.ChaincodeData) error
 }
 
 // Adapter from function to InstantiationPolicyChecker interface.
-type CheckInstantiationPolicyFunc func(name, version string, cd *ccprovider.ChaincodeData) error
+type CheckInstantiationPolicyFunc func(nameVersion string, cd *ccprovider.ChaincodeData) error
 
-func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(name, version string, cd *ccprovider.ChaincodeData) error {
-	return c(name, version, cd)
+func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(nameVersion string, cd *ccprovider.ChaincodeData) error {
+	return c(nameVersion, cd)
 }
 
 // QueryResponseBuilder is responsible for building QueryResponse messages for query
@@ -1191,7 +1191,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	}
 
 	if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
-		err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(targetInstance.ChaincodeName, cd.CCVersion(), cData)
+		err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(cd.CCID(), cData)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

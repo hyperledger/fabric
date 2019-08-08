@@ -112,7 +112,7 @@ func (s *SupportImpl) IsSysCC(name string) bool {
 
 // GetChaincode returns the CCPackage from the fs
 func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
-	ccpack, err := ccprovider.GetChaincodeFromFS(cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version)
+	ccpack, err := ccprovider.GetChaincodeFromFS(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get chaincode from fs")
 	}
@@ -161,9 +161,9 @@ func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.Chann
 // CheckInstantiationPolicy returns an error if the instantiation in the supplied
 // ChaincodeDefinition differs from the instantiation policy stored on the ledger
 // If the definition is not of the legacy ChaincodeData type, it returns successfully.
-func (s *SupportImpl) CheckInstantiationPolicy(name, version string, cd ccprovider.ChaincodeDefinition) error {
+func (s *SupportImpl) CheckInstantiationPolicy(nameVersion string, cd ccprovider.ChaincodeDefinition) error {
 	if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
-		return ccprovider.CheckInstantiationPolicy(name, version, cData)
+		return ccprovider.CheckInstantiationPolicy(nameVersion, cData)
 	}
 	return nil
 }
