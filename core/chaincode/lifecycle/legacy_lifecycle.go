@@ -38,6 +38,7 @@ type LegacyDefinition struct {
 	HashField         []byte
 	EndorsementPlugin string
 	RequiresInitField bool
+	CCIDField         string
 }
 
 // CCName returns the chaincode name
@@ -67,6 +68,11 @@ func (ld *LegacyDefinition) Endorsement() string {
 // RequiresInit returns whether this chaincode must have Init commit before invoking.
 func (ld *LegacyDefinition) RequiresInit() bool {
 	return ld.RequiresInitField
+}
+
+// PackageID returns the package ID for the chaincode
+func (ld *LegacyDefinition) CCID() string {
+	return ld.CCIDField
 }
 
 type ChaincodeEndorsementInfo struct {
@@ -134,6 +140,7 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 			Version:           cei.SysCCVersion,
 			EndorsementPlugin: "escc",
 			RequiresInitField: false,
+			CCIDField:         chaincodeName + ":" + cei.SysCCVersion,
 		}, nil
 	}
 
@@ -152,6 +159,9 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 		Version:           chaincodeDefinition.EndorsementInfo.Version,
 		EndorsementPlugin: chaincodeDefinition.EndorsementInfo.EndorsementPlugin,
 		RequiresInitField: chaincodeDefinition.EndorsementInfo.InitRequired,
+
+		// Note, for local chaincodes, package-id is 1-1 with CCID, but for remote chaincodes, it might not be
+		CCIDField: string(chaincodeInfo.InstallInfo.PackageID),
 	}, nil
 }
 

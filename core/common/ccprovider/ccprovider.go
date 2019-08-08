@@ -415,6 +415,9 @@ type ChaincodeDefinition interface {
 
 	// RequiresInit indicates whether or not we must enforce Init exactly once semantics
 	RequiresInit() bool
+
+	// CCID returns the name the chaincode will register with
+	CCID() string
 }
 
 //-------- ChaincodeData is stored on the LSCC -------
@@ -484,6 +487,11 @@ func (cd *ChaincodeData) Endorsement() string {
 // part of the LSCC invocation
 func (cd *ChaincodeData) RequiresInit() bool {
 	return false
+}
+
+// CCID is the name by which the chaincode will register itself
+func (cd *ChaincodeData) CCID() string {
+	return cd.Name + ":" + cd.Version
 }
 
 // implement functions needed from proto.Message for proto's mar/unmarshal functions

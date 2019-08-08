@@ -39,3 +39,7 @@ func (m *MockChaincodeDefinition) Endorsement() string {
 func (m *MockChaincodeDefinition) RequiresInit() bool {
 	return m.RequiresInitRv
 }
+
+func (m *MockChaincodeDefinition) CCID() string {
+	panic("bespoke mocks are the worst")
+}

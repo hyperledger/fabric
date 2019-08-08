@@ -191,6 +191,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				Name:              "name",
 				Version:           "version",
 				EndorsementPlugin: "endorsement-plugin",
+				CCIDField:         "hash",
 			}))
 		})
 
@@ -206,6 +207,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 					Name:              "test-syscc-name",
 					Version:           "test-syscc-version",
 					EndorsementPlugin: "escc",
+					CCIDField:         "test-syscc-name:test-syscc-version",
 				}))
 			})
 		})

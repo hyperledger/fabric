@@ -6,6 +6,16 @@ import (
 )
 
 type ChaincodeDefinition struct {
+	CCIDStub        func() string
+	cCIDMutex       sync.RWMutex
+	cCIDArgsForCall []struct {
+	}
+	cCIDReturns struct {
+		result1 string
+	}
+	cCIDReturnsOnCall map[int]struct {
+		result1 string
+	}
 	CCNameStub        func() string
 	cCNameMutex       sync.RWMutex
 	cCNameArgsForCall []struct {
@@ -56,20 +66,60 @@ type ChaincodeDefinition struct {
 	requiresInitReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	ValidationStub        func() (string, []byte)
-	validationMutex       sync.RWMutex
-	validationArgsForCall []struct {
-	}
-	validationReturns struct {
-		result1 string
-		result2 []byte
-	}
-	validationReturnsOnCall map[int]struct {
-		result1 string
-		result2 []byte
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *ChaincodeDefinition) CCID() string {
+	fake.cCIDMutex.Lock()
+	ret, specificReturn := fake.cCIDReturnsOnCall[len(fake.cCIDArgsForCall)]
+	fake.cCIDArgsForCall = append(fake.cCIDArgsForCall, struct {
+	}{})
+	fake.recordInvocation("CCID", []interface{}{})
+	fake.cCIDMutex.Unlock()
+	if fake.CCIDStub != nil {
+		return fake.CCIDStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.cCIDReturns
+	return fakeReturns.result1
+}
+
+func (fake *ChaincodeDefinition) CCIDCallCount() int {
+	fake.cCIDMutex.RLock()
+	defer fake.cCIDMutex.RUnlock()
+	return len(fake.cCIDArgsForCall)
+}
+
+func (fake *ChaincodeDefinition) CCIDCalls(stub func() string) {
+	fake.cCIDMutex.Lock()
+	defer fake.cCIDMutex.Unlock()
+	fake.CCIDStub = stub
+}
+
+func (fake *ChaincodeDefinition) CCIDReturns(result1 string) {
+	fake.cCIDMutex.Lock()
+	defer fake.cCIDMutex.Unlock()
+	fake.CCIDStub = nil
+	fake.cCIDReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *ChaincodeDefinition) CCIDReturnsOnCall(i int, result1 string) {
+	fake.cCIDMutex.Lock()
+	defer fake.cCIDMutex.Unlock()
+	fake.CCIDStub = nil
+	if fake.cCIDReturnsOnCall == nil {
+		fake.cCIDReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.cCIDReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
 }
 
 func (fake *ChaincodeDefinition) CCName() string {
@@ -332,64 +382,11 @@ func (fake *ChaincodeDefinition) RequiresInitReturnsOnCall(i int, result1 bool) 
 	}{result1}
 }
 
-func (fake *ChaincodeDefinition) Validation() (string, []byte) {
-	fake.validationMutex.Lock()
-	ret, specificReturn := fake.validationReturnsOnCall[len(fake.validationArgsForCall)]
-	fake.validationArgsForCall = append(fake.validationArgsForCall, struct {
-	}{})
-	fake.recordInvocation("Validation", []interface{}{})
-	fake.validationMutex.Unlock()
-	if fake.ValidationStub != nil {
-		return fake.ValidationStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.validationReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *ChaincodeDefinition) ValidationCallCount() int {
-	fake.validationMutex.RLock()
-	defer fake.validationMutex.RUnlock()
-	return len(fake.validationArgsForCall)
-}
-
-func (fake *ChaincodeDefinition) ValidationCalls(stub func() (string, []byte)) {
-	fake.validationMutex.Lock()
-	defer fake.validationMutex.Unlock()
-	fake.ValidationStub = stub
-}
-
-func (fake *ChaincodeDefinition) ValidationReturns(result1 string, result2 []byte) {
-	fake.validationMutex.Lock()
-	defer fake.validationMutex.Unlock()
-	fake.ValidationStub = nil
-	fake.validationReturns = struct {
-		result1 string
-		result2 []byte
-	}{result1, result2}
-}
-
-func (fake *ChaincodeDefinition) ValidationReturnsOnCall(i int, result1 string, result2 []byte) {
-	fake.validationMutex.Lock()
-	defer fake.validationMutex.Unlock()
-	fake.ValidationStub = nil
-	if fake.validationReturnsOnCall == nil {
-		fake.validationReturnsOnCall = make(map[int]struct {
-			result1 string
-			result2 []byte
-		})
-	}
-	fake.validationReturnsOnCall[i] = struct {
-		result1 string
-		result2 []byte
-	}{result1, result2}
-}
-
 func (fake *ChaincodeDefinition) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.cCIDMutex.RLock()
+	defer fake.cCIDMutex.RUnlock()
 	fake.cCNameMutex.RLock()
 	defer fake.cCNameMutex.RUnlock()
 	fake.cCVersionMutex.RLock()
@@ -400,8 +397,6 @@ func (fake *ChaincodeDefinition) Invocations() map[string][][]interface{} {
 	defer fake.hashMutex.RUnlock()
 	fake.requiresInitMutex.RLock()
 	defer fake.requiresInitMutex.RUnlock()
-	fake.validationMutex.RLock()
-	defer fake.validationMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
