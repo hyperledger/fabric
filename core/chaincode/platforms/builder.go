@@ -18,6 +18,6 @@ type Builder struct {
 	Client   *docker.Client
 }
 
-func (b *Builder) GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error) {
+func (b *Builder) GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (io.Reader, error) {
 	return b.Registry.GenerateDockerBuild(ccci.Type, ccci.Path, ccci.Name, ccci.Version, codePackage, b.Client)
 }

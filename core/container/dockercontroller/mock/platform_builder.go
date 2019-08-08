@@ -9,11 +9,11 @@ import (
 )
 
 type PlatformBuilder struct {
-	GenerateDockerBuildStub        func(*ccprovider.ChaincodeContainerInfo, []byte) (io.Reader, error)
+	GenerateDockerBuildStub        func(*ccprovider.ChaincodeContainerInfo, io.Reader) (io.Reader, error)
 	generateDockerBuildMutex       sync.RWMutex
 	generateDockerBuildArgsForCall []struct {
 		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 []byte
+		arg2 io.Reader
 	}
 	generateDockerBuildReturns struct {
 		result1 io.Reader
@@ -27,19 +27,14 @@ type PlatformBuilder struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PlatformBuilder) GenerateDockerBuild(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) (io.Reader, error) {
-	var arg2Copy []byte
-	if arg2 != nil {
-		arg2Copy = make([]byte, len(arg2))
-		copy(arg2Copy, arg2)
-	}
+func (fake *PlatformBuilder) GenerateDockerBuild(arg1 *ccprovider.ChaincodeContainerInfo, arg2 io.Reader) (io.Reader, error) {
 	fake.generateDockerBuildMutex.Lock()
 	ret, specificReturn := fake.generateDockerBuildReturnsOnCall[len(fake.generateDockerBuildArgsForCall)]
 	fake.generateDockerBuildArgsForCall = append(fake.generateDockerBuildArgsForCall, struct {
 		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 []byte
-	}{arg1, arg2Copy})
-	fake.recordInvocation("GenerateDockerBuild", []interface{}{arg1, arg2Copy})
+		arg2 io.Reader
+	}{arg1, arg2})
+	fake.recordInvocation("GenerateDockerBuild", []interface{}{arg1, arg2})
 	fake.generateDockerBuildMutex.Unlock()
 	if fake.GenerateDockerBuildStub != nil {
 		return fake.GenerateDockerBuildStub(arg1, arg2)
@@ -57,13 +52,13 @@ func (fake *PlatformBuilder) GenerateDockerBuildCallCount() int {
 	return len(fake.generateDockerBuildArgsForCall)
 }
 
-func (fake *PlatformBuilder) GenerateDockerBuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) (io.Reader, error)) {
+func (fake *PlatformBuilder) GenerateDockerBuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, io.Reader) (io.Reader, error)) {
 	fake.generateDockerBuildMutex.Lock()
 	defer fake.generateDockerBuildMutex.Unlock()
 	fake.GenerateDockerBuildStub = stub
 }
 
-func (fake *PlatformBuilder) GenerateDockerBuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
+func (fake *PlatformBuilder) GenerateDockerBuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, io.Reader) {
 	fake.generateDockerBuildMutex.RLock()
 	defer fake.generateDockerBuildMutex.RUnlock()
 	argsForCall := fake.generateDockerBuildArgsForCall[i]

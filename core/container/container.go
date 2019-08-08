@@ -8,7 +8,6 @@ package container
 
 import (
 	"io"
-	"io/ioutil"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -26,7 +25,7 @@ var vmLogger = flogging.MustGetLogger("container")
 
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (Instance, error)
+	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackageStream io.Reader) (Instance, error)
 }
 
 //go:generate counterfeiter -o mock/instance.go --fake-name Instance . Instance
@@ -91,25 +90,29 @@ func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo) error {
 	metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(pintf.PackageID(ccci.PackageID))
 	if err != nil {
-		return errors.WithMessage(err, "get chaincode package failed")
+		return errors.WithMessage(err, "get chaincode package for external build failed")
 	}
-	defer codeStream.Close()
 
 	ccci2 := &ccprovider.ChaincodeContainerInfo{
 		Path:      metadata.Path,
 		Type:      metadata.Type,
 		PackageID: ccci.PackageID,
 	}
-	codePackage, err := ioutil.ReadAll(codeStream)
 
 	var instance Instance
 	var externalErr error
 	if r.ExternalVM != nil {
-		instance, externalErr = r.ExternalVM.Build(ccci2, codePackage)
+		instance, externalErr = r.ExternalVM.Build(ccci2, codeStream)
+		codeStream.Close()
 	}
 
 	if r.ExternalVM == nil || externalErr != nil {
-		instance, err = r.DockerVM.Build(ccci2, codePackage)
+		_, codeStream, err = r.PackageProvider.GetChaincodePackage(pintf.PackageID(ccci.PackageID))
+		if err != nil {
+			return errors.WithMessage(err, "get chaincode package for docker build failed")
+		}
+		instance, err = r.DockerVM.Build(ccci2, codeStream)
+		codeStream.Close()
 	}
 
 	if err != nil {

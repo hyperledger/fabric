@@ -8,7 +8,6 @@ package externalbuilders
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -64,7 +63,7 @@ func (d *Detector) Detect(buildContext *BuildContext) *Builder {
 	return nil
 }
 
-func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (*Instance, error) {
+func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codeStream io.Reader) (*Instance, error) {
 	if len(d.Builders) == 0 {
 		// A small optimization, especially while the launcher feature is under development
 		// let's not explode the build package out into the filesystem unless there are
@@ -72,7 +71,7 @@ func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []
 		return nil, errors.Errorf("no builders defined")
 	}
 
-	buildContext, err := NewBuildContext(ccci, bytes.NewBuffer(codePackage))
+	buildContext, err := NewBuildContext(ccci, codeStream)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create build context")
 	}

@@ -112,7 +112,7 @@ func (r *Registry) GenerateDockerfile(ccType, name, version string) (string, err
 	return contents, nil
 }
 
-func (r *Registry) StreamDockerBuild(ccType, path string, codePackage []byte, inputFiles map[string][]byte, tw *tar.Writer, client *docker.Client) error {
+func (r *Registry) StreamDockerBuild(ccType, path string, codePackage io.Reader, inputFiles map[string][]byte, tw *tar.Writer, client *docker.Client) error {
 	var err error
 
 	// ----------------------------------------------------------------------------------------------------
@@ -139,7 +139,7 @@ func (r *Registry) StreamDockerBuild(ccType, path string, codePackage []byte, in
 	}
 
 	output := &bytes.Buffer{}
-	buildOptions.InputStream = bytes.NewReader(codePackage)
+	buildOptions.InputStream = codePackage
 	buildOptions.OutputStream = output
 
 	err = util.DockerBuild(buildOptions, client)
@@ -168,7 +168,7 @@ func writeBytesToPackage(name string, payload []byte, tw *tar.Writer) error {
 	return nil
 }
 
-func (r *Registry) GenerateDockerBuild(ccType, path, name, version string, codePackage []byte, client *docker.Client) (io.Reader, error) {
+func (r *Registry) GenerateDockerBuild(ccType, path, name, version string, codePackage io.Reader, client *docker.Client) (io.Reader, error) {
 	inputFiles := make(map[string][]byte)
 
 	// ----------------------------------------------------------------------------------------------------
