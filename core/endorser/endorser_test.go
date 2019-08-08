@@ -202,28 +202,6 @@ func TestEndorserNoCCDef(t *testing.T) {
 	assert.Equal(t, "make sure the chaincode test-chaincode has been successfully defined on channel testchainid and try again: gesundheit", pResp.Response.Message)
 }
 
-func TestEndorserBadInstPolicy(t *testing.T) {
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, &mocks.MockSupport{
-		GetApplicationConfigBoolRv:    true,
-		GetApplicationConfigRv:        &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:         errors.New(""),
-		CheckInstantiationPolicyError: errors.New(""),
-		ChaincodeDefinitionRv:         &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                   &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mocks.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
-
-	signedProp := getSignedProp("test-chaincode", "test-version", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-}
-
 func TestEndorserSysCC(t *testing.T) {
 	m := &mock.Mock{}
 	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
@@ -728,7 +706,7 @@ func TestSimulateProposal(t *testing.T) {
 		},
 	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
 
-	_, _, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, "")
+	_, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, "")
 	assert.Error(t, err)
 }
 

@@ -38,8 +38,6 @@ var _ = Describe("Handler", func() {
 		fakeHistoryQueryExecutor       *mock.HistoryQueryExecutor
 		fakeQueryResponseBuilder       *fake.QueryResponseBuilder
 		fakeACLProvider                *mock.ACLProvider
-		fakeDefinitionGetter           *mock.ChaincodeDefinitionGetter
-		fakeInstantiationPolicyChecker *mock.InstantiationPolicyChecker
 		fakeInvoker                    *mock.Invoker
 		fakeLedgerGetter               *mock.LedgerGetter
 		fakeHandlerRegistry            *fake.Registry
@@ -79,10 +77,8 @@ var _ = Describe("Handler", func() {
 		txContext.InitializeCollectionACLCache()
 
 		fakeACLProvider = &mock.ACLProvider{}
-		fakeDefinitionGetter = &mock.ChaincodeDefinitionGetter{}
 		fakeInvoker = &mock.Invoker{}
 		fakeLedgerGetter = &mock.LedgerGetter{}
-		fakeInstantiationPolicyChecker = &mock.InstantiationPolicyChecker{}
 		fakeQueryResponseBuilder = &fake.QueryResponseBuilder{}
 		fakeHandlerRegistry = &fake.Registry{}
 
@@ -116,16 +112,14 @@ var _ = Describe("Handler", func() {
 		}
 
 		handler = &chaincode.Handler{
-			ACLProvider:                fakeACLProvider,
-			ActiveTransactions:         fakeTransactionRegistry,
-			DefinitionGetter:           fakeDefinitionGetter,
-			Invoker:                    fakeInvoker,
-			LedgerGetter:               fakeLedgerGetter,
-			InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
-			QueryResponseBuilder:       fakeQueryResponseBuilder,
-			Registry:                   fakeHandlerRegistry,
-			BuiltinSCCs:                builtinSCCs,
-			TXContexts:                 fakeContextRegistry,
+			ACLProvider:          fakeACLProvider,
+			ActiveTransactions:   fakeTransactionRegistry,
+			Invoker:              fakeInvoker,
+			LedgerGetter:         fakeLedgerGetter,
+			QueryResponseBuilder: fakeQueryResponseBuilder,
+			Registry:             fakeHandlerRegistry,
+			BuiltinSCCs:          builtinSCCs,
+			TXContexts:           fakeContextRegistry,
 			UUIDGenerator: chaincode.UUIDGeneratorFunc(func() string {
 				return "generated-query-id"
 			}),
@@ -2131,7 +2125,6 @@ var _ = Describe("Handler", func() {
 		var (
 			expectedSignedProp      *pb.SignedProposal
 			expectedProposal        *pb.Proposal
-			targetDefinition        *ccprovider.ChaincodeData
 			fakePeerLedger          *mock.PeerLedger
 			newTxSimulator          *mock.TxSimulator
 			newHistoryQueryExecutor *mock.HistoryQueryExecutor
@@ -2158,12 +2151,6 @@ var _ = Describe("Handler", func() {
 			fakePeerLedger.NewTxSimulatorReturns(newTxSimulator, nil)
 			fakeLedgerGetter.GetLedgerReturns(fakePeerLedger)
 			fakePeerLedger.NewHistoryQueryExecutorReturns(newHistoryQueryExecutor, nil)
-
-			targetDefinition = &ccprovider.ChaincodeData{
-				Name:    "target-chaincode-data-name",
-				Version: "target-chaincode-version",
-			}
-			fakeDefinitionGetter.ChaincodeDefinitionReturns(targetDefinition, nil)
 
 			request = &pb.ChaincodeSpec{
 				ChaincodeId: &pb.ChaincodeID{
@@ -2262,7 +2249,7 @@ var _ = Describe("Handler", func() {
 			})
 
 			It("marks the new transaction simulator as done after execute", func() {
-				fakeInvoker.InvokeStub = func(*ccprovider.TransactionParams, *ccprovider.CCContext, *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
+				fakeInvoker.InvokeStub = func(*ccprovider.TransactionParams, string, *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
 					Expect(newTxSimulator.DoneCallCount()).To(Equal(0))
 					return responseMessage, nil
 				}
@@ -2321,55 +2308,6 @@ var _ = Describe("Handler", func() {
 		})
 
 		Context("when the target is not a system chaincode", func() {
-			It("gets the chaincode definition", func() {
-				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(fakeDefinitionGetter.ChaincodeDefinitionCallCount()).To(Equal(1))
-				channelID, ccname, txSim := fakeDefinitionGetter.ChaincodeDefinitionArgsForCall(0)
-				Expect(channelID).To(Equal("channel-id"))
-				Expect(ccname).To(Equal("target-chaincode-name"))
-				Expect(txSim).To(Equal(newTxSimulator))
-			})
-
-			It("checks the instantiation policy on the target", func() {
-				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(fakeInstantiationPolicyChecker.CheckInstantiationPolicyCallCount()).To(Equal(1))
-				nameVersion, cd := fakeInstantiationPolicyChecker.CheckInstantiationPolicyArgsForCall(0)
-				Expect(nameVersion).To(Equal("target-chaincode-data-name:target-chaincode-version"))
-				Expect(cd).To(Equal(targetDefinition))
-
-			})
-			Context("when the chaincode definition is not ChaincodeData", func() {
-				BeforeEach(func() {
-					type wrapper struct {
-						*ccprovider.ChaincodeData
-					}
-
-					fakeDefinitionGetter.ChaincodeDefinitionReturns(wrapper{ChaincodeData: targetDefinition}, nil)
-				})
-
-				It("does not check the instantiation policy", func() {
-					_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-					Expect(err).NotTo(HaveOccurred())
-
-					Expect(fakeInstantiationPolicyChecker.CheckInstantiationPolicyCallCount()).To(Equal(0))
-				})
-			})
-
-			Context("when getting the chaincode definition fails", func() {
-				BeforeEach(func() {
-					fakeDefinitionGetter.ChaincodeDefinitionReturns(nil, errors.New("blueberry-cobbler"))
-				})
-
-				It("returns an error", func() {
-					_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-					Expect(err).To(MatchError("blueberry-cobbler"))
-				})
-			})
-
 			Context("when the signed proposal is nil", func() {
 				BeforeEach(func() {
 					txContext.SignedProp = nil
@@ -2378,17 +2316,6 @@ var _ = Describe("Handler", func() {
 				It("returns an error", func() {
 					_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
 					Expect(err).To(MatchError("signed proposal must not be nil from caller [channel-id.target-chaincode-name#target-version]"))
-				})
-			})
-
-			Context("when the instantiation policy evaluation returns an error", func() {
-				BeforeEach(func() {
-					fakeInstantiationPolicyChecker.CheckInstantiationPolicyReturns(errors.New("raspberry-pie"))
-				})
-
-				It("returns an error", func() {
-					_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-					Expect(err).To(MatchError("raspberry-pie"))
 				})
 			})
 		})

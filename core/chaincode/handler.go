@@ -48,7 +48,7 @@ type Registry interface {
 
 // An Invoker invokes chaincode.
 type Invoker interface {
-	Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeInput) (*pb.ChaincodeMessage, error)
+	Invoke(txParams *ccprovider.TransactionParams, chaincodeName string, spec *pb.ChaincodeInput) (*pb.ChaincodeMessage, error)
 }
 
 // TransactionRegistry tracks active transactions for each channel.
@@ -65,29 +65,11 @@ type ContextRegistry interface {
 	Close()
 }
 
-// InstantiationPolicyChecker is used to evaluate instantiation policies.
-type InstantiationPolicyChecker interface {
-	CheckInstantiationPolicy(nameVersion string, cd *ccprovider.ChaincodeData) error
-}
-
-// Adapter from function to InstantiationPolicyChecker interface.
-type CheckInstantiationPolicyFunc func(nameVersion string, cd *ccprovider.ChaincodeData) error
-
-func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(nameVersion string, cd *ccprovider.ChaincodeData) error {
-	return c(nameVersion, cd)
-}
-
 // QueryResponseBuilder is responsible for building QueryResponse messages for query
 // transactions initiated by chaincode.
 type QueryResponseBuilder interface {
 	BuildQueryResponse(txContext *TransactionContext, iter commonledger.ResultsIterator,
 		iterID string, isPaginated bool, totalReturnLimit int32) (*pb.QueryResponse, error)
-}
-
-// ChaincodeDefinitionGetter is responsible for retrieving a chaincode definition
-// from the system. The definition is used by the InstantiationPolicyChecker.
-type ChaincodeDefinitionGetter interface {
-	ChaincodeDefinition(channelID, chaincodeName string, txSim ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
 }
 
 // LedgerGetter is used to get ledgers for chaincode.
@@ -117,9 +99,6 @@ type Handler struct {
 	// TotalQueryLimit specifies the maximum number of results to return for
 	// chaincode queries.
 	TotalQueryLimit int
-	// DefinitionGetter is used to retrieve the chaincode definition from the
-	// Lifecycle System Chaincode.
-	DefinitionGetter ChaincodeDefinitionGetter
 	// Invoker is used to invoke chaincode.
 	Invoker Invoker
 	// Registry is used to track active handlers.
@@ -133,8 +112,6 @@ type Handler struct {
 	ActiveTransactions TransactionRegistry
 	// BuiltinSCCs can be used to determine if a name is associated with a system chaincode
 	BuiltinSCCs scc.BuiltinSCCs
-	// InstantiationPolicyChecker is used to evaluate the chaincode instantiation policies.
-	InstantiationPolicyChecker InstantiationPolicyChecker
 	// QueryResponeBuilder is used to build query responses
 	QueryResponseBuilder QueryResponseBuilder
 	// LedgerGetter is used to get the ledger associated with a channel
@@ -1182,33 +1159,8 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 		txParams.HistoryQueryExecutor = hqe
 	}
 
-	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
-
-	// if its a user chaincode, get the details
-	cd, err := h.DefinitionGetter.ChaincodeDefinition(targetInstance.ChainID, targetInstance.ChaincodeName, txParams.TXSimulator)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
-		err = h.InstantiationPolicyChecker.CheckInstantiationPolicy(cd.CCID(), cData)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-	}
-
-	// Launch the new chaincode if not already running
-	chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
-
-	cccid := &ccprovider.CCContext{
-		Name:         targetInstance.ChaincodeName,
-		Version:      cd.CCVersion(),
-		InitRequired: cd.RequiresInit(),
-		ID:           cd.Hash(),
-	}
-
 	// Execute the chaincode... this CANNOT be an init at least for now
-	responseMessage, err := h.Invoker.Invoke(txParams, cccid, chaincodeSpec.Input)
+	responseMessage, err := h.Invoker.Invoke(txParams, targetInstance.ChaincodeName, chaincodeSpec.Input)
 	if err != nil {
 		return nil, errors.Wrap(err, "execute failed")
 	}

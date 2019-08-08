@@ -122,6 +122,20 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			}, nil
 		}
 	}
+	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+		switch name {
+		case "lscc":
+			return &ccprovider.ChaincodeData{
+				Name:    "lscc",
+				Version: "latest",
+			}, nil
+		default:
+			return &ccprovider.ChaincodeData{
+				Name:    name,
+				Version: "0",
+			}, nil
+		}
+	}
 	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -153,6 +167,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		},
 		PeerAddress: peerAddress,
 	}
+	fakeInstantiationPolicyChecker := &mock.InstantiationPolicyChecker{}
 	userRunsCC := false
 	metricsProviders := &disabled.Provider{}
 	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
@@ -167,19 +182,20 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			func(string) channelconfig.Resources { return nil },
 			newPolicyChecker(peerInstance),
 		),
-		AppConfig:              peerInstance,
-		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
-		ExecuteTimeout:         globalConfig.ExecuteTimeout,
-		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
-		HandlerRegistry:        chaincodeHandlerRegistry,
-		Keepalive:              globalConfig.Keepalive,
-		Launcher:               chaincodeLauncher,
-		Lifecycle:              ml,
-		Peer:                   peerInstance,
-		Runtime:                containerRuntime,
-		BuiltinSCCs:            builtinSCCs,
-		TotalQueryLimit:        globalConfig.TotalQueryLimit,
-		UserRunsCC:             userRunsCC,
+		AppConfig:                  peerInstance,
+		DeployedCCInfoProvider:     &ledgermock.DeployedChaincodeInfoProvider{},
+		ExecuteTimeout:             globalConfig.ExecuteTimeout,
+		HandlerMetrics:             NewHandlerMetrics(metricsProviders),
+		HandlerRegistry:            chaincodeHandlerRegistry,
+		InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
+		Keepalive:                  globalConfig.Keepalive,
+		Launcher:                   chaincodeLauncher,
+		Lifecycle:                  ml,
+		Peer:                       peerInstance,
+		Runtime:                    containerRuntime,
+		BuiltinSCCs:                builtinSCCs,
+		TotalQueryLimit:            globalConfig.TotalQueryLimit,
+		UserRunsCC:                 userRunsCC,
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
@@ -472,14 +488,8 @@ func deploy2(chainID string, cccid *ccprovider.CCContext, chaincodeDeploymentSpe
 	//ignore existence errors
 	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
 
-	sysCCVers := "latest"
-	lsccid := &ccprovider.CCContext{
-		Name:    cis.ChaincodeSpec.ChaincodeId.Name,
-		Version: sysCCVers,
-	}
-
 	//write to lscc
-	if _, _, err = chaincodeSupport.Execute(txParams, lsccid, cis.ChaincodeSpec.Input); err != nil {
+	if _, _, err = chaincodeSupport.Execute(txParams, "lscc", cis.ChaincodeSpec.Input); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode (1): %s", err)
 	}
 
@@ -522,10 +532,6 @@ func invokeWithVersion(chainID string, version string, spec *pb.ChaincodeSpec, b
 		creator = []byte("Admin")
 	}
 	sprop, prop := protoutil.MockSignedEndorserProposalOrPanic(chainID, spec, creator, []byte("msg1"))
-	cccid := &ccprovider.CCContext{
-		Name:    cdInvocationSpec.ChaincodeSpec.ChaincodeId.Name,
-		Version: version,
-	}
 	var resp *pb.Response
 	txParams := &ccprovider.TransactionParams{
 		TxID:                 uuid,
@@ -536,7 +542,7 @@ func invokeWithVersion(chainID string, version string, spec *pb.ChaincodeSpec, b
 		Proposal:             prop,
 	}
 
-	resp, ccevt, err = chaincodeSupport.Execute(txParams, cccid, cdInvocationSpec.ChaincodeSpec.Input)
+	resp, ccevt, err = chaincodeSupport.Execute(txParams, cdInvocationSpec.ChaincodeSpec.ChaincodeId.Name, cdInvocationSpec.ChaincodeSpec.Input)
 	if err != nil {
 		return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s", err)
 	}

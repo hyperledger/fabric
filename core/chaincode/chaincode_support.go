@@ -53,22 +53,35 @@ type Lifecycle interface {
 	ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)
 }
 
+// InstantiationPolicyChecker is used to evaluate instantiation policies.
+type InstantiationPolicyChecker interface {
+	CheckInstantiationPolicy(nameVersion string, cd *ccprovider.ChaincodeData) error
+}
+
+// Adapter from function to InstantiationPolicyChecker interface.
+type CheckInstantiationPolicyFunc func(nameVersion string, cd *ccprovider.ChaincodeData) error
+
+func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(nameVersion string, cd *ccprovider.ChaincodeData) error {
+	return c(nameVersion, cd)
+}
+
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
-	ACLProvider            ACLProvider
-	AppConfig              ApplicationConfigRetriever
-	BuiltinSCCs            scc.BuiltinSCCs
-	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
-	ExecuteTimeout         time.Duration
-	HandlerMetrics         *HandlerMetrics
-	HandlerRegistry        *HandlerRegistry
-	Keepalive              time.Duration
-	Launcher               Launcher
-	Lifecycle              Lifecycle
-	Peer                   *peer.Peer
-	Runtime                Runtime
-	TotalQueryLimit        int
-	UserRunsCC             bool
+	ACLProvider                ACLProvider
+	AppConfig                  ApplicationConfigRetriever
+	BuiltinSCCs                scc.BuiltinSCCs
+	DeployedCCInfoProvider     ledger.DeployedChaincodeInfoProvider
+	ExecuteTimeout             time.Duration
+	HandlerMetrics             *HandlerMetrics
+	HandlerRegistry            *HandlerRegistry
+	InstantiationPolicyChecker InstantiationPolicyChecker
+	Keepalive                  time.Duration
+	Launcher                   Launcher
+	Lifecycle                  Lifecycle
+	Peer                       *peer.Peer
+	Runtime                    Runtime
+	TotalQueryLimit            int
+	UserRunsCC                 bool
 }
 
 // LaunchInit bypasses getting the chaincode spec from the LSCC table
@@ -117,22 +130,20 @@ func (cs *ChaincodeSupport) LaunchInProc(ccid ccintf.CCID) <-chan struct{} {
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream
 func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
 	handler := &Handler{
-		Invoker:                    cs,
-		DefinitionGetter:           cs.Lifecycle,
-		Keepalive:                  cs.Keepalive,
-		Registry:                   cs.HandlerRegistry,
-		ACLProvider:                cs.ACLProvider,
-		TXContexts:                 NewTransactionContexts(),
-		ActiveTransactions:         NewActiveTransactions(),
-		BuiltinSCCs:                cs.BuiltinSCCs,
-		InstantiationPolicyChecker: CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
-		QueryResponseBuilder:       &QueryResponseGenerator{MaxResultLimit: 100},
-		UUIDGenerator:              UUIDGeneratorFunc(util.GenerateUUID),
-		LedgerGetter:               cs.Peer,
-		DeployedCCInfoProvider:     cs.DeployedCCInfoProvider,
-		AppConfig:                  cs.AppConfig,
-		Metrics:                    cs.HandlerMetrics,
-		TotalQueryLimit:            cs.TotalQueryLimit,
+		Invoker:                cs,
+		Keepalive:              cs.Keepalive,
+		Registry:               cs.HandlerRegistry,
+		ACLProvider:            cs.ACLProvider,
+		TXContexts:             NewTransactionContexts(),
+		ActiveTransactions:     NewActiveTransactions(),
+		BuiltinSCCs:            cs.BuiltinSCCs,
+		QueryResponseBuilder:   &QueryResponseGenerator{MaxResultLimit: 100},
+		UUIDGenerator:          UUIDGeneratorFunc(util.GenerateUUID),
+		LedgerGetter:           cs.Peer,
+		DeployedCCInfoProvider: cs.DeployedCCInfoProvider,
+		AppConfig:              cs.AppConfig,
+		Metrics:                cs.HandlerMetrics,
+		TotalQueryLimit:        cs.TotalQueryLimit,
 	}
 
 	return handler.ProcessStream(stream)
@@ -171,9 +182,9 @@ func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionPa
 }
 
 // Execute invokes chaincode and returns the original response.
-func (cs *ChaincodeSupport) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
-	resp, err := cs.Invoke(txParams, cccid, input)
-	return processChaincodeExecutionResult(txParams.TxID, cccid.Name, resp, err)
+func (cs *ChaincodeSupport) Execute(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	resp, err := cs.Invoke(txParams, chaincodeName, input)
+	return processChaincodeExecutionResult(txParams.TxID, chaincodeName, resp, err)
 }
 
 func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMessage, err error) (*pb.Response, *pb.ChaincodeEvent, error) {
@@ -208,7 +219,28 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
-func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
+func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
+	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(txParams.TxID), chaincodeName, txParams.ChannelID)
+	cd, err := cs.Lifecycle.ChaincodeDefinition(txParams.ChannelID, chaincodeName, txParams.TXSimulator)
+	if err != nil {
+		logDevModeError(cs.UserRunsCC)
+		return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, chaincodeName)
+	}
+
+	if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
+		err = cs.InstantiationPolicyChecker.CheckInstantiationPolicy(cd.CCID(), cData)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	}
+
+	cccid := &ccprovider.CCContext{
+		Name:         chaincodeName,
+		Version:      cd.CCVersion(),
+		InitRequired: cd.RequiresInit(),
+		ID:           cd.Hash(),
+	}
+
 	// go to _lifecycle to retrieve information about the chaincode
 	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
 	if err != nil {

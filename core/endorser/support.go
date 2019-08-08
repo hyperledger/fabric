@@ -131,20 +131,14 @@ func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, 
 }
 
 // Execute a proposal and return the chaincode response
-func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, cid, name, txid string, idBytes []byte, requiresInit bool, signedProp *pb.SignedProposal, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := &ccprovider.CCContext{
-		Name:         name,
-		InitRequired: requiresInit,
-		ID:           idBytes,
-	}
-
+func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, name string, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	// decorate the chaincode input
 	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
 	input.Decorations = make(map[string][]byte)
 	input = decoration.Apply(prop, input, decorators...)
 	txParams.ProposalDecorations = input.Decorations
 
-	return s.ChaincodeSupport.Execute(txParams, cccid, input)
+	return s.ChaincodeSupport.Execute(txParams, name, input)
 }
 
 // GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
@@ -156,16 +150,6 @@ func (s *SupportImpl) GetChaincodeDefinition(channelID, chaincodeName string, tx
 // SignedProposal from which an id can be extracted for testing against a policy
 func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
 	return s.ACLProvider.CheckACL(resources.Peer_Propose, chdr.ChannelId, signedProp)
-}
-
-// CheckInstantiationPolicy returns an error if the instantiation in the supplied
-// ChaincodeDefinition differs from the instantiation policy stored on the ledger
-// If the definition is not of the legacy ChaincodeData type, it returns successfully.
-func (s *SupportImpl) CheckInstantiationPolicy(nameVersion string, cd ccprovider.ChaincodeDefinition) error {
-	if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
-		return ccprovider.CheckInstantiationPolicy(nameVersion, cData)
-	}
-	return nil
 }
 
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the Channel

@@ -85,11 +85,6 @@ type aclProvider interface {
 	chaincode.ACLProvider
 }
 
-//go:generate counterfeiter -o mock/chaincode_definition_getter.go --fake-name ChaincodeDefinitionGetter . chaincodeDefinitionGetter
-type chaincodeDefinitionGetter interface {
-	chaincode.ChaincodeDefinitionGetter
-}
-
 //go:generate counterfeiter -o mock/instantiation_policy_checker.go --fake-name InstantiationPolicyChecker . instantiationPolicyChecker
 type instantiationPolicyChecker interface {
 	chaincode.InstantiationPolicyChecker
