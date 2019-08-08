@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package lscc
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 
@@ -203,25 +204,47 @@ func New(
 func (lscc *LifeCycleSysCC) Name() string              { return "lscc" }
 func (lscc *LifeCycleSysCC) Chaincode() shim.Chaincode { return lscc }
 
-func (lscc *LifeCycleSysCC) ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
-	chaincodeDataBytes, err := qe.GetState("lscc", chaincodeName)
+type LegacySecurity struct {
+	*ccprovider.ChaincodeData
+	Support FilesystemSupport
+}
+
+func (ls *LegacySecurity) SecurityCheckLegacyChaincode() error {
+	ccpack, err := ls.Support.GetChaincodeFromLocalStorage(ls.ChaincodeData.CCID())
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not retrieve state for chaincode %s", chaincodeName)
+		return InvalidDeploymentSpecErr(err.Error())
 	}
 
-	if chaincodeDataBytes == nil {
-		return nil, errors.Errorf("chaincode %s not found", chaincodeName)
+	// This is 'the big security check', though it's no clear what's being accomplished
+	// here.  Basically, it seems to try to verify that the chaincode defintion matches
+	// what's on the filesystem, which, might include instanatiation policy, but it's
+	// not obvious from the code, and was being checked separately, so we check it
+	// explicitly below.
+	if err = ccpack.ValidateCC(ls.ChaincodeData); err != nil {
+		return InvalidCCOnFSError(err.Error())
 	}
 
-	// Note, although it looks very tempting to replace the bulk of this function with
-	// the below 'ChaincodeDefinition' call, the 'getCCCode' call provides us security
-	// by side-effect, so we must leave it as is for now.
-	cds, _, err := lscc.getCCCode(chaincodeName, chaincodeDataBytes)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not get chaincode code")
+	fsData := ccpack.GetChaincodeData()
+
+	// we have the info from the fs, check that the policy
+	// matches the one on the file system if one was specified;
+	// this check is required because the admin of this peer
+	// might have specified instantiation policies for their
+	// chaincode, for example to make sure that the chaincode
+	// is only instantiated on certain channels; a malicious
+	// peer on the other hand might have created a deploy
+	// transaction that attempts to bypass the instantiation
+	// policy. This check is there to ensure that this will not
+	// happen, i.e. that the peer will refuse to invoke the
+	// chaincode under these conditions. More info on
+	// https://jira.hyperledger.org/browse/FAB-3156
+	if fsData.InstantiationPolicy != nil {
+		if !bytes.Equal(fsData.InstantiationPolicy, ls.ChaincodeData.InstantiationPolicy) {
+			return fmt.Errorf("Instantiation policy mismatch for cc %s", ls.CCID())
+		}
 	}
 
-	return ccprovider.DeploymentSpecToChaincodeContainerInfo(cds, false), nil
+	return nil
 }
 
 func (lscc *LifeCycleSysCC) ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
@@ -240,7 +263,10 @@ func (lscc *LifeCycleSysCC) ChaincodeDefinition(channelID, chaincodeName string,
 		return nil, errors.Wrapf(err, "chaincode %s has bad definition", chaincodeName)
 	}
 
-	return chaincodeData, nil
+	return &LegacySecurity{
+		ChaincodeData: chaincodeData,
+		Support:       lscc.Support,
+	}, nil
 }
 
 // ValidationInfo returns name&arguments of the validation plugin for the supplied chaincode.

@@ -7,11 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"strings"
-
 	"github.com/hyperledger/fabric/common/util"
 	corechaincode "github.com/hyperledger/fabric/core/chaincode"
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
@@ -35,7 +32,6 @@ type ChaincodeInfoCache interface {
 type LegacyDefinition struct {
 	Name              string
 	Version           string
-	HashField         []byte
 	EndorsementPlugin string
 	RequiresInitField bool
 	CCIDField         string
@@ -162,33 +158,5 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 
 		// Note, for local chaincodes, package-id is 1-1 with CCID, but for remote chaincodes, it might not be
 		CCIDField: string(chaincodeInfo.InstallInfo.PackageID),
-	}, nil
-}
-
-// ChaincodeContainerInfo returns the information necessary to launch a chaincode, it also returns
-// static definitions for the fabric defined system chaincodes
-func (cei *ChaincodeEndorsementInfo) ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
-	if cei.BuiltinSCCs.IsSysCC(chaincodeName) {
-		return &ccprovider.ChaincodeContainerInfo{
-			PackageID: persistence.PackageID(chaincodeName + ":" + cei.SysCCVersion),
-			Name:      chaincodeName,
-			Version:   cei.SysCCVersion,
-		}, nil
-	}
-
-	chaincodeInfo, ok, err := cei.CachedChaincodeInfo(channelID, chaincodeName, qe)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return cei.LegacyImpl.ChaincodeContainerInfo(channelID, chaincodeName, qe)
-	}
-
-	return &ccprovider.ChaincodeContainerInfo{
-		Name:      chaincodeName,
-		Version:   chaincodeInfo.Definition.EndorsementInfo.Version,
-		Path:      chaincodeInfo.InstallInfo.Path,
-		Type:      strings.ToUpper(chaincodeInfo.InstallInfo.Type),
-		PackageID: chaincodeInfo.InstallInfo.PackageID,
 	}, nil
 }

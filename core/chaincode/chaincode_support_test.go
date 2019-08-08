@@ -215,7 +215,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	if !globalConfig.TLSEnabled {
 		containerRuntime.CertGenerator = nil
 	}
-	fakeInstantiationPolicyChecker := &mock.InstantiationPolicyChecker{}
 	userRunsCC := true
 	metricsProviders := &disabled.Provider{}
 	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
@@ -226,21 +225,20 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		StartupTimeout: globalConfig.StartupTimeout,
 	}
 	chaincodeSupport := &ChaincodeSupport{
-		ACLProvider:                mockAclProvider,
-		AppConfig:                  peerInstance,
-		DeployedCCInfoProvider:     &ledgermock.DeployedChaincodeInfoProvider{},
-		ExecuteTimeout:             globalConfig.ExecuteTimeout,
-		HandlerMetrics:             NewHandlerMetrics(metricsProviders),
-		HandlerRegistry:            chaincodeHandlerRegistry,
-		InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
-		Keepalive:                  globalConfig.Keepalive,
-		Launcher:                   chaincodeLauncher,
-		Lifecycle:                  ml,
-		Peer:                       peerInstance,
-		Runtime:                    containerRuntime,
-		BuiltinSCCs:                map[string]struct{}{"lscc": {}},
-		TotalQueryLimit:            globalConfig.TotalQueryLimit,
-		UserRunsCC:                 userRunsCC,
+		ACLProvider:            mockAclProvider,
+		AppConfig:              peerInstance,
+		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
+		HandlerRegistry:        chaincodeHandlerRegistry,
+		Keepalive:              globalConfig.Keepalive,
+		Launcher:               chaincodeLauncher,
+		Lifecycle:              ml,
+		Peer:                   peerInstance,
+		Runtime:                containerRuntime,
+		BuiltinSCCs:            map[string]struct{}{"lscc": {}},
+		TotalQueryLimit:        globalConfig.TotalQueryLimit,
+		UserRunsCC:             userRunsCC,
 	}
 
 	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)

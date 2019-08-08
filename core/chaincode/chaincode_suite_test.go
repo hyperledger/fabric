@@ -64,6 +64,11 @@ type lifecycle interface {
 	chaincode.Lifecycle
 }
 
+//go:generate counterfeiter -o mock/legacy_chaincode_definition.go --fake-name LegacyChaincodeDefinition . legacyChaincodeDefinition
+type legacyChaincodeDefinition interface {
+	chaincode.LegacyChaincodeDefinition
+}
+
 //go:generate counterfeiter -o mock/chaincode_stream.go --fake-name ChaincodeStream . chaincodeStream
 type chaincodeStream interface {
 	ccintf.ChaincodeStream
@@ -77,11 +82,6 @@ type transactionRegistry interface {
 //go:generate counterfeiter -o mock/acl_provider.go --fake-name ACLProvider . aclProvider
 type aclProvider interface {
 	chaincode.ACLProvider
-}
-
-//go:generate counterfeiter -o mock/instantiation_policy_checker.go --fake-name InstantiationPolicyChecker . instantiationPolicyChecker
-type instantiationPolicyChecker interface {
-	chaincode.InstantiationPolicyChecker
 }
 
 //go:generate counterfeiter -o mock/ledger_getter.go --fake-name LedgerGetter . ledgerGetter

@@ -250,73 +250,6 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			})
 		})
 	})
-
-	Describe("ChaincodeContainerInfo", func() {
-		It("returns the current definition", func() {
-			res, err := cei.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(Equal(&ccprovider.ChaincodeContainerInfo{
-				Name:      "name",
-				Version:   "version",
-				Path:      "fake-path",
-				Type:      "FAKE-TYPE",
-				PackageID: "hash",
-			}))
-		})
-
-		Context("when the chaincode is a builtin system chaincode", func() {
-			BeforeEach(func() {
-				builtinSCCs["test-syscc-name"] = struct{}{}
-			})
-
-			It("returns a static definition", func() {
-				res, err := cei.ChaincodeContainerInfo("channel-id", "test-syscc-name", fakeQueryExecutor)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal(&ccprovider.ChaincodeContainerInfo{
-					Name:      "test-syscc-name",
-					Version:   "test-syscc-version",
-					PackageID: "test-syscc-name:test-syscc-version",
-				}))
-			})
-		})
-
-		Context("when the definition does not exist in the new lifecycle", func() {
-			var (
-				legacyContainerInfo *ccprovider.ChaincodeContainerInfo
-			)
-
-			BeforeEach(func() {
-				legacyContainerInfo = &ccprovider.ChaincodeContainerInfo{
-					Name:    "definition-name",
-					Version: "definition-version",
-				}
-
-				fakeLegacyImpl.ChaincodeContainerInfoReturns(legacyContainerInfo, fmt.Errorf("fake-error"))
-			})
-
-			It("passes through the legacy implementation", func() {
-				res, err := cei.ChaincodeContainerInfo("channel-id", "different-name", fakeQueryExecutor)
-				Expect(err).To(MatchError("fake-error"))
-				Expect(res).To(Equal(legacyContainerInfo))
-				Expect(fakeLegacyImpl.ChaincodeContainerInfoCallCount()).To(Equal(1))
-				channelID, name, qe := fakeLegacyImpl.ChaincodeContainerInfoArgsForCall(0)
-				Expect(channelID).To(Equal("channel-id"))
-				Expect(name).To(Equal("different-name"))
-				Expect(qe).To(Equal(fakeQueryExecutor))
-			})
-		})
-
-		Context("when the cache returns an error", func() {
-			BeforeEach(func() {
-				fakeCache.ChaincodeInfoReturns(nil, fmt.Errorf("cache-error"))
-			})
-
-			It("returns the wrapped error", func() {
-				_, err := cei.ChaincodeContainerInfo("channel-id", "name", fakeQueryExecutor)
-				Expect(err).To(MatchError("could not get approved chaincode info from cache: cache-error"))
-			})
-		})
-	})
 })
 
 var _ = Describe("LegacyDefinition", func() {
@@ -328,7 +261,6 @@ var _ = Describe("LegacyDefinition", func() {
 		ld = &lifecycle.LegacyDefinition{
 			Name:              "name",
 			Version:           "version",
-			HashField:         []byte("hash"),
 			EndorsementPlugin: "endorsement-plugin",
 			RequiresInitField: true,
 		}

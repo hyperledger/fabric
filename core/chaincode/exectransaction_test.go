@@ -155,7 +155,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		},
 		PeerAddress: peerAddress,
 	}
-	fakeInstantiationPolicyChecker := &mock.InstantiationPolicyChecker{}
 	userRunsCC := false
 	metricsProviders := &disabled.Provider{}
 	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
@@ -170,20 +169,19 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			func(string) channelconfig.Resources { return nil },
 			newPolicyChecker(peerInstance),
 		),
-		AppConfig:                  peerInstance,
-		DeployedCCInfoProvider:     &ledgermock.DeployedChaincodeInfoProvider{},
-		ExecuteTimeout:             globalConfig.ExecuteTimeout,
-		HandlerMetrics:             NewHandlerMetrics(metricsProviders),
-		HandlerRegistry:            chaincodeHandlerRegistry,
-		InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
-		Keepalive:                  globalConfig.Keepalive,
-		Launcher:                   chaincodeLauncher,
-		Lifecycle:                  ml,
-		Peer:                       peerInstance,
-		Runtime:                    containerRuntime,
-		BuiltinSCCs:                builtinSCCs,
-		TotalQueryLimit:            globalConfig.TotalQueryLimit,
-		UserRunsCC:                 userRunsCC,
+		AppConfig:              peerInstance,
+		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
+		HandlerRegistry:        chaincodeHandlerRegistry,
+		Keepalive:              globalConfig.Keepalive,
+		Launcher:               chaincodeLauncher,
+		Lifecycle:              ml,
+		Peer:                   peerInstance,
+		Runtime:                containerRuntime,
+		BuiltinSCCs:            builtinSCCs,
+		TotalQueryLimit:        globalConfig.TotalQueryLimit,
+		UserRunsCC:             userRunsCC,
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
