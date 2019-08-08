@@ -18,6 +18,7 @@ import (
 	"regexp"
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence/intf" // yuck
+	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/pkg/errors"
 )
@@ -45,6 +46,46 @@ const (
 	ChaincodePackageMetadataFile = "Chaincode-Package-Metadata.json"
 )
 
+//go:generate counterfeiter -o mock/legacy_cc_package_locator.go --fake-name LegacyCCPackageLocator . LegacyCCPackageLocator
+
+type LegacyCCPackageLocator interface {
+	GetChaincodeDepSpec(nameVersion string) (*pb.ChaincodeDeploymentSpec, error)
+}
+
+type FallbackPackageLocator struct {
+	ChaincodePackageLocator *ChaincodePackageLocator
+	LegacyCCPackageLocator  LegacyCCPackageLocator
+}
+
+func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID persistence.PackageID) (*ChaincodePackageMetadata, io.ReadCloser, error) {
+	streamer := fpl.ChaincodePackageLocator.ChaincodePackageStreamer(packageID)
+	if streamer.Exists() {
+		metadata, err := streamer.Metadata()
+		if err != nil {
+			return nil, nil, errors.WithMessagef(err, "error retrieving chaincode package metadata '%s'", packageID)
+		}
+
+		tarStream, err := streamer.Code()
+		if err != nil {
+			return nil, nil, errors.WithMessagef(err, "error retrieving chaincode package code '%s'", packageID)
+		}
+
+		return metadata, tarStream, nil
+	}
+
+	cds, err := fpl.LegacyCCPackageLocator.GetChaincodeDepSpec(string(packageID))
+	if err != nil {
+		return nil, nil, errors.WithMessagef(err, "could not get legacy chaincode package '%s'", packageID)
+	}
+
+	return &ChaincodePackageMetadata{
+			Path: cds.ChaincodeSpec.ChaincodeId.Path,
+			Type: cds.ChaincodeSpec.Type.String(),
+		},
+		ioutil.NopCloser(bytes.NewBuffer(cds.CodePackage)),
+		nil
+}
+
 type ChaincodePackageLocator struct {
 	ChaincodeDir string
 }
@@ -57,6 +98,11 @@ func (cpl *ChaincodePackageLocator) ChaincodePackageStreamer(packageID persisten
 
 type ChaincodePackageStreamer struct {
 	PackagePath string
+}
+
+func (cps *ChaincodePackageStreamer) Exists() bool {
+	_, err := os.Stat(cps.PackagePath)
+	return err == nil
 }
 
 func (cps *ChaincodePackageStreamer) Metadata() (*ChaincodePackageMetadata, error) {

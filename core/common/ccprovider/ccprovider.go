@@ -134,6 +134,14 @@ func (cifs *CCInfoFSImpl) GetChaincodeCodePackage(ccNameVersion string) ([]byte,
 	return ccpack.GetDepSpec().CodePackage, nil
 }
 
+func (cifs *CCInfoFSImpl) GetChaincodeDepSpec(ccNameVersion string) (*pb.ChaincodeDeploymentSpec, error) {
+	ccpack, err := cifs.GetChaincode(ccNameVersion)
+	if err != nil {
+		return nil, err
+	}
+	return ccpack.GetDepSpec(), nil
+}
+
 // GetChaincodeFromPath this is a wrapper for hiding package implementation.
 func (*CCInfoFSImpl) GetChaincodeFromPath(ccNameVersion string, path string) (CCPackage, error) {
 	// try raw CDS

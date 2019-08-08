@@ -11,11 +11,102 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/persistence/mock"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	tm "github.com/stretchr/testify/mock"
 )
+
+var _ = Describe("FallbackPackageLocator", func() {
+	var (
+		cpl               *persistence.ChaincodePackageLocator
+		fakeLegacyLocator *mock.LegacyCCPackageLocator
+		fpl               *persistence.FallbackPackageLocator
+	)
+
+	BeforeEach(func() {
+		cpl = &persistence.ChaincodePackageLocator{
+			ChaincodeDir: "testdata",
+		}
+		fakeLegacyLocator = &mock.LegacyCCPackageLocator{}
+		fpl = &persistence.FallbackPackageLocator{
+			ChaincodePackageLocator: cpl,
+			LegacyCCPackageLocator:  fakeLegacyLocator,
+		}
+	})
+
+	Describe("GetChaincodePackage", func() {
+		It("gets the chaincode package metadata and stream", func() {
+			md, stream, err := fpl.GetChaincodePackage("good-package")
+			Expect(err).NotTo(HaveOccurred())
+			defer stream.Close()
+			Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
+				Type:  "Fake-Type",
+				Path:  "Fake-Path",
+				Label: "Real-Label",
+			}))
+			code, err := ioutil.ReadAll(stream)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(code).To(Equal([]byte("package")))
+			Expect(fakeLegacyLocator.GetChaincodeDepSpecCallCount()).To(Equal(0))
+		})
+
+		Context("when the package has bad metadata", func() {
+			It("wraps and returns the error", func() {
+				_, _, err := fpl.GetChaincodePackage("bad-metadata")
+				Expect(err).To(MatchError(ContainSubstring("error retrieving chaincode package metadata 'bad-metadata'")))
+			})
+		})
+
+		Context("when the package has bad code", func() {
+			It("wraps and returns the error", func() {
+				_, _, err := fpl.GetChaincodePackage("missing-codepackage")
+				Expect(err).To(MatchError(ContainSubstring("error retrieving chaincode package code 'missing-codepackage'")))
+			})
+		})
+
+		Context("when the package is not in the new package store", func() {
+			BeforeEach(func() {
+				fakeLegacyLocator.GetChaincodeDepSpecReturns(
+					&pb.ChaincodeDeploymentSpec{
+						ChaincodeSpec: &pb.ChaincodeSpec{
+							ChaincodeId: &pb.ChaincodeID{
+								Path: "legacy-path",
+							},
+							Type: pb.ChaincodeSpec_GOLANG,
+						},
+						CodePackage: []byte("legacy-code"),
+					},
+					nil)
+			})
+
+			It("falls back to the legacy retriever", func() {
+				md, stream, err := fpl.GetChaincodePackage("legacy-package")
+				Expect(err).NotTo(HaveOccurred())
+				defer stream.Close()
+				Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
+					Path: "legacy-path",
+					Type: "GOLANG",
+				}))
+				code, err := ioutil.ReadAll(stream)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(code).To(Equal([]byte("legacy-code")))
+			})
+
+			Context("when the legacy provider returns an error", func() {
+				BeforeEach(func() {
+					fakeLegacyLocator.GetChaincodeDepSpecReturns(nil, errors.Errorf("fake-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					_, _, err := fpl.GetChaincodePackage("legacy-package")
+					Expect(err).To(MatchError("could not get legacy chaincode package 'legacy-package': fake-error"))
+				})
+			})
+		})
+	})
+})
 
 var _ = Describe("ChaincodePackageParser", func() {
 	var (
