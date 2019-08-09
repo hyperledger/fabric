@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 syntax = "proto3";
 
 import "common/common.proto";
-import "google/protobuf/timestamp.proto";
 import "peer/chaincode_event.proto";
 import "peer/transaction.proto";
 

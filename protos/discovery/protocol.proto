@@ -6,7 +6,6 @@ syntax = "proto3";
 
 import "gossip/message.proto";
 import "msp/msp_config.proto";
-import "msp/identities.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/discovery" ;
 
