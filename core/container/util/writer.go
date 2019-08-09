@@ -24,12 +24,6 @@ import (
 
 var vmLogger = flogging.MustGetLogger("container")
 
-// These filetypes are excluded while creating the tar package sent to Docker
-// Generated .class and other temporary files can be excluded
-var javaExcludeFileTypes = map[string]bool{
-	".class": true,
-}
-
 // WriteFolderToTarPackage writes source files to a tarball.
 // This utility is used for node js chaincode packaging, but not golang chaincode.
 // Golang chaincode has more sophisticated file packaging, as implemented in golang/platform.go.
@@ -155,7 +149,6 @@ func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 
 	is := bufio.NewReader(fd)
 	return WriteStreamToPackage(is, localpath, packagepath, tw)
-
 }
 
 //WriteStreamToPackage writes bytes (from a file reader) to the tarball
