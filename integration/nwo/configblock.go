@@ -304,6 +304,67 @@ func RemoveConsenter(n *Network, peer *Peer, orderer *Orderer, channel string, c
 	})
 }
 
+// ConsenterRemover constructs configs that can be used by `UpdateOrdererConfig` to remove a consenter
+func ConsenterRemover(n *Network, peer *Peer, orderer *Orderer, channel string, certificate []byte) (current, updated *common.Config) {
+	config := GetConfig(n, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeValue := &protosorderer.ConsensusType{}
+	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	Expect(err).NotTo(HaveOccurred())
+
+	metadata := &ectdraft_protos.ConfigMetadata{}
+	err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
+	Expect(err).NotTo(HaveOccurred())
+
+	var newConsenters []*ectdraft_protos.Consenter
+	for _, consenter := range metadata.Consenters {
+		if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
+			continue
+		}
+		newConsenters = append(newConsenters, consenter)
+	}
+
+	metadata.Consenters = newConsenters
+	consensusTypeValue.Metadata, err = proto.Marshal(metadata)
+	Expect(err).NotTo(HaveOccurred())
+
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value:     protoutil.MarshalOrPanic(consensusTypeValue),
+	}
+
+	return config, updatedConfig
+}
+
+// ConsenterAdder constructs configs that can be used by `UpdateOrdererConfig` to add a consenter
+func ConsenterAdder(n *Network, peer *Peer, orderer *Orderer, channel string, consenter ectdraft_protos.Consenter) (current, updated *common.Config) {
+	config := GetConfig(n, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeValue := &protosorderer.ConsensusType{}
+	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	Expect(err).NotTo(HaveOccurred())
+
+	metadata := &ectdraft_protos.ConfigMetadata{}
+	err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
+	Expect(err).NotTo(HaveOccurred())
+
+	metadata.Consenters = append(metadata.Consenters, &consenter)
+
+	consensusTypeValue.Metadata, err = proto.Marshal(metadata)
+	Expect(err).NotTo(HaveOccurred())
+
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value:     protoutil.MarshalOrPanic(consensusTypeValue),
+	}
+
+	return config, updatedConfig
+}
+
 // ConsensusMetadataMutator receives ConsensusType.Metadata and mutates it
 type ConsensusMetadataMutator func([]byte) []byte
 
