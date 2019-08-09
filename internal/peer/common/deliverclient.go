@@ -71,11 +71,16 @@ func (d *DeliverClient) readBlock() (*cb.Block, error) {
 	}
 	switch t := msg.Type.(type) {
 	case *ab.DeliverResponse_Status:
-		logger.Infof("Got status: %v", t)
+		logger.Infof("Expect block, but got status: %v", t)
 		return nil, errors.Errorf("can't read the block: %v", t)
 	case *ab.DeliverResponse_Block:
 		logger.Infof("Received block: %v", t.Block.Header.Number)
-		d.Service.Recv() // Flush the success message
+		if resp, err := d.Service.Recv(); err != nil { // Flush the success message
+			logger.Errorf("Failed to flush success message: %s", err)
+		} else if status := resp.GetStatus(); status != cb.Status_SUCCESS {
+			logger.Errorf("Expect status to be SUCCESS, got: %s", status)
+		}
+
 		return t.Block, nil
 	default:
 		return nil, errors.Errorf("response error: unknown type %T", t)
