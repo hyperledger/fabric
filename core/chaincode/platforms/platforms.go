@@ -1,7 +1,7 @@
 /*
-# Copyright IBM Corp. All Rights Reserved.
-#
-# SPDX-License-Identifier: Apache-2.0
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
 */
 
 package platforms
@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/pkg/errors"
 )
@@ -184,13 +183,4 @@ func (r *Registry) GenerateDockerBuild(ccType, path, name, version string, codeP
 	}()
 
 	return input, nil
-}
-
-type Builder struct {
-	Registry *Registry
-	Client   *docker.Client
-}
-
-func (b *Builder) GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error) {
-	return b.Registry.GenerateDockerBuild(ccci.Type, ccci.Path, ccci.Name, ccci.Version, codePackage, b.Client)
 }
