@@ -138,7 +138,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 	return nil
 }
 
-//WriteFileToPackage writes a file to the tarball
+// WriteFileToPackage writes a file to a tar stream.
 func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) error {
 	vmLogger.Debug("Writing file to tarball:", packagepath)
 	fd, err := os.Open(localpath)
@@ -147,23 +147,17 @@ func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 	}
 	defer fd.Close()
 
-	is := bufio.NewReader(fd)
-	return WriteStreamToPackage(is, localpath, packagepath, tw)
-}
-
-//WriteStreamToPackage writes bytes (from a file reader) to the tarball
-func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw *tar.Writer) error {
-	info, err := os.Stat(localpath)
+	fi, err := fd.Stat()
 	if err != nil {
 		return fmt.Errorf("%s: %s", localpath, err)
 	}
-	header, err := tar.FileInfoHeader(info, localpath)
+
+	header, err := tar.FileInfoHeader(fi, localpath)
 	if err != nil {
-		return fmt.Errorf("Error getting FileInfoHeader: %s", err)
+		return fmt.Errorf("failed calculating FileInfoHeader: %s", err)
 	}
 
-	//Let's take the variance out of the tar, make headers identical by using zero time
-	oldname := header.Name
+	// Take the variance out of the tar by using zero time and fixed uid/gid.
 	var zeroTime time.Time
 	header.AccessTime = zeroTime
 	header.ModTime = zeroTime
@@ -173,11 +167,15 @@ func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw
 	header.Uid = 500
 	header.Gid = 500
 
-	if err = tw.WriteHeader(header); err != nil {
-		return fmt.Errorf("Error write header for (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
+	err = tw.WriteHeader(header)
+	if err != nil {
+		return fmt.Errorf("failed to write header for %s: %s", localpath, err)
 	}
-	if _, err := io.Copy(tw, is); err != nil {
-		return fmt.Errorf("Error copy (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
+
+	is := bufio.NewReader(fd)
+	_, err = io.Copy(tw, is)
+	if err != nil {
+		return fmt.Errorf("failed to write %s as %s: %s", localpath, packagepath, err)
 	}
 
 	return nil
