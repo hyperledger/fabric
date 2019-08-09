@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ram"
+	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -108,6 +109,7 @@ func TestConfigTx(t *testing.T) {
 }
 
 func TestNewRegistrar(t *testing.T) {
+	conf := localconfig.TopLevel{}
 	// system channel
 	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
@@ -120,7 +122,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
 		assert.Panics(t, func() {
-			NewRegistrar(lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
+			NewRegistrar(conf, lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
 		}, "Should have panicked when starting without a system chain")
 	})
 
@@ -140,7 +142,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
 		assert.Panics(t, func() {
-			NewRegistrar(lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
+			NewRegistrar(conf, lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
 		}, "Two system channels should have caused panic")
 	})
 
@@ -151,7 +153,7 @@ func TestNewRegistrar(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(conf, lf, mockCrypto(), &disabled.Provider{})
 		manager.Initialize(consenters)
 
 		chainSupport := manager.GetChain("Fake")
@@ -165,6 +167,7 @@ func TestNewRegistrar(t *testing.T) {
 }
 
 func TestCreateChain(t *testing.T) {
+	conf := localconfig.TopLevel{}
 	// system channel
 	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
@@ -175,7 +178,7 @@ func TestCreateChain(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(conf, lf, mockCrypto(), &disabled.Provider{})
 		manager.Initialize(consenters)
 
 		ledger, err := lf.GetOrCreate("mychannel")
@@ -214,7 +217,7 @@ func TestCreateChain(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		manager := NewRegistrar(lf, mockCrypto(), &disabled.Provider{})
+		manager := NewRegistrar(conf, lf, mockCrypto(), &disabled.Provider{})
 		manager.Initialize(consenters)
 		orglessChannelConf := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 		orglessChannelConf.Application.Organizations = nil
@@ -373,12 +376,13 @@ func TestBroadcastChannelSupportRejection(t *testing.T) {
 	// system channel
 	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
+	conf := localconfig.TopLevel{}
 
 	t.Run("Rejection", func(t *testing.T) {
 
 		ledgerFactory, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChainID, genesisBlockSys)
 		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
-		registrar := NewRegistrar(ledgerFactory, mockCrypto(), &disabled.Provider{})
+		registrar := NewRegistrar(conf, ledgerFactory, mockCrypto(), &disabled.Provider{})
 		registrar.Initialize(mockConsenters)
 		randomValue := 1
 		configTx := makeConfigTx(genesisconfig.TestChainID, randomValue)

@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -91,9 +92,9 @@ type ledgerResources struct {
 
 // Registrar serves as a point of access and control for the individual channel resources.
 type Registrar struct {
-	lock   sync.RWMutex
-	chains map[string]*ChainSupport
-
+	lock               sync.RWMutex
+	chains             map[string]*ChainSupport
+	config             localconfig.TopLevel
 	consenters         map[string]consensus.Consenter
 	ledgerFactory      blockledger.Factory
 	signer             crypto.LocalSigner
@@ -125,9 +126,14 @@ func configTx(reader blockledger.Reader) *cb.Envelope {
 }
 
 // NewRegistrar produces an instance of a *Registrar.
-func NewRegistrar(ledgerFactory blockledger.Factory,
-	signer crypto.LocalSigner, metricsProvider metrics.Provider, callbacks ...channelconfig.BundleActor) *Registrar {
+func NewRegistrar(
+	config localconfig.TopLevel,
+	ledgerFactory blockledger.Factory,
+	signer crypto.LocalSigner,
+	metricsProvider metrics.Provider,
+	callbacks ...channelconfig.BundleActor) *Registrar {
 	r := &Registrar{
+		config:             config,
 		chains:             make(map[string]*ChainSupport),
 		ledgerFactory:      ledgerFactory,
 		signer:             signer,
@@ -167,7 +173,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r.blockcutterMetrics,
 			)
 			r.templator = msgprocessor.NewDefaultTemplator(chain)
-			chain.Processor = msgprocessor.NewSystemChannel(chain, r.templator, msgprocessor.CreateSystemChannelFilters(r, chain))
+			chain.Processor = msgprocessor.NewSystemChannel(chain, r.templator, msgprocessor.CreateSystemChannelFilters(r, chain, r.config))
 
 			// Retrieve genesis block to log its hash. See FAB-5450 for the purpose
 			iter, pos := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}})

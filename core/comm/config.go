@@ -114,6 +114,8 @@ type SecureOptions struct {
 	RequireClientCert bool
 	// CipherSuites is a list of supported cipher suites for TLS
 	CipherSuites []uint16
+	// TimeShift makes TLS handshakes time sampling shift to the past by a given duration
+	TimeShift time.Duration
 }
 
 // KeepaliveOptions is used to set the gRPC keepalive settings for both

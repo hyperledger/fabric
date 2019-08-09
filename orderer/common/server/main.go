@@ -161,7 +161,8 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 	manager := initializeMultichannelRegistrar(clusterBootBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
-	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS)
+	expiration := conf.General.Authentication.NoExpirationChecks
+	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS, expiration)
 
 	logger.Infof("Starting %s", metadata.GetVersionInfo())
 	go handleSignals(addPlatformSignals(map[os.Signal]func(){
@@ -364,6 +365,7 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 		Logger:             generalConf.Logger,
 		KaOpts:             generalConf.KaOpts,
 		SecOpts: &comm.SecureOptions{
+			TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
 			CipherSuites:      comm.DefaultTLSCipherSuites,
 			ClientRootCAs:     clientRootCAs,
 			RequireClientCert: true,
@@ -419,6 +421,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool,
 	}
 
 	cc.SecOpts = &comm.SecureOptions{
+		TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
 		RequireClientCert: true,
 		CipherSuites:      comm.DefaultTLSCipherSuites,
 		ServerRootCAs:     serverRootCAs,
@@ -626,7 +629,7 @@ func initializeMultichannelRegistrar(
 
 	consenters := make(map[string]consensus.Consenter)
 
-	registrar := multichannel.NewRegistrar(lf, signer, metricsProvider, callbacks...)
+	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, callbacks...)
 
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics

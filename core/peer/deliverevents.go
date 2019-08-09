@@ -138,7 +138,7 @@ func NewDeliverEventsServer(mutualTLS bool, policyCheckerProvider PolicyCheckerP
 	}
 	metrics := deliver.NewMetrics(metricsProvider)
 	return &server{
-		dh:                    deliver.NewHandler(chainManager, timeWindow, mutualTLS, metrics),
+		dh:                    deliver.NewHandler(chainManager, timeWindow, mutualTLS, metrics, false),
 		policyCheckerProvider: policyCheckerProvider,
 	}
 }

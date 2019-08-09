@@ -115,6 +115,15 @@ used to further fine tune the cluster communication or replication mechanisms:
   attempts to replicate existing channels that this node was added to, or
   channels that this node failed to replicate in the past. Defaults to five
   minutes.
+  * `TLSHandshakeTimeShift`: If the TLS certificates of the ordering nodes
+  expire and are not replaced in time (see TLS certificate rotation below),
+   communication between them cannot be established, and it will be impossible
+   to send new transactions to the ordering service.
+   To recover from such a scenario, it is possible to make TLS handshakes
+   between ordering nodes consider the time to be shifted backwards a given
+   amount that is configured to `TLSHandshakeTimeShift`.
+   It only effects ordering nodes that use a separate gRPC server for their
+   intra-cluster communication (via `general.cluster.ListenPort` and `general.cluster.ListenAddress`).
 
 
 **Consensus parameters:**
