@@ -139,10 +139,11 @@ type externalVMAdapter struct {
 }
 
 func (e externalVMAdapter) Build(
-	cci *ccprovider.ChaincodeContainerInfo,
+	ccid ccintf.CCID,
+	metadata *persistence.ChaincodePackageMetadata,
 	codePackage io.Reader,
 ) (container.Instance, error) {
-	return e.detector.Build(cci, codePackage)
+	return e.detector.Build(ccid, metadata, codePackage)
 }
 
 func serve(args []string) error {

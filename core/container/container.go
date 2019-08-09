@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	pintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 
 	"github.com/pkg/errors"
@@ -25,7 +24,7 @@ var vmLogger = flogging.MustGetLogger("container")
 
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackageStream io.Reader) (Instance, error)
+	Build(ccid ccintf.CCID, metadata *persistence.ChaincodePackageMetadata, codePackageStream io.Reader) (Instance, error)
 }
 
 //go:generate counterfeiter -o mock/instance.go --fake-name Instance . Instance
@@ -95,16 +94,10 @@ func (r *Router) Build(ccid ccintf.CCID) error {
 		return errors.WithMessage(err, "get chaincode package for external build failed")
 	}
 
-	ccci := &ccprovider.ChaincodeContainerInfo{
-		Path:      metadata.Path,
-		Type:      metadata.Type,
-		PackageID: packageID,
-	}
-
 	var instance Instance
 	var externalErr error
 	if r.ExternalVM != nil {
-		instance, externalErr = r.ExternalVM.Build(ccci, codeStream)
+		instance, externalErr = r.ExternalVM.Build(ccid, metadata, codeStream)
 		codeStream.Close()
 	}
 
@@ -113,7 +106,7 @@ func (r *Router) Build(ccid ccintf.CCID) error {
 		if err != nil {
 			return errors.WithMessage(err, "get chaincode package for docker build failed")
 		}
-		instance, err = r.DockerVM.Build(ccci, codeStream)
+		instance, err = r.DockerVM.Build(ccid, metadata, codeStream)
 		codeStream.Close()
 	}
 

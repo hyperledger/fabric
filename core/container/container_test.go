@@ -14,7 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/mock"
@@ -62,11 +61,11 @@ var _ = Describe("Container", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeDockerVM.BuildCallCount()).To(Equal(0))
 				Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
-				ccci, codeStream := fakeExternalVM.BuildArgsForCall(0)
-				Expect(ccci).To(Equal(&ccprovider.ChaincodeContainerInfo{
-					PackageID: "package-id",
-					Type:      "package-type",
-					Path:      "package-path",
+				ccid, md, codeStream := fakeExternalVM.BuildArgsForCall(0)
+				Expect(ccid).To(Equal(ccintf.CCID("package-id")))
+				Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
+					Type: "package-type",
+					Path: "package-path",
 				}))
 				codePackage, err := ioutil.ReadAll(codeStream)
 				Expect(err).NotTo(HaveOccurred())
@@ -96,11 +95,11 @@ var _ = Describe("Container", func() {
 					Expect(err).To(MatchError("failed external (fake-external-error) and docker build: fake-docker-error"))
 					Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
 					Expect(fakeDockerVM.BuildCallCount()).To(Equal(1))
-					ccci, codeStream := fakeDockerVM.BuildArgsForCall(0)
-					Expect(ccci).To(Equal(&ccprovider.ChaincodeContainerInfo{
-						PackageID: "package-id",
-						Type:      "package-type",
-						Path:      "package-path",
+					ccid, md, codeStream := fakeDockerVM.BuildArgsForCall(0)
+					Expect(ccid).To(Equal(ccintf.CCID("package-id")))
+					Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
+						Type: "package-type",
+						Path: "package-path",
 					}))
 					codePackage, err := ioutil.ReadAll(codeStream)
 					Expect(err).NotTo(HaveOccurred())

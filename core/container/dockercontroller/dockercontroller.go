@@ -24,7 +24,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -73,7 +73,7 @@ type dockerClient interface {
 }
 
 type PlatformBuilder interface {
-	GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (io.Reader, error)
+	GenerateDockerBuild(ccType, path string, codePackage io.Reader) (io.Reader, error)
 }
 
 type ContainerInstance struct {
@@ -172,8 +172,7 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 }
 
 // Build is responsible for building an image if it does not already exist.
-func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (container.Instance, error) {
-	ccid := ccintf.New(ccci.PackageID)
+func (vm *DockerVM) Build(ccid ccintf.CCID, metadata *persistence.ChaincodePackageMetadata, codePackage io.Reader) (container.Instance, error) {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return nil, err
@@ -182,15 +181,12 @@ func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage i
 	// This is an awkward translation, but better here in a future dead path
 	// than elsewhere.  The old enum types are capital, but at least as implemented
 	// lifecycle tools seem to allow type to be set lower case.
-	ccType := strings.ToUpper(ccci.Type)
-
-	ccciTranslated := *ccci
-	ccciTranslated.Type = ccType
+	ccType := strings.ToUpper(metadata.Type)
 
 	_, err = vm.Client.InspectImage(imageName)
 	switch err {
 	case docker.ErrNoSuchImage:
-		dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(&ccciTranslated, codePackage)
+		dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccType, metadata.Path, codePackage)
 		if err != nil {
 			return nil, errors.Wrap(err, "platform builder failed")
 		}
