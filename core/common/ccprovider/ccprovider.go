@@ -17,7 +17,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -485,18 +484,6 @@ func (cd *ChaincodeData) String() string { return proto.CompactTextString(cd) }
 // ProtoMessage just exists to make proto happy
 func (*ChaincodeData) ProtoMessage() {}
 
-// ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
-type ChaincodeContainerInfo struct {
-	PackageID persistence.PackageID
-	Path      string
-	Type      string
-
-	// FIXME: Name and Version fields must disappear from this struct
-	// because they are *NOT* a property of the chaincode container (FAB-14561)
-	Name    string
-	Version string
-}
-
 // TransactionParams are parameters which are tied to a particular transaction
 // and which are required for invoking chaincode.
 type TransactionParams struct {
@@ -512,15 +499,4 @@ type TransactionParams struct {
 
 	// this is additional data passed to the chaincode
 	ProposalDecorations map[string][]byte
-}
-
-func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec, systemCC bool) *ChaincodeContainerInfo {
-	cci := &ChaincodeContainerInfo{
-		Name:      cds.ChaincodeSpec.ChaincodeId.Name,
-		Version:   cds.ChaincodeSpec.ChaincodeId.Version,
-		Path:      cds.ChaincodeSpec.ChaincodeId.Path,
-		Type:      cds.ChaincodeSpec.Type.String(),
-		PackageID: persistence.PackageID(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version),
-	}
-	return cci
 }

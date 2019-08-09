@@ -140,14 +140,6 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 	return simRes.GetPubSimulationBytes()
 }
 
-type PackageProviderWrapper struct {
-	FS *ccprovider.CCInfoFSImpl
-}
-
-func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	return p.FS.GetChaincodeCodePackage(string(ccci.PackageID))
-}
-
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}

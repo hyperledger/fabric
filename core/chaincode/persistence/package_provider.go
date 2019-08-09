@@ -44,30 +44,6 @@ type PackageProvider struct {
 	LegacyPP LegacyPackageProvider
 }
 
-// GetChaincodeCodePackage gets the code package bytes for a chaincode given
-// the name and version. It first searches through the persisted
-// ChaincodeInstallPackages and then falls back to searching for
-// ChaincodeDeploymentSpecs
-func (p *PackageProvider) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	codePackage, err := p.getCodePackageFromStore(ccci.PackageID)
-	if err == nil {
-		return codePackage, nil
-	}
-	if _, ok := err.(*CodePackageNotFoundErr); !ok {
-		// return the error if the hash cannot be retrieved or the code package
-		// fails to load from the persistence store
-		return nil, err
-	}
-
-	codePackage, err = p.getCodePackageFromLegacyPP(ccci.Name, ccci.Version)
-	if err != nil {
-		logger.Debug(err.Error())
-		err = errors.Errorf("code package not found for chaincode with name '%s', version '%s'", ccci.Name, ccci.Version)
-		return nil, err
-	}
-	return codePackage, nil
-}
-
 // GetCodePackageFromStore gets the code package bytes from the package
 // provider's Store, which persists ChaincodeInstallPackages
 func (p *PackageProvider) getCodePackageFromStore(packageID persistence.PackageID) ([]byte, error) {

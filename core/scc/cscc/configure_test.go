@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
@@ -282,14 +281,6 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 		res.Status,
 		"cscc invoke JoinChain should have failed with null genesis block",
 	)
-}
-
-type PackageProviderWrapper struct {
-	FS *ccprovider.CCInfoFSImpl
-}
-
-func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	return p.FS.GetChaincodeCodePackage(ccci.Name + ":" + ccci.Version)
 }
 
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
