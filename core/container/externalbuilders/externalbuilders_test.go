@@ -60,17 +60,6 @@ var _ = Describe("Externalbuilders", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		Context("when the tmp dir cannot be created", func() {
-			BeforeEach(func() {
-				ccci.PackageID = "/"
-			})
-
-			It("returns an error", func() {
-				_, err := externalbuilders.NewBuildContext(ccci, codePackage)
-				Expect(err).To(MatchError(ContainSubstring("could not create temp dir")))
-			})
-		})
-
 		Context("when the archive cannot be extracted", func() {
 			BeforeEach(func() {
 				var err error
@@ -82,6 +71,16 @@ var _ = Describe("Externalbuilders", func() {
 			It("returns an error", func() {
 				_, err := externalbuilders.NewBuildContext(ccci, codePackage)
 				Expect(err).To(MatchError(ContainSubstring("could not untar source package")))
+			})
+		})
+
+		Context("when package id contains inappropriate chars", func() {
+			It("replaces them with dash", func() {
+				ccci.PackageID = "i&am/pkg:id"
+
+				buildContext, err := externalbuilders.NewBuildContext(ccci, codePackage)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(buildContext.ScratchDir).To(ContainSubstring("fabric-i-am-pkg-id"))
 			})
 		})
 	})
@@ -101,17 +100,6 @@ var _ = Describe("Externalbuilders", func() {
 				Expect(err).NotTo(HaveOccurred())
 				defer instance.(*externalbuilders.Instance).BuildContext.Cleanup()
 				Expect(instance.(*externalbuilders.Instance).Builder).To(Equal(&externalbuilders.Builder{Location: "testdata"}))
-			})
-
-			Context("when the build context cannot be created", func() {
-				BeforeEach(func() {
-					ccci.PackageID = "/"
-				})
-
-				It("returns an error", func() {
-					_, err := detector.Build(ccci, codePackageBytes)
-					Expect(err).To(MatchError(ContainSubstring("could not create build context")))
-				})
 			})
 
 			Context("when no builder can be found", func() {
