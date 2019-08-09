@@ -19,10 +19,10 @@ type ChaincodeStreamHandler struct {
 	handleChaincodeStreamReturnsOnCall map[int]struct {
 		result1 error
 	}
-	LaunchInProcStub        func(ccintf.CCID) <-chan struct{}
+	LaunchInProcStub        func(string) <-chan struct{}
 	launchInProcMutex       sync.RWMutex
 	launchInProcArgsForCall []struct {
-		arg1 ccintf.CCID
+		arg1 string
 	}
 	launchInProcReturns struct {
 		result1 <-chan struct{}
@@ -94,11 +94,11 @@ func (fake *ChaincodeStreamHandler) HandleChaincodeStreamReturnsOnCall(i int, re
 	}{result1}
 }
 
-func (fake *ChaincodeStreamHandler) LaunchInProc(arg1 ccintf.CCID) <-chan struct{} {
+func (fake *ChaincodeStreamHandler) LaunchInProc(arg1 string) <-chan struct{} {
 	fake.launchInProcMutex.Lock()
 	ret, specificReturn := fake.launchInProcReturnsOnCall[len(fake.launchInProcArgsForCall)]
 	fake.launchInProcArgsForCall = append(fake.launchInProcArgsForCall, struct {
-		arg1 ccintf.CCID
+		arg1 string
 	}{arg1})
 	fake.recordInvocation("LaunchInProc", []interface{}{arg1})
 	fake.launchInProcMutex.Unlock()
@@ -118,13 +118,13 @@ func (fake *ChaincodeStreamHandler) LaunchInProcCallCount() int {
 	return len(fake.launchInProcArgsForCall)
 }
 
-func (fake *ChaincodeStreamHandler) LaunchInProcCalls(stub func(ccintf.CCID) <-chan struct{}) {
+func (fake *ChaincodeStreamHandler) LaunchInProcCalls(stub func(string) <-chan struct{}) {
 	fake.launchInProcMutex.Lock()
 	defer fake.launchInProcMutex.Unlock()
 	fake.LaunchInProcStub = stub
 }
 
-func (fake *ChaincodeStreamHandler) LaunchInProcArgsForCall(i int) ccintf.CCID {
+func (fake *ChaincodeStreamHandler) LaunchInProcArgsForCall(i int) string {
 	fake.launchInProcMutex.RLock()
 	defer fake.launchInProcMutex.RUnlock()
 	argsForCall := fake.launchInProcArgsForCall[i]

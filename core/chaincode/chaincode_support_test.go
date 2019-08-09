@@ -38,7 +38,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
@@ -870,8 +869,8 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
-		handlerRegistry.Ready(ccintf.CCID("testcc:0"))
+	fakeRuntime.StartStub = func(_ string) error {
+		handlerRegistry.Ready("testcc:0")
 		return nil
 	}
 
@@ -892,7 +891,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 //test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
+	fakeRuntime.StartStub = func(_ string) error {
 		time.Sleep(time.Second)
 		return nil
 	}
@@ -914,7 +913,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 //test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
+	fakeRuntime.StartStub = func(_ string) error {
 		return errors.New("Bad lunch; upset stomach")
 	}
 

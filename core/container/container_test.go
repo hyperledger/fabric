@@ -62,7 +62,7 @@ var _ = Describe("Container", func() {
 				Expect(fakeDockerVM.BuildCallCount()).To(Equal(0))
 				Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
 				ccid, md, codeStream := fakeExternalVM.BuildArgsForCall(0)
-				Expect(ccid).To(Equal(ccintf.CCID("package-id")))
+				Expect(ccid).To(Equal("package-id"))
 				Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
 					Type: "package-type",
 					Path: "package-path",
@@ -96,7 +96,7 @@ var _ = Describe("Container", func() {
 					Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
 					Expect(fakeDockerVM.BuildCallCount()).To(Equal(1))
 					ccid, md, codeStream := fakeDockerVM.BuildArgsForCall(0)
-					Expect(ccid).To(Equal(ccintf.CCID("package-id")))
+					Expect(ccid).To(Equal("package-id"))
 					Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
 						Type: "package-type",
 						Path: "package-path",
@@ -135,7 +135,7 @@ var _ = Describe("Container", func() {
 
 				It("passes through to the docker impl", func() {
 					err := router.Start(
-						ccintf.CCID("fake-id"),
+						"fake-id",
 						&ccintf.PeerConnection{
 							Address: "peer-address",
 							TLSConfig: &ccintf.TLSConfig{
@@ -161,7 +161,7 @@ var _ = Describe("Container", func() {
 				Context("when the chaincode has not yet been built", func() {
 					It("returns an error", func() {
 						err := router.Start(
-							ccintf.CCID("missing-name"),
+							"missing-name",
 							&ccintf.PeerConnection{
 								Address: "peer-address",
 							},
@@ -177,14 +177,14 @@ var _ = Describe("Container", func() {
 				})
 
 				It("passes through to the docker impl", func() {
-					err := router.Stop(ccintf.CCID("fake-id"))
+					err := router.Stop("fake-id")
 					Expect(err).To(MatchError("Boo"))
 					Expect(fakeInstance.StopCallCount()).To(Equal(1))
 				})
 
 				Context("when the chaincode has not yet been built", func() {
 					It("returns an error", func() {
-						err := router.Stop(ccintf.CCID("missing-name"))
+						err := router.Stop("missing-name")
 						Expect(err).To(MatchError("instance has not yet been built, cannot be stopped"))
 					})
 				})
@@ -197,7 +197,7 @@ var _ = Describe("Container", func() {
 
 				It("passes through to the docker impl", func() {
 					res, err := router.Wait(
-						ccintf.CCID("fake-id"),
+						"fake-id",
 					)
 					Expect(res).To(Equal(7))
 					Expect(err).To(MatchError("fake-wait-error"))
@@ -206,7 +206,7 @@ var _ = Describe("Container", func() {
 
 				Context("when the chaincode has not yet been built", func() {
 					It("returns an error", func() {
-						_, err := router.Wait(ccintf.CCID("missing-name"))
+						_, err := router.Wait("missing-name")
 						Expect(err).To(MatchError("instance has not yet been built, cannot wait"))
 					})
 				})

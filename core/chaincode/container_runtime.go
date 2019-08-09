@@ -25,10 +25,10 @@ type CertGenerator interface {
 // invocations.  But, the legacy lifecycle makes this very challenging.  Once the legacy lifecycle
 // is removed (or perhaps before), this interface should probably go away entirely.
 type ContainerRouter interface {
-	Build(ccid ccintf.CCID) error
-	Start(ccid ccintf.CCID, peerConnection *ccintf.PeerConnection) error
-	Stop(ccid ccintf.CCID) error
-	Wait(ccid ccintf.CCID) (int, error)
+	Build(ccid string) error
+	Start(ccid string, peerConnection *ccintf.PeerConnection) error
+	Stop(ccid string) error
+	Wait(ccid string) (int, error)
 }
 
 // ContainerRuntime is responsible for managing containerized chaincode.
@@ -40,7 +40,7 @@ type ContainerRuntime struct {
 }
 
 // Start launches chaincode in a runtime environment.
-func (c *ContainerRuntime) Start(ccid ccintf.CCID) error {
+func (c *ContainerRuntime) Start(ccid string) error {
 	var tlsConfig *ccintf.TLSConfig
 	if c.CertGenerator != nil {
 		certKeyPair, err := c.CertGenerator.Generate(string(ccid))
@@ -75,7 +75,7 @@ func (c *ContainerRuntime) Start(ccid ccintf.CCID) error {
 }
 
 // Stop terminates chaincode and its container runtime environment.
-func (c *ContainerRuntime) Stop(ccid ccintf.CCID) error {
+func (c *ContainerRuntime) Stop(ccid string) error {
 	if err := c.ContainerRouter.Stop(ccid); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
@@ -84,6 +84,6 @@ func (c *ContainerRuntime) Stop(ccid ccintf.CCID) error {
 }
 
 // Wait waits for the container runtime to terminate.
-func (c *ContainerRuntime) Wait(ccid ccintf.CCID) (int, error) {
+func (c *ContainerRuntime) Wait(ccid string) (int, error) {
 	return c.ContainerRouter.Wait(ccid)
 }

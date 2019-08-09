@@ -5,14 +5,13 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type Registry struct {
-	DeregisterStub        func(ccintf.CCID) error
+	DeregisterStub        func(string) error
 	deregisterMutex       sync.RWMutex
 	deregisterArgsForCall []struct {
-		arg1 ccintf.CCID
+		arg1 string
 	}
 	deregisterReturns struct {
 		result1 error
@@ -20,16 +19,16 @@ type Registry struct {
 	deregisterReturnsOnCall map[int]struct {
 		result1 error
 	}
-	FailedStub        func(ccintf.CCID, error)
+	FailedStub        func(string, error)
 	failedMutex       sync.RWMutex
 	failedArgsForCall []struct {
-		arg1 ccintf.CCID
+		arg1 string
 		arg2 error
 	}
-	ReadyStub        func(ccintf.CCID)
+	ReadyStub        func(string)
 	readyMutex       sync.RWMutex
 	readyArgsForCall []struct {
-		arg1 ccintf.CCID
+		arg1 string
 	}
 	RegisterStub        func(*chaincode.Handler) error
 	registerMutex       sync.RWMutex
@@ -46,11 +45,11 @@ type Registry struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Registry) Deregister(arg1 ccintf.CCID) error {
+func (fake *Registry) Deregister(arg1 string) error {
 	fake.deregisterMutex.Lock()
 	ret, specificReturn := fake.deregisterReturnsOnCall[len(fake.deregisterArgsForCall)]
 	fake.deregisterArgsForCall = append(fake.deregisterArgsForCall, struct {
-		arg1 ccintf.CCID
+		arg1 string
 	}{arg1})
 	fake.recordInvocation("Deregister", []interface{}{arg1})
 	fake.deregisterMutex.Unlock()
@@ -70,13 +69,13 @@ func (fake *Registry) DeregisterCallCount() int {
 	return len(fake.deregisterArgsForCall)
 }
 
-func (fake *Registry) DeregisterCalls(stub func(ccintf.CCID) error) {
+func (fake *Registry) DeregisterCalls(stub func(string) error) {
 	fake.deregisterMutex.Lock()
 	defer fake.deregisterMutex.Unlock()
 	fake.DeregisterStub = stub
 }
 
-func (fake *Registry) DeregisterArgsForCall(i int) ccintf.CCID {
+func (fake *Registry) DeregisterArgsForCall(i int) string {
 	fake.deregisterMutex.RLock()
 	defer fake.deregisterMutex.RUnlock()
 	argsForCall := fake.deregisterArgsForCall[i]
@@ -106,10 +105,10 @@ func (fake *Registry) DeregisterReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Registry) Failed(arg1 ccintf.CCID, arg2 error) {
+func (fake *Registry) Failed(arg1 string, arg2 error) {
 	fake.failedMutex.Lock()
 	fake.failedArgsForCall = append(fake.failedArgsForCall, struct {
-		arg1 ccintf.CCID
+		arg1 string
 		arg2 error
 	}{arg1, arg2})
 	fake.recordInvocation("Failed", []interface{}{arg1, arg2})
@@ -125,23 +124,23 @@ func (fake *Registry) FailedCallCount() int {
 	return len(fake.failedArgsForCall)
 }
 
-func (fake *Registry) FailedCalls(stub func(ccintf.CCID, error)) {
+func (fake *Registry) FailedCalls(stub func(string, error)) {
 	fake.failedMutex.Lock()
 	defer fake.failedMutex.Unlock()
 	fake.FailedStub = stub
 }
 
-func (fake *Registry) FailedArgsForCall(i int) (ccintf.CCID, error) {
+func (fake *Registry) FailedArgsForCall(i int) (string, error) {
 	fake.failedMutex.RLock()
 	defer fake.failedMutex.RUnlock()
 	argsForCall := fake.failedArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *Registry) Ready(arg1 ccintf.CCID) {
+func (fake *Registry) Ready(arg1 string) {
 	fake.readyMutex.Lock()
 	fake.readyArgsForCall = append(fake.readyArgsForCall, struct {
-		arg1 ccintf.CCID
+		arg1 string
 	}{arg1})
 	fake.recordInvocation("Ready", []interface{}{arg1})
 	fake.readyMutex.Unlock()
@@ -156,13 +155,13 @@ func (fake *Registry) ReadyCallCount() int {
 	return len(fake.readyArgsForCall)
 }
 
-func (fake *Registry) ReadyCalls(stub func(ccintf.CCID)) {
+func (fake *Registry) ReadyCalls(stub func(string)) {
 	fake.readyMutex.Lock()
 	defer fake.readyMutex.Unlock()
 	fake.ReadyStub = stub
 }
 
-func (fake *Registry) ReadyArgsForCall(i int) ccintf.CCID {
+func (fake *Registry) ReadyArgsForCall(i int) string {
 	fake.readyMutex.RLock()
 	defer fake.readyMutex.RUnlock()
 	argsForCall := fake.readyArgsForCall[i]

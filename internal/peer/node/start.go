@@ -49,7 +49,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/dispatcher"
@@ -139,7 +138,7 @@ type externalVMAdapter struct {
 }
 
 func (e externalVMAdapter) Build(
-	ccid ccintf.CCID,
+	ccid string,
 	metadata *persistence.ChaincodePackageMetadata,
 	codePackage io.Reader,
 ) (container.Instance, error) {
@@ -440,7 +439,7 @@ func serve(args []string) error {
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
-		PackageID:       ccintf.CCID(lifecycle.LifecycleNamespace + ":" + sysCCVersion),
+		CCID:            lifecycle.LifecycleNamespace + ":" + sysCCVersion,
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{

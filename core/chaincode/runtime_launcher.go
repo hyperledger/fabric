@@ -10,14 +10,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
 // LaunchRegistry tracks launching chaincode instances.
 type LaunchRegistry interface {
-	Launching(packageID ccintf.CCID) (launchState *LaunchState, started bool)
-	Deregister(packageID ccintf.CCID) error
+	Launching(ccid string) (launchState *LaunchState, started bool)
+	Deregister(ccid string) error
 }
 
 // RuntimeLauncher is responsible for launching chaincode runtimes.
@@ -28,7 +27,7 @@ type RuntimeLauncher struct {
 	Metrics        *LaunchMetrics
 }
 
-func (r *RuntimeLauncher) Launch(ccid ccintf.CCID) error {
+func (r *RuntimeLauncher) Launch(ccid string) error {
 	var startFailCh chan error
 	var timeoutCh <-chan time.Time
 
@@ -57,11 +56,11 @@ func (r *RuntimeLauncher) Launch(ccid ccintf.CCID) error {
 		err = errors.WithMessage(launchState.Err(), "chaincode registration failed")
 	case err = <-startFailCh:
 		launchState.Notify(err)
-		r.Metrics.LaunchFailures.With("chaincode", ccid.String()).Add(1)
+		r.Metrics.LaunchFailures.With("chaincode", ccid).Add(1)
 	case <-timeoutCh:
 		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", ccid)
 		launchState.Notify(err)
-		r.Metrics.LaunchTimeouts.With("chaincode", ccid.String()).Add(1)
+		r.Metrics.LaunchTimeouts.With("chaincode", ccid).Add(1)
 	}
 
 	success := true
@@ -75,7 +74,7 @@ func (r *RuntimeLauncher) Launch(ccid ccintf.CCID) error {
 	}
 
 	r.Metrics.LaunchDuration.With(
-		"chaincode", ccid.String(),
+		"chaincode", ccid,
 		"success", strconv.FormatBool(success),
 	).Observe(time.Since(startTime).Seconds())
 

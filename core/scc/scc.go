@@ -33,7 +33,7 @@ func (bccs BuiltinSCCs) IsSysCC(name string) bool {
 // communication between a per and chaincode.
 type ChaincodeStreamHandler interface {
 	HandleChaincodeStream(ccintf.ChaincodeStream) error
-	LaunchInProc(packageID ccintf.CCID) <-chan struct{}
+	LaunchInProc(packageID string) <-chan struct{}
 }
 
 type SelfDescribingSysCC interface {
@@ -49,7 +49,7 @@ type SelfDescribingSysCC interface {
 func DeploySysCC(sysCC SelfDescribingSysCC, sysCCVersion string, chaincodeStreamHandler ChaincodeStreamHandler) {
 	sysccLogger.Infof("deploying system chaincode '%s'", sysCC.Name())
 
-	ccid := ccintf.CCID(sysCC.Name() + ":" + sysCCVersion)
+	ccid := sysCC.Name() + ":" + sysCCVersion
 
 	done := chaincodeStreamHandler.LaunchInProc(ccid)
 
@@ -65,7 +65,7 @@ func DeploySysCC(sysCC SelfDescribingSysCC, sysCCVersion string, chaincodeStream
 
 	go func(sysCC SelfDescribingSysCC) {
 		sysccLogger.Debugf("chaincode started for %s", ccid)
-		err := shim.StartInProc(ccid.String(), newInProcStream(ccRcvPeerSend, peerRcvCCSend), sysCC.Chaincode())
+		err := shim.StartInProc(ccid, newInProcStream(ccRcvPeerSend, peerRcvCCSend), sysCC.Chaincode())
 		sysccLogger.Criticalf("system chaincode ended with err: %v", err)
 	}(sysCC)
 	<-done

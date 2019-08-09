@@ -33,14 +33,14 @@ const (
 
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
-	Start(ccid ccintf.CCID) error
-	Stop(ccid ccintf.CCID) error
-	Wait(ccid ccintf.CCID) (int, error)
+	Start(ccid string) error
+	Stop(ccid string) error
+	Wait(ccid string) (int, error)
 }
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(ccid ccintf.CCID) error
+	Launch(ccid string) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
@@ -78,7 +78,7 @@ type ChaincodeSupport struct {
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(ccid ccintf.CCID) (*Handler, error) {
+func (cs *ChaincodeSupport) Launch(ccid string) (*Handler, error) {
 	if h := cs.HandlerRegistry.Handler(ccid); h != nil {
 		return h, nil
 	}
@@ -96,7 +96,7 @@ func (cs *ChaincodeSupport) Launch(ccid ccintf.CCID) (*Handler, error) {
 }
 
 // LaunchInProc is a stopgap solution to be called by the inproccontroller to allow system chaincodes to register
-func (cs *ChaincodeSupport) LaunchInProc(ccid ccintf.CCID) <-chan struct{} {
+func (cs *ChaincodeSupport) LaunchInProc(ccid string) <-chan struct{} {
 	launchStatus, ok := cs.HandlerRegistry.Launching(ccid)
 	if ok {
 		chaincodeLogger.Panicf("attempted to launch a system chaincode which has already been launched")
@@ -138,10 +138,10 @@ func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) 
 // accepts the container information directly in the form of a ChaincodeDeploymentSpec.
 func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	// FIXME: this is a hack, we shouldn't construct the
-	// packageID manually but rather let lifecycle construct it
+	// ccid manually but rather let lifecycle construct it
 	// for us. However this is legacy code that will disappear
 	// so it is acceptable for now (FAB-14627)
-	ccid := ccintf.CCID(cccid.Name + ":" + cccid.Version)
+	ccid := cccid.Name + ":" + cccid.Version
 
 	h, err := cs.Launch(ccid)
 	if err != nil {
@@ -197,7 +197,7 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chain
 		return nil, errors.WithMessage(err, "invalid invocation")
 	}
 
-	h, err := cs.Launch(ccintf.CCID(ccid))
+	h, err := cs.Launch(ccid)
 	if err != nil {
 		return nil, err
 	}

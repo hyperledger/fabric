@@ -63,7 +63,7 @@ func (d *Detector) Detect(buildContext *BuildContext) *Builder {
 	return nil
 }
 
-func (d *Detector) Build(ccid ccintf.CCID, md *persistence.ChaincodePackageMetadata, codeStream io.Reader) (*Instance, error) {
+func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, codeStream io.Reader) (*Instance, error) {
 	if len(d.Builders) == 0 {
 		// A small optimization, especially while the launcher feature is under development
 		// let's not explode the build package out into the filesystem unless there are

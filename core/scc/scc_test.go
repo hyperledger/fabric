@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/mock"
 	"github.com/onsi/gomega"
@@ -30,6 +29,6 @@ func TestDeploy(t *testing.T) {
 	csh.LaunchInProcReturns(doneC)
 	scc.DeploySysCC(&lifecycle.SCC{}, "latest", csh)
 	gt.Expect(csh.LaunchInProcCallCount()).To(gomega.Equal(1))
-	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal(ccintf.CCID("_lifecycle:latest")))
+	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal("_lifecycle:latest"))
 	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(gomega.Equal(1))
 }

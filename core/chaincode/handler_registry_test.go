@@ -297,7 +297,7 @@ var _ = Describe("TxSimulatorGetter", func() {
 		fakeTxSimulator = &mock.TxSimulator{}
 		txQEGetter = &chaincode.TxQueryExecutorGetter{
 			HandlerRegistry: hr,
-			PackageID:       "package-ID",
+			CCID:            "package-ID",
 		}
 	})
 

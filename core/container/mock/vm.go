@@ -7,14 +7,13 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type VM struct {
-	BuildStub        func(ccintf.CCID, *persistence.ChaincodePackageMetadata, io.Reader) (container.Instance, error)
+	BuildStub        func(string, *persistence.ChaincodePackageMetadata, io.Reader) (container.Instance, error)
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
-		arg1 ccintf.CCID
+		arg1 string
 		arg2 *persistence.ChaincodePackageMetadata
 		arg3 io.Reader
 	}
@@ -30,11 +29,11 @@ type VM struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VM) Build(arg1 ccintf.CCID, arg2 *persistence.ChaincodePackageMetadata, arg3 io.Reader) (container.Instance, error) {
+func (fake *VM) Build(arg1 string, arg2 *persistence.ChaincodePackageMetadata, arg3 io.Reader) (container.Instance, error) {
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
-		arg1 ccintf.CCID
+		arg1 string
 		arg2 *persistence.ChaincodePackageMetadata
 		arg3 io.Reader
 	}{arg1, arg2, arg3})
@@ -56,13 +55,13 @@ func (fake *VM) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *VM) BuildCalls(stub func(ccintf.CCID, *persistence.ChaincodePackageMetadata, io.Reader) (container.Instance, error)) {
+func (fake *VM) BuildCalls(stub func(string, *persistence.ChaincodePackageMetadata, io.Reader) (container.Instance, error)) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *VM) BuildArgsForCall(i int) (ccintf.CCID, *persistence.ChaincodePackageMetadata, io.Reader) {
+func (fake *VM) BuildArgsForCall(i int) (string, *persistence.ChaincodePackageMetadata, io.Reader) {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	argsForCall := fake.buildArgsForCall[i]
