@@ -310,8 +310,6 @@ func serve(args []string) error {
 
 	packageProvider := &persistence.PackageProvider{
 		LegacyPP: &ccprovider.CCInfoFSImpl{},
-		Store:    ccStore,
-		Parser:   ccPackageParser,
 	}
 
 	// legacyMetadataManager collects metadata information from the legacy

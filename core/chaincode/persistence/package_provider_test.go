@@ -18,13 +18,11 @@ import (
 var _ = Describe("PackageProvider", func() {
 	Describe("ListInstalledChaincodesLegacy", func() {
 		var (
-			mockSPP         *mock.StorePackageProvider
 			mockLPP         *mock.LegacyPackageProvider
 			packageProvider *persistence.PackageProvider
 		)
 
 		BeforeEach(func() {
-			mockSPP = &mock.StorePackageProvider{}
 			mockLPP = &mock.LegacyPackageProvider{}
 			installedChaincodesLegacy := []chaincode.InstalledChaincode{
 				{
@@ -36,7 +34,6 @@ var _ = Describe("PackageProvider", func() {
 			mockLPP.ListInstalledChaincodesReturns(installedChaincodesLegacy, nil)
 
 			packageProvider = &persistence.PackageProvider{
-				Store:    mockSPP,
 				LegacyPP: mockLPP,
 			}
 		})
