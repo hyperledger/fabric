@@ -71,11 +71,26 @@ func (d *DeliverClient) readBlock() (*cb.Block, error) {
 	}
 	switch t := msg.Type.(type) {
 	case *ab.DeliverResponse_Status:
-		logger.Infof("Got status: %v", t)
+		logger.Infof("Expect block, but got status: %v", t)
 		return nil, errors.Errorf("can't read the block: %v", t)
 	case *ab.DeliverResponse_Block:
 		logger.Infof("Received block: %v", t.Block.Header.Number)
-		d.Service.Recv() // Flush the success message
+
+		// Deliver service returns a STATUS_SUCCESS after delivering blocks,
+		// which needs to be flushed, so that next deliver request on the same
+		// stream can proceed immediately.
+		if resp, err := d.Service.Recv(); err != nil {
+			logger.Errorf("Failed to flush success message: %s", err)
+		} else {
+			// Following code is here for debugging current flakes in IT. When we
+			// flush response message with type STATUS, sometimes we got unexpected block
+			if b, ok := resp.Type.(*ab.DeliverResponse_Block); ok {
+				logger.Errorf("Expect response to be STATUS, but got BLOCK [%d]", b.Block.Header.Number)
+			} else if status := resp.GetStatus(); status != cb.Status_SUCCESS {
+				logger.Errorf("Expect status to be SUCCESS, got: %s", status)
+			}
+		}
+
 		return t.Block, nil
 	default:
 		return nil, errors.Errorf("response error: unknown type %T", t)
