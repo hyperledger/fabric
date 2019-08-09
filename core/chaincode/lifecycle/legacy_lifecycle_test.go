@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/scc"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -72,7 +71,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			InstallInfo: &lifecycle.ChaincodeInstallInfo{
 				Path:      "fake-path",
 				Type:      "fake-type",
-				PackageID: persistence.PackageID("hash"),
+				PackageID: "hash",
 			},
 			Approved: true,
 		}
@@ -110,7 +109,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				InstallInfo: &lifecycle.ChaincodeInstallInfo{
 					Type:      "fake-type",
 					Path:      "fake-path",
-					PackageID: persistence.PackageID("hash"),
+					PackageID: "hash",
 				},
 				Approved: true,
 			}))

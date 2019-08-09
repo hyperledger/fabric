@@ -11,7 +11,6 @@ package ccintf
 //Currently inproccontroller uses it. dockercontroller does not.
 
 import (
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -30,8 +29,8 @@ func (c CCID) String() string {
 }
 
 // New returns a chaincode ID given the supplied package ID
-func New(packageID persistence.PackageID) CCID {
-	return CCID(packageID.String())
+func New(packageID string) CCID {
+	return CCID(packageID)
 }
 
 // PeerConnection instructs the chaincode how to connect back to the peer

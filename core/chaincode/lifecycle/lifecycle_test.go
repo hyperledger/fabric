@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
@@ -238,7 +237,7 @@ var _ = Describe("ExternalFunctions", func() {
 					Label: "cc-label",
 				},
 			}, nil)
-			fakeCCStore.SaveReturns(p.PackageID("fake-hash"), nil)
+			fakeCCStore.SaveReturns("fake-hash", nil)
 		})
 
 		It("saves the chaincode", func() {
@@ -264,7 +263,7 @@ var _ = Describe("ExternalFunctions", func() {
 				Path:  "cc-path",
 				Label: "cc-label",
 			}))
-			Expect(packageID).To(Equal(p.PackageID("fake-hash")))
+			Expect(packageID).To(Equal("fake-hash"))
 		})
 
 		Context("when the package does not have metadata", func() {
@@ -310,13 +309,13 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("returns the chaincode install package", func() {
-			pkgBytes, err := ef.GetInstalledChaincodePackage(p.PackageID("some-package-id"))
+			pkgBytes, err := ef.GetInstalledChaincodePackage("some-package-id")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pkgBytes).To(Equal([]byte("code-package")))
 
 			Expect(fakeCCStore.LoadCallCount()).To(Equal(1))
 			packageID := fakeCCStore.LoadArgsForCall(0)
-			Expect(packageID).To(Equal(p.PackageID("some-package-id")))
+			Expect(packageID).To(Equal("some-package-id"))
 		})
 
 		Context("when loading the chaincode fails", func() {
@@ -325,7 +324,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				pkgBytes, err := ef.GetInstalledChaincodePackage(p.PackageID("some-package-id"))
+				pkgBytes, err := ef.GetInstalledChaincodePackage("some-package-id")
 				Expect(pkgBytes).To(BeNil())
 				Expect(err).To(MatchError("could not load cc install package: fake-error"))
 			})
@@ -359,7 +358,7 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("returns installed chaincode information", func() {
-			result, err := ef.QueryInstalledChaincode(p.PackageID("installed-package-id2"))
+			result, err := ef.QueryInstalledChaincode("installed-package-id2")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(
 				&chaincode.InstalledChaincode{
@@ -393,7 +392,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("returns an error", func() {
-				result, err := ef.QueryInstalledChaincode(p.PackageID("not-there"))
+				result, err := ef.QueryInstalledChaincode("not-there")
 				Expect(err.Error()).To(Equal("another-fake-error"))
 				Expect(result).To(BeNil())
 			})
@@ -512,7 +511,7 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 
 		It("serializes the chaincode parameters to the org scoped collection", func() {
-			err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
+			err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
 
 			metadata, ok, err := resources.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)
@@ -548,7 +547,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 
 			It("uses appropriate defaults", func() {
-				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 				Expect(err).NotTo(HaveOccurred())
 
 				metadata, ok, err := resources.Serializer.DeserializeMetadata("namespaces", "cc-name#5", fakeOrgState)
@@ -577,7 +576,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("could not set defaults for chaincode definition in channel my-channel: Policy '/Channel/Application/Endorsement' must be defined for channel 'my-channel' before chaincode operations can be attempted"))
 				})
@@ -589,7 +588,7 @@ var _ = Describe("ExternalFunctions", func() {
 				})
 
 				It("returns an error", func() {
-					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, p.PackageID("hash"), fakePublicState, fakeOrgState)
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("could not get channel config for channel 'my-channel'"))
 				})

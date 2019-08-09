@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
@@ -175,9 +174,9 @@ func (cd *ChaincodeDefinition) String() string {
 
 // ChaincodeStore provides a way to persist chaincodes
 type ChaincodeStore interface {
-	Save(label string, ccInstallPkg []byte) (p.PackageID, error)
+	Save(label string, ccInstallPkg []byte) (string, error)
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
-	Load(packageID p.PackageID) (ccInstallPkg []byte, err error)
+	Load(packageID string) (ccInstallPkg []byte, err error)
 }
 
 type PackageParser interface {
@@ -186,13 +185,13 @@ type PackageParser interface {
 
 //go:generate counterfeiter -o mock/install_listener.go --fake-name InstallListener . InstallListener
 type InstallListener interface {
-	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID p.PackageID)
+	HandleChaincodeInstalled(md *persistence.ChaincodePackageMetadata, packageID string)
 }
 
 //go:generate counterfeiter -o mock/installed_chaincodes_lister.go --fake-name InstalledChaincodesLister . InstalledChaincodesLister
 type InstalledChaincodesLister interface {
 	ListInstalledChaincodes() []*chaincode.InstalledChaincode
-	GetInstalledChaincode(packageID p.PackageID) (*chaincode.InstalledChaincode, error)
+	GetInstalledChaincode(packageID string) (*chaincode.InstalledChaincode, error)
 }
 
 // Resources stores the common functions needed by all components of the lifecycle
@@ -352,7 +351,7 @@ func (ef *ExternalFunctions) SetChaincodeDefinitionDefaults(chname string, cd *C
 // ApproveChaincodeDefinitionForOrg adds a chaincode definition entry into the passed in Org state.  The definition must be
 // for either the currently defined sequence number or the next sequence number.  If the definition is
 // for the current sequence number, then it must match exactly the current definition or it will be rejected.
-func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID p.PackageID, publicState ReadableState, orgState ReadWritableState) error {
+func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID string, publicState ReadableState, orgState ReadWritableState) error {
 	// Get the current sequence from the public state
 	currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
 	if err != nil {
@@ -408,7 +407,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 	// peers of an org no longer to endorse invocations
 	// for this chaincode
 	if err := ef.Resources.Serializer.Serialize(ChaincodeSourcesName, privateName, &ChaincodeLocalPackage{
-		PackageID: packageID.String(),
+		PackageID: packageID,
 	}, orgState); err != nil {
 		return errors.WithMessage(err, "could not serialize chaincode package info to state")
 	}
@@ -499,7 +498,7 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 
 // GetInstalledChaincodePakcage retreives the installed chaincode with the given package ID
 // from the peer's chaincode store.
-func (ef *ExternalFunctions) GetInstalledChaincodePackage(packageID p.PackageID) ([]byte, error) {
+func (ef *ExternalFunctions) GetInstalledChaincodePackage(packageID string) ([]byte, error) {
 	pkgBytes, err := ef.Resources.ChaincodeStore.Load(packageID)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not load cc install package")
@@ -531,7 +530,7 @@ func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableStat
 }
 
 // QueryInstalledChaincode returns metadata for the chaincode with the supplied package ID.
-func (ef *ExternalFunctions) QueryInstalledChaincode(packageID p.PackageID) (*chaincode.InstalledChaincode, error) {
+func (ef *ExternalFunctions) QueryInstalledChaincode(packageID string) (*chaincode.InstalledChaincode, error) {
 	return ef.InstalledChaincodesLister.GetInstalledChaincode(packageID)
 }
 

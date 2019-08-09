@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/hyperledger/fabric/core/chaincode/persistence/intf" // yuck
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/pkg/errors"
@@ -57,7 +56,7 @@ type FallbackPackageLocator struct {
 	LegacyCCPackageLocator  LegacyCCPackageLocator
 }
 
-func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID persistence.PackageID) (*ChaincodePackageMetadata, io.ReadCloser, error) {
+func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*ChaincodePackageMetadata, io.ReadCloser, error) {
 	streamer := fpl.ChaincodePackageLocator.ChaincodePackageStreamer(packageID)
 	if streamer.Exists() {
 		metadata, err := streamer.Metadata()
@@ -90,9 +89,9 @@ type ChaincodePackageLocator struct {
 	ChaincodeDir string
 }
 
-func (cpl *ChaincodePackageLocator) ChaincodePackageStreamer(packageID persistence.PackageID) *ChaincodePackageStreamer {
+func (cpl *ChaincodePackageLocator) ChaincodePackageStreamer(packageID string) *ChaincodePackageStreamer {
 	return &ChaincodePackageStreamer{
-		PackagePath: filepath.Join(cpl.ChaincodeDir, packageID.String()+".bin"),
+		PackagePath: filepath.Join(cpl.ChaincodeDir, packageID+".bin"),
 	}
 }
 

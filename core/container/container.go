@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	pintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 
 	"github.com/pkg/errors"
@@ -56,7 +55,7 @@ func (UninitializedInstance) Wait() (int, error) {
 
 // PackageProvider gets chaincode packages from the filesystem.
 type PackageProvider interface {
-	GetChaincodePackage(packageID pintf.PackageID) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)
+	GetChaincodePackage(packageID string) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)
 }
 
 type Router struct {
@@ -87,7 +86,7 @@ func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 }
 
 func (r *Router) Build(ccid ccintf.CCID) error {
-	packageID := pintf.PackageID(ccid)
+	packageID := string(ccid)
 
 	metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(packageID)
 	if err != nil {
@@ -102,7 +101,7 @@ func (r *Router) Build(ccid ccintf.CCID) error {
 	}
 
 	if r.ExternalVM == nil || externalErr != nil {
-		_, codeStream, err = r.PackageProvider.GetChaincodePackage(packageID)
+		_, codeStream, err = r.PackageProvider.GetChaincodePackage(string(ccid))
 		if err != nil {
 			return errors.WithMessage(err, "get chaincode package for docker build failed")
 		}

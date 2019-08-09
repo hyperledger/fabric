@@ -8,7 +8,6 @@ package lifecycle
 import (
 	"sync"
 
-	ccpersistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
@@ -154,7 +153,7 @@ func (b *EventBroker) invokeDoneOnListeners(channelID string, succeeded bool) {
 	}
 }
 
-func (b *EventBroker) loadDBArtifacts(packageID ccpersistence.PackageID) ([]byte, error) {
+func (b *EventBroker) loadDBArtifacts(packageID string) ([]byte, error) {
 	pkgBytes, err := b.chaincodeStore.Load(packageID)
 	if err != nil {
 		return nil, err

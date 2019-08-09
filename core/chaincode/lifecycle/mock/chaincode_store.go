@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/chaincode"
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 )
 
 type ChaincodeStore struct {
@@ -21,10 +20,10 @@ type ChaincodeStore struct {
 		result1 []chaincode.InstalledChaincode
 		result2 error
 	}
-	LoadStub        func(persistence.PackageID) ([]byte, error)
+	LoadStub        func(string) ([]byte, error)
 	loadMutex       sync.RWMutex
 	loadArgsForCall []struct {
-		arg1 persistence.PackageID
+		arg1 string
 	}
 	loadReturns struct {
 		result1 []byte
@@ -34,18 +33,18 @@ type ChaincodeStore struct {
 		result1 []byte
 		result2 error
 	}
-	SaveStub        func(string, []byte) (persistence.PackageID, error)
+	SaveStub        func(string, []byte) (string, error)
 	saveMutex       sync.RWMutex
 	saveArgsForCall []struct {
 		arg1 string
 		arg2 []byte
 	}
 	saveReturns struct {
-		result1 persistence.PackageID
+		result1 string
 		result2 error
 	}
 	saveReturnsOnCall map[int]struct {
-		result1 persistence.PackageID
+		result1 string
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -107,11 +106,11 @@ func (fake *ChaincodeStore) ListInstalledChaincodesReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
-func (fake *ChaincodeStore) Load(arg1 persistence.PackageID) ([]byte, error) {
+func (fake *ChaincodeStore) Load(arg1 string) ([]byte, error) {
 	fake.loadMutex.Lock()
 	ret, specificReturn := fake.loadReturnsOnCall[len(fake.loadArgsForCall)]
 	fake.loadArgsForCall = append(fake.loadArgsForCall, struct {
-		arg1 persistence.PackageID
+		arg1 string
 	}{arg1})
 	fake.recordInvocation("Load", []interface{}{arg1})
 	fake.loadMutex.Unlock()
@@ -131,13 +130,13 @@ func (fake *ChaincodeStore) LoadCallCount() int {
 	return len(fake.loadArgsForCall)
 }
 
-func (fake *ChaincodeStore) LoadCalls(stub func(persistence.PackageID) ([]byte, error)) {
+func (fake *ChaincodeStore) LoadCalls(stub func(string) ([]byte, error)) {
 	fake.loadMutex.Lock()
 	defer fake.loadMutex.Unlock()
 	fake.LoadStub = stub
 }
 
-func (fake *ChaincodeStore) LoadArgsForCall(i int) persistence.PackageID {
+func (fake *ChaincodeStore) LoadArgsForCall(i int) string {
 	fake.loadMutex.RLock()
 	defer fake.loadMutex.RUnlock()
 	argsForCall := fake.loadArgsForCall[i]
@@ -170,7 +169,7 @@ func (fake *ChaincodeStore) LoadReturnsOnCall(i int, result1 []byte, result2 err
 	}{result1, result2}
 }
 
-func (fake *ChaincodeStore) Save(arg1 string, arg2 []byte) (persistence.PackageID, error) {
+func (fake *ChaincodeStore) Save(arg1 string, arg2 []byte) (string, error) {
 	var arg2Copy []byte
 	if arg2 != nil {
 		arg2Copy = make([]byte, len(arg2))
@@ -200,7 +199,7 @@ func (fake *ChaincodeStore) SaveCallCount() int {
 	return len(fake.saveArgsForCall)
 }
 
-func (fake *ChaincodeStore) SaveCalls(stub func(string, []byte) (persistence.PackageID, error)) {
+func (fake *ChaincodeStore) SaveCalls(stub func(string, []byte) (string, error)) {
 	fake.saveMutex.Lock()
 	defer fake.saveMutex.Unlock()
 	fake.SaveStub = stub
@@ -213,28 +212,28 @@ func (fake *ChaincodeStore) SaveArgsForCall(i int) (string, []byte) {
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *ChaincodeStore) SaveReturns(result1 persistence.PackageID, result2 error) {
+func (fake *ChaincodeStore) SaveReturns(result1 string, result2 error) {
 	fake.saveMutex.Lock()
 	defer fake.saveMutex.Unlock()
 	fake.SaveStub = nil
 	fake.saveReturns = struct {
-		result1 persistence.PackageID
+		result1 string
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *ChaincodeStore) SaveReturnsOnCall(i int, result1 persistence.PackageID, result2 error) {
+func (fake *ChaincodeStore) SaveReturnsOnCall(i int, result1 string, result2 error) {
 	fake.saveMutex.Lock()
 	defer fake.saveMutex.Unlock()
 	fake.SaveStub = nil
 	if fake.saveReturnsOnCall == nil {
 		fake.saveReturnsOnCall = make(map[int]struct {
-			result1 persistence.PackageID
+			result1 string
 			result2 error
 		})
 	}
 	fake.saveReturnsOnCall[i] = struct {
-		result1 persistence.PackageID
+		result1 string
 		result2 error
 	}{result1, result2}
 }
