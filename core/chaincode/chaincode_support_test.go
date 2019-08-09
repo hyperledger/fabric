@@ -31,7 +31,8 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	pintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -180,13 +181,13 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 			return &ccprovider.ChaincodeContainerInfo{
 				Name:      name,
 				Version:   "0",
-				PackageID: persistence.PackageID(name + ":0"),
+				PackageID: pintf.PackageID(name + ":0"),
 			}, nil
 		case "lscc":
 			return &ccprovider.ChaincodeContainerInfo{
 				Name:      "lscc",
 				Version:   "latest",
-				PackageID: persistence.PackageID("lscc:latest"),
+				PackageID: pintf.PackageID("lscc:latest"),
 			}, nil
 		default:
 			return nil, errors.New("oh-bother-no-chaincode-info")
@@ -210,7 +211,10 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 					Client:   client,
 				},
 			},
-			PackageProvider: &PackageProviderWrapper{FS: &ccprovider.CCInfoFSImpl{}},
+			PackageProvider: &persistence.FallbackPackageLocator{
+				ChaincodePackageLocator: &persistence.ChaincodePackageLocator{},
+				LegacyCCPackageLocator:  &ccprovider.CCInfoFSImpl{},
+			},
 		},
 	}
 	if !globalConfig.TLSEnabled {
@@ -897,7 +901,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		Type:      "GOLANG",
 		Name:      "testcc",
 		Version:   "0",
-		PackageID: persistence.PackageID("testcc:0"),
+		PackageID: pintf.PackageID("testcc:0"),
 	}
 
 	//actual test - everythings good

@@ -516,9 +516,14 @@ func serve(args []string) error {
 		CertGenerator: authenticator,
 		PeerAddress:   ccEndpoint,
 		ContainerRouter: &container.Router{
-			DockerVM:        dockerVM,
-			ExternalVM:      externalVMAdapter{externalVM},
-			PackageProvider: packageProvider,
+			DockerVM:   dockerVM,
+			ExternalVM: externalVMAdapter{externalVM},
+			PackageProvider: &persistence.FallbackPackageLocator{
+				ChaincodePackageLocator: &persistence.ChaincodePackageLocator{
+					ChaincodeDir: chaincodeInstallPath,
+				},
+				LegacyCCPackageLocator: &ccprovider.CCInfoFSImpl{},
+			},
 		},
 	}
 

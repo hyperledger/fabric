@@ -7,9 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package container
 
 import (
+	"io"
+	"io/ioutil"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	pintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 
@@ -54,7 +58,7 @@ func (UninitializedInstance) Wait() (int, error) {
 
 // PackageProvider gets chaincode packages from the filesystem.
 type PackageProvider interface {
-	GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error)
+	GetChaincodePackage(packageID pintf.PackageID) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)
 }
 
 type Router struct {
@@ -85,19 +89,27 @@ func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 }
 
 func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo) error {
-	codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci)
+	metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(pintf.PackageID(ccci.PackageID))
 	if err != nil {
 		return errors.WithMessage(err, "get chaincode package failed")
 	}
+	defer codeStream.Close()
+
+	ccci2 := &ccprovider.ChaincodeContainerInfo{
+		Path:      metadata.Path,
+		Type:      metadata.Type,
+		PackageID: ccci.PackageID,
+	}
+	codePackage, err := ioutil.ReadAll(codeStream)
 
 	var instance Instance
 	var externalErr error
 	if r.ExternalVM != nil {
-		instance, externalErr = r.ExternalVM.Build(ccci, codePackage)
+		instance, externalErr = r.ExternalVM.Build(ccci2, codePackage)
 	}
 
 	if r.ExternalVM == nil || externalErr != nil {
-		instance, err = r.DockerVM.Build(ccci, codePackage)
+		instance, err = r.DockerVM.Build(ccci2, codePackage)
 	}
 
 	if err != nil {
@@ -111,7 +123,7 @@ func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo) error {
 		r.containers = map[ccintf.CCID]Instance{}
 	}
 
-	r.containers[ccintf.CCID(ccci.PackageID)] = instance
+	r.containers[ccintf.CCID(ccci2.PackageID)] = instance
 
 	return nil
 }

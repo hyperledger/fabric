@@ -179,10 +179,18 @@ func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage [
 		return nil, err
 	}
 
+	// This is an awkward translation, but better here in a future dead path
+	// than elsewhere.  The old enum types are capital, but at least as implemented
+	// lifecycle tools seem to allow type to be set lower case.
+	ccType := strings.ToUpper(ccci.Type)
+
+	ccciTranslated := *ccci
+	ccciTranslated.Type = ccType
+
 	_, err = vm.Client.InspectImage(imageName)
 	switch err {
 	case docker.ErrNoSuchImage:
-		dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccci, codePackage)
+		dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(&ccciTranslated, codePackage)
 		if err != nil {
 			return nil, errors.Wrap(err, "platform builder failed")
 		}
@@ -198,7 +206,7 @@ func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage [
 	return &ContainerInstance{
 		DockerVM: vm,
 		CCID:     ccid,
-		Type:     ccci.Type,
+		Type:     ccType,
 	}, nil
 }
 

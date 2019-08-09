@@ -61,7 +61,7 @@ func TestIntegrationPath(t *testing.T) {
 
 	assert.Equal(t, &ContainerInstance{
 		CCID:     ccintf.CCID("simple"),
-		Type:     "type",
+		Type:     "TYPE",
 		DockerVM: &dc,
 	}, instance)
 
@@ -432,7 +432,7 @@ func TestBuild(t *testing.T) {
 		require.Equal(t, 1, fakePlatformBuilder.GenerateDockerBuildCallCount())
 		ccci, codePackage := fakePlatformBuilder.GenerateDockerBuildArgsForCall(0)
 		assert.Equal(t, "chaincode-name:chaincode-version", string(ccci.PackageID))
-		assert.Equal(t, "type", ccci.Type)
+		assert.Equal(t, "TYPE", ccci.Type)
 		assert.Equal(t, "path", ccci.Path)
 		assert.Equal(t, "name", ccci.Name)
 		assert.Equal(t, "version", ccci.Version)

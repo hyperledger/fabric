@@ -7,9 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package container_test
 
 import (
+	"bytes"
+	"io/ioutil"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -32,7 +36,14 @@ var _ = Describe("Container", func() {
 			fakeExternalVM = &mock.VM{}
 			fakeInstance = &mock.Instance{}
 			fakePackageProvider = &mock.PackageProvider{}
-			fakePackageProvider.GetChaincodeCodePackageReturns([]byte("code-bytes"), nil)
+			fakePackageProvider.GetChaincodePackageReturns(
+				&persistence.ChaincodePackageMetadata{
+					Type: "package-type",
+					Path: "package-path",
+				},
+				ioutil.NopCloser(bytes.NewBuffer([]byte("code-bytes"))),
+				nil,
+			)
 
 			router = &container.Router{
 				DockerVM:        fakeDockerVM,
@@ -49,7 +60,7 @@ var _ = Describe("Container", func() {
 			It("passes through to the external impl", func() {
 				err := router.Build(
 					&ccprovider.ChaincodeContainerInfo{
-						PackageID: "stop:name",
+						PackageID: "package-id",
 						Type:      "type",
 						Path:      "path",
 						Name:      "name",
@@ -61,28 +72,24 @@ var _ = Describe("Container", func() {
 				Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
 				ccci, codePackage := fakeExternalVM.BuildArgsForCall(0)
 				Expect(ccci).To(Equal(&ccprovider.ChaincodeContainerInfo{
-					PackageID: "stop:name",
-					Type:      "type",
-					Path:      "path",
-					Name:      "name",
-					Version:   "version",
+					PackageID: "package-id",
+					Type:      "package-type",
+					Path:      "package-path",
 				}))
 				Expect(codePackage).To(Equal([]byte("code-bytes")))
 			})
 
 			Context("when the package provider returns an error", func() {
 				BeforeEach(func() {
-					fakePackageProvider.GetChaincodeCodePackageReturns(nil, errors.New("fake-package-error"))
+					fakePackageProvider.GetChaincodePackageReturns(nil, nil, errors.New("fake-package-error"))
 				})
 
 				It("wraps and returns the error", func() {
 					err := router.Build(
 						&ccprovider.ChaincodeContainerInfo{
-							PackageID: "stop:name",
-							Type:      "type",
-							Path:      "path",
-							Name:      "name",
-							Version:   "version",
+							PackageID: "package-id",
+							Type:      "package-type",
+							Path:      "package-path",
 						},
 					)
 
@@ -99,11 +106,9 @@ var _ = Describe("Container", func() {
 				It("falls back to the docker impl", func() {
 					err := router.Build(
 						&ccprovider.ChaincodeContainerInfo{
-							PackageID: "stop:name",
-							Type:      "type",
-							Path:      "path",
-							Name:      "name",
-							Version:   "version",
+							PackageID: "package-id",
+							Type:      "package-type",
+							Path:      "package-path",
 						},
 					)
 					Expect(err).To(MatchError("failed external (fake-external-error) and docker build: fake-docker-error"))
@@ -111,11 +116,9 @@ var _ = Describe("Container", func() {
 					Expect(fakeDockerVM.BuildCallCount()).To(Equal(1))
 					ccci, codePackage := fakeDockerVM.BuildArgsForCall(0)
 					Expect(ccci).To(Equal(&ccprovider.ChaincodeContainerInfo{
-						PackageID: "stop:name",
-						Type:      "type",
-						Path:      "path",
-						Name:      "name",
-						Version:   "version",
+						PackageID: "package-id",
+						Type:      "package-type",
+						Path:      "package-path",
 					}))
 					Expect(codePackage).To(Equal([]byte("code-bytes")))
 				})
