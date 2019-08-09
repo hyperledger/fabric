@@ -70,7 +70,7 @@ func NewRegistry(platformTypes ...Platform) *Registry {
 	}
 }
 
-func (r *Registry) GenerateDockerfile(ccType, name, version string) (string, error) {
+func (r *Registry) GenerateDockerfile(ccType string) (string, error) {
 	platform, ok := r.Platforms[ccType]
 	if !ok {
 		return "", fmt.Errorf("Unknown chaincodeType: %s", ccType)
@@ -86,16 +86,7 @@ func (r *Registry) GenerateDockerfile(ccType, name, version string) (string, err
 		return "", fmt.Errorf("Failed to generate platform-specific Dockerfile: %s", err)
 	}
 	buf = append(buf, base)
-
-	// ----------------------------------------------------------------------------------------------------
-	// Add some handy labels
-	// ----------------------------------------------------------------------------------------------------
-	// FIXME: remove these two fields since they are *NOT* properties of the chaincode; rather add packageid/label (FAB-14630)
-	/* REMOVE */
-	buf = append(buf, fmt.Sprintf(`LABEL %s.chaincode.id.name="%s" \`, metadata.BaseDockerLabel, name))
-	/* REMOVE */ buf = append(buf, fmt.Sprintf(`      %s.chaincode.id.version="%s" \`, metadata.BaseDockerLabel, version))
-
-	buf = append(buf, fmt.Sprintf(`      %s.chaincode.type="%s" \`, metadata.BaseDockerLabel, ccType))
+	buf = append(buf, fmt.Sprintf(`LABEL %s.chaincode.type="%s" \`, metadata.BaseDockerLabel, ccType))
 	buf = append(buf, fmt.Sprintf(`      %s.version="%s"`, metadata.BaseDockerLabel, metadata.Version))
 	// ----------------------------------------------------------------------------------------------------
 	// Then augment it with any general options
@@ -168,13 +159,13 @@ func writeBytesToPackage(name string, payload []byte, tw *tar.Writer) error {
 	return nil
 }
 
-func (r *Registry) GenerateDockerBuild(ccType, path, name, version string, codePackage io.Reader, client *docker.Client) (io.Reader, error) {
+func (r *Registry) GenerateDockerBuild(ccType, path string, codePackage io.Reader, client *docker.Client) (io.Reader, error) {
 	inputFiles := make(map[string][]byte)
 
 	// ----------------------------------------------------------------------------------------------------
 	// Generate the Dockerfile specific to our context
 	// ----------------------------------------------------------------------------------------------------
-	dockerFile, err := r.GenerateDockerfile(ccType, name, version)
+	dockerFile, err := r.GenerateDockerfile(ccType)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to generate a Dockerfile: %s", err)
 	}
