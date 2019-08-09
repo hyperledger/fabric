@@ -13,7 +13,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -34,14 +33,14 @@ const (
 
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
-	Start(ccci *ccprovider.ChaincodeContainerInfo) error
-	Stop(ccci *ccprovider.ChaincodeContainerInfo) error
-	Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, error)
+	Start(ccid ccintf.CCID) error
+	Stop(ccid ccintf.CCID) error
+	Wait(ccid ccintf.CCID) (int, error)
 }
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(ccci *ccprovider.ChaincodeContainerInfo) error
+	Launch(ccid ccintf.CCID) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
@@ -87,20 +86,18 @@ type ChaincodeSupport struct {
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(ccci *ccprovider.ChaincodeContainerInfo) (*Handler, error) {
-	ccid := ccintf.New(ccci.PackageID)
-
+func (cs *ChaincodeSupport) Launch(ccid ccintf.CCID) (*Handler, error) {
 	if h := cs.HandlerRegistry.Handler(ccid); h != nil {
 		return h, nil
 	}
 
-	if err := cs.Launcher.Launch(ccci); err != nil {
-		return nil, errors.Wrapf(err, "could not launch chaincode %s", ccci.PackageID)
+	if err := cs.Launcher.Launch(ccid); err != nil {
+		return nil, errors.Wrapf(err, "could not launch chaincode %s", ccid)
 	}
 
 	h := cs.HandlerRegistry.Handler(ccid)
 	if h == nil {
-		return nil, errors.Errorf("claimed to start chaincode container for %s but could not find handler", ccci.PackageID)
+		return nil, errors.Errorf("claimed to start chaincode container for %s but could not find handler", ccid)
 	}
 
 	return h, nil
@@ -148,15 +145,13 @@ func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) 
 // It does not attempt to start the chaincode based on the information from lifecycle, but instead
 // accepts the container information directly in the form of a ChaincodeDeploymentSpec.
 func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	ccci := ccprovider.DeploymentSpecToChaincodeContainerInfo(spec, cccid.SystemCC)
-	ccci.Version = cccid.Version
 	// FIXME: this is a hack, we shouldn't construct the
 	// packageID manually but rather let lifecycle construct it
 	// for us. However this is legacy code that will disappear
 	// so it is acceptable for now (FAB-14627)
-	ccci.PackageID = persistence.PackageID(ccci.Name + ":" + ccci.Version)
+	ccid := ccintf.CCID(cccid.Name + ":" + cccid.Version)
 
-	h, err := cs.Launch(ccci)
+	h, err := cs.Launch(ccid)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -226,17 +221,14 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chain
 	}
 
 	// go to _lifecycle to retrieve information about the chaincode
-	ccci, err := cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
+	// Note, this check is 'security  by side-effect', and must still be called here (for now)
+	_, err = cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
 	if err != nil {
 		logDevModeError(cs.UserRunsCC)
 		return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, cccid.Name)
 	}
 
-	// fill the chaincode version field from the chaincode container info that we
-	// got from _lifecycle
-	cccid.Version = ccci.Version
-
-	h, err := cs.Launch(ccci)
+	h, err := cs.Launch(ccintf.CCID(cd.CCID()))
 	if err != nil {
 		return nil, err
 	}

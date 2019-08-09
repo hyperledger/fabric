@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
@@ -29,10 +28,9 @@ type RuntimeLauncher struct {
 	Metrics        *LaunchMetrics
 }
 
-func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error {
+func (r *RuntimeLauncher) Launch(ccid ccintf.CCID) error {
 	var startFailCh chan error
 	var timeoutCh <-chan time.Time
-	ccid := ccintf.New(ccci.PackageID)
 
 	startTime := time.Now()
 	launchState, alreadyStarted := r.Registry.Launching(ccid)
@@ -41,11 +39,11 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		timeoutCh = time.NewTimer(r.StartupTimeout).C
 
 		go func() {
-			if err := r.Runtime.Start(ccci); err != nil {
+			if err := r.Runtime.Start(ccid); err != nil {
 				startFailCh <- errors.WithMessage(err, "error starting container")
 				return
 			}
-			exitCode, err := r.Runtime.Wait(ccci)
+			exitCode, err := r.Runtime.Wait(ccid)
 			if err != nil {
 				launchState.Notify(errors.Wrap(err, "failed to wait on container exit"))
 			}
@@ -61,7 +59,7 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		launchState.Notify(err)
 		r.Metrics.LaunchFailures.With("chaincode", ccid.String()).Add(1)
 	case <-timeoutCh:
-		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", ccci.PackageID)
+		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", ccid)
 		launchState.Notify(err)
 		r.Metrics.LaunchTimeouts.With("chaincode", ccid.String()).Add(1)
 	}
@@ -71,7 +69,7 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		success = false
 		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
 		defer r.Registry.Deregister(ccid)
-		if err := r.Runtime.Stop(ccci); err != nil {
+		if err := r.Runtime.Stop(ccid); err != nil {
 			chaincodeLogger.Debugf("stop failed: %+v", err)
 		}
 	}
