@@ -4,15 +4,14 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type ContainerRouter struct {
-	BuildStub        func(*ccprovider.ChaincodeContainerInfo) error
+	BuildStub        func(ccintf.CCID) error
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
-		arg1 *ccprovider.ChaincodeContainerInfo
+		arg1 ccintf.CCID
 	}
 	buildReturns struct {
 		result1 error
@@ -60,11 +59,11 @@ type ContainerRouter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ContainerRouter) Build(arg1 *ccprovider.ChaincodeContainerInfo) error {
+func (fake *ContainerRouter) Build(arg1 ccintf.CCID) error {
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
-		arg1 *ccprovider.ChaincodeContainerInfo
+		arg1 ccintf.CCID
 	}{arg1})
 	fake.recordInvocation("Build", []interface{}{arg1})
 	fake.buildMutex.Unlock()
@@ -84,13 +83,13 @@ func (fake *ContainerRouter) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *ContainerRouter) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo) error) {
+func (fake *ContainerRouter) BuildCalls(stub func(ccintf.CCID) error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *ContainerRouter) BuildArgsForCall(i int) *ccprovider.ChaincodeContainerInfo {
+func (fake *ContainerRouter) BuildArgsForCall(i int) ccintf.CCID {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	argsForCall := fake.buildArgsForCall[i]

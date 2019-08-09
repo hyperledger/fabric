@@ -26,7 +26,7 @@ type CertGenerator interface {
 // invocations.  But, the legacy lifecycle makes this very challenging.  Once the legacy lifecycle
 // is removed (or perhaps before), this interface should probably go away entirely.
 type ContainerRouter interface {
-	Build(ccci *ccprovider.ChaincodeContainerInfo) error
+	Build(ccid ccintf.CCID) error
 	Start(ccid ccintf.CCID, peerConnection *ccintf.PeerConnection) error
 	Stop(ccid ccintf.CCID) error
 	Wait(ccid ccintf.CCID) (int, error)
@@ -58,7 +58,7 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo) error 
 		}
 	}
 
-	if err := c.ContainerRouter.Build(ccci); err != nil {
+	if err := c.ContainerRouter.Build(ccintf.CCID(packageID)); err != nil {
 		return errors.WithMessage(err, "error building image")
 	}
 

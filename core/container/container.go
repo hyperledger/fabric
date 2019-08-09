@@ -87,31 +87,33 @@ func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 	return vm
 }
 
-func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo) error {
-	metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(pintf.PackageID(ccci.PackageID))
+func (r *Router) Build(ccid ccintf.CCID) error {
+	packageID := pintf.PackageID(ccid)
+
+	metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(packageID)
 	if err != nil {
 		return errors.WithMessage(err, "get chaincode package for external build failed")
 	}
 
-	ccci2 := &ccprovider.ChaincodeContainerInfo{
+	ccci := &ccprovider.ChaincodeContainerInfo{
 		Path:      metadata.Path,
 		Type:      metadata.Type,
-		PackageID: ccci.PackageID,
+		PackageID: packageID,
 	}
 
 	var instance Instance
 	var externalErr error
 	if r.ExternalVM != nil {
-		instance, externalErr = r.ExternalVM.Build(ccci2, codeStream)
+		instance, externalErr = r.ExternalVM.Build(ccci, codeStream)
 		codeStream.Close()
 	}
 
 	if r.ExternalVM == nil || externalErr != nil {
-		_, codeStream, err = r.PackageProvider.GetChaincodePackage(pintf.PackageID(ccci.PackageID))
+		_, codeStream, err = r.PackageProvider.GetChaincodePackage(packageID)
 		if err != nil {
 			return errors.WithMessage(err, "get chaincode package for docker build failed")
 		}
-		instance, err = r.DockerVM.Build(ccci2, codeStream)
+		instance, err = r.DockerVM.Build(ccci, codeStream)
 		codeStream.Close()
 	}
 
@@ -126,7 +128,7 @@ func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo) error {
 		r.containers = map[ccintf.CCID]Instance{}
 	}
 
-	r.containers[ccintf.CCID(ccci2.PackageID)] = instance
+	r.containers[ccid] = instance
 
 	return nil
 }

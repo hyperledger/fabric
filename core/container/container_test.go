@@ -58,15 +58,7 @@ var _ = Describe("Container", func() {
 			})
 
 			It("passes through to the external impl", func() {
-				err := router.Build(
-					&ccprovider.ChaincodeContainerInfo{
-						PackageID: "package-id",
-						Type:      "type",
-						Path:      "path",
-						Name:      "name",
-						Version:   "version",
-					},
-				)
+				err := router.Build("package-id")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeDockerVM.BuildCallCount()).To(Equal(0))
 				Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
@@ -87,13 +79,7 @@ var _ = Describe("Container", func() {
 				})
 
 				It("wraps and returns the error", func() {
-					err := router.Build(
-						&ccprovider.ChaincodeContainerInfo{
-							PackageID: "package-id",
-							Type:      "package-type",
-							Path:      "package-path",
-						},
-					)
+					err := router.Build("package-id")
 
 					Expect(err).To(MatchError("get chaincode package for external build failed: fake-package-error"))
 				})
@@ -106,13 +92,7 @@ var _ = Describe("Container", func() {
 				})
 
 				It("falls back to the docker impl", func() {
-					err := router.Build(
-						&ccprovider.ChaincodeContainerInfo{
-							PackageID: "package-id",
-							Type:      "package-type",
-							Path:      "package-path",
-						},
-					)
+					err := router.Build("package-id")
 					Expect(err).To(MatchError("failed external (fake-external-error) and docker build: fake-docker-error"))
 					Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
 					Expect(fakeDockerVM.BuildCallCount()).To(Equal(1))
@@ -133,13 +113,7 @@ var _ = Describe("Container", func() {
 					})
 
 					It("wraps and returns the error", func() {
-						err := router.Build(
-							&ccprovider.ChaincodeContainerInfo{
-								PackageID: "package-id",
-								Type:      "package-type",
-								Path:      "package-path",
-							},
-						)
+						err := router.Build("package-id")
 
 						Expect(err).To(MatchError("get chaincode package for docker build failed: fake-package-error"))
 					})
@@ -151,14 +125,7 @@ var _ = Describe("Container", func() {
 		Describe("Post-build operations", func() {
 			BeforeEach(func() {
 				fakeExternalVM.BuildReturns(fakeInstance, nil)
-				err := router.Build(&ccprovider.ChaincodeContainerInfo{
-					PackageID: "fake-id",
-					Type:      "type",
-					Path:      "path",
-					Name:      "name",
-					Version:   "version",
-				},
-				)
+				err := router.Build("fake-id")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
