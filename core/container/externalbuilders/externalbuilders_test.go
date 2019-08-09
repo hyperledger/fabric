@@ -11,12 +11,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/externalbuilders"
@@ -99,8 +103,8 @@ var _ = Describe("Externalbuilders", func() {
 			It("iterates over all detectors and chooses the one that matches", func() {
 				instance, err := detector.Build(ccci, codePackageBytes)
 				Expect(err).NotTo(HaveOccurred())
-				defer instance.(*externalbuilders.Instance).BuildContext.Cleanup()
-				Expect(instance.(*externalbuilders.Instance).Builder).To(Equal(&externalbuilders.Builder{Location: "testdata"}))
+				instance.BuildContext.Cleanup()
+				Expect(instance.Builder.Name()).To(Equal("testdata"))
 			})
 
 			Context("when the build context cannot be created", func() {
@@ -240,6 +244,51 @@ var _ = Describe("Externalbuilders", func() {
 			Expect(err).NotTo(HaveOccurred())
 			env := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
 			Expect(env).To(ConsistOf(expectedEnv))
+		})
+	})
+
+	Describe("RunCommand", func() {
+		var (
+			logger *flogging.FabricLogger
+			buf    *bytes.Buffer
+		)
+
+		BeforeEach(func() {
+			buf = &bytes.Buffer{}
+			enc := zapcore.NewConsoleEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			core := zapcore.NewCore(enc, zapcore.AddSync(buf), zap.NewAtomicLevel())
+			logger = flogging.NewFabricLogger(zap.New(core).Named("logger"))
+		})
+
+		It("runs the command directs stderr to the logger", func() {
+			cmd := exec.Command("/bin/sh", "-c", `echo stdout && echo stderr >&2`)
+			err := externalbuilders.RunCommand(logger, cmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(buf.String()).To(Equal("stderr\n"))
+		})
+
+		Context("when start fails", func() {
+			It("returns the error", func() {
+				cmd := exec.Command("nonsense-program")
+				err := externalbuilders.RunCommand(logger, cmd)
+				Expect(err).To(HaveOccurred())
+
+				execError, ok := err.(*exec.Error)
+				Expect(ok).To(BeTrue())
+				Expect(execError.Name).To(Equal("nonsense-program"))
+			})
+		})
+
+		Context("when the process exits with a non-zero return", func() {
+			It("returns the exec.ExitErr for the command", func() {
+				cmd := exec.Command("false")
+				err := externalbuilders.RunCommand(logger, cmd)
+				Expect(err).To(HaveOccurred())
+
+				exitErr, ok := err.(*exec.ExitError)
+				Expect(ok).To(BeTrue())
+				Expect(exitErr.ExitCode()).To(Equal(1))
+			})
 		})
 	})
 })

@@ -90,11 +90,13 @@ func (r *Router) Build(ccci *ccprovider.ChaincodeContainerInfo) error {
 		return errors.WithMessage(err, "get chaincode package failed")
 	}
 
-	instance, err := r.ExternalVM.Build(ccci, codePackage)
+	var instance Instance
+	var externalErr error
+	if r.ExternalVM != nil {
+		instance, externalErr = r.ExternalVM.Build(ccci, codePackage)
+	}
 
-	externalErr := err
-	if err != nil {
-		vmLogger.Debug("falling back to docker VM")
+	if r.ExternalVM == nil || externalErr != nil {
 		instance, err = r.DockerVM.Build(ccci, codePackage)
 	}
 

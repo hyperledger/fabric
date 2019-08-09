@@ -131,6 +131,19 @@ var nodeStartCmd = &cobra.Command{
 	},
 }
 
+// externalVMAdapter adapts coerces the result of Build to the
+// container.Interface type expected by the VM interface.
+type externalVMAdapter struct {
+	detector *externalbuilders.Detector
+}
+
+func (e externalVMAdapter) Build(
+	cci *ccprovider.ChaincodeContainerInfo,
+	codePackage []byte,
+) (container.Instance, error) {
+	return e.detector.Build(cci, codePackage)
+}
+
 func serve(args []string) error {
 	// currently the peer only works with the standard MSP
 	// because in certain scenarios the MSP has to make sure
@@ -504,7 +517,7 @@ func serve(args []string) error {
 		PeerAddress:   ccEndpoint,
 		ContainerRouter: &container.Router{
 			DockerVM:        dockerVM,
-			ExternalVM:      externalVM,
+			ExternalVM:      externalVMAdapter{externalVM},
 			PackageProvider: packageProvider,
 		},
 	}
