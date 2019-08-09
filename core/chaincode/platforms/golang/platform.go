@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/internal/ccmetadata"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -459,7 +458,7 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 			}
 		}
 
-		err = cutil.WriteFileToPackage(file.Path, file.Name, tw)
+		err = util.WriteFileToPackage(file.Path, file.Name, tw)
 		if err != nil {
 			return nil, fmt.Errorf("Error writing %s to tar: %s", file.Name, err)
 		}

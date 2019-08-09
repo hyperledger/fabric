@@ -19,7 +19,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -107,7 +106,7 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	excludedDirs := []string{"target", "build", "out"}
 	excludedFileTypes := map[string]bool{".class": true}
-	err := cutil.WriteFolderToTarPackage(tw, path, excludedDirs, nil, excludedFileTypes)
+	err := util.WriteFolderToTarPackage(tw, path, excludedDirs, nil, excludedFileTypes)
 	if err != nil {
 		logger.Errorf("Error writing java project to tar package %s", err)
 		return nil, fmt.Errorf("failed to create chaincode package: %s", err)
