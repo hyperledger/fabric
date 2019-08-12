@@ -27,8 +27,8 @@ func TestDeploy(t *testing.T) {
 	doneC := make(chan struct{})
 	close(doneC)
 	csh.LaunchInProcReturns(doneC)
-	scc.DeploySysCC(&lifecycle.SCC{}, "latest", csh)
+	scc.DeploySysCC(&lifecycle.SCC{}, csh)
 	gt.Expect(csh.LaunchInProcCallCount()).To(gomega.Equal(1))
-	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal("_lifecycle:latest"))
+	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal("_lifecycle.syscc"))
 	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(gomega.Equal(1))
 }

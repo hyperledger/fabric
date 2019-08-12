@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	cm "github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -109,9 +110,10 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 		switch name {
 		case "lscc":
-			return &ccprovider.ChaincodeData{
-				Name:    "lscc",
-				Version: "latest",
+			return &lifecycle.LegacyDefinition{
+				Name:      "lscc",
+				Version:   "syscc",
+				CCIDField: "lscc.syscc",
 			}, nil
 		default:
 			return &ccprovider.ChaincodeData{
@@ -184,7 +186,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
-	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)
+	scc.DeploySysCC(lsccImpl, chaincodeSupport)
 
 	for _, id := range chainIDs {
 		if err = peer.CreateMockChannel(peerInstance, id); err != nil {
@@ -245,8 +247,7 @@ func endTxSimulationCDS(peerInstance *peer.Peer, chainID string, txsim ledger.Tx
 
 	// get lscc ChaincodeID
 	lsccid := &pb.ChaincodeID{
-		Name:    "lscc",
-		Version: "latest",
+		Name: "lscc",
 	}
 
 	// get a proposal - we need it to get a transaction
@@ -393,8 +394,6 @@ func getDeployLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec, ccp *com
 			return nil, err
 		}
 	}
-	sysCCVers := "latest"
-
 	invokeInput := &pb.ChaincodeInput{Args: [][]byte{
 		[]byte("deploy"), // function name
 		[]byte(chainID),  // chaincode name to deploy
@@ -410,7 +409,7 @@ func getDeployLSCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec, ccp *com
 	lsccSpec := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			Type:        pb.ChaincodeSpec_GOLANG,
-			ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers},
+			ChaincodeId: &pb.ChaincodeID{Name: "lscc"},
 			Input:       invokeInput,
 		}}
 
@@ -619,9 +618,10 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 		switch name {
 		case "lscc":
-			return &ccprovider.ChaincodeData{
-				Name:    "lscc",
-				Version: "latest",
+			return &lifecycle.LegacyDefinition{
+				Name:      "lscc",
+				Version:   "syscc",
+				CCIDField: "lscc.syscc",
 			}, nil
 		default:
 			return &ccprovider.ChaincodeData{
@@ -757,9 +757,10 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 		switch name {
 		case "lscc":
-			return &ccprovider.ChaincodeData{
-				Name:    "lscc",
-				Version: "latest",
+			return &lifecycle.LegacyDefinition{
+				Name:      "lscc",
+				Version:   "syscc",
+				CCIDField: "lscc.syscc",
 			}, nil
 		default:
 			return &ccprovider.ChaincodeData{

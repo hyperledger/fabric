@@ -8,7 +8,6 @@ package lifecycle
 
 import (
 	"github.com/hyperledger/fabric/common/util"
-	corechaincode "github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
@@ -17,8 +16,13 @@ import (
 )
 
 //go:generate counterfeiter -o mock/legacy_lifecycle.go --fake-name LegacyLifecycle . LegacyLifecycle
+
+// LegacyLifecycle is the interface which the core/chaincode package requires that lifecycle satisfy.
+// Note this this is a duplication of the interface defined there, so as to avoid import cycles when testing.
+// Ultimately, this interface needs to be removed, and replaced with something that returns a concrete type,
+// hence the naming of this file as legacy_lifecycle.go.
 type LegacyLifecycle interface {
-	corechaincode.Lifecycle
+	ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
 }
 
 //go:generate counterfeiter -o mock/chaincode_info_cache.go --fake-name ChaincodeInfoCache . ChaincodeInfoCache
@@ -72,11 +76,10 @@ func (ld *LegacyDefinition) CCID() string {
 }
 
 type ChaincodeEndorsementInfo struct {
-	Resources    *Resources
-	Cache        ChaincodeInfoCache
-	LegacyImpl   LegacyLifecycle
-	BuiltinSCCs  scc.BuiltinSCCs
-	SysCCVersion string
+	Resources   *Resources
+	Cache       ChaincodeInfoCache
+	LegacyImpl  LegacyLifecycle
+	BuiltinSCCs scc.BuiltinSCCs
 }
 
 func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*LocalChaincodeInfo, bool, error) {
@@ -133,10 +136,10 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 	if cei.BuiltinSCCs.IsSysCC(chaincodeName) {
 		return &LegacyDefinition{
 			Name:              chaincodeName,
-			Version:           cei.SysCCVersion,
+			Version:           scc.SysCCVersion,
 			EndorsementPlugin: "escc",
 			RequiresInitField: false,
-			CCIDField:         chaincodeName + ":" + cei.SysCCVersion,
+			CCIDField:         scc.CCID(chaincodeName),
 		}, nil
 	}
 

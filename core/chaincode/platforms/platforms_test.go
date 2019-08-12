@@ -47,8 +47,8 @@ var _ = Describe("Platforms", func() {
 			Expect(err).NotTo(HaveOccurred())
 			expectedDockerfile := fmt.Sprintf(`docker-header
 LABEL org.hyperledger.fabric.chaincode.type="fakeType" \
-      org.hyperledger.fabric.version="latest"
-ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version)
+      org.hyperledger.fabric.version="%s"
+ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			Expect(df).To(Equal(expectedDockerfile))
 		})
 

@@ -13,6 +13,18 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
+// SysCCVersion is a constant used for the version field of system chaincodes.
+// Historically, the version of a system chaincode was implicitly tied to the exact
+// build version of a peer, which does not work for collecting endorsements across
+// sccs across peers.  Until there is a need for separate SCC versions, we use
+// this constant here.
+const SysCCVersion = "syscc"
+
+// CCID returns the chaincode ID of a system chaincode of a given name.
+func CCID(ccName string) string {
+	return ccName + "." + SysCCVersion
+}
+
 // XXX should we change this name to actually match the package name? Leaving now for historical consistency
 var sysccLogger = flogging.MustGetLogger("sccapi")
 
@@ -46,10 +58,10 @@ type SelfDescribingSysCC interface {
 
 // DeploySysCC is the hook for system chaincodes where system chaincodes are registered with the fabric.
 // This call directly registers the chaincode with the chaincode handler and bypasses the other usercc constructs.
-func DeploySysCC(sysCC SelfDescribingSysCC, sysCCVersion string, chaincodeStreamHandler ChaincodeStreamHandler) {
+func DeploySysCC(sysCC SelfDescribingSysCC, chaincodeStreamHandler ChaincodeStreamHandler) {
 	sysccLogger.Infof("deploying system chaincode '%s'", sysCC.Name())
 
-	ccid := sysCC.Name() + ":" + sysCCVersion
+	ccid := CCID(sysCC.Name())
 
 	done := chaincodeStreamHandler.LaunchInProc(ccid)
 

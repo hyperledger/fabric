@@ -80,11 +80,10 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeCache.ChaincodeInfoReturns(testInfo, nil)
 
 		cei = &lifecycle.ChaincodeEndorsementInfo{
-			LegacyImpl:   fakeLegacyImpl,
-			Resources:    resources,
-			Cache:        fakeCache,
-			BuiltinSCCs:  builtinSCCs,
-			SysCCVersion: "test-syscc-version",
+			LegacyImpl:  fakeLegacyImpl,
+			Resources:   resources,
+			Cache:       fakeCache,
+			BuiltinSCCs: builtinSCCs,
 		}
 
 	})
@@ -204,9 +203,9 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res).To(Equal(&lifecycle.LegacyDefinition{
 					Name:              "test-syscc-name",
-					Version:           "test-syscc-version",
+					Version:           "syscc",
 					EndorsementPlugin: "escc",
-					CCIDField:         "test-syscc-name:test-syscc-version",
+					CCIDField:         "test-syscc-name.syscc",
 				}))
 			})
 		})
