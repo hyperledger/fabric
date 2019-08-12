@@ -192,6 +192,7 @@ type InstallListener interface {
 //go:generate counterfeiter -o mock/installed_chaincodes_lister.go --fake-name InstalledChaincodesLister . InstalledChaincodesLister
 type InstalledChaincodesLister interface {
 	ListInstalledChaincodes() []*chaincode.InstalledChaincode
+	GetInstalledChaincode(packageID p.PackageID) (*chaincode.InstalledChaincode, error)
 }
 
 // Resources stores the common functions needed by all components of the lifecycle
@@ -529,29 +530,9 @@ func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableStat
 	return result, nil
 }
 
-// QueryInstalledChaincode returns the hash of an installed chaincode of a given name and version.
+// QueryInstalledChaincode returns metadata for the chaincode with the supplied package ID.
 func (ef *ExternalFunctions) QueryInstalledChaincode(packageID p.PackageID) (*chaincode.InstalledChaincode, error) {
-	ccPackageBytes, err := ef.Resources.ChaincodeStore.Load(packageID)
-	if err != nil {
-		if _, ok := err.(persistence.CodePackageNotFoundErr); ok {
-			return nil, err
-		}
-		return nil, errors.WithMessagef(err, "could not load chaincode with package id '%s'", packageID)
-	}
-
-	parsedCCPackage, err := ef.Resources.PackageParser.Parse(ccPackageBytes)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "could not parse chaincode with package id '%s'", packageID)
-	}
-
-	if parsedCCPackage.Metadata == nil {
-		return nil, errors.Errorf("empty metadata for chaincode with package id '%s'", packageID)
-	}
-
-	return &chaincode.InstalledChaincode{
-		PackageID: packageID,
-		Label:     parsedCCPackage.Metadata.Label,
-	}, nil
+	return ef.InstalledChaincodesLister.GetInstalledChaincode(packageID)
 }
 
 // QueryInstalledChaincodes returns a list of installed chaincodes

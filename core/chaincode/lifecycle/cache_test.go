@@ -122,7 +122,7 @@ var _ = Describe("Cache", func() {
 				},
 			},
 			string(util.ComputeSHA256(protoutil.MarshalOrPanic(&lb.StateData{
-				Type: &lb.StateData_String_{String_: "another-packageID"},
+				Type: &lb.StateData_String_{String_: "notinstalled-packageID"},
 			}))): {
 				References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
 					"channel-id": {
@@ -209,7 +209,7 @@ var _ = Describe("Cache", func() {
 		})
 	})
 
-	Describe("InstalledChaincodes", func() {
+	Describe("ListInstalledChaincodes", func() {
 		It("returns the installed chaincodes", func() {
 			installedChaincodes := c.ListInstalledChaincodes()
 			Expect(installedChaincodes).To(Equal([]*chaincode.InstalledChaincode{
@@ -226,6 +226,33 @@ var _ = Describe("Cache", func() {
 					},
 				},
 			}))
+		})
+	})
+
+	Describe("GetInstalledChaincode", func() {
+		It("returns the requested installed chaincode", func() {
+			installedChaincode, err := c.GetInstalledChaincode(ccpersistence.PackageID("packageID"))
+			Expect(installedChaincode).To(Equal(&chaincode.InstalledChaincode{
+				Label:     "chaincode-label",
+				PackageID: "packageID",
+				References: map[string][]*chaincode.Metadata{
+					"channel-id": {
+						&chaincode.Metadata{
+							Name:    "chaincode-name",
+							Version: "chaincode-version",
+						},
+					},
+				},
+			}))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when the chaincode is not installed", func() {
+			It("returns an error", func() {
+				installedChaincode, err := c.GetInstalledChaincode(ccpersistence.PackageID("notinstalled-packageID"))
+				Expect(installedChaincode).To(BeNil())
+				Expect(err).To(MatchError("could not find chaincode with package id 'notinstalled-packageID'"))
+			})
 		})
 	})
 

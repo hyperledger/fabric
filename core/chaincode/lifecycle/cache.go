@@ -90,6 +90,36 @@ type LocalChaincode struct {
 	References map[string]map[string]*CachedChaincodeDefinition
 }
 
+// ToInstalledChaincode converts a LocalChaincode to an InstalledChaincode,
+// which is returned by lifecycle queries.
+func (l *LocalChaincode) ToInstalledChaincode() *chaincode.InstalledChaincode {
+	references := l.createMetadataMapFromReferences()
+	return &chaincode.InstalledChaincode{
+		PackageID:  l.Info.PackageID,
+		Label:      l.Info.Label,
+		References: references,
+	}
+}
+
+// createMetadataMapFromReferences returns a map of channel name to a slice
+// of chaincode metadata for the chaincode definitions that reference a
+// specific local chaincode. This function should only be called by code that
+// holds the lock on the cache.
+func (l *LocalChaincode) createMetadataMapFromReferences() map[string][]*chaincode.Metadata {
+	references := map[string][]*chaincode.Metadata{}
+	for channel, chaincodeMap := range l.References {
+		metadata := []*chaincode.Metadata{}
+		for cc, cachedDefinition := range chaincodeMap {
+			metadata = append(metadata, &chaincode.Metadata{
+				Name:    cc,
+				Version: cachedDefinition.Definition.EndorsementInfo.Version,
+			})
+		}
+		references[channel] = metadata
+	}
+	return references
+}
+
 func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler) *Cache {
 	return &Cache{
 		definedChaincodes: map[string]*ChannelCache{},
@@ -327,25 +357,30 @@ func (c *Cache) ListInstalledChaincodes() []*chaincode.InstalledChaincode {
 			// even if it isn't yet installed
 			continue
 		}
-		references := map[string][]*chaincode.Metadata{}
-		for channel, chaincodeMap := range lc.References {
-			metadata := []*chaincode.Metadata{}
-			for cc, cachedDefinition := range chaincodeMap {
-				metadata = append(metadata, &chaincode.Metadata{
-					Name:    cc,
-					Version: cachedDefinition.Definition.EndorsementInfo.Version,
-				})
-			}
-			references[channel] = metadata
-		}
-		installedChaincodes = append(installedChaincodes, &chaincode.InstalledChaincode{
-			PackageID:  lc.Info.PackageID,
-			Label:      lc.Info.Label,
-			References: references,
-		})
+		installedChaincodes = append(installedChaincodes, lc.ToInstalledChaincode())
 	}
 
 	return installedChaincodes
+}
+
+// GetInstalledChaincode returns all of the information about a specific
+// installed chaincode.
+func (c *Cache) GetInstalledChaincode(packageID ccpersistence.PackageID) (*chaincode.InstalledChaincode, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	for _, lc := range c.localChaincodes {
+		if lc.Info == nil {
+			// the update function adds an entry to localChaincodes
+			// even if it isn't yet installed
+			continue
+		}
+		if lc.Info.PackageID == packageID {
+			return lc.ToInstalledChaincode(), nil
+		}
+	}
+
+	return nil, errors.Errorf("could not find chaincode with package id '%s'", packageID)
 }
 
 // update should only be called with the write lock already held
