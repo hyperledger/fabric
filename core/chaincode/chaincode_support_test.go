@@ -419,8 +419,11 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, ccContext *C
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
 
-	//ignore existence errors
-	ccprovider.PutChaincodeIntoFS(cds)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	ccinfoFSImpl := &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider}
+	_, err = ccinfoFSImpl.PutChaincode(cds)
+	assert.NoError(t, err)
 
 	b := protoutil.MarshalOrPanic(cds)
 

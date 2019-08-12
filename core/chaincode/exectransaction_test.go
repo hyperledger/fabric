@@ -474,8 +474,13 @@ func deploy2(chainID string, ccContext *CCContext, chaincodeDeploymentSpec *pb.C
 		}
 	}()
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create default cryptoProvider: %s ", err)
+	}
+	ccinfoFSImpl := &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider}
 	//ignore existence errors
-	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
+	ccinfoFSImpl.PutChaincode(chaincodeDeploymentSpec)
 
 	//write to lscc
 	if _, _, err = chaincodeSupport.Execute(txParams, "lscc", cis.ChaincodeSpec.Input); err != nil {

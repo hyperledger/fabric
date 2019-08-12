@@ -129,7 +129,12 @@ func constructDeploymentSpec(name, path, version string, initArgs [][]byte, crea
 	chaincodeDeploymentSpec := &peer.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes.Bytes()}
 
 	if createFS {
-		err := ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		if err != nil {
+			return nil, err
+		}
+		ccinfoFSImpl := &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider}
+		_, err = ccinfoFSImpl.PutChaincode(chaincodeDeploymentSpec)
 		if err != nil {
 			return nil, err
 		}

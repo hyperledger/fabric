@@ -246,14 +246,6 @@ func GetChaincodeFromFS(ccNameVersion string) (CCPackage, error) {
 	return ccInfoFSProvider.GetChaincode(ccNameVersion)
 }
 
-// PutChaincodeIntoFS puts chaincode information in the file system (and
-// also in the cache to prime it) if the cache is enabled, or directly
-// from the file system otherwise
-func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
-	_, err := ccInfoFSProvider.PutChaincode(depSpec)
-	return err
-}
-
 // GetChaincodeData gets chaincode data from cache if there's one
 func GetChaincodeData(ccNameVersion string) (*ChaincodeData, error) {
 	ccproviderLogger.Debugf("Getting chaincode data for <%s> from cache", ccNameVersion)
