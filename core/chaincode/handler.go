@@ -1174,13 +1174,13 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
-func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
+func (h *Handler) Execute(txParams *ccprovider.TransactionParams, namespace string, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	chaincodeLogger.Debugf("Entry")
 	defer chaincodeLogger.Debugf("Exit")
 
 	txParams.CollectionStore = h.getCollectionStore(msg.ChannelId)
 	txParams.IsInitTransaction = (msg.Type == pb.ChaincodeMessage_INIT)
-	txParams.NamespaceID = cccid.Name
+	txParams.NamespaceID = namespace
 
 	txctx, err := h.TXContexts.Create(txParams)
 	if err != nil {
@@ -1201,9 +1201,8 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovi
 		// are typically treated as error
 	case <-time.After(timeout):
 		err = errors.New("timeout expired while executing transaction")
-		ccName := cccid.Name + ":" + cccid.Version
 		h.Metrics.ExecuteTimeouts.With(
-			"chaincode", ccName,
+			"chaincode", h.chaincodeID,
 		).Add(1)
 	}
 

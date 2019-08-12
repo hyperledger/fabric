@@ -136,20 +136,20 @@ func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) 
 // is entirely deprecated.  Ideally one release after the introduction of the new lifecycle.
 // It does not attempt to start the chaincode based on the information from lifecycle, but instead
 // accepts the container information directly in the form of a ChaincodeDeploymentSpec.
-func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, ccName, ccVersion string, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	// FIXME: this is a hack, we shouldn't construct the
 	// ccid manually but rather let lifecycle construct it
 	// for us. However this is legacy code that will disappear
 	// so it is acceptable for now (FAB-14627)
-	ccid := cccid.Name + ":" + cccid.Version
+	ccid := ccName + ":" + ccVersion
 
 	h, err := cs.Launch(ccid)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := cs.execute(pb.ChaincodeMessage_INIT, txParams, cccid, spec.GetChaincodeSpec().Input, h)
-	return processChaincodeExecutionResult(txParams.TxID, cccid.Name, resp, err)
+	resp, err := cs.execute(pb.ChaincodeMessage_INIT, txParams, ccName, spec.GetChaincodeSpec().Input, h)
+	return processChaincodeExecutionResult(txParams.TxID, ccName, resp, err)
 }
 
 // Execute invokes chaincode and returns the original response.
@@ -212,7 +212,7 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chain
 		cctype = pb.ChaincodeMessage_INIT
 	}
 
-	return cs.execute(cctype, txParams, ccContext, input, h)
+	return cs.execute(cctype, txParams, chaincodeName, input, h)
 }
 
 func (cs *ChaincodeSupport) CheckInvocation(channelID, chaincodeName string, txSim ledger.SimpleQueryExecutor) (ccid string, ccContext *ccprovider.CCContext, err error) {
@@ -285,7 +285,7 @@ func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cc
 }
 
 // execute executes a transaction and waits for it to complete until a timeout value.
-func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput, h *Handler) (*pb.ChaincodeMessage, error) {
+func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *ccprovider.TransactionParams, namespace string, input *pb.ChaincodeInput, h *Handler) (*pb.ChaincodeMessage, error) {
 	input.Decorations = txParams.ProposalDecorations
 
 	payload, err := proto.Marshal(input)
@@ -300,7 +300,7 @@ func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *cc
 		ChannelId: txParams.ChannelID,
 	}
 
-	ccresp, err := h.Execute(txParams, cccid, ccMsg, cs.ExecuteTimeout)
+	ccresp, err := h.Execute(txParams, namespace, ccMsg, cs.ExecuteTimeout)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error sending")
 	}

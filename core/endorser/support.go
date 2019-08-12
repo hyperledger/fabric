@@ -122,12 +122,7 @@ func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSp
 
 // ExecuteInit a deployment proposal and return the chaincode response
 func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := &ccprovider.CCContext{
-		Name:    name,
-		Version: version,
-	}
-
-	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, cccid, cds)
+	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, name, version, cds)
 }
 
 // Execute a proposal and return the chaincode response
