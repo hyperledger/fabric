@@ -732,7 +732,7 @@ ledger, this query will take a long time to respond or may timeout.
 
 While it is important to follow best practices with your queries, using indexes
 is not a solution for collecting large amounts of data. The blockchain data
-structure is optimized to validate and confirm transactions, and is not suited
+structure is optimized to validate and confirm transactions and is not suited
 for data analytics or reporting. If you want to build a dashboard as part
 of your application or analyze the data from your network, the best practice is
 to query an off chain database that replicates the data from your peers. This
@@ -744,7 +744,9 @@ data to an off-chain database or analytics engine. For each block received, the 
 listener application would iterate through the block transactions and build a data
 store using the key/value writes from each valid transaction's ``rwset``. The
 :doc:`peer_event_services` provide replayable events to ensure the integrity of
-downstream data stores.
+downstream data stores. For an example of how you can use an event listener to write
+data to an external database, visit the `Off chain data sample <https://github.com/hyperledger/fabric-samples/tree/master/off_chain_data>`__
+in the Fabric Samples.
 
 .. _cdb-pagination:
 
@@ -760,7 +762,7 @@ chaincode that executes the query until no more results are returned. For more i
 this `topic on pagination with CouchDB <http://hyperledger-fabric.readthedocs.io/en/master/couchdb_as_state_database.html#couchdb-pagination>`__.
 
 
-We will use the  `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__
+We will use the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__
 function ``queryMarblesWithPagination`` to  demonstrate how
 pagination can be implemented in chaincode and the client application.
 
