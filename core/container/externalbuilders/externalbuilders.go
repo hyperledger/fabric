@@ -16,7 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
+	"regexp"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -101,9 +101,10 @@ type BuildContext struct {
 	LaunchDir  string
 }
 
+var pkgIDreg = regexp.MustCompile("[^a-zA-Z0-9]+")
+
 func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (*BuildContext, error) {
-	// TODO, investigate if any other characters need sanitizing (we cannot have colons in the go path, for instance)
-	scratchDir, err := ioutil.TempDir("", "fabric-"+strings.ReplaceAll(string(ccci.PackageID), string(os.PathListSeparator), "-"))
+	scratchDir, err := ioutil.TempDir("", "fabric-"+pkgIDreg.ReplaceAllString(string(ccci.PackageID), "-"))
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp dir")
 	}
