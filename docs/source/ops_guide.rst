@@ -9,6 +9,7 @@ Operations Guides
    config_update
    msp
    configtx
+   capability_requirements
    endorsement-policies
    token/FabToken
    pluggable_endorsement_and_validation
