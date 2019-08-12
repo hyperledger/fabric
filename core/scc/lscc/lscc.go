@@ -108,7 +108,7 @@ type FilesystemSupport interface {
 
 	// GetChaincodeFromLocalStorage retrieves the chaincode package
 	// for the requested chaincode, specified by name and version
-	GetChaincodeFromLocalStorage(ccname string, ccversion string) (ccprovider.CCPackage, error)
+	GetChaincodeFromLocalStorage(ccNameVersion string) (ccprovider.CCPackage, error)
 
 	// GetChaincodesFromLocalStorage returns an array of all chaincode
 	// data that have previously been persisted to local storage
@@ -475,7 +475,7 @@ func (lscc *LifeCycleSysCC) getCCCode(ccname string, cdbytes []byte) (*pb.Chainc
 		return nil, nil, err
 	}
 
-	ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(ccname, cd.Version)
+	ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(cd.CCID())
 	if err != nil {
 		return nil, nil, InvalidDeploymentSpecErr(err.Error())
 	}
@@ -528,7 +528,7 @@ func (lscc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.R
 
 		// if chaincode is not installed on the system we won't have
 		// data beyond name and version
-		ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(ccdata.Name, ccdata.Version)
+		ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(ccdata.CCID())
 		if err == nil {
 			path = ccpack.GetDepSpec().GetChaincodeSpec().ChaincodeId.Path
 			input = ccpack.GetDepSpec().GetChaincodeSpec().Input.String()
@@ -703,9 +703,11 @@ func (lscc *LifeCycleSysCC) executeDeployOrUpgrade(
 		return nil, err
 	}
 
-	ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(chaincodeName, chaincodeVersion)
+	chaincodeNameVersion := chaincodeName + ":" + chaincodeVersion
+
+	ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(chaincodeNameVersion)
 	if err != nil {
-		retErrMsg := fmt.Sprintf("cannot get package for chaincode (%s:%s)", chaincodeName, chaincodeVersion)
+		retErrMsg := fmt.Sprintf("cannot get package for chaincode (%s)", chaincodeNameVersion)
 		logger.Errorf("%s-err:%s", retErrMsg, err)
 		return nil, fmt.Errorf("%s", retErrMsg)
 	}

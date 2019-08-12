@@ -80,7 +80,7 @@ func TestInstalledCCs(t *testing.T) {
 		{
 			name: "No permission on chaincode files",
 			ls:   ioutil.ReadDir,
-			extractCCFromPath: func(_ string, _ string, _ string) (ccprovider.CCPackage, error) {
+			extractCCFromPath: func(_ string, _ string) (ccprovider.CCPackage, error) {
 				return nil, errors.New("banana")
 			},
 			expected:      nil,

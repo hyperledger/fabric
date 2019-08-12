@@ -31,8 +31,8 @@ func (s *supportImpl) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) er
 
 // GetChaincodeFromLocalStorage retrieves the chaincode package
 // for the requested chaincode, specified by name and version
-func (s *supportImpl) GetChaincodeFromLocalStorage(ccname string, ccversion string) (ccprovider.CCPackage, error) {
-	return ccprovider.GetChaincodeFromFS(ccname, ccversion)
+func (s *supportImpl) GetChaincodeFromLocalStorage(ccNameVersion string) (ccprovider.CCPackage, error) {
+	return ccprovider.GetChaincodeFromFS(ccNameVersion)
 }
 
 // GetChaincodesFromLocalStorage returns an array of all chaincode

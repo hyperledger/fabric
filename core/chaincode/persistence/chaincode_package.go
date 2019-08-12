@@ -13,7 +13,11 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"regexp"
+
+	"github.com/hyperledger/fabric/core/chaincode/persistence/intf" // yuck
 
 	"github.com/pkg/errors"
 )
@@ -40,6 +44,105 @@ const (
 	// of the file that contains metadata for a chaincode pacakge.
 	ChaincodePackageMetadataFile = "Chaincode-Package-Metadata.json"
 )
+
+type ChaincodePackageLocator struct {
+	ChaincodeDir string
+}
+
+func (cpl *ChaincodePackageLocator) ChaincodePackageStreamer(packageID persistence.PackageID) *ChaincodePackageStreamer {
+	return &ChaincodePackageStreamer{
+		PackagePath: filepath.Join(cpl.ChaincodeDir, packageID.String()+".bin"),
+	}
+}
+
+type ChaincodePackageStreamer struct {
+	PackagePath string
+}
+
+func (cps *ChaincodePackageStreamer) Metadata() (*ChaincodePackageMetadata, error) {
+	tarFileStream, err := cps.File(PreferredChaincodePackageMetadataFile)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get metadata file")
+	}
+
+	defer tarFileStream.Close()
+
+	metadata := &ChaincodePackageMetadata{}
+	err = json.NewDecoder(tarFileStream).Decode(metadata)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not parse metadata file")
+	}
+
+	return metadata, nil
+}
+
+func (cps *ChaincodePackageStreamer) Code() (*TarFileStream, error) {
+	tarFileStream, err := cps.File(CodePackageFile)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get code package")
+	}
+
+	return tarFileStream, nil
+}
+
+func (cps *ChaincodePackageStreamer) File(name string) (tarFileStream *TarFileStream, err error) {
+	file, err := os.Open(cps.PackagePath)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not open chaincode package at '%s'", cps.PackagePath)
+	}
+
+	defer func() {
+		if err != nil {
+			file.Close()
+		}
+	}()
+
+	gzReader, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading as gzip stream")
+	}
+
+	tarReader := tar.NewReader(gzReader)
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, errors.Wrapf(err, "error inspecting next tar header")
+		}
+
+		if header.Name != name {
+			continue
+		}
+
+		if header.Typeflag != tar.TypeReg {
+			return nil, errors.Errorf("tar entry %s is not a regular file, type %v", header.Name, header.Typeflag)
+		}
+
+		return &TarFileStream{
+			TarFile:    tarReader,
+			FileStream: file,
+		}, nil
+	}
+
+	return nil, errors.Errorf("did not find file '%s' in package", name)
+}
+
+type TarFileStream struct {
+	TarFile    io.Reader
+	FileStream io.Closer
+}
+
+func (tfs *TarFileStream) Read(p []byte) (int, error) {
+	return tfs.TarFile.Read(p)
+}
+
+func (tfs *TarFileStream) Close() error {
+	return tfs.FileStream.Close()
+}
 
 // ChaincodePackage represents the un-tar-ed format of the chaincode package.
 type ChaincodePackage struct {

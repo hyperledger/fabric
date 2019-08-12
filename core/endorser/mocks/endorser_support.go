@@ -98,7 +98,7 @@ func (s *MockSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, 
 	return s.ExecuteCDSResp, s.ExecuteCDSEvent, s.ExecuteCDSError
 }
 
-func (s *MockSupport) Execute(txParams *ccprovider.TransactionParams, cid, name, txid string, idBytes []byte, initRequired bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *MockSupport) Execute(txParams *ccprovider.TransactionParams, name string, prop *pb.Proposal, spec *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return s.ExecuteResp, s.ExecuteEvent, s.ExecuteError
 }
 
@@ -114,7 +114,7 @@ func (s *MockSupport) CheckACL(signedProp *pb.SignedProposal, chdr *common.Chann
 	return s.CheckACLErr
 }
 
-func (s *MockSupport) CheckInstantiationPolicy(name, version string, cd ccprovider.ChaincodeDefinition) error {
+func (s *MockSupport) CheckInstantiationPolicy(nameVersion string, cd ccprovider.ChaincodeDefinition) error {
 	return s.CheckInstantiationPolicyError
 }
 

@@ -145,7 +145,7 @@ type PackageProviderWrapper struct {
 }
 
 func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	return p.FS.GetChaincodeCodePackage(ccci.Name, ccci.Version)
+	return p.FS.GetChaincodeCodePackage(string(ccci.PackageID))
 }
 
 //initialize peer and start up. If security==enabled, login as vp
@@ -216,6 +216,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	if !globalConfig.TLSEnabled {
 		containerRuntime.CertGenerator = nil
 	}
+	fakeInstantiationPolicyChecker := &mock.InstantiationPolicyChecker{}
 	userRunsCC := true
 	metricsProviders := &disabled.Provider{}
 	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
@@ -226,20 +227,21 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		StartupTimeout: globalConfig.StartupTimeout,
 	}
 	chaincodeSupport := &ChaincodeSupport{
-		ACLProvider:            mockAclProvider,
-		AppConfig:              peerInstance,
-		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
-		ExecuteTimeout:         globalConfig.ExecuteTimeout,
-		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
-		HandlerRegistry:        chaincodeHandlerRegistry,
-		Keepalive:              globalConfig.Keepalive,
-		Launcher:               chaincodeLauncher,
-		Lifecycle:              ml,
-		Peer:                   peerInstance,
-		Runtime:                containerRuntime,
-		BuiltinSCCs:            map[string]struct{}{"lscc": {}},
-		TotalQueryLimit:        globalConfig.TotalQueryLimit,
-		UserRunsCC:             userRunsCC,
+		ACLProvider:                mockAclProvider,
+		AppConfig:                  peerInstance,
+		DeployedCCInfoProvider:     &ledgermock.DeployedChaincodeInfoProvider{},
+		ExecuteTimeout:             globalConfig.ExecuteTimeout,
+		HandlerMetrics:             NewHandlerMetrics(metricsProviders),
+		HandlerRegistry:            chaincodeHandlerRegistry,
+		InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
+		Keepalive:                  globalConfig.Keepalive,
+		Launcher:                   chaincodeLauncher,
+		Lifecycle:                  ml,
+		Peer:                       peerInstance,
+		Runtime:                    containerRuntime,
+		BuiltinSCCs:                map[string]struct{}{"lscc": {}},
+		TotalQueryLimit:            globalConfig.TotalQueryLimit,
+		UserRunsCC:                 userRunsCC,
 	}
 
 	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)
@@ -331,10 +333,10 @@ func endTx(t *testing.T, peerInstance *peer.Peer, txParams *ccprovider.Transacti
 	globalBlockNum[txParams.ChannelID] = globalBlockNum[txParams.ChannelID] + 1
 }
 
-func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mockpeer.MockCCComm, cccid *ccprovider.CCContext, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mockpeer.MockResponseSet, chaincodeSupport *ChaincodeSupport) error {
+func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mockpeer.MockCCComm, chaincodeName string, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mockpeer.MockResponseSet, chaincodeSupport *ChaincodeSupport) error {
 	ccSide.SetResponses(respSet)
 
-	resp, _, err := chaincodeSupport.Execute(txParams, cccid, cis.ChaincodeSpec.Input)
+	resp, _, err := chaincodeSupport.Execute(txParams, chaincodeName, cis.ChaincodeSpec.Input)
 	if err == nil && resp.Status != shim.OK {
 		err = errors.New(resp.Message)
 	}
@@ -423,13 +425,8 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *ccpro
 	//wrap the deployment in an invocation spec to lscc...
 	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(txParams.ChannelID), b}}}}
 
-	lsccid := &ccprovider.CCContext{
-		Name:    lsccSpec.ChaincodeSpec.ChaincodeId.Name,
-		Version: sysCCVers,
-	}
-
 	//write to lscc
-	if _, _, err := chaincodeSupport.Execute(txParams, lsccid, lsccSpec.ChaincodeSpec.Input); err != nil {
+	if _, _, err := chaincodeSupport.Execute(txParams, "lscc", lsccSpec.ChaincodeSpec.Input); err != nil {
 		t.Fatalf("Error deploying chaincode %v (err: %s)", cccid, err)
 	}
 }
@@ -464,11 +461,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 		Responses: []*mockpeer.MockResponse{resp},
 	}
 
-	cccid := &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "0",
-	}
-	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 
 	//set the right TxID in response now
 	resp = &mockpeer.MockResponse{
@@ -486,13 +479,9 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 		Responses: []*mockpeer.MockResponse{resp},
 	}
 
-	badcccid := &ccprovider.CCContext{
-		Name: "badccname",
-	}
-
 	//we are not going to reach the chaincode and so won't get a response from it. processDone will not
 	//be triggered by the chaincode stream.  We just expect an error from fabric. Hence pass nil for done
-	execCC(t, txParams, ccSide, badcccid, false, true, nil, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, "badccname", false, true, nil, cis, respSet, chaincodeSupport)
 
 	//---------try a successful init at last-------
 	//everything lined up
@@ -512,7 +501,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 		},
 	}
 
-	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 
@@ -545,11 +534,7 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 		},
 	}
 
-	cccid := &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "0",
-	}
-	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 
 	//delete the extra var
 	respSet = &mockpeer.MockResponseSet{
@@ -563,7 +548,7 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 	}
 
 	txParams.TxID = "3"
-	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 
 	//get the extra var and delete it
 	respSet = &mockpeer.MockResponseSet{
@@ -576,7 +561,7 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 	}
 
 	txParams.TxID = "4"
-	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 
@@ -641,14 +626,10 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 		Responses: mkpeer,
 	}
 
-	cccid := &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "0",
-	}
 	if collection == "" {
-		execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
+		execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 	} else {
-		execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
+		execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 	}
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
@@ -717,12 +698,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	}
 	calledCCSide.SetResponses(respSet2)
 
-	cccid = &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "0",
-	}
-
-	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 
@@ -760,12 +736,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 
 	calledCCSide.SetResponses(respSet2)
 
-	cccid = &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "0",
-	}
-
-	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 
@@ -841,14 +812,10 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 		Responses: mkpeer,
 	}
 
-	cccid := &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "0",
-	}
 	if collection == "" {
-		execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
+		execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 	} else {
-		execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
+		execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 	}
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
@@ -903,11 +870,7 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 		},
 	}
 
-	cccid := &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "0",
-	}
-	execCC(t, txParams, ccSide, cccid, false, false, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 
@@ -1168,12 +1131,7 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 		},
 	}
 
-	cccid = &ccprovider.CCContext{
-		Name:    ccname,
-		Version: "0",
-	}
-
-	execCC(t, txParams, ccSide, cccid, false, true, done, cis, respSet, chaincodeSupport)
+	execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 }

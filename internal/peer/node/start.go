@@ -535,20 +535,21 @@ func serve(args []string) error {
 	}
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{
-		ACLProvider:            aclProvider,
-		AppConfig:              peerInstance,
-		DeployedCCInfoProvider: lifecycleValidatorCommitter,
-		ExecuteTimeout:         chaincodeConfig.ExecuteTimeout,
-		HandlerRegistry:        chaincodeHandlerRegistry,
-		HandlerMetrics:         chaincode.NewHandlerMetrics(opsSystem.Provider),
-		Keepalive:              chaincodeConfig.Keepalive,
-		Launcher:               chaincodeLauncher,
-		Lifecycle:              chaincodeEndorsementInfo,
-		Peer:                   peerInstance,
-		Runtime:                containerRuntime,
-		BuiltinSCCs:            builtinSCCs,
-		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
-		UserRunsCC:             userRunsCC,
+		ACLProvider:                aclProvider,
+		AppConfig:                  peerInstance,
+		DeployedCCInfoProvider:     lifecycleValidatorCommitter,
+		ExecuteTimeout:             chaincodeConfig.ExecuteTimeout,
+		HandlerRegistry:            chaincodeHandlerRegistry,
+		HandlerMetrics:             chaincode.NewHandlerMetrics(opsSystem.Provider),
+		InstantiationPolicyChecker: chaincode.CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
+		Keepalive:                  chaincodeConfig.Keepalive,
+		Launcher:                   chaincodeLauncher,
+		Lifecycle:                  chaincodeEndorsementInfo,
+		Peer:                       peerInstance,
+		Runtime:                    containerRuntime,
+		BuiltinSCCs:                builtinSCCs,
+		TotalQueryLimit:            chaincodeConfig.TotalQueryLimit,
+		UserRunsCC:                 userRunsCC,
 	}
 
 	ccSupSrv := pb.ChaincodeSupportServer(chaincodeSupport)
