@@ -91,7 +91,7 @@ type ChaincodePackageLocator struct {
 
 func (cpl *ChaincodePackageLocator) ChaincodePackageStreamer(packageID string) *ChaincodePackageStreamer {
 	return &ChaincodePackageStreamer{
-		PackagePath: filepath.Join(cpl.ChaincodeDir, packageID+".bin"),
+		PackagePath: filepath.Join(cpl.ChaincodeDir, CCFileName(packageID)),
 	}
 }
 

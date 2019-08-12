@@ -147,7 +147,7 @@ func (s *Store) Save(label string, ccInstallPkg []byte) (string, error) {
 	hash := util.ComputeSHA256(ccInstallPkg)
 	packageID := packageID(label, hash)
 
-	ccInstallPkgFileName := packageID + ".bin"
+	ccInstallPkgFileName := CCFileName(packageID)
 	ccInstallPkgFilePath := filepath.Join(s.Path, ccInstallPkgFileName)
 
 	if exists, _ := s.ReadWriter.Exists(ccInstallPkgFilePath); exists {
@@ -167,7 +167,7 @@ func (s *Store) Save(label string, ccInstallPkg []byte) (string, error) {
 // Load loads a persisted chaincode install package bytes with
 // the given packageID.
 func (s *Store) Load(packageID string) ([]byte, error) {
-	ccInstallPkgPath := filepath.Join(s.Path, packageID+".bin")
+	ccInstallPkgPath := filepath.Join(s.Path, CCFileName(packageID))
 
 	exists, err := s.ReadWriter.Exists(ccInstallPkgPath)
 	if err != nil {
@@ -225,7 +225,11 @@ func packageID(label string, hash []byte) string {
 	return fmt.Sprintf("%s:%x", label, hash)
 }
 
-var packageFileMatcher = regexp.MustCompile("^(.+):([0-9abcdef]+)[.]bin$")
+func CCFileName(packageID string) string {
+	return packageID + ".tar.gz"
+}
+
+var packageFileMatcher = regexp.MustCompile("^(.+):([0-9abcdef]+)[.]tar[.]gz$")
 
 func installedChaincodeFromFilename(fileName string) (chaincode.InstalledChaincode, bool) {
 	matches := packageFileMatcher.FindStringSubmatch(fileName)

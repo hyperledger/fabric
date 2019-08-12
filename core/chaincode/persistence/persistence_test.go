@@ -231,7 +231,7 @@ var _ = Describe("Persistence", func() {
 			Expect(mockReadWriter.WriteFileCallCount()).To(Equal(1))
 			pkgDataFilePath, pkgDataFileName, pkgData := mockReadWriter.WriteFileArgsForCall(0)
 			Expect(pkgDataFilePath).To(Equal(""))
-			Expect(pkgDataFileName).To(Equal("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.bin"))
+			Expect(pkgDataFileName).To(Equal("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.tar.gz"))
 			Expect(pkgData).To(Equal([]byte("testpkg")))
 		})
 
@@ -257,7 +257,7 @@ var _ = Describe("Persistence", func() {
 				packageID, err := store.Save("testcc", pkgBytes)
 				Expect(packageID).To(Equal(""))
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("error writing chaincode install package to testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.bin: soccer"))
+				Expect(err.Error()).To(ContainSubstring("error writing chaincode install package to testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.tar.gz: soccer"))
 			})
 		})
 	})
@@ -333,9 +333,9 @@ var _ = Describe("Persistence", func() {
 		BeforeEach(func() {
 			mockReadWriter = &mock.IOReadWriter{}
 			mockFileInfo := &mock.OSFileInfo{}
-			mockFileInfo.NameReturns(fmt.Sprintf("%s:%x.bin", "label1", []byte("hash1")))
+			mockFileInfo.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "label1", []byte("hash1")))
 			mockFileInfo2 := &mock.OSFileInfo{}
-			mockFileInfo2.NameReturns(fmt.Sprintf("%s:%x.bin", "label2", []byte("hash2")))
+			mockFileInfo2.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "label2", []byte("hash2")))
 			mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2}, nil)
 			store = &persistence.Store{
 				ReadWriter: mockReadWriter,
@@ -361,13 +361,13 @@ var _ = Describe("Persistence", func() {
 		Context("when extraneous files are present", func() {
 			BeforeEach(func() {
 				mockFileInfo := &mock.OSFileInfo{}
-				mockFileInfo.NameReturns(fmt.Sprintf("%s:%x.bin", "label1", []byte("hash1")))
+				mockFileInfo.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "label1", []byte("hash1")))
 				mockFileInfo2 := &mock.OSFileInfo{}
-				mockFileInfo2.NameReturns(fmt.Sprintf("%s:%x.bin", "label2", []byte("hash2")))
+				mockFileInfo2.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "label2", []byte("hash2")))
 				mockFileInfo3 := &mock.OSFileInfo{}
-				mockFileInfo3.NameReturns(fmt.Sprintf("%s:%x.bin", "", "Musha rain dum a doo, dum a da"))
+				mockFileInfo3.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "", "Musha rain dum a doo, dum a da"))
 				mockFileInfo4 := &mock.OSFileInfo{}
-				mockFileInfo4.NameReturns(fmt.Sprintf("%s:%x.bin", "", "barfity:barf.bin"))
+				mockFileInfo4.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "", "barfity:barf.tar.gz"))
 				mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2, mockFileInfo3}, nil)
 			})
 
