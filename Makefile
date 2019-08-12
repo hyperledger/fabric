@@ -45,7 +45,7 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
-ALPINE_VER ?= 3.9
+ALPINE_VER ?= 3.10
 BASE_VERSION = 2.0.0
 PREV_VERSION = 2.0.0-alpha
 BASEIMAGE_RELEASE = 0.4.15
@@ -81,7 +81,9 @@ METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
-GO_VER = $(shell grep "GO_VER" ci.properties |cut -d'=' -f2-)
+# GO_VER = $(shell grep "GO_VER" ci.properties |cut -d'=' -f2-)
+# temporary override until CI support 1.12.7
+GO_VER = 1.12.7
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 
 GO_TAGS ?=
