@@ -400,7 +400,7 @@ func getTarGZ(t *testing.T, name string, contents []byte) []byte {
 }
 
 // Deploy a chaincode - i.e., build and initialize.
-func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeSpec, chaincodeSupport *ChaincodeSupport) {
+func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *CCContext, spec *pb.ChaincodeSpec, chaincodeSupport *ChaincodeSupport) {
 	// First build and get the deployment spec
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
@@ -647,7 +647,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	//first deploy the new cc to LSCC
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	cccid := &ccprovider.CCContext{
+	cccid := &CCContext{
 		Name:    calledCC,
 		Version: "0",
 	}
@@ -1066,7 +1066,7 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 	txid := util.GenerateUUID()
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID2, cis, txid)
 
-	cccid := &ccprovider.CCContext{
+	cccid := &CCContext{
 		Name:    ccname,
 		Version: "0",
 	}

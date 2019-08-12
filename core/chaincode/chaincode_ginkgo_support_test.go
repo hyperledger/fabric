@@ -77,10 +77,9 @@ var _ = Describe("ChaincodeSupport", func() {
 			ccid, ccContext, err := chaincodeSupport.CheckInvocation("test-channel", "test-chaincode-name", fakeTxSim)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ccid).To(Equal("definition-name:cc-version"))
-			Expect(ccContext).To(Equal(&ccprovider.CCContext{
+			Expect(ccContext).To(Equal(&chaincode.CCContext{
 				Name:    "test-chaincode-name",
 				Version: "cc-version",
-				ID:      []byte("id"),
 			}))
 
 			Expect(fakeLifecycle.ChaincodeDefinitionCallCount()).To(Equal(1))
@@ -118,7 +117,7 @@ var _ = Describe("ChaincodeSupport", func() {
 	Describe("CheckInit", func() {
 		var (
 			txParams *ccprovider.TransactionParams
-			cccid    *ccprovider.CCContext
+			cccid    *chaincode.CCContext
 			input    *pb.ChaincodeInput
 
 			fakeSimulator *mock.TxSimulator
@@ -133,7 +132,7 @@ var _ = Describe("ChaincodeSupport", func() {
 				TXSimulator: fakeSimulator,
 			}
 
-			cccid = &ccprovider.CCContext{
+			cccid = &chaincode.CCContext{
 				Name:         "cc-name",
 				Version:      "cc-version",
 				InitRequired: true,

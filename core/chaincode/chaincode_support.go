@@ -75,6 +75,20 @@ type ChaincodeSupport struct {
 	UserRunsCC             bool
 }
 
+// CCContext is passed around instead of args, but is increasingly small
+// and not so useful, it will hopefully go away soon.
+type CCContext struct {
+	// Name chaincode name
+	Name string
+
+	// Version used to construct the chaincode image and register
+	Version string
+
+	// InitRequired indicates whether the chaincode must have 'Init' invoked
+	// before other transactions can proceed.
+	InitRequired bool
+}
+
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
@@ -215,7 +229,7 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chain
 	return cs.execute(cctype, txParams, chaincodeName, input, h)
 }
 
-func (cs *ChaincodeSupport) CheckInvocation(channelID, chaincodeName string, txSim ledger.SimpleQueryExecutor) (ccid string, ccContext *ccprovider.CCContext, err error) {
+func (cs *ChaincodeSupport) CheckInvocation(channelID, chaincodeName string, txSim ledger.SimpleQueryExecutor) (ccid string, ccContext *CCContext, err error) {
 	cd, err := cs.Lifecycle.ChaincodeDefinition(channelID, chaincodeName, txSim)
 	if err != nil {
 		logDevModeError(cs.UserRunsCC)
@@ -229,15 +243,14 @@ func (cs *ChaincodeSupport) CheckInvocation(channelID, chaincodeName string, txS
 		}
 	}
 
-	return cd.CCID(), &ccprovider.CCContext{
+	return cd.CCID(), &CCContext{
 		Name:         chaincodeName,
 		Version:      cd.CCVersion(),
 		InitRequired: cd.RequiresInit(),
-		ID:           cd.Hash(),
 	}, nil
 }
 
-func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (bool, error) {
+func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cccid *CCContext, input *pb.ChaincodeInput) (bool, error) {
 	if txParams.ChannelID == "" {
 		// Channel-less invocations must be for SCCs, so, we ignore them for now
 		return false, nil
