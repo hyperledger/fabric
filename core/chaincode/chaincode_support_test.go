@@ -1128,7 +1128,7 @@ func TestCCFramework(t *testing.T) {
 	initializeCC(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	//chaincode support should not allow dups
-	handler := &Handler{chaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, BuiltinSCCs: chaincodeSupport.BuiltinSCCs}
+	handler := &Handler{chaincodeID: ccname + ":0", BuiltinSCCs: chaincodeSupport.BuiltinSCCs}
 	if err := chaincodeSupport.HandlerRegistry.Register(handler); err == nil {
 		t.Fatalf("expected re-register to fail")
 	}

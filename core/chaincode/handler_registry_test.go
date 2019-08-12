@@ -10,7 +10,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -23,7 +22,7 @@ var _ = Describe("HandlerRegistry", func() {
 	BeforeEach(func() {
 		hr = chaincode.NewHandlerRegistry(true)
 		handler = &chaincode.Handler{}
-		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "chaincode-name"})
+		chaincode.SetHandlerChaincodeID(handler, "chaincode-name")
 	})
 
 	Describe("Launching", func() {
@@ -310,7 +309,7 @@ var _ = Describe("TxSimulatorGetter", func() {
 
 	When("No TxContext is created", func() {
 		BeforeEach(func() {
-			chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "package-ID"})
+			chaincode.SetHandlerChaincodeID(handler, "package-ID")
 			hr.Register(handler)
 		})
 
@@ -322,7 +321,7 @@ var _ = Describe("TxSimulatorGetter", func() {
 
 	When("Handler is created for package-ID and TxContext is created for channel-ID/tx-ID", func() {
 		BeforeEach(func() {
-			chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "package-ID"})
+			chaincode.SetHandlerChaincodeID(handler, "package-ID")
 			hr.Register(handler)
 			handler.TXContexts.Create(&ccprovider.TransactionParams{
 				ChannelID:   "channel-ID",

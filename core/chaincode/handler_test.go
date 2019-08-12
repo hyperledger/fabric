@@ -126,7 +126,7 @@ var _ = Describe("Handler", func() {
 			Metrics:   chaincodeMetrics,
 		}
 		chaincode.SetHandlerChatStream(handler, fakeChatStream)
-		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "test-handler-name", Version: "1.0"})
+		chaincode.SetHandlerChaincodeID(handler, "test-handler-name:1.0")
 	})
 
 	Describe("HandleTransaction", func() {
