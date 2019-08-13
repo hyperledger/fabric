@@ -294,29 +294,6 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 
-	// blksPvtData returns all the pvt data for a block for which the any pvtdata has been submitted
-	// using CommitPvtDataOfOldBlocks
-	blksPvtData, err := store.GetLastUpdatedOldBlocksPvtData()
-	assert.NoError(err)
-
-	expectedLastupdatedPvtdata := make(map[uint64][]*ledger.TxPvtData)
-	expectedLastupdatedPvtdata[1] = []*ledger.TxPvtData{
-		produceSamplePvtdata(t, 1, []string{"ns-1:coll-1", "ns-2:coll-1"}),
-		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-2:coll-1", "ns-2:coll-2", "ns-3:coll-1"}),
-		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
-	}
-	expectedLastupdatedPvtdata[2] = []*ledger.TxPvtData{
-		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1"}),
-	}
-	assert.Equal(expectedLastupdatedPvtdata, blksPvtData)
-
-	err = store.ResetLastUpdatedOldBlocksList()
-	assert.NoError(err)
-
-	blksPvtData, err = store.GetLastUpdatedOldBlocksPvtData()
-	assert.NoError(err)
-	assert.Nil(blksPvtData)
-
 	// COMMIT BLOCK 3 WITH NO PVTDATA
 	assert.NoError(store.Prepare(3, nil, nil))
 	assert.NoError(store.Commit())
@@ -345,9 +322,6 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 	assert.False(testDataKeyExists(t, store, ns2Coll2Blk1Tx1)) // expired but still missing
 	assert.False(testDataKeyExists(t, store, ns1Coll2Blk1Tx2)) // expired still missing
 	assert.True(testDataKeyExists(t, store, ns3Coll2Blk1Tx2))  // never expires
-
-	err = store.ResetLastUpdatedOldBlocksList()
-	assert.NoError(err)
 
 	// COMMIT BLOCK 4 WITH NO PVTDATA
 	assert.NoError(store.Prepare(4, nil, nil))

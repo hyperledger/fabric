@@ -8,7 +8,6 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -282,10 +281,10 @@ func (s *store) Rollback() error {
 // Given a list of old block's pvtData, `CommitPvtDataOfOldBlocks` performs the following four
 // operations
 // (1) construct dataEntries for all pvtData
-// (2) construct update entries (i.e., dataEntries, expiryEntries, missingDataEntries, and
-//     lastUpdatedOldBlocksList) from the above created data entries
+// (2) construct update entries (i.e., dataEntries, expiryEntries, missingDataEntries)
+//     from the above created data entries
 // (3) create a db update batch from the update entries
-// (4) commit the update entries to the pvtStore
+// (4) commit the update batch to the pvtStore
 func (s *store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
 	if s.isLastUpdatedOldBlocksSet {
 		return &ErrIllegalCall{`The lastUpdatedOldBlocksList is set. It means that the
@@ -309,12 +308,11 @@ func (s *store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPv
 		return err
 	}
 
-	// (4) commit the update entries to the pvtStore
+	// (4) commit the update batch to the pvtStore
 	logger.Debug("Committing the update batch to pvtdatastore")
 	if err := s.commitBatch(batch); err != nil {
 		return err
 	}
-	s.isLastUpdatedOldBlocksSet = true
 
 	return nil
 }
@@ -466,9 +464,6 @@ func constructUpdateBatchFromUpdateEntries(updateEntries *entriesForPvtDataOfOld
 		return nil, err
 	}
 
-	// (4) add lastUpdatedOldBlocksList to the batch
-	addLastUpdatedOldBlocksList(batch, updateEntries)
-
 	return batch, nil
 }
 
@@ -516,36 +511,6 @@ func addUpdatedMissingDataEntriesToUpdateBatch(batch *leveldbhelper.UpdateBatch,
 	return nil
 }
 
-func addLastUpdatedOldBlocksList(batch *leveldbhelper.UpdateBatch, entries *entriesForPvtDataOfOldBlocks) {
-	// create a list of blocks' pvtData which are being stored. If this list is
-	// found during the recovery, the stateDB may not be in sync with the pvtData
-	// and needs recovery. In a normal flow, once the stateDB is synced, the
-	// block list would be deleted.
-	updatedBlksListMap := make(map[uint64]bool)
-
-	for dataKey := range entries.dataEntries {
-		updatedBlksListMap[dataKey.blkNum] = true
-	}
-
-	var updatedBlksList lastUpdatedOldBlocksList
-	for blkNum := range updatedBlksListMap {
-		updatedBlksList = append(updatedBlksList, blkNum)
-	}
-
-	// better to store as sorted list
-	sort.SliceStable(updatedBlksList, func(i, j int) bool {
-		return updatedBlksList[i] < updatedBlksList[j]
-	})
-
-	buf := proto.NewBuffer(nil)
-	buf.EncodeVarint(uint64(len(updatedBlksList)))
-	for _, blkNum := range updatedBlksList {
-		buf.EncodeVarint(blkNum)
-	}
-
-	batch.Put(lastUpdatedOldBlocksKey, buf.Bytes())
-}
-
 func (s *store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
 	// commit the batch to the store
 	if err := s.db.WriteBatch(batch, true); err != nil {
@@ -555,6 +520,11 @@ func (s *store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
 	return nil
 }
 
+// TODO FAB-16293 -- GetLastUpdatedOldBlocksPvtData() can be removed either in v2.0 or in v2.1.
+// If we decide to rebuild stateDB in v2.0, by default, the rebuild logic would take
+// care of synching stateDB with pvtdataStore without calling GetLastUpdatedOldBlocksPvtData().
+// Hence, it can be safely removed. Suppose if we decide not to rebuild stateDB in v2.0,
+// we can remove this function in v2.1.
 // GetLastUpdatedOldBlocksPvtData implements the function in the interface `Store`
 func (s *store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error) {
 	if !s.isLastUpdatedOldBlocksSet {
@@ -600,6 +570,11 @@ func (s *store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 	}
 	return updatedBlksList, nil
 }
+
+// TODO FAB-16294 -- ResetLastUpdatedOldBlocksList() can be removed in v2.1.
+// From v2.0 onwards, we do not store the last updatedBlksList. Only to support
+// the rolling upgrade from v142 to v2.0, we retain the ResetLastUpdatedOldBlocksList()
+// in v2.0.
 
 // ResetLastUpdatedOldBlocksList implements the function in the interface `Store`
 func (s *store) ResetLastUpdatedOldBlocksList() error {

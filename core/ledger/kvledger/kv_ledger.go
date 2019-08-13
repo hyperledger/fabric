@@ -278,6 +278,8 @@ func (l *kvLedger) syncStateDBWithPvtdatastore() error {
 		return err
 	}
 
+	l.blockStore.ResetLastUpdatedOldBlocksList()
+
 	return nil
 }
 
@@ -576,13 +578,13 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(pvtData []*ledger.BlockPvtData) ([]*
 		return nil, err
 	}
 
-	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the pvtdatastore", l.ledgerID, len(pvtData))
-	err = l.blockStore.CommitPvtDataOfOldBlocks(hashVerifiedPvtData)
+	err = l.applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData)
 	if err != nil {
 		return nil, err
 	}
 
-	err = l.applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData)
+	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the pvtdatastore", l.ledgerID, len(pvtData))
+	err = l.blockStore.CommitPvtDataOfOldBlocks(hashVerifiedPvtData)
 	if err != nil {
 		return nil, err
 	}
@@ -597,17 +599,17 @@ func (l *kvLedger) applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData map[uint64
 		return err
 	}
 
+	// Assume the peer fails after storing the pvtData of old block in the stateDB but before
+	// storing it in block store. When the peer starts again, the reconciler finds that the
+	// pvtData is missing in the ledger store and hence, it would fetch those data again. As
+	// a result, RemoveStaleAndCommitPvtDataOfOldBlocks gets already existing data. In this
+	// scenario, RemoveStaleAndCommitPvtDataOfOldBlocks just replaces the old entry as we
+	// always makes the comparison between hashed version and this pvtData. There is no
+	// problem in terms of data consistency. However, if the reconciler is disabled before
+	// the peer restart, then the pvtData in stateDB may not be in sync with the pvtData in
+	// ledger store till the reconciler is enabled.
 	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the stateDB", l.ledgerID, len(hashVerifiedPvtData))
-	err = l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(committedPvtData)
-	if err != nil {
-		return err
-	}
-
-	logger.Debugf("[%s:] Clearing the bookkeeping information from pvtdatastore", l.ledgerID)
-	if err := l.blockStore.ResetLastUpdatedOldBlocksList(); err != nil {
-		return err
-	}
-	return nil
+	return l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(committedPvtData)
 }
 
 func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
