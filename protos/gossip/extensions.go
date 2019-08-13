@@ -476,6 +476,9 @@ func (e *Envelope) SignSecret(signer Signer, secret *Secret) error {
 // in the secret envelope, or an empty string
 // if a failure occurs.
 func (s *SecretEnvelope) InternalEndpoint() string {
+	if s == nil {
+		return ""
+	}
 	secret := &Secret{}
 	if err := proto.Unmarshal(s.Payload, secret); err != nil {
 		return ""
