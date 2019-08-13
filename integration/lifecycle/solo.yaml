@@ -44,9 +44,11 @@ orderers:
 
 orderercapabilities:
   v20: false
-  
+
 channels:
 - name: testchannel
+  profile: TwoOrgsChannel
+- name: testchannel2
   profile: TwoOrgsChannel
 
 peers:
@@ -55,18 +57,24 @@ peers:
   channels:
   - name: testchannel
     anchor: true
+  - name: testchannel2
+    anchor: true
 - name: peer2
   organization: org1
   channels:
   - name: testchannel
+  - name: testchannel2
 - name: peer1
   organization: org2
   channels:
   - name: testchannel
+  - name: testchannel2
 - name: peer2
   organization: org2
   channels:
   - name: testchannel
+    anchor: true
+  - name: testchannel2
     anchor: true
 
 profiles:

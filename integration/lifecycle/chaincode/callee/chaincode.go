@@ -16,7 +16,7 @@ type CC struct {
 }
 
 func (t *CC) Init(stub shim.ChaincodeStubInterface) pb.Response {
-	err := stub.PutState("foo", []byte("foo"))
+	err := stub.PutState("foo", []byte("callee:foo"))
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -28,7 +28,7 @@ func (t *CC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	fn, _ := stub.GetFunctionAndParameters()
 	switch fn {
 	case "INVOKE":
-		err := stub.PutState("foo", []byte("bar"))
+		err := stub.PutState("foo", []byte("callee:bar"))
 		if err != nil {
 			return shim.Error(err.Error())
 		}
