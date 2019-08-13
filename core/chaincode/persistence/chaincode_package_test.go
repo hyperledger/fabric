@@ -269,7 +269,7 @@ var _ = Describe("ChaincodePackageLocator", func() {
 		It("creates a ChaincodePackageStreamer for the given packageID", func() {
 			streamer := locator.ChaincodePackageStreamer("test-package")
 			Expect(streamer).To(Equal(&persistence.ChaincodePackageStreamer{
-				PackagePath: "/fake-dir/test-package.bin",
+				PackagePath: "/fake-dir/test-package.tar.gz",
 			}))
 		})
 	})
