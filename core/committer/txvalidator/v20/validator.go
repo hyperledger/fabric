@@ -323,7 +323,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		var err error
 		var txResult peer.TxValidationCode
 
-		if payload, txResult = validation.ValidateTransaction(env, v.ChannelResources.Capabilities()); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = validation.ValidateTransaction(env); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,

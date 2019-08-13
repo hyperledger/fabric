@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -212,7 +211,7 @@ func TestValidateTransactionGoodTokenTx(t *testing.T) {
 	assert.NoError(t, err)
 	envelope, err := createTestEnvelope(t, txBytes, header, signer)
 	assert.NoError(t, err)
-	payload, code := ValidateTransaction(envelope, &config.MockApplicationCapabilities{})
+	payload, code := ValidateTransaction(envelope)
 	assert.Equal(t, code, peer.TxValidationCode_VALID)
 	assert.Equal(t, payload.Data, txBytes)
 }
@@ -223,7 +222,7 @@ func TestValidateTransactionBadTokenTxData(t *testing.T) {
 	assert.NoError(t, err)
 	envelope, err := createTestEnvelope(t, txBytes, header, signer)
 	assert.NoError(t, err)
-	payload, code := ValidateTransaction(envelope, &config.MockApplicationCapabilities{})
+	payload, code := ValidateTransaction(envelope)
 	assert.Equal(t, code, peer.TxValidationCode_BAD_PAYLOAD)
 	assert.Equal(t, payload.Data, txBytes)
 }
@@ -235,7 +234,7 @@ func TestValidateTransactionBadTokenTxID(t *testing.T) {
 	assert.NoError(t, err)
 	envelope, err := createTestEnvelope(t, txBytes, header, signer)
 	assert.NoError(t, err)
-	payload, code := ValidateTransaction(envelope, &config.MockApplicationCapabilities{})
+	payload, code := ValidateTransaction(envelope)
 	assert.Equal(t, code, peer.TxValidationCode_BAD_PROPOSAL_TXID)
 	assert.Nil(t, payload)
 }
