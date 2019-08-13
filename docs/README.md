@@ -67,11 +67,14 @@ Here are the quick steps to achieve this on a local machine without
 depending on ReadTheDocs, starting from the main fabric
 directory. Note: you may need to adjust depending on your OS.
 
+Prereqs:
+ - [Python 3.7](https://wiki.python.org/moin/BeginnersGuide/Download)
+ - [Pipenv](https://docs.pipenv.org/en/latest/#install-pipenv-today)
+
 ```
-sudo pip install Sphinx
-sudo pip install sphinx_rtd_theme
-sudo pip install recommonmark==0.4.0
-cd fabric/docs # Be in this directory. Makefile sits there.
+cd fabric/docs
+pipenv install
+pipenv shell
 make html
 ```
 

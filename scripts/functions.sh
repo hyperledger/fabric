@@ -27,6 +27,8 @@ function filterExcludedAndGeneratedFiles {
         '(^|/)testdata\/'
         '(^|/)vendor\/'
         '\.json$'
+        '(^|/)Pipfile$'
+        '(^|/)Pipfile\.lock$'
     )
 
     local filter
