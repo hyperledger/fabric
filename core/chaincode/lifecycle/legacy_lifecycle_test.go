@@ -187,7 +187,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			Expect(def).To(Equal(&lifecycle.LegacyDefinition{
 				Version:           "version",
 				EndorsementPlugin: "endorsement-plugin",
-				CCIDField:         "hash",
+				ChaincodeIDField:  "hash",
 			}))
 		})
 
@@ -202,7 +202,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				Expect(res).To(Equal(&lifecycle.LegacyDefinition{
 					Version:           "syscc",
 					EndorsementPlugin: "escc",
-					CCIDField:         "test-syscc-name.syscc",
+					ChaincodeIDField:  "test-syscc-name.syscc",
 				}))
 			})
 		})
@@ -256,12 +256,19 @@ var _ = Describe("LegacyDefinition", func() {
 			Version:           "version",
 			EndorsementPlugin: "endorsement-plugin",
 			RequiresInitField: true,
+			ChaincodeIDField:  "chaincode-id",
 		}
 	})
 
 	Describe("CCVersion", func() {
 		It("returns the version", func() {
 			Expect(ld.CCVersion()).To(Equal("version"))
+		})
+	})
+
+	Describe("ChaincodeID", func() {
+		It("returns the version", func() {
+			Expect(ld.ChaincodeID()).To(Equal("chaincode-id"))
 		})
 	})
 

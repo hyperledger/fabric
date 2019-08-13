@@ -433,7 +433,7 @@ func serve(args []string) error {
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
-		CCID:            scc.CCID(lifecycle.LifecycleNamespace),
+		CCID:            scc.ChaincodeID(lifecycle.LifecycleNamespace),
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{

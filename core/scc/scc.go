@@ -20,8 +20,8 @@ import (
 // this constant here.
 const SysCCVersion = "syscc"
 
-// CCID returns the chaincode ID of a system chaincode of a given name.
-func CCID(ccName string) string {
+// ChaincodeID returns the chaincode ID of a system chaincode of a given name.
+func ChaincodeID(ccName string) string {
 	return ccName + "." + SysCCVersion
 }
 
@@ -61,7 +61,7 @@ type SelfDescribingSysCC interface {
 func DeploySysCC(sysCC SelfDescribingSysCC, chaincodeStreamHandler ChaincodeStreamHandler) {
 	sysccLogger.Infof("deploying system chaincode '%s'", sysCC.Name())
 
-	ccid := CCID(sysCC.Name())
+	ccid := ChaincodeID(sysCC.Name())
 
 	done := chaincodeStreamHandler.LaunchInProc(ccid)
 

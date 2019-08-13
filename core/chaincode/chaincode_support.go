@@ -253,14 +253,14 @@ func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionPara
 			return "", 0, errors.WithMessage(err, "could not set 'initialized' key")
 		}
 
-		return cd.CCID(), pb.ChaincodeMessage_INIT, nil
+		return cd.ChaincodeID(), pb.ChaincodeMessage_INIT, nil
 	}
 
 	if needsInitialization {
 		return "", 0, errors.Errorf("chaincode '%s' has not been initialized for this version, must call as init first", chaincodeName)
 	}
 
-	return cd.CCID(), pb.ChaincodeMessage_TRANSACTION, nil
+	return cd.ChaincodeID(), pb.ChaincodeMessage_TRANSACTION, nil
 }
 
 // execute executes a transaction and waits for it to complete until a timeout value.
