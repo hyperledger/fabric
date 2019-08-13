@@ -22,12 +22,15 @@ import (
 	"time"
 
 	protoG "github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 )
@@ -1095,6 +1098,47 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 
 				return envelope
 			}
+	}
+}
+
+func TestExpirationNoSecretEnvelope(t *testing.T) {
+	t.Parallel()
+
+	l, err := zap.NewDevelopment()
+	assert.NoError(t, err)
+
+	removed := make(chan struct{})
+	logger := flogging.NewFabricLogger(l, zap.Hooks(func(entry zapcore.Entry) error {
+		if strings.Contains(entry.Message, "Removing member: Endpoint: foo") {
+			removed <- struct{}{}
+		}
+		return nil
+	}))
+
+	msgStore := newAliveMsgStore(&gossipDiscoveryImpl{
+		aliveExpirationTimeout: time.Millisecond,
+		lock:                   &sync.RWMutex{},
+		aliveMembership:        util.NewMembershipStore(),
+		deadMembership:         util.NewMembershipStore(),
+		logger:                 logger,
+	})
+
+	msg := &proto.GossipMessage{
+		Content: &proto.GossipMessage_AliveMsg{
+			AliveMsg: &proto.AliveMessage{Membership: &proto.Member{
+				Endpoint: "foo",
+			}},
+		},
+	}
+
+	sMsg, err := msg.NoopSign()
+	assert.NoError(t, err)
+
+	msgStore.Add(sMsg)
+	select {
+	case <-removed:
+	case <-time.After(time.Second * 10):
+		t.Fatalf("timed out")
 	}
 }
 
