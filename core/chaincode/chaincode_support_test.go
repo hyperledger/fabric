@@ -408,7 +408,7 @@ func getTarGZ(t *testing.T, name string, contents []byte) []byte {
 }
 
 // Deploy a chaincode - i.e., build and initialize.
-func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *CCContext, spec *pb.ChaincodeSpec, chaincodeSupport *ChaincodeSupport) {
+func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, ccContext *CCContext, spec *pb.ChaincodeSpec, chaincodeSupport *ChaincodeSupport) {
 	// First build and get the deployment spec
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
@@ -423,7 +423,7 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *CCCon
 
 	//write to lscc
 	if _, _, err := chaincodeSupport.Execute(txParams, "lscc", lsccSpec.ChaincodeSpec.Input); err != nil {
-		t.Fatalf("Error deploying chaincode %v (err: %s)", cccid, err)
+		t.Fatalf("Error deploying chaincode %v (err: %s)", ccContext, err)
 	}
 }
 
@@ -655,12 +655,12 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	//first deploy the new cc to LSCC
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	cccid := &CCContext{
+	ccContext := &CCContext{
 		Name:    calledCC,
 		Version: "0",
 	}
 
-	deployCC(t, txParams, cccid, cis.ChaincodeSpec, chaincodeSupport)
+	deployCC(t, txParams, ccContext, cis.ChaincodeSpec, chaincodeSupport)
 
 	//commit
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
@@ -1074,12 +1074,12 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 	txid := util.GenerateUUID()
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID2, cis, txid)
 
-	cccid := &CCContext{
+	ccContext := &CCContext{
 		Name:    ccname,
 		Version: "0",
 	}
 
-	deployCC(t, txParams, cccid, cis.ChaincodeSpec, chaincodeSupport)
+	deployCC(t, txParams, ccContext, cis.ChaincodeSpec, chaincodeSupport)
 
 	//commit
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
