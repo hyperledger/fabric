@@ -14,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -405,6 +406,19 @@ func TestEnvelope_SignSecret(t *testing.T) {
 
 	assert.NotNil(t, env.SecretEnvelope)
 	assert.Equal(t, protoext.InternalEndpoint(env.SecretEnvelope), "localhost:5050")
+}
+
+func TestInternalEndpoint(t *testing.T) {
+	assert.Empty(t, protoext.InternalEndpoint(nil))
+	assert.Empty(t, protoext.InternalEndpoint(&gossip.SecretEnvelope{
+		Payload: []byte{1, 2, 3}}))
+	assert.Equal(t, "foo", protoext.InternalEndpoint(&gossip.SecretEnvelope{
+		Payload: protoutil.MarshalOrPanic(
+			&gossip.Secret{
+				Content: &gossip.Secret_InternalEndpoint{
+					InternalEndpoint: "foo",
+				},
+			})}))
 }
 
 func envelopes() []*gossip.Envelope {
