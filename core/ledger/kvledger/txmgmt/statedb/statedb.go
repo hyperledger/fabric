@@ -224,6 +224,16 @@ func (batch *UpdateBatch) GetRangeScanIterator(ns string, startKey string, endKe
 	return newNsIterator(ns, startKey, endKey, batch)
 }
 
+// Merge merges another updates batch with this updates batch
+func (batch *UpdateBatch) Merge(toMerge *UpdateBatch) {
+	batch.ContainsPostOrderWrites = batch.ContainsPostOrderWrites || toMerge.ContainsPostOrderWrites
+	for ns, nsUpdates := range toMerge.Updates {
+		for key, vv := range nsUpdates.M {
+			batch.Update(ns, key, vv)
+		}
+	}
+}
+
 func (batch *UpdateBatch) getOrCreateNsUpdates(ns string) *nsUpdates {
 	nsUpdates := batch.Updates[ns]
 	if nsUpdates == nil {
