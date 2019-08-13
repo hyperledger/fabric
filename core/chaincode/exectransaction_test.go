@@ -46,7 +46,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -155,7 +154,6 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		},
 		PeerAddress: peerAddress,
 	}
-	fakeInstantiationPolicyChecker := &mock.InstantiationPolicyChecker{}
 	userRunsCC := false
 	metricsProviders := &disabled.Provider{}
 	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
@@ -170,20 +168,19 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			func(string) channelconfig.Resources { return nil },
 			newPolicyChecker(peerInstance),
 		),
-		AppConfig:                  peerInstance,
-		DeployedCCInfoProvider:     &ledgermock.DeployedChaincodeInfoProvider{},
-		ExecuteTimeout:             globalConfig.ExecuteTimeout,
-		HandlerMetrics:             NewHandlerMetrics(metricsProviders),
-		HandlerRegistry:            chaincodeHandlerRegistry,
-		InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
-		Keepalive:                  globalConfig.Keepalive,
-		Launcher:                   chaincodeLauncher,
-		Lifecycle:                  ml,
-		Peer:                       peerInstance,
-		Runtime:                    containerRuntime,
-		BuiltinSCCs:                builtinSCCs,
-		TotalQueryLimit:            globalConfig.TotalQueryLimit,
-		UserRunsCC:                 userRunsCC,
+		AppConfig:              peerInstance,
+		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
+		HandlerRegistry:        chaincodeHandlerRegistry,
+		Keepalive:              globalConfig.Keepalive,
+		Launcher:               chaincodeLauncher,
+		Lifecycle:              ml,
+		Peer:                   peerInstance,
+		Runtime:                containerRuntime,
+		BuiltinSCCs:            builtinSCCs,
+		TotalQueryLimit:        globalConfig.TotalQueryLimit,
+		UserRunsCC:             userRunsCC,
 	}
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
@@ -742,7 +739,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 }
 
 func stopChaincode(chaincodeCtx *ccprovider.CCContext, chaincodeSupport *ChaincodeSupport) {
-	chaincodeSupport.Runtime.Stop(ccintf.CCID(chaincodeCtx.Name + ":" + chaincodeCtx.Version))
+	chaincodeSupport.Runtime.Stop(chaincodeCtx.Name + ":" + chaincodeCtx.Version)
 }
 
 // Test the execution of a chaincode that invokes another chaincode with wrong parameters. Should receive error from
@@ -785,7 +782,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	}
 
 	var nextBlockNumber uint64 = 1
-	defer chaincodeSupport.Runtime.Stop(ccintf.CCID(cID1.Name + ":" + cID1.Version))
+	defer chaincodeSupport.Runtime.Stop(cID1.Name + ":" + cID1.Version)
 
 	_, err = deploy(chainID, cccid1, spec1, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
@@ -810,7 +807,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 		Version: "0",
 	}
 
-	defer chaincodeSupport.Runtime.Stop(ccintf.CCID(cID2.Name + ":" + cID2.Version))
+	defer chaincodeSupport.Runtime.Stop(cID2.Name + ":" + cID2.Version)
 	_, err = deploy(chainID, cccid2, spec2, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID2 := spec2.ChaincodeId.Name
@@ -867,7 +864,7 @@ func TestChaincodeInit(t *testing.T) {
 		Version: "0",
 	}
 
-	defer chaincodeSupport.Runtime.Stop(ccintf.CCID(cID.Name + ":" + cID.Version))
+	defer chaincodeSupport.Runtime.Stop(cID.Name + ":" + cID.Version)
 
 	var nextBlockNumber uint64 = 1
 	_, err = deploy(chainID, cccid, spec, nextBlockNumber, chaincodeSupport)
@@ -921,7 +918,7 @@ func TestQueries(t *testing.T) {
 		Version: "0",
 	}
 
-	defer chaincodeSupport.Runtime.Stop(ccintf.CCID(cID.Name + ":" + cID.Version))
+	defer chaincodeSupport.Runtime.Stop(cID.Name + ":" + cID.Version)
 
 	var nextBlockNumber uint64 = 1
 	_, err = deploy(chainID, cccid, spec, nextBlockNumber, chaincodeSupport)

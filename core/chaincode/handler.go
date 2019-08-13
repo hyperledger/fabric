@@ -41,9 +41,9 @@ type ACLProvider interface {
 // A Registry is responsible for tracking handlers.
 type Registry interface {
 	Register(*Handler) error
-	Ready(ccintf.CCID)
-	Failed(ccintf.CCID, error)
-	Deregister(ccintf.CCID) error
+	Ready(string)
+	Failed(string, error)
+	Deregister(string) error
 }
 
 // An Invoker invokes chaincode.
@@ -345,7 +345,7 @@ func (h *Handler) deregister() {
 		// FIXME: this works once again because h.chaincodeID.Name
 		// is not the chaincode name but the concatenation of name
 		// and version (FAB-14630)
-		h.Registry.Deregister(ccintf.CCID(h.chaincodeID.Name))
+		h.Registry.Deregister(h.chaincodeID.Name)
 	}
 }
 
@@ -441,12 +441,12 @@ func (h *Handler) notifyRegistry(err error) {
 	}
 
 	if err != nil {
-		h.Registry.Failed(ccintf.CCID(h.chaincodeID.Name), err)
+		h.Registry.Failed(h.chaincodeID.Name, err)
 		chaincodeLogger.Errorf("failed to start %s -- %s", h.chaincodeID, err)
 		return
 	}
 
-	h.Registry.Ready(ccintf.CCID(h.chaincodeID.Name))
+	h.Registry.Ready(h.chaincodeID.Name)
 }
 
 // handleRegister is invoked when chaincode tries to register.

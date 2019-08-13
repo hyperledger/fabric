@@ -49,7 +49,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/dispatcher"
@@ -139,10 +138,11 @@ type externalVMAdapter struct {
 }
 
 func (e externalVMAdapter) Build(
-	cci *ccprovider.ChaincodeContainerInfo,
+	ccid string,
+	metadata *persistence.ChaincodePackageMetadata,
 	codePackage io.Reader,
 ) (container.Instance, error) {
-	return e.detector.Build(cci, codePackage)
+	return e.detector.Build(ccid, metadata, codePackage)
 }
 
 func serve(args []string) error {
@@ -309,8 +309,6 @@ func serve(args []string) error {
 
 	packageProvider := &persistence.PackageProvider{
 		LegacyPP: &ccprovider.CCInfoFSImpl{},
-		Store:    ccStore,
-		Parser:   ccPackageParser,
 	}
 
 	// legacyMetadataManager collects metadata information from the legacy
@@ -441,7 +439,7 @@ func serve(args []string) error {
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
-		PackageID:       ccintf.CCID(lifecycle.LifecycleNamespace + ":" + sysCCVersion),
+		CCID:            lifecycle.LifecycleNamespace + ":" + sysCCVersion,
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
@@ -541,21 +539,20 @@ func serve(args []string) error {
 	}
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{
-		ACLProvider:                aclProvider,
-		AppConfig:                  peerInstance,
-		DeployedCCInfoProvider:     lifecycleValidatorCommitter,
-		ExecuteTimeout:             chaincodeConfig.ExecuteTimeout,
-		HandlerRegistry:            chaincodeHandlerRegistry,
-		HandlerMetrics:             chaincode.NewHandlerMetrics(opsSystem.Provider),
-		InstantiationPolicyChecker: chaincode.CheckInstantiationPolicyFunc(ccprovider.CheckInstantiationPolicy),
-		Keepalive:                  chaincodeConfig.Keepalive,
-		Launcher:                   chaincodeLauncher,
-		Lifecycle:                  chaincodeEndorsementInfo,
-		Peer:                       peerInstance,
-		Runtime:                    containerRuntime,
-		BuiltinSCCs:                builtinSCCs,
-		TotalQueryLimit:            chaincodeConfig.TotalQueryLimit,
-		UserRunsCC:                 userRunsCC,
+		ACLProvider:            aclProvider,
+		AppConfig:              peerInstance,
+		DeployedCCInfoProvider: lifecycleValidatorCommitter,
+		ExecuteTimeout:         chaincodeConfig.ExecuteTimeout,
+		HandlerRegistry:        chaincodeHandlerRegistry,
+		HandlerMetrics:         chaincode.NewHandlerMetrics(opsSystem.Provider),
+		Keepalive:              chaincodeConfig.Keepalive,
+		Launcher:               chaincodeLauncher,
+		Lifecycle:              chaincodeEndorsementInfo,
+		Peer:                   peerInstance,
+		Runtime:                containerRuntime,
+		BuiltinSCCs:            builtinSCCs,
+		TotalQueryLimit:        chaincodeConfig.TotalQueryLimit,
+		UserRunsCC:             userRunsCC,
 	}
 
 	ccSupSrv := pb.ChaincodeSupportServer(chaincodeSupport)

@@ -27,6 +27,8 @@ var _ = Describe("ChaincodeSupport", func() {
 		fakeApplicationConfigRetriever *fake.ApplicationConfigRetriever
 		fakeApplicationConfig          *mock.ApplicationConfig
 		fakeApplicationCapabilities    *mock.ApplicationCapabilities
+		fakeLifecycle                  *mock.Lifecycle
+		fakeTxSim                      *mock.TxSimulator
 	)
 
 	BeforeEach(func() {
@@ -39,9 +41,78 @@ var _ = Describe("ChaincodeSupport", func() {
 		fakeApplicationConfigRetriever = &fake.ApplicationConfigRetriever{}
 		fakeApplicationConfigRetriever.GetApplicationConfigReturns(fakeApplicationConfig, true)
 
+		fakeLifecycle = &mock.Lifecycle{}
+		fakeTxSim = &mock.TxSimulator{}
+
 		chaincodeSupport = &chaincode.ChaincodeSupport{
 			AppConfig: fakeApplicationConfigRetriever,
+			Lifecycle: fakeLifecycle,
 		}
+	})
+
+	Describe("CheckInvocation", func() {
+		var (
+			fakeLegacyDefinition *mock.LegacyChaincodeDefinition
+		)
+
+		BeforeEach(func() {
+			fakeLegacyDefinition = &mock.LegacyChaincodeDefinition{}
+
+			ccDef := struct {
+				*ccprovider.ChaincodeData
+				*mock.LegacyChaincodeDefinition
+			}{
+				ChaincodeData: &ccprovider.ChaincodeData{
+					Name:    "definition-name",
+					Version: "cc-version",
+					Id:      []byte("id"),
+				},
+				LegacyChaincodeDefinition: fakeLegacyDefinition,
+			}
+
+			fakeLifecycle.ChaincodeDefinitionReturns(ccDef, nil)
+		})
+
+		It("fetches the definition, performs security checks, and returns the necessary info", func() {
+			ccid, ccContext, err := chaincodeSupport.CheckInvocation("test-channel", "test-chaincode-name", fakeTxSim)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ccid).To(Equal("definition-name:cc-version"))
+			Expect(ccContext).To(Equal(&ccprovider.CCContext{
+				Name:    "test-chaincode-name",
+				Version: "cc-version",
+				ID:      []byte("id"),
+			}))
+
+			Expect(fakeLifecycle.ChaincodeDefinitionCallCount()).To(Equal(1))
+			channelID, chaincodeName, txSim := fakeLifecycle.ChaincodeDefinitionArgsForCall(0)
+			Expect(channelID).To(Equal("test-channel"))
+			Expect(chaincodeName).To(Equal("test-chaincode-name"))
+			Expect(txSim).To(Equal(fakeTxSim))
+
+			Expect(fakeLegacyDefinition.ExecuteLegacySecurityChecksCallCount()).To(Equal(1))
+		})
+
+		Context("when the legacy security check fails", func() {
+			BeforeEach(func() {
+				fakeLegacyDefinition.ExecuteLegacySecurityChecksReturns(fmt.Errorf("fake-security-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, _, err := chaincodeSupport.CheckInvocation("test-channel", "test-chaincode-name", fakeTxSim)
+				Expect(err).To(MatchError("[channel test-channel] failed the chaincode security checks for test-chaincode-name: fake-security-error"))
+			})
+		})
+
+		Context("when lifecycle returns an error", func() {
+			BeforeEach(func() {
+				fakeLifecycle.ChaincodeDefinitionReturns(nil, fmt.Errorf("fake-lifecycle-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				_, _, err := chaincodeSupport.CheckInvocation("test-channel", "test-chaincode-name", fakeTxSim)
+				Expect(err).To(MatchError("[channel test-channel] failed to get chaincode container info for test-chaincode-name: fake-lifecycle-error"))
+			})
+		})
 	})
 
 	Describe("CheckInit", func() {

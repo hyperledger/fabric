@@ -10,7 +10,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	ccpersistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	. "github.com/onsi/ginkgo"
@@ -36,7 +35,7 @@ var _ = Describe("EventBroker", func() {
 		cachedChaincodeDef = &lifecycle.CachedChaincodeDefinition{}
 		localChaincode = &lifecycle.LocalChaincode{
 			Info: &lifecycle.ChaincodeInstallInfo{
-				PackageID: ccpersistence.PackageID("PackageID"),
+				PackageID: "PackageID",
 			},
 			References: make(map[string]map[string]*lifecycle.CachedChaincodeDefinition),
 		}

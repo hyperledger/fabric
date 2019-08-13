@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/lscc/mock"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -57,73 +56,67 @@ var _ = Describe("LSCC", func() {
 		fakeQueryExecutor.GetStateReturns(ccDataBytes, nil)
 	})
 
-	Describe("GetChaincodeDeploymentSpec", func() {
+	Describe("LegacySecurity", func() {
 		var (
 			fakeCCPackage  *mock.CCPackage
-			deploymentSpec *pb.ChaincodeDeploymentSpec
+			legacySecurity *lscc.LegacySecurity
 		)
 
 		BeforeEach(func() {
-			fakeSCCProvider.GetQueryExecutorForLedgerReturns(fakeQueryExecutor, nil)
-
-			deploymentSpec = &pb.ChaincodeDeploymentSpec{
-				ChaincodeSpec: &pb.ChaincodeSpec{
-					ChaincodeId: &pb.ChaincodeID{
-						Name: "chaincode-name",
-					},
-				},
-			}
-
 			fakeCCPackage = &mock.CCPackage{}
-			fakeCCPackage.GetDepSpecReturns(deploymentSpec)
+			fakeCCPackage.GetChaincodeDataReturns(&ccprovider.ChaincodeData{
+				InstantiationPolicy: []byte("instantiation-policy"),
+			})
 
 			fakeSupport.GetChaincodeFromLocalStorageReturns(fakeCCPackage, nil)
+
+			legacySecurity = &lscc.LegacySecurity{
+				ChaincodeData: ccData,
+				Support:       fakeSupport,
+			}
 		})
 
-		It("returns the chaincode deployment spec for a valid chaincode", func() {
-			ccci, err := l.ChaincodeContainerInfo("", "chaincode-data-name", fakeQueryExecutor)
+		It("returns nil if security checks are passed", func() {
+			err := legacySecurity.SecurityCheckLegacyChaincode()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ccci).To(Equal(ccprovider.DeploymentSpecToChaincodeContainerInfo(deploymentSpec, false)))
 
-			Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
-			getStateNamespace, getStateCCName := fakeQueryExecutor.GetStateArgsForCall(0)
-			Expect(getStateNamespace).To(Equal("lscc"))
-			Expect(getStateCCName).To(Equal("chaincode-data-name"))
+			Expect(fakeCCPackage.ValidateCCCallCount()).To(Equal(1))
+			Expect(fakeCCPackage.ValidateCCArgsForCall(0)).To(Equal(ccData))
 		})
 
-		Context("when the get state query fails", func() {
+		Context("when cc package validation fails", func() {
 			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, errors.New("fake-error"))
-			})
-
-			It("wraps and returns the error", func() {
-				_, err := l.ChaincodeContainerInfo("", "chaincode-data-name", fakeQueryExecutor)
-				Expect(err).To(MatchError("could not retrieve state for chaincode chaincode-data-name: fake-error"))
-			})
-		})
-
-		Context("when the chaincode is not found in the table", func() {
-			BeforeEach(func() {
-				fakeQueryExecutor.GetStateReturns(nil, nil)
+				fakeCCPackage.ValidateCCReturns(errors.New("fake-validation-error"))
 			})
 
 			It("returns an error", func() {
-				_, err := l.ChaincodeContainerInfo("", "chaincode-data-name", fakeQueryExecutor)
-				Expect(err).To(MatchError("chaincode chaincode-data-name not found"))
+				err := legacySecurity.SecurityCheckLegacyChaincode()
+				Expect(err).To(MatchError(lscc.InvalidCCOnFSError("fake-validation-error")))
+			})
+		})
+
+		Context("when the instantiation policy doesn't match", func() {
+			BeforeEach(func() {
+				fakeCCPackage.GetChaincodeDataReturns(&ccprovider.ChaincodeData{
+					InstantiationPolicy: []byte("bad-instantiation-policy"),
+				})
+			})
+
+			It("returns an error", func() {
+				err := legacySecurity.SecurityCheckLegacyChaincode()
+				Expect(err).To(MatchError("Instantiation policy mismatch for cc chaincode-data-name:version"))
 			})
 		})
 	})
 
 	Describe("ChaincodeDefinition", func() {
-		BeforeEach(func() {
-		})
-
 		It("retrieves the chaincode data from the state", func() {
 			chaincodeDefinition, err := l.ChaincodeDefinition("", "cc-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
-			returnedChaincodeData, ok := chaincodeDefinition.(*ccprovider.ChaincodeData)
+			returnedChaincodeData, ok := chaincodeDefinition.(*lscc.LegacySecurity)
 			Expect(ok).To(BeTrue())
-			Expect(returnedChaincodeData).To(Equal(ccData))
+			Expect(returnedChaincodeData.ChaincodeData).To(Equal(ccData))
+			Expect(returnedChaincodeData.Support).To(Equal(fakeSupport))
 
 			Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
 			namespace, key := fakeQueryExecutor.GetStateArgsForCall(0)

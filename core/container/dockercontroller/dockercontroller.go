@@ -24,7 +24,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -73,11 +73,11 @@ type dockerClient interface {
 }
 
 type PlatformBuilder interface {
-	GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (io.Reader, error)
+	GenerateDockerBuild(ccType, path string, codePackage io.Reader) (io.Reader, error)
 }
 
 type ContainerInstance struct {
-	CCID     ccintf.CCID
+	CCID     string
 	Type     string
 	DockerVM *DockerVM
 }
@@ -138,7 +138,7 @@ func (vm *DockerVM) createContainer(imageID, containerID string, args, env []str
 	return nil
 }
 
-func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
+func (vm *DockerVM) buildImage(ccid string, reader io.Reader) error {
 	id, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 	err = vm.Client.BuildImage(opts)
 
 	vm.BuildMetrics.ChaincodeImageBuildDuration.With(
-		"chaincode", ccid.String(),
+		"chaincode", ccid,
 		"success", strconv.FormatBool(err == nil),
 	).Observe(time.Since(startTime).Seconds())
 
@@ -172,8 +172,7 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 }
 
 // Build is responsible for building an image if it does not already exist.
-func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (container.Instance, error) {
-	ccid := ccintf.New(ccci.PackageID)
+func (vm *DockerVM) Build(ccid string, metadata *persistence.ChaincodePackageMetadata, codePackage io.Reader) (container.Instance, error) {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return nil, err
@@ -182,15 +181,12 @@ func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage i
 	// This is an awkward translation, but better here in a future dead path
 	// than elsewhere.  The old enum types are capital, but at least as implemented
 	// lifecycle tools seem to allow type to be set lower case.
-	ccType := strings.ToUpper(ccci.Type)
-
-	ccciTranslated := *ccci
-	ccciTranslated.Type = ccType
+	ccType := strings.ToUpper(metadata.Type)
 
 	_, err = vm.Client.InspectImage(imageName)
 	switch err {
 	case docker.ErrNoSuchImage:
-		dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(&ccciTranslated, codePackage)
+		dockerfileReader, err := vm.PlatformBuilder.GenerateDockerBuild(ccType, metadata.Path, codePackage)
 		if err != nil {
 			return nil, errors.Wrap(err, "platform builder failed")
 		}
@@ -232,7 +228,7 @@ const (
 	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
 )
 
-func (vm *DockerVM) GetEnv(ccid ccintf.CCID, tlsConfig *ccintf.TLSConfig) []string {
+func (vm *DockerVM) GetEnv(ccid string, tlsConfig *ccintf.TLSConfig) []string {
 	// common environment variables
 	// FIXME: we are using the env variable CHAINCODE_ID to store
 	// the package ID; in the legacy lifecycle they used to be the
@@ -257,7 +253,7 @@ func (vm *DockerVM) GetEnv(ccid ccintf.CCID, tlsConfig *ccintf.TLSConfig) []stri
 }
 
 // Start starts a container using a previously created docker image
-func (vm *DockerVM) Start(ccid ccintf.CCID, ccType string, peerConnection *ccintf.PeerConnection) error {
+func (vm *DockerVM) Start(ccid string, ccType string, peerConnection *ccintf.PeerConnection) error {
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {
 		return err
@@ -416,18 +412,18 @@ func streamOutput(logger *flogging.FabricLogger, client dockerClient, containerN
 }
 
 // Stop stops a running chaincode
-func (vm *DockerVM) Stop(ccid ccintf.CCID) error {
+func (vm *DockerVM) Stop(ccid string) error {
 	id := vm.ccidToContainerID(ccid)
 	return vm.stopInternal(id)
 }
 
 // Wait blocks until the container stops and returns the exit code of the container.
-func (vm *DockerVM) Wait(ccid ccintf.CCID) (int, error) {
+func (vm *DockerVM) Wait(ccid string) (int, error) {
 	id := vm.ccidToContainerID(ccid)
 	return vm.Client.WaitContainer(id)
 }
 
-func (vm *DockerVM) ccidToContainerID(ccid ccintf.CCID) string {
+func (vm *DockerVM) ccidToContainerID(ccid string) string {
 	return strings.Replace(vm.GetVMName(ccid), ":", "_", -1)
 }
 
@@ -452,7 +448,7 @@ func (vm *DockerVM) stopInternal(id string) error {
 // GetVMName generates the VM name from peer information. It accepts a format
 // function parameter to allow different formatting based on the desired use of
 // the name.
-func (vm *DockerVM) GetVMName(ccid ccintf.CCID) string {
+func (vm *DockerVM) GetVMName(ccid string) string {
 	// replace any invalid characters with "-" (either in network id, peer id, or in the
 	// entire name returned by any format function)
 	return vmRegExp.ReplaceAllString(vm.preFormatImageName(ccid), "-")
@@ -463,7 +459,7 @@ func (vm *DockerVM) GetVMName(ccid ccintf.CCID) string {
 // environment (such as a development environment). It computes the hash for the
 // supplied image name and then appends it to the lowercase image name to ensure
 // uniqueness.
-func (vm *DockerVM) GetVMNameForDocker(ccid ccintf.CCID) (string, error) {
+func (vm *DockerVM) GetVMNameForDocker(ccid string) (string, error) {
 	name := vm.preFormatImageName(ccid)
 	hash := hex.EncodeToString(util.ComputeSHA256([]byte(name)))
 	saniName := vmRegExp.ReplaceAllString(name, "-")
@@ -478,8 +474,8 @@ func (vm *DockerVM) GetVMNameForDocker(ccid ccintf.CCID) (string, error) {
 	return imageName, nil
 }
 
-func (vm *DockerVM) preFormatImageName(ccid ccintf.CCID) string {
-	name := ccid.String()
+func (vm *DockerVM) preFormatImageName(ccid string) string {
+	name := ccid
 
 	if vm.NetworkID != "" && vm.PeerID != "" {
 		name = fmt.Sprintf("%s-%s-%s", vm.NetworkID, vm.PeerID, name)

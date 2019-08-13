@@ -5,16 +5,17 @@ import (
 	"io"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
 )
 
 type VM struct {
-	BuildStub        func(*ccprovider.ChaincodeContainerInfo, io.Reader) (container.Instance, error)
+	BuildStub        func(string, *persistence.ChaincodePackageMetadata, io.Reader) (container.Instance, error)
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
-		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 io.Reader
+		arg1 string
+		arg2 *persistence.ChaincodePackageMetadata
+		arg3 io.Reader
 	}
 	buildReturns struct {
 		result1 container.Instance
@@ -28,17 +29,18 @@ type VM struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 io.Reader) (container.Instance, error) {
+func (fake *VM) Build(arg1 string, arg2 *persistence.ChaincodePackageMetadata, arg3 io.Reader) (container.Instance, error) {
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
-		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 io.Reader
-	}{arg1, arg2})
-	fake.recordInvocation("Build", []interface{}{arg1, arg2})
+		arg1 string
+		arg2 *persistence.ChaincodePackageMetadata
+		arg3 io.Reader
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("Build", []interface{}{arg1, arg2, arg3})
 	fake.buildMutex.Unlock()
 	if fake.BuildStub != nil {
-		return fake.BuildStub(arg1, arg2)
+		return fake.BuildStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -53,17 +55,17 @@ func (fake *VM) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *VM) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, io.Reader) (container.Instance, error)) {
+func (fake *VM) BuildCalls(stub func(string, *persistence.ChaincodePackageMetadata, io.Reader) (container.Instance, error)) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *VM) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, io.Reader) {
+func (fake *VM) BuildArgsForCall(i int) (string, *persistence.ChaincodePackageMetadata, io.Reader) {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	argsForCall := fake.buildArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *VM) BuildReturns(result1 container.Instance, result2 error) {

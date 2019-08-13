@@ -33,60 +33,52 @@ const (
 
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
-	Start(ccid ccintf.CCID) error
-	Stop(ccid ccintf.CCID) error
-	Wait(ccid ccintf.CCID) (int, error)
+	Start(ccid string) error
+	Stop(ccid string) error
+	Wait(ccid string) (int, error)
 }
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(ccid ccintf.CCID) error
+	Launch(ccid string) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
 type Lifecycle interface {
 	// ChaincodeDefinition returns the details for a chaincode by name
 	ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
-
-	// ChaincodeContainerInfo returns the package necessary to launch a chaincode
-	ChaincodeContainerInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error)
 }
 
-// InstantiationPolicyChecker is used to evaluate instantiation policies.
-type InstantiationPolicyChecker interface {
-	CheckInstantiationPolicy(nameVersion string, cd *ccprovider.ChaincodeData) error
-}
-
-// Adapter from function to InstantiationPolicyChecker interface.
-type CheckInstantiationPolicyFunc func(nameVersion string, cd *ccprovider.ChaincodeData) error
-
-func (c CheckInstantiationPolicyFunc) CheckInstantiationPolicy(nameVersion string, cd *ccprovider.ChaincodeData) error {
-	return c(nameVersion, cd)
+// LegacyChaincodeDefinitions need to perform security checks whenever a chaincode definition
+// is looked up.  These security checks include checking the instantiation policy, as well
+// as performing the chaincode fingerprint matching, and other checks implemented in the legacy
+// packaging.
+type LegacyChaincodeDefinition interface {
+	ExecuteLegacySecurityChecks() error
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
-	ACLProvider                ACLProvider
-	AppConfig                  ApplicationConfigRetriever
-	BuiltinSCCs                scc.BuiltinSCCs
-	DeployedCCInfoProvider     ledger.DeployedChaincodeInfoProvider
-	ExecuteTimeout             time.Duration
-	HandlerMetrics             *HandlerMetrics
-	HandlerRegistry            *HandlerRegistry
-	InstantiationPolicyChecker InstantiationPolicyChecker
-	Keepalive                  time.Duration
-	Launcher                   Launcher
-	Lifecycle                  Lifecycle
-	Peer                       *peer.Peer
-	Runtime                    Runtime
-	TotalQueryLimit            int
-	UserRunsCC                 bool
+	ACLProvider            ACLProvider
+	AppConfig              ApplicationConfigRetriever
+	BuiltinSCCs            scc.BuiltinSCCs
+	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
+	ExecuteTimeout         time.Duration
+	HandlerMetrics         *HandlerMetrics
+	HandlerRegistry        *HandlerRegistry
+	Keepalive              time.Duration
+	Launcher               Launcher
+	Lifecycle              Lifecycle
+	Peer                   *peer.Peer
+	Runtime                Runtime
+	TotalQueryLimit        int
+	UserRunsCC             bool
 }
 
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
-func (cs *ChaincodeSupport) Launch(ccid ccintf.CCID) (*Handler, error) {
+func (cs *ChaincodeSupport) Launch(ccid string) (*Handler, error) {
 	if h := cs.HandlerRegistry.Handler(ccid); h != nil {
 		return h, nil
 	}
@@ -104,7 +96,7 @@ func (cs *ChaincodeSupport) Launch(ccid ccintf.CCID) (*Handler, error) {
 }
 
 // LaunchInProc is a stopgap solution to be called by the inproccontroller to allow system chaincodes to register
-func (cs *ChaincodeSupport) LaunchInProc(ccid ccintf.CCID) <-chan struct{} {
+func (cs *ChaincodeSupport) LaunchInProc(ccid string) <-chan struct{} {
 	launchStatus, ok := cs.HandlerRegistry.Launching(ccid)
 	if ok {
 		chaincodeLogger.Panicf("attempted to launch a system chaincode which has already been launched")
@@ -146,10 +138,10 @@ func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) 
 // accepts the container information directly in the form of a ChaincodeDeploymentSpec.
 func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
 	// FIXME: this is a hack, we shouldn't construct the
-	// packageID manually but rather let lifecycle construct it
+	// ccid manually but rather let lifecycle construct it
 	// for us. However this is legacy code that will disappear
 	// so it is acceptable for now (FAB-14627)
-	ccid := ccintf.CCID(cccid.Name + ":" + cccid.Version)
+	ccid := cccid.Name + ":" + cccid.Version
 
 	h, err := cs.Launch(ccid)
 	if err != nil {
@@ -200,40 +192,17 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 // The chaincode will be launched if it is not already running.
 func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
 	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(txParams.TxID), chaincodeName, txParams.ChannelID)
-	cd, err := cs.Lifecycle.ChaincodeDefinition(txParams.ChannelID, chaincodeName, txParams.TXSimulator)
+	ccid, ccContext, err := cs.CheckInvocation(txParams.ChannelID, chaincodeName, txParams.TXSimulator)
 	if err != nil {
-		logDevModeError(cs.UserRunsCC)
-		return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, chaincodeName)
+		return nil, errors.WithMessage(err, "invalid invocation")
 	}
 
-	if cData, ok := cd.(*ccprovider.ChaincodeData); ok {
-		err = cs.InstantiationPolicyChecker.CheckInstantiationPolicy(cd.CCID(), cData)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-	}
-
-	cccid := &ccprovider.CCContext{
-		Name:         chaincodeName,
-		Version:      cd.CCVersion(),
-		InitRequired: cd.RequiresInit(),
-		ID:           cd.Hash(),
-	}
-
-	// go to _lifecycle to retrieve information about the chaincode
-	// Note, this check is 'security  by side-effect', and must still be called here (for now)
-	_, err = cs.Lifecycle.ChaincodeContainerInfo(txParams.ChannelID, cccid.Name, txParams.TXSimulator)
-	if err != nil {
-		logDevModeError(cs.UserRunsCC)
-		return nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, cccid.Name)
-	}
-
-	h, err := cs.Launch(ccintf.CCID(cd.CCID()))
+	h, err := cs.Launch(ccid)
 	if err != nil {
 		return nil, err
 	}
 
-	isInit, err := cs.CheckInit(txParams, cccid, input)
+	isInit, err := cs.CheckInit(txParams, ccContext, input)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +212,29 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chain
 		cctype = pb.ChaincodeMessage_INIT
 	}
 
-	return cs.execute(cctype, txParams, cccid, input, h)
+	return cs.execute(cctype, txParams, ccContext, input, h)
+}
+
+func (cs *ChaincodeSupport) CheckInvocation(channelID, chaincodeName string, txSim ledger.SimpleQueryExecutor) (ccid string, ccContext *ccprovider.CCContext, err error) {
+	cd, err := cs.Lifecycle.ChaincodeDefinition(channelID, chaincodeName, txSim)
+	if err != nil {
+		logDevModeError(cs.UserRunsCC)
+		return "", nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", channelID, chaincodeName)
+	}
+
+	if legacyDefinition, ok := cd.(LegacyChaincodeDefinition); ok {
+		err = legacyDefinition.ExecuteLegacySecurityChecks()
+		if err != nil {
+			return "", nil, errors.WithMessagef(err, "[channel %s] failed the chaincode security checks for %s", channelID, chaincodeName)
+		}
+	}
+
+	return cd.CCID(), &ccprovider.CCContext{
+		Name:         chaincodeName,
+		Version:      cd.CCVersion(),
+		InitRequired: cd.RequiresInit(),
+		ID:           cd.Hash(),
+	}, nil
 }
 
 func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, input *pb.ChaincodeInput) (bool, error) {

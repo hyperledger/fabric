@@ -12,8 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	pintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 
 	"github.com/pkg/errors"
@@ -25,7 +23,7 @@ var vmLogger = flogging.MustGetLogger("container")
 
 //VM is an abstract virtual image for supporting arbitrary virual machines
 type VM interface {
-	Build(ccci *ccprovider.ChaincodeContainerInfo, codePackageStream io.Reader) (Instance, error)
+	Build(ccid string, metadata *persistence.ChaincodePackageMetadata, codePackageStream io.Reader) (Instance, error)
 }
 
 //go:generate counterfeiter -o mock/instance.go --fake-name Instance . Instance
@@ -57,18 +55,18 @@ func (UninitializedInstance) Wait() (int, error) {
 
 // PackageProvider gets chaincode packages from the filesystem.
 type PackageProvider interface {
-	GetChaincodePackage(packageID pintf.PackageID) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)
+	GetChaincodePackage(packageID string) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)
 }
 
 type Router struct {
 	ExternalVM      VM
 	DockerVM        VM
-	containers      map[ccintf.CCID]Instance
+	containers      map[string]Instance
 	PackageProvider PackageProvider
 	mutex           sync.Mutex
 }
 
-func (r *Router) getInstance(ccid ccintf.CCID) Instance {
+func (r *Router) getInstance(ccid string) Instance {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	// Note, to resolve the locking problem which existed in the previous code, we never delete
@@ -76,7 +74,7 @@ func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 	// on the returned reference
 
 	if r.containers == nil {
-		r.containers = map[ccintf.CCID]Instance{}
+		r.containers = map[string]Instance{}
 	}
 
 	vm, ok := r.containers[ccid]
@@ -87,33 +85,29 @@ func (r *Router) getInstance(ccid ccintf.CCID) Instance {
 	return vm
 }
 
-func (r *Router) Build(ccid ccintf.CCID) error {
-	packageID := pintf.PackageID(ccid)
+func (r *Router) Build(ccid string) error {
+	// for now, the package ID we retrieve from the FS is always the ccid
+	// the chaincode uses for registration
+	packageID := ccid
 
 	metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(packageID)
 	if err != nil {
 		return errors.WithMessage(err, "get chaincode package for external build failed")
 	}
 
-	ccci := &ccprovider.ChaincodeContainerInfo{
-		Path:      metadata.Path,
-		Type:      metadata.Type,
-		PackageID: packageID,
-	}
-
 	var instance Instance
 	var externalErr error
 	if r.ExternalVM != nil {
-		instance, externalErr = r.ExternalVM.Build(ccci, codeStream)
+		instance, externalErr = r.ExternalVM.Build(ccid, metadata, codeStream)
 		codeStream.Close()
 	}
 
 	if r.ExternalVM == nil || externalErr != nil {
-		_, codeStream, err = r.PackageProvider.GetChaincodePackage(packageID)
+		_, codeStream, err = r.PackageProvider.GetChaincodePackage(ccid)
 		if err != nil {
 			return errors.WithMessage(err, "get chaincode package for docker build failed")
 		}
-		instance, err = r.DockerVM.Build(ccci, codeStream)
+		instance, err = r.DockerVM.Build(ccid, metadata, codeStream)
 		codeStream.Close()
 	}
 
@@ -125,7 +119,7 @@ func (r *Router) Build(ccid ccintf.CCID) error {
 	defer r.mutex.Unlock()
 
 	if r.containers == nil {
-		r.containers = map[ccintf.CCID]Instance{}
+		r.containers = map[string]Instance{}
 	}
 
 	r.containers[ccid] = instance
@@ -133,14 +127,14 @@ func (r *Router) Build(ccid ccintf.CCID) error {
 	return nil
 }
 
-func (r *Router) Start(ccid ccintf.CCID, peerConnection *ccintf.PeerConnection) error {
+func (r *Router) Start(ccid string, peerConnection *ccintf.PeerConnection) error {
 	return r.getInstance(ccid).Start(peerConnection)
 }
 
-func (r *Router) Stop(ccid ccintf.CCID) error {
+func (r *Router) Stop(ccid string) error {
 	return r.getInstance(ccid).Stop()
 }
 
-func (r *Router) Wait(ccid ccintf.CCID) (int, error) {
+func (r *Router) Wait(ccid string) (int, error) {
 	return r.getInstance(ccid).Wait()
 }

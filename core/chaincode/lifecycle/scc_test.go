@@ -20,8 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
-	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/msp"
@@ -171,7 +169,7 @@ var _ = Describe("SCC", func() {
 
 				fakeSCCFuncs.InstallChaincodeReturns(&chaincode.InstalledChaincode{
 					Label:     "label",
-					PackageID: persistenceintf.PackageID("packageid"),
+					PackageID: "packageid",
 				}, nil)
 			})
 
@@ -219,7 +217,7 @@ var _ = Describe("SCC", func() {
 				fakeStub.GetArgsReturns([][]byte{[]byte("QueryInstalledChaincode"), marshaledArg})
 
 				fakeSCCFuncs.QueryInstalledChaincodeReturns(&chaincode.InstalledChaincode{
-					PackageID: persistenceintf.PackageID("awesome_package"),
+					PackageID: "awesome_package",
 					Label:     "awesome_package_label",
 					References: map[string][]*chaincode.Metadata{
 						"test-channel": {
@@ -253,12 +251,12 @@ var _ = Describe("SCC", func() {
 
 				Expect(fakeSCCFuncs.QueryInstalledChaincodeCallCount()).To(Equal(1))
 				name := fakeSCCFuncs.QueryInstalledChaincodeArgsForCall(0)
-				Expect(name).To(Equal(persistenceintf.PackageID("awesome_package")))
+				Expect(name).To(Equal("awesome_package"))
 			})
 
 			Context("when the code package cannot be found", func() {
 				BeforeEach(func() {
-					fakeSCCFuncs.QueryInstalledChaincodeReturns(nil, persistence.CodePackageNotFoundErr{PackageID: persistenceintf.PackageID("less_awesome_package")})
+					fakeSCCFuncs.QueryInstalledChaincodeReturns(nil, persistence.CodePackageNotFoundErr{PackageID: "less_awesome_package"})
 				})
 
 				It("returns 404 Not Found", func() {
@@ -311,7 +309,7 @@ var _ = Describe("SCC", func() {
 
 				Expect(fakeSCCFuncs.GetInstalledChaincodePackageCallCount()).To(Equal(1))
 				packageID := fakeSCCFuncs.GetInstalledChaincodePackageArgsForCall(0)
-				Expect(packageID).To(Equal(p.PackageID("package-id")))
+				Expect(packageID).To(Equal("package-id"))
 			})
 
 			Context("when the underlying function implementation fails", func() {
@@ -345,7 +343,7 @@ var _ = Describe("SCC", func() {
 				fakeSCCFuncs.QueryInstalledChaincodesReturns([]*chaincode.InstalledChaincode{
 					{
 						Label:     "cc0-label",
-						PackageID: persistenceintf.PackageID("cc0-package-id"),
+						PackageID: "cc0-package-id",
 						References: map[string][]*chaincode.Metadata{
 							"test-channel": {
 								&chaincode.Metadata{
@@ -357,7 +355,7 @@ var _ = Describe("SCC", func() {
 					},
 					{
 						Label:     "cc1-label",
-						PackageID: persistenceintf.PackageID("cc1-package-id"),
+						PackageID: "cc1-package-id",
 					},
 				})
 			})
@@ -506,7 +504,7 @@ var _ = Describe("SCC", func() {
 					collConfigs.toProtoCollectionConfigPackage(),
 				)).Should(BeTrue())
 
-				Expect(packageID).To(Equal(persistenceintf.PackageID("hash")))
+				Expect(packageID).To(Equal("hash"))
 				Expect(pubState).To(Equal(fakeStub))
 				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
 				Expect(privState.(*lifecycle.ChaincodePrivateLedgerShim).Collection).To(Equal("_implicit_org_fake-mspid"))

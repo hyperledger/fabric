@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/externalbuilders"
 )
@@ -29,7 +29,7 @@ import (
 var _ = Describe("Externalbuilders", func() {
 	var (
 		codePackage *os.File
-		ccci        *ccprovider.ChaincodeContainerInfo
+		md          *persistence.ChaincodePackageMetadata
 	)
 
 	BeforeEach(func() {
@@ -37,10 +37,9 @@ var _ = Describe("Externalbuilders", func() {
 		codePackage, err = os.Open("testdata/normal_archive.tar.gz")
 		Expect(err).NotTo(HaveOccurred())
 
-		ccci = &ccprovider.ChaincodeContainerInfo{
-			PackageID: "fake-package-id",
-			Path:      "fake-path",
-			Type:      "fake-type",
+		md = &persistence.ChaincodePackageMetadata{
+			Path: "fake-path",
+			Type: "fake-type",
 		}
 	})
 
@@ -52,7 +51,7 @@ var _ = Describe("Externalbuilders", func() {
 
 	Describe("NewBuildContext()", func() {
 		It("creates a new context, including temporary locations", func() {
-			buildContext, err := externalbuilders.NewBuildContext(ccci, codePackage)
+			buildContext, err := externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
 			Expect(err).NotTo(HaveOccurred())
 			defer buildContext.Cleanup()
 
@@ -73,16 +72,14 @@ var _ = Describe("Externalbuilders", func() {
 				codePackage, err := os.Open("testdata/archive_with_absolute.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 				defer codePackage.Close()
-				_, err = externalbuilders.NewBuildContext(ccci, codePackage)
+				_, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
 				Expect(err).To(MatchError(ContainSubstring("could not untar source package")))
 			})
 		})
 
 		Context("when package id contains inappropriate chars", func() {
 			It("replaces them with dash", func() {
-				ccci.PackageID = "i&am/pkg:id"
-
-				buildContext, err := externalbuilders.NewBuildContext(ccci, codePackage)
+				buildContext, err := externalbuilders.NewBuildContext("i&am/pkg:id", md, codePackage)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(buildContext.ScratchDir).To(ContainSubstring("fabric-i-am-pkg-id"))
 			})
@@ -100,7 +97,7 @@ var _ = Describe("Externalbuilders", func() {
 
 		Describe("Build", func() {
 			It("iterates over all detectors and chooses the one that matches", func() {
-				instance, err := detector.Build(ccci, codePackage)
+				instance, err := detector.Build("fake-package-id", md, codePackage)
 				Expect(err).NotTo(HaveOccurred())
 				instance.BuildContext.Cleanup()
 				Expect(instance.Builder.Name()).To(Equal("testdata"))
@@ -112,18 +109,14 @@ var _ = Describe("Externalbuilders", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := detector.Build(ccci, codePackage)
+					_, err := detector.Build("fake-package-id", md, codePackage)
 					Expect(err).To(MatchError("no builders defined"))
 				})
 			})
 
 			Context("when no builder can be found", func() {
-				BeforeEach(func() {
-					ccci.PackageID = "unsupported"
-				})
-
 				It("returns an error", func() {
-					_, err := detector.Build(ccci, codePackage)
+					_, err := detector.Build("unsupported", md, codePackage)
 					Expect(err).To(MatchError("no builder found"))
 				})
 			})
@@ -142,7 +135,7 @@ var _ = Describe("Externalbuilders", func() {
 			}
 
 			var err error
-			buildContext, err = externalbuilders.NewBuildContext(ccci, codePackage)
+			buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -158,7 +151,7 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the builder does not support the package", func() {
 				BeforeEach(func() {
-					buildContext.CCCI.PackageID = "unsupported-package-id"
+					buildContext.CCID = "unsupported-package-id"
 				})
 
 				It("returns false", func() {
@@ -176,7 +169,7 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the builder exits with a non-zero status", func() {
 				BeforeEach(func() {
-					buildContext.CCCI.PackageID = "unsupported-package-id"
+					buildContext.CCID = "unsupported-package-id"
 				})
 
 				It("returns an error", func() {
@@ -205,7 +198,7 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the builder exits with a non-zero status", func() {
 				BeforeEach(func() {
-					buildContext.CCCI.PackageID = "unsupported-package-id"
+					buildContext.CCID = "unsupported-package-id"
 				})
 
 				It("returns an error", func() {

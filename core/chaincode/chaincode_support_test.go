@@ -38,7 +38,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
@@ -140,14 +139,6 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 	return simRes.GetPubSimulationBytes()
 }
 
-type PackageProviderWrapper struct {
-	FS *ccprovider.CCInfoFSImpl
-}
-
-func (p *PackageProviderWrapper) GetChaincodeCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	return p.FS.GetChaincodeCodePackage(string(ccci.PackageID))
-}
-
 //initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	peerInstance := &peer.Peer{}
@@ -215,7 +206,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	if !globalConfig.TLSEnabled {
 		containerRuntime.CertGenerator = nil
 	}
-	fakeInstantiationPolicyChecker := &mock.InstantiationPolicyChecker{}
 	userRunsCC := true
 	metricsProviders := &disabled.Provider{}
 	chaincodeHandlerRegistry := NewHandlerRegistry(userRunsCC)
@@ -226,21 +216,20 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		StartupTimeout: globalConfig.StartupTimeout,
 	}
 	chaincodeSupport := &ChaincodeSupport{
-		ACLProvider:                mockAclProvider,
-		AppConfig:                  peerInstance,
-		DeployedCCInfoProvider:     &ledgermock.DeployedChaincodeInfoProvider{},
-		ExecuteTimeout:             globalConfig.ExecuteTimeout,
-		HandlerMetrics:             NewHandlerMetrics(metricsProviders),
-		HandlerRegistry:            chaincodeHandlerRegistry,
-		InstantiationPolicyChecker: fakeInstantiationPolicyChecker,
-		Keepalive:                  globalConfig.Keepalive,
-		Launcher:                   chaincodeLauncher,
-		Lifecycle:                  ml,
-		Peer:                       peerInstance,
-		Runtime:                    containerRuntime,
-		BuiltinSCCs:                map[string]struct{}{"lscc": {}},
-		TotalQueryLimit:            globalConfig.TotalQueryLimit,
-		UserRunsCC:                 userRunsCC,
+		ACLProvider:            mockAclProvider,
+		AppConfig:              peerInstance,
+		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
+		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
+		HandlerRegistry:        chaincodeHandlerRegistry,
+		Keepalive:              globalConfig.Keepalive,
+		Launcher:               chaincodeLauncher,
+		Lifecycle:              ml,
+		Peer:                   peerInstance,
+		Runtime:                containerRuntime,
+		BuiltinSCCs:            map[string]struct{}{"lscc": {}},
+		TotalQueryLimit:        globalConfig.TotalQueryLimit,
+		UserRunsCC:             userRunsCC,
 	}
 
 	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)
@@ -880,8 +869,8 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
-		handlerRegistry.Ready(ccintf.CCID("testcc:0"))
+	fakeRuntime.StartStub = func(_ string) error {
+		handlerRegistry.Ready("testcc:0")
 		return nil
 	}
 
@@ -902,7 +891,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 //test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
+	fakeRuntime.StartStub = func(_ string) error {
 		time.Sleep(time.Second)
 		return nil
 	}
@@ -924,7 +913,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 //test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
+	fakeRuntime.StartStub = func(_ string) error {
 		return errors.New("Bad lunch; upset stomach")
 	}
 

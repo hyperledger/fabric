@@ -6,14 +6,13 @@ import (
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 )
 
 type InstalledChaincodesLister struct {
-	GetInstalledChaincodeStub        func(persistence.PackageID) (*chaincode.InstalledChaincode, error)
+	GetInstalledChaincodeStub        func(string) (*chaincode.InstalledChaincode, error)
 	getInstalledChaincodeMutex       sync.RWMutex
 	getInstalledChaincodeArgsForCall []struct {
-		arg1 persistence.PackageID
+		arg1 string
 	}
 	getInstalledChaincodeReturns struct {
 		result1 *chaincode.InstalledChaincode
@@ -37,11 +36,11 @@ type InstalledChaincodesLister struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *InstalledChaincodesLister) GetInstalledChaincode(arg1 persistence.PackageID) (*chaincode.InstalledChaincode, error) {
+func (fake *InstalledChaincodesLister) GetInstalledChaincode(arg1 string) (*chaincode.InstalledChaincode, error) {
 	fake.getInstalledChaincodeMutex.Lock()
 	ret, specificReturn := fake.getInstalledChaincodeReturnsOnCall[len(fake.getInstalledChaincodeArgsForCall)]
 	fake.getInstalledChaincodeArgsForCall = append(fake.getInstalledChaincodeArgsForCall, struct {
-		arg1 persistence.PackageID
+		arg1 string
 	}{arg1})
 	fake.recordInvocation("GetInstalledChaincode", []interface{}{arg1})
 	fake.getInstalledChaincodeMutex.Unlock()
@@ -61,13 +60,13 @@ func (fake *InstalledChaincodesLister) GetInstalledChaincodeCallCount() int {
 	return len(fake.getInstalledChaincodeArgsForCall)
 }
 
-func (fake *InstalledChaincodesLister) GetInstalledChaincodeCalls(stub func(persistence.PackageID) (*chaincode.InstalledChaincode, error)) {
+func (fake *InstalledChaincodesLister) GetInstalledChaincodeCalls(stub func(string) (*chaincode.InstalledChaincode, error)) {
 	fake.getInstalledChaincodeMutex.Lock()
 	defer fake.getInstalledChaincodeMutex.Unlock()
 	fake.GetInstalledChaincodeStub = stub
 }
 
-func (fake *InstalledChaincodesLister) GetInstalledChaincodeArgsForCall(i int) persistence.PackageID {
+func (fake *InstalledChaincodesLister) GetInstalledChaincodeArgsForCall(i int) string {
 	fake.getInstalledChaincodeMutex.RLock()
 	defer fake.getInstalledChaincodeMutex.RUnlock()
 	argsForCall := fake.getInstalledChaincodeArgsForCall[i]

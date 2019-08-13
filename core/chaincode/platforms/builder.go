@@ -10,7 +10,6 @@ import (
 	"io"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 )
 
 type Builder struct {
@@ -18,6 +17,6 @@ type Builder struct {
 	Client   *docker.Client
 }
 
-func (b *Builder) GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (io.Reader, error) {
-	return b.Registry.GenerateDockerBuild(ccci.Type, ccci.Path, codePackage, b.Client)
+func (b *Builder) GenerateDockerBuild(ccType, path string, codePackage io.Reader) (io.Reader, error) {
+	return b.Registry.GenerateDockerBuild(ccType, path, codePackage, b.Client)
 }

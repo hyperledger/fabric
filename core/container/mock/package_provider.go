@@ -6,15 +6,14 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	persistencea "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/container"
 )
 
 type PackageProvider struct {
-	GetChaincodePackageStub        func(persistencea.PackageID) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)
+	GetChaincodePackageStub        func(string) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)
 	getChaincodePackageMutex       sync.RWMutex
 	getChaincodePackageArgsForCall []struct {
-		arg1 persistencea.PackageID
+		arg1 string
 	}
 	getChaincodePackageReturns struct {
 		result1 *persistence.ChaincodePackageMetadata
@@ -30,11 +29,11 @@ type PackageProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PackageProvider) GetChaincodePackage(arg1 persistencea.PackageID) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error) {
+func (fake *PackageProvider) GetChaincodePackage(arg1 string) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error) {
 	fake.getChaincodePackageMutex.Lock()
 	ret, specificReturn := fake.getChaincodePackageReturnsOnCall[len(fake.getChaincodePackageArgsForCall)]
 	fake.getChaincodePackageArgsForCall = append(fake.getChaincodePackageArgsForCall, struct {
-		arg1 persistencea.PackageID
+		arg1 string
 	}{arg1})
 	fake.recordInvocation("GetChaincodePackage", []interface{}{arg1})
 	fake.getChaincodePackageMutex.Unlock()
@@ -54,13 +53,13 @@ func (fake *PackageProvider) GetChaincodePackageCallCount() int {
 	return len(fake.getChaincodePackageArgsForCall)
 }
 
-func (fake *PackageProvider) GetChaincodePackageCalls(stub func(persistencea.PackageID) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)) {
+func (fake *PackageProvider) GetChaincodePackageCalls(stub func(string) (*persistence.ChaincodePackageMetadata, io.ReadCloser, error)) {
 	fake.getChaincodePackageMutex.Lock()
 	defer fake.getChaincodePackageMutex.Unlock()
 	fake.GetChaincodePackageStub = stub
 }
 
-func (fake *PackageProvider) GetChaincodePackageArgsForCall(i int) persistencea.PackageID {
+func (fake *PackageProvider) GetChaincodePackageArgsForCall(i int) string {
 	fake.getChaincodePackageMutex.RLock()
 	defer fake.getChaincodePackageMutex.RUnlock()
 	argsForCall := fake.getChaincodePackageArgsForCall[i]

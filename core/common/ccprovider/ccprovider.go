@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package ccprovider
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,7 +17,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
-	persistence "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -258,33 +256,6 @@ func GetChaincodeData(ccNameVersion string) (*ChaincodeData, error) {
 	return ccInfoCache.GetChaincodeData(ccNameVersion)
 }
 
-func CheckInstantiationPolicy(nameVersion string, cdLedger *ChaincodeData) error {
-	ccdata, err := GetChaincodeData(nameVersion)
-	if err != nil {
-		return err
-	}
-
-	// we have the info from the fs, check that the policy
-	// matches the one on the file system if one was specified;
-	// this check is required because the admin of this peer
-	// might have specified instantiation policies for their
-	// chaincode, for example to make sure that the chaincode
-	// is only instantiated on certain channels; a malicious
-	// peer on the other hand might have created a deploy
-	// transaction that attempts to bypass the instantiation
-	// policy. This check is there to ensure that this will not
-	// happen, i.e. that the peer will refuse to invoke the
-	// chaincode under these conditions. More info on
-	// https://jira.hyperledger.org/browse/FAB-3156
-	if ccdata.InstantiationPolicy != nil {
-		if !bytes.Equal(ccdata.InstantiationPolicy, cdLedger.InstantiationPolicy) {
-			return fmt.Errorf("Instantiation policy mismatch for cc %s", nameVersion)
-		}
-	}
-
-	return nil
-}
-
 // GetCCPackage tries each known package implementation one by one
 // till the right package is found
 func GetCCPackage(buf []byte) (CCPackage, error) {
@@ -513,18 +484,6 @@ func (cd *ChaincodeData) String() string { return proto.CompactTextString(cd) }
 // ProtoMessage just exists to make proto happy
 func (*ChaincodeData) ProtoMessage() {}
 
-// ChaincodeContainerInfo is yet another synonym for the data required to start/stop a chaincode.
-type ChaincodeContainerInfo struct {
-	PackageID persistence.PackageID
-	Path      string
-	Type      string
-
-	// FIXME: Name and Version fields must disappear from this struct
-	// because they are *NOT* a property of the chaincode container (FAB-14561)
-	Name    string
-	Version string
-}
-
 // TransactionParams are parameters which are tied to a particular transaction
 // and which are required for invoking chaincode.
 type TransactionParams struct {
@@ -540,15 +499,4 @@ type TransactionParams struct {
 
 	// this is additional data passed to the chaincode
 	ProposalDecorations map[string][]byte
-}
-
-func DeploymentSpecToChaincodeContainerInfo(cds *pb.ChaincodeDeploymentSpec, systemCC bool) *ChaincodeContainerInfo {
-	cci := &ChaincodeContainerInfo{
-		Name:      cds.ChaincodeSpec.ChaincodeId.Name,
-		Version:   cds.ChaincodeSpec.ChaincodeId.Version,
-		Path:      cds.ChaincodeSpec.ChaincodeId.Path,
-		Type:      cds.ChaincodeSpec.Type.String(),
-		PackageID: persistence.PackageID(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version),
-	}
-	return cci
 }

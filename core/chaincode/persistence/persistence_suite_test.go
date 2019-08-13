@@ -25,19 +25,9 @@ type osFileInfo interface {
 	os.FileInfo
 }
 
-//go:generate counterfeiter -o mock/store_package_provider.go -fake-name StorePackageProvider . storePackageProvider
-type storePackageProvider interface {
-	persistence.StorePackageProvider
-}
-
 //go:generate counterfeiter -o mock/legacy_package_provider.go -fake-name LegacyPackageProvider . legacyPackageProvider
 type legacyPackageProvider interface {
 	persistence.LegacyPackageProvider
-}
-
-//go:generate counterfeiter -o mock/package_parser.go -fake-name PackageParser . packageParser
-type packageParser interface {
-	persistence.PackageParser
 }
 
 //go:generate mockery -dir . -name MetadataProvider -case underscore -output mock/ -outpkg mock

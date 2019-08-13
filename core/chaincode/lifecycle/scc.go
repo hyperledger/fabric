@@ -15,8 +15,6 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	p "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
-	persistenceintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -78,17 +76,17 @@ type SCCFunctions interface {
 	InstallChaincode([]byte) (*chaincode.InstalledChaincode, error)
 
 	// QueryInstalledChaincode returns metadata for the chaincode with the supplied package ID.
-	QueryInstalledChaincode(packageID persistenceintf.PackageID) (*chaincode.InstalledChaincode, error)
+	QueryInstalledChaincode(packageID string) (*chaincode.InstalledChaincode, error)
 
 	// GetInstalledChaincodePackage returns the chaincode package
 	// installed on the peer as bytes.
-	GetInstalledChaincodePackage(packageID p.PackageID) ([]byte, error)
+	GetInstalledChaincodePackage(packageID string) ([]byte, error)
 
 	// QueryInstalledChaincodes returns the currently installed chaincodes
 	QueryInstalledChaincodes() []*chaincode.InstalledChaincode
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
-	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID persistenceintf.PackageID, publicState ReadableState, orgState ReadWritableState) error
+	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID string, publicState ReadableState, orgState ReadWritableState) error
 
 	// CheckCommitReadiness returns a map containing the orgs
 	// whose orgStates were supplied and whether or not they have approved
@@ -265,7 +263,7 @@ func (i *Invocation) InstallChaincode(input *lb.InstallChaincodeArgs) (proto.Mes
 
 	return &lb.InstallChaincodeResult{
 		Label:     installedCC.Label,
-		PackageId: installedCC.PackageID.String(),
+		PackageId: installedCC.PackageID,
 	}, nil
 }
 
@@ -276,7 +274,7 @@ func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeAr
 		input.PackageId,
 	)
 
-	chaincode, err := i.SCC.Functions.QueryInstalledChaincode(persistenceintf.PackageID(input.PackageId))
+	chaincode, err := i.SCC.Functions.QueryInstalledChaincode(input.PackageId)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +296,7 @@ func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeAr
 
 	return &lb.QueryInstalledChaincodeResult{
 		Label:      chaincode.Label,
-		PackageId:  chaincode.PackageID.String(),
+		PackageId:  chaincode.PackageID,
 		References: references,
 	}, nil
 }
@@ -308,7 +306,7 @@ func (i *Invocation) QueryInstalledChaincode(input *lb.QueryInstalledChaincodeAr
 func (i *Invocation) GetInstalledChaincodePackage(input *lb.GetInstalledChaincodePackageArgs) (proto.Message, error) {
 	logger.Debugf("received invocation of GetInstalledChaincodePackage")
 
-	pkgBytes, err := i.SCC.Functions.GetInstalledChaincodePackage(p.PackageID(input.PackageId))
+	pkgBytes, err := i.SCC.Functions.GetInstalledChaincodePackage(input.PackageId)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +343,7 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 		result.InstalledChaincodes = append(result.InstalledChaincodes,
 			&lb.QueryInstalledChaincodesResult_InstalledChaincode{
 				Label:      chaincode.Label,
-				PackageId:  chaincode.PackageID.String(),
+				PackageId:  chaincode.PackageID,
 				References: references,
 			})
 	}
@@ -365,11 +363,11 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		collectionConfig = input.Collections.Config
 	}
 
-	var packageID persistenceintf.PackageID
+	var packageID string
 	if input.Source != nil {
 		switch source := input.Source.Type.(type) {
 		case *lb.ChaincodeSource_LocalPackage:
-			packageID = persistenceintf.PackageID(source.LocalPackage.PackageId)
+			packageID = source.LocalPackage.PackageId
 		case *lb.ChaincodeSource_Unavailable_:
 		default:
 		}

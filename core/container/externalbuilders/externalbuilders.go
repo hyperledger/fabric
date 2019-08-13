@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 
 	"github.com/pkg/errors"
@@ -63,7 +63,7 @@ func (d *Detector) Detect(buildContext *BuildContext) *Builder {
 	return nil
 }
 
-func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codeStream io.Reader) (*Instance, error) {
+func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, codeStream io.Reader) (*Instance, error) {
 	if len(d.Builders) == 0 {
 		// A small optimization, especially while the launcher feature is under development
 		// let's not explode the build package out into the filesystem unless there are
@@ -71,7 +71,7 @@ func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codeStream io.
 		return nil, errors.Errorf("no builders defined")
 	}
 
-	buildContext, err := NewBuildContext(ccci, codeStream)
+	buildContext, err := NewBuildContext(string(ccid), md, codeStream)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create build context")
 	}
@@ -94,7 +94,8 @@ func (d *Detector) Build(ccci *ccprovider.ChaincodeContainerInfo, codeStream io.
 }
 
 type BuildContext struct {
-	CCCI       *ccprovider.ChaincodeContainerInfo
+	CCID       string
+	Metadata   *persistence.ChaincodePackageMetadata
 	ScratchDir string
 	SourceDir  string
 	OutputDir  string
@@ -103,8 +104,8 @@ type BuildContext struct {
 
 var pkgIDreg = regexp.MustCompile("[^a-zA-Z0-9]+")
 
-func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (*BuildContext, error) {
-	scratchDir, err := ioutil.TempDir("", "fabric-"+pkgIDreg.ReplaceAllString(string(ccci.PackageID), "-"))
+func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, codePackage io.Reader) (*BuildContext, error) {
+	scratchDir, err := ioutil.TempDir("", "fabric-"+pkgIDreg.ReplaceAllString(ccid, "-"))
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp dir")
 	}
@@ -141,7 +142,8 @@ func NewBuildContext(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Rea
 		SourceDir:  sourceDir,
 		OutputDir:  outputDir,
 		LaunchDir:  launchDir,
-		CCCI:       ccci,
+		Metadata:   md,
+		CCID:       ccid,
 	}, nil
 }
 
@@ -158,9 +160,9 @@ func (b *Builder) Detect(buildContext *BuildContext) bool {
 	detect := filepath.Join(b.Location, "bin", "detect")
 	cmd := NewCommand(
 		detect,
-		"--package-id", string(buildContext.CCCI.PackageID),
-		"--path", buildContext.CCCI.Path,
-		"--type", buildContext.CCCI.Type,
+		"--package-id", buildContext.CCID,
+		"--path", buildContext.Metadata.Path,
+		"--type", buildContext.Metadata.Type,
 		"--source", buildContext.SourceDir,
 	)
 
@@ -179,9 +181,9 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 	build := filepath.Join(b.Location, "bin", "build")
 	cmd := NewCommand(
 		build,
-		"--package-id", string(buildContext.CCCI.PackageID),
-		"--path", buildContext.CCCI.Path,
-		"--type", buildContext.CCCI.Type,
+		"--package-id", buildContext.CCID,
+		"--path", buildContext.Metadata.Path,
+		"--type", buildContext.Metadata.Type,
 		"--source", buildContext.SourceDir,
 		"--output", buildContext.OutputDir,
 	)
@@ -225,9 +227,9 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 	launch := filepath.Join(b.Location, "bin", "launch")
 	cmd := NewCommand(
 		launch,
-		"--package-id", string(buildContext.CCCI.PackageID),
-		"--path", buildContext.CCCI.Path,
-		"--type", buildContext.CCCI.Type,
+		"--package-id", buildContext.CCID,
+		"--path", buildContext.Metadata.Path,
+		"--type", buildContext.Metadata.Type,
 		"--source", buildContext.SourceDir,
 		"--output", buildContext.OutputDir,
 		"--artifacts", buildContext.LaunchDir,
