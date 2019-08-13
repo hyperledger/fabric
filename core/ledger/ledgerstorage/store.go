@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/pkg/errors"
 )
 
 const maxBlockFileSize = 64 * 1024 * 1024
@@ -127,7 +126,6 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		return err
 	}
 
-	writtenToPvtStore := false
 	if pvtBlkStoreHt < blockNum+1 { // The pvt data store sanity check does not allow rewriting the pvt data.
 		// when re-processing blocks (rejoin the channel or re-fetching last few block),
 		// skip the pvt data commit to the pvtdata blockstore
@@ -141,16 +139,14 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		// transaction to become valid, we store the pvtdata of invalid transactions
 		// too in the pvtdataStore as we do for the publicdata in the case of blockStore.
 		pvtData, missingPvtData := constructPvtDataAndMissingData(blockAndPvtdata)
-		if err := s.pvtdataStore.Prepare(blockAndPvtdata.Block.Header.Number, pvtData, missingPvtData); err != nil {
+		if err := s.pvtdataStore.Commit(blockAndPvtdata.Block.Header.Number, pvtData, missingPvtData); err != nil {
 			return err
 		}
-		writtenToPvtStore = true
 	} else {
 		logger.Debugf("Skipping writing block [%d] to pvt block store as the store height is [%d]", blockNum, pvtBlkStoreHt)
 	}
 
 	if err := s.AddBlock(blockAndPvtdata.Block); err != nil {
-		s.pvtdataStore.Rollback()
 		return err
 	}
 
@@ -161,9 +157,6 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 		s.isPvtstoreAheadOfBlockstore.Store(false)
 	}
 
-	if writtenToPvtStore {
-		return s.pvtdataStore.Commit()
-	}
 	return nil
 }
 
@@ -282,6 +275,13 @@ func (s *Store) IsPvtStoreAheadOfBlockStore() bool {
 	return s.isPvtstoreAheadOfBlockstore.Load().(bool)
 }
 
+// TODO: FAB-16297 -- Remove init() as it is no longer needed. The private data feature
+// became stable from v1.2 onwards. To allow the initiation of pvtdata store with non-zero
+// block height (mainly during a rolling upgrade from an existing v1.1 network to v1.2),
+// we introduced pvtdata init() function which would take the height of block store and
+// set it as a height of pvtdataStore. From v2.0 onwards, it is no longer needed as we do
+// not support a rolling upgrade from v1.1 to v2.0
+
 // init first invokes function `initFromExistingBlockchain`
 // in order to check whether the pvtdata store is present because of an upgrade
 // of peer from 1.0 and need to be updated with the existing blockchain. If, this is
@@ -293,7 +293,7 @@ func (s *Store) init() error {
 	if initialized, err = s.initPvtdataStoreFromExistingBlockchain(); err != nil || initialized {
 		return err
 	}
-	return s.syncPvtdataStoreWithBlockStore()
+	return nil
 }
 
 // initPvtdataStoreFromExistingBlockchain updates the initial state of the pvtdata store
@@ -323,44 +323,7 @@ func (s *Store) initPvtdataStoreFromExistingBlockchain() (bool, error) {
 	return false, nil
 }
 
-// syncPvtdataStoreWithBlockStore checks whether the block storage and pvt data store are in sync
-// this is called when the store instance is constructed and handed over for the use.
-// this check whether there is a pending batch (possibly from a previous system crash)
-// of pvt data that was not committed. If a pending batch exists, the check is made
-// whether the associated block was successfully committed in the block storage (before the crash)
-// or not. If the block was committed, the private data batch is committed
-// otherwise, the pvt data batch is rolledback
-func (s *Store) syncPvtdataStoreWithBlockStore() error {
-	var pendingPvtbatch bool
-	var err error
-	if pendingPvtbatch, err = s.pvtdataStore.HasPendingBatch(); err != nil {
-		return err
-	}
-	if !pendingPvtbatch {
-		return nil
-	}
-	var bcInfo *common.BlockchainInfo
-	var pvtdataStoreHt uint64
-
-	if bcInfo, err = s.GetBlockchainInfo(); err != nil {
-		return err
-	}
-	if pvtdataStoreHt, err = s.pvtdataStore.LastCommittedBlockHeight(); err != nil {
-		return err
-	}
-
-	if bcInfo.Height == pvtdataStoreHt {
-		return s.pvtdataStore.Rollback()
-	}
-
-	if bcInfo.Height == pvtdataStoreHt+1 {
-		return s.pvtdataStore.Commit()
-	}
-
-	return errors.Errorf("This is not expected. blockStoreHeight=%d, pvtdataStoreHeight=%d", bcInfo.Height, pvtdataStoreHt)
-}
-
-func constructPvtdataMap(pvtdata []*ledger.TxPvtData) map[uint64]*ledger.TxPvtData {
+func constructPvtdataMap(pvtdata []*ledger.TxPvtData) ledger.TxPvtDataMap {
 	if pvtdata == nil {
 		return nil
 	}
