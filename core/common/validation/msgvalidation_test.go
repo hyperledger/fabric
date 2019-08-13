@@ -96,9 +96,7 @@ func createTestHeader(t *testing.T, txType common.HeaderType, channelId string, 
 	// useGoodTxid is used to for testing purpose. When it is true, we use a bad value for txid
 	txid := "bad"
 	if useGoodTxid {
-		var err error
-		txid, err = protoutil.ComputeTxID(nonce, creator)
-		assert.NoError(t, err)
+		txid = protoutil.ComputeTxID(nonce, creator)
 	}
 
 	chdr := &common.ChannelHeader{

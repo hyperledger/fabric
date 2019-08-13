@@ -243,10 +243,7 @@ func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string,
 	}
 
 	// compute txid
-	txid, err := ComputeTxID(nonce, creator)
-	if err != nil {
-		return nil, "", err
-	}
+	txid := ComputeTxID(nonce, creator)
 
 	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, chainID, cis, nonce, creator, transientMap)
 }
@@ -263,10 +260,7 @@ func CreateChaincodeProposalWithTxIDAndTransient(typ common.HeaderType, chainID 
 
 	// compute txid unless provided by tests
 	if txid == "" {
-		txid, err = ComputeTxID(nonce, creator)
-		if err != nil {
-			return nil, "", err
-		}
+		txid = ComputeTxID(nonce, creator)
 	}
 
 	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, chainID, cis, nonce, creator, transientMap)
@@ -575,20 +569,17 @@ func createProposalFromCDS(chainID string, msg proto.Message, creator []byte, pr
 
 // ComputeTxID computes TxID as the Hash computed
 // over the concatenation of nonce and creator.
-func ComputeTxID(nonce, creator []byte) (string, error) {
+func ComputeTxID(nonce, creator []byte) string {
 	// TODO: Get the Hash function to be used from
 	// channel configuration
 	digest := sha256.Sum256(append(nonce, creator...))
-	return hex.EncodeToString(digest[:]), nil
+	return hex.EncodeToString(digest[:])
 }
 
 // CheckTxID checks that txid is equal to the Hash computed
 // over the concatenation of nonce and creator.
 func CheckTxID(txid string, nonce, creator []byte) error {
-	computedTxID, err := ComputeTxID(nonce, creator)
-	if err != nil {
-		return errors.WithMessage(err, "error computing target txid")
-	}
+	computedTxID := ComputeTxID(nonce, creator)
 
 	if txid != computedTxID {
 		return errors.Errorf("invalid txid. got [%s], expected [%s]", txid, computedTxID)

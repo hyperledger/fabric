@@ -172,8 +172,7 @@ func getTokenTx(t *testing.T) *common.Envelope {
 	signerBytes, err := signer.Serialize()
 	assert.NoError(t, err)
 	nonce := []byte{0, 1, 2, 3, 4}
-	txID, err := protoutil.ComputeTxID(nonce, signerBytes)
-	assert.NoError(t, err)
+	txID := protoutil.ComputeTxID(nonce, signerBytes)
 
 	hdr := &common.Header{
 		SignatureHeader: protoutil.MarshalOrPanic(
