@@ -776,6 +776,71 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		})
 	})
 
+	When("orderer cluster is not healthy", func() {
+		var (
+			o1, o2 *nwo.Orderer
+		)
+
+		BeforeEach(func() {
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			o1, o2 = network.Orderer("orderer1"), network.Orderer("orderer2")
+			orderers := []*nwo.Orderer{o1, o2}
+			By("Launching the orderers")
+			for _, o := range orderers {
+				runner := network.OrdererRunner(o)
+				ordererRunners = append(ordererRunners, runner)
+				process := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			for _, ordererProc := range ordererProcesses {
+				Eventually(ordererProc.Ready()).Should(BeClosed())
+			}
+		})
+
+		AfterEach(func() {
+			for _, ordererInstance := range ordererProcesses {
+				ordererInstance.Signal(syscall.SIGTERM)
+				Eventually(ordererInstance.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+		})
+
+		It("refuses to reconfig if it results in quorum loss", func() {
+			By("Waitinf for them to elect a leader")
+			findLeader(ordererRunners)
+
+			extendNetwork(network)
+			certificatesOfOrderers := refreshOrdererPEMs(network)
+
+			By("Removing alive node from 2/3 cluster")
+			peer := network.Peer("Org1", "peer1")
+			current, updated := nwo.ConsenterRemover(network, peer, o2, network.SystemChannel.Name, certificatesOfOrderers[1].oldCert)
+			sess := nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
+			Expect(sess.ExitCode()).NotTo(BeZero())
+			Expect(string(sess.Err.Contents())).To(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
+
+			By("Adding node to 2/3 cluster")
+			current, updated = nwo.ConsenterAdder(
+				network,
+				peer,
+				o2,
+				network.SystemChannel.Name,
+				etcdraft.Consenter{
+					ServerTlsCert: certificatesOfOrderers[0].newCert,
+					ClientTlsCert: certificatesOfOrderers[0].newCert,
+					Host:          "127.0.0.1",
+					Port:          uint32(network.OrdererPort(o1, nwo.ListenPort)),
+				},
+			)
+			sess = nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
+			Expect(sess.ExitCode()).NotTo(BeZero())
+			Expect(string(sess.Err.Contents())).To(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
+		})
+	})
+
 	When("an orderer node is evicted", func() {
 		BeforeEach(func() {
 			ordererRunners = nil
