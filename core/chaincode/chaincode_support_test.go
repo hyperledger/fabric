@@ -52,6 +52,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// CCContext is a legacy structure that was utilized heavily in the tests
+// so it has been preserved, even though it basically passes a name/version pair
+// alone.
+type CCContext struct {
+	Name    string
+	Version string
+}
+
 var globalBlockNum map[string]uint64
 
 type mockResultsIterator struct {

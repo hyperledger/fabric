@@ -75,20 +75,6 @@ type ChaincodeSupport struct {
 	UserRunsCC             bool
 }
 
-// CCContext is passed around instead of args, but is increasingly small
-// and not so useful, it will hopefully go away soon.
-type CCContext struct {
-	// Name chaincode name
-	Name string
-
-	// Version used to construct the chaincode image and register
-	Version string
-
-	// InitRequired indicates whether the chaincode must have 'Init' invoked
-	// before other transactions can proceed.
-	InitRequired bool
-}
-
 // Launch starts executing chaincode if it is not already running. This method
 // blocks until the peer side handler gets into ready state or encounters a fatal
 // error. If the chaincode is already running, it simply returns.
@@ -205,8 +191,7 @@ func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMess
 // Invoke will invoke chaincode and return the message containing the response.
 // The chaincode will be launched if it is not already running.
 func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(txParams.TxID), chaincodeName, txParams.ChannelID)
-	ccid, ccContext, err := cs.CheckInvocation(txParams.ChannelID, chaincodeName, txParams.TXSimulator)
+	ccid, cctype, err := cs.CheckInvocation(txParams, chaincodeName, input)
 	if err != nil {
 		return nil, errors.WithMessage(err, "invalid invocation")
 	}
@@ -216,41 +201,40 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chain
 		return nil, err
 	}
 
-	isInit, err := cs.CheckInit(txParams, ccContext, input)
-	if err != nil {
-		return nil, err
-	}
-
-	cctype := pb.ChaincodeMessage_TRANSACTION
-	if isInit {
-		cctype = pb.ChaincodeMessage_INIT
-	}
-
 	return cs.execute(cctype, txParams, chaincodeName, input, h)
 }
 
-func (cs *ChaincodeSupport) CheckInvocation(channelID, chaincodeName string, txSim ledger.SimpleQueryExecutor) (ccid string, ccContext *CCContext, err error) {
-	cd, err := cs.Lifecycle.ChaincodeDefinition(channelID, chaincodeName, txSim)
+func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (ccid string, cctype pb.ChaincodeMessage_Type, err error) {
+	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(txParams.TxID), chaincodeName, txParams.ChannelID)
+	cd, err := cs.Lifecycle.ChaincodeDefinition(txParams.ChannelID, chaincodeName, txParams.TXSimulator)
 	if err != nil {
 		logDevModeError(cs.UserRunsCC)
-		return "", nil, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", channelID, chaincodeName)
+		return "", 0, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, chaincodeName)
 	}
 
 	if legacyDefinition, ok := cd.(LegacyChaincodeDefinition); ok {
 		err = legacyDefinition.ExecuteLegacySecurityChecks()
 		if err != nil {
-			return "", nil, errors.WithMessagef(err, "[channel %s] failed the chaincode security checks for %s", channelID, chaincodeName)
+			return "", 0, errors.WithMessagef(err, "[channel %s] failed the chaincode security checks for %s", txParams.ChannelID, chaincodeName)
+		}
+	}
+	isInit := false
+	if cd.RequiresInit() {
+		isInit, err = cs.CheckInit(txParams, cd.CCName(), cd.CCVersion(), input)
+		if err != nil {
+			return "", 0, err
 		}
 	}
 
-	return cd.CCID(), &CCContext{
-		Name:         chaincodeName,
-		Version:      cd.CCVersion(),
-		InitRequired: cd.RequiresInit(),
-	}, nil
+	cctype = pb.ChaincodeMessage_TRANSACTION
+	if isInit {
+		cctype = pb.ChaincodeMessage_INIT
+	}
+
+	return cd.CCID(), cctype, nil
 }
 
-func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cccid *CCContext, input *pb.ChaincodeInput) (bool, error) {
+func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, ccName, ccVersion string, input *pb.ChaincodeInput) (bool, error) {
 	if txParams.ChannelID == "" {
 		// Channel-less invocations must be for SCCs, so, we ignore them for now
 		return false, nil
@@ -265,31 +249,25 @@ func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, cc
 		return false, nil
 	}
 
-	if !cccid.InitRequired {
-		// If Init is not required, treat this as a normal invocation
-		// i.e. execute Invoke with 'init' as the function name
-		return false, nil
-	}
-
 	// At this point, we know we must enforce init exactly once semantics
 
-	value, err := txParams.TXSimulator.GetState(cccid.Name, InitializedKeyName)
+	value, err := txParams.TXSimulator.GetState(ccName, InitializedKeyName)
 	if err != nil {
 		return false, errors.WithMessage(err, "could not get 'initialized' key")
 	}
 
-	needsInitialization := !bytes.Equal(value, []byte(cccid.Version))
+	needsInitialization := !bytes.Equal(value, []byte(ccVersion))
 
 	switch {
 	case !input.IsInit && !needsInitialization:
 		return false, nil
 	case !input.IsInit && needsInitialization:
-		return false, errors.Errorf("chaincode '%s' has not been initialized for this version, must call as init first", cccid.Name)
+		return false, errors.Errorf("chaincode '%s' has not been initialized for this version, must call as init first", ccName)
 	case input.IsInit && !needsInitialization:
-		return false, errors.Errorf("chaincode '%s' is already initialized but called as init", cccid.Name)
+		return false, errors.Errorf("chaincode '%s' is already initialized but called as init", ccName)
 	default:
 		// input.IsInit && needsInitialization:
-		err = txParams.TXSimulator.SetState(cccid.Name, InitializedKeyName, []byte(cccid.Version))
+		err = txParams.TXSimulator.SetState(ccName, InitializedKeyName, []byte(ccVersion))
 		if err != nil {
 			return false, errors.WithMessage(err, "could not set 'initialized' key")
 		}
