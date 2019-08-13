@@ -204,6 +204,10 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chain
 	return cs.execute(cctype, txParams, chaincodeName, input, h)
 }
 
+// CheckInvocation inspects the parameters of an invocation and determines if, how, and to where a that invocation should be routed.
+// First, we ensure that the target namespace is defined on the channel and invokable on this peer, according to the lifecycle implementation.
+// Then, if the chaincode definition requires it, this function enforces 'init exactly once' semantics.
+// Finally, it returns the chaincode ID to route to and the message type of the request (normal transation, or init).
 func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (ccid string, cctype pb.ChaincodeMessage_Type, err error) {
 	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(txParams.TxID), chaincodeName, txParams.ChannelID)
 	cd, err := cs.Lifecycle.ChaincodeDefinition(txParams.ChannelID, chaincodeName, txParams.TXSimulator)
@@ -218,61 +222,45 @@ func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionPara
 			return "", 0, errors.WithMessagef(err, "[channel %s] failed the chaincode security checks for %s", txParams.ChannelID, chaincodeName)
 		}
 	}
-	isInit := false
+
+	needsInitialization := false
 	if cd.RequiresInit() {
-		isInit, err = cs.CheckInit(txParams, cd.CCName(), cd.CCVersion(), input)
+		// Note, RequiresInit() is only ever true for non-legacy definitions, and is always false for system chaincodes
+		// so performing this txSimulator read is safe.
+
+		value, err := txParams.TXSimulator.GetState(chaincodeName, InitializedKeyName)
 		if err != nil {
-			return "", 0, err
+			return "", 0, errors.WithMessage(err, "could not get 'initialized' key")
 		}
+
+		needsInitialization = !bytes.Equal(value, []byte(cd.CCVersion()))
 	}
 
-	cctype = pb.ChaincodeMessage_TRANSACTION
-	if isInit {
-		cctype = pb.ChaincodeMessage_INIT
-	}
+	// Note, IsInit is a new field for v2.0 and should only be set for invocations of non-legacy chaincodes.
+	// Any invocation of a legacy chaincode with IsInit set will fail.  This is desirable, as the old
+	// InstantiationPolicy contract enforces which users may call init.
+	if input.IsInit {
+		if !cd.RequiresInit() {
+			return "", 0, errors.Errorf("chaincode '%s' does not require initialization but called as init", chaincodeName)
+		}
 
-	return cd.CCID(), cctype, nil
-}
+		if !needsInitialization {
+			return "", 0, errors.Errorf("chaincode '%s' is already initialized but called as init", chaincodeName)
+		}
 
-func (cs *ChaincodeSupport) CheckInit(txParams *ccprovider.TransactionParams, ccName, ccVersion string, input *pb.ChaincodeInput) (bool, error) {
-	if txParams.ChannelID == "" {
-		// Channel-less invocations must be for SCCs, so, we ignore them for now
-		return false, nil
-	}
-
-	ac, ok := cs.AppConfig.GetApplicationConfig(txParams.ChannelID)
-	if !ok {
-		return false, errors.Errorf("could not retrieve application config for channel '%s'", txParams.ChannelID)
-	}
-
-	if !ac.Capabilities().LifecycleV20() {
-		return false, nil
-	}
-
-	// At this point, we know we must enforce init exactly once semantics
-
-	value, err := txParams.TXSimulator.GetState(ccName, InitializedKeyName)
-	if err != nil {
-		return false, errors.WithMessage(err, "could not get 'initialized' key")
-	}
-
-	needsInitialization := !bytes.Equal(value, []byte(ccVersion))
-
-	switch {
-	case !input.IsInit && !needsInitialization:
-		return false, nil
-	case !input.IsInit && needsInitialization:
-		return false, errors.Errorf("chaincode '%s' has not been initialized for this version, must call as init first", ccName)
-	case input.IsInit && !needsInitialization:
-		return false, errors.Errorf("chaincode '%s' is already initialized but called as init", ccName)
-	default:
-		// input.IsInit && needsInitialization:
-		err = txParams.TXSimulator.SetState(ccName, InitializedKeyName, []byte(ccVersion))
+		err = txParams.TXSimulator.SetState(chaincodeName, InitializedKeyName, []byte(cd.CCVersion()))
 		if err != nil {
-			return false, errors.WithMessage(err, "could not set 'initialized' key")
+			return "", 0, errors.WithMessage(err, "could not set 'initialized' key")
 		}
-		return true, nil
+
+		return cd.CCID(), pb.ChaincodeMessage_INIT, nil
 	}
+
+	if needsInitialization {
+		return "", 0, errors.Errorf("chaincode '%s' has not been initialized for this version, must call as init first", chaincodeName)
+	}
+
+	return cd.CCID(), pb.ChaincodeMessage_TRANSACTION, nil
 }
 
 // execute executes a transaction and waits for it to complete until a timeout value.
