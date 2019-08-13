@@ -118,10 +118,8 @@ func TestChaincodeData(t *testing.T) {
 		Vscc:                "Vscc",
 	}
 
-	assert.Equal(t, cd.CCName(), "Name")
 	assert.Equal(t, cd.CCVersion(), "Version")
 	assert.Equal(t, cd.Endorsement(), "Escc")
-	assert.Equal(t, cd.Hash(), []byte("Id"))
 	assert.Equal(t, cd.RequiresInit(), false)
 }
 

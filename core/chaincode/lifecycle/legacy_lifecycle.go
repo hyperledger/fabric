@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
@@ -34,24 +33,10 @@ type ChaincodeInfoCache interface {
 // It is a different data-type to allow differentiation at cast-time from
 // chaincode definitions which require validaiton of instantiation policy.
 type LegacyDefinition struct {
-	Name              string
 	Version           string
 	EndorsementPlugin string
 	RequiresInitField bool
 	CCIDField         string
-}
-
-// CCName returns the chaincode name
-func (ld *LegacyDefinition) CCName() string {
-	return ld.Name
-}
-
-// Hash returns the hash of <name>:<version>.  This is useless, but
-// is a hack to allow the rest of the code to have consistent view of
-// what hash means for a chaincode definition.  Ultimately, this should
-// be removed.
-func (ld *LegacyDefinition) Hash() []byte {
-	return util.ComputeSHA256([]byte(ld.Name + ":" + ld.Version))
 }
 
 // CCVersion returns the version of the chaincode.
@@ -135,7 +120,6 @@ func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeNam
 func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 	if cei.BuiltinSCCs.IsSysCC(chaincodeName) {
 		return &LegacyDefinition{
-			Name:              chaincodeName,
 			Version:           scc.SysCCVersion,
 			EndorsementPlugin: "escc",
 			RequiresInitField: false,
@@ -154,7 +138,6 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 	chaincodeDefinition := chaincodeInfo.Definition
 
 	return &LegacyDefinition{
-		Name:              chaincodeName,
 		Version:           chaincodeDefinition.EndorsementInfo.Version,
 		EndorsementPlugin: chaincodeDefinition.EndorsementInfo.EndorsementPlugin,
 		RequiresInitField: chaincodeDefinition.EndorsementInfo.InitRequired,

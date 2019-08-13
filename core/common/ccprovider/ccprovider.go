@@ -360,12 +360,6 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 // ChaincodeDefinition describes all of the necessary information for a peer to decide whether to endorse
 // a proposal and whether to validate a transaction, for a particular chaincode.
 type ChaincodeDefinition interface {
-	// CCName returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
-	CCName() string
-
-	// Hash returns the hash of the chaincode.
-	Hash() []byte
-
 	// CCVersion returns the version of the chaincode.
 	CCVersion() string
 

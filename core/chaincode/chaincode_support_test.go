@@ -183,7 +183,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 			}, nil
 		case "lscc":
 			return &lifecycle.LegacyDefinition{
-				Name:      "lscc",
 				Version:   "syscc",
 				CCIDField: "lscc.syscc",
 			}, nil

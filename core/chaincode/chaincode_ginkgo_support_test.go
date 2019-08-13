@@ -55,7 +55,6 @@ var _ = Describe("CheckInvocation", func() {
 
 		BeforeEach(func() {
 			chaincodeDefinition = &lifecycle.LegacyDefinition{
-				Name:      "definition-name",
 				Version:   "definition-version",
 				CCIDField: "definition-ccid",
 			}
