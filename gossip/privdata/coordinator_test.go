@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -42,10 +41,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-func init() {
-	factory.InitFactories(nil)
-}
 
 var testConfig = CoordinatorConfig{
 	PullRetryThreshold:             time.Second * 3,
@@ -138,18 +133,18 @@ func (f *fetcherMock) On(methodName string, arguments ...interface{}) *fetchCall
 }
 
 func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtDataContainer, error) {
+	uniqueEndorsements := make(map[string]interface{})
 	for _, endorsements := range dig2src {
 		for _, endorsement := range endorsements {
 			_, exists := f.expectedEndorsers[string(endorsement.Endorser)]
 			if !exists {
 				f.t.Fatalf("Encountered a non-expected endorser: %s", string(endorsement.Endorser))
 			}
-			// Else, it exists, so delete it so we will end up with an empty expected map at the end of the call
-			delete(f.expectedEndorsers, string(endorsement.Endorser))
+			uniqueEndorsements[string(endorsement.Endorser)] = struct{}{}
 		}
 	}
-	assert.True(f.t, digests(dig2src.keys()).Equal(digests(f.expectedDigests)))
-	assert.Empty(f.t, f.expectedEndorsers)
+	assert.True(f.t, digests(f.expectedDigests).Equal(digests(dig2src.keys())))
+	assert.Equal(f.t, len(f.expectedEndorsers), len(uniqueEndorsements))
 	args := f.Called(dig2src)
 	if args.Get(1) == nil {
 		return args.Get(0).(*privdatacommon.FetchedPvtDataContainer), nil

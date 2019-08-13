@@ -646,6 +646,30 @@ type Hasher interface {
 	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
 }
 
+// TxPvtdataInfo captures information about the requested private data to be retrieved
+// and is populated by ledger during commit
+type TxPvtdataInfo struct {
+	TxID                  string
+	Invalid               bool
+	SeqInBlock            uint64
+	CollectionPvtdataInfo []*CollectionPvtdataInfo
+}
+
+// CollectionPvtdataInfo contains information about the private data for a given collection
+type CollectionPvtdataInfo struct {
+	Namespace, Collection string
+	ExpectedHash          []byte
+	CollectionConfig      *common.StaticCollectionConfig
+	Endorsers             []*peer.Endorsement
+}
+
+// BlockPvtdata contains the retrieved private data as well as missing and ineligible
+// private data for use at commit time
+type BlockPvtdata struct {
+	PvtData        TxPvtDataMap
+	MissingPvtData TxMissingPvtDataMap
+}
+
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener
 //go:generate counterfeiter -o mock/query_executor.go -fake-name QueryExecutor . QueryExecutor
 //go:generate counterfeiter -o mock/tx_simulator.go -fake-name TxSimulator . TxSimulator
