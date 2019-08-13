@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
@@ -53,12 +54,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	// this test assumes four collections
 	collectionConfig := []*common.StaticCollectionConfig{{Name: "c1"}, {Name: "c2"}, {Name: "c3"}, {Name: "c4"}}
 	collectionConfigPkg := constructCollectionConfigPkg(collectionConfig)
-	defer chaincodeSupport.Runtime.Stop(&ccprovider.ChaincodeContainerInfo{
-		Name:    cID.Name,
-		Version: cID.Version,
-		Path:    cID.Path,
-		Type:    "GOLANG",
-	})
+	defer chaincodeSupport.Runtime.Stop(ccintf.CCID(cID.Name + ":" + cID.Version))
 	_, err = deployWithCollectionConfigs(chainID, cccid, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name

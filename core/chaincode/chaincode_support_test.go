@@ -32,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	pintf "github.com/hyperledger/fabric/core/chaincode/persistence/intf"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -175,19 +174,17 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	globalConfig.ExecuteTimeout = 1 * time.Second
 	lsccImpl := lscc.New(map[string]struct{}{"lscc": {}}, &lscc.PeerShim{Peer: peerInstance}, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &mock.Lifecycle{}
-	ml.ChaincodeContainerInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*ccprovider.ChaincodeContainerInfo, error) {
+	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 		switch name {
 		case "shimTestCC", "calledCC":
-			return &ccprovider.ChaincodeContainerInfo{
-				Name:      name,
-				Version:   "0",
-				PackageID: pintf.PackageID(name + ":0"),
+			return &ccprovider.ChaincodeData{
+				Name:    name,
+				Version: "0",
 			}, nil
 		case "lscc":
-			return &ccprovider.ChaincodeContainerInfo{
-				Name:      "lscc",
-				Version:   "latest",
-				PackageID: pintf.PackageID("lscc:latest"),
+			return &ccprovider.ChaincodeData{
+				Name:    "lscc",
+				Version: "latest",
 			}, nil
 		default:
 			return nil, errors.New("oh-bother-no-chaincode-info")
@@ -199,8 +196,6 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		panic(err)
 	}
 
-	fakeCCDefinition := &mock.ChaincodeDefinition{}
-	ml.ChaincodeDefinitionReturns(fakeCCDefinition, nil)
 	containerRuntime := &ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
@@ -885,7 +880,7 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo) error {
+	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
 		handlerRegistry.Ready(ccintf.CCID("testcc:0"))
 		return nil
 	}
@@ -897,15 +892,8 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
-	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:      "GOLANG",
-		Name:      "testcc",
-		Version:   "0",
-		PackageID: pintf.PackageID("testcc:0"),
-	}
-
 	//actual test - everythings good
-	err := launcher.Launch(ccci)
+	err := launcher.Launch("testcc:0")
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
@@ -914,7 +902,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 //test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo) error {
+	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
 		time.Sleep(time.Second)
 		return nil
 	}
@@ -926,14 +914,8 @@ func TestStartAndWaitTimeout(t *testing.T) {
 		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
-	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:    "GOLANG",
-		Name:    "testcc",
-		Version: "0",
-	}
-
 	//the actual test - timeout 1000 > 500
-	err := launcher.Launch(ccci)
+	err := launcher.Launch("testcc:0")
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -942,7 +924,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 //test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ *ccprovider.ChaincodeContainerInfo) error {
+	fakeRuntime.StartStub = func(_ ccintf.CCID) error {
 		return errors.New("Bad lunch; upset stomach")
 	}
 
@@ -953,14 +935,8 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
-	ccci := &ccprovider.ChaincodeContainerInfo{
-		Type:    "GOLANG",
-		Name:    "testcc",
-		Version: "0",
-	}
-
 	//actual test - container launch gives error
-	err := launcher.Launch(ccci)
+	err := launcher.Launch("testcc:0")
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}

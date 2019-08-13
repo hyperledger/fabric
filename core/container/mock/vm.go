@@ -2,6 +2,7 @@
 package mock
 
 import (
+	"io"
 	"sync"
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -9,11 +10,11 @@ import (
 )
 
 type VM struct {
-	BuildStub        func(*ccprovider.ChaincodeContainerInfo, []byte) (container.Instance, error)
+	BuildStub        func(*ccprovider.ChaincodeContainerInfo, io.Reader) (container.Instance, error)
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
 		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 []byte
+		arg2 io.Reader
 	}
 	buildReturns struct {
 		result1 container.Instance
@@ -27,19 +28,14 @@ type VM struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 []byte) (container.Instance, error) {
-	var arg2Copy []byte
-	if arg2 != nil {
-		arg2Copy = make([]byte, len(arg2))
-		copy(arg2Copy, arg2)
-	}
+func (fake *VM) Build(arg1 *ccprovider.ChaincodeContainerInfo, arg2 io.Reader) (container.Instance, error) {
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
 		arg1 *ccprovider.ChaincodeContainerInfo
-		arg2 []byte
-	}{arg1, arg2Copy})
-	fake.recordInvocation("Build", []interface{}{arg1, arg2Copy})
+		arg2 io.Reader
+	}{arg1, arg2})
+	fake.recordInvocation("Build", []interface{}{arg1, arg2})
 	fake.buildMutex.Unlock()
 	if fake.BuildStub != nil {
 		return fake.BuildStub(arg1, arg2)
@@ -57,13 +53,13 @@ func (fake *VM) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *VM) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, []byte) (container.Instance, error)) {
+func (fake *VM) BuildCalls(stub func(*ccprovider.ChaincodeContainerInfo, io.Reader) (container.Instance, error)) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *VM) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, []byte) {
+func (fake *VM) BuildArgsForCall(i int) (*ccprovider.ChaincodeContainerInfo, io.Reader) {
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
 	argsForCall := fake.buildArgsForCall[i]

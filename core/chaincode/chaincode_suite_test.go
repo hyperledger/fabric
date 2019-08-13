@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -63,11 +62,6 @@ type invoker interface {
 //go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycle
 type lifecycle interface {
 	chaincode.Lifecycle
-}
-
-//go:generate counterfeiter -o mock/chaincode_definition.go --fake-name ChaincodeDefinition . chaincodeDefinition
-type chaincodeDefinition interface {
-	ccprovider.ChaincodeDefinition
 }
 
 //go:generate counterfeiter -o mock/chaincode_stream.go --fake-name ChaincodeStream . chaincodeStream

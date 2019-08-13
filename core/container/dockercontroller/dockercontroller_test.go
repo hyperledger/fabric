@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -56,7 +57,7 @@ func TestIntegrationPath(t *testing.T) {
 		Path:      "path",
 		Name:      "name",
 		Version:   "version",
-	}, []byte("code-package"))
+	}, bytes.NewBuffer([]byte("code-package")))
 	require.NoError(t, err)
 
 	assert.Equal(t, &ContainerInstance{
@@ -424,18 +425,20 @@ func TestBuild(t *testing.T) {
 		fakePlatformBuilder.GenerateDockerBuildReturns(&bytes.Buffer{}, nil)
 
 		dvm := &DockerVM{Client: client, BuildMetrics: buildMetrics, PlatformBuilder: fakePlatformBuilder}
-		_, err := dvm.Build(ccci, []byte("code-package"))
+		_, err := dvm.Build(ccci, bytes.NewBuffer([]byte("code-package")))
 		assert.NoError(t, err, "should have built successfully")
 
 		assert.Equal(t, 1, client.BuildImageCallCount())
 
 		require.Equal(t, 1, fakePlatformBuilder.GenerateDockerBuildCallCount())
-		ccci, codePackage := fakePlatformBuilder.GenerateDockerBuildArgsForCall(0)
+		ccci, codePackageStream := fakePlatformBuilder.GenerateDockerBuildArgsForCall(0)
 		assert.Equal(t, "chaincode-name:chaincode-version", string(ccci.PackageID))
 		assert.Equal(t, "TYPE", ccci.Type)
 		assert.Equal(t, "path", ccci.Path)
 		assert.Equal(t, "name", ccci.Name)
 		assert.Equal(t, "version", ccci.Version)
+		codePackage, err := ioutil.ReadAll(codePackageStream)
+		require.NoError(t, err)
 		assert.Equal(t, []byte("code-package"), codePackage)
 
 	})
@@ -445,7 +448,7 @@ func TestBuild(t *testing.T) {
 		client.InspectImageReturns(nil, errors.New("inspecting-image-fails"))
 
 		dvm := &DockerVM{Client: client, BuildMetrics: buildMetrics}
-		_, err := dvm.Build(ccci, []byte("code-package"))
+		_, err := dvm.Build(ccci, bytes.NewBuffer([]byte("code-package")))
 		assert.EqualError(t, err, "docker image inspection failed: inspecting-image-fails")
 
 		assert.Equal(t, 0, client.BuildImageCallCount())
@@ -455,7 +458,7 @@ func TestBuild(t *testing.T) {
 		client := &mock.DockerClient{}
 
 		dvm := &DockerVM{Client: client, BuildMetrics: buildMetrics}
-		_, err := dvm.Build(ccci, []byte("code-package"))
+		_, err := dvm.Build(ccci, bytes.NewBuffer([]byte("code-package")))
 		assert.NoError(t, err)
 
 		assert.Equal(t, 0, client.BuildImageCallCount())
@@ -470,7 +473,7 @@ func TestBuild(t *testing.T) {
 		fakePlatformBuilder.GenerateDockerBuildReturns(nil, errors.New("fake-builder-error"))
 
 		dvm := &DockerVM{Client: client, BuildMetrics: buildMetrics, PlatformBuilder: fakePlatformBuilder}
-		_, err := dvm.Build(ccci, []byte("code-package"))
+		_, err := dvm.Build(ccci, bytes.NewBuffer([]byte("code-package")))
 		assert.Equal(t, 1, client.InspectImageCallCount())
 		assert.Equal(t, 1, fakePlatformBuilder.GenerateDockerBuildCallCount())
 		assert.Equal(t, 0, client.BuildImageCallCount())
@@ -485,7 +488,7 @@ func TestBuild(t *testing.T) {
 		fakePlatformBuilder := &mock.PlatformBuilder{}
 
 		dvm := &DockerVM{Client: client, BuildMetrics: buildMetrics, PlatformBuilder: fakePlatformBuilder}
-		_, err := dvm.Build(ccci, []byte("code-package"))
+		_, err := dvm.Build(ccci, bytes.NewBuffer([]byte("code-package")))
 		assert.Equal(t, 1, client.InspectImageCallCount())
 		assert.Equal(t, 1, client.BuildImageCallCount())
 		assert.EqualError(t, err, "docker image build failed: no-build-for-you")

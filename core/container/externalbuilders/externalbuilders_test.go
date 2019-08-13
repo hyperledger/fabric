@@ -28,21 +28,25 @@ import (
 
 var _ = Describe("Externalbuilders", func() {
 	var (
-		codePackageBytes []byte
-		codePackage      *bytes.Buffer
-		ccci             *ccprovider.ChaincodeContainerInfo
+		codePackage *os.File
+		ccci        *ccprovider.ChaincodeContainerInfo
 	)
 
 	BeforeEach(func() {
 		var err error
-		codePackageBytes, err = ioutil.ReadFile("testdata/normal_archive.tar.gz")
+		codePackage, err = os.Open("testdata/normal_archive.tar.gz")
 		Expect(err).NotTo(HaveOccurred())
-		codePackage = bytes.NewBuffer(codePackageBytes)
 
 		ccci = &ccprovider.ChaincodeContainerInfo{
 			PackageID: "fake-package-id",
 			Path:      "fake-path",
 			Type:      "fake-type",
+		}
+	})
+
+	AfterEach(func() {
+		if codePackage != nil {
+			codePackage.Close()
 		}
 	})
 
@@ -65,15 +69,11 @@ var _ = Describe("Externalbuilders", func() {
 		})
 
 		Context("when the archive cannot be extracted", func() {
-			BeforeEach(func() {
-				var err error
-				codePackageBytes, err = ioutil.ReadFile("testdata/archive_with_absolute.tar.gz")
-				Expect(err).NotTo(HaveOccurred())
-				codePackage = bytes.NewBuffer(codePackageBytes)
-			})
-
 			It("returns an error", func() {
-				_, err := externalbuilders.NewBuildContext(ccci, codePackage)
+				codePackage, err := os.Open("testdata/archive_with_absolute.tar.gz")
+				Expect(err).NotTo(HaveOccurred())
+				defer codePackage.Close()
+				_, err = externalbuilders.NewBuildContext(ccci, codePackage)
 				Expect(err).To(MatchError(ContainSubstring("could not untar source package")))
 			})
 		})
@@ -100,7 +100,7 @@ var _ = Describe("Externalbuilders", func() {
 
 		Describe("Build", func() {
 			It("iterates over all detectors and chooses the one that matches", func() {
-				instance, err := detector.Build(ccci, codePackageBytes)
+				instance, err := detector.Build(ccci, codePackage)
 				Expect(err).NotTo(HaveOccurred())
 				instance.BuildContext.Cleanup()
 				Expect(instance.Builder.Name()).To(Equal("testdata"))
@@ -112,7 +112,7 @@ var _ = Describe("Externalbuilders", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := detector.Build(ccci, codePackageBytes)
+					_, err := detector.Build(ccci, codePackage)
 					Expect(err).To(MatchError("no builders defined"))
 				})
 			})
@@ -123,7 +123,7 @@ var _ = Describe("Externalbuilders", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := detector.Build(ccci, codePackageBytes)
+					_, err := detector.Build(ccci, codePackage)
 					Expect(err).To(MatchError("no builder found"))
 				})
 			})

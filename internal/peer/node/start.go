@@ -9,6 +9,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -139,7 +140,7 @@ type externalVMAdapter struct {
 
 func (e externalVMAdapter) Build(
 	cci *ccprovider.ChaincodeContainerInfo,
-	codePackage []byte,
+	codePackage io.Reader,
 ) (container.Instance, error) {
 	return e.detector.Build(cci, codePackage)
 }

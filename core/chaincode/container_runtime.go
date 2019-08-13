@@ -8,7 +8,6 @@ package chaincode
 
 import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
@@ -26,7 +25,7 @@ type CertGenerator interface {
 // invocations.  But, the legacy lifecycle makes this very challenging.  Once the legacy lifecycle
 // is removed (or perhaps before), this interface should probably go away entirely.
 type ContainerRouter interface {
-	Build(ccci *ccprovider.ChaincodeContainerInfo) error
+	Build(ccid ccintf.CCID) error
 	Start(ccid ccintf.CCID, peerConnection *ccintf.PeerConnection) error
 	Stop(ccid ccintf.CCID) error
 	Wait(ccid ccintf.CCID) (int, error)
@@ -41,14 +40,12 @@ type ContainerRuntime struct {
 }
 
 // Start launches chaincode in a runtime environment.
-func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo) error {
-	packageID := ccci.PackageID.String()
-
+func (c *ContainerRuntime) Start(ccid ccintf.CCID) error {
 	var tlsConfig *ccintf.TLSConfig
 	if c.CertGenerator != nil {
-		certKeyPair, err := c.CertGenerator.Generate(packageID)
+		certKeyPair, err := c.CertGenerator.Generate(string(ccid))
 		if err != nil {
-			return errors.WithMessagef(err, "failed to generate TLS certificates for %s", packageID)
+			return errors.WithMessagef(err, "failed to generate TLS certificates for %s", ccid)
 		}
 
 		tlsConfig = &ccintf.TLSConfig{
@@ -58,14 +55,14 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo) error 
 		}
 	}
 
-	if err := c.ContainerRouter.Build(ccci); err != nil {
+	if err := c.ContainerRouter.Build(ccid); err != nil {
 		return errors.WithMessage(err, "error building image")
 	}
 
-	chaincodeLogger.Debugf("start container: %s", packageID)
+	chaincodeLogger.Debugf("start container: %s", ccid)
 
 	if err := c.ContainerRouter.Start(
-		ccintf.New(ccci.PackageID),
+		ccid,
 		&ccintf.PeerConnection{
 			Address:   c.PeerAddress,
 			TLSConfig: tlsConfig,
@@ -78,8 +75,8 @@ func (c *ContainerRuntime) Start(ccci *ccprovider.ChaincodeContainerInfo) error 
 }
 
 // Stop terminates chaincode and its container runtime environment.
-func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
-	if err := c.ContainerRouter.Stop(ccintf.New(ccci.PackageID)); err != nil {
+func (c *ContainerRuntime) Stop(ccid ccintf.CCID) error {
+	if err := c.ContainerRouter.Stop(ccid); err != nil {
 		return errors.WithMessage(err, "error stopping container")
 	}
 
@@ -87,6 +84,6 @@ func (c *ContainerRuntime) Stop(ccci *ccprovider.ChaincodeContainerInfo) error {
 }
 
 // Wait waits for the container runtime to terminate.
-func (c *ContainerRuntime) Wait(ccci *ccprovider.ChaincodeContainerInfo) (int, error) {
-	return c.ContainerRouter.Wait(ccintf.New(ccci.PackageID))
+func (c *ContainerRuntime) Wait(ccid ccintf.CCID) (int, error) {
+	return c.ContainerRouter.Wait(ccid)
 }

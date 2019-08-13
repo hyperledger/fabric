@@ -73,7 +73,7 @@ type dockerClient interface {
 }
 
 type PlatformBuilder interface {
-	GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (io.Reader, error)
+	GenerateDockerBuild(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (io.Reader, error)
 }
 
 type ContainerInstance struct {
@@ -172,7 +172,7 @@ func (vm *DockerVM) buildImage(ccid ccintf.CCID, reader io.Reader) error {
 }
 
 // Build is responsible for building an image if it does not already exist.
-func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage []byte) (container.Instance, error) {
+func (vm *DockerVM) Build(ccci *ccprovider.ChaincodeContainerInfo, codePackage io.Reader) (container.Instance, error) {
 	ccid := ccintf.New(ccci.PackageID)
 	imageName, err := vm.GetVMNameForDocker(ccid)
 	if err != nil {

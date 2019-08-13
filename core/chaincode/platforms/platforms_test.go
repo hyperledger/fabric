@@ -43,28 +43,26 @@ var _ = Describe("Platforms", func() {
 	Describe("GenerateDockerfile", func() {
 		It("calls the underlying platform, then appends some boilerplate", func() {
 			fakePlatform.GenerateDockerfileReturns("docker-header", nil)
-			df, err := registry.GenerateDockerfile("fakeType", "cc-name", "cc-version")
+			df, err := registry.GenerateDockerfile("fakeType")
 			Expect(err).NotTo(HaveOccurred())
 			expectedDockerfile := fmt.Sprintf(`docker-header
-LABEL org.hyperledger.fabric.chaincode.id.name="cc-name" \
-      org.hyperledger.fabric.chaincode.id.version="cc-version" \
-      org.hyperledger.fabric.chaincode.type="fakeType" \
-      org.hyperledger.fabric.version="%s"
-ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
+LABEL org.hyperledger.fabric.chaincode.type="fakeType" \
+      org.hyperledger.fabric.version="latest"
+ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version)
 			Expect(df).To(Equal(expectedDockerfile))
 		})
 
 		Context("when the underlying platform returns an error", func() {
 			It("returns the error", func() {
 				fakePlatform.GenerateDockerfileReturns("docker-header", errors.New("fake-error"))
-				_, err := registry.GenerateDockerfile("fakeType", "", "")
+				_, err := registry.GenerateDockerfile("fakeType")
 				Expect(err).To(MatchError("Failed to generate platform-specific Dockerfile: fake-error"))
 			})
 		})
 
 		Context("when the platform is unknown", func() {
 			It("returns an error", func() {
-				df, err := registry.GenerateDockerfile("badType", "", "")
+				df, err := registry.GenerateDockerfile("badType")
 				Expect(df).To(BeEmpty())
 				Expect(err).To(MatchError("Unknown chaincodeType: badType"))
 			})
@@ -139,7 +137,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 
 		Describe("GenerateDockerBuild", func() {
 			It("creates a stream for the package", func() {
-				reader, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil, client)
+				reader, err := registry.GenerateDockerBuild("fakeType", "", nil, client)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = ioutil.ReadAll(reader)
 				Expect(err).NotTo(HaveOccurred())
@@ -148,7 +146,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			Context("when there is a problem generating the dockerfile", func() {
 				It("returns an error", func() {
 					fakePlatform.GenerateDockerfileReturns("docker-header", errors.New("fake-error"))
-					_, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil, client)
+					_, err := registry.GenerateDockerBuild("fakeType", "", nil, client)
 					Expect(err).To(MatchError("Failed to generate a Dockerfile: Failed to generate platform-specific Dockerfile: fake-error"))
 				})
 			})
@@ -156,7 +154,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			Context("when there is a problem streaming the dockerbuild", func() {
 				It("closes the reader with an error", func() {
 					pw.WriteReturns(errors.New("fake-error"))
-					reader, err := registry.GenerateDockerBuild("fakeType", "", "", "", nil, client)
+					reader, err := registry.GenerateDockerBuild("fakeType", "", nil, client)
 					Expect(err).NotTo(HaveOccurred())
 					_, err = ioutil.ReadAll(reader)
 					Expect(err).To(MatchError("Failed to inject \"Dockerfile\": fake-error"))
