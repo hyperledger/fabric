@@ -14,7 +14,6 @@ import (
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 
@@ -272,10 +271,7 @@ var _ = Describe("Network", func() {
 			nwo.PackageChaincode(network, chaincode, testPeers[0])
 
 			// we set the PackageID so that we can pass it to the approve step
-			filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
-			Expect(err).NotTo(HaveOccurred())
-			hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
-			chaincode.PackageID = chaincode.Label + ":" + hashStr
+			chaincode.SetPackageIDFromPackageFile()
 
 			nwo.InstallChaincode(network, chaincode, testPeers...)
 
