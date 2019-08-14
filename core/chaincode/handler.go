@@ -127,7 +127,7 @@ type Handler struct {
 	// ready.
 	state State
 	// chaincodeID holds the ID of the chaincode that registered with the peer.
-	chaincodeID *pb.ChaincodeID
+	chaincodeID string
 
 	// serialLock is used to serialize sends across the grpc chat stream.
 	serialLock sync.Mutex
@@ -229,11 +229,10 @@ func (h *Handler) HandleTransaction(msg *pb.ChaincodeMessage, delegate handleFun
 		txContext, err = h.isValidTxSim(msg.ChannelId, msg.Txid, "no ledger context")
 	}
 
-	chaincodeName := h.chaincodeID.Name + ":" + h.chaincodeID.Version
 	meterLabels := []string{
 		"type", msg.Type.String(),
 		"channel", msg.ChannelId,
-		"chaincode", chaincodeName,
+		"chaincode", h.chaincodeID,
 	}
 	h.Metrics.ShimRequestsReceived.With(meterLabels...).Add(1)
 
@@ -341,11 +340,8 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 }
 
 func (h *Handler) deregister() {
-	if h.chaincodeID != nil {
-		// FIXME: this works once again because h.chaincodeID.Name
-		// is not the chaincode name but the concatenation of name
-		// and version (FAB-14630)
-		h.Registry.Deregister(h.chaincodeID.Name)
+	if h.chaincodeID != "" {
+		h.Registry.Deregister(h.chaincodeID)
 	}
 }
 
@@ -417,18 +413,18 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 
 // sendReady sends READY to chaincode serially (just like REGISTER)
 func (h *Handler) sendReady() error {
-	chaincodeLogger.Debugf("sending READY for chaincode %+v", h.chaincodeID)
+	chaincodeLogger.Debugf("sending READY for chaincode %s", h.chaincodeID)
 	ccMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY}
 
 	// if error in sending tear down the h
 	if err := h.serialSend(ccMsg); err != nil {
-		chaincodeLogger.Errorf("error sending READY (%s) for chaincode %+v", err, h.chaincodeID)
+		chaincodeLogger.Errorf("error sending READY (%s) for chaincode %s", err, h.chaincodeID)
 		return err
 	}
 
 	h.state = Ready
 
-	chaincodeLogger.Debugf("Changed to state ready for chaincode %+v", h.chaincodeID)
+	chaincodeLogger.Debugf("Changed to state ready for chaincode %s", h.chaincodeID)
 
 	return nil
 }
@@ -441,12 +437,12 @@ func (h *Handler) notifyRegistry(err error) {
 	}
 
 	if err != nil {
-		h.Registry.Failed(h.chaincodeID.Name, err)
+		h.Registry.Failed(h.chaincodeID, err)
 		chaincodeLogger.Errorf("failed to start %s -- %s", h.chaincodeID, err)
 		return
 	}
 
-	h.Registry.Ready(h.chaincodeID.Name)
+	h.Registry.Ready(h.chaincodeID)
 }
 
 // handleRegister is invoked when chaincode tries to register.
@@ -460,14 +456,17 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 	}
 
 	// Now register with the chaincodeSupport
-	h.chaincodeID = chaincodeID
+	// Note: chaincodeID.Name is actually of the form name:version for older chaincodes, and
+	// of the form label:hash for newer chaincodes.  Either way, it is the handle by which
+	// we track the chaincode's registration.
+	h.chaincodeID = chaincodeID.Name
 	err = h.Registry.Register(h)
 	if err != nil {
 		h.notifyRegistry(err)
 		return
 	}
 
-	chaincodeLogger.Debugf("Got %s for chaincodeID = %s, sending back %s", pb.ChaincodeMessage_REGISTER, chaincodeID, pb.ChaincodeMessage_REGISTERED)
+	chaincodeLogger.Debugf("Got %s for chaincodeID = %s, sending back %s", pb.ChaincodeMessage_REGISTER, h.chaincodeID, pb.ChaincodeMessage_REGISTERED)
 	if err := h.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}); err != nil {
 		chaincodeLogger.Errorf("error sending %s: %s", pb.ChaincodeMessage_REGISTERED, err)
 		h.notifyRegistry(err)
@@ -476,7 +475,7 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 
 	h.state = Established
 
-	chaincodeLogger.Debugf("Changed state to established for %+v", h.chaincodeID)
+	chaincodeLogger.Debugf("Changed state to established for %s", h.chaincodeID)
 
 	// for dev mode this will also move to ready automatically
 	h.notifyRegistry(nil)
@@ -513,11 +512,11 @@ func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 	}
 
 	// Log the issue and drop the request
-	chaincodeName := "unknown"
-	if h.chaincodeID != nil {
-		chaincodeName = h.chaincodeID.Name
+	chaincodeID := "unknown"
+	if h.chaincodeID != "" {
+		chaincodeID = h.chaincodeID
 	}
-	chaincodeLogger.Errorf("[%s] Another request pending for this CC: %s, Txid: %s, ChannelID: %s. Cannot process.", shorttxid(msg.Txid), chaincodeName, msg.Txid, msg.ChannelId)
+	chaincodeLogger.Errorf("[%s] Another request pending for this CC: %s, Txid: %s, ChannelID: %s. Cannot process.", shorttxid(msg.Txid), chaincodeID, msg.Txid, msg.ChannelId)
 	return false
 }
 
@@ -1175,13 +1174,13 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
-func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
+func (h *Handler) Execute(txParams *ccprovider.TransactionParams, namespace string, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	chaincodeLogger.Debugf("Entry")
 	defer chaincodeLogger.Debugf("Exit")
 
 	txParams.CollectionStore = h.getCollectionStore(msg.ChannelId)
 	txParams.IsInitTransaction = (msg.Type == pb.ChaincodeMessage_INIT)
-	txParams.NamespaceID = cccid.Name
+	txParams.NamespaceID = namespace
 
 	txctx, err := h.TXContexts.Create(txParams)
 	if err != nil {
@@ -1202,9 +1201,8 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, cccid *ccprovi
 		// are typically treated as error
 	case <-time.After(timeout):
 		err = errors.New("timeout expired while executing transaction")
-		ccName := cccid.Name + ":" + cccid.Version
 		h.Metrics.ExecuteTimeouts.With(
-			"chaincode", ccName,
+			"chaincode", h.chaincodeID,
 		).Add(1)
 	}
 

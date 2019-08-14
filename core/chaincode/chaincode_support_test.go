@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -50,6 +51,14 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
+
+// CCContext is a legacy structure that was utilized heavily in the tests
+// so it has been preserved, even though it basically passes a name/version pair
+// alone.
+type CCContext struct {
+	Name    string
+	Version string
+}
 
 var globalBlockNum map[string]uint64
 
@@ -173,9 +182,9 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 				Version: "0",
 			}, nil
 		case "lscc":
-			return &ccprovider.ChaincodeData{
-				Name:    "lscc",
-				Version: "latest",
+			return &lifecycle.LegacyDefinition{
+				Version:   "syscc",
+				CCIDField: "lscc.syscc",
 			}, nil
 		default:
 			return nil, errors.New("oh-bother-no-chaincode-info")
@@ -232,7 +241,7 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 		UserRunsCC:             userRunsCC,
 	}
 
-	scc.DeploySysCC(lsccImpl, "latest", chaincodeSupport)
+	scc.DeploySysCC(lsccImpl, chaincodeSupport)
 
 	globalBlockNum = make(map[string]uint64, len(chainIDs))
 	for _, id := range chainIDs {
@@ -398,7 +407,7 @@ func getTarGZ(t *testing.T, name string, contents []byte) []byte {
 }
 
 // Deploy a chaincode - i.e., build and initialize.
-func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *ccprovider.CCContext, spec *pb.ChaincodeSpec, chaincodeSupport *ChaincodeSupport) {
+func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, ccContext *CCContext, spec *pb.ChaincodeSpec, chaincodeSupport *ChaincodeSupport) {
 	// First build and get the deployment spec
 	code := getTarGZ(t, "src/dummy/dummy.go", []byte("code"))
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: code}
@@ -408,14 +417,12 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, cccid *ccpro
 
 	b := protoutil.MarshalOrPanic(cds)
 
-	sysCCVers := "latest"
-
 	//wrap the deployment in an invocation spec to lscc...
-	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(txParams.ChannelID), b}}}}
+	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(txParams.ChannelID), b}}}}
 
 	//write to lscc
 	if _, _, err := chaincodeSupport.Execute(txParams, "lscc", lsccSpec.ChaincodeSpec.Input); err != nil {
-		t.Fatalf("Error deploying chaincode %v (err: %s)", cccid, err)
+		t.Fatalf("Error deploying chaincode %v (err: %s)", ccContext, err)
 	}
 }
 
@@ -647,12 +654,12 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	//first deploy the new cc to LSCC
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	cccid := &ccprovider.CCContext{
+	ccContext := &CCContext{
 		Name:    calledCC,
 		Version: "0",
 	}
 
-	deployCC(t, txParams, cccid, cis.ChaincodeSpec, chaincodeSupport)
+	deployCC(t, txParams, ccContext, cis.ChaincodeSpec, chaincodeSupport)
 
 	//commit
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
@@ -664,16 +671,15 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	txid = util.GenerateUUID()
 	txParams, txsim = startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	sysCCVers := "latest"
 	//call a callable system CC, a regular cc, a regular but different cc on a different chain, a regular but same cc on a different chain,  and an uncallable system cc and expect an error inthe last one
 	respSet := &mockpeer.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
 		Responses: []*mockpeer.MockResponse{
-			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "lscc:" + sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "lscc.syscc"}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID2}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
-			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "vscc:" + sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
+			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "vscc.syscc"}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
 		},
 	}
 
@@ -1067,12 +1073,12 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 	txid := util.GenerateUUID()
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID2, cis, txid)
 
-	cccid := &ccprovider.CCContext{
+	ccContext := &CCContext{
 		Name:    ccname,
 		Version: "0",
 	}
 
-	deployCC(t, txParams, cccid, cis.ChaincodeSpec, chaincodeSupport)
+	deployCC(t, txParams, ccContext, cis.ChaincodeSpec, chaincodeSupport)
 
 	//commit
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
@@ -1129,7 +1135,7 @@ func TestCCFramework(t *testing.T) {
 	initializeCC(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	//chaincode support should not allow dups
-	handler := &Handler{chaincodeID: &pb.ChaincodeID{Name: ccname + ":0"}, BuiltinSCCs: chaincodeSupport.BuiltinSCCs}
+	handler := &Handler{chaincodeID: ccname + ":0", BuiltinSCCs: chaincodeSupport.BuiltinSCCs}
 	if err := chaincodeSupport.HandlerRegistry.Register(handler); err == nil {
 		t.Fatalf("expected re-register to fail")
 	}

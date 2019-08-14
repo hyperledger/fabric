@@ -130,28 +130,20 @@ func (r *HandlerRegistry) Register(h *Handler) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	// FIXME: the ccid must be its own field in the handler
-	// This hack works because currently h.chaincodeID.Name is
-	// actually set as the concatenation of chaincode name and
-	// chaincode ID, which is set at build time. While it's ok
-	// for the chaincode to communicate back its packageID, the
-	// usage of the chaincodeID field is misleading (FAB-14630)
-	ccid := h.chaincodeID.Name
-
-	if r.handlers[ccid] != nil {
-		chaincodeLogger.Debugf("duplicate registered handler(key:%s) return error", ccid)
-		return errors.Errorf("duplicate chaincodeID: %s", h.chaincodeID.Name)
+	if r.handlers[h.chaincodeID] != nil {
+		chaincodeLogger.Debugf("duplicate registered handler(key:%s) return error", h.chaincodeID)
+		return errors.Errorf("duplicate chaincodeID: %s", h.chaincodeID)
 	}
 
 	// This chaincode was not launched by the peer but is attempting
 	// to register. Only allowed in development mode.
-	if r.launching[ccid] == nil && !r.allowUnsolicitedRegistration {
-		return errors.Errorf("peer will not accept external chaincode connection %v (except in dev mode)", h.chaincodeID.Name)
+	if r.launching[h.chaincodeID] == nil && !r.allowUnsolicitedRegistration {
+		return errors.Errorf("peer will not accept external chaincode connection %s (except in dev mode)", h.chaincodeID)
 	}
 
-	r.handlers[ccid] = h
+	r.handlers[h.chaincodeID] = h
 
-	chaincodeLogger.Debugf("registered handler complete for chaincode %s", ccid)
+	chaincodeLogger.Debugf("registered handler complete for chaincode %s", h.chaincodeID)
 	return nil
 }
 

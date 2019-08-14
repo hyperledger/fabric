@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/fake"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -20,42 +20,149 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ChaincodeSupport", func() {
+var _ = Describe("CheckInvocation", func() {
 	var (
 		chaincodeSupport *chaincode.ChaincodeSupport
 
-		fakeApplicationConfigRetriever *fake.ApplicationConfigRetriever
-		fakeApplicationConfig          *mock.ApplicationConfig
-		fakeApplicationCapabilities    *mock.ApplicationCapabilities
-		fakeLifecycle                  *mock.Lifecycle
-		fakeTxSim                      *mock.TxSimulator
+		fakeLifecycle *mock.Lifecycle
+		fakeSimulator *mock.TxSimulator
+
+		txParams *ccprovider.TransactionParams
+		input    *pb.ChaincodeInput
 	)
 
 	BeforeEach(func() {
-		fakeApplicationCapabilities = &mock.ApplicationCapabilities{}
-		fakeApplicationCapabilities.LifecycleV20Returns(true)
-
-		fakeApplicationConfig = &mock.ApplicationConfig{}
-		fakeApplicationConfig.CapabilitiesReturns(fakeApplicationCapabilities)
-
-		fakeApplicationConfigRetriever = &fake.ApplicationConfigRetriever{}
-		fakeApplicationConfigRetriever.GetApplicationConfigReturns(fakeApplicationConfig, true)
-
 		fakeLifecycle = &mock.Lifecycle{}
-		fakeTxSim = &mock.TxSimulator{}
+		fakeSimulator = &mock.TxSimulator{}
+		fakeSimulator.GetStateReturns([]byte("old-cc-version"), nil)
+
+		txParams = &ccprovider.TransactionParams{
+			ChannelID:   "channel-id",
+			TXSimulator: fakeSimulator,
+		}
+
+		input = &pb.ChaincodeInput{}
 
 		chaincodeSupport = &chaincode.ChaincodeSupport{
-			AppConfig: fakeApplicationConfigRetriever,
 			Lifecycle: fakeLifecycle,
 		}
 	})
 
-	Describe("CheckInvocation", func() {
+	Describe("CheckInvocation for a non-legacy (_lifecycle) chaincode definition", func() {
+		var (
+			chaincodeDefinition *lifecycle.LegacyDefinition
+		)
+
+		BeforeEach(func() {
+			chaincodeDefinition = &lifecycle.LegacyDefinition{
+				Version:   "definition-version",
+				CCIDField: "definition-ccid",
+			}
+
+			fakeLifecycle.ChaincodeDefinitionReturns(chaincodeDefinition, nil)
+		})
+
+		It("fetches the definition and skips the legacy security checks", func() {
+			ccid, cctype, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ccid).To(Equal("definition-ccid"))
+			Expect(cctype).To(Equal(pb.ChaincodeMessage_TRANSACTION))
+
+			Expect(fakeLifecycle.ChaincodeDefinitionCallCount()).To(Equal(1))
+			channelID, chaincodeName, txSim := fakeLifecycle.ChaincodeDefinitionArgsForCall(0)
+			Expect(channelID).To(Equal("channel-id"))
+			Expect(chaincodeName).To(Equal("test-chaincode-name"))
+			Expect(txSim).To(Equal(fakeSimulator))
+		})
+
+		Context("when the invocation is an init", func() {
+			BeforeEach(func() {
+				input.IsInit = true
+			})
+
+			It("returns an error for chaincodes which do not require init", func() {
+				_, _, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+				Expect(err).To(MatchError("chaincode 'test-chaincode-name' does not require initialization but called as init"))
+			})
+
+			Context("when the chaincode requires init", func() {
+				BeforeEach(func() {
+					chaincodeDefinition.RequiresInitField = true
+				})
+
+				It("enforces init exactly once semantics", func() {
+					ccid, cctype, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(ccid).To(Equal("definition-ccid"))
+					Expect(cctype).To(Equal(pb.ChaincodeMessage_INIT))
+
+					Expect(fakeSimulator.GetStateCallCount()).To(Equal(1))
+					namespace, key := fakeSimulator.GetStateArgsForCall(0)
+					Expect(namespace).To(Equal("test-chaincode-name"))
+					Expect(key).To(Equal("\x00" + string(utf8.MaxRune) + "initialized"))
+
+					Expect(fakeSimulator.SetStateCallCount()).To(Equal(1))
+					namespace, key, value := fakeSimulator.SetStateArgsForCall(0)
+					Expect(namespace).To(Equal("test-chaincode-name"))
+					Expect(key).To(Equal("\x00" + string(utf8.MaxRune) + "initialized"))
+					Expect(value).To(Equal([]byte("definition-version")))
+				})
+
+				Context("when the invocation is not an init", func() {
+					BeforeEach(func() {
+						input.IsInit = false
+					})
+
+					It("returns an error", func() {
+						_, _, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+						Expect(err).To(MatchError("chaincode 'test-chaincode-name' has not been initialized for this version, must call as init first"))
+					})
+				})
+
+				Context("when the chaincode is already initialized", func() {
+					BeforeEach(func() {
+						fakeSimulator.GetStateReturns([]byte("definition-version"), nil)
+					})
+
+					It("returns an error", func() {
+						_, _, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+						Expect(err).To(MatchError("chaincode 'test-chaincode-name' is already initialized but called as init"))
+					})
+				})
+
+				Context("when the txsimulator cannot get state", func() {
+					BeforeEach(func() {
+						fakeSimulator.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+					})
+
+					It("wraps and returns the error", func() {
+						_, _, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+						Expect(err).To(MatchError("could not get 'initialized' key: get-state-error"))
+					})
+				})
+
+				Context("when the txsimulator cannot set state", func() {
+					BeforeEach(func() {
+						fakeSimulator.SetStateReturns(fmt.Errorf("set-state-error"))
+					})
+
+					It("wraps and returns the error", func() {
+						_, _, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+						Expect(err).To(MatchError("could not set 'initialized' key: set-state-error"))
+					})
+				})
+			})
+
+		})
+	})
+
+	Describe("CheckInvocation for a legacy (lscc) chaincode definition", func() {
 		var (
 			fakeLegacyDefinition *mock.LegacyChaincodeDefinition
 		)
 
 		BeforeEach(func() {
+			input.IsInit = false
 			fakeLegacyDefinition = &mock.LegacyChaincodeDefinition{}
 
 			ccDef := struct {
@@ -73,21 +180,17 @@ var _ = Describe("ChaincodeSupport", func() {
 			fakeLifecycle.ChaincodeDefinitionReturns(ccDef, nil)
 		})
 
-		It("fetches the definition, performs security checks, and returns the necessary info", func() {
-			ccid, ccContext, err := chaincodeSupport.CheckInvocation("test-channel", "test-chaincode-name", fakeTxSim)
+		It("fetches the definition, performs security checks, and skips the init checks", func() {
+			ccid, cctype, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ccid).To(Equal("definition-name:cc-version"))
-			Expect(ccContext).To(Equal(&ccprovider.CCContext{
-				Name:    "test-chaincode-name",
-				Version: "cc-version",
-				ID:      []byte("id"),
-			}))
+			Expect(cctype).To(Equal(pb.ChaincodeMessage_TRANSACTION))
 
 			Expect(fakeLifecycle.ChaincodeDefinitionCallCount()).To(Equal(1))
 			channelID, chaincodeName, txSim := fakeLifecycle.ChaincodeDefinitionArgsForCall(0)
-			Expect(channelID).To(Equal("test-channel"))
+			Expect(channelID).To(Equal("channel-id"))
 			Expect(chaincodeName).To(Equal("test-chaincode-name"))
-			Expect(txSim).To(Equal(fakeTxSim))
+			Expect(txSim).To(Equal(fakeSimulator))
 
 			Expect(fakeLegacyDefinition.ExecuteLegacySecurityChecksCallCount()).To(Equal(1))
 		})
@@ -98,178 +201,20 @@ var _ = Describe("ChaincodeSupport", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, _, err := chaincodeSupport.CheckInvocation("test-channel", "test-chaincode-name", fakeTxSim)
-				Expect(err).To(MatchError("[channel test-channel] failed the chaincode security checks for test-chaincode-name: fake-security-error"))
-			})
-		})
-
-		Context("when lifecycle returns an error", func() {
-			BeforeEach(func() {
-				fakeLifecycle.ChaincodeDefinitionReturns(nil, fmt.Errorf("fake-lifecycle-error"))
-			})
-
-			It("wraps and returns the error", func() {
-				_, _, err := chaincodeSupport.CheckInvocation("test-channel", "test-chaincode-name", fakeTxSim)
-				Expect(err).To(MatchError("[channel test-channel] failed to get chaincode container info for test-chaincode-name: fake-lifecycle-error"))
+				_, _, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+				Expect(err).To(MatchError("[channel channel-id] failed the chaincode security checks for test-chaincode-name: fake-security-error"))
 			})
 		})
 	})
 
-	Describe("CheckInit", func() {
-		var (
-			txParams *ccprovider.TransactionParams
-			cccid    *ccprovider.CCContext
-			input    *pb.ChaincodeInput
-
-			fakeSimulator *mock.TxSimulator
-		)
-
+	Context("when lifecycle returns an error", func() {
 		BeforeEach(func() {
-			fakeSimulator = &mock.TxSimulator{}
-			fakeSimulator.GetStateReturns([]byte("old-cc-version"), nil)
-
-			txParams = &ccprovider.TransactionParams{
-				ChannelID:   "channel-id",
-				TXSimulator: fakeSimulator,
-			}
-
-			cccid = &ccprovider.CCContext{
-				Name:         "cc-name",
-				Version:      "cc-version",
-				InitRequired: true,
-			}
-
-			input = &pb.ChaincodeInput{
-				IsInit: true,
-			}
+			fakeLifecycle.ChaincodeDefinitionReturns(nil, fmt.Errorf("fake-lifecycle-error"))
 		})
 
-		It("indicates that it is init", func() {
-			isInit, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(isInit).To(BeTrue())
-
-			Expect(fakeSimulator.GetStateCallCount()).To(Equal(1))
-			namespace, key := fakeSimulator.GetStateArgsForCall(0)
-			Expect(namespace).To(Equal("cc-name"))
-			Expect(key).To(Equal("\x00" + string(utf8.MaxRune) + "initialized"))
-
-			Expect(fakeSimulator.SetStateCallCount()).To(Equal(1))
-			namespace, key, value := fakeSimulator.SetStateArgsForCall(0)
-			Expect(namespace).To(Equal("cc-name"))
-			Expect(key).To(Equal("\x00" + string(utf8.MaxRune) + "initialized"))
-			Expect(value).To(Equal([]byte("cc-version")))
-		})
-
-		Context("when the version is not changed", func() {
-			BeforeEach(func() {
-				cccid.Version = "old-cc-version"
-			})
-
-			It("returns an error", func() {
-				_, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).To(MatchError("chaincode 'cc-name' is already initialized but called as init"))
-			})
-
-			Context("when the invocation is not 'init'", func() {
-				BeforeEach(func() {
-					input.IsInit = false
-				})
-
-				It("returns that it is not an init", func() {
-					isInit, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(isInit).To(BeFalse())
-					Expect(fakeSimulator.GetStateCallCount()).To(Equal(1))
-					Expect(fakeSimulator.SetStateCallCount()).To(Equal(0))
-				})
-			})
-		})
-
-		Context("when init is not required", func() {
-			BeforeEach(func() {
-				cccid.InitRequired = false
-			})
-
-			It("returns that it is not init", func() {
-				isInit, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isInit).To(BeFalse())
-				Expect(fakeSimulator.GetStateCallCount()).To(Equal(0))
-				Expect(fakeSimulator.SetStateCallCount()).To(Equal(0))
-			})
-		})
-
-		Context("when the new lifecycle is not enabled", func() {
-			BeforeEach(func() {
-				fakeApplicationCapabilities.LifecycleV20Returns(false)
-			})
-
-			It("returns that it is not init", func() {
-				isInit, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isInit).To(BeFalse())
-				Expect(fakeSimulator.GetStateCallCount()).To(Equal(0))
-				Expect(fakeSimulator.SetStateCallCount()).To(Equal(0))
-			})
-		})
-
-		Context("when the invocation is channel-less", func() {
-			BeforeEach(func() {
-				txParams.ChannelID = ""
-			})
-
-			It("returns it is not an init", func() {
-				isInit, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(isInit).To(BeFalse())
-				Expect(fakeSimulator.GetStateCallCount()).To(Equal(0))
-				Expect(fakeSimulator.SetStateCallCount()).To(Equal(0))
-			})
-		})
-
-		Context("when the application config cannot be retrieved", func() {
-			BeforeEach(func() {
-				fakeApplicationConfigRetriever.GetApplicationConfigReturns(nil, false)
-			})
-
-			It("returns an error", func() {
-				_, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).To(MatchError("could not retrieve application config for channel 'channel-id'"))
-			})
-		})
-
-		Context("when the invocation is not 'init'", func() {
-			BeforeEach(func() {
-				input.IsInit = false
-			})
-
-			It("returns an error", func() {
-				_, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).To(MatchError("chaincode 'cc-name' has not been initialized for this version, must call as init first"))
-			})
-		})
-
-		Context("when the txsimulator cannot get state", func() {
-			BeforeEach(func() {
-				fakeSimulator.GetStateReturns(nil, fmt.Errorf("get-state-error"))
-			})
-
-			It("wraps and returns the error", func() {
-				_, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).To(MatchError("could not get 'initialized' key: get-state-error"))
-			})
-		})
-
-		Context("when the txsimulator cannot set state", func() {
-			BeforeEach(func() {
-				fakeSimulator.SetStateReturns(fmt.Errorf("set-state-error"))
-			})
-
-			It("wraps and returns the error", func() {
-				_, err := chaincodeSupport.CheckInit(txParams, cccid, input)
-				Expect(err).To(MatchError("could not set 'initialized' key: set-state-error"))
-			})
+		It("wraps and returns the error", func() {
+			_, _, err := chaincodeSupport.CheckInvocation(txParams, "test-chaincode-name", input)
+			Expect(err).To(MatchError("[channel channel-id] failed to get chaincode container info for test-chaincode-name: fake-lifecycle-error"))
 		})
 	})
 })

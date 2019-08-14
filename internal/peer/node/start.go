@@ -422,12 +422,6 @@ func serve(args []string) error {
 	// create chaincode specific tls CA
 	authenticator := accesscontrol.NewAuthenticator(ca)
 
-	// sysCCVersion is a concept we're probably better off without.
-	// This should probably be set as a constant, that is not build dependent.
-	// As it stands, this forces different versions of peer chaincode _lifecycle
-	// to be incompatible.
-	sysCCVersion := metadata.Version
-
 	builtinSCCs := map[string]struct{}{
 		"lscc":       {},
 		"qscc":       {},
@@ -439,15 +433,14 @@ func serve(args []string) error {
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
-		CCID:            lifecycle.LifecycleNamespace + ":" + sysCCVersion,
+		CCID:            scc.CCID(lifecycle.LifecycleNamespace),
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
-		LegacyImpl:   lsccInst,
-		Resources:    lifecycleResources,
-		Cache:        lifecycleCache,
-		BuiltinSCCs:  builtinSCCs,
-		SysCCVersion: sysCCVersion,
+		LegacyImpl:  lsccInst,
+		Resources:   lifecycleResources,
+		Cache:       lifecycleCache,
+		BuiltinSCCs: builtinSCCs,
 	}
 
 	lifecycleFunctions := &lifecycle.ExternalFunctions{
@@ -625,7 +618,7 @@ func serve(args []string) error {
 			logger.Infof("not deploying chaincode %s as it is not enabled", cc.Name())
 			continue
 		}
-		scc.DeploySysCC(cc, sysCCVersion, chaincodeSupport)
+		scc.DeploySysCC(cc, chaincodeSupport)
 	}
 
 	logger.Infof("Deployed system chaincodes")

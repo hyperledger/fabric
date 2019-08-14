@@ -59,8 +59,8 @@ type invoker interface {
 	chaincode.Invoker
 }
 
-//go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycle
-type lifecycle interface {
+//go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycle_
+type lifecycle_ interface {
 	chaincode.Lifecycle
 }
 

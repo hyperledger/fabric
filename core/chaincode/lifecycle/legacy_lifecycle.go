@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"github.com/hyperledger/fabric/common/util"
-	corechaincode "github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
@@ -17,8 +15,13 @@ import (
 )
 
 //go:generate counterfeiter -o mock/legacy_lifecycle.go --fake-name LegacyLifecycle . LegacyLifecycle
+
+// LegacyLifecycle is the interface which the core/chaincode package requires that lifecycle satisfy.
+// Note this this is a duplication of the interface defined there, so as to avoid import cycles when testing.
+// Ultimately, this interface needs to be removed, and replaced with something that returns a concrete type,
+// hence the naming of this file as legacy_lifecycle.go.
 type LegacyLifecycle interface {
-	corechaincode.Lifecycle
+	ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
 }
 
 //go:generate counterfeiter -o mock/chaincode_info_cache.go --fake-name ChaincodeInfoCache . ChaincodeInfoCache
@@ -30,24 +33,10 @@ type ChaincodeInfoCache interface {
 // It is a different data-type to allow differentiation at cast-time from
 // chaincode definitions which require validaiton of instantiation policy.
 type LegacyDefinition struct {
-	Name              string
 	Version           string
 	EndorsementPlugin string
 	RequiresInitField bool
 	CCIDField         string
-}
-
-// CCName returns the chaincode name
-func (ld *LegacyDefinition) CCName() string {
-	return ld.Name
-}
-
-// Hash returns the hash of <name>:<version>.  This is useless, but
-// is a hack to allow the rest of the code to have consistent view of
-// what hash means for a chaincode definition.  Ultimately, this should
-// be removed.
-func (ld *LegacyDefinition) Hash() []byte {
-	return util.ComputeSHA256([]byte(ld.Name + ":" + ld.Version))
 }
 
 // CCVersion returns the version of the chaincode.
@@ -72,11 +61,10 @@ func (ld *LegacyDefinition) CCID() string {
 }
 
 type ChaincodeEndorsementInfo struct {
-	Resources    *Resources
-	Cache        ChaincodeInfoCache
-	LegacyImpl   LegacyLifecycle
-	BuiltinSCCs  scc.BuiltinSCCs
-	SysCCVersion string
+	Resources   *Resources
+	Cache       ChaincodeInfoCache
+	LegacyImpl  LegacyLifecycle
+	BuiltinSCCs scc.BuiltinSCCs
 }
 
 func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*LocalChaincodeInfo, bool, error) {
@@ -132,11 +120,10 @@ func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeNam
 func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
 	if cei.BuiltinSCCs.IsSysCC(chaincodeName) {
 		return &LegacyDefinition{
-			Name:              chaincodeName,
-			Version:           cei.SysCCVersion,
+			Version:           scc.SysCCVersion,
 			EndorsementPlugin: "escc",
 			RequiresInitField: false,
-			CCIDField:         chaincodeName + ":" + cei.SysCCVersion,
+			CCIDField:         scc.CCID(chaincodeName),
 		}, nil
 	}
 
@@ -151,7 +138,6 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 	chaincodeDefinition := chaincodeInfo.Definition
 
 	return &LegacyDefinition{
-		Name:              chaincodeName,
 		Version:           chaincodeDefinition.EndorsementInfo.Version,
 		EndorsementPlugin: chaincodeDefinition.EndorsementInfo.EndorsementPlugin,
 		RequiresInitField: chaincodeDefinition.EndorsementInfo.InitRequired,

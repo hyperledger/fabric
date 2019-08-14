@@ -9,7 +9,6 @@ package lifecycle_test
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -80,11 +79,10 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeCache.ChaincodeInfoReturns(testInfo, nil)
 
 		cei = &lifecycle.ChaincodeEndorsementInfo{
-			LegacyImpl:   fakeLegacyImpl,
-			Resources:    resources,
-			Cache:        fakeCache,
-			BuiltinSCCs:  builtinSCCs,
-			SysCCVersion: "test-syscc-version",
+			LegacyImpl:  fakeLegacyImpl,
+			Resources:   resources,
+			Cache:       fakeCache,
+			BuiltinSCCs: builtinSCCs,
 		}
 
 	})
@@ -187,7 +185,6 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			def, err := cei.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(def).To(Equal(&lifecycle.LegacyDefinition{
-				Name:              "name",
 				Version:           "version",
 				EndorsementPlugin: "endorsement-plugin",
 				CCIDField:         "hash",
@@ -203,10 +200,9 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 				res, err := cei.ChaincodeDefinition("channel-id", "test-syscc-name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res).To(Equal(&lifecycle.LegacyDefinition{
-					Name:              "test-syscc-name",
-					Version:           "test-syscc-version",
+					Version:           "syscc",
 					EndorsementPlugin: "escc",
-					CCIDField:         "test-syscc-name:test-syscc-version",
+					CCIDField:         "test-syscc-name.syscc",
 				}))
 			})
 		})
@@ -230,7 +226,6 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			BeforeEach(func() {
 				delete(fakePublicState, "namespaces/fields/name/Sequence")
 				legacyChaincodeDefinition = &ccprovider.ChaincodeData{
-					Name:    "definition-name",
 					Version: "definition-version",
 				}
 
@@ -258,28 +253,15 @@ var _ = Describe("LegacyDefinition", func() {
 
 	BeforeEach(func() {
 		ld = &lifecycle.LegacyDefinition{
-			Name:              "name",
 			Version:           "version",
 			EndorsementPlugin: "endorsement-plugin",
 			RequiresInitField: true,
 		}
 	})
 
-	Describe("CCName", func() {
-		It("returns the name", func() {
-			Expect(ld.CCName()).To(Equal("name"))
-		})
-	})
-
 	Describe("CCVersion", func() {
 		It("returns the version", func() {
 			Expect(ld.CCVersion()).To(Equal("version"))
-		})
-	})
-
-	Describe("Hash", func() {
-		It("returns the sha256 hash of name and version", func() {
-			Expect(ld.Hash()).To(Equal(util.ComputeSHA256([]byte("name:version"))))
 		})
 	})
 

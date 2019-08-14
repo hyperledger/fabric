@@ -126,7 +126,7 @@ var _ = Describe("Handler", func() {
 			Metrics:   chaincodeMetrics,
 		}
 		chaincode.SetHandlerChatStream(handler, fakeChatStream)
-		chaincode.SetHandlerChaincodeID(handler, &pb.ChaincodeID{Name: "test-handler-name", Version: "1.0"})
+		chaincode.SetHandlerChaincodeID(handler, "test-handler-name:1.0")
 	})
 
 	Describe("HandleTransaction", func() {
@@ -2366,7 +2366,6 @@ var _ = Describe("Handler", func() {
 
 	Describe("Execute", func() {
 		var (
-			cccid              *ccprovider.CCContext
 			incomingMessage    *pb.ChaincodeMessage
 			expectedProposal   *pb.Proposal
 			expectedSignedProp *pb.SignedProposal
@@ -2390,10 +2389,6 @@ var _ = Describe("Handler", func() {
 				Signature:     []byte("signature"),
 			}
 
-			cccid = &ccprovider.CCContext{
-				Name:    "chaincode-name",
-				Version: "chaincode-version",
-			}
 			incomingMessage = &pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_TRANSACTION,
 				Txid:      "tx-id",
@@ -2411,7 +2406,7 @@ var _ = Describe("Handler", func() {
 
 		It("creates transaction context", func() {
 			close(responseNotifier)
-			handler.Execute(txParams, cccid, incomingMessage, time.Second)
+			handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 
 			Expect(fakeContextRegistry.CreateCallCount()).To(Equal(1))
 			Expect(fakeContextRegistry.CreateArgsForCall(0)).To(Equal(txParams))
@@ -2422,7 +2417,7 @@ var _ = Describe("Handler", func() {
 			expectedMessage.Proposal = expectedSignedProp
 
 			close(responseNotifier)
-			handler.Execute(txParams, cccid, incomingMessage, time.Second)
+			handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 
 			Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
 			Consistently(fakeChatStream.SendCallCount).Should(Equal(1))
@@ -2434,7 +2429,7 @@ var _ = Describe("Handler", func() {
 		It("waits for the chaincode to respond", func() {
 			doneCh := make(chan struct{})
 			go func() {
-				handler.Execute(txParams, cccid, incomingMessage, time.Second)
+				handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 				close(doneCh)
 			}()
 
@@ -2449,14 +2444,14 @@ var _ = Describe("Handler", func() {
 		It("returns the chaincode response", func() {
 			Eventually(responseNotifier).Should(BeSent(&pb.ChaincodeMessage{Txid: "a-transaction-id"}))
 
-			resp, err := handler.Execute(txParams, cccid, incomingMessage, time.Second)
+			resp, err := handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp).To(Equal(&pb.ChaincodeMessage{Txid: "a-transaction-id"}))
 		})
 
 		It("deletes the transaction context", func() {
 			close(responseNotifier)
-			handler.Execute(txParams, cccid, incomingMessage, time.Second)
+			handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 
 			Expect(fakeContextRegistry.DeleteCallCount()).Should(Equal(1))
 			channelID, txid := fakeContextRegistry.DeleteArgsForCall(0)
@@ -2473,7 +2468,7 @@ var _ = Describe("Handler", func() {
 				respCh := make(chan *pb.ChaincodeMessage, 1)
 				go func() {
 					defer GinkgoRecover()
-					resp, err := handler.Execute(txParams, cccid, incomingMessage, time.Second)
+					resp, err := handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(respCh).Should(BeSent(resp))
 				}()
@@ -2494,7 +2489,7 @@ var _ = Describe("Handler", func() {
 
 			It("sends a nil proposal", func() {
 				close(responseNotifier)
-				_, err := handler.Execute(txParams, cccid, incomingMessage, time.Second)
+				_, err := handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(fakeChatStream.SendCallCount).Should(Equal(1))
@@ -2511,14 +2506,14 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				close(responseNotifier)
-				_, err := handler.Execute(txParams, cccid, incomingMessage, time.Second)
+				_, err := handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 
 				Expect(err).To(MatchError("failed getting proposal context. Signed proposal is nil"))
 			})
 
 			It("deletes the transaction context", func() {
 				close(responseNotifier)
-				handler.Execute(txParams, cccid, incomingMessage, time.Second)
+				handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 
 				Expect(fakeContextRegistry.DeleteCallCount()).Should(Equal(1))
 				channelID, txid := fakeContextRegistry.DeleteArgsForCall(0)
@@ -2533,12 +2528,12 @@ var _ = Describe("Handler", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := handler.Execute(txParams, cccid, incomingMessage, time.Second)
+				_, err := handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 				Expect(err).To(MatchError("burger"))
 			})
 
 			It("does not try to delete the tranasction context", func() {
-				handler.Execute(txParams, cccid, incomingMessage, time.Second)
+				handler.Execute(txParams, "chaincode-name", incomingMessage, time.Second)
 				Expect(fakeContextRegistry.CreateCallCount()).To(Equal(1))
 				Expect(fakeContextRegistry.DeleteCallCount()).To(Equal(0))
 			})
@@ -2548,7 +2543,7 @@ var _ = Describe("Handler", func() {
 			It("returns an error", func() {
 				errCh := make(chan error, 1)
 				go func() {
-					_, err := handler.Execute(txParams, cccid, incomingMessage, time.Millisecond)
+					_, err := handler.Execute(txParams, "chaincode-name", incomingMessage, time.Millisecond)
 					errCh <- err
 				}()
 				Eventually(errCh).Should(Receive(MatchError("timeout expired while executing transaction")))
@@ -2557,21 +2552,21 @@ var _ = Describe("Handler", func() {
 			It("records execute timeouts", func() {
 				errCh := make(chan error, 1)
 				go func() {
-					_, err := handler.Execute(txParams, cccid, incomingMessage, time.Millisecond)
+					_, err := handler.Execute(txParams, "chaincode-name", incomingMessage, time.Millisecond)
 					errCh <- err
 				}()
 				Eventually(errCh).Should(Receive(MatchError("timeout expired while executing transaction")))
 				Expect(fakeExecuteTimeouts.WithCallCount()).To(Equal(1))
 				labelValues := fakeExecuteTimeouts.WithArgsForCall(0)
 				Expect(labelValues).To(Equal([]string{
-					"chaincode", "chaincode-name:chaincode-version",
+					"chaincode", "test-handler-name:1.0",
 				}))
 				Expect(fakeExecuteTimeouts.AddCallCount()).To(Equal(1))
 				Expect(fakeExecuteTimeouts.AddArgsForCall(0)).To(BeNumerically("~", 1.0))
 			})
 
 			It("deletes the transaction context", func() {
-				handler.Execute(txParams, cccid, incomingMessage, time.Millisecond)
+				handler.Execute(txParams, "chaincode-name", incomingMessage, time.Millisecond)
 
 				Expect(fakeContextRegistry.DeleteCallCount()).Should(Equal(1))
 				channelID, txid := fakeContextRegistry.DeleteArgsForCall(0)
@@ -2821,7 +2816,6 @@ var _ = Describe("Handler", func() {
 
 		Context("when an async error is sent", func() {
 			var (
-				cccid           *ccprovider.CCContext
 				incomingMessage *pb.ChaincodeMessage
 
 				recvChan chan *pb.ChaincodeMessage
@@ -2831,11 +2825,6 @@ var _ = Describe("Handler", func() {
 				request := &pb.ChaincodeInput{}
 				payload, err := proto.Marshal(request)
 				Expect(err).NotTo(HaveOccurred())
-
-				cccid = &ccprovider.CCContext{
-					Name:    "chaincode-name",
-					Version: "chaincode-version",
-				}
 
 				incomingMessage = &pb.ChaincodeMessage{
 					Type:      pb.ChaincodeMessage_TRANSACTION,
@@ -2860,8 +2849,8 @@ var _ = Describe("Handler", func() {
 			It("returns an error", func() {
 				errChan := make(chan error, 1)
 				go func() { errChan <- handler.ProcessStream(fakeChatStream) }()
-				Eventually(fakeChatStream.RecvCallCount).ShouldNot(Equal(0))                               // wait for loop to start
-				handler.Execute(&ccprovider.TransactionParams{}, cccid, incomingMessage, time.Millisecond) // force async error
+				Eventually(fakeChatStream.RecvCallCount).ShouldNot(Equal(0))                                          // wait for loop to start
+				handler.Execute(&ccprovider.TransactionParams{}, "chaincode-name", incomingMessage, time.Millisecond) // force async error
 
 				Eventually(errChan).Should(Receive(MatchError("received error while sending message, ending chaincode support stream: [tx-id] error sending TRANSACTION: candy")))
 			})
@@ -2869,8 +2858,8 @@ var _ = Describe("Handler", func() {
 			It("stops receiving messages", func() {
 				errChan := make(chan error, 1)
 				go func() { errChan <- handler.ProcessStream(fakeChatStream) }()
-				Eventually(fakeChatStream.RecvCallCount).ShouldNot(Equal(0))                               // wait for loop to start
-				handler.Execute(&ccprovider.TransactionParams{}, cccid, incomingMessage, time.Millisecond) // force async error
+				Eventually(fakeChatStream.RecvCallCount).ShouldNot(Equal(0))                                          // wait for loop to start
+				handler.Execute(&ccprovider.TransactionParams{}, "chaincode-name", incomingMessage, time.Millisecond) // force async error
 
 				Eventually(fakeChatStream.RecvCallCount).Should(Equal(1))
 				Consistently(fakeChatStream.RecvCallCount).Should(Equal(1))

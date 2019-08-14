@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
@@ -44,7 +43,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := &ccprovider.CCContext{
+	ccContext := &CCContext{
 		Name:    "tmap",
 		Version: "0",
 	}
@@ -54,7 +53,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	collectionConfig := []*common.StaticCollectionConfig{{Name: "c1"}, {Name: "c2"}, {Name: "c3"}, {Name: "c4"}}
 	collectionConfigPkg := constructCollectionConfigPkg(collectionConfig)
 	defer chaincodeSupport.Runtime.Stop(cID.Name + ":" + cID.Version)
-	_, err = deployWithCollectionConfigs(chainID, cccid, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
+	_, err = deployWithCollectionConfigs(chainID, ccContext, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name
 	if err != nil {

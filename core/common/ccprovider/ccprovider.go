@@ -356,35 +356,10 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 	return cqr, nil
 }
 
-// CCContext pass this around instead of string of args
-type CCContext struct {
-	// Name chaincode name
-	Name string
-
-	// Version used to construct the chaincode image and register
-	Version string
-
-	// ID the identifier for this chaincode (for now, the hash of the package)
-	ID []byte
-
-	// InitRequired indicates whether the chaincode must have 'Init' invoked
-	// before other transactions can proceed.
-	InitRequired bool
-
-	// SystemCC indictes whether or not this is system chaincode.
-	SystemCC bool
-}
-
 //-------- ChaincodeDefinition - interface for ChaincodeData ------
 // ChaincodeDefinition describes all of the necessary information for a peer to decide whether to endorse
 // a proposal and whether to validate a transaction, for a particular chaincode.
 type ChaincodeDefinition interface {
-	// CCName returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
-	CCName() string
-
-	// Hash returns the hash of the chaincode.
-	Hash() []byte
-
 	// CCVersion returns the version of the chaincode.
 	CCVersion() string
 
