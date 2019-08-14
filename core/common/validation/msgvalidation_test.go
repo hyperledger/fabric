@@ -21,15 +21,9 @@ import (
 )
 
 func createTestTransactionEnvelope(channel string, response *peer.Response, simRes []byte) (*common.Envelope, error) {
-	prop, sProp, err := createTestProposalAndSignedProposal(channel)
+	prop, err := createTestProposalAndSignedProposal(channel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create test proposal and signed proposal, err %s", err)
-	}
-
-	// validate it
-	_, _, _, err = ValidateProposalMessage(sProp)
-	if err != nil {
-		return nil, fmt.Errorf("ValidateProposalMessage failed, err %s", err)
 	}
 
 	// endorse it to get a proposal response
@@ -47,19 +41,14 @@ func createTestTransactionEnvelope(channel string, response *peer.Response, simR
 	return tx, nil
 }
 
-func createTestProposalAndSignedProposal(channel string) (*peer.Proposal, *peer.SignedProposal, error) {
+func createTestProposalAndSignedProposal(channel string) (*peer.Proposal, error) {
 	// get a toy proposal
 	prop, err := getProposal(channel)
 	if err != nil {
-		return nil, nil, fmt.Errorf("getProposal failed, err %s", err)
+		return nil, fmt.Errorf("getProposal failed, err %s", err)
 	}
 
-	// sign it
-	sProp, err := protoutil.GetSignedProposal(prop, signer)
-	if err != nil {
-		return nil, nil, fmt.Errorf("GetSignedProposal failed, err %s", err)
-	}
-	return prop, sProp, nil
+	return prop, nil
 }
 
 func protoMarshal(t *testing.T, m proto.Message) []byte {
@@ -142,30 +131,6 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, "junkchannel")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "MSP error: channel doesn't exist")
-}
-
-func TestValidateProposalMessage(t *testing.T) {
-	// nonexistent channel
-	fakeChannel := "fakechannel"
-	_, sProp, err := createTestProposalAndSignedProposal(fakeChannel)
-	assert.NoError(t, err)
-	// validate it - it should fail
-	_, _, _, err = ValidateProposalMessage(sProp)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), fmt.Sprintf("access denied: channel [%s] creator org [%s]", fakeChannel, signerMSPId))
-
-	// invalid signature
-	_, sProp, err = createTestProposalAndSignedProposal(util.GetTestChainID())
-	assert.NoError(t, err)
-	sigCopy := make([]byte, len(sProp.Signature))
-	copy(sigCopy, sProp.Signature)
-	for i := 0; i < len(sProp.Signature); i++ {
-		sigCopy[i] = byte(int(sigCopy[i]+1) % 255)
-	}
-	// validate it - it should fail
-	_, _, _, err = ValidateProposalMessage(&peer.SignedProposal{ProposalBytes: sProp.ProposalBytes, Signature: sigCopy})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), fmt.Sprintf("access denied: channel [%s] creator org [%s]", util.GetTestChainID(), signerMSPId))
 }
 
 func ToHex(q uint64) string {

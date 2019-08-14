@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
@@ -271,7 +270,7 @@ func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.S
 func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, error) {
 	vr := &validateResult{}
 	// at first, we check whether the message is valid
-	prop, hdr, hdrExt, err := validation.ValidateProposalMessage(signedProp)
+	prop, hdr, hdrExt, err := ValidateProposalMessage(signedProp)
 
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
