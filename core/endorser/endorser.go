@@ -270,23 +270,25 @@ func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.S
 func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, error) {
 	vr := &validateResult{}
 	// at first, we check whether the message is valid
-	prop, hdr, hdrExt, err := ValidateProposalMessage(signedProp)
+	up, err := UnpackProposal(signedProp)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
 		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
 		return vr, err
 	}
 
-	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
+	err = ValidateUnpackedProposal(up)
 	if err != nil {
+		e.Metrics.ProposalValidationFailed.Add(1)
 		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
 		return vr, err
 	}
 
-	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
-	if err != nil {
-		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
-		return vr, err
+	prop, chdr, shdr, chaincodeName := up.Proposal, up.ChannelHeader, up.SignatureHeader, up.ChaincodeName
+	hdrExt := &pb.ChaincodeHeaderExtension{
+		ChaincodeId: &pb.ChaincodeID{
+			Name: chaincodeName,
+		},
 	}
 
 	chainID := chdr.ChannelId
