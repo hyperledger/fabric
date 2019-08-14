@@ -12,20 +12,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	resourceconfig "github.com/hyperledger/fabric/common/mocks/resourcesconfig"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/mocks"
 	"github.com/hyperledger/fabric/core/handlers/endorsement/builtin"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -142,7 +139,7 @@ func TestEndorserNilProp(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -170,7 +167,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
@@ -192,7 +189,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
@@ -217,7 +214,7 @@ func TestEndorserSysCC(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
@@ -238,43 +235,13 @@ func TestEndorserCCInvocationError(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	signedProp := getSignedProp("test-chaincode", "test-version", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 500, pResp.Response.Status)
-}
-
-func TestEndorserLSCCBadType(t *testing.T) {
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, &mocks.MockSupport{
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mocks.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
-
-	cds := protoutil.MarshalOrPanic(
-		&pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				ChaincodeId: &pb.ChaincodeID{Name: "barf"},
-				Type:        pb.ChaincodeSpec_UNDEFINED,
-			},
-		},
-	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Equal(t, "Unknown chaincodeType: UNDEFINED", pResp.Response.Message)
 }
 
 func TestEndorserDupTXId(t *testing.T) {
@@ -288,7 +255,7 @@ func TestEndorserDupTXId(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -320,7 +287,7 @@ func TestEndorserBadACL(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -350,7 +317,7 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -377,7 +344,7 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 			},
 		},
 		ExecuteCDSError: errors.New(""),
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -422,7 +389,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 			},
 		},
 		SysCCMap: SysCCMap,
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -455,7 +422,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 		ExecuteEvent:               &pb.ChaincodeEvent{},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -476,7 +443,7 @@ func TestEndorserBadChannel(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	signedProp := getSignedPropWithCHID("ccid", "0", "barfchain", t)
 
@@ -500,7 +467,7 @@ func TestEndorserGoodPath(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
 	fakeMetrics := initFakeMetrics(es)
 
@@ -533,7 +500,7 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
 	buf := gbytes.NewBuffer()
 	old := flogging.SetWriter(buf)
@@ -560,7 +527,7 @@ func TestEndorserLSCC(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
 	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -608,7 +575,7 @@ func TestEndorseWithPlugin(t *testing.T) {
 	}
 	attachPluginEndorser(support, nil)
 
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
 	signedProp := getSignedProp("ccid", "0", t)
 
@@ -636,7 +603,7 @@ func TestEndorseEndorsementFailure(t *testing.T) {
 	// fail endorsement with "sign err"
 	attachPluginEndorser(support, fmt.Errorf("sign err"))
 
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -672,7 +639,7 @@ func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
 
 	attachPluginEndorser(support, nil)
 
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", "0", t)
@@ -704,7 +671,7 @@ func TestSimulateProposal(t *testing.T) {
 				PubSimulationResults: &rwset.TxReadWriteSet{},
 			},
 		},
-	}, packaging.NewRegistry(&golang.Platform{}), &disabled.Provider{})
+	}, &disabled.Provider{})
 
 	_, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, "")
 	assert.Error(t, err)
@@ -743,7 +710,6 @@ func TestEndorserAcquireTxSimulator(t *testing.T) {
 			es := endorser.NewEndorserServer(
 				pvtEmptyDistributor,
 				support,
-				packaging.NewRegistry(&golang.Platform{}),
 				&disabled.Provider{},
 			)
 
@@ -789,51 +755,4 @@ func TestMain(m *testing.M) {
 
 type support interface {
 	endorser.Support
-}
-
-func TestUserCDSSanitization(t *testing.T) {
-	fakeSupport := &mocks.Support{}
-	e := endorser.NewEndorserServer(nil, fakeSupport, nil, &disabled.Provider{})
-
-	userCDS := &pb.ChaincodeDeploymentSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{
-				Name:    "user-cc-name",
-				Version: "user-cc-version",
-				Path:    "user-cc-path",
-			},
-			Input: &pb.ChaincodeInput{
-				Args: [][]byte{[]byte("foo"), []byte("bar")},
-			},
-			Type: pb.ChaincodeSpec_GOLANG,
-		},
-		CodePackage: []byte("user-code"),
-	}
-
-	fsCDS := &pb.ChaincodeDeploymentSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			ChaincodeId: &pb.ChaincodeID{
-				Name:    "fs-cc-name",
-				Version: "fs-cc-version",
-				Path:    "fs-cc-path",
-			},
-			Type: pb.ChaincodeSpec_GOLANG,
-		},
-		CodePackage: []byte("fs-code"),
-	}
-
-	fakeSupport.GetChaincodeDeploymentSpecFSReturns(fsCDS, nil)
-
-	sanitizedCDS, err := e.SanitizeUserCDS(userCDS)
-	assert.NoError(t, err)
-	assert.Nil(t, sanitizedCDS.CodePackage)
-	assert.True(t, proto.Equal(userCDS.ChaincodeSpec.Input, sanitizedCDS.ChaincodeSpec.Input))
-	assert.True(t, proto.Equal(fsCDS.ChaincodeSpec.ChaincodeId, sanitizedCDS.ChaincodeSpec.ChaincodeId))
-
-	t.Run("BadPath", func(t *testing.T) {
-		fakeSupport.GetChaincodeDeploymentSpecFSReturns(nil, fmt.Errorf("fake-error"))
-		_, err := e.SanitizeUserCDS(userCDS)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "fake-error")
-	})
 }

@@ -136,7 +136,7 @@ func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) 
 // is entirely deprecated.  Ideally one release after the introduction of the new lifecycle.
 // It does not attempt to start the chaincode based on the information from lifecycle, but instead
 // accepts the container information directly in the form of a ChaincodeDeploymentSpec.
-func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, ccName, ccVersion string, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, ccName, ccVersion string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	// FIXME: this is a hack, we shouldn't construct the
 	// ccid manually but rather let lifecycle construct it
 	// for us. However this is legacy code that will disappear
@@ -148,7 +148,7 @@ func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionPa
 		return nil, nil, err
 	}
 
-	resp, err := cs.execute(pb.ChaincodeMessage_INIT, txParams, ccName, spec.GetChaincodeSpec().Input, h)
+	resp, err := cs.execute(pb.ChaincodeMessage_INIT, txParams, ccName, input, h)
 	return processChaincodeExecutionResult(txParams.TxID, ccName, resp, err)
 }
 
