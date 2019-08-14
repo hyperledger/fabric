@@ -169,16 +169,6 @@ func CreateSignedTx(
 		return nil, errors.New("signer must be the same as the one referenced in the header")
 	}
 
-	// get header extensions so we have the visibility field
-	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
-	if err != nil {
-		return nil, err
-	}
-	hdrExt, err := UnmarshalChaincodeHeaderExtension(chdr.Extension)
-	if err != nil {
-		return nil, err
-	}
-
 	// ensure that all actions are bitwise equal and that they are successful
 	var a1 []byte
 	for n, r := range resps {
@@ -206,7 +196,7 @@ func CreateSignedTx(
 	cea := &peer.ChaincodeEndorsedAction{ProposalResponsePayload: resps[0].Payload, Endorsements: endorsements}
 
 	// obtain the bytes of the proposal payload that will go to the transaction
-	propPayloadBytes, err := GetBytesProposalPayloadForTx(pPayl, hdrExt.PayloadVisibility)
+	propPayloadBytes, err := GetBytesProposalPayloadForTx(pPayl)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +245,6 @@ func CreateProposalResponse(
 	results []byte,
 	events []byte,
 	ccid *peer.ChaincodeID,
-	visibility []byte,
 	signingEndorser identity.SignerSerializer,
 ) (*peer.ProposalResponse, error) {
 	hdr, err := UnmarshalHeader(hdrbytes)
@@ -265,7 +254,7 @@ func CreateProposalResponse(
 
 	// obtain the proposal hash given proposal header, payload and the
 	// requested visibility
-	pHashBytes, err := GetProposalHash1(hdr, payl, visibility)
+	pHashBytes, err := GetProposalHash1(hdr, payl)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error computing proposal hash")
 	}
@@ -315,8 +304,7 @@ func CreateProposalResponseFailure(
 	response *peer.Response,
 	results []byte,
 	events []byte,
-	ccid *peer.ChaincodeID,
-	visibility []byte,
+	chaincodeName string,
 ) (*peer.ProposalResponse, error) {
 	hdr, err := UnmarshalHeader(hdrbytes)
 	if err != nil {
@@ -324,13 +312,13 @@ func CreateProposalResponseFailure(
 	}
 
 	// obtain the proposal hash given proposal header, payload and the requested visibility
-	pHashBytes, err := GetProposalHash1(hdr, payl, visibility)
+	pHashBytes, err := GetProposalHash1(hdr, payl)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error computing proposal hash")
 	}
 
 	// get the bytes of the proposal response payload
-	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, response, results, events, ccid)
+	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, response, results, events, &peer.ChaincodeID{Name: chaincodeName})
 	if err != nil {
 		return nil, err
 	}
@@ -421,28 +409,18 @@ func MockSignedEndorserProposal2OrPanic(
 // its serialized version according to the visibility field
 func GetBytesProposalPayloadForTx(
 	payload *peer.ChaincodeProposalPayload,
-	visibility []byte,
 ) ([]byte, error) {
 	// check for nil argument
 	if payload == nil {
 		return nil, errors.New("nil arguments")
 	}
 
-	// strip the transient bytes off the payload - this needs to be done no
-	// matter the visibility mode
+	// strip the transient bytes off the payload
 	cppNoTransient := &peer.ChaincodeProposalPayload{Input: payload.Input, TransientMap: nil}
 	cppBytes, err := GetBytesChaincodeProposalPayload(cppNoTransient)
 	if err != nil {
 		return nil, err
 	}
-
-	// currently the fabric only supports full visibility: this means that
-	// there are no restrictions on which parts of the proposal payload will
-	// be visible in the final transaction; this default approach requires
-	// no additional instructions in the PayloadVisibility field; however
-	// the fabric may be extended to encode more elaborate visibility
-	// mechanisms that shall be encoded in this field (and handled
-	// appropriately by the peer)
 
 	return cppBytes, nil
 }
@@ -472,7 +450,7 @@ func GetProposalHash2(header *common.Header, ccPropPayl []byte) ([]byte, error) 
 
 // GetProposalHash1 gets the proposal hash bytes after sanitizing the
 // chaincode proposal payload according to the rules of visibility
-func GetProposalHash1(header *common.Header, ccPropPayl []byte, visibility []byte) ([]byte, error) {
+func GetProposalHash1(header *common.Header, ccPropPayl []byte) ([]byte, error) {
 	// check for nil argument
 	if header == nil ||
 		header.ChannelHeader == nil ||
@@ -487,7 +465,7 @@ func GetProposalHash1(header *common.Header, ccPropPayl []byte, visibility []byt
 		return nil, err
 	}
 
-	ppBytes, err := GetBytesProposalPayloadForTx(cpp, visibility)
+	ppBytes, err := GetBytesProposalPayloadForTx(cpp)
 	if err != nil {
 		return nil, err
 	}

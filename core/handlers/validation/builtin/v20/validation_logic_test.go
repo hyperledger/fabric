@@ -41,7 +41,7 @@ func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 		return nil, err
 	}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, ccid, nil, id)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, ccid, id)
 	if err != nil {
 		return nil, err
 	}

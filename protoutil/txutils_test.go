@@ -126,26 +126,17 @@ func TestCreateSignedTx(t *testing.T) {
 	signerBytes, err := signID.Serialize()
 	assert.NoError(t, err, "Unexpected error serializing signing identity")
 
-	ccHeaderExtensionBytes, _ := proto.Marshal(&pb.ChaincodeHeaderExtension{})
-	chdrBytes, _ := proto.Marshal(&cb.ChannelHeader{
+	ccHeaderExtensionBytes := protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{})
+	chdrBytes := protoutil.MarshalOrPanic(&cb.ChannelHeader{
 		Extension: ccHeaderExtensionBytes,
 	})
-	shdrBytes, _ := proto.Marshal(&cb.SignatureHeader{
+	shdrBytes := protoutil.MarshalOrPanic(&cb.SignatureHeader{
 		Creator: signerBytes,
 	})
 	responses := []*pb.ProposalResponse{{}}
 
-	// malformed chaincode header extension
-	headerBytes, _ := proto.Marshal(&cb.Header{
-		ChannelHeader:   []byte("bad channel header"),
-		SignatureHeader: shdrBytes,
-	})
-	prop.Header = headerBytes
-	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	assert.Error(t, err, "Expected error with malformed chaincode extension")
-
 	// malformed signature header
-	headerBytes, _ = proto.Marshal(&cb.Header{
+	headerBytes := protoutil.MarshalOrPanic(&cb.Header{
 		SignatureHeader: []byte("bad signature header"),
 	})
 	prop.Header = headerBytes
@@ -434,11 +425,11 @@ func TestGetBytesProposalPayloadForTx(t *testing.T) {
 		Input: []byte("input"),
 	})
 
-	result, err := protoutil.GetBytesProposalPayloadForTx(input, []byte{})
+	result, err := protoutil.GetBytesProposalPayloadForTx(input)
 	assert.NoError(t, err, "Unexpected error getting proposal payload")
 	assert.Equal(t, expected, result, "Payload does not match expected value")
 
-	_, err = protoutil.GetBytesProposalPayloadForTx(nil, []byte{})
+	_, err = protoutil.GetBytesProposalPayloadForTx(nil)
 	assert.Error(t, err, "Expected error with nil proposal payload")
 }
 
@@ -470,19 +461,17 @@ func TestGetProposalHash1(t *testing.T) {
 
 	ccProposal, _ := proto.Marshal(&pb.ChaincodeProposalPayload{})
 
-	propHash, err := protoutil.GetProposalHash1(hdr, ccProposal, []byte{})
+	propHash, err := protoutil.GetProposalHash1(hdr, ccProposal)
 	assert.NoError(t, err, "Unexpected error getting hash for proposal")
 	t.Logf("%x", propHash)
 	assert.Equal(t, expectedHash, propHash,
 		"Proposal hash did not match expected hash")
 
-	propHash, err = protoutil.GetProposalHash1(hdr,
-		[]byte("ccproppayload"), []byte{})
+	propHash, err = protoutil.GetProposalHash1(hdr, []byte("ccproppayload"))
 	assert.Error(t, err,
 		"Expected error with malformed chaincode proposal payload")
 
-	propHash, err = protoutil.GetProposalHash1(&cb.Header{},
-		[]byte("ccproppayload"), []byte{})
+	propHash, err = protoutil.GetProposalHash1(&cb.Header{}, []byte("ccproppayload"))
 	assert.Error(t, err, "Expected error with nil arguments")
 }
 
@@ -496,9 +485,8 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 
 	response := &pb.Response{Status: 502, Payload: []byte("Invalid function name")}
 	result := []byte("res")
-	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
 
-	prespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, ccid, nil)
+	prespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, "foo")
 	if err != nil {
 		t.Fatalf("Could not create proposal response failure, err %s\n", err)
 		return

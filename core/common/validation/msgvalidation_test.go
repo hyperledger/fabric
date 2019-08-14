@@ -27,7 +27,7 @@ func createTestTransactionEnvelope(channel string, response *peer.Response, simR
 	}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), signer)
 	if err != nil {
 		return nil, fmt.Errorf("CreateProposalResponse failed, err %s", err)
 	}
