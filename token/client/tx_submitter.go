@@ -158,10 +158,7 @@ func CreateHeader(txType common.HeaderType, channelId string, creator []byte, tl
 		return "", nil, err
 	}
 
-	txId, err := protoutil.ComputeTxID(nonce, creator)
-	if err != nil {
-		return "", nil, err
-	}
+	txId := protoutil.ComputeTxID(nonce, creator)
 
 	chdr := &common.ChannelHeader{
 		Type:        int32(txType),

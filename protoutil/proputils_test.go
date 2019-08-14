@@ -592,20 +592,17 @@ func TestProposalTxID(t *testing.T) {
 	nonce := []byte{1}
 	creator := []byte{2}
 
-	txid, err := protoutil.ComputeTxID(nonce, creator)
+	txid := protoutil.ComputeTxID(nonce, creator)
 	assert.NotEmpty(t, txid, "TxID cannot be empty.")
-	assert.NoError(t, err, "Failed computing txID")
 	assert.Nil(t, protoutil.CheckTxID(txid, nonce, creator))
 	assert.Error(t, protoutil.CheckTxID("", nonce, creator))
 
-	txid, err = protoutil.ComputeTxID(nil, nil)
+	txid = protoutil.ComputeTxID(nil, nil)
 	assert.NotEmpty(t, txid, "TxID cannot be empty.")
-	assert.NoError(t, err, "Failed computing txID")
 }
 
 func TestComputeProposalTxID(t *testing.T) {
-	txid, err := protoutil.ComputeTxID([]byte{1}, []byte{1})
-	assert.NoError(t, err, "Failed computing TxID")
+	txid := protoutil.ComputeTxID([]byte{1}, []byte{1})
 
 	// Compute the function computed by ComputeTxID,
 	// namely, base64(sha256(nonce||creator))

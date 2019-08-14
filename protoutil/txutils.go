@@ -530,5 +530,6 @@ func GetOrComputeTxIDFromEnvelope(txEnvelopBytes []byte) (string, error) {
 		return "", errors.WithMessage(err, "error getting nonce and creator for computing txID")
 	}
 
-	return ComputeTxID(sighdr.Nonce, sighdr.Creator)
+	txid := ComputeTxID(sighdr.Nonce, sighdr.Creator)
+	return txid, nil
 }
