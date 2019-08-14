@@ -181,17 +181,15 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	globalConfig.ExecuteTimeout = 1 * time.Second
 	lsccImpl := lscc.New(map[string]struct{}{"lscc": {}}, &lscc.PeerShim{Peer: peerInstance}, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &mock.Lifecycle{}
-	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
 		case "shimTestCC", "calledCC":
-			return &ccprovider.ChaincodeData{
-				Name:    name,
-				Version: "0",
+			return &lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID: name + ":0",
 			}, nil
 		case "lscc":
-			return &lifecycle.LegacyDefinition{
-				Version:          "syscc",
-				ChaincodeIDField: "lscc.syscc",
+			return &lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID: "lscc.syscc",
 			}, nil
 		default:
 			return nil, errors.New("oh-bother-no-chaincode-info")

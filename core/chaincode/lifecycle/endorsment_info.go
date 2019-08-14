@@ -7,21 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle
 
 import (
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
 
 	"github.com/pkg/errors"
 )
 
-//go:generate counterfeiter -o mock/legacy_lifecycle.go --fake-name LegacyLifecycle . LegacyLifecycle
+//go:generate counterfeiter -o mock/legacy_lifecycle.go --fake-name LegacyLifecycle . Lifecycle
 
-// LegacyLifecycle is the interface which the core/chaincode package requires that lifecycle satisfy.
-// Note this this is a duplication of the interface defined there, so as to avoid import cycles when testing.
-// Ultimately, this interface needs to be removed, and replaced with something that returns a concrete type,
-// hence the naming of this file as legacy_lifecycle.go.
-type LegacyLifecycle interface {
-	ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error)
+// Lifecycle is the interface which the core/chaincode package and core/endorser package requires that lifecycle satisfy.
+type Lifecycle interface {
+	ChaincodeEndorsementInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ChaincodeEndorsementInfo, error)
 }
 
 //go:generate counterfeiter -o mock/chaincode_info_cache.go --fake-name ChaincodeInfoCache . ChaincodeInfoCache
@@ -29,45 +25,30 @@ type ChaincodeInfoCache interface {
 	ChaincodeInfo(channelID, chaincodeName string) (definition *LocalChaincodeInfo, err error)
 }
 
-// LegacyDefinition is an implmentor of ccprovider.ChaincodeDefinition.
-// It is a different data-type to allow differentiation at cast-time from
-// chaincode definitions which require validaiton of instantiation policy.
-type LegacyDefinition struct {
-	Version           string
-	EndorsementPlugin string
-	RequiresInitField bool
-	ChaincodeIDField  string
-}
-
-// CCVersion returns the version of the chaincode.
-func (ld *LegacyDefinition) CCVersion() string {
-	return ld.Version
-}
-
-// Endorsement returns how to endorse proposals for this chaincode.
-// The string returns is the name of the endorsement method (usually 'escc').
-func (ld *LegacyDefinition) Endorsement() string {
-	return ld.EndorsementPlugin
-}
-
-// RequiresInit returns whether this chaincode must have Init commit before invoking.
-func (ld *LegacyDefinition) RequiresInit() bool {
-	return ld.RequiresInitField
-}
-
-// ChaincodeID returns the id the chaincode should register with in its handshake with the peer.
-func (ld *LegacyDefinition) ChaincodeID() string {
-	return ld.ChaincodeIDField
-}
-
+// ChaincodeEndorsementInfo contains the information necessary to handle a chaincode invoke request.
 type ChaincodeEndorsementInfo struct {
+	// Version is the version from the definition in this particular channel and namespace context.
+	Version string
+
+	// EnforceInit is set to true for definitions which require the chaincode package to enforce
+	// 'init exactly once' semantics.
+	EnforceInit bool
+
+	// ChaincodeID is the name by which to look up or launch the underlying chaincode.
+	ChaincodeID string
+
+	// EndorsementPlugin is the name of the plugin to use when endorsing.
+	EndorsementPlugin string
+}
+
+type ChaincodeEndorsementInfoSource struct {
 	Resources   *Resources
 	Cache       ChaincodeInfoCache
-	LegacyImpl  LegacyLifecycle
+	LegacyImpl  Lifecycle
 	BuiltinSCCs scc.BuiltinSCCs
 }
 
-func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*LocalChaincodeInfo, bool, error) {
+func (cei *ChaincodeEndorsementInfoSource) CachedChaincodeInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*LocalChaincodeInfo, bool, error) {
 	var qes ReadableState = &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
@@ -116,14 +97,15 @@ func (cei *ChaincodeEndorsementInfo) CachedChaincodeInfo(channelID, chaincodeNam
 
 }
 
-// ChaincodeDefinition returns the details for a chaincode by name
-func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+// ChaincodeEndorsementInfo returns the information necessary to handle a chaincode invocation request, as well as a function to
+// enforce security checks on the chaincode (in case the definition is from the legacy lscc).
+func (cei *ChaincodeEndorsementInfoSource) ChaincodeEndorsementInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ChaincodeEndorsementInfo, error) {
 	if cei.BuiltinSCCs.IsSysCC(chaincodeName) {
-		return &LegacyDefinition{
+		return &ChaincodeEndorsementInfo{
 			Version:           scc.SysCCVersion,
 			EndorsementPlugin: "escc",
-			RequiresInitField: false,
-			ChaincodeIDField:  scc.ChaincodeID(chaincodeName),
+			EnforceInit:       false,
+			ChaincodeID:       scc.ChaincodeID(chaincodeName),
 		}, nil
 	}
 
@@ -132,17 +114,13 @@ func (cei *ChaincodeEndorsementInfo) ChaincodeDefinition(channelID, chaincodeNam
 		return nil, err
 	}
 	if !ok {
-		return cei.LegacyImpl.ChaincodeDefinition(channelID, chaincodeName, qe)
+		return cei.LegacyImpl.ChaincodeEndorsementInfo(channelID, chaincodeName, qe)
 	}
 
-	chaincodeDefinition := chaincodeInfo.Definition
-
-	return &LegacyDefinition{
-		Version:           chaincodeDefinition.EndorsementInfo.Version,
-		EndorsementPlugin: chaincodeDefinition.EndorsementInfo.EndorsementPlugin,
-		RequiresInitField: chaincodeDefinition.EndorsementInfo.InitRequired,
-
-		// Note, for local chaincodes, package-id is 1-1 with CCID, but for remote chaincodes, it might not be
-		ChaincodeIDField: string(chaincodeInfo.InstallInfo.PackageID),
+	return &ChaincodeEndorsementInfo{
+		Version:           chaincodeInfo.Definition.EndorsementInfo.Version,
+		EnforceInit:       chaincodeInfo.Definition.EndorsementInfo.InitRequired,
+		EndorsementPlugin: chaincodeInfo.Definition.EndorsementInfo.EndorsementPlugin,
+		ChaincodeID:       chaincodeInfo.InstallInfo.PackageID, // Local packages use package ID for ccid
 	}, nil
 }

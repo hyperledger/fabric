@@ -446,7 +446,7 @@ func serve(args []string) error {
 		CCID:            scc.ChaincodeID(lifecycle.LifecycleNamespace),
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
-	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfo{
+	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfoSource{
 		LegacyImpl:  lsccInst,
 		Resources:   lifecycleResources,
 		Cache:       lifecycleCache,

@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/lscc/mock"
@@ -21,6 +22,7 @@ var _ = Describe("LSCC", func() {
 	var (
 		l                 *lscc.LifeCycleSysCC
 		fakeSupport       *mock.FileSystemSupport
+		fakeCCPackage     *mock.CCPackage
 		fakeSCCProvider   *mock.SystemChaincodeProvider
 		fakeQueryExecutor *mock.QueryExecutor
 		ccData            *ccprovider.ChaincodeData
@@ -29,7 +31,14 @@ var _ = Describe("LSCC", func() {
 	)
 
 	BeforeEach(func() {
+		fakeCCPackage = &mock.CCPackage{}
+		fakeCCPackage.GetChaincodeDataReturns(&ccprovider.ChaincodeData{
+			InstantiationPolicy: []byte("instantiation-policy"),
+		})
+
 		fakeSupport = &mock.FileSystemSupport{}
+		fakeSupport.GetChaincodeFromLocalStorageReturns(fakeCCPackage, nil)
+
 		fakeSCCProvider = &mock.SystemChaincodeProvider{}
 		fakeQueryExecutor = &mock.QueryExecutor{}
 
@@ -71,13 +80,12 @@ var _ = Describe("LSCC", func() {
 			fakeSupport.GetChaincodeFromLocalStorageReturns(fakeCCPackage, nil)
 
 			legacySecurity = &lscc.LegacySecurity{
-				ChaincodeData: ccData,
-				Support:       fakeSupport,
+				Support: fakeSupport,
 			}
 		})
 
 		It("returns nil if security checks are passed", func() {
-			err := legacySecurity.SecurityCheckLegacyChaincode()
+			err := legacySecurity.SecurityCheckLegacyChaincode(ccData)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeCCPackage.ValidateCCCallCount()).To(Equal(1))
@@ -90,7 +98,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("returns an error", func() {
-				err := legacySecurity.SecurityCheckLegacyChaincode()
+				err := legacySecurity.SecurityCheckLegacyChaincode(ccData)
 				Expect(err).To(MatchError(lscc.InvalidCCOnFSError("fake-validation-error")))
 			})
 		})
@@ -103,20 +111,21 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("returns an error", func() {
-				err := legacySecurity.SecurityCheckLegacyChaincode()
+				err := legacySecurity.SecurityCheckLegacyChaincode(ccData)
 				Expect(err).To(MatchError("Instantiation policy mismatch for cc chaincode-data-name:version"))
 			})
 		})
 	})
 
-	Describe("ChaincodeDefinition", func() {
+	Describe("ChaincodeEndorsementInfo", func() {
 		It("retrieves the chaincode data from the state", func() {
-			chaincodeDefinition, err := l.ChaincodeDefinition("", "cc-name", fakeQueryExecutor)
+			chaincodeEndorsementInfo, err := l.ChaincodeEndorsementInfo("", "cc-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
-			returnedChaincodeData, ok := chaincodeDefinition.(*lscc.LegacySecurity)
-			Expect(ok).To(BeTrue())
-			Expect(returnedChaincodeData.ChaincodeData).To(Equal(ccData))
-			Expect(returnedChaincodeData.Support).To(Equal(fakeSupport))
+			Expect(chaincodeEndorsementInfo).To(Equal(&lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID:       "chaincode-data-name:version",
+				Version:           "version",
+				EndorsementPlugin: "escc",
+			}))
 
 			Expect(fakeQueryExecutor.GetStateCallCount()).To(Equal(1))
 			namespace, key := fakeQueryExecutor.GetStateArgsForCall(0)
@@ -130,7 +139,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("returns the wrapped error", func() {
-				_, err := l.ChaincodeDefinition("", "cc-name", fakeQueryExecutor)
+				_, err := l.ChaincodeEndorsementInfo("", "cc-name", fakeQueryExecutor)
 				Expect(err).To(MatchError("could not retrieve state for chaincode cc-name: fake-error"))
 			})
 		})
@@ -141,7 +150,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := l.ChaincodeDefinition("", "cc-name", fakeQueryExecutor)
+				_, err := l.ChaincodeEndorsementInfo("", "cc-name", fakeQueryExecutor)
 				Expect(err).To(MatchError("chaincode cc-name not found"))
 			})
 		})
@@ -152,7 +161,7 @@ var _ = Describe("LSCC", func() {
 			})
 
 			It("wraps and returns the error", func() {
-				_, err := l.ChaincodeDefinition("", "cc-name", fakeQueryExecutor)
+				_, err := l.ChaincodeEndorsementInfo("", "cc-name", fakeQueryExecutor)
 				Expect(err).To(MatchError(MatchRegexp("chaincode cc-name has bad definition: proto:.*")))
 			})
 		})

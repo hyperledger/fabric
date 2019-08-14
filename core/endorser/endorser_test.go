@@ -121,7 +121,7 @@ var _ = Describe("Endorser", func() {
 			nil,
 		)
 
-		fakeSupport.GetChaincodeDefinitionReturns(&lifecycle.LegacyDefinition{
+		fakeSupport.ChaincodeEndorsementInfoReturns(&lifecycle.ChaincodeEndorsementInfo{
 			Version:           "chaincode-definition-version",
 			EndorsementPlugin: "plugin-name",
 		}, nil)
@@ -600,7 +600,7 @@ var _ = Describe("Endorser", func() {
 
 	Context("when the chaincode definition is not found", func() {
 		BeforeEach(func() {
-			fakeSupport.GetChaincodeDefinitionReturns(nil, fmt.Errorf("fake-definition-error"))
+			fakeSupport.ChaincodeEndorsementInfoReturns(nil, fmt.Errorf("fake-definition-error"))
 		})
 
 		It("returns an error in the response", func() {
@@ -699,7 +699,7 @@ var _ = Describe("Endorser", func() {
 			fakeTxSimulator.GetTxSimulationResultsReturns(
 				&ledger.TxSimulationResults{
 					PubSimulationResults: &rwset.TxReadWriteSet{},
-					// We nil don't return private data in this case because lscc forbids it
+					// We don't return private data in this case because lscc forbids it
 				},
 				nil,
 			)
