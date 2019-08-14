@@ -367,11 +367,11 @@ type ChaincodeDefinition interface {
 	// The string returns is the name of the endorsement method (usually 'escc').
 	Endorsement() string
 
-	// RequiresInit indicates whether or not we must enforce Init exactly once semantics
+	// RequiresInit indicates whether or not we must enforce Init exactly once semantics.
 	RequiresInit() bool
 
-	// CCID returns the name the chaincode will register with
-	CCID() string
+	// ChaincodeID returns the id the chaincode will register with.
+	ChaincodeID() string
 }
 
 //-------- ChaincodeData is stored on the LSCC -------
@@ -443,8 +443,8 @@ func (cd *ChaincodeData) RequiresInit() bool {
 	return false
 }
 
-// CCID is the name by which the chaincode will register itself
-func (cd *ChaincodeData) CCID() string {
+// ChaincodeID is the name by which the chaincode will register itself.
+func (cd *ChaincodeData) ChaincodeID() string {
 	return cd.Name + ":" + cd.Version
 }
 

@@ -40,6 +40,6 @@ func (m *MockChaincodeDefinition) RequiresInit() bool {
 	return m.RequiresInitRv
 }
 
-func (m *MockChaincodeDefinition) CCID() string {
+func (m *MockChaincodeDefinition) ChaincodeID() string {
 	return m.NameRv + ":" + m.VersionRv
 }

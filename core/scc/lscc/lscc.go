@@ -210,7 +210,7 @@ type LegacySecurity struct {
 }
 
 func (ls *LegacySecurity) SecurityCheckLegacyChaincode() error {
-	ccpack, err := ls.Support.GetChaincodeFromLocalStorage(ls.ChaincodeData.CCID())
+	ccpack, err := ls.Support.GetChaincodeFromLocalStorage(ls.ChaincodeData.ChaincodeID())
 	if err != nil {
 		return InvalidDeploymentSpecErr(err.Error())
 	}
@@ -240,7 +240,7 @@ func (ls *LegacySecurity) SecurityCheckLegacyChaincode() error {
 	// https://jira.hyperledger.org/browse/FAB-3156
 	if fsData.InstantiationPolicy != nil {
 		if !bytes.Equal(fsData.InstantiationPolicy, ls.ChaincodeData.InstantiationPolicy) {
-			return fmt.Errorf("Instantiation policy mismatch for cc %s", ls.CCID())
+			return fmt.Errorf("Instantiation policy mismatch for cc %s", ls.ChaincodeID())
 		}
 	}
 
@@ -501,7 +501,7 @@ func (lscc *LifeCycleSysCC) getCCCode(ccname string, cdbytes []byte) (*pb.Chainc
 		return nil, nil, err
 	}
 
-	ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(cd.CCID())
+	ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(cd.ChaincodeID())
 	if err != nil {
 		return nil, nil, InvalidDeploymentSpecErr(err.Error())
 	}
@@ -554,7 +554,7 @@ func (lscc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.R
 
 		// if chaincode is not installed on the system we won't have
 		// data beyond name and version
-		ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(ccdata.CCID())
+		ccpack, err := lscc.Support.GetChaincodeFromLocalStorage(ccdata.ChaincodeID())
 		if err == nil {
 			path = ccpack.GetDepSpec().GetChaincodeSpec().ChaincodeId.Path
 			input = ccpack.GetDepSpec().GetChaincodeSpec().Input.String()

@@ -111,8 +111,8 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 		switch name {
 		case "lscc":
 			return &lifecycle.LegacyDefinition{
-				Version:   "syscc",
-				CCIDField: "lscc.syscc",
+				Version:          "syscc",
+				ChaincodeIDField: "lscc.syscc",
 			}, nil
 		default:
 			return &ccprovider.ChaincodeData{
@@ -618,8 +618,8 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 		switch name {
 		case "lscc":
 			return &lifecycle.LegacyDefinition{
-				Version:   "syscc",
-				CCIDField: "lscc.syscc",
+				Version:          "syscc",
+				ChaincodeIDField: "lscc.syscc",
 			}, nil
 		default:
 			return &ccprovider.ChaincodeData{
@@ -756,8 +756,8 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 		switch name {
 		case "lscc":
 			return &lifecycle.LegacyDefinition{
-				Version:   "syscc",
-				CCIDField: "lscc.syscc",
+				Version:          "syscc",
+				ChaincodeIDField: "lscc.syscc",
 			}, nil
 		default:
 			return &ccprovider.ChaincodeData{
