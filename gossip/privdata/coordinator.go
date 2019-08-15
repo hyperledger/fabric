@@ -439,7 +439,7 @@ func computeOwnedRWsets(block *common.Block, blockPvtData util.PvtDataCollection
 		if err != nil {
 			return nil, err
 		}
-		payload, err := protoutil.GetPayload(env)
+		payload, err := protoutil.UnmarshalPayload(env.Payload)
 		if err != nil {
 			return nil, err
 		}
@@ -611,7 +611,7 @@ func (data blockData) forEachTxn(storePvtDataOfInvalidTx bool, txsFilter txValid
 			continue
 		}
 
-		payload, err := protoutil.GetPayload(env)
+		payload, err := protoutil.UnmarshalPayload(env.Payload)
 		if err != nil {
 			logger.Warning("Invalid payload:", err)
 			continue
@@ -640,13 +640,13 @@ func (data blockData) forEachTxn(storePvtDataOfInvalidTx bool, txsFilter txValid
 			continue
 		}
 
-		tx, err := protoutil.GetTransaction(payload.Data)
+		tx, err := protoutil.UnmarshalTransaction(payload.Data)
 		if err != nil {
 			logger.Warning("Invalid transaction in payload data for tx ", chdr.TxId, ":", err)
 			continue
 		}
 
-		ccActionPayload, err := protoutil.GetChaincodeActionPayload(tx.Actions[0].Payload)
+		ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(tx.Actions[0].Payload)
 		if err != nil {
 			logger.Warning("Invalid chaincode action in payload for tx", chdr.TxId, ":", err)
 			continue

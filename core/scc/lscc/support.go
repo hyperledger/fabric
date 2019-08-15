@@ -81,16 +81,16 @@ func (s *supportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, ch
 	if err != nil {
 		return err
 	}
-	proposal, err := protoutil.GetProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return err
 	}
 	// get the signature header of the proposal
-	header, err := protoutil.GetHeader(proposal.Header)
+	header, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
 		return err
 	}
-	shdr, err := protoutil.GetSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(header.SignatureHeader)
 	if err != nil {
 		return err
 	}

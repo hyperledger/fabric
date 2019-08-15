@@ -110,7 +110,7 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	}
 
 	// get header extensions so we have the chaincode ID
-	hdrExt, err := protoutil.GetChaincodeHeaderExtension(chdr.Extension)
+	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
 		return err, peer.TxValidationCode_BAD_HEADER_EXTENSION
 	}

@@ -25,7 +25,7 @@ func UnmarshalTokenTransaction(raw []byte) (*cb.ChannelHeader, *token.TokenTrans
 	}
 
 	// the creator from the signature header
-	sh, err := protoutil.GetSignatureHeader(payload.Header.SignatureHeader)
+	sh, err := protoutil.UnmarshalSignatureHeader(payload.Header.SignatureHeader)
 	if err != nil {
 		return nil, nil, nil, err
 	}

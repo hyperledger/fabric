@@ -107,7 +107,7 @@ func (h *historyDB) Commit(block *common.Block) error {
 			return err
 		}
 
-		payload, err := protoutil.GetPayload(env)
+		payload, err := protoutil.UnmarshalPayload(env.Payload)
 		if err != nil {
 			return err
 		}

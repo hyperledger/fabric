@@ -135,7 +135,7 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	// NOTE that if there's an error all simulation, including the chaincode
 	// table changes in lscc will be thrown away
 	if chaincodeName == "lscc" && len(input.Args) >= 3 && (string(input.Args[0]) == "deploy" || string(input.Args[0]) == "upgrade") {
-		cds, err := protoutil.GetChaincodeDeploymentSpec(input.Args[2])
+		cds, err := protoutil.UnmarshalChaincodeDeploymentSpec(input.Args[2])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -285,7 +285,7 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 		return vr, err
 	}
 
-	shdr, err := protoutil.GetSignatureHeader(hdr.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
 		return vr, err

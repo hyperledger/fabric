@@ -661,7 +661,7 @@ func createConfigTx(txData []byte, channelName string, network *nwo.Network, ord
 	ctxEnv, err := protoutil.UnmarshalEnvelope(txData)
 	Expect(err).NotTo(HaveOccurred())
 
-	payload, err := protoutil.ExtractPayload(ctxEnv)
+	payload, err := protoutil.UnmarshalPayload(ctxEnv.Payload)
 	Expect(err).NotTo(HaveOccurred())
 
 	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
@@ -729,7 +729,7 @@ func configFromBootstrapBlock(bootstrapBlock []byte) *common.Config {
 	envelope, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[0])
 	Expect(err).NotTo(HaveOccurred())
 
-	payload, err := protoutil.GetPayload(envelope)
+	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
 	Expect(err).NotTo(HaveOccurred())
 
 	configEnv := &common.ConfigEnvelope{}

@@ -261,7 +261,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 		return nil, errors.Wrap(err, "cannot read config update")
 	}
 
-	payload, err := protoutil.ExtractPayload(configEnvelope)
+	payload, err := protoutil.UnmarshalPayload(configEnvelope.Payload)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to extract payload from config envelope")
 	}

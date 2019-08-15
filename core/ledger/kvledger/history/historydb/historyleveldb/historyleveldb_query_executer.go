@@ -138,12 +138,12 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 	logger.Debugf("Entering getKeyModificationFromTran()\n", namespace, key)
 
 	// extract action from the envelope
-	payload, err := protoutil.GetPayload(tranEnvelope)
+	payload, err := protoutil.UnmarshalPayload(tranEnvelope.Payload)
 	if err != nil {
 		return nil, err
 	}
 
-	tx, err := protoutil.GetTransaction(payload.Data)
+	tx, err := protoutil.UnmarshalTransaction(payload.Data)
 	if err != nil {
 		return nil, err
 	}

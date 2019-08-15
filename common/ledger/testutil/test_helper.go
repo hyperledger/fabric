@@ -456,7 +456,7 @@ func SetTxID(t *testing.T, block *common.Block, txNum int, txID string) {
 		t.Fatalf("error unmarshaling envelope: %s", err)
 	}
 
-	payload, err := protoutil.GetPayload(envelope)
+	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
 	if err != nil {
 		t.Fatalf("error getting payload from envelope: %s", err)
 	}

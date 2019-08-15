@@ -56,7 +56,7 @@ func GetConfig(n *Network, peer *Peer, orderer *Orderer, channel string) *common
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshal the payload bytes
-	payload, err := protoutil.GetPayload(envelope)
+	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
 	Expect(err).NotTo(HaveOccurred())
 
 	// unmarshal the config envelope bytes

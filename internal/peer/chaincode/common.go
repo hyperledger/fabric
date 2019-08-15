@@ -141,11 +141,11 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 
 	if invoke {
 		logger.Debugf("ESCC invoke result: %v", proposalResp)
-		pRespPayload, err := protoutil.GetProposalResponsePayload(proposalResp.Payload)
+		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(proposalResp.Payload)
 		if err != nil {
 			return errors.WithMessage(err, "error while unmarshaling proposal response payload")
 		}
-		ca, err := protoutil.GetChaincodeAction(pRespPayload.Extension)
+		ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
 		if err != nil {
 			return errors.WithMessage(err, "error while unmarshaling chaincode action")
 		}

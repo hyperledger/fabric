@@ -72,7 +72,7 @@ func TestBadProposalHeaders(t *testing.T) {
 		Header:  []byte("bad header"),
 		Payload: []byte("payload"),
 	}
-	_, err = protoutil.GetHeader(prop.Header)
+	_, err = protoutil.UnmarshalHeader(prop.Header)
 	assert.Error(t, err, "Expected error with malformed proposal header")
 	_, err = protoutil.GetChaincodeInvocationSpec(prop)
 	assert.Error(t, err, "Expected error with malformed proposal header")
@@ -91,7 +91,7 @@ func TestBadProposalHeaders(t *testing.T) {
 		ChannelHeader:   chdr,
 		SignatureHeader: []byte("bad signature header"),
 	}
-	_, err = protoutil.GetSignatureHeader(hdr.SignatureHeader)
+	_, err = protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	assert.Error(t, err, "Expected error with malformed signature header")
 	hdrBytes, _ := proto.Marshal(hdr)
 	prop.Header = hdrBytes
@@ -125,7 +125,7 @@ func TestBadProposalHeaders(t *testing.T) {
 	assert.Error(t, err, "Expected error with malformed channel header")
 	_, err = protoutil.GetNonce(prop)
 	assert.Error(t, err, "Expected error with malformed channel header")
-	_, err = protoutil.GetChaincodeHeaderExtension([]byte("bad header extension"))
+	_, err = protoutil.UnmarshalChaincodeHeaderExtension([]byte("bad header extension"))
 	assert.Error(t, err, "Expected error with malformed channel header")
 	_, err = protoutil.ComputeProposalBinding(prop)
 	assert.Error(t, err, "Expected error with malformed channel header")
@@ -163,7 +163,7 @@ func TestGetNonce(t *testing.T) {
 }
 
 func TestGetChaincodeDeploymentSpec(t *testing.T) {
-	_, err := protoutil.GetChaincodeDeploymentSpec([]byte("bad spec"))
+	_, err := protoutil.UnmarshalChaincodeDeploymentSpec([]byte("bad spec"))
 	assert.Error(t, err, "Expected error with malformed spec")
 
 	cds, _ := proto.Marshal(&pb.ChaincodeDeploymentSpec{
@@ -171,7 +171,7 @@ func TestGetChaincodeDeploymentSpec(t *testing.T) {
 			Type: pb.ChaincodeSpec_GOLANG,
 		},
 	})
-	_, err = protoutil.GetChaincodeDeploymentSpec(cds)
+	_, err = protoutil.UnmarshalChaincodeDeploymentSpec(cds)
 	assert.NoError(t, err, "Unexpected error getting deployment spec")
 }
 
@@ -251,7 +251,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// deserialize it and expect it to be the same
-	propBack, err := protoutil.GetProposal(pBytes)
+	propBack, err := protoutil.UnmarshalProposal(pBytes)
 	if err != nil {
 		t.Fatalf("Could not deserialize the chaincode proposal, err %s\n", err)
 		return
@@ -262,7 +262,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// get back the header
-	hdr, err := protoutil.GetHeader(prop.Header)
+	hdr, err := protoutil.UnmarshalHeader(prop.Header)
 	if err != nil {
 		t.Fatalf("Could not extract the header from the proposal, err %s\n", err)
 	}
@@ -272,7 +272,7 @@ func TestProposal(t *testing.T) {
 		t.Fatalf("Could not marshal the header, err %s\n", err)
 	}
 
-	hdr, err = protoutil.GetHeader(hdrBytes)
+	hdr, err = protoutil.UnmarshalHeader(hdrBytes)
 	if err != nil {
 		t.Fatalf("Could not unmarshal the header, err %s\n", err)
 	}
@@ -282,7 +282,7 @@ func TestProposal(t *testing.T) {
 		t.Fatalf("Could not unmarshal channel header, err %s", err)
 	}
 
-	shdr, err := protoutil.GetSignatureHeader(hdr.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		t.Fatalf("Could not unmarshal signature header, err %s", err)
 	}
@@ -301,7 +301,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// get back the header extension
-	hdrExt, err := protoutil.GetChaincodeHeaderExtension(chdr.Extension)
+	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
 		t.Fatalf("Could not extract the header extensions from the proposal, err %s\n", err)
 		return
@@ -400,7 +400,7 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// get the response from bytes
-	_, err = protoutil.GetResponse(pResponseBytes)
+	_, err = protoutil.UnmarshalResponse(pResponseBytes)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the Response")
 		return
@@ -414,14 +414,14 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// get the ProposalResponsePayload message
-	prp, err := protoutil.GetProposalResponsePayload(prpBytes)
+	prp, err := protoutil.UnmarshalProposalResponsePayload(prpBytes)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ProposalResponsePayload")
 		return
 	}
 
 	// get the ChaincodeAction message
-	act, err := protoutil.GetChaincodeAction(prp.Extension)
+	act, err := protoutil.UnmarshalChaincodeAction(prp.Extension)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ChaincodeAction")
 		return
@@ -433,7 +433,7 @@ func TestProposalResponse(t *testing.T) {
 		return
 	}
 
-	event, err := protoutil.GetChaincodeEvents(act.Events)
+	event, err := protoutil.UnmarshalChaincodeEvents(act.Events)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ChainCodeEvents")
 		return
@@ -459,7 +459,7 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// get the proposal response message back
-	prBack, err := protoutil.GetProposalResponse(prBytes)
+	prBack, err := protoutil.UnmarshalProposalResponse(prBytes)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ProposalResponse")
 		return
@@ -531,19 +531,19 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	txpayl, err := protoutil.GetPayload(tx)
+	txpayl, err := protoutil.UnmarshalPayload(tx.Payload)
 	if err != nil {
 		t.Fatalf("Could not unmarshal payload, err %s\n", err)
 		return
 	}
 
-	tx2, err := protoutil.GetTransaction(txpayl.Data)
+	tx2, err := protoutil.UnmarshalTransaction(txpayl.Data)
 	if err != nil {
 		t.Fatalf("Could not unmarshal Transaction, err %s\n", err)
 		return
 	}
 
-	sh, err := protoutil.GetSignatureHeader(tx2.Actions[0].Header)
+	sh, err := protoutil.UnmarshalSignatureHeader(tx2.Actions[0].Header)
 	if err != nil {
 		t.Fatalf("Could not unmarshal SignatureHeader, err %s\n", err)
 		return
@@ -554,20 +554,20 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	cap, err := protoutil.GetChaincodeActionPayload(tx2.Actions[0].Payload)
+	cap, err := protoutil.UnmarshalChaincodeActionPayload(tx2.Actions[0].Payload)
 	if err != nil {
 		t.Fatalf("Could not unmarshal ChaincodeActionPayload, err %s\n", err)
 		return
 	}
 	assert.NotNil(t, cap)
 
-	prp, err := protoutil.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+	prp, err := protoutil.UnmarshalProposalResponsePayload(cap.Action.ProposalResponsePayload)
 	if err != nil {
 		t.Fatalf("Could not unmarshal ProposalResponsePayload, err %s\n", err)
 		return
 	}
 
-	ca, err := protoutil.GetChaincodeAction(prp.Extension)
+	ca, err := protoutil.UnmarshalChaincodeAction(prp.Extension)
 	if err != nil {
 		t.Fatalf("Could not unmarshal ChaincodeAction, err %s\n", err)
 		return

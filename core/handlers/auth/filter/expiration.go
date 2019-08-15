@@ -32,17 +32,17 @@ func (f *expirationCheckFilter) Init(next peer.EndorserServer) {
 }
 
 func validateProposal(signedProp *peer.SignedProposal) error {
-	prop, err := protoutil.GetProposal(signedProp.ProposalBytes)
+	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed parsing proposal")
 	}
 
-	hdr, err := protoutil.GetHeader(prop.Header)
+	hdr, err := protoutil.UnmarshalHeader(prop.Header)
 	if err != nil {
 		return errors.Wrap(err, "failed parsing header")
 	}
 
-	sh, err := protoutil.GetSignatureHeader(hdr.SignatureHeader)
+	sh, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		return errors.Wrap(err, "failed parsing signature header")
 	}

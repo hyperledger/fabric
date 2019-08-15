@@ -43,7 +43,7 @@ var systemChaincodeNames = map[string]struct{}{
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal
 func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte, payl *common.Payload) commonerrors.TxValidationError {
 	// get the signature header
-	shdr, err := protoutil.GetSignatureHeader(payl.Header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(payl.Header.SignatureHeader)
 	if err != nil {
 		return policyErr(err)
 	}
@@ -350,7 +350,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 	payl *common.Payload,
 	ac vc.Capabilities,
 ) commonerrors.TxValidationError {
-	cpp, err := protoutil.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
+	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeProposalPayload failed, err %s", err)
 		return policyErr(err)
@@ -388,7 +388,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("Wrong number of arguments for invocation lscc(%s): received %d", lsccFunc, len(lsccArgs)))
 		}
 
-		cdsArgs, err := protoutil.GetChaincodeDeploymentSpec(lsccArgs[1])
+		cdsArgs, err := protoutil.UnmarshalChaincodeDeploymentSpec(lsccArgs[1])
 		if err != nil {
 			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error %s", err))
 		}
@@ -432,14 +432,14 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		}
 
 		// get the rwset
-		pRespPayload, err := protoutil.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.Action.ProposalResponsePayload)
 		if err != nil {
 			return policyErr(fmt.Errorf("GetProposalResponsePayload error %s", err))
 		}
 		if pRespPayload.Extension == nil {
 			return policyErr(fmt.Errorf("nil pRespPayload.Extension"))
 		}
-		respPayload, err := protoutil.GetChaincodeAction(pRespPayload.Extension)
+		respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
 		if err != nil {
 			return policyErr(fmt.Errorf("GetChaincodeAction error %s", err))
 		}

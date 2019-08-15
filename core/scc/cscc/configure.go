@@ -168,7 +168,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			return shim.Error("Cannot join the channel <nil> configuration block provided")
 		}
 
-		block, err := protoutil.GetBlockFromBlockBytes(args[1])
+		block, err := protoutil.UnmarshalBlock(args[1])
 		if err != nil {
 			return shim.Error(fmt.Sprintf("Failed to reconstruct the genesis block, %s", err))
 		}

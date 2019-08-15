@@ -44,13 +44,13 @@ func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentit
 	}
 
 	// the original header
-	hdr, err := protoutil.GetHeader(proposal.Header)
+	hdr, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal the proposal header")
 	}
 
 	// the original payload
-	pPayl, err := protoutil.GetChaincodeProposalPayload(proposal.Payload)
+	pPayl, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal the proposal payload")
 	}
@@ -153,7 +153,7 @@ func TestGoodPath(t *testing.T) {
 		return
 	}
 
-	txx, err := protoutil.GetTransaction(payl.Data)
+	txx, err := protoutil.UnmarshalTransaction(payl.Data)
 	if err != nil {
 		t.Fatalf("GetTransaction failed, err %s", err)
 		return

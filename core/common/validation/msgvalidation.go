@@ -31,7 +31,7 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header, chd
 	putilsLogger.Debugf("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
 
 	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
-	chaincodeHdrExt, err := protoutil.GetChaincodeHeaderExtension(chdr.Extension)
+	chaincodeHdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
 		return nil, errors.New("invalid header extension for type CHAINCODE")
 	}
@@ -71,13 +71,13 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	putilsLogger.Debugf("ValidateProposalMessage starts for signed proposal %p", signedProp)
 
 	// extract the Proposal message from signedProp
-	prop, err := protoutil.GetProposal(signedProp.ProposalBytes)
+	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	// 1) look at the ProposalHeader
-	hdr, err := protoutil.GetHeader(prop.Header)
+	hdr, err := protoutil.UnmarshalHeader(prop.Header)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -245,7 +245,7 @@ func validateCommonHeader(hdr *common.Header) (*common.ChannelHeader, *common.Si
 		return nil, nil, err
 	}
 
-	shdr, err := protoutil.GetSignatureHeader(hdr.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -289,7 +289,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 	}
 
 	// if the type is ENDORSER_TRANSACTION we unmarshal a Transaction message
-	tx, err := protoutil.GetTransaction(data)
+	tx, err := protoutil.UnmarshalTransaction(data)
 	if err != nil {
 		return err
 	}
@@ -317,7 +317,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		}
 
 		// if the type is ENDORSER_TRANSACTION we unmarshal a SignatureHeader
-		sHdr, err := protoutil.GetSignatureHeader(act.Header)
+		sHdr, err := protoutil.UnmarshalSignatureHeader(act.Header)
 		if err != nil {
 			return err
 		}
@@ -332,13 +332,13 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		putilsLogger.Debugf("validateEndorserTransaction info: signature header is valid")
 
 		// if the type is ENDORSER_TRANSACTION we unmarshal a ChaincodeActionPayload
-		ccActionPayload, err := protoutil.GetChaincodeActionPayload(act.Payload)
+		ccActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(act.Payload)
 		if err != nil {
 			return err
 		}
 
 		// extract the proposal response payload
-		prp, err := protoutil.GetProposalResponsePayload(ccActionPayload.Action.ProposalResponsePayload)
+		prp, err := protoutil.UnmarshalProposalResponsePayload(ccActionPayload.Action.ProposalResponsePayload)
 		if err != nil {
 			return err
 		}
@@ -390,7 +390,7 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, pb.TxValidationCo
 	}
 
 	// get the payload from the envelope
-	payload, err := protoutil.GetPayload(e)
+	payload, err := protoutil.UnmarshalPayload(e.Payload)
 	if err != nil {
 		putilsLogger.Errorf("GetPayload returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_PAYLOAD
