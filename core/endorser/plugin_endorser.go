@@ -10,12 +10,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/transientstore"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -165,43 +163,13 @@ type PluginEndorser struct {
 }
 
 // EndorseWithPlugin endorses the response with a plugin
-func (pe *PluginEndorser) EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, error) {
-	endorserLogger.Debug("Entering endorsement for", ctx)
-
-	if ctx.Response == nil {
-		return nil, errors.New("response is nil")
-	}
-
-	if ctx.Response.Status >= shim.ERRORTHRESHOLD {
-		return &pb.ProposalResponse{Response: ctx.Response}, nil
-	}
-
-	plugin, err := pe.getOrCreatePlugin(PluginName(ctx.PluginName), ctx.Channel)
+func (pe *PluginEndorser) EndorseWithPlugin(pluginName, channelID string, prpBytes []byte, signedProposal *pb.SignedProposal) (*pb.Endorsement, []byte, error) {
+	plugin, err := pe.getOrCreatePlugin(PluginName(pluginName), channelID)
 	if err != nil {
-		endorserLogger.Warning("Endorsement with plugin for", ctx, " failed:", err)
-		return nil, errors.Errorf("plugin with name %s could not be used: %v", ctx.PluginName, err)
+		return nil, nil, errors.WithMessagef(err, "plugin with name %s could not be used", pluginName)
 	}
 
-	prpBytes, err := proposalResponsePayloadFromContext(ctx)
-	if err != nil {
-		endorserLogger.Warning("Endorsement with plugin for", ctx, " failed:", err)
-		return nil, errors.Wrap(err, "failed assembling proposal response payload")
-	}
-
-	endorsement, prpBytes, err := plugin.Endorse(prpBytes, ctx.SignedProposal)
-	if err != nil {
-		endorserLogger.Warning("Endorsement with plugin for", ctx, " failed:", err)
-		return nil, errors.WithStack(err)
-	}
-
-	resp := &pb.ProposalResponse{
-		Version:     1,
-		Endorsement: endorsement,
-		Payload:     prpBytes,
-		Response:    ctx.Response,
-	}
-	endorserLogger.Debug("Exiting", ctx)
-	return resp, nil
+	return plugin.Endorse(prpBytes, signedProposal)
 }
 
 // getOrCreatePlugin returns a plugin instance for the given plugin name and channel
@@ -228,25 +196,4 @@ func (pe *PluginEndorser) getOrCreatePluginChannelMapping(plugin PluginName, pf 
 		pe.pluginChannelMapping[PluginName(plugin)] = endorserChannelMapping
 	}
 	return endorserChannelMapping
-}
-
-func proposalResponsePayloadFromContext(ctx Context) ([]byte, error) {
-	hdr, err := protoutil.UnmarshalHeader(ctx.Proposal.Header)
-	if err != nil {
-		endorserLogger.Warning("Failed parsing header", err)
-		return nil, errors.Wrap(err, "failed parsing header")
-	}
-
-	pHashBytes, err := protoutil.GetProposalHash1(hdr, ctx.Proposal.Payload)
-	if err != nil {
-		endorserLogger.Warning("Failed computing proposal hash", err)
-		return nil, errors.Wrap(err, "could not compute proposal hash")
-	}
-
-	prpBytes, err := protoutil.GetBytesProposalResponsePayload(pHashBytes, ctx.Response, ctx.SimRes, ctx.Event, ctx.ChaincodeID)
-	if err != nil {
-		endorserLogger.Warning("Failed marshaling the proposal response payload to bytes", err)
-		return nil, errors.New("failure while marshaling the ProposalResponsePayload")
-	}
-	return prpBytes, nil
 }

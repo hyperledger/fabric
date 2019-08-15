@@ -67,7 +67,7 @@ type Support interface {
 	CheckACL(channelID string, signedProp *pb.SignedProposal) error
 
 	// EndorseWithPlugin endorses the response with a plugin
-	EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, error)
+	EndorseWithPlugin(pluginName, channnelID string, prpBytes []byte, signedProposal *pb.SignedProposal) (*pb.Endorsement, []byte, error)
 
 	// GetLedgerHeight returns ledger height for given channelID
 	GetLedgerHeight(channelID string) (uint64, error)
@@ -230,26 +230,48 @@ func (e *Endorser) endorseProposal(up *UnpackedProposal, response *pb.Response, 
 	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChaincodeName)
 	defer endorserLogger.Debugf("[%s][%s] Exit", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId))
 
+	if response.Status >= shim.ERRORTHRESHOLD {
+		return &pb.ProposalResponse{Response: response}, nil
+	}
+
+	hdr, err := protoutil.UnmarshalHeader(up.Proposal.Header)
+	if err != nil {
+		endorserLogger.Warning("Failed parsing header", err)
+		return nil, errors.Wrap(err, "failed parsing header")
+	}
+
+	pHashBytes, err := protoutil.GetProposalHash1(hdr, up.Proposal.Payload)
+	if err != nil {
+		endorserLogger.Warning("Failed computing proposal hash", err)
+		return nil, errors.Wrap(err, "could not compute proposal hash")
+	}
+
+	prpBytes, err := protoutil.GetBytesProposalResponsePayload(pHashBytes, response, simRes, eventBytes, &pb.ChaincodeID{
+		Name:    up.ChaincodeName,
+		Version: cd.CCVersion(),
+	})
+	if err != nil {
+		endorserLogger.Warning("Failed marshaling the proposal response payload to bytes", err)
+		return nil, errors.New("failure while marshaling the ProposalResponsePayload")
+	}
+
 	escc := cd.Endorsement()
 
 	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChaincodeName, escc)
 
-	ctx := Context{
-		PluginName:     escc,
-		Channel:        up.ChannelHeader.ChannelId,
-		SignedProposal: up.SignedProposal,
-		ChaincodeID: &pb.ChaincodeID{
-			Name:    up.ChaincodeName,
-			Version: cd.CCVersion(),
-		},
-		Event:    eventBytes,
-		SimRes:   simRes,
-		Response: response,
-		// Visibility is checked to be nil at the beginning of the flow, so it is safe not to set
-		Proposal: up.Proposal,
-		TxID:     up.ChannelHeader.TxId,
+	endorsement, prpBytes, err := e.s.EndorseWithPlugin(escc, up.ChannelHeader.ChannelId, prpBytes, up.SignedProposal)
+	if err != nil {
+		return nil, errors.WithMessage(err, "endorsing with plugin failed")
 	}
-	return e.s.EndorseWithPlugin(ctx)
+
+	resp := &pb.ProposalResponse{
+		Version:     1,
+		Endorsement: endorsement,
+		Payload:     prpBytes,
+		Response:    response,
+	}
+
+	return resp, nil
 }
 
 // preProcess checks the tx proposal headers, uniqueness and ACL
