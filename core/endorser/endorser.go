@@ -353,9 +353,26 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 			"success", strconv.FormatBool(success),
 		}
 		e.Metrics.ProposalDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
-
 	}()
 
+	pResp, err := e.ProcessProposalSuccessfullyOrError(up)
+	if err != nil {
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
+	}
+
+	if pResp.Endorsement != nil || up.ChannelHeader.ChannelId == "" {
+		// We mark the tx as successfull only if it was successfully endorsed, or
+		// if it was a system chaincode on a channel-less channel and therefore
+		// cannot be endorsed.
+		success = true
+
+		// total failed proposals = ProposalsReceived-SuccessfulProposals
+		e.Metrics.SuccessfulProposals.Add(1)
+	}
+	return pResp, nil
+}
+
+func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb.ProposalResponse, error) {
 	txParams := &ccprovider.TransactionParams{
 		ChannelID:  up.ChannelHeader.ChannelId,
 		TxID:       up.ChannelHeader.TxId,
@@ -364,9 +381,9 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}
 
 	if acquireTxSimulator(up.ChannelHeader.ChannelId, up.ChaincodeName) {
-		txSim, err := e.s.GetTxSimulator(up.ChannelHeader.ChannelId, up.ChannelHeader.TxId)
+		txSim, err := e.s.GetTxSimulator(up.ChannelID(), up.TxID())
 		if err != nil {
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
+			return nil, err
 		}
 
 		// txsim acquires a shared lock on the stateDB. As this would impact the block commits (i.e., commit
@@ -378,9 +395,9 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		// released, the following txsim.Done() simply returns.
 		defer txSim.Done()
 
-		hqe, err := e.s.GetHistoryQueryExecutor(up.ChannelHeader.ChannelId)
+		hqe, err := e.s.GetHistoryQueryExecutor(up.ChannelID())
 		if err != nil {
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
+			return nil, err
 		}
 
 		txParams.TXSimulator = txSim
@@ -389,13 +406,13 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	cdLedger, err := e.s.GetChaincodeDefinition(up.ChannelHeader.ChannelId, up.ChaincodeName, txParams.TXSimulator)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: fmt.Sprintf("make sure the chaincode %s has been successfully defined on channel %s and try again: %s", up.ChaincodeName, up.ChannelID(), err)}}, nil
+		return nil, errors.WithMessagef(err, "make sure the chaincode %s has been successfully defined on channel %s and try again", up.ChaincodeName, up.ChannelID())
 	}
 
 	// 1 -- simulate
 	res, simulationResult, ccevent, err := e.SimulateProposal(txParams, up.ChaincodeName, up.Input)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
+		return nil, err
 	}
 
 	cceventBytes, err := CreateCCEventBytes(ccevent)
@@ -407,7 +424,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, res.Status, up.TxID())
 		pResp, err := protoutil.CreateProposalResponseFailure(up.Proposal.Header, up.Proposal.Payload, res, simulationResult, cceventBytes, up.ChaincodeName)
 		if err != nil {
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
+			return nil, err
 		}
 
 		return pResp, nil
@@ -432,7 +449,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		if err != nil {
 			meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(false))
 			e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
-			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
+			return nil, err
 		}
 		if pResp.Response.Status >= shim.ERRORTHRESHOLD {
 			// the default ESCC treats all status codes about threshold as errors and fails endorsement
@@ -448,10 +465,6 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// contains the "return value" from the
 	// chaincode invocation
 	pResp.Response = res
-
-	// total failed proposals = ProposalsReceived-SuccessfulProposals
-	e.Metrics.SuccessfulProposals.Add(1)
-	success = true
 
 	return pResp, nil
 }
