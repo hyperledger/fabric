@@ -422,40 +422,36 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 	}
 
 	// 2 -- endorse and get a marshalled ProposalResponse message
-	var pResp *pb.ProposalResponse
 
-	// TODO till we implement global ESCC, CSCC for system chaincodes
-	// chainless proposals (such as CSCC) don't have to be endorsed
 	if up.ChannelID() == "" {
-		pResp = &pb.ProposalResponse{}
-	} else {
-		pResp, err = e.endorseProposal(up, res, simulationResult, cceventBytes, cdLedger)
-
-		// if error, capture endorsement failure metric
-		meterLabels := []string{
-			"channel", up.ChannelID(),
-			"chaincode", up.ChaincodeName,
-		}
-
-		if err != nil {
-			meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(false))
-			e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
-			return nil, err
-		}
-		if pResp.Response.Status >= shim.ERRORTHRESHOLD {
-			// the default ESCC treats all status codes about threshold as errors and fails endorsement
-			// useful to track this as a separate metric
-			meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
-			e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
-			endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, up.TxID())
-			return pResp, nil
-		}
+		// Chaincode invocations without a channel ID is a broken concept
+		// that should be removed in the future.  For now, return unendorsed
+		// success.
+		return &pb.ProposalResponse{
+			Response: res,
+		}, nil
 	}
 
-	// Set the proposal response payload - it
-	// contains the "return value" from the
-	// chaincode invocation
-	pResp.Response = res
+	// if error, capture endorsement failure metric
+	meterLabels := []string{
+		"channel", up.ChannelID(),
+		"chaincode", up.ChaincodeName,
+	}
+
+	pResp, err := e.endorseProposal(up, res, simulationResult, cceventBytes, cdLedger)
+	if err != nil {
+		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(false))
+		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
+		return nil, err
+	}
+
+	if pResp.Response.Status >= shim.ERRORTHRESHOLD {
+		// the default ESCC treats all status codes about threshold as errors and fails endorsement
+		// useful to track this as a separate metric
+		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
+		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
+		endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, up.TxID())
+	}
 
 	return pResp, nil
 }
