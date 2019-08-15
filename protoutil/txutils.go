@@ -170,7 +170,11 @@ func CreateSignedTx(
 	}
 
 	// get header extensions so we have the visibility field
-	hdrExt, err := GetChaincodeHeaderExtension(hdr)
+	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, err
+	}
+	hdrExt, err := GetChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
 		return nil, err
 	}

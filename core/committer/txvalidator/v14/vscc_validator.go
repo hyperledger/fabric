@@ -39,13 +39,24 @@ func newVSCCValidator(chainID string, cr ChannelResources, pluginValidator *Plug
 	}
 }
 
+func getChaincodeHeaderExtension(hdr *common.Header) (*peer.ChaincodeHeaderExtension, error) {
+	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
+	err = proto.Unmarshal(chdr.Extension, chaincodeHdrExt)
+	return chaincodeHdrExt, errors.Wrap(err, "error unmarshaling ChaincodeHeaderExtension")
+}
+
 // VSCCValidateTx executes vscc validation for transaction
 func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode) {
 	chainID := v.chainID
 	logger.Debugf("[%s] VSCCValidateTx starts for bytes %p", chainID, envBytes)
 
 	// get header extensions so we have the chaincode ID
-	hdrExt, err := protoutil.GetChaincodeHeaderExtension(payload.Header)
+	hdrExt, err := getChaincodeHeaderExtension(payload.Header)
 	if err != nil {
 		return err, peer.TxValidationCode_BAD_HEADER_EXTENSION
 	}

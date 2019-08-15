@@ -128,15 +128,10 @@ func GetNonce(prop *peer.Proposal) ([]byte, error) {
 	return shdr.Nonce, nil
 }
 
-// GetChaincodeHeaderExtension get chaincode header extension given header
-func GetChaincodeHeaderExtension(hdr *common.Header) (*peer.ChaincodeHeaderExtension, error) {
-	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
-	if err != nil {
-		return nil, err
-	}
-
+// GetChaincodeHeaderExtension get chaincode header extension given bytes
+func GetChaincodeHeaderExtension(hdrExtension []byte) (*peer.ChaincodeHeaderExtension, error) {
 	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
-	err = proto.Unmarshal(chdr.Extension, chaincodeHdrExt)
+	err := proto.Unmarshal(hdrExtension, chaincodeHdrExt)
 	return chaincodeHdrExt, errors.Wrap(err, "error unmarshaling ChaincodeHeaderExtension")
 }
 
