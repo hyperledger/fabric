@@ -79,6 +79,7 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		if err2 != nil {
 			return err2
 		}
+		logger.Infof("Retrieving last config block: %d", lc)
 		block, err = cf.DeliverClient.GetSpecifiedBlock(lc)
 	default:
 		num, err2 := strconv.Atoi(args[0])
