@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/scc/lscc"
@@ -41,10 +42,12 @@ var _ = Describe("LSCC", func() {
 
 		fakeSCCProvider = &mock.SystemChaincodeProvider{}
 		fakeQueryExecutor = &mock.QueryExecutor{}
+		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 
 		l = &lscc.LifeCycleSysCC{
 			Support:     fakeSupport,
 			SCCProvider: fakeSCCProvider,
+			BCCSP:       cryptoProvider,
 		}
 
 		ccData = &ccprovider.ChaincodeData{

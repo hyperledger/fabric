@@ -488,7 +488,9 @@ func TestRWSetTooBig(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -548,7 +550,9 @@ func TestValidateDeployFail(t *testing.T) {
 
 	v := newValidationInstance(state)
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -815,7 +819,9 @@ func TestAlreadyDeployed(t *testing.T) {
 
 	v := newValidationInstance(state)
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -909,8 +915,10 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 
 	v := newValidationInstance(state)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -970,7 +978,9 @@ func TestValidateDeployOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1028,8 +1038,10 @@ func TestValidateDeployNOK(t *testing.T) {
 
 	v := newValidationInstance(state)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1079,7 +1091,9 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	})
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1171,7 +1185,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
 
 	v = newValidationInstance(state)
-	lccc = lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	lccc = lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc = shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1196,7 +1210,9 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1269,7 +1285,9 @@ func TestInvalidUpgrade(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1311,7 +1329,9 @@ func TestValidateUpgradeOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1374,7 +1394,9 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1443,7 +1465,9 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	})
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1630,7 +1654,9 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1716,7 +1742,9 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 	v := newCustomValidationInstance(qec, capabilities)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 
@@ -1794,7 +1822,9 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	v := newValidationInstance(state)
 
 	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	lccc := lscc.New(nil, mp, mockAclProvider, mockMSPIDGetter, &mockPolicyChecker{}, cryptoProvider)
 	stublccc := shimtest.NewMockStub("lscc", lccc)
 	state["lscc"] = stublccc.State
 

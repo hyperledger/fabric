@@ -9,7 +9,6 @@ package multichannel
 import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
@@ -29,6 +28,7 @@ type ChainSupport struct {
 	consensus.Chain
 	cutter blockcutter.Receiver
 	identity.SignerSerializer
+	BCCSP bccsp.BCCSP
 
 	// NOTE: It makes sense to add this to the ChainSupport since the design of Registrar does not assume
 	// that there is a single consensus type at this orderer node and therefore the resolution of
@@ -62,6 +62,7 @@ func newChainSupport(
 			ledgerResources,
 			blockcutterMetrics,
 		),
+		BCCSP: bccsp,
 	}
 
 	// Set up the msgprocessor
@@ -195,7 +196,7 @@ func (cs *ChainSupport) VerifyBlockSignature(sd []*protoutil.SignedData, envelop
 	policyMgr := cs.PolicyManager()
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {
-		bundle, err := channelconfig.NewBundle(cs.ChannelID(), envelope.Config, factory.GetDefault())
+		bundle, err := channelconfig.NewBundle(cs.ChannelID(), envelope.Config, cs.BCCSP)
 		if err != nil {
 			return err
 		}

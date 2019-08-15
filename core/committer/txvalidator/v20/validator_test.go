@@ -20,6 +20,7 @@ import (
 	protosmsp "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	protospeer "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/semaphore"
@@ -178,12 +179,13 @@ func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *supportmocks.Identi
 
 	mockCR := &txvalidatormocks.CollectionResources{}
 
+	cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	v := txvalidatorv20.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
-		&lscc.LifeCycleSysCC{},
+		&lscc.LifeCycleSysCC{BCCSP: cryptoProvider},
 		mockCR,
 		pm,
 		mockCpmg,
@@ -1082,12 +1084,15 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
 	mockCpmg.On("Manager", mock.Anything).Return(&txvalidatormocks.PolicyManager{})
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	v := txvalidatorv20.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
-		&lscc.LifeCycleSysCC{},
+		&lscc.LifeCycleSysCC{BCCSP: cryptoProvider},
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
@@ -1112,7 +1117,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	}
 
 	// Keep default callback
-	err := v.Validate(b)
+	err = v.Validate(b)
 	// Restore default callback
 	assert.NoError(t, err)
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
@@ -1153,12 +1158,14 @@ func TestValidationPluginExecutionError(t *testing.T) {
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
 	mockCpmg.On("Manager", mock.Anything).Return(&txvalidatormocks.PolicyManager{})
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	v := txvalidatorv20.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
-		&lscc.LifeCycleSysCC{},
+		&lscc.LifeCycleSysCC{BCCSP: cryptoProvider},
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
@@ -1170,7 +1177,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 
-	err := v.Validate(b)
+	err = v.Validate(b)
 	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
 	assert.Contains(t, executionErr.Error(), "I/O error")
 }
@@ -1203,12 +1210,14 @@ func TestValidationPluginNotFound(t *testing.T) {
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
 	mockCpmg.On("Manager", mock.Anything).Return(&txvalidatormocks.PolicyManager{})
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	v := txvalidatorv20.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{ACVal: v20Capabilities(), MSPManagerVal: mspmgr},
 		mockLedger,
-		&lscc.LifeCycleSysCC{},
+		&lscc.LifeCycleSysCC{BCCSP: cryptoProvider},
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
@@ -1220,7 +1229,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 
-	err := v.Validate(b)
+	err = v.Validate(b)
 	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
 	assert.Contains(t, executionErr.Error(), "plugin with name vscc wasn't found")
 }

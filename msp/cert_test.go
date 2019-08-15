@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -96,7 +97,9 @@ func TestSanitizeCert(t *testing.T) {
 }
 
 func TestCertExpiration(t *testing.T) {
-	msp := &bccspmsp{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	msp := &bccspmsp{bccsp: cryptoProvider}
 	msp.opts = &x509.VerifyOptions{}
 	msp.opts.DNSName = "test.example.com"
 
@@ -104,7 +107,7 @@ func TestCertExpiration(t *testing.T) {
 	_, cert := generateSelfSignedCert(t, time.Now().Add(24*time.Hour))
 	msp.opts.Roots = x509.NewCertPool()
 	msp.opts.Roots.AddCert(cert)
-	_, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
+	_, err = msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 	assert.NoError(t, err)
 
 	// Certificate is in the past

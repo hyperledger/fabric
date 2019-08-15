@@ -112,9 +112,11 @@ var _ = Describe("Consenter", func() {
 	})
 
 	When("the consenter is asked for a chain", func() {
+		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		chainInstance := &etcdraft.Chain{}
 		cs := &multichannel.ChainSupport{
 			Chain: chainInstance,
+			BCCSP: cryptoProvider,
 		}
 		BeforeEach(func() {
 			chainGetter.On("GetChain", "mychannel").Return(cs)

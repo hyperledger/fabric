@@ -111,7 +111,13 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 	pr := platforms.NewRegistry(&golang.Platform{})
 	mockAclProvider := &mock.ACLProvider{}
 	builtinSCCs := map[string]struct{}{"lscc": {}}
-	lsccImpl := lscc.New(builtinSCCs, &lscc.PeerShim{Peer: peerInstance}, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	lsccImpl := lscc.New(
+		builtinSCCs,
+		&lscc.PeerShim{Peer: peerInstance},
+		mockAclProvider, peerInstance.GetMSPIDs,
+		newPolicyChecker(peerInstance),
+		cryptoProvider,
+	)
 	ml := &cm.Lifecycle{}
 	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
