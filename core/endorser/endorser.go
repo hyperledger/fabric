@@ -371,37 +371,35 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		return nil, errors.Wrap(err, "failed to marshal chaincode event")
 	}
 
+	prpBytes, err := protoutil.GetBytesProposalResponsePayload(up.ProposalHash, res, simulationResult, cceventBytes, &pb.ChaincodeID{
+		Name:    up.ChaincodeName,
+		Version: cdLedger.CCVersion(),
+	})
+	if err != nil {
+		endorserLogger.Warning("Failed marshaling the proposal response payload to bytes", err)
+		return nil, errors.WithMessage(err, "failed to create the proposal response")
+	}
+
 	// if error, capture endorsement failure metric
 	meterLabels := []string{
 		"channel", up.ChannelID(),
 		"chaincode", up.ChaincodeName,
 	}
 
-	if res.Status >= shim.ERROR {
-		endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, res.Status, up.TxID())
-		prpBytes, err := protoutil.GetBytesProposalResponsePayload(up.ProposalHash, res, simulationResult, cceventBytes, &pb.ChaincodeID{Name: up.ChaincodeName})
-		if err != nil {
-			return nil, err
-		}
-
+	switch {
+	case res.Status >= shim.ERROR:
 		return &pb.ProposalResponse{
 			Response: res,
 			Payload:  prpBytes,
 		}, nil
-	}
-
-	// 2 -- endorse and get a marshalled ProposalResponse message
-
-	if up.ChannelID() == "" {
+	case up.ChannelID() == "":
 		// Chaincode invocations without a channel ID is a broken concept
 		// that should be removed in the future.  For now, return unendorsed
 		// success.
 		return &pb.ProposalResponse{
 			Response: res,
 		}, nil
-	}
-
-	if res.Status >= shim.ERRORTHRESHOLD {
+	case res.Status >= shim.ERRORTHRESHOLD:
 		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
 		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
 		endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, up.TxID())
@@ -410,34 +408,24 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		}, nil
 	}
 
-	prpBytes, err := protoutil.GetBytesProposalResponsePayload(up.ProposalHash, res, simulationResult, cceventBytes, &pb.ChaincodeID{
-		Name:    up.ChaincodeName,
-		Version: cdLedger.CCVersion(),
-	})
-	if err != nil {
-		endorserLogger.Warning("Failed marshaling the proposal response payload to bytes", err)
-		return nil, errors.New("failure while marshaling the ProposalResponsePayload")
-	}
-
 	escc := cdLedger.Endorsement()
 
 	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, escc)
 
-	endorsement, prpBytes, err := e.s.EndorseWithPlugin(escc, up.ChannelID(), prpBytes, up.SignedProposal)
+	// Note, mPrpBytes is the same as prpBytes by default endorsement plugin, but others could change it.
+	endorsement, mPrpBytes, err := e.s.EndorseWithPlugin(escc, up.ChannelID(), prpBytes, up.SignedProposal)
 	if err != nil {
 		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(false))
 		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
 		return nil, errors.WithMessage(err, "endorsing with plugin failed")
 	}
 
-	pResp := &pb.ProposalResponse{
+	return &pb.ProposalResponse{
 		Version:     1,
 		Endorsement: endorsement,
-		Payload:     prpBytes,
+		Payload:     mPrpBytes,
 		Response:    res,
-	}
-
-	return pResp, nil
+	}, nil
 }
 
 // determine whether or not a transaction simulator should be
