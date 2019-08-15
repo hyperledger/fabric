@@ -476,7 +476,7 @@ func deploy2(chainID string, ccContext *CCContext, chaincodeDeploymentSpec *pb.C
 		return nil, fmt.Errorf("Error deploying chaincode (1): %s", err)
 	}
 
-	if resp, _, err = chaincodeSupport.ExecuteLegacyInit(txParams, ccContext.Name, ccContext.Version, chaincodeDeploymentSpec); err != nil {
+	if resp, _, err = chaincodeSupport.ExecuteLegacyInit(txParams, ccContext.Name, ccContext.Version, chaincodeDeploymentSpec.ChaincodeSpec.Input); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode(2): %s", err)
 	}
 

@@ -94,7 +94,7 @@ func (s *MockSupport) IsSysCC(name string) bool {
 	return s.IsSysCCRv
 }
 
-func (s *MockSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *MockSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, name, version string, spec *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return s.ExecuteCDSResp, s.ExecuteCDSEvent, s.ExecuteCDSError
 }
 

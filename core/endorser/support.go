@@ -110,19 +110,9 @@ func (s *SupportImpl) IsSysCC(name string) bool {
 	return s.BuiltinSCCs.IsSysCC(name)
 }
 
-// GetChaincode returns the CCPackage from the fs
-func (s *SupportImpl) GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
-	ccpack, err := ccprovider.GetChaincodeFromFS(cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not get chaincode from fs")
-	}
-
-	return ccpack.GetDepSpec(), nil
-}
-
 // ExecuteInit a deployment proposal and return the chaincode response
-func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, cds *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error) {
-	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, name, version, cds)
+func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, name, version string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, name, version, input)
 }
 
 // Execute a proposal and return the chaincode response

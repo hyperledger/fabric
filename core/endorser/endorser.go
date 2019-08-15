@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
@@ -20,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -60,7 +58,7 @@ type Support interface {
 	Execute(txParams *ccprovider.TransactionParams, name string, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
 
 	// ExecuteLegacyInit - executes a deployment proposal, return original response of chaincode
-	ExecuteLegacyInit(txParams *ccprovider.TransactionParams, cid, name, version, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, spec *pb.ChaincodeDeploymentSpec) (*pb.Response, *pb.ChaincodeEvent, error)
+	ExecuteLegacyInit(txParams *ccprovider.TransactionParams, name, version string, spec *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
 
 	// GetChaincodeDefinition returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
 	GetChaincodeDefinition(channelID, chaincodeID string, txsim ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
@@ -68,9 +66,6 @@ type Support interface {
 	// CheckACL checks the ACL for the resource for the channel using the
 	// SignedProposal from which an id can be extracted for testing against a policy
 	CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error
-
-	// GetChaincodeDeploymentSpecFS returns the deploymentspec for a chaincode from the fs
-	GetChaincodeDeploymentSpecFS(cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error)
 
 	// EndorseWithPlugin endorses the response with a plugin
 	EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, error)
@@ -86,7 +81,6 @@ type Support interface {
 type Endorser struct {
 	distributePrivateData privateDataDistributor
 	s                     Support
-	PlatformRegistry      *packaging.Registry
 	PvtRWSetAssembler
 	Metrics *EndorserMetrics
 }
@@ -101,11 +95,10 @@ type validateResult struct {
 }
 
 // NewEndorserServer creates and returns a new Endorser server instance.
-func NewEndorserServer(privDist privateDataDistributor, s Support, pr *packaging.Registry, metricsProv metrics.Provider) *Endorser {
+func NewEndorserServer(privDist privateDataDistributor, s Support, metricsProv metrics.Provider) *Endorser {
 	e := &Endorser{
 		distributePrivateData: privDist,
 		s:                     s,
-		PlatformRegistry:      pr,
 		PvtRWSetAssembler:     &rwSetAssembler{},
 		Metrics:               NewEndorserMetrics(metricsProv),
 	}
@@ -142,18 +135,7 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	// NOTE that if there's an error all simulation, including the chaincode
 	// table changes in lscc will be thrown away
 	if chaincodeName == "lscc" && len(input.Args) >= 3 && (string(input.Args[0]) == "deploy" || string(input.Args[0]) == "upgrade") {
-		userCDS, err := protoutil.GetChaincodeDeploymentSpec(input.Args[2])
-		if err != nil {
-			return nil, nil, err
-		}
-
-		err = e.PlatformRegistry.ValidateDeploymentSpec(userCDS.ChaincodeSpec.Type.String(), userCDS.CodePackage)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		var cds *pb.ChaincodeDeploymentSpec
-		cds, err = e.SanitizeUserCDS(userCDS)
+		cds, err := protoutil.GetChaincodeDeploymentSpec(input.Args[2])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -163,7 +145,7 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 			return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, txParams.ChannelID)
 		}
 
-		_, _, err = e.s.ExecuteLegacyInit(txParams, txParams.ChannelID, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, txParams.TxID, txParams.SignedProp, txParams.Proposal, cds)
+		_, _, err = e.s.ExecuteLegacyInit(txParams, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, cds.ChaincodeSpec.Input)
 		if err != nil {
 			// increment the failure to indicate instantion/upgrade failures
 			meterLabels := []string{
@@ -177,19 +159,6 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	// ----- END -------
 
 	return res, ccevent, err
-}
-
-func (e *Endorser) SanitizeUserCDS(userCDS *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
-	fsCDS, err := e.s.GetChaincodeDeploymentSpecFS(userCDS)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot deploy a chaincode which is not installed")
-	}
-
-	sanitizedCDS := proto.Clone(fsCDS).(*pb.ChaincodeDeploymentSpec)
-	sanitizedCDS.CodePackage = nil
-	sanitizedCDS.ChaincodeSpec.Input = userCDS.ChaincodeSpec.Input
-
-	return sanitizedCDS, nil
 }
 
 // SimulateProposal simulates the proposal by calling the chaincode
