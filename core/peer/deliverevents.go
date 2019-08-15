@@ -108,6 +108,11 @@ func (s *DeliverServer) DeliverFiltered(srv peer.Deliver_DeliverFilteredServer) 
 	return s.DeliverHandler.Handle(srv.Context(), deliverServer)
 }
 
+// DeliverWithPrivateData sends a stream of blocks and pvtdata to a client after commitment
+func (s *DeliverServer) DeliverWithPrivateData(srv peer.Deliver_DeliverWithPrivateDataServer) (err error) {
+	panic("not implemented yet")
+}
+
 // Deliver sends a stream of blocks to a client after commitment
 func (s *DeliverServer) Deliver(srv peer.Deliver_DeliverServer) (err error) {
 	logger.Debugf("Starting new Deliver handler")
