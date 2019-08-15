@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package endorser
 
 import (
+	"crypto/sha256"
+
 	"github.com/golang/protobuf/proto"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
@@ -25,6 +27,7 @@ type UnpackedProposal struct {
 	Proposal        *pb.Proposal
 	SignatureHeader *cb.SignatureHeader
 	SignedProposal  *pb.SignedProposal
+	ProposalHash    []byte
 }
 
 func (up *UnpackedProposal) ChannelID() string {
@@ -100,6 +103,29 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 		return nil, errors.Errorf("chaincode input did not contain any input")
 	}
 
+	// unmarshal the chaincode proposal payload
+	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(prop.Payload)
+	if err != nil {
+		return nil, err
+	}
+
+	ppBytes, err := protoutil.GetBytesProposalPayloadForTx(cpp)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO, this was preserved from the proputils stuff, but should this be BCCSP?
+
+	// The proposal hash is the hash of the concatenation of:
+	// 1) The serialized Channel Header object
+	// 2) The serialized Signature Header object
+	// 3) The hash of the part of the chaincode proposal payload that will go to the tx
+	// (ie, the parts without the transient data)
+	propHash := sha256.New()
+	propHash.Write(hdr.ChannelHeader)
+	propHash.Write(hdr.SignatureHeader)
+	propHash.Write(ppBytes)
+
 	return &UnpackedProposal{
 		SignedProposal:  signedProp,
 		Proposal:        prop,
@@ -107,6 +133,7 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 		SignatureHeader: shdr,
 		ChaincodeName:   chaincodeHdrExt.ChaincodeId.Name,
 		Input:           cis.ChaincodeSpec.Input,
+		ProposalHash:    propHash.Sum(nil)[:],
 	}, nil
 }
 

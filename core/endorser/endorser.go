@@ -234,19 +234,7 @@ func (e *Endorser) endorseProposal(up *UnpackedProposal, response *pb.Response, 
 		return &pb.ProposalResponse{Response: response}, nil
 	}
 
-	hdr, err := protoutil.UnmarshalHeader(up.Proposal.Header)
-	if err != nil {
-		endorserLogger.Warning("Failed parsing header", err)
-		return nil, errors.Wrap(err, "failed parsing header")
-	}
-
-	pHashBytes, err := protoutil.GetProposalHash1(hdr, up.Proposal.Payload)
-	if err != nil {
-		endorserLogger.Warning("Failed computing proposal hash", err)
-		return nil, errors.Wrap(err, "could not compute proposal hash")
-	}
-
-	prpBytes, err := protoutil.GetBytesProposalResponsePayload(pHashBytes, response, simRes, eventBytes, &pb.ChaincodeID{
+	prpBytes, err := protoutil.GetBytesProposalResponsePayload(up.ProposalHash, response, simRes, eventBytes, &pb.ChaincodeID{
 		Name:    up.ChaincodeName,
 		Version: cd.CCVersion(),
 	})
@@ -422,12 +410,15 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 
 	if res.Status >= shim.ERROR {
 		endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, res.Status, up.TxID())
-		pResp, err := protoutil.CreateProposalResponseFailure(up.Proposal.Header, up.Proposal.Payload, res, simulationResult, cceventBytes, up.ChaincodeName)
+		prpBytes, err := protoutil.GetBytesProposalResponsePayload(up.ProposalHash, res, simulationResult, cceventBytes, &pb.ChaincodeID{Name: up.ChaincodeName})
 		if err != nil {
 			return nil, err
 		}
 
-		return pResp, nil
+		return &pb.ProposalResponse{
+			Response: res,
+			Payload:  prpBytes,
+		}, nil
 	}
 
 	// 2 -- endorse and get a marshalled ProposalResponse message
