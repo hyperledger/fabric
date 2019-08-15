@@ -225,43 +225,6 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 	return res, pubSimResBytes, ccevent, nil
 }
 
-// endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(up *UnpackedProposal, response *pb.Response, simRes, eventBytes []byte, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
-	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChaincodeName)
-	defer endorserLogger.Debugf("[%s][%s] Exit", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId))
-
-	if response.Status >= shim.ERRORTHRESHOLD {
-		return &pb.ProposalResponse{Response: response}, nil
-	}
-
-	prpBytes, err := protoutil.GetBytesProposalResponsePayload(up.ProposalHash, response, simRes, eventBytes, &pb.ChaincodeID{
-		Name:    up.ChaincodeName,
-		Version: cd.CCVersion(),
-	})
-	if err != nil {
-		endorserLogger.Warning("Failed marshaling the proposal response payload to bytes", err)
-		return nil, errors.New("failure while marshaling the ProposalResponsePayload")
-	}
-
-	escc := cd.Endorsement()
-
-	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChaincodeName, escc)
-
-	endorsement, prpBytes, err := e.s.EndorseWithPlugin(escc, up.ChannelHeader.ChannelId, prpBytes, up.SignedProposal)
-	if err != nil {
-		return nil, errors.WithMessage(err, "endorsing with plugin failed")
-	}
-
-	resp := &pb.ProposalResponse{
-		Version:     1,
-		Endorsement: endorsement,
-		Payload:     prpBytes,
-		Response:    response,
-	}
-
-	return resp, nil
-}
-
 // preProcess checks the tx proposal headers, uniqueness and ACL
 func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 	// at first, we check whether the message is valid
@@ -408,6 +371,12 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		return nil, errors.Wrap(err, "failed to marshal chaincode event")
 	}
 
+	// if error, capture endorsement failure metric
+	meterLabels := []string{
+		"channel", up.ChannelID(),
+		"chaincode", up.ChaincodeName,
+	}
+
 	if res.Status >= shim.ERROR {
 		endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, res.Status, up.TxID())
 		prpBytes, err := protoutil.GetBytesProposalResponsePayload(up.ProposalHash, res, simulationResult, cceventBytes, &pb.ChaincodeID{Name: up.ChaincodeName})
@@ -432,25 +401,40 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		}, nil
 	}
 
-	// if error, capture endorsement failure metric
-	meterLabels := []string{
-		"channel", up.ChannelID(),
-		"chaincode", up.ChaincodeName,
-	}
-
-	pResp, err := e.endorseProposal(up, res, simulationResult, cceventBytes, cdLedger)
-	if err != nil {
-		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(false))
-		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
-		return nil, err
-	}
-
-	if pResp.Response.Status >= shim.ERRORTHRESHOLD {
-		// the default ESCC treats all status codes about threshold as errors and fails endorsement
-		// useful to track this as a separate metric
+	if res.Status >= shim.ERRORTHRESHOLD {
 		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
 		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
 		endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, up.TxID())
+		return &pb.ProposalResponse{
+			Response: res,
+		}, nil
+	}
+
+	prpBytes, err := protoutil.GetBytesProposalResponsePayload(up.ProposalHash, res, simulationResult, cceventBytes, &pb.ChaincodeID{
+		Name:    up.ChaincodeName,
+		Version: cdLedger.CCVersion(),
+	})
+	if err != nil {
+		endorserLogger.Warning("Failed marshaling the proposal response payload to bytes", err)
+		return nil, errors.New("failure while marshaling the ProposalResponsePayload")
+	}
+
+	escc := cdLedger.Endorsement()
+
+	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, escc)
+
+	endorsement, prpBytes, err := e.s.EndorseWithPlugin(escc, up.ChannelID(), prpBytes, up.SignedProposal)
+	if err != nil {
+		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(false))
+		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
+		return nil, errors.WithMessage(err, "endorsing with plugin failed")
+	}
+
+	pResp := &pb.ProposalResponse{
+		Version:     1,
+		Endorsement: endorsement,
+		Payload:     prpBytes,
+		Response:    res,
 	}
 
 	return pResp, nil
