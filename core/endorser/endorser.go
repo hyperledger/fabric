@@ -125,6 +125,11 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 		return res, nil, nil
 	}
 
+	// Unless this is the weirdo LSCC case, just return
+	if chaincodeName != "lscc" || len(input.Args) < 3 || (string(input.Args[0]) != "deploy" && string(input.Args[0]) != "upgrade") {
+		return res, ccevent, err
+	}
+
 	// ----- BEGIN -  SECTION THAT MAY NEED TO BE DONE IN LSCC ------
 	// if this a call to deploy a chaincode, We need a mechanism
 	// to pass TxSimulator into LSCC. Till that is worked out this
@@ -133,31 +138,29 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	//
 	// NOTE that if there's an error all simulation, including the chaincode
 	// table changes in lscc will be thrown away
-	if chaincodeName == "lscc" && len(input.Args) >= 3 && (string(input.Args[0]) == "deploy" || string(input.Args[0]) == "upgrade") {
-		cds, err := protoutil.UnmarshalChaincodeDeploymentSpec(input.Args[2])
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// this should not be a system chaincode
-		if e.s.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
-			return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, txParams.ChannelID)
-		}
-
-		_, _, err = e.s.ExecuteLegacyInit(txParams, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, cds.ChaincodeSpec.Input)
-		if err != nil {
-			// increment the failure to indicate instantion/upgrade failures
-			meterLabels := []string{
-				"channel", txParams.ChannelID,
-				"chaincode", cds.ChaincodeSpec.ChaincodeId.Name,
-			}
-			e.Metrics.InitFailed.With(meterLabels...).Add(1)
-			return nil, nil, err
-		}
+	cds, err := protoutil.UnmarshalChaincodeDeploymentSpec(input.Args[2])
+	if err != nil {
+		return nil, nil, err
 	}
-	// ----- END -------
+
+	// this should not be a system chaincode
+	if e.s.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
+		return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, txParams.ChannelID)
+	}
+
+	_, _, err = e.s.ExecuteLegacyInit(txParams, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, cds.ChaincodeSpec.Input)
+	if err != nil {
+		// increment the failure to indicate instantion/upgrade failures
+		meterLabels := []string{
+			"channel", txParams.ChannelID,
+			"chaincode", cds.ChaincodeSpec.ChaincodeId.Name,
+		}
+		e.Metrics.InitFailed.With(meterLabels...).Add(1)
+		return nil, nil, err
+	}
 
 	return res, ccevent, err
+
 }
 
 // SimulateProposal simulates the proposal by calling the chaincode
@@ -223,28 +226,28 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 }
 
 // endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes, eventBytes []byte, chaincodeName string, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
-	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), chaincodeName)
-	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
+func (e *Endorser) endorseProposal(up *UnpackedProposal, response *pb.Response, simRes, eventBytes []byte, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
+	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChaincodeName)
+	defer endorserLogger.Debugf("[%s][%s] Exit", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId))
 
 	escc := cd.Endorsement()
 
-	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", chainID, shorttxid(txid), chaincodeName, escc)
+	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChaincodeName, escc)
 
 	ctx := Context{
 		PluginName:     escc,
-		Channel:        chainID,
-		SignedProposal: signedProp,
+		Channel:        up.ChannelHeader.ChannelId,
+		SignedProposal: up.SignedProposal,
 		ChaincodeID: &pb.ChaincodeID{
-			Name:    chaincodeName,
+			Name:    up.ChaincodeName,
 			Version: cd.CCVersion(),
 		},
 		Event:    eventBytes,
 		SimRes:   simRes,
 		Response: response,
 		// Visibility is checked to be nil at the beginning of the flow, so it is safe not to set
-		Proposal: proposal,
-		TxID:     txid,
+		Proposal: up.Proposal,
+		TxID:     up.ChannelHeader.TxId,
 	}
 	return e.s.EndorseWithPlugin(ctx)
 }
@@ -310,32 +313,26 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	addr := util.ExtractRemoteAddress(ctx)
 	endorserLogger.Debug("Entering: request from", addr)
+	defer endorserLogger.Debug("Exit: request from", addr)
 
 	// variables to capture proposal duration metric
-	var up *UnpackedProposal
-	var success bool
-	defer func() {
-		// capture proposal duration metric. hdrExt == nil indicates early failure
-		// where we don't capture latency metric. But the ProposalValidationFailed
-		// counter metric should shed light on those failures.
-		if up != nil {
-			meterLabels := []string{
-				"channel", up.ChannelHeader.ChannelId,
-				"chaincode", up.ChaincodeName,
-				"success", strconv.FormatBool(success),
-			}
-			e.Metrics.ProposalDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
-		}
-
-		endorserLogger.Debug("Exit: request from", addr)
-	}()
+	success := false
 
 	// 0 -- check and validate
-	var err error
-	up, err = e.preProcess(signedProp)
+	up, err := e.preProcess(signedProp)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
+
+	defer func() {
+		meterLabels := []string{
+			"channel", up.ChannelHeader.ChannelId,
+			"chaincode", up.ChaincodeName,
+			"success", strconv.FormatBool(success),
+		}
+		e.Metrics.ProposalDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
+
+	}()
 
 	txParams := &ccprovider.TransactionParams{
 		ChannelID:  up.ChannelHeader.ChannelId,
@@ -402,7 +399,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	if up.ChannelID() == "" {
 		pResp = &pb.ProposalResponse{}
 	} else {
-		pResp, err = e.endorseProposal(up.ChannelID(), up.TxID(), signedProp, up.Proposal, res, simulationResult, cceventBytes, up.ChaincodeName, cdLedger)
+		pResp, err = e.endorseProposal(up, res, simulationResult, cceventBytes, cdLedger)
 
 		// if error, capture endorsement failure metric
 		meterLabels := []string{
