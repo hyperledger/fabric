@@ -631,24 +631,6 @@ func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
 	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid", "false")
 }
 
-func TestSimulateProposal(t *testing.T) {
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, &mocks.MockSupport{
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mocks.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
-	}, &disabled.Provider{})
-
-	_, _, _, err := es.SimulateProposal(&ccprovider.TransactionParams{}, "")
-	assert.Error(t, err)
-}
-
 func TestEndorserAcquireTxSimulator(t *testing.T) {
 	tc := []struct {
 		name          string
