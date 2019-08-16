@@ -15,14 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
-	"github.com/hyperledger/fabric/common/util"
 	lproto "github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // shimTestCC example simple Chaincode implementation
-type shimTestCC struct {
-}
+type shimTestCC struct{}
 
 func (t *shimTestCC) Init(stub ChaincodeStubInterface) pb.Response {
 	_, args := stub.GetFunctionAndParameters()
@@ -192,7 +190,7 @@ func (t *shimTestCC) cc2cc(stub ChaincodeStubInterface, args []string) pb.Respon
 	if len(args) < 1 {
 		return Error("Invalid number of args for cc2cc. expecting at least 1")
 	}
-	return stub.InvokeChaincode(args[0], util.ToChaincodeArgs(args...), "")
+	return stub.InvokeChaincode(args[0], toChaincodeArgs(args...), "")
 }
 
 // rangeq calls range query

@@ -14,14 +14,21 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 )
 
+func toChaincodeArgs(args ...string) [][]byte {
+	ccArgs := make([][]byte, len(args))
+	for i, a := range args {
+		ccArgs[i] = []byte(a)
+	}
+	return ccArgs
+}
+
 func TestNewChaincodeStub(t *testing.T) {
-	expectedArgs := util.ToChaincodeArgs("function", "arg1", "arg2")
+	expectedArgs := toChaincodeArgs("function", "arg1", "arg2")
 	expectedDecorations := map[string][]byte{"decoration-key": []byte("decoration-value")}
 	expectedCreator := []byte("signature-header-creator")
 	expectedTransient := map[string][]byte{"key": []byte("value")}
@@ -79,123 +86,112 @@ func TestNewChaincodeStub(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		gt := NewGomegaWithT(t)
-
 		stub, err := newChaincodeStub(
 			&Handler{},
 			"channel-id",
 			"transaction-id",
-			&pb.ChaincodeInput{Args: expectedArgs, Decorations: expectedDecorations},
+			&pb.ChaincodeInput{Args: expectedArgs[:], Decorations: expectedDecorations},
 			tt.signedProposal,
 		)
 		if tt.expectedErr != "" {
-			gt.Expect(err).To(HaveOccurred())
-			gt.Expect(err).To(MatchError(tt.expectedErr))
+			assert.Error(t, err)
+			assert.EqualError(t, err, tt.expectedErr)
 			continue
 		}
-		gt.Expect(err).NotTo(HaveOccurred())
-		gt.Expect(stub).NotTo(BeNil())
+		assert.NoError(t, err)
+		assert.NotNil(t, stub)
 
-		gt.Expect(stub.handler).To(Equal(&Handler{}))
-		gt.Expect(stub.ChannelId).To(Equal("channel-id"))
-		gt.Expect(stub.TxID).To(Equal("transaction-id"))
-		gt.Expect(stub.args).To(Equal(expectedArgs))
-		gt.Expect(stub.decorations).To(Equal(expectedDecorations))
-		gt.Expect(stub.validationParameterMetakey).To(Equal("VALIDATION_PARAMETER"))
+		assert.Equal(t, &Handler{}, stub.handler, "expected empty handler")
+		assert.Equal(t, "channel-id", stub.ChannelId)
+		assert.Equal(t, "transaction-id", stub.TxID)
+		assert.Equal(t, expectedArgs, stub.args)
+		assert.Equal(t, expectedDecorations, stub.decorations)
+		assert.Equal(t, "VALIDATION_PARAMETER", stub.validationParameterMetakey)
 		if tt.signedProposal == nil {
-			gt.Expect(stub.proposal).To(BeNil())
-			gt.Expect(stub.creator).To(BeNil())
-			gt.Expect(stub.transient).To(BeNil())
-			gt.Expect(stub.binding).To(BeNil())
+			assert.Nil(t, stub.proposal, "expected nil proposal")
+			assert.Nil(t, stub.creator, "expected nil creator")
+			assert.Nil(t, stub.transient, "expected nil transient")
+			assert.Nil(t, stub.binding, "expected nil binding")
 			continue
 		}
 
 		prop := &pb.Proposal{}
 		err = proto.Unmarshal(tt.signedProposal.ProposalBytes, prop)
-		gt.Expect(err).NotTo(HaveOccurred())
-		gt.Expect(stub.proposal).To(Equal(prop))
+		assert.NoError(t, err)
+		assert.Equal(t, prop, stub.proposal)
 
-		gt.Expect(stub.creator).To(Equal(expectedCreator))
-		gt.Expect(stub.transient).To(Equal(expectedTransient))
+		assert.Equal(t, expectedCreator, stub.creator)
+		assert.Equal(t, expectedTransient, stub.transient)
 
 		epoch := make([]byte, 8)
 		binary.LittleEndian.PutUint64(epoch, expectedEpoch)
 		shdr := &common.SignatureHeader{}
 		digest := sha256.Sum256(append(append(shdr.GetNonce(), expectedCreator...), epoch...))
-		gt.Expect(stub.binding).To(Equal(digest[:]))
+		assert.Equal(t, digest[:], stub.binding)
 	}
 }
 
 func TestChaincodeStubSetEvent(t *testing.T) {
-	gt := NewGomegaWithT(t)
-
 	stub := &ChaincodeStub{}
 	err := stub.SetEvent("", []byte("event payload"))
-	gt.Expect(err).To(MatchError("event name can not be empty string"))
-	gt.Expect(stub.chaincodeEvent).To(BeNil())
+	assert.EqualError(t, err, "event name can not be empty string")
+	assert.Nil(t, stub.chaincodeEvent)
 
 	stub = &ChaincodeStub{}
 	err = stub.SetEvent("name", []byte("payload"))
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(stub.chaincodeEvent).To(Equal(&pb.ChaincodeEvent{
-		EventName: "name",
-		Payload:   []byte("payload"),
-	}))
+	assert.NoError(t, err)
+	assert.Equal(t, &pb.ChaincodeEvent{EventName: "name", Payload: []byte("payload")}, stub.chaincodeEvent)
 }
 
 func TestChaincodeStubAccessors(t *testing.T) {
-	gt := NewGomegaWithT(t)
-
 	stub := &ChaincodeStub{TxID: "transaction-id"}
-	gt.Expect(stub.GetTxID()).To(Equal("transaction-id"))
+	assert.Equal(t, "transaction-id", stub.GetTxID())
 
 	stub = &ChaincodeStub{ChannelId: "channel-id"}
-	gt.Expect(stub.GetChannelID()).To(Equal("channel-id"))
+	assert.Equal(t, "channel-id", stub.GetChannelID())
 
 	stub = &ChaincodeStub{decorations: map[string][]byte{"key": []byte("value")}}
-	gt.Expect(stub.GetDecorations()).To(Equal(map[string][]byte{"key": []byte("value")}))
+	assert.Equal(t, map[string][]byte{"key": []byte("value")}, stub.GetDecorations())
 
 	stub = &ChaincodeStub{args: [][]byte{[]byte("function"), []byte("arg1"), []byte("arg2")}}
-	gt.Expect(stub.GetArgs()).To(Equal([][]byte{[]byte("function"), []byte("arg1"), []byte("arg2")}))
-	gt.Expect(stub.GetStringArgs()).To(Equal([]string{"function", "arg1", "arg2"}))
+	assert.Equal(t, [][]byte{[]byte("function"), []byte("arg1"), []byte("arg2")}, stub.GetArgs())
+	assert.Equal(t, []string{"function", "arg1", "arg2"}, stub.GetStringArgs())
 
 	f, a := stub.GetFunctionAndParameters()
-	gt.Expect(f).To(Equal("function"))
-	gt.Expect(a).To(Equal([]string{"arg1", "arg2"}))
+	assert.Equal(t, "function", f)
+	assert.Equal(t, []string{"arg1", "arg2"}, a)
 
 	as, err := stub.GetArgsSlice()
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(as).To(Equal([]byte("functionarg1arg2")))
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("functionarg1arg2"), as)
 
 	stub = &ChaincodeStub{}
 	f, a = stub.GetFunctionAndParameters()
-	gt.Expect(f).To(Equal(""))
-	gt.Expect(a).To(BeEmpty())
+	assert.Equal(t, "", f)
+	assert.Empty(t, a)
 
 	stub = &ChaincodeStub{creator: []byte("creator")}
 	creator, err := stub.GetCreator()
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(creator).To(Equal([]byte("creator")))
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("creator"), creator)
 
 	stub = &ChaincodeStub{transient: map[string][]byte{"key": []byte("value")}}
 	transient, err := stub.GetTransient()
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(transient).To(Equal(map[string][]byte{"key": []byte("value")}))
+	assert.NoError(t, err)
+	assert.Equal(t, map[string][]byte{"key": []byte("value")}, transient)
 
 	stub = &ChaincodeStub{binding: []byte("binding")}
 	binding, err := stub.GetBinding()
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(binding).To(Equal([]byte("binding")))
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("binding"), binding)
 
 	stub = &ChaincodeStub{signedProposal: &pb.SignedProposal{ProposalBytes: []byte("proposal-bytes")}}
 	sp, err := stub.GetSignedProposal()
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(sp).To(Equal(&pb.SignedProposal{ProposalBytes: []byte("proposal-bytes")}))
+	assert.NoError(t, err)
+	assert.Equal(t, &pb.SignedProposal{ProposalBytes: []byte("proposal-bytes")}, sp)
 }
 
 func TestChaincodeStubGetTxTimestamp(t *testing.T) {
-	gt := NewGomegaWithT(t)
-
 	now := ptypes.TimestampNow()
 	tests := []struct {
 		proposal    *pb.Proposal
@@ -230,11 +226,11 @@ func TestChaincodeStubGetTxTimestamp(t *testing.T) {
 		stub := &ChaincodeStub{proposal: tt.proposal}
 		ts, err := stub.GetTxTimestamp()
 		if tt.expectedErr != "" {
-			gt.Expect(err).To(MatchError(tt.expectedErr))
+			assert.EqualError(t, err, tt.expectedErr)
 			continue
 		}
 
-		gt.Expect(err).NotTo(HaveOccurred())
-		gt.Expect(proto.Equal(ts, tt.ts)).To(BeTrue())
+		assert.NoError(t, err)
+		assert.True(t, proto.Equal(ts, tt.ts))
 	}
 }
