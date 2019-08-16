@@ -9,11 +9,14 @@ package chaincode
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewClientConnections(t *testing.T) {
 	assert := assert.New(t)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.Nil(err)
 
 	t.Run("bad connection profile", func(t *testing.T) {
 		input := &ClientConnectionsInput{
@@ -22,7 +25,7 @@ func TestNewClientConnections(t *testing.T) {
 			ConnectionProfilePath: "testdata/connectionprofile-bad.yaml",
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.Contains(err.Error(), "failed to validate peer connection parameters: error unmarshaling YAML")
@@ -36,7 +39,7 @@ func TestNewClientConnections(t *testing.T) {
 			ConnectionProfilePath: "testdata/connectionprofile-uneven.yaml",
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.EqualError(err, "failed to validate peer connection parameters: peer 'peer0.org2.example.com' is defined in the channel config but doesn't have associated peer config")
@@ -50,7 +53,7 @@ func TestNewClientConnections(t *testing.T) {
 			ConnectionProfilePath: "testdata/connectionprofile.yaml",
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.Contains(err.Error(), "failed to retrieve endorser client")
@@ -63,7 +66,7 @@ func TestNewClientConnections(t *testing.T) {
 			PeerAddresses:    []string{"testing123", "testing321"},
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.EqualError(err, "failed to validate peer connection parameters: 'install' command supports one peer. 2 peers provided")
@@ -78,7 +81,7 @@ func TestNewClientConnections(t *testing.T) {
 			TLSEnabled:       true,
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.EqualError(err, "failed to validate peer connection parameters: number of peer addresses (1) does not match the number of TLS root cert files (2)")
@@ -93,7 +96,7 @@ func TestNewClientConnections(t *testing.T) {
 			TLSEnabled:       true,
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.Contains(err.Error(), "failed to retrieve endorser client")
@@ -108,7 +111,7 @@ func TestNewClientConnections(t *testing.T) {
 			TLSEnabled:       false,
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.Contains(err.Error(), "failed to retrieve endorser client")
@@ -120,7 +123,7 @@ func TestNewClientConnections(t *testing.T) {
 			EndorserRequired: true,
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.Contains(err.Error(), "no endorser clients retrieved")
@@ -134,7 +137,7 @@ func TestNewClientConnections(t *testing.T) {
 			TLSRootCertFiles: []string{"123testing"},
 		}
 
-		c, err := NewClientConnections(input)
+		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
 		assert.Contains(err.Error(), "cannot obtain orderer endpoint, empty endorser list")

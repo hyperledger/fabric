@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	"github.com/pkg/errors"
@@ -250,7 +251,9 @@ var _ = Describe("CheckCommitReadiness", func() {
 		)
 
 		BeforeEach(func() {
-			checkCommitReadinessCmd = chaincode.CheckCommitReadinessCmd(nil)
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).To(BeNil())
+			checkCommitReadinessCmd = chaincode.CheckCommitReadinessCmd(nil, cryptoProvider)
 			checkCommitReadinessCmd.SetArgs([]string{
 				"--channelID=testchannel",
 				"--name=testcc",

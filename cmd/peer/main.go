@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/channel"
 	"github.com/hyperledger/fabric/internal/peer/common"
@@ -40,11 +41,13 @@ func main() {
 	viper.BindPFlag("logging_level", mainFlags.Lookup("logging-level"))
 	mainFlags.MarkHidden("logging-level")
 
+	cryptoProvider := factory.GetDefault()
+
 	mainCmd.AddCommand(version.Cmd())
 	mainCmd.AddCommand(node.Cmd())
-	mainCmd.AddCommand(chaincode.Cmd(nil))
+	mainCmd.AddCommand(chaincode.Cmd(nil, cryptoProvider))
 	mainCmd.AddCommand(channel.Cmd(nil))
-	mainCmd.AddCommand(lifecycle.Cmd())
+	mainCmd.AddCommand(lifecycle.Cmd(cryptoProvider))
 
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status

@@ -21,6 +21,7 @@ import (
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/peer/common"
@@ -377,7 +378,7 @@ type ChaincodeCmdFactory struct {
 }
 
 // InitCmdFactory init the ChaincodeCmdFactory with default clients
-func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
+func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool, cryptoProvider bccsp.BCCSP) (*ChaincodeCmdFactory, error) {
 	var err error
 	var endorserClients []pb.EndorserClient
 	var deliverClients []pb.DeliverClient
@@ -423,7 +424,7 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool) 
 			}
 			endorserClient := endorserClients[0]
 
-			orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, signer, endorserClient)
+			orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, signer, endorserClient, cryptoProvider)
 			if err != nil {
 				return nil, errors.WithMessagef(err, "error getting channel (%s) orderer endpoint", channelID)
 			}

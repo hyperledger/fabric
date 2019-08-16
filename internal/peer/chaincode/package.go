@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -43,6 +44,7 @@ type Packager struct {
 	ChaincodeCmdFactory *ChaincodeCmdFactory
 	Command             *cobra.Command
 	Input               *PackageInput
+	CryptoProvider      bccsp.BCCSP
 }
 
 // PackageInput holds the input parameters for packaging a
@@ -59,7 +61,7 @@ type PackageInput struct {
 }
 
 // packageCmd returns the cobra command for packaging chaincode
-func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory, p *Packager) *cobra.Command {
+func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory, p *Packager, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodePackageCmd = &cobra.Command{
 		Use:       "package [outputfile]",
 		Short:     "Package a chaincode",
@@ -74,6 +76,7 @@ func packageCmd(cf *ChaincodeCmdFactory, cdsFact ccDepSpecFactory, p *Packager) 
 				p = &Packager{
 					CDSFactory:          cdsFact,
 					ChaincodeCmdFactory: cf,
+					CryptoProvider:      cryptoProvider,
 				}
 			}
 			p.Command = cmd
@@ -134,7 +137,7 @@ func (p *Packager) packageCC() error {
 
 	var err error
 	if p.ChaincodeCmdFactory == nil {
-		p.ChaincodeCmdFactory, err = InitCmdFactory(p.Command.Name(), false, false)
+		p.ChaincodeCmdFactory, err = InitCmdFactory(p.Command.Name(), false, false, p.CryptoProvider)
 		if err != nil {
 			return err
 		}

@@ -9,12 +9,15 @@ package chaincode
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestInstantiateCmd(t *testing.T) {
 	mockCF, err := getMockChaincodeCmdFactory()
 	assert.NoError(t, err, "Error getting mock chaincode command factory")
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
 	// basic function tests
 	var tests = []struct {
@@ -69,7 +72,7 @@ func TestInstantiateCmd(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resetFlags()
-			cmd := instantiateCmd(mockCF)
+			cmd := instantiateCmd(mockCF, cryptoProvider)
 			addFlags(cmd)
 			cmd.SetArgs(test.args)
 			err = cmd.Execute()

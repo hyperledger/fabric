@@ -9,6 +9,7 @@ package chaincode
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -41,14 +42,16 @@ func TestOrdererFlags(t *testing.T) {
 		},
 	}
 
-	runCmd := Cmd(nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	runCmd := Cmd(nil, cryptoProvider)
 
 	runCmd.AddCommand(testCmd)
 
 	runCmd.SetArgs([]string{"test", "--cafile", ca, "--keyfile", key,
 		"--certfile", cert, "--orderer", endpoint, "--tls", "--clientauth",
 		"--ordererTLSHostnameOverride", sn})
-	err := runCmd.Execute()
+	err = runCmd.Execute()
 	assert.NoError(t, err)
 
 	// check env one more time

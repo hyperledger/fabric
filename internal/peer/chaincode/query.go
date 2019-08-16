@@ -10,20 +10,21 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/spf13/cobra"
 )
 
 var chaincodeQueryCmd *cobra.Command
 
 // queryCmd returns the cobra command for Chaincode Query
-func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
+func queryCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeQueryCmd = &cobra.Command{
 		Use:       "query",
 		Short:     fmt.Sprintf("Query using the specified %s.", chainFuncName),
 		Long:      fmt.Sprintf("Get endorsed result of %s function call and print it. It won't generate transaction.", chainFuncName),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return chaincodeQuery(cmd, cf)
+			return chaincodeQuery(cmd, cf, cryptoProvider)
 		},
 	}
 	flagList := []string{
@@ -44,7 +45,7 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	return chaincodeQueryCmd
 }
 
-func chaincodeQuery(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
+func chaincodeQuery(cmd *cobra.Command, cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) error {
 	if channelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
@@ -53,7 +54,7 @@ func chaincodeQuery(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(cmd.Name(), true, false)
+		cf, err = InitCmdFactory(cmd.Name(), true, false, cryptoProvider)
 		if err != nil {
 			return err
 		}

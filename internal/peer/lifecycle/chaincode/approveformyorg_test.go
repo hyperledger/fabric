@@ -12,6 +12,7 @@ import (
 	"time"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	"github.com/pkg/errors"
@@ -316,7 +317,9 @@ var _ = Describe("ApproverForMyOrg", func() {
 		)
 
 		BeforeEach(func() {
-			approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil)
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).To(BeNil())
+			approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil, cryptoProvider)
 			approveForMyOrgCmd.SetArgs([]string{
 				"--channelID=testchannel",
 				"--name=testcc",
@@ -341,7 +344,9 @@ var _ = Describe("ApproverForMyOrg", func() {
 
 		Context("when the channel config policy is specified", func() {
 			BeforeEach(func() {
-				approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil)
+				cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+				Expect(err).To(BeNil())
+				approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil, cryptoProvider)
 				approveForMyOrgCmd.SetArgs([]string{
 					"--channel-config-policy=/Channel/Application/Readers",
 					"--channelID=testchannel",

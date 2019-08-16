@@ -14,11 +14,14 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/stretchr/testify/assert"
 )
 
 //helper to sign an existing package
-func signExistingPackage(env *pcommon.Envelope, infile, outfile string) error {
+func signExistingPackage(env *pcommon.Envelope, infile, outfile string, cryptoProvider bccsp.BCCSP) error {
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		return fmt.Errorf("Get default signer error: %v", err)
@@ -26,7 +29,7 @@ func signExistingPackage(env *pcommon.Envelope, infile, outfile string) error {
 
 	mockCF := &ChaincodeCmdFactory{Signer: signer}
 
-	cmd := signpackageCmd(mockCF)
+	cmd := signpackageCmd(mockCF, cryptoProvider)
 	addFlags(cmd)
 
 	cmd.SetArgs([]string{infile, outfile})
@@ -45,8 +48,11 @@ func TestSignExistingPackage(t *testing.T) {
 	pdir := newTempDir()
 	defer os.RemoveAll(pdir)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	ccpackfile := pdir + "/ccpack.file"
-	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", "-S", ccpackfile}, true)
+	err = createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", "-S", ccpackfile}, true)
 	if err != nil {
 		t.Fatalf("error creating signed :%v", err)
 	}
@@ -63,7 +69,7 @@ func TestSignExistingPackage(t *testing.T) {
 	}
 
 	signedfile := pdir + "/signed.file"
-	err = signExistingPackage(e, ccpackfile, signedfile)
+	err = signExistingPackage(e, ccpackfile, signedfile, cryptoProvider)
 	if err != nil {
 		t.Fatalf("could not sign envelope")
 	}
@@ -99,10 +105,12 @@ func TestFailSignUnsignedPackage(t *testing.T) {
 	defer resetFlags()
 	pdir := newTempDir()
 	defer os.RemoveAll(pdir)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
 	ccpackfile := pdir + "/ccpack.file"
 	// don't sign it ... no "-S"
-	err := createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", ccpackfile}, true)
+	err = createSignedCDSPackage(t, []string{"-n", "somecc", "-p", "some/go/package", "-v", "0", "-s", ccpackfile}, true)
 	if err != nil {
 		t.Fatalf("error creating signed :%v", err)
 	}
@@ -119,7 +127,7 @@ func TestFailSignUnsignedPackage(t *testing.T) {
 	}
 
 	signedfile := pdir + "/signed.file"
-	err = signExistingPackage(e, ccpackfile, signedfile)
+	err = signExistingPackage(e, ccpackfile, signedfile, cryptoProvider)
 	if err == nil {
 		t.Fatalf("expected signing a package that's not originally signed to fail")
 	}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/packaging"
@@ -37,17 +38,17 @@ func addFlags(cmd *cobra.Command) {
 }
 
 // Cmd returns the cobra command for Chaincode
-func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
+func Cmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	addFlags(chaincodeCmd)
 
-	chaincodeCmd.AddCommand(installCmd(cf, nil))
-	chaincodeCmd.AddCommand(instantiateCmd(cf))
-	chaincodeCmd.AddCommand(invokeCmd(cf))
-	chaincodeCmd.AddCommand(packageCmd(cf, nil, nil))
-	chaincodeCmd.AddCommand(queryCmd(cf))
-	chaincodeCmd.AddCommand(signpackageCmd(cf))
-	chaincodeCmd.AddCommand(upgradeCmd(cf))
-	chaincodeCmd.AddCommand(listCmd(cf))
+	chaincodeCmd.AddCommand(installCmd(cf, nil, cryptoProvider))
+	chaincodeCmd.AddCommand(instantiateCmd(cf, cryptoProvider))
+	chaincodeCmd.AddCommand(invokeCmd(cf, cryptoProvider))
+	chaincodeCmd.AddCommand(packageCmd(cf, nil, nil, cryptoProvider))
+	chaincodeCmd.AddCommand(queryCmd(cf, cryptoProvider))
+	chaincodeCmd.AddCommand(signpackageCmd(cf, cryptoProvider))
+	chaincodeCmd.AddCommand(upgradeCmd(cf, cryptoProvider))
+	chaincodeCmd.AddCommand(listCmd(cf, cryptoProvider))
 
 	return chaincodeCmd
 }

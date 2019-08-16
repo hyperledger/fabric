@@ -17,6 +17,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -39,7 +40,7 @@ type InstalledQueryInput struct {
 
 // QueryInstalledCmd returns the cobra command for listing
 // the installed chaincodes
-func QueryInstalledCmd(i *InstalledQuerier) *cobra.Command {
+func QueryInstalledCmd(i *InstalledQuerier, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeQueryInstalledCmd := &cobra.Command{
 		Use:   "queryinstalled",
 		Short: "Query the installed chaincodes on a peer.",
@@ -56,7 +57,7 @@ func QueryInstalledCmd(i *InstalledQuerier) *cobra.Command {
 					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
 				}
 
-				cc, err := NewClientConnections(ccInput)
+				cc, err := NewClientConnections(ccInput, cryptoProvider)
 				if err != nil {
 					return err
 				}

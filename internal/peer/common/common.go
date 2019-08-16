@@ -18,6 +18,7 @@ import (
 
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -71,7 +72,7 @@ var (
 	// GetOrdererEndpointOfChainFnc returns orderer endpoints of given chain
 	// by default it is set to GetOrdererEndpointOfChain function
 	GetOrdererEndpointOfChainFnc func(chainID string, signer Signer,
-		endorserClient pb.EndorserClient) ([]string, error)
+		endorserClient pb.EndorserClient, cryptoProvider bccsp.BCCSP) ([]string, error)
 
 	// GetCertificateFnc is a function that returns the client TLS certificate
 	GetCertificateFnc func() (tls.Certificate, error)
@@ -172,7 +173,7 @@ type Signer interface {
 }
 
 // GetOrdererEndpointOfChain returns orderer endpoints of given chain
-func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.EndorserClient) ([]string, error) {
+func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.EndorserClient, cryptoProvider bccsp.BCCSP) ([]string, error) {
 	// query cscc for chain config block
 	invocation := &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
@@ -220,7 +221,7 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 	if err != nil {
 		return nil, errors.WithMessage(err, "error extracting config block envelope")
 	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, factory.GetDefault())
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, cryptoProvider)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error loading config block")
 	}

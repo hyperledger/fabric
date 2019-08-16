@@ -21,6 +21,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
@@ -170,7 +171,9 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 	}
 	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	ordererEndpoints, err := common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	ordererEndpoints, err := common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient, cryptoProvider)
 	assert.NoError(t, err, "GetOrdererEndpointOfChain from genesis block")
 
 	assert.Equal(t, len(ordererEndpoints), 1)
@@ -190,7 +193,9 @@ func TestGetOrdererEndpointFail(t *testing.T) {
 	}
 	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	_, err = common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	_, err = common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient, cryptoProvider)
 	assert.Error(t, err, "GetOrdererEndpointOfChain from invalid response")
 }
 
@@ -332,11 +337,14 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 	defer resetFlags()
 	assert := assert.New(t)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.Nil(err)
+
 	// failure validating peer connection parameters
 	resetFlags()
 	peerAddresses = []string{"peer0", "peer1"}
 	tlsRootCertFiles = []string{"cert0", "cert1"}
-	cf, err := InitCmdFactory("query", true, false)
+	cf, err := InitCmdFactory("query", true, false, cryptoProvider)
 	assert.Error(err)
 	assert.Contains(err.Error(), "error validating peer connection parameters: 'query' command can only be executed against one peer")
 	assert.Nil(cf)
@@ -344,7 +352,7 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 	// failure - no peers supplied and endorser client is needed
 	resetFlags()
 	peerAddresses = []string{}
-	cf, err = InitCmdFactory("query", true, false)
+	cf, err = InitCmdFactory("query", true, false, cryptoProvider)
 	assert.Error(err)
 	assert.Contains(err.Error(), "no endorser clients retrieved")
 	assert.Nil(cf)
@@ -353,7 +361,7 @@ func TestInitCmdFactoryFailures(t *testing.T) {
 	// endorser client supplied
 	resetFlags()
 	peerAddresses = nil
-	cf, err = InitCmdFactory("invoke", false, true)
+	cf, err = InitCmdFactory("invoke", false, true, cryptoProvider)
 	assert.Error(err)
 	assert.Contains(err.Error(), "no ordering endpoint or endorser client supplied")
 	assert.Nil(cf)

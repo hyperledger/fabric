@@ -13,6 +13,7 @@ import (
 
 	protcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
 )
@@ -24,14 +25,14 @@ const instantiateCmdName = "instantiate"
 const instantiateDesc = "Deploy the specified chaincode to the network."
 
 // instantiateCmd returns the cobra command for Chaincode Deploy
-func instantiateCmd(cf *ChaincodeCmdFactory) *cobra.Command {
+func instantiateCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeInstantiateCmd = &cobra.Command{
 		Use:       instantiateCmdName,
 		Short:     fmt.Sprint(instantiateDesc),
 		Long:      fmt.Sprint(instantiateDesc),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return chaincodeDeploy(cmd, args, cf)
+			return chaincodeDeploy(cmd, args, cf, cryptoProvider)
 		},
 	}
 	flagList := []string{
@@ -103,7 +104,7 @@ func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envel
 // chaincodeDeploy instantiates the chaincode. On success, the chaincode name
 // (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
 // commands.
-func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
+func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) error {
 	if channelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
@@ -112,7 +113,7 @@ func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory)
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(cmd.Name(), true, true)
+		cf, err = InitCmdFactory(cmd.Name(), true, true, cryptoProvider)
 		if err != nil {
 			return err
 		}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/internal/peer/common"
@@ -37,17 +38,17 @@ func addFlags(cmd *cobra.Command) {
 }
 
 // Cmd returns the cobra command for Chaincode
-func Cmd() *cobra.Command {
+func Cmd(cryptoProvider bccsp.BCCSP) *cobra.Command {
 	addFlags(chaincodeCmd)
 
 	chaincodeCmd.AddCommand(PackageCmd(nil))
-	chaincodeCmd.AddCommand(InstallCmd(nil))
-	chaincodeCmd.AddCommand(QueryInstalledCmd(nil))
-	chaincodeCmd.AddCommand(GetInstalledPackageCmd(nil))
-	chaincodeCmd.AddCommand(ApproveForMyOrgCmd(nil))
-	chaincodeCmd.AddCommand(CheckCommitReadinessCmd(nil))
-	chaincodeCmd.AddCommand(CommitCmd(nil))
-	chaincodeCmd.AddCommand(QueryCommittedCmd(nil))
+	chaincodeCmd.AddCommand(InstallCmd(nil, cryptoProvider))
+	chaincodeCmd.AddCommand(QueryInstalledCmd(nil, cryptoProvider))
+	chaincodeCmd.AddCommand(GetInstalledPackageCmd(nil, cryptoProvider))
+	chaincodeCmd.AddCommand(ApproveForMyOrgCmd(nil, cryptoProvider))
+	chaincodeCmd.AddCommand(CheckCommitReadinessCmd(nil, cryptoProvider))
+	chaincodeCmd.AddCommand(CommitCmd(nil, cryptoProvider))
+	chaincodeCmd.AddCommand(QueryCommittedCmd(nil, cryptoProvider))
 
 	return chaincodeCmd
 }

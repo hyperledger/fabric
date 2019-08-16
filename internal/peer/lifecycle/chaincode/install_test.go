@@ -8,6 +8,7 @@ package chaincode_test
 
 import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	"github.com/pkg/errors"
@@ -182,7 +183,9 @@ var _ = Describe("Install", func() {
 		)
 
 		BeforeEach(func() {
-			installCmd = chaincode.InstallCmd(nil)
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).To(BeNil())
+			installCmd = chaincode.InstallCmd(nil, cryptoProvider)
 			installCmd.SetArgs([]string{
 				"testpkg",
 				"--peerAddresses=test1",

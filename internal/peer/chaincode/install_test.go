@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -41,8 +42,10 @@ func initInstallTest(t *testing.T, fsPath string, ec pb.EndorserClient, mockResp
 		Signer:          signer,
 		EndorserClients: []pb.EndorserClient{ec},
 	}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
-	cmd := installCmd(mockCF, nil)
+	cmd := installCmd(mockCF, nil, cryptoProvider)
 	addFlags(cmd)
 
 	return cmd, mockCF
@@ -168,9 +171,13 @@ func newInstallerForTest(t *testing.T, ec pb.EndorserClient) (installer *Install
 	assert.NoError(t, err)
 	_, mockCF := initInstallTest(t, fsPath, ec, nil)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	i := &Installer{
 		EndorserClients: mockCF.EndorserClients,
 		Signer:          mockCF.Signer,
+		CryptoProvider:  cryptoProvider,
 	}
 
 	cleanupFunc := func() {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -46,7 +47,10 @@ func TestChaincodeListCmd(t *testing.T) {
 		BroadcastClient: mockBroadcastClient,
 	}
 
-	cmd := listCmd(mockCF)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	cmd := listCmd(mockCF, cryptoProvider)
 
 	t.Run("get installed chaincodes - lscc", func(t *testing.T) {
 		resetFlags()
@@ -78,7 +82,7 @@ func TestChaincodeListCmd(t *testing.T) {
 
 	t.Run("get instantiated chaincodes - success", func(t *testing.T) {
 		resetFlags()
-		instantiatedChaincodesCmd := listCmd(mockCF)
+		instantiatedChaincodesCmd := listCmd(mockCF, cryptoProvider)
 		args := []string{"--instantiated", "-C", "mychannel"}
 		instantiatedChaincodesCmd.SetArgs(args)
 		if err := instantiatedChaincodesCmd.Execute(); err != nil {
@@ -90,7 +94,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		resetFlags()
 
 		// Wrong case: Set both "--installed" and "--instantiated"
-		cmd = listCmd(mockCF)
+		cmd = listCmd(mockCF, cryptoProvider)
 		args := []string{"--installed", "--instantiated"}
 		cmd.SetArgs(args)
 		err = cmd.Execute()
@@ -142,8 +146,11 @@ func TestChaincodeListFailure(t *testing.T) {
 
 	resetFlags()
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	// Get instantiated chaincodes
-	instantiatedChaincodesCmd := listCmd(mockCF)
+	instantiatedChaincodesCmd := listCmd(mockCF, cryptoProvider)
 	args := []string{"--instantiated", "-C", "mychannel"}
 	instantiatedChaincodesCmd.SetArgs(args)
 	err = instantiatedChaincodesCmd.Execute()

@@ -14,6 +14,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -49,7 +50,7 @@ func (i *GetInstalledPackageInput) Validate() error {
 
 // GetInstalledPackageCmd returns the cobra command for getting an
 // installed chaincode package from a peer.
-func GetInstalledPackageCmd(i *InstalledPackageGetter) *cobra.Command {
+func GetInstalledPackageCmd(i *InstalledPackageGetter, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeGetInstalledPackageCmd := &cobra.Command{
 		Use:   "getinstalledpackage [outputfile]",
 		Short: "Get an installed chaincode package from a peer.",
@@ -66,7 +67,7 @@ func GetInstalledPackageCmd(i *InstalledPackageGetter) *cobra.Command {
 					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
 				}
 
-				cc, err := NewClientConnections(ccInput)
+				cc, err := NewClientConnections(ccInput, cryptoProvider)
 				if err != nil {
 					return err
 				}

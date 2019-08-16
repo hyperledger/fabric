@@ -18,6 +18,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -81,7 +82,7 @@ func (c *CommitReadinessCheckInput) Validate() error {
 
 // CheckCommitReadinessCmd returns the cobra command for the
 // CheckCommitReadiness lifecycle operation
-func CheckCommitReadinessCmd(c *CommitReadinessChecker) *cobra.Command {
+func CheckCommitReadinessCmd(c *CommitReadinessChecker, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeCheckCommitReadinessCmd := &cobra.Command{
 		Use:   "checkcommitreadiness",
 		Short: fmt.Sprintf("Check whether a chaincode definition is ready to be committed on a channel."),
@@ -104,7 +105,7 @@ func CheckCommitReadinessCmd(c *CommitReadinessChecker) *cobra.Command {
 					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
 				}
 
-				cc, err := NewClientConnections(ccInput)
+				cc, err := NewClientConnections(ccInput, cryptoProvider)
 				if err != nil {
 					return err
 				}

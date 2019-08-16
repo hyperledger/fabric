@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ type ClientConnections struct {
 	EndorserClients []pb.EndorserClient
 	Certificate     tls.Certificate
 	Signer          identity.SignerSerializer
+	CryptoProvider  bccsp.BCCSP
 }
 
 // ClientConnectionsInput holds the input parameters for creating
@@ -42,13 +44,16 @@ type ClientConnectionsInput struct {
 
 // NewClientConnections creates a new set of client connections based on the
 // input parameters.
-func NewClientConnections(input *ClientConnectionsInput) (*ClientConnections, error) {
+func NewClientConnections(input *ClientConnectionsInput, cryptoProvider bccsp.BCCSP) (*ClientConnections, error) {
 	signer, err := common.GetDefaultSigner()
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to retrieve default signer")
 	}
 
-	c := &ClientConnections{Signer: signer}
+	c := &ClientConnections{
+		Signer:         signer,
+		CryptoProvider: cryptoProvider,
+	}
 
 	if input.EndorserRequired {
 		err := c.setPeerClients(input)
@@ -174,7 +179,7 @@ func (c *ClientConnections) setOrdererClient() error {
 			return errors.New("cannot obtain orderer endpoint, empty endorser list")
 		}
 
-		orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, c.Signer, c.EndorserClients[0])
+		orderingEndpoints, err := common.GetOrdererEndpointOfChainFnc(channelID, c.Signer, c.EndorserClients[0], c.CryptoProvider)
 		if err != nil {
 			return errors.WithMessagef(err, "error getting channel (%s) orderer endpoint", channelID)
 		}

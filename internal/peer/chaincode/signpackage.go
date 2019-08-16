@@ -10,13 +10,14 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/cobra"
 )
 
 // signpackageCmd returns the cobra command for signing a package
-func signpackageCmd(cf *ChaincodeCmdFactory) *cobra.Command {
+func signpackageCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	spCmd := &cobra.Command{
 		Use:       "signpackage",
 		Short:     "Sign the specified chaincode package",
@@ -26,20 +27,20 @@ func signpackageCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 			if len(args) < 2 {
 				return fmt.Errorf("peer chaincode signpackage <inputpackage> <outputpackage>")
 			}
-			return signpackage(cmd, args[0], args[1], cf)
+			return signpackage(cmd, args[0], args[1], cf, cryptoProvider)
 		},
 	}
 
 	return spCmd
 }
 
-func signpackage(cmd *cobra.Command, ipackageFile string, opackageFile string, cf *ChaincodeCmdFactory) error {
+func signpackage(cmd *cobra.Command, ipackageFile string, opackageFile string, cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) error {
 	// Parsing of the command line is done so silence cmd usage
 	cmd.SilenceUsage = true
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(cmd.Name(), false, false)
+		cf, err = InitCmdFactory(cmd.Name(), false, false, cryptoProvider)
 		if err != nil {
 			return err
 		}

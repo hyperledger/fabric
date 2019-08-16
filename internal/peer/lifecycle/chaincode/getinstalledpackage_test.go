@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode/mock"
 	"github.com/pkg/errors"
@@ -230,7 +231,9 @@ var _ = Describe("GetInstalledPackage", func() {
 		)
 
 		BeforeEach(func() {
-			getInstalledPackageCmd = chaincode.GetInstalledPackageCmd(nil)
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).To(BeNil())
+			getInstalledPackageCmd = chaincode.GetInstalledPackageCmd(nil, cryptoProvider)
 			getInstalledPackageCmd.SetArgs([]string{
 				"--package-id=test-package",
 				"--peerAddresses=test1",

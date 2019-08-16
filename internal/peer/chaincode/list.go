@@ -17,6 +17,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -30,13 +31,13 @@ var (
 
 // listCmd returns the cobra command for listing
 // the installed or instantiated chaincodes
-func listCmd(cf *ChaincodeCmdFactory) *cobra.Command {
+func listCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeListCmd = &cobra.Command{
 		Use:   "list",
 		Short: "Get the instantiated chaincodes on a channel or installed chaincodes on a peer.",
 		Long:  "Get the instantiated chaincodes in the channel if specify channel, or get installed chaincodes on the peer",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return getChaincodes(cmd, cf)
+			return getChaincodes(cmd, cf, cryptoProvider)
 		},
 	}
 
@@ -53,7 +54,7 @@ func listCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	return chaincodeListCmd
 }
 
-func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
+func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) error {
 	if getInstantiatedChaincodes && channelID == "" {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
@@ -62,7 +63,7 @@ func getChaincodes(cmd *cobra.Command, cf *ChaincodeCmdFactory) error {
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(cmd.Name(), true, false)
+		cf, err = InitCmdFactory(cmd.Name(), true, false, cryptoProvider)
 		if err != nil {
 			return err
 		}
