@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package msp
@@ -259,14 +249,14 @@ func TestSatisfiesPrincipalAdmin(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
+func TestLoad143MSPWithInvalidAdminConfiguration(t *testing.T) {
 	// testdata/nodeouadmin2:
 	// the configuration enables NodeOUs (with adminOU) but no valid identifier for the AdminOU
-	getLocalMSPWithVersionErr(t, "testdata/nodeouadmin2", MSPv1_4_3, "invalid admin ou configuration, nil.")
+	getLocalMSPWithVersionErr(t, "testdata/nodeouadmin2", MSPv1_4_3, "administrators must be declared when no admin ou classification is set")
 
 	// testdata/nodeouadmin3:
 	// the configuration enables NodeOUs (with adminOU) but no valid identifier for the AdminOU
-	getLocalMSPWithVersionErr(t, "testdata/nodeouadmin3", MSPv1_4_3, "invalid admin ou configuration, nil.")
+	getLocalMSPWithVersionErr(t, "testdata/nodeouadmin3", MSPv1_4_3, "administrators must be declared when no admin ou classification is set")
 }
 
 func TestSatisfiesPrincipalOrderer(t *testing.T) {
@@ -287,7 +277,7 @@ func TestSatisfiesPrincipalOrderer(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
+func TestLoad143MSPWithInvalidOrdererConfiguration(t *testing.T) {
 	// testdata/nodeouorderer2:
 	// the configuration enables NodeOUs (with orderOU) but no valid identifier for the OrdererOU
 	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeouorderer2", MSPv1_4_3)
@@ -304,7 +294,7 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 		Principal:               principalBytes}
 	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
-	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for orderer ou classification, node ou for orderers not defined", err.Error())
+	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for classification, node ou for type [ORDERER], not defined, msp: [SampleOrg]", err.Error())
 
 	// testdata/nodeouorderer3:
 	// the configuration enables NodeOUs (with orderOU) but no valid identifier for the OrdererOU
@@ -322,5 +312,26 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 		Principal:               principalBytes}
 	err = id.SatisfiesPrincipal(principal)
 	assert.Error(t, err)
-	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for orderer ou classification, node ou for orderers not defined", err.Error())
+	assert.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for classification, node ou for type [ORDERER], not defined, msp: [SampleOrg]", err.Error())
+}
+
+func TestValidMSPWithNodeOUMissingClassification(t *testing.T) {
+	// testdata/nodeousbadconf1:
+	// the configuration enables NodeOUs but client ou identifier is missing
+	_, err := getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf1", MSPv1_3)
+	assert.Error(t, err)
+	assert.Equal(t, "Failed setting up NodeOUs. ClientOU must be different from nil.", err.Error())
+
+	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf1", MSPv1_4_3)
+	assert.Error(t, err)
+	assert.Equal(t, "admin 0 is invalid [cannot test for classification, node ou for type [CLIENT], not defined, msp: [SampleOrg],The identity does not contain OU [ADMIN], MSP: [SampleOrg]]", err.Error())
+
+	// testdata/nodeousbadconf2:
+	// the configuration enables NodeOUs but peer ou identifier is missing
+	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf2", MSPv1_3)
+	assert.Error(t, err)
+	assert.Equal(t, "Failed setting up NodeOUs. PeerOU must be different from nil.", err.Error())
+
+	_, err = getLocalMSPWithVersionAndError(t, "testdata/nodeousbadconf2", MSPv1_4_3)
+	assert.NoError(t, err)
 }

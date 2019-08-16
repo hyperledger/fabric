@@ -296,17 +296,14 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 		// Prepare NodeOUs
 		if configuration.NodeOUs != nil && configuration.NodeOUs.Enable {
 			mspLogger.Debug("Loading NodeOUs")
-			if configuration.NodeOUs.ClientOUIdentifier == nil || len(configuration.NodeOUs.ClientOUIdentifier.OrganizationalUnitIdentifier) == 0 {
-				return nil, errors.New("Failed loading NodeOUs. ClientOU must be different from nil.")
-			}
-			if configuration.NodeOUs.PeerOUIdentifier == nil || len(configuration.NodeOUs.PeerOUIdentifier.OrganizationalUnitIdentifier) == 0 {
-				return nil, errors.New("Failed loading NodeOUs. PeerOU must be different from nil.")
-			}
-
 			nodeOUs = &msp.FabricNodeOUs{
-				Enable:             configuration.NodeOUs.Enable,
-				ClientOuIdentifier: &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.ClientOUIdentifier.OrganizationalUnitIdentifier},
-				PeerOuIdentifier:   &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.PeerOUIdentifier.OrganizationalUnitIdentifier},
+				Enable: true,
+			}
+			if configuration.NodeOUs.ClientOUIdentifier != nil && len(configuration.NodeOUs.ClientOUIdentifier.OrganizationalUnitIdentifier) != 0 {
+				nodeOUs.ClientOuIdentifier = &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.ClientOUIdentifier.OrganizationalUnitIdentifier}
+			}
+			if configuration.NodeOUs.PeerOUIdentifier != nil && len(configuration.NodeOUs.PeerOUIdentifier.OrganizationalUnitIdentifier) != 0 {
+				nodeOUs.PeerOuIdentifier = &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.PeerOUIdentifier.OrganizationalUnitIdentifier}
 			}
 			if configuration.NodeOUs.AdminOUIdentifier != nil && len(configuration.NodeOUs.AdminOUIdentifier.OrganizationalUnitIdentifier) != 0 {
 				nodeOUs.AdminOuIdentifier = &msp.FabricOUIdentifier{OrganizationalUnitIdentifier: configuration.NodeOUs.AdminOUIdentifier.OrganizationalUnitIdentifier}
@@ -318,9 +315,13 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 			// Read certificates, if defined
 
 			// ClientOU
-			nodeOUs.ClientOuIdentifier.Certificate = loadCertificateAt(dir, configuration.NodeOUs.ClientOUIdentifier.Certificate, "ClientOU")
+			if nodeOUs.ClientOuIdentifier != nil {
+				nodeOUs.ClientOuIdentifier.Certificate = loadCertificateAt(dir, configuration.NodeOUs.ClientOUIdentifier.Certificate, "ClientOU")
+			}
 			// PeerOU
-			nodeOUs.PeerOuIdentifier.Certificate = loadCertificateAt(dir, configuration.NodeOUs.PeerOUIdentifier.Certificate, "PeerOU")
+			if nodeOUs.PeerOuIdentifier != nil {
+				nodeOUs.PeerOuIdentifier.Certificate = loadCertificateAt(dir, configuration.NodeOUs.PeerOUIdentifier.Certificate, "PeerOU")
+			}
 			// AdminOU
 			if nodeOUs.AdminOuIdentifier != nil {
 				nodeOUs.AdminOuIdentifier.Certificate = loadCertificateAt(dir, configuration.NodeOUs.AdminOUIdentifier.Certificate, "AdminOU")

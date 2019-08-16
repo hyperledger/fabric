@@ -187,8 +187,8 @@ func (msp *bccspmsp) setupAdminsV143(conf *m.FabricMSPConfig) error {
 		return err
 	}
 
-	if len(msp.admins) == 0 && !msp.ouEnforcement {
-		return errors.New("administrators must be declared when no ou enforcement is set")
+	if len(msp.admins) == 0 && (!msp.ouEnforcement || msp.adminOU == nil) {
+		return errors.New("administrators must be declared when no admin ou classification is set")
 	}
 
 	return nil
@@ -252,6 +252,14 @@ func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 
 		msp.ouEnforcement = config.FabricNodeOus.Enable
 
+		if config.FabricNodeOus.ClientOuIdentifier == nil || len(config.FabricNodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier) == 0 {
+			return errors.New("Failed setting up NodeOUs. ClientOU must be different from nil.")
+		}
+
+		if config.FabricNodeOus.PeerOuIdentifier == nil || len(config.FabricNodeOus.PeerOuIdentifier.OrganizationalUnitIdentifier) == 0 {
+			return errors.New("Failed setting up NodeOUs. PeerOU must be different from nil.")
+		}
+
 		// ClientOU
 		msp.clientOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier}
 		if len(config.FabricNodeOus.ClientOuIdentifier.Certificate) != 0 {
@@ -280,26 +288,57 @@ func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 }
 
 func (msp *bccspmsp) setupNodeOUsV143(config *m.FabricMSPConfig) error {
-	if err := msp.setupNodeOUs(config); err != nil {
-		return err
-	}
-
 	if config.FabricNodeOus == nil {
+		msp.ouEnforcement = false
 		return nil
 	}
 
-	// AdminOU
-	if config.FabricNodeOus.AdminOuIdentifier == nil {
-		return errors.New("invalid admin ou configuration, nil.")
+	msp.ouEnforcement = config.FabricNodeOus.Enable
+
+	counter := 0
+	// ClientOU
+	if config.FabricNodeOus.ClientOuIdentifier != nil {
+		msp.clientOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOus.ClientOuIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.ClientOuIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.clientOU.CertifiersIdentifier = certifiersIdentifier
+		}
+		counter++
+	} else {
+		msp.clientOU = nil
 	}
 
-	msp.adminOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.AdminOuIdentifier.OrganizationalUnitIdentifier}
-	if len(config.FabricNodeOus.AdminOuIdentifier.Certificate) != 0 {
-		certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.AdminOuIdentifier.Certificate)
-		if err != nil {
-			return err
+	// PeerOU
+	if config.FabricNodeOus.PeerOuIdentifier != nil {
+		msp.peerOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.PeerOuIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOus.PeerOuIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.PeerOuIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.peerOU.CertifiersIdentifier = certifiersIdentifier
 		}
-		msp.adminOU.CertifiersIdentifier = certifiersIdentifier
+		counter++
+	} else {
+		msp.peerOU = nil
+	}
+
+	// AdminOU
+	if config.FabricNodeOus.AdminOuIdentifier != nil {
+		msp.adminOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.AdminOuIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOus.AdminOuIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.AdminOuIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.adminOU.CertifiersIdentifier = certifiersIdentifier
+		}
+		counter++
+	} else {
+		msp.adminOU = nil
 	}
 
 	// OrdererOU
@@ -312,8 +351,14 @@ func (msp *bccspmsp) setupNodeOUsV143(config *m.FabricMSPConfig) error {
 			}
 			msp.ordererOU.CertifiersIdentifier = certifiersIdentifier
 		}
+		counter++
 	} else {
 		msp.ordererOU = nil
+	}
+
+	if counter == 0 {
+		// Disable NodeOU
+		msp.ouEnforcement = false
 	}
 
 	return nil
@@ -614,8 +659,10 @@ func (msp *bccspmsp) postSetupV143(conf *m.FabricMSPConfig) error {
 
 	// Check that admins are clients or admins
 	for i, admin := range msp.admins {
-		if msp.hasOURole(admin, m.MSPRole_CLIENT) != nil && msp.hasOURole(admin, m.MSPRole_ADMIN) != nil {
-			return errors.Errorf("admin %d is invalid", i)
+		err1 := msp.hasOURole(admin, m.MSPRole_CLIENT)
+		err2 := msp.hasOURole(admin, m.MSPRole_ADMIN)
+		if err1 != nil && err2 != nil {
+			return errors.Errorf("admin %d is invalid [%s,%s]", i, err1, err2)
 		}
 	}
 

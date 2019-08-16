@@ -220,9 +220,15 @@ func (msp *bccspmsp) validateIdentityOUsV143(id *identity) error {
 	// used to tell apart clients, peers and admins.
 	counter := 0
 	validOUs := make(map[string]*OUIdentifier)
-	validOUs[msp.clientOU.OrganizationalUnitIdentifier] = msp.clientOU
-	validOUs[msp.peerOU.OrganizationalUnitIdentifier] = msp.peerOU
-	validOUs[msp.adminOU.OrganizationalUnitIdentifier] = msp.adminOU
+	if msp.clientOU != nil {
+		validOUs[msp.clientOU.OrganizationalUnitIdentifier] = msp.clientOU
+	}
+	if msp.peerOU != nil {
+		validOUs[msp.peerOU.OrganizationalUnitIdentifier] = msp.peerOU
+	}
+	if msp.adminOU != nil {
+		validOUs[msp.adminOU.OrganizationalUnitIdentifier] = msp.adminOU
+	}
 	if msp.ordererOU != nil {
 		validOUs[msp.ordererOU.OrganizationalUnitIdentifier] = msp.ordererOU
 	}
