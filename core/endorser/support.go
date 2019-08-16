@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
-	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
+	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
@@ -51,7 +51,7 @@ func (s *SupportImpl) NewQueryCreator(channel string) (QueryCreator, error) {
 	return lgr, nil
 }
 
-func (s *SupportImpl) SigningIdentityForRequest(*pb.SignedProposal) (SigningIdentity, error) {
+func (s *SupportImpl) SigningIdentityForRequest(*pb.SignedProposal) (endorsement.SigningIdentity, error) {
 	return s.SignerSerializer, nil
 }
 

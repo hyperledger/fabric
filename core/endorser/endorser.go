@@ -107,8 +107,8 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	endorserLogger.Infof("[%s][%s] Entry chaincode: %s", txParams.ChannelID, shorttxid(txParams.TxID), chaincodeName)
 	defer func(start time.Time) {
 		logger := endorserLogger.WithOptions(zap.AddCallerSkip(1))
-		elapsedMilliseconds := time.Since(start).Round(time.Millisecond) / time.Millisecond
-		logger.Infof("[%s][%s] Exit chaincode: %s (%dms)", txParams.ChannelID, shorttxid(txParams.TxID), chaincodeName, elapsedMilliseconds)
+		elapsedMillisec := time.Since(start).Round(time.Millisecond) / time.Millisecond
+		logger.Infof("[%s][%s] Exit chaincode: %s (%dms)", txParams.ChannelID, shorttxid(txParams.TxID), chaincodeName, elapsedMillisec)
 	}(time.Now())
 
 	res, ccevent, err := e.Support.Execute(txParams, chaincodeName, input)
