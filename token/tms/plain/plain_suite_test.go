@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/token/tms/plain"
 	. "github.com/onsi/ginkgo"
@@ -33,10 +34,14 @@ func IntToHex(q int64) string {
 	return "0x" + strconv.FormatInt(q, 16)
 }
 
-func buildTokenOwnerString(raw []byte) string {
+func buildTokenOwnerString(raw []byte) (string, error) {
 	owner := &token.TokenOwner{Type: token.TokenOwner_MSP_IDENTIFIER, Raw: raw}
-	ownerString, err := plain.GetTokenOwnerString(owner)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return "", err
+	}
+	ownerString, err := plain.GetTokenOwnerString(owner, cryptoProvider)
 	Expect(err).NotTo(HaveOccurred())
 
-	return ownerString
+	return ownerString, nil
 }

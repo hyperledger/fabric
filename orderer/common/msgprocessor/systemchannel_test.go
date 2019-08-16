@@ -472,6 +472,7 @@ func TestNewChannelConfig(t *testing.T) {
 	}
 	channelGroup, err := encoder.NewChannelGroup(gConf)
 	assert.NoError(t, err)
+
 	ctxm, err := channelconfig.NewBundle(channelID, &cb.Config{ChannelGroup: channelGroup})
 
 	originalCG := proto.Clone(ctxm.ConfigtxValidator().ConfigProto().ChannelGroup).(*cb.ConfigGroup)

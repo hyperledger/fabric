@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/pkg/errors"
 )
@@ -46,13 +45,18 @@ func CreateGRPCClient(config *ConnectionConfig) (*comm.GRPCClient, error) {
 	return comm.NewGRPCClient(clientConfig)
 }
 
+// Hasher is the interface provides the hash function should be used for all token components.
+type Hasher interface {
+	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
+}
+
 // GetTLSCertHash computes SHA2-256 on tls certificate
-func GetTLSCertHash(cert *tls.Certificate) ([]byte, error) {
+func GetTLSCertHash(cert *tls.Certificate, hasher Hasher) ([]byte, error) {
 	if cert == nil || len(cert.Certificate) == 0 {
 		return nil, nil
 	}
 
-	tlsCertHash, err := factory.GetDefault().Hash(cert.Certificate[0], &bccsp.SHA256Opts{})
+	tlsCertHash, err := hasher.Hash(cert.Certificate[0], &bccsp.SHA256Opts{})
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to compute SHA256 on client certificate")
 	}

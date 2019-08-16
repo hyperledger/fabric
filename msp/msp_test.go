@@ -22,6 +22,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -110,7 +111,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err := proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err := newBccspMsp(MSPv1_0)
+	newmsp, err := newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -123,7 +124,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err = proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err = newBccspMsp(MSPv1_0)
+	newmsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -135,7 +136,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err = proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err = newBccspMsp(MSPv1_0)
+	newmsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -177,13 +178,16 @@ func (*bccspNoKeyLookupKS) GetKey(ski []byte) (k bccsp.Key, err error) {
 }
 
 func TestNotFoundInBCCSP(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	dir, err := configtest.GetDevMspDir()
 	assert.NoError(t, err)
 	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(MSPv1_0)
+	thisMSP, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
@@ -222,6 +226,9 @@ func TestDeserializeIdentityFails(t *testing.T) {
 }
 
 func TestGetSigningIdentityFromVerifyingMSP(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	mspDir, err := configtest.GetDevMspDir()
 	if err != nil {
 		fmt.Printf("Errog getting DevMspDir: %s", err)
@@ -234,7 +241,7 @@ func TestGetSigningIdentityFromVerifyingMSP(t *testing.T) {
 		os.Exit(-1)
 	}
 
-	newmsp, err := newBccspMsp(MSPv1_0)
+	newmsp, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -350,10 +357,13 @@ func TestValidateCAIdentity(t *testing.T) {
 }
 
 func TestBadAdminIdentity(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	conf, err := GetLocalMspConfig("testdata/badadmin", nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(MSPv1_0)
+	thisMSP, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/badadmin", "keystore"), true)
 	assert.NoError(t, err)
@@ -972,11 +982,14 @@ func TestIdentityExpiresAt(t *testing.T) {
 }
 
 func TestIdentityExpired(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	expiredCertsDir := "testdata/expired"
 	conf, err := GetLocalMspConfig(expiredCertsDir, nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(MSPv1_0)
+	thisMSP, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	assert.NoError(t, err)
 
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(expiredCertsDir, "keystore"), true)
@@ -1091,9 +1104,10 @@ var mspMgr MSPManager
 
 func TestMain(m *testing.M) {
 	var err error
+
 	mspDir, err := configtest.GetDevMspDir()
 	if err != nil {
-		fmt.Printf("Errog getting DevMspDir: %s", err)
+		fmt.Printf("Error getting DevMspDir: %s", err)
 		os.Exit(-1)
 	}
 
@@ -1103,25 +1117,25 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	localMsp, err = newBccspMsp(MSPv1_0)
+	localMsp, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspBad, err = newBccspMsp(MSPv1_0)
+	localMspBad, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspV13, err = newBccspMsp(MSPv1_3)
+	localMspV13, err = newBccspMsp(MSPv1_3, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for V1.3 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspV11, err = newBccspMsp(MSPv1_1)
+	localMspV11, err = newBccspMsp(MSPv1_1, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for V1.1 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)

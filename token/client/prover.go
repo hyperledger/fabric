@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/token"
 	tk "github.com/hyperledger/fabric/token"
@@ -224,7 +225,7 @@ func (prover *ProverPeer) CreateSignedCommand(payload interface{}, signingIdenti
 	}
 
 	// check for client certificate and compute SHA2-256 on certificate if present
-	tlsCertHash, err := GetTLSCertHash(prover.ProverPeerClient.Certificate())
+	tlsCertHash, err := GetTLSCertHash(prover.ProverPeerClient.Certificate(), factory.GetDefault())
 	if err != nil {
 		return nil, err
 	}

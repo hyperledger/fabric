@@ -21,6 +21,7 @@ import (
 )
 
 func TestSpawnEtcdRaft(t *testing.T) {
+
 	gt := NewGomegaWithT(t)
 
 	cwd, err := filepath.Abs(".")

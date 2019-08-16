@@ -11,6 +11,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/token/client"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -146,20 +147,26 @@ var _ = Describe("GRPCClient", func() {
 		})
 
 		It("returns cert hash", func() {
-			tlsCertHash, err := client.GetTLSCertHash(&clientCert)
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).NotTo(HaveOccurred())
+			tlsCertHash, err := client.GetTLSCertHash(&clientCert, cryptoProvider)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tlsCertHash).NotTo(BeNil())
 		})
 
 		It("returns nil when cert is nil", func() {
-			tlsCertHash, err := client.GetTLSCertHash(nil)
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).NotTo(HaveOccurred())
+			tlsCertHash, err := client.GetTLSCertHash(nil, cryptoProvider)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tlsCertHash).To(BeNil())
 		})
 
 		It("returns nil when clientCert has no certificate", func() {
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).NotTo(HaveOccurred())
 			clientCert = tls.Certificate{}
-			tlsCertHash, err := client.GetTLSCertHash(&clientCert)
+			tlsCertHash, err := client.GetTLSCertHash(&clientCert, cryptoProvider)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tlsCertHash).To(BeNil())
 		})

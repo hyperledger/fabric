@@ -44,7 +44,8 @@ var _ = Describe("RequestListTokens", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// owner should be the same credential for transactor
-		ownerString := buildTokenOwnerString([]byte("Alice"))
+		ownerString, err := buildTokenOwnerString([]byte("Alice"))
+		Expect(err).NotTo(HaveOccurred())
 
 		keys[0] = generateKey(ownerString, "1", "0", tokenKeyPrefix)
 		keys[1] = generateKey(ownerString, "1", "1", tokenKeyPrefix)
