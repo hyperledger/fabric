@@ -385,12 +385,12 @@ func (fake *FakeConsenterSupport) BlockCutterReturnsOnCall(i int, result1 blockc
 	}{result1}
 }
 
-func (fake *FakeConsenterSupport) ChainID() string {
+func (fake *FakeConsenterSupport) ChannelID() string {
 	fake.chainIDMutex.Lock()
 	ret, specificReturn := fake.chainIDReturnsOnCall[len(fake.chainIDArgsForCall)]
 	fake.chainIDArgsForCall = append(fake.chainIDArgsForCall, struct {
 	}{})
-	fake.recordInvocation("ChainID", []interface{}{})
+	fake.recordInvocation("ChannelID", []interface{}{})
 	fake.chainIDMutex.Unlock()
 	if fake.ChainIDStub != nil {
 		return fake.ChainIDStub()

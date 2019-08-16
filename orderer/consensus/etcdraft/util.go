@@ -97,7 +97,7 @@ func newBlockPuller(support consensus.ConsenterSupport,
 		Endpoints:           endpoints,
 		Signer:              support,
 		TLSCert:             der.Bytes,
-		Channel:             support.ChainID(),
+		Channel:             support.ChannelID(),
 		Dialer:              stdDialer,
 	}
 

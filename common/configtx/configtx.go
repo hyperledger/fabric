@@ -19,8 +19,8 @@ type Validator interface {
 	// Validate attempts to validate a new configtx against the current config state
 	ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error)
 
-	// ChainID retrieves the chain ID associated with this manager
-	ChainID() string
+	// ChannelID retrieves the channel ID associated with this manager
+	ChannelID() string
 
 	// ConfigProto returns the current config as a proto
 	ConfigProto() *cb.Config

@@ -163,11 +163,11 @@ func (fake *ConfigtxValidator) ProposeConfigUpdateReturnsOnCall(i int, result1 *
 	}{result1, result2}
 }
 
-func (fake *ConfigtxValidator) ChainID() string {
+func (fake *ConfigtxValidator) ChannelID() string {
 	fake.chainIDMutex.Lock()
 	ret, specificReturn := fake.chainIDReturnsOnCall[len(fake.chainIDArgsForCall)]
 	fake.chainIDArgsForCall = append(fake.chainIDArgsForCall, struct{}{})
-	fake.recordInvocation("ChainID", []interface{}{})
+	fake.recordInvocation("ChannelID", []interface{}{})
 	fake.chainIDMutex.Unlock()
 	if fake.ChainIDStub != nil {
 		return fake.ChainIDStub()

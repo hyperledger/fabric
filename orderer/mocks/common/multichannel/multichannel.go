@@ -34,8 +34,8 @@ type ConsenterSupport struct {
 	// Blocks is the channel where WriteBlock writes the most recently created block,
 	Blocks chan *cb.Block
 
-	// ChainIDVal is the value returned by ChainID()
-	ChainIDVal string
+	// ChannelIDVal is the value returned by ChannelID()
+	ChannelIDVal string
 
 	// HeightVal is the value returned by Height()
 	HeightVal uint64
@@ -116,9 +116,9 @@ func (mcs *ConsenterSupport) WriteConfigBlock(block *cb.Block, encodedMetadataVa
 	mcs.WriteBlock(block, encodedMetadataValue)
 }
 
-// ChainID returns the chain ID this specific consenter instance is associated with
-func (mcs *ConsenterSupport) ChainID() string {
-	return mcs.ChainIDVal
+// ChannelID returns the channel ID this specific consenter instance is associated with
+func (mcs *ConsenterSupport) ChannelID() string {
+	return mcs.ChannelIDVal
 }
 
 // Height returns the number of blocks of the chain this specific consenter instance is associated with

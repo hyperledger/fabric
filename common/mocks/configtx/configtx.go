@@ -12,8 +12,8 @@ import (
 
 // Validator is a mock implementation of configtx.Validator
 type Validator struct {
-	// ChainIDVal is returned as the result of ChainID()
-	ChainIDVal string
+	// ChannelIDVal is returned as the result of ChannelID()
+	ChannelIDVal string
 
 	// SequenceVal is returned as the result of Sequence()
 	SequenceVal uint64
@@ -43,8 +43,8 @@ func (cm *Validator) ConfigProto() *cb.Config {
 }
 
 // ConsensusType returns the ConsensusTypeVal
-func (cm *Validator) ChainID() string {
-	return cm.ChainIDVal
+func (cm *Validator) ChannelID() string {
+	return cm.ChannelIDVal
 }
 
 // BatchSize returns the BatchSizeVal

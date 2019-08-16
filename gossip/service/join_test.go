@@ -141,7 +141,7 @@ func (c *configMock) OrdererAddresses() []string {
 	return []string{"localhost:7050"}
 }
 
-func (*configMock) ChainID() string {
+func (*configMock) ChannelID() string {
 	return "A"
 }
 

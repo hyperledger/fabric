@@ -99,7 +99,7 @@ func TestHandleChain(t *testing.T) {
 	})
 
 	mockSupport := &mockmultichannel.ConsenterSupport{
-		ChainIDVal: mockChannel.topic(),
+		ChannelIDVal: mockChannel.topic(),
 		SharedConfigVal: &mockconfig.Orderer{
 			KafkaBrokersVal: []string{mockBroker.Addr()},
 		},

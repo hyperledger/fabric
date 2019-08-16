@@ -162,7 +162,7 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 	// If mod_policy is unset, it's impossible to modify the element, and current code disallows
 	// unset mod_policy values.  This hack 'fixes' existing config with empty mod_policy values.
 	// If the capabilities framework is on, it sets any unset mod_policy to 'Admins'.
-	// This code needs to sit here until validation of v1.0 chains is deprecated from the codebase.
+	// This code needs to sit here until validation of v1.0 channels is deprecated from the codebase.
 	if _, ok := configMap[hackyFixOrdererCapabilities]; ok {
 		// Hacky fix constants, used in recurseConfigMap
 		if newConfigGroup.ModPolicy == "" {

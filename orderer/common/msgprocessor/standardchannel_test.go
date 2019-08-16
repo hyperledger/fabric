@@ -40,7 +40,7 @@ func (ms *mockSystemChannelFilterSupport) Signer() identity.SignerSerializer {
 	return nil
 }
 
-func (ms *mockSystemChannelFilterSupport) ChainID() string {
+func (ms *mockSystemChannelFilterSupport) ChannelID() string {
 	return testChannelID
 }
 

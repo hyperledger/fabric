@@ -206,7 +206,7 @@ func TestGoodWriteConfig(t *testing.T) {
 		&mockBlockWriterSupport{
 			SignerSerializer: mockCrypto(),
 			ReadWriter:       l,
-			Validator:        &mockconfigtx.Validator{ChainIDVal: genesisconfig.TestChainID},
+			Validator:        &mockconfigtx.Validator{ChannelIDVal: genesisconfig.TestChainID},
 			fakeConfig:       fakeConfig,
 			bccsp:            cryptoProvider,
 		},
@@ -246,7 +246,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 		&mockBlockWriterSupport{
 			SignerSerializer: mockCrypto(),
 			ReadWriter:       l,
-			Validator:        &mockconfigtx.Validator{ChainIDVal: genesisconfig.TestChainID},
+			Validator:        &mockconfigtx.Validator{ChannelIDVal: genesisconfig.TestChainID},
 			fakeConfig:       fakeConfig,
 			bccsp:            cryptoProvider,
 		},

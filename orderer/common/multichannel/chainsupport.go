@@ -48,7 +48,7 @@ func newChainSupport(
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
-		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", ledgerResources.ConfigtxValidator().ChainID(), err)
+		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", ledgerResources.ConfigtxValidator().ChannelID(), err)
 	}
 
 	// Construct limited support needed as a parameter for additional support
@@ -56,7 +56,7 @@ func newChainSupport(
 		ledgerResources:  ledgerResources,
 		SignerSerializer: signer,
 		cutter: blockcutter.NewReceiverImpl(
-			ledgerResources.ConfigtxValidator().ChainID(),
+			ledgerResources.ConfigtxValidator().ChannelID(),
 			ledgerResources,
 			blockcutterMetrics,
 		),
@@ -77,7 +77,7 @@ func newChainSupport(
 
 	cs.Chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {
-		logger.Panicf("[channel: %s] Error creating consenter: %s", cs.ChainID(), err)
+		logger.Panicf("[channel: %s] Error creating consenter: %s", cs.ChannelID(), err)
 	}
 
 	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
@@ -85,7 +85,7 @@ func newChainSupport(
 		cs.MetadataValidator = consensus.NoOpMetadataValidator{}
 	}
 
-	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChainID())
+	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChannelID())
 
 	return cs
 }
@@ -130,7 +130,7 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 		return nil, err
 	}
 
-	bundle, err := cs.CreateBundle(cs.ChainID(), env.Config)
+	bundle, err := cs.CreateBundle(cs.ChannelID(), env.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -162,9 +162,9 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	return env, nil
 }
 
-// ChainID passes through to the underlying configtx.Validator
-func (cs *ChainSupport) ChainID() string {
-	return cs.ConfigtxValidator().ChainID()
+// ChannelID passes through to the underlying configtx.Validator
+func (cs *ChainSupport) ChannelID() string {
+	return cs.ConfigtxValidator().ChannelID()
 }
 
 // ConfigProto passes through to the underlying configtx.Validator
@@ -193,7 +193,7 @@ func (cs *ChainSupport) VerifyBlockSignature(sd []*protoutil.SignedData, envelop
 	policyMgr := cs.PolicyManager()
 	// If the envelope passed isn't nil, we should use a different policy manager.
 	if envelope != nil {
-		bundle, err := channelconfig.NewBundle(cs.ChainID(), envelope.Config, factory.GetDefault())
+		bundle, err := channelconfig.NewBundle(cs.ChannelID(), envelope.Config, factory.GetDefault())
 		if err != nil {
 			return err
 		}

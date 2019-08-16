@@ -131,7 +131,7 @@ func (cs *CredentialSupport) BuildTrustedRootsForChain(cm channelconfig.Resource
 		}
 	}
 
-	cid := cm.ConfigtxValidator().ChainID()
+	cid := cm.ConfigtxValidator().ChannelID()
 	msps, err := cm.MSPManager().GetMSPs()
 	if err != nil {
 		commLogger.Errorf("Error getting root CAs for channel %s (%s)", cid, err)

@@ -50,7 +50,7 @@ func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
 		return err
 	}
 
-	bundle, err := channelconfig.NewBundle(configTxValidator.ChainID(), configtx.Config, c.cryptoProvider)
+	bundle, err := channelconfig.NewBundle(configTxValidator.ChannelID(), configtx.Config, c.cryptoProvider)
 	if err != nil {
 		return err
 	}
@@ -155,14 +155,14 @@ func (c *Channel) Errored() <-chan struct{} {
 func capabilitiesSupportedOrPanic(res channelconfig.Resources) {
 	ac, ok := res.ApplicationConfig()
 	if !ok {
-		peerLogger.Panicf("[channel %s] does not have application config so is incompatible", res.ConfigtxValidator().ChainID())
+		peerLogger.Panicf("[channel %s] does not have application config so is incompatible", res.ConfigtxValidator().ChannelID())
 	}
 
 	if err := ac.Capabilities().Supported(); err != nil {
-		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChainID(), err)
+		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChannelID(), err)
 	}
 
 	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
-		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChainID(), err)
+		peerLogger.Panicf("[channel %s] incompatible: %s", res.ConfigtxValidator().ChannelID(), err)
 	}
 }

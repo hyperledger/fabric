@@ -96,7 +96,7 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 	}
 
 	// this is triggered on per channel basis so first update the roots for the channel
-	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxValidator().ChainID())
+	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ConfigtxValidator().ChannelID())
 
 	p.CredentialSupport.BuildTrustedRootsForChain(cm)
 
@@ -113,7 +113,7 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 	if err != nil {
 		msg := "Failed to update trusted roots from latest config block. " +
 			"This peer may not be able to communicate with members of channel %s (%s)"
-		peerLogger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
+		peerLogger.Warningf(msg, cm.ConfigtxValidator().ChannelID(), err)
 	}
 }
 
@@ -336,7 +336,7 @@ func (p *Peer) createChannel(
 			},
 			&CollectionInfoShim{
 				CollectionAndLifecycleResources: newLifecycleValidation,
-				ChannelID:                       bundle.ConfigtxValidator().ChainID(),
+				ChannelID:                       bundle.ConfigtxValidator().ChannelID(),
 			},
 			p.pluginMapper,
 			policies.PolicyManagerGetterFunc(p.GetPolicyManager),
@@ -349,14 +349,14 @@ func (p *Peer) createChannel(
 	}
 
 	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
-	store, err := p.openStore(bundle.ConfigtxValidator().ChainID())
+	store, err := p.openStore(bundle.ConfigtxValidator().ChannelID())
 	if err != nil {
-		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChainID())
+		return errors.Wrapf(err, "[channel %s] failed opening transient store", bundle.ConfigtxValidator().ChannelID())
 	}
 	channel.store = store
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
-	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChainID(), ordererAddresses, gossipservice.Support{
+	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererAddresses, gossipservice.Support{
 		Validator:       validator,
 		Committer:       committer,
 		Store:           store,

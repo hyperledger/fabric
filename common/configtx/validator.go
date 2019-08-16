@@ -193,8 +193,8 @@ func (vi *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 	return nil
 }
 
-// ChainID retrieves the chain ID associated with this manager
-func (vi *ValidatorImpl) ChainID() string {
+// ChannelID retrieves the channel ID associated with this manager
+func (vi *ValidatorImpl) ChannelID() string {
 	return vi.channelID
 }
 

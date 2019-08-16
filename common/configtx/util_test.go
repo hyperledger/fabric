@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestValidConfigID checks that the constraints on chain IDs are enforced properly
+// TestValidConfigID checks that the constraints on channel IDs are enforced properly
 func TestValidConfigID(t *testing.T) {
 	acceptMsg := "Should have accepted valid config ID"
 	rejectMsg := "Should have rejected invalid config ID"
@@ -53,7 +53,7 @@ func TestValidConfigID(t *testing.T) {
 	})
 }
 
-// TestValidChannelID checks that the constraints on chain IDs are enforced properly
+// TestValidChannelID checks that the constraints on channel IDs are enforced properly
 func TestValidChannelID(t *testing.T) {
 	acceptMsg := "Should have accepted valid channel ID"
 	rejectMsg := "Should have rejected invalid channel ID"

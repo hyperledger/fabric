@@ -116,8 +116,8 @@ type ConsenterSupport interface {
 	// Sequence returns the current config squence.
 	Sequence() uint64
 
-	// ChainID returns the channel ID this support is associated with.
-	ChainID() string
+	// ChannelID returns the channel ID this support is associated with.
+	ChannelID() string
 
 	// Height returns the number of blocks in the chain this channel is associated with.
 	Height() uint64

@@ -818,7 +818,7 @@ func (mgr *caManager) updateTrustedRoots(
 		}
 	}
 
-	cid := cm.ConfigtxValidator().ChainID()
+	cid := cm.ConfigtxValidator().ChannelID()
 	logger.Debugf("updating root CAs for channel [%s]", cid)
 	msps, err := cm.MSPManager().GetMSPs()
 	if err != nil {
@@ -877,7 +877,7 @@ func (mgr *caManager) updateTrustedRoots(
 			msg := "Failed to update trusted roots for orderer from latest config " +
 				"block.  This orderer may not be able to communicate " +
 				"with members of channel %s (%s)"
-			logger.Warningf(msg, cm.ConfigtxValidator().ChainID(), err)
+			logger.Warningf(msg, cm.ConfigtxValidator().ChannelID(), err)
 		}
 	}
 }

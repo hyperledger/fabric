@@ -69,7 +69,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 	}
 	ms := &mutableResourcesMock{
 		Resources: config.Resources{
-			ConfigtxValidatorVal: &mockconfigtx.Validator{ChainIDVal: "mychannel"},
+			ConfigtxValidatorVal: &mockconfigtx.Validator{ChannelIDVal: "mychannel"},
 			PolicyManagerVal:     policyMgr,
 		},
 	}
@@ -118,7 +118,7 @@ func TestConsensusMetadataValidation(t *testing.T) {
 	ms := &mutableResourcesMock{
 		Resources: config.Resources{
 			ConfigtxValidatorVal: &mockconfigtx.Validator{
-				ChainIDVal:             "mychannel",
+				ChannelIDVal:           "mychannel",
 				ProposeConfigUpdateVal: testConfigEnvelope(t),
 			},
 			OrdererConfigVal: &config.Orderer{

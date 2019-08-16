@@ -107,7 +107,7 @@ func (mcc *mockChainCreator) ChannelsCount() int {
 func (mcc *mockChainCreator) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
 	return &mockconfig.Resources{
 		ConfigtxValidatorVal: &mockconfigtx.Validator{
-			ChainIDVal: channelID,
+			ChannelIDVal: channelID,
 		},
 		OrdererConfigVal: &mockconfig.Orderer{
 			ConsensusMetadataVal: []byte("new consensus metadata"),

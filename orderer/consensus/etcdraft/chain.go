@@ -202,7 +202,7 @@ func NewChain(
 	f CreateBlockPuller,
 	observeC chan<- raft.SoftState) (*Chain, error) {
 
-	lg := opts.Logger.With("channel", support.ChainID(), "node", opts.RaftID)
+	lg := opts.Logger.With("channel", support.ChannelID(), "node", opts.RaftID)
 
 	fresh := !wal.Exist(opts.WALDir)
 	storage, err := CreateStorage(lg, opts.WALDir, opts.SnapDir, opts.MemoryStorage)
@@ -238,7 +238,7 @@ func NewChain(
 	c := &Chain{
 		configurator:     conf,
 		rpc:              rpc,
-		channelID:        support.ChainID(),
+		channelID:        support.ChannelID(),
 		raftID:           opts.RaftID,
 		submitC:          make(chan *submit),
 		applyC:           make(chan apply),
@@ -259,16 +259,16 @@ func NewChain(
 		createPuller:     f,
 		clock:            opts.Clock,
 		Metrics: &Metrics{
-			ClusterSize:             opts.Metrics.ClusterSize.With("channel", support.ChainID()),
-			IsLeader:                opts.Metrics.IsLeader.With("channel", support.ChainID()),
-			ActiveNodes:             opts.Metrics.ActiveNodes.With("channel", support.ChainID()),
-			CommittedBlockNumber:    opts.Metrics.CommittedBlockNumber.With("channel", support.ChainID()),
-			SnapshotBlockNumber:     opts.Metrics.SnapshotBlockNumber.With("channel", support.ChainID()),
-			LeaderChanges:           opts.Metrics.LeaderChanges.With("channel", support.ChainID()),
-			ProposalFailures:        opts.Metrics.ProposalFailures.With("channel", support.ChainID()),
-			DataPersistDuration:     opts.Metrics.DataPersistDuration.With("channel", support.ChainID()),
-			NormalProposalsReceived: opts.Metrics.NormalProposalsReceived.With("channel", support.ChainID()),
-			ConfigProposalsReceived: opts.Metrics.ConfigProposalsReceived.With("channel", support.ChainID()),
+			ClusterSize:             opts.Metrics.ClusterSize.With("channel", support.ChannelID()),
+			IsLeader:                opts.Metrics.IsLeader.With("channel", support.ChannelID()),
+			ActiveNodes:             opts.Metrics.ActiveNodes.With("channel", support.ChannelID()),
+			CommittedBlockNumber:    opts.Metrics.CommittedBlockNumber.With("channel", support.ChannelID()),
+			SnapshotBlockNumber:     opts.Metrics.SnapshotBlockNumber.With("channel", support.ChannelID()),
+			LeaderChanges:           opts.Metrics.LeaderChanges.With("channel", support.ChannelID()),
+			ProposalFailures:        opts.Metrics.ProposalFailures.With("channel", support.ChannelID()),
+			DataPersistDuration:     opts.Metrics.DataPersistDuration.With("channel", support.ChannelID()),
+			NormalProposalsReceived: opts.Metrics.NormalProposalsReceived.With("channel", support.ChannelID()),
+			ConfigProposalsReceived: opts.Metrics.ConfigProposalsReceived.With("channel", support.ChannelID()),
 		},
 		logger: lg,
 		opts:   opts,

@@ -421,7 +421,7 @@ func (g *GossipService) createSelfSignedData() protoutil.SignedData {
 func (g *GossipService) updateAnchors(config Config) {
 	myOrg := string(g.secAdv.OrgByPeerIdentity(api.PeerIdentityType(g.peerIdentity)))
 	if !g.amIinChannel(myOrg, config) {
-		logger.Error("Tried joining channel", config.ChainID(), "but our org(", myOrg, "), isn't "+
+		logger.Error("Tried joining channel", config.ChannelID(), "but our org(", myOrg, "), isn't "+
 			"among the orgs of the channel:", orgListFromConfig(config), ", aborting.")
 		return
 	}
@@ -439,8 +439,8 @@ func (g *GossipService) updateAnchors(config Config) {
 	}
 
 	// Initialize new state provider for given committer
-	logger.Debug("Creating state provider for channelID", config.ChainID())
-	g.JoinChan(jcm, gossipcommon.ChannelID(config.ChainID()))
+	logger.Debug("Creating state provider for channelID", config.ChannelID())
+	g.JoinChan(jcm, gossipcommon.ChannelID(config.ChannelID()))
 }
 
 func (g *GossipService) updateEndpoints(channelID string, endpoints []string) {

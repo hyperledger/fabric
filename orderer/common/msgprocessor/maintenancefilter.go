@@ -25,7 +25,7 @@ type MaintenanceFilterSupport interface {
 	// OrdererConfig returns the config.Orderer for the channel and whether the Orderer config exists
 	OrdererConfig() (channelconfig.Orderer, bool)
 
-	ChainID() string
+	ChannelID() string
 }
 
 // MaintenanceFilter checks whether the orderer config ConsensusType is in maintenance mode, and if it is,
@@ -79,7 +79,7 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 		return errors.Errorf("updated config does not include a config update")
 	}
 
-	bundle, err := channelconfig.NewBundle(mf.support.ChainID(), configEnvelope.Config, factory.GetDefault())
+	bundle, err := channelconfig.NewBundle(mf.support.ChannelID(), configEnvelope.Config, factory.GetDefault())
 	if err != nil {
 		return errors.Wrap(err, "failed to parse config")
 	}
@@ -139,12 +139,12 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 		}
 
 		logger.Infof("[channel: %s] consensus-type migration: about to change from %s to %s",
-			mf.support.ChainID(), ordererConfig.ConsensusType(), nextOrdererConfig.ConsensusType())
+			mf.support.ChannelID(), ordererConfig.ConsensusType(), nextOrdererConfig.ConsensusType())
 	}
 
 	if nextOrdererConfig.ConsensusState() != ordererConfig.ConsensusState() {
 		logger.Infof("[channel: %s] maintenance mode: ConsensusType.State about to change from %s to %s",
-			mf.support.ChainID(), ordererConfig.ConsensusState(), nextOrdererConfig.ConsensusState())
+			mf.support.ChannelID(), ordererConfig.ConsensusState(), nextOrdererConfig.ConsensusState())
 	}
 
 	return nil

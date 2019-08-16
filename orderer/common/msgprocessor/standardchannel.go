@@ -29,8 +29,8 @@ type StandardChannelSupport interface {
 	// Sequence should return the current configSeq
 	Sequence() uint64
 
-	// ChainID returns the ChannelID
-	ChainID() string
+	// ChannelID returns the ChannelID
+	ChannelID() string
 
 	// Signer returns the signer for this orderer
 	Signer() identity.SignerSerializer
@@ -117,7 +117,7 @@ func (s *StandardChannel) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, 
 // return the resulting config message and the configSeq the config was computed from.  If the config impetus message
 // is invalid, an error is returned.
 func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
-	logger.Debugf("Processing config update message for channel %s", s.support.ChainID())
+	logger.Debugf("Processing config update message for channel %s", s.support.ChannelID())
 
 	// Call Sequence first.  If seq advances between proposal and acceptance, this is okay, and will cause reprocessing
 	// however, if Sequence is called last, then a success could be falsely attributed to a newer configSeq
@@ -129,10 +129,10 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 
 	configEnvelope, err := s.support.ProposeConfigUpdate(env)
 	if err != nil {
-		return nil, 0, errors.WithMessagef(err, "error applying config update to existing channel '%s'", s.support.ChainID())
+		return nil, 0, errors.WithMessagef(err, "error applying config update to existing channel '%s'", s.support.ChannelID())
 	}
 
-	config, err = protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, s.support.ChainID(), s.support.Signer(), configEnvelope, msgVersion, epoch)
+	config, err = protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, s.support.ChannelID(), s.support.Signer(), configEnvelope, msgVersion, epoch)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -158,7 +158,7 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 // ProcessConfigMsg takes an envelope of type `HeaderType_CONFIG`, unpacks the `ConfigEnvelope` from it
 // extracts the `ConfigUpdate` from `LastUpdate` field, and calls `ProcessConfigUpdateMsg` on it.
 func (s *StandardChannel) ProcessConfigMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
-	logger.Debugf("Processing config message for channel %s", s.support.ChainID())
+	logger.Debugf("Processing config message for channel %s", s.support.ChannelID())
 
 	configEnvelope := &cb.ConfigEnvelope{}
 	_, err = protoutil.UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, configEnvelope)

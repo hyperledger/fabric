@@ -40,7 +40,7 @@ type SystemChannel struct {
 
 // NewSystemChannel creates a new system channel message processor.
 func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTemplator, filters *RuleSet) *SystemChannel {
-	logger.Debugf("Creating system channel msg processor for channel %s", support.ChainID())
+	logger.Debugf("Creating system channel msg processor for channel %s", support.ChannelID())
 	return &SystemChannel{
 		StandardChannel: NewStandardChannel(support, filters),
 		templator:       templator,
@@ -83,7 +83,7 @@ func (s *SystemChannel) ProcessNormalMsg(msg *cb.Envelope) (configSeq uint64, er
 	// because the message processor is looked up by channel ID.
 	// However, the system channel message processor is the catch all for messages
 	// which do not correspond to an extant channel, so we must check it here.
-	if channelID != s.support.ChainID() {
+	if channelID != s.support.ChannelID() {
 		return 0, ErrChannelDoesNotExist
 	}
 
@@ -101,13 +101,13 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 
 	logger.Debugf("Processing config update tx with system channel message processor for channel ID %s", channelID)
 
-	if channelID == s.support.ChainID() {
+	if channelID == s.support.ChannelID() {
 		return s.StandardChannel.ProcessConfigUpdateMsg(envConfigUpdate)
 	}
 
 	// XXX we should check that the signature on the outer envelope is at least valid for some MSP in the system channel
 
-	logger.Debugf("Processing channel create tx for channel %s on system channel %s", channelID, s.support.ChainID())
+	logger.Debugf("Processing channel create tx for channel %s on system channel %s", channelID, s.support.ChannelID())
 
 	// If the channel ID does not match the system channel, then this must be a channel creation transaction
 
@@ -126,7 +126,7 @@ func (s *SystemChannel) ProcessConfigUpdateMsg(envConfigUpdate *cb.Envelope) (co
 		return nil, 0, err
 	}
 
-	wrappedOrdererTransaction, err := protoutil.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, s.support.ChainID(), s.support.Signer(), newChannelEnvConfig, msgVersion, epoch)
+	wrappedOrdererTransaction, err := protoutil.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, s.support.ChannelID(), s.support.Signer(), newChannelEnvConfig, msgVersion, epoch)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -142,7 +142,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return errors.Errorf("config proposed by the channel creation request did not match the config received with the channel creation request")
 	}
 
-	bundle, err := scf.cc.CreateBundle(res.ConfigtxValidator().ChainID(), newChannelConfigEnv.Config)
+	bundle, err := scf.cc.CreateBundle(res.ConfigtxValidator().ChannelID(), newChannelConfigEnv.Config)
 	if err != nil {
 		return errors.Wrap(err, "config does not validly parse")
 	}
