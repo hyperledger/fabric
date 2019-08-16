@@ -103,16 +103,16 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	chainID := v.chainID
 	logger.Debugf("[%s] Dispatch starts for bytes %p", chainID, envBytes)
 
-	// get header extensions so we have the chaincode ID
-	hdrExt, err := protoutil.GetChaincodeHeaderExtension(payload.Header)
-	if err != nil {
-		return err, peer.TxValidationCode_BAD_HEADER_EXTENSION
-	}
-
 	// get channel header
 	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return err, peer.TxValidationCode_BAD_CHANNEL_HEADER
+	}
+
+	// get header extensions so we have the chaincode ID
+	hdrExt, err := protoutil.GetChaincodeHeaderExtension(chdr.Extension)
+	if err != nil {
+		return err, peer.TxValidationCode_BAD_HEADER_EXTENSION
 	}
 
 	/* obtain the list of namespaces we're writing to */

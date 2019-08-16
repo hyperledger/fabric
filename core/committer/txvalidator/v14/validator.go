@@ -558,7 +558,7 @@ func (v *TxValidator) getTxCCInstance(payload *common.Payload) (invokeCCIns, upg
 	chainID := chdr.ChannelId // it is guaranteed to be an existing channel by now
 
 	// ChaincodeID
-	hdrExt, err := protoutil.GetChaincodeHeaderExtension(payload.Header)
+	hdrExt, err := protoutil.GetChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -125,7 +125,7 @@ func TestBadProposalHeaders(t *testing.T) {
 	assert.Error(t, err, "Expected error with malformed channel header")
 	_, err = protoutil.GetNonce(prop)
 	assert.Error(t, err, "Expected error with malformed channel header")
-	_, err = protoutil.GetChaincodeHeaderExtension(hdr)
+	_, err = protoutil.GetChaincodeHeaderExtension([]byte("bad header extension"))
 	assert.Error(t, err, "Expected error with malformed channel header")
 	_, err = protoutil.ComputeProposalBinding(prop)
 	assert.Error(t, err, "Expected error with malformed channel header")
@@ -301,7 +301,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// get back the header extension
-	hdrExt, err := protoutil.GetChaincodeHeaderExtension(hdr)
+	hdrExt, err := protoutil.GetChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
 		t.Fatalf("Could not extract the header extensions from the proposal, err %s\n", err)
 		return

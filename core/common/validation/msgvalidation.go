@@ -23,15 +23,15 @@ import (
 var putilsLogger = flogging.MustGetLogger("protoutils")
 
 // validateChaincodeProposalMessage checks the validity of a Proposal message of type CHAINCODE
-func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*pb.ChaincodeHeaderExtension, error) {
-	if prop == nil || hdr == nil {
+func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header, chdr *common.ChannelHeader) (*pb.ChaincodeHeaderExtension, error) {
+	if prop == nil || hdr == nil || chdr == nil {
 		return nil, errors.New("nil arguments")
 	}
 
 	putilsLogger.Debugf("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
 
 	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
-	chaincodeHdrExt, err := protoutil.GetChaincodeHeaderExtension(hdr)
+	chaincodeHdrExt, err := protoutil.GetChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
 		return nil, errors.New("invalid header extension for type CHAINCODE")
 	}
@@ -125,7 +125,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 		fallthrough
 	case common.HeaderType_ENDORSER_TRANSACTION:
 		// validation of the proposal message knowing it's of type CHAINCODE
-		chaincodeHdrExt, err := validateChaincodeProposalMessage(prop, hdr)
+		chaincodeHdrExt, err := validateChaincodeProposalMessage(prop, hdr, chdr)
 		if err != nil {
 			return nil, nil, nil, err
 		}
