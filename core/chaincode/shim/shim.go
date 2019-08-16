@@ -28,6 +28,8 @@ const (
 	emptyKeySubstitute    = "\x01"
 )
 
+var peerAddress = flag.String("peer.address", "", "peer address")
+
 //this separates the chaincode stream interface establishment
 //so we can replace it with a mock peer stream
 type peerStreamGetter func(name string) (PeerChaincodeStream, error)
@@ -37,8 +39,6 @@ var streamGetter peerStreamGetter
 
 //the non-mock user CC stream establishment func
 func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
-	peerAddress := flag.String("peer.address", "", "peer address")
-	flag.Parse()
 	if *peerAddress == "" {
 		return nil, errors.New("flag 'peer.address' must be set")
 	}
@@ -58,6 +58,7 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 
 // chaincodes.
 func Start(cc Chaincode) error {
+	flag.Parse()
 	chaincodename := os.Getenv("CORE_CHAINCODE_ID_NAME")
 	if chaincodename == "" {
 		return errors.New("'CORE_CHAINCODE_ID_NAME' must be set")
@@ -121,8 +122,7 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 		case rmsg := <-msgAvail:
 			switch {
 			case rmsg.err == io.EOF:
-				err = fmt.Errorf("received EOF, ending chaincode stream: %s", rmsg.err)
-				return err
+				return errors.New("received EOF, ending chaincode stream")
 			case rmsg.err != nil:
 				err := fmt.Errorf("receive failed: %s", rmsg.err)
 				return err
