@@ -55,7 +55,7 @@ package the chaincode prior to installation and instantiation, by using
 the "peer chaincode package" command.
 
 FAB-15366 Logger removed from chaincode shim
-Chaincodes that used the shim's NewLogger() will need to shift to a new
+Chaincode that used the shim's NewLogger() will need to shift to a new
 logging mechanism. Chaincode logging is intended to be the responsibility
 of the application developer. As such it should be handled using tools and
 libraries that make the most sense to the chaincode developer and the
@@ -66,6 +66,11 @@ once enabled, each chaincode will receive its own logging channel and
 STDOUT and STDERR will be integrated in the peers log on a per-line basis.
 A production grade approach would be to run a log aggregation service and
 forward your logs to the aggregation service.
+
+FAB-16213 - the go chaincode entities extension has been removed
+Chaincode implementations that used the entities extension package from an
+earlier version of Fabric will need to vendor a 1.x version of the package
+for as part of their chaincode package.
 
 Known Vulnerabilities
 ---------------------

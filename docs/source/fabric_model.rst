@@ -112,8 +112,7 @@ To further obfuscate the data, values within chaincode can be encrypted
 sending transactions to the ordering service and appending blocks to the ledger.
 Once encrypted data has been written to the ledger, it can be decrypted only by
 a user in possession of the corresponding key that was used to generate the cipher
-text. For further details on chaincode encryption, see the :doc:`chaincode4ade`
-topic.
+text.
 
 See the :doc:`private-data-arch` topic for more details on how to achieve
 privacy on your blockchain network.

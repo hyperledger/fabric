@@ -10,7 +10,6 @@ import (
 	_ "github.com/hyperledger/fabric/core/chaincode/shim"
 	_ "github.com/hyperledger/fabric/core/chaincode/shim/ext/attrmgr"
 	_ "github.com/hyperledger/fabric/core/chaincode/shim/ext/cid"
-	_ "github.com/hyperledger/fabric/core/chaincode/shim/ext/entities"
 	_ "github.com/hyperledger/fabric/core/chaincode/shim/ext/statebased"
 )
 
