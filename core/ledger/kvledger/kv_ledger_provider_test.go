@@ -387,7 +387,7 @@ func TestLedgerBackup(t *testing.T) {
 	txEnvBytes2 := block1.Data.Data[0]
 	txEnv2, err := protoutil.GetEnvelopeFromBlock(txEnvBytes2)
 	assert.NoError(t, err, "Error upon GetEnvelopeFromBlock")
-	payload2, err := protoutil.GetPayload(txEnv2)
+	payload2, err := protoutil.UnmarshalPayload(txEnv2.Payload)
 	assert.NoError(t, err, "Error upon GetPayload")
 	chdr, err := protoutil.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
 	assert.NoError(t, err, "Error upon GetChannelHeaderFromBytes")

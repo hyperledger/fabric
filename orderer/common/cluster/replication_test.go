@@ -196,7 +196,7 @@ func TestReplicateChainsFailures(t *testing.T) {
 				}},
 			},
 			expectedPanic: "Failed converting channel creation block for channel channelWeAreNotPartOf" +
-				" to genesis block: no payload in envelope: proto: common.Payload: illegal tag 0 (wire type 1)",
+				" to genesis block: error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1085,7 +1085,7 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint str
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	assert.NoError(t, err)
-	payload, err := protoutil.ExtractPayload(env)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	assert.NoError(t, err)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 	assert.NoError(t, err)
@@ -1109,7 +1109,7 @@ func injectTLSCACert(t *testing.T, block *common.Block, tlsCA []byte) {
 	// Unwrap the layers until we reach the TLS CA certificates
 	env, err := protoutil.ExtractEnvelope(block, 0)
 	assert.NoError(t, err)
-	payload, err := protoutil.ExtractPayload(env)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	assert.NoError(t, err)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 	assert.NoError(t, err)
@@ -1157,7 +1157,7 @@ func TestIsNewChannelBlock(t *testing.T) {
 		},
 		{
 			name:        "corrupt payload in envelope",
-			expectedErr: "no payload in envelope: proto: common.Payload: illegal tag 0 (wire type 1)",
+			expectedErr: "error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
 			block: &common.Block{
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{

@@ -117,7 +117,7 @@ func (s *MSPMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 // else returns error
 func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum uint64, signedBlock []byte) error {
 	// - Convert signedBlock to common.Block.
-	block, err := protoutil.GetBlockFromBlockBytes(signedBlock)
+	block, err := protoutil.UnmarshalBlock(signedBlock)
 	if err != nil {
 		return fmt.Errorf("Failed unmarshalling block bytes on channel [%s]: [%s]", chainID, err)
 	}
@@ -174,7 +174,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	// - Prepare SignedData
 	signatureSet := []*protoutil.SignedData{}
 	for _, metadataSignature := range metadata.Signatures {
-		shdr, err := protoutil.GetSignatureHeader(metadataSignature.SignatureHeader)
+		shdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.SignatureHeader)
 		if err != nil {
 			return fmt.Errorf("Failed unmarshalling signature header for block with id [%d] on channel [%s]: [%s]", block.Header.Number, chainID, err)
 		}

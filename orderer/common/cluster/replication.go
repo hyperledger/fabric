@@ -609,7 +609,7 @@ func ChannelCreationBlockToGenesisBlock(block *common.Block) (*common.Block, err
 	if err != nil {
 		return nil, err
 	}
-	payload, err := protoutil.ExtractPayload(env)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	if err != nil {
 		return nil, err
 	}
@@ -639,7 +639,7 @@ func IsNewChannelBlock(block *common.Block) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	payload, err := protoutil.ExtractPayload(env)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	if err != nil {
 		return "", err
 	}

@@ -319,7 +319,7 @@ func TestQueryGeneratedBlock(t *testing.T) {
 			if env, err := protoutil.GetEnvelopeFromBlock(ebytes); err != nil {
 				t.Fatalf("error getting envelope from block: %s", err)
 			} else if env != nil {
-				payload, err := protoutil.GetPayload(env)
+				payload, err := protoutil.UnmarshalPayload(env.Payload)
 				if err != nil {
 					t.Fatalf("error extracting payload from envelope: %s", err)
 				}

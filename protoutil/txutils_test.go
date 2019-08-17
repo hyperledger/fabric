@@ -506,9 +506,9 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 
 	assert.Equal(t, int32(502), prespFailure.Response.Status)
 	// drilldown into the response to find the chaincode response
-	pRespPayload, err := protoutil.GetProposalResponsePayload(prespFailure.Payload)
+	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(prespFailure.Payload)
 	assert.NoError(t, err, "Error while unmarshaling proposal response payload: %s", err)
-	ca, err := protoutil.GetChaincodeAction(pRespPayload.Extension)
+	ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
 	assert.NoError(t, err, "Error while unmarshaling chaincode action: %s", err)
 
 	assert.Equal(t, int32(502), ca.Response.Status)

@@ -164,11 +164,11 @@ func TestGetBlockFromBlockBytes(t *testing.T) {
 	assert.NoError(t, err, "Failed to create test configuration block")
 	blockBytes, err := protoutil.Marshal(gb)
 	assert.NoError(t, err, "Failed to marshal block")
-	_, err = protoutil.GetBlockFromBlockBytes(blockBytes)
+	_, err = protoutil.UnmarshalBlock(blockBytes)
 	assert.NoError(t, err, "to get block from block bytes")
 
 	// bad block bytes
-	_, err = protoutil.GetBlockFromBlockBytes([]byte("bad block"))
+	_, err = protoutil.UnmarshalBlock([]byte("bad block"))
 	assert.Error(t, err, "Expected error for malformed block bytes")
 }
 

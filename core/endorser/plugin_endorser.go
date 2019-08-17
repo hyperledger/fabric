@@ -231,7 +231,7 @@ func (pe *PluginEndorser) getOrCreatePluginChannelMapping(plugin PluginName, pf 
 }
 
 func proposalResponsePayloadFromContext(ctx Context) ([]byte, error) {
-	hdr, err := protoutil.GetHeader(ctx.Proposal.Header)
+	hdr, err := protoutil.UnmarshalHeader(ctx.Proposal.Header)
 	if err != nil {
 		endorserLogger.Warning("Failed parsing header", err)
 		return nil, errors.Wrap(err, "failed parsing header")

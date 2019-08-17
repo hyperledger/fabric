@@ -233,7 +233,7 @@ func ConfigFromBlock(block *common.Block) (*common.ConfigEnvelope, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	payload, err := protoutil.GetPayload(env)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -313,7 +313,7 @@ func SignatureSetFromBlock(block *common.Block) ([]*protoutil.SignedData, error)
 
 	var signatureSet []*protoutil.SignedData
 	for _, metadataSignature := range metadata.Signatures {
-		sigHdr, err := protoutil.GetSignatureHeader(metadataSignature.SignatureHeader)
+		sigHdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.SignatureHeader)
 		if err != nil {
 			return nil, errors.Errorf("failed unmarshaling signature header for block with id %d: %v",
 				block.Header.Number, err)

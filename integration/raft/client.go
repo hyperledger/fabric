@@ -190,7 +190,7 @@ func signAsAdmin(n *nwo.Network, entity interface{}, env *common.Envelope) *comm
 	signer, err := signer.NewSigner(conf)
 	Expect(err).NotTo(HaveOccurred())
 
-	payload, err := protoutil.ExtractPayload(env)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(payload.Header).NotTo(BeNil())
 	Expect(payload.Header.ChannelHeader).NotTo(BeNil())

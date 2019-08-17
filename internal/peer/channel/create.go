@@ -81,7 +81,7 @@ func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
 }
 
 func sanityCheckAndSignConfigTx(envConfigUpdate *cb.Envelope, signer identity.SignerSerializer) (*cb.Envelope, error) {
-	payload, err := protoutil.ExtractPayload(envConfigUpdate)
+	payload, err := protoutil.UnmarshalPayload(envConfigUpdate.Payload)
 	if err != nil {
 		return nil, InvalidCreateTx("bad payload")
 	}

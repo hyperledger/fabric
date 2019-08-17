@@ -142,7 +142,7 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	assert.NotNil(t, env)
 
 	// get the payload from the envelope
-	payload, err := protoutil.GetPayload(env)
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
 	assert.NoError(t, err, "GetPayload returns err %s", err)
 
 	// validate the header

@@ -117,7 +117,7 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 		txStatInfo := &txmgr.TxStatInfo{TxType: -1}
 		txsStatInfo = append(txsStatInfo, txStatInfo)
 		if env, err = protoutil.GetEnvelopeFromBlock(envBytes); err == nil {
-			if payload, err = protoutil.GetPayload(env); err == nil {
+			if payload, err = protoutil.UnmarshalPayload(env.Payload); err == nil {
 				chdr, err = protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 			}
 		}

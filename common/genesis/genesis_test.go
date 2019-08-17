@@ -22,7 +22,7 @@ func TestForTransactionID(t *testing.T) {
 	impl := NewFactoryImpl(protoutil.NewConfigGroup())
 	block := impl.Block("testchainid")
 	configEnv, _ := protoutil.ExtractEnvelope(block, 0)
-	configEnvPayload, _ := protoutil.ExtractPayload(configEnv)
+	configEnvPayload, _ := protoutil.UnmarshalPayload(configEnv.Payload)
 	configEnvPayloadChannelHeader, _ := protoutil.UnmarshalChannelHeader(configEnvPayload.GetHeader().ChannelHeader)
 	assert.NotEmpty(t, configEnvPayloadChannelHeader.TxId, "tx_id of configuration transaction should not be empty")
 }

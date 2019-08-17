@@ -150,7 +150,7 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 		}
 
 		// get the payload from the envelope
-		payload, err := protoutil.GetPayload(env)
+		payload, err := protoutil.UnmarshalPayload(env.Payload)
 		if err != nil {
 			return nil, errors.WithMessage(err, "could not extract payload from envelope")
 		}
@@ -173,7 +173,7 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 		}
 
 		if filteredTransaction.Type == common.HeaderType_ENDORSER_TRANSACTION {
-			tx, err := protoutil.GetTransaction(payload.Data)
+			tx, err := protoutil.UnmarshalTransaction(payload.Data)
 			if err != nil {
 				return nil, errors.WithMessage(err, "error unmarshal transaction payload for block event")
 			}
@@ -194,7 +194,7 @@ func (block *blockEvent) toFilteredBlock() (*peer.FilteredBlock, error) {
 func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_TransactionActions, error) {
 	transactionActions := &peer.FilteredTransactionActions{}
 	for _, action := range ta {
-		chaincodeActionPayload, err := protoutil.GetChaincodeActionPayload(action.Payload)
+		chaincodeActionPayload, err := protoutil.UnmarshalChaincodeActionPayload(action.Payload)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal transaction action payload for block event")
 		}
@@ -203,17 +203,17 @@ func (ta transactionActions) toFilteredActions() (*peer.FilteredTransaction_Tran
 			logger.Debugf("chaincode action, the payload action is nil, skipping")
 			continue
 		}
-		propRespPayload, err := protoutil.GetProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
+		propRespPayload, err := protoutil.UnmarshalProposalResponsePayload(chaincodeActionPayload.Action.ProposalResponsePayload)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal proposal response payload for block event")
 		}
 
-		caPayload, err := protoutil.GetChaincodeAction(propRespPayload.Extension)
+		caPayload, err := protoutil.UnmarshalChaincodeAction(propRespPayload.Extension)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal chaincode action for block event")
 		}
 
-		ccEvent, err := protoutil.GetChaincodeEvents(caPayload.Events)
+		ccEvent, err := protoutil.UnmarshalChaincodeEvents(caPayload.Events)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error unmarshal chaincode event for block event")
 		}

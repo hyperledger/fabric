@@ -230,7 +230,7 @@ func isCreatorOfProposalAMember(signedProposal *pb.SignedProposal, collection *S
 }
 
 func getSignedData(signedProposal *pb.SignedProposal) (protoutil.SignedData, error) {
-	proposal, err := protoutil.GetProposal(signedProposal.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
 	if err != nil {
 		return protoutil.SignedData{}, err
 	}

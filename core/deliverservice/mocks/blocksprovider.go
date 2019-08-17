@@ -108,7 +108,7 @@ func MockRecv(mock *MockBlocksDeliverer) (*orderer.DeliverResponse, error) {
 // Send sends the envelope with request for the blocks for ordering service
 // currently mocked and not doing anything
 func (mock *MockBlocksDeliverer) Send(env *common.Envelope) error {
-	payload, _ := protoutil.GetPayload(env)
+	payload, _ := protoutil.UnmarshalPayload(env.Payload)
 	seekInfo := &orderer.SeekInfo{}
 
 	proto.Unmarshal(payload.Data, seekInfo)

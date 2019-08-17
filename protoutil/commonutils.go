@@ -14,9 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
 
@@ -49,57 +47,6 @@ func CreateNonceOrPanic() []byte {
 func CreateNonce() ([]byte, error) {
 	nonce, err := getRandomNonce()
 	return nonce, errors.WithMessage(err, "error generating random nonce")
-}
-
-// UnmarshalPayloadOrPanic unmarshals bytes to a Payload structure or panics
-// on error
-func UnmarshalPayloadOrPanic(encoded []byte) *cb.Payload {
-	payload, err := UnmarshalPayload(encoded)
-	if err != nil {
-		panic(err)
-	}
-	return payload
-}
-
-// UnmarshalPayload unmarshals bytes to a Payload structure
-func UnmarshalPayload(encoded []byte) (*cb.Payload, error) {
-	payload := &cb.Payload{}
-	err := proto.Unmarshal(encoded, payload)
-	return payload, errors.Wrap(err, "error unmarshaling Payload")
-}
-
-// UnmarshalEnvelopeOrPanic unmarshals bytes to an Envelope structure or panics
-// on error
-func UnmarshalEnvelopeOrPanic(encoded []byte) *cb.Envelope {
-	envelope, err := UnmarshalEnvelope(encoded)
-	if err != nil {
-		panic(err)
-	}
-	return envelope
-}
-
-// UnmarshalEnvelope unmarshals bytes to an Envelope structure
-func UnmarshalEnvelope(encoded []byte) (*cb.Envelope, error) {
-	envelope := &cb.Envelope{}
-	err := proto.Unmarshal(encoded, envelope)
-	return envelope, errors.Wrap(err, "error unmarshaling Envelope")
-}
-
-// UnmarshalBlockOrPanic unmarshals bytes to an Block structure or panics
-// on error
-func UnmarshalBlockOrPanic(encoded []byte) *cb.Block {
-	block, err := UnmarshalBlock(encoded)
-	if err != nil {
-		panic(err)
-	}
-	return block
-}
-
-// UnmarshalBlock unmarshals bytes to an Block structure
-func UnmarshalBlock(encoded []byte) (*cb.Block, error) {
-	block := &cb.Block{}
-	err := proto.Unmarshal(encoded, block)
-	return block, errors.Wrap(err, "error unmarshaling Block")
 }
 
 // UnmarshalEnvelopeOfType unmarshals an envelope of the specified type,
@@ -153,24 +100,6 @@ func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
 	envelope, err := GetEnvelopeFromBlock(marshaledEnvelope)
 	err = errors.WithMessagef(err, "block data does not carry an envelope at index %d", index)
 	return envelope, err
-}
-
-// ExtractPayloadOrPanic retrieves the payload of a given envelope and
-// unmarshals it -- it panics if either of these operations fail
-func ExtractPayloadOrPanic(envelope *cb.Envelope) *cb.Payload {
-	payload, err := ExtractPayload(envelope)
-	if err != nil {
-		panic(err)
-	}
-	return payload
-}
-
-// ExtractPayload retrieves the payload of a given envelope and unmarshals it.
-func ExtractPayload(envelope *cb.Envelope) (*cb.Payload, error) {
-	payload := &cb.Payload{}
-	err := proto.Unmarshal(envelope.Payload, payload)
-	err = errors.Wrap(err, "no payload in envelope")
-	return payload, err
 }
 
 // MakeChannelHeader creates a ChannelHeader.
@@ -256,52 +185,6 @@ func SignOrPanic(signer identity.Signer, msg []byte) []byte {
 	return sigma
 }
 
-// UnmarshalChannelHeader returns a ChannelHeader from bytes
-func UnmarshalChannelHeader(bytes []byte) (*cb.ChannelHeader, error) {
-	chdr := &cb.ChannelHeader{}
-	err := proto.Unmarshal(bytes, chdr)
-	return chdr, errors.Wrap(err, "error unmarshaling ChannelHeader")
-}
-
-// UnmarshalChannelHeaderOrPanic unmarshals bytes to a ChannelHeader or panics
-// on error
-func UnmarshalChannelHeaderOrPanic(bytes []byte) *cb.ChannelHeader {
-	chdr, err := UnmarshalChannelHeader(bytes)
-	if err != nil {
-		panic(err)
-	}
-	return chdr
-}
-
-// UnmarshalChaincodeID returns a ChaincodeID from bytes
-func UnmarshalChaincodeID(bytes []byte) (*pb.ChaincodeID, error) {
-	ccid := &pb.ChaincodeID{}
-	err := proto.Unmarshal(bytes, ccid)
-	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling ChaincodeID")
-	}
-
-	return ccid, nil
-}
-
-// UnmarshalSignatureHeader unmarshals bytes to a SignatureHeader.
-func UnmarshalSignatureHeader(bytes []byte) (*cb.SignatureHeader, error) {
-	sh := &common.SignatureHeader{}
-	if err := proto.Unmarshal(bytes, sh); err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling SignatureHeader")
-	}
-	return sh, nil
-}
-
-// UnmarshalSignatureHeaderOrPanic unmarshals bytes to a SignatureHeader.
-func UnmarshalSignatureHeaderOrPanic(bytes []byte) *cb.SignatureHeader {
-	sighdr, err := UnmarshalSignatureHeader(bytes)
-	if err != nil {
-		panic(err)
-	}
-	return sighdr
-}
-
 // IsConfigBlock validates whenever given block contains configuration
 // update transaction
 func IsConfigBlock(block *cb.Block) bool {
@@ -310,7 +193,7 @@ func IsConfigBlock(block *cb.Block) bool {
 		return false
 	}
 
-	payload, err := GetPayload(envelope)
+	payload, err := UnmarshalPayload(envelope.Payload)
 	if err != nil {
 		return false
 	}

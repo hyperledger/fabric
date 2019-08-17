@@ -68,17 +68,17 @@ func (p *policyChecker) CheckPolicy(channelID, policyName string, signedProp *pb
 	}
 
 	// Prepare SignedData
-	proposal, err := protoutil.GetProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return fmt.Errorf("Failing extracting proposal during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
-	header, err := protoutil.GetHeader(proposal.Header)
+	header, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
 		return fmt.Errorf("Failing extracting header during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
-	shdr, err := protoutil.GetSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(header.SignatureHeader)
 	if err != nil {
 		return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
@@ -103,17 +103,17 @@ func (p *policyChecker) CheckPolicyNoChannel(policyName string, signedProp *pb.S
 		return fmt.Errorf("Invalid signed proposal during channelless check policy with policy [%s]", policyName)
 	}
 
-	proposal, err := protoutil.GetProposal(signedProp.ProposalBytes)
+	proposal, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return fmt.Errorf("Failing extracting proposal during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
-	header, err := protoutil.GetHeader(proposal.Header)
+	header, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
 		return fmt.Errorf("Failing extracting header during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
-	shdr, err := protoutil.GetSignatureHeader(header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(header.SignatureHeader)
 	if err != nil {
 		return fmt.Errorf("Invalid Proposal's SignatureHeader during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
