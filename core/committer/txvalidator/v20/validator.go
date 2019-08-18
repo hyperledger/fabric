@@ -391,26 +391,6 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 					return
 				}
 			}
-		} else if common.HeaderType(chdr.Type) == common.HeaderType_TOKEN_TRANSACTION {
-
-			txID = chdr.TxId
-			if !v.ChannelResources.Capabilities().FabToken() {
-				logger.Debugf("Unsupported transaction type [%s] in block number [%d] transaction index [%d]: FabToken capability is not enabled",
-					common.HeaderType(chdr.Type), block.Header.Number, tIdx)
-				results <- &blockValidationResult{
-					tIdx:           tIdx,
-					validationCode: peer.TxValidationCode_UNKNOWN_TX_TYPE,
-				}
-				return
-			}
-
-			// Check if there is a duplicate of such transaction in the ledger and
-			// obtain the corresponding result that acknowledges the error type
-			erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.LedgerResources)
-			if erroneousResultEntry != nil {
-				results <- erroneousResultEntry
-				return
-			}
 		} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
 			configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 			if err != nil {
@@ -531,11 +511,6 @@ func (ds *dynamicCapabilities) ACLs() bool {
 
 func (ds *dynamicCapabilities) CollectionUpgrade() bool {
 	return ds.cr.Capabilities().CollectionUpgrade()
-}
-
-// FabToken returns true if fabric token function is supported.
-func (ds *dynamicCapabilities) FabToken() bool {
-	return ds.cr.Capabilities().FabToken()
 }
 
 func (ds *dynamicCapabilities) ForbidDuplicateTXIdInBlock() bool {

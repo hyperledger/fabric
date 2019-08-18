@@ -133,11 +133,6 @@ func (ap *ApplicationProvider) KeyLevelEndorsement() bool {
 	return ap.v13 || ap.v142 || ap.v20
 }
 
-// FabToken returns true if support for fabric token functions is enabled.
-func (ap *ApplicationProvider) FabToken() bool {
-	return ap.v20
-}
-
 // StorePvtDataOfInvalidTx returns true if the peer needs to store
 // the pvtData of invalid transactions.
 func (ap *ApplicationProvider) StorePvtDataOfInvalidTx() bool {

@@ -86,7 +86,6 @@ func TestApplicationV20(t *testing.T) {
 	assert.True(t, ap.CollectionUpgrade())
 	assert.True(t, ap.PrivateChannelData())
 	assert.True(t, ap.LifecycleV20())
-	assert.True(t, ap.FabToken())
 	assert.True(t, ap.StorePvtDataOfInvalidTx())
 }
 

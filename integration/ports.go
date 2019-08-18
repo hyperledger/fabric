@@ -33,7 +33,6 @@ const (
 	PrivateDataBasePort
 	RaftBasePort
 	SBEBasePort
-	TokenBasePort
 	IdemixBasePort
 )
 

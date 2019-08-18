@@ -14,10 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
@@ -44,7 +42,6 @@ import (
 	protosmsp "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	protospeer "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/token"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -62,17 +59,6 @@ func v20Capabilities() *mockconfig.MockApplicationCapabilities {
 		PrivateChannelDataRv:  true,
 		KeyLevelEndorsementRv: true,
 		V2_0ValidationRv:      true,
-	}
-}
-
-func fabTokenCapabilities() *mockconfig.MockApplicationCapabilities {
-	return &mockconfig.MockApplicationCapabilities{
-		V1_2ValidationRv:      true,
-		V1_3ValidationRv:      true,
-		PrivateChannelDataRv:  true,
-		KeyLevelEndorsementRv: true,
-		V2_0ValidationRv:      true,
-		FabTokenRv:            true,
 	}
 }
 
@@ -149,57 +135,6 @@ func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIden
 	assert.NoError(t, err)
 
 	return tx
-}
-
-func getTokenTx(t *testing.T) *common.Envelope {
-	transactionData := &token.TokenTransaction{
-		Action: &token.TokenTransaction_TokenAction{
-			TokenAction: &token.TokenAction{
-				Data: &token.TokenAction_Issue{
-					Issue: &token.Issue{
-						Outputs: []*token.Token{
-							{Owner: &token.TokenOwner{Raw: []byte("owner-1")}, Type: "TOK1", Quantity: ToHex(111)},
-							{Owner: &token.TokenOwner{Raw: []byte("owner-2")}, Type: "TOK2", Quantity: ToHex(222)},
-						},
-					},
-				},
-			},
-		},
-	}
-	tdBytes, err := proto.Marshal(transactionData)
-	assert.NoError(t, err)
-
-	signerBytes, err := signer.Serialize()
-	assert.NoError(t, err)
-	nonce := []byte{0, 1, 2, 3, 4}
-	txID := protoutil.ComputeTxID(nonce, signerBytes)
-
-	hdr := &common.Header{
-		SignatureHeader: protoutil.MarshalOrPanic(
-			&common.SignatureHeader{
-				Creator: signerBytes,
-				Nonce:   nonce,
-			},
-		),
-		ChannelHeader: protoutil.MarshalOrPanic(
-			&common.ChannelHeader{
-				Type: int32(common.HeaderType_TOKEN_TRANSACTION),
-				TxId: txID,
-			},
-		),
-	}
-
-	// create the payload
-	payl := &common.Payload{Header: hdr, Data: tdBytes}
-	paylBytes, err := protoutil.GetBytesPayload(payl)
-	assert.NoError(t, err)
-
-	// sign the payload
-	sig, err := signer.Sign(paylBytes)
-	assert.NoError(t, err)
-
-	// here's the envelope
-	return &common.Envelope{Payload: paylBytes, Signature: sig}
 }
 
 func assertInvalid(block *common.Block, t *testing.T, code peer.TxValidationCode) {
@@ -998,60 +933,6 @@ func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
 	err := v.Validate(b)
 	assert.NoError(t, err)
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
-}
-
-func TestTokenValidTransaction(t *testing.T) {
-	v, _, _, _ := setupValidator()
-	v.ChannelResources.(*mocktxvalidator.Support).ACVal = fabTokenCapabilities()
-
-	tx := getTokenTx(t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
-
-	err := v.Validate(b)
-	assert.NoError(t, err)
-	assertValid(b, t)
-}
-
-func TestTokenCapabilityNotEnabled(t *testing.T) {
-	v, _, _, _ := setupValidator()
-
-	tx := getTokenTx(t)
-	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 1}}
-
-	err := v.Validate(b)
-
-	assertion := assert.New(t)
-	// We expect no validation error because we simply mark the tx as invalid
-	assertion.NoError(err)
-
-	// We expect the tx to be invalid because of a duplicate txid
-	txsfltr := ledgerutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	assertion.True(txsfltr.IsInvalid(0))
-	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_UNKNOWN_TX_TYPE)
-}
-
-func TestTokenDuplicateTxId(t *testing.T) {
-	v, _, _, _ := setupValidator()
-	v.ChannelResources.(*mocktxvalidator.Support).ACVal = fabTokenCapabilities()
-
-	mockLedger := &txvalidatormocks.LedgerResources{}
-	v.LedgerResources = mockLedger
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, nil)
-
-	tx := getTokenTx(t)
-
-	b := testutil.NewBlock([]*common.Envelope{tx}, 0, nil)
-
-	err := v.Validate(b)
-
-	assertion := assert.New(t)
-	// We expect no validation error because we simply mark the tx as invalid
-	assertion.NoError(err)
-
-	// We expect the tx to be invalid because of a duplicate txid
-	txsfltr := ledgerutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	assertion.True(txsfltr.IsInvalid(0))
-	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_DUPLICATE_TXID)
 }
 
 func TestDynamicCapabilitiesAndMSP(t *testing.T) {

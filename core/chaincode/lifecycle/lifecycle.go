@@ -508,8 +508,7 @@ func (ef *ExternalFunctions) GetInstalledChaincodePackage(packageID string) ([]b
 }
 
 // QueryNamespaceDefinitions lists the publicly defined namespaces in a channel.  Today it should only ever
-// find Datatype encodings of 'ChaincodeDefinition'.  In the future as we support encodings like 'TokenManagementSystem'
-// or similar, additional statements will be added to the switch.
+// find Datatype encodings of 'ChaincodeDefinition'.
 func (ef *ExternalFunctions) QueryNamespaceDefinitions(publicState RangeableState) (map[string]string, error) {
 	metadatas, err := ef.Resources.Serializer.DeserializeAllMetadata(NamespacesName, publicState)
 	if err != nil {
