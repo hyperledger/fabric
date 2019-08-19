@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,6 +20,12 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
+
+var basePort = int32(8000)
+
+func nextPort() int32 {
+	return atomic.AddInt32(&basePort, 1)
+}
 
 func TestSpawnEtcdRaft(t *testing.T) {
 
@@ -99,7 +106,6 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer,
 	// it is really configured autonomously via the etcdraft chain itself.
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("EvictionSuspicion not set, defaulting to 10m"))
 	// Wait until the the node starts up and elects itself as a single leader in a single node cluster.
-	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Starting cluster listener on 127.0.0.1:5612"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
 }
@@ -131,7 +137,7 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, tempDir, orderer, fabri
 
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
-		"ORDERER_GENERAL_LISTENPORT=5611",
+		fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_GENESISMETHOD=file",
 		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
@@ -154,14 +160,14 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricR
 
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
-		"ORDERER_GENERAL_LISTENPORT=5611",
+		fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_GENESISMETHOD=file",
 		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
 		"ORDERER_GENERAL_TLS_ENABLED=false",
 		"ORDERER_OPERATIONS_TLS_ENABLED=false",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
 		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
-		"ORDERER_GENERAL_CLUSTER_LISTENPORT=5612",
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1",
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
@@ -171,6 +177,7 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricR
 		fmt.Sprintf("ORDERER_CONSENSUS_WALDIR=%s", filepath.Join(tempDir, "wal")),
 		fmt.Sprintf("ORDERER_CONSENSUS_SNAPDIR=%s", filepath.Join(tempDir, "snapshot")),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(fabricRootDir, "sampleconfig")),
+		fmt.Sprintf("ORDERER_OPERATIONS_LISTENADDRESS=127.0.0.1:%d", nextPort()),
 	}
 	ordererProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -187,7 +194,7 @@ func launchOrderer(gt *GomegaWithT, orderer, tempDir, genesisBlockPath, fabricRo
 	// Launch the orderer process
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
-		"ORDERER_GENERAL_LISTENPORT=5611",
+		fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_GENESISMETHOD=file",
 		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
 		"ORDERER_GENERAL_TLS_CLIENTAUTHREQUIRED=true",
@@ -195,7 +202,7 @@ func launchOrderer(gt *GomegaWithT, orderer, tempDir, genesisBlockPath, fabricRo
 		"ORDERER_OPERATIONS_TLS_ENABLED=false",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
 		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
-		"ORDERER_GENERAL_CLUSTER_LISTENPORT=5612",
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1",
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
