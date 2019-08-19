@@ -170,6 +170,7 @@ func TestHistory(t *testing.T) {
 
 	count := 0
 	for {
+		// iterator will return entries in the order of newest to oldest
 		kmod, _ := itr.Next()
 		if kmod == nil {
 			break
@@ -181,12 +182,14 @@ func TestHistory(t *testing.T) {
 		t.Logf("Retrieved history record for key=key7 at TxId=%s with value %v and timestamp %v",
 			txid, retrievedValue, retrievedTimestamp)
 		count++
-		if count != 4 {
-			expectedValue := []byte("value" + strconv.Itoa(count))
+		if count != 1 {
+			// entries 2, 3, 4 are block2:tran2, block2:tran1 and block1:tran1
+			expectedValue := []byte("value" + strconv.Itoa(5-count))
 			assert.Equal(t, expectedValue, retrievedValue)
 			assert.NotNil(t, retrievedTimestamp)
 			assert.False(t, retrievedIsDelete)
 		} else {
+			// entry 1 is block3:tran1
 			assert.Equal(t, []uint8(nil), retrievedValue)
 			assert.NotNil(t, retrievedTimestamp)
 			assert.True(t, retrievedIsDelete)
@@ -331,8 +334,8 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
 	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
 
-	// verify the results for each key
-	testutilVerifyResults(t, qhistory, "ns1", "key", []string{"value1", "value2"})
+	// verify the results for each key, in the order of newest to oldest
+	testutilVerifyResults(t, qhistory, "ns1", "key", []string{"value2", "value1"})
 	testutilVerifyResults(t, qhistory, "ns1", key1, []string{"dummyVal1"})
 	testutilVerifyResults(t, qhistory, "ns1", key2, []string{"dummyVal2"})
 	testutilVerifyResults(t, qhistory, "ns1", key3, []string{"dummyVal3"})
@@ -347,86 +350,9 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	testutilCheckKeyNotInRange(t, qhistory, "ns1", "key", key5)
 }
 
-// TestNoKeyFoundForFalseKey creates a false key that maps to block 257: tran 0.
-// The test creates block 257, but the false key is skipped because the key is not found in block 257.
-func TestNoKeyFoundForFalseKey(t *testing.T) {
-	env := newTestHistoryEnv(t)
-	defer env.cleanup()
-	provider := env.testBlockStorageEnv.provider
-	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
-	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
-	defer store1.Shutdown()
-
-	bg, gb := testutil.NewBlockGenerator(t, ledger1id, false)
-	assert.NoError(t, store1.AddBlock(gb))
-	assert.NoError(t, env.testHistoryDB.Commit(gb))
-
-	// block1 is used to test a false key that is decoded to valid blockNum(257):tranNum(0),
-	// but it is skipped because "key" is not found in block(257):tran(0).
-	// In this case, otherKey's history key is <ns, key\x00\x04\x00, 1, 0> that would be decoded
-	// to the same blockNum:tranNum as history key <ns, key, 257, 0>.
-	// blockNumTranNumBytes are 0x4, 0x0, 0x0 (separator), 0x1, 0x1, 0x0 when getting history for "key".
-	otherKey := "key\x00\x04\x00"
-	txid := util2.GenerateUUID()
-	simulator, _ := env.txmgr.NewTxSimulator(txid)
-	simulator.SetState("ns1", otherKey, []byte("otherValue"))
-	simulator.Done()
-	simRes, _ := simulator.GetTxSimulationResults()
-	pubSimResBytes, _ := simRes.GetPubSimulationBytes()
-	block1 := bg.NextBlock([][]byte{pubSimResBytes})
-	err = store1.AddBlock(block1)
-	assert.NoError(t, err)
-	err = env.testHistoryDB.Commit(block1)
-	assert.NoError(t, err)
-
-	// add blocks 2-256, each block has 1 transaction setting state for "ns1" and "key", value is "value<blockNum>"
-	expectedResults := make([]string, 0, 255)
-	for i := 2; i <= 256; i++ {
-		txid := util2.GenerateUUID()
-		simulator, _ := env.txmgr.NewTxSimulator(txid)
-		value := fmt.Sprintf("value%d", i)
-		expectedResults = append(expectedResults, value)
-		simulator.SetState("ns1", "key", []byte(value))
-		simulator.Done()
-		simRes, _ := simulator.GetTxSimulationResults()
-		pubSimResBytes, _ := simRes.GetPubSimulationBytes()
-		block := bg.NextBlock([][]byte{pubSimResBytes})
-		err = store1.AddBlock(block)
-		assert.NoError(t, err)
-		err = env.testHistoryDB.Commit(block)
-		assert.NoError(t, err)
-	}
-
-	// add block 257 with a different key so that otherKey cannot find "key" in this block(257):tran(0)
-	txid = util2.GenerateUUID()
-	simulator, _ = env.txmgr.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key2", []byte("key2Value"))
-	simulator.Done()
-	simRes, _ = simulator.GetTxSimulationResults()
-	pubSimResBytes, _ = simRes.GetPubSimulationBytes()
-	block257 := bg.NextBlock([][]byte{pubSimResBytes})
-	err = store1.AddBlock(block257)
-	assert.NoError(t, err)
-	err = env.testHistoryDB.Commit(block257)
-	assert.NoError(t, err)
-
-	// query history db for "ns1", "key"
-	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
-	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
-
-	testutilVerifyResults(t, qhistory, "ns1", otherKey, []string{"otherValue"})
-	testutilVerifyResults(t, qhistory, "ns1", "key", expectedResults)
-	testutilVerifyResults(t, qhistory, "ns1", "key2", []string{"key2Value"})
-
-	// TODO: test results for key are as expected
-	// test results for "otherKey" and "key2"
-
-}
-
 // TestHistoryWithBlockNumber256 creates 256 blocks and then
-// search historydb to verify that block number 256 is correctly returned
-// even if its blockNumTranNumBytes contains a nil byte (FAB-15450).
+// queries historydb to verify that all 256 blocks are returned in the right orderer.
+// This test also verifies that block256 is returned correctly even if its key contains nil byte.
 func TestHistoryWithBlockNumber256(t *testing.T) {
 	env := newTestHistoryEnv(t)
 	defer env.cleanup()
@@ -459,25 +385,13 @@ func TestHistoryWithBlockNumber256(t *testing.T) {
 	// query history db for "ns1", "key"
 	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
 	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
-	itr, err := qhistory.GetHistoryForKey("ns1", "key")
-	assert.NoError(t, err, "Error upon GetHistoryForKey()")
 
-	// iterate query result - there should be 256 entries
-	numEntries := 0
-	valueInBlock256 := "unknown"
-	for {
-		kmod, _ := itr.Next()
-		if kmod == nil {
-			break
-		}
-		numEntries++
-		retrievedValue := string(kmod.(*queryresult.KeyModification).Value)
-		if numEntries == 256 {
-			valueInBlock256 = retrievedValue
-		}
+	// verify history query returns the expected results in the orderer of block256, 255, 254 .... 1.
+	expectedHistoryResults := make([]string, 0)
+	for i := 256; i >= 1; i-- {
+		expectedHistoryResults = append(expectedHistoryResults, fmt.Sprintf("value%d", i))
 	}
-	assert.Equal(t, 256, numEntries)
-	assert.Equal(t, "value256", valueInBlock256)
+	testutilVerifyResults(t, qhistory, "ns1", "key", expectedHistoryResults)
 }
 
 func TestName(t *testing.T) {
@@ -486,7 +400,7 @@ func TestName(t *testing.T) {
 	assert.Equal(t, "history", env.testHistoryDB.Name())
 }
 
-// verify history results match the expected values
+// verify history results
 func testutilVerifyResults(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, key string, expectedVals []string) {
 	itr, err := hqe.GetHistoryForKey(ns, key)
 	assert.NoError(t, err, "Error upon GetHistoryForKey()")

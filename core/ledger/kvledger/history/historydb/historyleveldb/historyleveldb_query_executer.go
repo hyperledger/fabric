@@ -34,6 +34,13 @@ func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key str
 
 	// range scan to find any history records starting with namespace~key
 	dbItr := q.historyDB.db.GetIterator(compositeStartKey, compositeEndKey)
+
+	// By default, dbItr is in the orderer of oldest to newest and its cursor is at the beginning of the entries.
+	// Need to call Last() and Next() to move the cursor to the end of the entries so that we can iterate
+	// the entries in the order of newest to oldest.
+	if dbItr.Last() {
+		dbItr.Next()
+	}
 	return newHistoryScanner(compositeStartKey, namespace, key, dbItr, q.blockStore), nil
 }
 
@@ -51,11 +58,13 @@ func newHistoryScanner(compositePartialKey []byte, namespace string, key string,
 	return &historyScanner{compositePartialKey, namespace, key, dbItr, blockStore}
 }
 
-// Next iterates to the next key from history scanner, decodes blockNumTranNumBytes to get blockNum and tranNum,
+// Next iterates to the next key, in the order of newest to oldest, from history scanner.
+// It decodes blockNumTranNumBytes to get blockNum and tranNum,
 // loads the block:tran from block storage, finds the key and returns the result.
 // The history keys are in the format of <namespace, len(key), key, blockNum, tranNum>, separated by nil byte "\x00".
 func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
-	if !scanner.dbItr.Next() {
+	// call Prev because history query result is returned from newest to oldest
+	if !scanner.dbItr.Prev() {
 		return nil, nil
 	}
 

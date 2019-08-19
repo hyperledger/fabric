@@ -410,10 +410,10 @@ func TestLedgerBackup(t *testing.T) {
 
 	result1, err := itr.Next()
 	assert.NoError(t, err)
-	assert.Equal(t, []byte("value1"), result1.(*queryresult.KeyModification).Value)
+	assert.Equal(t, []byte("value4"), result1.(*queryresult.KeyModification).Value)
 	result2, err := itr.Next()
 	assert.NoError(t, err)
-	assert.Equal(t, []byte("value4"), result2.(*queryresult.KeyModification).Value)
+	assert.Equal(t, []byte("value1"), result2.(*queryresult.KeyModification).Value)
 }
 
 func constructTestLedgerID(i int) string {
