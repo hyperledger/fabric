@@ -18,7 +18,7 @@ WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 ENV EXECUTABLES go git
 
 FROM golang as tools
-RUN make configtxgen configtxlator cryptogen peer discover idemixgen token
+RUN make configtxgen configtxlator cryptogen peer discover idemixgen
 
 FROM golang:${GO_VER}-alpine
 RUN apk add --no-cache \
