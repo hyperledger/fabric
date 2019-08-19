@@ -230,35 +230,6 @@ func (n *Network) AddOrg(o *Organization, peers ...*Peer) {
 	n.Consortiums[0].Organizations = append(n.Consortiums[0].Organizations, o.Name)
 }
 
-// GenerateOrgUpdateMeterials generates the necessary configtx and
-// crypto materials for a new org's peers to join a network
-func (n *Network) GenerateOrgUpdateMaterials(peers ...*Peer) {
-	orgUpdateNetwork := *n
-	orgUpdateNetwork.Peers = peers
-	orgUpdateNetwork.Templates = &Templates{
-		ConfigTx: OrgUpdateConfigTxTemplate,
-		Crypto:   OrgUpdateCryptoTemplate,
-		Core:     n.Templates.CoreTemplate(),
-	}
-
-	orgUpdateNetwork.GenerateConfigTxConfig()
-	for _, peer := range peers {
-		orgUpdateNetwork.GenerateCoreConfig(peer)
-	}
-
-	orgUpdateNetwork.GenerateCryptoConfig()
-	sess, err := orgUpdateNetwork.Cryptogen(commands.Generate{
-		Config: orgUpdateNetwork.CryptoConfigPath(),
-		Output: orgUpdateNetwork.CryptoPath(),
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, orgUpdateNetwork.EventuallyTimeout).Should(gexec.Exit(0))
-
-	// refresh TLSCACertificates ca-certs.pem so that it includes
-	// the newly generated cert
-	n.ConcatenateTLSCACertificates()
-}
-
 // ConfigTxPath returns the path to the generated configtxgen configuration
 // file.
 func (n *Network) ConfigTxConfigPath() string {

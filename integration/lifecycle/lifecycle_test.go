@@ -223,7 +223,7 @@ var _ = Describe("Lifecycle", func() {
 		org3Peers := []*nwo.Peer{org3peer1, org3peer2}
 
 		network.AddOrg(org3, org3peer1, org3peer2)
-		network.GenerateOrgUpdateMaterials(org3peer1, org3peer2)
+		GenerateOrgUpdateMaterials(network, org3peer1, org3peer2)
 
 		By("starting the org3 peers")
 		for _, peer := range org3Peers {

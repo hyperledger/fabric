@@ -275,3 +275,32 @@ func CommitTx(network *nwo.Network, env *pcommon.Envelope, peer *nwo.Peer, dc pb
 
 	return dg.Wait(ctx)
 }
+
+// GenerateOrgUpdateMeterials generates the necessary configtx and
+// crypto materials for a new org's peers to join a network
+func GenerateOrgUpdateMaterials(n *nwo.Network, peers ...*nwo.Peer) {
+	orgUpdateNetwork := *n
+	orgUpdateNetwork.Peers = peers
+	orgUpdateNetwork.Templates = &nwo.Templates{
+		ConfigTx: nwo.OrgUpdateConfigTxTemplate,
+		Crypto:   nwo.OrgUpdateCryptoTemplate,
+		Core:     n.Templates.CoreTemplate(),
+	}
+
+	orgUpdateNetwork.GenerateConfigTxConfig()
+	for _, peer := range peers {
+		orgUpdateNetwork.GenerateCoreConfig(peer)
+	}
+
+	orgUpdateNetwork.GenerateCryptoConfig()
+	sess, err := orgUpdateNetwork.Cryptogen(commands.Generate{
+		Config: orgUpdateNetwork.CryptoConfigPath(),
+		Output: orgUpdateNetwork.CryptoPath(),
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, orgUpdateNetwork.EventuallyTimeout).Should(gexec.Exit(0))
+
+	// refresh TLSCACertificates ca-certs.pem so that it includes
+	// the newly generated cert
+	n.ConcatenateTLSCACertificates()
+}
