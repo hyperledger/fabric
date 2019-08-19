@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package persistence_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -178,7 +179,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = ccpp.Parse(data)
-				Expect(err).To(MatchError("could not unmarshal Chaincode-Package-Metadata.json as json: invalid character '\\n' in string literal"))
+				Expect(err).To(MatchError("could not unmarshal metadata.json as json: invalid character '\\n' in string literal"))
 			})
 		})
 
@@ -395,5 +396,18 @@ var _ = Describe("ChaincodePackageStreamer", func() {
 				Expect(err).To(MatchError("error reading as gzip stream: unexpected EOF"))
 			})
 		})
+	})
+})
+
+var _ = Describe("ChaincodePackageMetadata", func() {
+	It("works around upper case keys by unmarshaling in a case insensitive way", func() {
+		md := persistence.ChaincodePackageMetadata{}
+		err := json.Unmarshal([]byte(`{"Type": "fake-type", "Label": "fake-label", "Path": "fake-path"}`), &md)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(md).To(Equal(persistence.ChaincodePackageMetadata{
+			Type:  "fake-type",
+			Path:  "fake-path",
+			Label: "fake-label",
+		}))
 	})
 })

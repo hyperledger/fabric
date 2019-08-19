@@ -31,18 +31,13 @@ import (
 // seems like a good step.
 
 const (
-	// PreferredChaincodePackageMetadataFile is the first name we check
-	// for the chaincode metadata before falling back to ChaincodePackageMetadataFile
-	// The latter will be removed before release
-	PreferredChaincodePackageMetadataFile = "metadata.json"
+	// MetadataFile is the expected location of the metadata json document
+	// in the top level of the chaincode package.
+	MetadataFile = "metadata.json"
 
 	// CodePackageFile is the expected location of the code package in the
 	// top level of the chaincode package
 	CodePackageFile = "code.tar.gz"
-
-	// ChaincodePackageMetadataFile contains the name
-	// of the file that contains metadata for a chaincode pacakge.
-	ChaincodePackageMetadataFile = "Chaincode-Package-Metadata.json"
 )
 
 //go:generate counterfeiter -o mock/legacy_cc_package_locator.go --fake-name LegacyCCPackageLocator . LegacyCCPackageLocator
@@ -105,7 +100,7 @@ func (cps *ChaincodePackageStreamer) Exists() bool {
 }
 
 func (cps *ChaincodePackageStreamer) Metadata() (*ChaincodePackageMetadata, error) {
-	tarFileStream, err := cps.File(PreferredChaincodePackageMetadataFile)
+	tarFileStream, err := cps.File(MetadataFile)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get metadata file")
 	}
@@ -198,10 +193,12 @@ type ChaincodePackage struct {
 
 // ChaincodePackageMetadata contains the information necessary to understand
 // the embedded code package.
+// Note: annotations for the names need to be added back, but, we're making it
+// case insensitive for now to allow SDKs to transition.  TODO, add annotations back
 type ChaincodePackageMetadata struct {
-	Type  string `json:"Type"`
-	Path  string `json:"Path"`
-	Label string `json:"Label"`
+	Type  string
+	Path  string
+	Label string
 }
 
 // MetadataProvider provides the means to retrieve metadata
@@ -262,25 +259,13 @@ func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, erro
 
 		switch header.Name {
 
-		case PreferredChaincodePackageMetadataFile:
+		case MetadataFile:
 			ccPackageMetadata = &ChaincodePackageMetadata{}
 			err := json.Unmarshal(fileBytes, ccPackageMetadata)
 			if err != nil {
-				return nil, errors.Wrapf(err, "could not unmarshal %s as json", ChaincodePackageMetadataFile)
+				return nil, errors.Wrapf(err, "could not unmarshal %s as json", MetadataFile)
 			}
 
-		case ChaincodePackageMetadataFile:
-			// XXX this is a temporary compatibility hack to allow the SDKs a few days to transition
-			// to the new filename without breaking everything
-			if ccPackageMetadata != nil {
-				// We must have already loaded the metadata from the preferred location
-				continue
-			}
-			ccPackageMetadata = &ChaincodePackageMetadata{}
-			err := json.Unmarshal(fileBytes, ccPackageMetadata)
-			if err != nil {
-				return nil, errors.Wrapf(err, "could not unmarshal %s as json", ChaincodePackageMetadataFile)
-			}
 		case CodePackageFile:
 			codePackage = fileBytes
 		default:
@@ -293,7 +278,7 @@ func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, erro
 	}
 
 	if ccPackageMetadata == nil {
-		return nil, errors.Errorf("did not find any package metadata (missing %s)", PreferredChaincodePackageMetadataFile)
+		return nil, errors.Errorf("did not find any package metadata (missing %s)", MetadataFile)
 	}
 
 	if err := validateLabel(ccPackageMetadata.Label); err != nil {
