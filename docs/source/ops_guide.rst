@@ -11,7 +11,6 @@ Operations Guides
    configtx
    capability_requirements
    endorsement-policies
-   token/FabToken
    pluggable_endorsement_and_validation
    access_control.md
    idemix
