@@ -21,6 +21,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc"
+	"gopkg.in/alecthomas/kingpin.v2"
+
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -50,9 +54,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protoutil"
-	"go.uber.org/zap/zapcore"
-	"google.golang.org/grpc"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var logger = flogging.MustGetLogger("orderer.common.server")
@@ -450,8 +451,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig
 	for _, serverRoot := range conf.General.Cluster.RootCAs {
 		rootCACert, err := ioutil.ReadFile(serverRoot)
 		if err != nil {
-			logger.Fatalf("Failed to load ServerRootCAs file '%s' (%s)",
-				err, serverRoot)
+			logger.Fatalf("Failed to load ServerRootCAs file '%s' (%s)", serverRoot, err)
 		}
 		serverRootCAs = append(serverRootCAs, rootCACert)
 	}
