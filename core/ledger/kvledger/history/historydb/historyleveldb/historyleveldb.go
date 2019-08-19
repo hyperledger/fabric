@@ -21,9 +21,6 @@ import (
 
 var logger = flogging.MustGetLogger("historyleveldb")
 
-var savePointKey = []byte{0x00}
-var emptyValue = []byte{}
-
 // HistoryDBProvider implements interface HistoryDBProvider
 type HistoryDBProvider struct {
 	dbProvider *leveldbhelper.Provider
@@ -132,7 +129,7 @@ func (h *historyDB) Commit(block *common.Block) error {
 					writeKey := kvWrite.Key
 
 					//composite key for history records is in the form ns~key~blockNo~tranNo
-					compositeHistoryKey := historydb.ConstructCompositeHistoryKey(ns, writeKey, blockNo, tranNo)
+					compositeHistoryKey := constructCompositeHistoryKey(ns, writeKey, blockNo, tranNo)
 
 					// No value is required, write an empty byte array (emptyValue) since Put() of nil is not allowed
 					dbBatch.Put(compositeHistoryKey, emptyValue)

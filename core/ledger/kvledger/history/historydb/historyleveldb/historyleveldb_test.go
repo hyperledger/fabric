@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -423,7 +422,7 @@ func testutilCheckKeyNotInRange(t *testing.T, hqe ledger.HistoryQueryExecutor, n
 	itr, err := hqe.GetHistoryForKey(ns, desiredKey)
 	assert.NoError(t, err, "Error upon GetHistoryForKey()")
 	scanner := itr.(*historyScanner)
-	compositePartialKey := historydb.ConstructPartialCompositeHistoryKey(ns, falseKey, false)
+	compositePartialKey := constructPartialCompositeHistoryKey(ns, falseKey, false)
 	for {
 		if !scanner.dbItr.Next() {
 			break

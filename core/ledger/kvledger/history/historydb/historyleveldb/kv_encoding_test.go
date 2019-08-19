@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package historydb
+package historyleveldb
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var strKeySep = string(CompositeKeySep)
+var strKeySep = string(compositeKeySep)
 
 func TestCompositeKeyConstruction(t *testing.T) {
 	type keyComponents struct {
@@ -31,9 +31,9 @@ func TestCompositeKeyConstruction(t *testing.T) {
 	}
 
 	for _, testDatum := range testData {
-		key := ConstructCompositeHistoryKey(testDatum.ns, testDatum.key, testDatum.blkNum, testDatum.tranNum)
-		startKey := ConstructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, false)
-		endKey := ConstructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, true)
+		key := constructCompositeHistoryKey(testDatum.ns, testDatum.key, testDatum.blkNum, testDatum.tranNum)
+		startKey := constructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, false)
+		endKey := constructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, true)
 		assert.Equal(t, bytes.Compare(startKey, key), -1) //startKey should be smaller than key
 		assert.Equal(t, bytes.Compare(endKey, key), 1)    //endKey should be greater than key
 	}
@@ -43,19 +43,19 @@ func TestCompositeKeyConstruction(t *testing.T) {
 			if i == j {
 				continue
 			}
-			startKey := ConstructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, false)
-			endKey := ConstructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, true)
+			startKey := constructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, false)
+			endKey := constructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, true)
 
-			anotherKey := ConstructCompositeHistoryKey(another.ns, another.key, another.blkNum, another.tranNum)
+			anotherKey := constructCompositeHistoryKey(another.ns, another.key, another.blkNum, another.tranNum)
 			assert.False(t, bytes.Compare(anotherKey, startKey) == 1 && bytes.Compare(anotherKey, endKey) == -1) //any key should not fall in the range of start/end key range query for any other key
 		}
 	}
 }
 
 func TestSplitCompositeKey(t *testing.T) {
-	compositeFullKey := ConstructCompositeHistoryKey("ns1", "key1", 20, 200)
-	compositePartialKey := ConstructPartialCompositeHistoryKey("ns1", "key1", false)
-	_, extraBytes := SplitCompositeHistoryKey(compositeFullKey, compositePartialKey)
+	compositeFullKey := constructCompositeHistoryKey("ns1", "key1", 20, 200)
+	compositePartialKey := constructPartialCompositeHistoryKey("ns1", "key1", false)
+	_, extraBytes := splitCompositeHistoryKey(compositeFullKey, compositePartialKey)
 	blkNum, bytesConsumed, err := util.DecodeOrderPreservingVarUint64(extraBytes)
 	assert.NoError(t, err)
 	txNum, _, err := util.DecodeOrderPreservingVarUint64(extraBytes[bytesConsumed:])

@@ -10,7 +10,6 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -29,8 +28,8 @@ type LevelHistoryDBQueryExecutor struct {
 func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
 	var compositeStartKey []byte
 	var compositeEndKey []byte
-	compositeStartKey = historydb.ConstructPartialCompositeHistoryKey(namespace, key, false)
-	compositeEndKey = historydb.ConstructPartialCompositeHistoryKey(namespace, key, true)
+	compositeStartKey = constructPartialCompositeHistoryKey(namespace, key, false)
+	compositeEndKey = constructPartialCompositeHistoryKey(namespace, key, true)
 
 	// range scan to find any history records starting with namespace~key
 	dbItr := q.historyDB.db.GetIterator(compositeStartKey, compositeEndKey)
@@ -71,7 +70,7 @@ func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 	historyKey := scanner.dbItr.Key() // history key is in the form namespace~len(key)~key~blocknum~trannum
 
 	// SplitCompositeKey(namespace~len(key)~key~blocknum~trannum, namespace~len(key)~key~) will return the blocknum~trannum in second position
-	_, blockNumTranNumBytes := historydb.SplitCompositeHistoryKey(historyKey, scanner.compositePartialKey)
+	_, blockNumTranNumBytes := splitCompositeHistoryKey(historyKey, scanner.compositePartialKey)
 	blockNum, tranNum, err := decodeBlockNumTranNum(blockNumTranNumBytes)
 	if err != nil {
 		return nil, err
