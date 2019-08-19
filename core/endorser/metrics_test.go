@@ -13,15 +13,15 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestNewEndorserMetrics(t *testing.T) {
+func TestNewMetrics(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	provider := &metricsfakes.Provider{}
 	provider.NewHistogramReturns(&metricsfakes.Histogram{})
 	provider.NewCounterReturns(&metricsfakes.Counter{})
 
-	endorserMetrics := NewEndorserMetrics(provider)
-	gt.Expect(endorserMetrics).To(Equal(&EndorserMetrics{
+	endorserMetrics := NewMetrics(provider)
+	gt.Expect(endorserMetrics).To(Equal(&Metrics{
 		ProposalDuration:         &metricsfakes.Histogram{},
 		ProposalsReceived:        &metricsfakes.Counter{},
 		SuccessfulProposals:      &metricsfakes.Counter{},

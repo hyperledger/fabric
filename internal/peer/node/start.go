@@ -596,7 +596,7 @@ func serve(args []string) error {
 	serverEndorser := &endorser.Endorser{
 		PrivateDataDistributor: privDataDist,
 		Support:                endorserSupport,
-		Metrics:                endorser.NewEndorserMetrics(metricsProvider),
+		Metrics:                endorser.NewMetrics(metricsProvider),
 	}
 
 	// deploy system chaincodes

@@ -89,7 +89,7 @@ type fakeEndorserMetrics struct {
 }
 
 // initialize Endorser with fake metrics
-func initFakeMetrics(es *endorser.Endorser) *fakeEndorserMetrics {
+func initFakeMetrics() (*endorser.Metrics, *fakeEndorserMetrics) {
 	fakeMetrics := &fakeEndorserMetrics{
 		proposalDuration:         &metricsfakes.Histogram{},
 		proposalsReceived:        &metricsfakes.Counter{},
@@ -107,16 +107,18 @@ func initFakeMetrics(es *endorser.Endorser) *fakeEndorserMetrics {
 	fakeMetrics.endorsementsFailed.WithReturns(fakeMetrics.endorsementsFailed)
 	fakeMetrics.duplicateTxsFailure.WithReturns(fakeMetrics.duplicateTxsFailure)
 
-	es.Metrics.ProposalDuration = fakeMetrics.proposalDuration
-	es.Metrics.ProposalsReceived = fakeMetrics.proposalsReceived
-	es.Metrics.SuccessfulProposals = fakeMetrics.successfulProposals
-	es.Metrics.ProposalValidationFailed = fakeMetrics.proposalValidationFailed
-	es.Metrics.ProposalACLCheckFailed = fakeMetrics.proposalACLCheckFailed
-	es.Metrics.InitFailed = fakeMetrics.initFailed
-	es.Metrics.EndorsementsFailed = fakeMetrics.endorsementsFailed
-	es.Metrics.DuplicateTxsFailure = fakeMetrics.duplicateTxsFailure
+	metrics := &endorser.Metrics{
+		ProposalDuration:         fakeMetrics.proposalDuration,
+		ProposalsReceived:        fakeMetrics.proposalsReceived,
+		SuccessfulProposals:      fakeMetrics.successfulProposals,
+		ProposalValidationFailed: fakeMetrics.proposalValidationFailed,
+		ProposalACLCheckFailed:   fakeMetrics.proposalACLCheckFailed,
+		InitFailed:               fakeMetrics.initFailed,
+		EndorsementsFailed:       fakeMetrics.endorsementsFailed,
+		DuplicateTxsFailure:      fakeMetrics.duplicateTxsFailure,
+	}
 
-	return fakeMetrics
+	return metrics, fakeMetrics
 }
 
 func testEndorsementCompletedMetric(t *testing.T, fakeMetrics *fakeEndorserMetrics, callCount int32, chainID, ccnamever, succ string) {
@@ -142,7 +144,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 				},
 			},
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	signedProp := getSignedProp("test-chaincode", t)
@@ -168,7 +170,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 				},
 			},
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	signedProp := getSignedProp("test-chaincode", t)
@@ -197,7 +199,7 @@ func TestEndorserSysCC(t *testing.T) {
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support:                support,
-		Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	signedProp := getSignedProp("test-chaincode", t)
@@ -222,7 +224,7 @@ func TestEndorserCCInvocationError(t *testing.T) {
 				},
 			},
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	signedProp := getSignedProp("test-chaincode", t)
@@ -233,6 +235,8 @@ func TestEndorserCCInvocationError(t *testing.T) {
 }
 
 func TestEndorserDupTXId(t *testing.T) {
+	metrics, fakeMetrics := initFakeMetrics()
+
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support: &mocks.MockSupport{
@@ -246,10 +250,8 @@ func TestEndorserDupTXId(t *testing.T) {
 				},
 			},
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: metrics,
 	}
-
-	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("test-chaincode", t)
 
@@ -267,6 +269,8 @@ func TestEndorserDupTXId(t *testing.T) {
 }
 
 func TestEndorserBadACL(t *testing.T) {
+	metrics, fakeMetrics := initFakeMetrics()
+
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support: &mocks.MockSupport{
@@ -282,10 +286,8 @@ func TestEndorserBadACL(t *testing.T) {
 				},
 			},
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: metrics,
 	}
-
-	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("test-chaincode", t)
 
@@ -302,6 +304,8 @@ func TestEndorserBadACL(t *testing.T) {
 }
 
 func TestEndorserGoodPathEmptyChannel(t *testing.T) {
+	metrics, fakeMetrics := initFakeMetrics()
+
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support: &mocks.MockSupport{
@@ -316,10 +320,8 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 				},
 			},
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: metrics,
 	}
-
-	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedPropWithCHIdAndArgs("", "test-chaincode", [][]byte{[]byte("test-args")}, t)
 
@@ -332,6 +334,8 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 }
 
 func TestEndorserLSCCInitFails(t *testing.T) {
+	metrics, fakeMetrics := initFakeMetrics()
+
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support: &mocks.MockSupport{
@@ -347,10 +351,8 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 			},
 			ExecuteCDSError: errors.New(""),
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: metrics,
 	}
-
-	fakeMetrics := initFakeMetrics(es)
 
 	cds := protoutil.MarshalOrPanic(
 		&pb.ChaincodeDeploymentSpec{
@@ -396,7 +398,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 			},
 			SysCCMap: SysCCMap,
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	cds := protoutil.MarshalOrPanic(
@@ -433,7 +435,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support:                support,
-		Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	signedProp := getSignedProp("ccid", t)
@@ -458,7 +460,7 @@ func TestEndorserBadChannel(t *testing.T) {
 				},
 			},
 		},
-		Metrics: endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics: endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	signedProp := getSignedPropWithCHID("ccid", "barfchain", t)
@@ -483,13 +485,14 @@ func TestEndorserGoodPath(t *testing.T) {
 		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
 	}
 	attachPluginEndorser(support, nil)
+
+	metrics, fakeMetrics := initFakeMetrics()
+
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support:                support,
-		Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics:                metrics,
 	}
-
-	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", t)
 
@@ -523,7 +526,7 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support:                support,
-		Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	buf := gbytes.NewBuffer()
@@ -554,7 +557,7 @@ func TestEndorserLSCC(t *testing.T) {
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support:                support,
-		Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	cds := protoutil.MarshalOrPanic(
@@ -606,7 +609,7 @@ func TestEndorseWithPlugin(t *testing.T) {
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support:                support,
-		Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
 	}
 
 	signedProp := getSignedProp("ccid", t)
@@ -635,13 +638,13 @@ func TestEndorseEndorsementFailure(t *testing.T) {
 	// fail endorsement with "sign err"
 	attachPluginEndorser(support, fmt.Errorf("sign err"))
 
+	metrics, fakeMetrics := initFakeMetrics()
+
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support:                support,
-		Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics:                metrics,
 	}
-
-	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", t)
 
@@ -676,12 +679,12 @@ func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
 
 	attachPluginEndorser(support, nil)
 
+	metrics, fakeMetrics := initFakeMetrics()
 	es := &endorser.Endorser{
 		PrivateDataDistributor: pvtEmptyDistributor,
 		Support:                support,
-		Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+		Metrics:                metrics,
 	}
-	fakeMetrics := initFakeMetrics(es)
 
 	signedProp := getSignedProp("ccid", t)
 
@@ -733,7 +736,7 @@ func TestEndorserAcquireTxSimulator(t *testing.T) {
 			es := &endorser.Endorser{
 				PrivateDataDistributor: pvtEmptyDistributor,
 				Support:                support,
-				Metrics:                endorser.NewEndorserMetrics(&disabled.Provider{}),
+				Metrics:                endorser.NewMetrics(&disabled.Provider{}),
 			}
 
 			t.Parallel()

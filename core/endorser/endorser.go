@@ -80,7 +80,7 @@ type Endorser struct {
 	PrivateDataDistributor PrivateDataDistributor
 	Support                Support
 	PvtRWSetAssembler      PvtRWSetAssembler
-	Metrics                *EndorserMetrics
+	Metrics                *Metrics
 }
 
 // call specified chaincode (system or user)
