@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -204,8 +203,10 @@ func NewChain(
 	opts Options,
 	conf Configurator,
 	rpc RPC,
+	cryptoProvider bccsp.BCCSP,
 	f CreateBlockPuller,
-	observeC chan<- raft.SoftState) (*Chain, error) {
+	observeC chan<- raft.SoftState,
+) (*Chain, error) {
 
 	lg := opts.Logger.With("channel", support.ChannelID(), "node", opts.RaftID)
 
@@ -277,7 +278,7 @@ func NewChain(
 		},
 		logger:         lg,
 		opts:           opts,
-		CryptoProvider: factory.GetDefault(),
+		CryptoProvider: cryptoProvider,
 	}
 
 	// Sets initial values for metrics

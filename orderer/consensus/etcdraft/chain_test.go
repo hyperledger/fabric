@@ -21,7 +21,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	raftprotos "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -110,9 +112,13 @@ var _ = Describe("Chain", func() {
 			snapDir           string
 			err               error
 			fakeFields        *fakeMetricsFields
+			cryptoProvider    bccsp.BCCSP
 		)
 
 		BeforeEach(func() {
+			cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).NotTo(HaveOccurred())
+
 			configurator = &mocks.FakeConfigurator{}
 			clock = fakeclock.NewFakeClock(time.Now())
 			storage = raft.NewMemoryStorage()
@@ -179,7 +185,7 @@ var _ = Describe("Chain", func() {
 		}
 
 		JustBeforeEach(func() {
-			chain, err = etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, observeC)
+			chain, err = etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, observeC)
 			Expect(err).NotTo(HaveOccurred())
 
 			chain.Start()
@@ -710,7 +716,7 @@ var _ = Describe("Chain", func() {
 					})
 
 					It("replays blocks from committed entries", func() {
-						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 						c.init()
 						c.Start()
 						defer c.Halt()
@@ -740,7 +746,7 @@ var _ = Describe("Chain", func() {
 
 					It("only replays blocks after Applied index", func() {
 						raftMetadata.RaftIndex = m1.RaftIndex
-						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 						c.support.WriteBlock(support.WriteBlockArgsForCall(0))
 
 						c.init()
@@ -766,7 +772,7 @@ var _ = Describe("Chain", func() {
 
 					It("does not replay any block if already in sync", func() {
 						raftMetadata.RaftIndex = m2.RaftIndex
-						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+						c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 						c.init()
 						c.Start()
 						defer c.Halt()
@@ -793,7 +799,7 @@ var _ = Describe("Chain", func() {
 								os.Chmod(path.Join(walDir, f.Name()), 0300)
 							}
 
-							c, err := etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, observeC)
+							c, err := etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, observeC)
 							Expect(c).To(BeNil())
 							Expect(err).To(MatchError(ContainSubstring("permission denied")))
 						})
@@ -898,7 +904,7 @@ var _ = Describe("Chain", func() {
 
 							chain.Halt()
 
-							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 							c.init()
 
 							signal := make(chan struct{})
@@ -961,7 +967,7 @@ var _ = Describe("Chain", func() {
 							chain.Halt()
 
 							raftMetadata.RaftIndex = m.RaftIndex
-							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 							c.opts.SnapshotIntervalSize = 1
 
 							c.init()
@@ -990,7 +996,7 @@ var _ = Describe("Chain", func() {
 							m = &raftprotos.BlockMetadata{}
 							proto.Unmarshal(metadata, m)
 							raftMetadata.RaftIndex = m.RaftIndex
-							cx := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+							cx := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 
 							cx.init()
 							cx.Start()
@@ -1054,7 +1060,7 @@ var _ = Describe("Chain", func() {
 							chain.Halt()
 
 							raftMetadata.RaftIndex = m.RaftIndex
-							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 							cnt := support.WriteBlockCallCount()
 							for i := 0; i < cnt; i++ {
 								c.support.WriteBlock(support.WriteBlockArgsForCall(i))
@@ -1112,7 +1118,7 @@ var _ = Describe("Chain", func() {
 								chain.Halt()
 
 								raftMetadata.RaftIndex = m.RaftIndex
-								c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+								c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 								// replay block 1&2
 								c.support.WriteBlock(support.WriteBlockArgsForCall(0))
 								c.support.WriteBlock(support.WriteBlockArgsForCall(1))
@@ -1159,7 +1165,7 @@ var _ = Describe("Chain", func() {
 							chain.Halt()
 
 							raftMetadata.RaftIndex = m.RaftIndex
-							c1 := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+							c1 := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters, cryptoProvider)
 							cnt := support.WriteBlockCallCount()
 							for i := 0; i < cnt; i++ {
 								c1.support.WriteBlock(support.WriteBlockArgsForCall(i))
@@ -1208,6 +1214,7 @@ var _ = Describe("Chain", func() {
 							},
 							configurator,
 							nil,
+							cryptoProvider,
 							nil,
 							observeC)
 						Expect(chain).NotTo(BeNil())
@@ -1240,6 +1247,7 @@ var _ = Describe("Chain", func() {
 							},
 							nil,
 							nil,
+							cryptoProvider,
 							noOpBlockPuller,
 							nil)
 						Expect(chain).NotTo(BeNil())
@@ -1268,6 +1276,7 @@ var _ = Describe("Chain", func() {
 							},
 							nil,
 							nil,
+							cryptoProvider,
 							noOpBlockPuller,
 							nil)
 						Expect(chain).To(BeNil())
@@ -1280,14 +1289,15 @@ var _ = Describe("Chain", func() {
 
 	Describe("2-node Raft cluster", func() {
 		var (
-			network      *network
-			channelID    string
-			timeout      time.Duration
-			dataDir      string
-			c1, c2       *chain
-			raftMetadata *raftprotos.BlockMetadata
-			consenters   map[uint64]*raftprotos.Consenter
-			configEnv    *common.Envelope
+			network        *network
+			channelID      string
+			timeout        time.Duration
+			dataDir        string
+			c1, c2         *chain
+			raftMetadata   *raftprotos.BlockMetadata
+			consenters     map[uint64]*raftprotos.Consenter
+			configEnv      *common.Envelope
+			cryptoProvider bccsp.BCCSP
 		)
 		BeforeEach(func() {
 			var err error
@@ -1296,6 +1306,9 @@ var _ = Describe("Chain", func() {
 			timeout = 10 * time.Second
 
 			dataDir, err = ioutil.TempDir("", "raft-test-")
+			Expect(err).NotTo(HaveOccurred())
+
+			cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).NotTo(HaveOccurred())
 
 			raftMetadata = &raftprotos.BlockMetadata{
@@ -1339,7 +1352,7 @@ var _ = Describe("Chain", func() {
 			// prepare config update to remove 1
 			configEnv = newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, value))
 
-			network = createNetwork(timeout, channelID, dataDir, raftMetadata, consenters)
+			network = createNetwork(timeout, channelID, dataDir, raftMetadata, consenters, cryptoProvider)
 			c1, c2 = network.chains[1], network.chains[2]
 			c1.cutter.CutNext = true
 			network.init()
@@ -1436,13 +1449,14 @@ var _ = Describe("Chain", func() {
 
 	Describe("3-node Raft cluster", func() {
 		var (
-			network      *network
-			channelID    string
-			timeout      time.Duration
-			dataDir      string
-			c1, c2, c3   *chain
-			raftMetadata *raftprotos.BlockMetadata
-			consenters   map[uint64]*raftprotos.Consenter
+			network        *network
+			channelID      string
+			timeout        time.Duration
+			dataDir        string
+			c1, c2, c3     *chain
+			raftMetadata   *raftprotos.BlockMetadata
+			consenters     map[uint64]*raftprotos.Consenter
+			cryptoProvider bccsp.BCCSP
 		)
 
 		BeforeEach(func() {
@@ -1458,6 +1472,9 @@ var _ = Describe("Chain", func() {
 				ConsenterIds:    []uint64{1, 2, 3},
 				NextConsenterId: 4,
 			}
+
+			cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			Expect(err).NotTo(HaveOccurred())
 
 			consenters = map[uint64]*raftprotos.Consenter{
 				1: {
@@ -1480,7 +1497,7 @@ var _ = Describe("Chain", func() {
 				},
 			}
 
-			network = createNetwork(timeout, channelID, dataDir, raftMetadata, consenters)
+			network = createNetwork(timeout, channelID, dataDir, raftMetadata, consenters, cryptoProvider)
 			c1 = network.chains[1]
 			c2 = network.chains[2]
 			c3 = network.chains[3]
@@ -1926,7 +1943,7 @@ var _ = Describe("Chain", func() {
 					raftmeta, err := etcdraft.ReadBlockMetadata(meta, nil)
 					Expect(err).NotTo(HaveOccurred())
 
-					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters)
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters, cryptoProvider)
 					// if we join a node to existing network, it MUST already obtained blocks
 					// till the config block that adds this node to cluster.
 					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
@@ -2049,7 +2066,7 @@ var _ = Describe("Chain", func() {
 					raftmeta, err := etcdraft.ReadBlockMetadata(meta, nil)
 					Expect(err).NotTo(HaveOccurred())
 
-					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters)
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters, cryptoProvider)
 					// if we join a node to existing network, it MUST already obtained blocks
 					// till the config block that adds this node to cluster.
 					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
@@ -2124,7 +2141,7 @@ var _ = Describe("Chain", func() {
 					raftmeta, err := etcdraft.ReadBlockMetadata(meta, nil)
 					Expect(err).NotTo(HaveOccurred())
 
-					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters)
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters, cryptoProvider)
 					// if we join a node to existing network, it MUST already obtained blocks
 					// till the config block that adds this node to cluster.
 					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
@@ -2328,7 +2345,7 @@ var _ = Describe("Chain", func() {
 					raftmeta, err := etcdraft.ReadBlockMetadata(meta, nil)
 					Expect(err).NotTo(HaveOccurred())
 
-					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters)
+					c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters, cryptoProvider)
 					// if we join a node to existing network, it MUST already obtained blocks
 					// till the config block that adds this node to cluster.
 					c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
@@ -3219,9 +3236,18 @@ type chain struct {
 	fakeFields *fakeMetricsFields
 
 	*etcdraft.Chain
+
+	cryptoProvider bccsp.BCCSP
 }
 
-func newChain(timeout time.Duration, channel string, dataDir string, id uint64, raftMetadata *raftprotos.BlockMetadata, consenters map[uint64]*raftprotos.Consenter) *chain {
+func newChain(
+	timeout time.Duration,
+	channel, dataDir string,
+	id uint64,
+	raftMetadata *raftprotos.BlockMetadata,
+	consenters map[uint64]*raftprotos.Consenter,
+	cryptoProvider bccsp.BCCSP,
+) *chain {
 	rpc := &mocks.FakeRPC{}
 	clock := fakeclock.NewFakeClock(time.Now())
 	storage := raft.NewMemoryStorage()
@@ -3281,8 +3307,9 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 		ledger: map[uint64]*common.Block{
 			0: getSeedBlock(), // Very first block
 		},
-		ledgerHeight: 1,
-		fakeFields:   fakeFields,
+		ledgerHeight:   1,
+		fakeFields:     fakeFields,
+		cryptoProvider: cryptoProvider,
 	}
 
 	// receives normal blocks and metadata and appends it into
@@ -3357,6 +3384,7 @@ func (c *chain) init() {
 		c.opts,
 		c.configurator,
 		c.rpc,
+		c.cryptoProvider,
 		func() (etcdraft.BlockPuller, error) { return c.puller, nil },
 		c.observe,
 	)
@@ -3520,7 +3548,13 @@ func (n *network) addChain(c *chain) {
 	n.chains[c.id] = c
 }
 
-func createNetwork(timeout time.Duration, channel string, dataDir string, raftMetadata *raftprotos.BlockMetadata, consenters map[uint64]*raftprotos.Consenter) *network {
+func createNetwork(
+	timeout time.Duration,
+	channel, dataDir string,
+	raftMetadata *raftprotos.BlockMetadata,
+	consenters map[uint64]*raftprotos.Consenter,
+	cryptoProvider bccsp.BCCSP,
+) *network {
 	n := &network{
 		chains:       make(map[uint64]*chain),
 		connectivity: make(map[uint64]bool),
@@ -3532,7 +3566,7 @@ func createNetwork(timeout time.Duration, channel string, dataDir string, raftMe
 		Expect(err).NotTo(HaveOccurred())
 
 		m := proto.Clone(raftMetadata).(*raftprotos.BlockMetadata)
-		n.addChain(newChain(timeout, channel, dir, nodeID, m, consenters))
+		n.addChain(newChain(timeout, channel, dir, nodeID, m, consenters, cryptoProvider))
 	}
 
 	return n
