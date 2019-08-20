@@ -240,6 +240,7 @@ func serve(args []string) error {
 		StoreProvider: transientstore.NewStoreProvider(
 			filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
 		),
+		CryptoProvider: factory.GetDefault(),
 	}
 
 	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()

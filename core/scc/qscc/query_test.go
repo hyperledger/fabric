@@ -12,6 +12,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
@@ -45,8 +46,13 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 		ledgerMgr.Close()
 		os.RemoveAll(testDir)
 	}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	peerInstance := &peer.Peer{
-		LedgerMgr: ledgerMgr,
+		LedgerMgr:      ledgerMgr,
+		CryptoProvider: cryptoProvider,
 	}
 	peer.CreateMockChannel(peerInstance, chainid)
 

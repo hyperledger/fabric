@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
@@ -138,12 +139,12 @@ func GetLocalMSP() msp.MSP {
 		return localMsp
 	}
 
-	localMsp = loadLocaMSP()
+	localMsp = loadLocaMSP(factory.GetDefault())
 
 	return localMsp
 }
 
-func loadLocaMSP() msp.MSP {
+func loadLocaMSP(bccsp bccsp.BCCSP) msp.MSP {
 	// determine the type of MSP (by default, we'll use bccspMSP)
 	mspType := viper.GetString("peer.localMspType")
 	if mspType == "" {
@@ -155,7 +156,7 @@ func loadLocaMSP() msp.MSP {
 		mspLogger.Panicf("msp type " + mspType + " unknown")
 	}
 
-	mspInst, err := msp.New(newOpts, factory.GetDefault())
+	mspInst, err := msp.New(newOpts, bccsp)
 	if err != nil {
 		mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
 	}

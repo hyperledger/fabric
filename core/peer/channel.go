@@ -9,7 +9,7 @@ package peer
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
@@ -22,8 +22,9 @@ import (
 
 // Channel manages objects and configuration associated with a Channel.
 type Channel struct {
-	ledger ledger.PeerLedger
-	store  transientstore.Store
+	ledger         ledger.PeerLedger
+	store          transientstore.Store
+	cryptoProvider bccsp.BCCSP
 
 	// applyLock is used to serialize calls to Apply and bundle update processing.
 	applyLock sync.Mutex
@@ -49,7 +50,7 @@ func (c *Channel) Apply(configtx *common.ConfigEnvelope) error {
 		return err
 	}
 
-	bundle, err := channelconfig.NewBundle(configTxValidator.ChainID(), configtx.Config, factory.GetDefault())
+	bundle, err := channelconfig.NewBundle(configTxValidator.ChainID(), configtx.Config, c.cryptoProvider)
 	if err != nil {
 		return err
 	}

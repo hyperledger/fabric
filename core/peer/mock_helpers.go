@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
@@ -32,6 +33,11 @@ func CreateMockChannel(p *Peer, cid string) error {
 		p.channels = map[string]*Channel{}
 	}
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return err
+	}
+
 	p.channels[cid] = &Channel{
 		ledger: ledger,
 		resources: &mockchannelconfig.Resources{
@@ -41,6 +47,7 @@ func CreateMockChannel(p *Peer, cid string) error {
 			ConfigtxValidatorVal: &mockconfigtx.Validator{},
 			ApplicationConfigVal: &mockchannelconfig.MockApplication{CapabilitiesRv: &mockchannelconfig.MockApplicationCapabilities{}},
 		},
+		cryptoProvider: cryptoProvider,
 	}
 
 	return nil

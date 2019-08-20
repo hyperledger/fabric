@@ -28,6 +28,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -72,7 +73,12 @@ import (
 
 //initialize peer and start up. If security==enabled, login as vp
 func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupport, func(), error) {
-	peerInstance := &peer.Peer{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to create cryptoProvider %s", err)
+	}
+
+	peerInstance := &peer.Peer{CryptoProvider: cryptoProvider}
 	grpcServer := grpc.NewServer()
 
 	lis, err := net.Listen("tcp", ":0")

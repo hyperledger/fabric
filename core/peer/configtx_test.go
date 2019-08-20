@@ -127,9 +127,11 @@ type testHelper struct {
 }
 
 func newTestHelper(t *testing.T) *testHelper {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	return &testHelper{
 		t:    t,
-		peer: &Peer{},
+		peer: &Peer{CryptoProvider: cryptoProvider},
 	}
 }
 
@@ -183,9 +185,12 @@ func (h *testHelper) mockCreateChain(t *testing.T, channelID string, ledger ledg
 	if h.peer.channels == nil {
 		h.peer.channels = map[string]*Channel{}
 	}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	h.peer.channels[channelID] = &Channel{
-		bundleSource: channelconfig.NewBundleSource(chanBundle),
-		ledger:       ledger,
+		bundleSource:   channelconfig.NewBundleSource(chanBundle),
+		ledger:         ledger,
+		cryptoProvider: cryptoProvider,
 	}
 }
 
