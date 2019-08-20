@@ -39,7 +39,7 @@ type replicationInitiator struct {
 	conf              *localconfig.TopLevel
 	lf                cluster.LedgerFactory
 	signer            identity.SignerSerializer
-	bccsp             bccsp.BCCSP
+	cryptoProvider    bccsp.BCCSP
 }
 
 func (ri *replicationInitiator) replicateIfNeeded(bootstrapBlock *common.Block) {
@@ -51,13 +51,17 @@ func (ri *replicationInitiator) replicateIfNeeded(bootstrapBlock *common.Block) 
 }
 
 func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, filter func(string) bool) *cluster.Replicator {
-	consenterCert := etcdraft.ConsenterCertificate(ri.secOpts.Certificate)
+	consenterCert := &etcdraft.ConsenterCertificate{
+		ConsenterCertificate: ri.secOpts.Certificate,
+		CryptoProvider:       ri.cryptoProvider,
+	}
+
 	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}
 	pullerConfig := cluster.PullerConfigFromTopLevelConfig(systemChannelName, ri.conf, ri.secOpts.Key, ri.secOpts.Certificate, ri.signer)
-	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, bootstrapBlock, ri.verifierRetriever, ri.bccsp)
+	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, bootstrapBlock, ri.verifierRetriever, ri.cryptoProvider)
 	if err != nil {
 		ri.logger.Panicf("Failed creating puller config from bootstrap block: %v", err)
 	}

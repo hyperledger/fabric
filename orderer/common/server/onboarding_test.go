@@ -273,7 +273,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 		logger:            flogging.MustGetLogger("testOnboarding"),
 		conf:              config,
 		secOpts:           secConfig,
-		bccsp:             cryptoProvider,
+		cryptoProvider:    cryptoProvider,
 	}
 
 	type event struct {
@@ -694,9 +694,9 @@ func TestReplicate(t *testing.T) {
 				logger:            flogging.MustGetLogger("testReplicateIfNeeded"),
 				signer:            testCase.signer,
 
-				conf:    testCase.conf,
-				secOpts: testCase.secOpts,
-				bccsp:   cryptoProvider,
+				conf:           testCase.conf,
+				secOpts:        testCase.secOpts,
+				cryptoProvider: cryptoProvider,
 			}
 
 			if testCase.panicValue != "" {

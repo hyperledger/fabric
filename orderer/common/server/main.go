@@ -338,7 +338,7 @@ func createReplicator(
 		conf:              conf,
 		lf:                ledgerFactory,
 		signer:            signer,
-		bccsp:             bccsp,
+		cryptoProvider:    bccsp,
 	}
 }
 

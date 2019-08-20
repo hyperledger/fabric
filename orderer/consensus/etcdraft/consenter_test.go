@@ -113,7 +113,7 @@ var _ = Describe("Consenter", func() {
 
 	When("the consenter is asked for a chain", func() {
 		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		chainInstance := &etcdraft.Chain{}
+		chainInstance := &etcdraft.Chain{CryptoProvider: cryptoProvider}
 		cs := &multichannel.ChainSupport{
 			Chain: chainInstance,
 			BCCSP: cryptoProvider,

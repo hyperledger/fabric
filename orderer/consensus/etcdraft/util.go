@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -266,7 +266,12 @@ func validateCert(pemData []byte, certRole string) error {
 }
 
 // ConsenterCertificate denotes a TLS certificate of a consenter
-type ConsenterCertificate []byte
+type ConsenterCertificate struct {
+	ConsenterCertificate []byte
+	CryptoProvider       bccsp.BCCSP
+}
+
+// type ConsenterCertificate []byte
 
 // IsConsenterOfChannel returns whether the caller is a consenter of a channel
 // by inspecting the given configuration block.
@@ -279,7 +284,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 	if err != nil {
 		return err
 	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, factory.GetDefault())
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, conCert.CryptoProvider)
 	if err != nil {
 		return err
 	}
@@ -293,7 +298,7 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 	}
 
 	for _, consenter := range m.Consenters {
-		if bytes.Equal(conCert, consenter.ServerTlsCert) || bytes.Equal(conCert, consenter.ClientTlsCert) {
+		if bytes.Equal(conCert.ConsenterCertificate, consenter.ServerTlsCert) || bytes.Equal(conCert.ConsenterCertificate, consenter.ClientTlsCert) {
 			return nil
 		}
 	}

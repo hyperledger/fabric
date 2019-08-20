@@ -18,6 +18,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
@@ -95,7 +96,14 @@ func TestIsConsenterOfChannel(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			err := ConsenterCertificate(testCase.certificate).IsConsenterOfChannel(testCase.configBlock)
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			assert.NoError(t, err)
+
+			consenterCertificate := &ConsenterCertificate{
+				ConsenterCertificate: testCase.certificate,
+				CryptoProvider:       cryptoProvider,
+			}
+			err = consenterCertificate.IsConsenterOfChannel(testCase.configBlock)
 			if testCase.expectedError != "" {
 				assert.EqualError(t, err, testCase.expectedError)
 			} else {

@@ -364,7 +364,7 @@ func TestInitializeMultiChainManager(t *testing.T) {
 		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 		initializeMultichannelRegistrar(
 			bootBlock,
-			&replicationInitiator{bccsp: cryptoProvider},
+			&replicationInitiator{cryptoProvider: cryptoProvider},
 			&cluster.PredicateDialer{},
 			comm.ServerConfig{},
 			nil,
@@ -444,7 +444,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 
 	initializeMultichannelRegistrar(
 		bootBlock,
-		&replicationInitiator{bccsp: cryptoProvider},
+		&replicationInitiator{cryptoProvider: cryptoProvider},
 		&cluster.PredicateDialer{},
 		comm.ServerConfig{},
 		nil,
@@ -495,7 +495,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	}
 	initializeMultichannelRegistrar(
 		bootBlock,
-		&replicationInitiator{bccsp: cryptoProvider},
+		&replicationInitiator{cryptoProvider: cryptoProvider},
 		predDialer,
 		comm.ServerConfig{},
 		nil,
@@ -754,7 +754,7 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 		&localconfig.TopLevel{},
 		rlf,
 		&cluster.PredicateDialer{},
-		genesisBlock, &replicationInitiator{bccsp: cryptoProvider},
+		genesisBlock, &replicationInitiator{cryptoProvider: cryptoProvider},
 		comm.ServerConfig{
 			SecOpts: comm.SecureOptions{
 				Certificate: crt.Cert,
