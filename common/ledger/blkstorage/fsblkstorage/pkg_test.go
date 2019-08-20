@@ -69,7 +69,9 @@ func newTestEnvWithMetricsProvider(t testing.TB, conf *Conf, metricsProvider met
 
 func newTestEnvSelectiveIndexing(t testing.TB, conf *Conf, attrsToIndex []blkstorage.IndexableAttr, metricsProvider metrics.Provider) *testEnv {
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	return &testEnv{t, NewProvider(conf, indexConfig, metricsProvider).(*FsBlockstoreProvider)}
+	p, err := NewProvider(conf, indexConfig, metricsProvider)
+	assert.NoError(t, err)
+	return &testEnv{t, p.(*FsBlockstoreProvider)}
 }
 
 func (env *testEnv) Cleanup() {

@@ -60,7 +60,8 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	)
 
 	assert.NoError(t, err)
-	testHistoryDBProvider := NewDBProvider(testHistoryDBPath)
+	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath)
+	assert.NoError(t, err)
 	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
 	assert.NoError(t, err)
 
@@ -110,9 +111,9 @@ func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 
-	blockStorageProvider := fsblkstorage.NewProvider(conf, indexConfig, &disabled.Provider{}).(*fsblkstorage.FsBlockstoreProvider)
-
-	return &testBlockStoreEnv{t, blockStorageProvider, testPath}
+	p, err := fsblkstorage.NewProvider(conf, indexConfig, &disabled.Provider{})
+	assert.NoError(t, err)
+	return &testBlockStoreEnv{t, p.(*fsblkstorage.FsBlockstoreProvider), testPath}
 }
 
 func (env *testBlockStoreEnv) cleanup() {

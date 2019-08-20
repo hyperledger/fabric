@@ -44,7 +44,8 @@ func TestStore(t *testing.T) {
 	defer os.RemoveAll(storeDir)
 	conf := buildPrivateDataConfig(storeDir)
 	blockStoreDir := filepath.Join(storeDir, "chains")
-	provider := NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err := NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -134,12 +135,12 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 		blkstorage.IndexableAttrTxValidationCode,
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	blockStoreProvider := fsblkstorage.NewProvider(
+	blockStoreProvider, err := fsblkstorage.NewProvider(
 		fsblkstorage.NewConf(filepath.Join(storeDir, "chains"), maxBlockFileSize),
 		indexConfig,
 		metricsProvider,
 	)
-
+	assert.NoError(t, err)
 	blkStore, err := blockStoreProvider.OpenBlockStore(testLedgerid)
 	assert.NoError(t, err)
 	testBlocks := testutil.ConstructTestBlocks(t, 10)
@@ -157,7 +158,8 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 	// Open the ledger storage - pvtdata store is opened for the first time with an existing block storage
 	conf := buildPrivateDataConfig(storeDir)
 	blockStoreDir := filepath.Join(storeDir, "chains")
-	provider := NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err := NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	defer provider.Close()
 	store, err := provider.Open(testLedgerid)
 	store.Init(btlPolicyForSampleData())
@@ -184,7 +186,8 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 	defer os.RemoveAll(storeDir)
 	conf := buildPrivateDataConfig(storeDir)
 	blockStoreDir := filepath.Join(storeDir, "chains")
-	provider := NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err := NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -207,7 +210,8 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 	store.pvtdataStore.Commit(blockNumAtCrash, pvtdataAtCrash, nil)
 	store.Shutdown()
 	provider.Close()
-	provider = NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err = NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	store, err = provider.Open("testLedger")
 	assert.NoError(t, err)
 	store.Init(btlPolicyForSampleData())
@@ -268,7 +272,8 @@ func TestAddAfterPvtdataStoreError(t *testing.T) {
 	defer os.RemoveAll(storeDir)
 	conf := buildPrivateDataConfig(storeDir)
 	blockStoreDir := filepath.Join(storeDir, "chains")
-	provider := NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err := NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -303,7 +308,8 @@ func TestAddAfterBlkStoreError(t *testing.T) {
 	defer os.RemoveAll(storeDir)
 	conf := buildPrivateDataConfig(storeDir)
 	blockStoreDir := filepath.Join(storeDir, "chains")
-	provider := NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err := NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -333,7 +339,8 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	defer os.RemoveAll(storeDir)
 	conf := buildPrivateDataConfig(storeDir)
 	blockStoreDir := filepath.Join(storeDir, "chains")
-	provider := NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err := NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	defer provider.Close()
 	store, err := provider.Open("testLedger")
 	store.Init(btlPolicyForSampleData())
@@ -352,7 +359,8 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	// close and reopen
 	store.Shutdown()
 	provider.Close()
-	provider = NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err = NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	store, err = provider.Open("testLedger")
 	assert.NoError(t, err)
 	store.Init(btlPolicyForSampleData())
@@ -376,7 +384,8 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	// close and reopen
 	store.Shutdown()
 	provider.Close()
-	provider = NewProvider(blockStoreDir, conf, metricsProvider)
+	provider, err = NewProvider(blockStoreDir, conf, metricsProvider)
+	assert.NoError(t, err)
 	store, err = provider.Open("testLedger")
 	assert.NoError(t, err)
 	store.Init(btlPolicyForSampleData())

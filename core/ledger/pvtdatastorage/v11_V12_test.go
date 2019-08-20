@@ -48,7 +48,8 @@ func TestV11v12(t *testing.T) {
 		},
 		StorePath: filepath.Join(testWorkingDir, "pvtdataStore"),
 	}
-	p := NewProvider(conf)
+	p, err := NewProvider(conf)
+	assert.NoError(t, err)
 	defer p.Close()
 	s, err := p.OpenStore(ledgerid)
 	assert.NoError(t, err)

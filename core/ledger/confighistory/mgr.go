@@ -36,8 +36,12 @@ type mgr struct {
 }
 
 // NewMgr constructs an instance that implements interface `Mgr`
-func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) Mgr {
-	return &mgr{ccInfoProvider, newDBProvider(dbPath)}
+func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (Mgr, error) {
+	p, err := newDBProvider(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	return &mgr{ccInfoProvider, p}, nil
 }
 
 func (m *mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {

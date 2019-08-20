@@ -17,11 +17,13 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/common/metrics"
 	config "github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/pkg/errors"
 )
 
-func createLedgerFactory(conf *config.TopLevel, metricsProvider metrics.Provider) (blockledger.Factory, string) {
+func createLedgerFactory(conf *config.TopLevel, metricsProvider metrics.Provider) (blockledger.Factory, string, error) {
 	var lf blockledger.Factory
 	var ld string
+	var err error
 	switch conf.General.LedgerType {
 	case "file":
 		ld = conf.FileLedger.Location
@@ -29,7 +31,9 @@ func createLedgerFactory(conf *config.TopLevel, metricsProvider metrics.Provider
 			ld = createTempDir(conf.FileLedger.Prefix)
 		}
 		logger.Debug("Ledger dir:", ld)
-		lf = fileledger.New(ld, metricsProvider)
+		if lf, err = fileledger.New(ld, metricsProvider); err != nil {
+			return nil, "", errors.WithMessage(err, "Error in opening ledger factory")
+		}
 		// The file-based ledger stores the blocks for each channel
 		// in a fsblkstorage.ChainsDir sub-directory that we have
 		// to create separately. Otherwise the call to the ledger
@@ -40,7 +44,7 @@ func createLedgerFactory(conf *config.TopLevel, metricsProvider metrics.Provider
 	default:
 		lf = ramledger.New(int(conf.RAMLedger.HistorySize))
 	}
-	return lf, ld
+	return lf, ld, nil
 }
 
 func createTempDir(dirPrefix string) string {

@@ -13,6 +13,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
@@ -45,13 +47,13 @@ func testStore(t *testing.T) (s Store, cleanup func()) {
 		os.RemoveAll(tempdir)
 	}
 
-	s, err = NewStoreProvider(tempdir).OpenStore("TestStore")
+	sp, err := NewStoreProvider(tempdir)
 	if err != nil {
 		t.Fatalf("Failed to open test store: %s", err)
 	}
-
+	s, err = sp.OpenStore("TestStore")
+	require.NoError(t, err)
 	return s, cleanup
-
 }
 
 func TestPurgeIndexKeyCodingEncoding(t *testing.T) {

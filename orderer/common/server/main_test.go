@@ -208,7 +208,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 		t.Run(tc.genesisMethod+"/"+tc.ledgerType, func(t *testing.T) {
 
 			fileLedgerLocation, _ := ioutil.TempDir("", "test-ledger")
-			ledgerFactory, _ := createLedgerFactory(
+			ledgerFactory, _, err := createLedgerFactory(
 				&localconfig.TopLevel{
 					General: localconfig.General{LedgerType: tc.ledgerType},
 					FileLedger: localconfig.FileLedger{
@@ -217,7 +217,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 				},
 				&disabled.Provider{},
 			)
-
+			assert.NoError(t, err)
 			bootstrapConfig := &localconfig.TopLevel{
 				General: localconfig.General{
 					GenesisMethod:  tc.genesisMethod,
@@ -355,7 +355,8 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	conf := genesisConfig(t)
 	assert.NotPanics(t, func() {
 		signer := &server_mocks.SignerSerializer{}
-		lf, _ := createLedgerFactory(conf, &disabled.Provider{})
+		lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
+		assert.NoError(t, err)
 		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 		initializeMultichannelRegistrar(
 			bootBlock,
@@ -428,7 +429,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			caMgr.updateTrustedRoots(bundle, grpcServer)
 		}
 	}
-	lf, _ := createLedgerFactory(conf, &disabled.Provider{})
+	lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
+	assert.NoError(t, err)
 	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
 	signer := &server_mocks.SignerSerializer{}
 	initializeMultichannelRegistrar(

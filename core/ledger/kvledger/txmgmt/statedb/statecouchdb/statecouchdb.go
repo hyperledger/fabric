@@ -42,12 +42,16 @@ func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Prov
 	if err != nil {
 		return nil, err
 	}
+	p, err := newRedoLoggerProvider(config.RedoLogPath)
+	if err != nil {
+		return nil, err
+	}
 	return &VersionedDBProvider{
 			couchInstance:      couchInstance,
 			databases:          make(map[string]*VersionedDB),
 			mux:                sync.Mutex{},
 			openCounts:         0,
-			redoLoggerProvider: newRedoLoggerProvider(config.RedoLogPath),
+			redoLoggerProvider: p,
 		},
 		nil
 }

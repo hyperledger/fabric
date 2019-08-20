@@ -25,7 +25,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("leveldbhelper,historyleveldb=debug")
+	flogging.ActivateSpec("leveldbhelper,history=debug")
 	os.Exit(m.Run())
 }
 

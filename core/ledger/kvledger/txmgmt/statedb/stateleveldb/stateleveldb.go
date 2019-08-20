@@ -28,10 +28,13 @@ type VersionedDBProvider struct {
 }
 
 // NewVersionedDBProvider instantiates VersionedDBProvider
-func NewVersionedDBProvider(dbPath string) *VersionedDBProvider {
+func NewVersionedDBProvider(dbPath string) (*VersionedDBProvider, error) {
 	logger.Debugf("constructing VersionedDBProvider dbPath=%s", dbPath)
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dbPath})
-	return &VersionedDBProvider{dbProvider}
+	dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dbPath})
+	if err != nil {
+		return nil, err
+	}
+	return &VersionedDBProvider{dbProvider}, nil
 }
 
 // GetDBHandle gets the handle to a named database
