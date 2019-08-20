@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
@@ -30,6 +31,8 @@ var endorserLogger = flogging.MustGetLogger("endorser")
 
 // The Jira issue that documents Endorser flow along with its relationship to
 // the lifecycle chaincode - https://jira.hyperledger.org/browse/FAB-181
+
+//go:generate counterfeiter -o fake/prvt_data_distributor.go --fake-name PrivateDataDistributor . PrivateDataDistributor
 
 type PrivateDataDistributor interface {
 	DistributePrivateData(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error
@@ -77,8 +80,21 @@ type Support interface {
 	GetDeployedCCInfoProvider() ledger.DeployedChaincodeInfoProvider
 }
 
+//go:generate counterfeiter -o fake/channel_fetcher.go --fake-name ChannelFetcher . ChannelFetcher
+
+// ChannelFetcher fetches the channel context for a given channel ID.
+type ChannelFetcher interface {
+	Channel(channelID string) *Channel
+}
+
+type Channel struct {
+	IdentityDeserializer msp.IdentityDeserializer
+}
+
 // Endorser provides the Endorser service ProcessProposal
 type Endorser struct {
+	ChannelFetcher         ChannelFetcher
+	LocalMSP               msp.IdentityDeserializer
 	PrivateDataDistributor PrivateDataDistributor
 	Support                Support
 	PvtRWSetAssembler      PvtRWSetAssembler
@@ -185,7 +201,7 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 		}
 		endorsedAt, err := e.Support.GetLedgerHeight(txParams.ChannelID)
 		if err != nil {
-			return nil, nil, nil, errors.WithMessage(err, fmt.Sprint("failed to obtain ledger height for channel", txParams.ChannelID))
+			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed to obtain ledger height for channel '%s'", txParams.ChannelID))
 		}
 		// Add ledger height at which transaction was endorsed,
 		// `endorsedAt` is obtained from the block storage and at times this could be 'endorsement Height + 1'.
@@ -207,18 +223,13 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 }
 
 // preProcess checks the tx proposal headers, uniqueness and ACL
-func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
+func (e *Endorser) preProcess(up *UnpackedProposal, channel *Channel) error {
 	// at first, we check whether the message is valid
-	up, err := UnpackProposal(signedProp)
-	if err != nil {
-		e.Metrics.ProposalValidationFailed.Add(1)
-		return nil, err
-	}
 
-	err = ValidateUnpackedProposal(up)
+	err := ValidateUnpackedProposal(up, channel.IdentityDeserializer)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
-		return nil, err
+		return err
 	}
 
 	endorserLogger.Debugf("[%s][%s] processing txid: %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChannelHeader.TxId)
@@ -228,7 +239,7 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*UnpackedProposal,
 		// ignore uniqueness checks; also, chainless proposals are not validated using the policies
 		// of the chain since by definition there is no chain; they are validated against the local
 		// MSP of the peer instead by the call to ValidateUnpackProposal above
-		return up, nil
+		return nil
 	}
 
 	// labels that provide context for failure metrics
@@ -243,7 +254,7 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*UnpackedProposal,
 		// increment failure due to duplicate transactions. Useful for catching replay attacks in
 		// addition to benign retries
 		e.Metrics.DuplicateTxsFailure.With(meterLabels...).Add(1)
-		return nil, errors.Errorf("duplicate transaction found [%s]. Creator [%x]", up.ChannelHeader.TxId, up.SignatureHeader.Creator)
+		return errors.Errorf("duplicate transaction found [%s]. Creator [%x]", up.ChannelHeader.TxId, up.SignatureHeader.Creator)
 	}
 
 	// check ACL only for application chaincodes; ACLs
@@ -252,11 +263,11 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*UnpackedProposal,
 		// check that the proposal complies with the Channel's writers
 		if err = e.Support.CheckACL(up.ChannelHeader.ChannelId, up.SignedProposal); err != nil {
 			e.Metrics.ProposalACLCheckFailed.With(meterLabels...).Add(1)
-			return nil, err
+			return err
 		}
 	}
 
-	return up, nil
+	return nil
 }
 
 // ProcessProposal process the Proposal
@@ -272,8 +283,26 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// variables to capture proposal duration metric
 	success := false
 
+	up, err := UnpackProposal(signedProp)
+	if err != nil {
+		e.Metrics.ProposalValidationFailed.Add(1)
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	}
+
+	var channel *Channel
+	if up.ChannelID() != "" {
+		channel = e.ChannelFetcher.Channel(up.ChannelID())
+		if channel == nil {
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: fmt.Sprintf("channel '%s' not found", up.ChannelHeader.ChannelId)}}, nil
+		}
+	} else {
+		channel = &Channel{
+			IdentityDeserializer: e.LocalMSP,
+		}
+	}
+
 	// 0 -- check and validate
-	up, err := e.preProcess(signedProp)
+	err = e.preProcess(up, channel)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
@@ -344,7 +373,7 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 	// 1 -- simulate
 	res, simulationResult, ccevent, err := e.SimulateProposal(txParams, up.ChaincodeName, up.Input)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "error in simulation")
 	}
 
 	cceventBytes, err := CreateCCEventBytes(ccevent)

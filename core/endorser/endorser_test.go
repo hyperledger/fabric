@@ -9,782 +9,592 @@ package endorser_test
 import (
 	"context"
 	"fmt"
-	"os"
-	"testing"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
-	mc "github.com/hyperledger/fabric/common/mocks/config"
-	resourceconfig "github.com/hyperledger/fabric/common/mocks/resourcesconfig"
-	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/endorser"
-	"github.com/hyperledger/fabric/core/endorser/mocks"
-	"github.com/hyperledger/fabric/core/handlers/endorsement/builtin"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/transientstore"
-	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+
+	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/core/endorser"
+	"github.com/hyperledger/fabric/core/endorser/fake"
+	"github.com/hyperledger/fabric/core/ledger"
+	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
+	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
+
+	"github.com/golang/protobuf/proto"
 )
 
-type PrivateDataDistributorAdapter func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error
+var _ = Describe("Endorser", func() {
+	var (
+		fakeProposalDuration         *metricsfakes.Histogram
+		fakeProposalsReceived        *metricsfakes.Counter
+		fakeSuccessfulProposals      *metricsfakes.Counter
+		fakeProposalValidationFailed *metricsfakes.Counter
+		fakeProposalACLCheckFailed   *metricsfakes.Counter
+		fakeInitFailed               *metricsfakes.Counter
+		fakeEndorsementsFailed       *metricsfakes.Counter
+		fakeDuplicateTxsFailure      *metricsfakes.Counter
 
-func (pda PrivateDataDistributorAdapter) DistributePrivateData(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
-	return pda(channel, txID, privateData, blkHt)
-}
+		fakeLocalIdentity                *fake.Identity
+		fakeLocalMSPIdentityDeserializer *fake.IdentityDeserializer
 
-var pvtEmptyDistributor = PrivateDataDistributorAdapter(func(_ string, _ string, _ *transientstore.TxPvtReadWriteSetWithConfigInfo, _ uint64) error {
-	return nil
-})
+		fakeChannelIdentity                *fake.Identity
+		fakeChannelMSPIdentityDeserializer *fake.IdentityDeserializer
 
-func getSignedPropWithCHID(ccid, chid string, t *testing.T) *pb.SignedProposal {
-	ccargs := [][]byte{[]byte("args")}
+		fakeChannelFetcher *fake.ChannelFetcher
 
-	return getSignedPropWithCHIdAndArgs(chid, ccid, ccargs, t)
-}
+		fakePrivateDataDistributor *fake.PrivateDataDistributor
 
-func getSignedProp(ccid string, t *testing.T) *pb.SignedProposal {
-	return getSignedPropWithCHID(ccid, util.GetTestChainID(), t)
-}
+		fakeSupport     *fake.Support
+		fakeTxSimulator *fake.TxSimulator
 
-func getSignedPropWithCHIdAndArgs(chid, ccid string, ccargs [][]byte, t *testing.T) *pb.SignedProposal {
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: ccid}, Input: &pb.ChaincodeInput{Args: ccargs}}
+		signedProposal *pb.SignedProposal
+		channelID      string
+		chaincodeName  string
 
-	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
+		chaincodeResponse *pb.Response
+		chaincodeEvent    *pb.ChaincodeEvent
 
-	creator, err := signer.Serialize()
-	assert.NoError(t, err)
-	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chid, cis, creator)
-	assert.NoError(t, err)
-	propBytes, err := protoutil.GetBytesProposal(prop)
-	assert.NoError(t, err)
-	signature, err := signer.Sign(propBytes)
-	assert.NoError(t, err)
-	return &pb.SignedProposal{ProposalBytes: propBytes, Signature: signature}
-}
-
-func newMockTxSim() *mocks.MockTxSim {
-	return &mocks.MockTxSim{
-		GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-			PubSimulationResults: &rwset.TxReadWriteSet{},
-		},
-	}
-}
-
-// fake metrics
-type fakeEndorserMetrics struct {
-	proposalDuration         *metricsfakes.Histogram
-	proposalsReceived        *metricsfakes.Counter
-	successfulProposals      *metricsfakes.Counter
-	proposalValidationFailed *metricsfakes.Counter
-	proposalACLCheckFailed   *metricsfakes.Counter
-	initFailed               *metricsfakes.Counter
-	endorsementsFailed       *metricsfakes.Counter
-	duplicateTxsFailure      *metricsfakes.Counter
-}
-
-// initialize Endorser with fake metrics
-func initFakeMetrics() (*endorser.Metrics, *fakeEndorserMetrics) {
-	fakeMetrics := &fakeEndorserMetrics{
-		proposalDuration:         &metricsfakes.Histogram{},
-		proposalsReceived:        &metricsfakes.Counter{},
-		successfulProposals:      &metricsfakes.Counter{},
-		proposalValidationFailed: &metricsfakes.Counter{},
-		proposalACLCheckFailed:   &metricsfakes.Counter{},
-		initFailed:               &metricsfakes.Counter{},
-		endorsementsFailed:       &metricsfakes.Counter{},
-		duplicateTxsFailure:      &metricsfakes.Counter{},
-	}
-
-	fakeMetrics.proposalDuration.WithReturns(fakeMetrics.proposalDuration)
-	fakeMetrics.proposalACLCheckFailed.WithReturns(fakeMetrics.proposalACLCheckFailed)
-	fakeMetrics.initFailed.WithReturns(fakeMetrics.initFailed)
-	fakeMetrics.endorsementsFailed.WithReturns(fakeMetrics.endorsementsFailed)
-	fakeMetrics.duplicateTxsFailure.WithReturns(fakeMetrics.duplicateTxsFailure)
-
-	metrics := &endorser.Metrics{
-		ProposalDuration:         fakeMetrics.proposalDuration,
-		ProposalsReceived:        fakeMetrics.proposalsReceived,
-		SuccessfulProposals:      fakeMetrics.successfulProposals,
-		ProposalValidationFailed: fakeMetrics.proposalValidationFailed,
-		ProposalACLCheckFailed:   fakeMetrics.proposalACLCheckFailed,
-		InitFailed:               fakeMetrics.initFailed,
-		EndorsementsFailed:       fakeMetrics.endorsementsFailed,
-		DuplicateTxsFailure:      fakeMetrics.duplicateTxsFailure,
-	}
-
-	return metrics, fakeMetrics
-}
-
-func testEndorsementCompletedMetric(t *testing.T, fakeMetrics *fakeEndorserMetrics, callCount int32, chainID, ccnamever, succ string) {
-	// test for triggering of duplicate TX metric
-	assert.EqualValues(t, callCount, fakeMetrics.proposalDuration.WithCallCount())
-	labelValues := fakeMetrics.proposalDuration.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", chainID, "chaincode", ccnamever, "success", succ})
-	assert.NotEqual(t, 0, fakeMetrics.proposalDuration.ObserveArgsForCall(0))
-}
-
-func TestEndorserCCInvocationFailed(t *testing.T) {
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			GetTransactionByIDErr:      errors.New(""),
-			ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-			ExecuteResp:                &pb.Response{Status: 1000, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}}), Message: "achoo"},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
-			},
-		},
-		Metrics: endorser.NewMetrics(&disabled.Provider{}),
-	}
-
-	signedProp := getSignedProp("test-chaincode", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1000, pResp.Response.Status)
-	assert.Equal(t, "achoo", pResp.Response.Message)
-}
-
-func TestEndorserNoCCDef(t *testing.T) {
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			GetTransactionByIDErr:      errors.New(""),
-			ChaincodeDefinitionError:   errors.New("gesundheit"),
-			ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
-			},
-		},
-		Metrics: endorser.NewMetrics(&disabled.Provider{}),
-	}
-
-	signedProp := getSignedProp("test-chaincode", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Equal(t, "make sure the chaincode test-chaincode has been successfully defined on channel testchainid and try again: gesundheit", pResp.Response.Message)
-}
-
-func TestEndorserSysCC(t *testing.T) {
-	m := &mock.Mock{}
-	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-	support := &mocks.MockSupport{
-		Mock:                       m,
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		IsSysCCRv:                  true,
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-	}
-	attachPluginEndorser(support, nil)
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support:                support,
-		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
-	}
-
-	signedProp := getSignedProp("test-chaincode", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 200, pResp.Response.Status)
-}
-
-func TestEndorserCCInvocationError(t *testing.T) {
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			GetTransactionByIDErr:      errors.New(""),
-			ExecuteError:               errors.New(""),
-			ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
-			},
-		},
-		Metrics: endorser.NewMetrics(&disabled.Provider{}),
-	}
-
-	signedProp := getSignedProp("test-chaincode", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-}
-
-func TestEndorserDupTXId(t *testing.T) {
-	metrics, fakeMetrics := initFakeMetrics()
-
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-			ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
-			},
-		},
-		Metrics: metrics,
-	}
-
-	signedProp := getSignedProp("test-chaincode", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Regexp(t, "duplicate transaction found", pResp.Response.Message)
-
-	// test for triggering of duplicate TX metric
-	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.WithCallCount())
-	labelValues := fakeMetrics.duplicateTxsFailure.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", "testchainid", "chaincode", "test-chaincode"})
-	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.AddCallCount())
-	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.AddArgsForCall(0))
-}
-
-func TestEndorserBadACL(t *testing.T) {
-	metrics, fakeMetrics := initFakeMetrics()
-
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			CheckACLErr:                errors.New(""),
-			GetTransactionByIDErr:      errors.New(""),
-			ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-			ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
-			},
-		},
-		Metrics: metrics,
-	}
-
-	signedProp := getSignedProp("test-chaincode", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-
-	// test for triggering of ACL check failure metric
-	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.WithCallCount())
-	labelValues := fakeMetrics.proposalACLCheckFailed.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", "testchainid", "chaincode", "test-chaincode"})
-	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.AddCallCount())
-	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.AddArgsForCall(0))
-}
-
-func TestEndorserGoodPathEmptyChannel(t *testing.T) {
-	metrics, fakeMetrics := initFakeMetrics()
-
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			GetTransactionByIDErr:      errors.New(""),
-			ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-			ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
-			},
-		},
-		Metrics: metrics,
-	}
-
-	signedProp := getSignedPropWithCHIdAndArgs("", "test-chaincode", [][]byte{[]byte("test-args")}, t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 200, pResp.Response.Status)
-
-	// test for triggering of successful TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, "", "test-chaincode", "true")
-}
-
-func TestEndorserLSCCInitFails(t *testing.T) {
-	metrics, fakeMetrics := initFakeMetrics()
-
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			GetTransactionByIDErr:      errors.New(""),
-			ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-			ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
-			},
-			ExecuteCDSError: errors.New(""),
-		},
-		Metrics: metrics,
-	}
-
-	cds := protoutil.MarshalOrPanic(
-		&pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				ChaincodeId: &pb.ChaincodeID{Name: "barf", Version: "0"},
-				Type:        pb.ChaincodeSpec_GOLANG,
-			},
-		},
+		e *endorser.Endorser
 	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
+	BeforeEach(func() {
+		fakeProposalDuration = &metricsfakes.Histogram{}
+		fakeProposalDuration.WithReturns(fakeProposalDuration)
 
-	// test for triggering of instantiation/upgrade failure metric
-	assert.EqualValues(t, 1, fakeMetrics.initFailed.WithCallCount())
-	labelValues := fakeMetrics.initFailed.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "barf"})
-	assert.EqualValues(t, 1, fakeMetrics.initFailed.AddCallCount())
-	assert.EqualValues(t, 1, fakeMetrics.initFailed.AddArgsForCall(0))
+		fakeProposalACLCheckFailed = &metricsfakes.Counter{}
+		fakeProposalACLCheckFailed.WithReturns(fakeProposalACLCheckFailed)
 
-	// test for triggering of failed TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "lscc", "false")
-}
+		fakeInitFailed = &metricsfakes.Counter{}
+		fakeInitFailed.WithReturns(fakeInitFailed)
 
-func TestEndorserLSCCDeploySysCC(t *testing.T) {
-	SysCCMap := make(map[string]struct{})
-	deployedCCName := "barf"
-	SysCCMap[deployedCCName] = struct{}{}
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			GetTransactionByIDErr:      errors.New(""),
-			ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-			ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
+		fakeEndorsementsFailed = &metricsfakes.Counter{}
+		fakeEndorsementsFailed.WithReturns(fakeEndorsementsFailed)
+
+		fakeDuplicateTxsFailure = &metricsfakes.Counter{}
+		fakeDuplicateTxsFailure.WithReturns(fakeDuplicateTxsFailure)
+
+		fakeProposalsReceived = &metricsfakes.Counter{}
+		fakeSuccessfulProposals = &metricsfakes.Counter{}
+		fakeProposalValidationFailed = &metricsfakes.Counter{}
+
+		fakeLocalIdentity = &fake.Identity{}
+		fakeLocalMSPIdentityDeserializer = &fake.IdentityDeserializer{}
+		fakeLocalMSPIdentityDeserializer.DeserializeIdentityReturns(fakeLocalIdentity, nil)
+
+		fakeChannelIdentity = &fake.Identity{}
+		fakeChannelMSPIdentityDeserializer = &fake.IdentityDeserializer{}
+		fakeChannelMSPIdentityDeserializer.DeserializeIdentityReturns(fakeChannelIdentity, nil)
+
+		fakeChannelFetcher = &fake.ChannelFetcher{}
+		fakeChannelFetcher.ChannelReturns(&endorser.Channel{
+			IdentityDeserializer: fakeChannelMSPIdentityDeserializer,
+		})
+
+		fakePrivateDataDistributor = &fake.PrivateDataDistributor{}
+
+		channelID = "channel-id"
+		chaincodeName = "chaincode-name"
+
+		chaincodeResponse = &pb.Response{
+			Status:  200,
+			Payload: []byte("response-payload"),
+		}
+		chaincodeEvent = &pb.ChaincodeEvent{
+			ChaincodeId: "chaincode-id",
+			TxId:        "event-txid",
+			EventName:   "event-name",
+			Payload:     []byte("event-payload"),
+		}
+
+		fakeSupport = &fake.Support{}
+		fakeSupport.ExecuteReturns(
+			chaincodeResponse,
+			chaincodeEvent,
+			nil,
+		)
+
+		fakeSupport.GetChaincodeDefinitionReturns(&lifecycle.LegacyDefinition{
+			Version:           "chaincode-definition-version",
+			EndorsementPlugin: "plugin-name",
+		}, nil)
+
+		fakeSupport.GetLedgerHeightReturns(7, nil)
+
+		fakeSupport.EndorseWithPluginReturns(
+			&pb.Endorsement{
+				Endorser:  []byte("endorser-identity"),
+				Signature: []byte("endorser-signature"),
 			},
-			SysCCMap: SysCCMap,
-		},
-		Metrics: endorser.NewMetrics(&disabled.Provider{}),
-	}
+			[]byte("endorser-modified-payload"),
+			nil,
+		)
 
-	cds := protoutil.MarshalOrPanic(
-		&pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				ChaincodeId: &pb.ChaincodeID{Name: deployedCCName},
-				Type:        pb.ChaincodeSpec_GOLANG,
+		fakeTxSimulator = &fake.TxSimulator{}
+		fakeTxSimulator.GetTxSimulationResultsReturns(
+			&ledger.TxSimulationResults{
+				PubSimulationResults: &rwset.TxReadWriteSet{},
+				PvtSimulationResults: &rwset.TxPvtReadWriteSet{},
 			},
-		},
-	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
+			nil,
+		)
 
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Equal(t, "attempting to deploy a system chaincode barf/testchainid", pResp.Response.Message)
-}
+		fakeSupport.GetTxSimulatorReturns(fakeTxSimulator, nil)
 
-func TestEndorserGoodPathWEvents(t *testing.T) {
-	m := &mock.Mock{}
-	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-	support := &mocks.MockSupport{
-		Mock:                       m,
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		ExecuteEvent:               &pb.ChaincodeEvent{},
-	}
-	attachPluginEndorser(support, nil)
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support:                support,
-		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
-	}
+		fakeSupport.GetTransactionByIDReturns(nil, fmt.Errorf("txid-error"))
 
-	signedProp := getSignedProp("ccid", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 200, pResp.Response.Status)
-}
-
-func TestEndorserBadChannel(t *testing.T) {
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support: &mocks.MockSupport{
-			GetApplicationConfigBoolRv: true,
-			GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-			GetTransactionByIDErr:      errors.New(""),
-			ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-			ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-			GetTxSimulatorRv: &mocks.MockTxSim{
-				GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
-				},
+		e = &endorser.Endorser{
+			LocalMSP:               fakeLocalMSPIdentityDeserializer,
+			PrivateDataDistributor: fakePrivateDataDistributor,
+			Metrics: &endorser.Metrics{
+				ProposalDuration:         fakeProposalDuration,
+				ProposalsReceived:        fakeProposalsReceived,
+				SuccessfulProposals:      fakeSuccessfulProposals,
+				ProposalValidationFailed: fakeProposalValidationFailed,
+				ProposalACLCheckFailed:   fakeProposalACLCheckFailed,
+				InitFailed:               fakeInitFailed,
+				EndorsementsFailed:       fakeEndorsementsFailed,
+				DuplicateTxsFailure:      fakeDuplicateTxsFailure,
 			},
-		},
-		Metrics: endorser.NewMetrics(&disabled.Provider{}),
-	}
-
-	signedProp := getSignedPropWithCHID("ccid", "barfchain", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.Error(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Equal(t, "access denied: channel [barfchain] creator org [SampleOrg]", pResp.Response.Message)
-}
-
-func TestEndorserGoodPath(t *testing.T) {
-	m := &mock.Mock{}
-	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-	support := &mocks.MockSupport{
-		Mock:                       m,
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Name: "ccid", Version: "0", Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-	}
-	attachPluginEndorser(support, nil)
-
-	metrics, fakeMetrics := initFakeMetrics()
-
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support:                support,
-		Metrics:                metrics,
-	}
-
-	signedProp := getSignedProp("ccid", t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 200, pResp.Response.Status)
-
-	// test for triggering of successfully completed TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid", "true")
-
-	// test for triggering of successful proposal metric
-	assert.EqualValues(t, 1, fakeMetrics.successfulProposals.AddCallCount())
-	assert.EqualValues(t, 1, fakeMetrics.successfulProposals.AddArgsForCall(0))
-}
-
-func TestEndorserChaincodeCallLogging(t *testing.T) {
-	gt := NewGomegaWithT(t)
-	m := &mock.Mock{}
-	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-	support := &mocks.MockSupport{
-		Mock:                       m,
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-	}
-	attachPluginEndorser(support, nil)
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support:                support,
-		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
-	}
-
-	buf := gbytes.NewBuffer()
-	old := flogging.SetWriter(buf)
-	defer flogging.SetWriter(old)
-
-	es.ProcessProposal(context.Background(), getSignedProp("chaincode-name", t))
-
-	t.Logf("contents:\n%s", buf.Contents())
-	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Entry chaincode: chaincode-name`))
-	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Exit chaincode: chaincode-name (.*ms)`))
-}
-
-func TestEndorserLSCC(t *testing.T) {
-	m := &mock.Mock{}
-	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-	support := &mocks.MockSupport{
-		Mock:                       m,
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-	}
-	attachPluginEndorser(support, nil)
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support:                support,
-		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
-	}
-
-	cds := protoutil.MarshalOrPanic(
-		&pb.ChaincodeDeploymentSpec{
-			ChaincodeSpec: &pb.ChaincodeSpec{
-				ChaincodeId: &pb.ChaincodeID{Name: "barf"},
-				Type:        pb.ChaincodeSpec_GOLANG,
-			},
-		},
-	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
-
-	pResp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 200, pResp.Response.Status)
-}
-
-func attachPluginEndorser(support *mocks.MockSupport, signerReturnErr error) {
-	csr := &mocks.ChannelStateRetriever{}
-	queryCreator := &mocks.QueryCreator{}
-	csr.On("NewQueryCreator", mock.Anything).Return(queryCreator, nil)
-	sif := &mocks.SigningIdentityFetcher{}
-	sif.On("SigningIdentityForRequest", mock.Anything).Return(support, signerReturnErr)
-	pm := &mocks.PluginMapper{}
-	pm.On("PluginFactoryByName", mock.Anything).Return(&builtin.DefaultEndorsementFactory{})
-	support.PluginEndorser = endorser.NewPluginEndorser(&endorser.PluginSupport{
-		ChannelStateRetriever:   csr,
-		SigningIdentityFetcher:  sif,
-		PluginMapper:            pm,
-		TransientStoreRetriever: mockTransientStoreRetriever,
+			Support:        fakeSupport,
+			ChannelFetcher: fakeChannelFetcher,
+		}
 	})
-}
 
-func TestEndorseWithPlugin(t *testing.T) {
-	m := &mock.Mock{}
-	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-	support := &mocks.MockSupport{
-		Mock:                       m,
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{EndorsementStr: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: []byte{1}},
-	}
-	attachPluginEndorser(support, nil)
+	JustBeforeEach(func() {
+		signedProposal = &pb.SignedProposal{
+			ProposalBytes: protoutil.MarshalOrPanic(&pb.Proposal{
+				Header: protoutil.MarshalOrPanic(&cb.Header{
+					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+						Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
+						ChannelId: channelID,
+						Extension: protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{
+							ChaincodeId: &pb.ChaincodeID{
+								Name: chaincodeName,
+							},
+						}),
+						TxId: "6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015",
+					}),
+					SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{
+						Creator: protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
+							Mspid: "msp-id",
+						}),
+						Nonce: []byte("nonce"),
+					}),
+				}),
+				Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
+					Input: protoutil.MarshalOrPanic(&pb.ChaincodeInvocationSpec{
+						ChaincodeSpec: &pb.ChaincodeSpec{
+							Input: &pb.ChaincodeInput{
+								Args: [][]byte{[]byte("arg1"), []byte("arg2"), []byte("arg3")},
+							},
+						},
+					}),
+				}),
+			}),
+			Signature: []byte("signature"),
+		}
+	})
 
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support:                support,
-		Metrics:                endorser.NewMetrics(&disabled.Provider{}),
-	}
+	It("successfully endorses the proposal", func() {
+		proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(proposalResponse.Endorsement).To(Equal(&pb.Endorsement{
+			Endorser:  []byte("endorser-identity"),
+			Signature: []byte("endorser-signature"),
+		}))
+		Expect(proposalResponse.Timestamp).To(BeNil())
+		Expect(proposalResponse.Version).To(Equal(int32(1)))
+		Expect(proposalResponse.Payload).To(Equal([]byte("endorser-modified-payload")))
+		Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+			Status:  200,
+			Payload: []byte("response-payload"),
+		})).To(BeTrue())
 
-	signedProp := getSignedProp("ccid", t)
+		Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(1))
+		ledgerName := fakeSupport.GetHistoryQueryExecutorArgsForCall(0)
+		Expect(ledgerName).To(Equal("channel-id"))
 
-	resp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{1, 2, 3, 4, 5}, resp.Endorsement.Signature)
-	assert.Equal(t, []byte{1, 1, 1}, resp.Endorsement.Endorser)
-	assert.Equal(t, 200, int(resp.Response.Status))
-}
+		Expect(fakeSupport.GetTransactionByIDCallCount()).To(Equal(1))
+		channelID, txid := fakeSupport.GetTransactionByIDArgsForCall(0)
+		Expect(channelID).To(Equal("channel-id"))
+		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
 
-func TestEndorseEndorsementFailure(t *testing.T) {
-	m := &mock.Mock{}
-	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-	support := &mocks.MockSupport{
-		Mock:                       m,
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{NameRv: "ccid", VersionRv: "0", EndorsementStr: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: []byte{1}},
-	}
+		Expect(fakeSupport.GetTxSimulatorCallCount()).To(Equal(1))
+		ledgerName, txid = fakeSupport.GetTxSimulatorArgsForCall(0)
+		Expect(ledgerName).To(Equal("channel-id"))
+		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
 
-	// fail endorsement with "sign err"
-	attachPluginEndorser(support, fmt.Errorf("sign err"))
+		Expect(fakeChannelMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(1))
+		identity := fakeChannelMSPIdentityDeserializer.DeserializeIdentityArgsForCall(0)
+		Expect(identity).To(Equal(protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
+			Mspid: "msp-id",
+		})))
 
-	metrics, fakeMetrics := initFakeMetrics()
+		Expect(fakeLocalMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(0))
 
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support:                support,
-		Metrics:                metrics,
-	}
+		Expect(fakePrivateDataDistributor.DistributePrivateDataCallCount()).To(Equal(1))
+		cid, txid, privateData, blkHt := fakePrivateDataDistributor.DistributePrivateDataArgsForCall(0)
+		Expect(cid).To(Equal("channel-id"))
+		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
+		Expect(blkHt).To(Equal(uint64(7)))
 
-	signedProp := getSignedProp("ccid", t)
+		// TODO, this deserves a better test, but there was none before and this logic,
+		// really seems far too jumbled to be in the endorser package.  There are seperate
+		// tests of the private data assembly functions in their test file.
+		Expect(privateData).NotTo(BeNil())
+		Expect(privateData.EndorsedAt).To(Equal(uint64(7)))
 
-	resp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 500, resp.Response.Status)
+		Expect(fakeSupport.EndorseWithPluginCallCount()).To(Equal(1))
+		pluginName, cid, propRespPayloadBytes, sp := fakeSupport.EndorseWithPluginArgsForCall(0)
+		Expect(sp).To(Equal(signedProposal))
+		Expect(pluginName).To(Equal("plugin-name"))
+		Expect(cid).To(Equal("channel-id"))
 
-	// test for triggering of endorsement failure metric
-	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.WithCallCount())
-	labelValues := fakeMetrics.endorsementsFailed.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "ccid", "chaincodeerror", "false"})
-	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddCallCount())
-	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddArgsForCall(0))
+		prp := &pb.ProposalResponsePayload{}
+		err = proto.Unmarshal(propRespPayloadBytes, prp)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fmt.Sprintf("%x", prp.ProposalHash)).To(Equal("6fa450b00ebef6c7de9f3479148f6d6ff2c645762e17fcaae989ff7b668be001"))
 
-	// test for triggering of failed TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid", "false")
-}
+		ccAct := &pb.ChaincodeAction{}
+		err = proto.Unmarshal(prp.Extension, ccAct)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ccAct.Events).To(Equal(protoutil.MarshalOrPanic(chaincodeEvent)))
+		Expect(proto.Equal(ccAct.Response, &pb.Response{
+			Status:  200,
+			Payload: []byte("response-payload"),
+		})).To(BeTrue())
 
-func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
-	m := &mock.Mock{}
-	m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-	m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-	m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-	support := &mocks.MockSupport{
-		Mock:                       m,
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &resourceconfig.MockChaincodeDefinition{NameRv: "ccid", VersionRv: "0", EndorsementStr: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 400, Message: "CC error"},
-	}
+		Expect(fakeProposalsReceived.AddCallCount()).To(Equal(1))
+		Expect(fakeSuccessfulProposals.AddCallCount()).To(Equal(1))
+		Expect(fakeProposalValidationFailed.AddCallCount()).To(Equal(0))
 
-	attachPluginEndorser(support, nil)
+		Expect(fakeProposalDuration.WithCallCount()).To(Equal(1))
+		Expect(fakeProposalDuration.WithArgsForCall(0)).To(Equal([]string{
+			"channel", "channel-id",
+			"chaincode", "chaincode-name",
+			"success", "true",
+		}))
 
-	metrics, fakeMetrics := initFakeMetrics()
-	es := &endorser.Endorser{
-		PrivateDataDistributor: pvtEmptyDistributor,
-		Support:                support,
-		Metrics:                metrics,
-	}
+		Expect(fakeProposalACLCheckFailed.WithCallCount()).To(Equal(0))
+		Expect(fakeInitFailed.WithCallCount()).To(Equal(0))
+		Expect(fakeEndorsementsFailed.WithCallCount()).To(Equal(0))
+		Expect(fakeDuplicateTxsFailure.WithCallCount()).To(Equal(0))
+	})
 
-	signedProp := getSignedProp("ccid", t)
+	Context("when the channel id is empty", func() {
+		BeforeEach(func() {
+			channelID = ""
+		})
 
-	resp, err := es.ProcessProposal(context.Background(), signedProp)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 400, int(resp.Response.Status))
+		It("returns a successful proposal response with no endorsement", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Endorsement).To(BeNil())
+			Expect(proposalResponse.Timestamp).To(BeNil())
+			Expect(proposalResponse.Version).To(Equal(int32(0)))
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+				Status:  200,
+				Payload: []byte("response-payload"),
+			})).To(BeTrue())
 
-	// test for triggering of endorsement failure due to CC error metric
-	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.WithCallCount())
-	labelValues := fakeMetrics.endorsementsFailed.WithArgsForCall(0)
-	assert.EqualValues(t, []string{"channel", util.GetTestChainID(), "chaincode", "ccid", "chaincodeerror", "true"}, labelValues)
-	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddCallCount())
-	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddArgsForCall(0))
+			Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(0))
+			Expect(fakeSupport.GetTransactionByIDCallCount()).To(Equal(0))
+			Expect(fakeSupport.GetTxSimulatorCallCount()).To(Equal(0))
+			Expect(fakeChannelMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(0))
 
-	// test for triggering of failed TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid", "false")
-}
+			Expect(fakeLocalMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(1))
+			identity := fakeLocalMSPIdentityDeserializer.DeserializeIdentityArgsForCall(0)
+			Expect(identity).To(Equal(protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
+				Mspid: "msp-id",
+			})))
 
-func TestEndorserAcquireTxSimulator(t *testing.T) {
-	tc := []struct {
-		name          string
-		chainID       string
-		chaincodeName string
-		simAcquired   bool
-	}{
-		{"empty channel", "", "ignored", false},
-		{"query scc", util.GetTestChainID(), "qscc", false},
-		{"config scc", util.GetTestChainID(), "cscc", false},
-		{"mainline", util.GetTestChainID(), "chaincode", true},
-	}
+			Expect(fakeProposalsReceived.AddCallCount()).To(Equal(1))
+			Expect(fakeSuccessfulProposals.AddCallCount()).To(Equal(1))
+			Expect(fakeProposalValidationFailed.AddCallCount()).To(Equal(0))
 
-	expectedResponse := &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})}
-	for _, tt := range tc {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			m := &mock.Mock{}
-			m.On("Sign", mock.Anything).Return([]byte{1, 2, 3, 4, 5}, nil)
-			m.On("Serialize").Return([]byte{1, 1, 1}, nil)
-			m.On("GetTxSimulator", mock.Anything, mock.Anything).Return(newMockTxSim(), nil)
-			support := &mocks.MockSupport{
-				Mock:                       m,
-				GetApplicationConfigBoolRv: true,
-				GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-				GetTransactionByIDErr:      errors.New(""),
-				ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-				ExecuteResp:                expectedResponse,
-			}
-			attachPluginEndorser(support, nil)
-			es := &endorser.Endorser{
-				PrivateDataDistributor: pvtEmptyDistributor,
-				Support:                support,
-				Metrics:                endorser.NewMetrics(&disabled.Provider{}),
-			}
+			Expect(fakeProposalDuration.WithCallCount()).To(Equal(1))
+			Expect(fakeProposalDuration.WithArgsForCall(0)).To(Equal([]string{
+				"channel", "",
+				"chaincode", "chaincode-name",
+				"success", "true",
+			}))
 
-			t.Parallel()
-			args := [][]byte{[]byte("args")}
-			signedProp := getSignedPropWithCHIdAndArgs(tt.chainID, tt.chaincodeName, args, t)
+			Expect(fakeProposalACLCheckFailed.WithCallCount()).To(Equal(0))
+			Expect(fakeInitFailed.WithCallCount()).To(Equal(0))
+			Expect(fakeEndorsementsFailed.WithCallCount()).To(Equal(0))
+			Expect(fakeDuplicateTxsFailure.WithCallCount()).To(Equal(0))
+		})
 
-			resp, err := es.ProcessProposal(context.Background(), signedProp)
-			assert.NoError(t, err)
-			assert.Equal(t, expectedResponse, resp.Response)
+		Context("when the chaincode response is >= 500", func() {
+			BeforeEach(func() {
+				chaincodeResponse.Status = 500
+			})
 
-			if tt.simAcquired {
-				m.AssertCalled(t, "GetTxSimulator", mock.Anything, mock.Anything)
-			} else {
-				m.AssertNotCalled(t, "GetTxSimulator", mock.Anything, mock.Anything)
+			It("returns the result, but with the proposal encoded, and no endorsements", func() {
+				proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Endorsement).To(BeNil())
+				Expect(proposalResponse.Timestamp).To(BeNil())
+				Expect(proposalResponse.Version).To(Equal(int32(0)))
+				Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+					Status:  500,
+					Payload: []byte("response-payload"),
+				})).To(BeTrue())
+
+				// This is almost definitely a bug, but, adding a test in case someone is relying on this behavior.
+				// When the response is >= 500, we return a payload, but not on success.  A payload is only meaningful
+				// if it is endorsed, so it's unclear why we're returning it here.
+				prp := &pb.ProposalResponsePayload{}
+				err = proto.Unmarshal(proposalResponse.Payload, prp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fmt.Sprintf("%x", prp.ProposalHash)).To(Equal("f2c27f04f897dc28fd1b2983e7b22ebc8fbbb3d0617c140d913b33e463886788"))
+
+				ccAct := &pb.ChaincodeAction{}
+				err = proto.Unmarshal(prp.Extension, ccAct)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proto.Equal(ccAct.Response, &pb.Response{
+					Status:  500,
+					Payload: []byte("response-payload"),
+				})).To(BeTrue())
+
+				// This is an especially weird bit of the behavior, the chaincode event is nil-ed before creating
+				// the proposal response. (That probably shouldn't be created)
+				Expect(ccAct.Events).To(BeNil())
+			})
+		})
+
+		Context("when the 200 < chaincode response < 500", func() {
+			BeforeEach(func() {
+				chaincodeResponse.Status = 499
+			})
+
+			It("returns the result, but with the proposal encoded, and no endorsements", func() {
+				proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Endorsement).To(BeNil())
+				Expect(proposalResponse.Timestamp).To(BeNil())
+				Expect(proposalResponse.Version).To(Equal(int32(0)))
+				Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+					Status:  499,
+					Payload: []byte("response-payload"),
+				})).To(BeTrue())
+				Expect(proposalResponse.Payload).To(BeNil())
+			})
+		})
+	})
+
+	Context("when the proposal is malformed", func() {
+		JustBeforeEach(func() {
+			signedProposal = &pb.SignedProposal{
+				ProposalBytes: []byte("garbage"),
 			}
 		})
-	}
-}
 
-var signer msp.SigningIdentity
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).To(MatchError("could not unmarshal proposal bytes: error unmarshaling Proposal: proto: can't skip unknown wire type 7"))
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "could not unmarshal proposal bytes: error unmarshaling Proposal: proto: can't skip unknown wire type 7",
+				},
+			}))
+		})
+	})
 
-func TestMain(m *testing.M) {
-	// setup the MSP manager so that we can sign/verify
-	err := msptesttools.LoadMSPSetupForTesting()
-	if err != nil {
-		fmt.Printf("Could not initialize msp/signer, err %s", err)
-		os.Exit(-1)
-		return
-	}
-	signer, err = mgmt.GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		fmt.Printf("Could not initialize msp/signer")
-		os.Exit(-1)
-		return
-	}
+	Context("when the proposal is not validly signed", func() {
+		BeforeEach(func() {
+			fakeChannelMSPIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserialize-error"))
+		})
 
-	retVal := m.Run()
-	os.Exit(retVal)
-}
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).To(MatchError("access denied: channel [channel-id] creator org [msp-id]"))
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "access denied: channel [channel-id] creator org [msp-id]",
+				},
+			}))
+		})
+	})
 
-//go:generate counterfeiter -o mocks/support.go --fake-name Support . support
+	Context("when the proposal is not validly signed", func() {
+		BeforeEach(func() {
+			fakeChannelMSPIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserialize-error"))
+		})
 
-type support interface {
-	endorser.Support
-}
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).To(MatchError("access denied: channel [channel-id] creator org [msp-id]"))
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "access denied: channel [channel-id] creator org [msp-id]",
+				},
+			}))
+		})
+	})
+
+	Context("when the chaincode response is >= 500", func() {
+		BeforeEach(func() {
+			chaincodeResponse.Status = 500
+		})
+
+		It("returns the result, but with the proposal encoded, and no endorsements", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Endorsement).To(BeNil())
+			Expect(proposalResponse.Timestamp).To(BeNil())
+			Expect(proposalResponse.Version).To(Equal(int32(0)))
+			Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+				Status:  500,
+				Payload: []byte("response-payload"),
+			})).To(BeTrue())
+			Expect(proposalResponse.Payload).NotTo(BeNil())
+		})
+	})
+
+	Context("when the chaincode endorsement fails", func() {
+		BeforeEach(func() {
+			fakeSupport.EndorseWithPluginReturns(nil, nil, fmt.Errorf("fake-endorserment-error"))
+		})
+
+		It("returns the error, but with no payload encoded", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "endorsing with plugin failed: fake-endorserment-error",
+			}))
+		})
+	})
+
+	Context("when getting the tx simulator fails", func() {
+		BeforeEach(func() {
+			fakeSupport.GetTxSimulatorReturns(nil, fmt.Errorf("fake-simulator-error"))
+		})
+
+		It("returns a response with the error", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "fake-simulator-error",
+			}))
+		})
+	})
+
+	Context("when getting the history query executor fails", func() {
+		BeforeEach(func() {
+			fakeSupport.GetHistoryQueryExecutorReturns(nil, fmt.Errorf("fake-history-error"))
+		})
+
+		It("returns a response with the error", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "fake-history-error",
+			}))
+		})
+	})
+
+	Context("when the channel context cannot be retrieved", func() {
+		BeforeEach(func() {
+			fakeChannelFetcher.ChannelReturns(nil)
+		})
+
+		It("returns a response with the error", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "channel 'channel-id' not found",
+			}))
+		})
+	})
+
+	Context("when the chaincode name is qscc", func() {
+		BeforeEach(func() {
+			chaincodeName = "qscc"
+		})
+
+		It("skips fetching the tx simulator and history query exucutor", func() {
+			_, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fakeSupport.GetTxSimulatorCallCount()).To(Equal(0))
+			Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(0))
+		})
+	})
+
+	Context("when the chaincode name is cscc", func() {
+		BeforeEach(func() {
+			chaincodeName = "cscc"
+		})
+
+		It("skips fetching the tx simulator and history query exucutor", func() {
+			_, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fakeSupport.GetTxSimulatorCallCount()).To(Equal(0))
+			Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(0))
+		})
+	})
+
+	Context("when calling the chaincode returns an error", func() {
+		BeforeEach(func() {
+			fakeSupport.ExecuteReturns(nil, nil, fmt.Errorf("fake-chaincode-execution-error"))
+		})
+
+		It("returns a response with the error and no payload", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "error in simulation: fake-chaincode-execution-error",
+			}))
+		})
+	})
+
+	Context("when the private data cannot be distributed", func() {
+		BeforeEach(func() {
+			fakePrivateDataDistributor.DistributePrivateDataReturns(fmt.Errorf("fake-private-data-error"))
+		})
+
+		It("returns a response with the error and no payload", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "error in simulation: fake-private-data-error",
+			}))
+		})
+	})
+
+	Context("when the block height cannot be determined", func() {
+		BeforeEach(func() {
+			fakeSupport.GetLedgerHeightReturns(0, fmt.Errorf("fake-block-height-error"))
+		})
+
+		It("returns a response with the error and no payload", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "error in simulation: failed to obtain ledger height for channel 'channel-id': fake-block-height-error",
+			}))
+		})
+	})
+})
