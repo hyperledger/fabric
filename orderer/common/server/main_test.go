@@ -610,9 +610,9 @@ func TestConfigureClusterListener(t *testing.T) {
 					},
 				},
 			},
-			expectedPanic:      "Failed to load CA cert file 'I/O error' (bad)",
+			expectedPanic:      "Failed to load CA cert file 'bad' (I/O error)",
 			generalSrv:         &comm.GRPCServer{},
-			expectedLogEntries: []string{"Failed to load CA cert file 'I/O error' (bad)"},
+			expectedLogEntries: []string{"Failed to load CA cert file 'bad' (I/O error)"},
 		},
 		{
 			name:        "bad listen address",
