@@ -381,26 +381,7 @@ organization's ``bar`` policies are satisfied.
 Policy Defaults
 ---------------
 
-The ``configtxgen`` tool creates default policies as follows:
-
-::
-
-    /Channel/Readers : ImplicitMetaPolicy for ANY of /Channel/*/Readers
-    /Channel/Writers : ImplicitMetaPolicy for ANY of /Channel/*/Writers
-    /Channel/Admins  : ImplicitMetaPolicy for MAJORITY of /Channel/*/Admins
-
-    /Channel/Application/Readers : ImplicitMetaPolicy for ANY of /Channel/Application/*/Readers
-    /Channel/Application/Writers : ImplicitMetaPolicy for ANY of /Channel/Application/*/Writers
-    /Channel/Application/Admins  : ImplicitMetaPolicy for MAJORITY of /Channel/Application/*/Admins
-
-    /Channel/Orderer/Readers : ImplicitMetaPolicy for ANY of /Channel/Orderer/*/Readers
-    /Channel/Orderer/Writers : ImplicitMetaPolicy for ANY of /Channel/Orderer/*/Writers
-    /Channel/Orderer/Admins  : ImplicitMetaPolicy for MAJORITY of /Channel/Orderer/*/Admins
-
-    # Here * represents either Orderer, or Application, and this is repeated for each org
-    /Channel/*/Org/Readers : SignaturePolicy for 1 of MSP Principal Org Member
-    /Channel/*/Org/Writers : SignaturePolicy for 1 of MSP Principal Org Member
-    /Channel/*/Org/Admins  : SignaturePolicy for 1 of MSP Principal Org Admin
+The ``configtxgen`` tool uses policies which must be specified explicitly in configtx.yaml.
 
 Note that policies higher in the hierarchy are all defined as
 ``ImplicitMetaPolicy``\ s while leaf nodes necessarily are defined as
