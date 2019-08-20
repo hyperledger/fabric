@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,11 +30,10 @@ func TestCompositeKeyConstruction(t *testing.T) {
 	}
 
 	for _, testDatum := range testData {
-		key := constructCompositeHistoryKey(testDatum.ns, testDatum.key, testDatum.blkNum, testDatum.tranNum)
-		startKey := constructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, false)
-		endKey := constructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, true)
-		assert.Equal(t, bytes.Compare(startKey, key), -1) //startKey should be smaller than key
-		assert.Equal(t, bytes.Compare(endKey, key), 1)    //endKey should be greater than key
+		key := constructDataKey(testDatum.ns, testDatum.key, testDatum.blkNum, testDatum.tranNum)
+		rangeScan := constructRangeScan(testDatum.ns, testDatum.key)
+		assert.Equal(t, bytes.Compare(rangeScan.startKey, key), -1) //startKey should be smaller than key
+		assert.Equal(t, bytes.Compare(rangeScan.endKey, key), 1)    //endKey should be greater than key
 	}
 
 	for i, testDatum := range testData {
@@ -43,24 +41,18 @@ func TestCompositeKeyConstruction(t *testing.T) {
 			if i == j {
 				continue
 			}
-			startKey := constructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, false)
-			endKey := constructPartialCompositeHistoryKey(testDatum.ns, testDatum.key, true)
-
-			anotherKey := constructCompositeHistoryKey(another.ns, another.key, another.blkNum, another.tranNum)
-			assert.False(t, bytes.Compare(anotherKey, startKey) == 1 && bytes.Compare(anotherKey, endKey) == -1) //any key should not fall in the range of start/end key range query for any other key
+			rangeScan := constructRangeScan(testDatum.ns, testDatum.key)
+			anotherKey := constructDataKey(another.ns, another.key, another.blkNum, another.tranNum)
+			assert.False(t, bytes.Compare(anotherKey, rangeScan.startKey) == 1 && bytes.Compare(anotherKey, rangeScan.endKey) == -1) //any key should not fall in the range of start/end key range query for any other key
 		}
 	}
 }
 
 func TestSplitCompositeKey(t *testing.T) {
-	compositeFullKey := constructCompositeHistoryKey("ns1", "key1", 20, 200)
-	compositePartialKey := constructPartialCompositeHistoryKey("ns1", "key1", false)
-	_, extraBytes := splitCompositeHistoryKey(compositeFullKey, compositePartialKey)
-	blkNum, bytesConsumed, err := util.DecodeOrderPreservingVarUint64(extraBytes)
+	dataKey := constructDataKey("ns1", "key1", 20, 200)
+	rangeScan := constructRangeScan("ns1", "key1")
+	blkNum, txNum, err := rangeScan.decodeBlockNumTranNum(dataKey)
 	assert.NoError(t, err)
-	txNum, _, err := util.DecodeOrderPreservingVarUint64(extraBytes[bytesConsumed:])
-	assert.NoError(t, err)
-	// second position should hold the extra bytes that were split off
 	assert.Equal(t, blkNum, uint64(20))
 	assert.Equal(t, txNum, uint64(200))
 }

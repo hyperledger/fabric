@@ -422,13 +422,13 @@ func testutilCheckKeyNotInRange(t *testing.T, hqe ledger.HistoryQueryExecutor, n
 	itr, err := hqe.GetHistoryForKey(ns, desiredKey)
 	assert.NoError(t, err, "Error upon GetHistoryForKey()")
 	scanner := itr.(*historyScanner)
-	compositePartialKey := constructPartialCompositeHistoryKey(ns, falseKey, false)
+	rangeScanKeys := constructRangeScan(ns, falseKey)
 	for {
 		if !scanner.dbItr.Next() {
 			break
 		}
 		historyKey := scanner.dbItr.Key()
-		if bytes.Contains(historyKey, compositePartialKey) {
+		if bytes.Contains(historyKey, rangeScanKeys.startKey) {
 			assert.Failf(t, "false key %s should not be returned in range query for key %s", falseKey, desiredKey)
 		}
 	}
