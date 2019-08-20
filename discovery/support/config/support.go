@@ -264,8 +264,5 @@ func ValidateConfigEnvelope(ce *common.ConfigEnvelope) error {
 	if ce.Config.ChannelGroup.Values == nil {
 		return fmt.Errorf("field Config.ChannelGroup.Values is nil")
 	}
-	if _, exists := ce.Config.ChannelGroup.Values[channelconfig.OrdererAddressesKey]; !exists {
-		return fmt.Errorf("field Config.ChannelGroup.Values is empty")
-	}
 	return nil
 }
