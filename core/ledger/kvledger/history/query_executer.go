@@ -1,14 +1,14 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
-package historyleveldb
+package history
 
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -17,16 +17,16 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
-// LevelHistoryDBQueryExecutor is a query executor against the LevelDB history DB
-type LevelHistoryDBQueryExecutor struct {
-	historyDB  *historyDB
+// QueryExecutor is a query executor against the LevelDB history DB
+type QueryExecutor struct {
+	levelDB    *leveldbhelper.DBHandle
 	blockStore blkstorage.BlockStore
 }
 
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
-func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
+func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
 	rangeScan := constructRangeScan(namespace, key)
-	dbItr := q.historyDB.db.GetIterator(rangeScan.startKey, rangeScan.endKey)
+	dbItr := q.levelDB.GetIterator(rangeScan.startKey, rangeScan.endKey)
 
 	// By default, dbItr is in the orderer of oldest to newest and its cursor is at the beginning of the entries.
 	// Need to call Last() and Next() to move the cursor to the end of the entries so that we can iterate
