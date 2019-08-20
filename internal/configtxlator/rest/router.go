@@ -22,9 +22,6 @@ func NewRouter() *mux.Router {
 	router.
 		HandleFunc("/configtxlator/compute/update-from-configs", ComputeUpdateFromConfigs).
 		Methods("POST")
-	router.
-		HandleFunc("/configtxlator/config/verify", SanityCheckConfig).
-		Methods("POST")
 
 	return router
 }
