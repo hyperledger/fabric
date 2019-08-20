@@ -1242,7 +1242,14 @@ func TestMain(m *testing.M) {
 	msptesttools.LoadMSPSetupForTesting()
 
 	var err error
-	signer, err = mgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		os.Exit(-1)
+		return
+	}
+
+	signer, err = mgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Println("Could not get signer")
 		os.Exit(-1)

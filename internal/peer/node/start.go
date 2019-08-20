@@ -159,7 +159,7 @@ func serve(args []string) error {
 	// Idemix does not support this *YET* but it can be easily
 	// fixed to support it. For now, we just make sure that
 	// the peer only comes up with the standard MSP
-	mspType := mgmt.GetLocalMSP().GetType()
+	mspType := mgmt.GetLocalMSP(factory.GetDefault()).GetType()
 	if mspType != msp.FABRIC {
 		panic("Unsupported msp type " + msp.ProviderTypeToString(mspType))
 	}
@@ -260,7 +260,7 @@ func serve(args []string) error {
 		CryptoProvider:    factory.GetDefault(),
 	}
 
-	localMSP := mgmt.GetLocalMSP()
+	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
 	signingIdentity, err := localMSP.GetDefaultSigningIdentity()
 	if err != nil {
 		logger.Panicf("Could not get the default signing identity from the local MSP: [%+v]", err)
@@ -299,7 +299,7 @@ func serve(args []string) error {
 
 	policyChecker := policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
-		mgmt.GetLocalMSP(),
+		mgmt.GetLocalMSP(factory.GetDefault()),
 		mgmt.NewLocalMSPPrincipalGetter(),
 	)
 
@@ -781,7 +781,7 @@ func handleSignals(handlers map[os.Signal]func()) {
 }
 
 func localPolicy(policyObject proto.Message) policies.Policy {
-	localMSP := mgmt.GetLocalMSP()
+	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
 	pp := cauthdsl.NewPolicyProvider(localMSP)
 	policy, _, err := pp.NewPolicy(protoutil.MarshalOrPanic(policyObject))
 	if err != nil {

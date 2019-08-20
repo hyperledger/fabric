@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
@@ -34,7 +35,11 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("Could not load msp config, err %s", err))
 	}
-	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		panic(fmt.Errorf("Initialize cryptoProvider failed: %s", err))
+	}
+	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		panic(fmt.Errorf("Could not initialize msp/signer"))
 	}

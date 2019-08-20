@@ -21,6 +21,7 @@ import (
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ctxt "github.com/hyperledger/fabric/common/configtx/test"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -1882,7 +1883,14 @@ func TestMain(m *testing.M) {
 	msptesttools.LoadMSPSetupForTesting()
 
 	var err error
-	signer, err = mgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		os.Exit(-1)
+		return
+	}
+
+	signer, err = mgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Println("Could not get signer")
 		os.Exit(-1)

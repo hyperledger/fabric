@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/semaphore"
@@ -222,7 +223,10 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		Vscc:             &validator.MockVsccValidator{},
 	}
 
-	mockSigner, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	mockSigner, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 	mockSignerSerialized, err := mockSigner.Serialize()
 	assert.NoError(t, err)
@@ -327,13 +331,11 @@ func createCCUpgradeEnvelope(channelID, chaincodeName, chaincodeVersion string, 
 func TestGetTxCCInstance(t *testing.T) {
 	// setup the MSP manager so that we can sign/verify
 	err := msptesttools.LoadMSPSetupForTesting()
-	if err != nil {
-		t.Fatalf("Could not initialize msp, err: %s", err)
-	}
-	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatalf("Could not initialize signer, err: %s", err)
-	}
+	assert.NoError(t, err)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	signer, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	assert.NoError(t, err)
 
 	channelID := util2.GetTestChannelID()
 	upgradeCCName := "mycc"

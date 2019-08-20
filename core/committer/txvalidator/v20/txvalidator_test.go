@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/semaphore"
 	util2 "github.com/hyperledger/fabric/common/util"
@@ -173,7 +174,9 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		LedgerResources:  mockLedger,
 	}
 
-	mockSigner, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mockSigner, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 	mockSignerSerialized, err := mockSigner.Serialize()
 	assert.NoError(t, err)

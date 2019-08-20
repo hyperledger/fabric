@@ -13,6 +13,7 @@ import (
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -196,7 +197,7 @@ func getChaincodeInstallPackage(cds *pb.ChaincodeDeploymentSpec, cf *ChaincodeCm
 	if ip == "" {
 		// if an instantiation policy is not given, default
 		// to "admin  must sign chaincode instantiation proposals"
-		mspid, err := mspmgmt.GetLocalMSP().GetIdentifier()
+		mspid, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetIdentifier()
 		if err != nil {
 			return nil, err
 		}

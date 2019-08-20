@@ -1293,7 +1293,14 @@ func NewMockProvider() *mscc.MocksccProviderImpl {
 func TestMain(m *testing.M) {
 	var err error
 	msptesttools.LoadMSPSetupForTesting()
-	id, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		os.Exit(-1)
+	}
+
+	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Printf("GetSigningIdentity failed with err %s", err)
 		os.Exit(-1)

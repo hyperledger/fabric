@@ -2140,7 +2140,14 @@ func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify
 	msptesttools.LoadMSPSetupForTesting()
 
-	id, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", cryptoProvider)
+		os.Exit(-1)
+		return
+	}
+
+	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Printf("GetSigningIdentity failed with err %s", err)
 		os.Exit(-1)
