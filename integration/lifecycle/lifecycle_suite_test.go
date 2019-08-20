@@ -69,22 +69,23 @@ func StartPort() int {
 	return integration.LifecyclePort.StartPortForNode()
 }
 
-func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, initialQueryResult int) {
+func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, chaincodeName string, initialQueryResult int) {
 	RunQueryInvokeQueryWithAddresses(
 		n,
 		orderer,
 		peer,
+		chaincodeName,
 		initialQueryResult,
 		n.PeerAddress(n.Peer("org1", "peer1"), nwo.ListenPort),
 		n.PeerAddress(n.Peer("org2", "peer2"), nwo.ListenPort),
 	)
 }
 
-func RunQueryInvokeQueryWithAddresses(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, initialQueryResult int, addresses ...string) {
+func RunQueryInvokeQueryWithAddresses(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, chaincodeName string, initialQueryResult int, addresses ...string) {
 	By("querying the chaincode")
 	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
-		Name:      "mycc",
+		Name:      chaincodeName,
 		Ctor:      `{"Args":["query","a"]}`,
 	})
 	Expect(err).NotTo(HaveOccurred())
@@ -94,7 +95,7 @@ func RunQueryInvokeQueryWithAddresses(n *nwo.Network, orderer *nwo.Orderer, peer
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID:     "testchannel",
 		Orderer:       n.OrdererAddress(orderer, nwo.ListenPort),
-		Name:          "mycc",
+		Name:          chaincodeName,
 		Ctor:          `{"Args":["invoke","a","b","10"]}`,
 		PeerAddresses: addresses,
 		WaitForEvent:  true,
@@ -105,7 +106,7 @@ func RunQueryInvokeQueryWithAddresses(n *nwo.Network, orderer *nwo.Orderer, peer
 
 	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
-		Name:      "mycc",
+		Name:      chaincodeName,
 		Ctor:      `{"Args":["query","a"]}`,
 	})
 	Expect(err).NotTo(HaveOccurred())

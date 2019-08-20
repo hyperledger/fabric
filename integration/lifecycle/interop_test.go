@@ -93,19 +93,19 @@ var _ = Describe("Release interoperability", func() {
 
 			network.CreateAndJoinChannels(orderer)
 			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer, 100)
+			RunQueryInvokeQuery(network, orderer, peer, "mycc", 100)
 
 			By("enabling V2_0 application capabilities")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 
 			By("ensuring that the chaincode is still operational after the upgrade")
-			RunQueryInvokeQuery(network, orderer, peer, 90)
+			RunQueryInvokeQuery(network, orderer, peer, "mycc", 90)
 
 			By("restarting the network from persistence")
 			RestartNetwork(&process, network)
 
 			By("ensuring that the chaincode is still operational after the upgrade and restart")
-			RunQueryInvokeQuery(network, orderer, peer, 80)
+			RunQueryInvokeQuery(network, orderer, peer, "mycc", 80)
 
 			By("attempting to invoke the chaincode without sufficient endorsements")
 			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
@@ -137,13 +137,13 @@ var _ = Describe("Release interoperability", func() {
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			By("querying/invoking/querying the chaincode with the new definition")
-			RunQueryInvokeQueryWithAddresses(network, orderer, peer, 70, network.PeerAddress(network.Peer("org1", "peer2"), nwo.ListenPort))
+			RunQueryInvokeQueryWithAddresses(network, orderer, peer, "mycc", 70, network.PeerAddress(network.Peer("org1", "peer2"), nwo.ListenPort))
 
 			By("restarting the network from persistence")
 			RestartNetwork(&process, network)
 
 			By("querying/invoking/querying the chaincode with the new definition again")
-			RunQueryInvokeQueryWithAddresses(network, orderer, peer, 60, network.PeerAddress(network.Peer("org1", "peer2"), nwo.ListenPort))
+			RunQueryInvokeQueryWithAddresses(network, orderer, peer, "mycc", 60, network.PeerAddress(network.Peer("org1", "peer2"), nwo.ListenPort))
 		})
 
 		Describe("Interoperability scenarios", func() {
@@ -187,7 +187,7 @@ var _ = Describe("Release interoperability", func() {
 
 				network.CreateAndJoinChannels(orderer)
 				nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-				RunQueryInvokeQuery(network, orderer, peer, 100)
+				RunQueryInvokeQuery(network, orderer, peer, "mycc", 100)
 
 				By("invoking the chaincode with the legacy definition and keeping the transaction")
 				signedProp, prop, txid := SignedProposal(
