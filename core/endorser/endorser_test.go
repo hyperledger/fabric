@@ -38,9 +38,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func pvtEmptyDistributor(_ string, _ string, _ *transientstore.TxPvtReadWriteSetWithConfigInfo, _ uint64) error {
-	return nil
+type PrivateDataDistributorAdapter func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error
+
+func (pda PrivateDataDistributorAdapter) DistributePrivateData(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
+	return pda(channel, txID, privateData, blkHt)
 }
+
+var pvtEmptyDistributor = PrivateDataDistributorAdapter(func(_ string, _ string, _ *transientstore.TxPvtReadWriteSetWithConfigInfo, _ uint64) error {
+	return nil
+})
 
 func getSignedPropWithCHID(ccid, chid string, t *testing.T) *pb.SignedProposal {
 	ccargs := [][]byte{[]byte("args")}

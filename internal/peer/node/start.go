@@ -88,7 +88,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	pt "github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -562,10 +561,6 @@ func serve(args []string) error {
 
 	logger.Debugf("Running peer")
 
-	privDataDist := func(channel string, txID string, privateData *pt.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
-		return gossipService.DistributePrivateData(channel, txID, privateData, blkHt)
-	}
-
 	libConf, err := library.LoadConfig()
 	if err != nil {
 		return errors.WithMessage(err, "could not decode peer handlers configuration")
@@ -594,7 +589,7 @@ func serve(args []string) error {
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
 	serverEndorser := &endorser.Endorser{
-		PrivateDataDistributor: privDataDist,
+		PrivateDataDistributor: gossipService,
 		Support:                endorserSupport,
 		Metrics:                endorser.NewMetrics(metricsProvider),
 	}

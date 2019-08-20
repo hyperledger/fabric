@@ -31,7 +31,9 @@ var endorserLogger = flogging.MustGetLogger("endorser")
 // The Jira issue that documents Endorser flow along with its relationship to
 // the lifecycle chaincode - https://jira.hyperledger.org/browse/FAB-181
 
-type PrivateDataDistributor func(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error
+type PrivateDataDistributor interface {
+	DistributePrivateData(channel string, txID string, privateData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error
+}
 
 // Support contains functions that the endorser requires to execute its tasks
 type Support interface {
@@ -191,7 +193,7 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 		// manage transient store purge for orphaned private writesets (4th parameter in distributePrivateData), this works for now.
 		// Ideally, ledger should add support in the simulator as a first class function `GetHeight()`.
 		pvtDataWithConfig.EndorsedAt = endorsedAt
-		if err := e.PrivateDataDistributor(txParams.ChannelID, txParams.TxID, pvtDataWithConfig, endorsedAt); err != nil {
+		if err := e.PrivateDataDistributor.DistributePrivateData(txParams.ChannelID, txParams.TxID, pvtDataWithConfig, endorsedAt); err != nil {
 			return nil, nil, nil, err
 		}
 	}
