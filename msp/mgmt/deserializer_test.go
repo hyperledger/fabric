@@ -19,14 +19,16 @@ import (
 )
 
 func TestNewDeserializersManager(t *testing.T) {
-	assert.NotNil(t, NewDeserializersManager())
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	assert.NotNil(t, NewDeserializersManager(cryptoProvider))
 }
 
 func TestMspDeserializersManager_Deserialize(t *testing.T) {
-	m := NewDeserializersManager()
-
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
+
+	m := NewDeserializersManager(cryptoProvider)
 
 	i, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
@@ -41,17 +43,21 @@ func TestMspDeserializersManager_Deserialize(t *testing.T) {
 }
 
 func TestMspDeserializersManager_GetChannelDeserializers(t *testing.T) {
-	m := NewDeserializersManager()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	m := NewDeserializersManager(cryptoProvider)
 
 	deserializers := m.GetChannelDeserializers()
 	assert.NotNil(t, deserializers)
 }
 
 func TestMspDeserializersManager_GetLocalDeserializer(t *testing.T) {
-	m := NewDeserializersManager()
-
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
+
+	m := NewDeserializersManager(cryptoProvider)
+
 	i, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 	raw, err := i.Serialize()

@@ -112,8 +112,8 @@ func TestInitGossipService(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 
-	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(), cryptoProvider)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	assert.NoError(t, err)
 
@@ -910,9 +910,12 @@ func TestInvalidInitialization(t *testing.T) {
 	grpcServer := grpc.NewServer()
 	endpoint, socket := getAvailablePort(t)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	mockSignerSerializer := &mocks.SignerSerializer{}
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	assert.NoError(t, err)
 
@@ -953,9 +956,12 @@ func TestChannelConfig(t *testing.T) {
 	grpcServer := grpc.NewServer()
 	endpoint, socket := getAvailablePort(t)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	mockSignerSerializer := &mocks.SignerSerializer{}
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	assert.NoError(t, err)
 

@@ -83,7 +83,7 @@ func TestPKIidOfNil(t *testing.T) {
 	signer := &mocks.SignerSerializer{}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(), cryptoProvider)
+	msgCryptoService := NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
 
 	pkid := msgCryptoService.GetPKIidOfCert(nil)
 	// Check pkid is not nil
@@ -137,10 +137,11 @@ func TestSign(t *testing.T) {
 	signer.SignReturns([]byte("signature"), nil)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
+
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
 		signer,
-		mgmt.NewDeserializersManager(),
+		mgmt.NewDeserializersManager(cryptoProvider),
 		cryptoProvider,
 	)
 

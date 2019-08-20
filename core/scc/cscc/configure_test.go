@@ -321,8 +321,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	assert.NoError(t, err)
 	signer := mgmt.GetLocalSigningIdentityOrPanic()
 
-	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(), cryptoProvider)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
 	var defaultSecureDialOpts = func() []grpc.DialOption {
 		var dialOpts []grpc.DialOption
 		dialOpts = append(dialOpts, grpc.WithInsecure())

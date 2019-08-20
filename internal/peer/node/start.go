@@ -300,7 +300,7 @@ func serve(args []string) error {
 	policyChecker := policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
 		mgmt.GetLocalMSP(factory.GetDefault()),
-		mgmt.NewLocalMSPPrincipalGetter(),
+		mgmt.NewLocalMSPPrincipalGetter(factory.GetDefault()),
 	)
 
 	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
@@ -1109,10 +1109,10 @@ func initGossipService(
 	messageCryptoService := peergossip.NewMCS(
 		policyMgr,
 		signer,
-		mgmt.NewDeserializersManager(),
+		mgmt.NewDeserializersManager(factory.GetDefault()),
 		factory.GetDefault(),
 	)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(factory.GetDefault()))
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
 	serviceConfig := service.GlobalConfig()
