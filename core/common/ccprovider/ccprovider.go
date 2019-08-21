@@ -352,24 +352,6 @@ func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
 	return cqr, nil
 }
 
-//-------- ChaincodeDefinition - interface for ChaincodeData ------
-// ChaincodeDefinition describes all of the necessary information for a peer to decide whether to endorse
-// a proposal and whether to validate a transaction, for a particular chaincode.
-type ChaincodeDefinition interface {
-	// CCVersion returns the version of the chaincode.
-	CCVersion() string
-
-	// Endorsement returns how to endorse proposals for this chaincode.
-	// The string returns is the name of the endorsement method (usually 'escc').
-	Endorsement() string
-
-	// RequiresInit indicates whether or not we must enforce Init exactly once semantics.
-	RequiresInit() bool
-
-	// ChaincodeID returns the id the chaincode will register with.
-	ChaincodeID() string
-}
-
 //-------- ChaincodeData is stored on the LSCC -------
 
 // ChaincodeData defines the datastructure for chaincodes to be serialized by proto
@@ -400,43 +382,6 @@ type ChaincodeData struct {
 
 	// InstantiationPolicy for the chaincode
 	InstantiationPolicy []byte `protobuf:"bytes,8,opt,name=instantiation_policy,proto3"`
-}
-
-// CCName returns the name of this chaincode (the name it was put in the ChaincodeRegistry with).
-func (cd *ChaincodeData) CCName() string {
-	return cd.Name
-}
-
-// Hash returns the hash of the chaincode.
-func (cd *ChaincodeData) Hash() []byte {
-	return cd.Id
-}
-
-// CCVersion returns the version of the chaincode.
-func (cd *ChaincodeData) CCVersion() string {
-	return cd.Version
-}
-
-// Validation returns how to validate transactions for this chaincode.
-// The string returned is the name of the validation method (usually 'vscc')
-// and the bytes returned are the argument to the validation (in the case of
-// 'vscc', this is a marshaled pb.VSCCArgs message).
-func (cd *ChaincodeData) Validation() (string, []byte) {
-	return cd.Vscc, cd.Policy
-}
-
-// Endorsement returns how to endorse proposals for this chaincode.
-// The string returns is the name of the endorsement method (usually 'escc').
-func (cd *ChaincodeData) Endorsement() string {
-	return cd.Escc
-}
-
-// RequiresInit always returns false because chaincodes
-// defined using the legacy lifecycle do not require an
-// explicit initialisation step since Init is invoked as
-// part of the LSCC invocation
-func (cd *ChaincodeData) RequiresInit() bool {
-	return false
 }
 
 // ChaincodeID is the name by which the chaincode will register itself.

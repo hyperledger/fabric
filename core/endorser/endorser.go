@@ -64,7 +64,7 @@ type Support interface {
 	// ExecuteLegacyInit - executes a deployment proposal, return original response of chaincode
 	ExecuteLegacyInit(txParams *ccprovider.TransactionParams, name, version string, spec *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error)
 
-	// ChaincodeEndorsementInfo returns ccprovider.ChaincodeDefinition for the chaincode with the supplied name
+	// ChaincodeEndorsementInfo returns the information from lifecycle required to endorse the chaincode.
 	ChaincodeEndorsementInfo(channelID, chaincodeID string, txsim ledger.QueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error)
 
 	// CheckACL checks the ACL for the resource for the channel using the
