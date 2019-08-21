@@ -1,20 +1,9 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package historyleveldb
+package history
 
 import (
 	"io/ioutil"
@@ -25,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
@@ -41,8 +29,8 @@ type levelDBLockBasedHistoryEnv struct {
 	testDBEnv             privacyenabledstate.TestEnv
 	testBookkeepingEnv    *bookkeeping.TestEnv
 	txmgr                 txmgr.TxMgr
-	testHistoryDBProvider historydb.HistoryDBProvider
-	testHistoryDB         historydb.HistoryDB
+	testHistoryDBProvider *DBProvider
+	testHistoryDB         *DB
 	testHistoryDBPath     string
 }
 
@@ -72,7 +60,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	)
 
 	assert.NoError(t, err)
-	testHistoryDBProvider := NewHistoryDBProvider(testHistoryDBPath)
+	testHistoryDBProvider := NewDBProvider(testHistoryDBPath)
 	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
 	assert.NoError(t, err)
 

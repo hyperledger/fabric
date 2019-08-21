@@ -16,8 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/confighistory"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb/historyleveldb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
@@ -44,7 +43,7 @@ type Provider struct {
 	idStore             *idStore
 	ledgerStoreProvider *ledgerstorage.Provider
 	vdbProvider         privacyenabledstate.DBProvider
-	historydbProvider   historydb.HistoryDBProvider
+	historydbProvider   *history.DBProvider
 	configHistoryMgr    confighistory.Mgr
 	stateListeners      []ledger.StateListener
 	bookkeepingProvider bookkeeping.Provider
@@ -83,7 +82,7 @@ func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 	p.ledgerStoreProvider = ledgerStoreProvider
 	if initializer.Config.HistoryDBConfig.Enabled {
 		// Initialize the history database (index for history of values by key)
-		historydbProvider := historyleveldb.NewHistoryDBProvider(
+		historydbProvider := history.NewDBProvider(
 			filepath.Join(p.initializer.Config.RootFSPath, "historyLeveldb"),
 		)
 		p.historydbProvider = historydbProvider
@@ -194,7 +193,7 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 	}
 
 	// Get the history database (index for history of values by key) for a chain/ledger
-	var historyDB historydb.HistoryDB
+	var historyDB *history.DB
 	if p.historydbProvider != nil {
 		historyDB, err = p.historydbProvider.GetDBHandle(ledgerID)
 		if err != nil {

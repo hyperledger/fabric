@@ -1,10 +1,9 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
-package historyleveldb
+package history
 
 import (
 	"bytes"
@@ -161,8 +160,8 @@ func TestHistory(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("Inserted all 3 blocks")
 
-	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
-	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
+	qhistory, err := env.testHistoryDB.NewQueryExecutor(store1)
+	assert.NoError(t, err, "Error upon NewQueryExecutor")
 
 	itr, err2 := qhistory.GetHistoryForKey("ns1", "key7")
 	assert.NoError(t, err2, "Error upon GetHistoryForKey()")
@@ -230,8 +229,8 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	err = env.testHistoryDB.Commit(block1)
 	assert.NoError(t, err)
 
-	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
-	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
+	qhistory, err := env.testHistoryDB.NewQueryExecutor(store1)
+	assert.NoError(t, err, "Error upon NewQueryExecutor")
 
 	itr, err2 := qhistory.GetHistoryForKey("ns1", "key7")
 	assert.NoError(t, err2, "Error upon GetHistoryForKey()")
@@ -330,8 +329,8 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	err = env.testHistoryDB.Commit(block2)
 	assert.NoError(t, err)
 
-	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
-	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
+	qhistory, err := env.testHistoryDB.NewQueryExecutor(store1)
+	assert.NoError(t, err, "Error upon NewQueryExecutor")
 
 	// verify the results for each key, in the order of newest to oldest
 	testutilVerifyResults(t, qhistory, "ns1", "key", []string{"value2", "value1"})
@@ -382,8 +381,8 @@ func TestHistoryWithBlockNumber256(t *testing.T) {
 	}
 
 	// query history db for "ns1", "key"
-	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
-	assert.NoError(t, err, "Error upon NewHistoryQueryExecutor")
+	qhistory, err := env.testHistoryDB.NewQueryExecutor(store1)
+	assert.NoError(t, err, "Error upon NewQueryExecutor")
 
 	// verify history query returns the expected results in the orderer of block256, 255, 254 .... 1.
 	expectedHistoryResults := make([]string, 0)
