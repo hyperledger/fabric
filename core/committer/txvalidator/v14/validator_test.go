@@ -99,7 +99,7 @@ func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *mockconfig.MockAp
 	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
 	assert.NoError(t, err)
-	theLedger, err := ledgerMgr.CreateLedger(gb)
+	theLedger, err := ledgerMgr.CreateLedger("TestLedger", gb)
 	assert.NoError(t, err)
 	pm := &mocks.Mapper{}
 	factory := &mocks.PluginFactory{}
@@ -1583,7 +1583,7 @@ func createCustomSupportAndLedger(t *testing.T) (*mocktxvalidator.Support, ledge
 	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
 	assert.NoError(t, err)
-	l, err := ledgerMgr.CreateLedger(gb)
+	l, err := ledgerMgr.CreateLedger("TestLedger", gb)
 	assert.NoError(t, err)
 
 	identity := &mocks2.Identity{}

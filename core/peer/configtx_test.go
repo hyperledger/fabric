@@ -46,7 +46,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	chanConf := helper.sampleChannelConfig(1, true)
 	genesisTx := helper.constructGenesisTx(t, channelID, chanConf)
 	genesisBlock := helper.constructBlock(genesisTx, 0, nil)
-	ledger, err := ledgerMgr.CreateLedger(genesisBlock)
+	ledger, err := ledgerMgr.CreateLedger(channelID, genesisBlock)
 	assert.NoError(t, err)
 
 	retrievedchanConf, err := retrievePersistedChannelConfig(ledger)
@@ -73,7 +73,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	chanConf := helper.sampleChannelConfig(1, true)
 	genesisTx := helper.constructGenesisTx(t, channelID, chanConf)
 	genesisBlock := helper.constructBlock(genesisTx, 0, nil)
-	lgr, err := ledgerMgr.CreateLedger(genesisBlock)
+	lgr, err := ledgerMgr.CreateLedger(channelID, genesisBlock)
 	assert.NoError(t, err)
 
 	retrievedchanConf, err := retrievePersistedChannelConfig(lgr)
@@ -113,7 +113,7 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 		os.RemoveAll(tempdir)
 	}()
 
-	lgr, err := ledgerMgr.CreateLedger(b)
+	lgr, err := ledgerMgr.CreateLedger("testchain", b)
 	assert.NoError(t, err)
 	chanConf, err := retrievePersistedChannelConfig(lgr)
 	assert.NoError(t, err)

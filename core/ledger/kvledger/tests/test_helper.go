@@ -32,7 +32,7 @@ type testhelper struct {
 func (env *env) newTestHelperCreateLgr(id string, t *testing.T) *testhelper {
 	genesisBlk, err := constructTestGenesisBlock(id)
 	assert.NoError(t, err)
-	lgr, err := env.ledgerMgr.CreateLedger(genesisBlk)
+	lgr, err := env.ledgerMgr.CreateLedger(id, genesisBlk)
 	assert.NoError(t, err)
 	client, committer, verifier := newClient(lgr, id, t), newCommitter(lgr, t), newVerifier(lgr, t)
 	return &testhelper{client, committer, verifier, lgr, id, assert.New(t)}
