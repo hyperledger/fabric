@@ -814,7 +814,7 @@ func localPolicy(policyObject proto.Message) policies.Policy {
 }
 
 func createSelfSignedData() protoutil.SignedData {
-	sID := mgmt.GetLocalSigningIdentityOrPanic()
+	sID := mgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
 	msg := make([]byte, 32)
 	sig, err := sID.Sign(msg)
 	if err != nil {

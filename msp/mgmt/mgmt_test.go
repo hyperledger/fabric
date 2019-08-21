@@ -9,7 +9,9 @@ package mgmt
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
@@ -42,15 +44,21 @@ func TestGetManagerForChains_usingMSPConfigHandlers(t *testing.T) {
 }
 
 func TestGetIdentityDeserializer(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	XXXSetMSPManager("baz", msp.NewMSPManager())
-	ids := GetIdentityDeserializer("baz")
+	ids := GetIdentityDeserializer("baz", cryptoProvider)
 	assert.NotNil(t, ids)
-	ids = GetIdentityDeserializer("")
+	ids = GetIdentityDeserializer("", cryptoProvider)
 	assert.NotNil(t, ids)
 }
 
 func TestGetLocalSigningIdentityOrPanic(t *testing.T) {
-	sid := GetLocalSigningIdentityOrPanic()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	sid := GetLocalSigningIdentityOrPanic(cryptoProvider)
 	assert.NotNil(t, sid)
 }
 
@@ -78,13 +86,13 @@ func TestUpdateLocalMspCache(t *testing.T) {
 }
 
 func TestNewMSPMgmtMgr(t *testing.T) {
-	err := LoadMSPSetupForTesting()
+	cryptoProvider, err := LoadMSPSetupForTesting()
 	assert.Nil(t, err)
 
 	// test for nonexistent channel
 	mspMgmtMgr := GetManagerForChain("fake")
 
-	id := GetLocalSigningIdentityOrPanic()
+	id := GetLocalSigningIdentityOrPanic(cryptoProvider)
 	assert.NotNil(t, id)
 
 	serializedID, err := id.Serialize()
@@ -101,7 +109,7 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 	// test for existing channel
 	mspMgmtMgr = GetManagerForChain(util.GetTestChannelID())
 
-	id = GetLocalSigningIdentityOrPanic()
+	id = GetLocalSigningIdentityOrPanic(cryptoProvider)
 	assert.NotNil(t, id)
 
 	serializedID, err = id.Serialize()
@@ -115,27 +123,27 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 	assert.NotNil(t, idBack, "deserialized identity should not have been nil")
 }
 
-func LoadMSPSetupForTesting() error {
+func LoadMSPSetupForTesting() (bccsp.BCCSP, error) {
 	dir, err := configtest.GetDevMspDir()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	conf, err := msp.GetLocalMspConfig(dir, nil, "SampleOrg")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cryptoProvider := factory.GetDefault()
 
 	err = GetLocalMSP(cryptoProvider).Setup(conf)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = GetManagerForChain(util.GetTestChannelID()).Setup([]msp.MSP{GetLocalMSP(cryptoProvider)})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return cryptoProvider, nil
 }

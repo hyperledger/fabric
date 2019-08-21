@@ -11,11 +11,13 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateConfigTx(t *testing.T) {
@@ -43,8 +45,10 @@ func TestValidateConfigTx(t *testing.T) {
 			}),
 		}),
 	}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	updateResult.Signature, _ = signer.Sign(updateResult.Payload)
-	_, txResult := ValidateTransaction(updateResult)
+	_, txResult := ValidateTransaction(updateResult, cryptoProvider)
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
