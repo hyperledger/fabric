@@ -32,70 +32,6 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
 
-func TestNilProposal(t *testing.T) {
-	// pass nil to all function which accept *peer.Proposal
-	_, err := protoutil.ComputeProposalBinding(nil)
-	assert.Error(t, err, "Expected error with nil proposal")
-}
-
-func TestBadProposalHeaders(t *testing.T) {
-	// NOTE:  There is a lot of repetitive proposal validation code
-	// in multiple functions which should be refactored in the future.
-	// For now, simply consolidating the test cases
-
-	// empty header
-	prop := &pb.Proposal{
-		Header: []byte{},
-	}
-	_, err := protoutil.ComputeProposalBinding(prop)
-	assert.Error(t, err, "Expected error with empty proposal header")
-
-	// empty payload
-	prop = &pb.Proposal{
-		Header: []byte("header"),
-	}
-
-	// malformed proposal header
-	prop = &pb.Proposal{
-		Header:  []byte("bad header"),
-		Payload: []byte("payload"),
-	}
-	_, err = protoutil.UnmarshalHeader(prop.Header)
-	assert.Error(t, err, "Expected error with malformed proposal header")
-	_, err = protoutil.ComputeProposalBinding(prop)
-	assert.Error(t, err, "Expected error with malformed proposal header")
-
-	// malformed signature header
-	chdr, _ := proto.Marshal(&common.ChannelHeader{
-		Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
-	})
-	hdr := &common.Header{
-		ChannelHeader:   chdr,
-		SignatureHeader: []byte("bad signature header"),
-	}
-	_, err = protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
-	assert.Error(t, err, "Expected error with malformed signature header")
-	hdrBytes, _ := proto.Marshal(hdr)
-	prop.Header = hdrBytes
-	_, err = protoutil.ComputeProposalBinding(prop)
-	assert.Error(t, err, "Expected error with malformed signature header")
-
-	// wrong channel header type
-	chdr, _ = proto.Marshal(&common.ChannelHeader{
-		Type: int32(common.HeaderType_DELIVER_SEEK_INFO),
-	})
-
-	// malformed channel header
-	hdr.ChannelHeader = []byte("bad channel header")
-	hdrBytes, _ = proto.Marshal(hdr)
-	prop.Header = hdrBytes
-	_, err = protoutil.UnmarshalChaincodeHeaderExtension([]byte("bad header extension"))
-	assert.Error(t, err, "Expected error with malformed channel header")
-	_, err = protoutil.ComputeProposalBinding(prop)
-	assert.Error(t, err, "Expected error with malformed channel header")
-
-}
-
 func TestGetChaincodeDeploymentSpec(t *testing.T) {
 	_, err := protoutil.UnmarshalChaincodeDeploymentSpec([]byte("bad spec"))
 	assert.Error(t, err, "Expected error with malformed spec")
@@ -142,27 +78,6 @@ func TestCDSProposals(t *testing.T) {
 	assert.NoError(t, err, "Unexpected error creating upgrade proposal")
 	assert.NotEqual(t, "", txid, "txid should not be empty")
 
-}
-
-func TestComputeProposalBinding(t *testing.T) {
-	expectedDigestHex := "5093dd4f4277e964da8f4afbde0a9674d17f2a6a5961f0670fc21ae9b67f2983"
-	expectedDigest, _ := hex.DecodeString(expectedDigestHex)
-	chdr, _ := proto.Marshal(&common.ChannelHeader{
-		Epoch: uint64(10),
-	})
-	shdr, _ := proto.Marshal(&common.SignatureHeader{
-		Nonce:   []byte("nonce"),
-		Creator: []byte("creator"),
-	})
-	hdr, _ := proto.Marshal(&common.Header{
-		ChannelHeader:   chdr,
-		SignatureHeader: shdr,
-	})
-	prop := &pb.Proposal{
-		Header: hdr,
-	}
-	binding, _ := protoutil.ComputeProposalBinding(prop)
-	assert.Equal(t, expectedDigest, binding, "Binding does not match expected digest")
 }
 
 func TestProposal(t *testing.T) {

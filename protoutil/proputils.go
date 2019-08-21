@@ -8,7 +8,6 @@ package protoutil
 
 import (
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"time"
 
@@ -381,40 +380,4 @@ func CheckTxID(txid string, nonce, creator []byte) error {
 	}
 
 	return nil
-}
-
-// ComputeProposalBinding computes the binding of a proposal
-func ComputeProposalBinding(proposal *peer.Proposal) ([]byte, error) {
-	if proposal == nil {
-		return nil, errors.New("proposal is nil")
-	}
-	if len(proposal.Header) == 0 {
-		return nil, errors.New("proposal's header is nil")
-	}
-
-	h, err := UnmarshalHeader(proposal.Header)
-	if err != nil {
-		return nil, err
-	}
-
-	chdr, err := UnmarshalChannelHeader(h.ChannelHeader)
-	if err != nil {
-		return nil, err
-	}
-	shdr, err := UnmarshalSignatureHeader(h.SignatureHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	return computeProposalBindingInternal(shdr.Nonce, shdr.Creator, chdr.Epoch)
-}
-
-func computeProposalBindingInternal(nonce, creator []byte, epoch uint64) ([]byte, error) {
-	epochBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(epochBytes, epoch)
-
-	// TODO: add to genesis block the hash function used for
-	// the binding computation
-	digest := sha256.Sum256(append(append(nonce, creator...), epochBytes...))
-	return digest[:], nil
 }
