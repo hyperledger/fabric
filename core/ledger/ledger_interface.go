@@ -540,9 +540,7 @@ type DeployedChaincodeInfo struct {
 func (dci DeployedChaincodeInfo) AllCollectionsConfigPkg() *common.CollectionConfigPackage {
 	var combinedColls []*common.CollectionConfig
 	if dci.ExplicitCollectionConfigPkg != nil {
-		for _, explicitColl := range dci.ExplicitCollectionConfigPkg.Config {
-			combinedColls = append(combinedColls, explicitColl)
-		}
+		combinedColls = append(combinedColls, dci.ExplicitCollectionConfigPkg.Config...)
 	}
 	for _, implicitColl := range dci.ImplicitCollections {
 		c := &common.CollectionConfig{}
