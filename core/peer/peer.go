@@ -203,16 +203,13 @@ func (p *Peer) openStore(cid string) (transientstore.Store, error) {
 }
 
 func (p *Peer) CreateChannel(
+	cid string,
 	cb *common.Block,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
 	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
 ) error {
-	cid, err := protoutil.GetChainIDFromBlock(cb)
-	if err != nil {
-		return err
-	}
-	l, err := p.LedgerMgr.CreateLedger(cb)
+	l, err := p.LedgerMgr.CreateLedger(cid, cb)
 	if err != nil {
 		return errors.WithMessage(err, "cannot create ledger from genesis block")
 	}

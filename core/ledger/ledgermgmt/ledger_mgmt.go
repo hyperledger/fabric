@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -85,13 +84,9 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 // CreateLedger creates a new ledger with the given genesis block.
 // This function guarantees that the creation of ledger and committing the genesis block would an atomic action
 // The chain id retrieved from the genesis block is treated as a ledger id
-func (m *LedgerMgr) CreateLedger(genesisBlock *common.Block) (ledger.PeerLedger, error) {
+func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.PeerLedger, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	id, err := protoutil.GetChainIDFromBlock(genesisBlock)
-	if err != nil {
-		return nil, err
-	}
 	logger.Infof("Creating ledger [%s] with genesis block", id)
 	l, err := m.ledgerProvider.Create(genesisBlock)
 	if err != nil {

@@ -172,7 +172,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	peerInstance.CredentialSupport = comm.NewCredentialSupport()
 
 	createChannel := func(t *testing.T, cid string, block *cb.Block) {
-		err = peerInstance.CreateChannel(block, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+		err = peerInstance.CreateChannel(cid, block, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 		if err != nil {
 			t.Fatalf("Failed to create config block (%s)", err)
 		}

@@ -33,8 +33,9 @@ func TestLedgerMgmt(t *testing.T) {
 	numLedgers := 10
 	ledgers := make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
-		gb, _ := test.MakeGenesisBlock(constructTestLedgerID(i))
-		l, err := ledgerMgr.CreateLedger(gb)
+		cid := constructTestLedgerID(i)
+		gb, _ := test.MakeGenesisBlock(cid)
+		l, err := ledgerMgr.CreateLedger(cid, gb)
 		assert.NoError(t, err)
 		ledgers[i] = l
 	}
@@ -83,7 +84,7 @@ func TestChaincodeInfoProvider(t *testing.T) {
 	}()
 
 	gb, _ := test.MakeGenesisBlock("ledger1")
-	ledgerMgr.CreateLedger(gb)
+	ledgerMgr.CreateLedger("ledger1", gb)
 
 	mockDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	mockDeployedCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
