@@ -809,7 +809,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		})
 
 		It("refuses to reconfig if it results in quorum loss", func() {
-			By("Waitinf for them to elect a leader")
+			By("Waiting for them to elect a leader")
 			findLeader(ordererRunners)
 
 			extendNetwork(network)
@@ -818,9 +818,11 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Removing alive node from 2/3 cluster")
 			peer := network.Peer("Org1", "peer1")
 			current, updated := nwo.ConsenterRemover(network, peer, o2, network.SystemChannel.Name, certificatesOfOrderers[1].oldCert)
-			sess := nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
-			Expect(sess.ExitCode()).NotTo(BeZero())
-			Expect(string(sess.Err.Contents())).To(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
+			Eventually(func() []byte {
+				sess := nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
+				Expect(sess.ExitCode()).NotTo(BeZero())
+				return sess.Err.Contents()
+			}, network.EventuallyTimeout).Should(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
 
 			By("Adding node to 2/3 cluster")
 			current, updated = nwo.ConsenterAdder(
@@ -835,7 +837,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Port:          uint32(network.OrdererPort(o1, nwo.ListenPort)),
 				},
 			)
-			sess = nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
+			sess := nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
 			Expect(sess.ExitCode()).NotTo(BeZero())
 			Expect(string(sess.Err.Contents())).To(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
 		})
