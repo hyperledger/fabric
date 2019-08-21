@@ -42,18 +42,18 @@ func pvtEmptyDistributor(_ string, _ string, _ *transientstore.TxPvtReadWriteSet
 	return nil
 }
 
-func getSignedPropWithCHID(ccid, ccver, chid string, t *testing.T) *pb.SignedProposal {
+func getSignedPropWithCHID(ccid, chid string, t *testing.T) *pb.SignedProposal {
 	ccargs := [][]byte{[]byte("args")}
 
-	return getSignedPropWithCHIdAndArgs(chid, ccid, ccver, ccargs, t)
+	return getSignedPropWithCHIdAndArgs(chid, ccid, ccargs, t)
 }
 
-func getSignedProp(ccid, ccver string, t *testing.T) *pb.SignedProposal {
-	return getSignedPropWithCHID(ccid, ccver, util.GetTestChainID(), t)
+func getSignedProp(ccid string, t *testing.T) *pb.SignedProposal {
+	return getSignedPropWithCHID(ccid, util.GetTestChainID(), t)
 }
 
-func getSignedPropWithCHIdAndArgs(chid, ccid, ccver string, ccargs [][]byte, t *testing.T) *pb.SignedProposal {
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: ccid, Version: ccver}, Input: &pb.ChaincodeInput{Args: ccargs}}
+func getSignedPropWithCHIdAndArgs(chid, ccid string, ccargs [][]byte, t *testing.T) *pb.SignedProposal {
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: ccid}, Input: &pb.ChaincodeInput{Args: ccargs}}
 
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 
@@ -127,34 +127,6 @@ func testEndorsementCompletedMetric(t *testing.T, fakeMetrics *fakeEndorserMetri
 	assert.NotEqual(t, 0, fakeMetrics.proposalDuration.ObserveArgsForCall(0))
 }
 
-func TestEndorserNilProp(t *testing.T) {
-	es := endorser.NewEndorserServer(pvtEmptyDistributor, &mocks.MockSupport{
-		GetApplicationConfigBoolRv: true,
-		GetApplicationConfigRv:     &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-		GetTransactionByIDErr:      errors.New(""),
-		ChaincodeDefinitionRv:      &ccprovider.ChaincodeData{Escc: "ESCC"},
-		ExecuteResp:                &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(&pb.ProposalResponse{Response: &pb.Response{}})},
-		GetTxSimulatorRv: &mocks.MockTxSim{
-			GetTxSimulationResultsRv: &ledger.TxSimulationResults{
-				PubSimulationResults: &rwset.TxReadWriteSet{},
-			},
-		},
-	}, &disabled.Provider{})
-
-	fakeMetrics := initFakeMetrics(es)
-
-	pResp, err := es.ProcessProposal(context.Background(), nil)
-	assert.Error(t, err)
-	assert.EqualValues(t, 500, pResp.Response.Status)
-	assert.Equal(t, "nil arguments", pResp.Response.Message)
-
-	// nil proposal results in upfront validation failure
-	assert.EqualValues(t, 1, fakeMetrics.proposalsReceived.AddCallCount())
-	assert.EqualValues(t, 1, fakeMetrics.proposalsReceived.AddArgsForCall(0))
-	assert.EqualValues(t, 1, fakeMetrics.proposalValidationFailed.AddCallCount())
-	assert.EqualValues(t, 1, fakeMetrics.proposalValidationFailed.AddArgsForCall(0))
-}
-
 func TestEndorserCCInvocationFailed(t *testing.T) {
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, &mocks.MockSupport{
 		GetApplicationConfigBoolRv: true,
@@ -169,7 +141,7 @@ func TestEndorserCCInvocationFailed(t *testing.T) {
 		},
 	}, &disabled.Provider{})
 
-	signedProp := getSignedProp("test-chaincode", "test-version", t)
+	signedProp := getSignedProp("test-chaincode", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -191,7 +163,7 @@ func TestEndorserNoCCDef(t *testing.T) {
 		},
 	}, &disabled.Provider{})
 
-	signedProp := getSignedProp("test-chaincode", "test-version", t)
+	signedProp := getSignedProp("test-chaincode", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -216,7 +188,7 @@ func TestEndorserSysCC(t *testing.T) {
 	attachPluginEndorser(support, nil)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
-	signedProp := getSignedProp("test-chaincode", "test-version", t)
+	signedProp := getSignedProp("test-chaincode", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -237,7 +209,7 @@ func TestEndorserCCInvocationError(t *testing.T) {
 		},
 	}, &disabled.Provider{})
 
-	signedProp := getSignedProp("test-chaincode", "test-version", t)
+	signedProp := getSignedProp("test-chaincode", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -259,7 +231,7 @@ func TestEndorserDupTXId(t *testing.T) {
 
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedProp("test-chaincode", "test-version", t)
+	signedProp := getSignedProp("test-chaincode", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
@@ -269,7 +241,7 @@ func TestEndorserDupTXId(t *testing.T) {
 	// test for triggering of duplicate TX metric
 	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.WithCallCount())
 	labelValues := fakeMetrics.duplicateTxsFailure.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", "testchainid", "chaincode", "test-chaincode:test-version"})
+	assert.EqualValues(t, labelValues, []string{"channel", "testchainid", "chaincode", "test-chaincode"})
 	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.AddCallCount())
 	assert.EqualValues(t, 1, fakeMetrics.duplicateTxsFailure.AddArgsForCall(0))
 }
@@ -291,7 +263,7 @@ func TestEndorserBadACL(t *testing.T) {
 
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedProp("test-chaincode", "test-version", t)
+	signedProp := getSignedProp("test-chaincode", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
@@ -300,7 +272,7 @@ func TestEndorserBadACL(t *testing.T) {
 	// test for triggering of ACL check failure metric
 	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.WithCallCount())
 	labelValues := fakeMetrics.proposalACLCheckFailed.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", "testchainid", "chaincode", "test-chaincode:test-version"})
+	assert.EqualValues(t, labelValues, []string{"channel", "testchainid", "chaincode", "test-chaincode"})
 	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.AddCallCount())
 	assert.EqualValues(t, 1, fakeMetrics.proposalACLCheckFailed.AddArgsForCall(0))
 }
@@ -321,14 +293,14 @@ func TestEndorserGoodPathEmptyChannel(t *testing.T) {
 
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedPropWithCHIdAndArgs("", "test-chaincode", "test-version", [][]byte{[]byte("test-args")}, t)
+	signedProp := getSignedPropWithCHIdAndArgs("", "test-chaincode", [][]byte{[]byte("test-args")}, t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 200, pResp.Response.Status)
 
 	// test for triggering of successful TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, "", "test-chaincode:test-version", "true")
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, "", "test-chaincode", "true")
 }
 
 func TestEndorserLSCCInitFails(t *testing.T) {
@@ -356,7 +328,7 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 			},
 		},
 	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
+	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -365,12 +337,12 @@ func TestEndorserLSCCInitFails(t *testing.T) {
 	// test for triggering of instantiation/upgrade failure metric
 	assert.EqualValues(t, 1, fakeMetrics.initFailed.WithCallCount())
 	labelValues := fakeMetrics.initFailed.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "barf:0"})
+	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "barf"})
 	assert.EqualValues(t, 1, fakeMetrics.initFailed.AddCallCount())
 	assert.EqualValues(t, 1, fakeMetrics.initFailed.AddArgsForCall(0))
 
 	// test for triggering of failed TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "lscc:0", "false")
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "lscc", "false")
 }
 
 func TestEndorserLSCCDeploySysCC(t *testing.T) {
@@ -399,7 +371,7 @@ func TestEndorserLSCCDeploySysCC(t *testing.T) {
 			},
 		},
 	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
+	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -424,7 +396,7 @@ func TestEndorserGoodPathWEvents(t *testing.T) {
 	attachPluginEndorser(support, nil)
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("ccid", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -445,7 +417,7 @@ func TestEndorserBadChannel(t *testing.T) {
 		},
 	}, &disabled.Provider{})
 
-	signedProp := getSignedPropWithCHID("ccid", "0", "barfchain", t)
+	signedProp := getSignedPropWithCHID("ccid", "barfchain", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.Error(t, err)
@@ -471,14 +443,14 @@ func TestEndorserGoodPath(t *testing.T) {
 
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("ccid", t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 200, pResp.Response.Status)
 
 	// test for triggering of successfully completed TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid:0", "true")
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid", "true")
 
 	// test for triggering of successful proposal metric
 	assert.EqualValues(t, 1, fakeMetrics.successfulProposals.AddCallCount())
@@ -506,7 +478,7 @@ func TestEndorserChaincodeCallLogging(t *testing.T) {
 	old := flogging.SetWriter(buf)
 	defer flogging.SetWriter(old)
 
-	es.ProcessProposal(context.Background(), getSignedProp("chaincode-name", "chaincode-version", t))
+	es.ProcessProposal(context.Background(), getSignedProp("chaincode-name", t))
 
 	t.Logf("contents:\n%s", buf.Contents())
 	gt.Eventually(buf).Should(gbytes.Say(`INFO.*\[testchainid\]\[[[:xdigit:]]{8}\] Entry chaincode: chaincode-name`))
@@ -537,7 +509,7 @@ func TestEndorserLSCC(t *testing.T) {
 			},
 		},
 	)
-	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", "0", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
+	signedProp := getSignedPropWithCHIdAndArgs(util.GetTestChainID(), "lscc", [][]byte{[]byte("deploy"), []byte("a"), cds}, t)
 
 	pResp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -577,7 +549,7 @@ func TestEndorseWithPlugin(t *testing.T) {
 
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("ccid", t)
 
 	resp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -606,7 +578,7 @@ func TestEndorseEndorsementFailure(t *testing.T) {
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("ccid", t)
 
 	resp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -615,12 +587,12 @@ func TestEndorseEndorsementFailure(t *testing.T) {
 	// test for triggering of endorsement failure metric
 	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.WithCallCount())
 	labelValues := fakeMetrics.endorsementsFailed.WithArgsForCall(0)
-	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "ccid:0", "chaincodeerror", "false"})
+	assert.EqualValues(t, labelValues, []string{"channel", util.GetTestChainID(), "chaincode", "ccid", "chaincodeerror", "false"})
 	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddCallCount())
 	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddArgsForCall(0))
 
 	// test for triggering of failed TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid:0", "false")
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid", "false")
 }
 
 func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
@@ -642,7 +614,7 @@ func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
 	es := endorser.NewEndorserServer(pvtEmptyDistributor, support, &disabled.Provider{})
 	fakeMetrics := initFakeMetrics(es)
 
-	signedProp := getSignedProp("ccid", "0", t)
+	signedProp := getSignedProp("ccid", t)
 
 	resp, err := es.ProcessProposal(context.Background(), signedProp)
 	assert.NoError(t, err)
@@ -651,12 +623,12 @@ func TestEndorseEndorsementFailureDueToCCError(t *testing.T) {
 	// test for triggering of endorsement failure due to CC error metric
 	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.WithCallCount())
 	labelValues := fakeMetrics.endorsementsFailed.WithArgsForCall(0)
-	assert.EqualValues(t, []string{"channel", util.GetTestChainID(), "chaincode", "ccid:0", "chaincodeerror", "true"}, labelValues)
+	assert.EqualValues(t, []string{"channel", util.GetTestChainID(), "chaincode", "ccid", "chaincodeerror", "true"}, labelValues)
 	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddCallCount())
 	assert.EqualValues(t, 1, fakeMetrics.endorsementsFailed.AddArgsForCall(0))
 
 	// test for triggering of failed TX metric
-	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid:0", "false")
+	testEndorsementCompletedMetric(t, fakeMetrics, 1, util.GetTestChainID(), "ccid", "false")
 }
 
 func TestSimulateProposal(t *testing.T) {
@@ -715,7 +687,7 @@ func TestEndorserAcquireTxSimulator(t *testing.T) {
 
 			t.Parallel()
 			args := [][]byte{[]byte("args")}
-			signedProp := getSignedPropWithCHIdAndArgs(tt.chainID, tt.chaincodeName, "version", args, t)
+			signedProp := getSignedPropWithCHIdAndArgs(tt.chainID, tt.chaincodeName, args, t)
 
 			resp, err := es.ProcessProposal(context.Background(), signedProp)
 			assert.NoError(t, err)

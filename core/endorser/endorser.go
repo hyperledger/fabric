@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protos/common"
@@ -150,7 +149,7 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 			// increment the failure to indicate instantion/upgrade failures
 			meterLabels := []string{
 				"channel", txParams.ChannelID,
-				"chaincode", cds.ChaincodeSpec.ChaincodeId.Name + ":" + cds.ChaincodeSpec.ChaincodeId.Version,
+				"chaincode", cds.ChaincodeSpec.ChaincodeId.Name,
 			}
 			e.Metrics.InitFailed.With(meterLabels...).Add(1)
 			return nil, nil, err
@@ -271,8 +270,7 @@ func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.S
 func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, error) {
 	vr := &validateResult{}
 	// at first, we check whether the message is valid
-	prop, hdr, hdrExt, err := validation.ValidateProposalMessage(signedProp)
-
+	prop, hdr, hdrExt, err := ValidateProposalMessage(signedProp)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
 		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
@@ -299,7 +297,7 @@ func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, e
 		// labels that provide context for failure metrics
 		meterLabels := []string{
 			"channel", chainID,
-			"chaincode", hdrExt.ChaincodeId.Name + ":" + hdrExt.ChaincodeId.Version,
+			"chaincode", hdrExt.ChaincodeId.Name,
 		}
 
 		// Here we handle uniqueness check and ACLs for proposals targeting a chain
@@ -354,7 +352,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		if hdrExt != nil {
 			meterLabels := []string{
 				"channel", chainID,
-				"chaincode", hdrExt.ChaincodeId.Name + ":" + hdrExt.ChaincodeId.Version,
+				"chaincode", hdrExt.ChaincodeId.Name,
 				"success", strconv.FormatBool(success),
 			}
 			e.Metrics.ProposalDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
@@ -454,7 +452,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		// if error, capture endorsement failure metric
 		meterLabels := []string{
 			"channel", chainID,
-			"chaincode", hdrExt.ChaincodeId.Name + ":" + hdrExt.ChaincodeId.Version,
+			"chaincode", hdrExt.ChaincodeId.Name,
 		}
 
 		if err != nil {

@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -115,20 +114,6 @@ func TestGoodPath(t *testing.T) {
 		return
 	}
 
-	// sign it
-	sProp, err := protoutil.GetSignedProposal(prop, signer)
-	if err != nil {
-		t.Fatalf("GetSignedProposal failed, err %s", err)
-		return
-	}
-
-	// validate it
-	_, _, _, err = ValidateProposalMessage(sProp)
-	if err != nil {
-		t.Fatalf("ValidateProposalMessage failed, err %s", err)
-		return
-	}
-
 	response := &peer.Response{Status: 200}
 	simRes := []byte("simulation_result")
 
@@ -210,78 +195,6 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	_, txResult := ValidateTransaction(tx)
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction should have failed")
-		return
-	}
-}
-
-func TestBadProp(t *testing.T) {
-	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
-	if err != nil {
-		t.Fatalf("getProposal failed, err %s", err)
-		return
-	}
-
-	// sign it
-	sProp, err := protoutil.GetSignedProposal(prop, signer)
-	if err != nil {
-		t.Fatalf("GetSignedProposal failed, err %s", err)
-		return
-	}
-
-	// mess with the signature
-	sigOrig := sProp.Signature
-	for i := 0; i < len(sigOrig); i++ {
-		sigCopy := make([]byte, len(sigOrig))
-		copy(sigCopy, sigOrig)
-		sigCopy[i] = byte(int(sigCopy[i]+1) % 255)
-		// validate it - it should fail
-		_, _, _, err = ValidateProposalMessage(&peer.SignedProposal{ProposalBytes: sProp.ProposalBytes, Signature: sigCopy})
-		if err == nil {
-			t.Fatal("ValidateProposalMessage should have failed")
-			return
-		}
-	}
-
-	// sign it again
-	sProp, err = protoutil.GetSignedProposal(prop, signer)
-	if err != nil {
-		t.Fatalf("GetSignedProposal failed, err %s", err)
-		return
-	}
-
-	// mess with the message
-	pbytesOrig := sProp.ProposalBytes
-	for i := 0; i < len(pbytesOrig); i++ {
-		pbytesCopy := make([]byte, len(pbytesOrig))
-		copy(pbytesCopy, pbytesOrig)
-		pbytesCopy[i] = byte(int(pbytesCopy[i]+1) % 255)
-		// validate it - it should fail
-		_, _, _, err = ValidateProposalMessage(&peer.SignedProposal{ProposalBytes: pbytesCopy, Signature: sProp.Signature})
-		if err == nil {
-			t.Fatal("ValidateProposalMessage should have failed")
-			return
-		}
-	}
-
-	// get a bad signing identity
-	badSigner, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatal("Couldn't get noop signer")
-		return
-	}
-
-	// sign it again with the bad signer
-	sProp, err = protoutil.GetSignedProposal(prop, badSigner)
-	if err != nil {
-		t.Fatalf("GetSignedProposal failed, err %s", err)
-		return
-	}
-
-	// validate it - it should fail
-	_, _, _, err = ValidateProposalMessage(sProp)
-	if err == nil {
-		t.Fatal("ValidateProposalMessage should have failed")
 		return
 	}
 }
@@ -447,12 +360,6 @@ func TestInvocationsBadArgs(t *testing.T) {
 	err = validateSignatureHeader(&common.SignatureHeader{Nonce: []byte("a")})
 	assert.Error(t, err)
 	err = checkSignatureFromCreator(nil, nil, nil, "")
-	assert.Error(t, err)
-	_, _, _, err = ValidateProposalMessage(nil)
-	assert.Error(t, err)
-	_, err = validateChaincodeProposalMessage(nil, nil, nil)
-	assert.Error(t, err)
-	_, err = validateChaincodeProposalMessage(&peer.Proposal{}, &common.Header{ChannelHeader: []byte("a"), SignatureHeader: []byte("a")}, nil)
 	assert.Error(t, err)
 }
 
