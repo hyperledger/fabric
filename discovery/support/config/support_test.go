@@ -291,25 +291,6 @@ func TestValidateConfigEnvelope(t *testing.T) {
 			},
 			containsError: "field Config.ChannelGroup.Values is nil",
 		},
-		{
-			name: "no OrdererAddressesKey in ChannelGroup Values",
-			ce: &common.ConfigEnvelope{
-				Config: &common.Config{
-					ChannelGroup: &common.ConfigGroup{
-						Values: map[string]*common.ConfigValue{},
-						Groups: map[string]*common.ConfigGroup{
-							channelconfig.ApplicationGroupKey: {
-								Groups: map[string]*common.ConfigGroup{},
-							},
-							channelconfig.OrdererGroupKey: {
-								Groups: map[string]*common.ConfigGroup{},
-							},
-						},
-					},
-				},
-			},
-			containsError: "field Config.ChannelGroup.Values is empty",
-		},
 	}
 
 	for _, test := range tests {
@@ -341,7 +322,7 @@ func TestOrdererEndpoints(t *testing.T) {
 		}, res.Orderers)
 	})
 
-	t.Run("Per org endpoints", func(t *testing.T) {
+	t.Run("Per org endpoints alongside global endpoints", func(t *testing.T) {
 		block, err := test.MakeGenesisBlock("mychannel")
 		assert.NoError(t, err)
 
@@ -361,6 +342,43 @@ func TestOrdererEndpoints(t *testing.T) {
 			"aBadOrg":    {},
 		}, res.Orderers)
 	})
+
+	t.Run("Per org endpoints without global endpoints", func(t *testing.T) {
+		block, err := test.MakeGenesisBlock("mychannel")
+		assert.NoError(t, err)
+
+		fakeBlockGetter := &mocks.ConfigBlockGetter{}
+		cs := config.NewDiscoverySupport(fakeBlockGetter)
+
+		fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(0, block)
+
+		removeGlobalEndpoints(t, block)
+		injectAdditionalEndpointPair(t, block, "perOrgEndpoint:7050", "SampleOrg")
+		injectAdditionalEndpointPair(t, block, "endpointWithoutAPortName", "aBadOrg")
+
+		res, err := cs.Config("test")
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]*discovery.Endpoints{
+			"SampleOrg": {Endpoint: []*discovery.Endpoint{{Host: "perOrgEndpoint", Port: 7050}}},
+			"aBadOrg":   {},
+		}, res.Orderers)
+	})
+}
+
+func removeGlobalEndpoints(t *testing.T, block *common.Block) {
+	// Unwrap the layers until we reach the orderer addresses
+	env, err := utils.ExtractEnvelope(block, 0)
+	assert.NoError(t, err)
+	payload, err := utils.ExtractPayload(env)
+	assert.NoError(t, err)
+	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
+	assert.NoError(t, err)
+	// Remove the orderer addresses
+	delete(confEnv.Config.ChannelGroup.Values, channelconfig.OrdererAddressesKey)
+	// And put it back into the block
+	payload.Data = utils.MarshalOrPanic(confEnv)
+	env.Payload = utils.MarshalOrPanic(payload)
+	block.Data.Data[0] = utils.MarshalOrPanic(env)
 }
 
 func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
