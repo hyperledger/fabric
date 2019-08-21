@@ -366,8 +366,10 @@ func createProposalFromCDS(chainID string, msg proto.Message, creator []byte, pr
 func ComputeTxID(nonce, creator []byte) string {
 	// TODO: Get the Hash function to be used from
 	// channel configuration
-	digest := sha256.Sum256(append(nonce, creator...))
-	return hex.EncodeToString(digest[:])
+	hasher := sha256.New()
+	hasher.Write(nonce)
+	hasher.Write(creator)
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 // CheckTxID checks that txid is equal to the Hash computed
