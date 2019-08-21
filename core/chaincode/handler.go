@@ -112,7 +112,7 @@ type Handler struct {
 	ActiveTransactions TransactionRegistry
 	// BuiltinSCCs can be used to determine if a name is associated with a system chaincode
 	BuiltinSCCs scc.BuiltinSCCs
-	// QueryResponeBuilder is used to build query responses
+	// QueryResponseBuilder is used to build query responses
 	QueryResponseBuilder QueryResponseBuilder
 	// LedgerGetter is used to get the ledger associated with a channel
 	LedgerGetter LedgerGetter
