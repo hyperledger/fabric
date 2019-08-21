@@ -235,14 +235,19 @@ func getSignedData(signedProposal *pb.SignedProposal) (protoutil.SignedData, err
 		return protoutil.SignedData{}, err
 	}
 
-	creator, _, err := protoutil.GetChaincodeProposalContext(proposal)
+	hdr, err := protoutil.UnmarshalHeader(proposal.Header)
+	if err != nil {
+		return protoutil.SignedData{}, err
+	}
+
+	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		return protoutil.SignedData{}, err
 	}
 
 	return protoutil.SignedData{
 		Data:      signedProposal.ProposalBytes,
-		Identity:  creator,
+		Identity:  shdr.Creator,
 		Signature: signedProposal.Signature,
 	}, nil
 }

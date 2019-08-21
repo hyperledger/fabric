@@ -19,66 +19,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GetChaincodeInvocationSpec get the ChaincodeInvocationSpec from the proposal
-func GetChaincodeInvocationSpec(prop *peer.Proposal) (*peer.ChaincodeInvocationSpec, error) {
-	if prop == nil {
-		return nil, errors.New("proposal is nil")
-	}
-	_, err := UnmarshalHeader(prop.Header)
-	if err != nil {
-		return nil, err
-	}
-	ccPropPayload, err := UnmarshalChaincodeProposalPayload(prop.Payload)
-	if err != nil {
-		return nil, err
-	}
-	cis := &peer.ChaincodeInvocationSpec{}
-	err = proto.Unmarshal(ccPropPayload.Input, cis)
-	return cis, errors.Wrap(err, "error unmarshaling ChaincodeInvocationSpec")
-}
-
-// GetChaincodeProposalContext returns creator and transient
-func GetChaincodeProposalContext(prop *peer.Proposal) ([]byte, map[string][]byte, error) {
-	if prop == nil {
-		return nil, nil, errors.New("proposal is nil")
-	}
-	if len(prop.Header) == 0 {
-		return nil, nil, errors.New("proposal's header is nil")
-	}
-	if len(prop.Payload) == 0 {
-		return nil, nil, errors.New("proposal's payload is nil")
-	}
-	// get back the header
-	hdr, err := UnmarshalHeader(prop.Header)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "error extracting header from proposal")
-	}
-	if hdr == nil {
-		return nil, nil, errors.New("unmarshaled header is nil")
-	}
-
-	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "error extracting channel header from proposal")
-	}
-
-	if err = validateChannelHeaderType(chdr, []common.HeaderType{common.HeaderType_ENDORSER_TRANSACTION, common.HeaderType_CONFIG}); err != nil {
-		return nil, nil, errors.WithMessage(err, "invalid proposal")
-	}
-
-	shdr, err := UnmarshalSignatureHeader(hdr.SignatureHeader)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "error extracting signature header from proposal")
-	}
-
-	ccPropPayload, err := UnmarshalChaincodeProposalPayload(prop.Payload)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return shdr.Creator, ccPropPayload.TransientMap, nil
-}
-
 func validateChannelHeaderType(chdr *common.ChannelHeader, expectedTypes []common.HeaderType) error {
 	for _, t := range expectedTypes {
 		if common.HeaderType(chdr.Type) == t {
