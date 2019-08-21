@@ -247,17 +247,6 @@ var _ = Describe("UnpackProposal", func() {
 		})
 	})
 
-	Context("when the payload visibility is set", func() {
-		BeforeEach(func() {
-			chaincodeHeaderExtension.PayloadVisibility = []byte("anything")
-		})
-
-		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("invalid payload visibility field"))
-		})
-	})
-
 	Context("when the chaincode invocation spec is invalid", func() {
 		BeforeEach(func() {
 			marshalChaincodeInvocationSpec = func() []byte {

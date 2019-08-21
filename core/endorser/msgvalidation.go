@@ -78,18 +78,6 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 		return nil, errors.New("ChaincodeHeaderExtension.ChaincodeId.Name is empty")
 	}
 
-	//    - ensure that the visibility field has some value we understand
-	// currently the fabric only supports full visibility: this means that
-	// there are no restrictions on which parts of the proposal payload will
-	// be visible in the final transaction; this default approach requires
-	// no additional instructions in the PayloadVisibility field which is
-	// therefore expected to be nil; however the fabric may be extended to
-	// encode more elaborate visibility mechanisms that shall be encoded in
-	// this field (and handled appropriately by the peer)
-	if chaincodeHdrExt.PayloadVisibility != nil {
-		return nil, errors.New("invalid payload visibility field")
-	}
-
 	cis, err := protoutil.GetChaincodeInvocationSpec(prop)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get invocation spec")
