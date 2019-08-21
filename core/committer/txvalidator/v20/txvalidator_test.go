@@ -54,6 +54,9 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	mockDispatcher := &mockDispatcher{}
 	mockLedger := &mocks.LedgerResources{}
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
@@ -64,6 +67,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       mockDispatcher,
 		LedgerResources:  mockLedger,
+		CryptoProvider:   cryptoProvider,
 	}
 
 	sr := [][]byte{}
@@ -118,6 +122,9 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	mockDispatcher := &mockDispatcher{}
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(true)
@@ -129,6 +136,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       mockDispatcher,
 		LedgerResources:  mockLedger,
+		CryptoProvider:   cryptoProvider,
 	}
 
 	envs := []*common.Envelope{}
@@ -163,6 +171,9 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 }
 
 func TestTxValidationFailure_InvalidTxid(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	mockLedger := &mocks.LedgerResources{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Water, water, everywhere, nor any drop to drink"))
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
@@ -172,10 +183,9 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       &mockDispatcher{},
 		LedgerResources:  mockLedger,
+		CryptoProvider:   cryptoProvider,
 	}
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
 	mockSigner, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 	mockSignerSerialized, err := mockSigner.Serialize()

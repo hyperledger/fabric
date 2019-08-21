@@ -128,11 +128,14 @@ func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *tmocks.Applicatio
 	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
 	factory.On("New").Return(plugin)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	theValidator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: cpb, MSPManagerVal: mspMgr},
 		pm,
+		cryptoProvider,
 	)
 
 	return theLedger,
@@ -1632,7 +1635,9 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	support, l, cleanup := createCustomSupportAndLedger(t)
 	defer cleanup()
 
-	v := txvalidatorv14.NewTxValidator("", semaphore.New(10), support, pm)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	v := txvalidatorv14.NewTxValidator("", semaphore.New(10), support, pm, cryptoProvider)
 
 	ccID := "mycc"
 
@@ -1645,7 +1650,7 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	}
 
 	// Perform a validation of a block
-	err := v.Validate(b)
+	err = v.Validate(b)
 	assert.NoError(t, err)
 	assertValid(b, t)
 	// Record the number of times the capabilities and the MSP Manager were invoked
@@ -1675,11 +1680,14 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 func TestLedgerIsNoAvailable(t *testing.T) {
 	theLedger := new(mockLedger)
 	pm := &mocks.Mapper{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
+		cryptoProvider,
 	)
 
 	ccID := "mycc"
@@ -1696,7 +1704,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 
-	err := validator.Validate(b)
+	err = validator.Validate(b)
 
 	assertion := assert.New(t)
 	// We suppose to get the error which indicates we cannot commit the block
@@ -1708,11 +1716,14 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 	theLedger := new(mockLedger)
 	pm := &mocks.Mapper{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
+		cryptoProvider,
 	)
 
 	ccID := "mycc"
@@ -1725,7 +1736,7 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 
-	err := validator.Validate(b)
+	err = validator.Validate(b)
 
 	assertion := assert.New(t)
 	// We expect a validation error because the ledger wasn't ready to tell us whether there was a tx with that ID or not
@@ -1735,11 +1746,14 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 func TestDuplicateTxId(t *testing.T) {
 	theLedger := new(mockLedger)
 	pm := &mocks.Mapper{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
+		cryptoProvider,
 	)
 
 	ccID := "mycc"
@@ -1752,7 +1766,7 @@ func TestDuplicateTxId(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 
-	err := validator.Validate(b)
+	err = validator.Validate(b)
 
 	assertion := assert.New(t)
 	// We expect no validation error because we simply mark the tx as invalid
@@ -1773,11 +1787,14 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("invalid tx"))
 	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
+		cryptoProvider,
 	)
 
 	ccID := "mycc"
@@ -1804,7 +1821,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	}
 
 	// Keep default callback
-	err := validator.Validate(b)
+	err = validator.Validate(b)
 	// Restore default callback
 	assert.NoError(t, err)
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
@@ -1864,13 +1881,16 @@ func TestValidationPluginNotFound(t *testing.T) {
 
 	pm := &mocks.Mapper{}
 	pm.On("FactoryByName", vp.Name("vscc")).Return(nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: l, ACVal: preV12Capabilities()},
 		pm,
+		cryptoProvider,
 	)
-	err := validator.Validate(b)
+	err = validator.Validate(b)
 	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
 	assert.Contains(t, executionErr.Error(), "plugin with name vscc wasn't found")
 }

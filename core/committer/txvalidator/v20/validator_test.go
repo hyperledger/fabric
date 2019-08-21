@@ -189,6 +189,7 @@ func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *supportmocks.Identi
 		mockCR,
 		pm,
 		mockCpmg,
+		cryptoProvider,
 	)
 
 	return v, mockQE, mockID, mockCR
@@ -1096,6 +1097,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
+		cryptoProvider,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1169,6 +1171,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
+		cryptoProvider,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1221,6 +1224,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
+		cryptoProvider,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)

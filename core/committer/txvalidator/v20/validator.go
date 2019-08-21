@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -111,6 +111,7 @@ type TxValidator struct {
 	ChannelResources ChannelResources
 	LedgerResources  LedgerResources
 	Dispatcher       Dispatcher
+	CryptoProvider   bccsp.BCCSP
 }
 
 var logger = flogging.MustGetLogger("committer.txvalidator")
@@ -138,6 +139,7 @@ func NewTxValidator(
 	cor plugindispatcher.CollectionResources,
 	pm plugin.Mapper,
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter,
+	cryptoProvider bccsp.BCCSP,
 ) *TxValidator {
 	// Encapsulates interface implementation
 	pluginValidator := plugindispatcher.NewPluginValidator(pm, ler, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr}, channelPolicyManagerGetter, cor)
@@ -147,6 +149,7 @@ func NewTxValidator(
 		ChannelResources: cr,
 		LedgerResources:  ler,
 		Dispatcher:       plugindispatcher.New(channelID, cr, ler, lcr, pluginValidator),
+		CryptoProvider:   cryptoProvider,
 	}
 }
 
@@ -324,7 +327,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		var err error
 		var txResult peer.TxValidationCode
 
-		if payload, txResult = validation.ValidateTransaction(env, factory.GetDefault()); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = validation.ValidateTransaction(env, v.CryptoProvider); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,
