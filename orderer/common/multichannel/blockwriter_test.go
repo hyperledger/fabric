@@ -9,7 +9,8 @@ package multichannel
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -32,6 +33,7 @@ type mockBlockWriterSupport struct {
 	identity.SignerSerializer
 	blockledger.ReadWriter
 	fakeConfig *mock.OrdererConfig
+	bccsp      bccsp.BCCSP
 }
 
 func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {
@@ -39,7 +41,7 @@ func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {
 }
 
 func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error) {
-	return channelconfig.NewBundle(channelID, config, factory.GetDefault())
+	return channelconfig.NewBundle(channelID, config, mbws.bccsp)
 }
 
 func (mbws mockBlockWriterSupport) SharedConfig() newchannelconfig.Orderer {
@@ -197,12 +199,16 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	bw := newBlockWriter(genesisBlockSys, nil,
 		&mockBlockWriterSupport{
 			SignerSerializer: mockCrypto(),
 			ReadWriter:       l,
 			Validator:        &mockconfigtx.Validator{ChainIDVal: genesisconfig.TestChainID},
 			fakeConfig:       fakeConfig,
+			bccsp:            cryptoProvider,
 		},
 	)
 
@@ -233,12 +239,16 @@ func TestMigrationWriteConfig(t *testing.T) {
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")
 	fakeConfig.ConsensusStateReturns(orderer.ConsensusType_STATE_MAINTENANCE)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	bw := newBlockWriter(genesisBlockSys, nil,
 		&mockBlockWriterSupport{
 			SignerSerializer: mockCrypto(),
 			ReadWriter:       l,
 			Validator:        &mockconfigtx.Validator{ChainIDVal: genesisconfig.TestChainID},
 			fakeConfig:       fakeConfig,
+			bccsp:            cryptoProvider,
 		},
 	)
 
@@ -268,12 +278,16 @@ func TestRaceWriteConfig(t *testing.T) {
 
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	bw := newBlockWriter(genesisBlockSys, nil,
 		&mockBlockWriterSupport{
 			SignerSerializer: mockCrypto(),
 			ReadWriter:       l,
 			Validator:        &mockconfigtx.Validator{},
 			fakeConfig:       fakeConfig,
+			bccsp:            cryptoProvider,
 		},
 	)
 

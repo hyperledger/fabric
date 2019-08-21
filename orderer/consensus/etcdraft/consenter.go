@@ -14,6 +14,7 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/comm"
@@ -218,7 +219,9 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		opts,
 		c.Communication,
 		rpc,
-		func() (BlockPuller, error) { return newBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster) },
+		func() (BlockPuller, error) {
+			return newBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, factory.GetDefault())
+		},
 		nil,
 	)
 }

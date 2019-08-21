@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -56,7 +57,7 @@ func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, f
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}
 	pullerConfig := cluster.PullerConfigFromTopLevelConfig(systemChannelName, ri.conf, ri.secOpts.Key, ri.secOpts.Certificate, ri.signer)
-	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, bootstrapBlock, ri.verifierRetriever)
+	puller, err := cluster.BlockPullerFromConfigBlock(pullerConfig, bootstrapBlock, ri.verifierRetriever, factory.GetDefault())
 	if err != nil {
 		ri.logger.Panicf("Failed creating puller config from bootstrap block: %v", err)
 	}
@@ -333,7 +334,7 @@ func (vl *verifierLoader) loadVerifier(chain string) cluster.BlockVerifier {
 
 // ValidateBootstrapBlock returns whether this block can be used as a bootstrap block.
 // A bootstrap block is a block of a system channel, and needs to have a ConsortiumsConfig.
-func ValidateBootstrapBlock(block *common.Block) error {
+func ValidateBootstrapBlock(block *common.Block, bccsp bccsp.BCCSP) error {
 	if block == nil {
 		return errors.New("nil block")
 	}
@@ -347,7 +348,7 @@ func ValidateBootstrapBlock(block *common.Block) error {
 		return errors.Wrap(err, "failed extracting envelope from block")
 	}
 
-	bundle, err := channelconfig.NewBundleFromEnvelope(firstTransaction, factory.GetDefault())
+	bundle, err := channelconfig.NewBundleFromEnvelope(firstTransaction, bccsp)
 	if err != nil {
 		return err
 	}

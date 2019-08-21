@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -348,7 +349,7 @@ type EndpointCriteria struct {
 
 // EndpointconfigFromConfigBlock retrieves TLS CA certificates and endpoints
 // from a config block.
-func EndpointconfigFromConfigBlock(block *common.Block) ([]EndpointCriteria, error) {
+func EndpointconfigFromConfigBlock(block *common.Block, bccsp bccsp.BCCSP) ([]EndpointCriteria, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
@@ -357,7 +358,7 @@ func EndpointconfigFromConfigBlock(block *common.Block) ([]EndpointCriteria, err
 		return nil, err
 	}
 
-	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, factory.GetDefault())
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, bccsp)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
 	}
@@ -521,11 +522,12 @@ func (interceptor *LedgerInterceptor) Append(block *common.Block) error {
 // BlockVerifierAssembler creates a BlockVerifier out of a config envelope
 type BlockVerifierAssembler struct {
 	Logger *flogging.FabricLogger
+	BCCSP  bccsp.BCCSP
 }
 
 // VerifierFromConfig creates a BlockVerifier from the given configuration.
 func (bva *BlockVerifierAssembler) VerifierFromConfig(configuration *common.ConfigEnvelope, channel string) (BlockVerifier, error) {
-	bundle, err := channelconfig.NewBundle(channel, configuration.Config, factory.GetDefault())
+	bundle, err := channelconfig.NewBundle(channel, configuration.Config, bva.BCCSP)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed extracting bundle from envelope")
 	}

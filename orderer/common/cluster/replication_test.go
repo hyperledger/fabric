@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -856,6 +857,9 @@ func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
 	validBlock := &common.Block{}
 	assert.NoError(t, proto.Unmarshal(blockBytes, validBlock))
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	for _, testCase := range []struct {
 		name         string
 		expectedErr  string
@@ -897,7 +901,7 @@ func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			verifierRetriever := &mocks.VerifierRetriever{}
 			verifierRetriever.On("RetrieveVerifier", mock.Anything).Return(&cluster.NoopBlockVerifier{})
-			bp, err := cluster.BlockPullerFromConfigBlock(testCase.pullerConfig, testCase.block, verifierRetriever)
+			bp, err := cluster.BlockPullerFromConfigBlock(testCase.pullerConfig, testCase.block, verifierRetriever, cryptoProvider)
 			assert.EqualError(t, err, testCase.expectedErr)
 			assert.Nil(t, bp)
 		})
@@ -968,6 +972,9 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 		osn.addExpectPullAssert(0)
 	}
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	bp, err := cluster.BlockPullerFromConfigBlock(cluster.PullerConfig{
 		TLSCert:             tlsCert,
 		TLSKey:              tlsKey,
@@ -975,7 +982,7 @@ func testBlockPullerFromConfig(t *testing.T, blockVerifiers []cluster.BlockVerif
 		Channel:             "mychannel",
 		Signer:              &mocks.SignerSerializer{},
 		Timeout:             time.Hour,
-	}, validBlock, verifierRetriever)
+	}, validBlock, verifierRetriever, cryptoProvider)
 	bp.RetryTimeout = time.Millisecond * 10
 	assert.NoError(t, err)
 	defer bp.Close()

@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -143,7 +144,7 @@ func (cifs *CCInfoFSImpl) GetChaincodeDepSpec(ccNameVersion string) (*pb.Chainco
 // GetChaincodeFromPath this is a wrapper for hiding package implementation.
 func (*CCInfoFSImpl) GetChaincodeFromPath(ccNameVersion string, path string) (CCPackage, error) {
 	// try raw CDS
-	cccdspack := &CDSPackage{}
+	cccdspack := &CDSPackage{GetHasher: factory.GetDefault()}
 	_, _, err := cccdspack.InitFromPath(ccNameVersion, path)
 	if err != nil {
 		// try signed CDS
@@ -169,7 +170,7 @@ func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackag
 	if err != nil {
 		return nil, err
 	}
-	cccdspack := &CDSPackage{}
+	cccdspack := &CDSPackage{GetHasher: factory.GetDefault()}
 	if _, err := cccdspack.InitFromBuffer(buf); err != nil {
 		return nil, err
 	}
@@ -260,7 +261,7 @@ func GetChaincodeData(ccNameVersion string) (*ChaincodeData, error) {
 // till the right package is found
 func GetCCPackage(buf []byte) (CCPackage, error) {
 	// try raw CDS
-	cds := &CDSPackage{}
+	cds := &CDSPackage{GetHasher: factory.GetDefault()}
 	if ccdata, err := cds.InitFromBuffer(buf); err != nil {
 		cds = nil
 	} else {

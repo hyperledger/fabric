@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
@@ -1065,6 +1066,9 @@ func TestValidateBootstrapBlock(t *testing.T) {
 	err = proto.Unmarshal(systemChannelBlockBytes, systemBlock)
 	assert.NoError(t, err)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	for _, testCase := range []struct {
 		description   string
 		block         *common.Block
@@ -1100,7 +1104,7 @@ func TestValidateBootstrapBlock(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			err := ValidateBootstrapBlock(testCase.block)
+			err := ValidateBootstrapBlock(testCase.block, cryptoProvider)
 			if testCase.expectedError == "" {
 				assert.NoError(t, err)
 				return
