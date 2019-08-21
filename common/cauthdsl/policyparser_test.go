@@ -228,6 +228,37 @@ func TestBadStringsNoPanic(t *testing.T) {
 	assert.EqualError(t, err, "unrecognized token 'Bmember' in policy string")
 }
 
+func TestNodeOUs(t *testing.T) {
+	p1, err := FromString("OR('A.peer', 'B.admin', 'C.orderer', 'D.client')")
+	assert.NoError(t, err)
+
+	principals := make([]*msp.MSPPrincipal, 0)
+
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: "A"})})
+
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "B"})})
+
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_ORDERER, MspIdentifier: "C"})})
+
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: "D"})})
+
+	p2 := &common.SignaturePolicyEnvelope{
+		Version:    0,
+		Rule:       NOutOf(1, []*common.SignaturePolicy{SignedBy(0), SignedBy(1), SignedBy(2), SignedBy(3)}),
+		Identities: principals,
+	}
+
+	assert.Equal(t, p1, p2)
+}
+
 func TestOutOfNumIsString(t *testing.T) {
 	p1, err := FromString("OutOf('1', 'A.member', 'B.member')")
 	assert.NoError(t, err)

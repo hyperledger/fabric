@@ -38,17 +38,17 @@ const (
 
 // Role values for principals
 const (
-	RoleAdmin  = "admin"
-	RoleMember = "member"
-	RoleClient = "client"
-	RolePeer   = "peer"
-	// RoleOrderer = "orderer" TODO
+	RoleAdmin   = "admin"
+	RoleMember  = "member"
+	RoleClient  = "client"
+	RolePeer    = "peer"
+	RoleOrderer = "orderer"
 )
 
 var (
 	regex = regexp.MustCompile(
-		fmt.Sprintf("^([[:alnum:].-]+)([.])(%s|%s|%s|%s)$",
-			RoleAdmin, RoleMember, RoleClient, RolePeer),
+		fmt.Sprintf("^([[:alnum:].-]+)([.])(%s|%s|%s|%s|%s)$",
+			RoleAdmin, RoleMember, RoleClient, RolePeer, RoleOrderer),
 	)
 	regexErr = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
 )
@@ -180,6 +180,8 @@ func secondPass(args ...interface{}) (interface{}, error) {
 				r = msp.MSPRole_CLIENT
 			case RolePeer:
 				r = msp.MSPRole_PEER
+			case RoleOrderer:
+				r = msp.MSPRole_ORDERER
 			default:
 				return nil, fmt.Errorf("Error parsing role %s", t)
 			}
