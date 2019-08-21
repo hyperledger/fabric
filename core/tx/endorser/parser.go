@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package endorsertx
 
 import (
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/pkg/tx"
 	"github.com/hyperledger/fabric/protoutil"
@@ -25,12 +26,54 @@ type EndorserTx struct {
 	Endorsements []*peer.Endorsement
 }
 
+func validateHeaders(
+	cHdr *common.ChannelHeader,
+	sHdr *common.SignatureHeader,
+	hdrExt *peer.ChaincodeHeaderExtension,
+) error {
+	/******************************************/
+	/*****VALIDATION OF THE CHANNEL HEADER*****/
+	/******************************************/
+
+	if cHdr.Epoch != 0 {
+		return errors.Errorf("invalid Epoch in ChannelHeader. Expected 0, got [%d]", cHdr.Epoch)
+	}
+
+	if cHdr.Version != 0 {
+		return errors.Errorf("invalid version in ChannelHeader. Expected 0, got [%d]", cHdr.Version)
+	}
+
+	/********************************************/
+	/*****VALIDATION OF THE SIGNATURE HEADER*****/
+	/********************************************/
+
+	if len(sHdr.Nonce) == 0 {
+		return errors.New("empty nonce")
+	}
+
+	if len(sHdr.Creator) == 0 {
+		return errors.New("empty creator")
+	}
+
+	/********************************************/
+	/*****VALIDATION OF THE HEADER EXTENSION*****/
+	/********************************************/
+
+	if hdrExt.ChaincodeId == nil {
+		return errors.New("nil ChaincodeId")
+	}
+
+	if hdrExt.ChaincodeId.Name == "" {
+		return errors.New("empty chaincode name in chaincode id")
+	}
+
+	return nil
+}
+
 // NewEndorserTx receives a tx.Envelope containing a partially
 // unmarshalled endorser transaction and returns an EndorserTx
 // instance (or an error)
 func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
-
-	// TODO FAB-16170: validate headers
 
 	if len(txenv.ChannelHeader.Extension) == 0 {
 		return nil, errors.New("empty header extension")
@@ -38,6 +81,15 @@ func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 
 	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(
 		txenv.ChannelHeader.Extension,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validateHeaders(
+		txenv.ChannelHeader,
+		txenv.SignatureHeader,
+		hdrExt,
 	)
 	if err != nil {
 		return nil, err
