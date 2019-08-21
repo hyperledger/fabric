@@ -239,12 +239,6 @@ func main() {
 			profileConfig = genesisconfig.Load(profile)
 		}
 	}
-	var topLevelConfig *genesisconfig.TopLevel
-	if configPath != "" {
-		topLevelConfig = genesisconfig.LoadTopLevel(configPath)
-	} else {
-		topLevelConfig = genesisconfig.LoadTopLevel()
-	}
 
 	var baseProfile *genesisconfig.Profile
 	if channelCreateTxBaseProfile != "" {
@@ -289,6 +283,13 @@ func main() {
 	}
 
 	if printOrg != "" {
+		var topLevelConfig *genesisconfig.TopLevel
+		if configPath != "" {
+			topLevelConfig = genesisconfig.LoadTopLevel(configPath)
+		} else {
+			topLevelConfig = genesisconfig.LoadTopLevel()
+		}
+
 		if err := doPrintOrg(topLevelConfig, printOrg); err != nil {
 			logger.Fatalf("Error on printOrg: %s", err)
 		}
