@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
@@ -72,6 +73,12 @@ func UnmarshalSignatureHeader(bytes []byte) (*cb.SignatureHeader, error) {
 	sh := &common.SignatureHeader{}
 	err := proto.Unmarshal(bytes, sh)
 	return sh, errors.Wrap(err, "error unmarshaling SignatureHeader")
+}
+
+func UnmarshalSerializedIdentity(bytes []byte) (*msp.SerializedIdentity, error) {
+	sid := &msp.SerializedIdentity{}
+	err := proto.Unmarshal(bytes, sid)
+	return sid, errors.Wrap(err, "error unmarshaling SerializedIdentity")
 }
 
 // UnmarshalHeader unmarshals bytes to a Header

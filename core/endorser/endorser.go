@@ -226,10 +226,10 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 func (e *Endorser) preProcess(up *UnpackedProposal, channel *Channel) error {
 	// at first, we check whether the message is valid
 
-	err := ValidateUnpackedProposal(up, channel.IdentityDeserializer)
+	err := up.Validate(channel.IdentityDeserializer)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
-		return err
+		return errors.WithMessage(err, "error validating proposal")
 	}
 
 	endorserLogger.Debugf("[%s][%s] processing txid: %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChannelHeader.TxId)

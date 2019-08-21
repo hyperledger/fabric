@@ -7,11 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package endorser_test
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/hyperledger/fabric/core/endorser"
+	"github.com/hyperledger/fabric/core/endorser/fake"
 	cb "github.com/hyperledger/fabric/protos/common"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 
@@ -268,6 +272,187 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).To(MatchError("chaincode input did not contain any input"))
+		})
+	})
+})
+
+var _ = Describe("Validate", func() {
+	var (
+		up *endorser.UnpackedProposal
+
+		fakeIdentity             *fake.Identity
+		fakeIdentityDeserializer *fake.IdentityDeserializer
+	)
+
+	BeforeEach(func() {
+		up = &endorser.UnpackedProposal{
+			SignedProposal: &pb.SignedProposal{
+				Signature:     []byte("signature"),
+				ProposalBytes: []byte("payload"),
+			},
+			ChannelHeader: &cb.ChannelHeader{
+				ChannelId: "channel-id",
+				Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				TxId:      "876a1777b78e5e3a6d1aabf8b5a11b893c3838285b2f5eedca7d23e25365fcfd",
+			},
+			SignatureHeader: &cb.SignatureHeader{
+				Nonce: []byte("nonce"),
+				Creator: protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
+					Mspid:   "mspid",
+					IdBytes: []byte("identity"),
+				}),
+			},
+		}
+
+		fakeIdentity = &fake.Identity{}
+
+		fakeIdentityDeserializer = &fake.IdentityDeserializer{}
+		fakeIdentityDeserializer.DeserializeIdentityReturns(fakeIdentity, nil)
+	})
+
+	It("validates the proposal", func() {
+		err := up.Validate(fakeIdentityDeserializer)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(fakeIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(1))
+		creator := fakeIdentityDeserializer.DeserializeIdentityArgsForCall(0)
+		Expect(creator).To(Equal(protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
+			Mspid:   "mspid",
+			IdBytes: []byte("identity"),
+		})))
+
+		Expect(fakeIdentity.ValidateCallCount()).To(Equal(1))
+		Expect(fakeIdentity.VerifyCallCount()).To(Equal(1))
+		payload, sig := fakeIdentity.VerifyArgsForCall(0)
+		Expect(payload).To(Equal([]byte("payload")))
+		Expect(sig).To(Equal([]byte("signature")))
+	})
+
+	Context("when the header type is config", func() {
+		BeforeEach(func() {
+			up.ChannelHeader = &cb.ChannelHeader{
+				Type: int32(cb.HeaderType_CONFIG),
+				TxId: "876a1777b78e5e3a6d1aabf8b5a11b893c3838285b2f5eedca7d23e25365fcfd",
+			}
+		})
+
+		It("preserves buggy behavior and does not error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("when the header type is bad", func() {
+		BeforeEach(func() {
+			up.ChannelHeader = &cb.ChannelHeader{
+				Type: int32(0),
+				TxId: "876a1777b78e5e3a6d1aabf8b5a11b893c3838285b2f5eedca7d23e25365fcfd",
+			}
+		})
+
+		It("returns an error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("invalid header type MESSAGE"))
+		})
+	})
+
+	Context("when the signature is missing", func() {
+		BeforeEach(func() {
+			up.SignedProposal.Signature = nil
+		})
+
+		It("returns an error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("empty signature bytes"))
+		})
+	})
+
+	Context("when the nonce is missing", func() {
+		BeforeEach(func() {
+			up.SignatureHeader.Nonce = nil
+		})
+
+		It("returns an error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("nonce is empty"))
+		})
+	})
+
+	Context("when the creator is missing", func() {
+		BeforeEach(func() {
+			up.SignatureHeader.Creator = nil
+		})
+
+		It("returns an error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("creator is empty"))
+		})
+	})
+
+	Context("when the txid is wrong", func() {
+		BeforeEach(func() {
+			up.ChannelHeader.TxId = "fake-txid"
+		})
+
+		It("returns an error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("incorrectly computed txid 'fake-txid' -- expected '876a1777b78e5e3a6d1aabf8b5a11b893c3838285b2f5eedca7d23e25365fcfd'"))
+		})
+	})
+
+	Context("when the proposal bytes are missing", func() {
+		BeforeEach(func() {
+			up.SignedProposal.ProposalBytes = nil
+		})
+
+		It("returns an error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("empty proposal bytes"))
+		})
+	})
+
+	Context("when the identity is actually not a validly serialized proto", func() {
+		BeforeEach(func() {
+			up.SignatureHeader.Creator = []byte("garbage")
+			up.ChannelHeader.TxId = "8f9de857052f103caee0fef35f66766562b4b4c2a14af34e9626351de52edfc4"
+		})
+
+		It("returns an auth error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("access denied: channel [channel-id] creator org unknown, creator is malformed"))
+		})
+	})
+
+	Context("when the identity cannot be deserialized", func() {
+		BeforeEach(func() {
+			fakeIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserializing-error"))
+		})
+
+		It("returns a generic auth error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("access denied: channel [channel-id] creator org [mspid]"))
+		})
+	})
+
+	Context("when the identity is not valid", func() {
+		BeforeEach(func() {
+			fakeIdentity.ValidateReturns(fmt.Errorf("fake-validate-error"))
+		})
+
+		It("returns a generic auth error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("access denied: channel [channel-id] creator org [mspid]"))
+		})
+	})
+
+	Context("when the identity signature is not valid", func() {
+		BeforeEach(func() {
+			fakeIdentity.VerifyReturns(fmt.Errorf("fake-verify-error"))
+		})
+
+		It("returns a generic auth error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("access denied: channel [channel-id] creator org [mspid]"))
 		})
 	})
 })
