@@ -41,33 +41,29 @@ func (up *UnpackedProposal) TxID() string {
 // UnpackProposal creates an an *UnpackedProposal which is guaranteed to have
 // no zero-ed fields or it returns an error.
 func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
-	// extract the Proposal message from signedProp
 	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal proposal bytes")
+		return nil, err
 	}
 
-	// 1) look at the ProposalHeader
 	hdr, err := protoutil.UnmarshalHeader(prop.Header)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal header")
+		return nil, err
 	}
 
-	// unpack the header
 	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal channel header")
+		return nil, err
 	}
 
 	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal signature header")
+		return nil, err
 	}
 
-	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
 	chaincodeHdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal header extension")
+		return nil, err
 	}
 
 	if chaincodeHdrExt.ChaincodeId == nil {
@@ -75,12 +71,17 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 	}
 
 	if chaincodeHdrExt.ChaincodeId.Name == "" {
-		return nil, errors.New("ChaincodeHeaderExtension.ChaincodeId.Name is empty")
+		return nil, errors.Errorf("ChaincodeHeaderExtension.ChaincodeId.Name is empty")
 	}
 
-	cis, err := protoutil.GetChaincodeInvocationSpec(prop)
+	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(prop.Payload)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not get invocation spec")
+		return nil, err
+	}
+
+	cis, err := protoutil.UnmarshalChaincodeInvocationSpec(cpp.Input)
+	if err != nil {
+		return nil, err
 	}
 
 	if cis.ChaincodeSpec == nil {
@@ -91,15 +92,10 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 		return nil, errors.Errorf("chaincode input did not contain any input")
 	}
 
-	// unmarshal the chaincode proposal payload
-	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(prop.Payload)
+	cppNoTransient := &pb.ChaincodeProposalPayload{Input: cpp.Input, TransientMap: nil}
+	ppBytes, err := proto.Marshal(cppNoTransient)
 	if err != nil {
-		return nil, err
-	}
-
-	ppBytes, err := protoutil.GetBytesProposalPayloadForTx(cpp)
-	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "could not marshal non-transient portion of payload")
 	}
 
 	// TODO, this was preserved from the proputils stuff, but should this be BCCSP?

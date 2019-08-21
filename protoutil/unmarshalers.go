@@ -32,6 +32,13 @@ func UnmarshalChaincodeDeploymentSpec(code []byte) (*peer.ChaincodeDeploymentSpe
 	return cds, errors.Wrap(err, "error unmarshaling ChaincodeDeploymentSpec")
 }
 
+// UnmarshalChaincodeInvocationSpec unmarshals bytes to a ChaincodeInvocationSpec
+func UnmarshalChaincodeInvocationSpec(encoded []byte) (*peer.ChaincodeInvocationSpec, error) {
+	cis := &peer.ChaincodeInvocationSpec{}
+	err := proto.Unmarshal(encoded, cis)
+	return cis, errors.Wrap(err, "error unmarshaling ChaincodeInvocationSpec")
+}
+
 // UnmarshalPayload unmarshals bytes to a Payload
 func UnmarshalPayload(encoded []byte) (*cb.Payload, error) {
 	payload := &cb.Payload{}
