@@ -9,7 +9,6 @@ package historyleveldb
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
@@ -26,13 +25,8 @@ type LevelHistoryDBQueryExecutor struct {
 
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
 func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
-	var compositeStartKey []byte
-	var compositeEndKey []byte
-	compositeStartKey = constructPartialCompositeHistoryKey(namespace, key, false)
-	compositeEndKey = constructPartialCompositeHistoryKey(namespace, key, true)
-
-	// range scan to find any history records starting with namespace~key
-	dbItr := q.historyDB.db.GetIterator(compositeStartKey, compositeEndKey)
+	rangeScan := constructRangeScan(namespace, key)
+	dbItr := q.historyDB.db.GetIterator(rangeScan.startKey, rangeScan.endKey)
 
 	// By default, dbItr is in the orderer of oldest to newest and its cursor is at the beginning of the entries.
 	// Need to call Last() and Next() to move the cursor to the end of the entries so that we can iterate
@@ -40,42 +34,32 @@ func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key str
 	if dbItr.Last() {
 		dbItr.Next()
 	}
-	return newHistoryScanner(compositeStartKey, namespace, key, dbItr, q.blockStore), nil
+	return &historyScanner{rangeScan, namespace, key, dbItr, q.blockStore}, nil
 }
 
 //historyScanner implements ResultsIterator for iterating through history results
 type historyScanner struct {
-	compositePartialKey []byte //compositePartialKey includes namespace~key
-	namespace           string
-	key                 string
-	dbItr               iterator.Iterator
-	blockStore          blkstorage.BlockStore
-}
-
-func newHistoryScanner(compositePartialKey []byte, namespace string, key string,
-	dbItr iterator.Iterator, blockStore blkstorage.BlockStore) *historyScanner {
-	return &historyScanner{compositePartialKey, namespace, key, dbItr, blockStore}
+	rangeScan  *rangeScan
+	namespace  string
+	key        string
+	dbItr      iterator.Iterator
+	blockStore blkstorage.BlockStore
 }
 
 // Next iterates to the next key, in the order of newest to oldest, from history scanner.
 // It decodes blockNumTranNumBytes to get blockNum and tranNum,
 // loads the block:tran from block storage, finds the key and returns the result.
-// The history keys are in the format of <namespace, len(key), key, blockNum, tranNum>, separated by nil byte "\x00".
 func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 	// call Prev because history query result is returned from newest to oldest
 	if !scanner.dbItr.Prev() {
 		return nil, nil
 	}
 
-	historyKey := scanner.dbItr.Key() // history key is in the form namespace~len(key)~key~blocknum~trannum
-
-	// SplitCompositeKey(namespace~len(key)~key~blocknum~trannum, namespace~len(key)~key~) will return the blocknum~trannum in second position
-	_, blockNumTranNumBytes := splitCompositeHistoryKey(historyKey, scanner.compositePartialKey)
-	blockNum, tranNum, err := decodeBlockNumTranNum(blockNumTranNumBytes)
+	historyKey := scanner.dbItr.Key()
+	blockNum, tranNum, err := scanner.rangeScan.decodeBlockNumTranNum(historyKey)
 	if err != nil {
 		return nil, err
 	}
-
 	logger.Debugf("Found history record for namespace:%s key:%s at blockNumTranNum %v:%v\n",
 		scanner.namespace, scanner.key, blockNum, tranNum)
 
@@ -156,25 +140,4 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 	} //end namespaces loop
 	logger.Debugf("namespace [%s] not found in transaction's ReadWriteSets", namespace)
 	return nil, nil
-}
-
-// decodeBlockNumTranNum decodes blockNumTranNumBytes to get blockNum and tranNum.
-func decodeBlockNumTranNum(blockNumTranNumBytes []byte) (uint64, uint64, error) {
-	blockNum, blockBytesConsumed, err := util.DecodeOrderPreservingVarUint64(blockNumTranNumBytes)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	tranNum, tranBytesConsumed, err := util.DecodeOrderPreservingVarUint64(blockNumTranNumBytes[blockBytesConsumed:])
-	if err != nil {
-		return 0, 0, err
-	}
-
-	// The following error should never happen. Keep the check just in case there is some unknown bug.
-	if blockBytesConsumed+tranBytesConsumed != len(blockNumTranNumBytes) {
-		return 0, 0, errors.Errorf("number of decoded bytes (%d) is not equal to the length of blockNumTranNumBytes (%d)",
-			blockBytesConsumed+tranBytesConsumed, len(blockNumTranNumBytes))
-	}
-
-	return blockNum, tranNum, nil
 }

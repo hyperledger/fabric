@@ -105,34 +105,23 @@ func (h *historyDB) Commit(block *common.Block) error {
 		}
 
 		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
-
-			// extract actions from the envelope message
+			// extract RWSet from transaction
 			respPayload, err := protoutil.GetActionFromEnvelope(envBytes)
 			if err != nil {
 				return err
 			}
-
-			//preparation for extracting RWSet from transaction
 			txRWSet := &rwsetutil.TxRwSet{}
-
-			// Get the Result from the Action and then Unmarshal
-			// it into a TxReadWriteSet using custom unmarshalling
 			if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
 				return err
 			}
-			// for each transaction, loop through the namespaces and writesets
-			// and add a history record for each write
+			// add a history record for each write
 			for _, nsRWSet := range txRWSet.NsRwSets {
 				ns := nsRWSet.NameSpace
 
 				for _, kvWrite := range nsRWSet.KvRwSet.Writes {
-					writeKey := kvWrite.Key
-
-					//composite key for history records is in the form ns~key~blockNo~tranNo
-					compositeHistoryKey := constructCompositeHistoryKey(ns, writeKey, blockNo, tranNo)
-
+					dataKey := constructDataKey(ns, kvWrite.Key, blockNo, tranNo)
 					// No value is required, write an empty byte array (emptyValue) since Put() of nil is not allowed
-					dbBatch.Put(compositeHistoryKey, emptyValue)
+					dbBatch.Put(dataKey, emptyValue)
 				}
 			}
 
