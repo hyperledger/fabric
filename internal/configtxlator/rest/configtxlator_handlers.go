@@ -7,13 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package rest
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/internal/configtxlator/sanitycheck"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -77,38 +75,4 @@ func ComputeUpdateFromConfigs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(encoded)
-}
-
-func SanityCheckConfig(w http.ResponseWriter, r *http.Request) {
-	buf, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, err)
-		return
-	}
-
-	config := &cb.Config{}
-	err = proto.Unmarshal(buf, config)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Error unmarshaling data to common.Config': %s\n", err)
-		return
-	}
-
-	fmt.Printf("Sanity checking %+v\n", config)
-	sanityCheckMessages, err := sanitycheck.Check(config)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error performing sanity check: %s\n", err)
-		return
-	}
-
-	resBytes, err := json.Marshal(sanityCheckMessages)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error marshaling result to JSON: %s\n", err)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(resBytes)
 }
