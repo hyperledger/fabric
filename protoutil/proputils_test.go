@@ -34,9 +34,7 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 
 func TestNilProposal(t *testing.T) {
 	// pass nil to all function which accept *peer.Proposal
-	_, err := protoutil.GetNonce(nil)
-	assert.Error(t, err, "Expected error with nil proposal")
-	_, err = protoutil.GetBytesProposal(nil)
+	_, err := protoutil.GetBytesProposal(nil)
 	assert.Error(t, err, "Expected error with nil proposal")
 	_, err = protoutil.ComputeProposalBinding(nil)
 	assert.Error(t, err, "Expected error with nil proposal")
@@ -66,8 +64,6 @@ func TestBadProposalHeaders(t *testing.T) {
 	}
 	_, err = protoutil.UnmarshalHeader(prop.Header)
 	assert.Error(t, err, "Expected error with malformed proposal header")
-	_, err = protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with malformed proposal header")
 	_, err = protoutil.ComputeProposalBinding(prop)
 	assert.Error(t, err, "Expected error with malformed proposal header")
 
@@ -83,8 +79,6 @@ func TestBadProposalHeaders(t *testing.T) {
 	assert.Error(t, err, "Expected error with malformed signature header")
 	hdrBytes, _ := proto.Marshal(hdr)
 	prop.Header = hdrBytes
-	_, err = protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with malformed signature header")
 	_, err = protoutil.ComputeProposalBinding(prop)
 	assert.Error(t, err, "Expected error with malformed signature header")
 
@@ -92,52 +86,15 @@ func TestBadProposalHeaders(t *testing.T) {
 	chdr, _ = proto.Marshal(&common.ChannelHeader{
 		Type: int32(common.HeaderType_DELIVER_SEEK_INFO),
 	})
-	hdr.ChannelHeader = chdr
-	hdrBytes, _ = proto.Marshal(hdr)
-	prop.Header = hdrBytes
-	_, err = protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with wrong header type")
 
 	// malformed channel header
 	hdr.ChannelHeader = []byte("bad channel header")
 	hdrBytes, _ = proto.Marshal(hdr)
 	prop.Header = hdrBytes
-	_, err = protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with malformed channel header")
 	_, err = protoutil.UnmarshalChaincodeHeaderExtension([]byte("bad header extension"))
 	assert.Error(t, err, "Expected error with malformed channel header")
 	_, err = protoutil.ComputeProposalBinding(prop)
 	assert.Error(t, err, "Expected error with malformed channel header")
-
-}
-
-func TestGetNonce(t *testing.T) {
-	chdr, _ := proto.Marshal(&common.ChannelHeader{
-		Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
-	})
-	hdr, _ := proto.Marshal(&common.Header{
-		ChannelHeader:   chdr,
-		SignatureHeader: []byte{},
-	})
-	prop := &pb.Proposal{
-		Header: hdr,
-	}
-	_, err := protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with nil signature header")
-
-	shdr, _ := proto.Marshal(&common.SignatureHeader{
-		Nonce: []byte("nonce"),
-	})
-	hdr, _ = proto.Marshal(&common.Header{
-		ChannelHeader:   chdr,
-		SignatureHeader: shdr,
-	})
-	prop = &pb.Proposal{
-		Header: hdr,
-	}
-	nonce, err := protoutil.GetNonce(prop)
-	assert.NoError(t, err, "Unexpected error getting nonce")
-	assert.Equal(t, "nonce", string(nonce), "Failed to return the expected nonce")
 
 }
 

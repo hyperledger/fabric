@@ -28,39 +28,6 @@ func validateChannelHeaderType(chdr *common.ChannelHeader, expectedTypes []commo
 	return errors.Errorf("invalid channel header type. expected one of %s, received %s", expectedTypes, common.HeaderType(chdr.Type))
 }
 
-// GetNonce returns the nonce used in Proposal
-func GetNonce(prop *peer.Proposal) ([]byte, error) {
-	if prop == nil {
-		return nil, errors.New("proposal is nil")
-	}
-
-	// get back the header
-	hdr, err := UnmarshalHeader(prop.Header)
-	if err != nil {
-		return nil, err
-	}
-
-	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = validateChannelHeaderType(chdr, []common.HeaderType{common.HeaderType_ENDORSER_TRANSACTION, common.HeaderType_CONFIG}); err != nil {
-		return nil, errors.WithMessage(err, "invalid proposal")
-	}
-
-	shdr, err := UnmarshalSignatureHeader(hdr.SignatureHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	if hdr.SignatureHeader == nil {
-		return nil, errors.New("invalid signature header. cannot be nil")
-	}
-
-	return shdr.Nonce, nil
-}
-
 // CreateChaincodeProposal creates a proposal from given input.
 // It returns the proposal and the transaction id associated to the proposal
 func CreateChaincodeProposal(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
