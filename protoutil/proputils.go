@@ -178,12 +178,6 @@ func GetBytesProposalResponse(pr *peer.ProposalResponse) ([]byte, error) {
 	return respBytes, errors.Wrap(err, "error marshaling ProposalResponse")
 }
 
-// GetBytesProposal returns the bytes of a proposal message
-func GetBytesProposal(prop *peer.Proposal) ([]byte, error) {
-	propBytes, err := proto.Marshal(prop)
-	return propBytes, errors.Wrap(err, "error marshaling Proposal")
-}
-
 // GetBytesHeader get the bytes of Header from the message
 func GetBytesHeader(hdr *common.Header) ([]byte, error) {
 	bytes, err := proto.Marshal(hdr)

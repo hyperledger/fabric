@@ -34,9 +34,7 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 
 func TestNilProposal(t *testing.T) {
 	// pass nil to all function which accept *peer.Proposal
-	_, err := protoutil.GetBytesProposal(nil)
-	assert.Error(t, err, "Expected error with nil proposal")
-	_, err = protoutil.ComputeProposalBinding(nil)
+	_, err := protoutil.ComputeProposalBinding(nil)
 	assert.Error(t, err, "Expected error with nil proposal")
 }
 
@@ -180,7 +178,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// serialize the proposal
-	pBytes, err := protoutil.GetBytesProposal(prop)
+	pBytes, err := proto.Marshal(prop)
 	if err != nil {
 		t.Fatalf("Could not serialize the chaincode proposal, err %s\n", err)
 		return
