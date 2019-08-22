@@ -505,6 +505,7 @@ type ChaincodeInvoke struct {
 	Orderer       string
 	Name          string
 	Ctor          string
+	Transient     string
 	PeerAddresses []string
 	WaitForEvent  bool
 	IsInit        bool
@@ -521,6 +522,10 @@ func (c ChaincodeInvoke) Args() []string {
 		"--orderer", c.Orderer,
 		"--name", c.Name,
 		"--ctor", c.Ctor,
+	}
+
+	if c.Transient != "" {
+		args = append(args, "--transient", c.Transient)
 	}
 	for _, p := range c.PeerAddresses {
 		args = append(args, "--peerAddresses", p)

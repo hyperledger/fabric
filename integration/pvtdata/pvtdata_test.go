@@ -8,6 +8,7 @@ package pvtdata
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -96,7 +97,7 @@ var _ bool = Describe("PrivateData", func() {
 			}
 			helper.deployChaincode(testChaincode)
 			helper.addMarble(testChaincode.Name,
-				`"marble1", "blue", "35", "tom", "99"`,
+				`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`,
 				network.Peer("org1", "peer0"),
 			)
 		})
@@ -122,7 +123,7 @@ var _ bool = Describe("PrivateData", func() {
 
 				It("distributes and allows access to newly added private data per collections_config2", func() {
 					helper.addMarble(testChaincode.Name,
-						`"marble2","yellow","53","jerry","22"`,
+						`{"name":"marble2", "color":"yellow", "size":53, "owner":"jerry", "price":22}`,
 						network.Peer("org2", "peer0"),
 					)
 					helper.assertPvtdataPresencePerCollectionConfig2(testChaincode.Name, "marble2")
@@ -170,71 +171,6 @@ var _ bool = Describe("PrivateData", func() {
 		})
 	})
 
-	// This section verifies that chaincode can return private data hash.
-	// Unlike private data that can only be accessed from authorized peers as defined in the collection config,
-	// private data hash can be queried on any peer in the channel that has the chaincode instantiated.
-	// When calling QueryChaincode with "getMarbleHash", the cc will return the private data hash in collectionMarbles.
-	// When calling QueryChaincode with "getMarblePrivateDetailsHash", the cc will return the private data hash in collectionMarblePrivateDetails.
-	Describe("GetPrivateDataHash", func() {
-		assertGetPrivateDataBehavior := func() {
-			It("gets private data hash by querying chaincode", func() {
-				eligiblePeer := network.Peer("org2", "peer0")
-				ccName := testChaincode.Name
-
-				By("deploying chaincode and adding marble3")
-				helper.deployChaincode(testChaincode)
-				helper.addMarble(ccName, `"marble3","yellow","53","jerry","33"`, eligiblePeer)
-
-				By("verifying getMarbleHash is accessible from all peers that has the chaincode instantiated")
-				peerList := []*nwo.Peer{
-					network.Peer("org1", "peer0"),
-					network.Peer("org2", "peer0"),
-					network.Peer("org3", "peer0")}
-				expectedBytes := util.ComputeStringHash(`{"docType":"marble","name":"marble3","color":"yellow","size":53,"owner":"jerry"}`)
-				verifyPvtdataHash(
-					network,
-					commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "marblesp",
-						Ctor:      `{"Args":["getMarbleHash","marble3"]}`},
-					peerList,
-					expectedBytes)
-
-				By("verifying getMarblePrivateDetailsHash is accessible from all peers that has the chaincode instantiated")
-				expectedBytes = util.ComputeStringHash(`{"docType":"marblePrivateDetails","name":"marble3","price":33}`)
-				verifyPvtdataHash(
-					network,
-					commands.ChaincodeQuery{
-						ChannelID: "testchannel",
-						Name:      "marblesp",
-						Ctor:      `{"Args":["getMarblePrivateDetailsHash","marble3"]}`},
-					peerList,
-					expectedBytes)
-			})
-		}
-
-		Context("chaincode in legacy lifecycle", func() {
-			BeforeEach(func() {
-				testChaincode = chaincode{
-					Chaincode: legacyChaincode,
-					isLegacy:  true,
-				}
-			})
-			assertGetPrivateDataBehavior()
-		})
-
-		Context("chaincode in new lifecycle", func() {
-			BeforeEach(func() {
-				testChaincode = chaincode{
-					Chaincode: newLifecycleChaincode,
-					isLegacy:  false,
-				}
-				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, allPeers...)
-			})
-			assertGetPrivateDataBehavior()
-		})
-	})
-
 	Describe("BlockToLive", func() {
 		assertBlockToLiveBehavior := func() {
 			It("purges private data after BTL and causes new peer not to pull the purged private data", func() {
@@ -244,18 +180,18 @@ var _ bool = Describe("PrivateData", func() {
 
 				By("deploying chaincode and adding marble1")
 				helper.deployChaincode(testChaincode)
-				helper.addMarble(ccName, `"marble1", "blue", "35", "tom", "99"`, eligiblePeer)
+				helper.addMarble(ccName, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, eligiblePeer)
 
 				By("adding three blocks")
 				for i := 0; i < 3; i++ {
-					helper.addMarble(ccName, fmt.Sprintf(`"test-marble-%d", "blue", "35", "tom", "99"`, i), eligiblePeer)
+					helper.addMarble(ccName, fmt.Sprintf(`{"name":"test-marble-%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), eligiblePeer)
 				}
 
 				By("verifying that marble1 still not purged in collection MarblesPD")
 				helper.assertPresentInCollectionMPD(ccName, "marble1", eligiblePeer)
 
 				By("adding one more block")
-				helper.addMarble(ccName, `"fun-marble-3", "blue", "35", "tom", "99"`, eligiblePeer)
+				helper.addMarble(ccName, `{"name":"fun-marble-3", "color":"blue", "size":35, "owner":"tom", "price":99}`, eligiblePeer)
 
 				By("verifying that marble1 purged in collection MarblesPD")
 				helper.assertDoesNotExistInCollectionMPD(ccName, "marble1", eligiblePeer)
@@ -296,51 +232,12 @@ var _ bool = Describe("PrivateData", func() {
 		})
 	})
 
-	Describe("collection ACL while reading private data", func() {
-		assertCollectionACLBehavior := func() {
-			It("does not allow private data reads to non-members", func() {
-				// collections_config4: collectionMarblePrivateDetails - member_only_read is set to true
-				testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
-				helper.deployChaincode(testChaincode)
-				helper.addMarble(
-					testChaincode.Name,
-					`"marble1", "blue", "35", "tom", "99"`,
-					network.Peer("org2", "peer0"),
-				)
-
-				By("querying collectionMarblePrivateDetails on org1-peer0 by org1-user1, shouldn't have read access")
-				helper.assertNoReadAccessToCollectionMPD(testChaincode.Name, "marble1", network.Peer("org1", "peer0"))
-			})
-		}
-
-		Context("chaincode in legacy lifecycle", func() {
-			BeforeEach(func() {
-				testChaincode = chaincode{
-					Chaincode: legacyChaincode,
-					isLegacy:  true,
-				}
-			})
-			assertCollectionACLBehavior()
-		})
-
-		Context("chaincode in new lifecycle", func() {
-			BeforeEach(func() {
-				testChaincode = chaincode{
-					Chaincode: newLifecycleChaincode,
-					isLegacy:  false,
-				}
-				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, allPeers...)
-			})
-			assertCollectionACLBehavior()
-		})
-	})
-
 	Describe("Org removal from collection", func() {
 		assertOrgRemovalBehavior := func() {
 			It("causes removed org not to get new data", func() {
 				testChaincode.CollectionsConfig = collectionConfig("collections_config2.json")
 				helper.deployChaincode(testChaincode)
-				helper.addMarble(testChaincode.Name, `"marble1", "blue", "35", "tom", "99"`, network.Peer("org2", "peer0"))
+				helper.addMarble(testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("org2", "peer0"))
 				helper.assertPvtdataPresencePerCollectionConfig2(testChaincode.Name, "marble1")
 
 				By("upgrading chaincode to remove org3 from collectionMarbles")
@@ -350,7 +247,7 @@ var _ bool = Describe("PrivateData", func() {
 					testChaincode.Sequence = "2"
 				}
 				helper.upgradeChaincode(testChaincode)
-				helper.addMarble(testChaincode.Name, `"marble2", "yellow", "53", "jerry", "22"`, network.Peer("org2", "peer0"))
+				helper.addMarble(testChaincode.Name, `{"name":"marble2", "color":"yellow", "size":53, "owner":"jerry", "price":22}`, network.Peer("org2", "peer0"))
 				helper.assertPvtdataPresencePerCollectionConfig1(testChaincode.Name, "marble2")
 			})
 		}
@@ -402,6 +299,88 @@ var _ bool = Describe("PrivateData", func() {
 			})
 		})
 	})
+
+	Describe("marble APIs invocation", func() {
+		assertMarbleAPIs := func() {
+			It("calls marble APIs: getMarblesByRange, transferMarble, delete, getMarbleHash, getMarblePrivateDetailsHash, ACLBehavior", func() {
+				testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
+				eligiblePeer := network.Peer("org2", "peer0")
+				ccName := testChaincode.Name
+
+				// Verifies marble private chaincode APIs: getMarblesByRange, transferMarble, delete
+
+				By("deploying chaincode and adding five marbles")
+				helper.deployChaincode(testChaincode)
+				for i := 0; i < 5; i++ {
+					helper.addMarble(ccName, fmt.Sprintf(`{"name":"test-marble-%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), eligiblePeer)
+				}
+
+				By("getting marbles by range")
+				expectedMsg := `\Q[{"Key":"test-marble-0", "Record":{"docType":"marble","name":"test-marble-0","color":"blue","size":35,"owner":"tom"}},{"Key":"test-marble-1", "Record":{"docType":"marble","name":"test-marble-1","color":"blue","size":35,"owner":"tom"}}]\E`
+				helper.assertGetMarblesByRange(ccName, `"test-marble-0", "test-marble-2"`, expectedMsg, eligiblePeer)
+
+				By("transferring test-marble-0 to jerry")
+				helper.transferMarble(ccName, `{"name":"test-marble-0", "owner":"jerry"}`, eligiblePeer)
+
+				By("verifying the new ownership of test-marble-0")
+				expectedMsg = fmt.Sprintf(`{"docType":"marble","name":"test-marble-0","color":"blue","size":35,"owner":"jerry"}`)
+				helper.assertOwnershipInCollectionM(ccName, `test-marble-0`, expectedMsg, eligiblePeer)
+
+				By("deleting test-marble-0")
+				helper.deleteMarble(ccName, `{"name":"test-marble-0"}`, eligiblePeer)
+
+				By("verifying the deletion of test-marble-0")
+				helper.assertDoesNotExistInCollectionM(ccName, `test-marble-0`, eligiblePeer)
+
+				// This section verifies that chaincode can return private data hash.
+				// Unlike private data that can only be accessed from authorized peers as defined in the collection config,
+				// private data hash can be queried on any peer in the channel that has the chaincode instantiated.
+				// When calling QueryChaincode with "getMarbleHash", the cc will return the private data hash in collectionMarbles.
+				// When calling QueryChaincode with "getMarblePrivateDetailsHash", the cc will return the private data hash in collectionMarblePrivateDetails.
+
+				peerList := []*nwo.Peer{
+					network.Peer("org1", "peer0"),
+					network.Peer("org2", "peer0"),
+					network.Peer("org3", "peer0")}
+
+				By("verifying getMarbleHash is accessible from all peers that has the chaincode instantiated")
+				expectedBytes := util.ComputeStringHash(`{"docType":"marble","name":"test-marble-1","color":"blue","size":35,"owner":"tom"}`)
+				helper.assertMarblesPrivateHashM(ccName, "test-marble-1", expectedBytes, peerList)
+
+				By("verifying getMarblePrivateDetailsHash is accessible from all peers that has the chaincode instantiated")
+				expectedBytes = util.ComputeStringHash(`{"docType":"marblePrivateDetails","name":"test-marble-1","price":99}`)
+				helper.assertMarblesPrivateDetailsHashMPD(ccName, "test-marble-1", expectedBytes, peerList)
+
+				// collection ACL while reading private data: not allowed to non-members
+				// collections_config4: collectionMarblePrivateDetails - member_only_read is set to true
+
+				By("querying collectionMarblePrivateDetails on org1-peer0 by org1-user1, shouldn't have read access")
+				helper.assertNoReadAccessToCollectionMPD(testChaincode.Name, "test-marble-1", network.Peer("org1", "peer0"))
+			})
+		}
+
+		Context("chaincode in legacy lifecycle", func() {
+			BeforeEach(func() {
+				testChaincode = chaincode{
+					Chaincode: legacyChaincode,
+					isLegacy:  true,
+				}
+			})
+			assertMarbleAPIs()
+		})
+
+		Context("chaincode in new lifecycle", func() {
+			BeforeEach(func() {
+				testChaincode = chaincode{
+					Chaincode: newLifecycleChaincode,
+					isLegacy:  false,
+				}
+				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, allPeers...)
+			})
+			assertMarbleAPIs()
+		})
+	})
+
 })
 
 func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []*nwo.Peer) {
@@ -567,11 +546,60 @@ type testHelper struct {
 }
 
 func (th *testHelper) addMarble(chaincodeName, marbleDetails string, peer *nwo.Peer) {
+	marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(marbleDetails))
+
 	command := commands.ChaincodeInvoke{
 		ChannelID: th.channelID,
 		Orderer:   th.OrdererAddress(th.orderer, nwo.ListenPort),
 		Name:      chaincodeName,
-		Ctor:      fmt.Sprintf(`{"Args":["initMarble",%s]}`, marbleDetails),
+		Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+		Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
+		PeerAddresses: []string{
+			th.PeerAddress(peer, nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	}
+	th.invokeChaincode(peer, command)
+	nwo.WaitUntilEqualLedgerHeight(th.Network, th.channelID, nwo.GetLedgerHeight(th.Network, peer, th.channelID), th.peers...)
+}
+
+func (th *testHelper) deleteMarble(chaincodeName, marbleDelete string, peer *nwo.Peer) {
+	marbleDeleteBase64 := base64.StdEncoding.EncodeToString([]byte(marbleDelete))
+
+	command := commands.ChaincodeInvoke{
+		ChannelID: th.channelID,
+		Orderer:   th.OrdererAddress(th.orderer, nwo.ListenPort),
+		Name:      chaincodeName,
+		Ctor:      fmt.Sprintf(`{"Args":["delete"]}`),
+		Transient: fmt.Sprintf(`{"marble_delete":"%s"}`, marbleDeleteBase64),
+		PeerAddresses: []string{
+			th.PeerAddress(peer, nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	}
+	th.invokeChaincode(peer, command)
+	nwo.WaitUntilEqualLedgerHeight(th.Network, th.channelID, nwo.GetLedgerHeight(th.Network, peer, th.channelID), th.peers...)
+}
+
+func (th *testHelper) assertGetMarblesByRange(chaincodeName, marbleRange string, expectedMsg string, peer *nwo.Peer) {
+
+	command := commands.ChaincodeQuery{
+		ChannelID: th.channelID,
+		Name:      chaincodeName,
+		Ctor:      fmt.Sprintf(`{"Args":["getMarblesByRange", %s]}`, marbleRange),
+	}
+	th.queryChaincode(peer, command, expectedMsg, true)
+}
+
+func (th *testHelper) transferMarble(chaincodeName, marbleOwner string, peer *nwo.Peer) {
+	marbleOwnerBase64 := base64.StdEncoding.EncodeToString([]byte(marbleOwner))
+
+	command := commands.ChaincodeInvoke{
+		ChannelID: th.channelID,
+		Orderer:   th.OrdererAddress(th.orderer, nwo.ListenPort),
+		Name:      chaincodeName,
+		Ctor:      fmt.Sprintf(`{"Args":["transferMarble"]}`),
+		Transient: fmt.Sprintf(`{"marble_owner":"%s"}`, marbleOwnerBase64),
 		PeerAddresses: []string{
 			th.PeerAddress(peer, nwo.ListenPort),
 		},
@@ -703,6 +731,42 @@ func (th *testHelper) assertDoesNotExistInCollectionMPD(chaincodeName, marbleNam
 	for _, peer := range peerList {
 		th.queryChaincode(peer, command, expectedMsg, false)
 	}
+}
+
+// assertOwnershipInCollectionM asserts that the private data for given marble is present
+// in collection 'readMarble' at the given peers
+func (th *testHelper) assertOwnershipInCollectionM(chaincodeName, marbleName string, expectedMsg string, peerList ...*nwo.Peer) {
+	command := commands.ChaincodeQuery{
+		ChannelID: th.channelID,
+		Name:      chaincodeName,
+		Ctor:      fmt.Sprintf(`{"Args":["readMarble","%s"]}`, marbleName),
+	}
+
+	for _, peer := range peerList {
+		th.queryChaincode(peer, command, expectedMsg, true)
+	}
+}
+
+// assertMarblesPrivateHashM asserts that getMarbleHash is accessible from all peers that has the chaincode instantiated
+func (th *testHelper) assertMarblesPrivateHashM(chaincodeName, marbleName string, expectedBytes []byte, peerList []*nwo.Peer) {
+	command := commands.ChaincodeQuery{
+		ChannelID: th.channelID,
+		Name:      chaincodeName,
+		Ctor:      fmt.Sprintf(`{"Args":["getMarbleHash","%s"]}`, marbleName),
+	}
+
+	verifyPvtdataHash(th.Network, command, peerList, expectedBytes)
+}
+
+// assertMarblesPrivateDetailsHashMPD asserts that getMarblePrivateDetailsHash is accessible from all peers that has the chaincode instantiated
+func (th *testHelper) assertMarblesPrivateDetailsHashMPD(chaincodeName, marbleName string, expectedBytes []byte, peerList []*nwo.Peer) {
+	command := commands.ChaincodeQuery{
+		ChannelID: th.channelID,
+		Name:      chaincodeName,
+		Ctor:      fmt.Sprintf(`{"Args":["getMarblePrivateDetailsHash","%s"]}`, marbleName),
+	}
+
+	verifyPvtdataHash(th.Network, command, peerList, expectedBytes)
 }
 
 // assertNoReadAccessToCollectionMPD asserts that the orgs of the given peers do not have
