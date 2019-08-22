@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
@@ -222,23 +223,13 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 }
 
 // endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, chaincodeName string, txsim ledger.TxSimulator, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
+func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes, eventBytes []byte, chaincodeName string, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
 	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), chaincodeName)
 	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
 
 	escc := cd.Endorsement()
 
 	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", chainID, shorttxid(txid), chaincodeName, escc)
-
-	// marshalling event bytes
-	var err error
-	var eventBytes []byte
-	if event != nil {
-		eventBytes, err = protoutil.GetBytesChaincodeEvent(event)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to marshal event bytes")
-		}
-	}
 
 	ctx := Context{
 		PluginName:     escc,
@@ -346,13 +337,16 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
-	// obtaining once the tx simulator for this proposal. This will be nil
-	// for chainless proposals
-	// Also obtain a history query executor for history queries, since tx simulator does not cover history
-	var txsim ledger.TxSimulator
-	var historyQueryExecutor ledger.HistoryQueryExecutor
+	txParams := &ccprovider.TransactionParams{
+		ChannelID:  up.ChannelHeader.ChannelId,
+		TxID:       up.ChannelHeader.TxId,
+		SignedProp: up.SignedProposal,
+		Proposal:   up.Proposal,
+	}
+
 	if acquireTxSimulator(up.ChannelHeader.ChannelId, up.ChaincodeName) {
-		if txsim, err = e.s.GetTxSimulator(up.ChannelHeader.ChannelId, up.ChannelHeader.TxId); err != nil {
+		txSim, err := e.s.GetTxSimulator(up.ChannelHeader.ChannelId, up.ChannelHeader.TxId)
+		if err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
 
@@ -363,36 +357,20 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		// add the following defer statement and is useful when an error occur. Note that calling
 		// txsim.Done() more than once does not cause any issue. If the txsim is already
 		// released, the following txsim.Done() simply returns.
-		defer txsim.Done()
+		defer txSim.Done()
 
-		if historyQueryExecutor, err = e.s.GetHistoryQueryExecutor(up.ChannelHeader.ChannelId); err != nil {
+		hqe, err := e.s.GetHistoryQueryExecutor(up.ChannelHeader.ChannelId)
+		if err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
+
+		txParams.TXSimulator = txSim
+		txParams.HistoryQueryExecutor = hqe
 	}
 
-	txParams := &ccprovider.TransactionParams{
-		ChannelID:            up.ChannelHeader.ChannelId,
-		TxID:                 up.ChannelHeader.TxId,
-		SignedProp:           up.SignedProposal,
-		Proposal:             up.Proposal,
-		TXSimulator:          txsim,
-		HistoryQueryExecutor: historyQueryExecutor,
-	}
-
-	chainID := up.ChannelHeader.ChannelId
-	txid := up.ChannelHeader.TxId
-	prop := up.Proposal
-
-	// this could be a request to a chainless SysCC
-
-	// TODO: if the proposal has an extension, it will be of type ChaincodeAction;
-	//       if it's present it means that no simulation is to be performed because
-	//       we're trying to emulate a submitting peer. On the other hand, we need
-	//       to validate the supplied action before endorsing it
-
-	cdLedger, err := e.s.GetChaincodeDefinition(up.ChannelHeader.ChannelId, up.ChaincodeName, txsim)
+	cdLedger, err := e.s.GetChaincodeDefinition(up.ChannelHeader.ChannelId, up.ChaincodeName, txParams.TXSimulator)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: fmt.Sprintf("make sure the chaincode %s has been successfully defined on channel %s and try again: %s", up.ChaincodeName, chainID, err)}}, nil
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: fmt.Sprintf("make sure the chaincode %s has been successfully defined on channel %s and try again: %s", up.ChaincodeName, up.ChannelID(), err)}}, nil
 	}
 
 	// 1 -- simulate
@@ -400,23 +378,20 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 	}
-	if res != nil {
-		if res.Status >= shim.ERROR {
-			endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", chainID, shorttxid(txid), up.ChaincodeName, res.Status, txid)
-			var cceventBytes []byte
-			if ccevent != nil {
-				cceventBytes, err = protoutil.GetBytesChaincodeEvent(ccevent)
-				if err != nil {
-					return nil, errors.Wrap(err, "failed to marshal event bytes")
-				}
-			}
-			pResp, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, res, simulationResult, cceventBytes, up.ChaincodeName)
-			if err != nil {
-				return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
-			}
 
-			return pResp, nil
+	cceventBytes, err := CreateCCEventBytes(ccevent)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal chaincode event")
+	}
+
+	if res.Status >= shim.ERROR {
+		endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, res.Status, up.TxID())
+		pResp, err := protoutil.CreateProposalResponseFailure(up.Proposal.Header, up.Proposal.Payload, res, simulationResult, cceventBytes, up.ChaincodeName)
+		if err != nil {
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
+
+		return pResp, nil
 	}
 
 	// 2 -- endorse and get a marshalled ProposalResponse message
@@ -424,15 +399,14 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	// TODO till we implement global ESCC, CSCC for system chaincodes
 	// chainless proposals (such as CSCC) don't have to be endorsed
-	if chainID == "" {
-		pResp = &pb.ProposalResponse{Response: res}
+	if up.ChannelID() == "" {
+		pResp = &pb.ProposalResponse{}
 	} else {
-		// Note: To endorseProposal(), we pass the released txsim. Hence, an error would occur if we try to use this txsim
-		pResp, err = e.endorseProposal(chainID, txid, signedProp, prop, res, simulationResult, ccevent, up.ChaincodeName, txsim, cdLedger)
+		pResp, err = e.endorseProposal(up.ChannelID(), up.TxID(), signedProp, up.Proposal, res, simulationResult, cceventBytes, up.ChaincodeName, cdLedger)
 
 		// if error, capture endorsement failure metric
 		meterLabels := []string{
-			"channel", chainID,
+			"channel", up.ChannelID(),
 			"chaincode", up.ChaincodeName,
 		}
 
@@ -446,7 +420,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 			// useful to track this as a separate metric
 			meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
 			e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
-			endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", chainID, shorttxid(txid), up.ChaincodeName, txid)
+			endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, up.TxID())
 			return pResp, nil
 		}
 	}
@@ -489,4 +463,12 @@ func shorttxid(txid string) string {
 		return txid
 	}
 	return txid[0:8]
+}
+
+func CreateCCEventBytes(ccevent *pb.ChaincodeEvent) ([]byte, error) {
+	if ccevent == nil {
+		return nil, nil
+	}
+
+	return proto.Marshal(ccevent)
 }
