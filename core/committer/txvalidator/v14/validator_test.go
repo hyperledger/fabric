@@ -153,7 +153,7 @@ func getEnvWithType(ccID string, event []byte, res []byte, pType common.HeaderTy
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, signer)
 	assert.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
@@ -186,7 +186,7 @@ func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIden
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, nil, sig)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, sig)
 	assert.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
@@ -1019,7 +1019,7 @@ func testInvokeOKSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator)
 	assert.NoError(t, err)
 	rwsetBytes, err := rwset.GetPubSimulationBytes()
 	assert.NoError(t, err)
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, rwsetBytes, nil, &peer.ChaincodeID{Name: "lscc", Version: ccVersion}, nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, rwsetBytes, nil, &peer.ChaincodeID{Name: "lscc", Version: ccVersion}, signer)
 	assert.NoError(t, err)
 	tx, err := protoutil.CreateSignedTx(prop, signer, presp)
 	assert.NoError(t, err)

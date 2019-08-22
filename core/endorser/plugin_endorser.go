@@ -237,7 +237,7 @@ func proposalResponsePayloadFromContext(ctx Context) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed parsing header")
 	}
 
-	pHashBytes, err := protoutil.GetProposalHash1(hdr, ctx.Proposal.Payload, ctx.Visibility)
+	pHashBytes, err := protoutil.GetProposalHash1(hdr, ctx.Proposal.Payload)
 	if err != nil {
 		endorserLogger.Warning("Failed computing proposal hash", err)
 		return nil, errors.Wrap(err, "could not compute proposal hash")

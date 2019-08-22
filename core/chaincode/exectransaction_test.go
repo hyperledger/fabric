@@ -312,7 +312,7 @@ func endTxSimulation(peerInstance *peer.Peer, chainID string, ccid *pb.Chaincode
 			}
 			// assemble a (signed) proposal response message
 			resp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200},
-				txSimulationBytes, nil, ccid, nil, signer)
+				txSimulationBytes, nil, ccid, signer)
 			if err != nil {
 				return err
 			}

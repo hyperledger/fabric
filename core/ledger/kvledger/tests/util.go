@@ -175,7 +175,6 @@ func constructUnsignedTxEnv(
 		simulationResults,
 		nil,
 		ccid,
-		nil,
 		sigId,
 	)
 	if err != nil {

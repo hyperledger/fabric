@@ -487,7 +487,7 @@ func TestEnvelope(t *testing.T) {
 	result := []byte("res")
 	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, ccid, nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, ccid, signer)
 	if err != nil {
 		t.Fatalf("Could not create proposal response, err %s\n", err)
 		return

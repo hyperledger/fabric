@@ -280,9 +280,8 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 
 	response := &pb.Response{Status: ccRespStatus, Payload: ccRespPayload}
 	result := []byte("res")
-	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
 
-	mockRespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, ccid, nil)
+	mockRespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, "foo")
 	if err != nil {
 
 		return nil, fmt.Errorf("Could not create proposal response failure, err %s\n", err)

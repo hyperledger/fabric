@@ -229,7 +229,7 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 }
 
 // endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, chaincodeName string, txsim ledger.TxSimulator, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
+func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, chaincodeName string, txsim ledger.TxSimulator, cd ccprovider.ChaincodeDefinition) (*pb.ProposalResponse, error) {
 	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", chainID, shorttxid(txid), chaincodeName)
 	defer endorserLogger.Debugf("[%s][%s] Exit", chainID, shorttxid(txid))
 
@@ -255,12 +255,12 @@ func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.S
 			Name:    chaincodeName,
 			Version: cd.CCVersion(),
 		},
-		Event:      eventBytes,
-		SimRes:     simRes,
-		Response:   response,
-		Visibility: visibility,
-		Proposal:   proposal,
-		TxID:       txid,
+		Event:    eventBytes,
+		SimRes:   simRes,
+		Response: response,
+		// Visibility is checked to be nil at the beginning of the flow, so it is safe not to set
+		Proposal: proposal,
+		TxID:     txid,
 	}
 	return e.s.EndorseWithPlugin(ctx)
 }
@@ -328,17 +328,16 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	endorserLogger.Debug("Entering: request from", addr)
 
 	// variables to capture proposal duration metric
-	var chainID string
-	var hdrExt *pb.ChaincodeHeaderExtension
+	var up *UnpackedProposal
 	var success bool
 	defer func() {
 		// capture proposal duration metric. hdrExt == nil indicates early failure
 		// where we don't capture latency metric. But the ProposalValidationFailed
 		// counter metric should shed light on those failures.
-		if hdrExt != nil {
+		if up != nil {
 			meterLabels := []string{
-				"channel", chainID,
-				"chaincode", hdrExt.ChaincodeId.Name,
+				"channel", up.ChannelHeader.ChannelId,
+				"chaincode", up.ChaincodeName,
 				"success", strconv.FormatBool(success),
 			}
 			e.Metrics.ProposalDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
@@ -348,18 +347,10 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}()
 
 	// 0 -- check and validate
-
-	up, err := e.preProcess(signedProp)
+	var err error
+	up, err = e.preProcess(signedProp)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
-	}
-
-	prop, chainID, txid := up.Proposal, up.ChannelHeader.ChannelId, up.ChannelHeader.TxId
-
-	hdrExt = &pb.ChaincodeHeaderExtension{
-		ChaincodeId: &pb.ChaincodeID{
-			Name: up.ChaincodeName,
-		},
 	}
 
 	// obtaining once the tx simulator for this proposal. This will be nil
@@ -367,8 +358,8 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// Also obtain a history query executor for history queries, since tx simulator does not cover history
 	var txsim ledger.TxSimulator
 	var historyQueryExecutor ledger.HistoryQueryExecutor
-	if acquireTxSimulator(chainID, hdrExt.ChaincodeId.Name) {
-		if txsim, err = e.s.GetTxSimulator(chainID, txid); err != nil {
+	if acquireTxSimulator(up.ChannelHeader.ChannelId, up.ChaincodeName) {
+		if txsim, err = e.s.GetTxSimulator(up.ChannelHeader.ChannelId, up.ChannelHeader.TxId); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
 
@@ -381,19 +372,24 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		// released, the following txsim.Done() simply returns.
 		defer txsim.Done()
 
-		if historyQueryExecutor, err = e.s.GetHistoryQueryExecutor(chainID); err != nil {
+		if historyQueryExecutor, err = e.s.GetHistoryQueryExecutor(up.ChannelHeader.ChannelId); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}
 	}
 
 	txParams := &ccprovider.TransactionParams{
-		ChannelID:            chainID,
-		TxID:                 txid,
-		SignedProp:           signedProp,
-		Proposal:             prop,
+		ChannelID:            up.ChannelHeader.ChannelId,
+		TxID:                 up.ChannelHeader.TxId,
+		SignedProp:           up.SignedProposal,
+		Proposal:             up.Proposal,
 		TXSimulator:          txsim,
 		HistoryQueryExecutor: historyQueryExecutor,
 	}
+
+	chainID := up.ChannelHeader.ChannelId
+	txid := up.ChannelHeader.TxId
+	prop := up.Proposal
+
 	// this could be a request to a chainless SysCC
 
 	// TODO: if the proposal has an extension, it will be of type ChaincodeAction;
@@ -401,19 +397,19 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	//       we're trying to emulate a submitting peer. On the other hand, we need
 	//       to validate the supplied action before endorsing it
 
-	cdLedger, err := e.s.GetChaincodeDefinition(chainID, hdrExt.ChaincodeId.Name, txsim)
+	cdLedger, err := e.s.GetChaincodeDefinition(up.ChannelHeader.ChannelId, up.ChaincodeName, txsim)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: fmt.Sprintf("make sure the chaincode %s has been successfully defined on channel %s and try again: %s", hdrExt.ChaincodeId.Name, chainID, err)}}, nil
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: fmt.Sprintf("make sure the chaincode %s has been successfully defined on channel %s and try again: %s", up.ChaincodeName, chainID, err)}}, nil
 	}
 
 	// 1 -- simulate
-	res, simulationResult, ccevent, err := e.SimulateProposal(txParams, hdrExt.ChaincodeId.Name)
+	res, simulationResult, ccevent, err := e.SimulateProposal(txParams, up.ChaincodeName)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 	}
 	if res != nil {
 		if res.Status >= shim.ERROR {
-			endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", chainID, shorttxid(txid), hdrExt.ChaincodeId, res.Status, txid)
+			endorserLogger.Errorf("[%s][%s] simulateProposal() resulted in chaincode %s response status %d for txid: %s", chainID, shorttxid(txid), up.ChaincodeName, res.Status, txid)
 			var cceventBytes []byte
 			if ccevent != nil {
 				cceventBytes, err = protoutil.GetBytesChaincodeEvent(ccevent)
@@ -421,7 +417,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 					return nil, errors.Wrap(err, "failed to marshal event bytes")
 				}
 			}
-			pResp, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, res, simulationResult, cceventBytes, hdrExt.ChaincodeId, hdrExt.PayloadVisibility)
+			pResp, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, res, simulationResult, cceventBytes, up.ChaincodeName)
 			if err != nil {
 				return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 			}
@@ -439,12 +435,12 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		pResp = &pb.ProposalResponse{Response: res}
 	} else {
 		// Note: To endorseProposal(), we pass the released txsim. Hence, an error would occur if we try to use this txsim
-		pResp, err = e.endorseProposal(chainID, txid, signedProp, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId.Name, txsim, cdLedger)
+		pResp, err = e.endorseProposal(chainID, txid, signedProp, prop, res, simulationResult, ccevent, up.ChaincodeName, txsim, cdLedger)
 
 		// if error, capture endorsement failure metric
 		meterLabels := []string{
 			"channel", chainID,
-			"chaincode", hdrExt.ChaincodeId.Name,
+			"chaincode", up.ChaincodeName,
 		}
 
 		if err != nil {
@@ -457,7 +453,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 			// useful to track this as a separate metric
 			meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
 			e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
-			endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", chainID, shorttxid(txid), hdrExt.ChaincodeId, txid)
+			endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", chainID, shorttxid(txid), up.ChaincodeName, txid)
 			return pResp, nil
 		}
 	}

@@ -312,7 +312,7 @@ func constructBytesProposalResponsePayload(chainID string, ccid *pb.ChaincodeID,
 		return nil, err
 	}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, signer)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,6 @@ func ConstructSignedTxEnv(
 		simulationResults,
 		nil,
 		ccid,
-		nil,
 		signer,
 	)
 	if err != nil {
