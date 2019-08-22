@@ -7,9 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package encoder_test
 
 import (
-	"fmt"
-
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -50,15 +49,8 @@ func hasModPolicySet(groupName string, cg *cb.ConfigGroup) error {
 }
 
 var _ = Describe("Integration", func() {
-	for _, profile := range []string{
-		genesisconfig.SampleInsecureSoloProfile,
-		genesisconfig.SampleSingleMSPSoloProfile,
-		genesisconfig.SampleDevModeSoloProfile,
-		genesisconfig.SampleInsecureKafkaProfile,
-		genesisconfig.SampleSingleMSPKafkaProfile,
-		genesisconfig.SampleDevModeKafkaProfile,
-	} {
-		It(fmt.Sprintf("successfully parses the %s profile", profile), func() {
+	DescribeTable("successfully parses the profile",
+		func(profile string) {
 			config := configtxgentest.Load(profile)
 			group, err := encoder.NewChannelGroup(config)
 			Expect(err).NotTo(HaveOccurred())
@@ -72,6 +64,12 @@ var _ = Describe("Integration", func() {
 
 			err = hasModPolicySet("Channel", group)
 			Expect(err).NotTo(HaveOccurred())
-		})
-	}
+		},
+		Entry("Sample Insecure Solo Profile", genesisconfig.SampleInsecureSoloProfile),
+		Entry("Sample Single MSP Solo Profile", genesisconfig.SampleSingleMSPSoloProfile),
+		Entry("Sample DevMode Solo Profile", genesisconfig.SampleDevModeSoloProfile),
+		Entry("Sample Insecure Kafka Profile", genesisconfig.SampleInsecureKafkaProfile),
+		Entry("Sample Single MSP Kafka Profile", genesisconfig.SampleSingleMSPKafkaProfile),
+		Entry("Sample DevMode Kafka Profile", genesisconfig.SampleDevModeKafkaProfile),
+	)
 })
