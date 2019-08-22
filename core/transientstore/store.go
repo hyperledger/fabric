@@ -320,7 +320,7 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 	}
 
 	txPvtRWSet := &rwset.TxPvtReadWriteSet{}
-	filteredTxPvtRWSet := &rwset.TxPvtReadWriteSet{}
+	var filteredTxPvtRWSet *rwset.TxPvtReadWriteSet = nil
 	txPvtRWSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{}
 
 	if dbVal[0] == nilByte {
