@@ -90,29 +90,30 @@ func (r *Router) Build(ccid string) error {
 	// the chaincode uses for registration
 	packageID := ccid
 
-	metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(packageID)
-	if err != nil {
-		return errors.WithMessage(err, "get chaincode package for external build failed")
-	}
-
 	var instance Instance
+
 	var externalErr error
 	if r.ExternalVM != nil {
+		metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(packageID)
+		if err != nil {
+			return errors.WithMessage(err, "get chaincode package for external build failed")
+		}
 		instance, externalErr = r.ExternalVM.Build(ccid, metadata, codeStream)
 		codeStream.Close()
 	}
 
+	var dockerErr error
 	if r.ExternalVM == nil || externalErr != nil {
-		_, codeStream, err = r.PackageProvider.GetChaincodePackage(ccid)
+		metadata, codeStream, err := r.PackageProvider.GetChaincodePackage(ccid)
 		if err != nil {
 			return errors.WithMessage(err, "get chaincode package for docker build failed")
 		}
-		instance, err = r.DockerVM.Build(ccid, metadata, codeStream)
+		instance, dockerErr = r.DockerVM.Build(ccid, metadata, codeStream)
 		codeStream.Close()
 	}
 
-	if err != nil {
-		return errors.WithMessagef(err, "failed external (%s) and docker build", externalErr)
+	if dockerErr != nil {
+		return errors.WithMessagef(dockerErr, "failed external (%s) and docker build", externalErr)
 	}
 
 	r.mutex.Lock()
