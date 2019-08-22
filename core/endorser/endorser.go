@@ -125,7 +125,7 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 
 	// Unless this is the weirdo LSCC case, just return
 	if chaincodeName != "lscc" || len(input.Args) < 3 || (string(input.Args[0]) != "deploy" && string(input.Args[0]) != "upgrade") {
-		return res, ccevent, err
+		return res, ccevent, nil
 	}
 
 	// ----- BEGIN -  SECTION THAT MAY NEED TO BE DONE IN LSCC ------
