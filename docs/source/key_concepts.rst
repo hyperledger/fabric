@@ -10,6 +10,7 @@ Key Concepts
    network/network.md
    identity/identity.md
    membership/membership.md
+   policies/policies.md
    peers/peers.md
    smartcontract/smartcontract.md
    ledger/ledger.md
