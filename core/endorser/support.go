@@ -115,11 +115,11 @@ func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, 
 }
 
 // Execute a proposal and return the chaincode response
-func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, name string, prop *pb.Proposal, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, name string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
 	// decorate the chaincode input
 	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
 	input.Decorations = make(map[string][]byte)
-	input = decoration.Apply(prop, input, decorators...)
+	input = decoration.Apply(txParams.Proposal, input, decorators...)
 	txParams.ProposalDecorations = input.Decorations
 
 	return s.ChaincodeSupport.Execute(txParams, name, input)
