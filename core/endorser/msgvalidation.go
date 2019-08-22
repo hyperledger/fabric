@@ -8,39 +8,64 @@ package endorser
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/flogging"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
+	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
-var putilsLogger = flogging.MustGetLogger("protoutils")
+// UnpackedProposal contains the interesting artifacts from inside the proposal.
+type UnpackedProposal struct {
+	ChaincodeName   string
+	ChannelHeader   *cb.ChannelHeader
+	Input           *pb.ChaincodeInput
+	Proposal        *pb.Proposal
+	SignatureHeader *cb.SignatureHeader
+	SignedProposal  *pb.SignedProposal
+}
 
-// validateChaincodeProposalMessage checks the validity of a Proposal message of type CHAINCODE
-func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header, chdr *common.ChannelHeader) (*pb.ChaincodeHeaderExtension, error) {
-	if prop == nil || hdr == nil {
-		return nil, errors.New("nil arguments")
+// UnpackProposal creates an an *UnpackedProposal which is guaranteed to have
+// no zero-ed fields or it returns an error.
+func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
+	// extract the Proposal message from signedProp
+	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not unmarshal proposal bytes")
 	}
 
-	putilsLogger.Debugf("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
+	// 1) look at the ProposalHeader
+	hdr, err := protoutil.UnmarshalHeader(prop.Header)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not unmarshal header")
+	}
+
+	// unpack the header
+	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not unmarshal channel header")
+	}
+
+	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not unmarshal signature header")
+	}
 
 	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
 	chaincodeHdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
-		return nil, errors.New("invalid header extension for type CHAINCODE")
+		return nil, errors.WithMessage(err, "could not unmarshal header extension")
 	}
 
 	if chaincodeHdrExt.ChaincodeId == nil {
-		return nil, errors.New("ChaincodeHeaderExtension.ChaincodeId is nil")
+		return nil, errors.Errorf("ChaincodeHeaderExtension.ChaincodeId is nil")
 	}
 
-	putilsLogger.Debugf("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeId)
-
-	//    - ensure that the chaincodeID is correct (?)
-	// TODO: should we even do this? If so, using which interface?
+	if chaincodeHdrExt.ChaincodeId.Name == "" {
+		return nil, errors.New("ChaincodeHeaderExtension.ChaincodeId.Name is empty")
+	}
 
 	//    - ensure that the visibility field has some value we understand
 	// currently the fabric only supports full visibility: this means that
@@ -54,92 +79,81 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header, chd
 		return nil, errors.New("invalid payload visibility field")
 	}
 
-	return chaincodeHdrExt, nil
+	cis, err := protoutil.GetChaincodeInvocationSpec(prop)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get invocation spec")
+	}
+
+	if cis.ChaincodeSpec == nil {
+		return nil, errors.Errorf("chaincode invocation spec did not contain chaincode spec")
+	}
+
+	if cis.ChaincodeSpec.Input == nil {
+		return nil, errors.Errorf("chaincode input did not contain any input")
+	}
+
+	return &UnpackedProposal{
+		SignedProposal:  signedProp,
+		Proposal:        prop,
+		ChannelHeader:   chdr,
+		SignatureHeader: shdr,
+		ChaincodeName:   chaincodeHdrExt.ChaincodeId.Name,
+		Input:           cis.ChaincodeSpec.Input,
+	}, nil
 }
 
-// ValidateProposalMessage checks the validity of a SignedProposal message
-// this function returns Header and ChaincodeHeaderExtension messages since they
-// have been unmarshalled and validated
-func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *common.Header, *pb.ChaincodeHeaderExtension, error) {
-	if signedProp == nil {
-		return nil, nil, nil, errors.New("nil arguments")
+// ValidateUnpackedProposal checks the validity of an unpacked proposal,
+// considering its signatures, its header values, including creator, nonce,
+// and txid.
+func ValidateUnpackedProposal(unpackedProp *UnpackedProposal) error {
+	if err := validateChannelHeader(unpackedProp.ChannelHeader); err != nil {
+		return err
 	}
 
-	putilsLogger.Debugf("ValidateProposalMessage starts for signed proposal %p", signedProp)
-
-	// extract the Proposal message from signedProp
-	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	// 1) look at the ProposalHeader
-	hdr, err := protoutil.UnmarshalHeader(prop.Header)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	// validate the header
-	chdr, shdr, err := validateCommonHeader(hdr)
-	if err != nil {
-		return nil, nil, nil, err
+	if err := validateSignatureHeader(unpackedProp.SignatureHeader); err != nil {
+		return err
 	}
 
 	// validate the signature
-	err = checkSignatureFromCreator(shdr.Creator, signedProp.Signature, signedProp.ProposalBytes, chdr.ChannelId)
+	err := checkSignatureFromCreator(
+		unpackedProp.SignatureHeader.Creator,
+		unpackedProp.SignedProposal.Signature,
+		unpackedProp.SignedProposal.ProposalBytes,
+		unpackedProp.ChannelHeader.ChannelId,
+	)
 	if err != nil {
 		// log the exact message on the peer but return a generic error message to
 		// avoid malicious users scanning for channels
-		putilsLogger.Warningf("channel [%s]: %s", chdr.ChannelId, err)
+		endorserLogger.Warningf("channel [%s]: %s", unpackedProp.ChannelHeader.ChannelId, err)
 		sId := &msp.SerializedIdentity{}
-		err := proto.Unmarshal(shdr.Creator, sId)
+		err := proto.Unmarshal(unpackedProp.SignatureHeader.Creator, sId)
 		if err != nil {
 			// log the error here as well but still only return the generic error
 			err = errors.Wrap(err, "could not deserialize a SerializedIdentity")
-			putilsLogger.Warningf("channel [%s]: %s", chdr.ChannelId, err)
+			endorserLogger.Warningf("channel [%s]: %s", unpackedProp.ChannelHeader.ChannelId, err)
 		}
-		return nil, nil, nil, errors.Errorf("access denied: channel [%s] creator org [%s]", chdr.ChannelId, sId.Mspid)
+		return errors.Errorf("access denied: channel [%s] creator org [%s]", unpackedProp.ChannelHeader.ChannelId, sId.Mspid)
 	}
 
 	// Verify that the transaction ID has been computed properly.
 	// This check is needed to ensure that the lookup into the ledger
 	// for the same TxID catches duplicates.
 	err = protoutil.CheckTxID(
-		chdr.TxId,
-		shdr.Nonce,
-		shdr.Creator)
+		unpackedProp.ChannelHeader.TxId,
+		unpackedProp.SignatureHeader.Nonce,
+		unpackedProp.SignatureHeader.Creator,
+	)
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
 
-	// continue the validation in a way that depends on the type specified in the header
-	switch common.HeaderType(chdr.Type) {
-	case common.HeaderType_CONFIG:
-		//which the types are different the validation is the same
-		//viz, validate a proposal to a chaincode. If we need other
-		//special validation for confguration, we would have to implement
-		//special validation
-		fallthrough
-	case common.HeaderType_ENDORSER_TRANSACTION:
-		// validation of the proposal message knowing it's of type CHAINCODE
-		chaincodeHdrExt, err := validateChaincodeProposalMessage(prop, hdr, chdr)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		return prop, hdr, chaincodeHdrExt, err
-	default:
-		//NOTE : we proably need a case
-		return nil, nil, nil, errors.Errorf("unsupported proposal type %d", common.HeaderType(chdr.Type))
-	}
+	return nil
 }
 
 // given a creator, a message and a signature,
 // this function returns nil if the creator
 // is a valid cert and the signature is valid
 func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, ChainID string) error {
-	putilsLogger.Debugf("begin")
-
 	// check for nil argument
 	if creatorBytes == nil || sig == nil || msg == nil {
 		return errors.New("nil arguments")
@@ -156,7 +170,7 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return errors.WithMessage(err, "MSP error")
 	}
 
-	putilsLogger.Debugf("creator is %s", creator.GetIdentifier())
+	endorserLogger.Debugf("creator is %s", creator.GetIdentifier())
 
 	// ensure that creator is a valid certificate
 	err = creator.Validate()
@@ -164,7 +178,7 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return errors.WithMessage(err, "creator certificate is not valid")
 	}
 
-	putilsLogger.Debugf("creator is valid")
+	endorserLogger.Debugf("creator is valid")
 
 	// validate the signature
 	err = creator.Verify(msg, sig)
@@ -172,18 +186,13 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return errors.WithMessage(err, "creator's signature over the proposal is not valid")
 	}
 
-	putilsLogger.Debugf("exits successfully")
+	endorserLogger.Debugf("exits successfully")
 
 	return nil
 }
 
 // checks for a valid SignatureHeader
 func validateSignatureHeader(sHdr *common.SignatureHeader) error {
-	// check for nil argument
-	if sHdr == nil {
-		return errors.New("nil SignatureHeader provided")
-	}
-
 	// ensure that there is a nonce
 	if sHdr.Nonce == nil || len(sHdr.Nonce) == 0 {
 		return errors.New("invalid nonce specified in the header")
@@ -199,62 +208,17 @@ func validateSignatureHeader(sHdr *common.SignatureHeader) error {
 
 // checks for a valid ChannelHeader
 func validateChannelHeader(cHdr *common.ChannelHeader) error {
-	// check for nil argument
-	if cHdr == nil {
-		return errors.New("nil ChannelHeader provided")
-	}
-
 	// validate the header type
 	switch common.HeaderType(cHdr.Type) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
-	case common.HeaderType_CONFIG_UPDATE:
 	case common.HeaderType_CONFIG:
+		// The CONFIG transaction type has _no_ business coming to the propose API.
+		// In fact, anything coming to the Propose API is by definition an endorser
+		// transaction, so any other header type seems like it ought to be an error... oh well.
+
 	default:
 		return errors.Errorf("invalid header type %s", common.HeaderType(cHdr.Type))
 	}
 
-	putilsLogger.Debugf("validateChannelHeader info: header type %d", common.HeaderType(cHdr.Type))
-
-	// TODO: validate chainID in cHdr.ChainID
-
-	// Validate epoch in cHdr.Epoch
-	// Currently we enforce that Epoch is 0.
-	// TODO: This check will be modified once the Epoch management
-	// will be in place.
-	if cHdr.Epoch != 0 {
-		return errors.Errorf("invalid Epoch in ChannelHeader. Expected 0, got [%d]", cHdr.Epoch)
-	}
-
-	// TODO: Validate version in cHdr.Version
-
 	return nil
-}
-
-// checks for a valid Header
-func validateCommonHeader(hdr *common.Header) (*common.ChannelHeader, *common.SignatureHeader, error) {
-	if hdr == nil {
-		return nil, nil, errors.New("nil header")
-	}
-
-	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = validateChannelHeader(chdr)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = validateSignatureHeader(shdr)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return chdr, shdr, nil
 }
