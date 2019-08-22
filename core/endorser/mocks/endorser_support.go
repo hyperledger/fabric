@@ -11,7 +11,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/mock"
 )
@@ -110,7 +109,7 @@ func (s *MockSupport) GetChaincodeDefinition(channelID, chaincodeName string, tx
 	return s.ChaincodeDefinitionRv, s.ChaincodeDefinitionError
 }
 
-func (s *MockSupport) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
+func (s *MockSupport) CheckACL(channelID string, signedProp *pb.SignedProposal) error {
 	return s.CheckACLErr
 }
 

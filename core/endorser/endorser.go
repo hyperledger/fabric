@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/transientstore"
 	"github.com/hyperledger/fabric/protoutil"
@@ -64,7 +63,7 @@ type Support interface {
 
 	// CheckACL checks the ACL for the resource for the channel using the
 	// SignedProposal from which an id can be extracted for testing against a policy
-	CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error
+	CheckACL(channelID string, signedProp *pb.SignedProposal) error
 
 	// EndorseWithPlugin endorses the response with a plugin
 	EndorseWithPlugin(ctx Context) (*pb.ProposalResponse, error)
@@ -267,71 +266,56 @@ func (e *Endorser) endorseProposal(chainID string, txid string, signedProp *pb.S
 }
 
 // preProcess checks the tx proposal headers, uniqueness and ACL
-func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*validateResult, error) {
-	vr := &validateResult{}
+func (e *Endorser) preProcess(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 	// at first, we check whether the message is valid
 	up, err := UnpackProposal(signedProp)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
-		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
-		return vr, err
+		return nil, err
 	}
 
 	err = ValidateUnpackedProposal(up)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
-		vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
-		return vr, err
+		return nil, err
 	}
 
-	prop, chdr, shdr, chaincodeName := up.Proposal, up.ChannelHeader, up.SignatureHeader, up.ChaincodeName
-	hdrExt := &pb.ChaincodeHeaderExtension{
-		ChaincodeId: &pb.ChaincodeID{
-			Name: chaincodeName,
-		},
-	}
+	endorserLogger.Debugf("[%s][%s] processing txid: %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChannelHeader.TxId)
 
-	chainID := chdr.ChannelId
-	txid := chdr.TxId
-	endorserLogger.Debugf("[%s][%s] processing txid: %s", chainID, shorttxid(txid), txid)
-
-	if chainID != "" {
-		// labels that provide context for failure metrics
-		meterLabels := []string{
-			"channel", chainID,
-			"chaincode", hdrExt.ChaincodeId.Name,
-		}
-
-		// Here we handle uniqueness check and ACLs for proposals targeting a chain
-		// Notice that ValidateProposalMessage has already verified that TxID is computed properly
-		if _, err = e.s.GetTransactionByID(chainID, txid); err == nil {
-			// increment failure due to duplicate transactions. Useful for catching replay attacks in
-			// addition to benign retries
-			e.Metrics.DuplicateTxsFailure.With(meterLabels...).Add(1)
-			err = errors.Errorf("duplicate transaction found [%s]. Creator [%x]", txid, shdr.Creator)
-			vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
-			return vr, err
-		}
-
-		// check ACL only for application chaincodes; ACLs
-		// for system chaincodes are checked elsewhere
-		if !e.s.IsSysCC(hdrExt.ChaincodeId.Name) {
-			// check that the proposal complies with the Channel's writers
-			if err = e.s.CheckACL(signedProp, chdr, shdr, hdrExt); err != nil {
-				e.Metrics.ProposalACLCheckFailed.With(meterLabels...).Add(1)
-				vr.resp = &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}
-				return vr, err
-			}
-		}
-	} else {
+	if up.ChannelHeader.ChannelId == "" {
 		// chainless proposals do not/cannot affect ledger and cannot be submitted as transactions
 		// ignore uniqueness checks; also, chainless proposals are not validated using the policies
 		// of the chain since by definition there is no chain; they are validated against the local
-		// MSP of the peer instead by the call to ValidateProposalMessage above
+		// MSP of the peer instead by the call to ValidateUnpackProposal above
+		return up, nil
 	}
 
-	vr.prop, vr.hdrExt, vr.chainID, vr.txid = prop, hdrExt, chainID, txid
-	return vr, nil
+	// labels that provide context for failure metrics
+	meterLabels := []string{
+		"channel", up.ChannelHeader.ChannelId,
+		"chaincode", up.ChaincodeName,
+	}
+
+	// Here we handle uniqueness check and ACLs for proposals targeting a chain
+	// Notice that ValidateProposalMessage has already verified that TxID is computed properly
+	if _, err = e.s.GetTransactionByID(up.ChannelHeader.ChannelId, up.ChannelHeader.TxId); err == nil {
+		// increment failure due to duplicate transactions. Useful for catching replay attacks in
+		// addition to benign retries
+		e.Metrics.DuplicateTxsFailure.With(meterLabels...).Add(1)
+		return nil, errors.Errorf("duplicate transaction found [%s]. Creator [%x]", up.ChannelHeader.TxId, up.SignatureHeader.Creator)
+	}
+
+	// check ACL only for application chaincodes; ACLs
+	// for system chaincodes are checked elsewhere
+	if !e.s.IsSysCC(up.ChaincodeName) {
+		// check that the proposal complies with the Channel's writers
+		if err = e.s.CheckACL(up.ChannelHeader.ChannelId, up.SignedProposal); err != nil {
+			e.Metrics.ProposalACLCheckFailed.With(meterLabels...).Add(1)
+			return nil, err
+		}
+	}
+
+	return up, nil
 }
 
 // ProcessProposal process the Proposal
@@ -364,20 +348,26 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}()
 
 	// 0 -- check and validate
-	vr, err := e.preProcess(signedProp)
+
+	up, err := e.preProcess(signedProp)
 	if err != nil {
-		resp := vr.resp
-		return resp, err
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
-	prop, hdrExt, chainID, txid := vr.prop, vr.hdrExt, vr.chainID, vr.txid
+	prop, chainID, txid := up.Proposal, up.ChannelHeader.ChannelId, up.ChannelHeader.TxId
+
+	hdrExt = &pb.ChaincodeHeaderExtension{
+		ChaincodeId: &pb.ChaincodeID{
+			Name: up.ChaincodeName,
+		},
+	}
 
 	// obtaining once the tx simulator for this proposal. This will be nil
 	// for chainless proposals
 	// Also obtain a history query executor for history queries, since tx simulator does not cover history
 	var txsim ledger.TxSimulator
 	var historyQueryExecutor ledger.HistoryQueryExecutor
-	if acquireTxSimulator(chainID, vr.hdrExt.ChaincodeId.Name) {
+	if acquireTxSimulator(chainID, hdrExt.ChaincodeId.Name) {
 		if txsim, err = e.s.GetTxSimulator(chainID, txid); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 		}

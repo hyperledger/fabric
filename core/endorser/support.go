@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
@@ -133,8 +132,8 @@ func (s *SupportImpl) GetChaincodeDefinition(channelID, chaincodeName string, tx
 
 // CheckACL checks the ACL for the resource for the Channel using the
 // SignedProposal from which an id can be extracted for testing against a policy
-func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
-	return s.ACLProvider.CheckACL(resources.Peer_Propose, chdr.ChannelId, signedProp)
+func (s *SupportImpl) CheckACL(channelID string, signedProp *pb.SignedProposal) error {
+	return s.ACLProvider.CheckACL(resources.Peer_Propose, channelID, signedProp)
 }
 
 // GetApplicationConfig returns the configtxapplication.SharedConfig for the Channel
