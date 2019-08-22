@@ -6,8 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"path/filepath"
-
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/pkg/errors"
@@ -15,7 +13,7 @@ import (
 
 // ResetAllKVLedgers resets all ledger to the genesis block.
 func ResetAllKVLedgers(rootFSPath string) error {
-	fileLockPath := filepath.Join(rootFSPath, "fileLock")
+	fileLockPath := fileLockPath(rootFSPath)
 	fileLock := leveldbhelper.NewFileLock(fileLockPath)
 	if err := fileLock.Lock(); err != nil {
 		return errors.Wrap(err, "as another peer node command is executing,"+
@@ -37,20 +35,20 @@ func ResetAllKVLedgers(rootFSPath string) error {
 
 // LoadPreResetHeight returns the prereset height of all ledgers.
 func LoadPreResetHeight(rootFSPath string) (map[string]uint64, error) {
-	blockstorePath := filepath.Join(rootFSPath, "chains")
+	blockstorePath := BlockStorePath(rootFSPath)
 	logger.Infof("Loading prereset height from path [%s]", blockstorePath)
 	return fsblkstorage.LoadPreResetHeight(blockstorePath)
 }
 
 // ClearPreResetHeight removes the prereset height recorded in the file system.
 func ClearPreResetHeight(rootFSPath string) error {
-	blockstorePath := filepath.Join(rootFSPath, "chains")
+	blockstorePath := BlockStorePath(rootFSPath)
 	logger.Infof("Clearing off prereset height files from path [%s]", blockstorePath)
 	return fsblkstorage.ClearPreResetHeight(blockstorePath)
 }
 
 func resetBlockStorage(rootFSPath string) error {
-	blockstorePath := filepath.Join(rootFSPath, "chains")
+	blockstorePath := BlockStorePath(rootFSPath)
 	logger.Infof("Resetting BlockStore to genesis block at location [%s]", blockstorePath)
 	return fsblkstorage.ResetBlockStore(blockstorePath)
 }

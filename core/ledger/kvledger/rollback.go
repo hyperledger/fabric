@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"path/filepath"
-
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/pkg/errors"
@@ -16,7 +14,7 @@ import (
 
 // RollbackKVLedger rollbacks a ledger to a specified block number
 func RollbackKVLedger(rootFSPath, ledgerID string, blockNum uint64) error {
-	fileLockPath := filepath.Join(rootFSPath, "fileLock")
+	fileLockPath := fileLockPath(rootFSPath)
 	fileLock := leveldbhelper.NewFileLock(fileLockPath)
 	if err := fileLock.Lock(); err != nil {
 		return errors.Wrap(err, "as another peer node command is executing,"+
@@ -24,7 +22,7 @@ func RollbackKVLedger(rootFSPath, ledgerID string, blockNum uint64) error {
 	}
 	defer fileLock.Unlock()
 
-	blockstorePath := filepath.Join(rootFSPath, "chains")
+	blockstorePath := BlockStorePath(rootFSPath)
 	if err := ledgerstorage.ValidateRollbackParams(blockstorePath, ledgerID, blockNum); err != nil {
 		return err
 	}

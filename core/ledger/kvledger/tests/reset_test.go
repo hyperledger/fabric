@@ -8,7 +8,6 @@ package tests
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
@@ -172,7 +171,7 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	env.closeLedgerMgmt()
 
 	// Reset All kv ledgers
-	blockstorePath := filepath.Join(env.initializer.Config.RootFSPath, "chains")
+	blockstorePath := kvledger.BlockStorePath(env.initializer.Config.RootFSPath)
 	err := fsblkstorage.ResetBlockStore(blockstorePath)
 	assert.NoError(t, err)
 	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB

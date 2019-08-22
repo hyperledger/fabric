@@ -331,9 +331,9 @@ func TestLedgerBackup(t *testing.T) {
 
 	// remove the statedb, historydb, and block indexes (they are supposed to be auto created during opening of an existing ledger)
 	// and rename the originalPath to restorePath
-	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "stateLeveldb")))
-	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "historyLeveldb")))
-	assert.NoError(t, os.RemoveAll(filepath.Join(originalPath, "chains", fsblkstorage.IndexDir)))
+	assert.NoError(t, os.RemoveAll(StateDBPath(originalPath)))
+	assert.NoError(t, os.RemoveAll(HistoryDBPath(originalPath)))
+	assert.NoError(t, os.RemoveAll(filepath.Join(BlockStorePath(originalPath), fsblkstorage.IndexDir)))
 	assert.NoError(t, os.Rename(originalPath, restorePath))
 
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment
