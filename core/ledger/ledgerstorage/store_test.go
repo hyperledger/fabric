@@ -158,6 +158,7 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 	provider := NewProvider(storeDir, conf, metricsProvider)
 	defer provider.Close()
 	store, err := provider.Open(testLedgerid)
+	assert.NoError(t, err)
 	store.Init(btlPolicyForSampleData())
 	defer store.Shutdown()
 
