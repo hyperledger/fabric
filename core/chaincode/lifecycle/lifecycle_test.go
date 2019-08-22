@@ -804,7 +804,7 @@ var _ = Describe("ExternalFunctions", func() {
 			resources.Serializer.Serialize("namespaces", "cc-name#5", &lifecycle.ChaincodeParameters{}, fakeOrgStates[1])
 		})
 
-		It("simulates committing the chaincode definition and returns the approvals", func() {
+		It("checks the commit readiness of a chaincode definition and returns the approvals", func() {
 			approvals, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(approvals).To(Equal(map[string]bool{
