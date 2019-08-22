@@ -214,21 +214,28 @@ func (i *KeyValueItr) Close() {
 	i.BackingItr.Close()
 }
 
-// Envelope corresponds to proto message common.Envelope
+// Envelope contains data of the common.Envelope; some byte fields are already
+// unmarshalled to structs and we preserve the unmarshalled version so as to not
+// duplicate the unmarshalling work. Still, given the non-deterministic nature of
+// protobufs, we preserve their original byte representation so that the tx processor
+// may for instance verify signatures or perform bitwise operations on their original
+// representation.
 type Envelope struct {
-	Payload   *Payload
+	// SignedBytes contains the marshalled common.Payload in the envelope
+	SignedBytes []byte
+	// Signature contains the creator's signature over the SignedBytes
 	Signature []byte
-}
-
-// Payload corresponds to proto message common.Payload
-type Payload struct {
-	Header *Header
-	Data   []byte
-}
-
-// Header corresponds to proto message common.Header
-type Header struct {
-	ChannelHeader   *common.ChannelHeader
+	// Data contains the opaque Data bytes in the common.Payload
+	Data []byte
+	// HeaderBytes contains the marshalled Header in the common.Payload
+	HeaderBytes []byte
+	// ChannelHeaderBytes contains the marshalled ChannelHeader of the common.Header
+	ChannelHeaderBytes []byte
+	// ChannelHeaderBytes contains the marshalled SignatureHeader of the common.Header
+	SignatureHeaderBytes []byte
+	// ChannelHeader contains the ChannelHeader of this envelope
+	ChannelHeader *common.ChannelHeader
+	// SignatureHeader contains the SignatureHeader of this envelope
 	SignatureHeader *common.SignatureHeader
 }
 

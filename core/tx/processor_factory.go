@@ -26,7 +26,7 @@ func (f *ProcessorFactory) CreateProcessor(txEnvelopeBytes []byte) (processor tx
 	if err != nil {
 		return nil, nil, err
 	}
-	c, ok := f.ProcessorCreators[common.HeaderType(txEnv.Payload.Header.ChannelHeader.Type)]
+	c, ok := f.ProcessorCreators[common.HeaderType(txEnv.ChannelHeader.Type)]
 	if !ok {
 		return nil, nil, &tx.InvalidErr{
 			ValidationCode: peer.TxValidationCode_UNKNOWN_TX_TYPE,
