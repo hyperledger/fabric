@@ -145,11 +145,11 @@ func (c *Cache) InitializeLocalChaincodes() error {
 	for _, ccPackage := range ccPackages {
 		ccPackageBytes, err := c.Resources.ChaincodeStore.Load(ccPackage.PackageID)
 		if err != nil {
-			return errors.WithMessagef(err, "could not load chaincode with pakcage ID '%s'", ccPackage.PackageID)
+			return errors.WithMessagef(err, "could not load chaincode with package ID '%s'", ccPackage.PackageID)
 		}
 		parsedCCPackage, err := c.Resources.PackageParser.Parse(ccPackageBytes)
 		if err != nil {
-			return errors.WithMessagef(err, "could not parse chaincode with pakcage ID '%s'", ccPackage.PackageID)
+			return errors.WithMessagef(err, "could not parse chaincode with package ID '%s'", ccPackage.PackageID)
 		}
 		c.handleChaincodeInstalledWhileLocked(true, parsedCCPackage.Metadata, ccPackage.PackageID)
 	}
