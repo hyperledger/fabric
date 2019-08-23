@@ -196,7 +196,7 @@ one member in Org2 is required for the policy to be satisfied.
 which is based on a tiered hierarchy of policies in a configuration tree. ImplicitMeta
 policies aggregate the result of policies deeper in the configuration tree that
 are ultimately defined by Signature policies. They are `Implicit` because they
-are constructed implicitly based on the on the current organizations in the
+are constructed implicitly based on the current organizations in the
 channel configuration, and they are `Meta` because their evaluation is not
 against specific MSP principals, but rather against other sub-policies below
 them in the configuration tree.
