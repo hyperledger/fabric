@@ -55,8 +55,6 @@ var attrsToIndex = []blkstorage.IndexableAttr{
 	blkstorage.IndexableAttrBlockNum,
 	blkstorage.IndexableAttrTxID,
 	blkstorage.IndexableAttrBlockNumTranNum,
-	blkstorage.IndexableAttrBlockTxID,
-	blkstorage.IndexableAttrTxValidationCode,
 }
 
 func newTestEnv(t testing.TB, conf *Conf) *testEnv {

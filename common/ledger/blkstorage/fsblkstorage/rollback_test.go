@@ -385,8 +385,6 @@ func testutilDeleteTxFromIndex(t *testing.T, db *leveldbhelper.DBHandle, blkNum,
 	indexKeys := [][]byte{
 		constructTxIDKey(txID),
 		constructBlockNumTranNumKey(blkNum, txNum),
-		constructBlockTxIDKey(txID),
-		constructTxValidationCodeIDKey(txID),
 	}
 
 	batch := leveldbhelper.NewUpdateBatch()

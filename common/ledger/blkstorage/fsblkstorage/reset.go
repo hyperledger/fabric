@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util"
 )
 
+// ResetBlockStore drops the block storage index and truncates the blocks files for all channels/ledgers to genesis blocks
 func ResetBlockStore(blockStorageDir string) error {
 	conf := &Conf{blockStorageDir: blockStorageDir}
 	indexDir := conf.getIndexDir()
@@ -170,6 +171,7 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 	return nil
 }
 
+// LoadPreResetHeight returns a map of channelname to the last recorded block height during one of the reset operations
 func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
 	logger.Info("Loading Pre-reset heights")
 	preResetFilesMap, err := preRestHtFiles(blockStorageDir)
@@ -192,6 +194,7 @@ func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
 	return m, nil
 }
 
+// ClearPreResetHeight deletes the files that contains the last recorded reset heights
 func ClearPreResetHeight(blockStorageDir string) error {
 	logger.Info("Clearing Pre-reset heights")
 	preResetFilesMap, err := preRestHtFiles(blockStorageDir)
