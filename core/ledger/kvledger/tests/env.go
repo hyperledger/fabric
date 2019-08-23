@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
@@ -166,23 +167,23 @@ func (e *env) getLedgerRootPath() string {
 }
 
 func (e *env) getLevelstateDBPath() string {
-	return filepath.Join(e.initializer.Config.RootFSPath, "stateLeveldb")
+	return kvledger.StateDBPath(e.initializer.Config.RootFSPath)
 }
 
 func (e *env) getBlockIndexDBPath() string {
-	return filepath.Join(e.initializer.Config.RootFSPath, "chains", fsblkstorage.IndexDir)
+	return filepath.Join(kvledger.BlockStorePath(e.initializer.Config.RootFSPath), fsblkstorage.IndexDir)
 }
 
 func (e *env) getConfigHistoryDBPath() string {
-	return filepath.Join(e.initializer.Config.RootFSPath, "configHistory")
+	return kvledger.ConfigHistoryDBPath(e.initializer.Config.RootFSPath)
 }
 
 func (e *env) getHistoryDBPath() string {
-	return filepath.Join(e.initializer.Config.RootFSPath, "historyLeveldb")
+	return kvledger.HistoryDBPath(e.initializer.Config.RootFSPath)
 }
 
 func (e *env) getBookkeeperDBPath() string {
-	return filepath.Join(e.initializer.Config.RootFSPath, "bookkeeper")
+	return kvledger.BookkeeperDBPath(e.initializer.Config.RootFSPath)
 }
 
 func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Initializer) {

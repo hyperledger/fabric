@@ -8,7 +8,6 @@ package kvledger
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/pkg/errors"
 )
@@ -39,27 +38,27 @@ func dropDBs(rootFSPath string) error {
 }
 
 func dropStateLevelDB(rootFSPath string) error {
-	stateLeveldbPath := filepath.Join(rootFSPath, "stateLeveldb")
+	stateLeveldbPath := StateDBPath(rootFSPath)
 	logger.Infof("Dropping StateLevelDB at location [%s] ...if present", stateLeveldbPath)
 	return os.RemoveAll(stateLeveldbPath)
 }
 
 func dropConfigHistoryDB(rootFSPath string) error {
-	configHistoryDBPath := filepath.Join(rootFSPath, "configHistory")
+	configHistoryDBPath := ConfigHistoryDBPath(rootFSPath)
 	logger.Infof("Dropping ConfigHistoryDB at location [%s]", configHistoryDBPath)
 	err := os.RemoveAll(configHistoryDBPath)
 	return errors.Wrapf(err, "error removing the ConfigHistoryDB located at %s", configHistoryDBPath)
 }
 
 func dropBookkeeperDB(rootFSPath string) error {
-	bookkeeperDBPath := filepath.Join(rootFSPath, "bookkeeper")
+	bookkeeperDBPath := BookkeeperDBPath(rootFSPath)
 	logger.Infof("Dropping BookkeeperDB at location [%s]", bookkeeperDBPath)
 	err := os.RemoveAll(bookkeeperDBPath)
 	return errors.Wrapf(err, "error removing the BookkeeperDB located at %s", bookkeeperDBPath)
 }
 
 func dropHistoryDB(rootFSPath string) error {
-	historyDBPath := filepath.Join(rootFSPath, "historyLeveldb")
+	historyDBPath := HistoryDBPath(rootFSPath)
 	logger.Infof("Dropping HistoryDB at location [%s] ...if present", historyDBPath)
 	return os.RemoveAll(historyDBPath)
 }
