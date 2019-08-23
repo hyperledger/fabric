@@ -56,17 +56,17 @@ func TestLedgerMgmt(t *testing.T) {
 	// attempt to close the same ledger twice and ensure it doesn't panic
 	assert.NotPanics(t, l.Close)
 
-	l, err = ledgerMgr.OpenLedger(ledgerID)
+	_, err = ledgerMgr.OpenLedger(ledgerID)
 	assert.NoError(t, err)
 
-	l, err = ledgerMgr.OpenLedger(ledgerID)
+	_, err = ledgerMgr.OpenLedger(ledgerID)
 	assert.Equal(t, ErrLedgerAlreadyOpened, err)
 	// close all opened ledgers and ledger mgmt
 	ledgerMgr.Close()
 
 	// Recreate LedgerMgr with existing ledgers
 	ledgerMgr = NewLedgerMgr(initializer)
-	l, err = ledgerMgr.OpenLedger(ledgerID)
+	_, err = ledgerMgr.OpenLedger(ledgerID)
 	assert.NoError(t, err)
 	ledgerMgr.Close()
 }

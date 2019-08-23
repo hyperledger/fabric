@@ -106,7 +106,7 @@ func (m *LedgerMgr) OpenLedger(id string) (ledger.PeerLedger, error) {
 	logger.Infof("Opening ledger with id = %s", id)
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	l, ok := m.openedLedgers[id]
+	_, ok := m.openedLedgers[id]
 	if ok {
 		return nil, ErrLedgerAlreadyOpened
 	}
