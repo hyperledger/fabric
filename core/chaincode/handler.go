@@ -340,9 +340,7 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 }
 
 func (h *Handler) deregister() {
-	if h.chaincodeID != "" {
-		h.Registry.Deregister(h.chaincodeID)
-	}
+	h.Registry.Deregister(h.chaincodeID)
 }
 
 func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
@@ -459,6 +457,10 @@ func (h *Handler) HandleRegister(msg *pb.ChaincodeMessage) {
 	// Note: chaincodeID.Name is actually of the form name:version for older chaincodes, and
 	// of the form label:hash for newer chaincodes.  Either way, it is the handle by which
 	// we track the chaincode's registration.
+	if chaincodeID.Name == "" {
+		h.notifyRegistry(errors.New("error in handling register chaincode, chaincodeID name is empty"))
+		return
+	}
 	h.chaincodeID = chaincodeID.Name
 	err = h.Registry.Register(h)
 	if err != nil {
@@ -512,11 +514,7 @@ func (h *Handler) registerTxid(msg *pb.ChaincodeMessage) bool {
 	}
 
 	// Log the issue and drop the request
-	chaincodeID := "unknown"
-	if h.chaincodeID != "" {
-		chaincodeID = h.chaincodeID
-	}
-	chaincodeLogger.Errorf("[%s] Another request pending for this CC: %s, Txid: %s, ChannelID: %s. Cannot process.", shorttxid(msg.Txid), chaincodeID, msg.Txid, msg.ChannelId)
+	chaincodeLogger.Errorf("[%s] Another request pending for this CC: %s, Txid: %s, ChannelID: %s. Cannot process.", shorttxid(msg.Txid), h.chaincodeID, msg.Txid, msg.ChannelId)
 	return false
 }
 
