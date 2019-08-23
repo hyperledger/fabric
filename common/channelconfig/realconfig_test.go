@@ -41,7 +41,7 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		assert.NoError(t, err)
 		_, err = channelconfig.NewChannelConfig(cg, cryptoProvider)
-		assert.EqualError(t, err, "could not create channel Orderer sub-group config: Orderer Org SampleOrg cannot contain endpoints value until V2_0+ capabilities have been enabled")
+		assert.EqualError(t, err, "could not create channel Orderer sub-group config: Orderer Org SampleOrg cannot contain endpoints value until V1_4_2+ capabilities have been enabled")
 	})
 
 	t.Run("Without_Capability_NoOSNs", func(t *testing.T) {

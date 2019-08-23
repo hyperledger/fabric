@@ -87,7 +87,7 @@ func NewOrdererOrgConfig(orgName string, orgGroup *cb.ConfigGroup, mspConfigHand
 
 	if !channelCapabilities.OrgSpecificOrdererEndpoints() {
 		if _, ok := orgGroup.Values[EndpointsKey]; ok {
-			return nil, errors.Errorf("Orderer Org %s cannot contain endpoints value until V2_0+ capabilities have been enabled", orgName)
+			return nil, errors.Errorf("Orderer Org %s cannot contain endpoints value until V1_4_2+ capabilities have been enabled", orgName)
 		}
 	}
 
