@@ -23,9 +23,8 @@ In this topic, we're going to cover:
 To help your understanding, we'll make reference to the commercial paper sample
 application provided with Hyperledger Fabric. You can [download
 it](../install.html) and [run it locally](../tutorial/commercial_paper.html). It
-is written in JavaScript, but the logic is quite language independent, so you'll
-be easily able to see what's going on! (The sample will become available for
-Java and GOLANG as well.)
+is written in both JavaScript and Java, but the logic is quite language independent, so you'll
+be easily able to see what's going on! (The sample will become available for  Go as well.)
 
 ## Basic Flow
 
