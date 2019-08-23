@@ -293,6 +293,37 @@ func TestLoad142MSPWithInvalidAdminConfiguration(t *testing.T) {
 	assert.Equal(t, "administrators must be declared when no admin ou classification is set", err.Error())
 }
 
+func TestAdminInAdmincertsWith143MSP(t *testing.T) {
+	// testdata/nodeouadminclient enables NodeOU classification and contains in the admincerts folder
+	// a certificate classified as client. This test checks that that identity is considered an admin anyway.
+	// testdata/nodeouadminclient2 enables NodeOU classification and contains in the admincerts folder
+	// a certificate classified as client. This test checks that that identity is considered an admin anyway.
+	// Notice that the configuration used is one that is usually expected for MSP version < 1.4.3 which
+	// only define peer and client OU.
+	testFolders := []string{"testdata/nodeouadminclient", "testdata/nodeouadminclient2"}
+
+	for _, testFolder := range testFolders {
+		localMSP := getLocalMSPWithVersion(t, testFolder, MSPv1_4_3)
+
+		cert, err := readFile(filepath.Join(testFolder, "admincerts", "admin.pem"))
+		assert.NoError(t, err)
+
+		id, _, err := localMSP.(*bccspmsp).getIdentityFromConf(cert)
+		assert.NoError(t, err)
+		for _, ou := range id.GetOrganizationalUnits() {
+			assert.NotEqual(t, "admin", ou.OrganizationalUnitIdentifier)
+		}
+
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "SampleOrg"})
+		assert.NoError(t, err)
+		principal := &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id.SatisfiesPrincipal(principal)
+		assert.NoError(t, err)
+	}
+}
+
 func TestSatisfiesPrincipalOrderer(t *testing.T) {
 	// testdata/nodeouorderer:
 	// the configuration enables NodeOUs (with orderOU)
