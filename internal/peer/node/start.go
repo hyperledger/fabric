@@ -593,7 +593,11 @@ func serve(args []string) error {
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
-	serverEndorser := endorser.NewEndorserServer(privDataDist, endorserSupport, metricsProvider)
+	serverEndorser := &endorser.Endorser{
+		PrivateDataDistributor: privDataDist,
+		Support:                endorserSupport,
+		Metrics:                endorser.NewEndorserMetrics(metricsProvider),
+	}
 
 	// deploy system chaincodes
 	for _, cc := range []scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC} {
