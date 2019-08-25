@@ -34,11 +34,6 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	cwd, err := filepath.Abs(".")
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	// Create tempdir to be used to store the genesis block for the system channel
-	tempDir, err := ioutil.TempDir("", "etcdraft-orderer-launch")
-	gt.Expect(err).NotTo(HaveOccurred())
-	defer os.RemoveAll(tempDir)
-
 	// Set the fabric root folder for easy navigation to sampleconfig folder
 	fabricRootDir, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -53,20 +48,38 @@ func TestSpawnEtcdRaft(t *testing.T) {
 
 	defer gexec.CleanupBuildArtifacts()
 
-	t.Run("Invalid bootstrap block", func(t *testing.T) {
-		testEtcdRaftOSNFailureInvalidBootstrapBlock(gt, tempDir, orderer, fabricRootDir)
+	t.Run("Bad", func(t *testing.T) {
+		tempDir, err := ioutil.TempDir("", "etcdraft-orderer-launch")
+		gt.Expect(err).NotTo(HaveOccurred())
+		defer os.RemoveAll(tempDir)
+
+		t.Run("Invalid bootstrap block", func(t *testing.T) {
+			testEtcdRaftOSNFailureInvalidBootstrapBlock(gt, tempDir, orderer, fabricRootDir)
+		})
+
+		t.Run("TLS disabled single listener", func(t *testing.T) {
+			testEtcdRaftOSNNoTLSSingleListener(gt, tempDir, orderer, fabricRootDir, configtxgen)
+		})
 	})
 
-	t.Run("No TLS single listener", func(t *testing.T) {
-		testEtcdRaftOSNNoTLSSingleListener(gt, tempDir, orderer, fabricRootDir, configtxgen)
-	})
+	t.Run("Good", func(t *testing.T) {
+		// tests in this suite actually launch process with success, hence we need to avoid
+		// conflicts in listening port, opening files.
+		t.Run("TLS disabled dual listener", func(t *testing.T) {
+			tempDir, err := ioutil.TempDir("", "etcdraft-orderer-launch")
+			gt.Expect(err).NotTo(HaveOccurred())
+			defer os.RemoveAll(tempDir)
 
-	t.Run("No TLS dual listener", func(t *testing.T) {
-		testEtcdRaftOSNNoTLSDualListener(gt, tempDir, orderer, fabricRootDir, configtxgen)
-	})
+			testEtcdRaftOSNNoTLSDualListener(gt, tempDir, orderer, fabricRootDir, configtxgen)
+		})
 
-	t.Run("EtcdRaft launch success", func(t *testing.T) {
-		testEtcdRaftOSNSuccess(gt, tempDir, configtxgen, cwd, orderer, fabricRootDir)
+		t.Run("TLS enabled single listener", func(t *testing.T) {
+			tempDir, err := ioutil.TempDir("", "etcdraft-orderer-launch")
+			gt.Expect(err).NotTo(HaveOccurred())
+			defer os.RemoveAll(tempDir)
+
+			testEtcdRaftOSNSuccess(gt, tempDir, configtxgen, cwd, orderer, fabricRootDir)
+		})
 	})
 }
 
@@ -177,7 +190,7 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricR
 		fmt.Sprintf("ORDERER_CONSENSUS_WALDIR=%s", filepath.Join(tempDir, "wal")),
 		fmt.Sprintf("ORDERER_CONSENSUS_SNAPDIR=%s", filepath.Join(tempDir, "snapshot")),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(fabricRootDir, "sampleconfig")),
-		fmt.Sprintf("ORDERER_OPERATIONS_LISTENADDRESS=127.0.0.1:%d", nextPort()),
+		"ORDERER_OPERATIONS_LISTENADDRESS=127.0.0.1:0",
 	}
 	ordererProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
