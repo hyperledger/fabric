@@ -45,7 +45,7 @@ USER=${1:-nobody}
 PASSWORD=${2:-nohow}
 NS_PULL=${NS_PULL:-hyperledger}
 NS_PUSH=${NS_PUSH:-hyperledger}
-VERSION=${BASE_VERSION:-1.4.1}
+VERSION=${BASE_VERSION}
 TWO_DIGIT_VERSION=${TWO_DIGIT_VERSION:-1.4}
 
 if [ "$#" -ne 2 ]; then
