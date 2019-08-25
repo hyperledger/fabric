@@ -273,7 +273,7 @@ func (ef *ExternalFunctions) CheckCommitReadiness(chname, ccname string, cd *Cha
 		return nil, err
 	}
 
-	logger.Infof("successfully simulated committing chaincode definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+	logger.Infof("successfully checked commit readiness of chaincode definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
 	return approvals, nil
 }
