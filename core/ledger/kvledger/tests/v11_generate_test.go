@@ -21,7 +21,12 @@ import "testing"
 // See a test in the same folder in v1.2 codebase for how this 'ledgersData' is used for testing backward compatibility
 func TestGenerateSampleDataForV12BackwardCompatibility(t *testing.T) {
 	t.Skip()
-	newEnv(defaultConfig, t)
+	c := config{}
+	for k, v := range defaultConfig {
+		c[k] = v
+	}
+	c["ledger.history.enableHistoryDatabase"] = true
+	newEnv(c, t)
 
 	// create two ledgers
 	h1 := newTestHelperCreateLgr("ledger1", t)
