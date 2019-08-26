@@ -227,8 +227,6 @@ type Envelope struct {
 	Signature []byte
 	// Data contains the opaque Data bytes in the common.Payload
 	Data []byte
-	// HeaderBytes contains the marshalled Header in the common.Payload
-	HeaderBytes []byte
 	// ChannelHeaderBytes contains the marshalled ChannelHeader of the common.Header
 	ChannelHeaderBytes []byte
 	// ChannelHeaderBytes contains the marshalled SignatureHeader of the common.Header
