@@ -1,7 +1,7 @@
 What's new in v1.4
 ==================
 
-Hyperledger Fabric's First long term support release
+Hyperledger Fabric's first long term support release
 ----------------------------------------------------
 
 Hyperledger Fabric has matured since the initial v1.0 release, and so has the
@@ -155,6 +155,15 @@ Private data enhancements
     chaincode based on the client organization collection membership without having
     to write specific chaincode logic.
 
+Node OU support
+---------------
+
+* :doc:`msp`:
+  Starting with v1.4.3, node OUs are now supported for admin and orderer identity
+  classifications (extending the existing Node OU support for clients and peers).
+  These "organizational units" allow organizations to further classify identities
+  into admins and orderers based on the OUs of their x509 certificates.
+
 Release notes
 =============
 
@@ -164,9 +173,11 @@ with a link to the full release change log.
 * `Fabric v1.4.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.0>`_.
 * `Fabric v1.4.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.1>`_.
 * `Fabric v1.4.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.2>`_.
+* `Fabric v1.4.3 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.3>`_.
 * `Fabric CA v1.4.0 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.0>`_.
 * `Fabric CA v1.4.1 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.1>`_.
 * `Fabric CA v1.4.2 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.2>`_.
+* `Fabric CA v1.4.3 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.3>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

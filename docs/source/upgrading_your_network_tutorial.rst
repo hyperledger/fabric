@@ -17,17 +17,23 @@ Upgrading Your Network Components
 Overview
 --------
 
-While upgrade to v1.4.0 does not require any capabilities to be enabled,
-v1.4.2 offers new capabilities at the orderer, channel, and application levels.
-Specifically, the new v1.4.2 capabilities enable the following features:
+If you're unfamiliar with capabilities, check out :doc:`capabilities_concept`
+before proceeding.
+
+While upgrading to v1.4.0 does not require any capabilities to be enabled,
+v1.4.2 and v1.4.3 offer new capabilities.
+
+Specifically, the v1.4.2 and v1.4.3 capabilities enable the following features:
 
  * Migration from Kafka to Raft consensus (requires v1.4.2 orderer and channel capabilities)
  * Ability to specify orderer endpoints per organization (requires v1.4.2 channel capability)
  * Ability to store private data for invalidated transactions (requires v1.4.2 application capability)
+ * Node OU support for admin and orderer identity classifications (extends the
+   existing Node OU support for clients and peers) (requires v1.4.3 channel capability)
 
-Because not all users need these new features, enabling the v1.4.2 capabilities
-is considered optional (though recommended), and will be detailed in a section
-after the main body of this tutorial.
+Because not all users need these new features, enabling the v1.4.2 and v1.4.3
+capabilities is considered optional (though recommended), and will be detailed in
+a section after the main body of this tutorial.
 
 Because the :doc:`build_network` (BYFN) tutorial defaults to the “latest” binaries,
 if you have run it since the latest release of v1.4.x, your machine should have
@@ -41,17 +47,17 @@ At a high level, our upgrade tutorial will perform the following steps:
 1. Backup the ledger and MSPs.
 2. Upgrade the orderer binaries to Fabric v1.4.x.
 3. Upgrade the peer binaries to Fabric v1.4.x.
-4. Update channel capabilities to 1.4.2 (optional).
+4. Update channel capabilities to v1.4.2 and 1.4.3 (optional).
 
 This tutorial will demonstrate how to perform each of these steps individually
 with CLI commands. Instructions for both scripted execution and manual execution
 are included.
 
-.. note:: Because BYFN uses a "Solo" ordering service (one ordering node) by
-          default, our script brings down the entire network. However, in
-          production environments, the ordering nodes and peers can be upgraded
-          simultaneously and on a rolling basis. In other words, you can upgrade
-          the binaries in any order without bringing down the network.
+.. note:: Because BYFN uses a single node ordering service by default, our script
+          brings down the entire network. However, in production environments,
+          the ordering nodes and peers can be upgraded simultaneously and on a
+          rolling basis. In other words, you can upgrade the binaries in any
+          order without bringing down the network.
 
           Because BYFN does not utilize the following components by default, our script for
           upgrading BYFN will not cover them:
@@ -133,15 +139,15 @@ Get the newest samples
 .. note:: The instructions below pertain to whatever is the most recently
           published version of v1.4.x. Please substitute 1.4.x with the version
           identifier of the published release that you are testing, for example,
-          replace '1.4.x' with '1.4.2'.
+          replace '1.4.x' with '1.4.3'.
 
 Before completing the rest of the tutorial, it's important to switch to the v1.4.x
-(for example, 1.4.2) version of the samples you are upgrading to. For v1.4.2,
+(for example, 1.4.3) version of the samples you are upgrading to. For v1.4.3,
 this would be:
 
 .. code:: bash
 
-  git checkout v1.4.2
+  git checkout v1.4.3
 
 Want to upgrade now?
 ~~~~~~~~~~~~~~~~~~~~
@@ -154,13 +160,27 @@ for performing your own upgrades.
 Afterwards, we will walk you through the steps in the script and describe what
 each piece of code is doing in the upgrade process.
 
-To run the script to upgrade from v1.3 to v1.4.x, issue this command (substituting
-your preferred release number for ``x``). Note that the script to upgrade to v1.4.2
+If you are updating from v1.3, you will need to set the correct system channel name,
+which you can do by issuing:
+
+.. code:: bash
+
+  export CH_NAME=testchainid
+
+If you are updating from a previous version of v1.4, you will need to set a different
+system channel name:
+
+.. code:: bash
+
+  export CH_NAME=byfn-sys-channel
+
+Once you have set the correct system channel name, issue these commands (substituting
+your preferred release number for ``x``). Note that the script to upgrade to v1.4.3
 will also upgrade the channel capabilities.
 
 .. code:: bash
 
-  ./byfn.sh upgrade -i 1.4.2
+  ./byfn.sh upgrade -i 1.4.3
 
 If the upgrade is successful, you should see the following:
 
@@ -186,7 +206,7 @@ high level, the orderer upgrade process goes as follows:
 3. Restart the orderer with the latest images.
 4. Verify upgrade completion.
 
-As a consequence of leveraging BYFN, we have a Solo orderer setup, therefore, we
+As a consequence of leveraging BYFN, we have a single node orderer setup, therefore, we
 will only perform this process once. In a Kafka or Raft setup, however, this
 process will have to be repeated on each orderer.
 
@@ -205,7 +225,7 @@ Let’s begin the upgrade process by **bringing down the orderer**:
 
   export LEDGERS_BACKUP=./ledgers-backup
 
-  # Note, replace '1.4.x' with a specific version, for example '1.4.2'.
+  # Note, replace '1.4.x' with a specific version, for example '1.4.3'.
   # Set IMAGE_TAG to 'latest' if you prefer to default to the images tagged 'latest' on your system.
 
   export IMAGE_TAG=$(go env GOARCH)-1.4.x
@@ -378,16 +398,16 @@ do this by repeating the process above with a different peer name exported.
   export PEER=peer0.org2.example.com
   export PEER=peer1.org2.example.com
 
-Update channel capabilities to v1.4.2 (optional)
-------------------------------------------------
+Update channel capabilities to v1.4.2 and v1.4.3 (optional)
+-----------------------------------------------------------
 
-.. note:: A reminder that while we show how to enable v1.4.2 capabilities as part of
+.. note:: While we show how to enable v1.4.2 and v1.4.3 capabilities as part of
           this tutorial, this is an optional step UNLESS you are leveraging
-          the v1.4.2 features that require the capabilities.
+          the v1.4.2 or v1.4.3 features that require the capabilities.
 
 Although Fabric binaries can and should be upgraded in a rolling fashion, it is
 important to finish upgrading binaries before enabling capabilities. Any binaries
-which are not upgraded to v1.4.2 before enabling the new v1.4.2 capabilities may
+which are not upgraded to at least the level of the relevant capabilities may
 intentionally crash to indicate a misconfiguration which could otherwise result
 in a forked blockchain.
 
@@ -406,8 +426,8 @@ Capabilities are enabled through a channel configuration transaction. For more
 information on updating channel configs, check out :doc:`channel_update_tutorial`
 or the doc on :doc:`config_update`.
 
-To learn about what the new capabilities are in v1.4.2 and what they enable, refer
-back to the Overview_.
+To learn about what the new capabilities are in v1.4.2 and v1.4.3 and what they
+enable, refer back to the Overview_.
 
 We will enable these capabilities in the following order:
 
@@ -421,6 +441,9 @@ We will enable these capabilities in the following order:
   a. Orderer Group
   b. Channel Group
   c. Application Group
+
+.. note:: The channel capabilities will be updated to v1.4.3. All other capabilities
+          will be updated to v1.4.2, the latest capability level for those groups.
 
 Updating a channel configuration is a three step process:
 
@@ -439,6 +462,12 @@ or the doc on :doc:`config_update`.
 Orderer System Channel Capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Make sure you are in the CLI container:
+
+.. code:: bash
+
+  docker exec -it cli bash
+
 Because only ordering organizations admins can update the ordering system channel,
 we need set environment variables for the system channel that will allow us to
 carry out these tasks. Issue each of these commands:
@@ -453,14 +482,14 @@ carry out these tasks. Issue each of these commands:
 
   ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
-If we're upgrading from v1.3 to v1.4.2, we need to set the system channel name
+If we're upgrading from v1.3 to v1.4.3, we need to set the system channel name
 to ``testchainid``:
 
 .. code:: bash
 
   CH_NAME=testchainid
 
-If we're upgrading from v1.4.1 to v1.4.2, we need to set the system channel name
+If we're upgrading from v1.4.1 to v1.4.3, we need to set the system channel name
 to ``byfn-sys-channel``:
 
 .. code:: bash
@@ -473,6 +502,8 @@ Orderer Group
 The first step in updating a channel configuration is getting the latest config
 block:
 
+.. code:: bash
+
   peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CH_NAME --tls --cafile $ORDERER_CA
 
   configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
@@ -484,7 +515,7 @@ copy of the config file and change the capability level:
 
 .. code:: bash
 
-  jq -s '.[0] * {"channel_group":{"groups":{"Orderer": {"values": {"Capabilities": .[1]}}}}}' config.json ./scripts/capabilities.json > modified_config.json
+  jq -s '.[0] * {"channel_group":{"groups":{"Orderer": {"values": {"Capabilities": .[1].orderer}}}}}' config.json ./scripts/capabilities.json > modified_config.json
 
 Now we can create the config update:
 
@@ -536,7 +567,7 @@ Next, create a modified channel config:
 
 .. code:: bash
 
-  jq -s '.[0] * {"channel_group":{"values": {"Capabilities": .[1]}}}' config.json ./scripts/capabilities.json > modified_config.json
+  jq -s '.[0] * {"channel_group":{"values": {"Capabilities": .[1].channel}}}' config.json ./scripts/capabilities.json > modified_config.json
 
 Create the config update transaction:
 
@@ -596,7 +627,7 @@ Change the capability level of the orderer group:
 
 .. code:: bash
 
-  jq -s '.[0] * {"channel_group":{"groups":{"Orderer": {"values": {"Capabilities": .[1]}}}}}' config.json ./scripts/capabilities.json > modified_config.json
+  jq -s '.[0] * {"channel_group":{"groups":{"Orderer": {"values": {"Capabilities": .[1].orderer}}}}}' config.json ./scripts/capabilities.json > modified_config.json
 
 Create the config update:
 
@@ -644,7 +675,7 @@ Create a modified config:
 
 .. code:: bash
 
-  jq -s '.[0] * {"channel_group":{"values": {"Capabilities": .[1]}}}' config.json ./scripts/capabilities.json > modified_config.json
+  jq -s '.[0] * {"channel_group":{"values": {"Capabilities": .[1].channel}}}' config.json ./scripts/capabilities.json > modified_config.json
 
 Create the config update:
 
@@ -741,7 +772,7 @@ Create a modified channel config:
 
 .. code:: bash
 
-  jq -s '.[0] * {"channel_group":{"groups":{"Application": {"values": {"Capabilities": .[1]}}}}}' config.json ./scripts/capabilities.json > modified_config.json
+  jq -s '.[0] * {"channel_group":{"groups":{"Application": {"values": {"Capabilities": .[1].application}}}}}' config.json ./scripts/capabilities.json > modified_config.json
 
 Note what we’re changing here: ``Capabilities`` are being added as a ``value``
 of the ``Application`` group under ``channel_group`` (in ``mychannel``).
@@ -782,7 +813,7 @@ Set the environment variables as Org2:
 
   export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 
-  export CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+  export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
 
 Org2 submits the config update transaction with its signature:
 
@@ -799,7 +830,7 @@ But let's test just to make sure by moving ``10`` from ``a`` to ``b``, as before
 
 .. code:: bash
 
-  peer chaincode invoke -o orderer.example.com:7050  --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem  -C mychannel -n mycc -c '{"Args":["invoke","a","b","10"]}'
+  peer chaincode invoke -o orderer.example.com:7050 --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt --tls --cafile $ORDERER_CA -C $CH_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
 
 And then querying the value of ``a``, which should reveal a value of ``70``.
 Let’s see:
