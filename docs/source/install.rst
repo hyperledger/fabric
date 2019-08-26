@@ -48,12 +48,12 @@ the binaries and images.
 
 .. note:: If you want a specific release, pass a version identifier for Fabric,
           Fabric-ca and thirdparty Docker images.
-          The command below demonstrates how to download **Fabric v1.4.2**
+          The command below demonstrates how to download **Fabric v1.4.3**
 
 .. code:: bash
 
   curl -sSL http://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version> <thirdparty_version>
-  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.2 1.4.2 0.4.15
+  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.3 1.4.3 0.4.15
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle

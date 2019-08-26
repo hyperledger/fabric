@@ -1,0 +1,152 @@
+v1.4.3 Release Notes - August 26, 2019
+--------------------------------------
+
+What's New in Hyperledger Fabric v1.4.3
+---------------------------------------
+
+The following features are included in this release:
+
+FAB-15388: Node OU certificate support for admin identities.
+FAB-12620: Node OU certificate support for orderer nodes.
+
+Node OUs are now supported for admin and orderer identity
+classifications (extending the existing Node OU support for clients and peers).
+These "organizational units" allow organizations to further classify identities
+into admins and orderers based on the OUs specified in their x509 certificates.
+This feature requires v1.4.3 'channel' capability to be enabled so that all
+orderer and peer nodes identify administrators consistently.
+Peers need to be updated to version v1.4.3 before channel administrators
+update a channel to v1.4.3 channel capability.
+Organizations that wish to take advantage of the new capability
+will need to update their MSP information in the channel configuration.
+For more details see:
+https://hyperledger-fabric.readthedocs.io/en/release-1.4/msp.html#identity-classification
+
+
+Important Fixes
+---------------
+
+FAB-16292 Fix nil pointer exception upon gossip peer expiration
+
+There was an issue introduced in v1.4.2 where peers participating in channels with
+gossip enabled may crash with a nil pointer exception, if another known peer goes down
+for several minutes (when using default aliveExpirationTimeout peer configuration
+of 25 seconds). To work around the problem on v1.4.2, automatically restart
+the peer process if it goes down, or configure a large value for aliveExpirationTimeout
+(peer environment variable CORE_PEER_GOSSIP_ALIVEEXPIRATIONTIMEOUT) to completely
+avoid the problem until peer can be upgraded to v1.4.3.
+
+
+FAB-16114 - v1.4.2 private data application capability enablement requires peer restart
+
+Prior to the fix, enablement of the v1.4.2 application capability required
+a peer restart to become effective. Since the v1.4.2 application capability
+changes how peers disseminate private data for invalid transactions, peers
+that have not been restarted after the application capability has been
+updated on the channel may not disseminate the data to peers that are
+attempting to pull the private data upon block commit. The pulling peers
+may therefore get stalled while pulling private data.
+The remedy on v1.4.2 requires restarting any peer that participates
+in private data dissemination, after v1.4.2 application
+capability has been enabled on a channel.
+Starting in v1.4.3, the application channel capability becomes effective upon
+processing the configuration block update, without requiring a peer restart.
+
+
+FAB-16327 Fix service discovery with orderer endpoints configured at organization level
+
+v1.4.2 introduced orderer endpoint configuration at the organization level
+('OrdererEndpoints' stanza). Prior to the fix, if orderer endpoints are configured
+only at the new organization level, and not at the global 'Orderer.Addresses'
+level, then service discovery is not able return the channel configuration with the
+orderer endpoints.
+With the v1.4.3 fix, service discovery functions correctly even if orderer endpoints
+are configured only at the organization level.
+
+
+FAB-16089 Use latest npm version of ccenv image
+
+In the ccenv image that is used to build node.js chaincode, npm is updated to
+the latest version. This resolves issues from prior npm versions, such as
+the ability to include 'prepare' statements in node.js chaincode
+package.json.
+
+
+Changes, Known Issues, and Workarounds
+--------------------------------------
+FAB-12088 - Java chaincode support on s390x architecture
+Java chaincode support is not available on s390x architecture.
+
+FAB-12134 - Same chaincode source receiving fingerprint mismatch error
+Chaincode installed in different ways may result in "chaincode fingerprint
+mismatch data mismatch" error upon instantiation. This may happen when
+installing chaincode by using different SDKs. To workaround the problem,
+package the chaincode prior to installation and instantiation, by using
+the "peer chaincode package" command.
+
+
+Known Vulnerabilities
+---------------------
+FAB-8664 - Peer should detect and react when its org has been removed
+This is a relatively low severity problem, because it requires a significant
+conspiracy of network admins, but it will be addressed in a future release.
+
+
+Resolved Vulnerabilities
+------------------------
+None.
+
+
+Deprecations
+------------
+The following functions are deprecated and are targeted for removal in a future release.
+
+Support for automatically vendoring the chaincode shim into user chaincodes.
+The fabric-ccenv image which is used to build chaincode, currently includes
+the github.com/hyperledger/fabric/core/chaincode/shim ("shim") package.
+This is convenient, as it provides the ability to package chaincode
+without the need to include the "shim". However, this may cause issues in future
+releases (and/or when trying to use packages which are included by the "shim").
+In order to avoid any issues, users are advised to manually vendor the "shim"
+package with their chaincode prior to using the peer CLI for packaging and/or
+for installing chaincode.
+For more details see FAB-5177.
+
+Support for CAR chaincode package format
+Support for packaging chaincode using the CAR format will be removed in
+a future release.
+For more details see FAB-14720.
+
+Support for specifying orderer endpoints at the global level in channel configuration.
+Utilize the new 'OrdererEndpoints' stanza within the channel configuration of
+an organization instead.
+For more details see FAB-7559.
+
+Support for invoking system chaincodes from user chaincodes.
+System chaincodes, for example QSCC, are intended to be invoked by
+a client rather than by a user chaincode. Invoking from a user chaincode
+may cause deadlocks.
+For more details see FAB-15285.
+
+Support for user chaincodes to utilize the chaincode shim's logger via NewLogger().
+Chaincodes that used the shim's NewLogger() will need to shift to their own preferred
+logging mechanism.
+For more details see FAB-15366.
+
+Support for peer's Admin service.
+The peer's Admin service exposes APIs such as GetLogSpec() and SetLogSpec().
+Instead of using these services, utilize the HTTP operations service that was
+introduced in v1.4.0.
+For more details see FAB-15390.
+
+Support for Solo ordering service.
+With the introduction of Raft-based ordering service in v1.4.1, it is possible
+to deploy a single-node (non-production) or multi-node
+Raft-based ordering service with no external dependencies.
+For single-node (non-production) ordering services, utilize Raft-based ordering
+service with a single node instead of Solo ordering service.
+For more details see FAB-15754.
+
+
+For the full list of improvements and fixes, refer to the release change log:
+https://github.com/hyperledger/fabric/blob/release-1.4/CHANGELOG.md#v143

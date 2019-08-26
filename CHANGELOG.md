@@ -1,3 +1,40 @@
+## v1.4.3
+Mon Aug 26 15:15:42 EDT 2019
+
+* [3b70d53](https://github.com/hyperledger/fabric/commit/3b70d53) [FAB-16412](https://jira.hyperledger.org/browse/FAB-16412) Release fabric v1.4.3
+* [a7ca2fc](https://github.com/hyperledger/fabric/commit/a7ca2fc) Use latest npm version of ccenv image
+* [98992bd](https://github.com/hyperledger/fabric/commit/98992bd) [FAB-16282](https://jira.hyperledger.org/browse/FAB-16282) Upgrade/what's new doc for 1.4.3
+* [30dea93](https://github.com/hyperledger/fabric/commit/30dea93) Remove hardcoded ver on fabric multiarch script
+* [7a9f6e7](https://github.com/hyperledger/fabric/commit/7a9f6e7) [FAB-15899](https://jira.hyperledger.org/browse/FAB-15899) Doc Node OU Support for admins and orderers
+* [607de4d](https://github.com/hyperledger/fabric/commit/607de4d) [FAB-16399](https://jira.hyperledger.org/browse/FAB-16399) Correct capabilities error message
+* [61030af](https://github.com/hyperledger/fabric/commit/61030af) fix peer node cmd preamble/postscript
+* [6f64c22](https://github.com/hyperledger/fabric/commit/6f64c22) [FAB-16357](https://jira.hyperledger.org/browse/FAB-16357) Support for .orderer
+* [e21cd4a](https://github.com/hyperledger/fabric/commit/e21cd4a) [FAB-16327](https://jira.hyperledger.org/browse/FAB-16327) Discovery config query with org endpoints
+* [9b2fde0](https://github.com/hyperledger/fabric/commit/9b2fde0) [FAB-16122](https://jira.hyperledger.org/browse/FAB-16122) Integration Test AdminOU
+* [fd02119](https://github.com/hyperledger/fabric/commit/fd02119) [FAB-15479](https://jira.hyperledger.org/browse/FAB-15479) Docs updates for Java
+* [4a7e76f](https://github.com/hyperledger/fabric/commit/4a7e76f) [FAB-16325](https://jira.hyperledger.org/browse/FAB-16325) Remove travis build file
+* [ea2316f](https://github.com/hyperledger/fabric/commit/ea2316f) [FAB-16056](https://jira.hyperledger.org/browse/FAB-16056) Display config block num for CLI
+* [7078648](https://github.com/hyperledger/fabric/commit/7078648) [FAB-15933](https://jira.hyperledger.org/browse/FAB-15933) Optional NodeOU Classification
+* [df962e9](https://github.com/hyperledger/fabric/commit/df962e9) [FAB-15970](https://jira.hyperledger.org/browse/FAB-15970) Enable MSP 1.4.3 at Channel Config
+* [762f3c5](https://github.com/hyperledger/fabric/commit/762f3c5) [FAB-12620](https://jira.hyperledger.org/browse/FAB-12620) Orderer OU
+* [2f31597](https://github.com/hyperledger/fabric/commit/2f31597) [FAB-15388](https://jira.hyperledger.org/browse/FAB-15388) AdminOU Support
+* [5132634](https://github.com/hyperledger/fabric/commit/5132634) [FAB-16292](https://jira.hyperledger.org/browse/FAB-16292) Fix NPE in expiration
+* [8c6182e](https://github.com/hyperledger/fabric/commit/8c6182e) [FAB-15979](https://jira.hyperledger.org/browse/FAB-15979) Improve capabilities documentation
+* [67026a5](https://github.com/hyperledger/fabric/commit/67026a5) [FAB-16141](https://jira.hyperledger.org/browse/FAB-16141) Option to disable cert expiration checks
+* [56cc786](https://github.com/hyperledger/fabric/commit/56cc786) [FAB-15700](https://jira.hyperledger.org/browse/FAB-15700) Recover an expired TLS cert cluster
+* [1786505](https://github.com/hyperledger/fabric/commit/1786505) [FAB-15532](https://jira.hyperledger.org/browse/FAB-15532) create in-proc broadcast client for IT
+* [861847b](https://github.com/hyperledger/fabric/commit/861847b) fix pvt and blockStore recovery for reset/rollback
+* [e40b33e](https://github.com/hyperledger/fabric/commit/e40b33e) Fix a typo error for etcdraft
+* [042b6c4](https://github.com/hyperledger/fabric/commit/042b6c4) rollback/reset: ensure that stateDB is dropped
+* [bb57b08](https://github.com/hyperledger/fabric/commit/bb57b08) [FAB-16208](https://jira.hyperledger.org/browse/FAB-16208) Add v1.4.2 orderer capability sampleconf
+* [ad802f9](https://github.com/hyperledger/fabric/commit/ad802f9) rollback: fix capability usage at gossip
+* [1181f45](https://github.com/hyperledger/fabric/commit/1181f45) [FAB-16138](https://jira.hyperledger.org/browse/FAB-16138) Accelerate reset and rollback tests
+* [fc4f3a5](https://github.com/hyperledger/fabric/commit/fc4f3a5) [FAB-16140](https://jira.hyperledger.org/browse/FAB-16140) Fix Missing error handling in EC query
+* [f78f7b9](https://github.com/hyperledger/fabric/commit/f78f7b9) [FAB-15891](https://jira.hyperledger.org/browse/FAB-15891) Node.js version support Add version 10
+* [ebf81bc](https://github.com/hyperledger/fabric/commit/ebf81bc) [FAB-16051](https://jira.hyperledger.org/browse/FAB-16051) MSP IDENTITY Principal Deserialization
+* [4d9954c](https://github.com/hyperledger/fabric/commit/4d9954c) [FAB-16020](https://jira.hyperledger.org/browse/FAB-16020) Add java_package to transaction.proto
+* [469501a](https://github.com/hyperledger/fabric/commit/469501a) [FAB-15998](https://jira.hyperledger.org/browse/FAB-15998) Prepare for next fabric rel (1.4.3)
+
 ## v1.4.2
 Wed Jul 17 14:16:28 EDT 2019
 
