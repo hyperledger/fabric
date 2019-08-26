@@ -68,7 +68,7 @@ var (
 	}
 )
 
-type EndorserMetrics struct {
+type Metrics struct {
 	ProposalDuration         metrics.Histogram
 	ProposalsReceived        metrics.Counter
 	SuccessfulProposals      metrics.Counter
@@ -79,8 +79,8 @@ type EndorserMetrics struct {
 	DuplicateTxsFailure      metrics.Counter
 }
 
-func NewEndorserMetrics(p metrics.Provider) *EndorserMetrics {
-	return &EndorserMetrics{
+func NewMetrics(p metrics.Provider) *Metrics {
+	return &Metrics{
 		ProposalDuration:         p.NewHistogram(proposalDurationHistogramOpts),
 		ProposalsReceived:        p.NewCounter(receivedProposalsCounterOpts),
 		SuccessfulProposals:      p.NewCounter(successfulProposalsCounterOpts),
