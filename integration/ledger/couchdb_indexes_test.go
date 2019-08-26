@@ -27,6 +27,7 @@ import (
 const (
 	chaincodePathWithNoIndex = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmd"
 	chaincodePathWithIndex   = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmdwithindexspec"
+	chaincodePathWithIndexes = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmdwithindexspecs"
 )
 
 var _ = Describe("CouchDB indexes", func() {
@@ -116,16 +117,33 @@ var _ = Describe("CouchDB indexes", func() {
 			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer0"), network.Peers...)
 			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_indexed")
-			verifyIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+			verifySizeIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 
-	When("chaincode is defined and installed via new lifecycle", func() {
+	When("chaincode is defined and installed via new lifecycle and then upgraded with an additional index", func() {
 		It("creates indexes", func() {
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode, network.Peers...)
 			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_indexed")
-			verifyIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+			verifySizeIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+			verifyColorIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+
+			By("upgrading the chaincode to include an additional index")
+			newlifecycleChaincode.Sequence = "2"
+			newlifecycleChaincode.Path = chaincodePathWithIndexes
+			newlifecycleChaincode.PackageFile = filepath.Join(testDir, "marbles-two-indexes.tar.gz")
+			newlifecycleChaincode.Label = "marbles-two-indexes"
+
+			nwo.PackageChaincode(network, newlifecycleChaincode, network.Peer("Org1", "peer0"))
+			newlifecycleChaincode.SetPackageIDFromPackageFile()
+			nwo.InstallChaincode(network, newlifecycleChaincode, network.Peers...)
+			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, newlifecycleChaincode, network.Peers...)
+			nwo.CheckCommitReadinessUntilReady(network, "testchannel", newlifecycleChaincode, network.PeerOrgs(), network.Peers...)
+			nwo.CommitChaincode(network, "testchannel", orderer, newlifecycleChaincode, network.Peers[0], network.Peers...)
+
+			verifySizeIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+			verifyColorIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 
@@ -141,13 +159,13 @@ var _ = Describe("CouchDB indexes", func() {
 			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer0"), network.Peers...)
 			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_not_indexed")
-			verifyIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+			verifySizeIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 
 			By("installing and defining chaincode using new lifecycle")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode)
 			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_indexed")
-			verifyIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+			verifySizeIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 
@@ -175,7 +193,7 @@ var _ = Describe("CouchDB indexes", func() {
 			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 
 			By("verifying that the index should not have been created on (Org1, peer0) - though the legacy package contains indexes")
-			verifyIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+			verifySizeIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 
@@ -196,7 +214,7 @@ var _ = Describe("CouchDB indexes", func() {
 			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_not_indexed")
 
 			By("verifying that the index should not have been created - though the legacy package contains indexes")
-			verifyIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+			verifySizeIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 })
@@ -226,16 +244,15 @@ func prepareChaincodeInvokeArgs(args ...string) string {
 	return string(m)
 }
 
-func verifyIndexExists(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string) {
-	verifyIndexPresence(n, channel, orderer, peer, ccName, true)
+func verifySizeIndexExists(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string) {
+	verifySizeIndexPresence(n, channel, orderer, peer, ccName, true)
 }
 
-func verifyIndexDoesNotExist(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string) {
-	verifyIndexPresence(n, channel, orderer, peer, ccName, false)
+func verifySizeIndexDoesNotExist(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string) {
+	verifySizeIndexPresence(n, channel, orderer, peer, ccName, false)
 }
 
-func verifyIndexPresence(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string, expectIndexPresent bool) {
-	By("invoking queryMarbles function with a user constructed query that requires an index due to a sort")
+func verifySizeIndexPresence(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string, expectIndexPresent bool) {
 	query := `{
 		"selector":{
 			"docType":{
@@ -252,10 +269,43 @@ func verifyIndexPresence(n *nwo.Network, channel string, orderer *nwo.Orderer, p
 		"sort":[{"size":"desc"}],
 		"use_index":"_design/indexSizeSortDoc"
 	}`
+	verifyIndexPresence(n, channel, orderer, peer, ccName, expectIndexPresent, query)
+}
+
+func verifyColorIndexExists(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string) {
+	verifyColorIndexPresence(n, channel, orderer, peer, ccName, true)
+}
+
+func verifyColorIndexDoesNotExist(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string) {
+	verifyColorIndexPresence(n, channel, orderer, peer, ccName, false)
+}
+
+func verifyColorIndexPresence(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string, expectIndexPresent bool) {
+	query := `{
+		"selector":{
+			"docType":{
+				"$eq":"marble"
+			},
+			"owner":{
+				"$eq":"tom"
+			},
+			"color":{
+				"$eq":"blue"
+			}
+		},
+		"fields":["docType","owner","size"],
+		"sort":[{"color":"desc"}],
+		"use_index":"_design/indexColorSortDoc"
+	}`
+	verifyIndexPresence(n, channel, orderer, peer, ccName, expectIndexPresent, query)
+}
+
+func verifyIndexPresence(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string, expectIndexPresent bool, indexQuery string) {
+	By("invoking queryMarbles function with a user constructed query that requires an index due to a sort")
 	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
 		Name:      ccName,
-		Ctor:      prepareChaincodeInvokeArgs("queryMarbles", query),
+		Ctor:      prepareChaincodeInvokeArgs("queryMarbles", indexQuery),
 	})
 	Expect(err).NotTo(HaveOccurred())
 	if expectIndexPresent {

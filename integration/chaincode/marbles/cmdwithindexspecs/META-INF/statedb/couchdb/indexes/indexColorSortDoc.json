@@ -1,0 +1,12 @@
+{
+    "index":{
+        "fields":[
+            {"color":"desc"},
+            {"docType":"desc"},
+            {"owner":"desc"}
+        ]
+    },
+    "ddoc":"indexColorSortDoc",
+    "name":"indexColorSortDesc",
+    "type":"json"
+}
