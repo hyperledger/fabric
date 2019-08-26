@@ -115,7 +115,8 @@ var _ = Describe("CouchDB indexes", func() {
 			nwo.PackageChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer0"), network.Peers...)
-			verifyIndexExists(network, "Org1", "peer0", "marbles", "testchannel", orderer)
+			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_indexed")
+			verifyIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 
@@ -123,7 +124,8 @@ var _ = Describe("CouchDB indexes", func() {
 		It("creates indexes", func() {
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode, network.Peers...)
-			verifyIndexExists(network, "Org1", "peer0", "marbles", "testchannel", orderer)
+			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_indexed")
+			verifyIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 
@@ -138,12 +140,14 @@ var _ = Describe("CouchDB indexes", func() {
 			nwo.PackageChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, legacyChaincode, network.Peer("Org1", "peer0"), network.Peers...)
-			verifyIndexDoesNotExist(network, "Org1", "peer0", "marbles", "testchannel", orderer)
+			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_not_indexed")
+			verifyIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 
 			By("installing and defining chaincode using new lifecycle")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode)
-			verifyIndexExists(network, "Org1", "peer0", "marbles", "testchannel", orderer)
+			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_indexed")
+			verifyIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 
@@ -165,12 +169,13 @@ var _ = Describe("CouchDB indexes", func() {
 			By("installing and defining chaincode using new lifecycle")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode)
+			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_not_indexed")
 
 			By("installing legacy chaincode on Org1.peer0")
 			nwo.InstallChaincodeLegacy(network, legacyChaincode, network.Peer("Org1", "peer0"))
 
 			By("verifying that the index should not have been created on (Org1, peer0) - though the legacy package contains indexes")
-			verifyIndexDoesNotExist(network, "Org1", "peer0", "marbles", "testchannel", orderer)
+			verifyIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 
@@ -188,31 +193,48 @@ var _ = Describe("CouchDB indexes", func() {
 			By("installing and defining chaincode (without an index included) using new lifecycle")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode)
+			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_not_indexed")
 
 			By("verifying that the index should not have been created - though the legacy package contains indexes")
-			verifyIndexDoesNotExist(network, "Org1", "peer0", "marbles", "testchannel", orderer)
+			verifyIndexDoesNotExist(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
 		})
 	})
 })
 
-func verifyIndexExists(n *nwo.Network, org string, peer string, ccname string, channel string, orderer *nwo.Orderer) {
-	verifyIndexPresence(n, org, peer, ccname, channel, orderer, true)
-}
-
-func verifyIndexDoesNotExist(n *nwo.Network, org string, peer string, ccname string, channel string, orderer *nwo.Orderer) {
-	verifyIndexPresence(n, org, peer, ccname, channel, orderer, false)
-}
-
-func verifyIndexPresence(n *nwo.Network, org string, peer string, ccname string, channel string, orderer *nwo.Orderer, expectIndexPresent bool) {
-	marbleName := "marble_not_indexed"
-	if expectIndexPresent {
-		marbleName = "marble_indexed"
-	}
+func initMarble(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName, marbleName string) {
 	By("invoking initMarble function of the chaincode")
-	commitTx(n, org, peer, ccname,
-		prepareChaincodeInvokeArgs("initMarble", marbleName, "blue", "35", "tom"),
-		channel, orderer)
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+		ChannelID: channel,
+		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
+		Name:      ccName,
+		Ctor:      prepareChaincodeInvokeArgs("initMarble", marbleName, "blue", "35", "tom"),
+		PeerAddresses: []string{
+			n.PeerAddress(peer, nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
+	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
+}
 
+func prepareChaincodeInvokeArgs(args ...string) string {
+	m, err := json.Marshal(map[string][]string{
+		"Args": args,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	return string(m)
+}
+
+func verifyIndexExists(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string) {
+	verifyIndexPresence(n, channel, orderer, peer, ccName, true)
+}
+
+func verifyIndexDoesNotExist(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string) {
+	verifyIndexPresence(n, channel, orderer, peer, ccName, false)
+}
+
+func verifyIndexPresence(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string, expectIndexPresent bool) {
 	By("invoking queryMarbles function with a user constructed query that requires an index due to a sort")
 	query := `{
 		"selector":{
@@ -230,9 +252,9 @@ func verifyIndexPresence(n *nwo.Network, org string, peer string, ccname string,
 		"sort":[{"size":"desc"}],
 		"use_index":"_design/indexSizeSortDoc"
 	}`
-	sess, err := n.PeerUserSession(n.Peer(org, peer), "User1", commands.ChaincodeInvoke{
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: channel,
-		Name:      ccname,
+		Name:      ccName,
 		Ctor:      prepareChaincodeInvokeArgs("queryMarbles", query),
 	})
 	Expect(err).NotTo(HaveOccurred())
@@ -243,28 +265,4 @@ func verifyIndexPresence(n *nwo.Network, org string, peer string, ccname string,
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
 		Expect(sess.Err).To(gbytes.Say("Error:no_usable_index"))
 	}
-}
-
-func commitTx(n *nwo.Network, org string, peer string, ccname string, args string, channel string, orderer *nwo.Orderer) {
-	sess, err := n.PeerUserSession(n.Peer(org, peer), "User1", commands.ChaincodeInvoke{
-		ChannelID: channel,
-		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
-		Name:      ccname,
-		Ctor:      args,
-		PeerAddresses: []string{
-			n.PeerAddress(n.Peer(org, peer), nwo.ListenPort),
-		},
-		WaitForEvent: true,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
-	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
-}
-
-func prepareChaincodeInvokeArgs(args ...string) string {
-	m, err := json.Marshal(map[string][]string{
-		"Args": args,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	return string(m)
 }
