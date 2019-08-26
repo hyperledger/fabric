@@ -33,7 +33,7 @@ func createLedgerFactory(conf *config.TopLevel, metricsProvider metrics.Provider
 		// The file-based ledger stores the blocks for each channel
 		// in a fsblkstorage.ChainsDir sub-directory that we have
 		// to create separately. Otherwise the call to the ledger
-		// Factory's ChainIDs below will fail (dir won't exist).
+		// Factory's ChannelIDs below will fail (dir won't exist).
 		createSubDir(ld, fsblkstorage.ChainsDir)
 	case "ram":
 		fallthrough

@@ -66,8 +66,8 @@ func newChain(maxSize int) blockledger.ReadWriter {
 	return rl
 }
 
-// ChainIDs returns the chain IDs the factory is aware of
-func (rlf *ramLedgerFactory) ChainIDs() []string {
+// ChannelIDs returns the channel IDs the factory is aware of
+func (rlf *ramLedgerFactory) ChannelIDs() []string {
 	rlf.mutex.Lock()
 	defer rlf.mutex.Unlock()
 	ids := make([]string, len(rlf.ledgers))

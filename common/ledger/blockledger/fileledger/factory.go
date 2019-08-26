@@ -52,13 +52,13 @@ func (flf *fileLedgerFactory) GetOrCreate(chainID string) (blockledger.ReadWrite
 	return ledger, nil
 }
 
-// ChainIDs returns the chain IDs the factory is aware of
-func (flf *fileLedgerFactory) ChainIDs() []string {
-	chainIDs, err := flf.blkstorageProvider.List()
+// ChannelIDs returns the channel IDs the factory is aware of
+func (flf *fileLedgerFactory) ChannelIDs() []string {
+	channelIDs, err := flf.blkstorageProvider.List()
 	if err != nil {
 		logger.Panic(err)
 	}
-	return chainIDs
+	return channelIDs
 }
 
 // Close releases all resources acquired by the factory

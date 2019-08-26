@@ -242,12 +242,12 @@ func reuseListener(conf *localconfig.TopLevel, typ string) bool {
 // Extract system channel last config block
 func extractSysChanLastConfig(lf blockledger.Factory, bootstrapBlock *cb.Block) *cb.Block {
 	// Are we bootstrapping?
-	chainCount := len(lf.ChainIDs())
-	if chainCount == 0 {
+	channelCount := len(lf.ChannelIDs())
+	if channelCount == 0 {
 		logger.Info("Bootstrapping because no existing channels")
 		return nil
 	}
-	logger.Infof("Not bootstrapping because of %d existing channels", chainCount)
+	logger.Infof("Not bootstrapping because of %d existing channels", channelCount)
 
 	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
 	if err != nil {
@@ -675,7 +675,7 @@ func initializeMultichannelRegistrar(
 ) *multichannel.Registrar {
 	genesisBlock := extractBootstrapBlock(conf)
 	// Are we bootstrapping?
-	if len(lf.ChainIDs()) == 0 {
+	if len(lf.ChannelIDs()) == 0 {
 		initializeBootstrapChannel(genesisBlock, lf)
 	} else {
 		logger.Info("Not bootstrapping because of existing channels")

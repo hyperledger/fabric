@@ -604,9 +604,9 @@ func New(config *genesisconfig.Profile) *Bootstrapper {
 	return bs
 }
 
-// GenesisBlock produces a genesis block for the default test chain id
+// GenesisBlock produces a genesis block for the default test channel id
 func (bs *Bootstrapper) GenesisBlock() *cb.Block {
-	return genesis.NewFactoryImpl(bs.channelGroup).Block(genesisconfig.TestChainID)
+	return genesis.NewFactoryImpl(bs.channelGroup).Block(genesisconfig.TestChannelID)
 }
 
 // GenesisBlockForChannel produces a genesis block for a given channel ID

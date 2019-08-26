@@ -10,8 +10,8 @@ type Factory struct {
 	mock.Mock
 }
 
-// ChainIDs provides a mock function with given fields:
-func (_m *Factory) ChainIDs() []string {
+// ChannelIDs provides a mock function with given fields:
+func (_m *Factory) ChannelIDs() []string {
 	ret := _m.Called()
 
 	var r0 []string
