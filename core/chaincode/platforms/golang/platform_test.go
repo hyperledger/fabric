@@ -196,30 +196,6 @@ func Test_DeploymentPayloadWithStateDBArtifacts(t *testing.T) {
 	}
 }
 
-func Test_decodeUrl(t *testing.T) {
-	path := "http://example.com/foo/bar"
-	if _, err := decodeUrl(path); err != nil {
-		t.Fail()
-		t.Logf("Error to decodeUrl unsuccessfully with valid path: %s, %s", path, err)
-	}
-
-	path = ""
-	if _, err := decodeUrl(path); err == nil {
-		t.Fail()
-		t.Logf("Error to decodeUrl successfully with invalid path: %s", path)
-	}
-
-	path = "/"
-	if _, err := decodeUrl(path); err == nil {
-		t.Fatalf("Error to decodeUrl successfully with invalid path: %s", path)
-	}
-
-	path = "http:///"
-	if _, err := decodeUrl(path); err == nil {
-		t.Fatalf("Error to decodeUrl successfully with invalid path: %s", path)
-	}
-}
-
 func TestValidatePath(t *testing.T) {
 	platform := &Platform{}
 

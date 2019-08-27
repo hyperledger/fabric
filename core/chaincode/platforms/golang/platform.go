@@ -41,27 +41,6 @@ func pathExists(path string) (bool, error) {
 	return true, err
 }
 
-func decodeUrl(path string) (string, error) {
-	var urlLocation string
-	if strings.HasPrefix(path, "http://") {
-		urlLocation = path[7:]
-	} else if strings.HasPrefix(path, "https://") {
-		urlLocation = path[8:]
-	} else {
-		urlLocation = path
-	}
-
-	if len(urlLocation) < 2 {
-		return "", errors.New("ChaincodeSpec's path/URL invalid")
-	}
-
-	if strings.LastIndex(urlLocation, "/") == len(urlLocation)-1 {
-		urlLocation = urlLocation[:len(urlLocation)-1]
-	}
-
-	return urlLocation, nil
-}
-
 func getGopath() (string, error) {
 	env, err := getGoEnv()
 	if err != nil {
@@ -493,14 +472,9 @@ func getLDFlagsOpts() string {
 	return staticLDFlagsOpts
 }
 
-func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
-	pkgname, err := decodeUrl(path)
-	if err != nil {
-		return util.DockerBuildOptions{}, fmt.Errorf("could not decode url: %s", err)
-	}
-
-	ldflagsOpt := getLDFlagsOpts()
+func (p *Platform) DockerBuildOptions(pkg string) (util.DockerBuildOptions, error) {
+	ldFlagOpts := getLDFlagsOpts()
 	return util.DockerBuildOptions{
-		Cmd: fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldflagsOpt, pkgname),
+		Cmd: fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldFlagOpts, pkg),
 	}, nil
 }
