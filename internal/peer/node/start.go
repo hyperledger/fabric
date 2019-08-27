@@ -138,6 +138,20 @@ func (e externalVMAdapter) Build(
 	return e.detector.Build(ccid, metadata, codePackage)
 }
 
+type endorserChannelAdapter struct {
+	peer *peer.Peer
+}
+
+func (e endorserChannelAdapter) Channel(channelID string) *endorser.Channel {
+	if peerChannel := e.peer.Channel(channelID); peerChannel != nil {
+		return &endorser.Channel{
+			IdentityDeserializer: peerChannel.MSPManager(),
+		}
+	}
+
+	return nil
+}
+
 func serve(args []string) error {
 	// currently the peer only works with the standard MSP
 	// because in certain scenarios the MSP has to make sure
@@ -242,7 +256,11 @@ func serve(args []string) error {
 		CryptoProvider: factory.GetDefault(),
 	}
 
-	signingIdentity := mgmt.GetLocalSigningIdentityOrPanic()
+	localMSP := mgmt.GetLocalMSP()
+	signingIdentity, err := localMSP.GetDefaultSigningIdentity()
+	if err != nil {
+		logger.Panicf("Could not get the default signing identity from the local MSP: [%+v]", err)
+	}
 	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
 
 	// FIXME: Creating the gossip service has the side effect of starting a bunch
@@ -588,8 +606,13 @@ func serve(args []string) error {
 		SigningIdentityFetcher:  signingIdentityFetcher,
 	})
 	endorserSupport.PluginEndorser = pluginEndorser
+	channelFetcher := endorserChannelAdapter{
+		peer: peerInstance,
+	}
 	serverEndorser := &endorser.Endorser{
 		PrivateDataDistributor: gossipService,
+		ChannelFetcher:         channelFetcher,
+		LocalMSP:               localMSP,
 		Support:                endorserSupport,
 		Metrics:                endorser.NewMetrics(metricsProvider),
 	}

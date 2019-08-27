@@ -10,10 +10,10 @@ import (
 	"crypto/sha256"
 
 	"github.com/golang/protobuf/proto"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -78,18 +78,6 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 		return nil, errors.New("ChaincodeHeaderExtension.ChaincodeId.Name is empty")
 	}
 
-	//    - ensure that the visibility field has some value we understand
-	// currently the fabric only supports full visibility: this means that
-	// there are no restrictions on which parts of the proposal payload will
-	// be visible in the final transaction; this default approach requires
-	// no additional instructions in the PayloadVisibility field which is
-	// therefore expected to be nil; however the fabric may be extended to
-	// encode more elaborate visibility mechanisms that shall be encoded in
-	// this field (and handled appropriately by the peer)
-	if chaincodeHdrExt.PayloadVisibility != nil {
-		return nil, errors.New("invalid payload visibility field")
-	}
-
 	cis, err := protoutil.GetChaincodeInvocationSpec(prop)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not get invocation spec")
@@ -140,7 +128,7 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 // ValidateUnpackedProposal checks the validity of an unpacked proposal,
 // considering its signatures, its header values, including creator, nonce,
 // and txid.
-func ValidateUnpackedProposal(unpackedProp *UnpackedProposal) error {
+func ValidateUnpackedProposal(unpackedProp *UnpackedProposal, idDeserializer msp.IdentityDeserializer) error {
 	if err := validateChannelHeader(unpackedProp.ChannelHeader); err != nil {
 		return err
 	}
@@ -155,12 +143,13 @@ func ValidateUnpackedProposal(unpackedProp *UnpackedProposal) error {
 		unpackedProp.SignedProposal.Signature,
 		unpackedProp.SignedProposal.ProposalBytes,
 		unpackedProp.ChannelHeader.ChannelId,
+		idDeserializer,
 	)
 	if err != nil {
 		// log the exact message on the peer but return a generic error message to
 		// avoid malicious users scanning for channels
 		endorserLogger.Warningf("channel [%s]: %s", unpackedProp.ChannelHeader.ChannelId, err)
-		sId := &msp.SerializedIdentity{}
+		sId := &mspproto.SerializedIdentity{}
 		err := proto.Unmarshal(unpackedProp.SignatureHeader.Creator, sId)
 		if err != nil {
 			// log the error here as well but still only return the generic error
@@ -188,19 +177,14 @@ func ValidateUnpackedProposal(unpackedProp *UnpackedProposal) error {
 // given a creator, a message and a signature,
 // this function returns nil if the creator
 // is a valid cert and the signature is valid
-func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, ChainID string) error {
+func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, ChainID string, idDeserializer msp.IdentityDeserializer) error {
 	// check for nil argument
 	if creatorBytes == nil || sig == nil || msg == nil {
 		return errors.New("nil arguments")
 	}
 
-	mspObj := mspmgmt.GetIdentityDeserializer(ChainID)
-	if mspObj == nil {
-		return errors.Errorf("could not get msp for channel [%s]", ChainID)
-	}
-
 	// get the identity of the creator
-	creator, err := mspObj.DeserializeIdentity(creatorBytes)
+	creator, err := idDeserializer.DeserializeIdentity(creatorBytes)
 	if err != nil {
 		return errors.WithMessage(err, "MSP error")
 	}

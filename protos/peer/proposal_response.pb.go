@@ -178,17 +178,7 @@ type ProposalResponsePayload struct {
 	// link a response with its proposal, both for bookeeping purposes on an
 	// asynchronous system and for security reasons (accountability,
 	// non-repudiation). The hash usually covers the entire Proposal message
-	// (byte-by-byte). However this implies that the hash can only be verified
-	// if the entire proposal message is available when ProposalResponsePayload is
-	// included in a transaction or stored in the ledger. For confidentiality
-	// reasons, with chaincodes it might be undesirable to store the proposal
-	// payload in the ledger.  If the type is CHAINCODE, this is handled by
-	// separating the proposal's header and
-	// the payload: the header is always hashed in its entirety whereas the
-	// payload can either be hashed fully, or only its hash may be hashed, or
-	// nothing from the payload can be hashed. The PayloadVisibility field in the
-	// Header's extension controls to which extent the proposal payload is
-	// "visible" in the sense that was just explained.
+	// (byte-by-byte).
 	ProposalHash []byte `protobuf:"bytes,1,opt,name=proposal_hash,json=proposalHash,proto3" json:"proposal_hash,omitempty"`
 	// Extension should be unmarshaled to a type-specific message. The type of
 	// the extension in any proposal response depends on the type of the proposal

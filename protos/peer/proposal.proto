@@ -205,19 +205,8 @@ SignedTransaction
 // the Header's type is CHAINCODE.  This extensions is used to specify which
 // chaincode to invoke and what should appear on the ledger.
 message ChaincodeHeaderExtension {
-
-	// The PayloadVisibility field controls to what extent the Proposal's payload
-	// (recall that for the type CHAINCODE, it is ChaincodeProposalPayload
-	// message) field will be visible in the final transaction and in the ledger.
-	// Ideally, it would be configurable, supporting at least 3 main visibility
-	// modes:
-	// 1. all bytes of the payload are visible;
-	// 2. only a hash of the payload is visible;
-	// 3. nothing is visible.
-	// Notice that the visibility function may be potentially part of the ESCC.
-	// In that case it overrides PayloadVisibility field.  Finally notice that
-	// this field impacts the content of ProposalResponsePayload.proposalHash.
-	bytes payload_visibility = 1;
+        reserved 1;
+        reserved "payload_visbility";
 
 	// The ID of the chaincode to target.
 	ChaincodeID chaincode_id = 2;
