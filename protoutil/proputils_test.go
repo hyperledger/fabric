@@ -32,136 +32,6 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
 
-func TestNilProposal(t *testing.T) {
-	// pass nil to all function which accept *peer.Proposal
-	_, err := protoutil.GetChaincodeInvocationSpec(nil)
-	assert.Error(t, err, "Expected error with nil proposal")
-	_, _, err = protoutil.GetChaincodeProposalContext(nil)
-	assert.Error(t, err, "Expected error with nil proposal")
-	_, err = protoutil.GetNonce(nil)
-	assert.Error(t, err, "Expected error with nil proposal")
-	_, err = protoutil.GetBytesProposal(nil)
-	assert.Error(t, err, "Expected error with nil proposal")
-	_, err = protoutil.ComputeProposalBinding(nil)
-	assert.Error(t, err, "Expected error with nil proposal")
-}
-
-func TestBadProposalHeaders(t *testing.T) {
-	// NOTE:  There is a lot of repetitive proposal validation code
-	// in multiple functions which should be refactored in the future.
-	// For now, simply consolidating the test cases
-
-	// empty header
-	prop := &pb.Proposal{
-		Header: []byte{},
-	}
-	_, _, err := protoutil.GetChaincodeProposalContext(prop)
-	assert.Error(t, err, "Expected error with empty proposal header")
-	_, err = protoutil.ComputeProposalBinding(prop)
-	assert.Error(t, err, "Expected error with empty proposal header")
-
-	// empty payload
-	prop = &pb.Proposal{
-		Header: []byte("header"),
-	}
-	_, _, err = protoutil.GetChaincodeProposalContext(prop)
-	assert.Error(t, err, "Expected error with empty proposal payload")
-
-	// malformed proposal header
-	prop = &pb.Proposal{
-		Header:  []byte("bad header"),
-		Payload: []byte("payload"),
-	}
-	_, err = protoutil.UnmarshalHeader(prop.Header)
-	assert.Error(t, err, "Expected error with malformed proposal header")
-	_, err = protoutil.GetChaincodeInvocationSpec(prop)
-	assert.Error(t, err, "Expected error with malformed proposal header")
-	_, _, err = protoutil.GetChaincodeProposalContext(prop)
-	assert.Error(t, err, "Expected error with malformed proposal header")
-	_, err = protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with malformed proposal header")
-	_, err = protoutil.ComputeProposalBinding(prop)
-	assert.Error(t, err, "Expected error with malformed proposal header")
-
-	// malformed signature header
-	chdr, _ := proto.Marshal(&common.ChannelHeader{
-		Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
-	})
-	hdr := &common.Header{
-		ChannelHeader:   chdr,
-		SignatureHeader: []byte("bad signature header"),
-	}
-	_, err = protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
-	assert.Error(t, err, "Expected error with malformed signature header")
-	hdrBytes, _ := proto.Marshal(hdr)
-	prop.Header = hdrBytes
-	_, err = protoutil.GetChaincodeInvocationSpec(prop)
-	assert.Error(t, err, "Expected error with malformed signature header")
-	_, _, err = protoutil.GetChaincodeProposalContext(prop)
-	assert.Error(t, err, "Expected error with malformed signature header")
-	_, err = protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with malformed signature header")
-	_, err = protoutil.ComputeProposalBinding(prop)
-	assert.Error(t, err, "Expected error with malformed signature header")
-
-	// wrong channel header type
-	chdr, _ = proto.Marshal(&common.ChannelHeader{
-		Type: int32(common.HeaderType_DELIVER_SEEK_INFO),
-	})
-	hdr.ChannelHeader = chdr
-	hdrBytes, _ = proto.Marshal(hdr)
-	prop.Header = hdrBytes
-	_, _, err = protoutil.GetChaincodeProposalContext(prop)
-	assert.Error(t, err, "Expected error with wrong header type")
-	assert.Contains(t, err.Error(), "invalid proposal: invalid channel header type")
-	_, err = protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with wrong header type")
-
-	// malformed channel header
-	hdr.ChannelHeader = []byte("bad channel header")
-	hdrBytes, _ = proto.Marshal(hdr)
-	prop.Header = hdrBytes
-	_, _, err = protoutil.GetChaincodeProposalContext(prop)
-	assert.Error(t, err, "Expected error with malformed channel header")
-	_, err = protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with malformed channel header")
-	_, err = protoutil.UnmarshalChaincodeHeaderExtension([]byte("bad header extension"))
-	assert.Error(t, err, "Expected error with malformed channel header")
-	_, err = protoutil.ComputeProposalBinding(prop)
-	assert.Error(t, err, "Expected error with malformed channel header")
-
-}
-
-func TestGetNonce(t *testing.T) {
-	chdr, _ := proto.Marshal(&common.ChannelHeader{
-		Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
-	})
-	hdr, _ := proto.Marshal(&common.Header{
-		ChannelHeader:   chdr,
-		SignatureHeader: []byte{},
-	})
-	prop := &pb.Proposal{
-		Header: hdr,
-	}
-	_, err := protoutil.GetNonce(prop)
-	assert.Error(t, err, "Expected error with nil signature header")
-
-	shdr, _ := proto.Marshal(&common.SignatureHeader{
-		Nonce: []byte("nonce"),
-	})
-	hdr, _ = proto.Marshal(&common.Header{
-		ChannelHeader:   chdr,
-		SignatureHeader: shdr,
-	})
-	prop = &pb.Proposal{
-		Header: hdr,
-	}
-	nonce, err := protoutil.GetNonce(prop)
-	assert.NoError(t, err, "Unexpected error getting nonce")
-	assert.Equal(t, "nonce", string(nonce), "Failed to return the expected nonce")
-
-}
-
 func TestGetChaincodeDeploymentSpec(t *testing.T) {
 	_, err := protoutil.UnmarshalChaincodeDeploymentSpec([]byte("bad spec"))
 	assert.Error(t, err, "Expected error with malformed spec")
@@ -210,27 +80,6 @@ func TestCDSProposals(t *testing.T) {
 
 }
 
-func TestComputeProposalBinding(t *testing.T) {
-	expectedDigestHex := "5093dd4f4277e964da8f4afbde0a9674d17f2a6a5961f0670fc21ae9b67f2983"
-	expectedDigest, _ := hex.DecodeString(expectedDigestHex)
-	chdr, _ := proto.Marshal(&common.ChannelHeader{
-		Epoch: uint64(10),
-	})
-	shdr, _ := proto.Marshal(&common.SignatureHeader{
-		Nonce:   []byte("nonce"),
-		Creator: []byte("creator"),
-	})
-	hdr, _ := proto.Marshal(&common.Header{
-		ChannelHeader:   chdr,
-		SignatureHeader: shdr,
-	})
-	prop := &pb.Proposal{
-		Header: hdr,
-	}
-	binding, _ := protoutil.ComputeProposalBinding(prop)
-	assert.Equal(t, expectedDigest, binding, "Binding does not match expected digest")
-}
-
 func TestProposal(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
 	prop, _, err := protoutil.CreateChaincodeProposalWithTransient(
@@ -244,7 +93,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// serialize the proposal
-	pBytes, err := protoutil.GetBytesProposal(prop)
+	pBytes, err := proto.Marshal(prop)
 	if err != nil {
 		t.Fatalf("Could not serialize the chaincode proposal, err %s\n", err)
 		return
@@ -313,11 +162,14 @@ func TestProposal(t *testing.T) {
 		return
 	}
 
-	// get back the ChaincodeInvocationSpec
-	cis, err := protoutil.GetChaincodeInvocationSpec(prop)
+	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(prop.Payload)
 	if err != nil {
-		t.Fatalf("Could not extract chaincode invocation spec from header, err %s\n", err)
-		return
+		t.Fatalf("could not unmarshal proposal payload")
+	}
+
+	cis, err := protoutil.UnmarshalChaincodeInvocationSpec(cpp.Input)
+	if err != nil {
+		t.Fatalf("could not unmarshal proposal chaincode invocation spec")
 	}
 
 	// sanity check on cis
@@ -330,15 +182,11 @@ func TestProposal(t *testing.T) {
 		return
 	}
 
-	creator, transient, err := protoutil.GetChaincodeProposalContext(prop)
-	if err != nil {
-		t.Fatalf("Failed getting chaincode proposal context [%s]", err)
-	}
-	if string(creator) != "creator" {
-		t.Fatalf("Failed checking Creator field. Invalid value, expectext 'creator', got [%s]", string(creator))
+	if string(shdr.Creator) != "creator" {
+		t.Fatalf("Failed checking Creator field. Invalid value, expectext 'creator', got [%s]", string(shdr.Creator))
 		return
 	}
-	value, ok := transient["certx"]
+	value, ok := cpp.TransientMap["certx"]
 	if !ok || string(value) != "transient" {
 		t.Fatalf("Failed checking Transient field. Invalid value, expectext 'transient', got [%s]", string(value))
 		return

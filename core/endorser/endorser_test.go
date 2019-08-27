@@ -397,11 +397,11 @@ var _ = Describe("Endorser", func() {
 
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("could not unmarshal proposal bytes: error unmarshaling Proposal: proto: can't skip unknown wire type 7"))
+			Expect(err).To(MatchError("error unmarshaling Proposal: proto: can't skip unknown wire type 7"))
 			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
 				Response: &pb.Response{
 					Status:  500,
-					Message: "could not unmarshal proposal bytes: error unmarshaling Proposal: proto: can't skip unknown wire type 7",
+					Message: "error unmarshaling Proposal: proto: can't skip unknown wire type 7",
 				},
 			}))
 		})
@@ -414,11 +414,11 @@ var _ = Describe("Endorser", func() {
 
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("access denied: channel [channel-id] creator org [msp-id]"))
+			Expect(err).To(MatchError("error validating proposal: access denied: channel [channel-id] creator org [msp-id]"))
 			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
 				Response: &pb.Response{
 					Status:  500,
-					Message: "access denied: channel [channel-id] creator org [msp-id]",
+					Message: "error validating proposal: access denied: channel [channel-id] creator org [msp-id]",
 				},
 			}))
 		})
@@ -431,11 +431,11 @@ var _ = Describe("Endorser", func() {
 
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("access denied: channel [channel-id] creator org [msp-id]"))
+			Expect(err).To(MatchError("error validating proposal: access denied: channel [channel-id] creator org [msp-id]"))
 			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
 				Response: &pb.Response{
 					Status:  500,
-					Message: "access denied: channel [channel-id] creator org [msp-id]",
+					Message: "error validating proposal: access denied: channel [channel-id] creator org [msp-id]",
 				},
 			}))
 		})

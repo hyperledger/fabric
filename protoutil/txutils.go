@@ -340,7 +340,7 @@ func GetSignedProposal(prop *peer.Proposal, signer identity.SignerSerializer) (*
 		return nil, errors.New("nil arguments")
 	}
 
-	propBytes, err := GetBytesProposal(prop)
+	propBytes, err := proto.Marshal(prop)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +370,7 @@ func MockSignedEndorserProposalOrPanic(
 		panic(err)
 	}
 
-	propBytes, err := GetBytesProposal(prop)
+	propBytes, err := proto.Marshal(prop)
 	if err != nil {
 		panic(err)
 	}

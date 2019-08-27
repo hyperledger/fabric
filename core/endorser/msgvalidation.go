@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	cb "github.com/hyperledger/fabric/protos/common"
-	mspproto "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -41,33 +40,29 @@ func (up *UnpackedProposal) TxID() string {
 // UnpackProposal creates an an *UnpackedProposal which is guaranteed to have
 // no zero-ed fields or it returns an error.
 func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
-	// extract the Proposal message from signedProp
 	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal proposal bytes")
+		return nil, err
 	}
 
-	// 1) look at the ProposalHeader
 	hdr, err := protoutil.UnmarshalHeader(prop.Header)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal header")
+		return nil, err
 	}
 
-	// unpack the header
 	chdr, err := protoutil.UnmarshalChannelHeader(hdr.ChannelHeader)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal channel header")
+		return nil, err
 	}
 
 	shdr, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal signature header")
+		return nil, err
 	}
 
-	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
 	chaincodeHdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not unmarshal header extension")
+		return nil, err
 	}
 
 	if chaincodeHdrExt.ChaincodeId == nil {
@@ -75,12 +70,17 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 	}
 
 	if chaincodeHdrExt.ChaincodeId.Name == "" {
-		return nil, errors.New("ChaincodeHeaderExtension.ChaincodeId.Name is empty")
+		return nil, errors.Errorf("ChaincodeHeaderExtension.ChaincodeId.Name is empty")
 	}
 
-	cis, err := protoutil.GetChaincodeInvocationSpec(prop)
+	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(prop.Payload)
 	if err != nil {
-		return nil, errors.WithMessage(err, "could not get invocation spec")
+		return nil, err
+	}
+
+	cis, err := protoutil.UnmarshalChaincodeInvocationSpec(cpp.Input)
+	if err != nil {
+		return nil, err
 	}
 
 	if cis.ChaincodeSpec == nil {
@@ -91,15 +91,10 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 		return nil, errors.Errorf("chaincode input did not contain any input")
 	}
 
-	// unmarshal the chaincode proposal payload
-	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(prop.Payload)
+	cppNoTransient := &pb.ChaincodeProposalPayload{Input: cpp.Input, TransientMap: nil}
+	ppBytes, err := proto.Marshal(cppNoTransient)
 	if err != nil {
-		return nil, err
-	}
-
-	ppBytes, err := protoutil.GetBytesProposalPayloadForTx(cpp)
-	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "could not marshal non-transient portion of payload")
 	}
 
 	// TODO, this was preserved from the proputils stuff, but should this be BCCSP?
@@ -125,110 +120,9 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 	}, nil
 }
 
-// ValidateUnpackedProposal checks the validity of an unpacked proposal,
-// considering its signatures, its header values, including creator, nonce,
-// and txid.
-func ValidateUnpackedProposal(unpackedProp *UnpackedProposal, idDeserializer msp.IdentityDeserializer) error {
-	if err := validateChannelHeader(unpackedProp.ChannelHeader); err != nil {
-		return err
-	}
-
-	if err := validateSignatureHeader(unpackedProp.SignatureHeader); err != nil {
-		return err
-	}
-
-	// validate the signature
-	err := checkSignatureFromCreator(
-		unpackedProp.SignatureHeader.Creator,
-		unpackedProp.SignedProposal.Signature,
-		unpackedProp.SignedProposal.ProposalBytes,
-		unpackedProp.ChannelHeader.ChannelId,
-		idDeserializer,
-	)
-	if err != nil {
-		// log the exact message on the peer but return a generic error message to
-		// avoid malicious users scanning for channels
-		endorserLogger.Warningf("channel [%s]: %s", unpackedProp.ChannelHeader.ChannelId, err)
-		sId := &mspproto.SerializedIdentity{}
-		err := proto.Unmarshal(unpackedProp.SignatureHeader.Creator, sId)
-		if err != nil {
-			// log the error here as well but still only return the generic error
-			err = errors.Wrap(err, "could not deserialize a SerializedIdentity")
-			endorserLogger.Warningf("channel [%s]: %s", unpackedProp.ChannelHeader.ChannelId, err)
-		}
-		return errors.Errorf("access denied: channel [%s] creator org [%s]", unpackedProp.ChannelHeader.ChannelId, sId.Mspid)
-	}
-
-	// Verify that the transaction ID has been computed properly.
-	// This check is needed to ensure that the lookup into the ledger
-	// for the same TxID catches duplicates.
-	err = protoutil.CheckTxID(
-		unpackedProp.ChannelHeader.TxId,
-		unpackedProp.SignatureHeader.Nonce,
-		unpackedProp.SignatureHeader.Creator,
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// given a creator, a message and a signature,
-// this function returns nil if the creator
-// is a valid cert and the signature is valid
-func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, ChainID string, idDeserializer msp.IdentityDeserializer) error {
-	// check for nil argument
-	if creatorBytes == nil || sig == nil || msg == nil {
-		return errors.New("nil arguments")
-	}
-
-	// get the identity of the creator
-	creator, err := idDeserializer.DeserializeIdentity(creatorBytes)
-	if err != nil {
-		return errors.WithMessage(err, "MSP error")
-	}
-
-	endorserLogger.Debugf("creator is %s", creator.GetIdentifier())
-
-	// ensure that creator is a valid certificate
-	err = creator.Validate()
-	if err != nil {
-		return errors.WithMessage(err, "creator certificate is not valid")
-	}
-
-	endorserLogger.Debugf("creator is valid")
-
-	// validate the signature
-	err = creator.Verify(msg, sig)
-	if err != nil {
-		return errors.WithMessage(err, "creator's signature over the proposal is not valid")
-	}
-
-	endorserLogger.Debugf("exits successfully")
-
-	return nil
-}
-
-// checks for a valid SignatureHeader
-func validateSignatureHeader(sHdr *common.SignatureHeader) error {
-	// ensure that there is a nonce
-	if sHdr.Nonce == nil || len(sHdr.Nonce) == 0 {
-		return errors.New("invalid nonce specified in the header")
-	}
-
-	// ensure that there is a creator
-	if sHdr.Creator == nil || len(sHdr.Creator) == 0 {
-		return errors.New("invalid creator specified in the header")
-	}
-
-	return nil
-}
-
-// checks for a valid ChannelHeader
-func validateChannelHeader(cHdr *common.ChannelHeader) error {
+func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) error {
 	// validate the header type
-	switch common.HeaderType(cHdr.Type) {
+	switch common.HeaderType(up.ChannelHeader.Type) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
 	case common.HeaderType_CONFIG:
 		// The CONFIG transaction type has _no_ business coming to the propose API.
@@ -236,8 +130,65 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 		// transaction, so any other header type seems like it ought to be an error... oh well.
 
 	default:
-		return errors.Errorf("invalid header type %s", common.HeaderType(cHdr.Type))
+		return errors.Errorf("invalid header type %s", common.HeaderType(up.ChannelHeader.Type))
 	}
+
+	// ensure that there is a nonce
+	if len(up.SignatureHeader.Nonce) == 0 {
+		return errors.Errorf("nonce is empty")
+	}
+
+	// ensure that there is a creator
+	if len(up.SignatureHeader.Creator) == 0 {
+		return errors.New("creator is empty")
+	}
+
+	expectedTxID := protoutil.ComputeTxID(up.SignatureHeader.Nonce, up.SignatureHeader.Creator)
+	if up.TxID() != expectedTxID {
+		return errors.Errorf("incorrectly computed txid '%s' -- expected '%s'", up.TxID(), expectedTxID)
+	}
+
+	if up.SignedProposal.ProposalBytes == nil {
+		return errors.Errorf("empty proposal bytes")
+	}
+
+	if up.SignedProposal.Signature == nil {
+		return errors.Errorf("empty signature bytes")
+	}
+
+	sId, err := protoutil.UnmarshalSerializedIdentity(up.SignatureHeader.Creator)
+	if err != nil {
+		return errors.Errorf("access denied: channel [%s] creator org unknown, creator is malformed", up.ChannelID())
+	}
+
+	genericAuthError := errors.Errorf("access denied: channel [%s] creator org [%s]", up.ChannelID(), sId.Mspid)
+
+	// get the identity of the creator
+	creator, err := idDeserializer.DeserializeIdentity(up.SignatureHeader.Creator)
+	if err != nil {
+		endorserLogger.Warningf("%s access denied: channel [%s]: %s", up.TxID(), up.ChannelID(), err)
+		return genericAuthError
+	}
+
+	endorserLogger.Debugf("%s creator is %s", up.TxID(), creator.GetIdentifier())
+
+	// ensure that creator is a valid certificate
+	err = creator.Validate()
+	if err != nil {
+		endorserLogger.Warningf("%s access denied: channel [%s]: identity is not valid: %s", up.TxID(), up.ChannelID(), err)
+		return genericAuthError
+	}
+
+	endorserLogger.Debugf("%s creator is valid", up.TxID())
+
+	// validate the signature
+	err = creator.Verify(up.SignedProposal.ProposalBytes, up.SignedProposal.Signature)
+	if err != nil {
+		endorserLogger.Warningf("%s access denied: channel [%s]: creator's signature over the proposal is not valid: %s", up.TxID(), up.ChannelID(), err)
+		return genericAuthError
+	}
+
+	endorserLogger.Debugf("%s signature is valid", up.TxID())
 
 	return nil
 }

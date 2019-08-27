@@ -8,7 +8,6 @@ package protoutil
 
 import (
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"time"
 
@@ -19,66 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GetChaincodeInvocationSpec get the ChaincodeInvocationSpec from the proposal
-func GetChaincodeInvocationSpec(prop *peer.Proposal) (*peer.ChaincodeInvocationSpec, error) {
-	if prop == nil {
-		return nil, errors.New("proposal is nil")
-	}
-	_, err := UnmarshalHeader(prop.Header)
-	if err != nil {
-		return nil, err
-	}
-	ccPropPayload, err := UnmarshalChaincodeProposalPayload(prop.Payload)
-	if err != nil {
-		return nil, err
-	}
-	cis := &peer.ChaincodeInvocationSpec{}
-	err = proto.Unmarshal(ccPropPayload.Input, cis)
-	return cis, errors.Wrap(err, "error unmarshaling ChaincodeInvocationSpec")
-}
-
-// GetChaincodeProposalContext returns creator and transient
-func GetChaincodeProposalContext(prop *peer.Proposal) ([]byte, map[string][]byte, error) {
-	if prop == nil {
-		return nil, nil, errors.New("proposal is nil")
-	}
-	if len(prop.Header) == 0 {
-		return nil, nil, errors.New("proposal's header is nil")
-	}
-	if len(prop.Payload) == 0 {
-		return nil, nil, errors.New("proposal's payload is nil")
-	}
-	// get back the header
-	hdr, err := UnmarshalHeader(prop.Header)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "error extracting header from proposal")
-	}
-	if hdr == nil {
-		return nil, nil, errors.New("unmarshaled header is nil")
-	}
-
-	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "error extracting channel header from proposal")
-	}
-
-	if err = validateChannelHeaderType(chdr, []common.HeaderType{common.HeaderType_ENDORSER_TRANSACTION, common.HeaderType_CONFIG}); err != nil {
-		return nil, nil, errors.WithMessage(err, "invalid proposal")
-	}
-
-	shdr, err := UnmarshalSignatureHeader(hdr.SignatureHeader)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "error extracting signature header from proposal")
-	}
-
-	ccPropPayload, err := UnmarshalChaincodeProposalPayload(prop.Payload)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return shdr.Creator, ccPropPayload.TransientMap, nil
-}
-
 func validateChannelHeaderType(chdr *common.ChannelHeader, expectedTypes []common.HeaderType) error {
 	for _, t := range expectedTypes {
 		if common.HeaderType(chdr.Type) == t {
@@ -86,39 +25,6 @@ func validateChannelHeaderType(chdr *common.ChannelHeader, expectedTypes []commo
 		}
 	}
 	return errors.Errorf("invalid channel header type. expected one of %s, received %s", expectedTypes, common.HeaderType(chdr.Type))
-}
-
-// GetNonce returns the nonce used in Proposal
-func GetNonce(prop *peer.Proposal) ([]byte, error) {
-	if prop == nil {
-		return nil, errors.New("proposal is nil")
-	}
-
-	// get back the header
-	hdr, err := UnmarshalHeader(prop.Header)
-	if err != nil {
-		return nil, err
-	}
-
-	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = validateChannelHeaderType(chdr, []common.HeaderType{common.HeaderType_ENDORSER_TRANSACTION, common.HeaderType_CONFIG}); err != nil {
-		return nil, errors.WithMessage(err, "invalid proposal")
-	}
-
-	shdr, err := UnmarshalSignatureHeader(hdr.SignatureHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	if hdr.SignatureHeader == nil {
-		return nil, errors.New("invalid signature header. cannot be nil")
-	}
-
-	return shdr.Nonce, nil
 }
 
 // CreateChaincodeProposal creates a proposal from given input.
@@ -269,12 +175,6 @@ func GetBytesChaincodeActionPayload(cap *peer.ChaincodeActionPayload) ([]byte, e
 func GetBytesProposalResponse(pr *peer.ProposalResponse) ([]byte, error) {
 	respBytes, err := proto.Marshal(pr)
 	return respBytes, errors.Wrap(err, "error marshaling ProposalResponse")
-}
-
-// GetBytesProposal returns the bytes of a proposal message
-func GetBytesProposal(prop *peer.Proposal) ([]byte, error) {
-	propBytes, err := proto.Marshal(prop)
-	return propBytes, errors.Wrap(err, "error marshaling Proposal")
 }
 
 // GetBytesHeader get the bytes of Header from the message
@@ -466,8 +366,10 @@ func createProposalFromCDS(chainID string, msg proto.Message, creator []byte, pr
 func ComputeTxID(nonce, creator []byte) string {
 	// TODO: Get the Hash function to be used from
 	// channel configuration
-	digest := sha256.Sum256(append(nonce, creator...))
-	return hex.EncodeToString(digest[:])
+	hasher := sha256.New()
+	hasher.Write(nonce)
+	hasher.Write(creator)
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 // CheckTxID checks that txid is equal to the Hash computed
@@ -480,40 +382,4 @@ func CheckTxID(txid string, nonce, creator []byte) error {
 	}
 
 	return nil
-}
-
-// ComputeProposalBinding computes the binding of a proposal
-func ComputeProposalBinding(proposal *peer.Proposal) ([]byte, error) {
-	if proposal == nil {
-		return nil, errors.New("proposal is nil")
-	}
-	if len(proposal.Header) == 0 {
-		return nil, errors.New("proposal's header is nil")
-	}
-
-	h, err := UnmarshalHeader(proposal.Header)
-	if err != nil {
-		return nil, err
-	}
-
-	chdr, err := UnmarshalChannelHeader(h.ChannelHeader)
-	if err != nil {
-		return nil, err
-	}
-	shdr, err := UnmarshalSignatureHeader(h.SignatureHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	return computeProposalBindingInternal(shdr.Nonce, shdr.Creator, chdr.Epoch)
-}
-
-func computeProposalBindingInternal(nonce, creator []byte, epoch uint64) ([]byte, error) {
-	epochBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(epochBytes, epoch)
-
-	// TODO: add to genesis block the hash function used for
-	// the binding computation
-	digest := sha256.Sum256(append(append(nonce, creator...), epochBytes...))
-	return digest[:], nil
 }
