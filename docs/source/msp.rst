@@ -208,7 +208,7 @@ the ``NodeOUs.ClientOUIdentifier`` (``NodeOUs.AdminOUIdentifier``, ``NodeOUs.Pee
 ``NodeOUs.OrdererOUIdentifier``) key:
 
 a. ``OrganizationalUnitIdentifier``: Is the OU value that the x509 certificate needs to contain
-   to be considered a client (admin, peer, orderer). If this field is empty, then the classification
+   to be considered a client (admin, peer, orderer respectively). If this field is empty, then the classification
    is not applied.
 b. ``Certificate``: Set this to the path of the CA or intermediate CA certificate under which client
    (peer, admin or orderer) identities should be validated. The field is relative to the MSP root
@@ -220,19 +220,17 @@ Notice that if the ``NodeOUs.ClientOUIdentifier`` section (``NodeOUs.AdminOUIden
 is not applied. If ``NodeOUs.Enable`` is set to ``true`` and no classification keys are defined,
 then identity classification is assumed to be disabled.
 
-Identities can use Organizational Units to be classified as either a client, an admin, a peer, or an
-orderer. The four classifications are mutually exclusive. When NodeOUs are enabled and configured
-for all four classifications, an identity needs to be classified as either a client, a peer, an
-admin, or an orderer, or else validation will fail.
+Identities can use organizational units to be classified as either a client, an admin, a peer, or an
+orderer. The four classifications are mutually exclusive.
 The 1.1 channel capability needs to be enabled before identities can be classified as clients
 or peers. The 1.4.3 channel capability needs to be enabled for identities to be classified as an
 admin or orderer.
 
 Classification allows identities to be classified as admins (and conduct administrator actions)
 without the certificate being stored in the ``admincerts`` folder of the MSP. Instead, the
-`admincerts`` folder can remain empty and administrators can be created by enrolling identities
-with the admin OU. However, if classification is enabled, all administrators must carry the
-admin OU in their x509 certificates, even if the certificate is specified in the `admincerts`` folder.
+``admincerts`` folder can remain empty and administrators can be created by enrolling identities
+with the admin OU. Certificates in the ``admincerts`` folder will still grant the role of
+administrator to their bearer, provided that they possess the client or admin OU.
 
 Channel MSP setup
 -----------------
