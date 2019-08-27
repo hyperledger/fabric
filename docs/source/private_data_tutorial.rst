@@ -157,7 +157,7 @@ Thus two different sets of private data are defined in the marbles private data
 sample. The mapping of this data to the collection policy which restricts its
 access is controlled by chaincode APIs. Specifically, reading and writing
 private data using a collection definition is performed by calling ``GetPrivateData()``
-and ``PutPrivateData()``, which can be found `here <https://github.com/hyperledger/fabric/blob/master/core/chaincode/shim/interfaces.go#L179>`_.
+and ``PutPrivateData()``, which can be found `here <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub>`_.
 
 The following diagrams illustrate the private data model used by the marbles
 private data sample.

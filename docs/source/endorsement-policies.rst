@@ -200,7 +200,7 @@ following functions apply:
 To help set endorsement policies and marshal them into validation
 parameter byte arrays, the Go shim provides an extension with convenience
 functions that allow the chaincode developer to deal with endorsement policies
-in terms of the MSP identifiers of organizations, see `KeyEndorsementPolicy <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim/ext/statebased#KeyEndorsementPolicy>`_:
+in terms of the MSP identifiers of organizations, see `KeyEndorsementPolicy <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/pkg/statebased#KeyEndorsementPolicy>`_:
 
 .. code-block:: Go
 

@@ -584,7 +584,7 @@ Delving into the query command above, there are three arguments of interest:
 
 *  ``queryMarbles``
 
-  Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim>`__
+  Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__
   ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
   ``getQueryResultForQueryString()`` passes the queryString to the shim API ``getQueryResult()``.
 
@@ -793,7 +793,7 @@ a unique bookmark.)
 
 *  ``queryMarblesWithPagination``
 
-  Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim>`__
+  Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__
   ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
   ``getQueryResultForQueryStringWithPagination()`` passes the queryString along
   with the pagesize and bookmark to the shim API ``GetQueryResultWithPagination()``.

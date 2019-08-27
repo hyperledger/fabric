@@ -139,9 +139,7 @@ of the CA certificates trusted by the peer or orderer node.
 
 If you see the error message ``remote error: tls: bad certificate`` in your chaincode logs,
 ensure that your chaincode has been built using the chaincode shim provided with Fabric v1.1
-or newer. If your chaincode does not contain a vendored copy of the shim, deleting the
-chaincode container and restarting its peer will rebuild the chaincode container using the
-current shim version.
+or newer.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

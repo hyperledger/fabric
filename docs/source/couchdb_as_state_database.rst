@@ -53,7 +53,7 @@ Using CouchDB from Chaincode
 Chaincode queries
 ~~~~~~~~~~~~~~~~~
 
-Most of the `chaincode shim APIs <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStubInterface>`__
+Most of the `chaincode shim APIs <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
 can be utilized with either LevelDB or CouchDB state database, e.g. ``GetState``, ``PutState``,
 ``GetStateByRange``, ``GetStateByPartialCompositeKey``. Additionally when you utilize CouchDB as
 the state database and model assets as JSON in chaincode, you can perform rich queries against
