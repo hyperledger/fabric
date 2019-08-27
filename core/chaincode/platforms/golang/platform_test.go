@@ -236,7 +236,9 @@ func updateGopath(t *testing.T, path string) func() {
 }
 
 func TestGetDeploymentPayload(t *testing.T) {
-	testdataPath, err := filepath.Abs("testdata")
+	const testdata = "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/"
+
+	gopath, err := getGopath()
 	require.NoError(t, err)
 
 	platform := &Platform{}
@@ -246,13 +248,13 @@ func TestGetDeploymentPayload(t *testing.T) {
 		path   string
 		succ   bool
 	}{
-		{gopath: testdataPath, path: "chaincodes/noop", succ: true},
-		{gopath: testdataPath, path: "bad/chaincodes/noop", succ: false},
-		{gopath: testdataPath, path: "chaincodes/BadImport", succ: false},
-		{gopath: testdataPath, path: "chaincodes/BadMetadataInvalidIndex", succ: false},
-		{gopath: testdataPath, path: "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
-		{gopath: testdataPath, path: "chaincodes/BadMetadataIgnoreHiddenFile", succ: true},
-		{gopath: testdataPath, path: "chaincodes/empty/", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/noop", succ: true},
+		{gopath: gopath, path: testdata + "bad/chaincodes/noop", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/BadImport", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/BadMetadataInvalidIndex", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/BadMetadataIgnoreHiddenFile", succ: true},
+		{gopath: gopath, path: testdata + "chaincodes/empty/", succ: false},
 	}
 
 	for _, tst := range tests {
