@@ -72,36 +72,31 @@ func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploy
 	return cds, nil
 }
 
-type spec struct {
-	CCName          string
-	Path, File      string
-	Mode            int64
-	SuccessExpected bool
-	RealGen         bool
-}
+func TestValidateCodePackage(t *testing.T) {
+	tests := []struct {
+		name            string
+		path            string
+		file            string
+		Mode            int64
+		successExpected bool
+	}{
+		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/main.go", Mode: 0100400, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/warez", Mode: 0100555, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "/META-INF/path/to/a/meta1", Mode: 0100555, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "META-INF/path/to/a/meta3", Mode: 0100400, successExpected: true},
+	}
 
-func TestValidateCDS(t *testing.T) {
-	platform := &Platform{}
+	for _, s := range tests {
+		cds, err := generateFakeCDS(s.name, s.path, s.file, s.Mode)
+		assert.NoError(t, err, "failed to generate fake cds")
 
-	specs := make([]spec, 0)
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/nowhere", File: "/bin/warez", Mode: 0100400, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/src/path/to/somewhere/main.go", Mode: 0100400, SuccessExpected: true})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/bad-src/path/to/somewhere/main.go", Mode: 0100400, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/src/path/to/somewhere/warez", Mode: 0100555, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/META-INF/path/to/a/meta1", Mode: 0100555, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/META-Inf/path/to/a/meta2", Mode: 0100400, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "META-INF/path/to/a/meta3", Mode: 0100400, SuccessExpected: true})
-
-	for _, s := range specs {
-		cds, err := generateFakeCDS(s.CCName, s.Path, s.File, s.Mode)
-
+		platform := &Platform{}
 		err = platform.ValidateCodePackage(cds.CodePackage)
-		if s.SuccessExpected == true && err != nil {
+		if s.successExpected && err != nil {
 			t.Errorf("Unexpected failure: %s", err)
 		}
-		if s.SuccessExpected == false && err == nil {
-			t.Log("Expected validation failure")
-			t.Fail()
+		if !s.successExpected && err == nil {
+			t.Errorf("Expected validation failure: path: %s, file: %s", s.path, s.file)
 		}
 	}
 }

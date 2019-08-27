@@ -11,10 +11,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -87,47 +87,23 @@ func (p *Platform) ValidatePath(rawPath string) error {
 }
 
 func (p *Platform) ValidateCodePackage(code []byte) error {
-	// FAB-2122: Scan the provided tarball to ensure it only contains source-code under
-	// /src/$packagename.  We do not want to allow something like ./pkg/shady.a to be installed under
-	// $GOPATH within the container.  Note, we do not look deeper than the path at this time
-	// with the knowledge that only the go/cgo compiler will execute for now.  We will remove the source
-	// from the system after the compilation as an extra layer of protection.
-	//
-	// It should be noted that we cannot catch every threat with these techniques.  Therefore,
-	// the container itself needs to be the last line of defense and be configured to be
-	// resilient in enforcing constraints. However, we should still do our best to keep as much
-	// garbage out of the system as possible.
-	re := regexp.MustCompile(`^(/)?(src|META-INF)/.*`)
 	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
 		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
 	}
-	tr := tar.NewReader(gr)
 
+	tr := tar.NewReader(gr)
 	for {
 		header, err := tr.Next()
-		if err != nil {
-			// We only get here if there are no more entries to scan
+		if err == io.EOF {
 			break
 		}
-
-		// --------------------------------------------------------------------------------------
-		// Check name for conforming path
-		// --------------------------------------------------------------------------------------
-		if !re.MatchString(header.Name) {
-			return fmt.Errorf("illegal file detected in payload: \"%s\"", header.Name)
+		if err != nil {
+			return err
 		}
 
-		// --------------------------------------------------------------------------------------
-		// Check that file mode makes sense
-		// --------------------------------------------------------------------------------------
-		// Acceptable flags:
-		//      ISREG      == 0100000
-		//      -rw-rw-rw- == 0666
-		//
-		// Anything else is suspect in this context and will be rejected
-		// --------------------------------------------------------------------------------------
+		// Only allow regular files without execute bit
 		if header.Mode&^0100666 != 0 {
 			return fmt.Errorf("illegal file mode detected for file %s: %o", header.Name, header.Mode)
 		}
