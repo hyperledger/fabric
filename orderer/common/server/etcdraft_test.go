@@ -49,16 +49,17 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	defer gexec.CleanupBuildArtifacts()
 
 	t.Run("Bad", func(t *testing.T) {
+		gt = NewGomegaWithT(t)
 		tempDir, err := ioutil.TempDir("", "etcdraft-orderer-launch")
 		gt.Expect(err).NotTo(HaveOccurred())
 		defer os.RemoveAll(tempDir)
 
 		t.Run("Invalid bootstrap block", func(t *testing.T) {
-			testEtcdRaftOSNFailureInvalidBootstrapBlock(gt, tempDir, orderer, fabricRootDir)
+			testEtcdRaftOSNFailureInvalidBootstrapBlock(NewGomegaWithT(t), tempDir, orderer, fabricRootDir)
 		})
 
 		t.Run("TLS disabled single listener", func(t *testing.T) {
-			testEtcdRaftOSNNoTLSSingleListener(gt, tempDir, orderer, fabricRootDir, configtxgen)
+			testEtcdRaftOSNNoTLSSingleListener(NewGomegaWithT(t), tempDir, orderer, fabricRootDir, configtxgen)
 		})
 	})
 
@@ -66,6 +67,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 		// tests in this suite actually launch process with success, hence we need to avoid
 		// conflicts in listening port, opening files.
 		t.Run("TLS disabled dual listener", func(t *testing.T) {
+			gt = NewGomegaWithT(t)
 			tempDir, err := ioutil.TempDir("", "etcdraft-orderer-launch")
 			gt.Expect(err).NotTo(HaveOccurred())
 			defer os.RemoveAll(tempDir)
@@ -74,6 +76,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 		})
 
 		t.Run("TLS enabled single listener", func(t *testing.T) {
+			gt = NewGomegaWithT(t)
 			tempDir, err := ioutil.TempDir("", "etcdraft-orderer-launch")
 			gt.Expect(err).NotTo(HaveOccurred())
 			defer os.RemoveAll(tempDir)
