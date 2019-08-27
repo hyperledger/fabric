@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -117,7 +118,9 @@ type CCCacheSupport interface {
 
 // CCInfoFSImpl provides the implementation for CC on the FS and the access to it
 // It implements CCCacheSupport
-type CCInfoFSImpl struct{}
+type CCInfoFSImpl struct {
+	GetHasher GetHasher
+}
 
 // GetChaincodeFromFS this is a wrapper for hiding package implementation.
 // It calls GetChaincodeFromPath with the chaincodeInstallPath
@@ -142,13 +145,13 @@ func (cifs *CCInfoFSImpl) GetChaincodeDepSpec(ccNameVersion string) (*pb.Chainco
 }
 
 // GetChaincodeFromPath this is a wrapper for hiding package implementation.
-func (*CCInfoFSImpl) GetChaincodeFromPath(ccNameVersion string, path string) (CCPackage, error) {
+func (cifs *CCInfoFSImpl) GetChaincodeFromPath(ccNameVersion string, path string) (CCPackage, error) {
 	// try raw CDS
-	cccdspack := &CDSPackage{GetHasher: factory.GetDefault()}
+	cccdspack := &CDSPackage{GetHasher: cifs.GetHasher}
 	_, _, err := cccdspack.InitFromPath(ccNameVersion, path)
 	if err != nil {
 		// try signed CDS
-		ccscdspack := &SignedCDSPackage{}
+		ccscdspack := &SignedCDSPackage{GetHasher: cifs.GetHasher}
 		_, _, err = ccscdspack.InitFromPath(ccNameVersion, path)
 		if err != nil {
 			return nil, err
@@ -165,12 +168,12 @@ func (*CCInfoFSImpl) GetChaincodeInstallPath() string {
 
 // PutChaincode is a wrapper for putting raw ChaincodeDeploymentSpec
 //using CDSPackage. This is only used in UTs
-func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error) {
+func (cifs *CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error) {
 	buf, err := proto.Marshal(depSpec)
 	if err != nil {
 		return nil, err
 	}
-	cccdspack := &CDSPackage{GetHasher: factory.GetDefault()}
+	cccdspack := &CDSPackage{GetHasher: cifs.GetHasher}
 	if _, err := cccdspack.InitFromBuffer(buf); err != nil {
 		return nil, err
 	}
@@ -186,7 +189,7 @@ func (*CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackag
 type DirEnumerator func(string) ([]os.FileInfo, error)
 
 // ChaincodeExtractor extracts chaincode from a given path
-type ChaincodeExtractor func(ccNameVersion string, path string) (CCPackage, error)
+type ChaincodeExtractor func(ccNameVersion string, path string, getHasher GetHasher) (CCPackage, error)
 
 // ListInstalledChaincodes retrieves the installed chaincodes
 func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, ccFromPath ChaincodeExtractor) ([]chaincode.InstalledChaincode, error) {
@@ -215,7 +218,7 @@ func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, 
 		ccName := f.Name()[:i]      // Everything before the separator
 		ccVersion := f.Name()[i+1:] // Everything after the separator
 
-		ccPackage, err := ccFromPath(ccName+":"+ccVersion, dir)
+		ccPackage, err := ccFromPath(ccName+":"+ccVersion, dir, cifs.GetHasher)
 		if err != nil {
 			ccproviderLogger.Warning("Failed obtaining chaincode information about", ccName, ccVersion, ":", err)
 			return nil, errors.Wrapf(err, "failed obtaining information about %s, version %s", ccName, ccVersion)
@@ -233,7 +236,7 @@ func (cifs *CCInfoFSImpl) ListInstalledChaincodes(dir string, ls DirEnumerator, 
 
 // ccInfoFSStorageMgr is the storage manager used either by the cache or if the
 // cache is bypassed
-var ccInfoFSProvider = &CCInfoFSImpl{}
+var ccInfoFSProvider = &CCInfoFSImpl{GetHasher: factory.GetDefault()}
 
 // ccInfoCache is the cache instance itself
 var ccInfoCache = NewCCInfoCache(ccInfoFSProvider)
@@ -259,9 +262,9 @@ func GetChaincodeData(ccNameVersion string) (*ChaincodeData, error) {
 
 // GetCCPackage tries each known package implementation one by one
 // till the right package is found
-func GetCCPackage(buf []byte) (CCPackage, error) {
+func GetCCPackage(buf []byte, bccsp bccsp.BCCSP) (CCPackage, error) {
 	// try raw CDS
-	cds := &CDSPackage{GetHasher: factory.GetDefault()}
+	cds := &CDSPackage{GetHasher: bccsp}
 	if ccdata, err := cds.InitFromBuffer(buf); err != nil {
 		cds = nil
 	} else {
@@ -272,7 +275,7 @@ func GetCCPackage(buf []byte) (CCPackage, error) {
 	}
 
 	// try signed CDS
-	scds := &SignedCDSPackage{}
+	scds := &SignedCDSPackage{GetHasher: bccsp}
 	if ccdata, err := scds.InitFromBuffer(buf); err != nil {
 		scds = nil
 	} else {

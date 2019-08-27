@@ -12,6 +12,7 @@ import (
 	"regexp"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -648,7 +649,7 @@ func isValidStatedbArtifactsTar(statedbArtifactsTar []byte) error {
 
 // executeInstall implements the "install" Invoke transaction
 func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte) error {
-	ccpack, err := ccprovider.GetCCPackage(ccbytes)
+	ccpack, err := ccprovider.GetCCPackage(ccbytes, factory.GetDefault())
 	if err != nil {
 		return err
 	}

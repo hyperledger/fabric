@@ -156,7 +156,7 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 			},
 			PackageProvider: &persistence.FallbackPackageLocator{
 				ChaincodePackageLocator: &persistence.ChaincodePackageLocator{},
-				LegacyCCPackageLocator:  &ccprovider.CCInfoFSImpl{},
+				LegacyCCPackageLocator:  &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider},
 			},
 		},
 		PeerAddress: peerAddress,

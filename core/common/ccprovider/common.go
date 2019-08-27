@@ -7,6 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package ccprovider
 
 // LoadPackage loads a chaincode package from the file system
-func LoadPackage(ccNameVersion string, path string) (CCPackage, error) {
-	return (&CCInfoFSImpl{}).GetChaincodeFromPath(ccNameVersion, path)
+func LoadPackage(ccNameVersion string, path string, getHasher GetHasher) (CCPackage, error) {
+	return (&CCInfoFSImpl{GetHasher: getHasher}).GetChaincodeFromPath(ccNameVersion, path)
 }

@@ -117,7 +117,10 @@ func TestCDSGetCCPackage(t *testing.T) {
 
 	b := protoutil.MarshalOrPanic(cds)
 
-	ccpack, err := GetCCPackage(b)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	ccpack, err := GetCCPackage(b, cryptoProvider)
 	if err != nil {
 		t.Fatalf("failed to get CDS CCPackage %s", err)
 		return

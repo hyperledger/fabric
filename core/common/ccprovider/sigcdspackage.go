@@ -64,18 +64,14 @@ func (data *SignedCDSData) Equals(other *SignedCDSData) bool {
 
 //SignedCDSPackage encapsulates SignedChaincodeDeploymentSpec.
 type SignedCDSPackage struct {
-	buf      []byte
-	depSpec  *pb.ChaincodeDeploymentSpec
-	sDepSpec *pb.SignedChaincodeDeploymentSpec
-	env      *common.Envelope
-	data     *SignedCDSData
-	datab    []byte
-	id       []byte
-}
-
-// resets data
-func (ccpack *SignedCDSPackage) reset() {
-	*ccpack = SignedCDSPackage{}
+	buf       []byte
+	depSpec   *pb.ChaincodeDeploymentSpec
+	sDepSpec  *pb.SignedChaincodeDeploymentSpec
+	env       *common.Envelope
+	data      *SignedCDSData
+	datab     []byte
+	id        []byte
+	GetHasher GetHasher
 }
 
 // GetId gets the fingerprint of the chaincode based on package computation
@@ -162,7 +158,7 @@ func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpe
 	}
 
 	//get the hash object
-	hash, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
+	hash, err := ccpack.GetHasher.GetHash(&bccsp.SHAOpts{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -256,8 +252,6 @@ func (ccpack *SignedCDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 
 //InitFromBuffer sets the buffer if valid and returns ChaincodeData
 func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
-	//incase ccpack is reused
-	ccpack.reset()
 
 	env := &common.Envelope{}
 	err := proto.Unmarshal(buf, env)
@@ -302,8 +296,6 @@ func (ccpack *SignedCDSPackage) InitFromFS(ccNameVersion string) ([]byte, *pb.Ch
 
 //InitFromPath returns the chaincode and its package from the file system
 func (ccpack *SignedCDSPackage) InitFromPath(ccNameVersion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
-	//incase ccpack is reused
-	ccpack.reset()
 
 	buf, err := GetChaincodePackageFromPath(ccNameVersion, path)
 	if err != nil {
