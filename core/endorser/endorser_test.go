@@ -48,8 +48,9 @@ var _ = Describe("Endorser", func() {
 
 		fakePrivateDataDistributor *fake.PrivateDataDistributor
 
-		fakeSupport     *fake.Support
-		fakeTxSimulator *fake.TxSimulator
+		fakeSupport              *fake.Support
+		fakeTxSimulator          *fake.TxSimulator
+		fakeHistoryQueryExecutor *fake.HistoryQueryExecutor
 
 		signedProposal *pb.SignedProposal
 		channelID      string
@@ -146,6 +147,9 @@ var _ = Describe("Endorser", func() {
 			nil,
 		)
 
+		fakeHistoryQueryExecutor = &fake.HistoryQueryExecutor{}
+		fakeSupport.GetHistoryQueryExecutorReturns(fakeHistoryQueryExecutor, nil)
+
 		fakeSupport.GetTxSimulatorReturns(fakeTxSimulator, nil)
 
 		fakeSupport.GetTransactionByIDReturns(nil, fmt.Errorf("txid-error"))
@@ -216,40 +220,6 @@ var _ = Describe("Endorser", func() {
 			Payload: []byte("response-payload"),
 		})).To(BeTrue())
 
-		Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(1))
-		ledgerName := fakeSupport.GetHistoryQueryExecutorArgsForCall(0)
-		Expect(ledgerName).To(Equal("channel-id"))
-
-		Expect(fakeSupport.GetTransactionByIDCallCount()).To(Equal(1))
-		channelID, txid := fakeSupport.GetTransactionByIDArgsForCall(0)
-		Expect(channelID).To(Equal("channel-id"))
-		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
-
-		Expect(fakeSupport.GetTxSimulatorCallCount()).To(Equal(1))
-		ledgerName, txid = fakeSupport.GetTxSimulatorArgsForCall(0)
-		Expect(ledgerName).To(Equal("channel-id"))
-		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
-
-		Expect(fakeChannelMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(1))
-		identity := fakeChannelMSPIdentityDeserializer.DeserializeIdentityArgsForCall(0)
-		Expect(identity).To(Equal(protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
-			Mspid: "msp-id",
-		})))
-
-		Expect(fakeLocalMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(0))
-
-		Expect(fakePrivateDataDistributor.DistributePrivateDataCallCount()).To(Equal(1))
-		cid, txid, privateData, blkHt := fakePrivateDataDistributor.DistributePrivateDataArgsForCall(0)
-		Expect(cid).To(Equal("channel-id"))
-		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
-		Expect(blkHt).To(Equal(uint64(7)))
-
-		// TODO, this deserves a better test, but there was none before and this logic,
-		// really seems far too jumbled to be in the endorser package.  There are seperate
-		// tests of the private data assembly functions in their test file.
-		Expect(privateData).NotTo(BeNil())
-		Expect(privateData.EndorsedAt).To(Equal(uint64(7)))
-
 		Expect(fakeSupport.EndorseWithPluginCallCount()).To(Equal(1))
 		pluginName, cid, propRespPayloadBytes, sp := fakeSupport.EndorseWithPluginArgsForCall(0)
 		Expect(sp).To(Equal(signedProposal))
@@ -269,6 +239,306 @@ var _ = Describe("Endorser", func() {
 			Status:  200,
 			Payload: []byte("response-payload"),
 		})).To(BeTrue())
+		Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(1))
+		ledgerName := fakeSupport.GetHistoryQueryExecutorArgsForCall(0)
+		Expect(ledgerName).To(Equal("channel-id"))
+	})
+
+	Context("when the chaincode endorsement fails", func() {
+		BeforeEach(func() {
+			fakeSupport.EndorseWithPluginReturns(nil, nil, fmt.Errorf("fake-endorserment-error"))
+		})
+
+		It("returns the error, but with no payload encoded", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "endorsing with plugin failed: fake-endorserment-error",
+			}))
+		})
+	})
+
+	It("checks for duplicate transactions", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeSupport.GetTransactionByIDCallCount()).To(Equal(1))
+		channelID, txid := fakeSupport.GetTransactionByIDArgsForCall(0)
+		Expect(channelID).To(Equal("channel-id"))
+		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
+	})
+
+	Context("when the txid is duplicated", func() {
+		BeforeEach(func() {
+			fakeSupport.GetTransactionByIDReturns(nil, nil)
+		})
+
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).To(MatchError("duplicate transaction found [6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015]. Creator [0a066d73702d6964]"))
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "duplicate transaction found [6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015]. Creator [0a066d73702d6964]",
+				},
+			}))
+		})
+	})
+
+	It("gets a transaction simulator", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeSupport.GetTxSimulatorCallCount()).To(Equal(1))
+		ledgerName, txid := fakeSupport.GetTxSimulatorArgsForCall(0)
+		Expect(ledgerName).To(Equal("channel-id"))
+		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
+	})
+
+	Context("when getting the tx simulator fails", func() {
+		BeforeEach(func() {
+			fakeSupport.GetTxSimulatorReturns(nil, fmt.Errorf("fake-simulator-error"))
+		})
+
+		It("returns a response with the error", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "fake-simulator-error",
+			}))
+		})
+	})
+
+	It("gets a history query executor", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(1))
+		ledgerName := fakeSupport.GetHistoryQueryExecutorArgsForCall(0)
+		Expect(ledgerName).To(Equal("channel-id"))
+	})
+
+	Context("when getting the history query executor fails", func() {
+		BeforeEach(func() {
+			fakeSupport.GetHistoryQueryExecutorReturns(nil, fmt.Errorf("fake-history-error"))
+		})
+
+		It("returns a response with the error", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "fake-history-error",
+			}))
+		})
+	})
+
+	It("gets the channel context", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeChannelFetcher.ChannelCallCount()).To(Equal(1))
+		channelID := fakeChannelFetcher.ChannelArgsForCall(0)
+		Expect(channelID).To(Equal("channel-id"))
+	})
+
+	Context("when the channel context cannot be retrieved", func() {
+		BeforeEach(func() {
+			fakeChannelFetcher.ChannelReturns(nil)
+		})
+
+		It("returns a response with the error", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "channel 'channel-id' not found",
+			}))
+		})
+	})
+
+	It("checks the submitter's identity", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeChannelMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(1))
+		identity := fakeChannelMSPIdentityDeserializer.DeserializeIdentityArgsForCall(0)
+		Expect(identity).To(Equal(protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
+			Mspid: "msp-id",
+		})))
+
+		Expect(fakeLocalMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(0))
+	})
+
+	Context("when the proposal is not validly signed", func() {
+		BeforeEach(func() {
+			fakeChannelMSPIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserialize-error"))
+		})
+
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).To(MatchError("error validating proposal: access denied: channel [channel-id] creator org [msp-id]"))
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "error validating proposal: access denied: channel [channel-id] creator org [msp-id]",
+				},
+			}))
+		})
+	})
+
+	It("checks the ACLs for the identity", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeProposalACLCheckFailed.WithCallCount()).To(Equal(0))
+		Expect(fakeInitFailed.WithCallCount()).To(Equal(0))
+		Expect(fakeEndorsementsFailed.WithCallCount()).To(Equal(0))
+		Expect(fakeDuplicateTxsFailure.WithCallCount()).To(Equal(0))
+	})
+
+	Context("when the acl check fails", func() {
+		BeforeEach(func() {
+			fakeSupport.CheckACLReturns(fmt.Errorf("fake-acl-error"))
+		})
+
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).To(MatchError("fake-acl-error"))
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "fake-acl-error",
+				},
+			}))
+		})
+
+		Context("when it's for a system chaincode", func() {
+			BeforeEach(func() {
+				fakeSupport.IsSysCCReturns(true)
+			})
+
+			It("skips the acl check", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response.Status).To(Equal(int32(200)))
+			})
+		})
+	})
+
+	It("gets the chaincode definition", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeSupport.ChaincodeEndorsementInfoCallCount()).To(Equal(1))
+		channelID, chaincodeName, txSim := fakeSupport.ChaincodeEndorsementInfoArgsForCall(0)
+		Expect(channelID).To(Equal("channel-id"))
+		Expect(chaincodeName).To(Equal("chaincode-name"))
+		Expect(txSim).To(Equal(fakeTxSimulator))
+	})
+
+	Context("when the chaincode definition is not found", func() {
+		BeforeEach(func() {
+			fakeSupport.ChaincodeEndorsementInfoReturns(nil, fmt.Errorf("fake-definition-error"))
+		})
+
+		It("returns an error in the response", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "make sure the chaincode chaincode-name has been successfully defined on channel channel-id and try again: fake-definition-error",
+			}))
+		})
+	})
+
+	It("calls the chaincode", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeSupport.ExecuteCallCount()).To(Equal(1))
+		txParams, chaincodeName, input := fakeSupport.ExecuteArgsForCall(0)
+		Expect(txParams.ChannelID).To(Equal("channel-id"))
+		Expect(txParams.SignedProp).To(Equal(signedProposal))
+		Expect(txParams.TXSimulator).To(Equal(fakeTxSimulator))
+		Expect(txParams.HistoryQueryExecutor).To(Equal(fakeHistoryQueryExecutor))
+		Expect(chaincodeName).To(Equal("chaincode-name"))
+		Expect(proto.Equal(input, &pb.ChaincodeInput{
+			Args: [][]byte{[]byte("arg1"), []byte("arg2"), []byte("arg3")},
+		})).To(BeTrue())
+	})
+
+	Context("when calling the chaincode returns an error", func() {
+		BeforeEach(func() {
+			fakeSupport.ExecuteReturns(nil, nil, fmt.Errorf("fake-chaincode-execution-error"))
+		})
+
+		It("returns a response with the error and no payload", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "error in simulation: fake-chaincode-execution-error",
+			}))
+		})
+	})
+
+	It("distributes private data", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakePrivateDataDistributor.DistributePrivateDataCallCount()).To(Equal(1))
+		cid, txid, privateData, blkHt := fakePrivateDataDistributor.DistributePrivateDataArgsForCall(0)
+		Expect(cid).To(Equal("channel-id"))
+		Expect(txid).To(Equal("6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015"))
+		Expect(blkHt).To(Equal(uint64(7)))
+
+		// TODO, this deserves a better test, but there was none before and this logic,
+		// really seems far too jumbled to be in the endorser package.  There are seperate
+		// tests of the private data assembly functions in their test file.
+		Expect(privateData).NotTo(BeNil())
+		Expect(privateData.EndorsedAt).To(Equal(uint64(7)))
+	})
+
+	Context("when the private data cannot be distributed", func() {
+		BeforeEach(func() {
+			fakePrivateDataDistributor.DistributePrivateDataReturns(fmt.Errorf("fake-private-data-error"))
+		})
+
+		It("returns a response with the error and no payload", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "error in simulation: fake-private-data-error",
+			}))
+		})
+	})
+
+	It("checks the block height", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeSupport.GetLedgerHeightCallCount()).To(Equal(1))
+	})
+
+	Context("when the block height cannot be determined", func() {
+		BeforeEach(func() {
+			fakeSupport.GetLedgerHeightReturns(0, fmt.Errorf("fake-block-height-error"))
+		})
+
+		It("returns a response with the error and no payload", func() {
+			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "error in simulation: failed to obtain ledger height for channel 'channel-id': fake-block-height-error",
+			}))
+		})
+	})
+
+	It("records metrics about the proposal processing", func() {
+		_, err := e.ProcessProposal(context.Background(), signedProposal)
+		Expect(err).NotTo(HaveOccurred())
 
 		Expect(fakeProposalsReceived.AddCallCount()).To(Equal(1))
 		Expect(fakeSuccessfulProposals.AddCallCount()).To(Equal(1))
@@ -280,11 +550,6 @@ var _ = Describe("Endorser", func() {
 			"chaincode", "chaincode-name",
 			"success", "true",
 		}))
-
-		Expect(fakeProposalACLCheckFailed.WithCallCount()).To(Equal(0))
-		Expect(fakeInitFailed.WithCallCount()).To(Equal(0))
-		Expect(fakeEndorsementsFailed.WithCallCount()).To(Equal(0))
-		Expect(fakeDuplicateTxsFailure.WithCallCount()).To(Equal(0))
 	})
 
 	Context("when the channel id is empty", func() {
@@ -303,10 +568,29 @@ var _ = Describe("Endorser", func() {
 				Status:  200,
 				Payload: []byte("response-payload"),
 			})).To(BeTrue())
+		})
 
+		It("does not attempt to get a history query executor", func() {
+			_, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(0))
+		})
+
+		It("does not attempt to deduplicate the txid", func() {
+			_, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeSupport.GetTransactionByIDCallCount()).To(Equal(0))
+		})
+
+		It("does not attempt to get a tx simulator", func() {
+			_, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeSupport.GetTxSimulatorCallCount()).To(Equal(0))
+		})
+
+		It("uses the local MSP to authorize the creator", func() {
+			_, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeChannelMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(0))
 
 			Expect(fakeLocalMSPIdentityDeserializer.DeserializeIdentityCallCount()).To(Equal(1))
@@ -314,7 +598,28 @@ var _ = Describe("Endorser", func() {
 			Expect(identity).To(Equal(protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
 				Mspid: "msp-id",
 			})))
+		})
 
+		Context("when the proposal is not validly signed", func() {
+			BeforeEach(func() {
+				fakeLocalMSPIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserialize-error"))
+			})
+
+			It("wraps and returns an error and responds to the client", func() {
+				proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+				Expect(err).To(MatchError("error validating proposal: access denied: channel [] creator org [msp-id]"))
+				Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+					Response: &pb.Response{
+						Status:  500,
+						Message: "error validating proposal: access denied: channel [] creator org [msp-id]",
+					},
+				}))
+			})
+		})
+
+		It("records metrics but without a channel ID set", func() {
+			_, err := e.ProcessProposal(context.Background(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeProposalsReceived.AddCallCount()).To(Equal(1))
 			Expect(fakeSuccessfulProposals.AddCallCount()).To(Equal(1))
 			Expect(fakeProposalValidationFailed.AddCallCount()).To(Equal(0))
@@ -325,7 +630,6 @@ var _ = Describe("Endorser", func() {
 				"chaincode", "chaincode-name",
 				"success", "true",
 			}))
-
 			Expect(fakeProposalACLCheckFailed.WithCallCount()).To(Equal(0))
 			Expect(fakeInitFailed.WithCallCount()).To(Equal(0))
 			Expect(fakeEndorsementsFailed.WithCallCount()).To(Equal(0))
@@ -409,86 +713,6 @@ var _ = Describe("Endorser", func() {
 		})
 	})
 
-	Context("when the proposal is not validly signed", func() {
-		BeforeEach(func() {
-			fakeChannelMSPIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserialize-error"))
-		})
-
-		It("wraps and returns an error and responds to the client", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("error validating proposal: access denied: channel [channel-id] creator org [msp-id]"))
-			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
-				Response: &pb.Response{
-					Status:  500,
-					Message: "error validating proposal: access denied: channel [channel-id] creator org [msp-id]",
-				},
-			}))
-		})
-	})
-
-	Context("when the proposal is not validly signed", func() {
-		BeforeEach(func() {
-			fakeChannelMSPIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserialize-error"))
-		})
-
-		It("wraps and returns an error and responds to the client", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("error validating proposal: access denied: channel [channel-id] creator org [msp-id]"))
-			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
-				Response: &pb.Response{
-					Status:  500,
-					Message: "error validating proposal: access denied: channel [channel-id] creator org [msp-id]",
-				},
-			}))
-		})
-	})
-
-	Context("when the txid is duplicated", func() {
-		BeforeEach(func() {
-			fakeSupport.GetTransactionByIDReturns(nil, nil)
-		})
-
-		It("wraps and returns an error and responds to the client", func() {
-			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-			Expect(err).To(MatchError("duplicate transaction found [6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015]. Creator [0a066d73702d6964]"))
-			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
-				Response: &pb.Response{
-					Status:  500,
-					Message: "duplicate transaction found [6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015]. Creator [0a066d73702d6964]",
-				},
-			}))
-		})
-	})
-
-	Context("when the acl check fails", func() {
-		BeforeEach(func() {
-			fakeSupport.CheckACLReturns(fmt.Errorf("fake-acl-error"))
-		})
-
-		It("wraps and returns an error and responds to the client", func() {
-			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-			Expect(err).To(MatchError("fake-acl-error"))
-			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
-				Response: &pb.Response{
-					Status:  500,
-					Message: "fake-acl-error",
-				},
-			}))
-		})
-
-		Context("when it's for a system chaincode", func() {
-			BeforeEach(func() {
-				fakeSupport.IsSysCCReturns(true)
-			})
-
-			It("skips the acl check", func() {
-				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(proposalResponse.Response.Status).To(Equal(int32(200)))
-			})
-		})
-	})
-
 	Context("when the chaincode response is >= 500", func() {
 		BeforeEach(func() {
 			chaincodeResponse.Status = 500
@@ -505,70 +729,6 @@ var _ = Describe("Endorser", func() {
 				Payload: []byte("response-payload"),
 			})).To(BeTrue())
 			Expect(proposalResponse.Payload).NotTo(BeNil())
-		})
-	})
-
-	Context("when the chaincode endorsement fails", func() {
-		BeforeEach(func() {
-			fakeSupport.EndorseWithPluginReturns(nil, nil, fmt.Errorf("fake-endorserment-error"))
-		})
-
-		It("returns the error, but with no payload encoded", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
-				Status:  500,
-				Message: "endorsing with plugin failed: fake-endorserment-error",
-			}))
-		})
-	})
-
-	Context("when getting the tx simulator fails", func() {
-		BeforeEach(func() {
-			fakeSupport.GetTxSimulatorReturns(nil, fmt.Errorf("fake-simulator-error"))
-		})
-
-		It("returns a response with the error", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
-				Status:  500,
-				Message: "fake-simulator-error",
-			}))
-		})
-	})
-
-	Context("when getting the history query executor fails", func() {
-		BeforeEach(func() {
-			fakeSupport.GetHistoryQueryExecutorReturns(nil, fmt.Errorf("fake-history-error"))
-		})
-
-		It("returns a response with the error", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
-				Status:  500,
-				Message: "fake-history-error",
-			}))
-		})
-	})
-
-	Context("when the channel context cannot be retrieved", func() {
-		BeforeEach(func() {
-			fakeChannelFetcher.ChannelReturns(nil)
-		})
-
-		It("returns a response with the error", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
-				Status:  500,
-				Message: "channel 'channel-id' not found",
-			}))
 		})
 	})
 
@@ -595,69 +755,6 @@ var _ = Describe("Endorser", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeSupport.GetTxSimulatorCallCount()).To(Equal(0))
 			Expect(fakeSupport.GetHistoryQueryExecutorCallCount()).To(Equal(0))
-		})
-	})
-
-	Context("when the chaincode definition is not found", func() {
-		BeforeEach(func() {
-			fakeSupport.ChaincodeEndorsementInfoReturns(nil, fmt.Errorf("fake-definition-error"))
-		})
-
-		It("returns an error in the response", func() {
-			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
-				Status:  500,
-				Message: "make sure the chaincode chaincode-name has been successfully defined on channel channel-id and try again: fake-definition-error",
-			}))
-		})
-	})
-
-	Context("when calling the chaincode returns an error", func() {
-		BeforeEach(func() {
-			fakeSupport.ExecuteReturns(nil, nil, fmt.Errorf("fake-chaincode-execution-error"))
-		})
-
-		It("returns a response with the error and no payload", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
-				Status:  500,
-				Message: "error in simulation: fake-chaincode-execution-error",
-			}))
-		})
-	})
-
-	Context("when the private data cannot be distributed", func() {
-		BeforeEach(func() {
-			fakePrivateDataDistributor.DistributePrivateDataReturns(fmt.Errorf("fake-private-data-error"))
-		})
-
-		It("returns a response with the error and no payload", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
-				Status:  500,
-				Message: "error in simulation: fake-private-data-error",
-			}))
-		})
-	})
-
-	Context("when the block height cannot be determined", func() {
-		BeforeEach(func() {
-			fakeSupport.GetLedgerHeightReturns(0, fmt.Errorf("fake-block-height-error"))
-		})
-
-		It("returns a response with the error and no payload", func() {
-			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Payload).To(BeNil())
-			Expect(proposalResponse.Response).To(Equal(&pb.Response{
-				Status:  500,
-				Message: "error in simulation: failed to obtain ledger height for channel 'channel-id': fake-block-height-error",
-			}))
 		})
 	})
 
