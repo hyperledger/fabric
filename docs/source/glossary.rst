@@ -254,26 +254,6 @@ curated based on the application and the desired level of resilience against
 misbehavior (deliberate or not) by the endorsing peers. A transaction that is submitted
 must satisfy the endorsement policy before being marked as valid by committing peers.
 
-.. _FabToken:
-
-FabToken
---------
-
-FabToken is an Unspent Transaction Output (UTXO) based token management system
-that allows users to issue, transfer, and redeem tokens on channels. FabToken
-uses the membership services of Fabric to authenticate the identity of token
-owners and manage their public and private keys.
-
-.. _FabToken:
-
-FabToken
---------
-
-FabToken is an Unspent Transaction Output (UTXO) based token management system
-that allows users to issue, transfer, and redeem tokens on channels. FabToken
-uses the membership services of Fabric to authenticate the identity of token
-owners and manage their public and private keys.
-
 .. _Follower:
 
 Follower
@@ -562,20 +542,6 @@ Proposal
 A request for endorsement that is aimed at specific peers on a channel. Each
 proposal is either an Init or an invoke (read/write) request.
 
-.. _Prover-peer:
-
-Prover peer
------------
-
-A trusted peer used by the FabToken client to assemble a token transaction and
-list the unspent tokens owned by a given authorized party.
-
-.. _Prover-peer:
-
-Prover peer
------------
-
-A trusted peer used by the FabToken client to assemble a token transaction.
 
 .. _Query:
 
@@ -682,13 +648,10 @@ Transaction
 
    A transaction, 'T'
 
-Transactions are created when a chaincode or FabToken client is used to read or
-write to data from the ledger. If you are invoking a chaincode, application
-clients gather the responses from endorsing peers and then package the results
-and endorsements into a transaction that is submitted for ordering, validation,
-and commit. If using FabToken to create a token transaction, the FabToken client
-uses a prover peer to create a transaction that is submitted to the ordering
-service and then validated by committing peers.
+Transactions are created when a chaincode is invoked from a client application
+to read or write to data from the ledger. Application clients gather the
+responses from endorsing peers and then package the results and endorsements
+into a transaction that is submitted for ordering, validation, and commit.
 
 .. _World-State:
 
