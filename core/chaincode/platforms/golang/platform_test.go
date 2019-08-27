@@ -203,8 +203,8 @@ func TestValidatePath(t *testing.T) {
 		path string
 		succ bool
 	}{
-		{path: "http://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
-		{path: "https://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
+		{path: "http://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
+		{path: "https://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
 		{path: "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
 		{path: "github.com/hyperledger/fabric/bad/chaincode/golang/testdata/src/chaincodes/noop", succ: false},
 		{path: ":github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},

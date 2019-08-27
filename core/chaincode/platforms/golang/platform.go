@@ -12,7 +12,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -69,29 +68,20 @@ func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_GOLANG.String()
 }
 
-// ValidateSpec validates Go chaincodes
+// ValidatePath validates Go chaincodes
 func (p *Platform) ValidatePath(rawPath string) error {
-	path, err := url.Parse(rawPath)
-	if err != nil || path == nil {
-		return fmt.Errorf("invalid path: %s", err)
+	gopath, err := getGopath()
+	if err != nil {
+		return err
 	}
 
-	//we have no real good way of checking existence of remote urls except by downloading and testing
-	//which we do later anyway. But we *can* - and *should* - test for existence of local paths.
-	//Treat empty scheme as a local filesystem path
-	if path.Scheme == "" {
-		gopath, err := getGopath()
-		if err != nil {
-			return err
-		}
-		pathToCheck := filepath.Join(gopath, "src", rawPath)
-		exists, err := pathExists(pathToCheck)
-		if err != nil {
-			return fmt.Errorf("error validating chaincode path: %s", err)
-		}
-		if !exists {
-			return fmt.Errorf("path to chaincode does not exist: %s", pathToCheck)
-		}
+	pathToCheck := filepath.Join(gopath, "src", rawPath)
+	exists, err := pathExists(pathToCheck)
+	if err != nil {
+		return fmt.Errorf("error validating chaincode path: %s", err)
+	}
+	if !exists {
+		return fmt.Errorf("path to chaincode does not exist: %s", pathToCheck)
 	}
 	return nil
 }
