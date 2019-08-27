@@ -14,8 +14,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
@@ -41,26 +42,17 @@ func pathExists(path string) (bool, error) {
 }
 
 func getGopath() (string, error) {
-	env, err := getGoEnv()
+	output, err := exec.Command("go", "env", "GOPATH").Output()
 	if err != nil {
 		return "", err
 	}
-	// Only take the first element of GOPATH
-	splitGoPath := filepath.SplitList(env["GOPATH"])
-	if len(splitGoPath) == 0 {
-		return "", fmt.Errorf("invalid GOPATH environment variable value: %s", env["GOPATH"])
-	}
-	return splitGoPath[0], nil
-}
 
-func filter(vs []string, f func(string) bool) []string {
-	vsf := make([]string, 0)
-	for _, v := range vs {
-		if f(v) {
-			vsf = append(vsf, v)
-		}
+	pathElements := filepath.SplitList(strings.TrimSpace(string(output)))
+	if len(pathElements) == 0 {
+		return "", fmt.Errorf("GOPATH is not set")
 	}
-	return vsf
+
+	return pathElements[0], nil
 }
 
 // Name returns the name of this platform
@@ -70,19 +62,11 @@ func (p *Platform) Name() string {
 
 // ValidatePath validates Go chaincodes
 func (p *Platform) ValidatePath(rawPath string) error {
-	gopath, err := getGopath()
+	_, err := getCodeDescriptor(rawPath)
 	if err != nil {
 		return err
 	}
 
-	pathToCheck := filepath.Join(gopath, "src", rawPath)
-	exists, err := pathExists(pathToCheck)
-	if err != nil {
-		return fmt.Errorf("error validating chaincode path: %s", err)
-	}
-	if !exists {
-		return fmt.Errorf("path to chaincode does not exist: %s", pathToCheck)
-	}
 	return nil
 }
 
@@ -112,242 +96,34 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 	return nil
 }
 
-type Sources []SourceDescriptor
-
-func (s Sources) Len() int {
-	return len(s)
-}
-
-func (s Sources) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s Sources) Less(i, j int) bool {
-	return strings.Compare(s[i].Name, s[j].Name) < 0
-}
-
-// Vendor any packages that are not already within our chaincode's primary package
-// or vendored by it.  We take the name of the primary package and a list of files
-// that have been previously determined to comprise the package's dependencies.
-// For anything that needs to be vendored, we simply update its path specification.
-// Everything else, we pass through untouched.
-func vendorDependencies(pkg string, files Sources) {
-
-	exclusions := make([]string, 0)
-	elements := strings.Split(pkg, "/")
-
-	// --------------------------------------------------------------------------------------
-	// First, add anything already vendored somewhere within our primary package to the
-	// "exclusions".  For a package "foo/bar/baz", we want to ensure we don't auto-vendor
-	// any of the following:
-	//
-	//     [ "foo/vendor", "foo/bar/vendor", "foo/bar/baz/vendor"]
-	//
-	// and we therefore employ a recursive path building process to form this list
-	// --------------------------------------------------------------------------------------
-	prev := filepath.Join("src")
-	for _, element := range elements {
-		curr := filepath.Join(prev, element)
-		vendor := filepath.Join(curr, "vendor")
-		exclusions = append(exclusions, vendor)
-		prev = curr
-	}
-
-	// --------------------------------------------------------------------------------------
-	// Next add our primary package to the list of "exclusions"
-	// --------------------------------------------------------------------------------------
-	exclusions = append(exclusions, filepath.Join("src", pkg))
-
-	count := len(files)
-	sem := make(chan bool, count)
-
-	// --------------------------------------------------------------------------------------
-	// Now start a parallel process which checks each file in files to see if it matches
-	// any of the excluded patterns.  Any that match are renamed such that they are vendored
-	// under src/$pkg/vendor.
-	// --------------------------------------------------------------------------------------
-	vendorPath := filepath.Join("src", pkg, "vendor")
-	for i, file := range files {
-		go func(i int, file SourceDescriptor) {
-			excluded := false
-
-			for _, exclusion := range exclusions {
-				if strings.HasPrefix(file.Name, exclusion) == true {
-					excluded = true
-					break
-				}
-			}
-
-			if excluded == false {
-				origName := file.Name
-				file.Name = strings.Replace(origName, "src", vendorPath, 1)
-				logger.Debugf("vendoring %s -> %s", origName, file.Name)
-			}
-
-			files[i] = file
-			sem <- true
-		}(i, file)
-	}
-
-	for i := 0; i < count; i++ {
-		<-sem
-	}
-}
-
 // Generates a deployment payload for GOLANG as a series of src/$pkg entries in .tar.gz format
-func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
-
-	var err error
-
-	// --------------------------------------------------------------------------------------
-	// retrieve a CodeDescriptor from either HTTP or the filesystem
-	// --------------------------------------------------------------------------------------
-	code, err := getCode(path)
+func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
+	codeDescriptor, err := getCodeDescriptor(codepath)
 	if err != nil {
 		return nil, err
 	}
-	if code.Cleanup != nil {
-		defer code.Cleanup()
-	}
 
-	// --------------------------------------------------------------------------------------
-	// Update our environment for the purposes of executing go-list directives
-	// --------------------------------------------------------------------------------------
-	env, err := getGoEnv()
+	fileMap, err := findSource(codeDescriptor)
 	if err != nil {
 		return nil, err
 	}
-	gopaths := splitEnvPaths(env["GOPATH"])
-	goroots := splitEnvPaths(env["GOROOT"])
-	gopaths[code.Gopath] = true
-	env["GOPATH"] = flattenEnvPaths(gopaths)
 
-	// --------------------------------------------------------------------------------------
-	// Retrieve the list of first-order imports referenced by the chaincode
-	// --------------------------------------------------------------------------------------
-	imports, err := listImports(env, code.Pkg)
+	packageInfo, err := dependencyPackageInfo(codeDescriptor.Pkg)
 	if err != nil {
-		return nil, fmt.Errorf("Error obtaining imports: %s", err)
+		return nil, err
 	}
 
-	// Golang "pseudo-packages" - packages which don't actually exist
-	var pseudo = map[string]bool{
-		"C": true,
-	}
-
-	imports = filter(imports, func(pkg string) bool {
-		// Drop pseudo-packages
-		if _, ok := pseudo[pkg]; ok == true {
-			logger.Debugf("Discarding pseudo-package %s", pkg)
-			return false
-		}
-
-		// Drop if provided by GOROOT
-		for goroot := range goroots {
-			fqp := filepath.Join(goroot, "src", pkg)
-			exists, err := pathExists(fqp)
-			if err == nil && exists {
-				logger.Debugf("Discarding GOROOT package %s", pkg)
-				return false
+	for _, pkg := range packageInfo {
+		for _, filename := range pkg.Files() {
+			filePath := filepath.Join(pkg.Dir, filename)
+			sd := SourceDescriptor{
+				Name:       path.Join("src", pkg.ImportPath, filename),
+				Path:       filePath,
+				IsMetadata: false,
 			}
-		}
-
-		// Else, we keep it
-		logger.Debugf("Accepting import: %s", pkg)
-		return true
-	})
-
-	// --------------------------------------------------------------------------------------
-	// Assemble the fully resolved list of direct and transitive dependencies based on the
-	// imports that remain after filtering
-	// --------------------------------------------------------------------------------------
-	deps := make(map[string]bool)
-
-	for _, pkg := range imports {
-		// ------------------------------------------------------------------------------
-		// Resolve direct import's transitives
-		// ------------------------------------------------------------------------------
-		transitives, err := listDeps(env, pkg)
-		if err != nil {
-			return nil, fmt.Errorf("Error obtaining dependencies for %s: %s", pkg, err)
-		}
-
-		// ------------------------------------------------------------------------------
-		// Merge all results with our top list
-		// ------------------------------------------------------------------------------
-
-		// Merge direct dependency...
-		deps[pkg] = true
-
-		// .. and then all transitives
-		for _, dep := range transitives {
-			deps[dep] = true
+			fileMap[sd.Name] = sd
 		}
 	}
-
-	// cull "" if it exists
-	delete(deps, "")
-
-	// --------------------------------------------------------------------------------------
-	// Find the source from our first-order code package ...
-	// --------------------------------------------------------------------------------------
-	fileMap, err := findSource(code.Gopath, code.Pkg)
-	if err != nil {
-		return nil, err
-	}
-
-	// --------------------------------------------------------------------------------------
-	// ... followed by the source for any non-system dependencies that our code-package has
-	// from the filtered list
-	// --------------------------------------------------------------------------------------
-	for dep := range deps {
-		logger.Debugf("processing dep: %s", dep)
-
-		// Each dependency should either be in our GOPATH or GOROOT.  We are not interested in packaging
-		// any of the system packages.  However, the official way (go-list) to make this determination
-		// is too expensive to run for every dep.  Therefore, we cheat.  We assume that any packages that
-		// cannot be found must be system packages and silently skip them
-		for gopath := range gopaths {
-			fqp := filepath.Join(gopath, "src", dep)
-			exists, err := pathExists(fqp)
-
-			logger.Debugf("checking: %s exists: %v", fqp, exists)
-
-			if err == nil && exists {
-
-				// We only get here when we found it, so go ahead and load its code
-				files, err := findSource(gopath, dep)
-				if err != nil {
-					return nil, err
-				}
-
-				// Merge the map manually
-				for _, file := range files {
-					fileMap[file.Name] = file
-				}
-			}
-		}
-	}
-
-	logger.Debugf("done")
-
-	// --------------------------------------------------------------------------------------
-	// Reprocess into a list for easier handling going forward
-	// --------------------------------------------------------------------------------------
-	files := make(Sources, 0)
-	for _, file := range fileMap {
-		files = append(files, file)
-	}
-
-	// --------------------------------------------------------------------------------------
-	// Remap non-package dependencies to package/vendor
-	// --------------------------------------------------------------------------------------
-	vendorDependencies(code.Pkg, files)
-
-	// --------------------------------------------------------------------------------------
-	// Sort on the filename so the tarball at least looks sane in terms of package grouping
-	// --------------------------------------------------------------------------------------
-	sort.Sort(files)
 
 	// --------------------------------------------------------------------------------------
 	// Write out our tar package
@@ -356,14 +132,15 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	for _, file := range files {
+	for _, file := range fileMap.values() {
 		// If the file is metadata rather than golang code, remove the leading go code path, for example:
 		// original file.Name:  src/github.com/hyperledger/fabric/examples/chaincode/go/marbles02/META-INF/statedb/couchdb/indexes/indexOwner.json
 		// updated file.Name:   META-INF/statedb/couchdb/indexes/indexOwner.json
 		if file.IsMetadata {
-			file.Name, err = filepath.Rel(filepath.Join("src", code.Pkg), file.Name)
+			// TODO: handle this much earlier - metadata is only gathered from the original directory
+			file.Name, err = filepath.Rel(filepath.Join("src", codeDescriptor.Pkg), file.Name)
 			if err != nil {
-				return nil, fmt.Errorf("This error was caused by bad packaging of the metadata.  The file [%s] is marked as MetaFile, however not located under META-INF   Error:[%s]", file.Name, err)
+				return nil, errors.Wrapf(err, "failed to calculate relative path for %s", file.Name)
 			}
 
 			// Split the tar location (file.Name) into a tar package directory and filename
@@ -372,7 +149,6 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 			// Hidden files are not supported as metadata, therefore ignore them.
 			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
 			if strings.HasPrefix(filename, ".") {
-				logger.Warningf("Ignoring hidden file in metadata directory: %s", file.Name)
 				continue
 			}
 

@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -37,10 +36,14 @@ func testerr(err error, succ bool) error {
 }
 
 func writeBytesToPackage(name string, payload []byte, mode int64, tw *tar.Writer) error {
-	//Make headers identical by using zero time
-	var zeroTime time.Time
-	tw.WriteHeader(&tar.Header{Name: name, Size: int64(len(payload)), ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime, Mode: mode})
-	tw.Write(payload)
+	err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(payload))})
+	if err != nil {
+		return err
+	}
+	_, err = tw.Write(payload)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -121,7 +124,7 @@ func Test_findSource(t *testing.T) {
 
 	var source SourceMap
 
-	source, err = findSource(gopath, "github.com/hyperledger/fabric/cmd/peer")
+	source, err = findSource(CodeDescriptor{Gopath: gopath, Pkg: "github.com/hyperledger/fabric/cmd/peer"})
 	if err != nil {
 		t.Errorf("failed to find source: %s", err)
 	}
@@ -130,7 +133,7 @@ func Test_findSource(t *testing.T) {
 		t.Errorf("Failed to find expected source file: %v", source)
 	}
 
-	source, err = findSource(gopath, "acme.com/this/should/not/exist")
+	source, err = findSource(CodeDescriptor{Gopath: gopath, Pkg: "acme.com/this/should/not/exist"})
 	if err == nil {
 		t.Errorf("Success when failure was expected")
 	}

@@ -9,73 +9,68 @@ package golang
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("chaincode.platform.golang")
+type CodeDescriptor struct {
+	Gopath string
+	Pkg    string
+}
 
-func getCodeFromFS(path string) (codegopath string, err error) {
-	logger.Debugf("getCodeFromFS %s", path)
-
+// getCodeDescriptor returns GOPATH and package information
+func getCodeDescriptor(path string) (CodeDescriptor, error) {
 	if path == "" {
-		return "", errors.New("cannot collect files from empty chaincode path")
+		return CodeDescriptor{}, errors.New("cannot collect files from empty chaincode path")
 	}
 
 	gopath, err := getGopath()
 	if err != nil {
-		return "", err
+		return CodeDescriptor{}, err
 	}
+	sourcePath := filepath.Join(gopath, "src", path)
 
-	tmppath := filepath.Join(gopath, "src", path)
-	if !isDir(tmppath) {
-		return "", errors.Wrap(err, "code does not exist")
-	}
-
-	return gopath, nil
-}
-
-func isDir(path string) bool {
-	fi, err := os.Stat(path)
+	fi, err := os.Stat(sourcePath)
 	if err != nil {
-		return false
+		return CodeDescriptor{}, errors.Wrap(err, "failed to get code")
+	}
+	if !fi.IsDir() {
+		return CodeDescriptor{}, errors.Errorf("path is not a directory: %s", path)
 	}
 
-	return fi.IsDir()
-}
-
-type CodeDescriptor struct {
-	Gopath  string
-	Pkg     string
-	Cleanup func()
-}
-
-// collectChaincodeFiles collects chaincode files. If path is a HTTP(s) url it
-// downloads the code first.
-func getCode(path string) (*CodeDescriptor, error) {
-	// code root will point to the directory where the code exists
-	gopath, err := getCodeFromFS(path)
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed to get code")
-	}
-
-	return &CodeDescriptor{Gopath: gopath, Pkg: path, Cleanup: nil}, nil
+	return CodeDescriptor{Gopath: gopath, Pkg: path}, nil
 }
 
 type SourceDescriptor struct {
-	Name, Path string
+	Name       string
+	Path       string
 	IsMetadata bool
-	Info       os.FileInfo
 }
+
+type Sources []SourceDescriptor
+
+func (s Sources) Len() int           { return len(s) }
+func (s Sources) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s Sources) Less(i, j int) bool { return s[i].Name < s[j].Name }
 
 type SourceMap map[string]SourceDescriptor
 
-func findSource(gopath, pkg string) (SourceMap, error) {
+func (s SourceMap) values() Sources {
+	var sources Sources
+	for _, src := range s {
+		sources = append(sources, src)
+	}
+
+	sort.Sort(sources)
+	return sources
+}
+
+func findSource(cd CodeDescriptor) (SourceMap, error) {
 	sources := SourceMap{}
 
-	tld := filepath.Join(gopath, "src", pkg)
+	tld := filepath.Join(cd.Gopath, "src", cd.Pkg)
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -90,21 +85,19 @@ func findSource(gopath, pkg string) (SourceMap, error) {
 			// Allow import of META-INF metadata directories into chaincode code package tar.
 			// META-INF directories contain chaincode metadata artifacts such as statedb index definitions
 			if isMetadataDir(path, tld) {
-				logger.Debug("Files in META-INF directory will be included in code package tar:", path)
 				return nil
 			}
 
 			// Do not import any other directories into chaincode code package
-			logger.Debugf("skipping dir: %s", path)
 			return filepath.SkipDir
 		}
 
-		name, err := filepath.Rel(gopath, path)
+		name, err := filepath.Rel(cd.Gopath, path)
 		if err != nil {
 			return errors.Wrapf(err, "failed to calculate relative path for %s", path)
 		}
 
-		sources[name] = SourceDescriptor{Name: name, Path: path, IsMetadata: isMetadataDir(path, tld), Info: info}
+		sources[name] = SourceDescriptor{Name: name, Path: path, IsMetadata: isMetadataDir(path, tld)}
 		return nil
 	}
 
