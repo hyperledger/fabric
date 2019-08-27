@@ -490,6 +490,8 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, packageID)
 	}
 
+	logger.Infof("successfully installed chaincode with package ID '%s'", packageID)
+
 	return &chaincode.InstalledChaincode{
 		PackageID: packageID,
 		Label:     pkg.Metadata.Label,
