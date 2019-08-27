@@ -106,7 +106,7 @@ const issueResponse = await contract.submitTransaction('issue', 'MagnetoCorp', '
 ```
 
 See how the application accesses the smart contract with the
-`contract.getContract()` method. The `papercontract` chaincode name
+`network.getContract()` method. The `papercontract` chaincode name
 `org.papernet.commercialpaper` returns a `contract` reference which can be
 used to submit transactions to issue commercial paper with the
 `contract.submitTransaction()` API.
