@@ -26,15 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testerr(err error, succ bool) error {
-	if succ && err != nil {
-		return fmt.Errorf("Expected success but got error %s", err)
-	} else if !succ && err == nil {
-		return fmt.Errorf("Expected failure but succeeded")
-	}
-	return nil
-}
-
 func writeBytesToPackage(name string, payload []byte, mode int64, tw *tar.Writer) error {
 	err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(payload))})
 	if err != nil {
@@ -75,31 +66,58 @@ func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploy
 	return cds, nil
 }
 
+func TestName(t *testing.T) {
+	platform := &Platform{}
+	assert.Equal(t, "GOLANG", platform.Name())
+}
+
+func TestValidatePath(t *testing.T) {
+	var tests = []struct {
+		path string
+		succ bool
+	}{
+		{path: "http://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
+		{path: "https://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
+		{path: "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
+		{path: "github.com/hyperledger/fabric/bad/chaincode/golang/testdata/src/chaincodes/noop", succ: false},
+		{path: ":github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
+	}
+
+	for _, tt := range tests {
+		platform := &Platform{}
+		err := platform.ValidatePath(tt.path)
+		if tt.succ {
+			assert.NoError(t, err, "expected %s to be a valid path", tt.path)
+		} else {
+			assert.Errorf(t, err, "expected %s to be an invalid path", tt.path)
+		}
+	}
+}
+
 func TestValidateCodePackage(t *testing.T) {
 	tests := []struct {
 		name            string
 		path            string
 		file            string
-		Mode            int64
+		mode            int64
 		successExpected bool
 	}{
-		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/main.go", Mode: 0100400, successExpected: true},
-		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/warez", Mode: 0100555, successExpected: false},
-		{name: "NoCode", path: "path/to/somewhere", file: "/META-INF/path/to/a/meta1", Mode: 0100555, successExpected: false},
-		{name: "NoCode", path: "path/to/somewhere", file: "META-INF/path/to/a/meta3", Mode: 0100400, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/main.go", mode: 0100400, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/warez", mode: 0100555, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "/META-INF/path/to/a/meta1", mode: 0100555, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "META-INF/path/to/a/meta3", mode: 0100400, successExpected: true},
 	}
 
-	for _, s := range tests {
-		cds, err := generateFakeCDS(s.name, s.path, s.file, s.Mode)
+	for _, tt := range tests {
+		cds, err := generateFakeCDS(tt.name, tt.path, tt.file, tt.mode)
 		assert.NoError(t, err, "failed to generate fake cds")
 
 		platform := &Platform{}
 		err = platform.ValidateCodePackage(cds.CodePackage)
-		if s.successExpected && err != nil {
-			t.Errorf("Unexpected failure: %s", err)
-		}
-		if !s.successExpected && err == nil {
-			t.Errorf("Expected validation failure: path: %s, file: %s", s.path, s.file)
+		if tt.successExpected {
+			assert.NoError(t, err, "expected success for path: %s, file: %s", tt.path, tt.file)
+		} else {
+			assert.Errorf(t, err, "expected error for path: %s, file: %s", tt.path, tt.file)
 		}
 	}
 }
@@ -194,28 +212,6 @@ func Test_DeploymentPayloadWithStateDBArtifacts(t *testing.T) {
 	}
 }
 
-func TestValidatePath(t *testing.T) {
-	platform := &Platform{}
-
-	var tests = []struct {
-		path string
-		succ bool
-	}{
-		{path: "http://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
-		{path: "https://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
-		{path: "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
-		{path: "github.com/hyperledger/fabric/bad/chaincode/golang/testdata/src/chaincodes/noop", succ: false},
-		{path: ":github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
-	}
-
-	for _, tst := range tests {
-		err := platform.ValidatePath(tst.path)
-		if err = testerr(err, tst.succ); err != nil {
-			t.Errorf("Error validating chaincode spec: %s, %s", tst.path, err)
-		}
-	}
-}
-
 func updateGopath(t *testing.T, path string) func() {
 	initialGopath, set := os.LookupEnv("GOPATH")
 
@@ -258,9 +254,10 @@ func TestGetDeploymentPayload(t *testing.T) {
 	for _, tst := range tests {
 		reset := updateGopath(t, tst.gopath)
 		_, err := platform.GetDeploymentPayload(tst.path)
-		t.Log(err)
-		if err = testerr(err, tst.succ); err != nil {
-			t.Errorf("Error validating chaincode spec: %s, %s", tst.path, err)
+		if tst.succ {
+			assert.NoError(t, err, "expected success for path: %s", tst.path)
+		} else {
+			assert.Errorf(t, err, "expected error for path: %s", tst.path)
 		}
 		reset()
 	}

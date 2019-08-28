@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
@@ -29,38 +30,15 @@ import (
 // Platform for chaincodes written in Go
 type Platform struct{}
 
-// Returns whether the given file or directory exists or not
-func pathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return true, err
-}
-
-func getGopath() (string, error) {
-	output, err := exec.Command("go", "env", "GOPATH").Output()
-	if err != nil {
-		return "", err
-	}
-
-	pathElements := filepath.SplitList(strings.TrimSpace(string(output)))
-	if len(pathElements) == 0 {
-		return "", fmt.Errorf("GOPATH is not set")
-	}
-
-	return pathElements[0], nil
-}
-
-// Name returns the name of this platform
+// Name returns the name of this platform.
 func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_GOLANG.String()
 }
 
-// ValidatePath validates Go chaincodes
+// ValidatePath is used to ensure that path provided points to something that
+// looks like go chainccode.
+//
+// NOTE: this is only used at the _client_ side by the peer CLI.
 func (p *Platform) ValidatePath(rawPath string) error {
 	_, err := getCodeDescriptor(rawPath)
 	if err != nil {
@@ -70,6 +48,9 @@ func (p *Platform) ValidatePath(rawPath string) error {
 	return nil
 }
 
+// ValidateCodePackage examines the chaincode archive to ensure it is valid.
+//
+// NOTE: this is only used at the _client_ side by the peer CLI.
 func (p *Platform) ValidateCodePackage(code []byte) error {
 	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
@@ -96,7 +77,10 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 	return nil
 }
 
-// Generates a deployment payload for GOLANG as a series of src/$pkg entries in .tar.gz format
+// GetDeploymentPayload creates a gzip compressed tape archive that contains the
+// required assets to build and run go chaincode.
+//
+// NOTE: this is only used at the _client_ side by the peer CLI.
 func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 	codeDescriptor, err := getCodeDescriptor(codepath)
 	if err != nil {
@@ -205,4 +189,116 @@ func (p *Platform) DockerBuildOptions(pkg string) (util.DockerBuildOptions, erro
 	return util.DockerBuildOptions{
 		Cmd: fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldFlagOpts, pkg),
 	}, nil
+}
+
+type CodeDescriptor struct {
+	Gopath string
+	Pkg    string
+}
+
+func getGopath() (string, error) {
+	output, err := exec.Command("go", "env", "GOPATH").Output()
+	if err != nil {
+		return "", err
+	}
+
+	pathElements := filepath.SplitList(strings.TrimSpace(string(output)))
+	if len(pathElements) == 0 {
+		return "", fmt.Errorf("GOPATH is not set")
+	}
+
+	return pathElements[0], nil
+}
+
+// getCodeDescriptor returns GOPATH and package information
+func getCodeDescriptor(path string) (CodeDescriptor, error) {
+	if path == "" {
+		return CodeDescriptor{}, errors.New("cannot collect files from empty chaincode path")
+	}
+
+	gopath, err := getGopath()
+	if err != nil {
+		return CodeDescriptor{}, err
+	}
+	sourcePath := filepath.Join(gopath, "src", path)
+
+	fi, err := os.Stat(sourcePath)
+	if err != nil {
+		return CodeDescriptor{}, errors.Wrap(err, "failed to get code")
+	}
+	if !fi.IsDir() {
+		return CodeDescriptor{}, errors.Errorf("path is not a directory: %s", path)
+	}
+
+	return CodeDescriptor{Gopath: gopath, Pkg: path}, nil
+}
+
+type SourceDescriptor struct {
+	Name       string
+	Path       string
+	IsMetadata bool
+}
+
+type Sources []SourceDescriptor
+
+func (s Sources) Len() int           { return len(s) }
+func (s Sources) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s Sources) Less(i, j int) bool { return s[i].Name < s[j].Name }
+
+type SourceMap map[string]SourceDescriptor
+
+func (s SourceMap) values() Sources {
+	var sources Sources
+	for _, src := range s {
+		sources = append(sources, src)
+	}
+
+	sort.Sort(sources)
+	return sources
+}
+
+func findSource(cd CodeDescriptor) (SourceMap, error) {
+	sources := SourceMap{}
+
+	tld := filepath.Join(cd.Gopath, "src", cd.Pkg)
+	walkFn := func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			// Allow import of the top level chaincode directory into chaincode code package
+			if path == tld {
+				return nil
+			}
+
+			// Allow import of META-INF metadata directories into chaincode code package tar.
+			// META-INF directories contain chaincode metadata artifacts such as statedb index definitions
+			if isMetadataDir(path, tld) {
+				return nil
+			}
+
+			// Do not import any other directories into chaincode code package
+			return filepath.SkipDir
+		}
+
+		name, err := filepath.Rel(cd.Gopath, path)
+		if err != nil {
+			return errors.Wrapf(err, "failed to calculate relative path for %s", path)
+		}
+
+		sources[name] = SourceDescriptor{Name: name, Path: path, IsMetadata: isMetadataDir(path, tld)}
+		return nil
+	}
+
+	if err := filepath.Walk(tld, walkFn); err != nil {
+		return nil, errors.Wrap(err, "walk failed")
+	}
+
+	return sources, nil
+}
+
+// isMetadataDir checks to see if the current path is in the META-INF directory at the root of the chaincode directory
+func isMetadataDir(path, tld string) bool {
+	return strings.HasPrefix(path, filepath.Join(tld, "META-INF"))
 }

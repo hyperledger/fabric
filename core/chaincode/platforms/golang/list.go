@@ -13,6 +13,8 @@ import (
 	"io"
 	"os/exec"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const listFormat = `
@@ -88,7 +90,7 @@ func dependencyPackageInfo(pkg string) ([]PackageInfo, error) {
 
 	err = cmd.Wait()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "listing deps for pacakge %s failed", pkg)
 	}
 
 	return list, nil
