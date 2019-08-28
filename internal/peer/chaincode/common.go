@@ -55,12 +55,16 @@ func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.Chainc
 
 		codePackageBytes, err = platformRegistry.GetDeploymentPayload(spec.Type.String(), spec.ChaincodeId.Path)
 		if err != nil {
-			err = errors.WithMessage(err, "error getting chaincode package bytes")
-			return nil, err
+			return nil, errors.WithMessage(err, "error getting chaincode package bytes")
 		}
+		chaincodePath, err := platformRegistry.NormalizePath(spec.Type.String(), spec.ChaincodeId.Path)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to normalize chaincode path")
+		}
+		spec.ChaincodeId.Path = chaincodePath
 	}
-	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}
-	return chaincodeDeploymentSpec, nil
+
+	return &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}, nil
 }
 
 // getChaincodeSpec get chaincode spec from the cli cmd pramameters

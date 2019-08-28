@@ -50,12 +50,17 @@ var _ = Describe("EndToEnd", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
+		chaincodePath, err := filepath.Abs("../chaincode/module")
+		Expect(err).NotTo(HaveOccurred())
+
 		chaincode = nwo.Chaincode{
 			Name:    "mycc",
 			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
+			// Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Path: chaincodePath,
+			// Path:   "../chaincode/module",
+			Ctor:   `{"Args":["init","a","100","b","200"]}`,
+			Policy: `AND ('Org1MSP.member','Org2MSP.member')`,
 		}
 	})
 

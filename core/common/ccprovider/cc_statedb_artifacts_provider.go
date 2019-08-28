@@ -74,6 +74,10 @@ func ExtractFileEntries(tarBytes []byte, databaseType string) (map[string][]*Tar
 		if err != nil {
 			return nil, err
 		}
+		if hdr.Typeflag == tar.TypeDir {
+			continue
+		}
+
 		//split the directory from the full name
 		dir, _ := filepath.Split(hdr.Name)
 		//remove the ending slash

@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const listFormat = `
+const packageListFormat = `
 {{- if eq .Goroot false -}}
 {
     "import_path": "{{ .ImportPath }}",
@@ -56,11 +56,13 @@ func (p PackageInfo) Files() []string {
 	return files
 }
 
-func dependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error) {
+// gopathDependencyPackageInfo extracts dependency information for
+// specified package.
+func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "go", "list", "-deps", "-f", listFormat, pkg)
+	cmd := exec.CommandContext(ctx, "go", "list", "-deps", "-f", packageListFormat, pkg)
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch)
 
 	stdout, err := cmd.StdoutPipe()
@@ -97,4 +99,39 @@ func dependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error) {
 	}
 
 	return list, nil
+}
+
+const moduleListFormat = `{
+    "dir": "{{ .Module.Dir }}",
+    "gomod": "{{ .Module.GoMod }}",
+    "import_path": "{{ .ImportPath }}",
+    "path": "{{ .Module.Path }}"
+}`
+
+type ModuleInfo struct {
+	Dir        string `json:"dir,omitempty"`
+	ImportPath string `json:"import_path,omitempty"`
+	Path       string `json:"path,omitempty"`
+	GoMod      string `json:"gomod,omitempty"`
+}
+
+// listModuleInfo extracts module information for the curent working directory.
+func listModuleInfo() (*ModuleInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "go", "list", "-f", moduleListFormat, ".")
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var moduleInfo ModuleInfo
+	if err := json.Unmarshal(output, &moduleInfo); err != nil {
+		return nil, err
+	}
+
+	return &moduleInfo, nil
 }

@@ -1,5 +1,3 @@
-// +build go1.9
-
 /*
 Copyright IBM Corp. All Rights Reserved.
 
@@ -14,8 +12,11 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -37,9 +38,11 @@ func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploy
 	if err != nil {
 		return nil, err
 	}
-	_, err = tw.Write(payload)
-	if err != nil {
-		return nil, err
+	if !strings.HasSuffix(file, "/") {
+		_, err = tw.Write(payload)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tw.Close()
@@ -86,6 +89,37 @@ func TestValidatePath(t *testing.T) {
 	}
 }
 
+func TestNormalizePath(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "normalize-path")
+	require.NoError(t, err, "failed to create temporary directory")
+	defer os.RemoveAll(tempdir)
+
+	var tests = []struct {
+		path   string
+		result string
+	}{
+		{path: "github.com/hyperledger/fabric/cmd/peer", result: "github.com/hyperledger/fabric/cmd/peer"},
+		{path: "testdata/ccmodule", result: "ccmodule"},
+		{path: "missing", result: "missing"},
+		{path: tempdir, result: tempdir}, // /dev/null is returned from `go env GOMOD`
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			platform := &Platform{}
+			result, err := platform.NormalizePath(tt.path)
+			assert.NoError(t, err, "normalize path failed")
+			assert.Equalf(t, tt.result, result, "want result %s got %s", tt.result, result)
+		})
+	}
+}
+
+// copied from the tar package
+const (
+	c_ISUID = 04000   // Set uid
+	c_ISGID = 02000   // Set gid
+	c_ISREG = 0100000 // Regular file
+)
+
 func TestValidateCodePackage(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -94,9 +128,15 @@ func TestValidateCodePackage(t *testing.T) {
 		mode            int64
 		successExpected bool
 	}{
-		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/main.go", mode: 0100400, successExpected: true},
-		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/warez", mode: 0100555, successExpected: false},
-		{name: "NoCode", path: "path/to/somewhere", file: "/META-INF/path/to/a/meta1", mode: 0100555, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/main.go", mode: c_ISREG | 0400, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0400, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0644, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0755, successExpected: true},
+		{name: "NoCode", path: "path/to/directory/", file: "src/path/to/directory/", mode: c_ISDIR | 0755, successExpected: true},
+		{name: "NoCode", path: "path/to/directory", file: "src/path/to/directory", mode: c_ISDIR | 0755, successExpected: true},
+		{name: "NoCode", path: "path/to/setuid", file: "src/path/to/setuid", mode: c_ISUID | 0755, successExpected: false},
+		{name: "NoCode", path: "path/to/setgid", file: "src/path/to/setgid", mode: c_ISGID | 0755, successExpected: false},
+		{name: "NoCode", path: "path/to/sticky/", file: "src/path/to/sticky/", mode: c_ISDIR | c_ISGID | 0755, successExpected: false},
 		{name: "NoCode", path: "path/to/somewhere", file: "META-INF/path/to/a/meta3", mode: 0100400, successExpected: true},
 	}
 
@@ -114,39 +154,54 @@ func TestValidateCodePackage(t *testing.T) {
 	}
 }
 
-func TestPlatform_GoPathNotSet(t *testing.T) {
-	gopath := os.Getenv("GOPATH")
-	defer os.Setenv("GOPATH", gopath)
-	os.Setenv("GOPATH", "")
+func getGopath() (string, error) {
+	output, err := exec.Command("go", "env", "GOPATH").Output()
+	if err != nil {
+		return "", err
+	}
 
-	// Go 1.9 sets GOPATH to $HOME/go if GOPATH is not set
-	defaultGopath := filepath.Join(os.Getenv("HOME"), "go")
-	currentGopath, err := getGopath()
-	assert.NoError(t, err, "Expected default GOPATH")
-	assert.Equal(t, defaultGopath, currentGopath)
+	pathElements := filepath.SplitList(strings.TrimSpace(string(output)))
+	if len(pathElements) == 0 {
+		return "", fmt.Errorf("GOPATH is not set")
+	}
+
+	return pathElements[0], nil
 }
 
 func Test_findSource(t *testing.T) {
-	gopath, err := getGopath()
-	if err != nil {
-		t.Errorf("failed to get GOPATH: %s", err)
-	}
+	t.Run("Gopath", func(t *testing.T) {
+		source, err := findSource(&CodeDescriptor{
+			Source:       filepath.Join("testdata/src/chaincodes/noop"),
+			MetadataRoot: filepath.Join("testdata/src/chaincodes/noop/META-INF"),
+			Path:         "chaincodes/noop",
+		})
+		require.NoError(t, err, "failed to find source")
+		assert.Len(t, source, 2)
+		assert.Contains(t, source, "src/chaincodes/noop/chaincode.go")
+		assert.Contains(t, source, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+	})
 
-	var source SourceMap
+	t.Run("Module", func(t *testing.T) {
+		source, err := findSource(&CodeDescriptor{
+			Module:       true,
+			Source:       filepath.Join("testdata/ccmodule"),
+			MetadataRoot: filepath.Join("testdata/ccmodule/META-INF"),
+			Path:         "ccmodule",
+		})
+		require.NoError(t, err, "failed to find source")
+		assert.Len(t, source, 5)
+		assert.Contains(t, source, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+		assert.Contains(t, source, "src/go.mod")
+		assert.Contains(t, source, "src/go.sum")
+		assert.Contains(t, source, "src/chaincode.go")
+		assert.Contains(t, source, "src/customlogger/customlogger.go")
+	})
 
-	source, err = findSource(CodeDescriptor{Gopath: gopath, Pkg: "github.com/hyperledger/fabric/cmd/peer"})
-	if err != nil {
-		t.Errorf("failed to find source: %s", err)
-	}
-
-	if _, ok := source["src/github.com/hyperledger/fabric/cmd/peer/main.go"]; !ok {
-		t.Errorf("Failed to find expected source file: %v", source)
-	}
-
-	source, err = findSource(CodeDescriptor{Gopath: gopath, Pkg: "acme.com/this/should/not/exist"})
-	if err == nil {
-		t.Errorf("Success when failure was expected")
-	}
+	t.Run("NonExistent", func(t *testing.T) {
+		_, err := findSource(&CodeDescriptor{Path: "acme.com/this/should/not/exist"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no such file or directory")
+	})
 }
 
 func TestDeploymentPayload(t *testing.T) {
@@ -160,6 +215,7 @@ func TestDeploymentPayload(t *testing.T) {
 	assert.NoError(t, err, "failed to create new gzip reader")
 	tr := tar.NewReader(gr)
 
+	// gather the entries and verify contents
 	var foundIndexArtifact bool
 	for {
 		header, err := tr.Next()
@@ -213,6 +269,7 @@ func TestGetDeploymentPayload(t *testing.T) {
 		{gopath: gopath, path: testdata + "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
 		{gopath: gopath, path: testdata + "chaincodes/BadMetadataIgnoreHiddenFile", succ: true},
 		{gopath: gopath, path: testdata + "chaincodes/empty/", succ: false},
+		{gopath: "", path: "testdata/ccmodule", succ: true},
 	}
 
 	for _, tst := range tests {
@@ -227,7 +284,22 @@ func TestGetDeploymentPayload(t *testing.T) {
 	}
 }
 
-//TestGetLDFlagsOpts tests handling of chaincode.golang.dynamicLink
+func TestGenerateDockerFile(t *testing.T) {
+	platform := &Platform{}
+
+	viper.Set("chaincode.golang.runtime", "buildimage")
+	expected := "FROM buildimage\nADD binpackage.tar /usr/local/bin"
+	dockerfile, err := platform.GenerateDockerfile()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, dockerfile)
+
+	viper.Set("chaincode.golang.runtime", "another-buildimage")
+	expected = "FROM another-buildimage\nADD binpackage.tar /usr/local/bin"
+	dockerfile, err = platform.GenerateDockerfile()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, dockerfile)
+}
+
 func TestGetLDFlagsOpts(t *testing.T) {
 	viper.Set("chaincode.golang.dynamicLink", true)
 	if getLDFlagsOpts() != dynamicLDFlagsOpts {
@@ -246,7 +318,19 @@ func TestDockerBuildOptions(t *testing.T) {
 	assert.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 	expectedOpts := util.DockerBuildOptions{
-		Cmd: "GOPATH=/chaincode/input:$GOPATH go build  -ldflags \"-linkmode external -extldflags '-static'\" -o /chaincode/output/chaincode the-path",
+		Cmd: `
+set -e
+if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
+    cd /chaincode/input/src
+    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+elif [ -f "/chaincode/input/src/go.mod" ]; then
+    cd /chaincode/input/src
+    GO111MODULE=on GOPROXY=https://proxy.golang.org go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+else
+    GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+fi
+echo Done!
+`,
 	}
 	assert.Equal(t, expectedOpts, opts)
 }

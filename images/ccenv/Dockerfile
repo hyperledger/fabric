@@ -10,9 +10,8 @@ RUN apk add --no-cache \
 	gcc \
 	musl-dev \
 	git;
-RUN mkdir -p /chaincode/output \
-	&& mkdir -p /chaincode/input;
 
-RUN addgroup chaincode && adduser -D -h /home/chaincode -G chaincode chaincode
-RUN chown -R chaincode:chaincode /chaincode/output /chaincode/input
+RUN mkdir -p /chaincode/output /chaincode/input
+RUN addgroup -g 500 chaincode && adduser -u 500 -D -h /home/chaincode -G chaincode chaincode
+RUN chown -R chaincode:chaincode /chaincode
 USER chaincode
