@@ -151,7 +151,7 @@ func TestGenerateDockerfile(t *testing.T) {
 
 	var buf []string
 
-	buf = append(buf, "FROM "+util.GetDockerfileFromConfig("chaincode.java.runtime"))
+	buf = append(buf, "FROM "+util.GetDockerImageFromConfig("chaincode.java.runtime"))
 	buf = append(buf, "ADD binpackage.tar /root/chaincode-java/chaincode")
 
 	dockerFileContents := strings.Join(buf, "\n")

@@ -166,7 +166,7 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 func (p *Platform) GenerateDockerfile() (string, error) {
 	var buf []string
 
-	buf = append(buf, "FROM "+util.GetDockerfileFromConfig("chaincode.node.runtime"))
+	buf = append(buf, "FROM "+util.GetDockerImageFromConfig("chaincode.node.runtime"))
 	buf = append(buf, "ADD binpackage.tar /usr/local/src")
 
 	dockerFileContents := strings.Join(buf, "\n")
@@ -176,7 +176,7 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 
 func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
 	return util.DockerBuildOptions{
-		Image: util.GetDockerfileFromConfig("chaincode.node.runtime"),
+		Image: util.GetDockerImageFromConfig("chaincode.node.runtime"),
 		Cmd:   fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
 	}, nil
 }

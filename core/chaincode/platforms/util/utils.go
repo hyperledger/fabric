@@ -53,7 +53,7 @@ type DockerBuildOptions struct {
 //-------------------------------------------------------------------------------------------
 func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 	if opts.Image == "" {
-		opts.Image = GetDockerfileFromConfig("chaincode.builder")
+		opts.Image = GetDockerImageFromConfig("chaincode.builder")
 		if opts.Image == "" {
 			return fmt.Errorf("No image provided and \"chaincode.builder\" default does not exist")
 		}
@@ -162,7 +162,7 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 	return nil
 }
 
-func GetDockerfileFromConfig(path string) string {
+func GetDockerImageFromConfig(path string) string {
 	r := strings.NewReplacer(
 		"$(ARCH)", runtime.GOARCH,
 		"$(PROJECT_VERSION)", metadata.Version,

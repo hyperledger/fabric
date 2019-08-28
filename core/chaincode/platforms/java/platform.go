@@ -121,7 +121,7 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 func (p *Platform) GenerateDockerfile() (string, error) {
 	var buf []string
 
-	buf = append(buf, "FROM "+util.GetDockerfileFromConfig("chaincode.java.runtime"))
+	buf = append(buf, "FROM "+util.GetDockerImageFromConfig("chaincode.java.runtime"))
 	buf = append(buf, "ADD binpackage.tar /root/chaincode-java/chaincode")
 
 	dockerFileContents := strings.Join(buf, "\n")
@@ -131,7 +131,7 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 
 func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
 	return util.DockerBuildOptions{
-		Image: util.GetDockerfileFromConfig("chaincode.java.runtime"),
+		Image: util.GetDockerImageFromConfig("chaincode.java.runtime"),
 		Cmd:   "./build.sh",
 	}, nil
 }

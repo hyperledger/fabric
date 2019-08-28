@@ -173,7 +173,7 @@ func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 
 func (p *Platform) GenerateDockerfile() (string, error) {
 	var buf []string
-	buf = append(buf, "FROM "+util.GetDockerfileFromConfig("chaincode.golang.runtime"))
+	buf = append(buf, "FROM "+util.GetDockerImageFromConfig("chaincode.golang.runtime"))
 	buf = append(buf, "ADD binpackage.tar /usr/local/bin")
 
 	return strings.Join(buf, "\n"), nil
