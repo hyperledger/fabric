@@ -387,7 +387,7 @@ var _ = Describe("Release interoperability", func() {
 					})
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("bar"))
+					Expect(sess).To(gbytes.Say("caller:bar"))
 
 					By("querying the callee chaincode")
 					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -397,7 +397,53 @@ var _ = Describe("Release interoperability", func() {
 					})
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-					Expect(sess).To(gbytes.Say("bar"))
+					Expect(sess).To(gbytes.Say("callee:bar"))
+
+				})
+
+				It("Deploys chaincode on two channels with the new lifecycle and performs a successful cc2cc invocation from one channel to another channel", func() {
+					By("enabling the 2.0 capability on the channel")
+					nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+					nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+
+					By("deploying the caller chaincode using _lifecycle")
+					nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
+
+					By("deploying the callee chaincode using _lifecycle")
+					nwo.DeployChaincode(network, "testchannel2", orderer, calleeDefNew)
+
+					By("invoking the chaincode on callee")
+					sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+						ChannelID:    "testchannel2",
+						Orderer:      network.OrdererAddress(orderer, nwo.ListenPort),
+						Name:         "callee",
+						Ctor:         `{"Args":["INVOKE"]}`,
+						WaitForEvent: true,
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+					Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
+
+					By("querying the callee chaincode")
+					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						ChannelID: "testchannel2",
+						Name:      "callee",
+						Ctor:      `{"Args":["QUERY"]}`,
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+					Expect(sess).To(gbytes.Say("callee:bar"))
+
+					By("querying (QUERYCALLEE) the callee chaincode from caller")
+					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						ChannelID: "testchannel",
+						Name:      "caller",
+						Ctor:      `{"Args":["QUERYCALLEE", "callee", "testchannel2"]}`,
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+					Expect(sess).To(gbytes.Say("callee:bar"))
+
 				})
 
 				When("the network starts with new definitions", func() {
@@ -444,7 +490,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("bar"))
+						Expect(sess).To(gbytes.Say("caller:bar"))
 
 						By("querying the callee chaincode")
 						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -454,7 +500,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("bar"))
+						Expect(sess).To(gbytes.Say("callee:bar"))
 					})
 
 					It("performs a successful cc2cc invocation which doesn't commit because the caller is further upgraded", func() {
@@ -495,7 +541,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("foo"))
+						Expect(sess).To(gbytes.Say("caller:foo"))
 
 						By("querying the callee chaincode")
 						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -505,7 +551,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("foo"))
+						Expect(sess).To(gbytes.Say("callee:foo"))
 					})
 
 					It("performs a successful cc2cc invocation which doesn't commit because the callee is further upgraded", func() {
@@ -546,7 +592,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("foo"))
+						Expect(sess).To(gbytes.Say("caller:foo"))
 
 						By("querying the callee chaincode")
 						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -556,7 +602,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("foo"))
+						Expect(sess).To(gbytes.Say("callee:foo"))
 					})
 				})
 
@@ -607,7 +653,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("bar"))
+						Expect(sess).To(gbytes.Say("caller:bar"))
 
 						By("querying the callee chaincode")
 						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -617,7 +663,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("bar"))
+						Expect(sess).To(gbytes.Say("callee:bar"))
 					})
 
 					It("upgrades the callee with the new and performs a successful cc2cc invocation", func() {
@@ -655,7 +701,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("bar"))
+						Expect(sess).To(gbytes.Say("caller:bar"))
 
 						By("querying the callee chaincode")
 						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -665,7 +711,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("bar"))
+						Expect(sess).To(gbytes.Say("callee:bar"))
 					})
 
 					It("performs a cc2cc invocation which fails because in the meantime, the callee is upgraded with the new lifecycle", func() {
@@ -704,7 +750,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("foo"))
+						Expect(sess).To(gbytes.Say("caller:foo"))
 
 						By("querying the callee chaincode")
 						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -714,7 +760,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("foo"))
+						Expect(sess).To(gbytes.Say("callee:foo"))
 					})
 
 					It("performs a cc2cc invocation which fails because in the meantime, the caller is upgraded with the new lifecycle", func() {
@@ -753,7 +799,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("foo"))
+						Expect(sess).To(gbytes.Say("caller:foo"))
 
 						By("querying the callee chaincode")
 						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
@@ -763,7 +809,7 @@ var _ = Describe("Release interoperability", func() {
 						})
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-						Expect(sess).To(gbytes.Say("foo"))
+						Expect(sess).To(gbytes.Say("callee:foo"))
 					})
 				})
 			})
