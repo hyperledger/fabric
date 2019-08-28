@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package golang
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ import (
 
 func Test_dependencyPackageInfo(t *testing.T) {
 	t.Run("TestPeer", func(t *testing.T) {
-		deps, err := dependencyPackageInfo("github.com/hyperledger/fabric/cmd/peer")
+		deps, err := dependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/cmd/peer")
 		assert.NoError(t, err, "failed to get dependencyPackageInfo")
 
 		var found bool
@@ -28,13 +29,13 @@ func Test_dependencyPackageInfo(t *testing.T) {
 	})
 
 	t.Run("TestFromGoroot", func(t *testing.T) {
-		deps, err := dependencyPackageInfo("os")
+		deps, err := dependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "os")
 		assert.NoError(t, err)
 		assert.Empty(t, deps)
 	})
 
 	t.Run("TestFailure", func(t *testing.T) {
-		_, err := dependencyPackageInfo("./doesnotexist")
+		_, err := dependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "./doesnotexist")
 		assert.EqualError(t, err, "listing deps for pacakge ./doesnotexist failed: exit status 1")
 	})
 }

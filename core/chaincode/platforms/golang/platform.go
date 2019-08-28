@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -92,9 +93,13 @@ func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 		return nil, err
 	}
 
-	packageInfo, err := dependencyPackageInfo(codeDescriptor.Pkg)
-	if err != nil {
-		return nil, err
+	var packageInfo []PackageInfo
+	for _, dist := range distributions() {
+		pi, err := dependencyPackageInfo(dist.goos, dist.goarch, codeDescriptor.Pkg)
+		if err != nil {
+			return nil, err
+		}
+		packageInfo = append(packageInfo, pi...)
 	}
 
 	for _, pkg := range packageInfo {
@@ -301,4 +306,26 @@ func findSource(cd CodeDescriptor) (SourceMap, error) {
 // isMetadataDir checks to see if the current path is in the META-INF directory at the root of the chaincode directory
 func isMetadataDir(path, tld string) bool {
 	return strings.HasPrefix(path, filepath.Join(tld, "META-INF"))
+}
+
+// dist holds go "distribution" infomration.
+type dist struct{ goos, goarch string }
+
+// distributions returns the OS and ARCH that we calcluate deps for.
+func distributions() []dist {
+	// linux architecutures
+	dists := map[dist]bool{
+		{goos: "linux", goarch: "amd64"}: true,
+		{goos: "linux", goarch: "s390x"}: true,
+	}
+
+	// add local OS and ARCH
+	dists[dist{goos: runtime.GOOS, goarch: runtime.GOARCH}] = true
+
+	var list []dist
+	for d := range dists {
+		list = append(list, d)
+	}
+
+	return list
 }

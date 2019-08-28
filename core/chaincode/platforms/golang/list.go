@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"time"
 
@@ -55,10 +56,12 @@ func (p PackageInfo) Files() []string {
 	return files
 }
 
-func dependencyPackageInfo(pkg string) ([]PackageInfo, error) {
+func dependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+
 	cmd := exec.CommandContext(ctx, "go", "list", "-deps", "-f", listFormat, pkg)
+	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
