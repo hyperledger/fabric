@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -148,59 +149,31 @@ func Test_findSource(t *testing.T) {
 	}
 }
 
-func Test_DeploymentPayload(t *testing.T) {
+func TestDeploymentPayload(t *testing.T) {
 	platform := &Platform{}
 
 	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop")
 	assert.NoError(t, err)
 
-	t.Logf("payload size: %d", len(payload))
-
 	is := bytes.NewReader(payload)
 	gr, err := gzip.NewReader(is)
-	if err == nil {
-		tr := tar.NewReader(gr)
+	assert.NoError(t, err, "failed to create new gzip reader")
+	tr := tar.NewReader(gr)
 
-		for {
-			header, err := tr.Next()
-			if err != nil {
-				// We only get here if there are no more entries to scan
-				break
-			}
+	var foundIndexArtifact bool
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err, "unexpected error while processing package")
 
-			t.Logf("%s (%d)", header.Name, header.Size)
+		if header.Name == "META-INF/statedb/couchdb/indexes/indexOwner.json" {
+			foundIndexArtifact = true
+			break
 		}
 	}
-}
-
-func Test_DeploymentPayloadWithStateDBArtifacts(t *testing.T) {
-	platform := &Platform{}
-
-	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noopWithMETA")
-	assert.NoError(t, err)
-
-	t.Logf("payload size: %d", len(payload))
-
-	is := bytes.NewReader(payload)
-	gr, err := gzip.NewReader(is)
-	if err == nil {
-		tr := tar.NewReader(gr)
-
-		var foundIndexArtifact bool
-		for {
-			header, err := tr.Next()
-			if err != nil {
-				// We only get here if there are no more entries to scan
-				break
-			}
-
-			t.Logf("%s (%d)", header.Name, header.Size)
-			if header.Name == "META-INF/statedb/couchdb/indexes/indexOwner.json" {
-				foundIndexArtifact = true
-			}
-		}
-		assert.Equal(t, true, foundIndexArtifact, "should have found statedb index artifact in noopWithMETA META-INF directory")
-	}
+	assert.Equal(t, true, foundIndexArtifact, "should have found statedb index artifact in noop META-INF directory")
 }
 
 func updateGopath(t *testing.T, path string) func() {
