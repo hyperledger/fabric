@@ -12,19 +12,23 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMaxBytesRule(t *testing.T) {
 	dataSize := uint32(100)
 	maxBytes := calcMessageBytesForPayloadDataSize(dataSize)
-	mcr := &mockconfig.Resources{
-		OrdererConfigVal: &mockconfig.Orderer{
-			BatchSizeVal: &ab.BatchSize{AbsoluteMaxBytes: maxBytes},
+	mockResources := &mocks.Resources{}
+	mockOrdererConfig := &mocks.OrdererConfig{}
+	mockResources.OrdererConfigReturns(mockOrdererConfig, true)
+
+	mockOrdererConfig.BatchSizeReturns(
+		&ab.BatchSize{
+			AbsoluteMaxBytes: maxBytes,
 		},
-	}
-	msf := NewSizeFilter(mcr)
+	)
+	msf := NewSizeFilter(mockResources)
 
 	t.Run("Less Than", func(t *testing.T) {
 		assert.Nil(t, msf.Apply(makeMessage(make([]byte, dataSize-1))))
@@ -40,9 +44,11 @@ func TestMaxBytesRule(t *testing.T) {
 
 	t.Run("Dynamic Resources", func(t *testing.T) {
 		assert.NotNil(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
-		mcr.OrdererConfigVal = &mockconfig.Orderer{
-			BatchSizeVal: &ab.BatchSize{AbsoluteMaxBytes: maxBytes + 2},
-		}
+		mockOrdererConfig.BatchSizeReturns(
+			&ab.BatchSize{
+				AbsoluteMaxBytes: maxBytes + 2,
+			},
+		)
 		assert.Nil(t, msf.Apply(makeMessage(make([]byte, dataSize+1))))
 	})
 }

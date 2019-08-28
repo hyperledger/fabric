@@ -12,37 +12,42 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
-	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type mockSystemChannelSupport struct {
-	NewChannelConfigVal *mockconfigtx.Validator
+	NewChannelConfigVal *mocks.ConfigTXValidator
 	NewChannelConfigErr error
 }
 
+func newMockConfigTXValidator(err error) *mocks.ConfigTXValidator {
+	mockValidator := &mocks.ConfigTXValidator{}
+	mockValidator.ProposeConfigUpdateReturns(&cb.ConfigEnvelope{}, err)
+	return mockValidator
+}
+
 func (mscs *mockSystemChannelSupport) NewChannelConfig(env *cb.Envelope) (channelconfig.Resources, error) {
-	return &mockchannelconfig.Resources{
-		ConfigtxValidatorVal: mscs.NewChannelConfigVal,
-	}, mscs.NewChannelConfigErr
+	mockResources := &mocks.Resources{}
+	mockResources.ConfigtxValidatorReturns(mscs.NewChannelConfigVal)
+	return mockResources, mscs.NewChannelConfigErr
 }
 
 func TestProcessSystemChannelNormalMsg(t *testing.T) {
 	t.Run("Missing header", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSystemChannelFilterSupport{
-			OrdererConfigVal: &mockconfig.Orderer{},
+			OrdererConfigVal: &mocks.OrdererConfig{},
 		}
 		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
@@ -51,7 +56,7 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 	t.Run("Mismatched channel ID", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSystemChannelFilterSupport{
-			OrdererConfigVal: &mockconfig.Orderer{},
+			OrdererConfigVal: &mocks.OrdererConfig{},
 		}
 		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -67,10 +72,8 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 	t.Run("Good", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSystemChannelFilterSupport{
-			SequenceVal: 7,
-			OrdererConfigVal: &mockconfig.Orderer{
-				CapabilitiesVal: &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			},
+			SequenceVal:      7,
+			OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
 		cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessNormalMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -91,7 +94,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	t.Run("Missing header", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{}
 		ms := &mockSystemChannelFilterSupport{
-			OrdererConfigVal: &mockconfig.Orderer{},
+			OrdererConfigVal: &mocks.OrdererConfig{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
@@ -102,9 +105,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal: &mockconfig.Orderer{
-				CapabilitiesVal: &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			},
+			OrdererConfigVal:       newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
 		sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}))
 		sysChan.maintenanceFilter = AcceptRule
@@ -127,7 +128,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		}
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -142,13 +143,11 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("BadProposedUpdate", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Validator{
-				ProposeConfigUpdateError: fmt.Errorf("An error"),
-			},
+			NewChannelConfigVal: newMockConfigTXValidator(fmt.Errorf("An error")),
 		}
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -163,11 +162,11 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("BadSignEnvelope", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Validator{},
+			NewChannelConfigVal: &mocks.ConfigTXValidator{},
 		}
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -182,14 +181,12 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("BadByFilter", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Validator{
-				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			},
+			NewChannelConfigVal: newMockConfigTXValidator(nil),
 		}
 		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{RejectRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -204,14 +201,12 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("RejectByMaintenance", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Validator{
-				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			},
+			NewChannelConfigVal: newMockConfigTXValidator(nil),
 		}
 		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}))
 		sysChan.maintenanceFilter = RejectRule
@@ -228,14 +223,12 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("Good", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Validator{
-				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			},
+			NewChannelConfigVal: newMockConfigTXValidator(nil),
 		}
 		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		config, cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -256,14 +249,12 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 	t.Run("ConfigMsg", func(t *testing.T) {
 		t.Run("BadPayloadData", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Validator{
-					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				},
+				NewChannelConfigVal: newMockConfigTXValidator(nil),
 			}
 			ms := &mockSystemChannelFilterSupport{
 				SequenceVal:            7,
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				OrdererConfigVal:       &mockconfig.Orderer{},
+				OrdererConfigVal:       &mocks.OrdererConfig{},
 			}
 			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -281,16 +272,12 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 
 		t.Run("Good", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Validator{
-					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				},
+				NewChannelConfigVal: newMockConfigTXValidator(nil),
 			}
 			ms := &mockSystemChannelFilterSupport{
 				SequenceVal:            7,
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				OrdererConfigVal: &mockconfig.Orderer{
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{},
-				},
+				OrdererConfigVal:       newMockOrdererConfig(false, orderer.ConsensusType_STATE_NORMAL),
 			}
 			sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}))
 			sysChan.maintenanceFilter = AcceptRule
@@ -320,14 +307,12 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 	t.Run("OrdererTxMsg", func(t *testing.T) {
 		t.Run("BadPayloadData", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Validator{
-					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				},
+				NewChannelConfigVal: newMockConfigTXValidator(nil),
 			}
 			ms := &mockSystemChannelFilterSupport{
 				SequenceVal:            7,
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				OrdererConfigVal:       &mockconfig.Orderer{},
+				OrdererConfigVal:       &mocks.OrdererConfig{},
 			}
 			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -345,14 +330,12 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 
 		t.Run("WrongEnvelopeType", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Validator{
-					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				},
+				NewChannelConfigVal: newMockConfigTXValidator(nil),
 			}
 			ms := &mockSystemChannelFilterSupport{
 				SequenceVal:            7,
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				OrdererConfigVal:       &mockconfig.Orderer{},
+				OrdererConfigVal:       &mocks.OrdererConfig{},
 			}
 			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -379,14 +362,12 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 
 		t.Run("GoodConfigMsg", func(t *testing.T) {
 			mscs := &mockSystemChannelSupport{
-				NewChannelConfigVal: &mockconfigtx.Validator{
-					ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				},
+				NewChannelConfigVal: newMockConfigTXValidator(nil),
 			}
 			ms := &mockSystemChannelFilterSupport{
 				SequenceVal:            7,
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-				OrdererConfigVal:       &mockconfig.Orderer{},
+				OrdererConfigVal:       &mocks.OrdererConfig{},
 			}
 			config, seq, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -434,14 +415,12 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 
 	t.Run("OtherMsgType", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
-			NewChannelConfigVal: &mockconfigtx.Validator{
-				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			},
+			NewChannelConfigVal: newMockConfigTXValidator(nil),
 		}
 		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
