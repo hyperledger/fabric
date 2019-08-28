@@ -26,26 +26,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func writeBytesToPackage(name string, payload []byte, mode int64, tw *tar.Writer) error {
-	err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(payload))})
-	if err != nil {
-		return err
-	}
-	_, err = tw.Write(payload)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploymentSpec, error) {
 	codePackage := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(codePackage)
 	tw := tar.NewWriter(gw)
 
 	payload := make([]byte, 25, 25)
-	err := writeBytesToPackage(file, payload, mode, tw)
+	err := tw.WriteHeader(&tar.Header{Name: file, Mode: mode, Size: int64(len(payload))})
+	if err != nil {
+		return nil, err
+	}
+	_, err = tw.Write(payload)
 	if err != nil {
 		return nil, err
 	}
