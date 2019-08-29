@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
@@ -41,6 +40,18 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+//go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy
+
+type policy interface {
+	policies.Policy
+}
+
+//go:generate counterfeiter -o mocks/policy_manager.go --fake-name PolicyManager . policyManager
+
+type policyManager interface {
+	policies.Manager
+}
 
 func TestParallelStubActivation(t *testing.T) {
 	t.Parallel()
@@ -722,47 +733,51 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 		expectedError string
 		envelope      *common.ConfigEnvelope
 		policyMap     map[string]policies.Policy
+		policy        policies.Policy
 	}{
+		/**
 		{
 			description:   "policy not found",
 			expectedError: "policy /Channel/Orderer/BlockValidation wasn't found",
 		},
+		*/
 		{
 			description:   "policy evaluation fails",
 			expectedError: "invalid signature",
-			policyMap: map[string]policies.Policy{
-				"/Channel/Orderer/BlockValidation": &mockpolicies.Policy{
-					Err: errors.New("invalid signature"),
+			policy: &mocks.Policy{
+				EvaluateStub: func([]*protoutil.SignedData) error {
+					return errors.New("invalid signature")
 				},
 			},
 		},
 		{
 			description:   "bad config envelope",
 			expectedError: "config must contain a channel group",
-			policyMap: map[string]policies.Policy{
-				"/Channel/Orderer/BlockValidation": &mockpolicies.Policy{
-					Err: errors.New("invalid signature"),
-				},
-			},
-			envelope: &common.ConfigEnvelope{Config: &common.Config{}},
+			policy:        &mocks.Policy{},
+			envelope:      &common.ConfigEnvelope{Config: &common.Config{}},
 		},
 		{
 			description: "good config envelope overrides custom policy manager",
-			policyMap: map[string]policies.Policy{
-				"/Channel/Orderer/BlockValidation": &mockpolicies.Policy{
-					Err: errors.New("invalid signature"),
+			policy: &mocks.Policy{
+				EvaluateStub: func([]*protoutil.SignedData) error {
+					return errors.New("invalid signature")
 				},
 			},
 			envelope: validConfigEnvelope,
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
+			mockPolicyManager := &mocks.PolicyManager{}
+			if testCase.policy != nil {
+				mockPolicyManager.GetPolicyReturns(testCase.policy, true)
+			} else {
+				mockPolicyManager.GetPolicyReturns(nil, false)
+			}
+			mockPolicyManager.GetPolicyReturns(testCase.policy, true)
 			verifier := &cluster.BlockValidationPolicyVerifier{
-				Logger:  flogging.MustGetLogger("test"),
-				Channel: "mychannel",
-				PolicyMgr: &mockpolicies.Manager{
-					PolicyMap: testCase.policyMap,
-				},
+				Logger:    flogging.MustGetLogger("test"),
+				Channel:   "mychannel",
+				PolicyMgr: mockPolicyManager,
 			}
 
 			err := verifier.VerifyBlockSignature(nil, testCase.envelope)

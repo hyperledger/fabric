@@ -12,13 +12,20 @@ import (
 	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/orderer/consensus/solo/mocks"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o mocks/orderer_config.go --fake-name OrdererConfig . ordererConfig
+
+type ordererConfig interface {
+	channelconfig.Orderer
+}
 
 func init() {
 	flogging.ActivateSpec("orderer.consensus.solo=DEBUG")
@@ -53,11 +60,12 @@ func goWithWait(target func()) *waitableGo {
 
 // This test checks that if consenter is halted before a timer fires, nothing is actually written.
 func TestHaltBeforeTimeout(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1h")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Hour)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -74,11 +82,12 @@ func TestHaltBeforeTimeout(t *testing.T) {
 }
 
 func TestStart(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1ms")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Millisecond)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 	}
 	close(support.BlockCutterVal.Block)
 	bs, _ := New().HandleChain(support, nil)
@@ -95,11 +104,12 @@ func TestStart(t *testing.T) {
 }
 
 func TestOrderAfterHalt(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1ms")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Millisecond)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -113,11 +123,12 @@ func TestOrderAfterHalt(t *testing.T) {
 }
 
 func TestBatchTimer(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1ms")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Millisecond)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -139,7 +150,7 @@ func TestBatchTimer(t *testing.T) {
 		t.Fatalf("Did not create the second batch, indicating that the timer was not appropriately reset")
 	}
 
-	support.SharedConfigVal.BatchTimeoutVal, _ = time.ParseDuration("10s")
+	mockOrderer.BatchTimeoutReturns(10 * time.Second)
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
 	select {
 	case <-support.Blocks:
@@ -156,11 +167,12 @@ func TestBatchTimer(t *testing.T) {
 }
 
 func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1h")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Hour)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 	}
 	defer close(support.BlockCutterVal.Block)
 
@@ -179,7 +191,7 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	}
 
 	// Change the batch timeout to be near instant, if the timer was not reset, it will still be waiting an hour
-	support.SharedConfigVal.BatchTimeoutVal = time.Millisecond
+	mockOrderer.BatchTimeoutReturns(time.Millisecond)
 
 	support.BlockCutterVal.CutNext = false
 	syncQueueMessage(testMessage, bs, support.BlockCutterVal)
@@ -199,11 +211,12 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 }
 
 func TestLargeMsgStyleMultiBatch(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1h")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Hour)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -235,11 +248,12 @@ func TestLargeMsgStyleMultiBatch(t *testing.T) {
 }
 
 func TestConfigMsg(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1h")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Hour)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -272,11 +286,12 @@ func TestConfigMsg(t *testing.T) {
 // This test checks that solo consenter could recover from an erroneous situation
 // where empty batch is cut
 func TestRecoverFromError(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1ms")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Millisecond)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -304,11 +319,12 @@ func TestRecoverFromError(t *testing.T) {
 
 // This test checks that solo consenter re-validates message if config sequence has advanced
 func TestRevalidation(t *testing.T) {
-	batchTimeout, _ := time.ParseDuration("1h")
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(time.Hour)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: mockOrderer,
 		SequenceVal:     uint64(1),
 	}
 	defer close(support.BlockCutterVal.Block)
@@ -379,10 +395,12 @@ func TestRevalidation(t *testing.T) {
 }
 
 func TestPendingMsgCutByTimeout(t *testing.T) {
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrderer.BatchTimeoutReturns(500 * time.Millisecond)
 	support := &mockmultichannel.ConsenterSupport{
 		Blocks:          make(chan *cb.Block),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: 500 * time.Millisecond},
+		SharedConfigVal: mockOrderer,
 	}
 	defer close(support.BlockCutterVal.Block)
 
