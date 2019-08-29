@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
+	mspa "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/msp"
-	mspa "github.com/hyperledger/fabric/protos/msp"
 )
 
 type Identity struct {

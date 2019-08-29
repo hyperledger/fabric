@@ -8,7 +8,7 @@ package protoext
 
 import (
 	"github.com/gogo/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/discovery"
+	"github.com/hyperledger/fabric-protos-go/discovery"
 )
 
 // SignedRequestToRequest deserializes this SignedRequest's payload

@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"testing"
 
+	protopeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	protopeer "github.com/hyperledger/fabric/protos/peer"
 )
 
 //TestV11 tests that a ledgersData folder created by v1.1 can be used with future releases in a backward compatible way

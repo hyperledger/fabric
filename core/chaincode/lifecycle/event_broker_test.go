@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
+	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
-	lb "github.com/hyperledger/fabric/protos/peer/lifecycle"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"

@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	pb "github.com/hyperledger/fabric/protos/peer"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

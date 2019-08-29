@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/protos/orderer"
 )
 
 type OrdererConfig struct {

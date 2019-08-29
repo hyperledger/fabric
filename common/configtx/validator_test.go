@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	mockpolicies "github.com/hyperledger/fabric/common/configtx/mock"
 	"github.com/hyperledger/fabric/common/policies"
-	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )

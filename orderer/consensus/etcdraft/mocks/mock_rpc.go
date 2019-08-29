@@ -4,8 +4,8 @@ package mocks
 import (
 	sync "sync"
 
+	orderer "github.com/hyperledger/fabric-protos-go/orderer"
 	etcdraft "github.com/hyperledger/fabric/orderer/consensus/etcdraft"
-	orderer "github.com/hyperledger/fabric/protos/orderer"
 )
 
 type FakeRPC struct {

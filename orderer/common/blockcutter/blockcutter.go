@@ -9,9 +9,9 @@ package blockcutter
 import (
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
-	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 var logger = flogging.MustGetLogger("orderer.common.blockcutter")

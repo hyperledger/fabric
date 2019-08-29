@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package builtin
 
 import (
+	"github.com/hyperledger/fabric-protos-go/peer"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
-	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
 

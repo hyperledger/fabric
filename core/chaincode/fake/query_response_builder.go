@@ -4,9 +4,9 @@ package fake
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/protos/peer"
 )
 
 type QueryResponseBuilder struct {

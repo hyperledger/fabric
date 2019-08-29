@@ -9,10 +9,10 @@ package scc_test
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/mock"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/gomega"
 )
 

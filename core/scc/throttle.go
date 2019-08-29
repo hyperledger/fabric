@@ -9,9 +9,9 @@ package scc
 import (
 	"context"
 
+	"github.com/hyperledger/fabric-chaincode-go/shim"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/semaphore"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func Throttle(limit int, systemCC SelfDescribingSysCC) *ThrottledSysCC {

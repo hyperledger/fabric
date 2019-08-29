@@ -14,12 +14,12 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
+	. "github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/cmd/common"
 	discovery "github.com/hyperledger/fabric/discovery/client"
 	"github.com/hyperledger/fabric/gossip/protoext"
-	. "github.com/hyperledger/fabric/protos/discovery"
-	"github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 

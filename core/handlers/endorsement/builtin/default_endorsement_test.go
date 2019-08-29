@@ -9,10 +9,10 @@ package builtin_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/endorser/mocks"
 	"github.com/hyperledger/fabric/core/handlers/endorsement/builtin"
 	mocks2 "github.com/hyperledger/fabric/core/handlers/endorsement/builtin/mocks"
-	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

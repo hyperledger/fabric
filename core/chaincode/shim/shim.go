@@ -17,8 +17,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
+	peerpb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode/shim/internal"
-	peerpb "github.com/hyperledger/fabric/protos/peer"
 )
 
 const (

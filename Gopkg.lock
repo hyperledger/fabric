@@ -364,12 +364,48 @@
   revision = "5ccba6eab8d6b39aa2cdd88db202bba0e25da5d7"
 
 [[projects]]
+  branch = "master"
+  digest = "1:7df71c1e14a719ce646e2a6722558525cc1ad0e84b75a6b749be65d760f96951"
+  name = "github.com/hyperledger/fabric-chaincode-go"
+  packages = [
+    "pkg/attrmgr",
+    "pkg/cid",
+    "pkg/statebased",
+    "shim",
+    "shim/internal",
+    "shimtest",
+  ]
+  pruneopts = "NUT"
+  revision = "04390e015b8579092f488172f9d333df7f0f6b28"
+
+[[projects]]
   digest = "1:0f4305e5a43e324844412168385a23ff23dafc55369fcbbc2ea77fb974f828cc"
   name = "github.com/hyperledger/fabric-lib-go"
   packages = ["healthz"]
   pruneopts = "NUT"
   revision = "90dc96fb23ab7eb18477e4bfcf9cd8ebdb7209f0"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:81ad31cdce826d64d33a2b9703ddd9982148ffedeea28768016d21b3efa55b73"
+  name = "github.com/hyperledger/fabric-protos-go"
+  packages = [
+    "common",
+    "discovery",
+    "gossip",
+    "ledger/queryresult",
+    "ledger/rwset",
+    "ledger/rwset/kvrwset",
+    "msp",
+    "orderer",
+    "orderer/etcdraft",
+    "peer",
+    "peer/lifecycle",
+    "transientstore",
+  ]
+  pruneopts = "NUT"
+  revision = "26c33c998676be969a8e0f4824defb3ee90a3d05"
 
 [[projects]]
   branch = "master"
@@ -1011,7 +1047,24 @@
     "github.com/hashicorp/go-version",
     "github.com/hyperledger/fabric-amcl/amcl",
     "github.com/hyperledger/fabric-amcl/amcl/FP256BN",
+    "github.com/hyperledger/fabric-chaincode-go/pkg/attrmgr",
+    "github.com/hyperledger/fabric-chaincode-go/pkg/cid",
+    "github.com/hyperledger/fabric-chaincode-go/pkg/statebased",
+    "github.com/hyperledger/fabric-chaincode-go/shim",
+    "github.com/hyperledger/fabric-chaincode-go/shimtest",
     "github.com/hyperledger/fabric-lib-go/healthz",
+    "github.com/hyperledger/fabric-protos-go/common",
+    "github.com/hyperledger/fabric-protos-go/discovery",
+    "github.com/hyperledger/fabric-protos-go/gossip",
+    "github.com/hyperledger/fabric-protos-go/ledger/queryresult",
+    "github.com/hyperledger/fabric-protos-go/ledger/rwset",
+    "github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset",
+    "github.com/hyperledger/fabric-protos-go/msp",
+    "github.com/hyperledger/fabric-protos-go/orderer",
+    "github.com/hyperledger/fabric-protos-go/orderer/etcdraft",
+    "github.com/hyperledger/fabric-protos-go/peer",
+    "github.com/hyperledger/fabric-protos-go/peer/lifecycle",
+    "github.com/hyperledger/fabric-protos-go/transientstore",
     "github.com/kr/pretty",
     "github.com/miekg/pkcs11",
     "github.com/mitchellh/mapstructure",

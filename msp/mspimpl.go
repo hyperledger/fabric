@@ -14,11 +14,11 @@ import (
 	"encoding/pem"
 
 	"github.com/golang/protobuf/proto"
+	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	m "github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 

@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"testing"
 
+	peerpb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode/shim/internal/mock"
-	peerpb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/stretchr/testify/assert"
 )
