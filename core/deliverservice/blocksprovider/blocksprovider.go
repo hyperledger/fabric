@@ -157,13 +157,14 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 			statusCounter = 0
 			blockNum := t.Block.Header.Number
 
+			if err := b.mcs.VerifyBlock(gossipcommon.ChannelID(b.chainID), blockNum, t.Block); err != nil {
+				logger.Errorf("[%s] Error verifying block with sequnce number %d, due to %s", b.chainID, blockNum, err)
+				continue
+			}
+
 			marshaledBlock, err := proto.Marshal(t.Block)
 			if err != nil {
 				logger.Errorf("[%s] Error serializing block with sequence number %d, due to %s", b.chainID, blockNum, err)
-				continue
-			}
-			if err := b.mcs.VerifyBlock(gossipcommon.ChannelID(b.chainID), blockNum, marshaledBlock); err != nil {
-				logger.Errorf("[%s] Error verifying block with sequnce number %d, due to %s", b.chainID, blockNum, err)
 				continue
 			}
 

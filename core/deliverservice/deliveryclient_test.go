@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
@@ -53,7 +54,7 @@ func (*mockMCS) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidTy
 	return common.PKIidType("pkiID")
 }
 
-func (*mockMCS) VerifyBlock(chainID common.ChannelID, seqNum uint64, signedBlock []byte) error {
+func (*mockMCS) VerifyBlock(chainID common.ChannelID, seqNum uint64, signedBlock *cb.Block) error {
 	return nil
 }
 

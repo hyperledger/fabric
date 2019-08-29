@@ -121,13 +121,7 @@ func (s *MSPMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 // VerifyBlock returns nil if the block is properly signed, and the claimed seqNum is the
 // sequence number that the block's header contains.
 // else returns error
-func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum uint64, signedBlock []byte) error {
-	// - Convert signedBlock to common.Block.
-	block, err := protoutil.UnmarshalBlock(signedBlock)
-	if err != nil {
-		return fmt.Errorf("Failed unmarshalling block bytes on channel [%s]: [%s]", chainID, err)
-	}
-
+func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum uint64, block *pcommon.Block) error {
 	if block.Header == nil {
 		return fmt.Errorf("Invalid Block on channel [%s]. Header must be different from nil.", chainID)
 	}

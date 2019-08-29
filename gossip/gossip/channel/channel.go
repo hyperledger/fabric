@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 const DefMsgExpirationTimeout = election.DefLeaderAliveThreshold * 10
@@ -775,7 +776,13 @@ func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKI
 	}
 	seqNum := payload.SeqNum
 	rawBlock := payload.Data
-	err := gc.mcs.VerifyBlock(msg.Channel, seqNum, rawBlock)
+	block, err := protoutil.UnmarshalBlock(rawBlock)
+	if err != nil {
+		gc.logger.Warningf("Received improperly encoded block from %v in DataUpdate: %+v", sender, err)
+		return false
+	}
+
+	err = gc.mcs.VerifyBlock(msg.Channel, seqNum, block)
 	if err != nil {
 		gc.logger.Warningf("Received fabricated block from %v in DataUpdate: %+v", sender, err)
 		return false
