@@ -12,6 +12,8 @@ function filterExcludedAndGeneratedFiles {
         '(^|/)ci\.properties$'
         '(^|/)\.git/'
         '\.gen\.go$'
+        '(^|/)go.mod$'
+        '(^|/)go.sum$'
         '(^|/)Gopkg\.lock$'
         '\.key$'
         '(^|/)LICENSE$'
