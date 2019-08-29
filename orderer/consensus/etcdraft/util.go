@@ -16,14 +16,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
@@ -32,81 +29,6 @@ import (
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
 )
-
-// EndpointconfigFromFromSupport extracts TLS CA certificates and endpoints from the ConsenterSupport
-func EndpointconfigFromFromSupport(support consensus.ConsenterSupport, bccsp bccsp.BCCSP) ([]cluster.EndpointCriteria, error) {
-	lastConfigBlock, err := lastConfigBlockFromSupport(support)
-	if err != nil {
-		return nil, err
-	}
-	endpointconf, err := cluster.EndpointconfigFromConfigBlock(lastConfigBlock, bccsp)
-	if err != nil {
-		return nil, err
-	}
-	return endpointconf, nil
-}
-
-func lastConfigBlockFromSupport(support consensus.ConsenterSupport) (*common.Block, error) {
-	lastBlockSeq := support.Height() - 1
-	lastBlock := support.Block(lastBlockSeq)
-	if lastBlock == nil {
-		return nil, errors.Errorf("unable to retrieve block [%d]", lastBlockSeq)
-	}
-	lastConfigBlock, err := cluster.LastConfigBlock(lastBlock, support)
-	if err != nil {
-		return nil, err
-	}
-	return lastConfigBlock, nil
-}
-
-// newBlockPuller creates a new block puller
-func newBlockPuller(support consensus.ConsenterSupport,
-	baseDialer *cluster.PredicateDialer,
-	clusterConfig localconfig.Cluster,
-	bccsp bccsp.BCCSP,
-) (BlockPuller, error) {
-
-	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
-		return cluster.VerifyBlocks(blocks, support)
-	}
-
-	stdDialer := &cluster.StandardDialer{
-		Config: baseDialer.Config.Clone(),
-	}
-	stdDialer.Config.AsyncConnect = false
-	stdDialer.Config.SecOpts.VerifyCertificate = nil
-
-	// Extract the TLS CA certs and endpoints from the configuration,
-	endpoints, err := EndpointconfigFromFromSupport(support, bccsp)
-	if err != nil {
-		return nil, err
-	}
-
-	der, _ := pem.Decode(stdDialer.Config.SecOpts.Certificate)
-	if der == nil {
-		return nil, errors.Errorf("client certificate isn't in PEM format: %v",
-			string(stdDialer.Config.SecOpts.Certificate))
-	}
-
-	bp := &cluster.BlockPuller{
-		VerifyBlockSequence: verifyBlockSequence,
-		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller"),
-		RetryTimeout:        clusterConfig.ReplicationRetryTimeout,
-		MaxTotalBufferBytes: clusterConfig.ReplicationBufferSize,
-		FetchTimeout:        clusterConfig.ReplicationPullTimeout,
-		Endpoints:           endpoints,
-		Signer:              support,
-		TLSCert:             der.Bytes,
-		Channel:             support.ChannelID(),
-		Dialer:              stdDialer,
-	}
-
-	return &LedgerBlockPuller{
-		Height:         support.Height,
-		BlockRetriever: support,
-		BlockPuller:    bp,
-	}, nil
-}
 
 // RaftPeers maps consenters to slice of raft.Peer
 func RaftPeers(consenterIDs []uint64) []raft.Peer {
@@ -468,22 +390,6 @@ func (pc *PeriodicCheck) conditionFulfilled() {
 	}
 
 	pc.Report(time.Since(pc.conditionHoldsSince))
-}
-
-// LedgerBlockPuller pulls blocks upon demand, or fetches them
-// from the ledger.
-type LedgerBlockPuller struct {
-	BlockPuller
-	BlockRetriever cluster.BlockRetriever
-	Height         func() uint64
-}
-
-func (ledgerPuller *LedgerBlockPuller) PullBlock(seq uint64) *common.Block {
-	lastSeq := ledgerPuller.Height() - 1
-	if lastSeq >= seq {
-		return ledgerPuller.BlockRetriever.Block(seq)
-	}
-	return ledgerPuller.BlockPuller.PullBlock(seq)
 }
 
 type evictionSuspector struct {

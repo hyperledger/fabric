@@ -220,7 +220,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		c.Communication,
 		rpc,
 		func() (BlockPuller, error) {
-			return newBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, factory.GetDefault())
+			return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, factory.GetDefault())
 		},
 		nil,
 	)
