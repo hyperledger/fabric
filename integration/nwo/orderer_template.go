@@ -36,7 +36,7 @@ General:
     ServerInterval: 7200s
     ServerTimeout: 20s
   GenesisMethod: file
-  GenesisFile: {{ .RootDir }}/{{ .SystemChannel.Name }}_block.pb
+  BootstrapFile: {{ .RootDir }}/{{ .SystemChannel.Name }}_block.pb
   LocalMSPDir: {{ $w.OrdererLocalMSPDir Orderer }}
   LocalMSPID: {{ ($w.Organization Orderer.Organization).MSPID }}
   Profile:

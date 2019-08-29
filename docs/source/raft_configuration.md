@@ -217,7 +217,7 @@ Adding a new node to a Raft cluster is done by:
   by checking that the config block that was fetched includes the certificate of
   (soon to be) added node.
   4. **Starting the new Raft node** with the path to the config block in the
-  `General.GenesisFile` configuration parameter.
+  `General.BootstrapFile` configuration parameter.
   5. **Waiting for the Raft node to replicate the blocks** from existing nodes for
   all channels its certificates have been added to. After this step has been
   completed, the node begins servicing the channel.

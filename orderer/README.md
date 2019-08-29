@@ -22,7 +22,7 @@ For details on the configuration structure of channels, refer to the [Channel Co
 
 `configtxgen` is a tool that allows for the creation of a genesis block using profiles, or grouped configuration parameters — refer to the [Configuring using the connfigtxgen tool](../docs/source/configtxgen.rst) guide for more.
 
-The location of this block can be set using the `ORDERER_GENERAL_GENESISFILE` environment variable. As is the case with all the configuration paths for Fabric binaries, this location is relative to the path set via the `FABRIC_CFG_PATH` environment variable.
+The location of this block can be set using the `ORDERER_GENERAL_BOOTSTRAPFILE` environment variable. As is the case with all the configuration paths for Fabric binaries, this location is relative to the path set via the `FABRIC_CFG_PATH` environment variable.
 
 ## Ledger
 

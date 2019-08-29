@@ -592,7 +592,7 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 	// Select the bootstrapping mechanism
 	switch conf.General.GenesisMethod {
 	case "file": // For now, "file" is the only supported genesis method
-		bootstrapBlock = file.New(conf.General.GenesisFile).GenesisBlock()
+		bootstrapBlock = file.New(conf.General.BootstrapFile).GenesisBlock()
 	case "none": // simply honor the configuration value
 		return nil
 	default:

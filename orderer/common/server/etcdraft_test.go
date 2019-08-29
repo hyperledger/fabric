@@ -150,7 +150,7 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, tempDir, orderer, fabri
 		"ORDERER_GENERAL_GENESISMETHOD=file",
 		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
-		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
+		fmt.Sprintf("ORDERER_GENERAL_BOOTSTRAPFILE=%s", genesisBlockPath),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(fabricRootDir, "sampleconfig")),
 	}
 	ordererProcess, err := gexec.Start(cmd, nil, nil)
@@ -175,7 +175,7 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricR
 		"ORDERER_GENERAL_TLS_ENABLED=false",
 		"ORDERER_OPERATIONS_TLS_ENABLED=false",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
-		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
+		fmt.Sprintf("ORDERER_GENERAL_BOOTSTRAPFILE=%s", genesisBlockPath),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1",
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.crt")),
@@ -210,7 +210,7 @@ func launchOrderer(gt *GomegaWithT, orderer, tempDir, genesisBlockPath, fabricRo
 		"ORDERER_GENERAL_TLS_ENABLED=true",
 		"ORDERER_OPERATIONS_TLS_ENABLED=false",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
-		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
+		fmt.Sprintf("ORDERER_GENERAL_BOOTSTRAPFILE=%s", genesisBlockPath),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1",
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.crt")),

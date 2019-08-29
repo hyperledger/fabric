@@ -46,7 +46,8 @@ type General struct {
 	Keepalive         Keepalive
 	ConnectionTimeout time.Duration
 	GenesisMethod     string
-	GenesisFile       string
+	GenesisFile       string // For compatibility only, will be replaced by BootstrapFile
+	BootstrapFile     string
 	Profile           Profile
 	LocalMSPDir       string
 	LocalMSPID        string
@@ -207,7 +208,7 @@ var Defaults = TopLevel{
 		ListenAddress: "127.0.0.1",
 		ListenPort:    7050,
 		GenesisMethod: "file",
-		GenesisFile:   "genesisblock",
+		BootstrapFile: "genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
@@ -316,7 +317,7 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		c.General.TLS.ClientRootCAs = translateCAs(configDir, c.General.TLS.ClientRootCAs)
 		coreconfig.TranslatePathInPlace(configDir, &c.General.TLS.PrivateKey)
 		coreconfig.TranslatePathInPlace(configDir, &c.General.TLS.Certificate)
-		coreconfig.TranslatePathInPlace(configDir, &c.General.GenesisFile)
+		coreconfig.TranslatePathInPlace(configDir, &c.General.BootstrapFile)
 		coreconfig.TranslatePathInPlace(configDir, &c.General.LocalMSPDir)
 		// Translate file ledger location
 		coreconfig.TranslatePathInPlace(configDir, &c.FileLedger.Location)
@@ -332,8 +333,14 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.ListenPort = Defaults.General.ListenPort
 		case c.General.GenesisMethod == "":
 			c.General.GenesisMethod = Defaults.General.GenesisMethod
-		case c.General.GenesisFile == "":
-			c.General.GenesisFile = Defaults.General.GenesisFile
+		case c.General.BootstrapFile == "":
+			if c.General.GenesisFile != "" {
+				// This is to keep the compatibility with old config file that uses genesisfile
+				logger.Warn("General.GenesisFile should be replaced by General.BootstrapFile")
+				c.General.BootstrapFile = c.General.GenesisFile
+			} else {
+				c.General.BootstrapFile = Defaults.General.BootstrapFile
+			}
 		case c.General.Cluster.RPCTimeout == 0:
 			c.General.Cluster.RPCTimeout = Defaults.General.Cluster.RPCTimeout
 		case c.General.Cluster.DialTimeout == 0:

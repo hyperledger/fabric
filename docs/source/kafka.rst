@@ -131,7 +131,7 @@ Then proceed as follows:
      of this writing, so there's no need to set it explicitly.)
 
 7. Orderers: **Point each OSN to the genesis block.** Edit
-   ``General.GenesisFile`` in ``orderer.yaml`` so that it points to the genesis
+   ``General.BootstrapFile`` in ``orderer.yaml`` so that it points to the genesis
    block created in Step 5 above. While at it, ensure all other keys in that YAML
    file are set appropriately.
 

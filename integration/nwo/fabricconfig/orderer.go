@@ -24,7 +24,8 @@ type General struct {
 	Keepalive      *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
 	GenesisMethod  string                 `yaml:"GenesisMethod,omitempty"`
 	GenesisProfile string                 `yaml:"GenesisProfile,omitempty"`
-	GenesisFile    string                 `yaml:"GenesisFile,omitempty"`
+	GenesisFile    string                 `yaml:"GenesisFile,omitempty"` // will be replaced by the BootstrapFile
+	BootstrapFile  string                 `yaml:"BootstrapFile,omitempty"`
 	LocalMSPDir    string                 `yaml:"LocalMSPDir,omitempty"`
 	LocalMSPID     string                 `yaml:"LocalMSPID,omitempty"`
 	Profile        *OrdererProfile        `yaml:"Profile,omitempty"`
