@@ -72,36 +72,31 @@ func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploy
 	return cds, nil
 }
 
-type spec struct {
-	CCName          string
-	Path, File      string
-	Mode            int64
-	SuccessExpected bool
-	RealGen         bool
-}
+func TestValidateCodePackage(t *testing.T) {
+	tests := []struct {
+		name            string
+		path            string
+		file            string
+		Mode            int64
+		successExpected bool
+	}{
+		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/main.go", Mode: 0100400, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/warez", Mode: 0100555, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "/META-INF/path/to/a/meta1", Mode: 0100555, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "META-INF/path/to/a/meta3", Mode: 0100400, successExpected: true},
+	}
 
-func TestValidateCDS(t *testing.T) {
-	platform := &Platform{}
+	for _, s := range tests {
+		cds, err := generateFakeCDS(s.name, s.path, s.file, s.Mode)
+		assert.NoError(t, err, "failed to generate fake cds")
 
-	specs := make([]spec, 0)
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/nowhere", File: "/bin/warez", Mode: 0100400, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/src/path/to/somewhere/main.go", Mode: 0100400, SuccessExpected: true})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/bad-src/path/to/somewhere/main.go", Mode: 0100400, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/src/path/to/somewhere/warez", Mode: 0100555, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/META-INF/path/to/a/meta1", Mode: 0100555, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "/META-Inf/path/to/a/meta2", Mode: 0100400, SuccessExpected: false})
-	specs = append(specs, spec{CCName: "NoCode", Path: "path/to/somewhere", File: "META-INF/path/to/a/meta3", Mode: 0100400, SuccessExpected: true})
-
-	for _, s := range specs {
-		cds, err := generateFakeCDS(s.CCName, s.Path, s.File, s.Mode)
-
+		platform := &Platform{}
 		err = platform.ValidateCodePackage(cds.CodePackage)
-		if s.SuccessExpected == true && err != nil {
+		if s.successExpected && err != nil {
 			t.Errorf("Unexpected failure: %s", err)
 		}
-		if s.SuccessExpected == false && err == nil {
-			t.Log("Expected validation failure")
-			t.Fail()
+		if !s.successExpected && err == nil {
+			t.Errorf("Expected validation failure: path: %s, file: %s", s.path, s.file)
 		}
 	}
 }
@@ -196,30 +191,6 @@ func Test_DeploymentPayloadWithStateDBArtifacts(t *testing.T) {
 	}
 }
 
-func Test_decodeUrl(t *testing.T) {
-	path := "http://example.com/foo/bar"
-	if _, err := decodeUrl(path); err != nil {
-		t.Fail()
-		t.Logf("Error to decodeUrl unsuccessfully with valid path: %s, %s", path, err)
-	}
-
-	path = ""
-	if _, err := decodeUrl(path); err == nil {
-		t.Fail()
-		t.Logf("Error to decodeUrl successfully with invalid path: %s", path)
-	}
-
-	path = "/"
-	if _, err := decodeUrl(path); err == nil {
-		t.Fatalf("Error to decodeUrl successfully with invalid path: %s", path)
-	}
-
-	path = "http:///"
-	if _, err := decodeUrl(path); err == nil {
-		t.Fatalf("Error to decodeUrl successfully with invalid path: %s", path)
-	}
-}
-
 func TestValidatePath(t *testing.T) {
 	platform := &Platform{}
 
@@ -227,8 +198,8 @@ func TestValidatePath(t *testing.T) {
 		path string
 		succ bool
 	}{
-		{path: "http://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
-		{path: "https://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
+		{path: "http://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
+		{path: "https://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
 		{path: "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
 		{path: "github.com/hyperledger/fabric/bad/chaincode/golang/testdata/src/chaincodes/noop", succ: false},
 		{path: ":github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
@@ -260,7 +231,9 @@ func updateGopath(t *testing.T, path string) func() {
 }
 
 func TestGetDeploymentPayload(t *testing.T) {
-	testdataPath, err := filepath.Abs("testdata")
+	const testdata = "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/"
+
+	gopath, err := getGopath()
 	require.NoError(t, err)
 
 	platform := &Platform{}
@@ -270,13 +243,13 @@ func TestGetDeploymentPayload(t *testing.T) {
 		path   string
 		succ   bool
 	}{
-		{gopath: testdataPath, path: "chaincodes/noop", succ: true},
-		{gopath: testdataPath, path: "bad/chaincodes/noop", succ: false},
-		{gopath: testdataPath, path: "chaincodes/BadImport", succ: false},
-		{gopath: testdataPath, path: "chaincodes/BadMetadataInvalidIndex", succ: false},
-		{gopath: testdataPath, path: "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
-		{gopath: testdataPath, path: "chaincodes/BadMetadataIgnoreHiddenFile", succ: true},
-		{gopath: testdataPath, path: "chaincodes/empty/", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/noop", succ: true},
+		{gopath: gopath, path: testdata + "bad/chaincodes/noop", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/BadImport", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/BadMetadataInvalidIndex", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
+		{gopath: gopath, path: testdata + "chaincodes/BadMetadataIgnoreHiddenFile", succ: true},
+		{gopath: gopath, path: testdata + "chaincodes/empty/", succ: false},
 	}
 
 	for _, tst := range tests {

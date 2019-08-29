@@ -15,68 +15,47 @@ import (
 	"github.com/pkg/errors"
 )
 
-var includeFileTypes = map[string]bool{
-	".c":    true,
-	".h":    true,
-	".s":    true,
-	".go":   true,
-	".yaml": true,
-	".json": true,
-}
-
 var logger = flogging.MustGetLogger("chaincode.platform.golang")
 
 func getCodeFromFS(path string) (codegopath string, err error) {
 	logger.Debugf("getCodeFromFS %s", path)
+
+	if path == "" {
+		return "", errors.New("cannot collect files from empty chaincode path")
+	}
+
 	gopath, err := getGopath()
 	if err != nil {
 		return "", err
 	}
 
 	tmppath := filepath.Join(gopath, "src", path)
-	if err := isCodeExist(tmppath); err != nil {
+	if !isDir(tmppath) {
 		return "", errors.Wrap(err, "code does not exist")
 	}
 
 	return gopath, nil
 }
 
-// isCodeExist checks the chaincode if exists
-func isCodeExist(tmppath string) error {
-	file, err := os.Open(tmppath)
+func isDir(path string) bool {
+	fi, err := os.Stat(path)
 	if err != nil {
-		return errors.Wrap(err, "open failed")
+		return false
 	}
 
-	fi, err := file.Stat()
-	if err != nil {
-		return errors.Wrap(err, "stat failed")
-	}
-
-	if !fi.IsDir() {
-		return errors.Errorf("%s is not a directory", file.Name())
-	}
-
-	return nil
+	return fi.IsDir()
 }
 
 type CodeDescriptor struct {
-	Gopath, Pkg string
-	Cleanup     func()
+	Gopath  string
+	Pkg     string
+	Cleanup func()
 }
 
 // collectChaincodeFiles collects chaincode files. If path is a HTTP(s) url it
 // downloads the code first.
-//
-//NOTE: for dev mode, user builds and runs chaincode manually. The name provided
-//by the user is equivalent to the path.
 func getCode(path string) (*CodeDescriptor, error) {
-	if path == "" {
-		return nil, errors.New("cannot collect files from empty chaincode path")
-	}
-
 	// code root will point to the directory where the code exists
-	var gopath string
 	gopath, err := getCodeFromFS(path)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to get code")
@@ -94,7 +73,8 @@ type SourceDescriptor struct {
 type SourceMap map[string]SourceDescriptor
 
 func findSource(gopath, pkg string) (SourceMap, error) {
-	sources := make(SourceMap)
+	sources := SourceMap{}
+
 	tld := filepath.Join(gopath, "src", pkg)
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -119,19 +99,12 @@ func findSource(gopath, pkg string) (SourceMap, error) {
 			return filepath.SkipDir
 		}
 
-		ext := filepath.Ext(path)
-		// we only want 'fileTypes' source files at this point
-		if _, ok := includeFileTypes[ext]; ok != true {
-			return nil
-		}
-
 		name, err := filepath.Rel(gopath, path)
 		if err != nil {
 			return errors.Wrapf(err, "failed to calculate relative path for %s", path)
 		}
 
 		sources[name] = SourceDescriptor{Name: name, Path: path, IsMetadata: isMetadataDir(path, tld), Info: info}
-
 		return nil
 	}
 

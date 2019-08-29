@@ -11,11 +11,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -39,27 +38,6 @@ func pathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
-}
-
-func decodeUrl(path string) (string, error) {
-	var urlLocation string
-	if strings.HasPrefix(path, "http://") {
-		urlLocation = path[7:]
-	} else if strings.HasPrefix(path, "https://") {
-		urlLocation = path[8:]
-	} else {
-		urlLocation = path
-	}
-
-	if len(urlLocation) < 2 {
-		return "", errors.New("ChaincodeSpec's path/URL invalid")
-	}
-
-	if strings.LastIndex(urlLocation, "/") == len(urlLocation)-1 {
-		urlLocation = urlLocation[:len(urlLocation)-1]
-	}
-
-	return urlLocation, nil
 }
 
 func getGopath() (string, error) {
@@ -90,75 +68,42 @@ func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_GOLANG.String()
 }
 
-// ValidateSpec validates Go chaincodes
+// ValidatePath validates Go chaincodes
 func (p *Platform) ValidatePath(rawPath string) error {
-	path, err := url.Parse(rawPath)
-	if err != nil || path == nil {
-		return fmt.Errorf("invalid path: %s", err)
+	gopath, err := getGopath()
+	if err != nil {
+		return err
 	}
 
-	//we have no real good way of checking existence of remote urls except by downloading and testing
-	//which we do later anyway. But we *can* - and *should* - test for existence of local paths.
-	//Treat empty scheme as a local filesystem path
-	if path.Scheme == "" {
-		gopath, err := getGopath()
-		if err != nil {
-			return err
-		}
-		pathToCheck := filepath.Join(gopath, "src", rawPath)
-		exists, err := pathExists(pathToCheck)
-		if err != nil {
-			return fmt.Errorf("error validating chaincode path: %s", err)
-		}
-		if !exists {
-			return fmt.Errorf("path to chaincode does not exist: %s", pathToCheck)
-		}
+	pathToCheck := filepath.Join(gopath, "src", rawPath)
+	exists, err := pathExists(pathToCheck)
+	if err != nil {
+		return fmt.Errorf("error validating chaincode path: %s", err)
+	}
+	if !exists {
+		return fmt.Errorf("path to chaincode does not exist: %s", pathToCheck)
 	}
 	return nil
 }
 
 func (p *Platform) ValidateCodePackage(code []byte) error {
-	// FAB-2122: Scan the provided tarball to ensure it only contains source-code under
-	// /src/$packagename.  We do not want to allow something like ./pkg/shady.a to be installed under
-	// $GOPATH within the container.  Note, we do not look deeper than the path at this time
-	// with the knowledge that only the go/cgo compiler will execute for now.  We will remove the source
-	// from the system after the compilation as an extra layer of protection.
-	//
-	// It should be noted that we cannot catch every threat with these techniques.  Therefore,
-	// the container itself needs to be the last line of defense and be configured to be
-	// resilient in enforcing constraints. However, we should still do our best to keep as much
-	// garbage out of the system as possible.
-	re := regexp.MustCompile(`^(/)?(src|META-INF)/.*`)
 	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
 		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
 	}
-	tr := tar.NewReader(gr)
 
+	tr := tar.NewReader(gr)
 	for {
 		header, err := tr.Next()
-		if err != nil {
-			// We only get here if there are no more entries to scan
+		if err == io.EOF {
 			break
 		}
-
-		// --------------------------------------------------------------------------------------
-		// Check name for conforming path
-		// --------------------------------------------------------------------------------------
-		if !re.MatchString(header.Name) {
-			return fmt.Errorf("illegal file detected in payload: \"%s\"", header.Name)
+		if err != nil {
+			return err
 		}
 
-		// --------------------------------------------------------------------------------------
-		// Check that file mode makes sense
-		// --------------------------------------------------------------------------------------
-		// Acceptable flags:
-		//      ISREG      == 0100000
-		//      -rw-rw-rw- == 0666
-		//
-		// Anything else is suspect in this context and will be rejected
-		// --------------------------------------------------------------------------------------
+		// Only allow regular files without execute bit
 		if header.Mode&^0100666 != 0 {
 			return fmt.Errorf("illegal file mode detected for file %s: %o", header.Name, header.Mode)
 		}
@@ -285,26 +230,12 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 		return nil, fmt.Errorf("Error obtaining imports: %s", err)
 	}
 
-	// --------------------------------------------------------------------------------------
-	// Remove any imports that are provided by the ccenv or system
-	// --------------------------------------------------------------------------------------
-	var provided = map[string]bool{
-		"github.com/hyperledger/fabric/core/chaincode/shim": true,
-		"github.com/hyperledger/fabric/protos/peer":         true,
-	}
-
 	// Golang "pseudo-packages" - packages which don't actually exist
 	var pseudo = map[string]bool{
 		"C": true,
 	}
 
 	imports = filter(imports, func(pkg string) bool {
-		// Drop if provided by CCENV
-		if _, ok := provided[pkg]; ok == true {
-			logger.Debugf("Discarding provided package %s", pkg)
-			return false
-		}
-
 		// Drop pseudo-packages
 		if _, ok := pseudo[pkg]; ok == true {
 			logger.Debugf("Discarding pseudo-package %s", pkg)
@@ -493,14 +424,9 @@ func getLDFlagsOpts() string {
 	return staticLDFlagsOpts
 }
 
-func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
-	pkgname, err := decodeUrl(path)
-	if err != nil {
-		return util.DockerBuildOptions{}, fmt.Errorf("could not decode url: %s", err)
-	}
-
-	ldflagsOpt := getLDFlagsOpts()
+func (p *Platform) DockerBuildOptions(pkg string) (util.DockerBuildOptions, error) {
+	ldFlagOpts := getLDFlagsOpts()
 	return util.DockerBuildOptions{
-		Cmd: fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldflagsOpt, pkgname),
+		Cmd: fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build  %s -o /chaincode/output/chaincode %s", ldFlagOpts, pkg),
 	}, nil
 }
