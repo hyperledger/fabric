@@ -16,9 +16,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/semaphore"
 	util2 "github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -50,10 +50,12 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 	}
 
 	mockVsccValidator := &validator.MockVsccValidator{}
+	mockCapabilities := &mocks.ApplicationCapabilities{}
+	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(false)
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
-		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}},
+		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: mockCapabilities},
 		Vscc:             mockVsccValidator,
 	}
 
@@ -125,7 +127,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	}
 
 	mockVsccValidator := &validator.MockVsccValidator{}
-	acv := &config.MockApplicationCapabilities{}
+	acv := &mocks.ApplicationCapabilities{}
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
@@ -144,6 +146,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	envs = append(envs, env)
 	block := testutil.NewBlock(envs, 1, gbHash)
 
+	acv.On("ForbidDuplicateTXIdInBlock").Return(false).Once()
 	tValidator.Validate(block)
 
 	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
@@ -151,8 +154,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_VALID))
 
-	acv.ForbidDuplicateTXIdInBlockRv = true
-
+	acv.On("ForbidDuplicateTXIdInBlock").Return(true)
 	tValidator.Validate(block)
 
 	txsfltr = util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
@@ -211,10 +213,12 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	defer ledger.Close()
 
+	mockCapabilities := &mocks.ApplicationCapabilities{}
+	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(false)
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
-		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: &config.MockApplicationCapabilities{}},
+		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: mockCapabilities},
 		Vscc:             &validator.MockVsccValidator{},
 	}
 

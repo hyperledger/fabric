@@ -26,10 +26,10 @@ import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
+	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	vp "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	txvalidatorv14 "github.com/hyperledger/fabric/core/committer/txvalidator/v14"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14/mocks"
@@ -57,19 +57,40 @@ func signedByAnyMember(ids []string) []byte {
 	return protoutil.MarshalOrPanic(p)
 }
 
-func preV12Capabilities() *mockconfig.MockApplicationCapabilities {
-	return &mockconfig.MockApplicationCapabilities{}
+func preV12Capabilities() *tmocks.ApplicationCapabilities {
+	ac := &tmocks.ApplicationCapabilities{}
+	ac.On("V1_2Validation").Return(false)
+	ac.On("V1_3Validation").Return(false)
+	ac.On("V2_0Validation").Return(false)
+	ac.On("PrivateChannelData").Return(false)
+	ac.On("ForbidDuplicateTXIdInBlock").Return(false)
+	ac.On("KeyLevelEndorsement").Return(false)
+	return ac
 }
 
-func v12Capabilities() *mockconfig.MockApplicationCapabilities {
-	return &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, PrivateChannelDataRv: true}
+func v12Capabilities() *tmocks.ApplicationCapabilities {
+	ac := &tmocks.ApplicationCapabilities{}
+	ac.On("V1_2Validation").Return(true)
+	ac.On("V1_3Validation").Return(false)
+	ac.On("V2_0Validation").Return(false)
+	ac.On("PrivateChannelData").Return(true)
+	ac.On("ForbidDuplicateTXIdInBlock").Return(false)
+	ac.On("KeyLevelEndorsement").Return(false)
+	return ac
 }
 
-func v13Capabilities() *mockconfig.MockApplicationCapabilities {
-	return &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, PrivateChannelDataRv: true, V1_3ValidationRv: true, KeyLevelEndorsementRv: true}
+func v13Capabilities() *tmocks.ApplicationCapabilities {
+	ac := &tmocks.ApplicationCapabilities{}
+	ac.On("V1_2Validation").Return(true)
+	ac.On("V1_3Validation").Return(true)
+	ac.On("V2_0Validation").Return(false)
+	ac.On("PrivateChannelData").Return(true)
+	ac.On("ForbidDuplicateTXIdInBlock").Return(true)
+	ac.On("KeyLevelEndorsement").Return(true)
+	return ac
 }
 
-func setupLedgerAndValidatorExplicit(t *testing.T, cpb *mockconfig.MockApplicationCapabilities, plugin validation.Plugin) (ledger.PeerLedger, txvalidator.Validator, func()) {
+func setupLedgerAndValidatorExplicit(t *testing.T, cpb *tmocks.ApplicationCapabilities, plugin validation.Plugin) (ledger.PeerLedger, txvalidator.Validator, func()) {
 	return setupLedgerAndValidatorExplicitWithMSP(t, cpb, plugin, nil)
 }
 
@@ -85,7 +106,7 @@ func setupLedgerAndValidatorWithV13Capabilities(t *testing.T) (ledger.PeerLedger
 	return setupLedgerAndValidatorWithCapabilities(t, v13Capabilities())
 }
 
-func setupLedgerAndValidatorWithCapabilities(t *testing.T, c *mockconfig.MockApplicationCapabilities) (ledger.PeerLedger, txvalidator.Validator, func()) {
+func setupLedgerAndValidatorWithCapabilities(t *testing.T, c *tmocks.ApplicationCapabilities) (ledger.PeerLedger, txvalidator.Validator, func()) {
 	mspmgr := &mocks2.MSPManager{}
 	idThatSatisfiesPrincipal := &mocks2.Identity{}
 	idThatSatisfiesPrincipal.SatisfiesPrincipalReturns(nil)
@@ -95,7 +116,7 @@ func setupLedgerAndValidatorWithCapabilities(t *testing.T, c *mockconfig.MockApp
 	return setupLedgerAndValidatorExplicitWithMSP(t, c, &builtin.DefaultValidation{}, mspmgr)
 }
 
-func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *mockconfig.MockApplicationCapabilities, plugin validation.Plugin, mspMgr msp.MSPManager) (ledger.PeerLedger, txvalidator.Validator, func()) {
+func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *tmocks.ApplicationCapabilities, plugin validation.Plugin, mspMgr msp.MSPManager) (ledger.PeerLedger, txvalidator.Validator, func()) {
 	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
 	gb, err := ctxt.MakeGenesisBlock("TestLedger")
 	assert.NoError(t, err)
@@ -604,8 +625,12 @@ func TestParallelValidation(t *testing.T) {
 	mgr.Setup([]msp.MSP{msp1, msp2})
 
 	vpKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-
-	l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, V1_3ValidationRv: true}, &builtin.DefaultValidation{}, mgr)
+	l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(
+		t,
+		v13Capabilities(),
+		&builtin.DefaultValidation{},
+		mgr,
+	)
 	defer cleanup()
 
 	ccID := "mycc"
@@ -905,14 +930,14 @@ func TestInvokeOKMetaUpdateOnly(t *testing.T) {
 	mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
 
 	t.Run("V1.2", func(t *testing.T) {
-		l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, v12Capabilities(), &builtin.DefaultValidation{}, mspmgr)
 		defer cleanup()
 
 		testInvokeOKMetaUpdateOnly(t, l, v)
 	})
 
 	t.Run("V1.3", func(t *testing.T) {
-		l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_3ValidationRv: true, V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, v13Capabilities(), &builtin.DefaultValidation{}, mspmgr)
 		defer cleanup()
 
 		testInvokeOKMetaUpdateOnly(t, l, v)
@@ -947,14 +972,14 @@ func TestInvokeOKPvtMetaUpdateOnly(t *testing.T) {
 	mspmgr.DeserializeIdentityReturns(idThatSatisfiesPrincipal, nil)
 
 	t.Run("V1.2", func(t *testing.T) {
-		l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, v12Capabilities(), &builtin.DefaultValidation{}, mspmgr)
 		defer cleanup()
 
 		testInvokeOKPvtMetaUpdateOnly(t, l, v)
 	})
 
 	t.Run("V1.3", func(t *testing.T) {
-		l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, &mockconfig.MockApplicationCapabilities{V1_3ValidationRv: true, V1_2ValidationRv: true, PrivateChannelDataRv: true}, &builtin.DefaultValidation{}, mspmgr)
+		l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(t, v13Capabilities(), &builtin.DefaultValidation{}, mspmgr)
 		defer cleanup()
 
 		testInvokeOKPvtMetaUpdateOnly(t, l, v)
@@ -1593,7 +1618,7 @@ func createCustomSupportAndLedger(t *testing.T) (*mocktxvalidator.Support, ledge
 	})
 	mspManager := &mocks2.MSPManager{}
 	mspManager.DeserializeIdentityReturns(identity, nil)
-	support := &mocktxvalidator.Support{LedgerVal: l, ACVal: &mockconfig.MockApplicationCapabilities{}, MSPManagerVal: mspManager}
+	support := &mocktxvalidator.Support{LedgerVal: l, ACVal: preV12Capabilities(), MSPManagerVal: mspManager}
 	return support, l, cleanup
 }
 
@@ -1652,7 +1677,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
-		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}},
+		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
 	)
 
@@ -1685,7 +1710,7 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
-		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}},
+		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
 	)
 
@@ -1712,7 +1737,7 @@ func TestDuplicateTxId(t *testing.T) {
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
-		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}},
+		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
 	)
 
@@ -1750,7 +1775,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
-		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: &mockconfig.MockApplicationCapabilities{}},
+		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
 	)
 
@@ -1805,7 +1830,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 	plugin := &mocks.Plugin{}
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	l, v, cleanup := setupLedgerAndValidatorExplicit(t, &mockconfig.MockApplicationCapabilities{}, plugin)
+	l, v, cleanup := setupLedgerAndValidatorExplicit(t, preV12Capabilities(), plugin)
 	defer cleanup()
 
 	ccID := "mycc"
@@ -1841,7 +1866,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
-		&mocktxvalidator.Support{LedgerVal: l, ACVal: &mockconfig.MockApplicationCapabilities{}},
+		&mocktxvalidator.Support{LedgerVal: l, ACVal: preV12Capabilities()},
 		pm,
 	)
 	err := validator.Validate(b)

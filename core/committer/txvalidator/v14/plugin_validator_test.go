@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/mocks/ledger"
+	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14/mocks"
@@ -68,15 +68,15 @@ func TestValidateWithPlugin(t *testing.T) {
 
 func TestSamplePlugin(t *testing.T) {
 	pm := make(plugin.MapBasedMapper)
-	qec := &mocks.QueryExecutorCreator{}
 
-	qec.On("NewQueryExecutor").Return(&ledger.MockQueryExecutor{
-		State: map[string]map[string][]byte{
-			"lscc": {
-				"mycc": []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-			},
-		},
-	}, nil)
+	qe := &tmocks.QueryExecutor{}
+	state := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	qe.On("GetState", "lscc", "mycc").Return(state, nil)
+	qe.On("GetStateMultipleKeys", "lscc", []string{"mycc"}).Return([][]byte{state}, nil)
+	qe.On("Done").Return(nil, nil)
+
+	qec := &mocks.QueryExecutorCreator{}
+	qec.On("NewQueryExecutor").Return(qe, nil)
 
 	deserializer := &mocks.IdentityDeserializer{}
 	identity := &MockIdentity{}

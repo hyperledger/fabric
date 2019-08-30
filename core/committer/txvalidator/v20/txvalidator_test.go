@@ -13,9 +13,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/semaphore"
 	util2 "github.com/hyperledger/fabric/common/util"
+	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -55,11 +55,12 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 
 	mockDispatcher := &mockDispatcher{}
 	mockLedger := &mocks.LedgerResources{}
+	mockCapabilities := &tmocks.ApplicationCapabilities{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Day after day, day after day"))
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
-		ChannelResources: &mocktxvalidator.Support{ACVal: &config.MockApplicationCapabilities{}},
+		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       mockDispatcher,
 		LedgerResources:  mockLedger,
 	}
@@ -117,15 +118,14 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	}
 
 	mockDispatcher := &mockDispatcher{}
-	acv := &config.MockApplicationCapabilities{
-		ForbidDuplicateTXIdInBlockRv: true,
-	}
+	mockCapabilities := &tmocks.ApplicationCapabilities{}
+	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(true)
 	mockLedger := &mocks.LedgerResources{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
-		ChannelResources: &mocktxvalidator.Support{ACVal: acv},
+		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       mockDispatcher,
 		LedgerResources:  mockLedger,
 	}
@@ -164,10 +164,11 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	mockLedger := &mocks.LedgerResources{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Water, water, everywhere, nor any drop to drink"))
+	mockCapabilities := &tmocks.ApplicationCapabilities{}
 	tValidator := &TxValidator{
 		ChainID:          "",
 		Semaphore:        semaphore.New(10),
-		ChannelResources: &mocktxvalidator.Support{ACVal: &config.MockApplicationCapabilities{}},
+		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       &mockDispatcher{},
 		LedgerResources:  mockLedger,
 	}

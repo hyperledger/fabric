@@ -22,10 +22,10 @@ import (
 	protospeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
+	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	txvalidatorplugin "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	txvalidatorv20 "github.com/hyperledger/fabric/core/committer/txvalidator/v20"
 	txvalidatormocks "github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
@@ -52,14 +52,14 @@ func signedByAnyMember(ids []string) []byte {
 	return protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: p}})
 }
 
-func v20Capabilities() *mockconfig.MockApplicationCapabilities {
-	return &mockconfig.MockApplicationCapabilities{
-		V1_2ValidationRv:      true,
-		V1_3ValidationRv:      true,
-		PrivateChannelDataRv:  true,
-		KeyLevelEndorsementRv: true,
-		V2_0ValidationRv:      true,
-	}
+func v20Capabilities() *tmocks.ApplicationCapabilities {
+	ac := &tmocks.ApplicationCapabilities{}
+	ac.On("V1_2Validation").Return(true)
+	ac.On("V1_3Validation").Return(true)
+	ac.On("V2_0Validation").Return(true)
+	ac.On("PrivateChannelData").Return(true)
+	ac.On("KeyLevelEndorsement").Return(true)
+	return ac
 }
 
 func createRWset(t *testing.T, ccnames ...string) []byte {
