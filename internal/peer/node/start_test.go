@@ -222,12 +222,13 @@ func TestResetLoop(t *testing.T) {
 		reject: true,
 	}
 
+	ledgerIDs := []string{"testchannel", "testchannel2"}
 	heights := map[string]uint64{
 		"testchannel":  uint64(10),
 		"testchannel2": uint64(10),
 	}
 
-	resetLoop(resetFilter, heights, getLedger.Spy, 1*time.Second)
+	resetLoop(resetFilter, heights, ledgerIDs, getLedger.Spy, 1*time.Second)
 	assert.False(t, resetFilter.reject)
 	assert.Equal(t, 4, peerLedger.GetBlockchainInfoCallCount())
 }

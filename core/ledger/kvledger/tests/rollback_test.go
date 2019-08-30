@@ -48,7 +48,7 @@ func TestRollbackKVLedger(t *testing.T) {
 	rebuildable := rebuildableStatedb + rebuildableBookkeeper + rebuildableConfigHistory + rebuildableHistoryDB
 	env.verifyRebuilableDoesNotExist(rebuildable)
 	env.initLedgerMgmt()
-	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath)
+	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, []string{"testLedger"})
 	assert.Equal(t, bcInfo.Height, preResetHt["testLedger"])
 	t.Logf("preResetHt = %#v", preResetHt)
 

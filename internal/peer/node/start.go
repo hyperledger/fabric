@@ -744,9 +744,15 @@ func serve(args []string) error {
 
 	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
 
+	// get a list of ledger IDs and load preResetHeight files for these ledger IDs
+	ledgerIDs, err := peerInstance.LedgerMgr.GetLedgerIDs()
+	if err != nil {
+		return errors.WithMessage(err, "failed to get ledger IDs")
+	}
+
 	// check to see if the peer ledgers have been reset
 	rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
-	preResetHeights, err := kvledger.LoadPreResetHeight(rootFSPath)
+	preResetHeights, err := kvledger.LoadPreResetHeight(rootFSPath, ledgerIDs)
 	if err != nil {
 		return fmt.Errorf("error loading prereset height: %s", err)
 	}
@@ -761,7 +767,7 @@ func serve(args []string) error {
 			reject: true,
 		}
 		authFilters = append(authFilters, resetFilter)
-		go resetLoop(resetFilter, preResetHeights, peerInstance.GetLedger, 10*time.Second)
+		go resetLoop(resetFilter, preResetHeights, ledgerIDs, peerInstance.GetLedger, 10*time.Second)
 	}
 
 	// start the peer server
@@ -1217,6 +1223,7 @@ type getLedger func(string) ledger.PeerLedger
 func resetLoop(
 	resetFilter *reset,
 	preResetHeights map[string]uint64,
+	ledgerIDs []string,
 	pLedger getLedger,
 	interval time.Duration,
 ) {
@@ -1232,19 +1239,21 @@ func resetLoop(
 			for cid, height := range preResetHeights {
 				var l peerLedger
 				l = pLedger(cid)
-				if l != nil {
-					bcInfo, err := l.GetBlockchainInfo()
-					if bcInfo != nil {
-						logger.Debugf("Ledger rebuild: channel [%s]: currentHeight [%d] : preresetHeight [%d]", cid, bcInfo.GetHeight(), height)
-						if bcInfo.GetHeight() >= height {
-							delete(preResetHeights, cid)
-						} else {
-							break
-						}
+				if l == nil {
+					logger.Warningf("No ledger found for channel [%s]", cid)
+					continue
+				}
+				bcInfo, err := l.GetBlockchainInfo()
+				if bcInfo != nil {
+					logger.Debugf("Ledger rebuild: channel [%s]: currentHeight [%d] : preresetHeight [%d]", cid, bcInfo.GetHeight(), height)
+					if bcInfo.GetHeight() >= height {
+						delete(preResetHeights, cid)
 					} else {
-						if err != nil {
-							logger.Warningf("Ledger rebuild: could not retrieve info for channel [%s]: %s", cid, err.Error())
-						}
+						break
+					}
+				} else {
+					if err != nil {
+						logger.Warningf("Ledger rebuild: could not retrieve info for channel [%s]: %s", cid, err.Error())
 					}
 				}
 			}
@@ -1253,7 +1262,7 @@ func resetLoop(
 			if len(preResetHeights) == 0 {
 				logger.Infof("Ledger rebuild: Complete, all ledgers surpass prereset heights. Endorsement request processing will be enabled.")
 				rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
-				err := kvledger.ClearPreResetHeight(rootFSPath)
+				err := kvledger.ClearPreResetHeight(rootFSPath, ledgerIDs)
 				if err != nil {
 					logger.Warningf("Ledger rebuild: could not clear off prerest files: error=%s", err)
 				}

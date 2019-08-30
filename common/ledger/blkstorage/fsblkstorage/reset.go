@@ -171,10 +171,11 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 	return nil
 }
 
-// LoadPreResetHeight returns a map of channelname to the last recorded block height during one of the reset operations
-func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
-	logger.Info("Loading Pre-reset heights")
-	preResetFilesMap, err := preRestHtFiles(blockStorageDir)
+// LoadPreResetHeight searches the preResetHeight files for the specified ledgers and
+// returns a map of channelname to the last recorded block height during one of the reset operations.
+func LoadPreResetHeight(blockStorageDir string, ledgerIDs []string) (map[string]uint64, error) {
+	logger.Debug("Loading Pre-reset heights")
+	preResetFilesMap, err := preResetHtFiles(blockStorageDir, ledgerIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -190,14 +191,16 @@ func LoadPreResetHeight(blockStorageDir string) (map[string]uint64, error) {
 		}
 		m[ledgerID] = previuoslyRecordedHt
 	}
-	logger.Info("Pre-reset heights loaded")
+	if len(m) > 0 {
+		logger.Infof("Pre-reset heights loaded: %v", m)
+	}
 	return m, nil
 }
 
-// ClearPreResetHeight deletes the files that contains the last recorded reset heights
-func ClearPreResetHeight(blockStorageDir string) error {
+// ClearPreResetHeight deletes the files that contain the last recorded reset heights for the specified ledgers
+func ClearPreResetHeight(blockStorageDir string, ledgerIDs []string) error {
 	logger.Info("Clearing Pre-reset heights")
-	preResetFilesMap, err := preRestHtFiles(blockStorageDir)
+	preResetFilesMap, err := preResetHtFiles(blockStorageDir, ledgerIDs)
 	if err != nil {
 		return err
 	}
@@ -210,7 +213,11 @@ func ClearPreResetHeight(blockStorageDir string) error {
 	return nil
 }
 
-func preRestHtFiles(blockStorageDir string) (map[string]string, error) {
+func preResetHtFiles(blockStorageDir string, ledgerIDs []string) (map[string]string, error) {
+	if len(ledgerIDs) == 0 {
+		logger.Info("No active channels passed")
+		return nil, nil
+	}
 	conf := &Conf{blockStorageDir: blockStorageDir}
 	chainsDir := conf.getChainsDir()
 	chainsDirExists, err := pathExists(chainsDir)
@@ -221,15 +228,6 @@ func preRestHtFiles(blockStorageDir string) (map[string]string, error) {
 		logger.Infof("Dir [%s] missing... exiting", chainsDir)
 		return nil, err
 	}
-	ledgerIDs, err := util.ListSubdirs(chainsDir)
-	if err != nil {
-		return nil, err
-	}
-	if len(ledgerIDs) == 0 {
-		logger.Info("No ledgers found.. exiting")
-		return nil, nil
-	}
-	logger.Infof("Found ledgers - %s", ledgerIDs)
 	m := map[string]string{}
 	for _, ledgerID := range ledgerIDs {
 		ledgerDir := conf.getLedgerBlockDir(ledgerID)

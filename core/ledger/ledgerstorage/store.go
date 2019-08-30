@@ -335,9 +335,9 @@ func constructPvtdataMap(pvtdata []*ledger.TxPvtData) ledger.TxPvtDataMap {
 	return m
 }
 
-// LoadPreResetHeight returns the pre reset height.
-func LoadPreResetHeight(blockstorePath string) (map[string]uint64, error) {
-	return fsblkstorage.LoadPreResetHeight(blockstorePath)
+// LoadPreResetHeight returns the pre reset height for the specified ledgers.
+func LoadPreResetHeight(blockstorePath string, ledgerIDs []string) (map[string]uint64, error) {
+	return fsblkstorage.LoadPreResetHeight(blockstorePath, ledgerIDs)
 }
 
 // ResetBlockStore resets all ledgers to the genesis block.

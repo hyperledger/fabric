@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResetAllLedgers(t *testing.T) {
@@ -28,15 +28,18 @@ func TestResetAllLedgers(t *testing.T) {
 
 	// create ledgers and pouplate with sample data
 	// Also, retrieve the genesis blocks and blockchain info for matching later
-	for i := 0; i < 10; i++ {
-		h := env.newTestHelperCreateLgr(fmt.Sprintf("ledger-%d", i), t)
+	numLedgers := 10
+	ledgerIDs := make([]string, numLedgers, numLedgers)
+	for i := 0; i < numLedgers; i++ {
+		ledgerIDs[i] = fmt.Sprintf("ledger-%d", i)
+		h := env.newTestHelperCreateLgr(ledgerIDs[i], t)
 		dataHelper.populateLedger(h)
 		dataHelper.verifyLedgerContent(h)
 		gb, err := h.lgr.GetBlockByNumber(0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		genesisBlocks = append(genesisBlocks, gb)
 		bcInfo, err := h.lgr.GetBlockchainInfo()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		blockchainsInfo = append(blockchainsInfo, bcInfo)
 	}
 	env.closeLedgerMgmt()
@@ -44,11 +47,11 @@ func TestResetAllLedgers(t *testing.T) {
 	// Reset All kv ledgers
 	rootFSPath := env.initializer.Config.RootFSPath
 	err := kvledger.ResetAllKVLedgers(rootFSPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB | rebuildableBlockIndex
 	env.verifyRebuilableDoesNotExist(rebuildable)
 	env.initLedgerMgmt()
-	preResetHt, err := kvledger.LoadPreResetHeight(rootFSPath)
+	preResetHt, err := kvledger.LoadPreResetHeight(rootFSPath, ledgerIDs)
 	t.Logf("preResetHt = %#v", preResetHt)
 	// open all the ledgers again and verify that
 	// - initial height==1
@@ -59,23 +62,45 @@ func TestResetAllLedgers(t *testing.T) {
 		ledgerID := fmt.Sprintf("ledger-%d", i)
 		h := env.newTestHelperOpenLgr(ledgerID, t)
 		h.verifyLedgerHeight(1)
-		assert.Equal(t, blockchainsInfo[i].Height, preResetHt[ledgerID])
+		require.Equal(t, blockchainsInfo[i].Height, preResetHt[ledgerID])
 		gb, err := h.lgr.GetBlockByNumber(0)
-		assert.NoError(t, err)
-		assert.Equal(t, genesisBlocks[i], gb)
+		require.NoError(t, err)
+		require.Equal(t, genesisBlocks[i], gb)
 		for _, b := range dataHelper.submittedData[ledgerID].Blocks {
-			assert.NoError(t, h.lgr.CommitLegacy(b, &ledger.CommitOptions{}))
+			require.NoError(t, h.lgr.CommitLegacy(b, &ledger.CommitOptions{}))
 		}
 		bcInfo, err := h.lgr.GetBlockchainInfo()
-		assert.NoError(t, err)
-		assert.Equal(t, blockchainsInfo[i], bcInfo)
+		require.NoError(t, err)
+		require.Equal(t, blockchainsInfo[i], bcInfo)
 		dataHelper.verifyLedgerContent(h)
 	}
 
-	assert.NoError(t, kvledger.ClearPreResetHeight(env.initializer.Config.RootFSPath))
-	preResetHt, err = kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath)
-	assert.NoError(t, err)
-	assert.Len(t, preResetHt, 0)
+	require.NoError(t, kvledger.ClearPreResetHeight(env.initializer.Config.RootFSPath, ledgerIDs))
+	preResetHt, err = kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, ledgerIDs)
+	require.NoError(t, err)
+	require.Len(t, preResetHt, 0)
+
+	// reset again to test ClearPreResetHeight with different ledgerIDs
+	env.closeLedgerMgmt()
+	err = kvledger.ResetAllKVLedgers(rootFSPath)
+	require.NoError(t, err)
+	env.initLedgerMgmt()
+	// verify LoadPreResetHeight with different ledgerIDs
+	newLedgerIDs := ledgerIDs[:len(ledgerIDs)-3]
+	preResetHt, err = kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, newLedgerIDs)
+	require.NoError(t, err)
+	require.Equal(t, numLedgers-3, len(preResetHt))
+	for i := 0; i < len(preResetHt); i++ {
+		require.Contains(t, preResetHt, fmt.Sprintf("ledger-%d", i))
+	}
+	// verify preResetHt after ClearPreResetHeight
+	require.NoError(t, kvledger.ClearPreResetHeight(env.initializer.Config.RootFSPath, newLedgerIDs))
+	preResetHt, err = kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, ledgerIDs)
+	require.NoError(t, err)
+	require.Len(t, preResetHt, 3)
+	require.Contains(t, preResetHt, fmt.Sprintf("ledger-%d", 7))
+	require.Contains(t, preResetHt, fmt.Sprintf("ledger-%d", 8))
+	require.Contains(t, preResetHt, fmt.Sprintf("ledger-%d", 9))
 }
 
 func TestResetAllLedgersWithBTL(t *testing.T) {
@@ -127,26 +152,26 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 
 	// reset ledgers to genesis block
 	err := kvledger.ResetAllKVLedgers(env.initializer.Config.RootFSPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB | rebuildableBlockIndex
 	env.verifyRebuilableDoesNotExist(rebuildable)
 	env.initLedgerMgmt()
 
 	// ensure that the reset is executed correctly
-	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath)
+	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, []string{"ledger1"})
 	t.Logf("preResetHt = %#v", preResetHt)
-	assert.Equal(t, uint64(5), preResetHt["ledger1"])
+	require.Equal(t, uint64(5), preResetHt["ledger1"])
 	h = env.newTestHelperOpenLgr("ledger1", t)
 	h.verifyLedgerHeight(1)
 
 	// recommit blocks
-	assert.NoError(t, h.lgr.CommitLegacy(blk1, &ledger.CommitOptions{}))
-	assert.NoError(t, h.lgr.CommitLegacy(blk2, &ledger.CommitOptions{}))
+	require.NoError(t, h.lgr.CommitLegacy(blk1, &ledger.CommitOptions{}))
+	require.NoError(t, h.lgr.CommitLegacy(blk2, &ledger.CommitOptions{}))
 	// After the recommit of block 2
 	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
 	h.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
-	assert.NoError(t, h.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
-	assert.NoError(t, h.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
+	require.NoError(t, h.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
+	require.NoError(t, h.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
 
 	// after the recommit of block 4
 	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
@@ -173,18 +198,20 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	// Reset All kv ledgers
 	blockstorePath := kvledger.BlockStorePath(env.initializer.Config.RootFSPath)
 	err := fsblkstorage.ResetBlockStore(blockstorePath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB
 	env.verifyRebuilablesExist(rebuildable)
 	rebuildable = rebuildableBlockIndex
 	env.verifyRebuilableDoesNotExist(rebuildable)
 	env.initLedgerMgmt()
-	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath)
+	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, []string{"ledger-1"})
 	t.Logf("preResetHt = %#v", preResetHt)
+	require.NoError(t, err)
+	require.Equal(t, uint64(9), preResetHt["ledger-1"])
 	_, err = env.ledgerMgr.OpenLedger("ledger-1")
-	assert.Error(t, err)
+	require.Error(t, err)
 	// populateLedger() stores 8 block in total
-	assert.EqualError(t, err, "the state database [height=9] is ahead of the block store [height=1]. "+
+	require.EqualError(t, err, "the state database [height=9] is ahead of the block store [height=1]. "+
 		"This is possible when the state database is not dropped after a ledger reset/rollback. "+
 		"The state database can safely be dropped and will be rebuilt up to block store height upon the next peer start.")
 }
