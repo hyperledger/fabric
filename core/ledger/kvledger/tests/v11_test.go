@@ -13,6 +13,8 @@ import (
 
 	protopeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,8 +27,19 @@ func TestV11(t *testing.T) {
 
 	blkIndexPath := fmt.Sprintf("%s/chains/index", env.initializer.Config.RootFSPath)
 	historyDBPath := fmt.Sprintf("%s/historyLeveldb", env.initializer.Config.RootFSPath)
+	idStorePath := kvledger.LedgerProviderPath(env.initializer.Config.RootFSPath)
 
-	// initialize ledger causes a panic because blkstore-index data is in 1.1 format
+	// initialize ledger causes a panic because idStore has old format
+	assert.PanicsWithValue(
+		t,
+		fmt.Sprintf("Error in instantiating ledger provider: unexpected format. db path = [%s], data format = [], expected format = [2.0]",
+			idStorePath),
+		func() { env.initLedgerMgmt() },
+	)
+
+	// upgrade idStore format to new format.
+	require.NoError(t, kvledger.UpgradeIDStoreFormat(env.initializer.Config.RootFSPath))
+	// This time, initialize ledger causes a panic because blkstore-index data is in 1.1 format
 	require.PanicsWithValue(
 		t,
 		fmt.Sprintf("Error in instantiating ledger provider: unexpected format. db path = [%s], data format = [], expected format = [2.0]",

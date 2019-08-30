@@ -77,7 +77,8 @@ func (dbInst *DB) Open() {
 	dbInst.dbState = opened
 }
 
-func (dbInst *DB) isEmpty() (bool, error) {
+// IsEmpty returns whether or not a database is empty
+func (dbInst *DB) IsEmpty() (bool, error) {
 	itr := dbInst.db.NewIterator(&goleveldbutil.Range{}, dbInst.readOpts)
 	defer itr.Release()
 	hasItems := itr.Next()

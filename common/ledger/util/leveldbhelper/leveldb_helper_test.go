@@ -49,9 +49,9 @@ func TestLevelDBHelper(t *testing.T) {
 	db.Open()
 	// second time open should not have any side effect
 	db.Open()
-	isEmpty, err := db.isEmpty()
+	IsEmpty, err := db.IsEmpty()
 	assert.NoError(t, err)
-	assert.True(t, isEmpty)
+	assert.True(t, IsEmpty)
 	db.Put([]byte("key1"), []byte("value1"), false)
 	db.Put([]byte("key2"), []byte("value2"), true)
 	db.Put([]byte("key3"), []byte("value3"), true)
@@ -74,16 +74,16 @@ func TestLevelDBHelper(t *testing.T) {
 	// second time Close should not have any side effect
 	db.Close()
 
-	_, err = db.isEmpty()
+	_, err = db.IsEmpty()
 	require.Error(t, err)
 
 	val3, err3 := db.Get([]byte("key3"))
 	assert.Error(t, err3)
 
 	db.Open()
-	isEmpty, err = db.isEmpty()
+	IsEmpty, err = db.IsEmpty()
 	assert.NoError(t, err)
-	assert.False(t, isEmpty)
+	assert.False(t, IsEmpty)
 
 	batch := &leveldb.Batch{}
 	batch.Put([]byte("key1"), []byte("value1"))
