@@ -205,11 +205,9 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 	build := filepath.Join(b.Location, "bin", "build")
 	cmd := NewCommand(
 		build,
-		"--package-id", buildContext.CCID,
-		"--path", buildContext.Metadata.Path,
-		"--type", buildContext.Metadata.Type,
-		"--source", buildContext.SourceDir,
-		"--output", buildContext.OutputDir,
+		buildContext.SourceDir,
+		buildContext.MetadataDir,
+		buildContext.OutputDir,
 	)
 
 	err := RunCommand(b.Logger, cmd)
