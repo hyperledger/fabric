@@ -106,14 +106,14 @@ const issueResponse = await contract.submitTransaction('issue', 'MagnetoCorp', '
 ```
 
 See how the application accesses the smart contract with the
-`contract.getContract()` method. The `papercontract` chaincode name
+`network.getContract()` method. The `papercontract` chaincode name
 `org.papernet.commercialpaper` returns a `contract` reference which can be
 used to submit transactions to issue commercial paper with the
 `contract.submitTransaction()` API.
 
 ## Default contract
 
-The first smart contract defined in a chaincode is the called the *default*
+The first smart contract defined in a chaincode is called the *default*
 smart contract. A default is helpful because a chaincode will usually have one
 smart contract defined within it; a default allows the application to access
 those transactions directly -- without specifying a contract name.
