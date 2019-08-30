@@ -113,13 +113,6 @@ var _ = Describe("Externalbuilders", func() {
 					Expect(err).To(MatchError("no builders defined"))
 				})
 			})
-
-			Context("when no builder can be found", func() {
-				It("returns an error", func() {
-					_, err := detector.Build("unsupported", md, codePackage)
-					Expect(err).To(MatchError("no builder found"))
-				})
-			})
 		})
 	})
 
@@ -149,9 +142,15 @@ var _ = Describe("Externalbuilders", func() {
 				Expect(result).To(BeTrue())
 			})
 
-			Context("when the builder does not support the package", func() {
+			Context("when the detector exits with a non-zero status", func() {
 				BeforeEach(func() {
-					buildContext.CCID = "unsupported-package-id"
+					md.Type = "foo"
+
+					var err error
+					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
+					Expect(err).NotTo(HaveOccurred())
+					buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("returns false", func() {
