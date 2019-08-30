@@ -18,19 +18,14 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	vi "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	vp "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
-	"github.com/hyperledger/fabric/core/handlers/validation/builtin/internal/car"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
-	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -541,18 +536,10 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("VSCC error: invocation of lscc(%s) does not have appropriate arguments", lsccFunc))
 		}
 
-		err = packaging.NewRegistry(
-			// XXX We should definitely _not_ have this external dependency in VSCC
-			// as adding a platform could cause non-determinism.  This is yet another
-			// reason why all of this custom LSCC validation at commit time has no
-			// long term hope of staying deterministic and needs to be removed.
-			&golang.Platform{},
-			&node.Platform{},
-			&java.Platform{},
-			&car.Platform{},
-		).ValidateDeploymentSpec(cdsArgs.ChaincodeSpec.Type.String(), cdsArgs.CodePackage)
-		if err != nil {
-			return policyErr(fmt.Errorf("failed to validate deployment spec: %s", err))
+		switch cdsArgs.ChaincodeSpec.Type.String() {
+		case "GOLANG", "NODE", "JAVA", "CAR":
+		default:
+			return policyErr(fmt.Errorf("unexpected chaincode spec type: %s", cdsArgs.ChaincodeSpec.Type.String()))
 		}
 
 		// validate chaincode name
