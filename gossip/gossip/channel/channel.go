@@ -298,7 +298,9 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 }
 
 func (gc *gossipChannel) reportMembershipChanges(input ...interface{}) {
-	gc.logger.Info(input...)
+	args := []interface{}{fmt.Sprintf("[%s]", string(gc.chainID))}
+	args = append(args, input...)
+	gc.logger.Info(args)
 }
 
 // Stop stop the channel operations
