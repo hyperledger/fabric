@@ -15,29 +15,37 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
-	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter/mock"
+	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+//go:generate counterfeiter -o mocks/configtx_validator.go --fake-name ConfigTXValidator . configtxValidator
+
+type configtxValidator interface {
+	configtx.Validator
+}
+
 type mockBlockWriterSupport struct {
-	*mockconfigtx.Validator
+	*mocks.ConfigTXValidator
 	identity.SignerSerializer
 	blockledger.ReadWriter
 	fakeConfig *mock.OrdererConfig
 	bccsp      bccsp.BCCSP
+	sequence   uint64
 }
 
 func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {
-	mbws.Validator.SequenceVal++
+	return
 }
 
 func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error) {
@@ -72,9 +80,9 @@ func TestBlockSignature(t *testing.T) {
 	bw := &BlockWriter{
 		lastConfigBlockNum: 42,
 		support: &mockBlockWriterSupport{
-			SignerSerializer: mockCrypto(),
-			Validator:        &mockconfigtx.Validator{},
-			ReadWriter:       l,
+			SignerSerializer:  mockCrypto(),
+			ConfigTXValidator: &mocks.ConfigTXValidator{},
+			ReadWriter:        l,
 		},
 		lastBlock: protoutil.NewBlock(1, protoutil.BlockHeaderHash(lastBlock.Header)),
 	}
@@ -103,12 +111,12 @@ func TestBlockLastConfig(t *testing.T) {
 	newConfigSeq := lastConfigSeq + 1
 	newBlockNum := uint64(9)
 
+	mockValidator := &mocks.ConfigTXValidator{}
+	mockValidator.SequenceReturns(newConfigSeq)
 	bw := &BlockWriter{
 		support: &mockBlockWriterSupport{
-			SignerSerializer: mockCrypto(),
-			Validator: &mockconfigtx.Validator{
-				SequenceVal: newConfigSeq,
-			},
+			SignerSerializer:  mockCrypto(),
+			ConfigTXValidator: mockValidator,
 		},
 		lastConfigSeq: lastConfigSeq,
 	}
@@ -202,13 +210,16 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
+
+	mockValidator := &mocks.ConfigTXValidator{}
+	mockValidator.ChannelIDReturns(genesisconfig.TestChainID)
 	bw := newBlockWriter(genesisBlockSys, nil,
 		&mockBlockWriterSupport{
-			SignerSerializer: mockCrypto(),
-			ReadWriter:       l,
-			Validator:        &mockconfigtx.Validator{ChannelIDVal: genesisconfig.TestChainID},
-			fakeConfig:       fakeConfig,
-			bccsp:            cryptoProvider,
+			SignerSerializer:  mockCrypto(),
+			ReadWriter:        l,
+			ConfigTXValidator: mockValidator,
+			fakeConfig:        fakeConfig,
+			bccsp:             cryptoProvider,
 		},
 	)
 
@@ -242,13 +253,16 @@ func TestMigrationWriteConfig(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
+
+	mockValidator := &mocks.ConfigTXValidator{}
+	mockValidator.ChannelIDReturns(genesisconfig.TestChainID)
 	bw := newBlockWriter(genesisBlockSys, nil,
 		&mockBlockWriterSupport{
-			SignerSerializer: mockCrypto(),
-			ReadWriter:       l,
-			Validator:        &mockconfigtx.Validator{ChannelIDVal: genesisconfig.TestChainID},
-			fakeConfig:       fakeConfig,
-			bccsp:            cryptoProvider,
+			SignerSerializer:  mockCrypto(),
+			ReadWriter:        l,
+			ConfigTXValidator: mockValidator,
+			fakeConfig:        fakeConfig,
+			bccsp:             cryptoProvider,
 		},
 	)
 
@@ -281,13 +295,15 @@ func TestRaceWriteConfig(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
+
+	mockValidator := &mocks.ConfigTXValidator{}
 	bw := newBlockWriter(genesisBlockSys, nil,
 		&mockBlockWriterSupport{
-			SignerSerializer: mockCrypto(),
-			ReadWriter:       l,
-			Validator:        &mockconfigtx.Validator{},
-			fakeConfig:       fakeConfig,
-			bccsp:            cryptoProvider,
+			SignerSerializer:  mockCrypto(),
+			ReadWriter:        l,
+			ConfigTXValidator: mockValidator,
+			fakeConfig:        fakeConfig,
+			bccsp:             cryptoProvider,
 		},
 	)
 
@@ -295,11 +311,13 @@ func TestRaceWriteConfig(t *testing.T) {
 	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
 	block1.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata1 := []byte("foo")
+	mockValidator.SequenceReturnsOnCall(1, 1)
 
 	ctx = makeConfigTxFull(genesisconfig.TestChainID, 1)
 	block2 := protoutil.NewBlock(2, protoutil.BlockHeaderHash(block1.Header))
 	block2.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata2 := []byte("bar")
+	mockValidator.SequenceReturnsOnCall(2, 2)
 
 	bw.WriteConfigBlock(block1, consenterMetadata1)
 	bw.WriteConfigBlock(block2, consenterMetadata2)

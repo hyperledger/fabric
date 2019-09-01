@@ -9,7 +9,6 @@ package multichannel
 import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
@@ -20,10 +19,10 @@ import (
 // Whenever a block is written, it writes to the Batches channel to allow for synchronization
 type ConsenterSupport struct {
 	// SharedConfigVal is the value returned by SharedConfig()
-	SharedConfigVal *mockconfig.Orderer
+	SharedConfigVal channelconfig.Orderer
 
-	// SharedConfigVal is the value returned by ChannelConfig()
-	ChannelConfigVal *mockconfig.Channel
+	// ChannelConfigVal is the value returned by ChannelConfig()
+	ChannelConfigVal channelconfig.Channel
 
 	// BlockCutterVal is the value returned by BlockCutter()
 	BlockCutterVal *mockblockcutter.Receiver

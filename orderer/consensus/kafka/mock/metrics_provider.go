@@ -2,9 +2,9 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	metrics "github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/metrics"
 )
 
 type MetricsProvider struct {

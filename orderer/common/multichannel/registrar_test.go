@@ -12,11 +12,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
@@ -29,6 +29,36 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o mocks/resources.go --fake-name Resources . resources
+
+type resources interface {
+	channelconfig.Resources
+}
+
+//go:generate counterfeiter -o mocks/orderer_config.go --fake-name OrdererConfig . ordererConfig
+
+type ordererConfig interface {
+	channelconfig.Orderer
+}
+
+//go:generate counterfeiter -o mocks/orderer_capabilities.go --fake-name OrdererCapabilities . ordererCapabilities
+
+type ordererCapabilities interface {
+	channelconfig.OrdererCapabilities
+}
+
+//go:generate counterfeiter -o mocks/channel_config.go --fake-name ChannelConfig . channelConfig
+
+type channelConfig interface {
+	channelconfig.Channel
+}
+
+//go:generate counterfeiter -o mocks/channel_capabilities.go --fake-name ChannelCapabilities . channelCapabilities
+
+type channelCapabilities interface {
+	channelconfig.ChannelCapabilities
+}
 
 //go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
 
@@ -312,65 +342,57 @@ func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumbe
 }
 
 func TestResourcesCheck(t *testing.T) {
-	t.Run("GoodResources", func(t *testing.T) {
-		err := checkResources(&mockchannelconfig.Resources{
-			PolicyManagerVal: &mockpolicies.Manager{},
-			OrdererConfigVal: &mockchannelconfig.Orderer{
-				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{},
-			},
-			ChannelConfigVal: &mockchannelconfig.Channel{
-				CapabilitiesVal: &mockchannelconfig.ChannelCapabilities{},
-			},
-		})
+	mockOrderer := &mocks.OrdererConfig{}
+	mockOrdererCaps := &mocks.OrdererCapabilities{}
+	mockOrderer.CapabilitiesReturns(mockOrdererCaps)
+	mockChannel := &mocks.ChannelConfig{}
+	mockChannelCaps := &mocks.ChannelCapabilities{}
+	mockChannel.CapabilitiesReturns(mockChannelCaps)
 
+	mockResources := &mocks.Resources{}
+	mockResources.PolicyManagerReturns(&policies.ManagerImpl{})
+
+	t.Run("GoodResources", func(t *testing.T) {
+		mockResources.OrdererConfigReturns(mockOrderer, true)
+		mockResources.ChannelConfigReturns(mockChannel)
+
+		err := checkResources(mockResources)
 		assert.NoError(t, err)
 	})
 
 	t.Run("MissingOrdererConfigPanic", func(t *testing.T) {
-		err := checkResources(&mockchannelconfig.Resources{
-			PolicyManagerVal: &mockpolicies.Manager{},
-		})
+		mockResources.OrdererConfigReturns(nil, false)
 
+		err := checkResources(mockResources)
 		assert.Error(t, err)
 		assert.Regexp(t, "config does not contain orderer config", err.Error())
 	})
 
 	t.Run("MissingOrdererCapability", func(t *testing.T) {
-		err := checkResources(&mockchannelconfig.Resources{
-			PolicyManagerVal: &mockpolicies.Manager{},
-			OrdererConfigVal: &mockchannelconfig.Orderer{
-				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{
-					SupportedErr: errors.New("An error"),
-				},
-			},
-		})
+		mockResources.OrdererConfigReturns(mockOrderer, true)
+		mockOrdererCaps.SupportedReturns(errors.New("An error"))
 
+		err := checkResources(mockResources)
 		assert.Error(t, err)
 		assert.Regexp(t, "config requires unsupported orderer capabilities:", err.Error())
+
+		// reset
+		mockOrdererCaps.SupportedReturns(nil)
 	})
 
 	t.Run("MissingChannelCapability", func(t *testing.T) {
-		err := checkResources(&mockchannelconfig.Resources{
-			PolicyManagerVal: &mockpolicies.Manager{},
-			OrdererConfigVal: &mockchannelconfig.Orderer{
-				CapabilitiesVal: &mockchannelconfig.OrdererCapabilities{},
-			},
-			ChannelConfigVal: &mockchannelconfig.Channel{
-				CapabilitiesVal: &mockchannelconfig.ChannelCapabilities{
-					SupportedErr: errors.New("An error"),
-				},
-			},
-		})
+		mockChannelCaps.SupportedReturns(errors.New("An error"))
 
+		err := checkResources(mockResources)
 		assert.Error(t, err)
 		assert.Regexp(t, "config requires unsupported channel capabilities:", err.Error())
 	})
 
 	t.Run("MissingOrdererConfigPanic", func(t *testing.T) {
+		mockResources.OrdererConfigReturns(nil, false)
+
 		assert.Panics(t, func() {
-			checkResourcesOrPanic(&mockchannelconfig.Resources{
-				PolicyManagerVal: &mockpolicies.Manager{},
-			})
+			checkResourcesOrPanic(mockResources)
 		})
 	})
 }

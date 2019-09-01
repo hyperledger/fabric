@@ -17,9 +17,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	clustermocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
@@ -34,6 +34,18 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+//go:generate counterfeiter -o mocks/orderer_capabilities.go --fake-name OrdererCapabilities . ordererCapabilities
+
+type ordererCapabilities interface {
+	channelconfig.OrdererCapabilities
+}
+
+//go:generate counterfeiter -o mocks/orderer_config.go --fake-name OrdererConfig . ordererConfig
+
+type ordererConfig interface {
+	channelconfig.Orderer
+}
 
 var _ = Describe("Consenter", func() {
 	var (
@@ -159,10 +171,14 @@ var _ = Describe("Consenter", func() {
 			},
 		}
 		metadata := protoutil.MarshalOrPanic(m)
-		support.SharedConfigReturns(&mockconfig.Orderer{
-			ConsensusMetadataVal: metadata,
-			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
-		})
+		mockOrderer := &mocks.OrdererConfig{}
+		mockOrderer.ConsensusMetadataReturns(metadata)
+		mockOrderer.BatchSizeReturns(
+			&orderer.BatchSize{
+				PreferredMaxBytes: 2 * 1024 * 1024,
+			},
+		)
+		support.SharedConfigReturns(mockOrderer)
 
 		consenter := newConsenter(chainGetter)
 		consenter.EtcdRaftConfig.WALDir = walDir
@@ -199,10 +215,14 @@ var _ = Describe("Consenter", func() {
 		}
 		metadata := protoutil.MarshalOrPanic(m)
 		support := &consensusmocks.FakeConsenterSupport{}
-		support.SharedConfigReturns(&mockconfig.Orderer{
-			ConsensusMetadataVal: metadata,
-			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
-		})
+		mockOrderer := &mocks.OrdererConfig{}
+		mockOrderer.ConsensusMetadataReturns(metadata)
+		mockOrderer.BatchSizeReturns(
+			&orderer.BatchSize{
+				PreferredMaxBytes: 2 * 1024 * 1024,
+			},
+		)
+		support.SharedConfigReturns(mockOrderer)
 		support.ChainIDReturns("foo")
 
 		consenter := newConsenter(chainGetter)
@@ -221,10 +241,14 @@ var _ = Describe("Consenter", func() {
 			},
 		}
 		metadata := protoutil.MarshalOrPanic(m)
-		support.SharedConfigReturns(&mockconfig.Orderer{
-			ConsensusMetadataVal: metadata,
-			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
-		})
+		mockOrderer := &mocks.OrdererConfig{}
+		mockOrderer.ConsensusMetadataReturns(metadata)
+		mockOrderer.BatchSizeReturns(
+			&orderer.BatchSize{
+				PreferredMaxBytes: 2 * 1024 * 1024,
+			},
+		)
+		support.SharedConfigReturns(mockOrderer)
 
 		consenter := newConsenter(chainGetter)
 
@@ -246,11 +270,15 @@ var _ = Describe("Consenter", func() {
 			},
 		}
 		metadata := protoutil.MarshalOrPanic(m)
-		support.SharedConfigReturns(&mockconfig.Orderer{
-			ConsensusMetadataVal: metadata,
-			CapabilitiesVal:      &mockconfig.OrdererCapabilities{},
-			BatchSizeVal:         &orderer.BatchSize{PreferredMaxBytes: 2 * 1024 * 1024},
-		})
+		mockOrderer := &mocks.OrdererConfig{}
+		mockOrderer.ConsensusMetadataReturns(metadata)
+		mockOrderer.BatchSizeReturns(
+			&orderer.BatchSize{
+				PreferredMaxBytes: 2 * 1024 * 1024,
+			},
+		)
+		mockOrderer.CapabilitiesReturns(&mocks.OrdererCapabilities{})
+		support.SharedConfigReturns(mockOrderer)
 
 		consenter := newConsenter(chainGetter)
 

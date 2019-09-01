@@ -20,7 +20,6 @@ import (
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	mockkafka "github.com/hyperledger/fabric/orderer/consensus/kafka/mock"
@@ -32,6 +31,42 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+//go:generate counterfeiter -o mock/orderer_capabilities.go --fake-name OrdererCapabilities . ordererCapabilities
+
+type ordererCapabilities interface {
+	channelconfig.OrdererCapabilities
+}
+
+//go:generate counterfeiter -o mock/channel_capabilities.go --fake-name ChannelCapabilities . channelCapabilities
+
+type channelCapabilities interface {
+	channelconfig.ChannelCapabilities
+}
+
+//go:generate counterfeiter -o mock/channel_config.go --fake-name ChannelConfig . channelConfig
+
+type channelConfig interface {
+	channelconfig.Channel
+}
+
+func newMockOrderer(batchTimeout time.Duration, brokers []string, resubmission bool) *mockkafka.OrdererConfig {
+	mockCapabilities := &mockkafka.OrdererCapabilities{}
+	mockCapabilities.ResubmissionReturns(resubmission)
+	mockOrderer := &mockkafka.OrdererConfig{}
+	mockOrderer.CapabilitiesReturns(mockCapabilities)
+	mockOrderer.BatchTimeoutReturns(batchTimeout)
+	mockOrderer.KafkaBrokersReturns(brokers)
+	return mockOrderer
+}
+
+func newMockChannel() *mockkafka.ChannelConfig {
+	mockCapabilities := &mockkafka.ChannelCapabilities{}
+	mockCapabilities.ConsensusTypeMigrationReturns(false)
+	mockChannel := &mockkafka.ChannelConfig{}
+	mockChannel.CapabilitiesReturns(mockCapabilities)
+	return mockChannel
+}
 
 var (
 	extraShortTimeout = 1 * time.Millisecond
@@ -66,13 +101,10 @@ func TestChain(t *testing.T) {
 				SetMessage(mockChannel.topic(), mockChannel.partition(), newestOffset, message),
 		})
 		mockSupport = &mockmultichannel.ConsenterSupport{
-			ChannelIDVal:    mockChannel.topic(),
-			HeightVal:       uint64(3),
-			SharedConfigVal: &mockconfig.Orderer{KafkaBrokersVal: []string{mockBroker.Addr()}},
-			ChannelConfigVal: &mockconfig.Channel{
-				CapabilitiesVal: &mockconfig.ChannelCapabilities{
-					ConsensusTypeMigrationVal: false},
-			},
+			ChannelIDVal:     mockChannel.topic(),
+			HeightVal:        uint64(3),
+			SharedConfigVal:  newMockOrderer(0, []string{mockBroker.Addr()}, false),
+			ChannelConfigVal: newMockChannel(),
 		}
 		return
 	}
@@ -185,7 +217,7 @@ func TestChain(t *testing.T) {
 		defer func() { mockBroker.Close() }()
 		// Point to an empty brokers list
 		mockSupportCopy := *mockSupport
-		mockSupportCopy.SharedConfigVal = &mockconfig.Orderer{KafkaBrokersVal: []string{}}
+		mockSupportCopy.SharedConfigVal = newMockOrderer(longTimeout, []string{}, false)
 
 		chain, _ := newChain(mockConsenter, &mockSupportCopy, newestOffset-1, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 
@@ -995,7 +1027,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				BlockCutterVal:  mockblockcutter.NewReceiver(),
 				ChannelIDVal:    mockChannel.topic(),
 				HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{BatchTimeoutVal: shortTimeout / 2},
+				SharedConfigVal: newMockOrderer(shortTimeout/2, []string{mockBroker.Addr()}, false),
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1367,13 +1399,11 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-					},
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1423,13 +1453,11 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-					},
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1496,13 +1524,11 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-					},
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1585,9 +1611,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
 					ClassifyMsgVal:      msgprocessor.ConfigMsg,
 					ProcessConfigMsgErr: fmt.Errorf("Invalid config message"),
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-					},
+					SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1641,9 +1665,7 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 					HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
 					ClassifyMsgVal:      msgprocessor.ConfigMsg,
 					ProcessConfigMsgErr: fmt.Errorf("Invalid config message"),
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-					},
+					SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1691,13 +1713,11 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-					},
+					Blocks:              make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:      mockblockcutter.NewReceiver(),
+					ChannelIDVal:        mockChannel.topic(),
+					HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 					ProcessNormalMsgErr: fmt.Errorf("Invalid normal message"),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
@@ -1742,14 +1762,12 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-					},
-					ClassifyMsgVal: msgprocessor.ConfigMsg,
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
+					ClassifyMsgVal:  msgprocessor.ConfigMsg,
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1805,14 +1823,12 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-					},
-					ClassifyMsgVal: msgprocessor.ConfigUpdateMsg,
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
+					ClassifyMsgVal:  msgprocessor.ConfigUpdateMsg,
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1863,13 +1879,11 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: extraShortTimeout, // ATTN
-					},
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber,                                                    // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(extraShortTimeout, []string{mockBroker.Addr()}, false), // ATTN
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -1939,13 +1953,11 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: extraShortTimeout, // ATTN
-					},
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber,                                                    // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(extraShortTimeout, []string{mockBroker.Addr()}, false), // ATTN
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2010,17 +2022,12 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-						CapabilitiesVal: &mockconfig.OrdererCapabilities{
-							ResubmissionVal: false,
-						},
-					},
-					SequenceVal: uint64(0),
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
+					SequenceVal:     uint64(0),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2100,16 +2107,11 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-						CapabilitiesVal: &mockconfig.OrdererCapabilities{
-							ResubmissionVal: false,
-						},
-					},
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2164,16 +2166,11 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-						CapabilitiesVal: &mockconfig.OrdererCapabilities{
-							ResubmissionVal: false,
-						},
-					},
+					Blocks:          make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:  mockblockcutter.NewReceiver(),
+					ChannelIDVal:    mockChannel.topic(),
+					HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+					SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 				}
 				defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2258,17 +2255,12 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 				lastCutBlockNumber := uint64(3)
 
 				mockSupport := &mockmultichannel.ConsenterSupport{
-					Blocks:         make(chan *cb.Block), // WriteBlock will post here
-					BlockCutterVal: mockblockcutter.NewReceiver(),
-					ChannelIDVal:   mockChannel.topic(),
-					HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-					ClassifyMsgVal: msgprocessor.ConfigMsg,
-					SharedConfigVal: &mockconfig.Orderer{
-						BatchTimeoutVal: longTimeout,
-						CapabilitiesVal: &mockconfig.OrdererCapabilities{
-							ResubmissionVal: false,
-						},
-					},
+					Blocks:              make(chan *cb.Block), // WriteBlock will post here
+					BlockCutterVal:      mockblockcutter.NewReceiver(),
+					ChannelIDVal:        mockChannel.topic(),
+					HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
+					ClassifyMsgVal:      msgprocessor.ConfigMsg,
+					SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, false),
 					SequenceVal:         uint64(1),
 					ProcessConfigMsgErr: fmt.Errorf("Invalid config message"),
 				}
@@ -2517,16 +2509,11 @@ func TestResubmission(t *testing.T) {
 			lastOriginalOffsetProcessed := int64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
+				Blocks:          make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:  mockblockcutter.NewReceiver(),
+				ChannelIDVal:    mockChannel.topic(),
+				HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2591,17 +2578,12 @@ func TestResubmission(t *testing.T) {
 			lastOriginalOffsetProcessed := int64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
-				SequenceVal: uint64(0),
+				Blocks:          make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:  mockblockcutter.NewReceiver(),
+				ChannelIDVal:    mockChannel.topic(),
+				HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
+				SequenceVal:     uint64(0),
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2673,16 +2655,11 @@ func TestResubmission(t *testing.T) {
 			lastCutBlockNumber := uint64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
+				Blocks:              make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:      mockblockcutter.NewReceiver(),
+				ChannelIDVal:        mockChannel.topic(),
+				HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
 				SequenceVal:         uint64(1),
 				ProcessNormalMsgErr: fmt.Errorf("Invalid normal message"),
 			}
@@ -2751,18 +2728,13 @@ func TestResubmission(t *testing.T) {
 			lastCutBlockNumber := uint64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
-				SequenceVal:  uint64(1),
-				ConfigSeqVal: uint64(1),
+				Blocks:          make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:  mockblockcutter.NewReceiver(),
+				ChannelIDVal:    mockChannel.topic(),
+				HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
+				SequenceVal:     uint64(1),
+				ConfigSeqVal:    uint64(1),
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2884,16 +2856,11 @@ func TestResubmission(t *testing.T) {
 			lastOriginalOffsetProcessed := int64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
+				Blocks:          make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:  mockblockcutter.NewReceiver(),
+				ChannelIDVal:    mockChannel.topic(),
+				HeightVal:       lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal: newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
 			}
 			defer close(mockSupport.BlockCutterVal.Block)
 
@@ -2955,16 +2922,11 @@ func TestResubmission(t *testing.T) {
 			lastCutBlockNumber := uint64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
+				Blocks:              make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:      mockblockcutter.NewReceiver(),
+				ChannelIDVal:        mockChannel.topic(),
+				HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
 				SequenceVal:         uint64(1),
 				ConfigSeqVal:        uint64(1),
 				ProcessConfigMsgVal: newMockConfigEnvelope(),
@@ -3063,20 +3025,12 @@ func TestResubmission(t *testing.T) {
 			lastOriginalOffsetProcessed := int64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
-				ChannelConfigVal: &mockconfig.Channel{
-					CapabilitiesVal: &mockconfig.ChannelCapabilities{
-						ConsensusTypeMigrationVal: false},
-				},
+				Blocks:              make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:      mockblockcutter.NewReceiver(),
+				ChannelIDVal:        mockChannel.topic(),
+				HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
+				ChannelConfigVal:    newMockChannel(),
 				SequenceVal:         uint64(2),
 				ProcessConfigMsgVal: newMockConfigEnvelope(),
 			}
@@ -3146,16 +3100,11 @@ func TestResubmission(t *testing.T) {
 			lastCutBlockNumber := uint64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
+				Blocks:              make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:      mockblockcutter.NewReceiver(),
+				ChannelIDVal:        mockChannel.topic(),
+				HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
 				SequenceVal:         uint64(1),
 				ProcessConfigMsgErr: fmt.Errorf("Invalid config message"),
 			}
@@ -3224,20 +3173,12 @@ func TestResubmission(t *testing.T) {
 			lastCutBlockNumber := uint64(3)
 
 			mockSupport := &mockmultichannel.ConsenterSupport{
-				Blocks:         make(chan *cb.Block), // WriteBlock will post here
-				BlockCutterVal: mockblockcutter.NewReceiver(),
-				ChannelIDVal:   mockChannel.topic(),
-				HeightVal:      lastCutBlockNumber, // Incremented during the WriteBlock call
-				SharedConfigVal: &mockconfig.Orderer{
-					BatchTimeoutVal: longTimeout,
-					CapabilitiesVal: &mockconfig.OrdererCapabilities{
-						ResubmissionVal: true,
-					},
-				},
-				ChannelConfigVal: &mockconfig.Channel{
-					CapabilitiesVal: &mockconfig.ChannelCapabilities{
-						ConsensusTypeMigrationVal: false},
-				},
+				Blocks:              make(chan *cb.Block), // WriteBlock will post here
+				BlockCutterVal:      mockblockcutter.NewReceiver(),
+				ChannelIDVal:        mockChannel.topic(),
+				HeightVal:           lastCutBlockNumber, // Incremented during the WriteBlock call
+				SharedConfigVal:     newMockOrderer(longTimeout, []string{mockBroker.Addr()}, true),
+				ChannelConfigVal:    newMockChannel(),
 				SequenceVal:         uint64(1),
 				ConfigSeqVal:        uint64(1),
 				ProcessConfigMsgVal: newMockConfigEnvelope(),
@@ -3440,7 +3381,7 @@ func TestDeliverSession(t *testing.T) {
 		support.On("Height").Return(uint64(height))
 		support.On("ChannelID").Return(topic)
 		support.On("Sequence").Return(uint64(0))
-		support.On("SharedConfig").Return(&mockconfig.Orderer{KafkaBrokersVal: []string{broker0.Addr()}})
+		support.On("SharedConfig").Return(newMockOrderer(0, []string{broker0.Addr()}, false))
 		support.On("ClassifyMsg", mock.Anything).Return(msgprocessor.NormalMsg, nil)
 		support.On("ProcessNormalMsg", mock.Anything).Return(uint64(0), nil)
 		support.On("BlockCutter").Return(blockcutter)

@@ -2,9 +2,9 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	sarama "github.com/Shopify/sarama"
+	"github.com/Shopify/sarama"
 )
 
 type SyncProducer struct {
