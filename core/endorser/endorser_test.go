@@ -57,6 +57,7 @@ var _ = Describe("Endorser", func() {
 
 		chaincodeResponse *pb.Response
 		chaincodeEvent    *pb.ChaincodeEvent
+		chaincodeInput    *pb.ChaincodeInput
 
 		e *endorser.Endorser
 	)
@@ -98,6 +99,9 @@ var _ = Describe("Endorser", func() {
 
 		channelID = "channel-id"
 		chaincodeName = "chaincode-name"
+		chaincodeInput = &pb.ChaincodeInput{
+			Args: [][]byte{[]byte("arg1"), []byte("arg2"), []byte("arg3")},
+		}
 
 		chaincodeResponse = &pb.Response{
 			Status:  200,
@@ -188,9 +192,7 @@ var _ = Describe("Endorser", func() {
 				Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
 					Input: protoutil.MarshalOrPanic(&pb.ChaincodeInvocationSpec{
 						ChaincodeSpec: &pb.ChaincodeSpec{
-							Input: &pb.ChaincodeInput{
-								Args: [][]byte{[]byte("arg1"), []byte("arg2"), []byte("arg3")},
-							},
+							Input: chaincodeInput,
 						},
 					}),
 				}),
@@ -441,6 +443,52 @@ var _ = Describe("Endorser", func() {
 		})
 	})
 
+	Context("when the txid is duplicated", func() {
+		BeforeEach(func() {
+			fakeSupport.GetTransactionByIDReturns(nil, nil)
+		})
+
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).To(MatchError("duplicate transaction found [6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015]. Creator [0a066d73702d6964]"))
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "duplicate transaction found [6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015]. Creator [0a066d73702d6964]",
+				},
+			}))
+		})
+	})
+
+	Context("when the acl check fails", func() {
+		BeforeEach(func() {
+			fakeSupport.CheckACLReturns(fmt.Errorf("fake-acl-error"))
+		})
+
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).To(MatchError("fake-acl-error"))
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "fake-acl-error",
+				},
+			}))
+		})
+
+		Context("when it's for a system chaincode", func() {
+			BeforeEach(func() {
+				fakeSupport.IsSysCCReturns(true)
+			})
+
+			It("skips the acl check", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response.Status).To(Equal(int32(200)))
+			})
+		})
+	})
+
 	Context("when the chaincode response is >= 500", func() {
 		BeforeEach(func() {
 			chaincodeResponse.Status = 500
@@ -550,6 +598,21 @@ var _ = Describe("Endorser", func() {
 		})
 	})
 
+	Context("when the chaincode definition is not found", func() {
+		BeforeEach(func() {
+			fakeSupport.GetChaincodeDefinitionReturns(nil, fmt.Errorf("fake-definition-error"))
+		})
+
+		It("returns an error in the response", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "make sure the chaincode chaincode-name has been successfully defined on channel channel-id and try again: fake-definition-error",
+			}))
+		})
+	})
+
 	Context("when calling the chaincode returns an error", func() {
 		BeforeEach(func() {
 			fakeSupport.ExecuteReturns(nil, nil, fmt.Errorf("fake-chaincode-execution-error"))
@@ -595,6 +658,125 @@ var _ = Describe("Endorser", func() {
 				Status:  500,
 				Message: "error in simulation: failed to obtain ledger height for channel 'channel-id': fake-block-height-error",
 			}))
+		})
+	})
+
+	Context("when the chaincode response is >= 400 but < 500", func() {
+		BeforeEach(func() {
+			chaincodeResponse.Status = 400
+		})
+
+		It("returns the response with no payload", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Payload).To(BeNil())
+			Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+				Status:  400,
+				Payload: []byte("response-payload"),
+			})).To(BeTrue())
+		})
+	})
+
+	Context("when we're in the degenerate legacy lifecycle case", func() {
+		BeforeEach(func() {
+			chaincodeName = "lscc"
+			chaincodeInput.Args = [][]byte{
+				[]byte("deploy"),
+				nil,
+				protoutil.MarshalOrPanic(&pb.ChaincodeDeploymentSpec{
+					ChaincodeSpec: &pb.ChaincodeSpec{
+						ChaincodeId: &pb.ChaincodeID{
+							Name:    "deploy-name",
+							Version: "deploy-version",
+						},
+						Input: &pb.ChaincodeInput{
+							Args: [][]byte{[]byte("target-arg")},
+						},
+					},
+				}),
+			}
+
+			fakeTxSimulator.GetTxSimulationResultsReturns(
+				&ledger.TxSimulationResults{
+					PubSimulationResults: &rwset.TxReadWriteSet{},
+					// We nil don't return private data in this case because lscc forbids it
+				},
+				nil,
+			)
+		})
+
+		It("triggers the legacy init, and returns the response from lscc", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proto.Equal(proposalResponse.Response, &pb.Response{
+				Status:  200,
+				Payload: []byte("response-payload"),
+			})).To(BeTrue())
+
+			Expect(fakeSupport.ExecuteLegacyInitCallCount()).To(Equal(1))
+			_, name, version, input := fakeSupport.ExecuteLegacyInitArgsForCall(0)
+			Expect(name).To(Equal("deploy-name"))
+			Expect(version).To(Equal("deploy-version"))
+			Expect(input.Args).To(Equal([][]byte{[]byte("target-arg")}))
+		})
+
+		Context("when the simulation uses private data", func() {
+			BeforeEach(func() {
+				fakeTxSimulator.GetTxSimulationResultsReturns(
+					&ledger.TxSimulationResults{
+						PubSimulationResults: &rwset.TxReadWriteSet{},
+						PvtSimulationResults: &rwset.TxPvtReadWriteSet{},
+					},
+					nil,
+				)
+			})
+
+			It("returns an error to the client", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+					Status:  500,
+					Message: "error in simulation: Private data is forbidden to be used in instantiate",
+				}))
+			})
+		})
+
+		Context("when the init fails", func() {
+			BeforeEach(func() {
+				fakeSupport.ExecuteLegacyInitReturns(nil, nil, fmt.Errorf("fake-legacy-init-error"))
+			})
+
+			It("returns an error and increments the metric", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+					Status:  500,
+					Message: "error in simulation: fake-legacy-init-error",
+				}))
+
+				Expect(fakeInitFailed.WithCallCount()).To(Equal(1))
+				Expect(fakeInitFailed.WithArgsForCall(0)).To(Equal([]string{
+					"channel", "channel-id",
+					"chaincode", "deploy-name",
+				}))
+			})
+		})
+
+		Context("when the deploying chaincode is the name of a builtin system chaincode", func() {
+			BeforeEach(func() {
+				fakeSupport.IsSysCCStub = func(name string) bool {
+					return name == "deploy-name"
+				}
+			})
+
+			It("triggers the legacy init, and returns the response from lscc", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+					Status:  500,
+					Message: "error in simulation: attempting to deploy a system chaincode deploy-name/channel-id",
+				}))
+			})
 		})
 	})
 })

@@ -229,6 +229,19 @@ var _ = Describe("UnpackProposal", func() {
 		})
 	})
 
+	Context("when the chaincode proposal payload is invalid", func() {
+		BeforeEach(func() {
+			marshalChaincodeProposalPayload = func() []byte {
+				return []byte("garbage")
+			}
+		})
+
+		It("wraps and returns an error", func() {
+			_, err := endorser.UnpackProposal(signedProposal)
+			Expect(err).To(MatchError("error unmarshaling ChaincodeProposalPayload: proto: can't skip unknown wire type 7"))
+		})
+	})
+
 	Context("when the chaincode id is empty", func() {
 		BeforeEach(func() {
 			chaincodeHeaderExtension.ChaincodeId = nil
@@ -261,6 +274,17 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).To(MatchError("error unmarshaling ChaincodeInvocationSpec: proto: can't skip unknown wire type 7"))
+		})
+	})
+
+	Context("when the chaincode invocation spec is has a nil chaincodespec", func() {
+		BeforeEach(func() {
+			chaincodeInvocationSpec.ChaincodeSpec = nil
+		})
+
+		It("wraps and returns an error", func() {
+			_, err := endorser.UnpackProposal(signedProposal)
+			Expect(err).To(MatchError("chaincode invocation spec did not contain chaincode spec"))
 		})
 	})
 
