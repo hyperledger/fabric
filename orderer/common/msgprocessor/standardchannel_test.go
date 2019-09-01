@@ -13,8 +13,8 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -74,11 +74,8 @@ func TestClassifyMsg(t *testing.T) {
 func TestProcessNormalMsg(t *testing.T) {
 	t.Run("Normal", func(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
-			SequenceVal: 7,
-			OrdererConfigVal: &mockconfig.Orderer{
-				CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-				ConsensusTypeStateVal: orderer.ConsensusType_STATE_NORMAL,
-			},
+			SequenceVal:      7,
+			OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
 		cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessNormalMsg(nil)
 		assert.Equal(t, cs, ms.SequenceVal)
@@ -86,11 +83,8 @@ func TestProcessNormalMsg(t *testing.T) {
 	})
 	t.Run("Maintenance", func(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
-			SequenceVal: 7,
-			OrdererConfigVal: &mockconfig.Orderer{
-				CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-				ConsensusTypeStateVal: orderer.ConsensusType_STATE_MAINTENANCE,
-			},
+			SequenceVal:      7,
+			OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE),
 		}
 		_, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessNormalMsg(nil)
 		assert.EqualError(t, err, "normal transactions are rejected: maintenance mode")
@@ -102,7 +96,7 @@ func TestConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			ProposeConfigUpdateErr: fmt.Errorf("An error"),
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		config, cs, err := NewStandardChannel(ms, NewRuleSet(nil)).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.Nil(t, config)
@@ -113,7 +107,7 @@ func TestConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			ProposeConfigUpdateErr: fmt.Errorf("An error"),
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		config, cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{EmptyRejectRule})).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.Nil(t, config)
@@ -122,7 +116,7 @@ func TestConfigUpdateMsg(t *testing.T) {
 	})
 	t.Run("SignedEnvelopeFailure", func(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
-			OrdererConfigVal: &mockconfig.Orderer{},
+			OrdererConfigVal: &mocks.OrdererConfig{},
 		}
 		config, cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(nil)
 		assert.Nil(t, config)
@@ -134,9 +128,7 @@ func TestConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal: &mockconfig.Orderer{
-				CapabilitiesVal: &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			},
+			OrdererConfigVal:       newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
 		stdChan := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}))
 		stdChan.maintenanceFilter = AcceptRule
@@ -152,7 +144,7 @@ func TestProcessConfigMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal:       &mockconfig.Orderer{},
+			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
 		_, _, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -171,9 +163,7 @@ func TestProcessConfigMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			SequenceVal:            7,
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
-			OrdererConfigVal: &mockconfig.Orderer{
-				CapabilitiesVal: &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			},
+			OrdererConfigVal:       newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
 		stdChan := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}))
 		stdChan.maintenanceFilter = AcceptRule

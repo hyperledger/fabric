@@ -129,7 +129,7 @@ func TestConsensusMetadataValidation(t *testing.T) {
 	}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	mv := &msgprocessormocks.FakeMetadataValidator{}
+	mv := &msgprocessormocks.MetadataValidator{}
 	cs := &ChainSupport{
 		ledgerResources: &ledgerResources{
 			configResources: &configResources{

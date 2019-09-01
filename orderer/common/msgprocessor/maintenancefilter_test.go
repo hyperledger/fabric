@@ -14,23 +14,29 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func newMockOrdererConfig(migration bool, state orderer.ConsensusType_State) *mocks.OrdererConfig {
+	mockOrderer := &mocks.OrdererConfig{}
+	mockCapabilties := &mocks.OrdererCapabilities{}
+	mockCapabilties.ConsensusTypeMigrationReturns(migration)
+	mockOrderer.CapabilitiesReturns(mockCapabilties)
+	mockOrderer.ConsensusTypeReturns("kafka")
+	mockOrderer.ConsensusStateReturns(state)
+	return mockOrderer
+}
+
 func TestMaintenanceNoConfig(t *testing.T) {
 	ms := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			ConsensusTypeVal:      "solo",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_NORMAL,
-		},
+		OrdererConfigVal: &mocks.OrdererConfig{},
 	}
 	mf := NewMaintenanceFilter(ms)
 	require.NotNil(t, mf)
@@ -40,11 +46,7 @@ func TestMaintenanceNoConfig(t *testing.T) {
 
 func TestMaintenanceDisabled(t *testing.T) {
 	msInactive := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: false},
-			ConsensusTypeVal:      "kafka",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_NORMAL,
-		},
+		OrdererConfigVal: newMockOrdererConfig(false, orderer.ConsensusType_STATE_NORMAL),
 	}
 	mf := NewMaintenanceFilter(msInactive)
 	require.NotNil(t, mf)
@@ -75,11 +77,7 @@ func TestMaintenanceDisabled(t *testing.T) {
 
 func TestMaintenanceParseEvelope(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			ConsensusTypeVal:      "kafka",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_NORMAL,
-		},
+		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 	}
 	mf := NewMaintenanceFilter(msActive)
 	require.NotNil(t, mf)
@@ -155,11 +153,7 @@ func TestMaintenanceParseEvelope(t *testing.T) {
 
 func TestMaintenanceInspectEntry(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			ConsensusTypeVal:      "kafka",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_NORMAL,
-		},
+		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 	}
 	mf := NewMaintenanceFilter(msActive)
 	require.NotNil(t, mf)
@@ -192,11 +186,7 @@ func TestMaintenanceInspectEntry(t *testing.T) {
 
 func TestMaintenanceInspectChange(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			ConsensusTypeVal:      "kafka",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_MAINTENANCE,
-		},
+		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE),
 	}
 	mf := NewMaintenanceFilter(msActive)
 	require.NotNil(t, mf)
@@ -246,13 +236,12 @@ func TestMaintenanceInspectChange(t *testing.T) {
 
 func TestMaintenanceInspectExit(t *testing.T) {
 	validMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{})
+	mockOrderer := newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE)
+	mockOrderer.ConsensusTypeReturns("etcdraft")
+	mockOrderer.ConsensusMetadataReturns(validMetadata)
+
 	msActive := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			ConsensusTypeVal:      "etcdraft",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_MAINTENANCE,
-			ConsensusMetadataVal:  validMetadata,
-		},
+		OrdererConfigVal: mockOrderer,
 	}
 	mf := NewMaintenanceFilter(msActive)
 	require.NotNil(t, mf)
@@ -297,11 +286,7 @@ func TestMaintenanceInspectExit(t *testing.T) {
 
 func TestMaintenanceExtra(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			ConsensusTypeVal:      "kafka",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_MAINTENANCE,
-		},
+		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE),
 	}
 	mf := NewMaintenanceFilter(msActive)
 	require.NotNil(t, mf)
@@ -332,11 +317,7 @@ func TestMaintenanceExtra(t *testing.T) {
 
 func TestMaintenanceMissingConsensusType(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
-		OrdererConfigVal: &mockconfig.Orderer{
-			CapabilitiesVal:       &mockconfig.OrdererCapabilities{ConsensusTypeMigrationVal: true},
-			ConsensusTypeVal:      "kafka",
-			ConsensusTypeStateVal: orderer.ConsensusType_STATE_MAINTENANCE,
-		},
+		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE),
 	}
 	mf := NewMaintenanceFilter(msActive)
 	require.NotNil(t, mf)
