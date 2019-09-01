@@ -9,6 +9,7 @@ package api
 import (
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/gossip/common"
 	"google.golang.org/grpc"
 )
@@ -27,7 +28,7 @@ type MessageCryptoService interface {
 	// VerifyBlock returns nil if the block is properly signed, and the claimed seqNum is the
 	// sequence number that the block's header contains.
 	// else returns error
-	VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock []byte) error
+	VerifyBlock(channelID common.ChannelID, seqNum uint64, block *cb.Block) error
 
 	// Sign signs msg with this peer's signing key and outputs
 	// the signature if no error occurred.

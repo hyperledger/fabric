@@ -119,7 +119,7 @@ func (*cryptoServiceMock) GetPKIidOfCert(peerIdentity api.PeerIdentityType) comm
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*cryptoServiceMock) VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock []byte) error {
+func (*cryptoServiceMock) VerifyBlock(channelID common.ChannelID, seqNum uint64, signedBlock *pcomm.Block) error {
 	return nil
 }
 
