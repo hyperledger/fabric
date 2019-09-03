@@ -51,8 +51,8 @@ func TestBlockstoreProviderError(t *testing.T) {
 	}
 	assert.Panics(
 		t,
-		func() { flf.ChainIDs() },
-		"Expected ChainIDs to panic if storage provider cannot list chain IDs")
+		func() { flf.ChannelIDs() },
+		"Expected ChannelIDs to panic if storage provider cannot list channel IDs")
 
 	_, err := flf.GetOrCreate("foo")
 	assert.Error(t, err, "Expected GetOrCreate to return error if blockstorage provider cannot open")
@@ -66,20 +66,20 @@ func TestMultiReinitialization(t *testing.T) {
 	assert.NoError(t, err, "Error creating temp dir: %s", err)
 
 	flf := New(dir, metricsProvider)
-	_, err = flf.GetOrCreate(genesisconfig.TestChainID)
-	assert.NoError(t, err, "Error GetOrCreate chain")
-	assert.Equal(t, 1, len(flf.ChainIDs()), "Expected 1 chain")
+	_, err = flf.GetOrCreate(genesisconfig.TestChannelID)
+	assert.NoError(t, err, "Error GetOrCreate channel")
+	assert.Equal(t, 1, len(flf.ChannelIDs()), "Expected 1 channel")
 	flf.Close()
 
 	flf = New(dir, metricsProvider)
 	_, err = flf.GetOrCreate("foo")
-	assert.NoError(t, err, "Error creating chain")
-	assert.Equal(t, 2, len(flf.ChainIDs()), "Expected chain to be recovered")
+	assert.NoError(t, err, "Error creating channel")
+	assert.Equal(t, 2, len(flf.ChannelIDs()), "Expected channel to be recovered")
 	flf.Close()
 
 	flf = New(dir, metricsProvider)
 	_, err = flf.GetOrCreate("bar")
-	assert.NoError(t, err, "Error creating chain")
-	assert.Equal(t, 3, len(flf.ChainIDs()), "Expected chain to be recovered")
+	assert.NoError(t, err, "Error creating channel")
+	assert.Equal(t, 3, len(flf.ChannelIDs()), "Expected channel to be recovered")
 	flf.Close()
 }

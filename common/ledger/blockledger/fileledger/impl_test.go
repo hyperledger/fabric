@@ -43,8 +43,8 @@ func initialize(t *testing.T) (*testEnv, *FileLedger) {
 	assert.NoError(t, err, "Error creating temp dir: %s", err)
 
 	flf := New(name, &disabled.Provider{}).(*fileLedgerFactory)
-	fl, err := flf.GetOrCreate(genesisconfig.TestChainID)
-	assert.NoError(t, err, "Error GetOrCreate chain")
+	fl, err := flf.GetOrCreate(genesisconfig.TestChannelID)
+	assert.NoError(t, err, "Error GetOrCreate channel")
 
 	fl.Append(genesisBlock)
 	return &testEnv{location: name, t: t, flf: flf}, fl.(*FileLedger)
@@ -147,10 +147,10 @@ func TestReinitialization(t *testing.T) {
 	// add the block to the ledger
 	ledger1.Append(b1)
 
-	fl, err := tev.flf.GetOrCreate(genesisconfig.TestChainID)
+	fl, err := tev.flf.GetOrCreate(genesisconfig.TestChannelID)
 	ledger1, ok := fl.(*FileLedger)
-	assert.NoError(t, err, "Expected to successfully get test chain")
-	assert.Equal(t, 1, len(tev.flf.ChainIDs()), "Exptected not new chain to be created")
+	assert.NoError(t, err, "Expected to successfully get test channel")
+	assert.Equal(t, 1, len(tev.flf.ChannelIDs()), "Exptected not new channel to be created")
 	assert.True(t, ok, "Exptected type assertion to succeed")
 
 	// shut down the ledger provider
@@ -160,11 +160,11 @@ func TestReinitialization(t *testing.T) {
 	provider2 := New(tev.location, &disabled.Provider{})
 
 	// assert expected ledgers exist
-	chains := provider2.ChainIDs()
-	assert.Equal(t, 1, len(chains), "Should have recovered the chain")
+	channels := provider2.ChannelIDs()
+	assert.Equal(t, 1, len(channels), "Should have recovered the channel")
 
-	// get the existing test chain ledger
-	ledger2, err := provider2.GetOrCreate(chains[0])
+	// get the existing test channel ledger
+	ledger2, err := provider2.GetOrCreate(channels[0])
 	assert.NoError(t, err, "Unexpected error: %s", err)
 
 	fl = ledger2.(*FileLedger)

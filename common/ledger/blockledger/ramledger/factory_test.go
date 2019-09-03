@@ -14,11 +14,11 @@ import (
 
 func TestGetOrCreate(t *testing.T) {
 	rlf := New(3)
-	channel, err := rlf.GetOrCreate(genesisconfig.TestChainID)
+	channel, err := rlf.GetOrCreate(genesisconfig.TestChannelID)
 	if err != nil {
 		panic(err)
 	}
-	channel2, err := rlf.GetOrCreate(genesisconfig.TestChainID)
+	channel2, err := rlf.GetOrCreate(genesisconfig.TestChannelID)
 	if err != nil {
 		panic(err)
 	}
@@ -27,12 +27,12 @@ func TestGetOrCreate(t *testing.T) {
 	}
 }
 
-func TestChainIDs(t *testing.T) {
+func TestChannelIDs(t *testing.T) {
 	rlf := New(3)
 	rlf.GetOrCreate("channel1")
 	rlf.GetOrCreate("channel2")
 	rlf.GetOrCreate("channel3")
-	if len(rlf.ChainIDs()) != 3 {
+	if len(rlf.ChannelIDs()) != 3 {
 		t.Fatalf("Expecting three channels,")
 	}
 	rlf.Close()

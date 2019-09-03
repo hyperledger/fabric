@@ -25,7 +25,7 @@ func init() {
 
 func newTestChain(maxSize int) *ramLedger {
 	rlf := New(maxSize)
-	chain, err := rlf.GetOrCreate(genesisconfig.TestChainID)
+	chain, err := rlf.GetOrCreate(genesisconfig.TestChannelID)
 	if err != nil {
 		panic(err)
 	}

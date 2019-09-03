@@ -33,9 +33,9 @@ var logger = flogging.MustGetLogger("common.tools.configtxgen.localconfig")
 var configName = strings.ToLower(Prefix)
 
 const (
-	// TestChainID is the channel name used for testing purposes when one is
+	// TestChannelID is the channel name used for testing purposes when one is
 	// not given
-	TestChainID = "testchainid"
+	TestChannelID = "testchainid"
 
 	// SampleInsecureSoloProfile references the sample profile which does not
 	// include any MSPs and uses solo for ordering.

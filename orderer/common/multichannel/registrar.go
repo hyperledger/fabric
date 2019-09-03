@@ -151,23 +151,23 @@ func NewRegistrar(
 
 func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 	r.consenters = consenters
-	existingChains := r.ledgerFactory.ChainIDs()
+	existingChannels := r.ledgerFactory.ChannelIDs()
 
-	for _, chainID := range existingChains {
-		rl, err := r.ledgerFactory.GetOrCreate(chainID)
+	for _, channelID := range existingChannels {
+		rl, err := r.ledgerFactory.GetOrCreate(channelID)
 		if err != nil {
-			logger.Panicf("Ledger factory reported chainID %s but could not retrieve it: %s", chainID, err)
+			logger.Panicf("Ledger factory reported channelID %s but could not retrieve it: %s", channelID, err)
 		}
 		configTx := configTx(rl)
 		if configTx == nil {
 			logger.Panic("Programming error, configTx should never be nil here")
 		}
 		ledgerResources := r.newLedgerResources(configTx)
-		chainID := ledgerResources.ConfigtxValidator().ChannelID()
+		channelID := ledgerResources.ConfigtxValidator().ChannelID()
 
 		if _, ok := ledgerResources.ConsortiumsConfig(); ok {
 			if r.systemChannelID != "" {
-				logger.Panicf("There appear to be two system chains %s and %s", r.systemChannelID, chainID)
+				logger.Panicf("There appear to be two system channels %s and %s", r.systemChannelID, channelID)
 			}
 
 			chain := newChainSupport(
@@ -188,22 +188,22 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 			iter, pos := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}})
 			defer iter.Close()
 			if pos != uint64(0) {
-				logger.Panicf("Error iterating over system channel: '%s', expected position 0, got %d", chainID, pos)
+				logger.Panicf("Error iterating over system channel: '%s', expected position 0, got %d", channelID, pos)
 			}
 			genesisBlock, status := iter.Next()
 			if status != cb.Status_SUCCESS {
-				logger.Panicf("Error reading genesis block of system channel '%s'", chainID)
+				logger.Panicf("Error reading genesis block of system channel '%s'", channelID)
 			}
 			logger.Infof("Starting system channel '%s' with genesis block hash %x and orderer type %s",
-				chainID, protoutil.BlockHeaderHash(genesisBlock.Header), chain.SharedConfig().ConsensusType())
+				channelID, protoutil.BlockHeaderHash(genesisBlock.Header), chain.SharedConfig().ConsensusType())
 
-			r.chains[chainID] = chain
-			r.systemChannelID = chainID
+			r.chains[channelID] = chain
+			r.systemChannelID = channelID
 			r.systemChannel = chain
-			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
+			// We delay starting this channel, as it might try to copy and replace the channels map via newChannel before the map is fully built
 			defer chain.start()
 		} else {
-			logger.Debugf("Starting chain: %s", chainID)
+			logger.Debugf("Starting channel: %s", channelID)
 			chain := newChainSupport(
 				r,
 				ledgerResources,
@@ -211,7 +211,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r.signer,
 				r.blockcutterMetrics,
 			)
-			r.chains[chainID] = chain
+			r.chains[channelID] = chain
 			chain.start()
 		}
 

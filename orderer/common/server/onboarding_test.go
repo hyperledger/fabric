@@ -1013,7 +1013,7 @@ func TestVerifierLoader(t *testing.T) {
 
 			ledgerFactory := &server_mocks.Factory{}
 			ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, testCase.ledgerGetOrCreateErr)
-			ledgerFactory.On("ChainIDs").Return([]string{"mychannel"})
+			ledgerFactory.On("ChannelIDs").Return([]string{"mychannel"})
 
 			verifierFactory := &mocks.VerifierFactory{}
 			verifierFactory.On("VerifierFromConfig", mock.Anything, "mychannel").Return(verifier, testCase.verifierFromConfigErr)

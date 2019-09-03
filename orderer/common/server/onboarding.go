@@ -256,8 +256,8 @@ type Factory interface {
 	// or creates it if it does not
 	GetOrCreate(chainID string) (blockledger.ReadWriter, error)
 
-	// ChainIDs returns the chain IDs the Factory is aware of
-	ChainIDs() []string
+	// ChannelIDs returns the channel IDs the Factory is aware of
+	ChannelIDs() []string
 
 	// Close releases all resources acquired by the factory
 	Close()
@@ -283,12 +283,12 @@ type verifiersByChannel map[string]cluster.BlockVerifier
 func (vl *verifierLoader) loadVerifiers() verifiersByChannel {
 	res := make(verifiersByChannel)
 
-	for _, chain := range vl.ledgerFactory.ChainIDs() {
-		v := vl.loadVerifier(chain)
+	for _, channel := range vl.ledgerFactory.ChannelIDs() {
+		v := vl.loadVerifier(channel)
 		if v == nil {
 			continue
 		}
-		res[chain] = v
+		res[channel] = v
 	}
 
 	return res

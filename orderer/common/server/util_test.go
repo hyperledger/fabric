@@ -60,7 +60,7 @@ func TestCreateLedgerFactory(t *testing.T) {
 					t.Log("Removed temp dir:", ld)
 				}
 			}()
-			lf.ChainIDs()
+			lf.ChannelIDs()
 		})
 	}
 }
