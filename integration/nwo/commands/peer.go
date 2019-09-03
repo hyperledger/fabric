@@ -52,6 +52,36 @@ func (n NodeRollback) Args() []string {
 	}
 }
 
+type NodePause struct {
+	ChannelID string
+}
+
+func (n NodePause) SessionName() string {
+	return "peer-node-pause"
+}
+
+func (n NodePause) Args() []string {
+	return []string{
+		"node", "pause",
+		"--channelID", n.ChannelID,
+	}
+}
+
+type NodeResume struct {
+	ChannelID string
+}
+
+func (n NodeResume) SessionName() string {
+	return "peer-node-resume"
+}
+
+func (n NodeResume) Args() []string {
+	return []string{
+		"node", "resume",
+		"--channelID", n.ChannelID,
+	}
+}
+
 type ChannelCreate struct {
 	ChannelID   string
 	Orderer     string

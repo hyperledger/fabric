@@ -89,7 +89,7 @@ var _ = Describe("Rollback & Reset Ledger", func() {
 		setup.cleanup()
 	})
 
-	assertPostRollbackOrReset := func() {
+	assertPostRollbackOrReset := func(createNewBlocks bool) {
 		org2peer0 := setup.network.Peer("org2", "peer0")
 
 		By("verifying that the endorsement is disabled")
@@ -106,10 +106,21 @@ var _ = Describe("Rollback & Reset Ledger", func() {
 			helper.assertPresentInCollectionMPD("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
 		}
 
+		By("verifying preResetHeightFile has been removed after peer restart")
+		preResetHeightFile := filepath.Join(setup.network.RootDir, "peers/org2.peer0/filesystem/ledgersData/chains/chains", helper.channelID, "__preResetHeight")
+		Expect(preResetHeightFile).NotTo(BeAnExistingFile())
+
 		By("starting org1 and org3 peer")
 		setup.startPeer(setup.peers[0])
 		setup.startPeer(setup.peers[2])
 		setup.network.VerifyMembership(setup.peers, setup.channelID, "marblesp")
+
+		By("verifying leger height on all peers")
+		helper.waitUntilEqualLedgerHeight(14)
+
+		if !createNewBlocks {
+			return
+		}
 
 		By("creating 2 more blocks")
 		for i := 6; i <= 7; i++ {
@@ -125,7 +136,30 @@ var _ = Describe("Rollback & Reset Ledger", func() {
 
 	}
 
-	It("rolls back the ledger to a past block", func() {
+	assertPostPause := func() {
+		// verify orderer and peers can be started successfully after pause and reset
+		org2peer0 := setup.network.Peer("org2", "peer0")
+
+		By("starting org2Peer0")
+		setup.startPeer(org2peer0)
+
+		By("starting the orderer")
+		setup.startBrokerAndOrderer()
+
+		// paused channel should not be found by ChannelInfo
+		sess, err := helper.PeerUserSession(org2peer0, "User1", commands.ChannelInfo{
+			ChannelID: helper.channelID,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, helper.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say("Invalid chain ID"))
+
+		By("starting org1 and org3 peer")
+		setup.startPeer(setup.peers[0])
+		setup.startPeer(setup.peers[2])
+	}
+
+	It("rolls back the ledger to a past block with paused channel", func() {
 		org2peer0 := setup.network.Peer("org2", "peer0")
 		// block 0: genesis, block 1: org1Anchor, block 2: org2Anchor, block 3: org3Anchor
 		// block 4 to 8: chaincode instantiation, block 9 to 13: chaincode invoke to add marbles.
@@ -134,29 +168,96 @@ var _ = Describe("Rollback & Reset Ledger", func() {
 			" wait for that command to complete its execution or terminate it before retrying"
 		helper.rollback(org2peer0, 6, expectedErrMessage, false)
 
+		// When rollback first and then pause
 		By("Rolling back peer0.org2 to block 6 from block 13 while the peer node is offline")
 		Expect(helper.getLedgerHeight(org2peer0)).Should(Equal(14))
 		setup.terminateAllProcess()
 		helper.rollback(org2peer0, 6, "", true)
 
-		assertPostRollbackOrReset()
+		By("Pausing peer0.org2 (after rollback) while the peer node is offline")
+		helper.pause(org2peer0, "", true)
+
+		By("Checking preResetHeightFile exists for paused channel after peer restart")
+		assertPostPause()
+		preResetHeightFile := filepath.Join(setup.network.RootDir, "peers/org2.peer0/filesystem/ledgersData/chains/chains", helper.channelID, "__preResetHeight")
+		Expect(preResetHeightFile).To(BeARegularFile())
+
+		// resume the channel and restart to clear preResetHeightFile
+		By("Resuming peer0.org2 and restarting processes")
+		setup.terminateAllProcess()
+		helper.resume(org2peer0, "", true)
+		assertPostRollbackOrReset(false)
+
+		// When pause first and then rollback
+		By("Pausing peer0.org2 (before rollback) while the peer node is offline")
+		setup.terminateAllProcess()
+		helper.pause(org2peer0, "", true)
+
+		By("Rolling back (after pasue) peer0.org2 to block 6 from block 13 while the peer node is offline")
+		helper.rollback(org2peer0, 6, "", true)
+
+		By("Checking preResetHeightFile exists for paused channel after peer restart")
+		assertPostPause()
+		Expect(preResetHeightFile).To(BeARegularFile())
+
+		By("Resuming peer0.org2 while the peer node is offline")
+		setup.terminateAllProcess()
+		helper.resume(org2peer0, "", true)
+
+		assertPostRollbackOrReset(true)
 	})
 
-	It("resets the ledger to the genesis block", func() {
+	It("resets the ledger to the genesis block with paused channel", func() {
 		org2peer0 := setup.network.Peer("org2", "peer0")
 		By("Resetting peer0.org2 to the genesis block while the peer node is online")
 		expectedErrMessage := "as another peer node command is executing," +
 			" wait for that command to complete its execution or terminate it before retrying"
 		helper.reset(org2peer0, expectedErrMessage, false)
 
-		By("Resetting peer0.org2 to the genesis block while the peer node is offline")
+		By("Pausing peer0.org2 while the peer node is online")
+		helper.pause(org2peer0, expectedErrMessage, false)
+
+		By("Resuming peer0.org2 while the peer node is online")
+		helper.resume(org2peer0, expectedErrMessage, false)
+
+		// When reset first and then pause
+		By("Resetting peer0.org2 (before pause) to the genesis block while the peer node is offline")
 		Expect(helper.getLedgerHeight(org2peer0)).Should(Equal(14))
 		setup.terminateAllProcess()
 		helper.reset(org2peer0, "", true)
 
-		assertPostRollbackOrReset()
-	})
+		By("Pausing peer0.org2 (after reset) while the peer node is offline")
+		helper.pause(org2peer0, "", true)
 
+		By("Checking preResetHeightFile exists for paused channel after peer restart")
+		assertPostPause()
+		preResetHeightFile := filepath.Join(setup.network.RootDir, "peers/org2.peer0/filesystem/ledgersData/chains/chains", helper.channelID, "__preResetHeight")
+		Expect(preResetHeightFile).To(BeARegularFile())
+
+		// resume the channel and restart to clear preResetHeightFile
+		By("Resuming peer0.org2 while the peer node is offline")
+		setup.terminateAllProcess()
+		helper.resume(org2peer0, "", true)
+		assertPostRollbackOrReset(false)
+
+		// When pause first and then reset
+		By("Pausing peer0.org2 (before reset) while the peer node is offline")
+		setup.terminateAllProcess()
+		helper.pause(org2peer0, "", true)
+
+		By("Resetting peer0.org2 (before pausing) to the genesis block while the peer node is offline")
+		helper.reset(org2peer0, "", true)
+
+		By("Checking preResetHeightFile exists for paused channel after peer restart")
+		assertPostPause()
+		Expect(preResetHeightFile).To(BeARegularFile())
+
+		By("Resuming peer0.org2 while the peer node is offline")
+		setup.terminateAllProcess()
+		helper.resume(org2peer0, "", true)
+
+		assertPostRollbackOrReset(true)
+	})
 })
 
 type setup struct {
@@ -315,7 +416,7 @@ func (nh *networkHelper) queryChaincode(peer *nwo.Peer, command commands.Chainco
 		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess).To(gbytes.Say(expectedMessage))
 	} else {
-		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit())
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(1))
 		Expect(sess.Err).To(gbytes.Say(expectedMessage))
 	}
 }
@@ -334,7 +435,7 @@ func (nh *networkHelper) rollback(peer *nwo.Peer, blockNumber int, expectedErrMe
 	if expectSuccess {
 		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
 	} else {
-		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit())
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(1))
 		Expect(sess.Err).To(gbytes.Say(expectedErrMessage))
 	}
 }
@@ -346,7 +447,31 @@ func (nh *networkHelper) reset(peer *nwo.Peer, expectedErrMessage string, expect
 	if expectSuccess {
 		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
 	} else {
-		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit())
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(expectedErrMessage))
+	}
+}
+
+func (nh *networkHelper) pause(peer *nwo.Peer, expectedErrMessage string, expectSuccess bool) {
+	pauseCmd := commands.NodePause{ChannelID: nh.channelID}
+	sess, err := nh.PeerUserSession(peer, "User1", pauseCmd)
+	Expect(err).NotTo(HaveOccurred())
+	if expectSuccess {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
+	} else {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(expectedErrMessage))
+	}
+}
+
+func (nh *networkHelper) resume(peer *nwo.Peer, expectedErrMessage string, expectSuccess bool) {
+	resumeCmd := commands.NodeResume{ChannelID: nh.channelID}
+	sess, err := nh.PeerUserSession(peer, "User1", resumeCmd)
+	Expect(err).NotTo(HaveOccurred())
+	if expectSuccess {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
+	} else {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(1))
 		Expect(sess.Err).To(gbytes.Say(expectedErrMessage))
 	}
 }
