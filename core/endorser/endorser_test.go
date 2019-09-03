@@ -720,6 +720,36 @@ var _ = Describe("Endorser", func() {
 			Expect(input.Args).To(Equal([][]byte{[]byte("target-arg")}))
 		})
 
+		Context("when the chaincode spec contains a code package", func() {
+			BeforeEach(func() {
+				chaincodeInput.Args = [][]byte{
+					[]byte("deploy"),
+					nil,
+					protoutil.MarshalOrPanic(&pb.ChaincodeDeploymentSpec{
+						ChaincodeSpec: &pb.ChaincodeSpec{
+							ChaincodeId: &pb.ChaincodeID{
+								Name:    "deploy-name",
+								Version: "deploy-version",
+							},
+							Input: &pb.ChaincodeInput{
+								Args: [][]byte{[]byte("target-arg")},
+							},
+						},
+						CodePackage: []byte("some-code"),
+					}),
+				}
+			})
+
+			It("returns an error to the client", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+					Status:  500,
+					Message: "error in simulation: lscc upgrade/deploy should not include a code packages",
+				}))
+			})
+		})
+
 		Context("when the simulation uses private data", func() {
 			BeforeEach(func() {
 				fakeTxSimulator.GetTxSimulationResultsReturns(
