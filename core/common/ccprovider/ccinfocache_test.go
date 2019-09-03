@@ -184,7 +184,10 @@ func TestCCInfoFSPeerInstance(t *testing.T) {
 	assert.NoError(t, err)
 
 	// put it
-	err = PutChaincodeIntoFS(ds)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	ccinfoFSImpl := &CCInfoFSImpl{GetHasher: cryptoProvider}
+	_, err = ccinfoFSImpl.PutChaincode(ds)
 	assert.NoError(t, err)
 
 	// Get all installed chaincodes, it should not return 0 chaincodes
