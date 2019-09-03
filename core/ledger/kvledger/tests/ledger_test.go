@@ -16,7 +16,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,statebasedval,statecouchdb,valimpl,pvtstatepurgemgmt,confighistory,kvledger=debug")
+	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,statebasedval,statecouchdb,valimpl,pvtstatepurgemgmt,confighistory,kvledger,leveldbhelper=debug")
 	if err := msptesttools.LoadMSPSetupForTesting(); err != nil {
 		panic(fmt.Errorf("Could not load msp config, err %s", err))
 	}

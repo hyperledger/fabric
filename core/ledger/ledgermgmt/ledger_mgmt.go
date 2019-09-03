@@ -8,6 +8,7 @@ package ledgermgmt
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -28,6 +29,7 @@ var ErrLedgerAlreadyOpened = errors.New("ledger already opened")
 // ErrLedgerMgmtNotInitialized is thrown when ledger mgmt is used before initializing this
 var ErrLedgerMgmtNotInitialized = errors.New("ledger mgmt should be initialized before using")
 
+// LedgerMgr manages ledgers for all channels
 type LedgerMgr struct {
 	lock           sync.Mutex
 	openedLedgers  map[string]ledger.PeerLedger
@@ -66,7 +68,7 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 		},
 	)
 	if err != nil {
-		panic(errors.WithMessage(err, "Error in instantiating ledger provider"))
+		panic(fmt.Sprintf("Error in instantiating ledger provider: %s", err))
 	}
 	ledgerMgr := &LedgerMgr{
 		openedLedgers:  make(map[string]ledger.PeerLedger),

@@ -52,8 +52,8 @@ func TestCreateLedgerFactory(t *testing.T) {
 			conf.General.LedgerType = tc.ledgerType
 			conf.FileLedger.Location = tc.ledgerDir
 			conf.FileLedger.Prefix = tc.ledgerDirPrefix
-			lf, ld := createLedgerFactory(conf, &disabled.Provider{})
-
+			lf, ld, err := createLedgerFactory(conf, &disabled.Provider{})
+			assert.NoError(t, err)
 			defer func() {
 				if ld != "" {
 					os.RemoveAll(ld)

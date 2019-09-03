@@ -49,10 +49,10 @@ var attrsToIndex = []blkstorage.IndexableAttr{
 }
 
 // NewProvider returns the handle to the provider
-func NewProvider(blockStoreDir string, conf *pvtdatastorage.PrivateDataConfig, metricsProvider metrics.Provider) *Provider {
+func NewProvider(blockStoreDir string, conf *pvtdatastorage.PrivateDataConfig, metricsProvider metrics.Provider) (*Provider, error) {
 	// Initialize the block storage
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	blockStoreProvider := fsblkstorage.NewProvider(
+	blockStoreProvider, err := fsblkstorage.NewProvider(
 		fsblkstorage.NewConf(
 			blockStoreDir,
 			maxBlockFileSize,
@@ -60,9 +60,14 @@ func NewProvider(blockStoreDir string, conf *pvtdatastorage.PrivateDataConfig, m
 		indexConfig,
 		metricsProvider,
 	)
-
-	pvtStoreProvider := pvtdatastorage.NewProvider(conf)
-	return &Provider{blockStoreProvider, pvtStoreProvider}
+	if err != nil {
+		return nil, err
+	}
+	pvtStoreProvider, err := pvtdatastorage.NewProvider(conf)
+	if err != nil {
+		return nil, err
+	}
+	return &Provider{blockStoreProvider, pvtStoreProvider}, nil
 }
 
 // Open opens the store

@@ -54,7 +54,17 @@ type Provider struct {
 
 // NewProvider instantiates a new Provider.
 // This is not thread-safe and assumed to be synchronized by the caller
-func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
+func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
+	p := &Provider{
+		initializer: initializer,
+	}
+
+	defer func() {
+		if e != nil {
+			p.Close()
+		}
+	}()
+
 	fileLockPath := fileLockPath(initializer.Config.RootFSPath)
 	fileLock := leveldbhelper.NewFileLock(fileLockPath)
 	if err := fileLock.Lock(); err != nil {
@@ -62,8 +72,6 @@ func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 			" wait for that command to complete its execution or terminate it before retrying")
 	}
 
-	p := &Provider{}
-	p.initializer = initializer
 	p.fileLock = fileLock
 	// initialize the ID store (inventory of chainIds/ledgerIds)
 	idStore := openIDStore(ledgerProviderPath(p.initializer.Config.RootFSPath))
@@ -73,24 +81,34 @@ func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 		PrivateDataConfig: initializer.Config.PrivateDataConfig,
 		StorePath:         PvtDataStorePath(p.initializer.Config.RootFSPath),
 	}
-	ledgerStoreProvider := ledgerstorage.NewProvider(
+
+	ledgerStoreProvider, err := ledgerstorage.NewProvider(
 		BlockStorePath(p.initializer.Config.RootFSPath),
 		privateData,
 		p.initializer.MetricsProvider,
 	)
+	if err != nil {
+		return nil, err
+	}
 	p.ledgerStoreProvider = ledgerStoreProvider
 	if initializer.Config.HistoryDBConfig.Enabled {
 		// Initialize the history database (index for history of values by key)
-		historydbProvider := history.NewDBProvider(
+		historydbProvider, err := history.NewDBProvider(
 			HistoryDBPath(p.initializer.Config.RootFSPath),
 		)
+		if err != nil {
+			return nil, err
+		}
 		p.historydbProvider = historydbProvider
 	}
 	// initialize config history for chaincode
-	configHistoryMgr := confighistory.NewMgr(
+	configHistoryMgr, err := confighistory.NewMgr(
 		ConfigHistoryDBPath(p.initializer.Config.RootFSPath),
 		initializer.DeployedChaincodeInfoProvider,
 	)
+	if err != nil {
+		return nil, err
+	}
 	p.configHistoryMgr = configHistoryMgr
 	// initialize the collection eligibility notifier
 
@@ -106,10 +124,12 @@ func NewProvider(initializer *ledger.Initializer) (*Provider, error) {
 	stateListeners = append(stateListeners, configHistoryMgr)
 	p.stateListeners = stateListeners
 
-	p.bookkeepingProvider = bookkeeping.NewProvider(
+	p.bookkeepingProvider, err = bookkeeping.NewProvider(
 		BookkeeperDBPath(p.initializer.Config.RootFSPath),
 	)
-	var err error
+	if err != nil {
+		return nil, err
+	}
 	stateDB := &privacyenabledstate.StateDBConfig{
 		StateDBConfig: initializer.Config.StateDBConfig,
 		LevelDBPath:   StateDBPath(p.initializer.Config.RootFSPath),
@@ -233,15 +253,27 @@ func (p *Provider) List() ([]string, error) {
 
 // Close implements the corresponding method from interface ledger.PeerLedgerProvider
 func (p *Provider) Close() {
-	p.idStore.close()
-	p.ledgerStoreProvider.Close()
-	p.vdbProvider.Close()
-	p.bookkeepingProvider.Close()
-	p.configHistoryMgr.Close()
+	if p.idStore != nil {
+		p.idStore.close()
+	}
+	if p.ledgerStoreProvider != nil {
+		p.ledgerStoreProvider.Close()
+	}
+	if p.vdbProvider != nil {
+		p.vdbProvider.Close()
+	}
+	if p.bookkeepingProvider != nil {
+		p.bookkeepingProvider.Close()
+	}
+	if p.configHistoryMgr != nil {
+		p.configHistoryMgr.Close()
+	}
 	if p.historydbProvider != nil {
 		p.historydbProvider.Close()
 	}
-	p.fileLock.Unlock()
+	if p.fileLock != nil {
+		p.fileLock.Unlock()
+	}
 }
 
 // recoverUnderConstructionLedger checks whether the under construction flag is set - this would be the case

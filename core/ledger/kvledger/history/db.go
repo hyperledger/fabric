@@ -17,7 +17,11 @@ import (
 	protoutil "github.com/hyperledger/fabric/protoutil"
 )
 
-var logger = flogging.MustGetLogger("historyleveldb")
+var logger = flogging.MustGetLogger("history")
+
+const (
+	dataFormatVersion = "2.0"
+)
 
 // DBProvider provides handle to HistoryDB for a given channel
 type DBProvider struct {
@@ -25,12 +29,20 @@ type DBProvider struct {
 }
 
 // NewDBProvider instantiates DBProvider
-func NewDBProvider(path string) *DBProvider {
+func NewDBProvider(path string) (*DBProvider, error) {
 	logger.Debugf("constructing HistoryDBProvider dbPath=%s", path)
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: path})
-	return &DBProvider{
-		leveldbProvider: dbProvider,
+	levelDBProvider, err := leveldbhelper.NewProvider(
+		&leveldbhelper.Conf{
+			DBPath:                path,
+			ExpectedFormatVersion: dataFormatVersion,
+		},
+	)
+	if err != nil {
+		return nil, err
 	}
+	return &DBProvider{
+		leveldbProvider: levelDBProvider,
+	}, nil
 }
 
 // GetDBHandle gets the handle to a named database

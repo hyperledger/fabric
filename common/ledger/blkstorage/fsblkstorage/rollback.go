@@ -58,8 +58,11 @@ func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *blkstorage.In
 	r.targetBlockNum = targetBlockNum
 
 	r.indexDir = conf.getIndexDir()
-	r.dbProvider = leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: r.indexDir})
 	var err error
+	r.dbProvider, err = leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: r.indexDir})
+	if err != nil {
+		return nil, err
+	}
 	indexDB := r.dbProvider.GetDBHandle(ledgerID)
 	r.indexStore, err = newBlockIndex(indexConfig, indexDB)
 	return r, err

@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -33,7 +34,8 @@ func TestWithNoCollectionConfig(t *testing.T) {
 	}
 	defer os.RemoveAll(dbPath)
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mgr := NewMgr(dbPath, mockCCInfoProvider)
+	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
+	assert.NoError(t, err)
 	testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(mockCCInfoProvider, "chaincode1", nil)
 	err = mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
 		LedgerID:           "ledger1",
@@ -57,7 +59,8 @@ func TestWithEmptyCollectionConfig(t *testing.T) {
 	}
 	defer os.RemoveAll(dbPath)
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mgr := NewMgr(dbPath, mockCCInfoProvider)
+	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
+	assert.NoError(t, err)
 	testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
 		mockCCInfoProvider,
 		"chaincode1",
@@ -85,7 +88,8 @@ func TestMgr(t *testing.T) {
 	}
 	defer os.RemoveAll(dbPath)
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	mgr := NewMgr(dbPath, mockCCInfoProvider)
+	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
+	assert.NoError(t, err)
 	chaincodeName := "chaincode1"
 	maxBlockNumberInLedger := uint64(2000)
 	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
@@ -174,10 +178,12 @@ func TestWithImplicitColls(t *testing.T) {
 		},
 		nil,
 	)
+	p, err := newDBProvider(dbPath)
+	require.NoError(t, err)
 
 	mgr := &mgr{
 		ccInfoProvider: mockCCInfoProvider,
-		dbProvider:     newDBProvider(dbPath),
+		dbProvider:     p,
 	}
 
 	// add explicit collections at height 20

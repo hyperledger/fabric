@@ -21,6 +21,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 )
 
@@ -38,7 +40,8 @@ func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
 	if err != nil {
 		t.Fatalf("Failed to create leveldb directory: %s", err)
 	}
-	dbProvider := NewVersionedDBProvider(dbPath)
+	dbProvider, err := NewVersionedDBProvider(dbPath)
+	assert.NoError(t, err)
 	return &TestVDBEnv{t, dbProvider, dbPath}
 }
 

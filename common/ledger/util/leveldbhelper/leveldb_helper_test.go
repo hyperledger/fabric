@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package leveldbhelper
@@ -23,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -58,6 +49,9 @@ func TestLevelDBHelper(t *testing.T) {
 	db.Open()
 	// second time open should not have any side effect
 	db.Open()
+	isEmpty, err := db.isEmpty()
+	assert.NoError(t, err)
+	assert.True(t, isEmpty)
 	db.Put([]byte("key1"), []byte("value1"), false)
 	db.Put([]byte("key2"), []byte("value2"), true)
 	db.Put([]byte("key3"), []byte("value3"), true)
@@ -77,13 +71,20 @@ func TestLevelDBHelper(t *testing.T) {
 	assert.Equal(t, "", string(val2))
 
 	db.Close()
-	// second time open should not have any side effect
+	// second time Close should not have any side effect
 	db.Close()
+
+	_, err = db.isEmpty()
+	require.Error(t, err)
 
 	val3, err3 := db.Get([]byte("key3"))
 	assert.Error(t, err3)
 
 	db.Open()
+	isEmpty, err = db.isEmpty()
+	assert.NoError(t, err)
+	assert.False(t, isEmpty)
+
 	batch := &leveldb.Batch{}
 	batch.Put([]byte("key1"), []byte("value1"))
 	batch.Put([]byte("key2"), []byte("value2"))
@@ -159,7 +160,7 @@ func TestFileLock(t *testing.T) {
 func TestCreateDBInEmptyDir(t *testing.T) {
 	assert.NoError(t, os.RemoveAll(testDBPath), "")
 	assert.NoError(t, os.MkdirAll(testDBPath, 0775), "")
-	db := CreateDB(&Conf{testDBPath})
+	db := CreateDB(&Conf{DBPath: testDBPath})
 	defer db.Close()
 	defer func() {
 		if r := recover(); r != nil {
@@ -175,7 +176,7 @@ func TestCreateDBInNonEmptyDir(t *testing.T) {
 	file, err := os.Create(filepath.Join(testDBPath, "dummyfile.txt"))
 	assert.NoError(t, err, "")
 	file.Close()
-	db := CreateDB(&Conf{testDBPath})
+	db := CreateDB(&Conf{DBPath: testDBPath})
 	defer db.Close()
 	defer func() {
 		if r := recover(); r == nil {

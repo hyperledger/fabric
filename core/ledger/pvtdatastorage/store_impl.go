@@ -107,12 +107,15 @@ type entriesForPvtDataOfOldBlocks struct {
 //////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
-func NewProvider(conf *PrivateDataConfig) Provider {
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.StorePath})
+func NewProvider(conf *PrivateDataConfig) (Provider, error) {
+	dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.StorePath})
+	if err != nil {
+		return nil, err
+	}
 	return &provider{
 		dbProvider: dbProvider,
 		pvtData:    conf,
-	}
+	}, nil
 }
 
 // OpenStore returns a handle to a store

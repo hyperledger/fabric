@@ -29,9 +29,12 @@ type redoRecord struct {
 	Version     *version.Height
 }
 
-func newRedoLoggerProvider(dirPath string) *redoLoggerProvider {
-	provider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dirPath})
-	return &redoLoggerProvider{leveldbProvider: provider}
+func newRedoLoggerProvider(dirPath string) (*redoLoggerProvider, error) {
+	provider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dirPath})
+	if err != nil {
+		return nil, err
+	}
+	return &redoLoggerProvider{leveldbProvider: provider}, nil
 }
 
 func (p *redoLoggerProvider) newRedoLogger(dbName string) *redoLogger {

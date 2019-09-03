@@ -123,9 +123,9 @@ func constructUnsignedTxEnv(
 	headerType common.HeaderType,
 ) (*common.Envelope, string, error) {
 	mspLcl := mmsp.NewNoopMsp()
-	sigId, _ := mspLcl.GetDefaultSigningIdentity()
+	sigID, _ := mspLcl.GetDefaultSigningIdentity()
 
-	ss, err := sigId.Serialize()
+	ss, err := sigID.Serialize()
 	if err != nil {
 		return nil, "", err
 	}
@@ -175,13 +175,13 @@ func constructUnsignedTxEnv(
 		simulationResults,
 		nil,
 		ccid,
-		sigId,
+		sigID,
 	)
 	if err != nil {
 		return nil, "", err
 	}
 
-	env, err := protoutil.CreateSignedTx(prop, sigId, presp)
+	env, err := protoutil.CreateSignedTx(prop, sigID, presp)
 	if err != nil {
 		return nil, "", err
 	}

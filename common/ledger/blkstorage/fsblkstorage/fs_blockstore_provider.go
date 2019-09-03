@@ -32,11 +32,14 @@ type FsBlockstoreProvider struct {
 }
 
 // NewProvider constructs a filesystem based block store provider
-func NewProvider(conf *Conf, indexConfig *blkstorage.IndexConfig, metricsProvider metrics.Provider) blkstorage.BlockStoreProvider {
-	p := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.getIndexDir()})
+func NewProvider(conf *Conf, indexConfig *blkstorage.IndexConfig, metricsProvider metrics.Provider) (blkstorage.BlockStoreProvider, error) {
+	p, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.getIndexDir()})
+	if err != nil {
+		return nil, err
+	}
 	// create stats instance at provider level and pass to newFsBlockStore
 	stats := newStats(metricsProvider)
-	return &FsBlockstoreProvider{conf, indexConfig, p, stats}
+	return &FsBlockstoreProvider{conf, indexConfig, p, stats}, nil
 }
 
 // CreateBlockStore simply calls OpenBlockStore

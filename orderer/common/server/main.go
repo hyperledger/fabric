@@ -100,7 +100,10 @@ func Main() {
 	defer opsSystem.Stop()
 	metricsProvider := opsSystem.Provider
 
-	lf, _ := createLedgerFactory(conf, metricsProvider)
+	lf, _, err := createLedgerFactory(conf, metricsProvider)
+	if err != nil {
+		logger.Panicf("Failed in creating ledger factory: %v", err)
+	}
 	sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
 	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
 

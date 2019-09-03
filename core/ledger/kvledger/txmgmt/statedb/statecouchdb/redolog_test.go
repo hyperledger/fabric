@@ -154,7 +154,8 @@ func redologTestSetup(t *testing.T) (p *redoLoggerProvider, cleanup func()) {
 	if err != nil {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}
-	p = newRedoLoggerProvider(dbPath)
+	p, err = newRedoLoggerProvider(dbPath)
+	assert.NoError(t, err)
 	cleanup = func() {
 		p.close()
 		assert.NoError(t, os.RemoveAll(dbPath))

@@ -12,6 +12,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	protopeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -115,6 +116,23 @@ func (v *verifier) verifyTxValidationCode(txid string, expectedCode protopeer.Tx
 	tran, err := v.lgr.GetTransactionByID(txid)
 	v.assert.NoError(err)
 	v.assert.Equal(int32(expectedCode), tran.ValidationCode)
+}
+
+func (v *verifier) verifyHistory(ns, key string, expectedVals []string) {
+	hqe, err := v.lgr.NewHistoryQueryExecutor()
+	v.assert.NoError(err)
+	itr, err := hqe.GetHistoryForKey(ns, key)
+	v.assert.NoError(err)
+	historyValues := []string{}
+	for {
+		result, err := itr.Next()
+		v.assert.NoError(err)
+		if result == nil {
+			break
+		}
+		historyValues = append(historyValues, string(result.(*queryresult.KeyModification).GetValue()))
+	}
+	v.assert.Equal(expectedVals, historyValues)
 }
 
 ////////////  structs used by verifier  //////////////////////////////////////////////////////////////

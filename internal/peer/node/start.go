@@ -246,14 +246,18 @@ func serve(args []string) error {
 		logger.Fatalf("Failed to create peer server (%s)", err)
 	}
 
+	transientStoreProvider, err := transientstore.NewStoreProvider(
+		filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
+	)
+	if err != nil {
+		return errors.WithMessage(err, "failed to open transient store")
+	}
 	peerInstance := &peer.Peer{
 		Server:            peerServer,
 		ServerConfig:      serverConfig,
 		CredentialSupport: cs,
-		StoreProvider: transientstore.NewStoreProvider(
-			filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
-		),
-		CryptoProvider: factory.GetDefault(),
+		StoreProvider:     transientStoreProvider,
+		CryptoProvider:    factory.GetDefault(),
 	}
 
 	localMSP := mgmt.GetLocalMSP()

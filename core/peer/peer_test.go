@@ -94,11 +94,13 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	require.NoError(t, err, "failed to create ledger manager")
 
 	assert.NoError(t, err)
+	transientStoreProvider, err := transientstore.NewStoreProvider(
+		filepath.Join(tempdir, "transientstore"),
+	)
+	assert.NoError(t, err)
 	peerInstance := &Peer{
-		GossipService: gossipService,
-		StoreProvider: transientstore.NewStoreProvider(
-			filepath.Join(tempdir, "transientstore"),
-		),
+		GossipService:  gossipService,
+		StoreProvider:  transientStoreProvider,
 		LedgerMgr:      ledgerMgr,
 		CryptoProvider: cryptoProvider,
 	}
