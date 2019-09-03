@@ -145,6 +145,10 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 		return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, txParams.ChannelID)
 	}
 
+	if len(cds.CodePackage) != 0 {
+		return nil, nil, errors.Errorf("lscc upgrade/deploy should not include a code packages")
+	}
+
 	_, _, err = e.Support.ExecuteLegacyInit(txParams, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, cds.ChaincodeSpec.Input)
 	if err != nil {
 		// increment the failure to indicate instantion/upgrade failures
