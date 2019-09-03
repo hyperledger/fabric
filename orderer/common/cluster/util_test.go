@@ -721,6 +721,8 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 	group, err := encoder.NewChannelGroup(config)
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
 	validConfigEnvelope := &common.ConfigEnvelope{
 		Config: &common.Config{
@@ -778,6 +780,7 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 				Logger:    flogging.MustGetLogger("test"),
 				Channel:   "mychannel",
 				PolicyMgr: mockPolicyManager,
+				BCCSP: cryptoProvider,
 			}
 
 			err := verifier.VerifyBlockSignature(nil, testCase.envelope)
