@@ -13,7 +13,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	protoetcdraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/protoutil"
@@ -34,14 +34,16 @@ type MaintenanceFilter struct {
 	support MaintenanceFilterSupport
 	// A set of permitted target consensus types
 	permittedTargetConsensusTypes map[string]bool
+	bccsp                         bccsp.BCCSP
 }
 
 // NewMaintenanceFilter creates a new maintenance filter, at every evaluation, the policy manager and orderer config
 // are called to retrieve the latest version of the policy and config.
-func NewMaintenanceFilter(support MaintenanceFilterSupport) *MaintenanceFilter {
+func NewMaintenanceFilter(support MaintenanceFilterSupport, bccsp bccsp.BCCSP) *MaintenanceFilter {
 	mf := &MaintenanceFilter{
 		support:                       support,
 		permittedTargetConsensusTypes: make(map[string]bool),
+		bccsp:                         bccsp,
 	}
 	mf.permittedTargetConsensusTypes["etcdraft"] = true
 	mf.permittedTargetConsensusTypes["solo"] = true
@@ -79,7 +81,7 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 		return errors.Errorf("updated config does not include a config update")
 	}
 
-	bundle, err := channelconfig.NewBundle(mf.support.ChannelID(), configEnvelope.Config, factory.GetDefault())
+	bundle, err := channelconfig.NewBundle(mf.support.ChannelID(), configEnvelope.Config, mf.bccsp)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse config")
 	}

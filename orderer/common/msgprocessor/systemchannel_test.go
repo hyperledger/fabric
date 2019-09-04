@@ -49,7 +49,9 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			OrdererConfigVal: &mocks.OrdererConfig{},
 		}
-		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{})
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, err = NewSystemChannel(ms, mscs, nil, cryptoProvider).ProcessNormalMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
 		assert.Regexp(t, "header not set", err.Error())
 	})
@@ -58,7 +60,9 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			OrdererConfigVal: &mocks.OrdererConfig{},
 		}
-		_, err := NewSystemChannel(ms, mscs, nil).ProcessNormalMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, err = NewSystemChannel(ms, mscs, nil, cryptoProvider).ProcessNormalMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -75,7 +79,9 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 			SequenceVal:      7,
 			OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
-		cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessNormalMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessNormalMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -96,7 +102,9 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			OrdererConfigVal: &mocks.OrdererConfig{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{})
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.NotNil(t, err)
 		assert.Regexp(t, "header not set", err.Error())
 	})
@@ -107,7 +115,9 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
-		sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}))
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider)
 		sysChan.maintenanceFilter = AcceptRule
 		config, cs, err := sysChan.ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -130,7 +140,9 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -149,7 +161,9 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -168,7 +182,9 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -188,7 +204,9 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{RejectRule})).ProcessConfigUpdateMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{RejectRule}), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -208,9 +226,11 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}))
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider)
 		sysChan.maintenanceFilter = RejectRule
-		_, _, err := sysChan.ProcessConfigUpdateMsg(&cb.Envelope{
+		_, _, err = sysChan.ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -230,7 +250,9 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		config, cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		config, cs, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -256,7 +278,9 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				OrdererConfigVal:       &mocks.OrdererConfig{},
 			}
-			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			assert.NoError(t, err)
+			_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
 					Header: &cb.Header{
 						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -279,7 +303,9 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				OrdererConfigVal:       newMockOrdererConfig(false, orderer.ConsensusType_STATE_NORMAL),
 			}
-			sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}))
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			assert.NoError(t, err)
+			sysChan := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider)
 			sysChan.maintenanceFilter = AcceptRule
 			config, seq, err := sysChan.ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
@@ -314,7 +340,9 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				OrdererConfigVal:       &mocks.OrdererConfig{},
 			}
-			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			assert.NoError(t, err)
+			_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
 					Header: &cb.Header{
 						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -337,7 +365,9 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				OrdererConfigVal:       &mocks.OrdererConfig{},
 			}
-			_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			assert.NoError(t, err)
+			_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
 					Header: &cb.Header{
 						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -369,7 +399,9 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 				ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 				OrdererConfigVal:       &mocks.OrdererConfig{},
 			}
-			config, seq, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			assert.NoError(t, err)
+			config, seq, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigMsg(&cb.Envelope{
 				Payload: protoutil.MarshalOrPanic(&cb.Payload{
 					Header: &cb.Header{
 						ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -422,7 +454,9 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		_, _, err := NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, _, err = NewSystemChannel(ms, mscs, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -461,7 +495,7 @@ func TestNewChannelConfig(t *testing.T) {
 
 	templator := NewDefaultTemplator(&mockDefaultTemplatorSupport{
 		Resources: ctxm,
-	})
+	}, cryptoProvider)
 
 	t.Run("BadPayload", func(t *testing.T) {
 		_, err := templator.NewChannelConfig(&cb.Envelope{Payload: []byte("bad payload")})

@@ -12,6 +12,7 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
@@ -77,7 +78,9 @@ func TestProcessNormalMsg(t *testing.T) {
 			SequenceVal:      7,
 			OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
-		cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessNormalMsg(nil)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessNormalMsg(nil)
 		assert.Equal(t, cs, ms.SequenceVal)
 		assert.Nil(t, err)
 	})
@@ -86,7 +89,9 @@ func TestProcessNormalMsg(t *testing.T) {
 			SequenceVal:      7,
 			OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE),
 		}
-		_, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessNormalMsg(nil)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, err = NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessNormalMsg(nil)
 		assert.EqualError(t, err, "normal transactions are rejected: maintenance mode")
 	})
 }
@@ -98,7 +103,9 @@ func TestConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateErr: fmt.Errorf("An error"),
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		config, cs, err := NewStandardChannel(ms, NewRuleSet(nil)).ProcessConfigUpdateMsg(&cb.Envelope{})
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		config, cs, err := NewStandardChannel(ms, NewRuleSet(nil), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.Nil(t, config)
 		assert.Equal(t, uint64(0), cs)
 		assert.EqualError(t, err, "error applying config update to existing channel 'foo': An error")
@@ -109,7 +116,9 @@ func TestConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateErr: fmt.Errorf("An error"),
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		config, cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{EmptyRejectRule})).ProcessConfigUpdateMsg(&cb.Envelope{})
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		config, cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{EmptyRejectRule}), cryptoProvider).ProcessConfigUpdateMsg(&cb.Envelope{})
 		assert.Nil(t, config)
 		assert.Equal(t, uint64(0), cs)
 		assert.NotNil(t, err)
@@ -118,7 +127,9 @@ func TestConfigUpdateMsg(t *testing.T) {
 		ms := &mockSystemChannelFilterSupport{
 			OrdererConfigVal: &mocks.OrdererConfig{},
 		}
-		config, cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessConfigUpdateMsg(nil)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		config, cs, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigUpdateMsg(nil)
 		assert.Nil(t, config)
 		assert.Equal(t, uint64(0), cs)
 		assert.NotNil(t, err)
@@ -130,7 +141,9 @@ func TestConfigUpdateMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
-		stdChan := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}))
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		stdChan := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}), cryptoProvider)
 		stdChan.maintenanceFilter = AcceptRule
 		config, cs, err := stdChan.ProcessConfigUpdateMsg(nil)
 		assert.NotNil(t, config)
@@ -146,7 +159,9 @@ func TestProcessConfigMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       &mocks.OrdererConfig{},
 		}
-		_, _, err := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule})).ProcessConfigMsg(&cb.Envelope{
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		_, _, err = NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}), cryptoProvider).ProcessConfigMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{
 					ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -165,7 +180,9 @@ func TestProcessConfigMsg(t *testing.T) {
 			ProposeConfigUpdateVal: &cb.ConfigEnvelope{},
 			OrdererConfigVal:       newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 		}
-		stdChan := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}))
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		stdChan := NewStandardChannel(ms, NewRuleSet([]Rule{AcceptRule}), cryptoProvider)
 		stdChan.maintenanceFilter = AcceptRule
 		config, cs, err := stdChan.ProcessConfigMsg(&cb.Envelope{
 			Payload: protoutil.MarshalOrPanic(&cb.Payload{
