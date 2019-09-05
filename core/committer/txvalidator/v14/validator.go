@@ -19,13 +19,11 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -593,10 +591,8 @@ func (v *TxValidator) getUpgradeTxInstance(chainID string, cdsBytes []byte) (*sy
 		return nil, err
 	}
 
-	// XXX this needs to be copied/inlined into validation so that we can delete it
-	err = packaging.NewRegistry(&golang.Platform{}).ValidateDeploymentSpec(cds.ChaincodeSpec.Type.String(), cds.CodePackage)
-	if err != nil {
-		return nil, err
+	if cds.ChaincodeSpec.Type.String() != "GOLANG" {
+		return nil, errors.Errorf("unexpected chaincode type: %s", cds.ChaincodeSpec.Type.String())
 	}
 
 	return &sysccprovider.ChaincodeInstance{
