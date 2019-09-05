@@ -332,7 +332,7 @@ enable the platform to support a wide range of industry use cases ranging from
 government, to finance, to supply-chain logistics, to healthcare and so much
 more.
 
-More importantly, Hyperledger Fabric is the most active of the (currently) ten
+Hyperledger Fabric is the most active of the
 Hyperledger projects. The community building around the platform is growing
 steadily, and the innovation delivered with each successive release far
 out-paces any of the other enterprise blockchain platforms.
