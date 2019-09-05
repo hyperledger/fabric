@@ -26,23 +26,23 @@ var (
 		Namespace:    "deliver",
 		Name:         "requests_received",
 		Help:         "The number of deliver requests that have been received.",
-		LabelNames:   []string{"channel", "filtered"},
-		StatsdFormat: "%{#fqname}.%{channel}.%{filtered}",
+		LabelNames:   []string{"channel", "filtered", "data_type"},
+		StatsdFormat: "%{#fqname}.%{channel}.%{filtered}.%{data_type}",
 	}
 	requestsCompleted = metrics.CounterOpts{
 		Namespace:    "deliver",
 		Name:         "requests_completed",
 		Help:         "The number of deliver requests that have been completed.",
-		LabelNames:   []string{"channel", "filtered", "success"},
-		StatsdFormat: "%{#fqname}.%{channel}.%{filtered}.%{success}",
+		LabelNames:   []string{"channel", "filtered", "data_type", "success"},
+		StatsdFormat: "%{#fqname}.%{channel}.%{filtered}.%{data_type}.%{success}",
 	}
 
 	blocksSent = metrics.CounterOpts{
 		Namespace:    "deliver",
 		Name:         "blocks_sent",
 		Help:         "The number of blocks sent by the deliver service.",
-		LabelNames:   []string{"channel", "filtered"},
-		StatsdFormat: "%{#fqname}.%{channel}.%{filtered}",
+		LabelNames:   []string{"channel", "filtered", "data_type"},
+		StatsdFormat: "%{#fqname}.%{channel}.%{filtered}.%{data_type}",
 	}
 )
 

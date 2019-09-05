@@ -23,6 +23,7 @@ import (
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -64,11 +65,21 @@ func (rs *responseSender) SendStatusResponse(status cb.Status) error {
 	return rs.Send(reply)
 }
 
-func (rs *responseSender) SendBlockResponse(block *cb.Block) error {
+// SendBlockResponse sends block data and ignores pvtDataMap.
+func (rs *responseSender) SendBlockResponse(
+	block *cb.Block,
+	channelID string,
+	chain deliver.Chain,
+	signedData *protoutil.SignedData,
+) error {
 	response := &ab.DeliverResponse{
 		Type: &ab.DeliverResponse_Block{Block: block},
 	}
 	return rs.Send(response)
+}
+
+func (rs *responseSender) DataType() string {
+	return "block"
 }
 
 // NewServer creates an ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
