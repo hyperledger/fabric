@@ -404,7 +404,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		res := stub.MockInit("1", nil)
 		assert.Equal(t, int32(shim.OK), res.Status, res.Message)
 	}
-	stub.ChannelID = chainid
+	stub.ChannelID = channelID
 
 	identityDeserializer := &policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")}
 	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
@@ -417,7 +417,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		identityDeserializer,
 		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
-	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(chainid, &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(channelID, &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
 	identityDeserializer.Msg = sProp.ProposalBytes
 	sProp.Signature = sProp.ProposalBytes
 
@@ -432,7 +432,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	}
 	cdsBytes := protoutil.MarshalOrPanic(cds)
 
-	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainid, &pb.ChaincodeSpec{}, id)
+	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(channelID, &pb.ChaincodeSpec{}, id)
 	var args [][]byte
 	if len(collectionConfigBytes) > 0 {
 		if bytes.Equal(collectionConfigBytes, []byte("nil")) {
@@ -451,7 +451,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 		for _, function := range []string{"getchaincodes", "GetChaincodes"} {
 			t.Run(function, func(t *testing.T) {
 				mockAclProvider.Reset()
-				mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, chainid, sProp).Return(nil)
+				mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, channelID, sProp).Return(nil)
 				args = [][]byte{[]byte(function)}
 				res = stub.MockInvokeWithSignedProposal("1", args, sProp)
 				assert.Equal(t, int32(shim.OK), res.Status, res.Message)
@@ -646,7 +646,7 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 		assert.NoError(t, err)
 		cdsBytes := protoutil.MarshalOrPanic(cds)
 
-		sProp, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainid, &pb.ChaincodeSpec{}, id)
+		sProp, _ := protoutil.MockSignedEndorserProposal2OrPanic(channelID, &pb.ChaincodeSpec{}, id)
 		args := [][]byte{[]byte("deploy"), []byte("test"), cdsBytes}
 		saved1 := scc.Support.(*MockSupport).GetInstantiationPolicyErr
 		saved2 := scc.Support.(*MockSupport).CheckInstantiationPolicyMap
@@ -1238,7 +1238,7 @@ func TestLifecycleChaincodeRegularExpressionsMatch(t *testing.T) {
 }
 
 var id msp.SigningIdentity
-var chainid = util.GetTestChainID()
+var channelID = util.GetTestChannelID()
 var mockAclProvider *mocks.MockACLProvider
 
 func NewMockProvider() *mscc.MocksccProviderImpl {

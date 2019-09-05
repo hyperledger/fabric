@@ -477,7 +477,7 @@ func TestGetProposalHash1(t *testing.T) {
 
 func TestCreateProposalResponseFailure(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, testChainID, createCIS(), signerSerialized)
+	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, testChannelID, createCIS(), signerSerialized)
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return

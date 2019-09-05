@@ -81,8 +81,8 @@ func ToChaincodeArgs(args ...string) [][]byte {
 
 const testchainid = "testchainid"
 
-//GetTestChainID returns the CHAINID constant in use by orderer
-func GetTestChainID() string {
+//GetTestChannelID returns the CHANNELID constant in use by orderer
+func GetTestChannelID() string {
 	return testchainid
 }
 

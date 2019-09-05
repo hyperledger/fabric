@@ -58,7 +58,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Day after day, day after day"))
 	tValidator := &TxValidator{
-		ChainID:          "",
+		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       mockDispatcher,
@@ -123,7 +123,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	mockLedger := &mocks.LedgerResources{}
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
 	tValidator := &TxValidator{
-		ChainID:          "",
+		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       mockDispatcher,
@@ -166,7 +166,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Water, water, everywhere, nor any drop to drink"))
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
 	tValidator := &TxValidator{
-		ChainID:          "",
+		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       &mockDispatcher{},
@@ -184,7 +184,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 			ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
 				TxId:      "INVALID TXID!!!",
 				Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
-				ChannelId: util2.GetTestChainID(),
+				ChannelId: util2.GetTestChannelID(),
 			}),
 			SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{
 				Nonce:   []byte("nonce"),

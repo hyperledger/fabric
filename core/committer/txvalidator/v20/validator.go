@@ -105,7 +105,7 @@ type PolicyManager interface {
 // reference to the ledger to enable tx simulation
 // and execution of plugins
 type TxValidator struct {
-	ChainID          string
+	ChannelID        string
 	Semaphore        Semaphore
 	ChannelResources ChannelResources
 	LedgerResources  LedgerResources
@@ -129,7 +129,7 @@ type blockValidationResult struct {
 
 // NewTxValidator creates new transactions validator
 func NewTxValidator(
-	chainID string,
+	channelID string,
 	sem Semaphore,
 	cr ChannelResources,
 	ler LedgerResources,
@@ -141,11 +141,11 @@ func NewTxValidator(
 	// Encapsulates interface implementation
 	pluginValidator := plugindispatcher.NewPluginValidator(pm, ler, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr}, channelPolicyManagerGetter, cor)
 	return &TxValidator{
-		ChainID:          chainID,
+		ChannelID:        channelID,
 		Semaphore:        sem,
 		ChannelResources: cr,
 		LedgerResources:  ler,
-		Dispatcher:       plugindispatcher.New(chainID, cr, ler, lcr, pluginValidator),
+		Dispatcher:       plugindispatcher.New(channelID, cr, ler, lcr, pluginValidator),
 	}
 }
 
@@ -179,7 +179,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	var errPos int
 
 	startValidation := time.Now() // timer to log Validate block duration
-	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChainID, block.Header.Number)
+	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChannelID, block.Header.Number)
 
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
 	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
@@ -256,7 +256,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
 	elapsedValidation := time.Since(startValidation) / time.Millisecond // duration in ms
-	logger.Infof("[%s] Validated block [%d] in %dms", v.ChainID, block.Header.Number, elapsedValidation)
+	logger.Infof("[%s] Validated block [%d] in %dms", v.ChannelID, block.Header.Number, elapsedValidation)
 
 	return nil
 }
@@ -317,8 +317,8 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		// chain binding proposal to endorsements to tx holds. We do
 		// NOT check the validity of endorsements, though. That's a
 		// job for the validation plugins
-		logger.Debugf("[%s] validateTx starts for block %p env %p txn %d", v.ChainID, block, env, tIdx)
-		defer logger.Debugf("[%s] validateTx completes for block %p env %p txn %d", v.ChainID, block, env, tIdx)
+		logger.Debugf("[%s] validateTx starts for block %p env %p txn %d", v.ChannelID, block, env, tIdx)
+		defer logger.Debugf("[%s] validateTx completes for block %p env %p txn %d", v.ChannelID, block, env, tIdx)
 		var payload *common.Payload
 		var err error
 		var txResult peer.TxValidationCode

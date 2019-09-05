@@ -36,7 +36,7 @@ func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 	ccid := &peer.ChaincodeID{Name: "foo", Version: "v1"}
 	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: ccid}}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func newCustomValidationInstance(qec txvalidator.QueryExecutorCreator, c validat
 	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
-		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChainID()),
+		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChannelID()),
 	}
 	v := New(c, sf, is, pe, mockCR)
 
@@ -109,7 +109,7 @@ func TestStateBasedValidationFailure(t *testing.T) {
 	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
-		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChainID()),
+		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChannelID()),
 	}
 	v := New(&mc.MockApplicationCapabilities{}, sf, is, pe, mockCR)
 	v.stateBasedValidator = sbvm
@@ -225,7 +225,7 @@ func TestToApplicationPolicyTranslator_Translate(t *testing.T) {
 var id msp.SigningIdentity
 var sid []byte
 var mspid string
-var chainId string = util.GetTestChainID()
+var channelID string = util.GetTestChannelID()
 
 type mockPolicyChecker struct{}
 
@@ -267,7 +267,7 @@ func TestMain(m *testing.M) {
 
 	// determine the MSP identifier for the first MSP in the default chain
 	var msp msp.MSP
-	mspMgr := mspmgmt.GetManagerForChain(chainId)
+	mspMgr := mspmgmt.GetManagerForChain(channelID)
 	msps, err := mspMgr.GetMSPs()
 	if err != nil {
 		fmt.Printf("Could not retrieve the MSPs for the chain manager, err %s", err)
@@ -288,7 +288,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// also set the MSP for the "test" chain
-	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain(util.GetTestChainID()))
+	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain(util.GetTestChannelID()))
 
 	os.Exit(m.Run())
 }

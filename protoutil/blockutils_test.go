@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testChainID = "myuniquetestchainid"
+var testChannelID = "myuniquetestchainid"
 
 func TestNewBlock(t *testing.T) {
 	var block *cb.Block
@@ -72,12 +72,12 @@ func TestGoodBlockHeaderBytes(t *testing.T) {
 }
 
 func TestGetChainIDFromBlockBytes(t *testing.T) {
-	gb, err := configtxtest.MakeGenesisBlock(testChainID)
+	gb, err := configtxtest.MakeGenesisBlock(testChannelID)
 	assert.NoError(t, err, "Failed to create test configuration block")
 	bytes, err := proto.Marshal(gb)
 	cid, err := protoutil.GetChainIDFromBlockBytes(bytes)
 	assert.NoError(t, err)
-	assert.Equal(t, testChainID, cid, "Failed to return expected chain ID")
+	assert.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
 
 	// bad block bytes
 	_, err = protoutil.GetChainIDFromBlockBytes([]byte("bad block"))
@@ -93,12 +93,12 @@ func TestGetChainIDFromBlock(t *testing.T) {
 	_, err = protoutil.GetChainIDFromBlock(gb)
 	assert.Error(t, err, "Expected error getting channel id from nil block")
 
-	gb, err = configtxtest.MakeGenesisBlock(testChainID)
+	gb, err = configtxtest.MakeGenesisBlock(testChannelID)
 	assert.NoError(t, err, "Failed to create test configuration block")
 
 	cid, err = protoutil.GetChainIDFromBlock(gb)
 	assert.NoError(t, err, "Failed to get chain ID from block")
-	assert.Equal(t, testChainID, cid, "Failed to return expected chain ID")
+	assert.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
 
 	// missing data
 	badBlock := gb

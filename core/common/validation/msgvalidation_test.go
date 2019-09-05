@@ -106,7 +106,7 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	response := &peer.Response{Status: 200}
 	simRes := []byte("simulation_result")
 
-	env, err := createTestTransactionEnvelope(util.GetTestChainID(), response, simRes)
+	env, err := createTestTransactionEnvelope(util.GetTestChannelID(), response, simRes)
 	assert.Nil(t, err, "failed to create test transaction: %s", err)
 	assert.NotNil(t, env)
 

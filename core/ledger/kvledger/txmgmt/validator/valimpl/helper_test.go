@@ -210,7 +210,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	assert.NoError(t, err)
 	expected := fmt.Sprintf(
 		"Channel [%s]: Block [%d] Transaction index [%d] TxId [%s] marked as invalid by committer. Reason code [%s]",
-		util.GetTestChainID(), blockNum, 0, txid, peer.TxValidationCode_BAD_HEADER_EXTENSION,
+		util.GetTestChannelID(), blockNum, 0, txid, peer.TxValidationCode_BAD_HEADER_EXTENSION,
 	)
 	assert.NotEmpty(t, recorder.MessagesContaining(expected))
 }

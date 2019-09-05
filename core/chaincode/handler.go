@@ -270,7 +270,7 @@ func ParseName(ccName string) *sysccprovider.ChaincodeInstance {
 
 	z := strings.SplitN(ccName, "/", 2)
 	if len(z) == 2 {
-		ci.ChainID = z[1]
+		ci.ChannelID = z[1]
 	}
 	z = strings.SplitN(z[0], ":", 2)
 	if len(z) == 2 {
@@ -336,7 +336,7 @@ func (h *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal,
 		return errors.Errorf("signed proposal must not be nil from caller [%s]", ccIns.String())
 	}
 
-	return h.ACLProvider.CheckACL(resources.Peer_ChaincodeToChaincode, ccIns.ChainID, signedProp)
+	return h.ACLProvider.CheckACL(resources.Peer_ChaincodeToChaincode, ccIns.ChannelID, signedProp)
 }
 
 func (h *Handler) deregister() {
@@ -561,7 +561,7 @@ func getReadWritePermission(chaincodeName, collection string, txContext *Transac
 	}
 
 	cc := common.CollectionCriteria{
-		Channel:    txContext.ChainID,
+		Channel:    txContext.ChannelID,
 		Namespace:  chaincodeName,
 		Collection: collection,
 	}
@@ -587,7 +587,7 @@ func (h *Handler) HandleGetState(msg *pb.ChaincodeMessage, txContext *Transactio
 	var res []byte
 	namespaceID := txContext.NamespaceID
 	collection := getState.Collection
-	chaincodeLogger.Debugf("[%s] getting state for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getState.Key, txContext.ChainID)
+	chaincodeLogger.Debugf("[%s] getting state for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getState.Key, txContext.ChannelID)
 
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
@@ -621,7 +621,7 @@ func (h *Handler) HandleGetPrivateDataHash(msg *pb.ChaincodeMessage, txContext *
 	var res []byte
 	namespaceID := txContext.NamespaceID
 	collection := getState.Collection
-	chaincodeLogger.Debugf("[%s] getting private data hash for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getState.Key, txContext.ChainID)
+	chaincodeLogger.Debugf("[%s] getting private data hash for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getState.Key, txContext.ChannelID)
 	if txContext.IsInitTransaction {
 		return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 	}
@@ -651,7 +651,7 @@ func (h *Handler) HandleGetStateMetadata(msg *pb.ChaincodeMessage, txContext *Tr
 
 	namespaceID := txContext.NamespaceID
 	collection := getStateMetadata.Collection
-	chaincodeLogger.Debugf("[%s] getting state metadata for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getStateMetadata.Key, txContext.ChainID)
+	chaincodeLogger.Debugf("[%s] getting state metadata for chaincode %s, key %s, channel %s", shorttxid(msg.Txid), namespaceID, getStateMetadata.Key, txContext.ChannelID)
 
 	var metadata map[string][]byte
 	if isCollectionSet(collection) {
@@ -1105,11 +1105,11 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	// We are not using version now but default to the latest.
 	targetInstance := ParseName(chaincodeSpec.ChaincodeId.Name)
 	chaincodeSpec.ChaincodeId.Name = targetInstance.ChaincodeName
-	if targetInstance.ChainID == "" {
+	if targetInstance.ChannelID == "" {
 		// use caller's channel as the called chaincode is in the same channel
-		targetInstance.ChainID = txContext.ChainID
+		targetInstance.ChannelID = txContext.ChannelID
 	}
-	chaincodeLogger.Debugf("[%s] C-call-C %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChainID)
+	chaincodeLogger.Debugf("[%s] C-call-C %s on channel %s", shorttxid(msg.Txid), targetInstance.ChaincodeName, targetInstance.ChannelID)
 
 	err = h.checkACL(txContext.SignedProp, txContext.Proposal, targetInstance)
 	if err != nil {
@@ -1117,7 +1117,7 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 			"[%s] C-call-C %s on channel %s failed check ACL [%v]: [%s]",
 			shorttxid(msg.Txid),
 			targetInstance.ChaincodeName,
-			targetInstance.ChainID,
+			targetInstance.ChannelID,
 			txContext.SignedProp,
 			err,
 		)
@@ -1128,17 +1128,17 @@ func (h *Handler) HandleInvokeChaincode(msg *pb.ChaincodeMessage, txContext *Tra
 	// We grab the called channel's ledger simulator to hold the new state
 	txParams := &ccprovider.TransactionParams{
 		TxID:                 msg.Txid,
-		ChannelID:            targetInstance.ChainID,
+		ChannelID:            targetInstance.ChannelID,
 		SignedProp:           txContext.SignedProp,
 		Proposal:             txContext.Proposal,
 		TXSimulator:          txContext.TXSimulator,
 		HistoryQueryExecutor: txContext.HistoryQueryExecutor,
 	}
 
-	if targetInstance.ChainID != txContext.ChainID {
-		lgr := h.LedgerGetter.GetLedger(targetInstance.ChainID)
+	if targetInstance.ChannelID != txContext.ChannelID {
+		lgr := h.LedgerGetter.GetLedger(targetInstance.ChannelID)
 		if lgr == nil {
-			return nil, errors.Errorf("failed to find ledger for channel: %s", targetInstance.ChainID)
+			return nil, errors.Errorf("failed to find ledger for channel: %s", targetInstance.ChannelID)
 		}
 
 		sim, err := lgr.NewTxSimulator(msg.Txid)

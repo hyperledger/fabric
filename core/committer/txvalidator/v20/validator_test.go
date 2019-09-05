@@ -80,7 +80,7 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(pType, util.GetTestChainID(), cis, signerSerialized)
+	proposal, _, err := protoutil.CreateProposalFromCIS(pType, util.GetTestChannelID(), cis, signerSerialized)
 	return proposal, err
 }
 

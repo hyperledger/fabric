@@ -28,7 +28,7 @@ func TestStatsBlockchainHeight(t *testing.T) {
 	defer store.Shutdown()
 
 	// add genesis block
-	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, util.GetTestChainID(), false)
+	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, util.GetTestChannelID(), false)
 	err = store.AddBlock(genesisBlock)
 	assert.NoError(t, err)
 
@@ -81,7 +81,7 @@ func TestStatsBlockCommit(t *testing.T) {
 	defer store.Shutdown()
 
 	// add a genesis block
-	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, util.GetTestChainID(), false)
+	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, util.GetTestChannelID(), false)
 	err = store.AddBlock(genesisBlock)
 	assert.NoError(t, err)
 

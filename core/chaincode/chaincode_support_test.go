@@ -150,7 +150,7 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 }
 
 //initialize peer and start up. If security==enabled, login as vp
-func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
+func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	if err != nil {
 		panic(fmt.Sprintf("failed to create cryptoProvider: %s", err))
@@ -248,16 +248,16 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 
 	scc.DeploySysCC(lsccImpl, chaincodeSupport)
 
-	globalBlockNum = make(map[string]uint64, len(chainIDs))
-	for _, id := range chainIDs {
+	globalBlockNum = make(map[string]uint64, len(channelIDs))
+	for _, id := range channelIDs {
 		if err := peer.CreateMockChannel(peerInstance, id); err != nil {
 			cleanup()
 			return nil, nil, func() {}, err
 		}
 
-		// any chain other than the default testchainid does not have a MSP set up -> create one
-		if id != util.GetTestChainID() {
-			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChainID()))
+		// any channel other than the default testchainid does not have a MSP set up -> create one
+		if id != util.GetTestChannelID() {
+			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChannelID()))
 		}
 		globalBlockNum[id] = 1
 	}
@@ -265,8 +265,8 @@ func initMockPeer(chainIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), er
 	return peerInstance, chaincodeSupport, cleanup, nil
 }
 
-func finitMockPeer(peerInstance *peer.Peer, chainIDs ...string) {
-	for _, c := range chainIDs {
+func finitMockPeer(peerInstance *peer.Peer, channelIDs ...string) {
+	for _, c := range channelIDs {
 		if lgr := peerInstance.GetLedger(c); lgr != nil {
 			lgr.Close()
 		}
@@ -308,16 +308,16 @@ func processDone(t *testing.T, done chan error, expecterr bool) {
 	}
 }
 
-func startTx(t *testing.T, peerInstance *peer.Peer, chainID string, cis *pb.ChaincodeInvocationSpec, txId string) (*ccprovider.TransactionParams, ledger.TxSimulator) {
+func startTx(t *testing.T, peerInstance *peer.Peer, channelID string, cis *pb.ChaincodeInvocationSpec, txId string) (*ccprovider.TransactionParams, ledger.TxSimulator) {
 	creator := []byte([]byte("Alice"))
-	sprop, prop := protoutil.MockSignedEndorserProposalOrPanic(chainID, cis.ChaincodeSpec, creator, []byte("msg1"))
-	txsim, hqe, err := startTxSimulation(peerInstance, chainID, txId)
+	sprop, prop := protoutil.MockSignedEndorserProposalOrPanic(channelID, cis.ChaincodeSpec, creator, []byte("msg1"))
+	txsim, hqe, err := startTxSimulation(peerInstance, channelID, txId)
 	if err != nil {
 		t.Fatalf("getting txsimulator failed %s", err)
 	}
 
 	txParams := &ccprovider.TransactionParams{
-		ChannelID:            chainID,
+		ChannelID:            channelID,
 		TxID:                 txId,
 		Proposal:             prop,
 		SignedProp:           sprop,

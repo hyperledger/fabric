@@ -96,7 +96,7 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 	assert.Nil(t, idBack, "deserialized identity should have been nil")
 
 	// test for existing channel
-	mspMgmtMgr = GetManagerForChain(util.GetTestChainID())
+	mspMgmtMgr = GetManagerForChain(util.GetTestChannelID())
 
 	id = GetLocalSigningIdentityOrPanic()
 	assert.NotNil(t, id)
@@ -127,7 +127,7 @@ func LoadMSPSetupForTesting() error {
 		return err
 	}
 
-	err = GetManagerForChain(util.GetTestChainID()).Setup([]msp.MSP{GetLocalMSP()})
+	err = GetManagerForChain(util.GetTestChannelID()).Setup([]msp.MSP{GetLocalMSP()})
 	if err != nil {
 		return err
 	}

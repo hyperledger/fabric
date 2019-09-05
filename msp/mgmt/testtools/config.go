@@ -30,7 +30,7 @@ func LoadMSPSetupForTesting() error {
 		return err
 	}
 
-	err = mgmt.GetManagerForChain(util.GetTestChainID()).Setup([]msp.MSP{mgmt.GetLocalMSP()})
+	err = mgmt.GetManagerForChain(util.GetTestChannelID()).Setup([]msp.MSP{mgmt.GetLocalMSP()})
 	if err != nil {
 		return err
 	}

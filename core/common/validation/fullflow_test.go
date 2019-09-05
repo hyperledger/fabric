@@ -23,13 +23,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getProposal(channel string) (*peer.Proposal, error) {
+func getProposal(channelID string) (*peer.Proposal, error) {
 	cis := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: getChaincodeID(),
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channel, cis, signerSerialized)
+	proposal, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channelID, cis, signerSerialized)
 	return proposal, err
 }
 
@@ -108,7 +108,7 @@ func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentit
 
 func TestGoodPath(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal(util.GetTestChannelID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -168,7 +168,7 @@ func TestGoodPath(t *testing.T) {
 
 func TestTXWithTwoActionsRejected(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal(util.GetTestChannelID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -206,7 +206,7 @@ func corrupt(bytes []byte) {
 
 func TestBadTx(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal(util.GetTestChannelID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -263,7 +263,7 @@ func TestBadTx(t *testing.T) {
 
 func Test2EndorsersAgree(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal(util.GetTestChannelID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -306,7 +306,7 @@ func Test2EndorsersAgree(t *testing.T) {
 
 func Test2EndorsersDisagree(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal(util.GetTestChannelID())
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return

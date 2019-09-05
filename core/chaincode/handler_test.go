@@ -66,7 +66,7 @@ var _ = Describe("Handler", func() {
 
 		responseNotifier = make(chan *pb.ChaincodeMessage, 1)
 		txContext = &chaincode.TransactionContext{
-			ChainID:              "channel-id",
+			ChannelID:            "channel-id",
 			NamespaceID:          "cc-instance-name",
 			TXSimulator:          fakeTxSimulator,
 			HistoryQueryExecutor: fakeHistoryQueryExecutor,
@@ -2743,7 +2743,7 @@ var _ = Describe("Handler", func() {
 				fakeChatStream.RecvReturns(nil, nil)
 			})
 
-			It("retuns an error", func() {
+			It("returns an error", func() {
 				err := handler.ProcessStream(fakeChatStream)
 				Expect(err).To(MatchError("received nil message, ending chaincode support stream"))
 			})
@@ -2920,10 +2920,10 @@ var _ = Describe("Handler", func() {
 			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name"}))
 			ci = chaincode.ParseName("name:version")
 			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name", ChaincodeVersion: "version"}))
-			ci = chaincode.ParseName("name/chain-id")
-			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name", ChainID: "chain-id"}))
-			ci = chaincode.ParseName("name:version/chain-id")
-			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name", ChaincodeVersion: "version", ChainID: "chain-id"}))
+			ci = chaincode.ParseName("name/channel-id")
+			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name", ChannelID: "channel-id"}))
+			ci = chaincode.ParseName("name:version/channel-id")
+			Expect(ci).To(Equal(&sysccprovider.ChaincodeInstance{ChaincodeName: "name", ChaincodeVersion: "version", ChannelID: "channel-id"}))
 		})
 	})
 

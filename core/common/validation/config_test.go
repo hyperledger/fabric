@@ -19,7 +19,7 @@ import (
 )
 
 func TestValidateConfigTx(t *testing.T) {
-	chainID := util.GetTestChainID()
+	channelID := util.GetTestChannelID()
 	profile := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
 	chCrtEnv, err := encoder.MakeChannelCreationTransaction(genesisconfig.SampleConsortiumName, nil, profile)
 	if err != nil {
@@ -31,7 +31,7 @@ func TestValidateConfigTx(t *testing.T) {
 		Payload: protoutil.MarshalOrPanic(&cb.Payload{Header: &cb.Header{
 			ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 				Type:      int32(cb.HeaderType_CONFIG),
-				ChannelId: chainID,
+				ChannelId: channelID,
 			}),
 			SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{
 				Creator: signerSerialized,

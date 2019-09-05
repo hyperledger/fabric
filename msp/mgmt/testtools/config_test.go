@@ -24,12 +24,12 @@ func TestFakeSetup(t *testing.T) {
 		t.Fatalf("GetDefaultSigningIdentity failed, err %s", err)
 	}
 
-	msps, err := mgmt.GetManagerForChain(util.GetTestChainID()).GetMSPs()
+	msps, err := mgmt.GetManagerForChain(util.GetTestChannelID()).GetMSPs()
 	if err != nil {
 		t.Fatalf("EnlistedMSPs failed, err %s", err)
 	}
 
 	if msps == nil || len(msps) == 0 {
-		t.Fatalf("There are no MSPS in the manager for chain %s", util.GetTestChainID())
+		t.Fatalf("There are no MSPS in the manager for chain %s", util.GetTestChannelID())
 	}
 }

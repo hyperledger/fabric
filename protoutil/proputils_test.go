@@ -84,7 +84,7 @@ func TestProposal(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
 	prop, _, err := protoutil.CreateChaincodeProposalWithTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
-		testChainID, createCIS(),
+		testChannelID, createCIS(),
 		[]byte("creator"),
 		map[string][]byte{"certx": []byte("transient")})
 	if err != nil {
@@ -197,7 +197,7 @@ func TestProposalWithTxID(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
 	prop, txid, err := protoutil.CreateChaincodeProposalWithTxIDAndTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
-		testChainID,
+		testChannelID,
 		createCIS(),
 		[]byte("creator"),
 		"testtx",
@@ -209,7 +209,7 @@ func TestProposalWithTxID(t *testing.T) {
 
 	prop, txid, err = protoutil.CreateChaincodeProposalWithTxIDAndTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
-		testChainID,
+		testChannelID,
 		createCIS(),
 		[]byte("creator"),
 		"",
@@ -325,7 +325,7 @@ func TestProposalResponse(t *testing.T) {
 
 func TestEnvelope(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, testChainID, createCIS(), signerSerialized)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, testChannelID, createCIS(), signerSerialized)
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return

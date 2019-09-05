@@ -273,7 +273,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 	}
 
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), nil)
+	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), createCIS(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
 	}

@@ -53,7 +53,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 	mockCapabilities := &mocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(false)
 	tValidator := &TxValidator{
-		ChainID:          "",
+		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: mockCapabilities},
 		Vscc:             mockVsccValidator,
@@ -129,7 +129,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	mockVsccValidator := &validator.MockVsccValidator{}
 	acv := &mocks.ApplicationCapabilities{}
 	tValidator := &TxValidator{
-		ChainID:          "",
+		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: acv},
 		Vscc:             mockVsccValidator,
@@ -216,7 +216,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	mockCapabilities := &mocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(false)
 	tValidator := &TxValidator{
-		ChainID:          "",
+		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: mockCapabilities},
 		Vscc:             &validator.MockVsccValidator{},
@@ -233,7 +233,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 			ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
 				TxId:      "INVALID TXID!!!",
 				Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
-				ChannelId: util2.GetTestChainID(),
+				ChannelId: util2.GetTestChannelID(),
 			}),
 			SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{
 				Nonce:   []byte("nonce"),
@@ -293,7 +293,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	assert.True(t, txsfltr.Flag(0) == peer.TxValidationCode_BAD_PROPOSAL_TXID)
 }
 
-func createCCUpgradeEnvelope(chainID, chaincodeName, chaincodeVersion string, signer msp.SigningIdentity) (*common.Envelope, error) {
+func createCCUpgradeEnvelope(channelID, chaincodeName, chaincodeVersion string, signer msp.SigningIdentity) (*common.Envelope, error) {
 	creator, err := signer.Serialize()
 	if err != nil {
 		return nil, err
@@ -309,7 +309,7 @@ func createCCUpgradeEnvelope(chainID, chaincodeName, chaincodeVersion string, si
 	}
 
 	cds := &peer.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: []byte{}}
-	prop, _, err := protoutil.CreateUpgradeProposalFromCDS(chainID, cds, creator, []byte{}, []byte{}, []byte{}, nil)
+	prop, _, err := protoutil.CreateUpgradeProposalFromCDS(channelID, cds, creator, []byte{}, []byte{}, []byte{}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -335,11 +335,11 @@ func TestGetTxCCInstance(t *testing.T) {
 		t.Fatalf("Could not initialize signer, err: %s", err)
 	}
 
-	chainID := util2.GetTestChainID()
+	channelID := util2.GetTestChannelID()
 	upgradeCCName := "mycc"
 	upgradeCCVersion := "v1"
 
-	env, err := createCCUpgradeEnvelope(chainID, upgradeCCName, upgradeCCVersion, signer)
+	env, err := createCCUpgradeEnvelope(channelID, upgradeCCName, upgradeCCVersion, signer)
 	assert.NoError(t, err)
 
 	// get the payload from the envelope
@@ -347,12 +347,12 @@ func TestGetTxCCInstance(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectInvokeCCIns := &sysccprovider.ChaincodeInstance{
-		ChainID:          chainID,
+		ChannelID:        channelID,
 		ChaincodeName:    "lscc",
 		ChaincodeVersion: "",
 	}
 	expectUpgradeCCIns := &sysccprovider.ChaincodeInstance{
-		ChainID:          chainID,
+		ChannelID:        channelID,
 		ChaincodeName:    upgradeCCName,
 		ChaincodeVersion: upgradeCCVersion,
 	}
@@ -368,19 +368,19 @@ func TestGetTxCCInstance(t *testing.T) {
 
 func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	txsChaincodeNames := map[int]*sysccprovider.ChaincodeInstance{
-		0: {ChainID: "chain0", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
-		1: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		2: {ChainID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
-		3: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
-		4: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
-		5: {ChainID: "chain1", ChaincodeName: "cc1", ChaincodeVersion: "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
-		6: {ChainID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
-		7: {ChainID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v3
+		0: {ChannelID: "chain0", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain0:v0, should not be affected by upgrade tx in other chain
+		1: {ChannelID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
+		2: {ChannelID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v1, should be invalided by latter cc0/chain1 upgtade tx
+		3: {ChannelID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v0"}, // invoke cc0/chain1:v0, should be invalided by cc1/chain1 upgrade tx
+		4: {ChannelID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v1"}, // invoke cc0/chain1:v1, should be invalided by cc1/chain1 upgrade tx
+		5: {ChannelID: "chain1", ChaincodeName: "cc1", ChaincodeVersion: "v0"}, // invoke cc1/chain1:v0, should not be affected by other chaincode upgrade tx
+		6: {ChannelID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v2, should be invalided by latter cc0/chain1 upgtade tx
+		7: {ChannelID: "chain1", ChaincodeName: "lscc", ChaincodeVersion: ""},  // upgrade cc0/chain1 to v3
 	}
 	upgradedChaincodes := map[int]*sysccprovider.ChaincodeInstance{
-		2: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v1"},
-		6: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v2"},
-		7: {ChainID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v3"},
+		2: {ChannelID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v1"},
+		6: {ChannelID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v2"},
+		7: {ChannelID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v3"},
 	}
 
 	txsfltr := ledgerUtil.NewTxValidationFlags(8)

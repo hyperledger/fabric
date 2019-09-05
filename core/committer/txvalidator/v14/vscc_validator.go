@@ -25,15 +25,15 @@ import (
 // VsccValidatorImpl is the implementation used to call
 // the vscc chaincode and validate block transactions
 type VsccValidatorImpl struct {
-	chainID         string
+	channelID       string
 	cr              ChannelResources
 	pluginValidator *PluginValidator
 }
 
 // newVSCCValidator creates new vscc validator
-func newVSCCValidator(chainID string, cr ChannelResources, pluginValidator *PluginValidator) *VsccValidatorImpl {
+func newVSCCValidator(channelID string, cr ChannelResources, pluginValidator *PluginValidator) *VsccValidatorImpl {
 	return &VsccValidatorImpl{
-		chainID:         chainID,
+		channelID:       channelID,
 		cr:              cr,
 		pluginValidator: pluginValidator,
 	}
@@ -52,7 +52,7 @@ func getChaincodeHeaderExtension(hdr *common.Header) (*peer.ChaincodeHeaderExten
 
 // VSCCValidateTx executes vscc validation for transaction
 func (v *VsccValidatorImpl) VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode) {
-	chainID := v.chainID
+	chainID := v.channelID
 	logger.Debugf("[%s] VSCCValidateTx starts for bytes %p", chainID, envBytes)
 
 	// get header extensions so we have the chaincode ID
@@ -329,11 +329,11 @@ func (v *VsccValidatorImpl) getCDataForCC(chid, ccid string) (*ccprovider.Chainc
 // GetInfoForValidate gets the ChaincodeInstance(with latest version) of tx, vscc and policy from lscc
 func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID string) (*sysccprovider.ChaincodeInstance, *sysccprovider.ChaincodeInstance, []byte, error) {
 	cc := &sysccprovider.ChaincodeInstance{
-		ChainID:       chdr.ChannelId,
+		ChannelID:     chdr.ChannelId,
 		ChaincodeName: ccID,
 	}
 	vscc := &sysccprovider.ChaincodeInstance{
-		ChainID:       chdr.ChannelId,
+		ChannelID:     chdr.ChannelId,
 		ChaincodeName: "vscc", // default vscc for system chaincodes
 	}
 	var policy []byte

@@ -44,11 +44,11 @@ type SystemChaincodeProvider interface {
 
 // ChaincodeInstance is unique identifier of chaincode instance
 type ChaincodeInstance struct {
-	ChainID          string
+	ChannelID        string
 	ChaincodeName    string
 	ChaincodeVersion string
 }
 
 func (ci *ChaincodeInstance) String() string {
-	return ci.ChainID + "." + ci.ChaincodeName + "#" + ci.ChaincodeVersion
+	return ci.ChannelID + "." + ci.ChaincodeName + "#" + ci.ChaincodeVersion
 }

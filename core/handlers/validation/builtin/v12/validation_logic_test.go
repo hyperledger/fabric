@@ -51,7 +51,7 @@ func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 	ccid := &peer.ChaincodeID{Name: "foo", Version: "v1"}
 	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: ccid}}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +229,7 @@ func createLSCCTxPutCdsWithCollection(ccname, ccver, f string, res, cdsbytes []b
 		}
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 		}
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func newCustomValidationInstance(qec txvalidator.QueryExecutorCreator, c validat
 	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
-		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChainID()),
+		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChannelID()),
 	}
 	return New(c, sf, is, pe)
 }
@@ -937,7 +937,7 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 		},
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
 	assert.NoError(t, err)
 
 	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
@@ -1851,7 +1851,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 var id msp.SigningIdentity
 var sid []byte
 var mspid string
-var chainId string = util.GetTestChainID()
+var chainId string = util.GetTestChannelID()
 
 type mockPolicyChecker struct{}
 
@@ -2145,7 +2145,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// also set the MSP for the "test" chain
-	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain(util.GetTestChainID()))
+	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain(util.GetTestChannelID()))
 
 	os.Exit(m.Run())
 }

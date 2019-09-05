@@ -156,7 +156,7 @@ func ConstructTransactionFromTxDetails(txDetails *TxDetails, sign bool) (*common
 	var txID string
 	if sign {
 		txEnv, txID, err = ConstructSignedTxEnvWithDefaultSigner(
-			util.GetTestChainID(),
+			util.GetTestChannelID(),
 			ccid,
 			nil,
 			txDetails.SimulationResults,
@@ -167,7 +167,7 @@ func ConstructTransactionFromTxDetails(txDetails *TxDetails, sign bool) (*common
 		)
 	} else {
 		txEnv, txID, err = ConstructUnsignedTxEnv(
-			util.GetTestChainID(),
+			util.GetTestChannelID(),
 			ccid,
 			nil,
 			txDetails.SimulationResults,
@@ -269,7 +269,7 @@ func ConstructTestBlock(t *testing.T, blockNum uint64, numTx int, txSize int) *c
 // The first block in the returned array is a config tx block that represents a genesis block
 // Except the genesis block, the size of each of the block would be the same.
 func ConstructTestBlocks(t *testing.T, numBlocks int) []*common.Block {
-	bg, gb := NewBlockGenerator(t, util.GetTestChainID(), false)
+	bg, gb := NewBlockGenerator(t, util.GetTestChannelID(), false)
 	blocks := []*common.Block{}
 	if numBlocks != 0 {
 		blocks = append(blocks, gb)
@@ -283,7 +283,7 @@ func ConstructBytesProposalResponsePayload(version string, simulationResults []b
 		Name:    "foo",
 		Version: version,
 	}
-	return constructBytesProposalResponsePayload(util.GetTestChainID(), ccid, nil, simulationResults)
+	return constructBytesProposalResponsePayload(util.GetTestChannelID(), ccid, nil, simulationResults)
 }
 
 func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *common.Block {
@@ -301,13 +301,13 @@ func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *com
 }
 
 // constructBytesProposalResponsePayload constructs a ProposalResponsePayload byte for tests with a default signer.
-func constructBytesProposalResponsePayload(chainID string, ccid *pb.ChaincodeID, pResponse *pb.Response, simulationResults []byte) ([]byte, error) {
+func constructBytesProposalResponsePayload(channelID string, ccid *pb.ChaincodeID, pResponse *pb.Response, simulationResults []byte) ([]byte, error) {
 	ss, err := signer.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
-	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccid}}, ss)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, channelID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccid}}, ss)
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +375,7 @@ func ConstructUnsignedTxEnv(
 
 // ConstructSignedTxEnv constructs a transaction envelop for tests
 func ConstructSignedTxEnv(
-	chainID string,
+	channelID string,
 	ccid *pb.ChaincodeID,
 	pResponse *pb.Response,
 	simulationResults []byte,
@@ -395,7 +395,7 @@ func ConstructSignedTxEnv(
 		// if txid is not set, then we need to generate one while creating the proposal message
 		prop, txid, err = protoutil.CreateChaincodeProposal(
 			common.HeaderType_ENDORSER_TRANSACTION,
-			chainID,
+			channelID,
 			&pb.ChaincodeInvocationSpec{
 				ChaincodeSpec: &pb.ChaincodeSpec{
 					ChaincodeId: ccid,
@@ -413,7 +413,7 @@ func ConstructSignedTxEnv(
 		prop, txid, err = protoutil.CreateChaincodeProposalWithTxIDNonceAndTransient(
 			txid,
 			headerType,
-			chainID,
+			channelID,
 			&pb.ChaincodeInvocationSpec{
 				ChaincodeSpec: &pb.ChaincodeSpec{
 					ChaincodeId: ccid,

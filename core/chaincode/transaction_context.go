@@ -16,7 +16,7 @@ import (
 )
 
 type TransactionContext struct {
-	ChainID              string
+	ChannelID            string
 	NamespaceID          string
 	SignedProp           *pb.SignedProposal
 	Proposal             *pb.Proposal

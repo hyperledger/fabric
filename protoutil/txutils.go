@@ -356,14 +356,14 @@ func GetSignedProposal(prop *peer.Proposal, signer identity.SignerSerializer) (*
 // MockSignedEndorserProposalOrPanic creates a SignedProposal with the
 // passed arguments
 func MockSignedEndorserProposalOrPanic(
-	chainID string,
+	channelID string,
 	cs *peer.ChaincodeSpec,
 	creator,
 	signature []byte,
 ) (*peer.SignedProposal, *peer.Proposal) {
 	prop, _, err := CreateChaincodeProposal(
 		common.HeaderType_ENDORSER_TRANSACTION,
-		chainID,
+		channelID,
 		&peer.ChaincodeInvocationSpec{ChaincodeSpec: cs},
 		creator)
 	if err != nil {
@@ -379,7 +379,7 @@ func MockSignedEndorserProposalOrPanic(
 }
 
 func MockSignedEndorserProposal2OrPanic(
-	chainID string,
+	channelID string,
 	cs *peer.ChaincodeSpec,
 	signer identity.SignerSerializer,
 ) (*peer.SignedProposal, *peer.Proposal) {
@@ -390,7 +390,7 @@ func MockSignedEndorserProposal2OrPanic(
 
 	prop, _, err := CreateChaincodeProposal(
 		common.HeaderType_ENDORSER_TRANSACTION,
-		chainID,
+		channelID,
 		&peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{}},
 		serializedSigner)
 	if err != nil {
