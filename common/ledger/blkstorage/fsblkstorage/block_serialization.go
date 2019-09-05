@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -21,9 +22,8 @@ type serializedBlockInfo struct {
 
 //The order of the transactions must be maintained for history
 type txindexInfo struct {
-	txID        string
-	loc         *locPointer
-	isDuplicate bool
+	txID string
+	loc  *locPointer
 }
 
 func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {

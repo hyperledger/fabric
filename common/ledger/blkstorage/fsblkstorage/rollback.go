@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -123,17 +124,11 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 
 	numberOfBlocksToRetrieve := endBlkNum - startBlkNum + 1
 	for numberOfBlocksToRetrieve > 0 {
-		blockBytes, placementInfo, err := stream.nextBlockBytesAndPlacementInfo()
+		blockBytes, _, err := stream.nextBlockBytesAndPlacementInfo()
 		if err != nil {
 			return err
 		}
-
 		blockInfo, err := extractSerializedBlockInfo(blockBytes)
-		if err != nil {
-			return err
-		}
-
-		err = populateBlockInfoWithDuplicateTxids(blockInfo, placementInfo, r.indexStore)
 		if err != nil {
 			return err
 		}
@@ -143,33 +138,6 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 
 	batch.Put(indexCheckpointKey, encodeBlockNum(startBlkNum-1))
 	return r.indexStore.db.WriteBatch(batch, true)
-}
-
-func populateBlockInfoWithDuplicateTxids(blockInfo *serializedBlockInfo, placementInfo *blockPlacementInfo, indexStore *blockIndex) error {
-	// to detect duplicate txID, TxID index must have been enabled.
-	if !indexStore.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
-		return nil
-	}
-
-	for _, txOffset := range blockInfo.txOffsets {
-		blockLoc, err := indexStore.getBlockLocByTxID(txOffset.txID)
-		// There is a situations where the txid entries for a config transaction may not present in the index. This is caused
-		// by the fact that in the data produced by a release proior to 1.4.2, the txID for a config transaction is used as
-		// an empty string. However, in the data produced by release 1.4.2 (and up), the real txID is used by computing in the
-		// indexing code. So, a mismatch is possible where the generated txID is not present in the index
-		if err == blkstorage.ErrNotFoundInIndex {
-			logger.Warnf("TxID [%s] not found in index... skipping this TxID", txOffset.txID)
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		// if the existing index entry points to a different block number, then the txID is duplicate
-		if blockLoc.fileSuffixNum != placementInfo.fileNum || blockLoc.offset != int(placementInfo.blockStartOffset) {
-			txOffset.isDuplicate = true
-		}
-	}
-	return nil
 }
 
 func addIndexEntriesToBeDeleted(batch *leveldbhelper.UpdateBatch, blockInfo *serializedBlockInfo, indexStore *blockIndex) error {
@@ -187,16 +155,11 @@ func addIndexEntriesToBeDeleted(batch *leveldbhelper.UpdateBatch, blockInfo *ser
 		}
 	}
 
-	for _, txOffset := range blockInfo.txOffsets {
-		if txOffset.isDuplicate {
-			continue
-		}
-
-		if indexStore.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
-			batch.Delete(constructTxIDKey(txOffset.txID))
+	if indexStore.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
+		for i, txOffset := range blockInfo.txOffsets {
+			batch.Delete(constructTxIDKey(txOffset.txID, blockInfo.blockHeader.Number, uint64(i)))
 		}
 	}
-
 	return nil
 }
 

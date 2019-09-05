@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -13,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -288,48 +288,6 @@ func TestDuplicateTxIDDuringRollback(t *testing.T) {
 	blkfileMgrWrapper.testGetTransactionByTxID("tx0", blocks[2].Data.Data[0], nil)
 }
 
-func TestRollbackTxIDMissingFromIndex(t *testing.T) {
-	// Polpulate block store with four blocks
-	path := testPath()
-	blocks := testutil.ConstructTestBlocks(t, 4)
-	testutil.SetTxID(t, blocks[3], 0, "blk3_tx0")
-
-	env := newTestEnv(t, NewConf(path, 0))
-	defer env.Cleanup()
-	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
-
-	blkfileMgrWrapper.addBlocks(blocks)
-	expectedBlockchainInfo := &common.BlockchainInfo{
-		Height:            4,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[3].Header),
-		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[2].Header),
-	}
-	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
-	assert.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
-	blkfileMgrWrapper.testGetTransactionByTxID("blk3_tx0", blocks[3].Data.Data[0], nil)
-
-	// Delete index entries for a tx
-	testutilDeleteTxFromIndex(t, blkfileMgrWrapper.blockfileMgr.db, 3, 0, "blk3_tx0")
-	env.provider.Close()
-	blkfileMgrWrapper.close()
-
-	// Rollback to block 2
-	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	err := Rollback(path, "testLedger", 2, indexConfig)
-	assert.NoError(t, err)
-
-	// Reopen blockstorage and assert basic functionality
-	env = newTestEnv(t, NewConf(path, 0))
-	blkfileMgrWrapper = newTestBlockfileWrapper(env, "testLedger")
-	expectedBlockchainInfo = &common.BlockchainInfo{
-		Height:            3,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[2].Header),
-		PreviousBlockHash: protoutil.BlockHeaderHash(blocks[1].Header),
-	}
-	actualBlockchainInfo = blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
-	assert.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
-}
-
 func assertBlockStoreRollback(t *testing.T, path, ledgerID string, blocks []*common.Block,
 	rollbackedToBlkNum uint64, lastFileSuffixNum int, indexConfig *blkstorage.IndexConfig) {
 
@@ -379,26 +337,4 @@ func assertBlockStoreRollback(t *testing.T, path, ledgerID string, blocks []*com
 	// 5. Close the blkfileMgrWrapper
 	env.provider.Close()
 	blkfileMgrWrapper.close()
-}
-
-func testutilDeleteTxFromIndex(t *testing.T, db *leveldbhelper.DBHandle, blkNum, txNum uint64, txID string) {
-	indexKeys := [][]byte{
-		constructTxIDKey(txID),
-		constructBlockNumTranNumKey(blkNum, txNum),
-	}
-
-	batch := leveldbhelper.NewUpdateBatch()
-	for _, key := range indexKeys {
-		value, err := db.Get(key)
-		assert.NoError(t, err)
-		assert.NotNil(t, value)
-		batch.Delete(key)
-	}
-	db.WriteBatch(batch, true)
-
-	for _, key := range indexKeys {
-		value, err := db.Get(key)
-		assert.NoError(t, err)
-		assert.Nil(t, value)
-	}
 }

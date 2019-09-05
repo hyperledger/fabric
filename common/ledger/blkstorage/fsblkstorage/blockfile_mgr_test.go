@@ -256,6 +256,55 @@ func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
 	assert.Equal(t, peer.TxValidationCode_INVALID_OTHER_REASON, validationCode)
 	validationCode, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-3")
 	assert.Equal(t, peer.TxValidationCode_VALID, validationCode)
+
+	// though we do not expose an API for retrieving all the txs by same id but we may in future
+	// and the data is persisted to support this. below code tests this behavior internally
+	w := &testBlockfileMgrWrapper{
+		t:            t,
+		blockfileMgr: blkFileMgr,
+	}
+	w.testGetMultipleDataByTxID(
+		"txid-1",
+		[]*expectedBlkTxValidationCode{
+			{
+				blk:            block1,
+				txEnv:          protoutil.ExtractEnvelopeOrPanic(block1, 0),
+				validationCode: peer.TxValidationCode_VALID,
+			},
+			{
+				blk:            block1,
+				txEnv:          protoutil.ExtractEnvelopeOrPanic(block1, 2),
+				validationCode: peer.TxValidationCode_DUPLICATE_TXID,
+			},
+			{
+				blk:            block2,
+				txEnv:          protoutil.ExtractEnvelopeOrPanic(block2, 1),
+				validationCode: peer.TxValidationCode_DUPLICATE_TXID,
+			},
+		},
+	)
+
+	w.testGetMultipleDataByTxID(
+		"txid-2",
+		[]*expectedBlkTxValidationCode{
+			{
+				blk:            block1,
+				txEnv:          protoutil.ExtractEnvelopeOrPanic(block1, 1),
+				validationCode: peer.TxValidationCode_INVALID_OTHER_REASON,
+			},
+		},
+	)
+
+	w.testGetMultipleDataByTxID(
+		"txid-3",
+		[]*expectedBlkTxValidationCode{
+			{
+				blk:            block2,
+				txEnv:          protoutil.ExtractEnvelopeOrPanic(block2, 0),
+				validationCode: peer.TxValidationCode_VALID,
+			},
+		},
+	)
 }
 
 func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {

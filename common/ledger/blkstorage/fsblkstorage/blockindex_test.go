@@ -14,10 +14,12 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	commonledgerutil "github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type noopIndex struct {
@@ -226,4 +228,44 @@ func containsAttr(indexItems []blkstorage.IndexableAttr, attr blkstorage.Indexab
 		}
 	}
 	return false
+}
+
+func TestTxIDKeyEncoding(t *testing.T) {
+	testcases := []struct {
+		txid   string
+		blkNum uint64
+		txNum  uint64
+	}{
+		{"txid1", 0, 0},
+		{"", 1, 1},
+		{"", 0, 0},
+		{"txid1", 100, 100},
+	}
+	for i, testcase := range testcases {
+		t.Run(fmt.Sprintf(" %d", i),
+			func(t *testing.T) {
+				verifyTxIDKeyDecodable(t,
+					constructTxIDKey(testcase.txid, testcase.blkNum, testcase.txNum),
+					testcase.txid, testcase.blkNum, testcase.txNum,
+				)
+			})
+	}
+}
+
+func verifyTxIDKeyDecodable(t *testing.T, txIDKey []byte, expectedTxID string, expectedBlkNum, expectedTxNum uint64) {
+	length, lengthBytes, err := commonledgerutil.DecodeOrderPreservingVarUint64(txIDKey[1:])
+	require.NoError(t, err)
+	firstIndexTxID := 1 + lengthBytes
+	firstIndexBlkNum := firstIndexTxID + int(length)
+	require.Equal(t, []byte(expectedTxID), txIDKey[firstIndexTxID:firstIndexBlkNum])
+
+	blkNum, n, err := commonledgerutil.DecodeOrderPreservingVarUint64(txIDKey[firstIndexBlkNum:])
+	require.NoError(t, err)
+	require.Equal(t, expectedBlkNum, blkNum)
+
+	firstIndexTxNum := firstIndexBlkNum + n
+	txNum, n, err := commonledgerutil.DecodeOrderPreservingVarUint64(txIDKey[firstIndexTxNum:])
+	require.NoError(t, err)
+	require.Equal(t, expectedTxNum, txNum)
+	require.Len(t, txIDKey, firstIndexTxNum+n)
 }
