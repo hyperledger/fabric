@@ -9,6 +9,7 @@ Vagrant.require_version ">= 1.7.4"
 Vagrant.configure('2') do |config|
   config.vm.box = "bento/ubuntu-16.04"
   config.vm.synced_folder "..", "/home/vagrant/go/src/github.com/hyperledger/fabric"
+  config.ssh.forward_agent = true
 
   config.vm.provider :virtualbox do |vb|
     vb.name = "hyperledger"
