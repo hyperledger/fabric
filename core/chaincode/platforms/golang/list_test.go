@@ -86,8 +86,22 @@ func Test_listModuleInfo(t *testing.T) {
 	assert.NoError(t, err, "failed to get module info")
 
 	expected := &ModuleInfo{
-		Path:       "ccmodule",
+		ModulePath: "ccmodule",
 		ImportPath: "ccmodule",
+		Dir:        moduleDir,
+		GoMod:      filepath.Join(moduleDir, "go.mod"),
+	}
+	assert.Equal(t, expected, mi)
+
+	err = os.Chdir("nested")
+	require.NoError(t, err, "failed to change to module directory")
+
+	mi, err = listModuleInfo()
+	assert.NoError(t, err, "failed to get module info")
+
+	expected = &ModuleInfo{
+		ModulePath: "ccmodule",
+		ImportPath: "ccmodule/nested",
 		Dir:        moduleDir,
 		GoMod:      filepath.Join(moduleDir, "go.mod"),
 	}

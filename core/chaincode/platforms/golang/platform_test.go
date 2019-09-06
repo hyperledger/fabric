@@ -189,12 +189,14 @@ func Test_findSource(t *testing.T) {
 			Path:         "ccmodule",
 		})
 		require.NoError(t, err, "failed to find source")
-		assert.Len(t, source, 5)
+		assert.Len(t, source, 7)
 		assert.Contains(t, source, "META-INF/statedb/couchdb/indexes/indexOwner.json")
 		assert.Contains(t, source, "src/go.mod")
 		assert.Contains(t, source, "src/go.sum")
 		assert.Contains(t, source, "src/chaincode.go")
 		assert.Contains(t, source, "src/customlogger/customlogger.go")
+		assert.Contains(t, source, "src/nested/chaincode.go")
+		assert.Contains(t, source, "src/nested/META-INF/statedb/couchdb/indexes/nestedIndexOwner.json")
 	})
 
 	t.Run("NonExistent", func(t *testing.T) {
@@ -204,32 +206,71 @@ func Test_findSource(t *testing.T) {
 	})
 }
 
-func TestDeploymentPayload(t *testing.T) {
-	platform := &Platform{}
-
-	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop")
-	assert.NoError(t, err)
+func tarContents(t *testing.T, payload []byte) []string {
+	var files []string
 
 	is := bytes.NewReader(payload)
 	gr, err := gzip.NewReader(is)
-	assert.NoError(t, err, "failed to create new gzip reader")
-	tr := tar.NewReader(gr)
+	require.NoError(t, err, "failed to create new gzip reader")
 
-	// gather the entries and verify contents
-	var foundIndexArtifact bool
+	tr := tar.NewReader(gr)
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
-		assert.NoError(t, err, "unexpected error while processing package")
+		assert.NoError(t, err)
 
-		if header.Name == "META-INF/statedb/couchdb/indexes/indexOwner.json" {
-			foundIndexArtifact = true
-			break
+		if header.Typeflag == tar.TypeReg {
+			files = append(files, header.Name)
 		}
 	}
-	assert.Equal(t, true, foundIndexArtifact, "should have found statedb index artifact in noop META-INF directory")
+
+	return files
+}
+
+func TestGopathDeploymentPayload(t *testing.T) {
+	platform := &Platform{}
+
+	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop")
+	assert.NoError(t, err)
+
+	contents := tarContents(t, payload)
+	assert.Contains(t, contents, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+}
+
+func TestModuleDeploymentPayload(t *testing.T) {
+	platform := &Platform{}
+
+	t.Run("TopLevel", func(t *testing.T) {
+		dp, err := platform.GetDeploymentPayload("testdata/ccmodule")
+		assert.NoError(t, err)
+		contents := tarContents(t, dp)
+		assert.ElementsMatch(t, contents, []string{
+			"META-INF/statedb/couchdb/indexes/indexOwner.json", // top level metadata
+			"src/chaincode.go",
+			"src/customlogger/customlogger.go",
+			"src/go.mod",
+			"src/go.sum",
+			"src/nested/META-INF/statedb/couchdb/indexes/nestedIndexOwner.json",
+			"src/nested/chaincode.go",
+		})
+	})
+
+	t.Run("NestedPackage", func(t *testing.T) {
+		dp, err := platform.GetDeploymentPayload("testdata/ccmodule/nested")
+		assert.NoError(t, err)
+		contents := tarContents(t, dp)
+		assert.ElementsMatch(t, contents, []string{
+			"META-INF/statedb/couchdb/indexes/nestedIndexOwner.json", // nested metadata
+			"src/META-INF/statedb/couchdb/indexes/indexOwner.json",
+			"src/chaincode.go",
+			"src/customlogger/customlogger.go",
+			"src/go.mod",
+			"src/go.sum",
+			"src/nested/chaincode.go",
+		})
+	})
 }
 
 func updateGopath(t *testing.T, path string) func() {
@@ -333,6 +374,35 @@ echo Done!
 `,
 	}
 	assert.Equal(t, expectedOpts, opts)
+}
+
+func TestDescribeCode(t *testing.T) {
+	abs, err := filepath.Abs("testdata/ccmodule")
+	assert.NoError(t, err)
+
+	t.Run("TopLevelModulePackage", func(t *testing.T) {
+		cd, err := DescribeCode("testdata/ccmodule")
+		assert.NoError(t, err)
+		expected := &CodeDescriptor{
+			Source:       abs,
+			MetadataRoot: filepath.Join(abs, "META-INF"),
+			Path:         "ccmodule",
+			Module:       true,
+		}
+		assert.Equal(t, expected, cd)
+	})
+
+	t.Run("NestedModulePackage", func(t *testing.T) {
+		cd, err := DescribeCode("testdata/ccmodule/nested")
+		assert.NoError(t, err)
+		expected := &CodeDescriptor{
+			Source:       abs,
+			MetadataRoot: filepath.Join(abs, "nested", "META-INF"),
+			Path:         "ccmodule/nested",
+			Module:       true,
+		}
+		assert.Equal(t, expected, cd)
+	})
 }
 
 func TestMain(m *testing.M) {

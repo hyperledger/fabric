@@ -42,7 +42,7 @@ func (p *Platform) Name() string {
 //
 // NOTE: this is only used at the _client_ side by the peer CLI.
 func (p *Platform) ValidatePath(rawPath string) error {
-	_, err := describeCode(rawPath)
+	_, err := DescribeCode(rawPath)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ const c_ISDIR = 040000
 //
 // NOTE: this is only used at the _client_ side by the peer CLI.
 func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
-	codeDescriptor, err := describeCode(codepath)
+	codeDescriptor, err := DescribeCode(codepath)
 	if err != nil {
 		return nil, err
 	}
@@ -234,8 +234,8 @@ func (cd CodeDescriptor) isMetadata(path string) bool {
 	)
 }
 
-// describeCode returns GOPATH and package information
-func describeCode(path string) (*CodeDescriptor, error) {
+// DescribeCode returns GOPATH and package information.
+func DescribeCode(path string) (*CodeDescriptor, error) {
 	if path == "" {
 		return nil, errors.New("cannot collect files from empty chaincode path")
 	}
@@ -247,9 +247,15 @@ func describeCode(path string) (*CodeDescriptor, error) {
 	}
 
 	if modInfo != nil {
+		// calculate where the metadata should be relative to module root
+		relImport, err := filepath.Rel(modInfo.ModulePath, modInfo.ImportPath)
+		if err != nil {
+			return nil, err
+		}
+
 		return &CodeDescriptor{
 			Module:       true,
-			MetadataRoot: filepath.Join(modInfo.Dir, modInfo.ImportPath, "META-INF"),
+			MetadataRoot: filepath.Join(modInfo.Dir, relImport, "META-INF"),
 			Path:         modInfo.ImportPath,
 			Source:       modInfo.Dir,
 		}, nil

@@ -105,13 +105,13 @@ const moduleListFormat = `{
     "dir": "{{ .Module.Dir }}",
     "gomod": "{{ .Module.GoMod }}",
     "import_path": "{{ .ImportPath }}",
-    "path": "{{ .Module.Path }}"
+    "module_path": "{{ .Module.Path }}"
 }`
 
 type ModuleInfo struct {
 	Dir        string `json:"dir,omitempty"`
 	ImportPath string `json:"import_path,omitempty"`
-	Path       string `json:"path,omitempty"`
+	ModulePath string `json:"module_path,omitempty"`
 	GoMod      string `json:"gomod,omitempty"`
 }
 
