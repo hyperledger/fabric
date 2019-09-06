@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -67,7 +68,7 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, wrapExitErr(err, "'go list -deps' failed")
 	}
 	decoder := json.NewDecoder(stdout)
 
@@ -101,6 +102,13 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 	return list, nil
 }
 
+func wrapExitErr(err error, message string) error {
+	if ee, ok := err.(*exec.ExitError); ok {
+		return errors.Wrapf(err, message+" with: %s", strings.TrimRight(string(ee.Stderr), "\n\r\t"))
+	}
+	return errors.Wrap(err, message)
+}
+
 const moduleListFormat = `{
     "dir": "{{ .Module.Dir }}",
     "gomod": "{{ .Module.GoMod }}",
@@ -125,12 +133,12 @@ func listModuleInfo() (*ModuleInfo, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, wrapExitErr(err, "'go list' failed")
 	}
 
 	var moduleInfo ModuleInfo
 	if err := json.Unmarshal(output, &moduleInfo); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshal output from 'go list'")
 	}
 
 	return &moduleInfo, nil
