@@ -306,7 +306,7 @@ Performance of a blockchain platform can be affected by many variables such as
 transaction size, block size, network size, as well as limits of the hardware,
 etc. The Hyperledger community is currently developing [a draft set of measures](https://docs.google.com/document/d/1DQ6PqoeIH0pCNJSEYiw7JVbExDvWh_ZRVhWkuioG4k0/edit#heading=h.t3gztry2ja8i) within the Performance and Scale working group, along
 with a corresponding implementation of a benchmarking framework called
-[Hyperledger Caliper](https://wiki.hyperledger.org/projects/caliper).
+[Hyperledger Caliper](https://wiki.hyperledger.org/display/caliper/Hyperledger+Caliper).
 
 While that work continues to be developed and should be seen as a definitive
 measure of blockchain platform performance and scale characteristics, a team
