@@ -114,29 +114,6 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 	})
 }
 
-func TestBlockIndexSelectiveIndexingWrongConfig(t *testing.T) {
-	testBlockIndexSelectiveIndexingWrongConfig(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockTxID})
-	testBlockIndexSelectiveIndexingWrongConfig(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxValidationCode})
-	testBlockIndexSelectiveIndexingWrongConfig(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockTxID, blkstorage.IndexableAttrBlockNum})
-	testBlockIndexSelectiveIndexingWrongConfig(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxValidationCode, blkstorage.IndexableAttrBlockNumTranNum})
-
-}
-
-func testBlockIndexSelectiveIndexingWrongConfig(t *testing.T, indexItems []blkstorage.IndexableAttr) {
-	var testName string
-	for _, s := range indexItems {
-		testName = testName + string(s)
-	}
-	t.Run(testName, func(t *testing.T) {
-		env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), indexItems, &disabled.Provider{})
-		defer env.Cleanup()
-
-		assert.Panics(t, func() {
-			env.provider.OpenBlockStore("test-ledger")
-		}, "A panic is expected when index is opened with wrong configs")
-	})
-}
-
 func TestBlockIndexSelectiveIndexing(t *testing.T) {
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockHash})
@@ -145,8 +122,6 @@ func TestBlockIndexSelectiveIndexing(t *testing.T) {
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNumTranNum})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockHash, blkstorage.IndexableAttrBlockNum})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxID, blkstorage.IndexableAttrBlockNumTranNum})
-	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxID, blkstorage.IndexableAttrBlockTxID})
-	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxID, blkstorage.IndexableAttrTxValidationCode})
 }
 
 func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.IndexableAttr) {
@@ -214,7 +189,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		txid, err = protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
 		assert.NoError(t, err)
 		block, err = blockfileMgr.retrieveBlockByTxID(txid)
-		if containsAttr(indexItems, blkstorage.IndexableAttrBlockTxID) {
+		if containsAttr(indexItems, blkstorage.IndexableAttrTxID) {
 			assert.NoError(t, err, "Error while retrieving block by txID")
 			assert.Equal(t, block, blocks[0])
 		} else {
@@ -230,7 +205,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 
 				reason, err := blockfileMgr.retrieveTxValidationCodeByTxID(txid)
 
-				if containsAttr(indexItems, blkstorage.IndexableAttrTxValidationCode) {
+				if containsAttr(indexItems, blkstorage.IndexableAttrTxID) {
 					assert.NoError(t, err, "Error while retrieving tx validation code by txID")
 
 					reasonFromFlags := flags.Flag(idx)

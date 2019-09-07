@@ -59,7 +59,12 @@ func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *blkstorage.In
 
 	r.indexDir = conf.getIndexDir()
 	var err error
-	r.dbProvider, err = leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: r.indexDir})
+	r.dbProvider, err = leveldbhelper.NewProvider(
+		&leveldbhelper.Conf{
+			DBPath:                r.indexDir,
+			ExpectedFormatVersion: dataFormatVersion(indexConfig),
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -141,8 +146,8 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 }
 
 func populateBlockInfoWithDuplicateTxids(blockInfo *serializedBlockInfo, placementInfo *blockPlacementInfo, indexStore *blockIndex) error {
-	// to detect duplicate txID, BlockTxID index must have been enabled.
-	if !indexStore.isAttributeIndexed(blkstorage.IndexableAttrBlockTxID) {
+	// to detect duplicate txID, TxID index must have been enabled.
+	if !indexStore.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
 		return nil
 	}
 
@@ -189,14 +194,6 @@ func addIndexEntriesToBeDeleted(batch *leveldbhelper.UpdateBatch, blockInfo *ser
 
 		if indexStore.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
 			batch.Delete(constructTxIDKey(txOffset.txID))
-		}
-
-		if indexStore.isAttributeIndexed(blkstorage.IndexableAttrBlockTxID) {
-			batch.Delete(constructBlockTxIDKey(txOffset.txID))
-		}
-
-		if indexStore.isAttributeIndexed(blkstorage.IndexableAttrTxValidationCode) {
-			batch.Delete(constructTxValidationCodeIDKey(txOffset.txID))
 		}
 	}
 

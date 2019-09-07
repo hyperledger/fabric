@@ -19,17 +19,25 @@ type IndexableAttr string
 
 // constants for indexable attributes
 const (
-	IndexableAttrBlockNum         = IndexableAttr("BlockNum")
-	IndexableAttrBlockHash        = IndexableAttr("BlockHash")
-	IndexableAttrTxID             = IndexableAttr("TxID")
-	IndexableAttrBlockNumTranNum  = IndexableAttr("BlockNumTranNum")
-	IndexableAttrBlockTxID        = IndexableAttr("BlockTxID")
-	IndexableAttrTxValidationCode = IndexableAttr("TxValidationCode")
+	IndexableAttrBlockNum        = IndexableAttr("BlockNum")
+	IndexableAttrBlockHash       = IndexableAttr("BlockHash")
+	IndexableAttrTxID            = IndexableAttr("TxID")
+	IndexableAttrBlockNumTranNum = IndexableAttr("BlockNumTranNum")
 )
 
 // IndexConfig - a configuration that includes a list of attributes that should be indexed
 type IndexConfig struct {
 	AttrsToIndex []IndexableAttr
+}
+
+// Contains returns true iff the supplied parameter is present in the IndexConfig.AttrsToIndex
+func (c *IndexConfig) Contains(indexableAttr IndexableAttr) bool {
+	for _, a := range c.AttrsToIndex {
+		if a == indexableAttr {
+			return true
+		}
+	}
+	return false
 }
 
 var (

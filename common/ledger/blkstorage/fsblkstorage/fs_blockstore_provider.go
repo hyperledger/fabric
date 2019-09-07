@@ -23,6 +23,18 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 )
 
+const (
+	dataFormatVersion20 = "2.0"
+)
+
+func dataFormatVersion(indexConfig *blkstorage.IndexConfig) string {
+	// in version 2.0 we merged three indexable into one `IndexableAttrTxID`
+	if indexConfig.Contains(blkstorage.IndexableAttrTxID) {
+		return dataFormatVersion20
+	}
+	return ""
+}
+
 // FsBlockstoreProvider provides handle to block storage - this is not thread-safe
 type FsBlockstoreProvider struct {
 	conf            *Conf
@@ -33,7 +45,12 @@ type FsBlockstoreProvider struct {
 
 // NewProvider constructs a filesystem based block store provider
 func NewProvider(conf *Conf, indexConfig *blkstorage.IndexConfig, metricsProvider metrics.Provider) (blkstorage.BlockStoreProvider, error) {
-	p, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.getIndexDir()})
+	dbConf := &leveldbhelper.Conf{
+		DBPath:                conf.getIndexDir(),
+		ExpectedFormatVersion: dataFormatVersion(indexConfig),
+	}
+
+	p, err := leveldbhelper.NewProvider(dbConf)
 	if err != nil {
 		return nil, err
 	}

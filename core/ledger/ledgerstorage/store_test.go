@@ -131,8 +131,6 @@ func TestStoreWithExistingBlockchain(t *testing.T) {
 		blkstorage.IndexableAttrBlockNum,
 		blkstorage.IndexableAttrTxID,
 		blkstorage.IndexableAttrBlockNumTranNum,
-		blkstorage.IndexableAttrBlockTxID,
-		blkstorage.IndexableAttrTxValidationCode,
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	blockStoreProvider, err := fsblkstorage.NewProvider(

@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage/msgs"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
@@ -21,13 +22,11 @@ import (
 )
 
 const (
-	blockNumIdxKeyPrefix           = 'n'
-	blockHashIdxKeyPrefix          = 'h'
-	txIDIdxKeyPrefix               = 't'
-	blockNumTranNumIdxKeyPrefix    = 'a'
-	blockTxIDIdxKeyPrefix          = 'b'
-	txValidationResultIdxKeyPrefix = 'v'
-	indexCheckpointKeyStr          = "indexCheckpointKey"
+	blockNumIdxKeyPrefix        = 'n'
+	blockHashIdxKeyPrefix       = 'h'
+	txIDIdxKeyPrefix            = 't'
+	blockNumTranNumIdxKeyPrefix = 'a'
+	indexCheckpointKeyStr       = "indexCheckpointKey"
 )
 
 var indexCheckpointKey = []byte(indexCheckpointKeyStr)
@@ -64,14 +63,6 @@ func newBlockIndex(indexConfig *blkstorage.IndexConfig, db *leveldbhelper.DBHand
 	indexItemsMap := make(map[blkstorage.IndexableAttr]bool)
 	for _, indexItem := range indexItems {
 		indexItemsMap[indexItem] = true
-	}
-	// This dependency is needed because the index 'IndexableAttrTxID' is used for detecting the duplicate txid
-	// and the results are reused in the other two indexes. Ideally, all three index should be merged into one
-	// for efficiency purpose - [FAB-10587]
-	if (indexItemsMap[blkstorage.IndexableAttrTxValidationCode] || indexItemsMap[blkstorage.IndexableAttrBlockTxID]) &&
-		!indexItemsMap[blkstorage.IndexableAttrTxID] {
-		return nil, errors.Errorf("dependent index [%s] is not enabled for [%s] or [%s]",
-			blkstorage.IndexableAttrTxID, blkstorage.IndexableAttrTxValidationCode, blkstorage.IndexableAttrBlockTxID)
 	}
 	return &blockIndex{indexItemsMap, db}, nil
 }
@@ -120,7 +111,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 			logger.Errorf("error detecting duplicate txids: %s", err)
 			return errors.WithMessage(err, "error detecting duplicate txids")
 		}
-		for _, txoffset := range txOffsets {
+		for i, txoffset := range txOffsets {
 			if txoffset.isDuplicate { // do not overwrite txid entry in the index - FAB-8557
 				logger.Debugf("txid [%s] is a duplicate of a previous tx. Not indexing in txid-index", txoffset.txID)
 				continue
@@ -132,7 +123,17 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 			if marshalErr != nil {
 				return marshalErr
 			}
-			batch.Put(constructTxIDKey(txoffset.txID), txFlpBytes)
+
+			indexVal := &msgs.TxIDIndexValProto{
+				BlkLocation:      flpBytes,
+				TxLocation:       txFlpBytes,
+				TxValidationCode: int32(txsfltr.Flag(i)),
+			}
+			indexValBytes, err := proto.Marshal(indexVal)
+			if err != nil {
+				return errors.Wrap(err, "unexpected error while marshaling TxIDIndexValProto message")
+			}
+			batch.Put(constructTxIDKey(txoffset.txID), indexValBytes)
 		}
 	}
 
@@ -146,26 +147,6 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 				return marshalErr
 			}
 			batch.Put(constructBlockNumTranNumKey(blockIdxInfo.blockNum, uint64(txIterator)), txFlpBytes)
-		}
-	}
-
-	// Index5 - Store BlockNumber will be used to find block by transaction id
-	if index.isAttributeIndexed(blkstorage.IndexableAttrBlockTxID) {
-		for _, txoffset := range txOffsets {
-			if txoffset.isDuplicate { // do not overwrite txid entry in the index - FAB-8557
-				continue
-			}
-			batch.Put(constructBlockTxIDKey(txoffset.txID), flpBytes)
-		}
-	}
-
-	// Index6 - Store transaction validation result by transaction id
-	if index.isAttributeIndexed(blkstorage.IndexableAttrTxValidationCode) {
-		for idx, txoffset := range txOffsets {
-			if txoffset.isDuplicate { // do not overwrite txid entry in the index - FAB-8557
-				continue
-			}
-			batch.Put(constructTxValidationCodeIDKey(txoffset.txID), []byte{byte(txsfltr.Flag(idx))})
 		}
 	}
 
@@ -247,24 +228,38 @@ func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 	if b == nil {
 		return nil, blkstorage.ErrNotFoundInIndex
 	}
+
+	indexVal := &msgs.TxIDIndexValProto{}
+	if err = proto.Unmarshal(b, indexVal); err != nil {
+		return nil, errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", b)
+	}
 	txFLP := &fileLocPointer{}
-	txFLP.unmarshal(b)
+	if err = txFLP.unmarshal(indexVal.TxLocation); err != nil {
+		return nil, err
+	}
 	return txFLP, nil
 }
 
 func (index *blockIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error) {
-	if !index.isAttributeIndexed(blkstorage.IndexableAttrBlockTxID) {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
-	b, err := index.db.Get(constructBlockTxIDKey(txID))
+	b, err := index.db.Get(constructTxIDKey(txID))
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
 		return nil, blkstorage.ErrNotFoundInIndex
 	}
+
+	indexVal := &msgs.TxIDIndexValProto{}
+	if err = proto.Unmarshal(b, indexVal); err != nil {
+		return nil, errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", b)
+	}
 	txFLP := &fileLocPointer{}
-	txFLP.unmarshal(b)
+	if err = txFLP.unmarshal(indexVal.BlkLocation); err != nil {
+		return nil, err
+	}
 	return txFLP, nil
 }
 
@@ -285,23 +280,24 @@ func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint
 }
 
 func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
-	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxValidationCode) {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
 		return peer.TxValidationCode(-1), blkstorage.ErrAttrNotIndexed
 	}
 
-	raw, err := index.db.Get(constructTxValidationCodeIDKey(txID))
+	b, err := index.db.Get(constructTxIDKey(txID))
 
 	if err != nil {
 		return peer.TxValidationCode(-1), err
-	} else if raw == nil {
+	}
+	if b == nil {
 		return peer.TxValidationCode(-1), blkstorage.ErrNotFoundInIndex
-	} else if len(raw) != 1 {
-		return peer.TxValidationCode(-1), errors.New("invalid value in indexItems")
 	}
 
-	result := peer.TxValidationCode(int32(raw[0]))
-
-	return result, nil
+	indexVal := &msgs.TxIDIndexValProto{}
+	if err = proto.Unmarshal(b, indexVal); err != nil {
+		return peer.TxValidationCode(-1), errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", b)
+	}
+	return peer.TxValidationCode(indexVal.TxValidationCode), nil
 }
 
 func constructBlockNumKey(blockNum uint64) []byte {
@@ -315,14 +311,6 @@ func constructBlockHashKey(blockHash []byte) []byte {
 
 func constructTxIDKey(txID string) []byte {
 	return append([]byte{txIDIdxKeyPrefix}, []byte(txID)...)
-}
-
-func constructBlockTxIDKey(txID string) []byte {
-	return append([]byte{blockTxIDIdxKeyPrefix}, []byte(txID)...)
-}
-
-func constructTxValidationCodeIDKey(txID string) []byte {
-	return append([]byte{txValidationResultIdxKeyPrefix}, []byte(txID)...)
 }
 
 func constructBlockNumTranNumKey(blockNum uint64, txNum uint64) []byte {
@@ -368,15 +356,15 @@ func (flp *fileLocPointer) marshal() ([]byte, error) {
 	buffer := proto.NewBuffer([]byte{})
 	e := buffer.EncodeVarint(uint64(flp.fileSuffixNum))
 	if e != nil {
-		return nil, e
+		return nil, errors.Wrapf(e, "unexpected error while marshaling fileLocPointer [%s]", flp)
 	}
 	e = buffer.EncodeVarint(uint64(flp.offset))
 	if e != nil {
-		return nil, e
+		return nil, errors.Wrapf(e, "unexpected error while marshaling fileLocPointer [%s]", flp)
 	}
 	e = buffer.EncodeVarint(uint64(flp.bytesLength))
 	if e != nil {
-		return nil, e
+		return nil, errors.Wrapf(e, "unexpected error while marshaling fileLocPointer [%s]", flp)
 	}
 	return buffer.Bytes(), nil
 }
@@ -385,18 +373,18 @@ func (flp *fileLocPointer) unmarshal(b []byte) error {
 	buffer := proto.NewBuffer(b)
 	i, e := buffer.DecodeVarint()
 	if e != nil {
-		return e
+		return errors.Wrapf(e, "unexpected error while unmarshaling bytes [%#v] into fileLocPointer", b)
 	}
 	flp.fileSuffixNum = int(i)
 
 	i, e = buffer.DecodeVarint()
 	if e != nil {
-		return e
+		return errors.Wrapf(e, "unexpected error while unmarshaling bytes [%#v] into fileLocPointer", b)
 	}
 	flp.offset = int(i)
 	i, e = buffer.DecodeVarint()
 	if e != nil {
-		return e
+		return errors.Wrapf(e, "unexpected error while unmarshaling bytes [%#v] into fileLocPointer", b)
 	}
 	flp.bytesLength = int(i)
 	return nil
