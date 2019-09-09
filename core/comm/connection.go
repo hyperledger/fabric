@@ -9,7 +9,6 @@ package comm
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -22,19 +21,17 @@ var commLogger = flogging.MustGetLogger("comm")
 
 // CredentialSupport type manages credentials used for gRPC client connections
 type CredentialSupport struct {
-	mutex                 sync.RWMutex
-	appRootCAsByChain     map[string][][]byte
-	ordererRootCAsByChain map[string][][]byte
-	serverRootCAs         [][]byte
-	clientCert            tls.Certificate
+	mutex             sync.RWMutex
+	appRootCAsByChain map[string][][]byte
+	serverRootCAs     [][]byte
+	clientCert        tls.Certificate
 }
 
 // NewCredentialSupport creates a CredentialSupport instance.
 func NewCredentialSupport(rootCAs ...[]byte) *CredentialSupport {
 	return &CredentialSupport{
-		appRootCAsByChain:     make(map[string][][]byte),
-		ordererRootCAsByChain: make(map[string][][]byte),
-		serverRootCAs:         rootCAs,
+		appRootCAsByChain: make(map[string][][]byte),
+		serverRootCAs:     rootCAs,
 	}
 }
 
@@ -51,34 +48,6 @@ func (cs *CredentialSupport) GetClientCertificate() tls.Certificate {
 	cs.mutex.RLock()
 	defer cs.mutex.RUnlock()
 	return cs.clientCert
-}
-
-// GetDeliverServiceCredentials returns gRPC transport credentials for given
-// channel to be used by gRPC clients which communicate with ordering service endpoints.
-// If the channel isn't found, an error is returned.
-func (cs *CredentialSupport) GetDeliverServiceCredentials(channelID string) (credentials.TransportCredentials, error) {
-	cs.mutex.RLock()
-	defer cs.mutex.RUnlock()
-
-	rootCACerts, exists := cs.ordererRootCAsByChain[channelID]
-	if !exists {
-		commLogger.Errorf("Attempted to obtain root CA certs of an unknown channel: %s", channelID)
-		return nil, fmt.Errorf("didn't find any root CA certs for channel %s", channelID)
-	}
-
-	certPool := x509.NewCertPool()
-	for _, cert := range rootCACerts {
-		err := AddPemToCertPool(cert, certPool)
-		if err != nil {
-			commLogger.Warningf("Failed to add root cert to credentials (%s)", err)
-			continue
-		}
-	}
-
-	return credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{cs.clientCert},
-		RootCAs:      certPool,
-	}), nil
 }
 
 // GetPeerCredentials returns gRPC transport credentials for use by gRPC
@@ -138,7 +107,7 @@ func (cs *CredentialSupport) BuildTrustedRootsForChain(cm channelconfig.Resource
 		return
 	}
 
-	var appRootCAs, ordererRootCAs [][]byte
+	var appRootCAs [][]byte
 	for k, v := range msps {
 		// we only support the fabric MSP
 		if v.GetType() != msp.FABRIC {
@@ -151,11 +120,6 @@ func (cs *CredentialSupport) BuildTrustedRootsForChain(cm channelconfig.Resource
 				commLogger.Debugf("adding app root CAs for MSP [%s]", k)
 				appRootCAs = append(appRootCAs, root)
 			}
-			// check to see of this is an orderer org MSP
-			if _, ok := ordOrgMSPs[k]; ok {
-				commLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
-				ordererRootCAs = append(ordererRootCAs, root)
-			}
 		}
 		for _, intermediate := range v.GetTLSIntermediateCerts() {
 			// check to see of this is an app org MSP
@@ -163,16 +127,10 @@ func (cs *CredentialSupport) BuildTrustedRootsForChain(cm channelconfig.Resource
 				commLogger.Debugf("adding app root CAs for MSP [%s]", k)
 				appRootCAs = append(appRootCAs, intermediate)
 			}
-			// check to see of this is an orderer org MSP
-			if _, ok := ordOrgMSPs[k]; ok {
-				commLogger.Debugf("adding orderer root CAs for MSP [%s]", k)
-				ordererRootCAs = append(ordererRootCAs, intermediate)
-			}
 		}
 	}
 
 	cs.mutex.Lock()
 	cs.appRootCAsByChain[cid] = appRootCAs
-	cs.ordererRootCAsByChain[cid] = ordererRootCAs
 	cs.mutex.Unlock()
 }
