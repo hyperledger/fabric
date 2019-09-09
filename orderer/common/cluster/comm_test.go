@@ -793,7 +793,7 @@ func TestNoTLSCertificate(t *testing.T) {
 	var conn *grpc.ClientConn
 	gt := gomega.NewGomegaWithT(t)
 	gt.Eventually(func() (bool, error) {
-		conn, err = cl.NewConnection(node1.srv.Address(), "")
+		conn, err = cl.NewConnection(node1.srv.Address())
 		return true, err
 	}, time.Minute).Should(gomega.BeTrue())
 

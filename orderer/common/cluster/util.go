@@ -129,7 +129,7 @@ func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return client.NewConnection(address, "")
+	return client.NewConnection(address)
 }
 
 // DERtoPEM returns a PEM representation of the DER
@@ -157,7 +157,7 @@ func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.Cli
 		return nil, errors.Wrap(err, "failed creating gRPC client")
 	}
 
-	return client.NewConnection(endpointCriteria.Endpoint, "")
+	return client.NewConnection(endpointCriteria.Endpoint)
 }
 
 //go:generate mockery -dir . -name BlockVerifier -case underscore -output ./mocks/

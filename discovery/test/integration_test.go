@@ -494,7 +494,7 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 	})
 	assert.NoError(t, err)
 
-	conn, err := dialer.NewConnection(gRPCServer.Address(), "")
+	conn, err := dialer.NewConnection(gRPCServer.Address())
 	assert.NoError(t, err)
 
 	wrapperClient := &client{AuthInfo: authInfo, conn: conn}

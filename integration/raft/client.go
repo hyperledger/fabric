@@ -30,7 +30,7 @@ func Broadcast(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*orderer.B
 	}
 
 	addr := n.OrdererAddress(o, nwo.ListenPort)
-	conn, err := gRPCclient.NewConnection(addr, "")
+	conn, err := gRPCclient.NewConnection(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Bloc
 	}
 
 	addr := n.OrdererAddress(o, nwo.ListenPort)
-	conn, err := gRPCclient.NewConnection(addr, "")
+	conn, err := gRPCclient.NewConnection(addr)
 	if err != nil {
 		return nil, err
 	}

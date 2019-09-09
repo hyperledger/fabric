@@ -307,7 +307,7 @@ func TestExpirationWarningIngress(t *testing.T) {
 	client, err := comm.NewGRPCClient(clientConf)
 	assert.NoError(t, err)
 
-	conn, err := client.NewConnection(srv.Address(), "")
+	conn, err := client.NewConnection(srv.Address())
 	assert.NoError(t, err)
 
 	cl := orderer.NewClusterClient(conn)
