@@ -34,6 +34,15 @@ FAB-12908 CouchDB health check
 Changes, Known Issues, and Workarounds
 --------------------------------------
 
+FAB-5177 - The ccenv build image no longer includes the shim
+The shim package and dependencies for go chaincode are no longer included in
+the chaincode build environment. Chaincode packages that do not include their
+own dependencies will no longer successfully build on the peer.  We strongly
+recommend that existing go chaincode be updated to vendor the
+github.com/hyperledger/fabric-chaincode-go/shim package and its dependencies.
+While there are many tools for managing vendored dependencies, we recommend
+moving directly to go modules and vendoring with `go mod vendor`.
+
 FAB-11096 - Docker images with Alpine Linux
 Bash is no longer available in Fabric images. Utilize Alpine's built-in
 sh or ash instead.
@@ -47,7 +56,7 @@ github.com/hyperledger/fabriccore/chaincode/lib/cid/cid.go
 FAB-12088 - Java chaincode support on s390x architecture
 Java chaincode support is not yet available on s390x architecture.
 
-FAB-12134 Same chaincode source receiving fingerprint mismatch error
+FAB-12134 - Same chaincode source receiving fingerprint mismatch error
 Chaincode installed in different ways may result in "chaincode fingerprint
 mismatch data mismatch" error upon instantiation.  This may happen when
 installing chaincode by using different SDKs. To workaround the problem,
@@ -67,7 +76,7 @@ STDOUT and STDERR will be integrated in the peers log on a per-line basis.
 A production grade approach would be to run a log aggregation service and
 forward your logs to the aggregation service.
 
-FAB-16213 - the go chaincode entities extension has been removed
+FAB-16213 - The go chaincode entities extension has been removed
 Chaincode implementations that used the entities extension package from an
 earlier version of Fabric will need to vendor a 1.x version of the package
 for as part of their chaincode package.
