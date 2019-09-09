@@ -367,6 +367,12 @@ if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ];
 elif [ -f "/chaincode/input/src/go.mod" ]; then
     cd /chaincode/input/src
     GO111MODULE=on GOPROXY=https://proxy.golang.org go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+elif [ -f "/chaincode/input/src/the-path/go.mod" ] && [ -d "/chaincode/input/src/the-path/vendor" ]; then
+    cd /chaincode/input/src/the-path
+    GO111MODULE=on GOPROXY=https://proxy.golang.org go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+elif [ -f "/chaincode/input/src/the-path/go.mod" ]; then
+    cd /chaincode/input/src/the-path
+    GO111MODULE=on GOPROXY=https://proxy.golang.org go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 else
     GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 fi
