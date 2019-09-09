@@ -263,7 +263,13 @@ func (d *Deliverer) processMsg(msg *orderer.DeliverResponse) error {
 
 // Stop stops blocks delivery provider
 func (d *Deliverer) Stop() {
-	close(d.DoneC)
+	// this select is not race-safe, but it prevents a panic
+	// for careless callers multiply invoking stop
+	select {
+	case <-d.DoneC:
+	default:
+		close(d.DoneC)
+	}
 }
 
 func (d *Deliverer) connect(seekInfoEnv *common.Envelope) (orderer.AtomicBroadcast_DeliverClient, *orderers.Endpoint, func(), error) {

@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -39,9 +38,12 @@ import (
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -86,9 +88,11 @@ func TestInitGossipService(t *testing.T) {
 
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(), cryptoProvider)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	dialOpts := defaultDeliverClientDialOpts()
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	assert.NoError(t, err)
+
+	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
+	require.NoError(t, err)
 
 	gossipService, err := New(
 		signer,
@@ -99,7 +103,7 @@ func TestInitGossipService(t *testing.T) {
 		secAdv,
 		nil,
 		comm.NewCredentialSupport(),
-		dialOpts,
+		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&deliverservice.DeliverServiceConfig{
@@ -159,7 +163,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
 
-		gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
 			Store:     &mockTransientStore{},
 			Committer: &mockLedgerInfo{1},
 		})
@@ -221,7 +225,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -235,7 +239,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	channelName = "chanB"
 	for i := 0; i < n; i++ {
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -281,7 +285,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -327,7 +331,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		assert.Panics(t, func() {
-			gossips[i].InitializeChannel(channelName, []string{"endpoint"}, Support{
+			gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
 				Committer: &mockLedgerInfo{1},
 				Store:     &mockTransientStore{},
 			})
@@ -341,8 +345,8 @@ type mockDeliverServiceFactory struct {
 	service *mockDeliverService
 }
 
-func (mf *mockDeliverServiceFactory) Service(g GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
-	return mf.service, nil
+func (mf *mockDeliverServiceFactory) Service(GossipServiceAdapter, *orderers.ConnectionSource, api.MessageCryptoService) deliverservice.DeliverService {
+	return mf.service
 }
 
 type mockDeliverService struct {
@@ -876,9 +880,11 @@ func TestInvalidInitialization(t *testing.T) {
 	mockSignerSerializer := &mocks.SignerSerializer{}
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	dialOpts := defaultDeliverClientDialOpts()
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	assert.NoError(t, err)
+
+	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
+	require.NoError(t, err)
 
 	gossipService, err := New(
 		mockSignerSerializer,
@@ -889,7 +895,7 @@ func TestInvalidInitialization(t *testing.T) {
 		secAdv,
 		nil,
 		comm.NewCredentialSupport(),
-		dialOpts,
+		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&deliverservice.DeliverServiceConfig{
@@ -905,16 +911,8 @@ func TestInvalidInitialization(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	dc, err := gService.deliveryFactory.Service(gService, []string{}, &naiveCryptoService{})
-	assert.EqualError(t, err, "no endpoints specified")
-	assert.Nil(t, dc)
-
-	endpoint2, socket2 := getAvailablePort(t)
-	defer socket2.Close()
-
-	dc, err = gService.deliveryFactory.Service(gService, []string{endpoint2}, &naiveCryptoService{})
+	dc := gService.deliveryFactory.Service(gService, orderers.NewConnectionSource(), &naiveCryptoService{})
 	assert.NotNil(t, dc)
-	assert.NoError(t, err)
 }
 
 func TestChannelConfig(t *testing.T) {
@@ -925,9 +923,10 @@ func TestChannelConfig(t *testing.T) {
 	mockSignerSerializer := &mocks.SignerSerializer{}
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	dialOpts := defaultDeliverClientDialOpts()
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	assert.NoError(t, err)
+
+	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
 
 	gossipService, err := New(
 		mockSignerSerializer,
@@ -938,7 +937,7 @@ func TestChannelConfig(t *testing.T) {
 		secAdv,
 		nil,
 		nil,
-		dialOpts,
+		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&deliverservice.DeliverServiceConfig{

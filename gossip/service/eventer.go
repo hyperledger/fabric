@@ -42,7 +42,6 @@ type configStore struct {
 
 type configEventReceiver interface {
 	updateAnchors(config Config)
-	updateEndpoints(chainID string, endpoints []string)
 }
 
 type configEventer struct {
@@ -81,7 +80,6 @@ func (ce *configEventer) ProcessConfigUpdate(config Config) {
 		logger.Debugf("Calling out because config was updated for channel %s", config.ChannelID())
 		ce.receiver.updateAnchors(config)
 	}
-	ce.receiver.updateEndpoints(config.ChannelID(), config.OrdererAddresses())
 }
 
 func cloneOrgConfig(src map[string]channelconfig.ApplicationOrg) map[string]channelconfig.ApplicationOrg {

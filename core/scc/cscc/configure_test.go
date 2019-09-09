@@ -336,7 +336,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		secAdv,
 		defaultSecureDialOpts,
 		nil,
-		defaultDeliverClientDialOpts,
+		nil,
 		gossipConfig,
 		&service.ServiceConfig{},
 		&deliverservice.DeliverServiceConfig{

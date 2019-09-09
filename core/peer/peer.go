@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -302,6 +303,30 @@ func (p *Peer) createChannel(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
+	ordererSource := orderers.NewConnectionSource()
+	ordererSourceCallback := func(bundle *channelconfig.Bundle) {
+		globalAddresses := bundle.ChannelConfig().OrdererAddresses()
+		orgAddresses := map[string]orderers.OrdererOrg{}
+		if ordererConfig, ok := bundle.OrdererConfig(); ok {
+			for orgName, org := range ordererConfig.Organizations() {
+				certs := [][]byte{}
+				for _, root := range org.MSP().GetTLSRootCerts() {
+					certs = append(certs, root)
+				}
+
+				for _, intermediate := range org.MSP().GetTLSIntermediateCerts() {
+					certs = append(certs, intermediate)
+				}
+
+				orgAddresses[orgName] = orderers.OrdererOrg{
+					Addresses: org.Endpoints(),
+					RootCerts: certs,
+				}
+			}
+		}
+		ordererSource.Update(globalAddresses, orgAddresses)
+	}
+
 	channel := &Channel{
 		ledger:         l,
 		resources:      bundle,
@@ -310,6 +335,7 @@ func (p *Peer) createChannel(
 
 	channel.bundleSource = channelconfig.NewBundleSource(
 		bundle,
+		ordererSourceCallback,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
@@ -343,11 +369,6 @@ func (p *Peer) createChannel(
 		),
 	}
 
-	ordererAddresses := bundle.ChannelConfig().OrdererAddresses()
-	if len(ordererAddresses) == 0 {
-		return errors.New("no ordering service endpoint provided in configuration block")
-	}
-
 	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
 	store, err := p.openStore(bundle.ConfigtxValidator().ChannelID())
 	if err != nil {
@@ -356,7 +377,7 @@ func (p *Peer) createChannel(
 	channel.store = store
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
-	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererAddresses, gossipservice.Support{
+	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererSource, gossipservice.Support{
 		Validator:       validator,
 		Committer:       committer,
 		Store:           store,
