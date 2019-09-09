@@ -6,9 +6,15 @@
 
 set -euo pipefail
 
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-. "$DIR/parse.sh"
+if [ "$#" -ne 4 ]; then
+    echo "Expected 4 directories got $#"
+    exit 1
+fi
+
+SOURCE=$1
+PACKAGE_ID="$(grep -o '"PackageID": *"[^"]*"' "$2/metadata.json"| grep -o '"[^"]*"$')"
+OUTPUT=$3
+ARTIFACTS=$4
 
 export CORE_CHAINCODE_ID_NAME="${PACKAGE_ID}"
 
@@ -16,8 +22,8 @@ export CORE_TLS_CLIENT_CERT_PATH="$ARTIFACTS/client.crt"
 export CORE_TLS_CLIENT_KEY_PATH="$ARTIFACTS/client.key"
 export CORE_PEER_TLS_ROOTCERT_FILE="$ARTIFACTS/root.crt"
 
-# Note, for strange historical reasons, the chaincode expects the cert and key to be base64 encoded,
-# but not the root cert.
+# Note, for strange historical reasons, the chaincode expects the cert and key
+# to be base64 encoded, but not the root cert.
 jq -r .ClientCert $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_CERT_PATH"
 jq -r .ClientKey $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_KEY_PATH"
 jq -r .RootCert $ARTIFACTS/chaincode.json | base64 --decode > "$CORE_PEER_TLS_ROOTCERT_FILE"
