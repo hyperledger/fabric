@@ -68,6 +68,11 @@ func (oc *OrganizationConfig) MSPID() string {
 	return oc.mspID
 }
 
+// MSP returns the actual MSP implementation for this org.
+func (oc *OrganizationConfig) MSP() msp.MSP {
+	return oc.msp
+}
+
 // Validate returns whether the configuration is valid
 func (oc *OrganizationConfig) Validate() error {
 	return oc.validateMSP()

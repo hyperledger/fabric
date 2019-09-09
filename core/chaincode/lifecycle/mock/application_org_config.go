@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/msp"
 )
 
 type ApplicationOrgConfig struct {
@@ -17,6 +18,16 @@ type ApplicationOrgConfig struct {
 	}
 	anchorPeersReturnsOnCall map[int]struct {
 		result1 []*peer.AnchorPeer
+	}
+	MSPStub        func() msp.MSP
+	mSPMutex       sync.RWMutex
+	mSPArgsForCall []struct {
+	}
+	mSPReturns struct {
+		result1 msp.MSP
+	}
+	mSPReturnsOnCall map[int]struct {
+		result1 msp.MSP
 	}
 	MSPIDStub        func() string
 	mSPIDMutex       sync.RWMutex
@@ -91,6 +102,58 @@ func (fake *ApplicationOrgConfig) AnchorPeersReturnsOnCall(i int, result1 []*pee
 	}
 	fake.anchorPeersReturnsOnCall[i] = struct {
 		result1 []*peer.AnchorPeer
+	}{result1}
+}
+
+func (fake *ApplicationOrgConfig) MSP() msp.MSP {
+	fake.mSPMutex.Lock()
+	ret, specificReturn := fake.mSPReturnsOnCall[len(fake.mSPArgsForCall)]
+	fake.mSPArgsForCall = append(fake.mSPArgsForCall, struct {
+	}{})
+	fake.recordInvocation("MSP", []interface{}{})
+	fake.mSPMutex.Unlock()
+	if fake.MSPStub != nil {
+		return fake.MSPStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.mSPReturns
+	return fakeReturns.result1
+}
+
+func (fake *ApplicationOrgConfig) MSPCallCount() int {
+	fake.mSPMutex.RLock()
+	defer fake.mSPMutex.RUnlock()
+	return len(fake.mSPArgsForCall)
+}
+
+func (fake *ApplicationOrgConfig) MSPCalls(stub func() msp.MSP) {
+	fake.mSPMutex.Lock()
+	defer fake.mSPMutex.Unlock()
+	fake.MSPStub = stub
+}
+
+func (fake *ApplicationOrgConfig) MSPReturns(result1 msp.MSP) {
+	fake.mSPMutex.Lock()
+	defer fake.mSPMutex.Unlock()
+	fake.MSPStub = nil
+	fake.mSPReturns = struct {
+		result1 msp.MSP
+	}{result1}
+}
+
+func (fake *ApplicationOrgConfig) MSPReturnsOnCall(i int, result1 msp.MSP) {
+	fake.mSPMutex.Lock()
+	defer fake.mSPMutex.Unlock()
+	fake.MSPStub = nil
+	if fake.mSPReturnsOnCall == nil {
+		fake.mSPReturnsOnCall = make(map[int]struct {
+			result1 msp.MSP
+		})
+	}
+	fake.mSPReturnsOnCall[i] = struct {
+		result1 msp.MSP
 	}{result1}
 }
 
@@ -203,6 +266,8 @@ func (fake *ApplicationOrgConfig) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.anchorPeersMutex.RLock()
 	defer fake.anchorPeersMutex.RUnlock()
+	fake.mSPMutex.RLock()
+	defer fake.mSPMutex.RUnlock()
 	fake.mSPIDMutex.RLock()
 	defer fake.mSPIDMutex.RUnlock()
 	fake.nameMutex.RLock()

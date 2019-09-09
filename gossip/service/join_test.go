@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -123,6 +124,10 @@ type appOrgMock struct {
 
 func (*appOrgMock) Name() string {
 	panic("implement me")
+}
+
+func (*appOrgMock) MSP() msp.MSP {
+	panic("generate this fake instead")
 }
 
 func (ao *appOrgMock) MSPID() string {

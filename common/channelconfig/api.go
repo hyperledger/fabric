@@ -24,6 +24,9 @@ type Org interface {
 
 	// MSPID returns the MSP ID associated with this org
 	MSPID() string
+
+	// MSP returns the MSP implementation for this org.
+	MSP() msp.MSP
 }
 
 // ApplicationOrg stores the per org application config
