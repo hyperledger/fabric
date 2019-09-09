@@ -566,3 +566,15 @@ func TestServerNameOverride(t *testing.T) {
 		ServerName: "override-name",
 	}, testConfig)
 }
+
+func TestCertPoolOverride(t *testing.T) {
+	tlsOption := comm.CertPoolOverride(&x509.CertPool{})
+	testConfig := &tls.Config{}
+	assert.NotEqual(t, &tls.Config{
+		RootCAs: &x509.CertPool{},
+	}, testConfig)
+	tlsOption(testConfig)
+	assert.Equal(t, &tls.Config{
+		RootCAs: &x509.CertPool{},
+	}, testConfig)
+}
