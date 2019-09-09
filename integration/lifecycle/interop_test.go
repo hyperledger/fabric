@@ -399,21 +399,14 @@ var _ = Describe("Release interoperability", func() {
 					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 					Expect(sess).To(gbytes.Say("callee:bar"))
 
-				})
-
-				It("Deploys chaincode on two channels with the new lifecycle and performs a successful cc2cc invocation from one channel to another channel", func() {
-					By("enabling the 2.0 capability on the channel")
-					nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+					By("enabling the 2.0 capability on channel2")
 					nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 
-					By("deploying the caller chaincode using _lifecycle")
-					nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
-
-					By("deploying the callee chaincode using _lifecycle")
+					By("deploying the callee chaincode using _lifecycle on channel2")
 					nwo.DeployChaincode(network, "testchannel2", orderer, calleeDefNew)
 
-					By("invoking the chaincode on callee")
-					sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+					By("invoking the chaincode on callee on channel2")
+					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 						ChannelID:    "testchannel2",
 						Orderer:      network.OrdererAddress(orderer, nwo.ListenPort),
 						Name:         "callee",
@@ -424,7 +417,7 @@ var _ = Describe("Release interoperability", func() {
 					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 					Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
-					By("querying the callee chaincode")
+					By("querying the callee chaincode on channel2")
 					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel2",
 						Name:      "callee",
@@ -434,7 +427,7 @@ var _ = Describe("Release interoperability", func() {
 					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 					Expect(sess).To(gbytes.Say("callee:bar"))
 
-					By("querying (QUERYCALLEE) the callee chaincode from caller")
+					By("querying (QUERYCALLEE) the callee chaincode on channel2 from caller on channel")
 					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "caller",
@@ -443,6 +436,16 @@ var _ = Describe("Release interoperability", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 					Expect(sess).To(gbytes.Say("callee:bar"))
+
+					By("querying (QUERYCALLEE) the callee chaincode from caller on non-existing channel and expecting the invocation to fail")
+					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						ChannelID: "testchannel",
+						Name:      "caller",
+						Ctor:      `{"Args":["QUERYCALLEE", "callee", "nonExistingChannel2"]}`,
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+					Expect(sess.Err).To(gbytes.Say(`Error: endorsement failure during query. response: status:500`))
 
 				})
 
