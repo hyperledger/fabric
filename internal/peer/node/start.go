@@ -367,7 +367,9 @@ func serve(args []string) error {
 	//
 	// gossip <-- lifecycleCache
 
-	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager)
+	chaincodeCustodian := lifecycle.NewChaincodeCustodian()
+
+	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager, chaincodeCustodian)
 
 	txProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
 		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
@@ -556,6 +558,8 @@ func serve(args []string) error {
 		Runtime:        containerRuntime,
 		StartupTimeout: chaincodeConfig.StartupTimeout,
 	}
+
+	go chaincodeCustodian.Work(buildRegistry, containerRouter, chaincodeLauncher)
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{
 		ACLProvider:            aclProvider,

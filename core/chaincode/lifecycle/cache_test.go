@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
@@ -39,6 +40,7 @@ var _ = Describe("Cache", func() {
 		fakePublicState     MapLedgerShim
 		fakePrivateState    MapLedgerShim
 		fakeQueryExecutor   *mock.SimpleQueryExecutor
+		chaincodeCustodian  *lifecycle.ChaincodeCustodian
 	)
 
 	BeforeEach(func() {
@@ -70,8 +72,10 @@ var _ = Describe("Cache", func() {
 
 		fakeMetadataHandler = &mock.MetadataHandler{}
 
+		chaincodeCustodian = lifecycle.NewChaincodeCustodian()
+
 		var err error
-		c = lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler)
+		c = lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler, chaincodeCustodian)
 		Expect(err).NotTo(HaveOccurred())
 
 		channelCache = &lifecycle.ChannelCache{
@@ -159,6 +163,10 @@ var _ = Describe("Cache", func() {
 		fakeQueryExecutor.GetPrivateDataHashStub = func(namespace, collection, key string) ([]byte, error) {
 			return fakePrivateState.GetStateHash(key)
 		}
+	})
+
+	AfterEach(func() {
+		chaincodeCustodian.Close()
 	})
 
 	Describe("ChaincodeInfo", func() {
@@ -370,8 +378,17 @@ var _ = Describe("Cache", func() {
 				Expect(channelCache.Chaincodes["chaincode-name"].InstallInfo).To(BeNil())
 			})
 
+			It("does not attempt to launch", func() {
+				err := c.Initialize("channel-id", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeLauncher := &mock.ChaincodeLauncher{}
+				go chaincodeCustodian.Work(nil, nil, fakeLauncher)
+				Consistently(fakeLauncher.LaunchCallCount).Should(Equal(0))
+			})
+
 			Context("when the chaincode is installed afterwards", func() {
-				It("gets its install info set", func() {
+				It("gets its install info set and attempts to launch", func() {
 					err := c.Initialize("channel-id", fakeQueryExecutor)
 					Expect(err).NotTo(HaveOccurred())
 					c.HandleChaincodeInstalled(&persistence.ChaincodePackageMetadata{
@@ -383,7 +400,12 @@ var _ = Describe("Cache", func() {
 						Path:      "some-path",
 						PackageID: "different-hash",
 					}))
+
+					fakeLauncher := &mock.ChaincodeLauncher{}
+					go chaincodeCustodian.Work(nil, nil, fakeLauncher)
+					Eventually(fakeLauncher.LaunchCallCount).Should(Equal(1))
 				})
+
 			})
 		})
 
@@ -468,6 +490,18 @@ var _ = Describe("Cache", func() {
 					Path:      "cc-path",
 					PackageID: "hash",
 				}))
+			})
+
+			It("tells the custodian first to build, then to launch it", func() {
+				err := c.Initialize("channel-id", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeLauncher := &mock.ChaincodeLauncher{}
+				fakeBuilder := &mock.ChaincodeBuilder{}
+				buildRegistry := &container.BuildRegistry{}
+				go chaincodeCustodian.Work(buildRegistry, fakeBuilder, fakeLauncher)
+				Eventually(fakeBuilder.BuildCallCount).Should(Equal(1))
+				Eventually(fakeLauncher.LaunchCallCount).Should(Equal(1))
 			})
 		})
 
