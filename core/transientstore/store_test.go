@@ -13,16 +13,17 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -162,7 +163,7 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 
 	// Create and persist private simulation results with old proto for txid-1
 	samplePvtRWSet := samplePvtData(t)
-	err = testStore.Persist(txid, receivedAtBlockHeight, samplePvtRWSet)
+	err = testStore.(*store).persistOldProto(txid, receivedAtBlockHeight, samplePvtRWSet)
 	assert.NoError(err)
 
 	// Create and persist private simulation results with new proto for txid-1
@@ -553,10 +554,10 @@ func sortResults(res []*EndorserPvtSimulationResultsWithConfig) {
 	// heights are same, we sort by comparing the hash of private write set.
 	var sortCondition = func(i, j int) bool {
 		if res[i].ReceivedAtBlockHeight == res[j].ReceivedAtBlockHeight {
-			res_i, _ := proto.Marshal(res[i].PvtSimulationResultsWithConfig)
-			res_j, _ := proto.Marshal(res[j].PvtSimulationResultsWithConfig)
+			resI, _ := proto.Marshal(res[i].PvtSimulationResultsWithConfig)
+			resJ, _ := proto.Marshal(res[j].PvtSimulationResultsWithConfig)
 			// if hashes are same, any order would work.
-			return string(util.ComputeHash(res_i)) < string(util.ComputeHash(res_j))
+			return string(util.ComputeHash(resI)) < string(util.ComputeHash(resJ))
 		}
 		return res[i].ReceivedAtBlockHeight < res[j].ReceivedAtBlockHeight
 	}
@@ -650,4 +651,50 @@ func sampleCollectionConfigPackage(colName string) *common.CollectionConfig {
 	maximumPeerCount = 2
 
 	return createCollectionConfig(colName, policyEnvelope, requiredPeerCount, maximumPeerCount)
+}
+
+// persistOldProto is the code from 1.1 to populate stores with old proto message
+// this is used only for testing
+func (s *store) persistOldProto(txid string, blockHeight uint64,
+	privateSimulationResults *rwset.TxPvtReadWriteSet) error {
+
+	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
+
+	dbBatch := leveldbhelper.NewUpdateBatch()
+
+	// Create compositeKey with appropriate prefix, txid, uuid and blockHeight
+	// Due to the fact that the txid may have multiple private write sets persisted from different
+	// endorsers (via Gossip), we postfix an uuid with the txid to avoid collision.
+	uuid := commonutil.GenerateUUID()
+	compositeKeyPvtRWSet := createCompositeKeyForPvtRWSet(txid, uuid, blockHeight)
+	privateSimulationResultsBytes, err := proto.Marshal(privateSimulationResults)
+	if err != nil {
+		return err
+	}
+	dbBatch.Put(compositeKeyPvtRWSet, privateSimulationResultsBytes)
+
+	// Create two index: (i) by txid, and (ii) by height
+
+	// Create compositeKey for purge index by height with appropriate prefix, blockHeight,
+	// txid, uuid and store the compositeKey (purge index) with a nil byte as value. Note that
+	// the purge index is used to remove orphan entries in the transient store (which are not removed
+	// by PurgeTxids()) using BTL policy by PurgeByHeight(). Note that orphan entries are due to transaction
+	// that gets endorsed but not submitted by the client for commit)
+	compositeKeyPurgeIndexByHeight := createCompositeKeyForPurgeIndexByHeight(blockHeight, txid, uuid)
+	dbBatch.Put(compositeKeyPurgeIndexByHeight, emptyValue)
+
+	// Create compositeKey for purge index by txid with appropriate prefix, txid, uuid,
+	// blockHeight and store the compositeKey (purge index) with a nil byte as value.
+	// Though compositeKeyPvtRWSet itself can be used to purge private write set by txid,
+	// we create a separate composite key with a nil byte as value. The reason is that
+	// if we use compositeKeyPvtRWSet, we unnecessarily read (potentially large) private write
+	// set associated with the key from db. Note that this purge index is used to remove non-orphan
+	// entries in the transient store and is used by PurgeTxids()
+	// Note: We can create compositeKeyPurgeIndexByTxid by just replacing the prefix of compositeKeyPvtRWSet
+	// with purgeIndexByTxidPrefix. For code readability and to be expressive, we use a
+	// createCompositeKeyForPurgeIndexByTxid() instead.
+	compositeKeyPurgeIndexByTxid := createCompositeKeyForPurgeIndexByTxid(txid, uuid, blockHeight)
+	dbBatch.Put(compositeKeyPurgeIndexByTxid, emptyValue)
+
+	return s.db.WriteBatch(dbBatch, true)
 }

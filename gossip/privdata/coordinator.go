@@ -58,8 +58,6 @@ type TransientStore interface {
 	// in the transient store based on txid and the block height the private data was received at
 	PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *protostransientstore.TxPvtReadWriteSetWithConfigInfo) error
 
-	// Persist stores the private write set of a transaction in the transient store
-	Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 	// write sets persisted from different endorsers (via Gossip)
 	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error)
@@ -355,9 +353,6 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][
 			}
 			ownedRWsets[key] = rws
 			delete(privateInfo.missingKeys, key)
-			// If we fetch private data that is associated to block i, then our last block persisted must be i-1
-			// so our ledger height is i, since blocks start from 0.
-			c.TransientStore.Persist(dig.TxId, blockSeq, key.toTxPvtReadWriteSet(rws))
 			logger.Debug("Fetched", key)
 		}
 	}

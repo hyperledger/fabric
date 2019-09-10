@@ -155,10 +155,6 @@ type rwsetScanner struct {
 	data []*rwset.TxPvtReadWriteSet
 }
 
-func (*rwsetScanner) Next() (*transientstore.EndorserPvtSimulationResults, error) {
-	panic("implement me")
-}
-
 func (rws *rwsetScanner) NextWithConfig() (*transientstore.EndorserPvtSimulationResultsWithConfig, error) {
 	if len(rws.data) == 0 {
 		return nil, nil

@@ -106,19 +106,6 @@ func (store *mockTransientStore) PurgeByTxids(txids []string) error {
 	return args.Error(0)
 }
 
-func (store *mockTransientStore) Persist(txid string, blockHeight uint64, res *rwset.TxPvtReadWriteSet) error {
-	key := rwsTriplet{
-		namespace:  res.NsPvtRwset[0].Namespace,
-		collection: res.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName,
-		rwset:      hex.EncodeToString(res.NsPvtRwset[0].CollectionPvtRwset[0].Rwset)}
-	if _, exists := store.persists[key]; !exists {
-		store.t.Fatal("Shouldn't have persisted", res)
-	}
-	delete(store.persists, key)
-	store.Called(txid, blockHeight, res)
-	return nil
-}
-
 func (store *mockTransientStore) PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
 	res := privateSimulationResultsWithConfig.PvtRwset
 	key := rwsTriplet{
@@ -185,10 +172,6 @@ func (scanner *mockRWSetScanner) withRWSet(ns string, col string) *mockRWSetScan
 		},
 	})
 	return scanner
-}
-
-func (scanner *mockRWSetScanner) Next() (*transientstore.EndorserPvtSimulationResults, error) {
-	panic("should not be used")
 }
 
 func (scanner *mockRWSetScanner) NextWithConfig() (*transientstore.EndorserPvtSimulationResultsWithConfig, error) {
