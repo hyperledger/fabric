@@ -88,6 +88,8 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	logger.Debugf("Indexing block [%s]", blockIdxInfo)
 	flp := blockIdxInfo.flp
 	txOffsets := blockIdxInfo.txOffsets
+	blkNum := blockIdxInfo.blockNum
+	blkHash := blockIdxInfo.blockHash
 	txsfltr := ledgerUtil.TxValidationFlags(blockIdxInfo.metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	batch := leveldbhelper.NewUpdateBatch()
 	flpBytes, err := flp.marshal()
@@ -97,26 +99,17 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 
 	//Index1
 	if index.isAttributeIndexed(blkstorage.IndexableAttrBlockHash) {
-		batch.Put(constructBlockHashKey(blockIdxInfo.blockHash), flpBytes)
+		batch.Put(constructBlockHashKey(blkHash), flpBytes)
 	}
 
 	//Index2
 	if index.isAttributeIndexed(blkstorage.IndexableAttrBlockNum) {
-		batch.Put(constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
+		batch.Put(constructBlockNumKey(blkNum), flpBytes)
 	}
 
-	//Index3 Used to find a transaction by it's transaction id
+	//Index3 Used to find a transaction by its transaction id
 	if index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
-		if err = index.markDuplicateTxids(blockIdxInfo); err != nil {
-			logger.Errorf("error detecting duplicate txids: %s", err)
-			return errors.WithMessage(err, "error detecting duplicate txids")
-		}
 		for i, txoffset := range txOffsets {
-			if txoffset.isDuplicate { // do not overwrite txid entry in the index - FAB-8557
-				logger.Debugf("txid [%s] is a duplicate of a previous tx. Not indexing in txid-index", txoffset.txID)
-				continue
-			}
-
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
 			logger.Debugf("Adding txLoc [%s] for tx ID: [%s] to txid-index", txFlp, txoffset.txID)
 			txFlpBytes, marshalErr := txFlp.marshal()
@@ -133,20 +126,23 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 			if err != nil {
 				return errors.Wrap(err, "unexpected error while marshaling TxIDIndexValProto message")
 			}
-			batch.Put(constructTxIDKey(txoffset.txID), indexValBytes)
+			batch.Put(
+				constructTxIDKey(txoffset.txID, blkNum, uint64(i)),
+				indexValBytes,
+			)
 		}
 	}
 
 	//Index4 - Store BlockNumTranNum will be used to query history data
 	if index.isAttributeIndexed(blkstorage.IndexableAttrBlockNumTranNum) {
-		for txIterator, txoffset := range txOffsets {
+		for i, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
-			logger.Debugf("Adding txLoc [%s] for tx number:[%d] ID: [%s] to blockNumTranNum index", txFlp, txIterator, txoffset.txID)
+			logger.Debugf("Adding txLoc [%s] for tx number:[%d] ID: [%s] to blockNumTranNum index", txFlp, i, txoffset.txID)
 			txFlpBytes, marshalErr := txFlp.marshal()
 			if marshalErr != nil {
 				return marshalErr
 			}
-			batch.Put(constructBlockNumTranNumKey(blockIdxInfo.blockNum, uint64(txIterator)), txFlpBytes)
+			batch.Put(constructBlockNumTranNumKey(blkNum, uint64(i)), txFlpBytes)
 		}
 	}
 
@@ -161,28 +157,6 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 func (index *blockIndex) isAttributeIndexed(attribute blkstorage.IndexableAttr) bool {
 	_, ok := index.indexItemsMap[attribute]
 	return ok
-}
-
-func (index *blockIndex) markDuplicateTxids(blockIdxInfo *blockIdxInfo) error {
-	uniqueTxids := make(map[string]bool)
-	for _, txIdxInfo := range blockIdxInfo.txOffsets {
-		txid := txIdxInfo.txID
-		if uniqueTxids[txid] { // txid is duplicate of a previous tx in the block
-			txIdxInfo.isDuplicate = true
-			continue
-		}
-
-		loc, err := index.getTxLoc(txid)
-		if loc != nil { // txid is duplicate of a previous tx in the index
-			txIdxInfo.isDuplicate = true
-			continue
-		}
-		if err != blkstorage.ErrNotFoundInIndex {
-			return err
-		}
-		uniqueTxids[txid] = true
-	}
-	return nil
 }
 
 func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, error) {
@@ -218,49 +192,58 @@ func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer
 }
 
 func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
-	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
-		return nil, blkstorage.ErrAttrNotIndexed
-	}
-	b, err := index.db.Get(constructTxIDKey(txID))
+	v, err := index.getTxIDVal(txID)
 	if err != nil {
 		return nil, err
 	}
-	if b == nil {
-		return nil, blkstorage.ErrNotFoundInIndex
-	}
-
-	indexVal := &msgs.TxIDIndexValProto{}
-	if err = proto.Unmarshal(b, indexVal); err != nil {
-		return nil, errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", b)
-	}
 	txFLP := &fileLocPointer{}
-	if err = txFLP.unmarshal(indexVal.TxLocation); err != nil {
+	if err = txFLP.unmarshal(v.TxLocation); err != nil {
 		return nil, err
 	}
 	return txFLP, nil
 }
 
 func (index *blockIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error) {
-	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
-		return nil, blkstorage.ErrAttrNotIndexed
-	}
-	b, err := index.db.Get(constructTxIDKey(txID))
+	v, err := index.getTxIDVal(txID)
 	if err != nil {
 		return nil, err
 	}
-	if b == nil {
-		return nil, blkstorage.ErrNotFoundInIndex
-	}
-
-	indexVal := &msgs.TxIDIndexValProto{}
-	if err = proto.Unmarshal(b, indexVal); err != nil {
-		return nil, errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", b)
-	}
-	txFLP := &fileLocPointer{}
-	if err = txFLP.unmarshal(indexVal.BlkLocation); err != nil {
+	blkFLP := &fileLocPointer{}
+	if err = blkFLP.unmarshal(v.BlkLocation); err != nil {
 		return nil, err
 	}
-	return txFLP, nil
+	return blkFLP, nil
+}
+
+func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+	v, err := index.getTxIDVal(txID)
+	if err != nil {
+		return peer.TxValidationCode(-1), err
+	}
+	return peer.TxValidationCode(v.TxValidationCode), nil
+}
+
+func (index *blockIndex) getTxIDVal(txID string) (*msgs.TxIDIndexValProto, error) {
+	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
+		return nil, blkstorage.ErrAttrNotIndexed
+	}
+	rangeScan := constructTxIDRangeScan(txID)
+	itr := index.db.GetIterator(rangeScan.startKey, rangeScan.stopKey)
+	defer itr.Release()
+
+	present := itr.Next()
+	if err := itr.Error(); err != nil {
+		return nil, errors.Wrapf(err, "error while trying to retrieve transaction info by TXID [%s]", txID)
+	}
+	if !present {
+		return nil, blkstorage.ErrNotFoundInIndex
+	}
+	valBytes := itr.Value()
+	val := &msgs.TxIDIndexValProto{}
+	if err := proto.Unmarshal(valBytes, val); err != nil {
+		return nil, errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", valBytes)
+	}
+	return val, nil
 }
 
 func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
@@ -279,27 +262,6 @@ func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint
 	return txFLP, nil
 }
 
-func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
-	if !index.isAttributeIndexed(blkstorage.IndexableAttrTxID) {
-		return peer.TxValidationCode(-1), blkstorage.ErrAttrNotIndexed
-	}
-
-	b, err := index.db.Get(constructTxIDKey(txID))
-
-	if err != nil {
-		return peer.TxValidationCode(-1), err
-	}
-	if b == nil {
-		return peer.TxValidationCode(-1), blkstorage.ErrNotFoundInIndex
-	}
-
-	indexVal := &msgs.TxIDIndexValProto{}
-	if err = proto.Unmarshal(b, indexVal); err != nil {
-		return peer.TxValidationCode(-1), errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", b)
-	}
-	return peer.TxValidationCode(indexVal.TxValidationCode), nil
-}
-
 func constructBlockNumKey(blockNum uint64) []byte {
 	blkNumBytes := util.EncodeOrderPreservingVarUint64(blockNum)
 	return append([]byte{blockNumIdxKeyPrefix}, blkNumBytes...)
@@ -309,8 +271,31 @@ func constructBlockHashKey(blockHash []byte) []byte {
 	return append([]byte{blockHashIdxKeyPrefix}, blockHash...)
 }
 
-func constructTxIDKey(txID string) []byte {
-	return append([]byte{txIDIdxKeyPrefix}, []byte(txID)...)
+func constructTxIDKey(txID string, blkNum, txNum uint64) []byte {
+	k := append(
+		[]byte{txIDIdxKeyPrefix},
+		util.EncodeOrderPreservingVarUint64(uint64(len(txID)))...,
+	)
+	k = append(k, txID...)
+	k = append(k, util.EncodeOrderPreservingVarUint64(blkNum)...)
+	return append(k, util.EncodeOrderPreservingVarUint64(txNum)...)
+}
+
+type rangeScan struct {
+	startKey []byte
+	stopKey  []byte
+}
+
+func constructTxIDRangeScan(txID string) *rangeScan {
+	sk := append(
+		[]byte{txIDIdxKeyPrefix},
+		util.EncodeOrderPreservingVarUint64(uint64(len(txID)))...,
+	)
+	sk = append(sk, txID...)
+	return &rangeScan{
+		startKey: sk,
+		stopKey:  append(sk, 0xff),
+	}
 }
 
 func constructBlockNumTranNumKey(blockNum uint64, txNum uint64) []byte {
