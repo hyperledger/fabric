@@ -22,7 +22,7 @@ import (
 	pcomm "github.com/hyperledger/fabric-protos-go/common"
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
+	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	errors2 "github.com/hyperledger/fabric/common/errors"
@@ -184,25 +184,6 @@ func (node *peerNode) shutdown() {
 	node.s.Stop()
 	node.g.Stop()
 	node.grpc.Stop()
-}
-
-type mockTransientStore struct {
-}
-
-func (*mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
-	return nil
-}
-
-func (*mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
-	panic("implement me")
-}
-
-func (mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
-	panic("implement me")
-}
-
-func (*mockTransientStore) PurgeByTxids(txids []string) error {
-	panic("implement me")
 }
 
 type mockCommitter struct {
@@ -421,10 +402,9 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coord := privdata.NewCoordinator(privdata.Support{
 		Validator:          v,
-		TransientStore:     &mockTransientStore{},
 		Committer:          committer,
 		CapabilityProvider: capabilityProvider,
-	}, protoutil.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
+	}, &transientstore.Store{}, protoutil.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
 	stateConfig := &StateConfig{
 		StateCheckInterval:   DefStateCheckInterval,
 		StateResponseTimeout: DefStateResponseTimeout,
@@ -1275,7 +1255,7 @@ func (mock *coordinatorMock) Close() {
 }
 
 // StorePvtData used to persist private date into transient store
-func (mock *coordinatorMock) StorePvtData(txid string, privData *transientstore2.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
+func (mock *coordinatorMock) StorePvtData(txid string, privData *tspb.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
 	return mock.Called().Error(0)
 }
 

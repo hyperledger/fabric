@@ -9,7 +9,9 @@ package service
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -34,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
@@ -58,23 +61,45 @@ type signerSerializer interface {
 	identity.SignerSerializer
 }
 
-type mockTransientStore struct {
+type testTransientStore struct {
+	storeProvider transientstore.StoreProvider
+	Store         *transientstore.Store
+	tempdir       string
 }
 
-func (*mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
-	return nil
+func newTransientStore(t *testing.T) *testTransientStore {
+	s := &testTransientStore{}
+	var err error
+	s.tempdir, err = ioutil.TempDir("", "ts")
+	if err != nil {
+		t.Fatalf("Failed to create test directory, got err %s", err)
+		return s
+	}
+	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir)
+	if err != nil {
+		t.Fatalf("Failed to open store, got err %s", err)
+		return s
+	}
+	s.Store, err = s.storeProvider.OpenStore("test")
+	if err != nil {
+		t.Fatalf("Failed to open store, got err %s", err)
+		return s
+	}
+	return s
 }
 
-func (*mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
-	panic("implement me")
+func (s *testTransientStore) tearDown() {
+	s.storeProvider.Close()
+	os.RemoveAll(s.tempdir)
 }
 
-func (*mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
-	panic("implement me")
+func (s *testTransientStore) Persist(txid string, blockHeight uint64,
+	privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
+	return s.Store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
 }
 
-func (*mockTransientStore) PurgeByTxids(txids []string) error {
-	panic("implement me")
+func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (privdata.RWSetScanner, error) {
+	return s.Store.GetTxPvtRWSetByTxid(txid, filter)
 }
 
 func TestInitGossipService(t *testing.T) {
@@ -155,6 +180,9 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 
 	services := make([]*electionService, n)
 
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	for i := 0; i < n; i++ {
 		deliverServiceFactory := &mockDeliverServiceFactory{
 			service: &mockDeliverService{
@@ -164,8 +192,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
 
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
-			Store:     &mockTransientStore{},
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		})
 		service, exist := gossips[i].leaderElection[channelName]
@@ -217,6 +244,9 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 
 	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
 
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
 			running: make(map[string]bool),
@@ -226,9 +256,8 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
-			Store:     &mockTransientStore{},
 		})
 	}
 
@@ -240,9 +269,8 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	channelName = "chanB"
 	for i := 0; i < n; i++ {
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
-			Store:     &mockTransientStore{},
 		})
 	}
 
@@ -277,6 +305,9 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 
 	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
 
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
 			running: make(map[string]bool),
@@ -286,9 +317,8 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
-			Store:     &mockTransientStore{},
 		})
 	}
 
@@ -323,6 +353,9 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 
 	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
 
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
 			running: make(map[string]bool),
@@ -332,9 +365,8 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		assert.Panics(t, func() {
-			gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
+			gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), store.Store, Support{
 				Committer: &mockLedgerInfo{1},
-				Store:     &mockTransientStore{},
 			})
 		}, "Dynamic leader election based and static connection to ordering service can't exist simultaneously")
 	}

@@ -52,29 +52,6 @@ type Committer interface {
 	committer.Committer
 }
 
-// TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger.
-type TransientStore interface {
-	// Persist stores the private write set of a transaction along with the collection config
-	// in the transient store based on txid and the block height the private data was received at
-	Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *protostransientstore.TxPvtReadWriteSetWithConfigInfo) error
-
-	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
-	// write sets persisted from different endorsers (via Gossip)
-	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error)
-
-	// PurgeByTxids removes private read-write sets for a given set of transactions from the
-	// transient store
-	PurgeByTxids(txids []string) error
-
-	// PurgeByHeight removes private write sets at block height lesser than
-	// a given maxBlockNumToRetain. In other words, Purge only retains private write sets
-	// that were persisted at block height of maxBlockNumToRetain or higher. Though the private
-	// write sets stored in transient store is removed by coordinator using PurgebyTxids()
-	// after successful block commit, PurgeByHeight() is still required to remove orphan entries (as
-	// transaction that gets endorsed may not be submitted by the client for commit)
-	PurgeByHeight(maxBlockNumToRetain uint64) error
-}
-
 // Coordinator orchestrates the flow of the new
 // blocks arrival and in flight transient data, responsible
 // to complete missing parts of transient data for given block.
@@ -130,7 +107,6 @@ type Support struct {
 	privdata.CollectionStore
 	txvalidator.Validator
 	committer.Committer
-	TransientStore
 	Fetcher
 	CapabilityProvider
 }
@@ -138,6 +114,7 @@ type Support struct {
 type coordinator struct {
 	selfSignedData protoutil.SignedData
 	Support
+	store                          *transientstore.Store
 	transientBlockRetention        uint64
 	metrics                        *metrics.PrivdataMetrics
 	pullRetryThreshold             time.Duration
@@ -151,9 +128,10 @@ type CoordinatorConfig struct {
 }
 
 // NewCoordinator creates a new instance of coordinator
-func NewCoordinator(support Support, selfSignedData protoutil.SignedData, metrics *metrics.PrivdataMetrics,
+func NewCoordinator(support Support, store *transientstore.Store, selfSignedData protoutil.SignedData, metrics *metrics.PrivdataMetrics,
 	config CoordinatorConfig) Coordinator {
 	return &coordinator{Support: support,
+		store:                          store,
 		selfSignedData:                 selfSignedData,
 		transientBlockRetention:        config.TransientBlockRetention,
 		metrics:                        metrics,
@@ -163,7 +141,7 @@ func NewCoordinator(support Support, selfSignedData protoutil.SignedData, metric
 
 // StorePvtData used to persist private date into transient store
 func (c *coordinator) StorePvtData(txID string, privData *protostransientstore.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
-	return c.TransientStore.Persist(txID, blkHeight, privData)
+	return c.store.Persist(txID, blkHeight, privData)
 }
 
 // StoreBlock stores block with private data into the ledger
@@ -298,14 +276,14 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	if len(blockAndPvtData.PvtData) > 0 {
 		// Finally, purge all transactions in block - valid or not valid.
-		if err := c.PurgeByTxids(privateInfo.txns); err != nil {
+		if err := c.store.PurgeByTxids(privateInfo.txns); err != nil {
 			logger.Error("Purging transactions", privateInfo.txns, "failed:", err)
 		}
 	}
 
 	seq := block.Header.Number
 	if seq%c.transientBlockRetention == 0 && seq > c.transientBlockRetention {
-		err := c.PurgeByHeight(seq - c.transientBlockRetention)
+		err := c.store.PurgeByHeight(seq - c.transientBlockRetention)
 		if err != nil {
 			logger.Error("Failed purging data from transient store at block", seq, ":", err)
 		}
@@ -379,7 +357,7 @@ func (c *coordinator) fetchMissingFromTransientStore(missing rwSetKeysByTxIDs, o
 }
 
 func (c *coordinator) fetchFromTransientStore(txAndSeq txAndSeqInBlock, filter ledger.PvtNsCollFilter, ownedRWsets map[rwSetKey][]byte) {
-	iterator, err := c.TransientStore.GetTxPvtRWSetByTxid(txAndSeq.txID, filter)
+	iterator, err := c.store.GetTxPvtRWSetByTxid(txAndSeq.txID, filter)
 	if err != nil {
 		logger.Warning("Failed obtaining iterator from transient store:", err)
 		return

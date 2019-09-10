@@ -34,7 +34,7 @@ var (
 
 // StoreProvider provides an instance of a TransientStore
 type StoreProvider interface {
-	OpenStore(ledgerID string) (Store, error)
+	OpenStore(ledgerID string) (*Store, error)
 	Close()
 }
 
@@ -46,31 +46,6 @@ type RWSetScanner interface {
 	Next() (*EndorserPvtSimulationResults, error)
 	// Close frees the resources associated with this RWSetScanner
 	Close()
-}
-
-// Store manages the storage of private write sets for a ledgerId.
-// Ideally, a ledger can remove the data from this storage when it is committed to
-// the permanent storage or the pruning of some data items is enforced by the policy
-type Store interface {
-	// Persist stores the private write set of a transaction along with the collection config
-	// in the transient store based on txid and the block height the private data was received at
-	Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error
-	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
-	// write sets persisted from different endorsers (via Gossip)
-	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error)
-	// PurgeByTxids removes private write sets of a given set of transactions from the
-	// transient store
-	PurgeByTxids(txids []string) error
-	// PurgeByHeight removes private write sets at block height lesser than
-	// a given maxBlockNumToRetain. In other words, Purge only retains private write sets
-	// that were persisted at block height of maxBlockNumToRetain or higher. Though the private
-	// write sets stored in transient store is removed by coordinator using PurgebyTxids()
-	// after successful block commit, PurgeByHeight() is still required to remove orphan entries (as
-	// transaction that gets endorsed may not be submitted by the client for commit)
-	PurgeByHeight(maxBlockNumToRetain uint64) error
-	// GetMinTransientBlkHt returns the lowest block height remaining in transient store
-	GetMinTransientBlkHt() (uint64, error)
-	Shutdown()
 }
 
 // EndorserPvtSimulationResults captures the details of the simulation results specific to an endorser
@@ -91,7 +66,7 @@ type storeProvider struct {
 }
 
 // store holds an instance of a levelDB.
-type store struct {
+type Store struct {
 	db       *leveldbhelper.DBHandle
 	ledgerID string
 }
@@ -113,9 +88,9 @@ func NewStoreProvider(path string) (StoreProvider, error) {
 }
 
 // OpenStore returns a handle to a ledgerId in Store
-func (provider *storeProvider) OpenStore(ledgerID string) (Store, error) {
+func (provider *storeProvider) OpenStore(ledgerID string) (*Store, error) {
 	dbHandle := provider.dbProvider.GetDBHandle(ledgerID)
-	return &store{db: dbHandle, ledgerID: ledgerID}, nil
+	return &Store{db: dbHandle, ledgerID: ledgerID}, nil
 }
 
 // Close closes the TransientStoreProvider
@@ -125,7 +100,7 @@ func (provider *storeProvider) Close() {
 
 // Persist stores the private write set of a transaction along with the collection config
 // in the transient store based on txid and the block height the private data was received at
-func (s *store) Persist(txid string, blockHeight uint64,
+func (s *Store) Persist(txid string, blockHeight uint64,
 	privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error {
 
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
@@ -178,7 +153,7 @@ func (s *store) Persist(txid string, blockHeight uint64,
 
 // GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 // write sets persisted from different endorsers.
-func (s *store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error) {
+func (s *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error) {
 
 	logger.Debugf("Getting private data from transient store for transaction %s", txid)
 
@@ -193,7 +168,7 @@ func (s *store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) 
 // PurgeByTxids removes private write sets of a given set of transactions from the
 // transient store. PurgeByTxids() is expected to be called by coordinator after
 // committing a block to ledger.
-func (s *store) PurgeByTxids(txids []string) error {
+func (s *Store) PurgeByTxids(txids []string) error {
 
 	logger.Debug("Purging private data from transient store for committed txids")
 
@@ -242,7 +217,7 @@ func (s *store) PurgeByTxids(txids []string) error {
 // write sets stored in transient store is removed by coordinator using PurgebyTxids()
 // after successful block commit, PurgeByHeight() is still required to remove orphan entries (as
 // transaction that gets endorsed may not be submitted by the client for commit)
-func (s *store) PurgeByHeight(maxBlockNumToRetain uint64) error {
+func (s *Store) PurgeByHeight(maxBlockNumToRetain uint64) error {
 
 	logger.Debugf("Purging orphaned private data from transient store received prior to block [%d]", maxBlockNumToRetain)
 
@@ -282,7 +257,7 @@ func (s *store) PurgeByHeight(maxBlockNumToRetain uint64) error {
 }
 
 // GetMinTransientBlkHt returns the lowest block height remaining in transient store
-func (s *store) GetMinTransientBlkHt() (uint64, error) {
+func (s *Store) GetMinTransientBlkHt() (uint64, error) {
 	// Current approach performs a range query on purgeIndex with startKey
 	// as 0 (i.e., blockHeight) and returns the first key which denotes
 	// the lowest block height remaining in transient store. An alternative approach
@@ -302,7 +277,7 @@ func (s *store) GetMinTransientBlkHt() (uint64, error) {
 	return 0, ErrStoreEmpty
 }
 
-func (s *store) Shutdown() {
+func (s *Store) Shutdown() {
 	// do nothing because shared db is used
 }
 

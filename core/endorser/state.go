@@ -22,7 +22,7 @@ type QueryCreator interface {
 
 // ChannelState defines state operations
 type ChannelState struct {
-	transientstore.Store
+	*transientstore.Store
 	QueryCreator
 }
 
@@ -41,7 +41,7 @@ func (cs *ChannelState) FetchState() (endorsement.State, error) {
 
 // StateContext defines an execution context that interacts with the state
 type StateContext struct {
-	transientstore.Store
+	*transientstore.Store
 	ledger.QueryExecutor
 }
 

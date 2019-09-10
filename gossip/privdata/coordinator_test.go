@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -22,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
+	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	util2 "github.com/hyperledger/fabric/common/util"
@@ -67,126 +69,6 @@ func fromCollectionCriteria(criteria common.CollectionCriteria) CollectionCriter
 		Namespace:  criteria.Namespace,
 		Channel:    criteria.Channel,
 	}
-}
-
-type persistCall struct {
-	*mock.Call
-	store *mockTransientStore
-}
-
-func (pc *persistCall) expectRWSet(namespace string, collection string, rws []byte) *persistCall {
-	if pc.store.persists == nil {
-		pc.store.persists = make(map[rwsTriplet]struct{})
-	}
-	pc.store.persists[rwsTriplet{
-		namespace:  namespace,
-		collection: collection,
-		rwset:      hex.EncodeToString(rws),
-	}] = struct{}{}
-	return pc
-}
-
-type mockTransientStore struct {
-	t *testing.T
-	mock.Mock
-	persists      map[rwsTriplet]struct{}
-	lastReqTxID   string
-	lastReqFilter map[string]ledger.PvtCollFilter
-}
-
-func (store *mockTransientStore) On(methodName string, arguments ...interface{}) *persistCall {
-	return &persistCall{
-		store: store,
-		Call:  store.Mock.On(methodName, arguments...),
-	}
-}
-
-func (store *mockTransientStore) PurgeByTxids(txids []string) error {
-	args := store.Called(txids)
-	return args.Error(0)
-}
-
-func (store *mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
-	res := privateSimulationResultsWithConfig.PvtRwset
-	key := rwsTriplet{
-		namespace:  res.NsPvtRwset[0].Namespace,
-		collection: res.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName,
-		rwset:      hex.EncodeToString(res.NsPvtRwset[0].CollectionPvtRwset[0].Rwset)}
-	if _, exists := store.persists[key]; !exists {
-		store.t.Fatal("Shouldn't have persisted", res)
-	}
-	delete(store.persists, key)
-	store.Called(txid, blockHeight, privateSimulationResultsWithConfig)
-	return nil
-}
-
-func (store *mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
-	return store.Called(maxBlockNumToRetain).Error(0)
-}
-
-func (store *mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
-	store.lastReqTxID = txid
-	store.lastReqFilter = filter
-	args := store.Called(txid, filter)
-	if args.Get(1) == nil {
-		return args.Get(0).(transientstore.RWSetScanner), nil
-	}
-	return nil, args.Get(1).(error)
-}
-
-type mockRWSetScanner struct {
-	err     error
-	results []*transientstore.EndorserPvtSimulationResults
-}
-
-func (scanner *mockRWSetScanner) withRWSet(ns string, col string) *mockRWSetScanner {
-	scanner.results = append(scanner.results, &transientstore.EndorserPvtSimulationResults{
-		PvtSimulationResultsWithConfig: &transientstore2.TxPvtReadWriteSetWithConfigInfo{
-			PvtRwset: &rwset.TxPvtReadWriteSet{
-				DataModel: rwset.TxReadWriteSet_KV,
-				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
-					{
-						Namespace: ns,
-						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-							{
-								CollectionName: col,
-								Rwset:          []byte("rws-pre-image"),
-							},
-						},
-					},
-				},
-			},
-			CollectionConfigs: map[string]*common.CollectionConfigPackage{
-				ns: {
-					Config: []*common.CollectionConfig{
-						{
-							Payload: &common.CollectionConfig_StaticCollectionConfig{
-								StaticCollectionConfig: &common.StaticCollectionConfig{
-									Name: col,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-	return scanner
-}
-
-func (scanner *mockRWSetScanner) Next() (*transientstore.EndorserPvtSimulationResults, error) {
-	if scanner.err != nil {
-		return nil, scanner.err
-	}
-	var res *transientstore.EndorserPvtSimulationResults
-	if len(scanner.results) == 0 {
-		return nil, nil
-	}
-	res, scanner.results = scanner.results[len(scanner.results)-1], scanner.results[:len(scanner.results)-1]
-	return res, nil
-}
-
-func (*mockRWSetScanner) Close() {
 }
 
 type validatorMock struct {
@@ -273,6 +155,47 @@ func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtData
 		return args.Get(0).(*privdatacommon.FetchedPvtDataContainer), nil
 	}
 	return nil, args.Get(1).(error)
+}
+
+type testTransientStore struct {
+	storeProvider transientstore.StoreProvider
+	store         *transientstore.Store
+	tempdir       string
+}
+
+func newTransientStore(t *testing.T) *testTransientStore {
+	s := &testTransientStore{}
+	var err error
+	s.tempdir, err = ioutil.TempDir("", "ts")
+	if err != nil {
+		t.Fatalf("Failed to create test directory, got err %s", err)
+		return s
+	}
+	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir)
+	if err != nil {
+		t.Fatalf("Failed to open store, got err %s", err)
+		return s
+	}
+	s.store, err = s.storeProvider.OpenStore("test")
+	if err != nil {
+		t.Fatalf("Failed to open store, got err %s", err)
+		return s
+	}
+	return s
+}
+
+func (s *testTransientStore) tearDown() {
+	s.storeProvider.Close()
+	os.RemoveAll(s.tempdir)
+}
+
+func (s *testTransientStore) Persist(txid string, blockHeight uint64,
+	privateSimulationResultsWithConfig *tspb.TxPvtReadWriteSetWithConfigInfo) error {
+	return s.store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
+}
+
+func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error) {
+	return s.store.GetTxPvtRWSetByTxid(txid, filter)
 }
 
 func createcollectionStore(expectedSignedData protoutil.SignedData) *collectionStore {
@@ -629,21 +552,28 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		t.Fatal("Shouldn't have committed")
 	}).Return(nil)
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
-	purgedTxns := make(map[string]struct{})
-	store := &mockTransientStore{t: t}
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	assertPurged := func(txns ...string) {
 		for _, txn := range txns {
-			_, exists := purgedTxns[txn]
-			assert.True(t, exists)
-			delete(purgedTxns, txn)
+			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			res, err := iterator.Next()
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			assert.Nil(t, res)
+			iterator.Close()
 		}
-		assert.Len(t, purgedTxns, 0)
 	}
-	store.On("PurgeByTxids", mock.Anything).Run(func(args mock.Arguments) {
-		for _, txn := range args.Get(0).([]string) {
-			purgedTxns[txn] = struct{}{}
-		}
-	}).Return(nil)
 	fetcher := &fetcherMock{t: t}
 	pdFactory := &pvtDataFactory{}
 	bf := &blockFactory{
@@ -662,10 +592,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err := coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
@@ -677,10 +606,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{fmt.Errorf("failed validating block")},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed validating block")
@@ -692,9 +620,8 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CollectionStore: cs,
 		Committer:       committer,
 		Fetcher:         fetcher,
-		TransientStore:  store,
 		Validator:       &validatorMock{},
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Block data size")
@@ -723,7 +650,6 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	}).Return(nil)
 	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
-	// store.On("GetTxPvtRWSetByTxid", "tx1", mock.Anything).Return(&mockRWSetScanner{}, nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
 	capabilityProvider = &capabilitymock.CapabilityProvider{}
@@ -734,10 +660,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -780,8 +705,6 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		assert.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
-	store.On("GetTxPvtRWSetByTxid", "tx2", mock.Anything).Return(&mockRWSetScanner{}, nil)
-
 	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
@@ -793,10 +716,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -852,11 +774,6 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		},
 	}, nil)
 
-	store.On("Persist", mock.Anything, uint64(1), mock.Anything).
-		expectRWSet("ns2", "c1", []byte("rws-pre-image")).Return(nil)
-
-	store.On("GetTxPvtRWSetByTxid", "tx2", mock.Anything).Return(&mockRWSetScanner{}, nil)
-
 	block = bf.withInvalidTxns(1).AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
 		AddTxnWithEndorsement("tx2", "ns2", hash, "org2", true, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
@@ -865,10 +782,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -918,7 +834,28 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
 	committer := &mocks.Committer{}
-	store := &mockTransientStore{t: t}
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
+	assertPurged := func(txns ...string) {
+		for _, txn := range txns {
+			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			res, err := iterator.Next()
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			assert.Nil(t, res)
+			iterator.Close()
+		}
+	}
 
 	fetcher := &fetcherMock{t: t}
 
@@ -941,7 +878,6 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	}
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1").create()
-	store.On("GetTxPvtRWSetByTxid", "tx1", mock.Anything).Return((&mockRWSetScanner{}).withRWSet("ns1", "c1"), nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
@@ -954,10 +890,9 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 
 	fetcher.On("fetch", mock.Anything).expectingDigests([]privdatacommon.DigKey{
 		{
@@ -976,23 +911,13 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 			},
 		},
 	}, nil)
-	store.On("Persist", mock.Anything, uint64(1), mock.Anything).
-		expectRWSet("ns1", "c1", []byte("rws-original")).Return(nil)
-
-	purgedTxns := make(map[string]struct{})
-	store.On("PurgeByTxids", mock.Anything).Run(func(args mock.Arguments) {
-		for _, txn := range args.Get(0).([]string) {
-			purgedTxns[txn] = struct{}{}
-		}
-	}).Return(nil)
 
 	coordinator.StoreBlock(block, nil)
 	// Assert blocks was eventually committed
 	assert.True(t, commitHappened)
 
 	// Assert transaction has been purged
-	_, exists := purgedTxns["tx1"]
-	assert.True(t, exists)
+	assertPurged("tx1")
 }
 
 func TestCoordinatorStoreBlock(t *testing.T) {
@@ -1021,20 +946,27 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
 		assert.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
-	purgedTxns := make(map[string]struct{})
-	store := &mockTransientStore{t: t}
-	store.On("PurgeByTxids", mock.Anything).Run(func(args mock.Arguments) {
-		for _, txn := range args.Get(0).([]string) {
-			purgedTxns[txn] = struct{}{}
-		}
-	}).Return(nil)
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	assertPurged := func(txns ...string) {
 		for _, txn := range txns {
-			_, exists := purgedTxns[txn]
-			assert.True(t, exists)
-			delete(purgedTxns, txn)
+			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			res, err := iterator.Next()
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			assert.Nil(t, res)
+			iterator.Close()
 		}
-		assert.Len(t, purgedTxns, 0)
 	}
 
 	fetcher := &fetcherMock{t: t}
@@ -1064,10 +996,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err := coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -1076,19 +1007,27 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	fmt.Println("Scenario II")
 	// Scenario II: Block we got doesn't have sufficient private data alongside it,
 	// it is missing ns1: c2, but the data exists in the transient store
-	store.On("GetTxPvtRWSetByTxid", "tx1", mock.Anything).Return((&mockRWSetScanner{}).withRWSet("ns1", "c2"), nil)
-	store.On("GetTxPvtRWSetByTxid", "tx2", mock.Anything).Return(&mockRWSetScanner{}, nil)
+	store.Persist("tx1", 1, &tspb.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: &rwset.TxPvtReadWriteSet{
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+				{
+					Namespace: "ns1",
+					CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+						{
+							CollectionName: "c2",
+							Rwset:          []byte("rws-pre-image"),
+						},
+					},
+				},
+			},
+		},
+		CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+	})
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1").addRWSet().addNSRWSet("ns2", "c1").create()
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
 	assertPurged("tx1", "tx2")
-	assert.Equal(t, "tx1", store.lastReqTxID)
-	assert.Equal(t, map[string]ledger.PvtCollFilter{
-		"ns1": map[string]bool{
-			"c2": true,
-		},
-	}, store.lastReqFilter)
 
 	fmt.Println("Scenario III")
 	// Scenario III: Block doesn't have sufficient private data alongside it,
@@ -1126,9 +1065,6 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 			},
 		},
 	}, nil)
-	store.On("Persist", mock.Anything, uint64(1), mock.Anything).
-		expectRWSet("ns1", "c2", []byte("rws-pre-image")).
-		expectRWSet("ns2", "c1", []byte("rws-pre-image")).Return(nil)
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1").create()
 	err = coordinator.StoreBlock(block, pvtData)
 	assertPurged("tx1", "tx2")
@@ -1154,10 +1090,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		CollectionStore:    mockCs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err = coordinator.StoreBlock(block, nil)
 	assert.Error(t, err)
 	assert.Equal(t, "test error", err.Error())
@@ -1185,14 +1120,6 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 			},
 		},
 	}, nil)
-	store = &mockTransientStore{t: t}
-	store.On("PurgeByTxids", mock.Anything).Run(func(args mock.Arguments) {
-		for _, txn := range args.Get(0).([]string) {
-			purgedTxns[txn] = struct{}{}
-		}
-	}).Return(nil)
-	store.On("GetTxPvtRWSetByTxid", "tx3", mock.Anything).Return(&mockRWSetScanner{err: errors.New("uh oh")}, nil)
-	store.On("Persist", mock.Anything, uint64(1), mock.Anything).expectRWSet("ns3", "c3", []byte("rws-pre-image"))
 	committer = &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
@@ -1209,10 +1136,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err = coordinator.StoreBlock(block, nil)
 	assertPurged("tx3")
 	assert.NoError(t, err)
@@ -1230,12 +1156,6 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		Namespace:  "ns3",
 		Channel:    "test",
 	})
-	store = &mockTransientStore{t: t}
-	store.On("PurgeByTxids", mock.Anything).Run(func(args mock.Arguments) {
-		for _, txn := range args.Get(0).([]string) {
-			purgedTxns[txn] = struct{}{}
-		}
-	}).Return(nil)
 	fetcher = &fetcherMock{t: t}
 	committer = &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -1253,10 +1173,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns3", "c3").create()
 	err = coordinator.StoreBlock(block, pvtData)
@@ -1315,10 +1234,9 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 		CollectionStore:    nil,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     nil,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, nil, peerSelfSignedData, metrics, testConfig)
 	err := coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -1354,21 +1272,27 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
 		assert.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
-	purgedTxns := make(map[string]struct{})
-	store := &mockTransientStore{t: t}
-	store.On("GetTxPvtRWSetByTxid", "tx1", mock.Anything).Return(&mockRWSetScanner{}, nil)
-	store.On("PurgeByTxids", mock.Anything).Run(func(args mock.Arguments) {
-		for _, txn := range args.Get(0).([]string) {
-			purgedTxns[txn] = struct{}{}
-		}
-	}).Return(nil)
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	assertPurged := func(txns ...string) {
 		for _, txn := range txns {
-			_, exists := purgedTxns[txn]
-			assert.True(t, exists)
-			delete(purgedTxns, txn)
+			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			res, err := iterator.Next()
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			assert.Nil(t, res)
+			iterator.Close()
 		}
-		assert.Len(t, purgedTxns, 0)
 	}
 
 	fetcher := &fetcherMock{t: t}
@@ -1411,10 +1335,9 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err := coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -1472,10 +1395,9 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            nil,
-		TransientStore:     nil,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, nil, peerSelfSignedData, metrics, testConfig)
 	err := coordinator.StoreBlock(block, nil)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -1490,7 +1412,10 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	}
 	cs := createcollectionStore(sd).thatAcceptsAll()
 	committer := &mocks.Committer{}
-	store := &mockTransientStore{t: t}
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	fetcher := &fetcherMock{t: t}
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
@@ -1502,10 +1427,9 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, sd, metrics, testConfig)
+	}, store.store, sd, metrics, testConfig)
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	bf := &blockFactory{
@@ -1531,10 +1455,9 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, sd, metrics, testConfig)
+	}, store.store, sd, metrics, testConfig)
 	expectedPrivData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c2").create()
 	block2, returnedPrivateData, err := coordinator.GetPvtDataAndBlockByNum(1, sd)
 	assert.NoError(t, err)
@@ -1551,31 +1474,72 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 }
 
 func TestPurgeByHeight(t *testing.T) {
-	// Scenario: commit 3000 blocks and ensure that PurgeByHeight is called
-	// at commit of blocks 2000 and 3000 with values of max block to retain of 1000 and 2000
+	conf := testConfig
+	conf.TransientBlockRetention = 5
 	peerSelfSignedData := protoutil.SignedData{}
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
 
-	var purgeHappened bool
-	assertPurgeHappened := func() {
-		assert.True(t, purgeHappened)
-		purgeHappened = false
-	}
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Return(nil)
-	store := &mockTransientStore{t: t}
-	store.On("PurgeByHeight", uint64(1000)).Return(nil).Once().Run(func(_ mock.Arguments) {
-		purgeHappened = true
-	})
-	store.On("PurgeByHeight", uint64(2000)).Return(nil).Once().Run(func(_ mock.Arguments) {
-		purgeHappened = true
-	})
-	store.On("PurgeByTxids", mock.Anything).Return(nil)
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
+	// store 9 data sets initially
+	for i := 0; i < 9; i++ {
+		txID := fmt.Sprintf("tx%d", i+1)
+		store.Persist(txID, uint64(i), &tspb.TxPvtReadWriteSetWithConfigInfo{
+			PvtRwset: &rwset.TxPvtReadWriteSet{
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					{
+						Namespace: "ns1",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "c1",
+								Rwset:          []byte("rws-pre-image"),
+							},
+						},
+					},
+				},
+			},
+			CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+		})
+	}
+	assertPurged := func(purged bool) {
+		numTx := 9
+		if purged {
+			numTx = 10
+		}
+		for i := 1; i <= numTx; i++ {
+			txID := fmt.Sprintf("tx%d", i)
+			iterator, err := store.GetTxPvtRWSetByTxid(txID, nil)
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			res, err := iterator.Next()
+			if err != nil {
+				t.Fatalf("Failed iterating, got err %s", err)
+				iterator.Close()
+				return
+			}
+			if (i < 6 || i == numTx) && purged {
+				assert.Nil(t, res)
+			} else {
+				assert.NotNil(t, res)
+			}
+			iterator.Close()
+		}
+	}
+
 	fetcher := &fetcherMock{t: t}
 
 	bf := &blockFactory{
 		channelID: "test",
 	}
+	pdFactory := &pvtDataFactory{}
+
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
@@ -1588,31 +1552,30 @@ func TestPurgeByHeight(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, conf)
 
-	for i := 0; i <= 3000; i++ {
-		block := bf.create()
-		block.Header.Number = uint64(i)
-		err := coordinator.StoreBlock(block, nil)
-		assert.NoError(t, err)
-		if i != 2000 && i != 3000 {
-			assert.False(t, purgeHappened)
-		} else {
-			assertPurgeHappened()
-		}
-	}
+	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
+	block := bf.AddTxn("tx10", "ns1", hash, "c1").create()
+	block.Header.Number = 10
+	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1").create()
+	// test no blocks purged yet
+	assertPurged(false)
+	err := coordinator.StoreBlock(block, pvtData)
+	assert.NoError(t, err)
+	// test first 6 blocks were purged
+	assertPurged(true)
 }
 
 func TestCoordinatorStorePvtData(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 	cs := createcollectionStore(protoutil.SignedData{}).thatAcceptsAll()
 	committer := &mocks.Committer{}
-	store := &mockTransientStore{t: t}
-	store.On("Persist", mock.Anything, uint64(5), mock.Anything).
-		expectRWSet("ns1", "c1", []byte("rws-pre-image")).Return(nil)
+
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	fetcher := &fetcherMock{t: t}
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
@@ -1624,13 +1587,12 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, protoutil.SignedData{}, metrics, testConfig)
+	}, store.store, protoutil.SignedData{}, metrics, testConfig)
 	pvtData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c1").create()
 	// Green path: ledger height can be retrieved from ledger/committer
-	err := coordinator.StorePvtData("tx1", &transientstore2.TxPvtReadWriteSetWithConfigInfo{
+	err := coordinator.StorePvtData("tx1", &tspb.TxPvtReadWriteSetWithConfigInfo{
 		PvtRwset:          pvtData[0].WriteSet,
 		CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
 	}, uint64(5))
@@ -1686,7 +1648,9 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
 		assert.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
-	store := &mockTransientStore{t: t}
+
+	store := newTransientStore(t)
+	defer store.tearDown()
 
 	fetcher := &fetcherMock{t: t}
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
@@ -1706,10 +1670,9 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	// We pass a nil private data slice to indicate no pre-images though the block contains
 	// private data reads.
 	err := coordinator.StoreBlock(block, nil)
@@ -1729,8 +1692,8 @@ func TestCoordinatorMetrics(t *testing.T) {
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Return(nil)
 
-	store := &mockTransientStore{t: t}
-	store.On("PurgeByTxids", mock.Anything).Return(nil)
+	store := newTransientStore(t)
+	defer store.tearDown()
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	pdFactory := &pvtDataFactory{}
@@ -1755,11 +1718,10 @@ func TestCoordinatorMetrics(t *testing.T) {
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            &fetcherMock{t: t},
-		TransientStore:     store,
 		Validator:          &validatorMock{},
 		ChainID:            "test",
 		CapabilityProvider: capabilityProvider,
-	}, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig)
 	err := coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 

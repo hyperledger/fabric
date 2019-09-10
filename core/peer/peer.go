@@ -194,7 +194,7 @@ type Peer struct {
 	channels map[string]*Channel
 }
 
-func (p *Peer) openStore(cid string) (transientstore.Store, error) {
+func (p *Peer) openStore(cid string) (*transientstore.Store, error) {
 	store, err := p.StoreProvider.OpenStore(cid)
 	if err != nil {
 		return nil, err
@@ -380,10 +380,9 @@ func (p *Peer) createChannel(
 	channel.store = store
 
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
-	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererSource, gossipservice.Support{
+	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererSource, store, gossipservice.Support{
 		Validator:       validator,
 		Committer:       committer,
-		Store:           store,
 		CollectionStore: simpleCollectionStore,
 		IdDeserializeFactory: gossipprivdata.IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
 			return mspmgmt.GetManagerForChain(chainID)
@@ -410,7 +409,7 @@ func (p *Peer) Channel(cid string) *Channel {
 	return nil
 }
 
-func (p *Peer) StoreForChannel(cid string) transientstore.Store {
+func (p *Peer) StoreForChannel(cid string) *transientstore.Store {
 	if c := p.Channel(cid); c != nil {
 		return c.Store()
 	}

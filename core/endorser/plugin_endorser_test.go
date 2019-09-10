@@ -7,18 +7,23 @@ SPDX-License-Identifier: Apache-2.0
 package endorser_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
+	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/mocks"
 	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/state"
+	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
+	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -26,8 +31,48 @@ import (
 
 var (
 	mockTransientStoreRetriever = transientStoreRetriever()
-	mockTransientStore          = &mocks.Store{}
 )
+
+type testTransientStore struct {
+	storeProvider transientstore.StoreProvider
+	store         *transientstore.Store
+	tempdir       string
+}
+
+func newTransientStore(t *testing.T) *testTransientStore {
+	s := &testTransientStore{}
+	var err error
+	s.tempdir, err = ioutil.TempDir("", "ts")
+	if err != nil {
+		t.Fatalf("Failed to create test directory, got err %s", err)
+		return s
+	}
+	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir)
+	if err != nil {
+		t.Fatalf("Failed to open store, got err %s", err)
+		return s
+	}
+	s.store, err = s.storeProvider.OpenStore("test")
+	if err != nil {
+		t.Fatalf("Failed to open store, got err %s", err)
+		return s
+	}
+	return s
+}
+
+func (s *testTransientStore) tearDown() {
+	s.storeProvider.Close()
+	os.RemoveAll(s.tempdir)
+}
+
+func (s *testTransientStore) Persist(txid string, blockHeight uint64,
+	privateSimulationResultsWithConfig *tspb.TxPvtReadWriteSetWithConfigInfo) error {
+	return s.store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
+}
+
+func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger2.PvtNsCollFilter) (privdata.RWSetScanner, error) {
+	return s.store.GetTxPvtRWSetByTxid(txid, filter)
+}
 
 func TestPluginEndorserNotFound(t *testing.T) {
 	pluginMapper := &mocks.PluginMapper{}
@@ -69,7 +114,7 @@ func TestPluginEndorserGreenPath(t *testing.T) {
 	assert.Equal(t, expectedSignature, endorsement.Signature)
 	assert.Equal(t, expectedProposalResponsePayload, prpBytes)
 	// Ensure both state and SigningIdentityFetcher were passed to Init()
-	plugin.AssertCalled(t, "Init", &endorser.ChannelState{QueryCreator: queryCreator, Store: mockTransientStore}, sif)
+	plugin.AssertCalled(t, "Init", &endorser.ChannelState{QueryCreator: queryCreator, Store: &transientstore.Store{}}, sif)
 
 	// Scenario II: Call the endorsement again a second time.
 	// Ensure the plugin wasn't instantiated again - which means the same instance
@@ -125,7 +170,7 @@ func TestPluginEndorserErrors(t *testing.T) {
 
 func transientStoreRetriever() *mocks.TransientStoreRetriever {
 	storeRetriever := &mocks.TransientStoreRetriever{}
-	storeRetriever.On("StoreForChannel", mock.Anything).Return(mockTransientStore)
+	storeRetriever.On("StoreForChannel", mock.Anything).Return(&transientstore.Store{})
 	return storeRetriever
 }
 
@@ -162,7 +207,7 @@ func (rws *rwsetScanner) Next() (*transientstore.EndorserPvtSimulationResults, e
 	res := rws.data[0]
 	rws.data = rws.data[1:]
 	return &transientstore.EndorserPvtSimulationResults{
-		PvtSimulationResultsWithConfig: &transientstore2.TxPvtReadWriteSetWithConfigInfo{
+		PvtSimulationResultsWithConfig: &tspb.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: res,
 		},
 	}, nil
@@ -182,19 +227,8 @@ func TestTransientStore(t *testing.T) {
 	queryCreator.On("NewQueryExecutor").Return(&ledger.MockQueryExecutor{}, nil)
 	cs.On("NewQueryCreator", "mychannel").Return(queryCreator, nil)
 
-	transientStore := &mocks.Store{}
-	storeRetriever := &mocks.TransientStoreRetriever{}
-	storeRetriever.On("StoreForChannel", mock.Anything).Return(transientStore)
-
-	pluginEndorser := endorser.NewPluginEndorser(&endorser.PluginSupport{
-		ChannelStateRetriever:  cs,
-		SigningIdentityFetcher: sif,
-		PluginMapper: endorser.MapBasedPluginMapper{
-			"plugin": factory,
-		},
-		TransientStoreRetriever: storeRetriever,
-	})
-
+	transientStore := newTransientStore(t)
+	defer transientStore.tearDown()
 	rws := &rwset.TxPvtReadWriteSet{
 		NsPvtRwset: []*rwset.NsPvtReadWriteSet{
 			{
@@ -207,12 +241,23 @@ func TestTransientStore(t *testing.T) {
 			},
 		},
 	}
-	scanner := &rwsetScanner{
-		data: []*rwset.TxPvtReadWriteSet{rws},
-	}
-	scanner.On("Close")
 
-	transientStore.On("GetTxPvtRWSetByTxid", mock.Anything, mock.Anything).Return(scanner, nil)
+	transientStore.Persist("tx1", 1, &tspb.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset:          rws,
+		CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+	})
+
+	storeRetriever := &mocks.TransientStoreRetriever{}
+	storeRetriever.On("StoreForChannel", mock.Anything).Return(transientStore.store)
+
+	pluginEndorser := endorser.NewPluginEndorser(&endorser.PluginSupport{
+		ChannelStateRetriever:  cs,
+		SigningIdentityFetcher: sif,
+		PluginMapper: endorser.MapBasedPluginMapper{
+			"plugin": factory,
+		},
+		TransientStoreRetriever: storeRetriever,
+	})
 
 	_, prpBytes, err := pluginEndorser.EndorseWithPlugin("plugin", "mychannel", nil, nil)
 	assert.NoError(t, err)
@@ -221,5 +266,4 @@ func TestTransientStore(t *testing.T) {
 	err = proto.Unmarshal(prpBytes, txrws)
 	assert.NoError(t, err)
 	assert.True(t, proto.Equal(rws, txrws))
-	scanner.AssertCalled(t, "Close")
 }

@@ -12,12 +12,9 @@ import (
 	"testing"
 	"time"
 
-	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -26,25 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type transientStoreMock struct {
-}
-
-func (*transientStoreMock) PurgeByHeight(maxBlockNumToRetain uint64) error {
-	return nil
-}
-
-func (*transientStoreMock) Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
-	panic("implement me")
-}
-
-func (*transientStoreMock) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
-	panic("implement me")
-}
-
-func (*transientStoreMock) PurgeByTxids(txids []string) error {
-	panic("implement me")
-}
 
 type embeddingDeliveryService struct {
 	startOnce sync.Once
@@ -132,6 +110,9 @@ func TestLeaderYield(t *testing.T) {
 	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
 	require.NoError(t, err)
 
+	store := newTransientStore(t)
+	defer store.tearDown()
+
 	// Helper function that creates a gossipService instance
 	newGossipService := func(i int) *GossipService {
 		gs := gossips[i].GossipService
@@ -145,9 +126,8 @@ func TestLeaderYield(t *testing.T) {
 			},
 			deliverGRPCClient: grpcClient,
 		}}
-		gs.InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
+		gs.InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
-			Store:     &transientStoreMock{},
 		})
 		return gs
 	}

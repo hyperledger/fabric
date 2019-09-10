@@ -12,17 +12,17 @@ type StoreProvider struct {
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
 	}
-	OpenStoreStub        func(string) (transientstore.Store, error)
+	OpenStoreStub        func(string) (*transientstore.Store, error)
 	openStoreMutex       sync.RWMutex
 	openStoreArgsForCall []struct {
 		arg1 string
 	}
 	openStoreReturns struct {
-		result1 transientstore.Store
+		result1 *transientstore.Store
 		result2 error
 	}
 	openStoreReturnsOnCall map[int]struct {
-		result1 transientstore.Store
+		result1 *transientstore.Store
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -52,7 +52,7 @@ func (fake *StoreProvider) CloseCalls(stub func()) {
 	fake.CloseStub = stub
 }
 
-func (fake *StoreProvider) OpenStore(arg1 string) (transientstore.Store, error) {
+func (fake *StoreProvider) OpenStore(arg1 string) (*transientstore.Store, error) {
 	fake.openStoreMutex.Lock()
 	ret, specificReturn := fake.openStoreReturnsOnCall[len(fake.openStoreArgsForCall)]
 	fake.openStoreArgsForCall = append(fake.openStoreArgsForCall, struct {
@@ -76,7 +76,7 @@ func (fake *StoreProvider) OpenStoreCallCount() int {
 	return len(fake.openStoreArgsForCall)
 }
 
-func (fake *StoreProvider) OpenStoreCalls(stub func(string) (transientstore.Store, error)) {
+func (fake *StoreProvider) OpenStoreCalls(stub func(string) (*transientstore.Store, error)) {
 	fake.openStoreMutex.Lock()
 	defer fake.openStoreMutex.Unlock()
 	fake.OpenStoreStub = stub
@@ -89,28 +89,28 @@ func (fake *StoreProvider) OpenStoreArgsForCall(i int) string {
 	return argsForCall.arg1
 }
 
-func (fake *StoreProvider) OpenStoreReturns(result1 transientstore.Store, result2 error) {
+func (fake *StoreProvider) OpenStoreReturns(result1 *transientstore.Store, result2 error) {
 	fake.openStoreMutex.Lock()
 	defer fake.openStoreMutex.Unlock()
 	fake.OpenStoreStub = nil
 	fake.openStoreReturns = struct {
-		result1 transientstore.Store
+		result1 *transientstore.Store
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *StoreProvider) OpenStoreReturnsOnCall(i int, result1 transientstore.Store, result2 error) {
+func (fake *StoreProvider) OpenStoreReturnsOnCall(i int, result1 *transientstore.Store, result2 error) {
 	fake.openStoreMutex.Lock()
 	defer fake.openStoreMutex.Unlock()
 	fake.OpenStoreStub = nil
 	if fake.openStoreReturnsOnCall == nil {
 		fake.openStoreReturnsOnCall = make(map[int]struct {
-			result1 transientstore.Store
+			result1 *transientstore.Store
 			result2 error
 		})
 	}
 	fake.openStoreReturnsOnCall[i] = struct {
-		result1 transientstore.Store
+		result1 *transientstore.Store
 		result2 error
 	}{result1, result2}
 }

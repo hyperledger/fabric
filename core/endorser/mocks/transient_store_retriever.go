@@ -13,15 +13,15 @@ type TransientStoreRetriever struct {
 }
 
 // StoreForChannel provides a mock function with given fields: channel
-func (_m *TransientStoreRetriever) StoreForChannel(channel string) transientstore.Store {
+func (_m *TransientStoreRetriever) StoreForChannel(channel string) *transientstore.Store {
 	ret := _m.Called(channel)
 
-	var r0 transientstore.Store
-	if rf, ok := ret.Get(0).(func(string) transientstore.Store); ok {
+	var r0 *transientstore.Store
+	if rf, ok := ret.Get(0).(func(string) *transientstore.Store); ok {
 		r0 = rf(channel)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(transientstore.Store)
+			r0 = ret.Get(0).(*transientstore.Store)
 		}
 	}
 

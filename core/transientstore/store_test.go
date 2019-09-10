@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 	os.Exit(rc)
 }
 
-func testStore(t *testing.T) (s Store, cleanup func()) {
+func testStore(t *testing.T) (s *Store, cleanup func()) {
 	tempdir, err := ioutil.TempDir("", "ts")
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %s", err)
@@ -163,7 +163,7 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 
 	// Create and persist private simulation results with old proto for txid-1
 	samplePvtRWSet := samplePvtData(t)
-	err = testStore.(*store).persistOldProto(txid, receivedAtBlockHeight, samplePvtRWSet)
+	err = testStore.persistOldProto(txid, receivedAtBlockHeight, samplePvtRWSet)
 	assert.NoError(err)
 
 	// Create and persist private simulation results with new proto for txid-1
@@ -655,7 +655,7 @@ func sampleCollectionConfigPackage(colName string) *common.CollectionConfig {
 
 // persistOldProto is the code from 1.1 to populate stores with old proto message
 // this is used only for testing
-func (s *store) persistOldProto(txid string, blockHeight uint64,
+func (s *Store) persistOldProto(txid string, blockHeight uint64,
 	privateSimulationResults *rwset.TxPvtReadWriteSet) error {
 
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)

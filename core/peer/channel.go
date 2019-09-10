@@ -23,7 +23,7 @@ import (
 // Channel manages objects and configuration associated with a Channel.
 type Channel struct {
 	ledger         ledger.PeerLedger
-	store          transientstore.Store
+	store          *transientstore.Store
 	cryptoProvider bccsp.BCCSP
 
 	// applyLock is used to serialize calls to Apply and bundle update processing.
@@ -132,7 +132,7 @@ func (c *Channel) Ledger() ledger.PeerLedger {
 }
 
 // Store returns the transient store associated with this channel.
-func (c *Channel) Store() transientstore.Store {
+func (c *Channel) Store() *transientstore.Store {
 	return c.store
 }
 

@@ -10,12 +10,13 @@ import (
 	"sync"
 
 	gproto "github.com/hyperledger/fabric-protos-go/gossip"
-	"github.com/hyperledger/fabric-protos-go/transientstore"
+	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
 	corecomm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -250,7 +251,7 @@ func New(
 }
 
 // DistributePrivateData distribute private read write set inside the channel based on the collections policies
-func (g *GossipService) DistributePrivateData(channelID string, txID string, privData *transientstore.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
+func (g *GossipService) DistributePrivateData(channelID string, txID string, privData *tspb.TxPvtReadWriteSetWithConfigInfo, blkHt uint64) error {
 	g.lock.RLock()
 	handler, exists := g.privateHandlers[channelID]
 	g.lock.RUnlock()
@@ -281,36 +282,21 @@ func (g *GossipService) NewConfigEventer() ConfigProcessor {
 type Support struct {
 	Validator            txvalidator.Validator
 	Committer            committer.Committer
-	Store                gossipprivdata.TransientStore
 	CollectionStore      privdata.CollectionStore
 	IdDeserializeFactory gossipprivdata.IdentityDeserializerFactory
 	CapabilityProvider   gossipprivdata.CapabilityProvider
 }
 
-// DataStoreSupport aggregates interfaces capable
-// of handling either incoming blocks or private data
-type DataStoreSupport struct {
-	committer.Committer
-	gossipprivdata.TransientStore
-}
-
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
-func (g *GossipService) InitializeChannel(channelID string, ordererSource *orderers.ConnectionSource, support Support) {
+func (g *GossipService) InitializeChannel(channelID string, ordererSource *orderers.ConnectionSource, store *transientstore.Store, support Support) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for channelID", channelID)
 	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
 
-	// Embed transient store and committer APIs to fulfill
-	// DataStore interface to capture ability of retrieving
-	// private data
-	storeSupport := &DataStoreSupport{
-		TransientStore: support.Store,
-		Committer:      support.Committer,
-	}
 	// Initialize private data fetcher
-	dataRetriever := gossipprivdata.NewDataRetriever(storeSupport)
+	dataRetriever := gossipprivdata.NewDataRetriever(store, support.Committer)
 	collectionAccessFactory := gossipprivdata.NewCollectionAccessFactory(support.IdDeserializeFactory)
 	fetcher := gossipprivdata.NewPuller(g.metrics.PrivdataMetrics, support.CollectionStore, g.gossipSvc, dataRetriever,
 		collectionAccessFactory, channelID, g.serviceConfig.BtlPullMargin)
@@ -324,11 +310,10 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		ChainID:            channelID,
 		CollectionStore:    support.CollectionStore,
 		Validator:          support.Validator,
-		TransientStore:     support.Store,
 		Committer:          support.Committer,
 		Fetcher:            fetcher,
 		CapabilityProvider: support.CapabilityProvider,
-	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
+	}, store, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
 
 	privdataConfig := gossipprivdata.GlobalConfig()
 	var reconciler gossipprivdata.PvtDataReconciler

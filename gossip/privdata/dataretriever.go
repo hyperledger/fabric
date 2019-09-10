@@ -9,33 +9,13 @@ package privdata
 import (
 	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/pkg/errors"
 )
-
-//go:generate mockery -dir . -name DataStore -case underscore -output mocks/
-
-// DataStore defines set of APIs need to get private data
-// from underlined data store.
-type DataStore interface {
-	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
-	// RWSets persisted from different endorsers (via Gossip)
-	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error)
-
-	// GetPvtDataByNum returns a slice of the private data from the ledger
-	// for given block and based on the filter which indicates a map of
-	// collections and namespaces of private data to retrieve
-	GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error)
-
-	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
-	GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error)
-
-	// Get recent block sequence number
-	LedgerHeight() (uint64, error)
-}
 
 //go:generate mockery -dir . -name RWSetScanner -case underscore -output mocks/
 
@@ -52,19 +32,23 @@ type StorageDataRetriever interface {
 }
 
 type dataRetriever struct {
-	store DataStore
+	store     *transientstore.Store
+	committer committer.Committer
 }
 
 // NewDataRetriever constructing function for implementation of the
 // StorageDataRetriever interface
-func NewDataRetriever(store DataStore) StorageDataRetriever {
-	return &dataRetriever{store: store}
+func NewDataRetriever(store *transientstore.Store, committer committer.Committer) StorageDataRetriever {
+	return &dataRetriever{
+		store:     store,
+		committer: committer,
+	}
 }
 
 // CollectionRWSet retrieves for give digest relevant private data if
 // available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
 func (dr *dataRetriever) CollectionRWSet(digests []*protosgossip.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error) {
-	height, err := dr.store.LedgerHeight()
+	height, err := dr.committer.LedgerHeight()
 	if err != nil {
 		// if there is an error getting info from the ledger, we need to try to read from transient store
 		return nil, false, errors.Wrap(err, "wasn't able to read ledger height")
@@ -113,7 +97,7 @@ func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, block
 		filter[dig.Namespace][dig.Collection] = true
 	}
 
-	pvtData, err := dr.store.GetPvtDataByNum(blockNum, filter)
+	pvtData, err := dr.committer.GetPvtDataByNum(blockNum, filter)
 	if err != nil {
 		return nil, errors.Errorf("wasn't able to obtain private data, block sequence number %d, due to %s", blockNum, err)
 	}
@@ -138,7 +122,7 @@ func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, block
 			pvtRWSetWithConfig.RWSet = append(pvtRWSetWithConfig.RWSet, pvtRWSet...)
 		}
 
-		confHistoryRetriever, err := dr.store.GetConfigHistoryRetriever()
+		confHistoryRetriever, err := dr.committer.GetConfigHistoryRetriever()
 		if err != nil {
 			return nil, errors.Errorf("cannot obtain configuration history retriever, for collection <%s>"+
 				" txID <%s> block sequence number <%d> due to <%s>", dig.Collection, dig.TxId, dig.BlockSeq, err)
