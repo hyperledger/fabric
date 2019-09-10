@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package ledger
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -71,7 +72,7 @@ var _ bool = Describe("Rollback & Reset Ledger", func() {
 
 		By("creating 5 blocks")
 		for i := 1; i <= 5; i++ {
-			helper.addMarble("marblesp", fmt.Sprintf(`"marble%d", "blue", "35", "tom", "99"`, i), org2peer0)
+			helper.addMarble("marblesp", fmt.Sprintf(`{"name":"marble%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), org2peer0)
 			helper.waitUntilEqualLedgerHeight(height + i)
 		}
 
@@ -111,7 +112,7 @@ var _ bool = Describe("Rollback & Reset Ledger", func() {
 
 		By("creating 2 more blocks")
 		for i := 6; i <= 7; i++ {
-			helper.addMarble("marblesp", fmt.Sprintf(`"marble%d", "blue", "35", "tom", "99"`, i), org2peer0)
+			helper.addMarble("marblesp", fmt.Sprintf(`{"name":"marble%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), org2peer0)
 			helper.waitUntilEqualLedgerHeight(14 + i - 5)
 		}
 
@@ -353,11 +354,14 @@ type testHelper struct {
 }
 
 func (th *testHelper) addMarble(chaincodeName, marbleDetails string, peer *nwo.Peer) {
+	marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(marbleDetails))
+
 	command := commands.ChaincodeInvoke{
 		ChannelID: th.channelID,
 		Orderer:   th.OrdererAddress(th.orderer, nwo.ListenPort),
 		Name:      chaincodeName,
-		Ctor:      fmt.Sprintf(`{"Args":["initMarble",%s]}`, marbleDetails),
+		Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+		Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
 		PeerAddresses: []string{
 			th.PeerAddress(peer, nwo.ListenPort),
 		},
