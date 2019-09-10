@@ -12,7 +12,7 @@ if [ "$#" -ne 4 ]; then
 fi
 
 SOURCE=$1
-PACKAGE_ID="$(grep -o '"PackageID": *"[^"]*"' "$2/metadata.json"| grep -o '"[^"]*"$')"
+PACKAGE_ID=$(jq -r .package_id $2/metadata.json)
 OUTPUT=$3
 ARTIFACTS=$4
 
@@ -24,9 +24,9 @@ export CORE_PEER_TLS_ROOTCERT_FILE="$ARTIFACTS/root.crt"
 
 # Note, for strange historical reasons, the chaincode expects the cert and key
 # to be base64 encoded, but not the root cert.
-jq -r .ClientCert $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_CERT_PATH"
-jq -r .ClientKey $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_KEY_PATH"
-jq -r .RootCert $ARTIFACTS/chaincode.json | base64 --decode > "$CORE_PEER_TLS_ROOTCERT_FILE"
+jq -r .client_cert $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_CERT_PATH"
+jq -r .client_key $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_KEY_PATH"
+jq -r .root_cert $ARTIFACTS/chaincode.json | base64 --decode > "$CORE_PEER_TLS_ROOTCERT_FILE"
 
 if [ -z "$(cat $CORE_TLS_CLIENT_CERT_PATH)" ]  ; then
     export CORE_PEER_TLS_ENABLED=false
@@ -34,7 +34,7 @@ else
     export CORE_PEER_TLS_ENABLED=true
 fi
 
-"$OUTPUT/chaincode" -peer.address=$(jq -r .PeerAddress "$ARTIFACTS/chaincode.json") &
+"$OUTPUT/chaincode" -peer.address=$(jq -r .peer_address "$ARTIFACTS/chaincode.json") &
 
 PID=$?
 

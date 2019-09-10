@@ -165,9 +165,9 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 }
 
 type buildMetadata struct {
-	Path      string `json:"Path"`
-	Type      string `json:"Type"`
-	PackageID string `json:"PackageID"`
+	Path      string `json:"path"`
+	Type      string `json:"type"`
+	PackageID string `json:"package_id"`
 }
 
 func writeMetadataFile(ccid string, md *persistence.ChaincodePackageMetadata, dst string) error {
@@ -231,10 +231,10 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 
 // LaunchConfig is serialized to disk when launching
 type LaunchConfig struct {
-	PeerAddress string `json:"PeerAddress"`
-	ClientCert  []byte `json:"ClientCert"`
-	ClientKey   []byte `json:"ClientKey"`
-	RootCert    []byte `json:"RootCert"`
+	PeerAddress string `json:"peer_address"`
+	ClientCert  []byte `json:"client_cert"`
+	ClientKey   []byte `json:"client_key"`
+	RootCert    []byte `json:"root_cert"`
 }
 
 func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.PeerConnection) error {

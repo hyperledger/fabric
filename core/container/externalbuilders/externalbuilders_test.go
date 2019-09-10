@@ -204,7 +204,7 @@ var _ = Describe("Externalbuilders", func() {
 
 				data1, err := ioutil.ReadFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"))
 				Expect(err).NotTo(HaveOccurred())
-				Expect(data1).To(MatchJSON(`{"PeerAddress":"fake-peer-address","ClientCert":"ZmFrZS1jbGllbnQtY2VydA==","ClientKey":"ZmFrZS1jbGllbnQta2V5","RootCert":"ZmFrZS1yb290LWNlcnQ="}`))
+				Expect(data1).To(MatchJSON(`{"peer_address":"fake-peer-address","client_cert":"ZmFrZS1jbGllbnQtY2VydA==","client_key":"ZmFrZS1jbGllbnQta2V5","root_cert":"ZmFrZS1yb290LWNlcnQ="}`))
 			})
 
 			Context("when the launch exits with a non-zero status", func() {
