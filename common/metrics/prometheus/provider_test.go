@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var _ = Describe("Provider", func() {
@@ -34,7 +35,7 @@ var _ = Describe("Provider", func() {
 		prom.DefaultRegisterer = registry
 		prom.DefaultGatherer = registry
 
-		server = httptest.NewServer(prom.UninstrumentedHandler())
+		server = httptest.NewServer(promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 		client = server.Client()
 
 		p = &prometheus.Provider{}

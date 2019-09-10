@@ -603,7 +603,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:3d7ad9c93ee2e43dc7dd48b76f96804c365be7fe30e75f7405028c4e633d189a"
+  digest = "1:097cc61836050f45cbb712ae3bb45d66fba464c16b8fac09907fa3c1f753eff6"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
@@ -611,8 +611,8 @@
     "prometheus/promhttp",
   ]
   pruneopts = "NUT"
-  revision = "2641b987480bca71fb39738eb8c8b0d577cb1d76"
-  version = "v0.9.4"
+  revision = "170205fb58decfd011f1550d4cfb737230d7ae4f"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"

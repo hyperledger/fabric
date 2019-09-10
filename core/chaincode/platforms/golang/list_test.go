@@ -83,7 +83,7 @@ func Test_listModuleInfo(t *testing.T) {
 	moduleDir, err := os.Getwd()
 	require.NoError(t, err, "failed to get module working directory")
 
-	mi, err := listModuleInfo()
+	mi, err := listModuleInfo("GOPROXY=https://proxy.golang.org")
 	assert.NoError(t, err, "failed to get module info")
 
 	expected := &ModuleInfo{
@@ -97,7 +97,7 @@ func Test_listModuleInfo(t *testing.T) {
 	err = os.Chdir("nested")
 	require.NoError(t, err, "failed to change to module directory")
 
-	mi, err = listModuleInfo()
+	mi, err = listModuleInfo("GOPROXY=https://proxy.golang.org")
 	assert.NoError(t, err, "failed to get module info")
 
 	expected = &ModuleInfo{

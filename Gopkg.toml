@@ -158,7 +158,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/prometheus/client_golang"
-  version = "0.9.0"
+  version = "1.0"
 
 # https://github.com/golang/dep/issues/1799
 [[override]]

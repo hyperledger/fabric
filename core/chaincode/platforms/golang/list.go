@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const listTimeout = 3 * time.Minute
+
 const packageListFormat = `
 {{- if eq .Goroot false -}}
 {
@@ -60,7 +62,7 @@ func (p PackageInfo) Files() []string {
 // gopathDependencyPackageInfo extracts dependency information for
 // specified package.
 func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), listTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "go", "list", "-deps", "-f", packageListFormat, pkg)
@@ -124,12 +126,13 @@ type ModuleInfo struct {
 }
 
 // listModuleInfo extracts module information for the curent working directory.
-func listModuleInfo() (*ModuleInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+func listModuleInfo(extraEnv ...string) (*ModuleInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), listTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "go", "list", "-f", moduleListFormat, ".")
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	cmd.Env = append(cmd.Env, extraEnv...)
 
 	output, err := cmd.Output()
 	if err != nil {
