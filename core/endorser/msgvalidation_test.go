@@ -413,6 +413,17 @@ var _ = Describe("Validate", func() {
 		})
 	})
 
+	Context("when the epoch is nonzero", func() {
+		BeforeEach(func() {
+			up.ChannelHeader.Epoch = 7
+		})
+
+		It("returns an error", func() {
+			err := up.Validate(fakeIdentityDeserializer)
+			Expect(err).To(MatchError("epoch is non-zero"))
+		})
+	})
+
 	Context("when the txid is wrong", func() {
 		BeforeEach(func() {
 			up.ChannelHeader.TxId = "fake-txid"

@@ -113,17 +113,15 @@ func initPeer(chainIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSuppor
 	builtinSCCs := map[string]struct{}{"lscc": {}}
 	lsccImpl := lscc.New(builtinSCCs, &lscc.PeerShim{Peer: peerInstance}, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
 	ml := &cm.Lifecycle{}
-	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
 		case "lscc":
-			return &lifecycle.LegacyDefinition{
-				Version:          "syscc",
-				ChaincodeIDField: "lscc.syscc",
+			return &lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID: "lscc.syscc",
 			}, nil
 		default:
-			return &ccprovider.ChaincodeData{
-				Name:    name,
-				Version: "0",
+			return &lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID: name + ":0",
 			}, nil
 		}
 	}
@@ -625,17 +623,15 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 	initialA, initialB := 100, 200
 
 	// Deploy first chaincode
-	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
 		case "lscc":
-			return &lifecycle.LegacyDefinition{
-				Version:          "syscc",
-				ChaincodeIDField: "lscc.syscc",
+			return &lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID: "lscc.syscc",
 			}, nil
 		default:
-			return &ccprovider.ChaincodeData{
-				Name:    name,
-				Version: "0",
+			return &lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID: name + ":0",
 			}, nil
 		}
 	}
@@ -763,17 +759,15 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	}
 	defer cleanup()
 
-	ml.ChaincodeDefinitionStub = func(_, name string, _ ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
 		case "lscc":
-			return &lifecycle.LegacyDefinition{
-				Version:          "syscc",
-				ChaincodeIDField: "lscc.syscc",
+			return &lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID: "lscc.syscc",
 			}, nil
 		default:
-			return &ccprovider.ChaincodeData{
-				Name:    name,
-				Version: "0",
+			return &lifecycle.ChaincodeEndorsementInfo{
+				ChaincodeID: name + ":0",
 			}, nil
 		}
 	}

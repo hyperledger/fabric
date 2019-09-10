@@ -133,6 +133,11 @@ func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) er
 		return errors.Errorf("invalid header type %s", common.HeaderType(up.ChannelHeader.Type))
 	}
 
+	// ensure the epoch is 0
+	if up.ChannelHeader.Epoch != 0 {
+		return errors.Errorf("epoch is non-zero")
+	}
+
 	// ensure that there is a nonce
 	if len(up.SignatureHeader.Nonce) == 0 {
 		return errors.Errorf("nonce is empty")

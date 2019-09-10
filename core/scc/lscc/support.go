@@ -23,7 +23,7 @@ type supportImpl struct {
 // package to local storage (i.e. the file system)
 func (s *supportImpl) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) error {
 	if err := ccpack.PutChaincodeToFS(); err != nil {
-		return errors.Errorf("error installing chaincode code %s:%s(%s)", ccpack.GetChaincodeData().CCName(), ccpack.GetChaincodeData().CCVersion(), err)
+		return errors.Errorf("error installing chaincode code %s:%s(%s)", ccpack.GetChaincodeData().Name, ccpack.GetChaincodeData().Version, err)
 	}
 
 	return nil

@@ -12,16 +12,15 @@ import (
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/scc"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ChaincodeEndorsementInfo", func() {
+var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 	var (
-		cei               *lifecycle.ChaincodeEndorsementInfo
+		cei               *lifecycle.ChaincodeEndorsementInfoSource
 		resources         *lifecycle.Resources
 		fakeLegacyImpl    *mock.LegacyLifecycle
 		fakePublicState   MapLedgerShim
@@ -78,7 +77,7 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		fakeCache = &mock.ChaincodeInfoCache{}
 		fakeCache.ChaincodeInfoReturns(testInfo, nil)
 
-		cei = &lifecycle.ChaincodeEndorsementInfo{
+		cei = &lifecycle.ChaincodeEndorsementInfoSource{
 			LegacyImpl:  fakeLegacyImpl,
 			Resources:   resources,
 			Cache:       fakeCache,
@@ -180,14 +179,14 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 		})
 	})
 
-	Describe("ChaincodeDefinition", func() {
+	Describe("ChaincodeEndorsementInfo", func() {
 		It("adapts the underlying lifecycle response", func() {
-			def, err := cei.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
+			def, err := cei.ChaincodeEndorsementInfo("channel-id", "name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(def).To(Equal(&lifecycle.LegacyDefinition{
+			Expect(def).To(Equal(&lifecycle.ChaincodeEndorsementInfo{
 				Version:           "version",
 				EndorsementPlugin: "endorsement-plugin",
-				ChaincodeIDField:  "hash",
+				ChaincodeID:       "hash",
 			}))
 		})
 
@@ -197,12 +196,12 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			})
 
 			It("returns a static definition", func() {
-				res, err := cei.ChaincodeDefinition("channel-id", "test-syscc-name", fakeQueryExecutor)
+				res, err := cei.ChaincodeEndorsementInfo("channel-id", "test-syscc-name", fakeQueryExecutor)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal(&lifecycle.LegacyDefinition{
+				Expect(res).To(Equal(&lifecycle.ChaincodeEndorsementInfo{
 					Version:           "syscc",
+					ChaincodeID:       "test-syscc-name.syscc",
 					EndorsementPlugin: "escc",
-					ChaincodeIDField:  "test-syscc-name.syscc",
 				}))
 			})
 		})
@@ -213,74 +212,35 @@ var _ = Describe("ChaincodeEndorsementInfo", func() {
 			})
 
 			It("returns the wrapped error", func() {
-				_, err := cei.ChaincodeDefinition("channel-id", "name", fakeQueryExecutor)
+				_, err := cei.ChaincodeEndorsementInfo("channel-id", "name", fakeQueryExecutor)
 				Expect(err).To(MatchError("could not get approved chaincode info from cache: cache-error"))
 			})
 		})
 
 		Context("when the chaincode is not defined in the new lifecycle", func() {
-			var (
-				legacyChaincodeDefinition *ccprovider.ChaincodeData
-			)
-
 			BeforeEach(func() {
 				delete(fakePublicState, "namespaces/fields/name/Sequence")
-				legacyChaincodeDefinition = &ccprovider.ChaincodeData{
-					Version: "definition-version",
-				}
-
-				fakeLegacyImpl.ChaincodeDefinitionReturns(legacyChaincodeDefinition, fmt.Errorf("fake-error"))
+				fakeLegacyImpl.ChaincodeEndorsementInfoReturns(&lifecycle.ChaincodeEndorsementInfo{
+					Version:           "legacy-version",
+					EndorsementPlugin: "legacy-plugin",
+					ChaincodeID:       "legacy-id",
+				}, fmt.Errorf("fake-error"))
 			})
 
 			It("passes through the legacy implementation", func() {
-				res, err := cei.ChaincodeDefinition("channel-id", "cc-name", fakeQueryExecutor)
+				res, err := cei.ChaincodeEndorsementInfo("channel-id", "cc-name", fakeQueryExecutor)
 				Expect(err).To(MatchError("fake-error"))
-				Expect(res).To(Equal(legacyChaincodeDefinition))
-				Expect(fakeLegacyImpl.ChaincodeDefinitionCallCount()).To(Equal(1))
-				channelID, name, qe := fakeLegacyImpl.ChaincodeDefinitionArgsForCall(0)
+				Expect(res).To(Equal(&lifecycle.ChaincodeEndorsementInfo{
+					Version:           "legacy-version",
+					EndorsementPlugin: "legacy-plugin",
+					ChaincodeID:       "legacy-id",
+				}))
+				Expect(fakeLegacyImpl.ChaincodeEndorsementInfoCallCount()).To(Equal(1))
+				channelID, name, qe := fakeLegacyImpl.ChaincodeEndorsementInfoArgsForCall(0)
 				Expect(channelID).To(Equal("channel-id"))
 				Expect(name).To(Equal("cc-name"))
 				Expect(qe).To(Equal(fakeQueryExecutor))
 			})
-		})
-	})
-})
-
-var _ = Describe("LegacyDefinition", func() {
-	var (
-		ld *lifecycle.LegacyDefinition
-	)
-
-	BeforeEach(func() {
-		ld = &lifecycle.LegacyDefinition{
-			Version:           "version",
-			EndorsementPlugin: "endorsement-plugin",
-			RequiresInitField: true,
-			ChaincodeIDField:  "chaincode-id",
-		}
-	})
-
-	Describe("CCVersion", func() {
-		It("returns the version", func() {
-			Expect(ld.CCVersion()).To(Equal("version"))
-		})
-	})
-
-	Describe("ChaincodeID", func() {
-		It("returns the version", func() {
-			Expect(ld.ChaincodeID()).To(Equal("chaincode-id"))
-		})
-	})
-
-	Describe("Endorsement", func() {
-		It("returns the endorsment plugin name", func() {
-			Expect(ld.Endorsement()).To(Equal("endorsement-plugin"))
-		})
-	})
-
-	Describe("RequiresInit", func() {
-		It("returns the endorsment init required field", func() {
-			Expect(ld.RequiresInit()).To(BeTrue())
 		})
 	})
 })

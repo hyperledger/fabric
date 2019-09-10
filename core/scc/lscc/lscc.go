@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
@@ -206,12 +207,11 @@ func (lscc *LifeCycleSysCC) Name() string              { return "lscc" }
 func (lscc *LifeCycleSysCC) Chaincode() shim.Chaincode { return lscc }
 
 type LegacySecurity struct {
-	*ccprovider.ChaincodeData
 	Support FilesystemSupport
 }
 
-func (ls *LegacySecurity) SecurityCheckLegacyChaincode() error {
-	ccpack, err := ls.Support.GetChaincodeFromLocalStorage(ls.ChaincodeData.ChaincodeID())
+func (ls *LegacySecurity) SecurityCheckLegacyChaincode(cd *ccprovider.ChaincodeData) error {
+	ccpack, err := ls.Support.GetChaincodeFromLocalStorage(cd.ChaincodeID())
 	if err != nil {
 		return InvalidDeploymentSpecErr(err.Error())
 	}
@@ -221,7 +221,7 @@ func (ls *LegacySecurity) SecurityCheckLegacyChaincode() error {
 	// what's on the filesystem, which, might include instanatiation policy, but it's
 	// not obvious from the code, and was being checked separately, so we check it
 	// explicitly below.
-	if err = ccpack.ValidateCC(ls.ChaincodeData); err != nil {
+	if err = ccpack.ValidateCC(cd); err != nil {
 		return InvalidCCOnFSError(err.Error())
 	}
 
@@ -240,15 +240,15 @@ func (ls *LegacySecurity) SecurityCheckLegacyChaincode() error {
 	// chaincode under these conditions. More info on
 	// https://jira.hyperledger.org/browse/FAB-3156
 	if fsData.InstantiationPolicy != nil {
-		if !bytes.Equal(fsData.InstantiationPolicy, ls.ChaincodeData.InstantiationPolicy) {
-			return fmt.Errorf("Instantiation policy mismatch for cc %s", ls.ChaincodeID())
+		if !bytes.Equal(fsData.InstantiationPolicy, cd.InstantiationPolicy) {
+			return fmt.Errorf("Instantiation policy mismatch for cc %s", cd.ChaincodeID())
 		}
 	}
 
 	return nil
 }
 
-func (lscc *LifeCycleSysCC) ChaincodeDefinition(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (ccprovider.ChaincodeDefinition, error) {
+func (lscc *LifeCycleSysCC) ChaincodeEndorsementInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 	chaincodeDataBytes, err := qe.GetState("lscc", chaincodeName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not retrieve state for chaincode %s", chaincodeName)
@@ -264,9 +264,19 @@ func (lscc *LifeCycleSysCC) ChaincodeDefinition(channelID, chaincodeName string,
 		return nil, errors.Wrapf(err, "chaincode %s has bad definition", chaincodeName)
 	}
 
-	return &LegacySecurity{
-		ChaincodeData: chaincodeData,
-		Support:       lscc.Support,
+	ls := &LegacySecurity{
+		Support: lscc.Support,
+	}
+
+	err = ls.SecurityCheckLegacyChaincode(chaincodeData)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed security checks")
+	}
+
+	return &lifecycle.ChaincodeEndorsementInfo{
+		Version:           chaincodeData.Version,
+		EndorsementPlugin: chaincodeData.Escc,
+		ChaincodeID:       chaincodeData.Name + ":" + chaincodeData.Version,
 	}, nil
 }
 

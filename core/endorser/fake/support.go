@@ -5,11 +5,27 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type Support struct {
+	ChaincodeEndorsementInfoStub        func(string, string, ledger.QueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error)
+	chaincodeEndorsementInfoMutex       sync.RWMutex
+	chaincodeEndorsementInfoArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 ledger.QueryExecutor
+	}
+	chaincodeEndorsementInfoReturns struct {
+		result1 *lifecycle.ChaincodeEndorsementInfo
+		result2 error
+	}
+	chaincodeEndorsementInfoReturnsOnCall map[int]struct {
+		result1 *lifecycle.ChaincodeEndorsementInfo
+		result2 error
+	}
 	CheckACLStub        func(string, *peer.SignedProposal) error
 	checkACLMutex       sync.RWMutex
 	checkACLArgsForCall []struct {
@@ -74,21 +90,6 @@ type Support struct {
 		result1 *peer.Response
 		result2 *peer.ChaincodeEvent
 		result3 error
-	}
-	GetChaincodeDefinitionStub        func(string, string, ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)
-	getChaincodeDefinitionMutex       sync.RWMutex
-	getChaincodeDefinitionArgsForCall []struct {
-		arg1 string
-		arg2 string
-		arg3 ledger.QueryExecutor
-	}
-	getChaincodeDefinitionReturns struct {
-		result1 ccprovider.ChaincodeDefinition
-		result2 error
-	}
-	getChaincodeDefinitionReturnsOnCall map[int]struct {
-		result1 ccprovider.ChaincodeDefinition
-		result2 error
 	}
 	GetDeployedCCInfoProviderStub        func() ledger.DeployedChaincodeInfoProvider
 	getDeployedCCInfoProviderMutex       sync.RWMutex
@@ -192,6 +193,71 @@ type Support struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Support) ChaincodeEndorsementInfo(arg1 string, arg2 string, arg3 ledger.QueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
+	fake.chaincodeEndorsementInfoMutex.Lock()
+	ret, specificReturn := fake.chaincodeEndorsementInfoReturnsOnCall[len(fake.chaincodeEndorsementInfoArgsForCall)]
+	fake.chaincodeEndorsementInfoArgsForCall = append(fake.chaincodeEndorsementInfoArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 ledger.QueryExecutor
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("ChaincodeEndorsementInfo", []interface{}{arg1, arg2, arg3})
+	fake.chaincodeEndorsementInfoMutex.Unlock()
+	if fake.ChaincodeEndorsementInfoStub != nil {
+		return fake.ChaincodeEndorsementInfoStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.chaincodeEndorsementInfoReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Support) ChaincodeEndorsementInfoCallCount() int {
+	fake.chaincodeEndorsementInfoMutex.RLock()
+	defer fake.chaincodeEndorsementInfoMutex.RUnlock()
+	return len(fake.chaincodeEndorsementInfoArgsForCall)
+}
+
+func (fake *Support) ChaincodeEndorsementInfoCalls(stub func(string, string, ledger.QueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error)) {
+	fake.chaincodeEndorsementInfoMutex.Lock()
+	defer fake.chaincodeEndorsementInfoMutex.Unlock()
+	fake.ChaincodeEndorsementInfoStub = stub
+}
+
+func (fake *Support) ChaincodeEndorsementInfoArgsForCall(i int) (string, string, ledger.QueryExecutor) {
+	fake.chaincodeEndorsementInfoMutex.RLock()
+	defer fake.chaincodeEndorsementInfoMutex.RUnlock()
+	argsForCall := fake.chaincodeEndorsementInfoArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Support) ChaincodeEndorsementInfoReturns(result1 *lifecycle.ChaincodeEndorsementInfo, result2 error) {
+	fake.chaincodeEndorsementInfoMutex.Lock()
+	defer fake.chaincodeEndorsementInfoMutex.Unlock()
+	fake.ChaincodeEndorsementInfoStub = nil
+	fake.chaincodeEndorsementInfoReturns = struct {
+		result1 *lifecycle.ChaincodeEndorsementInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Support) ChaincodeEndorsementInfoReturnsOnCall(i int, result1 *lifecycle.ChaincodeEndorsementInfo, result2 error) {
+	fake.chaincodeEndorsementInfoMutex.Lock()
+	defer fake.chaincodeEndorsementInfoMutex.Unlock()
+	fake.ChaincodeEndorsementInfoStub = nil
+	if fake.chaincodeEndorsementInfoReturnsOnCall == nil {
+		fake.chaincodeEndorsementInfoReturnsOnCall = make(map[int]struct {
+			result1 *lifecycle.ChaincodeEndorsementInfo
+			result2 error
+		})
+	}
+	fake.chaincodeEndorsementInfoReturnsOnCall[i] = struct {
+		result1 *lifecycle.ChaincodeEndorsementInfo
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Support) CheckACL(arg1 string, arg2 *peer.SignedProposal) error {
@@ -464,71 +530,6 @@ func (fake *Support) ExecuteLegacyInitReturnsOnCall(i int, result1 *peer.Respons
 		result2 *peer.ChaincodeEvent
 		result3 error
 	}{result1, result2, result3}
-}
-
-func (fake *Support) GetChaincodeDefinition(arg1 string, arg2 string, arg3 ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error) {
-	fake.getChaincodeDefinitionMutex.Lock()
-	ret, specificReturn := fake.getChaincodeDefinitionReturnsOnCall[len(fake.getChaincodeDefinitionArgsForCall)]
-	fake.getChaincodeDefinitionArgsForCall = append(fake.getChaincodeDefinitionArgsForCall, struct {
-		arg1 string
-		arg2 string
-		arg3 ledger.QueryExecutor
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("GetChaincodeDefinition", []interface{}{arg1, arg2, arg3})
-	fake.getChaincodeDefinitionMutex.Unlock()
-	if fake.GetChaincodeDefinitionStub != nil {
-		return fake.GetChaincodeDefinitionStub(arg1, arg2, arg3)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.getChaincodeDefinitionReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *Support) GetChaincodeDefinitionCallCount() int {
-	fake.getChaincodeDefinitionMutex.RLock()
-	defer fake.getChaincodeDefinitionMutex.RUnlock()
-	return len(fake.getChaincodeDefinitionArgsForCall)
-}
-
-func (fake *Support) GetChaincodeDefinitionCalls(stub func(string, string, ledger.QueryExecutor) (ccprovider.ChaincodeDefinition, error)) {
-	fake.getChaincodeDefinitionMutex.Lock()
-	defer fake.getChaincodeDefinitionMutex.Unlock()
-	fake.GetChaincodeDefinitionStub = stub
-}
-
-func (fake *Support) GetChaincodeDefinitionArgsForCall(i int) (string, string, ledger.QueryExecutor) {
-	fake.getChaincodeDefinitionMutex.RLock()
-	defer fake.getChaincodeDefinitionMutex.RUnlock()
-	argsForCall := fake.getChaincodeDefinitionArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
-}
-
-func (fake *Support) GetChaincodeDefinitionReturns(result1 ccprovider.ChaincodeDefinition, result2 error) {
-	fake.getChaincodeDefinitionMutex.Lock()
-	defer fake.getChaincodeDefinitionMutex.Unlock()
-	fake.GetChaincodeDefinitionStub = nil
-	fake.getChaincodeDefinitionReturns = struct {
-		result1 ccprovider.ChaincodeDefinition
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *Support) GetChaincodeDefinitionReturnsOnCall(i int, result1 ccprovider.ChaincodeDefinition, result2 error) {
-	fake.getChaincodeDefinitionMutex.Lock()
-	defer fake.getChaincodeDefinitionMutex.Unlock()
-	fake.GetChaincodeDefinitionStub = nil
-	if fake.getChaincodeDefinitionReturnsOnCall == nil {
-		fake.getChaincodeDefinitionReturnsOnCall = make(map[int]struct {
-			result1 ccprovider.ChaincodeDefinition
-			result2 error
-		})
-	}
-	fake.getChaincodeDefinitionReturnsOnCall[i] = struct {
-		result1 ccprovider.ChaincodeDefinition
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *Support) GetDeployedCCInfoProvider() ledger.DeployedChaincodeInfoProvider {
@@ -1023,6 +1024,8 @@ func (fake *Support) SignReturnsOnCall(i int, result1 []byte, result2 error) {
 func (fake *Support) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.chaincodeEndorsementInfoMutex.RLock()
+	defer fake.chaincodeEndorsementInfoMutex.RUnlock()
 	fake.checkACLMutex.RLock()
 	defer fake.checkACLMutex.RUnlock()
 	fake.endorseWithPluginMutex.RLock()
@@ -1031,8 +1034,6 @@ func (fake *Support) Invocations() map[string][][]interface{} {
 	defer fake.executeMutex.RUnlock()
 	fake.executeLegacyInitMutex.RLock()
 	defer fake.executeLegacyInitMutex.RUnlock()
-	fake.getChaincodeDefinitionMutex.RLock()
-	defer fake.getChaincodeDefinitionMutex.RUnlock()
 	fake.getDeployedCCInfoProviderMutex.RLock()
 	defer fake.getDeployedCCInfoProviderMutex.RUnlock()
 	fake.getHistoryQueryExecutorMutex.RLock()

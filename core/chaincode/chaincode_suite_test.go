@@ -64,11 +64,6 @@ type lifecycle_ interface {
 	chaincode.Lifecycle
 }
 
-//go:generate counterfeiter -o mock/legacy_chaincode_definition.go --fake-name LegacyChaincodeDefinition . legacyChaincodeDefinition
-type legacyChaincodeDefinition interface {
-	chaincode.LegacyChaincodeDefinition
-}
-
 //go:generate counterfeiter -o mock/chaincode_stream.go --fake-name ChaincodeStream . chaincodeStream
 type chaincodeStream interface {
 	ccintf.ChaincodeStream

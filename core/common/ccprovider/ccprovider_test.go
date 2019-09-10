@@ -110,24 +110,6 @@ func TestInstalledCCs(t *testing.T) {
 	}
 }
 
-func TestChaincodeData(t *testing.T) {
-	var cd ccprovider.ChaincodeDefinition
-	cd = &ccprovider.ChaincodeData{
-		Data:                []byte("Data"),
-		Escc:                "Escc",
-		Id:                  []byte("Id"),
-		InstantiationPolicy: []byte("InstantiationPolicy"),
-		Name:                "Name",
-		Policy:              []byte("Policy"),
-		Version:             "Version",
-		Vscc:                "Vscc",
-	}
-
-	assert.Equal(t, cd.CCVersion(), "Version")
-	assert.Equal(t, cd.Endorsement(), "Escc")
-	assert.Equal(t, cd.RequiresInit(), false)
-}
-
 func TestGetChaincodeInstallPath(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)

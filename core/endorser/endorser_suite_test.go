@@ -37,6 +37,11 @@ type txSimulator interface {
 	ledger.TxSimulator
 }
 
+//go:generate counterfeiter -o fake/history_query_executor.go --fake-name HistoryQueryExecutor . historyQueryExecutor
+type historyQueryExecutor interface {
+	ledger.HistoryQueryExecutor
+}
+
 func TestEndorser(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Endorser Suite")
