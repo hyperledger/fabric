@@ -203,6 +203,7 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 	containerRuntime := &ContainerRuntime{
 		CACert:        ca.CertBytes(),
 		CertGenerator: certGenerator,
+		BuildRegistry: &container.BuildRegistry{},
 		ContainerRouter: &container.Router{
 			DockerVM: &dockercontroller.DockerVM{
 				PlatformBuilder: &platforms.Builder{

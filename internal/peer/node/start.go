@@ -522,7 +522,10 @@ func serve(args []string) error {
 		Builders: coreConfig.ExternalBuilders,
 	}
 
+	buildRegistry := &container.BuildRegistry{}
+
 	containerRuntime := &chaincode.ContainerRuntime{
+		BuildRegistry: buildRegistry,
 		CACert:        ca.CertBytes(),
 		CertGenerator: authenticator,
 		PeerAddress:   ccEndpoint,
