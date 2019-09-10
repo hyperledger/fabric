@@ -183,7 +183,7 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 
 	maxEndorsedAt := uint64(0)
 	for {
-		res, err := it.NextWithConfig()
+		res, err := it.Next()
 		if err != nil {
 			return nil, errors.Errorf("error getting next element out of private data iterator, namespace <%s>"+
 				", collection name <%s>, txID <%s>, due to <%s>", dig.Namespace, dig.Collection, dig.TxId, err)

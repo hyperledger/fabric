@@ -106,7 +106,7 @@ func (store *mockTransientStore) PurgeByTxids(txids []string) error {
 	return args.Error(0)
 }
 
-func (store *mockTransientStore) PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
+func (store *mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
 	res := privateSimulationResultsWithConfig.PvtRwset
 	key := rwsTriplet{
 		namespace:  res.NsPvtRwset[0].Namespace,
@@ -136,11 +136,11 @@ func (store *mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.
 
 type mockRWSetScanner struct {
 	err     error
-	results []*transientstore.EndorserPvtSimulationResultsWithConfig
+	results []*transientstore.EndorserPvtSimulationResults
 }
 
 func (scanner *mockRWSetScanner) withRWSet(ns string, col string) *mockRWSetScanner {
-	scanner.results = append(scanner.results, &transientstore.EndorserPvtSimulationResultsWithConfig{
+	scanner.results = append(scanner.results, &transientstore.EndorserPvtSimulationResults{
 		PvtSimulationResultsWithConfig: &transientstore2.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: &rwset.TxPvtReadWriteSet{
 				DataModel: rwset.TxReadWriteSet_KV,
@@ -174,11 +174,11 @@ func (scanner *mockRWSetScanner) withRWSet(ns string, col string) *mockRWSetScan
 	return scanner
 }
 
-func (scanner *mockRWSetScanner) NextWithConfig() (*transientstore.EndorserPvtSimulationResultsWithConfig, error) {
+func (scanner *mockRWSetScanner) Next() (*transientstore.EndorserPvtSimulationResults, error) {
 	if scanner.err != nil {
 		return nil, scanner.err
 	}
-	var res *transientstore.EndorserPvtSimulationResultsWithConfig
+	var res *transientstore.EndorserPvtSimulationResults
 	if len(scanner.results) == 0 {
 		return nil, nil
 	}
@@ -1611,7 +1611,7 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	cs := createcollectionStore(protoutil.SignedData{}).thatAcceptsAll()
 	committer := &mocks.Committer{}
 	store := &mockTransientStore{t: t}
-	store.On("PersistWithConfig", mock.Anything, uint64(5), mock.Anything).
+	store.On("Persist", mock.Anything, uint64(5), mock.Anything).
 		expectRWSet("ns1", "c1", []byte("rws-pre-image")).Return(nil)
 	fetcher := &fetcherMock{t: t}
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
