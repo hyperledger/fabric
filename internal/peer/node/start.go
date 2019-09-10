@@ -462,24 +462,6 @@ func serve(args []string) error {
 		BuiltinSCCs: builtinSCCs,
 	}
 
-	lifecycleFunctions := &lifecycle.ExternalFunctions{
-		Resources:                 lifecycleResources,
-		InstallListener:           lifecycleCache,
-		InstalledChaincodesLister: lifecycleCache,
-	}
-
-	lifecycleSCC := &lifecycle.SCC{
-		Dispatcher: &dispatcher.Dispatcher{
-			Protobuf: &dispatcher.ProtobufImpl{},
-		},
-		DeployedCCInfoProvider: lifecycleValidatorCommitter,
-		QueryExecutorProvider:  lifecycleTxQueryExecutorGetter,
-		Functions:              lifecycleFunctions,
-		OrgMSPID:               mspID,
-		ChannelConfigSource:    peerInstance,
-		ACLProvider:            aclProvider,
-	}
-
 	var client *docker.Client
 	if coreConfig.VMDockerTLSEnabled {
 		client, err = docker.NewTLSClient(coreConfig.VMEndpoint, coreConfig.DockerCert, coreConfig.DockerKey, coreConfig.DockerCA)
@@ -524,21 +506,43 @@ func serve(args []string) error {
 
 	buildRegistry := &container.BuildRegistry{}
 
-	containerRuntime := &chaincode.ContainerRuntime{
-		BuildRegistry: buildRegistry,
-		CACert:        ca.CertBytes(),
-		CertGenerator: authenticator,
-		PeerAddress:   ccEndpoint,
-		ContainerRouter: &container.Router{
-			DockerVM:   dockerVM,
-			ExternalVM: externalVMAdapter{externalVM},
-			PackageProvider: &persistence.FallbackPackageLocator{
-				ChaincodePackageLocator: &persistence.ChaincodePackageLocator{
-					ChaincodeDir: chaincodeInstallPath,
-				},
-				LegacyCCPackageLocator: &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()},
+	containerRouter := &container.Router{
+		DockerVM:   dockerVM,
+		ExternalVM: externalVMAdapter{externalVM},
+		PackageProvider: &persistence.FallbackPackageLocator{
+			ChaincodePackageLocator: &persistence.ChaincodePackageLocator{
+				ChaincodeDir: chaincodeInstallPath,
 			},
+			LegacyCCPackageLocator: &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()},
 		},
+	}
+
+	containerRuntime := &chaincode.ContainerRuntime{
+		BuildRegistry:   buildRegistry,
+		CACert:          ca.CertBytes(),
+		CertGenerator:   authenticator,
+		PeerAddress:     ccEndpoint,
+		ContainerRouter: containerRouter,
+	}
+
+	lifecycleFunctions := &lifecycle.ExternalFunctions{
+		Resources:                 lifecycleResources,
+		InstallListener:           lifecycleCache,
+		InstalledChaincodesLister: lifecycleCache,
+		ChaincodeBuilder:          containerRouter,
+		BuildRegistry:             buildRegistry,
+	}
+
+	lifecycleSCC := &lifecycle.SCC{
+		Dispatcher: &dispatcher.Dispatcher{
+			Protobuf: &dispatcher.ProtobufImpl{},
+		},
+		DeployedCCInfoProvider: lifecycleValidatorCommitter,
+		QueryExecutorProvider:  lifecycleTxQueryExecutorGetter,
+		Functions:              lifecycleFunctions,
+		OrgMSPID:               mspID,
+		ChannelConfigSource:    peerInstance,
+		ACLProvider:            aclProvider,
 	}
 
 	// Keep TestQueries working

@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
@@ -172,6 +173,11 @@ func (cd *ChaincodeDefinition) String() string {
 	)
 }
 
+//go:generate counterfeiter -o mock/chaincode_builder.go --fake-name ChaincodeBuilder . ChaincodeBuilder
+type ChaincodeBuilder interface {
+	Build(ccid string) error
+}
+
 // ChaincodeStore provides a way to persist chaincodes
 type ChaincodeStore interface {
 	Save(label string, ccInstallPkg []byte) (string, error)
@@ -249,6 +255,8 @@ type ExternalFunctions struct {
 	Resources                 *Resources
 	InstallListener           InstallListener
 	InstalledChaincodesLister InstalledChaincodesLister
+	ChaincodeBuilder          ChaincodeBuilder
+	BuildRegistry             *container.BuildRegistry
 }
 
 // CheckCommitReadiness takes a chaincode definition, checks that
@@ -488,6 +496,15 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 
 	if ef.InstallListener != nil {
 		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, packageID)
+	}
+
+	buildStatus, ok := ef.BuildRegistry.BuildStatus(packageID)
+	if !ok {
+		buildStatus.Notify(ef.ChaincodeBuilder.Build(packageID))
+	}
+	<-buildStatus.Done()
+	if err := buildStatus.Err(); err != nil {
+		return nil, errors.WithMessage(err, "could not build chaincode")
 	}
 
 	logger.Infof("successfully installed chaincode with package ID '%s'", packageID)
