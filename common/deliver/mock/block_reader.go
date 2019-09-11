@@ -2,10 +2,10 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	orderer "github.com/hyperledger/fabric-protos-go/orderer"
-	blockledger "github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 )
 
 type BlockReader struct {

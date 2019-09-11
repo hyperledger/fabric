@@ -45,16 +45,6 @@ type FakeConsenterSupport struct {
 	blockCutterReturnsOnCall map[int]struct {
 		result1 blockcutter.Receiver
 	}
-	ChainIDStub        func() string
-	chainIDMutex       sync.RWMutex
-	chainIDArgsForCall []struct {
-	}
-	chainIDReturns struct {
-		result1 string
-	}
-	chainIDReturnsOnCall map[int]struct {
-		result1 string
-	}
 	ChannelConfigStub        func() channelconfig.Channel
 	channelConfigMutex       sync.RWMutex
 	channelConfigArgsForCall []struct {
@@ -64,6 +54,16 @@ type FakeConsenterSupport struct {
 	}
 	channelConfigReturnsOnCall map[int]struct {
 		result1 channelconfig.Channel
+	}
+	ChannelIDStub        func() string
+	channelIDMutex       sync.RWMutex
+	channelIDArgsForCall []struct {
+	}
+	channelIDReturns struct {
+		result1 string
+	}
+	channelIDReturnsOnCall map[int]struct {
+		result1 string
 	}
 	ClassifyMsgStub        func(*common.ChannelHeader) msgprocessor.Classification
 	classifyMsgMutex       sync.RWMutex
@@ -385,58 +385,6 @@ func (fake *FakeConsenterSupport) BlockCutterReturnsOnCall(i int, result1 blockc
 	}{result1}
 }
 
-func (fake *FakeConsenterSupport) ChannelID() string {
-	fake.chainIDMutex.Lock()
-	ret, specificReturn := fake.chainIDReturnsOnCall[len(fake.chainIDArgsForCall)]
-	fake.chainIDArgsForCall = append(fake.chainIDArgsForCall, struct {
-	}{})
-	fake.recordInvocation("ChannelID", []interface{}{})
-	fake.chainIDMutex.Unlock()
-	if fake.ChainIDStub != nil {
-		return fake.ChainIDStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.chainIDReturns
-	return fakeReturns.result1
-}
-
-func (fake *FakeConsenterSupport) ChainIDCallCount() int {
-	fake.chainIDMutex.RLock()
-	defer fake.chainIDMutex.RUnlock()
-	return len(fake.chainIDArgsForCall)
-}
-
-func (fake *FakeConsenterSupport) ChainIDCalls(stub func() string) {
-	fake.chainIDMutex.Lock()
-	defer fake.chainIDMutex.Unlock()
-	fake.ChainIDStub = stub
-}
-
-func (fake *FakeConsenterSupport) ChainIDReturns(result1 string) {
-	fake.chainIDMutex.Lock()
-	defer fake.chainIDMutex.Unlock()
-	fake.ChainIDStub = nil
-	fake.chainIDReturns = struct {
-		result1 string
-	}{result1}
-}
-
-func (fake *FakeConsenterSupport) ChainIDReturnsOnCall(i int, result1 string) {
-	fake.chainIDMutex.Lock()
-	defer fake.chainIDMutex.Unlock()
-	fake.ChainIDStub = nil
-	if fake.chainIDReturnsOnCall == nil {
-		fake.chainIDReturnsOnCall = make(map[int]struct {
-			result1 string
-		})
-	}
-	fake.chainIDReturnsOnCall[i] = struct {
-		result1 string
-	}{result1}
-}
-
 func (fake *FakeConsenterSupport) ChannelConfig() channelconfig.Channel {
 	fake.channelConfigMutex.Lock()
 	ret, specificReturn := fake.channelConfigReturnsOnCall[len(fake.channelConfigArgsForCall)]
@@ -486,6 +434,58 @@ func (fake *FakeConsenterSupport) ChannelConfigReturnsOnCall(i int, result1 chan
 	}
 	fake.channelConfigReturnsOnCall[i] = struct {
 		result1 channelconfig.Channel
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) ChannelID() string {
+	fake.channelIDMutex.Lock()
+	ret, specificReturn := fake.channelIDReturnsOnCall[len(fake.channelIDArgsForCall)]
+	fake.channelIDArgsForCall = append(fake.channelIDArgsForCall, struct {
+	}{})
+	fake.recordInvocation("ChannelID", []interface{}{})
+	fake.channelIDMutex.Unlock()
+	if fake.ChannelIDStub != nil {
+		return fake.ChannelIDStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.channelIDReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeConsenterSupport) ChannelIDCallCount() int {
+	fake.channelIDMutex.RLock()
+	defer fake.channelIDMutex.RUnlock()
+	return len(fake.channelIDArgsForCall)
+}
+
+func (fake *FakeConsenterSupport) ChannelIDCalls(stub func() string) {
+	fake.channelIDMutex.Lock()
+	defer fake.channelIDMutex.Unlock()
+	fake.ChannelIDStub = stub
+}
+
+func (fake *FakeConsenterSupport) ChannelIDReturns(result1 string) {
+	fake.channelIDMutex.Lock()
+	defer fake.channelIDMutex.Unlock()
+	fake.ChannelIDStub = nil
+	fake.channelIDReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *FakeConsenterSupport) ChannelIDReturnsOnCall(i int, result1 string) {
+	fake.channelIDMutex.Lock()
+	defer fake.channelIDMutex.Unlock()
+	fake.ChannelIDStub = nil
+	if fake.channelIDReturnsOnCall == nil {
+		fake.channelIDReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.channelIDReturnsOnCall[i] = struct {
+		result1 string
 	}{result1}
 }
 
@@ -1237,10 +1237,10 @@ func (fake *FakeConsenterSupport) Invocations() map[string][][]interface{} {
 	defer fake.blockMutex.RUnlock()
 	fake.blockCutterMutex.RLock()
 	defer fake.blockCutterMutex.RUnlock()
-	fake.chainIDMutex.RLock()
-	defer fake.chainIDMutex.RUnlock()
 	fake.channelConfigMutex.RLock()
 	defer fake.channelConfigMutex.RUnlock()
+	fake.channelIDMutex.RLock()
+	defer fake.channelIDMutex.RUnlock()
 	fake.classifyMsgMutex.RLock()
 	defer fake.classifyMsgMutex.RUnlock()
 	fake.createNextBlockMutex.RLock()

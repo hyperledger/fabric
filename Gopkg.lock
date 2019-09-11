@@ -1107,7 +1107,6 @@
     "go.uber.org/zap/zaptest/observer",
     "golang.org/x/crypto/sha3",
     "golang.org/x/lint/golint",
-    "golang.org/x/net/context",
     "golang.org/x/tools/cmd/goimports",
     "golang.org/x/tools/go/packages",
     "google.golang.org/grpc",

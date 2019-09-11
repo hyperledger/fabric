@@ -125,7 +125,7 @@ var _ = Describe("Chain", func() {
 			observeC = make(chan raft.SoftState, 1)
 
 			support = &consensusmocks.FakeConsenterSupport{}
-			support.ChainIDReturns(channelID)
+			support.ChannelIDReturns(channelID)
 			consenterMetadata = createMetadata(1, tlsCA)
 			support.SharedConfigReturns(mockOrderer(time.Hour, marshalOrPanic(consenterMetadata)))
 
@@ -3247,7 +3247,7 @@ func newChain(timeout time.Duration, channel string, dataDir string, id uint64, 
 	}
 
 	support := &consensusmocks.FakeConsenterSupport{}
-	support.ChainIDReturns(channel)
+	support.ChannelIDReturns(channel)
 	support.SharedConfigReturns(mockOrderer(timeout, nil))
 
 	cutter := mockblockcutter.NewReceiver()

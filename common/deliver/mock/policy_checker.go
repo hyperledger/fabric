@@ -2,10 +2,10 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 
-	common "github.com/hyperledger/fabric-protos-go/common"
-	deliver "github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/deliver"
 )
 
 type PolicyChecker struct {

@@ -2,12 +2,12 @@
 package mock
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	common "github.com/hyperledger/fabric-protos-go/common"
-	orderer "github.com/hyperledger/fabric-protos-go/orderer"
-	metadata "google.golang.org/grpc/metadata"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/orderer"
+	"google.golang.org/grpc/metadata"
 )
 
 type ABServer struct {

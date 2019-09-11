@@ -9,12 +9,12 @@ import (
 )
 
 type Processor struct {
-	GenerateSimulationResultsStub        func(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error
+	GenerateSimulationResultsStub        func(*common.Envelope, ledger.TxSimulator, bool) error
 	generateSimulationResultsMutex       sync.RWMutex
 	generateSimulationResultsArgsForCall []struct {
-		txEnvelop          *common.Envelope
-		simulator          ledger.TxSimulator
-		initializingLedger bool
+		arg1 *common.Envelope
+		arg2 ledger.TxSimulator
+		arg3 bool
 	}
 	generateSimulationResultsReturns struct {
 		result1 error
@@ -26,23 +26,24 @@ type Processor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Processor) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
+func (fake *Processor) GenerateSimulationResults(arg1 *common.Envelope, arg2 ledger.TxSimulator, arg3 bool) error {
 	fake.generateSimulationResultsMutex.Lock()
 	ret, specificReturn := fake.generateSimulationResultsReturnsOnCall[len(fake.generateSimulationResultsArgsForCall)]
 	fake.generateSimulationResultsArgsForCall = append(fake.generateSimulationResultsArgsForCall, struct {
-		txEnvelop          *common.Envelope
-		simulator          ledger.TxSimulator
-		initializingLedger bool
-	}{txEnvelop, simulator, initializingLedger})
-	fake.recordInvocation("GenerateSimulationResults", []interface{}{txEnvelop, simulator, initializingLedger})
+		arg1 *common.Envelope
+		arg2 ledger.TxSimulator
+		arg3 bool
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("GenerateSimulationResults", []interface{}{arg1, arg2, arg3})
 	fake.generateSimulationResultsMutex.Unlock()
 	if fake.GenerateSimulationResultsStub != nil {
-		return fake.GenerateSimulationResultsStub(txEnvelop, simulator, initializingLedger)
+		return fake.GenerateSimulationResultsStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.generateSimulationResultsReturns.result1
+	fakeReturns := fake.generateSimulationResultsReturns
+	return fakeReturns.result1
 }
 
 func (fake *Processor) GenerateSimulationResultsCallCount() int {
@@ -51,13 +52,22 @@ func (fake *Processor) GenerateSimulationResultsCallCount() int {
 	return len(fake.generateSimulationResultsArgsForCall)
 }
 
+func (fake *Processor) GenerateSimulationResultsCalls(stub func(*common.Envelope, ledger.TxSimulator, bool) error) {
+	fake.generateSimulationResultsMutex.Lock()
+	defer fake.generateSimulationResultsMutex.Unlock()
+	fake.GenerateSimulationResultsStub = stub
+}
+
 func (fake *Processor) GenerateSimulationResultsArgsForCall(i int) (*common.Envelope, ledger.TxSimulator, bool) {
 	fake.generateSimulationResultsMutex.RLock()
 	defer fake.generateSimulationResultsMutex.RUnlock()
-	return fake.generateSimulationResultsArgsForCall[i].txEnvelop, fake.generateSimulationResultsArgsForCall[i].simulator, fake.generateSimulationResultsArgsForCall[i].initializingLedger
+	argsForCall := fake.generateSimulationResultsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *Processor) GenerateSimulationResultsReturns(result1 error) {
+	fake.generateSimulationResultsMutex.Lock()
+	defer fake.generateSimulationResultsMutex.Unlock()
 	fake.GenerateSimulationResultsStub = nil
 	fake.generateSimulationResultsReturns = struct {
 		result1 error
@@ -65,6 +75,8 @@ func (fake *Processor) GenerateSimulationResultsReturns(result1 error) {
 }
 
 func (fake *Processor) GenerateSimulationResultsReturnsOnCall(i int, result1 error) {
+	fake.generateSimulationResultsMutex.Lock()
+	defer fake.generateSimulationResultsMutex.Unlock()
 	fake.GenerateSimulationResultsStub = nil
 	if fake.generateSimulationResultsReturnsOnCall == nil {
 		fake.generateSimulationResultsReturnsOnCall = make(map[int]struct {

@@ -37,7 +37,7 @@ var (
 	imageRegExp  = regexp.MustCompile("^[a-z0-9]+(([._-][a-z0-9]+)+)?$")
 )
 
-//go:generate counterfeiter -o mock/dockerclient.go --fake-name DockerClient dockerClient
+//go:generate counterfeiter -o mock/dockerclient.go --fake-name DockerClient . dockerClient
 
 // dockerClient represents a docker client
 type dockerClient interface {
