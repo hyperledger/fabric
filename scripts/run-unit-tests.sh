@@ -7,6 +7,8 @@
 set -e
 set -o pipefail
 
+base_dir="$(cd "$(dirname "$0")/.." && pwd)"
+
 # regexes for packages to exclude from unit test
 excluded_packages=(
     "/integration(/|$)"
@@ -55,7 +57,7 @@ package_filter() {
 
 # obtain packages changed since some git refspec
 packages_diff() {
-    git -C "${GOPATH}/src/github.com/hyperledger/fabric" diff --no-commit-id --name-only -r "${1:-HEAD}" |
+    git -C "${base_dir}" diff --no-commit-id --name-only -r "${1:-HEAD}" |
         (grep '.go$' || true) | \
         sed 's%/[^/]*$%%' | sort -u | \
         awk '{print "github.com/hyperledger/fabric/"$1}'
@@ -174,8 +176,8 @@ run_tests_with_coverage() {
 
 main() {
     # place the cache directory into the default build tree if it exists
-    if [ -d "${GOPATH}/src/github.com/hyperledger/fabric/.build" ]; then
-        export GOCACHE="${GOPATH}/src/github.com/hyperledger/fabric/.build/go-cache"
+    if [ -d "${base_dir}/.build" ]; then
+        export GOCACHE="${base_dir}/.build/go-cache"
     fi
 
     # explicit exclusions for ppc and s390x
