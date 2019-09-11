@@ -45,8 +45,8 @@ type Verifier interface {
 // Evaluator evaluates signatures.
 // It is used to evaluate signatures for the local MSP
 type Evaluator interface {
-	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-	Evaluate(signatureSet []*protoutil.SignedData) error
+	// EvaluateSignedData takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
+	EvaluateSignedData(signatureSet []*protoutil.SignedData) error
 }
 
 // DiscoverySupport implements support that is used for service discovery
@@ -66,7 +66,7 @@ func NewDiscoverySupport(v Verifier, e Evaluator, chanConf ChannelConfigGetter) 
 // service from the discovery service for a given channel
 func (s *DiscoverySupport) EligibleForService(channel string, data protoutil.SignedData) error {
 	if channel == "" {
-		return s.Evaluate([]*protoutil.SignedData{&data})
+		return s.EvaluateSignedData([]*protoutil.SignedData{&data})
 	}
 	return s.VerifyByChannel(channel, &data)
 }
@@ -139,5 +139,5 @@ func (cv *ChannelVerifier) VerifyByChannel(channel string, sd *protoutil.SignedD
 	if pol == nil {
 		return errors.New("failed obtaining channel application writers policy")
 	}
-	return pol.Evaluate([]*protoutil.SignedData{sd})
+	return pol.EvaluateSignedData([]*protoutil.SignedData{sd})
 }

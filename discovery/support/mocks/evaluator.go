@@ -30,7 +30,7 @@ type Evaluator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Evaluator) Evaluate(signatureSet []*protoutil.SignedData) error {
+func (fake *Evaluator) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	var signatureSetCopy []*protoutil.SignedData
 	if signatureSet != nil {
 		signatureSetCopy = make([]*protoutil.SignedData, len(signatureSet))

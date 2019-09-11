@@ -91,7 +91,7 @@ func (fake *ConvertiblePolicy) ConvertReturnsOnCall(i int, result1 *common.Signa
 	}{result1, result2}
 }
 
-func (fake *ConvertiblePolicy) Evaluate(arg1 []*protoutil.SignedData) error {
+func (fake *ConvertiblePolicy) EvaluateSignedData(arg1 []*protoutil.SignedData) error {
 	var arg1Copy []*protoutil.SignedData
 	if arg1 != nil {
 		arg1Copy = make([]*protoutil.SignedData, len(arg1))

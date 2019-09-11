@@ -19,7 +19,7 @@ const TestPolicyName = "TestPolicyName"
 
 type acceptPolicy struct{}
 
-func (ap acceptPolicy) Evaluate(signedData []*protoutil.SignedData) error {
+func (ap acceptPolicy) EvaluateSignedData(signedData []*protoutil.SignedData) error {
 	return nil
 }
 
@@ -55,7 +55,7 @@ func runPolicyTest(rule cb.ImplicitMetaPolicy_Rule, managerCount int, passingCou
 		panic(err)
 	}
 
-	return imp.Evaluate(nil)
+	return imp.EvaluateSignedData(nil)
 }
 
 func TestImplicitMetaAny(t *testing.T) {

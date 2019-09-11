@@ -64,8 +64,8 @@ func NewImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*Impl
 	}, nil
 }
 
-// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (imp *ImplicitMetaPolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
+// EvaluateSignedData takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
+func (imp *ImplicitMetaPolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	logger.Debugf("This is an implicit meta policy, it will trigger other policy evaluations, whose failures may be benign")
 	remaining := imp.Threshold
 
@@ -88,7 +88,7 @@ func (imp *ImplicitMetaPolicy) Evaluate(signatureSet []*protoutil.SignedData) er
 	}()
 
 	for _, policy := range imp.SubPolicies {
-		if policy.Evaluate(signatureSet) == nil {
+		if policy.EvaluateSignedData(signatureSet) == nil {
 			remaining--
 			if remaining == 0 {
 				return nil

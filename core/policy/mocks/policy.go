@@ -13,8 +13,8 @@ type Policy struct {
 	mock.Mock
 }
 
-// Evaluate provides a mock function with given fields: signatureSet
-func (_m *Policy) Evaluate(signatureSet []*protoutil.SignedData) error {
+// EvaluateSignedData provides a mock function with given fields: signatureSet
+func (_m *Policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	ret := _m.Called(signatureSet)
 
 	var r0 error

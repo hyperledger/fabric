@@ -65,7 +65,7 @@ func (sc *SimpleCollection) MaximumPeerCount() int {
 // against the member access policy of this collection
 func (sc *SimpleCollection) AccessFilter() Filter {
 	return func(sd protoutil.SignedData) bool {
-		if err := sc.accessPolicy.Evaluate([]*protoutil.SignedData{&sd}); err != nil {
+		if err := sc.accessPolicy.EvaluateSignedData([]*protoutil.SignedData{&sd}); err != nil {
 			return false
 		}
 		return true

@@ -81,8 +81,8 @@ type policy struct {
 	deserializer            msp.IdentityDeserializer
 }
 
-// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (p *policy) Evaluate(signatureSet []*protoutil.SignedData) error {
+// EvaluateSignedData takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
+func (p *policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	if p == nil {
 		return fmt.Errorf("No such policy")
 	}

@@ -36,7 +36,7 @@ func (m *MembershipProvider) AmMemberOf(channelName string, collectionPolicyConf
 		logger.Errorf("Reject all due to error getting policy: %s", err)
 		return false, nil
 	}
-	if err := accessPolicy.Evaluate([]*protoutil.SignedData{&m.selfSignedData}); err != nil {
+	if err := accessPolicy.EvaluateSignedData([]*protoutil.SignedData{&m.selfSignedData}); err != nil {
 		return false, nil
 	}
 	return true, nil

@@ -165,7 +165,7 @@ func (p *policyChecker) CheckPolicyBySignedData(channelID, policyName string, sd
 	policy, _ := policyManager.GetPolicy(policyName)
 
 	// Evaluate the policy
-	err := policy.Evaluate(sd)
+	err := policy.EvaluateSignedData(sd)
 	if err != nil {
 		return fmt.Errorf("Failed evaluating policy on signed data during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}

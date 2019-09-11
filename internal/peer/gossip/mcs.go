@@ -189,7 +189,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	}
 
 	// - Evaluate policy
-	return policy.Evaluate(signatureSet)
+	return policy.EvaluateSignedData(signatureSet)
 }
 
 // Sign signs msg with this peer's signing key and outputs
@@ -244,7 +244,7 @@ func (s *MSPMessageCryptoService) VerifyByChannel(chainID common.ChannelID, peer
 	policy, flag := cpm.GetPolicy(policies.ChannelApplicationReaders)
 	mcsLogger.Debugf("Got reader policy for channel [%s] with flag [%t]", string(chainID), flag)
 
-	return policy.Evaluate(
+	return policy.EvaluateSignedData(
 		[]*protoutil.SignedData{{
 			Data:      message,
 			Identity:  []byte(peerIdentity),

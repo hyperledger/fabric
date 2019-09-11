@@ -50,8 +50,8 @@ type Policy struct {
 	Deserializer msp.IdentityDeserializer
 }
 
-// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (m *Policy) Evaluate(signatureSet []*protoutil.SignedData) error {
+// EvaluateSignedData takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
+func (m *Policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	fmt.Printf("Evaluate [%s], [% x], [% x]\n", string(signatureSet[0].Identity), string(signatureSet[0].Data), string(signatureSet[0].Signature))
 	identity, err := m.Deserializer.DeserializeIdentity(signatureSet[0].Identity)
 	if err != nil {
