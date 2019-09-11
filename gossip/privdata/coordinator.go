@@ -54,9 +54,9 @@ type Committer interface {
 
 // TransientStore holds private data that the corresponding blocks haven't been committed yet into the ledger.
 type TransientStore interface {
-	// PersistWithConfig stores the private write set of a transaction along with the collection config
+	// Persist stores the private write set of a transaction along with the collection config
 	// in the transient store based on txid and the block height the private data was received at
-	PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *protostransientstore.TxPvtReadWriteSetWithConfigInfo) error
+	Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *protostransientstore.TxPvtReadWriteSetWithConfigInfo) error
 
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 	// write sets persisted from different endorsers (via Gossip)
@@ -163,7 +163,7 @@ func NewCoordinator(support Support, selfSignedData protoutil.SignedData, metric
 
 // StorePvtData used to persist private date into transient store
 func (c *coordinator) StorePvtData(txID string, privData *protostransientstore.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
-	return c.TransientStore.PersistWithConfig(txID, blkHeight, privData)
+	return c.TransientStore.Persist(txID, blkHeight, privData)
 }
 
 // StoreBlock stores block with private data into the ledger
@@ -386,7 +386,7 @@ func (c *coordinator) fetchFromTransientStore(txAndSeq txAndSeqInBlock, filter l
 	}
 	defer iterator.Close()
 	for {
-		res, err := iterator.NextWithConfig()
+		res, err := iterator.Next()
 		if err != nil {
 			logger.Error("Failed iterating:", err)
 			break

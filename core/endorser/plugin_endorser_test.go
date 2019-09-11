@@ -155,13 +155,13 @@ type rwsetScanner struct {
 	data []*rwset.TxPvtReadWriteSet
 }
 
-func (rws *rwsetScanner) NextWithConfig() (*transientstore.EndorserPvtSimulationResultsWithConfig, error) {
+func (rws *rwsetScanner) Next() (*transientstore.EndorserPvtSimulationResults, error) {
 	if len(rws.data) == 0 {
 		return nil, nil
 	}
 	res := rws.data[0]
 	rws.data = rws.data[1:]
-	return &transientstore.EndorserPvtSimulationResultsWithConfig{
+	return &transientstore.EndorserPvtSimulationResults{
 		PvtSimulationResultsWithConfig: &transientstore2.TxPvtReadWriteSetWithConfigInfo{
 			PvtRwset: res,
 		},

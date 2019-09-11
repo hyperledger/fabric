@@ -16,16 +16,16 @@ func (_m *RWSetScanner) Close() {
 	_m.Called()
 }
 
-// NextWithConfig provides a mock function with given fields:
-func (_m *RWSetScanner) NextWithConfig() (*transientstore.EndorserPvtSimulationResultsWithConfig, error) {
+// Next provides a mock function with given fields:
+func (_m *RWSetScanner) Next() (*transientstore.EndorserPvtSimulationResults, error) {
 	ret := _m.Called()
 
-	var r0 *transientstore.EndorserPvtSimulationResultsWithConfig
-	if rf, ok := ret.Get(0).(func() *transientstore.EndorserPvtSimulationResultsWithConfig); ok {
+	var r0 *transientstore.EndorserPvtSimulationResults
+	if rf, ok := ret.Get(0).(func() *transientstore.EndorserPvtSimulationResults); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*transientstore.EndorserPvtSimulationResultsWithConfig)
+			r0 = ret.Get(0).(*transientstore.EndorserPvtSimulationResults)
 		}
 	}
 

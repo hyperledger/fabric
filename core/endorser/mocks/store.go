@@ -56,8 +56,8 @@ func (_m *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter)
 	return r0, r1
 }
 
-// PersistWithConfig provides a mock function with given fields: txid, blockHeight, privateSimulationResultsWithConfig
-func (_m *Store) PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *fabric_protos_gotransientstore.TxPvtReadWriteSetWithConfigInfo) error {
+// Persist provides a mock function with given fields: txid, blockHeight, privateSimulationResultsWithConfig
+func (_m *Store) Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *fabric_protos_gotransientstore.TxPvtReadWriteSetWithConfigInfo) error {
 	ret := _m.Called(txid, blockHeight, privateSimulationResultsWithConfig)
 
 	var r0 error

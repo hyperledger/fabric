@@ -21,11 +21,12 @@ import (
 
 var logger = flogging.MustGetLogger("transientstore")
 
-var emptyValue = []byte{}
-var nilByte = byte('\x00')
-
-// ErrStoreEmpty is used to indicate that there are no entries in transient store
-var ErrStoreEmpty = errors.New("Transient store is empty")
+var (
+	emptyValue = []byte{}
+	nilByte    = byte('\x00')
+	// ErrStoreEmpty is used to indicate that there are no entries in transient store
+	ErrStoreEmpty = errors.New("Transient store is empty")
+)
 
 //////////////////////////////////////////////
 // Interfaces and data types
@@ -39,12 +40,10 @@ type StoreProvider interface {
 
 // RWSetScanner provides an iterator for EndorserPvtSimulationResults
 type RWSetScanner interface {
-	// NextWithConfig returns the next EndorserPvtSimulationResultsWithConfig from the RWSetScanner.
+	// Next returns the next EndorserPvtSimulationResults from the RWSetScanner.
 	// It may return nil, nil when it has no further data, and also may return an error
 	// on failure
-	// TODO: Once the related gossip changes are made as per FAB-5096, remove the above function
-	// and rename the below function to Next form NextWithConfig.
-	NextWithConfig() (*EndorserPvtSimulationResultsWithConfig, error)
+	Next() (*EndorserPvtSimulationResults, error)
 	// Close frees the resources associated with this RWSetScanner
 	Close()
 }
@@ -53,11 +52,9 @@ type RWSetScanner interface {
 // Ideally, a ledger can remove the data from this storage when it is committed to
 // the permanent storage or the pruning of some data items is enforced by the policy
 type Store interface {
-	// TODO: Once the related gossip changes are made as per FAB-5096, remove the above function
-	// and rename the below function to Persist form PersistWithConfig.
-	// PersistWithConfig stores the private write set of a transaction along with the collection config
+	// Persist stores the private write set of a transaction along with the collection config
 	// in the transient store based on txid and the block height the private data was received at
-	PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error
+	Persist(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error
 	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 	// write sets persisted from different endorsers (via Gossip)
 	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error)
@@ -76,8 +73,8 @@ type Store interface {
 	Shutdown()
 }
 
-// EndorserPvtSimulationResultsWithConfig captures the details of the simulation results specific to an endorser
-type EndorserPvtSimulationResultsWithConfig struct {
+// EndorserPvtSimulationResults captures the details of the simulation results specific to an endorser
+type EndorserPvtSimulationResults struct {
 	ReceivedAtBlockHeight          uint64
 	PvtSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo
 }
@@ -126,11 +123,9 @@ func (provider *storeProvider) Close() {
 	provider.dbProvider.Close()
 }
 
-// PersistWithConfig stores the private write set of a transaction along with the collection config
+// Persist stores the private write set of a transaction along with the collection config
 // in the transient store based on txid and the block height the private data was received at
-// TODO: Once the related gossip changes are made as per FAB-5096, rename this function to Persist
-// form PersistWithConfig.
-func (s *store) PersistWithConfig(txid string, blockHeight uint64,
+func (s *store) Persist(txid string, blockHeight uint64,
 	privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error {
 
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
@@ -312,9 +307,8 @@ func (s *store) Shutdown() {
 }
 
 // Next moves the iterator to the next key/value pair.
-// It returns whether the iterator is exhausted.
-// TODO: Once the related gossip changes are made as per FAB-5096, rename this function to Next
-func (scanner *RwsetScanner) NextWithConfig() (*EndorserPvtSimulationResultsWithConfig, error) {
+// It returns <nil, nil> when the iterator is exhausted.
+func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 	if !scanner.dbItr.Next() {
 		return nil, nil
 	}
@@ -351,7 +345,7 @@ func (scanner *RwsetScanner) NextWithConfig() (*EndorserPvtSimulationResultsWith
 
 	txPvtRWSetWithConfig.PvtRwset = filteredTxPvtRWSet
 
-	return &EndorserPvtSimulationResultsWithConfig{
+	return &EndorserPvtSimulationResults{
 		ReceivedAtBlockHeight:          blockHeight,
 		PvtSimulationResultsWithConfig: txPvtRWSetWithConfig,
 	}, nil
