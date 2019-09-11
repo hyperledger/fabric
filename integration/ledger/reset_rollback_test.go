@@ -42,13 +42,14 @@ var _ bool = Describe("Rollback & Reset Ledger", func() {
 
 	BeforeEach(func() {
 		setup = initThreeOrgsSetup()
+		nwo.EnableCapabilities(setup.network, setup.channelID, "Application", "V2_0", setup.orderer, setup.peers...)
 		helper = &testHelper{
 			networkHelper: &networkHelper{
 				Network:   setup.network,
 				orderer:   setup.orderer,
 				peers:     setup.peers,
 				testDir:   setup.testDir,
-				channelID: "testchannel",
+				channelID: setup.channelID,
 			},
 		}
 
@@ -212,8 +213,6 @@ func initThreeOrgsSetup() *setup {
 	n.UpdateChannelAnchors(orderer, "testchannel")
 	setup.orderer = orderer
 
-	nwo.EnableCapabilities(n, "testchannel", "Application", "V2_0", orderer, peers...)
-
 	By("verifying membership")
 	setup.network.VerifyMembership(setup.peers, setup.channelID)
 
@@ -235,6 +234,20 @@ func (s *setup) terminateAllProcess() {
 	Eventually(s.brokerProcess.Wait(), s.network.EventuallyTimeout).Should(Receive())
 	s.brokerProcess = nil
 
+	for _, p := range s.peerProcess {
+		p.Signal(syscall.SIGTERM)
+		Eventually(p.Wait(), s.network.EventuallyTimeout).Should(Receive())
+	}
+	s.peerProcess = nil
+}
+
+func (s *setup) startPeers() {
+	for _, peer := range s.peers {
+		s.startPeer(peer)
+	}
+}
+
+func (s *setup) stopPeers() {
 	for _, p := range s.peerProcess {
 		p.Signal(syscall.SIGTERM)
 		Eventually(p.Wait(), s.network.EventuallyTimeout).Should(Receive())
