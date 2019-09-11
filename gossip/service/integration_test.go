@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -30,10 +29,6 @@ type transientStoreMock struct {
 
 func (*transientStoreMock) PurgeByHeight(maxBlockNumToRetain uint64) error {
 	return nil
-}
-
-func (*transientStoreMock) Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
-	panic("implement me")
 }
 
 func (*transientStoreMock) PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {

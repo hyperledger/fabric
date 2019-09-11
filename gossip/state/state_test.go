@@ -193,10 +193,6 @@ func (*mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
 	return nil
 }
 
-func (*mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
-	panic("implement me")
-}
-
 func (*mockTransientStore) PersistWithConfig(txid string, blockHeight uint64, privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
 	panic("implement me")
 }
