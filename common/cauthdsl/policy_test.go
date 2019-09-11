@@ -114,7 +114,7 @@ func TestNewPolicyErrorCase(t *testing.T) {
 	assert.Nil(t, msg3)
 	assert.EqualError(t, err3, "Empty policy element")
 
-	var pol4 *policy = nil
+	var pol4 *policy
 	err4 := pol4.Evaluate([]*protoutil.SignedData{})
 	assert.EqualError(t, err4, "No such policy")
 }
@@ -132,11 +132,6 @@ func TestEnvelopeBasedPolicyProvider(t *testing.T) {
 	p, err = pp.NewPolicy(SignedByMspPeer("primus inter pares"))
 	assert.NotNil(t, p)
 	assert.NoError(t, err)
-}
-
-func TestVerifyFirstPanics(t *testing.T) {
-	d := &deserializeAndVerify{}
-	assert.Panics(t, func() { d.Verify() })
 }
 
 func TestConverter(t *testing.T) {
