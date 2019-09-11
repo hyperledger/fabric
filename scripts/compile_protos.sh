@@ -14,12 +14,8 @@ PROTO_DIRS=$(eval \
     -path $(pwd)/.build -prune -o \
     -name '*.proto' \
     -exec readlink -f {} \; \
-    -print0" | xargs -n 1 dirname | sort -u)
+    -print0" | xargs -n 1 dirname | sort -u | grep -v testdata)
 
 for dir in ${PROTO_DIRS}; do
-    echo Working on dir "$dir"
-    # As this is a proto root, and there may be subdirectories with protos, compile the protos for each sub-directory which contains them
-    for protos in $(find "$dir" -name '*.proto' -exec dirname {} \; | sort | uniq) ; do
-        protoc --proto_path="$dir" --go_out=plugins=grpc:"$GOPATH"/src "$protos"/*.proto
-    done
+    protoc --proto_path="$dir" --go_out=plugins=grpc,paths=source_relative:"$dir" "$dir"/*.proto
 done
