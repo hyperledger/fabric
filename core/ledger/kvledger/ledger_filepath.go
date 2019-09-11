@@ -13,7 +13,8 @@ func fileLockPath(rootFSPath string) string {
 	return filepath.Join(rootFSPath, "fileLock")
 }
 
-func ledgerProviderPath(rootFSPath string) string {
+// LedgerProviderPath returns the absolute path of ledgerprovider
+func LedgerProviderPath(rootFSPath string) string {
 	return filepath.Join(rootFSPath, "ledgerProvider")
 }
 

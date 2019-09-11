@@ -92,7 +92,7 @@ func openDBAndCheckFormat(conf *Conf) (d *DB, e error) {
 		dbName: internalDBName,
 	}
 
-	dbEmpty, err := db.isEmpty()
+	dbEmpty, err := db.IsEmpty()
 	if err != nil {
 		return nil, err
 	}
