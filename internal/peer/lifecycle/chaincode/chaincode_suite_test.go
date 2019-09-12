@@ -24,8 +24,8 @@ type writer interface {
 	chaincode.Writer
 }
 
-//go:generate counterfeiter -o mock/platform_registry.go -fake-name PlatformRegistry . platformRegistryIntf
-type platformRegistryIntf interface {
+//go:generate counterfeiter -o mock/platform_registry.go -fake-name PlatformRegistry . platformRegistry
+type platformRegistry interface {
 	chaincode.PlatformRegistry
 }
 
