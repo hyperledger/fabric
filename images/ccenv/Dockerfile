@@ -8,8 +8,8 @@ FROM golang:${GO_VER}-alpine${ALPINE_VER}
 RUN apk add --no-cache \
 	g++ \
 	gcc \
-	musl-dev \
-	git;
+	git \
+	musl-dev
 
 RUN mkdir -p /chaincode/output /chaincode/input
 RUN addgroup -g 500 chaincode && adduser -u 500 -D -h /home/chaincode -G chaincode chaincode

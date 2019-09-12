@@ -365,11 +365,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7df71c1e14a719ce646e2a6722558525cc1ad0e84b75a6b749be65d760f96951"
+  digest = "1:d34c45c3c23a248b5e6fbe81f5663410ec779c36ccbfa6652f19d14c29d1c79b"
   name = "github.com/hyperledger/fabric-chaincode-go"
   packages = [
-    "pkg/attrmgr",
-    "pkg/cid",
     "pkg/statebased",
     "shim",
     "shim/internal",
@@ -1047,8 +1045,6 @@
     "github.com/hashicorp/go-version",
     "github.com/hyperledger/fabric-amcl/amcl",
     "github.com/hyperledger/fabric-amcl/amcl/FP256BN",
-    "github.com/hyperledger/fabric-chaincode-go/pkg/attrmgr",
-    "github.com/hyperledger/fabric-chaincode-go/pkg/cid",
     "github.com/hyperledger/fabric-chaincode-go/pkg/statebased",
     "github.com/hyperledger/fabric-chaincode-go/shim",
     "github.com/hyperledger/fabric-chaincode-go/shimtest",
