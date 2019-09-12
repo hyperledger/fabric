@@ -43,6 +43,10 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
+# Disable impliicit rules
+.SUFFIXES:
+MAKEFLAGS += --no-builtin-rules
+
 ALPINE_VER ?= 3.10
 BASE_VERSION = 2.0.0
 PREV_VERSION = 2.0.0-alpha
