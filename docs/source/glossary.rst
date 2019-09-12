@@ -126,7 +126,7 @@ Channel
 
 A channel is a private blockchain overlay which allows for data
 isolation and confidentiality. A channel-specific ledger is shared across the
-peers in the channel, and transacting parties must be properly authenticated to
+peers in the channel, and transacting parties must be authenticated to
 a channel in order to interact with it.  Channels are defined by a
 Configuration-Block_.
 
