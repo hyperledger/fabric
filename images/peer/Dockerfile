@@ -5,21 +5,16 @@
 ARG GO_VER
 ARG ALPINE_VER
 
-FROM alpine:${ALPINE_VER} as base
-RUN apk add --no-cache tzdata
-RUN addgroup chaincode && adduser -D -h /chaincode -G chaincode chaincode
-USER chaincode
-
 FROM alpine:${ALPINE_VER} as peer-base
 RUN apk add --no-cache tzdata
 
 FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
 RUN apk add --no-cache \
-	gcc \
-	musl-dev \
-	git \
 	bash \
-	make;
+	gcc \
+	git \
+	make \
+	musl-dev
 ADD . $GOPATH/src/github.com/hyperledger/fabric
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 ENV EXECUTABLES go git

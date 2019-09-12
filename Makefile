@@ -243,19 +243,6 @@ $(BUILD_DIR)/bin/%: check-go-version $(PROJECT_FILES)
 	@echo "Binary available as $@"
 	@touch $@
 
-$(BUILD_DIR)/images/baseos/$(DUMMY):
-	@mkdir -p $(@D)
-	$(eval TARGET = ${patsubst $(BUILD_DIR)/images/%/$(DUMMY),%,${@}})
-	@echo "Docker:  building $(TARGET) image"
-	$(DBUILD) -f images/peer/Dockerfile \
-		--target base \
-		--build-arg GO_VER=${GO_VER} \
-		--build-arg ALPINE_VER=${ALPINE_VER} \
-		-t $(DOCKER_NS)/fabric-$(TARGET) images/peer
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
-	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
-	@touch $@
-
 $(BUILD_DIR)/images/peer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
 $(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
