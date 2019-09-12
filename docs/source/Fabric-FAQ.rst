@@ -159,9 +159,6 @@ Chaincode (Smart Contracts and Digital Assets)
   Chaincode can be written in any programming language and executed in
   containers. Currently, Golang, node.js and java chaincode are supported.
 
-  It is also possible to build Hyperledger Fabric applications using
-  `Hyperledger Composer <https://hyperledger.github.io/composer/>`__.
-
 :Question:
   Does the Hyperledger Fabric have native currency?
 

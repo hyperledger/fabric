@@ -36,9 +36,6 @@ Assets are represented in Hyperledger Fabric as a collection of
 key-value pairs, with state changes recorded as transactions on a :ref:`Channel`
 ledger.  Assets can be represented in binary and/or JSON form.
 
-You can easily define and use assets in your Hyperledger Fabric applications
-using the `Hyperledger Composer <https://github.com/hyperledger/composer>`__ tool.
-
 .. _Chaincode:
 
 Chaincode
