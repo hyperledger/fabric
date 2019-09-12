@@ -11,7 +11,7 @@ if [ "$#" -ne 2 ]; then
     exit 2
 fi
 
-if grep -q "GOLANG" "$2/metadata.json" ; then
+if grep -q "golang" "$2/metadata.json" ; then
     exit 0
 fi
 

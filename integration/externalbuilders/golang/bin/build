@@ -15,4 +15,9 @@ SOURCE=$1
 GO_PACKAGE_PATH=$(jq -r .path $2/metadata.json)
 OUTPUT=$3
 
-GOPATH=$SOURCE:$GOPATH go build -o "$OUTPUT/chaincode" -ldflags "-linkmode external -extldflags '-static'" $GO_PACKAGE_PATH
+if [ -f "$SOURCE/src/go.mod" ]; then
+    cd $SOURCE/src
+    GO111MODULE=on GOPROXY=https://proxy.golang.org go build -v -mod=readonly -o "$OUTPUT/chaincode" $GO_PACKAGE_PATH
+else
+    exit 1
+fi
