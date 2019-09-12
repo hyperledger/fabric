@@ -19,19 +19,32 @@ import (
 )
 
 func (msp *bccspmsp) validateIdentity(id *identity) error {
+	id.validationMutex.Lock()
+	defer id.validationMutex.Unlock()
+
+	// return cached validation value if already validated
+	if id.validated {
+		return id.validationErr
+	}
+
+	id.validated = true
+
 	validationChain, err := msp.getCertificationChainForBCCSPIdentity(id)
 	if err != nil {
-		return errors.WithMessage(err, "could not obtain certification chain")
+		id.validationErr = errors.WithMessage(err, "could not obtain certification chain")
+		return id.validationErr
 	}
 
 	err = msp.validateIdentityAgainstChain(id, validationChain)
 	if err != nil {
-		return errors.WithMessage(err, "could not validate identity against certification chain")
+		id.validationErr = errors.WithMessage(err, "could not validate identity against certification chain")
+		return id.validationErr
 	}
 
 	err = msp.internalValidateIdentityOusFunc(id)
 	if err != nil {
-		return errors.WithMessage(err, "could not validate identity's OUs")
+		id.validationErr = errors.WithMessage(err, "could not validate identity's OUs")
+		return id.validationErr
 	}
 
 	return nil

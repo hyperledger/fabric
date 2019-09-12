@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -36,6 +37,18 @@ type identity struct {
 
 	// reference to the MSP that "owns" this identity
 	msp *bccspmsp
+
+	// validationMutex is used to synchronise memory operation
+	// over validated and validationErr
+	validationMutex sync.Mutex
+
+	// validated is true when the validateIdentity function
+	// has been called on this instance
+	validated bool
+
+	// validationErr contains the validation error for this
+	// instance. It can be read if validated is true
+	validationErr error
 }
 
 func newIdentity(cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) (Identity, error) {
@@ -214,7 +227,15 @@ func newSigningIdentity(cert *x509.Certificate, pk bccsp.Key, signer crypto.Sign
 	if err != nil {
 		return nil, err
 	}
-	return &signingidentity{identity: *mspId.(*identity), signer: signer}, nil
+	return &signingidentity{
+		identity: identity{
+			id:   mspId.(*identity).id,
+			cert: mspId.(*identity).cert,
+			msp:  mspId.(*identity).msp,
+			pk:   mspId.(*identity).pk,
+		},
+		signer: signer,
+	}, nil
 }
 
 // Sign produces a signature over msg, signed by this instance
