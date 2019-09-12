@@ -19,7 +19,7 @@ hats to take the role of Balaji, an employee of DigiBank, who will buy this
 commercial paper, hold it for a period of time, and then redeem it with
 MagnetoCorp for a small profit.
 
-You'll act as an developer, end user, and administrator, each in different
+You'll act as a developer, end-user, and administrator, each in different
 organizations, performing the following steps designed to help you understand
 what it's like to collaborate as two different organizations working
 independently, but according to mutually agreed rules in a Hyperledger Fabric
