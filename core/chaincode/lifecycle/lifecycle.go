@@ -174,6 +174,7 @@ func (cd *ChaincodeDefinition) String() string {
 }
 
 //go:generate counterfeiter -o mock/chaincode_builder.go --fake-name ChaincodeBuilder . ChaincodeBuilder
+
 type ChaincodeBuilder interface {
 	Build(ccid string) error
 }
@@ -500,7 +501,8 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 
 	buildStatus, ok := ef.BuildRegistry.BuildStatus(packageID)
 	if !ok {
-		buildStatus.Notify(ef.ChaincodeBuilder.Build(packageID))
+		err := ef.ChaincodeBuilder.Build(packageID)
+		buildStatus.Notify(err)
 	}
 	<-buildStatus.Done()
 	if err := buildStatus.Err(); err != nil {

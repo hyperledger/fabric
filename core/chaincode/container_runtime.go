@@ -59,10 +59,11 @@ func (c *ContainerRuntime) Start(ccid string) error {
 
 	buildStatus, ok := c.BuildRegistry.BuildStatus(ccid)
 	if !ok {
-		buildStatus.Notify(c.ContainerRouter.Build(ccid))
-	} else {
-		<-buildStatus.Done()
+		err := c.ContainerRouter.Build(ccid)
+		buildStatus.Notify(err)
 	}
+	<-buildStatus.Done()
+
 	if err := buildStatus.Err(); err != nil {
 		return errors.WithMessage(err, "error building image")
 	}

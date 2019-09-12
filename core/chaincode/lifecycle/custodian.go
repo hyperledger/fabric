@@ -77,6 +77,7 @@ func (cc *ChaincodeCustodian) Work(buildRegistry *container.BuildRegistry, build
 			cc.cond.Wait()
 		}
 		if cc.halt {
+			cc.mutex.Unlock()
 			return
 		}
 		chore := cc.choreQueue[0]
