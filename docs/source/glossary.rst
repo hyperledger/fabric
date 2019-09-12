@@ -77,7 +77,7 @@ Block
 A block contains an ordered set of transactions. It is cryptographically linked
 to the preceding block, and in turn it is linked to be subsequent blocks. The
 first block in such a chain of blocks is called the **genesis block**. Blocks
-are created by the ordering system, and validated by peers.
+are created by the ordering service, and then validated and committed by peers.
 
 
 .. _Chain:
