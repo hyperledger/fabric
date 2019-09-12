@@ -61,6 +61,12 @@ func (m *Policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error 
 	return identity.Verify(signatureSet[0].Data, signatureSet[0].Signature)
 }
 
+// EvaluateIdentities takes an array of identities and evaluates whether
+// they satisfy the policy
+func (m *Policy) EvaluateIdentities(identities []msp.Identity) error {
+	panic("Implement me")
+}
+
 type DeserializersManager struct {
 	LocalDeserializer    msp.IdentityDeserializer
 	ChannelDeserializers map[string]msp.IdentityDeserializer

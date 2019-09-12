@@ -90,8 +90,8 @@ func TestEligibleForService(t *testing.T) {
 	e := &mocks.Evaluator{}
 	v.VerifyByChannelReturnsOnCall(0, errors.New("verification failed"))
 	v.VerifyByChannelReturnsOnCall(1, nil)
-	e.EvaluateReturnsOnCall(0, errors.New("verification failed for local msp"))
-	e.EvaluateReturnsOnCall(1, nil)
+	e.EvaluateSignedDataReturnsOnCall(0, errors.New("verification failed for local msp"))
+	e.EvaluateSignedDataReturnsOnCall(1, nil)
 	chConfig := &mocks.ChanConfig{}
 	sup := acl.NewDiscoverySupport(v, e, chConfig)
 	err := sup.EligibleForService("mychannel", protoutil.SignedData{})

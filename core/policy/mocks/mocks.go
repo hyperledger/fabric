@@ -53,6 +53,12 @@ func (m *MockPolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData) er
 	return identity.Verify(signatureSet[0].Data, signatureSet[0].Signature)
 }
 
+// EvaluateIdentities takes an array of identities and evaluates whether
+// they satisfy the policy
+func (m *MockPolicy) EvaluateIdentities(identities []msp.Identity) error {
+	return nil
+}
+
 type MockIdentityDeserializer struct {
 	Identity []byte
 	Msg      []byte

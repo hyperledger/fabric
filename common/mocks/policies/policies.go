@@ -8,6 +8,7 @@ package policies
 
 import (
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -19,6 +20,11 @@ type Policy struct {
 
 // EvaluateSignedData returns the Err set in Policy
 func (p *Policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
+	return p.Err
+}
+
+// EvaluateIdentities returns nil
+func (p *Policy) EvaluateIdentities(ids []msp.Identity) error {
 	return p.Err
 }
 

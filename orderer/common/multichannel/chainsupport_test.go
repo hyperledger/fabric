@@ -113,12 +113,12 @@ func TestVerifyBlockSignature(t *testing.T) {
 	mockPolicyManager.GetPolicyReturns(mockPolicy, true)
 	// Scenario II: Policy manager finds policy, but it evaluates
 	// to error.
-	mockPolicy.EvaluateReturns(errors.New("invalid signature"))
+	mockPolicy.EvaluateSignedDataReturns(errors.New("invalid signature"))
 	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
 	assert.EqualError(t, err, "block verification failed: invalid signature")
 
 	// Scenario III: Policy manager finds policy, and it evaluates to success
-	mockPolicy.EvaluateReturns(nil)
+	mockPolicy.EvaluateSignedDataReturns(nil)
 	assert.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil))
 
 	// Scenario IV: A bad config envelope is passed

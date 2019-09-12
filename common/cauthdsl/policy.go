@@ -81,7 +81,9 @@ type policy struct {
 	deserializer            msp.IdentityDeserializer
 }
 
-// EvaluateSignedData takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
+// EvaluateSignedData takes a set of SignedData and evaluates whether
+// 1) the signatures are valid over the related message
+// 2) the signing identities satisfy the policy
 func (p *policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	if p == nil {
 		return fmt.Errorf("No such policy")
@@ -89,7 +91,17 @@ func (p *policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error 
 
 	ids := policies.SignatureSetToValidIdentities(signatureSet, p.deserializer)
 
-	ok := p.evaluator(ids, make([]bool, len(signatureSet)))
+	return p.EvaluateIdentities(ids)
+}
+
+// EvaluateIdentities takes an array of identities and evaluates whether
+// they satisfy the policy
+func (p *policy) EvaluateIdentities(identities []msp.Identity) error {
+	if p == nil {
+		return fmt.Errorf("No such policy")
+	}
+
+	ok := p.evaluator(identities, make([]bool, len(identities)))
 	if !ok {
 		return errors.New("signature set did not satisfy policy")
 	}

@@ -1262,6 +1262,12 @@ func (c *CreatorPolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData)
 	return fmt.Errorf("Creator not recognized [%s]", string(signatureSet[0].Identity))
 }
 
+// EvaluateIdentities takes an array of identities and evaluates whether
+// they satisfy the policy
+func (c *CreatorPolicy) EvaluateIdentities(identities []msp.Identity) error {
+	return nil
+}
+
 func newPolicyChecker(peerInstance *peer.Peer) policy.PolicyChecker {
 	return policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),

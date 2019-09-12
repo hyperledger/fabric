@@ -746,7 +746,7 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 			description:   "policy evaluation fails",
 			expectedError: "invalid signature",
 			policy: &mocks.Policy{
-				EvaluateStub: func([]*protoutil.SignedData) error {
+				EvaluateSignedDataStub: func([]*protoutil.SignedData) error {
 					return errors.New("invalid signature")
 				},
 			},
@@ -760,7 +760,7 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 		{
 			description: "good config envelope overrides custom policy manager",
 			policy: &mocks.Policy{
-				EvaluateStub: func([]*protoutil.SignedData) error {
+				EvaluateSignedDataStub: func([]*protoutil.SignedData) error {
 					return errors.New("invalid signature")
 				},
 			},
