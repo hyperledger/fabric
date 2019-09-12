@@ -55,6 +55,10 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 
 	rootDirLen := len(rootDirectory)
 	walkFn := func(localpath string, info os.FileInfo, err error) error {
+		if err != nil {
+			vmLogger.Errorf("Visit %s failed: %s", localpath, err)
+			return err
+		}
 
 		// If localpath includes .git, ignore
 		if strings.Contains(localpath, ".git") {
