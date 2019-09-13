@@ -16,7 +16,6 @@ RUN apk add --no-cache \
 	make;
 ADD . $GOPATH/src/github.com/hyperledger/fabric
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
-ENV EXECUTABLES go git
 
 FROM golang as orderer
 ARG GO_TAGS

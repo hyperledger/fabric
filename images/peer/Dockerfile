@@ -17,7 +17,6 @@ RUN apk add --no-cache \
 	musl-dev
 ADD . $GOPATH/src/github.com/hyperledger/fabric
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
-ENV EXECUTABLES go git
 
 FROM golang as peer
 ARG GO_TAGS

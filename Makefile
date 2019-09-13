@@ -62,6 +62,10 @@ else
 PROJECT_NAME = hyperledger/fabric
 endif
 
+# Disable impliicit rules
+.SUFFIXES:
+MAKEFLAGS += --no-builtin-rules
+
 BUILD_DIR ?= .build
 NEXUS_REPO = nexus3.hyperledger.org:10001/hyperledger
 
@@ -87,10 +91,6 @@ GO_VER = 1.12.7
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 
 GO_TAGS ?=
-
-EXECUTABLES ?= go docker git curl
-K := $(foreach exec,$(EXECUTABLES),\
-	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
 # No sense rebuilding when non production code is changed
 PROJECT_FILES = $(shell git ls-files  | grep -Ev '^integration/|^vagrant/|.png$|^LICENSE|^vendor/')

@@ -15,7 +15,6 @@ RUN apk add --no-cache \
 
 ADD . $GOPATH/src/github.com/hyperledger/fabric
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
-ENV EXECUTABLES go git
 
 FROM golang as tools
 RUN make configtxgen configtxlator cryptogen peer discover idemixgen
