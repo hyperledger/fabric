@@ -53,15 +53,6 @@ BASEIMAGE_RELEASE = 0.4.15
 # 3rd party image version
 COUCHDB_VER ?= 2.3
 
-# Allow to build as a submodule setting the main project to
-# the PROJECT_NAME env variable, for example,
-# export PROJECT_NAME=hyperledger/fabric-test
-ifeq ($(PROJECT_NAME),true)
-PROJECT_NAME = $(PROJECT_NAME)/fabric
-else
-PROJECT_NAME = hyperledger/fabric
-endif
-
 # Disable impliicit rules
 .SUFFIXES:
 MAKEFLAGS += --no-builtin-rules
@@ -72,7 +63,7 @@ NEXUS_REPO = nexus3.hyperledger.org:10001/hyperledger
 EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
 PROJECT_VERSION=$(BASE_VERSION)-snapshot-$(EXTRA_VERSION)
 
-PKGNAME = github.com/$(PROJECT_NAME)
+PKGNAME = github.com/hyperledger/fabric
 CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell go env GOARCH)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
