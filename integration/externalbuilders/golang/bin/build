@@ -12,7 +12,7 @@ if [ "$#" -ne 3 ]; then
 fi
 
 SOURCE=$1
-GO_PACKAGE_PATH="$(grep -o '"Path": *"[^"]*"' "$2/metadata.json"| grep -o '"[^"]*"$')"
+GO_PACKAGE_PATH=$(jq -r .path $2/metadata.json)
 OUTPUT=$3
 
 GOPATH=$SOURCE:$GOPATH go build -o "$OUTPUT/chaincode" -ldflags "-linkmode external -extldflags '-static'" $GO_PACKAGE_PATH
