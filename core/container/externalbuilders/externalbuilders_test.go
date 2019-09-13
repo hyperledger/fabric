@@ -229,7 +229,7 @@ var _ = Describe("Externalbuilders", func() {
 	Describe("NewCommand", func() {
 		It("only propagates expected variables", func() {
 			var expectedEnv []string
-			for _, key := range []string{"LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"} {
+			for _, key := range []string{"GOCACHE", "HOME", "LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"} {
 				if val, ok := os.LookupEnv(key); ok {
 					expectedEnv = append(expectedEnv, fmt.Sprintf("%s=%s", key, val))
 				}

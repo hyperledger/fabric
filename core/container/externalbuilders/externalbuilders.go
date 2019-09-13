@@ -285,7 +285,7 @@ func (b *Builder) Name() string {
 // variables.
 func NewCommand(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	for _, key := range []string{"LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"} {
+	for _, key := range []string{"GOCACHE", "HOME", "LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"} {
 		if val, ok := os.LookupEnv(key); ok {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
 		}
