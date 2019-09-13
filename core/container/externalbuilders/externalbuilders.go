@@ -147,7 +147,7 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 		return nil, errors.WithMessage(err, "could not untar source package")
 	}
 
-	err = writeMetadataFile(md, metadataDir)
+	err = writeMetadataFile(ccid, md, metadataDir)
 	if err != nil {
 		os.RemoveAll(scratchDir)
 		return nil, errors.WithMessage(err, "could not write metadata file")
@@ -164,8 +164,19 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 	}, nil
 }
 
-func writeMetadataFile(md *persistence.ChaincodePackageMetadata, dst string) error {
-	mdBytes, err := json.Marshal(md)
+type buildMetadata struct {
+	Path      string `json:"Path"`
+	Type      string `json:"Type"`
+	PackageID string `json:"PackageID"`
+}
+
+func writeMetadataFile(ccid string, md *persistence.ChaincodePackageMetadata, dst string) error {
+	buildMetadata := &buildMetadata{
+		Path:      md.Path,
+		Type:      md.Type,
+		PackageID: ccid,
+	}
+	mdBytes, err := json.Marshal(buildMetadata)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal build metadata into JSON")
 	}
@@ -249,12 +260,10 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 	launch := filepath.Join(b.Location, "bin", "launch")
 	cmd := NewCommand(
 		launch,
-		"--package-id", buildContext.CCID,
-		"--path", buildContext.Metadata.Path,
-		"--type", buildContext.Metadata.Type,
-		"--source", buildContext.SourceDir,
-		"--output", buildContext.OutputDir,
-		"--artifacts", buildContext.LaunchDir,
+		buildContext.SourceDir,
+		buildContext.MetadataDir,
+		buildContext.OutputDir,
+		buildContext.LaunchDir,
 	)
 
 	err = RunCommand(b.Logger, cmd)

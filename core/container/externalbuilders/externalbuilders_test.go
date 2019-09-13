@@ -209,12 +209,18 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the launch exits with a non-zero status", func() {
 				BeforeEach(func() {
-					buildContext.CCID = "unsupported-package-id"
+					md.Path = "baz"
+
+					var err error
+					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
+					Expect(err).NotTo(HaveOccurred())
+					buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("returns an error", func() {
 					err := builder.Launch(buildContext, fakeConnection)
-					Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
+					Expect(err).To(MatchError("builder 'testdata' failed: exit status 1"))
 				})
 			})
 		})
