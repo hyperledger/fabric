@@ -32,11 +32,11 @@ func (c *Components) Discover() string {
 }
 
 func (c *Components) Idemixgen() string {
-	return c.build("github.com/hyperledger/fabric/common/tools/idemixgen")
+	return c.build("github.com/hyperledger/fabric/cmd/idemixgen")
 }
 
 func (c *Components) Orderer() string {
-	return c.build("github.com/hyperledger/fabric/orderer")
+	return c.build("github.com/hyperledger/fabric/cmd/orderer")
 }
 
 func (c *Components) Peer() string {

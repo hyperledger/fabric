@@ -43,7 +43,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// Build the orderer binary
-	orderer, err := gexec.Build("github.com/hyperledger/fabric/orderer")
+	orderer, err := gexec.Build("github.com/hyperledger/fabric/cmd/orderer")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	defer gexec.CleanupBuildArtifacts()

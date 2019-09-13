@@ -92,7 +92,6 @@ EXECUTABLES ?= go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
-PROTOS = $(shell git ls-files *.proto | grep -Ev 'vendor/|testdata/')
 # No sense rebuilding when non production code is changed
 PROJECT_FILES = $(shell git ls-files  | grep -Ev '^integration/|^vagrant/|.png$|^LICENSE|^vendor/')
 IMAGES = peer orderer baseos ccenv buildenv tools
@@ -101,11 +100,11 @@ RELEASE_PKGS = configtxgen cryptogen idemixgen discover configtxlator peer order
 RELEASE_IMAGES = peer orderer tools ccenv baseos
 
 pkgmap.cryptogen      := $(PKGNAME)/cmd/cryptogen
-pkgmap.idemixgen      := $(PKGNAME)/common/tools/idemixgen
+pkgmap.idemixgen      := $(PKGNAME)/cmd/idemixgen
 pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/cmd/configtxlator
 pkgmap.peer           := $(PKGNAME)/cmd/peer
-pkgmap.orderer        := $(PKGNAME)/orderer
+pkgmap.orderer        := $(PKGNAME)/cmd/orderer
 pkgmap.discover       := $(PKGNAME)/cmd/discover
 
 include docker-env.mk

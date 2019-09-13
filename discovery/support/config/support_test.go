@@ -74,7 +74,7 @@ func TestMSPIDMapping(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.Remove(cryptogen)
 
-	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/idemixgen")
+	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/cmd/idemixgen")
 	assert.NoError(t, err)
 	defer os.Remove(idemixgen)
 
