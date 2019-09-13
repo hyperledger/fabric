@@ -38,8 +38,6 @@
 #   - dist-clean - clean release packages for all target platforms
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 #   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
-#   - enable_ci_only_tests - triggers unit-tests in downstream jobs. Applicable only for CI not to
-#     use in the local machine.
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
@@ -185,8 +183,6 @@ unit-test: unit-test-clean docker-thirdparty ccenv baseos
 	./scripts/run-unit-tests.sh
 
 unit-tests: unit-test
-
-enable_ci_only_tests: unit-test
 
 verify: export JOB_TYPE=VERIFY
 verify: unit-test
