@@ -100,11 +100,11 @@ pkgmap.discover       := $(PKGNAME)/cmd/discover
 
 include docker-env.mk
 
-all: native docker checks
+all: check-go-version native docker checks
 
 checks: basic-checks unit-test integration-test
 
-basic-checks: license spelling references trailing-spaces linter check-metrics-doc
+basic-checks: check-go-version license spelling references trailing-spaces linter check-metrics-doc
 
 desk-check: checks verify
 
@@ -149,17 +149,11 @@ baseos: $(BUILD_DIR)/images/baseos/$(DUMMY)
 
 ccenv: $(BUILD_DIR)/images/ccenv/$(DUMMY)
 
-.PHONY: check-go-version
-check-go-version:
-	@scripts/check_go_version.sh
-
 .PHONY: peer
-peer: check-go-version
 peer: $(BUILD_DIR)/bin/peer
 peer-docker: $(BUILD_DIR)/images/peer/$(DUMMY)
 
 .PHONY: orderer
-orderer: check-go-version
 orderer: $(BUILD_DIR)/bin/orderer
 orderer-docker: $(BUILD_DIR)/images/orderer/$(DUMMY)
 
@@ -178,6 +172,10 @@ idemixgen: $(BUILD_DIR)/bin/idemixgen
 
 discover: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.Version=$(PROJECT_VERSION)
 discover: $(BUILD_DIR)/bin/discover
+
+.PHONY: check-go-version
+check-go-version:
+	@scripts/check_go_version.sh
 
 .PHONY: integration-test
 integration-test: gotool.ginkgo ccenv baseos docker-thirdparty
@@ -226,7 +224,7 @@ changelog:
 $(BUILD_DIR)/bin:
 	@mkdir -p $@
 
-$(BUILD_DIR)/bin/%: check-go-version $(PROJECT_FILES)
+$(BUILD_DIR)/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
 	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
@@ -259,22 +257,22 @@ release-all: check-go-version $(patsubst %,release/%, $(RELEASE_PLATFORMS))
 release/%: GO_LDFLAGS=-X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
 
 release/windows-amd64: GOOS=windows
-release/windows-amd64: check-go-version $(patsubst %,release/windows-amd64/bin/%, $(RELEASE_PKGS))
+release/windows-amd64: $(patsubst %,release/windows-amd64/bin/%, $(RELEASE_PKGS))
 
 release/darwin-amd64: GOOS=darwin
-release/darwin-amd64: check-go-version $(patsubst %,release/darwin-amd64/bin/%, $(RELEASE_PKGS))
+release/darwin-amd64: $(patsubst %,release/darwin-amd64/bin/%, $(RELEASE_PKGS))
 
 release/linux-amd64: GOOS=linux
-release/linux-amd64: check-go-version $(patsubst %,release/linux-amd64/bin/%, $(RELEASE_PKGS))
+release/linux-amd64: $(patsubst %,release/linux-amd64/bin/%, $(RELEASE_PKGS))
 
 release/%-amd64: GOARCH=amd64
 release/linux-%: GOOS=linux
 
 release/linux-s390x: GOARCH=s390x
-release/linux-s390x: check-go-version $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS))
+release/linux-s390x: $(patsubst %,release/linux-s390x/bin/%, $(RELEASE_PKGS))
 
 release/linux-ppc64le: GOARCH=ppc64le
-release/linux-ppc64le: check-go-version $(patsubst %,release/linux-ppc64le/bin/%, $(RELEASE_PKGS))
+release/linux-ppc64le: $(patsubst %,release/linux-ppc64le/bin/%, $(RELEASE_PKGS))
 
 release/%/bin/configtxlator: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
@@ -302,14 +300,12 @@ release/%/bin/discover: $(PROJECT_FILES)
 	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 
 release/%/bin/orderer: GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
-
 release/%/bin/orderer: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
 	mkdir -p $(@D)
 	$(CGO_FLAGS) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(abspath $@) -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 
 release/%/bin/peer: GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
-
 release/%/bin/peer: $(PROJECT_FILES)
 	@echo "Building $@ for $(GOOS)-$(GOARCH)"
 	mkdir -p $(@D)
