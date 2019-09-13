@@ -113,13 +113,6 @@ var _ = Describe("Externalbuilders", func() {
 					Expect(err).To(MatchError("no builders defined"))
 				})
 			})
-
-			Context("when no builder can be found", func() {
-				It("returns an error", func() {
-					_, err := detector.Build("unsupported", md, codePackage)
-					Expect(err).To(MatchError("no builder found"))
-				})
-			})
 		})
 	})
 
@@ -149,9 +142,15 @@ var _ = Describe("Externalbuilders", func() {
 				Expect(result).To(BeTrue())
 			})
 
-			Context("when the builder does not support the package", func() {
+			Context("when the detector exits with a non-zero status", func() {
 				BeforeEach(func() {
-					buildContext.CCID = "unsupported-package-id"
+					md.Type = "foo"
+
+					var err error
+					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
+					Expect(err).NotTo(HaveOccurred())
+					buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("returns false", func() {
@@ -169,26 +168,38 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the builder exits with a non-zero status", func() {
 				BeforeEach(func() {
-					buildContext.CCID = "unsupported-package-id"
+					md.Path = "bar"
+
+					var err error
+					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
+					Expect(err).NotTo(HaveOccurred())
+					buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("returns an error", func() {
 					err := builder.Build(buildContext)
-					Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
+					Expect(err).To(MatchError("builder 'testdata' failed: exit status 1"))
 				})
 			})
 		})
 
 		Describe("Launch", func() {
-			It("launches the package by invoking external builder", func() {
-				err := builder.Launch(buildContext, &ccintf.PeerConnection{
+			var fakeConnection *ccintf.PeerConnection
+
+			BeforeEach(func() {
+				fakeConnection = &ccintf.PeerConnection{
 					Address: "fake-peer-address",
 					TLSConfig: &ccintf.TLSConfig{
 						ClientCert: []byte("fake-client-cert"),
 						ClientKey:  []byte("fake-client-key"),
 						RootCert:   []byte("fake-root-cert"),
 					},
-				})
+				}
+			})
+
+			It("launches the package by invoking external builder", func() {
+				err := builder.Launch(buildContext, fakeConnection)
 				Expect(err).NotTo(HaveOccurred())
 
 				data1, err := ioutil.ReadFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"))
@@ -196,13 +207,13 @@ var _ = Describe("Externalbuilders", func() {
 				Expect(data1).To(MatchJSON(`{"PeerAddress":"fake-peer-address","ClientCert":"ZmFrZS1jbGllbnQtY2VydA==","ClientKey":"ZmFrZS1jbGllbnQta2V5","RootCert":"ZmFrZS1yb290LWNlcnQ="}`))
 			})
 
-			Context("when the builder exits with a non-zero status", func() {
+			Context("when the launch exits with a non-zero status", func() {
 				BeforeEach(func() {
 					buildContext.CCID = "unsupported-package-id"
 				})
 
 				It("returns an error", func() {
-					err := builder.Build(buildContext)
+					err := builder.Launch(buildContext, fakeConnection)
 					Expect(err).To(MatchError("builder 'testdata' failed: exit status 3"))
 				})
 			})

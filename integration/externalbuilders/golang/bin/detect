@@ -6,13 +6,14 @@
 
 set -euo pipefail
 
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-. "$DIR/parse.sh"
+if [ "$#" -ne 2 ]; then
+    echo "Expected 2 directories got $#"
+    exit 2
+fi
 
-if [ "$TYPE" = "GOLANG" ] ; then
+if grep -q "GOLANG" "$2/metadata.json" ; then
     exit 0
 fi
 
-echo "Supported types is only golang -- got type '$TYPE'"
+echo "golang is the only supported type"
 exit 1

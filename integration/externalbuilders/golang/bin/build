@@ -6,8 +6,13 @@
 
 set -euo pipefail
 
-DIR="${BASH_SOURCE%/*}"
-if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-. "$DIR/parse.sh"
+if [ "$#" -ne 3 ]; then
+    echo "Expected 3 directories got $#"
+    exit 1
+fi
 
-GOPATH=$SOURCE:$GOPATH go build -o "$OUTPUT/chaincode" -ldflags "-linkmode external -extldflags '-static'" "$GO_PACKAGE_PATH"
+SOURCE=$1
+GO_PACKAGE_PATH="$(grep -o '"Path": *"[^"]*"' "$2/metadata.json"| grep -o '"[^"]*"$')"
+OUTPUT=$3
+
+GOPATH=$SOURCE:$GOPATH go build -o "$OUTPUT/chaincode" -ldflags "-linkmode external -extldflags '-static'" $GO_PACKAGE_PATH
