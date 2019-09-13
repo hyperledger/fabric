@@ -14,10 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-type protomsg struct {
-	msg []byte
-}
-
 func randomLowerAlphaString(size int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyz")
 	output := make([]rune, size)
