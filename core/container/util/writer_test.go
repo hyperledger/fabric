@@ -237,6 +237,26 @@ func Test_WriteFolderToTarPackageFailure3(t *testing.T) {
 	gw.Close()
 }
 
+// Failure case 4: with lstat failed
+func Test_WriteFolderToTarPackageFailure4(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "WriteFolderToTarPackageFailure4BadFileMode")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	testFile := filepath.Join(tempDir, "test.java")
+	err = ioutil.WriteFile(testFile, []byte("Content"), 0644)
+	require.NoError(t, err, "Error creating file", testFile)
+	err = os.Chmod(tempDir, 0644)
+	require.NoError(t, err)
+
+	buf := bytes.NewBuffer(nil)
+	tw := tar.NewWriter(buf)
+	defer tw.Close()
+
+	err = WriteFolderToTarPackage(tw, tempDir, []string{}, nil, nil)
+	assert.Error(t, err, "Should have received error writing folder to package")
+	assert.Contains(t, err.Error(), "permission denied")
+}
+
 func Test_WriteJavaProjectToPackage(t *testing.T) {
 	inputbuf := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(inputbuf)
