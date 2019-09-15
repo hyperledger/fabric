@@ -2,10 +2,10 @@
 package fakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	testpb "github.com/hyperledger/fabric/common/grpclogging/testpb"
+	"github.com/hyperledger/fabric/common/grpclogging/testpb"
 )
 
 type EchoServiceServer struct {

@@ -8,11 +8,11 @@ import (
 )
 
 type CollectionInfoProvider struct {
-	CollectionInfoStub        func(chaincodeName, collectionName string) (*common.StaticCollectionConfig, error)
+	CollectionInfoStub        func(string, string) (*common.StaticCollectionConfig, error)
 	collectionInfoMutex       sync.RWMutex
 	collectionInfoArgsForCall []struct {
-		chaincodeName  string
-		collectionName string
+		arg1 string
+		arg2 string
 	}
 	collectionInfoReturns struct {
 		result1 *common.StaticCollectionConfig
@@ -26,22 +26,23 @@ type CollectionInfoProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CollectionInfoProvider) CollectionInfo(chaincodeName string, collectionName string) (*common.StaticCollectionConfig, error) {
+func (fake *CollectionInfoProvider) CollectionInfo(arg1 string, arg2 string) (*common.StaticCollectionConfig, error) {
 	fake.collectionInfoMutex.Lock()
 	ret, specificReturn := fake.collectionInfoReturnsOnCall[len(fake.collectionInfoArgsForCall)]
 	fake.collectionInfoArgsForCall = append(fake.collectionInfoArgsForCall, struct {
-		chaincodeName  string
-		collectionName string
-	}{chaincodeName, collectionName})
-	fake.recordInvocation("CollectionInfo", []interface{}{chaincodeName, collectionName})
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("CollectionInfo", []interface{}{arg1, arg2})
 	fake.collectionInfoMutex.Unlock()
 	if fake.CollectionInfoStub != nil {
-		return fake.CollectionInfoStub(chaincodeName, collectionName)
+		return fake.CollectionInfoStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.collectionInfoReturns.result1, fake.collectionInfoReturns.result2
+	fakeReturns := fake.collectionInfoReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *CollectionInfoProvider) CollectionInfoCallCount() int {
@@ -50,13 +51,22 @@ func (fake *CollectionInfoProvider) CollectionInfoCallCount() int {
 	return len(fake.collectionInfoArgsForCall)
 }
 
+func (fake *CollectionInfoProvider) CollectionInfoCalls(stub func(string, string) (*common.StaticCollectionConfig, error)) {
+	fake.collectionInfoMutex.Lock()
+	defer fake.collectionInfoMutex.Unlock()
+	fake.CollectionInfoStub = stub
+}
+
 func (fake *CollectionInfoProvider) CollectionInfoArgsForCall(i int) (string, string) {
 	fake.collectionInfoMutex.RLock()
 	defer fake.collectionInfoMutex.RUnlock()
-	return fake.collectionInfoArgsForCall[i].chaincodeName, fake.collectionInfoArgsForCall[i].collectionName
+	argsForCall := fake.collectionInfoArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *CollectionInfoProvider) CollectionInfoReturns(result1 *common.StaticCollectionConfig, result2 error) {
+	fake.collectionInfoMutex.Lock()
+	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = nil
 	fake.collectionInfoReturns = struct {
 		result1 *common.StaticCollectionConfig
@@ -65,6 +75,8 @@ func (fake *CollectionInfoProvider) CollectionInfoReturns(result1 *common.Static
 }
 
 func (fake *CollectionInfoProvider) CollectionInfoReturnsOnCall(i int, result1 *common.StaticCollectionConfig, result2 error) {
+	fake.collectionInfoMutex.Lock()
+	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = nil
 	if fake.collectionInfoReturnsOnCall == nil {
 		fake.collectionInfoReturnsOnCall = make(map[int]struct {

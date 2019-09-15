@@ -10,8 +10,9 @@ import (
 type IssuerPublicKey struct {
 	BytesStub        func() ([]byte, error)
 	bytesMutex       sync.RWMutex
-	bytesArgsForCall []struct{}
-	bytesReturns     struct {
+	bytesArgsForCall []struct {
+	}
+	bytesReturns struct {
 		result1 []byte
 		result2 error
 	}
@@ -21,8 +22,9 @@ type IssuerPublicKey struct {
 	}
 	HashStub        func() []byte
 	hashMutex       sync.RWMutex
-	hashArgsForCall []struct{}
-	hashReturns     struct {
+	hashArgsForCall []struct {
+	}
+	hashReturns struct {
 		result1 []byte
 	}
 	hashReturnsOnCall map[int]struct {
@@ -35,7 +37,8 @@ type IssuerPublicKey struct {
 func (fake *IssuerPublicKey) Bytes() ([]byte, error) {
 	fake.bytesMutex.Lock()
 	ret, specificReturn := fake.bytesReturnsOnCall[len(fake.bytesArgsForCall)]
-	fake.bytesArgsForCall = append(fake.bytesArgsForCall, struct{}{})
+	fake.bytesArgsForCall = append(fake.bytesArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Bytes", []interface{}{})
 	fake.bytesMutex.Unlock()
 	if fake.BytesStub != nil {
@@ -44,7 +47,8 @@ func (fake *IssuerPublicKey) Bytes() ([]byte, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.bytesReturns.result1, fake.bytesReturns.result2
+	fakeReturns := fake.bytesReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *IssuerPublicKey) BytesCallCount() int {
@@ -53,7 +57,15 @@ func (fake *IssuerPublicKey) BytesCallCount() int {
 	return len(fake.bytesArgsForCall)
 }
 
+func (fake *IssuerPublicKey) BytesCalls(stub func() ([]byte, error)) {
+	fake.bytesMutex.Lock()
+	defer fake.bytesMutex.Unlock()
+	fake.BytesStub = stub
+}
+
 func (fake *IssuerPublicKey) BytesReturns(result1 []byte, result2 error) {
+	fake.bytesMutex.Lock()
+	defer fake.bytesMutex.Unlock()
 	fake.BytesStub = nil
 	fake.bytesReturns = struct {
 		result1 []byte
@@ -62,6 +74,8 @@ func (fake *IssuerPublicKey) BytesReturns(result1 []byte, result2 error) {
 }
 
 func (fake *IssuerPublicKey) BytesReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.bytesMutex.Lock()
+	defer fake.bytesMutex.Unlock()
 	fake.BytesStub = nil
 	if fake.bytesReturnsOnCall == nil {
 		fake.bytesReturnsOnCall = make(map[int]struct {
@@ -78,7 +92,8 @@ func (fake *IssuerPublicKey) BytesReturnsOnCall(i int, result1 []byte, result2 e
 func (fake *IssuerPublicKey) Hash() []byte {
 	fake.hashMutex.Lock()
 	ret, specificReturn := fake.hashReturnsOnCall[len(fake.hashArgsForCall)]
-	fake.hashArgsForCall = append(fake.hashArgsForCall, struct{}{})
+	fake.hashArgsForCall = append(fake.hashArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Hash", []interface{}{})
 	fake.hashMutex.Unlock()
 	if fake.HashStub != nil {
@@ -87,7 +102,8 @@ func (fake *IssuerPublicKey) Hash() []byte {
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.hashReturns.result1
+	fakeReturns := fake.hashReturns
+	return fakeReturns.result1
 }
 
 func (fake *IssuerPublicKey) HashCallCount() int {
@@ -96,7 +112,15 @@ func (fake *IssuerPublicKey) HashCallCount() int {
 	return len(fake.hashArgsForCall)
 }
 
+func (fake *IssuerPublicKey) HashCalls(stub func() []byte) {
+	fake.hashMutex.Lock()
+	defer fake.hashMutex.Unlock()
+	fake.HashStub = stub
+}
+
 func (fake *IssuerPublicKey) HashReturns(result1 []byte) {
+	fake.hashMutex.Lock()
+	defer fake.hashMutex.Unlock()
 	fake.HashStub = nil
 	fake.hashReturns = struct {
 		result1 []byte
@@ -104,6 +128,8 @@ func (fake *IssuerPublicKey) HashReturns(result1 []byte) {
 }
 
 func (fake *IssuerPublicKey) HashReturnsOnCall(i int, result1 []byte) {
+	fake.hashMutex.Lock()
+	defer fake.hashMutex.Unlock()
 	fake.HashStub = nil
 	if fake.hashReturnsOnCall == nil {
 		fake.hashReturnsOnCall = make(map[int]struct {

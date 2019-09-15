@@ -9,12 +9,12 @@ import (
 )
 
 type Credential struct {
-	SignStub        func(key handlers.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) ([]byte, error)
+	SignStub        func(handlers.IssuerSecretKey, []byte, []bccsp.IdemixAttribute) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
-		key               handlers.IssuerSecretKey
-		credentialRequest []byte
-		attributes        []bccsp.IdemixAttribute
+		arg1 handlers.IssuerSecretKey
+		arg2 []byte
+		arg3 []bccsp.IdemixAttribute
 	}
 	signReturns struct {
 		result1 []byte
@@ -24,13 +24,13 @@ type Credential struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(sk handlers.Big, ipk handlers.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) error
+	VerifyStub        func(handlers.Big, handlers.IssuerPublicKey, []byte, []bccsp.IdemixAttribute) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
-		sk         handlers.Big
-		ipk        handlers.IssuerPublicKey
-		credential []byte
-		attributes []bccsp.IdemixAttribute
+		arg1 handlers.Big
+		arg2 handlers.IssuerPublicKey
+		arg3 []byte
+		arg4 []bccsp.IdemixAttribute
 	}
 	verifyReturns struct {
 		result1 error
@@ -42,33 +42,34 @@ type Credential struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Credential) Sign(key handlers.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) ([]byte, error) {
-	var credentialRequestCopy []byte
-	if credentialRequest != nil {
-		credentialRequestCopy = make([]byte, len(credentialRequest))
-		copy(credentialRequestCopy, credentialRequest)
+func (fake *Credential) Sign(arg1 handlers.IssuerSecretKey, arg2 []byte, arg3 []bccsp.IdemixAttribute) ([]byte, error) {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
 	}
-	var attributesCopy []bccsp.IdemixAttribute
-	if attributes != nil {
-		attributesCopy = make([]bccsp.IdemixAttribute, len(attributes))
-		copy(attributesCopy, attributes)
+	var arg3Copy []bccsp.IdemixAttribute
+	if arg3 != nil {
+		arg3Copy = make([]bccsp.IdemixAttribute, len(arg3))
+		copy(arg3Copy, arg3)
 	}
 	fake.signMutex.Lock()
 	ret, specificReturn := fake.signReturnsOnCall[len(fake.signArgsForCall)]
 	fake.signArgsForCall = append(fake.signArgsForCall, struct {
-		key               handlers.IssuerSecretKey
-		credentialRequest []byte
-		attributes        []bccsp.IdemixAttribute
-	}{key, credentialRequestCopy, attributesCopy})
-	fake.recordInvocation("Sign", []interface{}{key, credentialRequestCopy, attributesCopy})
+		arg1 handlers.IssuerSecretKey
+		arg2 []byte
+		arg3 []bccsp.IdemixAttribute
+	}{arg1, arg2Copy, arg3Copy})
+	fake.recordInvocation("Sign", []interface{}{arg1, arg2Copy, arg3Copy})
 	fake.signMutex.Unlock()
 	if fake.SignStub != nil {
-		return fake.SignStub(key, credentialRequest, attributes)
+		return fake.SignStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.signReturns.result1, fake.signReturns.result2
+	fakeReturns := fake.signReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Credential) SignCallCount() int {
@@ -77,13 +78,22 @@ func (fake *Credential) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
+func (fake *Credential) SignCalls(stub func(handlers.IssuerSecretKey, []byte, []bccsp.IdemixAttribute) ([]byte, error)) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
+	fake.SignStub = stub
+}
+
 func (fake *Credential) SignArgsForCall(i int) (handlers.IssuerSecretKey, []byte, []bccsp.IdemixAttribute) {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
-	return fake.signArgsForCall[i].key, fake.signArgsForCall[i].credentialRequest, fake.signArgsForCall[i].attributes
+	argsForCall := fake.signArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *Credential) SignReturns(result1 []byte, result2 error) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
 	fake.SignStub = nil
 	fake.signReturns = struct {
 		result1 []byte
@@ -92,6 +102,8 @@ func (fake *Credential) SignReturns(result1 []byte, result2 error) {
 }
 
 func (fake *Credential) SignReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
 	fake.SignStub = nil
 	if fake.signReturnsOnCall == nil {
 		fake.signReturnsOnCall = make(map[int]struct {
@@ -105,34 +117,35 @@ func (fake *Credential) SignReturnsOnCall(i int, result1 []byte, result2 error) 
 	}{result1, result2}
 }
 
-func (fake *Credential) Verify(sk handlers.Big, ipk handlers.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) error {
-	var credentialCopy []byte
-	if credential != nil {
-		credentialCopy = make([]byte, len(credential))
-		copy(credentialCopy, credential)
+func (fake *Credential) Verify(arg1 handlers.Big, arg2 handlers.IssuerPublicKey, arg3 []byte, arg4 []bccsp.IdemixAttribute) error {
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
 	}
-	var attributesCopy []bccsp.IdemixAttribute
-	if attributes != nil {
-		attributesCopy = make([]bccsp.IdemixAttribute, len(attributes))
-		copy(attributesCopy, attributes)
+	var arg4Copy []bccsp.IdemixAttribute
+	if arg4 != nil {
+		arg4Copy = make([]bccsp.IdemixAttribute, len(arg4))
+		copy(arg4Copy, arg4)
 	}
 	fake.verifyMutex.Lock()
 	ret, specificReturn := fake.verifyReturnsOnCall[len(fake.verifyArgsForCall)]
 	fake.verifyArgsForCall = append(fake.verifyArgsForCall, struct {
-		sk         handlers.Big
-		ipk        handlers.IssuerPublicKey
-		credential []byte
-		attributes []bccsp.IdemixAttribute
-	}{sk, ipk, credentialCopy, attributesCopy})
-	fake.recordInvocation("Verify", []interface{}{sk, ipk, credentialCopy, attributesCopy})
+		arg1 handlers.Big
+		arg2 handlers.IssuerPublicKey
+		arg3 []byte
+		arg4 []bccsp.IdemixAttribute
+	}{arg1, arg2, arg3Copy, arg4Copy})
+	fake.recordInvocation("Verify", []interface{}{arg1, arg2, arg3Copy, arg4Copy})
 	fake.verifyMutex.Unlock()
 	if fake.VerifyStub != nil {
-		return fake.VerifyStub(sk, ipk, credential, attributes)
+		return fake.VerifyStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.verifyReturns.result1
+	fakeReturns := fake.verifyReturns
+	return fakeReturns.result1
 }
 
 func (fake *Credential) VerifyCallCount() int {
@@ -141,13 +154,22 @@ func (fake *Credential) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
+func (fake *Credential) VerifyCalls(stub func(handlers.Big, handlers.IssuerPublicKey, []byte, []bccsp.IdemixAttribute) error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
+	fake.VerifyStub = stub
+}
+
 func (fake *Credential) VerifyArgsForCall(i int) (handlers.Big, handlers.IssuerPublicKey, []byte, []bccsp.IdemixAttribute) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
-	return fake.verifyArgsForCall[i].sk, fake.verifyArgsForCall[i].ipk, fake.verifyArgsForCall[i].credential, fake.verifyArgsForCall[i].attributes
+	argsForCall := fake.verifyArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *Credential) VerifyReturns(result1 error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = nil
 	fake.verifyReturns = struct {
 		result1 error
@@ -155,6 +177,8 @@ func (fake *Credential) VerifyReturns(result1 error) {
 }
 
 func (fake *Credential) VerifyReturnsOnCall(i int, result1 error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = nil
 	if fake.verifyReturnsOnCall == nil {
 		fake.verifyReturnsOnCall = make(map[int]struct {

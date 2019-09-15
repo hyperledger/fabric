@@ -223,7 +223,7 @@ var _ = Describe("Consenter", func() {
 			},
 		)
 		support.SharedConfigReturns(mockOrderer)
-		support.ChainIDReturns("foo")
+		support.ChannelIDReturns("foo")
 
 		consenter := newConsenter(chainGetter)
 

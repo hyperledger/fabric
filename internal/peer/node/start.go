@@ -1179,8 +1179,8 @@ func getDockerHostConfig() *docker.HostConfig {
 	}
 }
 
-//go:generate counterfeiter -o mock/get_ledger.go -fake-name GetLedger getLedger
-//go:generate counterfeiter -o mock/peer_ledger.go -fake-name PeerLedger peerLedger
+//go:generate counterfeiter -o mock/get_ledger.go -fake-name GetLedger . getLedger
+//go:generate counterfeiter -o mock/peer_ledger.go -fake-name PeerLedger . peerLedger
 
 type peerLedger interface {
 	ledger.PeerLedger

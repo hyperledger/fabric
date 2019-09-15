@@ -2,7 +2,7 @@
 package mock
 
 import (
-	sync "sync"
+	"sync"
 )
 
 type WriteSyncer struct {

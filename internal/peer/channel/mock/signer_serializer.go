@@ -3,8 +3,6 @@ package mock
 
 import (
 	"sync"
-
-	"github.com/hyperledger/fabric/internal/pkg/identity"
 )
 
 type SignerSerializer struct {
@@ -185,5 +183,3 @@ func (fake *SignerSerializer) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ identity.SignerSerializer = new(SignerSerializer)

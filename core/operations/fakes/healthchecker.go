@@ -2,8 +2,8 @@
 package fakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 )
 
 type HealthChecker struct {
