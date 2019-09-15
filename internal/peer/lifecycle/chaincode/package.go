@@ -24,6 +24,7 @@ import (
 // for a chaincode given the type and path
 type PlatformRegistry interface {
 	GetDeploymentPayload(ccType, path string) ([]byte, error)
+	NormalizePath(ccType, path string) (string, error)
 }
 
 // Packager holds the dependencies needed to package
@@ -154,7 +155,11 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	metadataBytes, err := toJSON(p.Input.Path, p.Input.Type, p.Input.Label)
+	normalizedPath, err := p.PlatformRegistry.NormalizePath(strings.ToUpper(p.Input.Type), p.Input.Path)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to normalize chaincode path")
+	}
+	metadataBytes, err := toJSON(normalizedPath, p.Input.Type, p.Input.Label)
 	if err != nil {
 		return nil, err
 	}

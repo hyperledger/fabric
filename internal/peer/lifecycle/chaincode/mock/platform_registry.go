@@ -20,6 +20,20 @@ type PlatformRegistry struct {
 		result1 []byte
 		result2 error
 	}
+	NormalizePathStub        func(string, string) (string, error)
+	normalizePathMutex       sync.RWMutex
+	normalizePathArgsForCall []struct {
+		arg1 string
+		arg2 string
+	}
+	normalizePathReturns struct {
+		result1 string
+		result2 error
+	}
+	normalizePathReturnsOnCall map[int]struct {
+		result1 string
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -88,11 +102,77 @@ func (fake *PlatformRegistry) GetDeploymentPayloadReturnsOnCall(i int, result1 [
 	}{result1, result2}
 }
 
+func (fake *PlatformRegistry) NormalizePath(arg1 string, arg2 string) (string, error) {
+	fake.normalizePathMutex.Lock()
+	ret, specificReturn := fake.normalizePathReturnsOnCall[len(fake.normalizePathArgsForCall)]
+	fake.normalizePathArgsForCall = append(fake.normalizePathArgsForCall, struct {
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("NormalizePath", []interface{}{arg1, arg2})
+	fake.normalizePathMutex.Unlock()
+	if fake.NormalizePathStub != nil {
+		return fake.NormalizePathStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.normalizePathReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *PlatformRegistry) NormalizePathCallCount() int {
+	fake.normalizePathMutex.RLock()
+	defer fake.normalizePathMutex.RUnlock()
+	return len(fake.normalizePathArgsForCall)
+}
+
+func (fake *PlatformRegistry) NormalizePathCalls(stub func(string, string) (string, error)) {
+	fake.normalizePathMutex.Lock()
+	defer fake.normalizePathMutex.Unlock()
+	fake.NormalizePathStub = stub
+}
+
+func (fake *PlatformRegistry) NormalizePathArgsForCall(i int) (string, string) {
+	fake.normalizePathMutex.RLock()
+	defer fake.normalizePathMutex.RUnlock()
+	argsForCall := fake.normalizePathArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *PlatformRegistry) NormalizePathReturns(result1 string, result2 error) {
+	fake.normalizePathMutex.Lock()
+	defer fake.normalizePathMutex.Unlock()
+	fake.NormalizePathStub = nil
+	fake.normalizePathReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *PlatformRegistry) NormalizePathReturnsOnCall(i int, result1 string, result2 error) {
+	fake.normalizePathMutex.Lock()
+	defer fake.normalizePathMutex.Unlock()
+	fake.NormalizePathStub = nil
+	if fake.normalizePathReturnsOnCall == nil {
+		fake.normalizePathReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 error
+		})
+	}
+	fake.normalizePathReturnsOnCall[i] = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *PlatformRegistry) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.getDeploymentPayloadMutex.RLock()
 	defer fake.getDeploymentPayloadMutex.RUnlock()
+	fake.normalizePathMutex.RLock()
+	defer fake.normalizePathMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
