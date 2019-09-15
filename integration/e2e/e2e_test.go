@@ -54,13 +54,16 @@ var _ = Describe("EndToEnd", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		chaincode = nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			// Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Path: chaincodePath,
-			// Path:   "../chaincode/module",
-			Ctor:   `{"Args":["init","a","100","b","200"]}`,
-			Policy: `AND ('Org1MSP.member','Org2MSP.member')`,
+			Name:            "mycc",
+			Version:         "0.0",
+			Path:            chaincodePath,
+			Lang:            "golang",
+			PackageFile:     filepath.Join(testDir, "module.tar.gz"),
+			Ctor:            `{"Args":["init","a","100","b","200"]}`,
+			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+			Sequence:        "1",
+			InitRequired:    true,
+			Label:           "my_simple_chaincode",
 		}
 	})
 
@@ -126,12 +129,13 @@ var _ = Describe("EndToEnd", func() {
 
 			By("setting up the channel")
 			network.CreateAndJoinChannel(orderer, "testchannel")
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("deploying the chaincode")
-			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			By("getting the client peer by name")
-			peer := network.Peer("Org1", "peer1")
+			peer := network.Peer("Org1", "peer0")
 
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 			RunRespondWith(network, orderer, peer, "testchannel")
