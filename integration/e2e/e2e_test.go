@@ -59,7 +59,7 @@ var _ = Describe("EndToEnd", func() {
 			Version:         "0.0",
 			Path:            chaincodePath,
 			Lang:            "golang",
-			PackageFile:     filepath.Join(testDir, "module.tar.gz"),
+			PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,
 			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
 			Sequence:        "1",
@@ -100,21 +100,27 @@ var _ = Describe("EndToEnd", func() {
 				Profile:     "TwoOrgsBaseProfileChannel",
 				BaseProfile: "TwoOrgsOrdererGenesis",
 			})
+			chaincodePath, err := filepath.Abs(network.Components.Chaincode())
+			Expect(err).NotTo(HaveOccurred())
+			chaincode.Path = chaincodePath
+			chaincode.Label = "myalreadybuiltcc"
+			nwo.PackageChaincodeBinary(chaincode)
 
 			network.GenerateConfigTree()
 
-			// Enable externabuilders for peer0
+			// Enable binary external launcher for all peers
 			cwd, err := os.Getwd()
 			Expect(err).NotTo(HaveOccurred())
-			peer := network.Peer("Org1", "peer0")
-			core := network.ReadPeerConfig(peer)
-			core.Chaincode.ExternalBuilders = []corepeer.ExternalBuilder{
-				{
-					Path: filepath.Join(cwd, "..", "externalbuilders", "golang"),
-					Name: "golang",
-				},
+			for _, peer := range network.PeersWithChannel("testchannel") {
+				core := network.ReadPeerConfig(peer)
+				core.Chaincode.ExternalBuilders = []corepeer.ExternalBuilder{
+					{
+						Path: filepath.Join(cwd, "..", "externalbuilders", "binary"),
+						Name: "binary",
+					},
+				}
+				network.WritePeerConfig(peer, core)
 			}
-			network.WritePeerConfig(peer, core)
 
 			network.Bootstrap()
 

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# set -euo pipefail
+
+if [ "$#" -ne 3 ]; then
+    echo "Expected 3 directories got $#"
+    exit 1
+fi
+
+SOURCE=$1
+OUTPUT=$3
+
+cp "$SOURCE/chaincode" "$OUTPUT/chaincode"

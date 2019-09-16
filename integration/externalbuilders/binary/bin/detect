@@ -11,9 +11,9 @@ if [ "$#" -ne 2 ]; then
     exit 2
 fi
 
-if [ "$(jq -r .type "$2/metadata.json")" == "golang" ]; then
+if [ "$(jq -r .type "$2/metadata.json")" == "binary" ]; then
     exit 0
 fi
 
-echo "golang is the only supported type"
+echo "binary is the only supported type"
 exit 1

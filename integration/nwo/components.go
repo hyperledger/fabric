@@ -19,6 +19,10 @@ type Components struct {
 	ServerAddress string `json:"server_address"`
 }
 
+func (c *Components) Chaincode() string {
+	return c.build("github.com/hyperledger/fabric/integration/chaincode/module")
+}
+
 func (c *Components) ConfigTxGen() string {
 	return c.build("github.com/hyperledger/fabric/cmd/configtxgen")
 }

@@ -25,7 +25,6 @@ jq -r .client_cert $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_CERT_PATH"
 jq -r .client_key $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_KEY_PATH"
 jq -r .root_cert $ARTIFACTS/chaincode.json | base64 --decode > "$CORE_PEER_TLS_ROOTCERT_FILE"
 
-
 if [ -z "$(cat $CORE_TLS_CLIENT_CERT_PATH)" ]  ; then
     export CORE_PEER_TLS_ENABLED=false
 else
