@@ -42,10 +42,6 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
-# Disable impliicit rules
-.SUFFIXES:
-MAKEFLAGS += --no-builtin-rules
-
 ALPINE_VER ?= 3.10
 BASE_VERSION = 2.0.0
 PREV_VERSION = 2.0.0-alpha
@@ -86,10 +82,9 @@ GO_TAGS ?=
 
 # No sense rebuilding when non production code is changed
 PROJECT_FILES = $(shell git ls-files  | grep -Ev '^integration/|^vagrant/|.png$|^LICENSE|^vendor/')
+RELEASE_IMAGES = baseos ccenv orderer peer tools
 RELEASE_PLATFORMS = darwin-amd64 linux-amd64 linux-ppc64le linux-s390x windows-amd64
 RELEASE_PKGS = configtxgen cryptogen idemixgen discover configtxlator peer orderer
-RELEASE_IMAGES = baseos ccenv orderer peer tools
-IMAGES = buildenv $(RELEASE_IMAGES)
 
 pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/cmd/configtxlator
@@ -144,8 +139,6 @@ gotools: gotools-install
 
 tools-docker: $(BUILD_DIR)/images/tools/$(DUMMY)
 
-buildenv: $(BUILD_DIR)/images/buildenv/$(DUMMY)
-
 .PHONY: baseos
 baseos: $(BUILD_DIR)/images/baseos/$(DUMMY)
 
@@ -199,25 +192,30 @@ verify: unit-test
 profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
-docker: $(patsubst %,$(BUILD_DIR)/images/%/$(DUMMY), $(IMAGES))
+docker: $(patsubst %,$(BUILD_DIR)/images/%/$(DUMMY), $(RELEASE_IMAGES))
 
 native: $(RELEASE_PKGS)
 
-linter: check-deps buildenv
+linter: check-deps gotools
 	@echo "LINT: Running code checks.."
-	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
+	./scripts/golinter.sh
 
-check-deps: buildenv
+check-deps: gotools
 	@echo "DEP: Checking for dependency issues.."
-	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/check_deps.sh
+	./scripts/check_deps.sh
 
-check-metrics-doc: buildenv
+check-metrics-doc: gotools
 	@echo "METRICS: Checking for outdated reference documentation.."
-	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/metrics_doc.sh check
+	./scripts/metrics_doc.sh check
 
-generate-metrics-doc: buildenv
+generate-metrics-doc: gotools
 	@echo "Generating metrics reference documentation..."
-	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/metrics_doc.sh generate
+	./scripts/metrics_doc.sh generate
+
+.PHONY: protos
+protos: gotools
+	@echo "Compiling non-API protos..."
+	./scripts/compile_protos.sh
 
 changelog:
 	./scripts/changelog.sh v$(PREV_VERSION) v$(BASE_VERSION)
@@ -322,15 +320,11 @@ dist/%: release/%
 	cp -r sampleconfig/*.yaml release/$(@F)/config
 	cd release/$(@F) && tar -czvf hyperledger-fabric-$(@F).$(PROJECT_VERSION).tar.gz *
 
-.PHONY: protos
-protos: buildenv
-	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
-
 %-docker-list:
 	$(eval TARGET = ${patsubst %-docker-list,%,${@}})
 	@echo $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 
-docker-list: $(patsubst %,%-docker-list, $(IMAGES))
+docker-list: $(patsubst %,%-docker-list, $(RELEASE_IMAGES))
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
@@ -338,7 +332,7 @@ docker-list: $(patsubst %,%-docker-list, $(IMAGES))
 	[ -n "$(DOCKER_IMAGES)" ] && docker rmi -f $(DOCKER_IMAGES) || true
 	-@rm -rf $(BUILD_DIR)/images/$(TARGET) ||:
 
-docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
+docker-clean: $(patsubst %,%-docker-clean, $(RELEASE_IMAGES))
 
 docker-tag-latest: $(IMAGES:%=%-docker-tag-latest)
 
