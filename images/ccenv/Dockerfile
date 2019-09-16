@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-ARG GO_VER
 ARG ALPINE_VER
+ARG GO_VER
+
 FROM golang:${GO_VER}-alpine${ALPINE_VER}
 RUN apk add --no-cache \
 	g++ \
