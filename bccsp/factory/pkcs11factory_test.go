@@ -91,3 +91,36 @@ func TestPKCS11FactoryGet(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, csp)
 }
+
+func TestPKCS11FactoryGetEmptyKeyStorePath(t *testing.T) {
+	f := &PKCS11Factory{}
+	lib, pin, label := pkcs11.FindPKCS11Lib()
+
+	opts := &FactoryOpts{
+		Pkcs11Opts: &pkcs11.PKCS11Opts{
+			SecLevel:     256,
+			HashFamily:   "SHA2",
+			FileKeystore: &pkcs11.FileKeystoreOpts{},
+			Library:      lib,
+			Pin:          pin,
+			Label:        label,
+		},
+	}
+	csp, err := f.Get(opts)
+	assert.NoError(t, err)
+	assert.NotNil(t, csp)
+
+	opts = &FactoryOpts{
+		Pkcs11Opts: &pkcs11.PKCS11Opts{
+			SecLevel:     256,
+			HashFamily:   "SHA2",
+			FileKeystore: &pkcs11.FileKeystoreOpts{KeyStorePath: ""},
+			Library:      lib,
+			Pin:          pin,
+			Label:        label,
+		},
+	}
+	csp, err = f.Get(opts)
+	assert.NoError(t, err)
+	assert.NotNil(t, csp)
+}
