@@ -193,12 +193,10 @@ type ChaincodePackage struct {
 
 // ChaincodePackageMetadata contains the information necessary to understand
 // the embedded code package.
-// Note: annotations for the names need to be added back, but, we're making it
-// case insensitive for now to allow SDKs to transition.  TODO, add annotations back
 type ChaincodePackageMetadata struct {
-	Type  string
-	Path  string
-	Label string
+	Type  string `json:"type"`
+	Path  string `json:"path"`
+	Label string `json:"label"`
 }
 
 // MetadataProvider provides the means to retrieve metadata
