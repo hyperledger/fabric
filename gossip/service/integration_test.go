@@ -13,6 +13,7 @@ import (
 	"time"
 
 	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -144,7 +145,7 @@ func TestLeaderYield(t *testing.T) {
 			},
 			deliverGRPCClient: grpcClient,
 		}}
-		gs.InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
+		gs.InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &transientStoreMock{},
 		})

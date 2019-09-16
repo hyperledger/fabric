@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 )
 
@@ -88,7 +89,7 @@ var _ = Describe("Connection", func() {
 		added = org2CertPool.AppendCertsFromPEM(cert3)
 		Expect(added).To(BeTrue())
 
-		cs = orderers.NewConnectionSource()
+		cs = orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"))
 		cs.Update(nil, map[string]orderers.OrdererOrg{
 			"org1": org1,
 			"org2": org2,

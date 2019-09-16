@@ -303,7 +303,10 @@ func (p *Peer) createChannel(
 		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
 	}
 
-	ordererSource := orderers.NewConnectionSource()
+	osLogger := flogging.MustGetLogger("peer.orderers")
+	namedOSLogger := osLogger.With("channel", cid)
+	ordererSource := orderers.NewConnectionSource(namedOSLogger)
+
 	ordererSourceCallback := func(bundle *channelconfig.Bundle) {
 		globalAddresses := bundle.ChannelConfig().OrdererAddresses()
 		orgAddresses := map[string]orderers.OrdererOrg{}

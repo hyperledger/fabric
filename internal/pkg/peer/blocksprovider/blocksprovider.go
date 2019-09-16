@@ -159,12 +159,14 @@ func (d *Deliverer) DeliverBlocks() {
 			continue
 		}
 
+		connLogger := d.Logger.With("orderer-address", endpoint.Address)
+
 		recv := make(chan *orderer.DeliverResponse)
 		go func() {
 			for {
 				resp, err := deliverClient.Recv()
 				if err != nil {
-					d.Logger.Warningf("Encountered an error reading from deliver stream: %s", err)
+					connLogger.Warningf("Encountered an error reading from deliver stream: %s", err)
 					close(recv)
 					return
 				}
@@ -181,17 +183,17 @@ func (d *Deliverer) DeliverBlocks() {
 		for {
 			select {
 			case <-endpoint.Refreshed:
-				d.Logger.Infof("Ordering endpoints have been refreshed, disconnecting from deliver to reconnect using updated endpoints")
+				connLogger.Infof("Ordering endpoints have been refreshed, disconnecting from deliver to reconnect using updated endpoints")
 				break RecvLoop
 			case response, ok := <-recv:
 				if !ok {
-					d.Logger.Warningf("Orderer hung up without sending status")
+					connLogger.Warningf("Orderer hung up without sending status")
 					failureCounter++
 					break RecvLoop
 				}
 				err = d.processMsg(response)
 				if err != nil {
-					d.Logger.Warningf("Got error while attempting to receive blocks: %v", err)
+					connLogger.Warningf("Got error while attempting to receive blocks: %v", err)
 					failureCounter++
 					break RecvLoop
 				}
