@@ -7,50 +7,61 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/stretchr/testify/require"
 )
 
-func TestUpgradeDataFormat(t *testing.T) {
+func TestUpgradeDBs(t *testing.T) {
 	conf, cleanup := testConfig(t)
-	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
 	provider := testutilNewProvider(conf, t)
 
 	// upgrade should fail when provider is still open
-	err := UpgradeDataFormat(conf.RootFSPath)
+	err := UpgradeDBs(conf.RootFSPath)
 	require.Error(t, err, "as another peer node command is executing, wait for that command to complete its execution or terminate it before retrying")
-
 	provider.Close()
-	err = UpgradeDataFormat(conf.RootFSPath)
+
+	// load v11 ledger data for upgrade
+	rootFSPath := conf.RootFSPath
+	testutil.CopyDir("tests/testdata/v11/sample_ledgers/ledgersData", rootFSPath, true)
+	v11LedgerIDs := getLedgerIDs(t, rootFSPath)
+	require.NoError(t, UpgradeIDStoreFormat(rootFSPath))
+
+	err = UpgradeDBs(rootFSPath)
 	require.NoError(t, err)
-}
 
-func TestUpgradeIDStoreFormat(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	conf.HistoryDBConfig.Enabled = false
-	defer cleanup()
-
-	// upgrade v11 ledger data
-	testutil.CopyDir("tests/testdata/v11/sample_ledgers/ledgersData", conf.RootFSPath, true)
-	v11LedgerIDs := getLedgerIDs(t, conf.RootFSPath)
-	require.NoError(t, UpgradeIDStoreFormat(conf.RootFSPath))
-
-	// verify formatVersion and active ledger IDs are set correctly
+	// verify idStore has formatKey and metadata entries
 	idStore, err := openIDStore(LedgerProviderPath(conf.RootFSPath))
-	defer idStore.close()
 	require.NoError(t, err)
-
 	formatVersion, err := idStore.db.Get(formatKey)
 	require.NoError(t, err)
-	require.Equal(t, []byte(idStoreFormatVersion), formatVersion)
-
+	require.Equal(t, []byte(dataformat.Version20), formatVersion)
 	metadataLedgerIDs, err := idStore.getActiveLedgerIDs()
 	require.NoError(t, err)
 	require.ElementsMatch(t, v11LedgerIDs, metadataLedgerIDs)
+	idStore.close()
+
+	// verify blockstoreIndex, configHistory, history, state, bookkeeper dbs are deleted
+	_, err = os.Stat(filepath.Join(BlockStorePath(rootFSPath), "index"))
+	require.Equal(t, os.IsNotExist(err), true)
+	_, err = os.Stat(ConfigHistoryDBPath(rootFSPath))
+	require.Equal(t, os.IsNotExist(err), true)
+	_, err = os.Stat(HistoryDBPath(rootFSPath))
+	require.Equal(t, os.IsNotExist(err), true)
+	_, err = os.Stat(StateDBPath(rootFSPath))
+	require.Equal(t, os.IsNotExist(err), true)
+	_, err = os.Stat(BookkeeperDBPath(rootFSPath))
+	require.Equal(t, os.IsNotExist(err), true)
+
+	// upgrade again should be successful
+	err = UpgradeDBs(rootFSPath)
+	require.NoError(t, err)
 }
 
 func TestUpgradeIDStoreWrongFormat(t *testing.T) {

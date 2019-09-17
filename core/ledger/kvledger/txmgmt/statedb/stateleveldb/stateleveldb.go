@@ -10,6 +10,7 @@ import (
 	"bytes"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -26,10 +27,6 @@ var (
 	savePointKey     = []byte{'s'}
 )
 
-const (
-	dataFormatVersion20 = "2.0"
-)
-
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
 	dbProvider *leveldbhelper.Provider
@@ -41,7 +38,7 @@ func NewVersionedDBProvider(dbPath string) (*VersionedDBProvider, error) {
 	dbProvider, err := leveldbhelper.NewProvider(
 		&leveldbhelper.Conf{
 			DBPath:                dbPath,
-			ExpectedFormatVersion: dataFormatVersion20,
+			ExpectedFormatVersion: dataformat.Version20,
 		})
 	if err != nil {
 		return nil, err

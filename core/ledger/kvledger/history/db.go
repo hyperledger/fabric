@@ -9,6 +9,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -18,10 +19,6 @@ import (
 )
 
 var logger = flogging.MustGetLogger("history")
-
-const (
-	dataFormatVersion = "2.0"
-)
 
 // DBProvider provides handle to HistoryDB for a given channel
 type DBProvider struct {
@@ -34,7 +31,7 @@ func NewDBProvider(path string) (*DBProvider, error) {
 	levelDBProvider, err := leveldbhelper.NewProvider(
 		&leveldbhelper.Conf{
 			DBPath:                path,
-			ExpectedFormatVersion: dataFormatVersion,
+			ExpectedFormatVersion: dataformat.Version20,
 		},
 	)
 	if err != nil {

@@ -112,8 +112,8 @@ func openDBAndCheckFormat(conf *Conf) (d *DB, e error) {
 	logger.Debugf("Checking for db format at path [%s]", conf.DBPath)
 
 	if !bytes.Equal(formatVersion, []byte(conf.ExpectedFormatVersion)) {
-		logger.Errorf("the db at path [%s] contains data in unexpected format. expected data format = [%s], data format = [%s]",
-			conf.DBPath, conf.ExpectedFormatVersion, formatVersion)
+		logger.Errorf("The db at path [%s] contains data in unexpected format. expected data format = [%s] (%#v), data format = [%s] (%#v).",
+			conf.DBPath, conf.ExpectedFormatVersion, []byte(conf.ExpectedFormatVersion), formatVersion, formatVersion)
 		return nil, &ErrFormatVersionMismatch{ExpectedFormatVersion: conf.ExpectedFormatVersion, DataFormatVersion: string(formatVersion), DBPath: conf.DBPath}
 	}
 

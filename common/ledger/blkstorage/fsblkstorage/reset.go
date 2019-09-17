@@ -17,12 +17,10 @@ import (
 
 // ResetBlockStore drops the block storage index and truncates the blocks files for all channels/ledgers to genesis blocks
 func ResetBlockStore(blockStorageDir string) error {
-	conf := &Conf{blockStorageDir: blockStorageDir}
-	indexDir := conf.getIndexDir()
-	logger.Infof("Dropping the index dir [%s]... if present", indexDir)
-	if err := os.RemoveAll(indexDir); err != nil {
+	if err := DeleteBlockStoreIndex(blockStorageDir); err != nil {
 		return err
 	}
+	conf := &Conf{blockStorageDir: blockStorageDir}
 	chainsDir := conf.getChainsDir()
 	chainsDirExists, err := pathExists(chainsDir)
 	if err != nil {
@@ -51,6 +49,14 @@ func ResetBlockStore(blockStorageDir string) error {
 		}
 	}
 	return nil
+}
+
+// DeleteBlockStoreIndex deletes block store index file
+func DeleteBlockStoreIndex(blockStorageDir string) error {
+	conf := &Conf{blockStorageDir: blockStorageDir}
+	indexDir := conf.getIndexDir()
+	logger.Infof("Dropping the index dir [%s]... if present", indexDir)
+	return os.RemoveAll(indexDir)
 }
 
 func resetToGenesisBlk(ledgerDir string) error {

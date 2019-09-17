@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/confighistory"
@@ -25,8 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 )
-
-const idStoreFormatVersion = "2.0"
 
 var (
 	// ErrLedgerIDExists is thrown by a CreateLedger call if a ledger with the given id already exists
@@ -79,6 +78,13 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	defer func() {
 		if e != nil {
 			p.Close()
+			if errFormatMismatch, ok := e.(*leveldbhelper.ErrFormatVersionMismatch); ok {
+				if errFormatMismatch.DataFormatVersion == dataformat.Version1x && errFormatMismatch.ExpectedFormatVersion == dataformat.Version20 {
+					logger.Errorf("Please execute the 'peer node upgrade-dbs' command to upgrade the database format: %s", errFormatMismatch)
+				} else {
+					logger.Errorf("Please check the Fabric version matches the ledger data format: %s", errFormatMismatch)
+				}
+			}
 		}
 	}()
 
@@ -378,9 +384,10 @@ func openIDStore(path string) (s *idStore, e error) {
 		return nil, err
 	}
 
+	expectedFormatBytes := []byte(dataformat.Version20)
 	if emptyDB {
 		// add format key to a new db
-		err := db.Put(formatKey, []byte(idStoreFormatVersion), true)
+		err := db.Put(formatKey, expectedFormatBytes, true)
 		if err != nil {
 			return nil, err
 		}
@@ -392,8 +399,10 @@ func openIDStore(path string) (s *idStore, e error) {
 	if err != nil {
 		return nil, err
 	}
-	if !bytes.Equal(formatVersion, []byte(idStoreFormatVersion)) {
-		return nil, &leveldbhelper.ErrFormatVersionMismatch{ExpectedFormatVersion: idStoreFormatVersion, DataFormatVersion: string(formatVersion), DBPath: path}
+	if !bytes.Equal(formatVersion, expectedFormatBytes) {
+		logger.Errorf("The db at path [%s] contains data in unexpected format. expected data format = [%s] (%#v), data format = [%s] (%#v).",
+			path, dataformat.Version20, expectedFormatBytes, formatVersion, formatVersion)
+		return nil, &leveldbhelper.ErrFormatVersionMismatch{ExpectedFormatVersion: dataformat.Version20, DataFormatVersion: string(formatVersion), DBPath: path}
 	}
 	return &idStore{db, path}, nil
 }
@@ -403,7 +412,7 @@ func (s *idStore) upgradeFormat() error {
 	if err != nil {
 		return err
 	}
-	idStoreFormatBytes := []byte(idStoreFormatVersion)
+	idStoreFormatBytes := []byte(dataformat.Version20)
 	if bytes.Equal(format, idStoreFormatBytes) {
 		logger.Debug("Format is current, nothing to do")
 		return nil
@@ -414,7 +423,7 @@ func (s *idStore) upgradeFormat() error {
 		return err
 	}
 
-	logger.Infof("The ledgerProvider db format is old, upgrading to the new format %s", idStoreFormatVersion)
+	logger.Infof("The ledgerProvider db format is old, upgrading to the new format %s", dataformat.Version20)
 
 	batch := &leveldb.Batch{}
 	batch.Put(formatKey, idStoreFormatBytes)
