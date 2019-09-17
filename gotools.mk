@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 GOTOOLS = counterfeiter dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell mockery manifest-tool
-BUILD_DIR ?= .build
-GOTOOLS_GOPATH ?= $(BUILD_DIR)/gotools
+BUILD_DIR ?= build
+GOTOOLS_GOPATH ?= $(BUILD_DIR)/_gotools
 GOTOOLS_BINDIR ?= $(GOPATH)/bin
 
 # go tool->path mapping
@@ -23,7 +23,7 @@ gotools-install: $(patsubst %,$(GOTOOLS_BINDIR)/%, $(GOTOOLS))
 
 .PHONY: gotools-clean
 gotools-clean:
-	-@rm -rf $(BUILD_DIR)/gotools
+	-@rm -rf $(GOTOOLS_GOPATH)
 
 # Special override for protoc-gen-go since we want to use the version vendored with the project
 gotool.protoc-gen-go:
