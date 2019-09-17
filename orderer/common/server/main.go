@@ -394,8 +394,7 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 	for _, serverRoot := range conf.General.Cluster.RootCAs {
 		rootCACert, err := loadPEM(serverRoot)
 		if err != nil {
-			logger.Panicf("Failed to load CA cert file '%s' (%s)",
-				err, serverRoot)
+			logger.Panicf("Failed to load CA cert file '%s' (%s)", serverRoot, err)
 		}
 		clientRootCAs = append(clientRootCAs, rootCACert)
 	}
