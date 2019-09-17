@@ -87,9 +87,16 @@ var _ = Describe("Externalbuilders", func() {
 	})
 
 	Describe("Detector", func() {
-		var detector *externalbuilders.Detector
+		var (
+			durablePath string
+			detector    *externalbuilders.Detector
+		)
 
 		BeforeEach(func() {
+			var err error
+			durablePath, err = ioutil.TempDir("", "detect-test")
+			Expect(err).NotTo(HaveOccurred())
+
 			detector = &externalbuilders.Detector{
 				Builders: []peer.ExternalBuilder{
 					{
@@ -105,6 +112,14 @@ var _ = Describe("Externalbuilders", func() {
 						Name: "bad2",
 					},
 				},
+				DurablePath: durablePath,
+			}
+		})
+
+		AfterEach(func() {
+			if durablePath != "" {
+				err := os.RemoveAll(durablePath)
+				Expect(err).NotTo(HaveOccurred())
 			}
 		})
 
@@ -112,7 +127,6 @@ var _ = Describe("Externalbuilders", func() {
 			It("iterates over all detectors and chooses the one that matches", func() {
 				instance, err := detector.Build("fake-package-id", md, codePackage)
 				Expect(err).NotTo(HaveOccurred())
-				instance.BuildContext.Cleanup()
 				Expect(instance.Builder.Name).To(Equal("testdata"))
 			})
 
@@ -199,9 +213,16 @@ var _ = Describe("Externalbuilders", func() {
 		})
 
 		Describe("Launch", func() {
-			var fakeConnection *ccintf.PeerConnection
+			var (
+				fakeConnection *ccintf.PeerConnection
+				bldDir         string
+			)
 
 			BeforeEach(func() {
+				var err error
+				bldDir, err = ioutil.TempDir("", "launch-test")
+				Expect(err).NotTo(HaveOccurred())
+
 				fakeConnection = &ccintf.PeerConnection{
 					Address: "fake-peer-address",
 					TLSConfig: &ccintf.TLSConfig{
@@ -212,28 +233,25 @@ var _ = Describe("Externalbuilders", func() {
 				}
 			})
 
-			It("launches the package by invoking external builder", func() {
-				err := builder.Launch(buildContext, fakeConnection)
-				Expect(err).NotTo(HaveOccurred())
+			AfterEach(func() {
+				if bldDir != "" {
+					err := os.RemoveAll(bldDir)
+					Expect(err).NotTo(HaveOccurred())
+				}
+			})
 
-				data1, err := ioutil.ReadFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"))
+			It("launches the package by invoking external builder", func() {
+				err := builder.Launch("test-ccid", bldDir, fakeConnection)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(data1).To(MatchJSON(`{"peer_address":"fake-peer-address","client_cert":"ZmFrZS1jbGllbnQtY2VydA==","client_key":"ZmFrZS1jbGllbnQta2V5","root_cert":"ZmFrZS1yb290LWNlcnQ="}`))
 			})
 
 			Context("when the launch exits with a non-zero status", func() {
 				BeforeEach(func() {
-					md.Path = "baz"
-
-					var err error
-					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
-					Expect(err).NotTo(HaveOccurred())
-					buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
-					Expect(err).NotTo(HaveOccurred())
+					fakeConnection.Address = "different-fake-peer-address"
 				})
 
 				It("returns an error", func() {
-					err := builder.Launch(buildContext, fakeConnection)
+					err := builder.Launch("test-ccid", bldDir, fakeConnection)
 					Expect(err).To(MatchError("builder 'testdata' failed: exit status 1"))
 				})
 			})

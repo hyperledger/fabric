@@ -502,8 +502,11 @@ func serve(args []string) error {
 		logger.Panicf("failed to register docker health check: %s", err)
 	}
 
+	externalBuilderOutput := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "externalbuilders", "builds")
+
 	externalVM := &externalbuilders.Detector{
-		Builders: coreConfig.ExternalBuilders,
+		Builders:    coreConfig.ExternalBuilders,
+		DurablePath: externalBuilderOutput,
 	}
 
 	buildRegistry := &container.BuildRegistry{}

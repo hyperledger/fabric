@@ -33,12 +33,13 @@ var (
 const MetadataFile = "metadata.json"
 
 type Instance struct {
-	BuildContext *BuildContext
-	Builder      *Builder
+	PackageID   string
+	DurablePath string
+	Builder     *Builder
 }
 
 func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
-	return i.Builder.Launch(i.BuildContext, peerConnection)
+	return i.Builder.Launch(i.PackageID, i.DurablePath, peerConnection)
 }
 
 func (i *Instance) Stop() error {
@@ -51,7 +52,8 @@ func (i *Instance) Wait() (int, error) {
 }
 
 type Detector struct {
-	Builders []peer.ExternalBuilder
+	DurablePath string
+	Builders    []peer.ExternalBuilder
 }
 
 func (d *Detector) Detect(buildContext *BuildContext) *Builder {
@@ -83,6 +85,8 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		return nil, errors.WithMessage(err, "could not create build context")
 	}
 
+	defer buildContext.Cleanup()
+
 	builder := d.Detect(buildContext)
 	if builder == nil {
 		buildContext.Cleanup()
@@ -94,9 +98,28 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		return nil, errors.WithMessage(err, "external builder failed to build")
 	}
 
+	durablePath := filepath.Join(d.DurablePath, ccid)
+
+	// cleanup anything which is already persisted
+	err = os.RemoveAll(durablePath)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not clean dir '%s' to persist build ouput", durablePath)
+	}
+
+	err = os.Mkdir(durablePath, 0700)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not create dir '%s' to persist build ouput", durablePath)
+	}
+
+	err = os.Rename(buildContext.OutputDir, filepath.Join(durablePath, "bld"))
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not move build context bld to persistent location '%s'", durablePath)
+	}
+
 	return &Instance{
-		BuildContext: buildContext,
-		Builder:      builder,
+		PackageID:   ccid,
+		Builder:     builder,
+		DurablePath: durablePath,
 	}, nil
 }
 
@@ -107,7 +130,6 @@ type BuildContext struct {
 	SourceDir   string
 	MetadataDir string
 	OutputDir   string
-	LaunchDir   string
 }
 
 var pkgIDreg = regexp.MustCompile("[^a-zA-Z0-9]+")
@@ -139,13 +161,6 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 		return nil, errors.WithMessage(err, "could not create build dir")
 	}
 
-	launchDir := filepath.Join(scratchDir, "run")
-	err = os.MkdirAll(launchDir, 0700)
-	if err != nil {
-		os.RemoveAll(scratchDir)
-		return nil, errors.WithMessage(err, "could not create launch dir")
-	}
-
 	err = Untar(codePackage, sourceDir)
 	if err != nil {
 		os.RemoveAll(scratchDir)
@@ -163,7 +178,6 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 		SourceDir:   sourceDir,
 		MetadataDir: metadataDir,
 		OutputDir:   outputDir,
-		LaunchDir:   launchDir,
 		Metadata:    md,
 		CCID:        ccid,
 	}, nil
@@ -240,15 +254,17 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 
 // LaunchConfig is serialized to disk when launching
 type LaunchConfig struct {
+	CCID        string `json:"chaincode_id"`
 	PeerAddress string `json:"peer_address"`
 	ClientCert  []byte `json:"client_cert"`
 	ClientKey   []byte `json:"client_key"`
 	RootCert    []byte `json:"root_cert"`
 }
 
-func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.PeerConnection) error {
+func (b *Builder) Launch(ccid, durablePath string, peerConnection *ccintf.PeerConnection) error {
 	lc := &LaunchConfig{
 		PeerAddress: peerConnection.Address,
+		CCID:        ccid,
 	}
 
 	if peerConnection.TLSConfig != nil {
@@ -257,12 +273,17 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 		lc.RootCert = peerConnection.TLSConfig.RootCert
 	}
 
+	launchDir, err := ioutil.TempDir("", "fabric-run")
+	if err != nil {
+		return errors.WithMessage(err, "could not create temp run dir")
+	}
+
 	marshaledLC, err := json.Marshal(lc)
 	if err != nil {
 		return errors.WithMessage(err, "could not marshal launch config")
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"), marshaledLC, 0600); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledLC, 0600); err != nil {
 		return errors.WithMessage(err, "could not write root cert")
 	}
 
@@ -270,10 +291,8 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 	cmd := NewCommand(
 		launch,
 		b.EnvWhitelist,
-		buildContext.SourceDir,
-		buildContext.MetadataDir,
-		buildContext.OutputDir,
-		buildContext.LaunchDir,
+		durablePath,
+		launchDir,
 	)
 
 	err = RunCommand(b.Logger, cmd)
