@@ -484,7 +484,7 @@ func testRetrievePrivateDataSuccess(t *testing.T,
 	expectedBlockPvtdata := formatExpectedBlockPvtdata(expectedRwSets)
 	// sometimes the collection private write sets are added out of order
 	// so we need to sort it to check equality with expected
-	blockPvtdata := sortBlockPvtdata(retrievedPvtdata.blockPvtdata)
+	blockPvtdata := sortBlockPvtdata(retrievedPvtdata.GetBlockPvtdata())
 	assert.Equal(t, expectedBlockPvtdata, blockPvtdata, scenario)
 
 	// Test pvtdata is purged from store on Done() call
@@ -567,12 +567,12 @@ func setupPrivateDataProvider(t *testing.T,
 
 func testPurged(t *testing.T,
 	scenario string,
-	retrievedPvtdata *RetrievedPvtdata,
+	retrievedPvtdata ledger.RetrievedPvtdata,
 	store *transientstore.Store,
 	txPvtdataInfo []*ledger.TxPvtdataInfo) {
 
 	retrievedPvtdata.Purge()
-	for _, pvtdata := range retrievedPvtdata.blockPvtdata.PvtData {
+	for _, pvtdata := range retrievedPvtdata.GetBlockPvtdata().PvtData {
 		func() {
 			txID := getTxIDBySeqInBlock(pvtdata.SeqInBlock, txPvtdataInfo)
 			require.NotEqual(t, txID, "", fmt.Sprintf("Could not find txID for SeqInBlock %d", pvtdata.SeqInBlock), scenario)
