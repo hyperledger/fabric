@@ -169,6 +169,12 @@ func ServerNameOverride(name string) TLSOption {
 	}
 }
 
+func CertPoolOverride(pool *x509.CertPool) TLSOption {
+	return func(tlsConfig *tls.Config) {
+		tlsConfig.RootCAs = pool
+	}
+}
+
 // NewConnection returns a grpc.ClientConn for the target address and
 // overrides the server name used to verify the hostname on the
 // certificate returned by a server when using TLS
