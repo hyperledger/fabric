@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/msp"
 )
 
 // Config enumerates the configuration methods required by gossip
@@ -111,4 +112,8 @@ func (ag *appGrp) MSPID() string {
 
 func (ag *appGrp) AnchorPeers() []*peer.AnchorPeer {
 	return ag.anchorPeers
+}
+
+func (ag *appGrp) MSP() msp.MSP {
+	return nil
 }
