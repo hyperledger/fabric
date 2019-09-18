@@ -649,9 +649,12 @@ Transaction
    A transaction, 'T'
 
 Transactions are created when a chaincode is invoked from a client application
-to read or write to data from the ledger. Application clients gather the
-responses from endorsing peers and then package the results and endorsements
-into a transaction that is submitted for ordering, validation, and commit.
+to read or write data from the ledger. Fabric application clients submit transaction proposals to
+endorsing peers for execution and endorsement, gather the signed (endorsed) responses from those
+endorsing peers, and then package the results and endorsements into a transaction that is
+submitted to the ordering service. The ordering service orders and places transactions
+in a block that is broadcast to the peers which validate and commit the transactions to the ledger
+and update world state.
 
 .. _World-State:
 
