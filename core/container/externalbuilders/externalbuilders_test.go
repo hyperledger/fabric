@@ -321,7 +321,7 @@ var _ = Describe("Externalbuilders", func() {
 			})
 		})
 
-		Describe("Launch", func() {
+		Describe("Run", func() {
 			var (
 				fakeConnection *ccintf.PeerConnection
 				bldDir         string
@@ -329,7 +329,7 @@ var _ = Describe("Externalbuilders", func() {
 
 			BeforeEach(func() {
 				var err error
-				bldDir, err = ioutil.TempDir("", "launch-test")
+				bldDir, err = ioutil.TempDir("", "run-test")
 				Expect(err).NotTo(HaveOccurred())
 
 				fakeConnection = &ccintf.PeerConnection{
@@ -349,20 +349,20 @@ var _ = Describe("Externalbuilders", func() {
 				}
 			})
 
-			It("launches the package by invoking external builder", func() {
-				err := builder.Launch("test-ccid", bldDir, fakeConnection)
+			It("runs the package by invoking external builder", func() {
+				err := builder.Run("test-ccid", bldDir, fakeConnection)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			Context("when the launch exits with a non-zero status", func() {
+			Context("when the run exits with a non-zero status", func() {
 				BeforeEach(func() {
 					builder.Location = "testdata/failbuilder"
 					builder.Name = "failbuilder"
 				})
 
 				It("returns an error", func() {
-					err := builder.Launch("test-ccid", bldDir, fakeConnection)
-					Expect(err).To(MatchError("builder 'failbuilder' launch failed: exit status 1"))
+					err := builder.Run("test-ccid", bldDir, fakeConnection)
+					Expect(err).To(MatchError("builder 'failbuilder' run failed: exit status 1"))
 				})
 			})
 		})

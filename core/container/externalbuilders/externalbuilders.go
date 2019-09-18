@@ -39,7 +39,7 @@ type Instance struct {
 }
 
 func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
-	return i.Builder.Launch(i.PackageID, i.BldDir, peerConnection)
+	return i.Builder.Run(i.PackageID, i.BldDir, peerConnection)
 }
 
 func (i *Instance) Stop() error {
@@ -360,8 +360,8 @@ func (b *Builder) Release(buildContext *BuildContext) error {
 	return nil
 }
 
-// LaunchConfig is serialized to disk when launching
-type LaunchConfig struct {
+// RunConfig is serialized to disk when launching
+type RunConfig struct {
 	CCID        string `json:"chaincode_id"`
 	PeerAddress string `json:"peer_address"`
 	ClientCert  []byte `json:"client_cert"`
@@ -369,8 +369,8 @@ type LaunchConfig struct {
 	RootCert    []byte `json:"root_cert"`
 }
 
-func (b *Builder) Launch(ccid, bldDir string, peerConnection *ccintf.PeerConnection) error {
-	lc := &LaunchConfig{
+func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection) error {
+	lc := &RunConfig{
 		PeerAddress: peerConnection.Address,
 		CCID:        ccid,
 	}
@@ -388,16 +388,16 @@ func (b *Builder) Launch(ccid, bldDir string, peerConnection *ccintf.PeerConnect
 
 	marshaledLC, err := json.Marshal(lc)
 	if err != nil {
-		return errors.WithMessage(err, "could not marshal launch config")
+		return errors.WithMessage(err, "could not marshal run config")
 	}
 
 	if err := ioutil.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledLC, 0600); err != nil {
 		return errors.WithMessage(err, "could not write root cert")
 	}
 
-	launch := filepath.Join(b.Location, "bin", "launch")
+	run := filepath.Join(b.Location, "bin", "run")
 	cmd := NewCommand(
-		launch,
+		run,
 		b.EnvWhitelist,
 		bldDir,
 		launchDir,
@@ -405,7 +405,7 @@ func (b *Builder) Launch(ccid, bldDir string, peerConnection *ccintf.PeerConnect
 
 	err = RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Wrapf(err, "builder '%s' launch failed", b.Name)
+		return errors.Wrapf(err, "builder '%s' run failed", b.Name)
 	}
 
 	return nil
