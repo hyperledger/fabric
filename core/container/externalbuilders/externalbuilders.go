@@ -141,6 +141,10 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		return nil, errors.WithMessage(err, "external builder failed to build")
 	}
 
+	if err := builder.Release(buildContext); err != nil {
+		return nil, errors.WithMessage(err, "external builder failed to release")
+	}
+
 	durablePath := filepath.Join(d.DurablePath, ccid)
 
 	err = os.Mkdir(durablePath, 0700)
@@ -162,9 +166,16 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		return nil, errors.WithMessage(err, "could not write build-info.json")
 	}
 
+	err = os.Rename(buildContext.ReleaseDir, filepath.Join(durablePath, "release"))
+	if err != nil {
+		os.RemoveAll(durablePath)
+		return nil, errors.WithMessagef(err, "could not move build context release to persistent location '%s'", durablePath)
+	}
+
 	durableBldDir := filepath.Join(durablePath, "bld")
 	err = os.Rename(buildContext.BldDir, durableBldDir)
 	if err != nil {
+		os.RemoveAll(durablePath)
 		return nil, errors.WithMessagef(err, "could not move build context bld to persistent location '%s'", durablePath)
 	}
 
@@ -180,48 +191,52 @@ type BuildContext struct {
 	Metadata    *persistence.ChaincodePackageMetadata
 	ScratchDir  string
 	SourceDir   string
+	ReleaseDir  string
 	MetadataDir string
 	BldDir      string
 }
 
 var pkgIDreg = regexp.MustCompile("[^a-zA-Z0-9]+")
 
-func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, codePackage io.Reader) (*BuildContext, error) {
+func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, codePackage io.Reader) (bc *BuildContext, err error) {
 	scratchDir, err := ioutil.TempDir("", "fabric-"+pkgIDreg.ReplaceAllString(ccid, "-"))
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp dir")
 	}
 
+	defer func() {
+		if err != nil {
+			os.RemoveAll(scratchDir)
+		}
+	}()
+
 	sourceDir := filepath.Join(scratchDir, "src")
-	err = os.Mkdir(sourceDir, 0700)
-	if err != nil {
-		os.RemoveAll(scratchDir)
+	if err = os.Mkdir(sourceDir, 0700); err != nil {
 		return nil, errors.WithMessage(err, "could not create source dir")
 	}
 
 	metadataDir := filepath.Join(scratchDir, "metadata")
-	err = os.Mkdir(metadataDir, 0700)
-	if err != nil {
-		os.RemoveAll(scratchDir)
+	if err = os.Mkdir(metadataDir, 0700); err != nil {
 		return nil, errors.WithMessage(err, "could not create metadata dir")
 	}
 
 	outputDir := filepath.Join(scratchDir, "bld")
-	err = os.Mkdir(outputDir, 0700)
-	if err != nil {
-		os.RemoveAll(scratchDir)
+	if err = os.Mkdir(outputDir, 0700); err != nil {
 		return nil, errors.WithMessage(err, "could not create build dir")
+	}
+
+	releaseDir := filepath.Join(scratchDir, "release")
+	if err = os.Mkdir(releaseDir, 0700); err != nil {
+		return nil, errors.WithMessage(err, "could not create release dir")
 	}
 
 	err = Untar(codePackage, sourceDir)
 	if err != nil {
-		os.RemoveAll(scratchDir)
 		return nil, errors.WithMessage(err, "could not untar source package")
 	}
 
 	err = writeMetadataFile(ccid, md, metadataDir)
 	if err != nil {
-		os.RemoveAll(scratchDir)
 		return nil, errors.WithMessage(err, "could not write metadata file")
 	}
 
@@ -230,6 +245,7 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 		SourceDir:   sourceDir,
 		MetadataDir: metadataDir,
 		BldDir:      outputDir,
+		ReleaseDir:  releaseDir,
 		Metadata:    md,
 		CCID:        ccid,
 	}, nil
@@ -312,6 +328,33 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
 		return errors.Wrapf(err, "builder '%s' build failed", b.Name)
+	}
+
+	return nil
+}
+
+func (b *Builder) Release(buildContext *BuildContext) error {
+	release := filepath.Join(b.Location, "bin", "release")
+
+	_, err := os.Stat(release)
+	if os.IsNotExist(err) {
+		b.Logger.Debugf("Skipping release step for '%s' as no release binary found", buildContext.CCID)
+		return nil
+	}
+
+	if err != nil {
+		return errors.WithMessagef(err, "could not stat release binary '%s'", release)
+	}
+
+	cmd := NewCommand(
+		release,
+		b.EnvWhitelist,
+		buildContext.BldDir,
+		buildContext.ReleaseDir,
+	)
+
+	if err := RunCommand(b.Logger, cmd); err != nil {
+		return errors.Wrapf(err, "builder '%s' release failed", b.Name)
 	}
 
 	return nil

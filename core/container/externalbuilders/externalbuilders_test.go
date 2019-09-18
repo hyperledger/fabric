@@ -63,6 +63,14 @@ var _ = Describe("Externalbuilders", func() {
 			_, err = os.Stat(buildContext.SourceDir)
 			Expect(err).NotTo(HaveOccurred())
 
+			Expect(buildContext.ReleaseDir).NotTo(BeEmpty())
+			_, err = os.Stat(buildContext.SourceDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(buildContext.BldDir).NotTo(BeEmpty())
+			_, err = os.Stat(buildContext.SourceDir)
+			Expect(err).NotTo(HaveOccurred())
+
 			_, err = os.Stat(filepath.Join(buildContext.SourceDir, "a/test.file"))
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -104,8 +112,8 @@ var _ = Describe("Externalbuilders", func() {
 						Name: "bad1",
 					},
 					{
-						Path: "testdata",
-						Name: "testdata",
+						Path: "testdata/goodbuilder",
+						Name: "goodbuilder",
 					},
 					{
 						Path: "bad2",
@@ -127,7 +135,7 @@ var _ = Describe("Externalbuilders", func() {
 			It("iterates over all detectors and chooses the one that matches", func() {
 				instance, err := detector.Build("fake-package-id", md, codePackage)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(instance.Builder.Name).To(Equal("testdata"))
+				Expect(instance.Builder.Name).To(Equal("goodbuilder"))
 			})
 
 			Context("when no builder can be found", func() {
@@ -146,6 +154,9 @@ var _ = Describe("Externalbuilders", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = os.Stat(filepath.Join(durablePath, "fake-package-id", "bld"))
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = os.Stat(filepath.Join(durablePath, "fake-package-id", "release"))
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = os.Stat(filepath.Join(durablePath, "fake-package-id", "build-info.json"))
@@ -215,7 +226,7 @@ var _ = Describe("Externalbuilders", func() {
 
 				It("returns an error", func() {
 					_, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError("existing build could not be restored: chaincode 'fake-package-id' was already built with builder 'testdata', but that builder is no longer available"))
+					Expect(err).To(MatchError("existing build could not be restored: chaincode 'fake-package-id' was already built with builder 'goodbuilder', but that builder is no longer available"))
 				})
 			})
 		})
@@ -229,8 +240,9 @@ var _ = Describe("Externalbuilders", func() {
 
 		BeforeEach(func() {
 			builder = &externalbuilders.Builder{
-				Location: "testdata",
-				Name:     "testdata",
+				Location: "testdata/goodbuilder",
+				Name:     "goodbuilder",
+				Logger:   flogging.MustGetLogger("builder.test"),
 			}
 
 			var err error
@@ -250,13 +262,7 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the detector exits with a non-zero status", func() {
 				BeforeEach(func() {
-					md.Type = "foo"
-
-					var err error
-					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
-					Expect(err).NotTo(HaveOccurred())
-					buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
-					Expect(err).NotTo(HaveOccurred())
+					builder.Location = "testdata/failbuilder"
 				})
 
 				It("returns false", func() {
@@ -274,18 +280,43 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the builder exits with a non-zero status", func() {
 				BeforeEach(func() {
-					md.Path = "bar"
-
-					var err error
-					codePackage, err = os.Open("testdata/normal_archive.tar.gz")
-					Expect(err).NotTo(HaveOccurred())
-					buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
-					Expect(err).NotTo(HaveOccurred())
+					builder.Location = "testdata/failbuilder"
+					builder.Name = "failbuilder"
 				})
 
 				It("returns an error", func() {
 					err := builder.Build(buildContext)
-					Expect(err).To(MatchError("builder 'testdata' build failed: exit status 1"))
+					Expect(err).To(MatchError("builder 'failbuilder' build failed: exit status 1"))
+				})
+			})
+		})
+
+		Describe("Release", func() {
+			It("releases the package by invoking external builder", func() {
+				err := builder.Release(buildContext)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			When("the release binary is not in the builder", func() {
+				BeforeEach(func() {
+					builder.Location = "bad-builder-location"
+				})
+
+				It("returns no error as release is optional", func() {
+					err := builder.Release(buildContext)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			When("the builder exits with a non-zero status", func() {
+				BeforeEach(func() {
+					builder.Location = "testdata/failbuilder"
+					builder.Name = "failbuilder"
+				})
+
+				It("returns an error", func() {
+					err := builder.Release(buildContext)
+					Expect(err).To(MatchError("builder 'failbuilder' release failed: exit status 1"))
 				})
 			})
 		})
@@ -325,12 +356,13 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the launch exits with a non-zero status", func() {
 				BeforeEach(func() {
-					fakeConnection.Address = "different-fake-peer-address"
+					builder.Location = "testdata/failbuilder"
+					builder.Name = "failbuilder"
 				})
 
 				It("returns an error", func() {
 					err := builder.Launch("test-ccid", bldDir, fakeConnection)
-					Expect(err).To(MatchError("builder 'testdata' launch failed: exit status 1"))
+					Expect(err).To(MatchError("builder 'failbuilder' launch failed: exit status 1"))
 				})
 			})
 		})
