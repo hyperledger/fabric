@@ -223,9 +223,9 @@ anyone in the network can verify that all actors in the network are in agreement
 about the transaction details.
 
 A transaction that is distributed to all peer nodes in the network is
-**validated** in two phases. Firstly, the transaction is checked to ensure it
-has been signed by sufficient organizations according to the endorsement policy.
-Secondly, it is checked to ensure that the current value of the world state
+**validated** in two phases by each peer. Firstly, the transaction is checked to
+ensure it has been signed by sufficient organizations according to the endorsement
+policy. Secondly, it is checked to ensure that the current value of the world state
 matches the read set of the transaction when it was signed by the endorsing peer
 nodes; that there has been no intermediate update. If a transaction passes both
 these tests, it is marked as **valid**. All transactions are added to the
