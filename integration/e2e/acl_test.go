@@ -240,20 +240,23 @@ var _ = Describe("EndToEndACL", func() {
 		// _lifecycle ACL policies
 		//
 
+		chaincodePath, err := filepath.Abs(components.Chaincode())
+		Expect(err).NotTo(HaveOccurred())
+
 		chaincode = nwo.Chaincode{
 			Name:                "mycc",
 			Version:             "0.0",
-			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Lang:                "golang",
-			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
+			Path:                chaincodePath,
+			Lang:                "binary",
+			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
 			InitRequired:        true,
-			Label:               "my_simple_chaincode",
+			Label:               "my_prebuilt_chaincode",
 		}
 
-		nwo.PackageChaincode(network, chaincode, org1Peer0)
+		nwo.PackageChaincodeBinary(chaincode)
 
 		// we set the PackageID so that we can pass it to the approve step
 		chaincode.SetPackageIDFromPackageFile()

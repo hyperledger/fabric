@@ -24,7 +24,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
@@ -51,20 +50,17 @@ var _ = Describe("EndToEnd", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		chaincodePath, err := filepath.Abs("../chaincode/module")
-		Expect(err).NotTo(HaveOccurred())
-
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
-			Path:            chaincodePath,
-			Lang:            "golang",
+			Path:            components.Chaincode(),
+			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,
 			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
 			Sequence:        "1",
 			InitRequired:    true,
-			Label:           "my_simple_chaincode",
+			Label:           "my_prebuilt_chaincode",
 		}
 	})
 
@@ -100,28 +96,8 @@ var _ = Describe("EndToEnd", func() {
 				Profile:     "TwoOrgsBaseProfileChannel",
 				BaseProfile: "TwoOrgsOrdererGenesis",
 			})
-			chaincodePath, err := filepath.Abs(network.Components.Chaincode())
-			Expect(err).NotTo(HaveOccurred())
-			chaincode.Path = chaincodePath
-			chaincode.Label = "myalreadybuiltcc"
-			nwo.PackageChaincodeBinary(chaincode)
 
 			network.GenerateConfigTree()
-
-			// Enable binary external launcher for all peers
-			cwd, err := os.Getwd()
-			Expect(err).NotTo(HaveOccurred())
-			for _, peer := range network.PeersWithChannel("testchannel") {
-				core := network.ReadPeerConfig(peer)
-				core.Chaincode.ExternalBuilders = []corepeer.ExternalBuilder{
-					{
-						Path: filepath.Join(cwd, "..", "externalbuilders", "binary"),
-						Name: "binary",
-					},
-				}
-				network.WritePeerConfig(peer, core)
-			}
-
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
@@ -179,12 +155,55 @@ var _ = Describe("EndToEnd", func() {
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
-		It("executes a basic kafka network with 2 orgs", func() {
+		It("executes a basic kafka network with 2 orgs (using docker chaincode builds)", func() {
+			chaincodePath, err := filepath.Abs("../chaincode/module")
+			Expect(err).NotTo(HaveOccurred())
+
+			// use these two variants of the same chaincode to ensure we test
+			// the golang docker build for both module and gopath chaincode
+			chaincode = nwo.Chaincode{
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            chaincodePath,
+				Lang:            "golang",
+				PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+				Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_module_chaincode",
+			}
+
+			gopathChaincode := nwo.Chaincode{
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:            "golang",
+				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+				Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_simple_chaincode",
+			}
+
 			orderer := network.Orderer("orderer")
 			peer := network.Peer("Org1", "peer1")
 
 			network.CreateAndJoinChannel(orderer, "testchannel")
-			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+
+			// package, install, and approve by org1 - module chaincode
+			packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"), network.Peer("Org1", "peer1"))
+
+			// package, install, and approve by org2 - gopath chaincode, same logic
+			packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"), network.Peer("Org2", "peer1"))
+
+			testPeers := network.PeersWithChannel("testchannel")
+			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
+			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
+
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
 			CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer1"))
@@ -209,12 +228,18 @@ var _ = Describe("EndToEnd", func() {
 
 			By("Create first channel and deploy the chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel1")
-			nwo.DeployChaincodeLegacy(network, "testchannel1", orderer, chaincode)
+			nwo.EnableCapabilities(network, "testchannel1", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, "testchannel1", orderer, chaincode)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel1")
 
 			By("Create second channel and deploy chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel2")
-			nwo.InstantiateChaincodeLegacy(network, "testchannel2", orderer, chaincode, peer, network.PeersWithChannel("testchannel2")...)
+			peers := network.PeersWithChannel("testchannel2")
+			nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.ApproveChaincodeForMyOrg(network, "testchannel2", orderer, chaincode, peers...)
+			nwo.CheckCommitReadinessUntilReady(network, "testchannel2", chaincode, network.PeerOrgs(), peers...)
+			nwo.CommitChaincode(network, "testchannel2", orderer, chaincode, peers[0], peers...)
+			nwo.InitChaincode(network, "testchannel2", orderer, chaincode, peers...)
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel2")
 
 			By("Update consensus metadata to increase snapshot interval")
@@ -523,4 +548,12 @@ func getBody(client *http.Client, url string) func() string {
 		resp.Body.Close()
 		return string(bodyBytes)
 	}
+}
+
+func packageInstallApproveChaincode(network *nwo.Network, channel string, orderer *nwo.Orderer, chaincode nwo.Chaincode, peers ...*nwo.Peer) {
+	nwo.PackageChaincode(network, chaincode, peers[0])
+	// set the PackageID so that we can pass it to the approve step
+	chaincode.SetPackageIDFromPackageFile()
+	nwo.InstallChaincode(network, chaincode, peers...)
+	nwo.ApproveChaincodeForMyOrg(network, channel, orderer, chaincode, peers...)
 }

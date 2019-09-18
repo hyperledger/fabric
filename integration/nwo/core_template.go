@@ -171,7 +171,13 @@ chaincode:
     level:  info
     shim:   warning
     format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
-  externalBuilders:
+  externalBuilders: {{ range .ExternalBuilders }}
+    - path: {{ .Path }}
+      name: {{ .Name }}
+      environmentWhitelist: {{ range .EnvironmentWhitelist }}
+         - {{ . }}
+      {{- end }}
+  {{- end }}
 
 ledger:
   blockchain:
