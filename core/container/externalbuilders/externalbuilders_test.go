@@ -56,23 +56,18 @@ var _ = Describe("Externalbuilders", func() {
 			defer buildContext.Cleanup()
 
 			Expect(buildContext.ScratchDir).NotTo(BeEmpty())
-			_, err = os.Stat(buildContext.ScratchDir)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(buildContext.ScratchDir).To(BeADirectory())
 
 			Expect(buildContext.SourceDir).NotTo(BeEmpty())
-			_, err = os.Stat(buildContext.SourceDir)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(buildContext.SourceDir).To(BeADirectory())
 
 			Expect(buildContext.ReleaseDir).NotTo(BeEmpty())
-			_, err = os.Stat(buildContext.SourceDir)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(buildContext.ReleaseDir).To(BeADirectory())
 
 			Expect(buildContext.BldDir).NotTo(BeEmpty())
-			_, err = os.Stat(buildContext.SourceDir)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(buildContext.BldDir).To(BeADirectory())
 
-			_, err = os.Stat(filepath.Join(buildContext.SourceDir, "a/test.file"))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(filepath.Join(buildContext.SourceDir, "a/test.file")).To(BeARegularFile())
 		})
 
 		Context("when the archive cannot be extracted", func() {
@@ -153,24 +148,19 @@ var _ = Describe("Externalbuilders", func() {
 				_, err := detector.Build("fake-package-id", md, codePackage)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = os.Stat(filepath.Join(durablePath, "fake-package-id", "bld"))
-				Expect(err).NotTo(HaveOccurred())
-
-				_, err = os.Stat(filepath.Join(durablePath, "fake-package-id", "release"))
-				Expect(err).NotTo(HaveOccurred())
-
-				_, err = os.Stat(filepath.Join(durablePath, "fake-package-id", "build-info.json"))
-				Expect(err).NotTo(HaveOccurred())
+				Expect(filepath.Join(durablePath, "fake-package-id", "bld")).To(BeADirectory())
+				Expect(filepath.Join(durablePath, "fake-package-id", "release")).To(BeADirectory())
+				Expect(filepath.Join(durablePath, "fake-package-id", "build-info.json")).To(BeARegularFile())
 			})
 
 			Context("when the durable path cannot be created", func() {
 				BeforeEach(func() {
-					detector.DurablePath = "/fake/path/to/nowhere"
+					detector.DurablePath = "fake/path/to/nowhere"
 				})
 
 				It("wraps and returns the error", func() {
 					_, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError("could not create dir '/fake/path/to/nowhere/fake-package-id' to persist build ouput: mkdir /fake/path/to/nowhere/fake-package-id: no such file or directory"))
+					Expect(err).To(MatchError("could not create dir 'fake/path/to/nowhere/fake-package-id' to persist build ouput: mkdir fake/path/to/nowhere/fake-package-id: no such file or directory"))
 				})
 			})
 		})
