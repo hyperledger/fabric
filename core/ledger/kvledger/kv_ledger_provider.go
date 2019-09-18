@@ -480,6 +480,43 @@ func (s *idStore) createLedgerID(ledgerID string, gb *common.Block) error {
 	return s.db.WriteBatch(batch, true)
 }
 
+func (s *idStore) updateLedgerStatus(ledgerID string, newStatus msgs.Status) error {
+	metadata, err := s.getLedgerMetadata(ledgerID)
+	if err != nil {
+		return err
+	}
+	if metadata == nil {
+		logger.Errorf("LedgerID [%s] does not exist", ledgerID)
+		return ErrNonExistingLedgerID
+	}
+	if metadata.Status == newStatus {
+		logger.Infof("Ledger [%s] is already in [%s] status, nothing to do", ledgerID, newStatus)
+		return nil
+	}
+	metadata.Status = newStatus
+	metadataBytes, err := proto.Marshal(metadata)
+	if err != nil {
+		logger.Errorf("Error marshalling ledger metadata: %s", err)
+		return errors.Wrapf(err, "error marshalling ledger metadata")
+	}
+	logger.Infof("Updating ledger [%s] status to [%s]", ledgerID, newStatus)
+	key := s.encodeLedgerKey(ledgerID, metadataKeyPrefix)
+	return s.db.Put(key, metadataBytes, true)
+}
+
+func (s *idStore) getLedgerMetadata(ledgerID string) (*msgs.LedgerMetadata, error) {
+	val, err := s.db.Get(s.encodeLedgerKey(ledgerID, metadataKeyPrefix))
+	if val == nil || err != nil {
+		return nil, err
+	}
+	metadata := &msgs.LedgerMetadata{}
+	if err := proto.Unmarshal(val, metadata); err != nil {
+		logger.Errorf("Error unmarshalling ledger metadata: %s", err)
+		return nil, errors.Wrapf(err, "error unmarshalling ledger metadata")
+	}
+	return metadata, nil
+}
+
 func (s *idStore) ledgerIDExists(ledgerID string) (bool, error) {
 	key := s.encodeLedgerKey(ledgerID, ledgerKeyPrefix)
 	val := []byte{}
@@ -492,15 +529,9 @@ func (s *idStore) ledgerIDExists(ledgerID string) (bool, error) {
 
 // ledgerIDActive returns if a ledger is active and existed
 func (s *idStore) ledgerIDActive(ledgerID string) (bool, bool, error) {
-	key := s.encodeLedgerKey(ledgerID, metadataKeyPrefix)
-	val, err := s.db.Get(key)
-	if val == nil || err != nil {
+	metadata, err := s.getLedgerMetadata(ledgerID)
+	if metadata == nil || err != nil {
 		return false, false, err
-	}
-	metadata := &msgs.LedgerMetadata{}
-	if err = proto.Unmarshal(val, metadata); err != nil {
-		logger.Errorf("Error unmarshing ledger metadata: %s", err)
-		return false, false, errors.Wrapf(err, "error unmarshing ledger metadata")
 	}
 	return metadata.Status == msgs.Status_ACTIVE, true, nil
 }
@@ -512,8 +543,8 @@ func (s *idStore) getActiveLedgerIDs() ([]string, error) {
 	for itr.Error() == nil && itr.Next() {
 		metadata := &msgs.LedgerMetadata{}
 		if err := proto.Unmarshal(itr.Value(), metadata); err != nil {
-			logger.Errorf("Error unmarshing ledger metadata: %s", err)
-			return nil, errors.Wrapf(err, "error unmarshing ledger metadata")
+			logger.Errorf("Error unmarshalling ledger metadata: %s", err)
+			return nil, errors.Wrapf(err, "error unmarshalling ledger metadata")
 		}
 		if metadata.Status == msgs.Status_ACTIVE {
 			id := s.decodeLedgerID(itr.Key(), metadataKeyPrefix)

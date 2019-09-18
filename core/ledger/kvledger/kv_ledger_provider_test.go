@@ -131,10 +131,10 @@ func TestLedgerMetataDataUnmarshalError(t *testing.T) {
 	provider.idStore.db.Put(provider.idStore.encodeLedgerKey(ledgerID, metadataKeyPrefix), []byte("invalid"), true)
 
 	_, err := provider.List()
-	require.EqualError(t, err, "error unmarshing ledger metadata: unexpected EOF")
+	require.EqualError(t, err, "error unmarshalling ledger metadata: unexpected EOF")
 
 	_, err = provider.Open(ledgerID)
-	require.EqualError(t, err, "error unmarshing ledger metadata: unexpected EOF")
+	require.EqualError(t, err, "error unmarshalling ledger metadata: unexpected EOF")
 }
 
 func TestNewProviderIdStoreFormatError(t *testing.T) {
