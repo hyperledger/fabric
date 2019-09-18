@@ -503,9 +503,12 @@ func serve(args []string) error {
 	}
 
 	externalBuilderOutput := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "externalbuilders", "builds")
+	if err := os.MkdirAll(externalBuilderOutput, 0700); err != nil {
+		logger.Panicf("could not create externalbuilders build output dir: %s", err)
+	}
 
 	externalVM := &externalbuilders.Detector{
-		Builders:    coreConfig.ExternalBuilders,
+		Builders:    externalbuilders.CreateBuilders(coreConfig.ExternalBuilders),
 		DurablePath: externalBuilderOutput,
 	}
 

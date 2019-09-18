@@ -33,13 +33,13 @@ var (
 const MetadataFile = "metadata.json"
 
 type Instance struct {
-	PackageID   string
-	DurablePath string
-	Builder     *Builder
+	PackageID string
+	BldDir    string
+	Builder   *Builder
 }
 
 func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
-	return i.Builder.Launch(i.PackageID, i.DurablePath, peerConnection)
+	return i.Builder.Launch(i.PackageID, i.BldDir, peerConnection)
 }
 
 func (i *Instance) Stop() error {
@@ -51,25 +51,61 @@ func (i *Instance) Wait() (int, error) {
 	select {}
 }
 
+type BuildInfo struct {
+	BuilderName string `json:"builder_name"`
+}
+
 type Detector struct {
 	DurablePath string
-	Builders    []peer.ExternalBuilder
+	Builders    []*Builder
 }
 
 func (d *Detector) Detect(buildContext *BuildContext) *Builder {
-	for _, detectBuilder := range d.Builders {
-		builder := &Builder{
-			Location:     detectBuilder.Path,
-			Logger:       logger.Named(filepath.Base(detectBuilder.Path)),
-			Name:         detectBuilder.Name,
-			EnvWhitelist: detectBuilder.EnvironmentWhitelist,
-		}
+	for _, builder := range d.Builders {
 		if builder.Detect(buildContext) {
 			return builder
 		}
 	}
-
 	return nil
+}
+
+// CachedBuild returns a build instance that was already built, or nil, or
+// when an unexpected error is encountered, an error.
+func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
+	durablePath := filepath.Join(d.DurablePath, ccid)
+
+	_, err := os.Stat(durablePath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, errors.WithMessage(err, "existing build detected, but something went wrong inspecting it")
+	}
+
+	buildInfoPath := filepath.Join(durablePath, "build-info.json")
+	buildInfoData, err := ioutil.ReadFile(buildInfoPath)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not read '%s' for build info", buildInfoPath)
+	}
+
+	buildInfo := &BuildInfo{}
+	err = json.Unmarshal(buildInfoData, buildInfo)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "malformed build info at '%s'", buildInfoPath)
+	}
+
+	for _, builder := range d.Builders {
+		if builder.Name == buildInfo.BuilderName {
+			return &Instance{
+				PackageID: ccid,
+				Builder:   builder,
+				BldDir:    filepath.Join(durablePath, "bld"),
+			}, nil
+		}
+	}
+
+	return nil, errors.Errorf("chaincode '%s' was already built with builder '%s', but that builder is no longer available", ccid, buildInfo.BuilderName)
 }
 
 func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, codeStream io.Reader) (*Instance, error) {
@@ -80,7 +116,16 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		return nil, errors.Errorf("no builders defined")
 	}
 
-	buildContext, err := NewBuildContext(string(ccid), md, codeStream)
+	i, err := d.CachedBuild(ccid)
+	if err != nil {
+		return nil, errors.WithMessage(err, "existing build could not be restored")
+	}
+
+	if i != nil {
+		return i, nil
+	}
+
+	buildContext, err := NewBuildContext(ccid, md, codeStream)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create build context")
 	}
@@ -89,37 +134,44 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 
 	builder := d.Detect(buildContext)
 	if builder == nil {
-		buildContext.Cleanup()
 		return nil, errors.Errorf("no builder found")
 	}
 
 	if err := builder.Build(buildContext); err != nil {
-		buildContext.Cleanup()
 		return nil, errors.WithMessage(err, "external builder failed to build")
 	}
 
 	durablePath := filepath.Join(d.DurablePath, ccid)
-
-	// cleanup anything which is already persisted
-	err = os.RemoveAll(durablePath)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "could not clean dir '%s' to persist build ouput", durablePath)
-	}
 
 	err = os.Mkdir(durablePath, 0700)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not create dir '%s' to persist build ouput", durablePath)
 	}
 
-	err = os.Rename(buildContext.OutputDir, filepath.Join(durablePath, "bld"))
+	buildInfo, err := json.Marshal(&BuildInfo{
+		BuilderName: builder.Name,
+	})
+	if err != nil {
+		os.RemoveAll(durablePath)
+		return nil, errors.WithMessage(err, "could not marshal for build-info.json")
+	}
+
+	err = ioutil.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0600)
+	if err != nil {
+		os.RemoveAll(durablePath)
+		return nil, errors.WithMessage(err, "could not write build-info.json")
+	}
+
+	durableBldDir := filepath.Join(durablePath, "bld")
+	err = os.Rename(buildContext.BldDir, durableBldDir)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not move build context bld to persistent location '%s'", durablePath)
 	}
 
 	return &Instance{
-		PackageID:   ccid,
-		Builder:     builder,
-		DurablePath: durablePath,
+		PackageID: ccid,
+		Builder:   builder,
+		BldDir:    durableBldDir,
 	}, nil
 }
 
@@ -129,7 +181,7 @@ type BuildContext struct {
 	ScratchDir  string
 	SourceDir   string
 	MetadataDir string
-	OutputDir   string
+	BldDir      string
 }
 
 var pkgIDreg = regexp.MustCompile("[^a-zA-Z0-9]+")
@@ -177,7 +229,7 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 		ScratchDir:  scratchDir,
 		SourceDir:   sourceDir,
 		MetadataDir: metadataDir,
-		OutputDir:   outputDir,
+		BldDir:      outputDir,
 		Metadata:    md,
 		CCID:        ccid,
 	}, nil
@@ -214,6 +266,19 @@ type Builder struct {
 	Name         string
 }
 
+func CreateBuilders(builderConfs []peer.ExternalBuilder) []*Builder {
+	builders := []*Builder{}
+	for _, builderConf := range builderConfs {
+		builders = append(builders, &Builder{
+			Location:     builderConf.Path,
+			Name:         builderConf.Name,
+			EnvWhitelist: builderConf.EnvironmentWhitelist,
+			Logger:       logger.Named(builderConf.Name),
+		})
+	}
+	return builders
+}
+
 func (b *Builder) Detect(buildContext *BuildContext) bool {
 	detect := filepath.Join(b.Location, "bin", "detect")
 	cmd := NewCommand(
@@ -225,7 +290,7 @@ func (b *Builder) Detect(buildContext *BuildContext) bool {
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		logger.Debugf("Detection for builder '%s' failed: %s", b.Name, err)
+		logger.Debugf("Detection for builder '%s' detect failed: %s", b.Name, err)
 		// XXX, we probably also want to differentiate between a 'not detected'
 		// and a 'I failed nastily', but, again, good enough for now
 		return false
@@ -241,12 +306,12 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 		b.EnvWhitelist,
 		buildContext.SourceDir,
 		buildContext.MetadataDir,
-		buildContext.OutputDir,
+		buildContext.BldDir,
 	)
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Wrapf(err, "builder '%s' failed", b.Name)
+		return errors.Wrapf(err, "builder '%s' build failed", b.Name)
 	}
 
 	return nil
@@ -261,7 +326,7 @@ type LaunchConfig struct {
 	RootCert    []byte `json:"root_cert"`
 }
 
-func (b *Builder) Launch(ccid, durablePath string, peerConnection *ccintf.PeerConnection) error {
+func (b *Builder) Launch(ccid, bldDir string, peerConnection *ccintf.PeerConnection) error {
 	lc := &LaunchConfig{
 		PeerAddress: peerConnection.Address,
 		CCID:        ccid,
@@ -291,13 +356,13 @@ func (b *Builder) Launch(ccid, durablePath string, peerConnection *ccintf.PeerCo
 	cmd := NewCommand(
 		launch,
 		b.EnvWhitelist,
-		durablePath,
+		bldDir,
 		launchDir,
 	)
 
 	err = RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Wrapf(err, "builder '%s' failed", b.Name)
+		return errors.Wrapf(err, "builder '%s' launch failed", b.Name)
 	}
 
 	return nil

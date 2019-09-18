@@ -98,7 +98,7 @@ var _ = Describe("Externalbuilders", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			detector = &externalbuilders.Detector{
-				Builders: []peer.ExternalBuilder{
+				Builders: externalbuilders.CreateBuilders([]peer.ExternalBuilder{
 					{
 						Path: "bad1",
 						Name: "bad1",
@@ -111,7 +111,7 @@ var _ = Describe("Externalbuilders", func() {
 						Path: "bad2",
 						Name: "bad2",
 					},
-				},
+				}),
 				DurablePath: durablePath,
 			}
 		})
@@ -138,6 +138,84 @@ var _ = Describe("Externalbuilders", func() {
 				It("returns an error", func() {
 					_, err := detector.Build("fake-package-id", md, codePackage)
 					Expect(err).To(MatchError("no builders defined"))
+				})
+			})
+
+			It("persists the build output", func() {
+				_, err := detector.Build("fake-package-id", md, codePackage)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = os.Stat(filepath.Join(durablePath, "fake-package-id", "bld"))
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = os.Stat(filepath.Join(durablePath, "fake-package-id", "build-info.json"))
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			Context("when the durable path cannot be created", func() {
+				BeforeEach(func() {
+					detector.DurablePath = "/fake/path/to/nowhere"
+				})
+
+				It("wraps and returns the error", func() {
+					_, err := detector.Build("fake-package-id", md, codePackage)
+					Expect(err).To(MatchError("could not create dir '/fake/path/to/nowhere/fake-package-id' to persist build ouput: mkdir /fake/path/to/nowhere/fake-package-id: no such file or directory"))
+				})
+			})
+		})
+
+		Describe("CachedBuild", func() {
+			var (
+				existingInstance *externalbuilders.Instance
+			)
+
+			BeforeEach(func() {
+				var err error
+				existingInstance, err = detector.Build("fake-package-id", md, codePackage)
+				Expect(err).NotTo(HaveOccurred())
+
+				// ensure the builder will fail if invoked
+				detector.Builders[0].Location = "bad-path"
+			})
+
+			It("returns the existing built instance", func() {
+				newInstance, err := detector.Build("fake-package-id", md, codePackage)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(existingInstance).To(Equal(newInstance))
+			})
+
+			When("the build-info is missing", func() {
+				BeforeEach(func() {
+					err := os.RemoveAll(filepath.Join(durablePath, "fake-package-id", "build-info.json"))
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("returns an error", func() {
+					_, err := detector.Build("fake-package-id", md, codePackage)
+					Expect(err).To(MatchError(ContainSubstring("existing build could not be restored: could not read '")))
+				})
+			})
+
+			When("the build-info is corrupted", func() {
+				BeforeEach(func() {
+					err := ioutil.WriteFile(filepath.Join(durablePath, "fake-package-id", "build-info.json"), []byte("{corrupted"), 0600)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("returns an error", func() {
+					_, err := detector.Build("fake-package-id", md, codePackage)
+					Expect(err).To(MatchError(ContainSubstring("invalid character 'c' looking for beginning of object key string")))
+				})
+			})
+
+			When("the builder is no longer available", func() {
+				BeforeEach(func() {
+					detector.Builders = detector.Builders[:1]
+				})
+
+				It("returns an error", func() {
+					_, err := detector.Build("fake-package-id", md, codePackage)
+					Expect(err).To(MatchError("existing build could not be restored: chaincode 'fake-package-id' was already built with builder 'testdata', but that builder is no longer available"))
 				})
 			})
 		})
@@ -207,7 +285,7 @@ var _ = Describe("Externalbuilders", func() {
 
 				It("returns an error", func() {
 					err := builder.Build(buildContext)
-					Expect(err).To(MatchError("builder 'testdata' failed: exit status 1"))
+					Expect(err).To(MatchError("builder 'testdata' build failed: exit status 1"))
 				})
 			})
 		})
@@ -252,7 +330,7 @@ var _ = Describe("Externalbuilders", func() {
 
 				It("returns an error", func() {
 					err := builder.Launch("test-ccid", bldDir, fakeConnection)
-					Expect(err).To(MatchError("builder 'testdata' failed: exit status 1"))
+					Expect(err).To(MatchError("builder 'testdata' launch failed: exit status 1"))
 				})
 			})
 		})
