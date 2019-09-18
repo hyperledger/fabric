@@ -610,7 +610,7 @@ onto peer nodes and then defined and used on one or more channels.
 State Database
 --------------
 
-Current state data is stored in a state database for efficient reads and queries
+World state data is stored in a state database for efficient reads and queries
 from chaincode. Supported databases include levelDB and couchDB.
 
 .. _System-Chain:
