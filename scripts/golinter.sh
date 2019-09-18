@@ -9,12 +9,6 @@ set -e
 # shellcheck source=/dev/null
 source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
 
-# place the Go build cache directory into the default build tree if it exists
-base_dir="$(cd "$(dirname "$0")/.." && pwd)"
-if [ -d "${base_dir}/build" ]; then
-    export GOCACHE="${base_dir}/build/go-cache"
-fi
-
 fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
 source_dirs=()
 while IFS=$'\n' read -r source_dir; do
