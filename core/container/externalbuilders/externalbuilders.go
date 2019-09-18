@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -36,10 +37,16 @@ type Instance struct {
 	PackageID string
 	BldDir    string
 	Builder   *Builder
+	RunStatus *RunStatus
 }
 
 func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
-	return i.Builder.Run(i.PackageID, i.BldDir, peerConnection)
+	rs, err := i.Builder.Run(i.PackageID, i.BldDir, peerConnection)
+	if err != nil {
+		return errors.WithMessage(err, "could not execute run")
+	}
+	i.RunStatus = rs
+	return nil
 }
 
 func (i *Instance) Stop() error {
@@ -47,8 +54,15 @@ func (i *Instance) Stop() error {
 }
 
 func (i *Instance) Wait() (int, error) {
-	// Unimplemented, so, wait forever
-	select {}
+	if i.RunStatus == nil {
+		return 0, errors.Errorf("instance was not successfully started")
+	}
+	<-i.RunStatus.Done()
+	err := i.RunStatus.Err()
+	if exitErr, ok := errors.Cause(err).(*exec.ExitError); ok {
+		return exitErr.ExitCode(), err
+	}
+	return 0, err
 }
 
 type BuildInfo struct {
@@ -369,7 +383,36 @@ type RunConfig struct {
 	RootCert    []byte `json:"root_cert"`
 }
 
-func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection) error {
+type RunStatus struct {
+	mutex sync.Mutex
+	doneC chan struct{}
+	err   error
+}
+
+func NewRunStatus() *RunStatus {
+	return &RunStatus{
+		doneC: make(chan struct{}),
+	}
+}
+
+func (rs *RunStatus) Err() error {
+	rs.mutex.Lock()
+	defer rs.mutex.Unlock()
+	return rs.err
+}
+
+func (rs *RunStatus) Done() <-chan struct{} {
+	return rs.doneC
+}
+
+func (rs *RunStatus) Notify(err error) {
+	rs.mutex.Lock()
+	defer rs.mutex.Unlock()
+	rs.err = err
+	close(rs.doneC)
+}
+
+func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection) (*RunStatus, error) {
 	lc := &RunConfig{
 		PeerAddress: peerConnection.Address,
 		CCID:        ccid,
@@ -383,16 +426,16 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 
 	launchDir, err := ioutil.TempDir("", "fabric-run")
 	if err != nil {
-		return errors.WithMessage(err, "could not create temp run dir")
+		return nil, errors.WithMessage(err, "could not create temp run dir")
 	}
 
 	marshaledLC, err := json.Marshal(lc)
 	if err != nil {
-		return errors.WithMessage(err, "could not marshal run config")
+		return nil, errors.WithMessage(err, "could not marshal run config")
 	}
 
 	if err := ioutil.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledLC, 0600); err != nil {
-		return errors.WithMessage(err, "could not write root cert")
+		return nil, errors.WithMessage(err, "could not write root cert")
 	}
 
 	run := filepath.Join(b.Location, "bin", "run")
@@ -403,12 +446,19 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 		launchDir,
 	)
 
-	err = RunCommand(b.Logger, cmd)
-	if err != nil {
-		return errors.Wrapf(err, "builder '%s' run failed", b.Name)
-	}
+	rs := NewRunStatus()
 
-	return nil
+	go func() {
+		defer os.RemoveAll(launchDir)
+		err := RunCommand(b.Logger, cmd)
+		if err != nil {
+			rs.Notify(errors.Wrapf(err, "builder '%s' run failed", b.Name))
+			return
+		}
+		rs.Notify(nil)
+	}()
+
+	return rs, nil
 }
 
 // NewCommand creates an exec.Cmd that is configured to prune the calling

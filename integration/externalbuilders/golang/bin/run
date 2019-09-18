@@ -32,14 +32,4 @@ else
     export CORE_PEER_TLS_ENABLED=true
 fi
 
-"$OUTPUT/chaincode" -peer.address=$(jq -r .peer_address "$ARTIFACTS/chaincode.json") &
-
-PID=$?
-
-sleep 5
-
-disown
-
-kill -0 $PID
-exit $?
-
+"$OUTPUT/chaincode" -peer.address=$(jq -r .peer_address "$ARTIFACTS/chaincode.json")

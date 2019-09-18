@@ -350,8 +350,10 @@ var _ = Describe("Externalbuilders", func() {
 			})
 
 			It("runs the package by invoking external builder", func() {
-				err := builder.Run("test-ccid", bldDir, fakeConnection)
+				rs, err := builder.Run("test-ccid", bldDir, fakeConnection)
 				Expect(err).NotTo(HaveOccurred())
+				Eventually(rs.Done()).Should(BeClosed())
+				Expect(rs.Err()).NotTo(HaveOccurred())
 			})
 
 			Context("when the run exits with a non-zero status", func() {
@@ -361,8 +363,10 @@ var _ = Describe("Externalbuilders", func() {
 				})
 
 				It("returns an error", func() {
-					err := builder.Run("test-ccid", bldDir, fakeConnection)
-					Expect(err).To(MatchError("builder 'failbuilder' run failed: exit status 1"))
+					rs, err := builder.Run("test-ccid", bldDir, fakeConnection)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(rs.Done()).Should(BeClosed())
+					Expect(rs.Err()).To(MatchError("builder 'failbuilder' run failed: exit status 1"))
 				})
 			})
 		})
@@ -428,6 +432,105 @@ var _ = Describe("Externalbuilders", func() {
 				exitErr, ok := err.(*exec.ExitError)
 				Expect(ok).To(BeTrue())
 				Expect(exitErr.ExitCode()).To(Equal(1))
+			})
+		})
+	})
+
+	Describe("RunStatus", func() {
+		var (
+			rs *externalbuilders.RunStatus
+		)
+
+		BeforeEach(func() {
+			rs = externalbuilders.NewRunStatus()
+		})
+
+		It("has a blocking ready channel", func() {
+			Consistently(rs.Done()).ShouldNot(BeClosed())
+		})
+
+		When("notify is called with an error", func() {
+			BeforeEach(func() {
+				rs.Notify(fmt.Errorf("fake-status-error"))
+			})
+
+			It("closes the blocking ready channel", func() {
+				Expect(rs.Done()).To(BeClosed())
+			})
+
+			It("sets the error value", func() {
+				Expect(rs.Err()).To(MatchError("fake-status-error"))
+			})
+		})
+	})
+
+	Describe("Instance", func() {
+		var (
+			i *externalbuilders.Instance
+		)
+
+		BeforeEach(func() {
+			i = &externalbuilders.Instance{
+				PackageID: "test-ccid",
+				Builder: &externalbuilders.Builder{
+					Location: "testdata/goodbuilder",
+					Logger:   flogging.MustGetLogger("builder.test"),
+				},
+			}
+		})
+
+		Describe("Start", func() {
+			It("invokes the builder's run command and sets the run status", func() {
+				err := i.Start(&ccintf.PeerConnection{
+					Address: "fake-peer-address",
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(i.RunStatus).NotTo(BeNil())
+				Eventually(i.RunStatus.Done()).Should(BeClosed())
+			})
+		})
+
+		Describe("Stop", func() {
+			It("statically returns an error", func() {
+				err := i.Stop()
+				Expect(err).To(MatchError("stop is not implemented for external builders yet"))
+			})
+		})
+
+		Describe("Wait", func() {
+			BeforeEach(func() {
+				err := i.Start(&ccintf.PeerConnection{
+					Address: "fake-peer-address",
+					TLSConfig: &ccintf.TLSConfig{
+						ClientCert: []byte("fake-client-cert"),
+						ClientKey:  []byte("fake-client-key"),
+						RootCert:   []byte("fake-root-cert"),
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns the exit status of the run", func() {
+				code, err := i.Wait()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(code).To(Equal(0))
+			})
+
+			When("run exits with a non-zero status", func() {
+				BeforeEach(func() {
+					i.Builder.Location = "testdata/failbuilder"
+					i.Builder.Name = "failbuilder"
+					err := i.Start(&ccintf.PeerConnection{
+						Address: "fake-peer-address",
+					})
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("returns the exit status of the run and accompanying error", func() {
+					code, err := i.Wait()
+					Expect(err).To(MatchError("builder 'failbuilder' run failed: exit status 1"))
+					Expect(code).To(Equal(1))
+				})
 			})
 		})
 	})
