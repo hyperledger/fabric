@@ -34,6 +34,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+// ExternalBuilder represents the configuration structure of
+// a chaincode external builder
+type ExternalBuilder struct {
+	EnvironmentWhitelist []string `json:"environmentWhitelist"`
+	Name                 string   `json:"name"`
+	Path                 string   `json:"path"`
+}
+
 // Config is the struct that defines the Peer configurations.
 type Config struct {
 	// LocalMSPID is the identifier of the local MSP.
@@ -139,10 +147,10 @@ type Config struct {
 
 	// ChaincodePull enables/disables force pulling of the base docker image.
 	ChaincodePull bool
-	// List of directories to treat as external builders and launchers for
+	// ExternalBuilders represents the builders and launchers for
 	// chaincode. The external builder detection processing will iterate over the
 	// builders in the order specified below.
-	ExternalBuilders []string
+	ExternalBuilders []ExternalBuilder
 
 	// ----- Operations config -----
 	// TODO: create separate sub-struct for Operations config.
@@ -257,9 +265,20 @@ func (c *Config) load() error {
 	}
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
-	for _, eb := range viper.GetStringSlice("chaincode.externalBuilders") {
-		c.ExternalBuilders = append(c.ExternalBuilders, config.TranslatePath(configDir, eb))
+	var externalBuilders []ExternalBuilder
+	err = viper.UnmarshalKey("chaincode.externalBuilders", &externalBuilders)
+	if err != nil {
+		return err
 	}
+	for _, builder := range externalBuilders {
+		if builder.Path == "" {
+			return fmt.Errorf("invalid external builder configuration, path attribute missing in one or more builders")
+		}
+		if builder.Name == "" {
+			return fmt.Errorf("external builder at path %s has no name attribute", builder.Path)
+		}
+	}
+	c.ExternalBuilders = externalBuilders
 
 	c.OperationsListenAddress = viper.GetString("operations.listenAddress")
 	c.OperationsTLSEnabled = viper.GetBool("operations.tls.enabled")
