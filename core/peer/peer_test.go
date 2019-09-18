@@ -80,7 +80,7 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 		secAdv,
 		defaultSecureDialOpts,
 		nil,
-		defaultDeliverClientDialOpts,
+		nil,
 		gossipConfig,
 		&service.ServiceConfig{},
 		&deliverservice.DeliverServiceConfig{

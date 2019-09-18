@@ -42,6 +42,9 @@ func TestGlobalConfig(t *testing.T) {
 			ServerTimeout:     time.Second * 20,
 			ServerMinInterval: time.Minute,
 		},
+		SecOpts: comm.SecureOptions{
+			UseTLS: true,
+		},
 	}
 
 	assert.Equal(t, expectedConfig, coreConfig)

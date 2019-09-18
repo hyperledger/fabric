@@ -267,11 +267,19 @@ func serve(args []string) error {
 	}
 	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
 
-	// FIXME: Creating the gossip service has the side effect of starting a bunch
-	// of go routines and registration with the grpc server.
-	deliverClientDialOpts := deliverClientDialOpts(coreConfig)
 	deliverServiceConfig := deliverservice.GlobalConfig()
 
+	deliverGRPCClient, err := comm.NewGRPCClient(comm.ClientConfig{
+		Timeout: deliverServiceConfig.ConnectionTimeout,
+		KaOpts:  deliverServiceConfig.KeepaliveOptions,
+		SecOpts: deliverServiceConfig.SecOpts,
+	})
+	if err != nil {
+		logger.Panicf("Could not create the deliver grpc client: [%+v]", err)
+	}
+
+	// FIXME: Creating the gossip service has the side effect of starting a bunch
+	// of go routines and registration with the grpc server.
 	gossipService, err := initGossipService(
 		policyMgr,
 		metricsProvider,
@@ -279,7 +287,7 @@ func serve(args []string) error {
 		signingIdentity,
 		cs,
 		coreConfig.PeerAddress,
-		deliverClientDialOpts,
+		deliverGRPCClient,
 		deliverServiceConfig,
 	)
 	if err != nil {
@@ -1058,7 +1066,7 @@ func initGossipService(
 	signer msp.SigningIdentity,
 	credSupport *comm.CredentialSupport,
 	peerAddress string,
-	deliverClientDialOpts []grpc.DialOption,
+	deliverGRPCClient *comm.GRPCClient,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 ) (*gossipservice.GossipService, error) {
 
@@ -1101,7 +1109,7 @@ func initGossipService(
 		secAdv,
 		secureDialOpts(credSupport),
 		credSupport,
-		deliverClientDialOpts,
+		deliverGRPCClient,
 		gossipConfig,
 		serviceConfig,
 		deliverServiceConfig,

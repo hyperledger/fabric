@@ -7,9 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package deliverservice
 
 import (
+	"io/ioutil"
 	"time"
 
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/config"
+
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -32,6 +36,8 @@ type DeliverServiceConfig struct {
 	ConnectionTimeout time.Duration
 	// Keepalive option for deliveryservice
 	KeepaliveOptions comm.KeepaliveOptions
+	// SecOpts provides the TLS info for connections
+	SecOpts comm.SecureOptions
 }
 
 // GlobalConfig obtains a set of configuration from viper, build and returns the config struct.
@@ -67,4 +73,21 @@ func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
 		c.KeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
 	}
 
+	c.SecOpts = comm.SecureOptions{
+		UseTLS:            viper.GetBool("peer.tls.enabled"),
+		RequireClientCert: viper.GetBool("peer.tls.clientAuthRequired"),
+	}
+
+	if c.SecOpts.RequireClientCert {
+		keyPEM, err := ioutil.ReadFile(config.GetPath("peer.tls.clientKey.file"))
+		if err != nil {
+			panic(errors.WithMessage(err, "unable to load peer.tls.clientKey.file"))
+		}
+		c.SecOpts.Key = keyPEM
+		certPEM, err := ioutil.ReadFile(config.GetPath("peer.tls.clientCert.file"))
+		if err != nil {
+			panic(errors.WithMessage(err, "unable to load peer.tls.clientCert.file"))
+		}
+		c.SecOpts.Certificate = certPEM
+	}
 }

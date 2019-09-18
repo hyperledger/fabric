@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -31,6 +30,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -121,32 +122,25 @@ type GossipServiceAdapter interface {
 // DeliveryServiceFactory factory to create and initialize delivery service instance
 type DeliveryServiceFactory interface {
 	// Returns an instance of delivery client
-	Service(g GossipServiceAdapter, endpoints []string, msc api.MessageCryptoService) (deliverservice.DeliverService, error)
+	Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, msc api.MessageCryptoService) deliverservice.DeliverService
 }
 
 type deliveryFactoryImpl struct {
-	signer                identity.SignerSerializer
-	credentialSupport     *corecomm.CredentialSupport
-	deliverClientDialOpts []grpc.DialOption
-	deliverServiceConfig  *deliverservice.DeliverServiceConfig
+	signer               identity.SignerSerializer
+	credentialSupport    *corecomm.CredentialSupport
+	deliverGRPCClient    *corecomm.GRPCClient
+	deliverServiceConfig *deliverservice.DeliverServiceConfig
 }
 
 // Returns an instance of delivery client
-func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (deliverservice.DeliverService, error) {
+func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, mcs api.MessageCryptoService) deliverservice.DeliverService {
 	return deliverservice.NewDeliverService(&deliverservice.Config{
-		ABCFactory:        deliverservice.DefaultABCFactory,
-		CryptoSvc:         mcs,
-		CredentialSupport: df.credentialSupport,
-		Endpoints:         endpoints,
-		ConnFactory: (&deliverservice.CredSupportDialerFactory{
-			CredentialSupport: df.credentialSupport,
-			KeepaliveOptions:  df.deliverServiceConfig.KeepaliveOptions,
-			TLSEnabled:        df.deliverServiceConfig.PeerTLSEnabled,
-		}).Dialer,
-		Gossip:                g,
-		Signer:                df.signer,
-		DeliverClientDialOpts: df.deliverClientDialOpts,
-		DeliverServiceConfig:  df.deliverServiceConfig,
+		CryptoSvc:            mcs,
+		Gossip:               g,
+		Signer:               df.signer,
+		DeliverGRPCClient:    df.deliverGRPCClient,
+		DeliverServiceConfig: df.deliverServiceConfig,
+		OrdererSource:        ordererSource,
 	})
 }
 
@@ -213,7 +207,7 @@ func New(
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
 	credSupport *corecomm.CredentialSupport,
-	deliverClientDialOpts []grpc.DialOption,
+	deliverGRPCClient *corecomm.GRPCClient,
 	gossipConfig *gossip.Config,
 	serviceConfig *ServiceConfig,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
@@ -243,10 +237,10 @@ func New(
 		leaderElection:  make(map[string]election.LeaderElectionService),
 		deliveryService: make(map[string]deliverservice.DeliverService),
 		deliveryFactory: &deliveryFactoryImpl{
-			signer:                peerIdentity,
-			credentialSupport:     credSupport,
-			deliverClientDialOpts: deliverClientDialOpts,
-			deliverServiceConfig:  deliverServiceConfig,
+			signer:               peerIdentity,
+			credentialSupport:    credSupport,
+			deliverGRPCClient:    deliverGRPCClient,
+			deliverServiceConfig: deliverServiceConfig,
 		},
 		peerIdentity:  serializedIdentity,
 		secAdv:        secAdv,
@@ -301,7 +295,7 @@ type DataStoreSupport struct {
 }
 
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
-func (g *GossipService) InitializeChannel(channelID string, endpoints []string, support Support) {
+func (g *GossipService) InitializeChannel(channelID string, ordererSource *orderers.ConnectionSource, support Support) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	// Initialize new state provider for given committer
@@ -365,11 +359,7 @@ func (g *GossipService) InitializeChannel(channelID string, endpoints []string, 
 		blockingMode,
 		stateConfig)
 	if g.deliveryService[channelID] == nil {
-		var err error
-		g.deliveryService[channelID], err = g.deliveryFactory.Service(g, endpoints, g.mcs)
-		if err != nil {
-			logger.Warningf("Cannot create delivery client, due to %+v", errors.WithStack(err))
-		}
+		g.deliveryService[channelID] = g.deliveryFactory.Service(g, ordererSource, g.mcs)
 	}
 
 	// Delivery service might be nil only if it was not able to get connected
@@ -441,17 +431,6 @@ func (g *GossipService) updateAnchors(config Config) {
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for channelID", config.ChannelID())
 	g.JoinChan(jcm, gossipcommon.ChannelID(config.ChannelID()))
-}
-
-func (g *GossipService) updateEndpoints(channelID string, endpoints []string) {
-	if ds, ok := g.deliveryService[channelID]; ok {
-		logger.Debugf("Updating endpoints for channelID %s", channelID)
-		if err := ds.UpdateEndpoints(channelID, endpoints); err != nil {
-			// The only reason to fail is because of absence of block provider
-			// for given channel id, hence printing a warning will be enough
-			logger.Warningf("Failed to update ordering service endpoints, due to %s", err)
-		}
-	}
 }
 
 // AddPayload appends message payload to for given chain
