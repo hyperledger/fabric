@@ -176,8 +176,8 @@ run_tests_with_coverage() {
 
 main() {
     # place the cache directory into the default build tree if it exists
-    if [ -d "${base_dir}/.build" ]; then
-        export GOCACHE="${base_dir}/.build/go-cache"
+    if [ -d "${base_dir}/build" ]; then
+        export GOCACHE="${base_dir}/build/go-cache"
     fi
 
     # explicit exclusions for ppc and s390x

@@ -10,7 +10,7 @@ set -eux -o pipefail
 # Find all proto dirs to be processed
 PROTO_DIRS="$(find "$(pwd)" \
     -path "$(pwd)/vendor" -prune -o \
-    -path "$(pwd)/.build" -prune -o \
+    -path "$(pwd)/build" -prune -o \
     -name '*.proto' -print0 | \
     xargs -0 -n 1 dirname | \
     sort -u | grep -v testdata)"

@@ -54,7 +54,7 @@ COUCHDB_VER ?= 2.3
 .SUFFIXES:
 MAKEFLAGS += --no-builtin-rules
 
-BUILD_DIR ?= .build
+BUILD_DIR ?= build
 NEXUS_REPO = nexus3.hyperledger.org:10001/hyperledger
 
 EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
