@@ -601,9 +601,9 @@ Smart Contract
 
 A smart contract is code -- invoked by a client application external to the
 blockchain network -- that manages access and modifications to a set of
-key-value pairs in the :ref:`World-State`. In Hyperledger Fabric, smart
-contracts are referred to as chaincode. Smart contract chaincode is installed
-onto peer nodes and then defined and used on one or more channels.
+key-value pairs in the :ref:`World-State` via :ref:`Transaction`. In Hyperledger Fabric,
+smart contracts are packaged as chaincode. Chaincode is installed on peers
+and then defined and used on one or more channels.
 
 .. _State-DB:
 
