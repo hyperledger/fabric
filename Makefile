@@ -86,11 +86,10 @@ GO_TAGS ?=
 
 # No sense rebuilding when non production code is changed
 PROJECT_FILES = $(shell git ls-files  | grep -Ev '^integration/|^vagrant/|.png$|^LICENSE|^vendor/')
-IMAGES = baseos buildenv ccenv orderer peer tools
-RELEASE_IMAGES = baseos ccenv orderer peer tools
-RELEASE_PKGS = orderer $(TOOLS_PKGS)
 RELEASE_PLATFORMS = darwin-amd64 linux-amd64 linux-ppc64le linux-s390x windows-amd64
-TOOLS_PKGS = configtxgen configtxlator cryptogen discover idemixgen peer
+RELEASE_PKGS = configtxgen cryptogen idemixgen discover configtxlator peer orderer
+RELEASE_IMAGES = baseos ccenv orderer peer tools
+IMAGES = buildenv $(RELEASE_IMAGES)
 
 pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/cmd/configtxlator
@@ -233,11 +232,9 @@ $(BUILD_DIR)/bin/%: $(PROJECT_FILES)
 	@echo "Binary available as $@"
 	@touch $@
 
-$(BUILD_DIR)/images/tools/$(DUMMY): $(patsubst %,release/linux-amd64/bin/%, $(TOOLS_PKGS))
+$(BUILD_DIR)/images/peer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
-$(BUILD_DIR)/images/peer/$(DUMMY): release/linux-amd64/bin/peer
-
-$(BUILD_DIR)/images/orderer/$(DUMMY): release/linux-amd64/bin/orderer
+$(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
 	@mkdir -p $(@D)
@@ -246,6 +243,7 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 	$(DBUILD) -f images/$(TARGET)/Dockerfile \
 		--build-arg GO_VER=${GO_VER} \
 		--build-arg ALPINE_VER=${ALPINE_VER} \
+		${BUILD_ARGS} \
 		-t $(DOCKER_NS)/fabric-$(TARGET) .
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
