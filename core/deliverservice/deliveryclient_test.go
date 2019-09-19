@@ -32,6 +32,9 @@ func TestStartDeliverForChannel(t *testing.T) {
 		SecOpts: comm.SecureOptions{
 			UseTLS:            true,
 			RequireClientCert: true,
+			// The below certificates were taken from the peer TLS
+			// dir as output by cryptogen.
+			// They are server.crt and server.key respectively.
 			Certificate: []byte(`-----BEGIN CERTIFICATE-----
 MIIChTCCAiygAwIBAgIQOrr7/tDzKhhCba04E6QVWzAKBggqhkjOPQQDAjB2MQsw
 CQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy

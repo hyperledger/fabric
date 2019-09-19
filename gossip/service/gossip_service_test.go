@@ -19,6 +19,7 @@ import (
 	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -163,7 +164,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
 
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
 			Store:     &mockTransientStore{},
 			Committer: &mockLedgerInfo{1},
 		})
@@ -225,7 +226,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -239,7 +240,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	channelName = "chanB"
 	for i := 0; i < n; i++ {
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -285,7 +286,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
 			Committer: &mockLedgerInfo{1},
 			Store:     &mockTransientStore{},
 		})
@@ -331,7 +332,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	for i := 0; i < n; i++ {
 		gossips[i].deliveryFactory = deliverServiceFactory
 		assert.Panics(t, func() {
-			gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(), Support{
+			gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), Support{
 				Committer: &mockLedgerInfo{1},
 				Store:     &mockTransientStore{},
 			})
@@ -911,7 +912,7 @@ func TestInvalidInitialization(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	dc := gService.deliveryFactory.Service(gService, orderers.NewConnectionSource(), &naiveCryptoService{})
+	dc := gService.deliveryFactory.Service(gService, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), &naiveCryptoService{})
 	assert.NotNil(t, dc)
 }
 

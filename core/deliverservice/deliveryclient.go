@@ -134,7 +134,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		DoneC:             make(chan struct{}),
 		Signer:            d.conf.Signer,
 		DeliverStreamer:   DeliverAdapter{},
-		Logger:            flogging.MustGetLogger("peer.blocksprovider").Named(fmt.Sprintf("[channel: %s]", chainID)),
+		Logger:            flogging.MustGetLogger("peer.blocksprovider").With("channel", chainID),
 		MaxRetryDelay:     time.Duration(d.conf.DeliverServiceConfig.ReConnectBackoffThreshold),
 		MaxRetryDuration:  d.conf.DeliverServiceConfig.ReconnectTotalTimeThreshold,
 		InitialRetryDelay: 100 * time.Millisecond,

@@ -19,12 +19,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("core.orderers")
-
 type ConnectionSource struct {
 	mutex              sync.RWMutex
 	allEndpoints       []*Endpoint
 	orgToEndpointsHash map[string][]byte
+	logger             *flogging.FabricLogger
 }
 
 type Endpoint struct {
@@ -38,9 +37,10 @@ type OrdererOrg struct {
 	RootCerts [][]byte
 }
 
-func NewConnectionSource() *ConnectionSource {
+func NewConnectionSource(logger *flogging.FabricLogger) *ConnectionSource {
 	return &ConnectionSource{
 		orgToEndpointsHash: map[string][]byte{},
+		logger:             logger,
 	}
 }
 
@@ -56,6 +56,7 @@ func (cs *ConnectionSource) RandomEndpoint() (*Endpoint, error) {
 func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]OrdererOrg) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
+	cs.logger.Debug("Processing updates for orderer endpoints")
 
 	anyChange := false
 	hasOrgEndpoints := false
@@ -76,22 +77,24 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 			continue
 		}
 
+		cs.logger.Debugf("Found orderer org '%s' has updates", orgName)
 		anyChange = true
 	}
 
 	for orgName := range cs.orgToEndpointsHash {
 		if _, ok := orgs[orgName]; !ok {
 			// An org that used to exist has been removed
+			cs.logger.Debugf("Found orderer org '%s' has been removed", orgName)
 			anyChange = true
 		}
 	}
 
 	if hasOrgEndpoints && len(globalAddrs) > 0 {
-		logger.Warning("Config defines both orderer org specific endpoints and global endpoints, global endpoints will be ignored")
+		cs.logger.Warning("Config defines both orderer org specific endpoints and global endpoints, global endpoints will be ignored")
 	}
 
 	if !hasOrgEndpoints && len(globalAddrs) != len(cs.allEndpoints) {
-		// There are no org endpoints, and the global addrs have changed
+		cs.logger.Debugf("There are no org endpoints, but the global addresses have changed")
 		anyChange = true
 	}
 
@@ -112,9 +115,13 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		// Set anyChange true if some new address was not
 		// in the set of old endpoints.
 		anyChange = len(newAddresses) != 0
+		if anyChange {
+			cs.logger.Debugf("There are no org endpoints, but some of the global addresses have changed")
+		}
 	}
 
 	if !anyChange {
+		cs.logger.Debugf("No orderer endpoint addresses or TLS certs were changed")
 		// No TLS certs changed, no org specified endpoints changed,
 		// and if we are using global endpoints, they are the same
 		// as our last set.  No need to update anything.
@@ -141,11 +148,11 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		for _, rootCert := range org.RootCerts {
 			if hasOrgEndpoints {
 				if err := comm.AddPemToCertPool(rootCert, certPool); err != nil {
-					logger.Warningf("Could not add orderer cert for org '%s' to cert pool: %s", orgName, err)
+					cs.logger.Warningf("Could not add orderer cert for org '%s' to cert pool: %s", orgName, err)
 				}
 			} else {
 				if err := comm.AddPemToCertPool(rootCert, globalCertPool); err != nil {
-					logger.Warningf("Could not add orderer cert for org '%s' to global cert pool: %s", orgName, err)
+					cs.logger.Warningf("Could not add orderer cert for org '%s' to global cert pool: %s", orgName, err)
 
 				}
 			}
@@ -163,6 +170,7 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 	}
 
 	if len(cs.allEndpoints) != 0 {
+		cs.logger.Debugf("Returning an orderer connection pool source with org specific endpoints only")
 		// There are some org specific endpoints, so we do not
 		// add any of the global endpoints to our pool.
 		return
@@ -175,4 +183,6 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 			Refreshed: make(chan struct{}),
 		})
 	}
+
+	cs.logger.Debugf("Returning an orderer connection pool source with global endpoints only")
 }
