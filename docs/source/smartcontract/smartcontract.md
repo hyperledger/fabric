@@ -291,32 +291,32 @@ namespace](../developapps/chaincodenamespace.html#cross-chaincode-access) topic.
 The smart contracts defined within a chaincode encode the domain dependent rules
 for a business process agreed between a set of blockchain organizations.
 However, a chaincode can also define low-level program code which corresponds to
-domain independent **system** interactions, unrelated to these smart contracts
+domain independent *system* interactions, unrelated to these smart contracts
 for business processes.
 
 The following are the different types of system chaincodes and their associated
 abbreviations:
 
-* Lifecycle system chaincode (LSCC) runs in all peers to handle package signing,
+* **Lifecycle system chaincode (LSCC)** runs in all peers to handle package signing,
   install, instantiate, and upgrade chaincode requests. You can read more about
   the LSCC implements this
   [process](../chaincode4noah.html#chaincode-lifecycle).
 
-* Configuration system chaincode (CSCC) runs in all peers to handle changes to a
+* **Configuration system chaincode (CSCC)** runs in all peers to handle changes to a
   channel configuration, such as a policy update.  You can read more about this
   process in the following chaincode
   [topic](../configtx.html#configuration-updates).
 
-* Query system chaincode (QSCC) runs in all peers to provide ledger APIs which
+* **Query system chaincode (QSCC)** runs in all peers to provide ledger APIs which
   include block query, transaction query etc. You can read more about these
   ledger APIs in the transaction context
   [topic](../developapps/transactioncontext.html).
 
-* Endorsement system chaincode (ESCC) runs in endorsing peers to
+* **Endorsement system chaincode (ESCC)** runs in endorsing peers to
   cryptographically sign a transaction response. You can read more about how
   the ESCC implements this [process](../peers/peers.html#phase-1-proposal).
 
-* Validation system chaincode (VSCC) validates a transaction, including checking
+* **Validation system chaincode (VSCC)** validates a transaction, including checking
   endorsement policy and read-write set versioning. You can read more about the
   LSCC implements this [process](../peers/peers.html#phase-3-validation).
 
