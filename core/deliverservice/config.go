@@ -79,14 +79,24 @@ func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
 	}
 
 	if c.SecOpts.RequireClientCert {
-		keyPEM, err := ioutil.ReadFile(config.GetPath("peer.tls.clientKey.file"))
+		certFile := config.GetPath("peer.tls.clientCert.file")
+		if certFile == "" {
+			certFile = config.GetPath("peer.tls.cert.file")
+		}
+
+		keyFile := config.GetPath("peer.tls.clientKey.file")
+		if keyFile == "" {
+			keyFile = config.GetPath("peer.tls.key.file")
+		}
+
+		keyPEM, err := ioutil.ReadFile(keyFile)
 		if err != nil {
-			panic(errors.WithMessage(err, "unable to load peer.tls.clientKey.file"))
+			panic(errors.WithMessagef(err, "unable to load key at '%s'", keyFile))
 		}
 		c.SecOpts.Key = keyPEM
-		certPEM, err := ioutil.ReadFile(config.GetPath("peer.tls.clientCert.file"))
+		certPEM, err := ioutil.ReadFile(certFile)
 		if err != nil {
-			panic(errors.WithMessage(err, "unable to load peer.tls.clientCert.file"))
+			panic(errors.WithMessagef(err, "unable to load cert at '%s'", certFile))
 		}
 		c.SecOpts.Certificate = certPEM
 	}
