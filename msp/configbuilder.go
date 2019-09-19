@@ -137,7 +137,7 @@ func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir stri
 		bccspConfig = factory.GetDefaultOpts()
 	}
 
-	if bccspConfig.ProviderName == "SW" {
+	if bccspConfig.ProviderName == "SW" || bccspConfig.SwOpts != nil {
 		if bccspConfig.SwOpts == nil {
 			bccspConfig.SwOpts = factory.GetDefaultOpts().SwOpts
 		}

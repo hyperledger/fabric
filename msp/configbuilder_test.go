@@ -12,9 +12,77 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestSetupBCCSPKeystoreConfig(t *testing.T) {
+	keystoreDir := "/tmp"
+
+	// Case 1 : Check with empty FactoryOpts
+	rtnConfig := SetupBCCSPKeystoreConfig(nil, keystoreDir)
+	assert.NotNil(t, rtnConfig)
+	assert.Equal(t, rtnConfig.ProviderName, "SW")
+	assert.NotNil(t, rtnConfig.SwOpts)
+	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
+	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+
+	// Case 2 : Check with 'SW' as default provider
+	// Case 2-1 : without SwOpts
+	bccspConfig := &factory.FactoryOpts{
+		ProviderName: "SW",
+	}
+	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
+	assert.NotNil(t, rtnConfig.SwOpts)
+	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
+	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+
+	// Case 2-2 : without SwOpts.FileKeystore
+	bccspConfig.SwOpts = &factory.SwOpts{
+		HashFamily: "SHA2",
+		SecLevel:   256,
+		Ephemeral:  true,
+	}
+	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
+	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
+	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+
+	// Case 2-3 : without SwOpts.FileKeystore.KeyStorePath
+	bccspConfig.SwOpts = &factory.SwOpts{
+		HashFamily:   "SHA2",
+		SecLevel:     256,
+		FileKeystore: &factory.FileKeystoreOpts{},
+	}
+	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
+	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+
+	// Case 2-4 : with empty SwOpts.FileKeystore.KeyStorePath
+	bccspConfig.SwOpts = &factory.SwOpts{
+		HashFamily:   "SHA2",
+		SecLevel:     256,
+		FileKeystore: &factory.FileKeystoreOpts{KeyStorePath: ""},
+	}
+	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
+	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+
+	// Case 3 : Check with 'PKCS11' as default provider
+	// Case 3-1 : without SwOpts
+	bccspConfig.ProviderName = "PKCS11"
+	bccspConfig.SwOpts = nil
+	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
+	assert.Nil(t, rtnConfig.SwOpts)
+
+	// Case 3-2 : without SwOpts.FileKeystore
+	bccspConfig.SwOpts = &factory.SwOpts{
+		HashFamily: "SHA2",
+		SecLevel:   256,
+		Ephemeral:  true,
+	}
+	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
+	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
+	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+}
 
 func TestGetLocalMspConfig(t *testing.T) {
 	mspDir, err := configtest.GetDevMspDir()
