@@ -276,7 +276,7 @@ networks with `ORG2` and `ORG3` respectively.
 
 ## Intercommunication
 
-Smart Contracts are able to call to other smart contracts both within the same
+A Smart Contract can call other smart contracts both within the same
 channel and across different channels. It this way, they can read and write
 world state data to which they would not otherwise have access due to smart
 contract namespaces.
