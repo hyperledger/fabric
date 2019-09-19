@@ -140,7 +140,8 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 		TotalQueryLimit: 10000,
 	}
 	containerRuntime := &ContainerRuntime{
-		CACert: ca.CertBytes(),
+		BuildRegistry: &container.BuildRegistry{},
+		CACert:        ca.CertBytes(),
 		ContainerRouter: &container.Router{
 			DockerVM: &dockercontroller.DockerVM{
 				PeerID:       "",

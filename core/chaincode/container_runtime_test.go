@@ -12,6 +12,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,6 +23,7 @@ func TestContainerRuntimeStart(t *testing.T) {
 	cr := &chaincode.ContainerRuntime{
 		ContainerRouter: fakeRouter,
 		PeerAddress:     "peer-address",
+		BuildRegistry:   &container.BuildRegistry{},
 	}
 
 	err := cr.Start("chaincode-name:chaincode-version")
@@ -36,6 +38,13 @@ func TestContainerRuntimeStart(t *testing.T) {
 	assert.Equal(t, "chaincode-name:chaincode-version", ccid)
 	assert.Equal(t, "peer-address", peerConnection.Address)
 	assert.Nil(t, peerConnection.TLSConfig)
+
+	// Try starting a second time, to ensure build is not invoked again
+	// as the BuildRegistry already holds it
+	err = cr.Start("chaincode-name:chaincode-version")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, fakeRouter.BuildCallCount())
+	assert.Equal(t, 2, fakeRouter.StartCallCount())
 }
 
 func TestContainerRuntimeStartErrors(t *testing.T) {
@@ -57,6 +66,7 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 
 		cr := &chaincode.ContainerRuntime{
 			ContainerRouter: fakeRouter,
+			BuildRegistry:   &container.BuildRegistry{},
 		}
 
 		err := cr.Start("ccid")

@@ -8,6 +8,7 @@ package chaincode
 
 import (
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
@@ -37,6 +38,7 @@ type ContainerRuntime struct {
 	ContainerRouter ContainerRouter
 	CACert          []byte
 	PeerAddress     string
+	BuildRegistry   *container.BuildRegistry
 }
 
 // Start launches chaincode in a runtime environment.
@@ -55,7 +57,14 @@ func (c *ContainerRuntime) Start(ccid string) error {
 		}
 	}
 
-	if err := c.ContainerRouter.Build(ccid); err != nil {
+	buildStatus, ok := c.BuildRegistry.BuildStatus(ccid)
+	if !ok {
+		err := c.ContainerRouter.Build(ccid)
+		buildStatus.Notify(err)
+	}
+	<-buildStatus.Done()
+
+	if err := buildStatus.Err(); err != nil {
 		return errors.WithMessage(err, "error building image")
 	}
 

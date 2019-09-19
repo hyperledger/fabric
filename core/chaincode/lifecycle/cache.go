@@ -82,6 +82,8 @@ type Cache struct {
 	localChaincodes map[string]*LocalChaincode
 	eventBroker     *EventBroker
 	MetadataHandler MetadataHandler
+
+	chaincodeCustodian *ChaincodeCustodian
 }
 
 type LocalChaincode struct {
@@ -119,14 +121,15 @@ func (l *LocalChaincode) createMetadataMapFromReferences() map[string][]*chainco
 	return references
 }
 
-func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler) *Cache {
+func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler, custodian *ChaincodeCustodian) *Cache {
 	return &Cache{
-		definedChaincodes: map[string]*ChannelCache{},
-		localChaincodes:   map[string]*LocalChaincode{},
-		Resources:         resources,
-		MyOrgMSPID:        myOrgMSPID,
-		eventBroker:       NewEventBroker(resources.ChaincodeStore, resources.PackageParser),
-		MetadataHandler:   metadataManager,
+		chaincodeCustodian: custodian,
+		definedChaincodes:  map[string]*ChannelCache{},
+		localChaincodes:    map[string]*LocalChaincode{},
+		Resources:          resources,
+		MyOrgMSPID:         myOrgMSPID,
+		eventBroker:        NewEventBroker(resources.ChaincodeStore, resources.PackageParser),
+		MetadataHandler:    metadataManager,
 	}
 }
 
@@ -145,11 +148,11 @@ func (c *Cache) InitializeLocalChaincodes() error {
 	for _, ccPackage := range ccPackages {
 		ccPackageBytes, err := c.Resources.ChaincodeStore.Load(ccPackage.PackageID)
 		if err != nil {
-			return errors.WithMessagef(err, "could not load chaincode with pakcage ID '%s'", ccPackage.PackageID)
+			return errors.WithMessagef(err, "could not load chaincode with package ID '%s'", ccPackage.PackageID)
 		}
 		parsedCCPackage, err := c.Resources.PackageParser.Parse(ccPackageBytes)
 		if err != nil {
-			return errors.WithMessagef(err, "could not parse chaincode with pakcage ID '%s'", ccPackage.PackageID)
+			return errors.WithMessagef(err, "could not parse chaincode with package ID '%s'", ccPackage.PackageID)
 		}
 		c.handleChaincodeInstalledWhileLocked(true, parsedCCPackage.Metadata, ccPackage.PackageID)
 	}
@@ -227,6 +230,7 @@ func (c *Cache) handleChaincodeInstalledWhileLocked(initializing bool, md *persi
 			References: map[string]map[string]*CachedChaincodeDefinition{},
 		}
 		c.localChaincodes[hashOfCCHash] = localChaincode
+		c.chaincodeCustodian.NotifyInstalled(packageID)
 	}
 	localChaincode.Info = &ChaincodeInstallInfo{
 		PackageID: packageID,
@@ -238,6 +242,7 @@ func (c *Cache) handleChaincodeInstalledWhileLocked(initializing bool, md *persi
 		for chaincodeName, cachedChaincode := range channelCache {
 			cachedChaincode.InstallInfo = localChaincode.Info
 			logger.Infof("Installed chaincode with package ID '%s' now available on channel %s for chaincode definition %s:%s", packageID, channelID, chaincodeName, cachedChaincode.Definition.EndorsementInfo.Version)
+			c.chaincodeCustodian.NotifyInstalledAndRunnable(packageID)
 		}
 	}
 
@@ -484,6 +489,7 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 		cachedChaincode.InstallInfo = localChaincode.Info
 		if localChaincode.Info != nil {
 			logger.Infof("Chaincode with package ID '%s' now available on channel %s for chaincode definition %s:%s", localChaincode.Info.PackageID, channelID, name, cachedChaincode.Definition.EndorsementInfo.Version)
+			c.chaincodeCustodian.NotifyInstalledAndRunnable(localChaincode.Info.PackageID)
 		} else {
 			logger.Debugf("Chaincode definition for chaincode '%s' on channel '%s' is approved, but not installed", name, channelID)
 		}

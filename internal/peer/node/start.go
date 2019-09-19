@@ -367,7 +367,9 @@ func serve(args []string) error {
 	//
 	// gossip <-- lifecycleCache
 
-	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager)
+	chaincodeCustodian := lifecycle.NewChaincodeCustodian()
+
+	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager, chaincodeCustodian)
 
 	txProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
 		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
@@ -462,24 +464,6 @@ func serve(args []string) error {
 		BuiltinSCCs: builtinSCCs,
 	}
 
-	lifecycleFunctions := &lifecycle.ExternalFunctions{
-		Resources:                 lifecycleResources,
-		InstallListener:           lifecycleCache,
-		InstalledChaincodesLister: lifecycleCache,
-	}
-
-	lifecycleSCC := &lifecycle.SCC{
-		Dispatcher: &dispatcher.Dispatcher{
-			Protobuf: &dispatcher.ProtobufImpl{},
-		},
-		DeployedCCInfoProvider: lifecycleValidatorCommitter,
-		QueryExecutorProvider:  lifecycleTxQueryExecutorGetter,
-		Functions:              lifecycleFunctions,
-		OrgMSPID:               mspID,
-		ChannelConfigSource:    peerInstance,
-		ACLProvider:            aclProvider,
-	}
-
 	var client *docker.Client
 	if coreConfig.VMDockerTLSEnabled {
 		client, err = docker.NewTLSClient(coreConfig.VMEndpoint, coreConfig.DockerCert, coreConfig.DockerKey, coreConfig.DockerCA)
@@ -522,20 +506,45 @@ func serve(args []string) error {
 		Builders: coreConfig.ExternalBuilders,
 	}
 
-	containerRuntime := &chaincode.ContainerRuntime{
-		CACert:        ca.CertBytes(),
-		CertGenerator: authenticator,
-		PeerAddress:   ccEndpoint,
-		ContainerRouter: &container.Router{
-			DockerVM:   dockerVM,
-			ExternalVM: externalVMAdapter{externalVM},
-			PackageProvider: &persistence.FallbackPackageLocator{
-				ChaincodePackageLocator: &persistence.ChaincodePackageLocator{
-					ChaincodeDir: chaincodeInstallPath,
-				},
-				LegacyCCPackageLocator: &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()},
+	buildRegistry := &container.BuildRegistry{}
+
+	containerRouter := &container.Router{
+		DockerVM:   dockerVM,
+		ExternalVM: externalVMAdapter{externalVM},
+		PackageProvider: &persistence.FallbackPackageLocator{
+			ChaincodePackageLocator: &persistence.ChaincodePackageLocator{
+				ChaincodeDir: chaincodeInstallPath,
 			},
+			LegacyCCPackageLocator: &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()},
 		},
+	}
+
+	containerRuntime := &chaincode.ContainerRuntime{
+		BuildRegistry:   buildRegistry,
+		CACert:          ca.CertBytes(),
+		CertGenerator:   authenticator,
+		PeerAddress:     ccEndpoint,
+		ContainerRouter: containerRouter,
+	}
+
+	lifecycleFunctions := &lifecycle.ExternalFunctions{
+		Resources:                 lifecycleResources,
+		InstallListener:           lifecycleCache,
+		InstalledChaincodesLister: lifecycleCache,
+		ChaincodeBuilder:          containerRouter,
+		BuildRegistry:             buildRegistry,
+	}
+
+	lifecycleSCC := &lifecycle.SCC{
+		Dispatcher: &dispatcher.Dispatcher{
+			Protobuf: &dispatcher.ProtobufImpl{},
+		},
+		DeployedCCInfoProvider: lifecycleValidatorCommitter,
+		QueryExecutorProvider:  lifecycleTxQueryExecutorGetter,
+		Functions:              lifecycleFunctions,
+		OrgMSPID:               mspID,
+		ChannelConfigSource:    peerInstance,
+		ACLProvider:            aclProvider,
 	}
 
 	// Keep TestQueries working
@@ -549,6 +558,8 @@ func serve(args []string) error {
 		Runtime:        containerRuntime,
 		StartupTimeout: chaincodeConfig.StartupTimeout,
 	}
+
+	go chaincodeCustodian.Work(buildRegistry, containerRouter, chaincodeLauncher)
 
 	chaincodeSupport := &chaincode.ChaincodeSupport{
 		ACLProvider:            aclProvider,
