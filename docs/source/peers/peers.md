@@ -400,7 +400,7 @@ rejected.
 
 The second phase of the transaction workflow is the packaging phase. The orderer
 is pivotal to this process --- it receives transactions containing endorsed
-transaction proposal responses from many applications, and orderes the
+transaction proposal responses from many applications, and orders the
 transactions into blocks. For more details about the
 ordering and packaging phase, check out our
 [conceptual information about the ordering phase](../orderer/ordering_service.html#phase-two-ordering-and-packaging-transactions-into-blocks).
