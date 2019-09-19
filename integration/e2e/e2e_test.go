@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
@@ -107,7 +108,12 @@ var _ = Describe("EndToEnd", func() {
 			Expect(err).NotTo(HaveOccurred())
 			peer := network.Peer("Org1", "peer0")
 			core := network.ReadPeerConfig(peer)
-			core.Chaincode.ExternalBuilders = []string{filepath.Join(cwd, "..", "externalbuilders", "golang")}
+			core.Chaincode.ExternalBuilders = []corepeer.ExternalBuilder{
+				{
+					Path: filepath.Join(cwd, "..", "externalbuilders", "golang"),
+					Name: "golang",
+				},
+			}
 			network.WritePeerConfig(peer, core)
 
 			network.Bootstrap()

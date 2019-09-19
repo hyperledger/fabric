@@ -15,15 +15,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/peer"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var _ = Describe("Externalbuilders", func() {
@@ -91,7 +91,20 @@ var _ = Describe("Externalbuilders", func() {
 
 		BeforeEach(func() {
 			detector = &externalbuilders.Detector{
-				[]string{"bad1", "testdata", "bad2"},
+				Builders: []peer.ExternalBuilder{
+					{
+						Path: "bad1",
+						Name: "bad1",
+					},
+					{
+						Path: "testdata",
+						Name: "testdata",
+					},
+					{
+						Path: "bad2",
+						Name: "bad2",
+					},
+				},
 			}
 		})
 
@@ -100,7 +113,7 @@ var _ = Describe("Externalbuilders", func() {
 				instance, err := detector.Build("fake-package-id", md, codePackage)
 				Expect(err).NotTo(HaveOccurred())
 				instance.BuildContext.Cleanup()
-				Expect(instance.Builder.Name()).To(Equal("testdata"))
+				Expect(instance.Builder.Name).To(Equal("testdata"))
 			})
 
 			Context("when no builder can be found", func() {
@@ -125,6 +138,7 @@ var _ = Describe("Externalbuilders", func() {
 		BeforeEach(func() {
 			builder = &externalbuilders.Builder{
 				Location: "testdata",
+				Name:     "testdata",
 			}
 
 			var err error
@@ -229,13 +243,13 @@ var _ = Describe("Externalbuilders", func() {
 	Describe("NewCommand", func() {
 		It("only propagates expected variables", func() {
 			var expectedEnv []string
-			for _, key := range []string{"GOCACHE", "HOME", "LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"} {
+			for _, key := range externalbuilders.DefaultEnvWhitelist {
 				if val, ok := os.LookupEnv(key); ok {
 					expectedEnv = append(expectedEnv, fmt.Sprintf("%s=%s", key, val))
 				}
 			}
 
-			cmd := externalbuilders.NewCommand("/usr/bin/env")
+			cmd := externalbuilders.NewCommand("/usr/bin/env", externalbuilders.DefaultEnvWhitelist)
 			Expect(cmd.Env).To(ConsistOf(expectedEnv))
 
 			output, err := cmd.CombinedOutput()

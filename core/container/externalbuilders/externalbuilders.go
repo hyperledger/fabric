@@ -21,11 +21,14 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("chaincode.externalbuilders")
+var (
+	DefaultEnvWhitelist = []string{"GOCACHE", "HOME", "LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"}
+	logger              = flogging.MustGetLogger("chaincode.externalbuilders")
+)
 
 const MetadataFile = "metadata.json"
 
@@ -48,14 +51,16 @@ func (i *Instance) Wait() (int, error) {
 }
 
 type Detector struct {
-	Builders []string
+	Builders []peer.ExternalBuilder
 }
 
 func (d *Detector) Detect(buildContext *BuildContext) *Builder {
-	for _, builderLocation := range d.Builders {
+	for _, detectBuilder := range d.Builders {
 		builder := &Builder{
-			Location: builderLocation,
-			Logger:   logger.Named(filepath.Base(builderLocation)),
+			Location:     detectBuilder.Path,
+			Logger:       logger.Named(filepath.Base(detectBuilder.Path)),
+			Name:         detectBuilder.Name,
+			EnvWhitelist: detectBuilder.EnvironmentWhitelist,
 		}
 		if builder.Detect(buildContext) {
 			return builder
@@ -189,21 +194,24 @@ func (bc *BuildContext) Cleanup() {
 }
 
 type Builder struct {
-	Location string
-	Logger   *flogging.FabricLogger
+	EnvWhitelist []string
+	Location     string
+	Logger       *flogging.FabricLogger
+	Name         string
 }
 
 func (b *Builder) Detect(buildContext *BuildContext) bool {
 	detect := filepath.Join(b.Location, "bin", "detect")
 	cmd := NewCommand(
 		detect,
+		b.EnvWhitelist,
 		buildContext.SourceDir,
 		buildContext.MetadataDir,
 	)
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		logger.Debugf("Detection for builder '%s' failed: %s", b.Name(), err)
+		logger.Debugf("Detection for builder '%s' failed: %s", b.Name, err)
 		// XXX, we probably also want to differentiate between a 'not detected'
 		// and a 'I failed nastily', but, again, good enough for now
 		return false
@@ -216,6 +224,7 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 	build := filepath.Join(b.Location, "bin", "build")
 	cmd := NewCommand(
 		build,
+		b.EnvWhitelist,
 		buildContext.SourceDir,
 		buildContext.MetadataDir,
 		buildContext.OutputDir,
@@ -223,7 +232,7 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Wrapf(err, "builder '%s' failed", b.Name())
+		return errors.Wrapf(err, "builder '%s' failed", b.Name)
 	}
 
 	return nil
@@ -260,6 +269,7 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 	launch := filepath.Join(b.Location, "bin", "launch")
 	cmd := NewCommand(
 		launch,
+		b.EnvWhitelist,
 		buildContext.SourceDir,
 		buildContext.MetadataDir,
 		buildContext.OutputDir,
@@ -268,29 +278,42 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 
 	err = RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Wrapf(err, "builder '%s' failed", b.Name())
+		return errors.Wrapf(err, "builder '%s' failed", b.Name)
 	}
 
 	return nil
 }
 
-// Name is a convenience method and uses the base name of the builder
-// for identification purposes.
-func (b *Builder) Name() string {
-	return filepath.Base(b.Location)
-}
-
 // NewCommand creates an exec.Cmd that is configured to prune the calling
 // environment down to LD_LIBRARY_PATH, LIBPATH, PATH, and TMPDIR environment
 // variables.
-func NewCommand(name string, args ...string) *exec.Cmd {
+func NewCommand(name string, envWhiteList []string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	for _, key := range []string{"GOCACHE", "HOME", "LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"} {
+	whitelist := appendDefaultWhitelist(envWhiteList)
+	for _, key := range whitelist {
 		if val, ok := os.LookupEnv(key); ok {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
 		}
 	}
 	return cmd
+}
+
+func appendDefaultWhitelist(envWhitelist []string) []string {
+	for _, variable := range DefaultEnvWhitelist {
+		if !contains(envWhitelist, variable) {
+			envWhitelist = append(envWhitelist, variable)
+		}
+	}
+	return envWhitelist
+}
+
+func contains(envWhiteList []string, key string) bool {
+	for _, variable := range envWhiteList {
+		if key == variable {
+			return true
+		}
+	}
+	return false
 }
 
 func RunCommand(logger *flogging.FabricLogger, cmd *exec.Cmd) error {

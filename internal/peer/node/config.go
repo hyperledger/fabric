@@ -12,7 +12,6 @@ import (
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
-
 	"github.com/spf13/viper"
 )
 
