@@ -413,10 +413,10 @@ and packaging them into blocks, ready for distribution to the peers.
 
 The final phase of the transaction workflow involves the distribution and
 subsequent validation of blocks from the orderer to the peers, where they can be
-applied to the ledger. Specifically, at each peer, every transaction within a
+committed to the ledger. Specifically, at each peer, every transaction within a
 block is validated to ensure that it has been consistently endorsed by all
-relevant organizations before it is applied to the ledger. Failed transactions
-are retained for audit, but are not applied to the ledger.
+relevant organizations before it is committed to the ledger. Failed transactions
+are retained for audit, but are not committed to the ledger.
 
 ![Peer12](./peers.diagram.12.png)
 
