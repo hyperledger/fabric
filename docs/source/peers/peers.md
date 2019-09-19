@@ -303,8 +303,8 @@ Org2.
 We've seen that peers form the basis for a blockchain network, hosting ledgers
 and smart contracts which can be queried and updated by peer-connected applications.
 However, the mechanism by which applications and peers interact with each other
-to ensure that every peer's ledger is kept consistent is mediated by special
-nodes called *orderers*, and it's to these nodes we now turn our
+to ensure that every peer's ledger is kept consistent with each other is mediated
+by special nodes called *orderers*, and it's to these nodes we now turn our
 attention.
 
 An update transaction is quite different from a query transaction because a single
