@@ -244,13 +244,13 @@ topic](../developapps/chaincodenamespace.html).
 ## Channels
 
 Hyperledger Fabric allows an organization to simultaneously participate in
-multiple, separate blockchain networks via **channels**. By joining multiple
-channels, an organization can participate in a so-called **network of
-networks**.  Channels provide an efficient sharing of infrastructure while
-maintaining data and communications privacy. They are independent enough to help
-organizations separate their work traffic with different counterparties, but
-integrated enough to allow them to coordinate independent activities when
-necessary.
+multiple, overlaid blockchains within a blockchain network via **channels**.
+By joining multiple channels within the same blockchain network, an organization can
+participate in a so-called **network of networks**. Channels provide an efficient
+sharing of infrastructure while maintaining data and communications privacy. They are
+independent enough to help organizations separate their work traffic with different
+counterparties, but integrated enough to allow them to coordinate independent activities
+when necessary.
 
 ![smart.diagram5](./smartcontract.diagram.05.png) *A channel provides a
 completely separate communication mechanism between a set of organizations. When
