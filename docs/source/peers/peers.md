@@ -127,7 +127,7 @@ chaincode S1 to query or update the ledger L1. P1 invokes S1 to generate a
 proposal response that contains a query result or a proposed ledger update.
 Application A receives the proposal response and, for queries,
 the process is now complete. For updates, A builds a transaction
-from all of the responses, which it sends it to O1 for ordering. O1 collects
+from all of the responses, which it sends to O1 for ordering. O1 collects
 transactions from across the network into blocks, and distributes these to all
 peers, including P1. P1 validates the transaction before applying to L1. Once L1
 is updated, P1 generates an event, received by A, to signify completion.*
