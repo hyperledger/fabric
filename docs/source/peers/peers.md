@@ -111,8 +111,8 @@ Applications always connect to peers when they need to access ledgers and
 chaincodes. The Fabric Software Development Kit (SDK) makes this
 easy for programmers --- its APIs enable applications to connect to peers, invoke
 chaincodes to generate transactions, submit transactions to the network that
-will get ordered and committed to the distributed ledger, and receive events
-when this process is complete.
+will get ordered, validated and committed to the distributed ledger, and receive
+events when this process is complete.
 
 Through a peer connection, applications can execute chaincodes to query or
 update a ledger. The result of a ledger query transaction is returned
