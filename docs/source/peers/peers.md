@@ -129,7 +129,7 @@ Application A receives the proposal response and, for queries,
 the process is now complete. For updates, A builds a transaction
 from all of the responses, which it sends it to O1 for ordering. O1 collects
 transactions from across the network into blocks, and distributes these to all
-peers, including P1. P1 validates the transaction before applying to L1. Once L1
+peers, including P1. P1 validates the transaction before committing to L1. Once L1
 is updated, P1 generates an event, received by A, to signify completion.*
 
 A peer can return the results of a query to an application immediately since
