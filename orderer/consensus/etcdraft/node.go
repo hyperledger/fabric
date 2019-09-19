@@ -76,6 +76,9 @@ func (n *node) start(fresh, join bool) {
 }
 
 func (n *node) run(campaign bool) {
+	electionTimeout := n.tickInterval.Seconds() * float64(n.config.ElectionTick)
+	halfElectionTimeout := electionTimeout / 2
+
 	raftTicker := n.clock.NewTicker(n.tickInterval)
 
 	if s := n.storage.Snapshot(); !raft.IsEmptySnap(s) {
@@ -122,6 +125,9 @@ func (n *node) run(campaign bool) {
 			}
 			duration := n.clock.Since(startStoring).Seconds()
 			n.metrics.DataPersistDuration.Observe(float64(duration))
+			if duration > halfElectionTimeout {
+				n.logger.Warningf("WAL sync took %v seconds and the network is configured to start elections after %v seconds. Your disk is too slow and may cause loss of quorum and trigger leadership election.", duration, electionTimeout)
+			}
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				n.chain.snapC <- &rd.Snapshot
