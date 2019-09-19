@@ -150,8 +150,8 @@ to the application a **proposed** update --- one that this peer would apply
 subject to other peers' prior agreement. The first extra step --- step four ---
 requires that applications send an appropriate set of matching proposed updates
 to the entire network of peers as a transaction for commitment to their
-respective ledgers. This is achieved by the application using an **orderer** to
-package transactions into blocks, and distribute them to the entire network of
+respective ledgers. This is achieved by the application by using an **orderer** to
+package transactions into blocks, and distributing them to the entire network of
 peers, where they can be verified before being applied to each peer's local copy
 of the ledger. As this whole ordering processing takes some time to complete
 (seconds), the application is notified asynchronously, as shown in step five.
