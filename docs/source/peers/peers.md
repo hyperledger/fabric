@@ -475,7 +475,7 @@ network. This is often helpful as it keeps the logic of the chaincode
 confidential to endorsing organizations. This is in contrast to the output of
 the chaincodes (the transaction proposal responses) which are shared with every
 peer in the channel, whether or not they endorsed the transaction. This
-specialization of endorsing peers is designed to help scalability.
+specialization of endorsing peers is designed to help scalability and confidentiality.
 
 Finally, every time a block is committed to a peer's ledger, that peer
 generates an appropriate *event*. *Block events* include the full block content,
