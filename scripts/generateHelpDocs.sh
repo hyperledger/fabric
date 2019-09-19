@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-PATH=.build/bin/:${PATH}
+PATH=build/bin/:${PATH}
 
 # Takes in 4 arguments
 # 1. Output doc file
