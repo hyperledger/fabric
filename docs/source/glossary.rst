@@ -535,7 +535,7 @@ Proposal
 --------
 
 A request for endorsement that is aimed at specific peers on a channel. Each
-proposal is either an Init or an invoke (read/write) request.
+proposal is either an Init or an Invoke (read/write) request.
 
 
 .. _Query:
