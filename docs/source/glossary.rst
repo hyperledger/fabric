@@ -211,13 +211,6 @@ definition can be committed to the channel. After the definition is committed,
 the first invoke of the chaincode (or, if requested, the execution of the Init
 function) will start the chaincode on the channel.
 
-.. _Current-State:
-
-Current State
--------------
-
-See World-State_.
-
 .. _Dynamic-Membership:
 
 Dynamic Membership
