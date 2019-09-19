@@ -292,9 +292,9 @@ you know more than enough to continue your understanding of peers!
 
 Finally, note that it's not really important where the peer is physically
 located --- it could reside in the cloud, or in a data centre owned by one
-of the organizations, or on a local machine --- it's the identity associated
-with it that identifies it as being owned by a particular organization. In our
-example above, P3 could be hosted in Org1's data center, but as long as the
+of the organizations, or on a local machine --- it's the digital certificate
+associated with it that identifies it as being owned by a particular organization.
+In our example above, P3 could be hosted in Org1's data center, but as long as the
 digital certificate associated with it is issued by CA2, then it's owned by
 Org2.
 
