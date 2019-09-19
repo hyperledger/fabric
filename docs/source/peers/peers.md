@@ -461,8 +461,8 @@ ledger when the proposed update was generated. This may not always be possible,
 even when the transaction has been fully endorsed. For example, another
 transaction may have updated the same asset in the ledger such that the
 transaction update is no longer valid and therefore can no longer be applied. In
-this way each peer's copy of the ledger is kept consistent across the network
-because they each follow the same rules for validation.
+this way, the ledger is kept consistent across each peer in the channel because
+they each follow the same rules for validation.
 
 After a peer has successfully validated each individual transaction, it updates
 the ledger. Failed transactions are not applied to the ledger, but they are
