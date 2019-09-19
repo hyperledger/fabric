@@ -201,6 +201,34 @@ func decodeSavepoint(couchDoc *couchdb.CouchDoc) (*version.Height, error) {
 	return &version.Height{BlockNum: savepointDoc.BlockNum, TxNum: savepointDoc.TxNum}, nil
 }
 
+type dataformatInfo struct {
+	Version string `json:"Version"`
+}
+
+func encodeDataformatInfo(dataFormatVersion string) (*couchdb.CouchDoc, error) {
+	var err error
+	dataformatInfo := &dataformatInfo{
+		Version: dataFormatVersion,
+	}
+	dataformatInfoJSON, err := json.Marshal(dataformatInfo)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to marshal dataformatInfo [%#v]", dataformatInfo)
+		logger.Errorf("%+v", err)
+		return nil, err
+	}
+	return &couchdb.CouchDoc{JSONValue: dataformatInfoJSON, Attachments: nil}, nil
+}
+
+func decodeDataformatInfo(couchDoc *couchdb.CouchDoc) (string, error) {
+	dataformatInfo := &dataformatInfo{}
+	if err := json.Unmarshal(couchDoc.JSONValue, dataformatInfo); err != nil {
+		err = errors.Wrapf(err, "failed to unmarshal json [%#v] into dataformatInfo", couchDoc.JSONValue)
+		logger.Errorf("%+v", err)
+		return "", err
+	}
+	return dataformatInfo.Version, nil
+}
+
 func validateValue(value []byte) error {
 	isJSON, jsonVal := tryCastingToJSON(value)
 	if !isJSON {

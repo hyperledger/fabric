@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -400,7 +401,7 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	maxRetriesOnStartup := couchInstance.conf.MaxRetriesOnStartup
 
 	resp, couchDBReturn, err := couchInstance.handleRequest(context.Background(), http.MethodGet, "", "VerifyCouchConfig", connectURL, nil,
-		couchInstance.conf.Username, couchInstance.conf.Password, maxRetriesOnStartup, true, nil)
+		"", "", maxRetriesOnStartup, true, nil)
 
 	if err != nil {
 		return nil, couchDBReturn, errors.WithMessage(err, "unable to connect to CouchDB, check the hostname and port")
@@ -427,6 +428,71 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	}
 
 	return dbResponse, couchDBReturn, nil
+}
+
+// IsEmpty returns false if couchInstance contains any databases
+// (except couchdb system databases and any database name supplied in the parameter 'databasesToIgnore')
+func (couchInstance *CouchInstance) IsEmpty(databasesToIgnore []string) (bool, error) {
+	toIgnore := map[string]bool{}
+	for _, s := range databasesToIgnore {
+		toIgnore[s] = true
+	}
+	applicationDBNames, err := couchInstance.RetrieveApplicationDBNames()
+	if err != nil {
+		return false, err
+	}
+	for _, dbName := range applicationDBNames {
+		if !toIgnore[dbName] {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// RetrieveApplicationDBNames returns all the applicaiton database names in the couch instance
+func (couchInstance *CouchInstance) RetrieveApplicationDBNames() ([]string, error) {
+	connectURL, err := url.Parse(couchInstance.URL())
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err)
+		return nil, errors.Wrapf(err, "error parsing couch instance URL: %s", couchInstance.URL())
+	}
+	connectURL.Path = "/_all_dbs"
+	maxRetries := couchInstance.conf.MaxRetries
+	resp, _, err := couchInstance.handleRequest(
+		context.Background(),
+		http.MethodGet,
+		"",
+		"IsEmpty",
+		connectURL,
+		nil,
+		"",
+		"",
+		maxRetries,
+		true,
+		nil,
+	)
+
+	if err != nil {
+		return nil, errors.WithMessage(err, "unable to connect to CouchDB, check the hostname and port")
+	}
+
+	var dbNames []string
+	defer closeResponseBody(resp)
+	if err := json.NewDecoder(resp.Body).Decode(&dbNames); err != nil {
+		return nil, errors.Wrap(err, "error decoding response body")
+	}
+	logger.Debugf("dbNames = %s", dbNames)
+	applicationsDBNames := []string{}
+	for _, d := range dbNames {
+		if !isCouchSystemDBName(d) {
+			applicationsDBNames = append(applicationsDBNames, d)
+		}
+	}
+	return applicationsDBNames, nil
+}
+
+func isCouchSystemDBName(name string) bool {
+	return strings.HasPrefix(name, "_")
 }
 
 // HealthCheck checks if the peer is able to communicate with CouchDB

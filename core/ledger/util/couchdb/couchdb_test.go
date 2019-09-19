@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const badConnectURL = "couchdb:5990"
@@ -284,6 +285,46 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 	//Ensure a full commit
 	_, commiterr := db.EnsureFullCommit()
 	assert.NoError(t, commiterr, "Error when trying to ensure a full commit")
+}
+
+func TestIsEmpty(t *testing.T) {
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
+	assert.NoError(t, err)
+
+	isEmpty, err := couchInstance.IsEmpty(nil)
+	require.NoError(t, err)
+	require.True(t, isEmpty)
+
+	testdbs := []string{"testdb1", "testdb2"}
+	defer func() {
+		for _, d := range testdbs {
+			cleanup(d)
+		}
+	}()
+
+	for _, d := range testdbs {
+		db := CouchDatabase{CouchInstance: couchInstance, DBName: d}
+		require.NoError(t, db.CreateDatabaseIfNotExist())
+	}
+	isEmpty, err = couchInstance.IsEmpty(nil)
+	require.NoError(t, err)
+	require.False(t, isEmpty)
+
+	ignore := []string{"testdb1"}
+	isEmpty, err = couchInstance.IsEmpty(ignore)
+	require.NoError(t, err)
+	require.False(t, isEmpty)
+
+	ignore = []string{"testdb1", "testdb2"}
+	isEmpty, err = couchInstance.IsEmpty(ignore)
+	require.NoError(t, err)
+	require.True(t, isEmpty)
+
+	couchInstance.conf.Address = "junk"
+	couchInstance.conf.MaxRetries = 0
+	isEmpty, err = couchInstance.IsEmpty(ignore)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unable to connect to CouchDB, check the hostname and port: Get http://junk/_all_dbs")
 }
 
 func TestDBBadDatabaseName(t *testing.T) {

@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -13,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -23,8 +25,30 @@ import (
 
 var logger = flogging.MustGetLogger("statecouchdb")
 
-// LsccCacheSize denotes the number of entries allowed in the lsccStateCache
-const lsccCacheSize = 50
+const (
+	// lsccCacheSize denotes the number of entries allowed in the lsccStateCache
+	lsccCacheSize = 50
+	// savepointDocID is used as a key for maintaining savepoint (maintained in metadatadb for a channel)
+	savepointDocID = "statedb_savepoint"
+	// fabricInternalDBName is used to create a db in couch that would be used for internal data such as the version of the data format
+	// a double underscore ensures that the dbname does not clash with the dbnames created for the chaincodes
+	fabricInternalDBName = "fabric__internal"
+	// dataformatVersionDocID is used as a key for maintaining version of the data format (maintained in fabric internal db)
+	dataformatVersionDocID = "dataformatVersion"
+)
+
+// ErrFormatVersionMismatch is returned if it is detected that the version of the format recorded in
+// the internal database is not "2.0"
+type ErrFormatVersionMismatch struct {
+	ExpectedFormatVersion string
+	DataFormatVersion     string
+}
+
+func (e *ErrFormatVersionMismatch) Error() string {
+	return fmt.Sprintf("unexpected format. data format = [%s], expected format = [%s]",
+		e.DataFormatVersion, e.ExpectedFormatVersion,
+	)
+}
 
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
@@ -42,6 +66,9 @@ func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Prov
 	if err != nil {
 		return nil, err
 	}
+	if err := checkExpectedDataformatVersion(couchInstance); err != nil {
+		return nil, err
+	}
 	p, err := newRedoLoggerProvider(config.RedoLogPath)
 	if err != nil {
 		return nil, err
@@ -54,6 +81,66 @@ func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Prov
 			redoLoggerProvider: p,
 		},
 		nil
+}
+
+func checkExpectedDataformatVersion(couchInstance *couchdb.CouchInstance) error {
+	databasesToIgnore := []string{fabricInternalDBName}
+	isEmpty, err := couchInstance.IsEmpty(databasesToIgnore)
+	if err != nil {
+		return err
+	}
+	if isEmpty {
+		logger.Debugf("couch instance is empty. Setting dataformat version to %s", dataformat.Version20)
+		return writeDataFormatVersion(couchInstance, dataformat.Version20)
+	}
+	dataformatVersion, err := readDataformatVersion(couchInstance)
+	if err != nil {
+		return err
+	}
+	if dataformatVersion != dataformat.Version20 {
+		return &ErrFormatVersionMismatch{
+			ExpectedFormatVersion: dataformat.Version20,
+			DataFormatVersion:     dataformatVersion,
+		}
+	}
+	return nil
+}
+
+func readDataformatVersion(couchInstance *couchdb.CouchInstance) (string, error) {
+	db, err := couchdb.CreateCouchDatabase(couchInstance, fabricInternalDBName)
+	if err != nil {
+		return "", err
+	}
+	doc, _, err := db.ReadDoc(dataformatVersionDocID)
+	logger.Debugf("dataformatVersionDoc = %s", doc)
+	if err != nil || doc == nil {
+		return "", err
+	}
+	return decodeDataformatInfo(doc)
+}
+
+func writeDataFormatVersion(couchInstance *couchdb.CouchInstance, dataformatVersion string) error {
+	db, err := couchdb.CreateCouchDatabase(couchInstance, fabricInternalDBName)
+	if err != nil {
+		return err
+	}
+	doc, err := encodeDataformatInfo(dataformatVersion)
+	if err != nil {
+		return err
+	}
+	if _, err := db.SaveDoc(dataformatVersionDocID, "", doc); err != nil {
+		return err
+	}
+	dbResponse, err := db.EnsureFullCommit()
+
+	if err != nil {
+		return err
+	}
+	if !dbResponse.Ok {
+		logger.Errorf("failed to perform full commit while writing dataformat version")
+		return errors.New("failed to perform full commit while writing dataformat version")
+	}
+	return nil
 }
 
 // GetDBHandle gets the handle to a named database
@@ -618,9 +705,6 @@ func (vdb *VersionedDB) Open() error {
 func (vdb *VersionedDB) Close() {
 	// no need to close db since a shared couch instance is used
 }
-
-// Savepoint docid (key) for couchdb
-const savepointDocID = "statedb_savepoint"
 
 // ensureFullCommitAndRecordSavepoint flushes all the dbs (corresponding to `namespaces`) to disk
 // and Record a savepoint in the metadata db.
