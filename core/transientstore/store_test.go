@@ -281,7 +281,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 
 	// Check whether actual results and expected results are same
 	var actualEndorsersResults []*EndorserPvtSimulationResults
-	for true {
+	for {
 		result, err := iter.Next()
 		assert.NoError(err)
 		if result == nil {
@@ -310,8 +310,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	for _, txid := range toRemoveTxids {
 
 		// Check whether private write sets of txid-2 are removed
-		var expectedEndorsersResults *EndorserPvtSimulationResults
-		expectedEndorsersResults = nil
+		var expectedEndorsersResults *EndorserPvtSimulationResults = nil
 		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
 		assert.NoError(err)
 		// Should return nil, nil
@@ -331,7 +330,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 
 	// Check whether actual results and expected results are same
 	actualEndorsersResults = nil
-	for true {
+	for {
 		result, err := iter.Next()
 		assert.NoError(err)
 		if result == nil {
@@ -359,8 +358,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	for _, txid := range toRemoveTxids {
 
 		// Check whether private write sets of txid-1 are removed
-		var expectedEndorsersResults *EndorserPvtSimulationResults
-		expectedEndorsersResults = nil
+		var expectedEndorsersResults *EndorserPvtSimulationResults = nil
 		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
 		assert.NoError(err)
 		// Should return nil, nil
@@ -406,14 +404,14 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 	}
 	endorsersResults = append(endorsersResults, endorser2SimulationResults)
 
-	// Results produced by endorser 3
+	// Results produced by endorser 4
 	endorser3SimulationResults := &EndorserPvtSimulationResults{
 		ReceivedAtBlockHeight:          12,
 		PvtSimulationResultsWithConfig: samplePvtRWSetWithConfig,
 	}
 	endorsersResults = append(endorsersResults, endorser3SimulationResults)
 
-	// Results produced by endorser 3
+	// Results produced by endorser 5
 	endorser4SimulationResults := &EndorserPvtSimulationResults{
 		ReceivedAtBlockHeight:          13,
 		PvtSimulationResultsWithConfig: samplePvtRWSetWithConfig,
@@ -445,7 +443,7 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 
 	// Check whether actual results and expected results are same
 	var actualEndorsersResults []*EndorserPvtSimulationResults
-	for true {
+	for {
 		result, err := iter.Next()
 		assert.NoError(err)
 		if result == nil {
@@ -480,6 +478,7 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 	// There should be no entries in the  store
 	actualMinTransientBlkHt, err = testStore.GetMinTransientBlkHt()
 	assert.Equal(err, ErrStoreEmpty)
+	assert.Equal(uint64(0), actualMinTransientBlkHt)
 
 	// Retain results at block height greater than or equal to 15
 	minTransientBlkHtToRetain = uint64(15)
