@@ -63,7 +63,7 @@ var _ = Describe("Gossip Test", func() {
 		os.RemoveAll(testDir)
 	})
 
-	PDescribe("State transfer test", func() {
+	PDescribe("Gossip state transfer test", func() {
 		var (
 			ordererProcess ifrit.Process
 			peerProcesses  = map[string]ifrit.Process{}
@@ -74,6 +74,32 @@ var _ = Describe("Gossip Test", func() {
 			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
+			//  modify peer config
+			//  Org1: leader election
+			//  Org2: no leader election
+			//      peer0: follower
+			//      peer1: leader
+			for _, peer := range network.Peers {
+				if peer.Organization == "Org1" {
+					core := network.ReadPeerConfig(peer)
+					if peer.Name == "peer1" {
+						core.Peer.Gossip.Bootstrap = "127.0.0.1:21004"
+						network.WritePeerConfig(peer, core)
+					}
+
+				}
+				if peer.Organization == "Org2" {
+					core := network.ReadPeerConfig(peer)
+					core.Peer.Gossip.UseLeaderElection = false
+					if peer.Name == "peer1" {
+						core.Peer.Gossip.OrgLeader = true
+					} else {
+						core.Peer.Gossip.OrgLeader = false
+					}
+
+					network.WritePeerConfig(peer, core)
+				}
+			}
 			network.Bootstrap()
 		})
 
@@ -89,7 +115,7 @@ var _ = Describe("Gossip Test", func() {
 			}
 		})
 
-		It("solo network with 2 orgs, 2 peers each, should sync from the peer if no orderer available", func() {
+		It("syncs blocks from the peer if no orderer is available, using solo network with 2 orgs, 2 peers each", func() {
 			orderer := network.Orderer("orderer")
 			ordererRunner := network.OrdererRunner(orderer)
 			ordererProcess = ifrit.Invoke(ordererRunner)
@@ -97,93 +123,53 @@ var _ = Describe("Gossip Test", func() {
 			peer0Org1, peer1Org1 := network.Peer("Org1", "peer0"), network.Peer("Org1", "peer1")
 			peer0Org2, peer1Org2 := network.Peer("Org2", "peer0"), network.Peer("Org2", "peer1")
 
-			for _, peer := range []*nwo.Peer{peer0Org1, peer1Org1, peer0Org2, peer1Org2} {
-				runner := network.PeerRunner(peer)
-				peerProcesses[peer.ID()] = ifrit.Invoke(runner)
-				peerRunners[peer.ID()] = runner
-			}
+			By("bring up all four peers")
+			peersToBringUp := []*nwo.Peer{peer0Org1, peer1Org1, peer0Org2, peer1Org2}
+			startPeers(network, peersToBringUp, peerProcesses, peerRunners, false)
 
 			channelName := "testchannel"
 			network.CreateChannel(channelName, orderer, peer0Org1)
+			By("join all peers to channel")
 			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
-			nwo.DeployChaincodeLegacy(network, channelName, orderer, chaincode, peer0Org1)
 			network.UpdateChannelAnchors(orderer, channelName)
 
-			for _, peer := range []*nwo.Peer{peer0Org1, peer1Org1, peer0Org2, peer1Org2} {
-				Eventually(func() int {
-					return nwo.GetLedgerHeight(network, peer, channelName)
-				}, network.EventuallyTimeout).Should(BeNumerically(">=", 2))
-			}
+			// base peer will be used for chaincode interactions
+			basePeerForTransactions := peer0Org1
+			nwo.DeployChaincodeLegacy(network, channelName, orderer, chaincode, basePeerForTransactions)
 
-			By("stop peers except peer0Org1 to make sure they cannot get blocks from orderer")
-			for id, proc := range peerProcesses {
-				if id == peer0Org1.ID() {
-					continue
-				}
-				proc.Signal(syscall.SIGTERM)
-				Eventually(proc.Wait(), network.EventuallyTimeout).Should(Receive())
-				delete(peerProcesses, id)
-			}
+			By("STATE TRANSFER TEST 1: newly joined peers should receive blocks from the peers that are already up")
 
-			By("create transactions")
-			runTransactions(network, orderer, peer0Org1, "mycc", channelName)
+			// Note, a better test would be to bring orderer down before joining the two peers.
+			// However, network.JoinChannel() requires orderer to be up so that genesis block can be fetched from orderer before joining peers.
+			// Therefore, for now we've joined all four peers and stop the two peers that should be synced up.
+			peersToStop := []*nwo.Peer{peer1Org1, peer1Org2}
+			stopPeers(network, peersToStop, peerProcesses)
 
-			peer0LedgerHeight := nwo.GetLedgerHeight(network, peer0Org1, channelName)
+			peersToSyncUp := []*nwo.Peer{peer1Org1, peer1Org2}
+			sendTransactionsAndSyncUpPeers(network, orderer, basePeerForTransactions, peersToSyncUp, channelName, &ordererProcess, ordererRunner, peerProcesses, peerRunners)
 
-			By("turning down ordering service")
-			ordererProcess.Signal(syscall.SIGTERM)
-			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-			ordererProcess = nil
+			By("STATE TRANSFER TEST 2: restarted peers should receive blocks from the peers that are already up")
+			basePeerForTransactions = peer1Org1
+			nwo.InstallChaincodeLegacy(network, chaincode, basePeerForTransactions)
 
-			By("restart the three peers that were stopped")
-			peerList := []*nwo.Peer{peer1Org1, peer0Org2, peer1Org2}
-			peersRestart(network, orderer, peerList, peerProcesses, peerRunners)
+			By("stop peer0Org1 (currently elected leader in Org1) and peer1Org2 (static leader in Org2)")
+			peersToStop = []*nwo.Peer{peer0Org1, peer1Org2}
+			stopPeers(network, peersToStop, peerProcesses)
 
-			By("Make sure peers are synced up")
-			assertPeersLedgerHeight(network, orderer, peerList, peer0LedgerHeight, channelName)
+			peersToSyncUp = []*nwo.Peer{peer0Org1, peer1Org2}
+			// Note that with the static leader in Org2 down, the static follower peer0Org2 will also get blocks via state transfer
+			// This effectively tests leader election as well, since the newly elected leader in Org1 (peer1Org1) will be the only peer
+			// that receives blocks from orderer and will therefore serve as the provider of blocks to all other peers.
+			sendTransactionsAndSyncUpPeers(network, orderer, basePeerForTransactions, peersToSyncUp, channelName, &ordererProcess, ordererRunner, peerProcesses, peerRunners)
 
-			By("start the orderer")
-			orderer = network.Orderer("orderer")
-			ordererRunner = network.OrdererRunner(orderer)
-			ordererProcess = ifrit.Invoke(ordererRunner)
-
-			By("install chaincode")
-			nwo.InstallChaincodeLegacy(network, chaincode, peer1Org1)
-
-			By("stop leader, peer0Org1, to make sure it cannot get blocks from orderer")
-			id := peer0Org1.ID()
-			proc := peerProcesses[id]
-			proc.Signal(syscall.SIGTERM)
-			Eventually(proc.Wait(), network.EventuallyTimeout).Should(Receive())
-
-			expectedMsg := "Stopped being a leader"
-			Eventually(peerRunners[id].Err(), network.EventuallyTimeout).Should(gbytes.Say(expectedMsg))
-
-			delete(peerProcesses, id)
-
-			By("create transactions")
-			runTransactions(network, orderer, peer1Org1, "mycc", channelName)
-
-			peer1LedgerHeight := nwo.GetLedgerHeight(network, peer1Org1, channelName)
-
-			By("turning down ordering service")
-			ordererProcess.Signal(syscall.SIGTERM)
-			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
-			ordererProcess = nil
-
-			By("restart peer0Org1")
-			peerList = []*nwo.Peer{peer0Org1}
-			peersRestart(network, orderer, peerList, peerProcesses, peerRunners)
-
-			By("Make sure peer0Org1 is synced up")
-			assertPeersLedgerHeight(network, orderer, peerList, peer1LedgerHeight, channelName)
 		})
+
 	})
 })
 
 func runTransactions(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, chaincodeName string, channelID string) {
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 			ChannelID: channelID,
 			Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
@@ -200,20 +186,64 @@ func runTransactions(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, chain
 	}
 }
 
-func peersRestart(n *nwo.Network, orderer *nwo.Orderer, peerList []*nwo.Peer, peerProc map[string]ifrit.Process, peerRun map[string]*ginkgomon.Runner) {
-	for _, peer := range peerList {
-		runner := n.PeerRunner(peer, fmt.Sprint("CORE_PEER_GOSSIP_STATE_CHECKINTERVAL=200ms"),
-			fmt.Sprint("FABRIC_LOGGING_SPEC=info:gossip.state=debug"),
-		)
+func startPeers(network *nwo.Network, peersToStart []*nwo.Peer, peerProc map[string]ifrit.Process, peerRun map[string]*ginkgomon.Runner, forceStateTransfer bool) {
+
+	env := []string{fmt.Sprint("FABRIC_LOGGING_SPEC=info:gossip.state=debug")}
+
+	// Setting CORE_PEER_GOSSIP_STATE_CHECKINTERVAL to 200ms (from default of 10s) will ensure that state transfer happens quickly,
+	// before blocks are gossipped through normal mechanisms
+	if forceStateTransfer {
+		env = append(env, fmt.Sprint("CORE_PEER_GOSSIP_STATE_CHECKINTERVAL=200ms"))
+	}
+
+	for _, peer := range peersToStart {
+		runner := network.PeerRunner(peer, env...)
 		peerProc[peer.ID()] = ifrit.Invoke(runner)
 		peerRun[peer.ID()] = runner
 	}
 }
 
-func assertPeersLedgerHeight(n *nwo.Network, orderer *nwo.Orderer, peerList []*nwo.Peer, expectedVal int, channelID string) {
-	for _, peer := range peerList {
+func stopPeers(network *nwo.Network, peersToStop []*nwo.Peer, peerProcesses map[string]ifrit.Process) {
+	for _, peer := range peersToStop {
+		id := peer.ID()
+		proc := peerProcesses[id]
+		proc.Signal(syscall.SIGTERM)
+		Eventually(proc.Wait(), network.EventuallyTimeout).Should(Receive())
+		delete(peerProcesses, id)
+	}
+}
+
+func assertPeersLedgerHeight(n *nwo.Network, orderer *nwo.Orderer, peersToSyncUp []*nwo.Peer, expectedVal int, channelID string) {
+	for _, peer := range peersToSyncUp {
 		Eventually(func() int {
 			return nwo.GetLedgerHeight(n, peer, channelID)
 		}, n.EventuallyTimeout).Should(Equal(expectedVal))
 	}
+}
+
+// send transactions, stop orderering server, then start peers to ensure they received blcoks via state transfer
+func sendTransactionsAndSyncUpPeers(network *nwo.Network, orderer *nwo.Orderer, basePeer *nwo.Peer, peersToSyncUp []*nwo.Peer, channelName string,
+	ordererProcess *ifrit.Process, ordererRunner *ginkgomon.Runner,
+	peerProcesses map[string]ifrit.Process, peerRunners map[string]*ginkgomon.Runner) {
+
+	By("create transactions")
+	runTransactions(network, orderer, basePeer, "mycc", channelName)
+	basePeerLedgerHeight := nwo.GetLedgerHeight(network, basePeer, channelName)
+
+	By("stop orderer")
+	(*ordererProcess).Signal(syscall.SIGTERM)
+	Eventually((*ordererProcess).Wait(), network.EventuallyTimeout).Should(Receive())
+	*ordererProcess = nil
+
+	By("start the peers contained in the peersToSyncUp list")
+	startPeers(network, peersToSyncUp, peerProcesses, peerRunners, true)
+
+	By("ensure the peers are synced up")
+	assertPeersLedgerHeight(network, orderer, peersToSyncUp, basePeerLedgerHeight, channelName)
+
+	By("restart orderer")
+	orderer = network.Orderer("orderer")
+	ordererRunner = network.OrdererRunner(orderer)
+	*ordererProcess = ifrit.Invoke(ordererRunner)
+
 }
