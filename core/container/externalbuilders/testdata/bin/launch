@@ -1,7 +1,0 @@
-#!/bin/bash
-
-if grep -q "fake-path" "$2/metadata.json" ; then
-    exit 0
-fi
-
-exit 1

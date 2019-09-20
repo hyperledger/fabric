@@ -1,0 +1,11 @@
+#!/bin/bash
+
+OUTPUT_JSON="$(jq -S . $2/chaincode.json)"
+
+EXPECTED_JSON="$(echo '{"chaincode_id":"test-ccid","peer_address":"fake-peer-address","client_cert":"ZmFrZS1jbGllbnQtY2VydA==","client_key":"ZmFrZS1jbGllbnQta2V5","root_cert":"ZmFrZS1yb290LWNlcnQ="}' | jq -S .)"
+	
+if [ "$OUTPUT_JSON" = "$EXPECTED_JSON" ] ; then
+    exit 0
+fi
+
+exit 1

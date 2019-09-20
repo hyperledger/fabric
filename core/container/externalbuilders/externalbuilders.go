@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -33,12 +34,19 @@ var (
 const MetadataFile = "metadata.json"
 
 type Instance struct {
-	BuildContext *BuildContext
-	Builder      *Builder
+	PackageID string
+	BldDir    string
+	Builder   *Builder
+	RunStatus *RunStatus
 }
 
 func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
-	return i.Builder.Launch(i.BuildContext, peerConnection)
+	rs, err := i.Builder.Run(i.PackageID, i.BldDir, peerConnection)
+	if err != nil {
+		return errors.WithMessage(err, "could not execute run")
+	}
+	i.RunStatus = rs
+	return nil
 }
 
 func (i *Instance) Stop() error {
@@ -46,28 +54,72 @@ func (i *Instance) Stop() error {
 }
 
 func (i *Instance) Wait() (int, error) {
-	// Unimplemented, so, wait forever
-	select {}
+	if i.RunStatus == nil {
+		return 0, errors.Errorf("instance was not successfully started")
+	}
+	<-i.RunStatus.Done()
+	err := i.RunStatus.Err()
+	if exitErr, ok := errors.Cause(err).(*exec.ExitError); ok {
+		return exitErr.ExitCode(), err
+	}
+	return 0, err
+}
+
+type BuildInfo struct {
+	BuilderName string `json:"builder_name"`
 }
 
 type Detector struct {
-	Builders []peer.ExternalBuilder
+	DurablePath string
+	Builders    []*Builder
 }
 
 func (d *Detector) Detect(buildContext *BuildContext) *Builder {
-	for _, detectBuilder := range d.Builders {
-		builder := &Builder{
-			Location:     detectBuilder.Path,
-			Logger:       logger.Named(filepath.Base(detectBuilder.Path)),
-			Name:         detectBuilder.Name,
-			EnvWhitelist: detectBuilder.EnvironmentWhitelist,
-		}
+	for _, builder := range d.Builders {
 		if builder.Detect(buildContext) {
 			return builder
 		}
 	}
-
 	return nil
+}
+
+// CachedBuild returns a build instance that was already built, or nil, or
+// when an unexpected error is encountered, an error.
+func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
+	durablePath := filepath.Join(d.DurablePath, ccid)
+
+	_, err := os.Stat(durablePath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, errors.WithMessage(err, "existing build detected, but something went wrong inspecting it")
+	}
+
+	buildInfoPath := filepath.Join(durablePath, "build-info.json")
+	buildInfoData, err := ioutil.ReadFile(buildInfoPath)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not read '%s' for build info", buildInfoPath)
+	}
+
+	buildInfo := &BuildInfo{}
+	err = json.Unmarshal(buildInfoData, buildInfo)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "malformed build info at '%s'", buildInfoPath)
+	}
+
+	for _, builder := range d.Builders {
+		if builder.Name == buildInfo.BuilderName {
+			return &Instance{
+				PackageID: ccid,
+				Builder:   builder,
+				BldDir:    filepath.Join(durablePath, "bld"),
+			}, nil
+		}
+	}
+
+	return nil, errors.Errorf("chaincode '%s' was already built with builder '%s', but that builder is no longer available", ccid, buildInfo.BuilderName)
 }
 
 func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, codeStream io.Reader) (*Instance, error) {
@@ -78,25 +130,73 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		return nil, errors.Errorf("no builders defined")
 	}
 
-	buildContext, err := NewBuildContext(string(ccid), md, codeStream)
+	i, err := d.CachedBuild(ccid)
+	if err != nil {
+		return nil, errors.WithMessage(err, "existing build could not be restored")
+	}
+
+	if i != nil {
+		return i, nil
+	}
+
+	buildContext, err := NewBuildContext(ccid, md, codeStream)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create build context")
 	}
 
+	defer buildContext.Cleanup()
+
 	builder := d.Detect(buildContext)
 	if builder == nil {
-		buildContext.Cleanup()
 		return nil, errors.Errorf("no builder found")
 	}
 
 	if err := builder.Build(buildContext); err != nil {
-		buildContext.Cleanup()
 		return nil, errors.WithMessage(err, "external builder failed to build")
 	}
 
+	if err := builder.Release(buildContext); err != nil {
+		return nil, errors.WithMessage(err, "external builder failed to release")
+	}
+
+	durablePath := filepath.Join(d.DurablePath, ccid)
+
+	err = os.Mkdir(durablePath, 0700)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not create dir '%s' to persist build ouput", durablePath)
+	}
+
+	buildInfo, err := json.Marshal(&BuildInfo{
+		BuilderName: builder.Name,
+	})
+	if err != nil {
+		os.RemoveAll(durablePath)
+		return nil, errors.WithMessage(err, "could not marshal for build-info.json")
+	}
+
+	err = ioutil.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0600)
+	if err != nil {
+		os.RemoveAll(durablePath)
+		return nil, errors.WithMessage(err, "could not write build-info.json")
+	}
+
+	err = os.Rename(buildContext.ReleaseDir, filepath.Join(durablePath, "release"))
+	if err != nil {
+		os.RemoveAll(durablePath)
+		return nil, errors.WithMessagef(err, "could not move build context release to persistent location '%s'", durablePath)
+	}
+
+	durableBldDir := filepath.Join(durablePath, "bld")
+	err = os.Rename(buildContext.BldDir, durableBldDir)
+	if err != nil {
+		os.RemoveAll(durablePath)
+		return nil, errors.WithMessagef(err, "could not move build context bld to persistent location '%s'", durablePath)
+	}
+
 	return &Instance{
-		BuildContext: buildContext,
-		Builder:      builder,
+		PackageID: ccid,
+		Builder:   builder,
+		BldDir:    durableBldDir,
 	}, nil
 }
 
@@ -105,56 +205,52 @@ type BuildContext struct {
 	Metadata    *persistence.ChaincodePackageMetadata
 	ScratchDir  string
 	SourceDir   string
+	ReleaseDir  string
 	MetadataDir string
-	OutputDir   string
-	LaunchDir   string
+	BldDir      string
 }
 
 var pkgIDreg = regexp.MustCompile("[^a-zA-Z0-9]+")
 
-func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, codePackage io.Reader) (*BuildContext, error) {
+func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, codePackage io.Reader) (bc *BuildContext, err error) {
 	scratchDir, err := ioutil.TempDir("", "fabric-"+pkgIDreg.ReplaceAllString(ccid, "-"))
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp dir")
 	}
 
+	defer func() {
+		if err != nil {
+			os.RemoveAll(scratchDir)
+		}
+	}()
+
 	sourceDir := filepath.Join(scratchDir, "src")
-	err = os.Mkdir(sourceDir, 0700)
-	if err != nil {
-		os.RemoveAll(scratchDir)
+	if err = os.Mkdir(sourceDir, 0700); err != nil {
 		return nil, errors.WithMessage(err, "could not create source dir")
 	}
 
 	metadataDir := filepath.Join(scratchDir, "metadata")
-	err = os.Mkdir(metadataDir, 0700)
-	if err != nil {
-		os.RemoveAll(scratchDir)
+	if err = os.Mkdir(metadataDir, 0700); err != nil {
 		return nil, errors.WithMessage(err, "could not create metadata dir")
 	}
 
 	outputDir := filepath.Join(scratchDir, "bld")
-	err = os.Mkdir(outputDir, 0700)
-	if err != nil {
-		os.RemoveAll(scratchDir)
+	if err = os.Mkdir(outputDir, 0700); err != nil {
 		return nil, errors.WithMessage(err, "could not create build dir")
 	}
 
-	launchDir := filepath.Join(scratchDir, "run")
-	err = os.MkdirAll(launchDir, 0700)
-	if err != nil {
-		os.RemoveAll(scratchDir)
-		return nil, errors.WithMessage(err, "could not create launch dir")
+	releaseDir := filepath.Join(scratchDir, "release")
+	if err = os.Mkdir(releaseDir, 0700); err != nil {
+		return nil, errors.WithMessage(err, "could not create release dir")
 	}
 
 	err = Untar(codePackage, sourceDir)
 	if err != nil {
-		os.RemoveAll(scratchDir)
 		return nil, errors.WithMessage(err, "could not untar source package")
 	}
 
 	err = writeMetadataFile(ccid, md, metadataDir)
 	if err != nil {
-		os.RemoveAll(scratchDir)
 		return nil, errors.WithMessage(err, "could not write metadata file")
 	}
 
@@ -162,8 +258,8 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 		ScratchDir:  scratchDir,
 		SourceDir:   sourceDir,
 		MetadataDir: metadataDir,
-		OutputDir:   outputDir,
-		LaunchDir:   launchDir,
+		BldDir:      outputDir,
+		ReleaseDir:  releaseDir,
 		Metadata:    md,
 		CCID:        ccid,
 	}, nil
@@ -200,6 +296,19 @@ type Builder struct {
 	Name         string
 }
 
+func CreateBuilders(builderConfs []peer.ExternalBuilder) []*Builder {
+	builders := []*Builder{}
+	for _, builderConf := range builderConfs {
+		builders = append(builders, &Builder{
+			Location:     builderConf.Path,
+			Name:         builderConf.Name,
+			EnvWhitelist: builderConf.EnvironmentWhitelist,
+			Logger:       logger.Named(builderConf.Name),
+		})
+	}
+	return builders
+}
+
 func (b *Builder) Detect(buildContext *BuildContext) bool {
 	detect := filepath.Join(b.Location, "bin", "detect")
 	cmd := NewCommand(
@@ -211,7 +320,7 @@ func (b *Builder) Detect(buildContext *BuildContext) bool {
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		logger.Debugf("Detection for builder '%s' failed: %s", b.Name, err)
+		logger.Debugf("Detection for builder '%s' detect failed: %s", b.Name, err)
 		// XXX, we probably also want to differentiate between a 'not detected'
 		// and a 'I failed nastily', but, again, good enough for now
 		return false
@@ -227,28 +336,86 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 		b.EnvWhitelist,
 		buildContext.SourceDir,
 		buildContext.MetadataDir,
-		buildContext.OutputDir,
+		buildContext.BldDir,
 	)
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Wrapf(err, "builder '%s' failed", b.Name)
+		return errors.Wrapf(err, "builder '%s' build failed", b.Name)
 	}
 
 	return nil
 }
 
-// LaunchConfig is serialized to disk when launching
-type LaunchConfig struct {
+func (b *Builder) Release(buildContext *BuildContext) error {
+	release := filepath.Join(b.Location, "bin", "release")
+
+	_, err := os.Stat(release)
+	if os.IsNotExist(err) {
+		b.Logger.Debugf("Skipping release step for '%s' as no release binary found", buildContext.CCID)
+		return nil
+	}
+
+	if err != nil {
+		return errors.WithMessagef(err, "could not stat release binary '%s'", release)
+	}
+
+	cmd := NewCommand(
+		release,
+		b.EnvWhitelist,
+		buildContext.BldDir,
+		buildContext.ReleaseDir,
+	)
+
+	if err := RunCommand(b.Logger, cmd); err != nil {
+		return errors.Wrapf(err, "builder '%s' release failed", b.Name)
+	}
+
+	return nil
+}
+
+// RunConfig is serialized to disk when launching
+type RunConfig struct {
+	CCID        string `json:"chaincode_id"`
 	PeerAddress string `json:"peer_address"`
 	ClientCert  []byte `json:"client_cert"`
 	ClientKey   []byte `json:"client_key"`
 	RootCert    []byte `json:"root_cert"`
 }
 
-func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.PeerConnection) error {
-	lc := &LaunchConfig{
+type RunStatus struct {
+	mutex sync.Mutex
+	doneC chan struct{}
+	err   error
+}
+
+func NewRunStatus() *RunStatus {
+	return &RunStatus{
+		doneC: make(chan struct{}),
+	}
+}
+
+func (rs *RunStatus) Err() error {
+	rs.mutex.Lock()
+	defer rs.mutex.Unlock()
+	return rs.err
+}
+
+func (rs *RunStatus) Done() <-chan struct{} {
+	return rs.doneC
+}
+
+func (rs *RunStatus) Notify(err error) {
+	rs.mutex.Lock()
+	defer rs.mutex.Unlock()
+	rs.err = err
+	close(rs.doneC)
+}
+
+func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection) (*RunStatus, error) {
+	lc := &RunConfig{
 		PeerAddress: peerConnection.Address,
+		CCID:        ccid,
 	}
 
 	if peerConnection.TLSConfig != nil {
@@ -257,31 +424,41 @@ func (b *Builder) Launch(buildContext *BuildContext, peerConnection *ccintf.Peer
 		lc.RootCert = peerConnection.TLSConfig.RootCert
 	}
 
+	launchDir, err := ioutil.TempDir("", "fabric-run")
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not create temp run dir")
+	}
+
 	marshaledLC, err := json.Marshal(lc)
 	if err != nil {
-		return errors.WithMessage(err, "could not marshal launch config")
+		return nil, errors.WithMessage(err, "could not marshal run config")
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(buildContext.LaunchDir, "chaincode.json"), marshaledLC, 0600); err != nil {
-		return errors.WithMessage(err, "could not write root cert")
+	if err := ioutil.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledLC, 0600); err != nil {
+		return nil, errors.WithMessage(err, "could not write root cert")
 	}
 
-	launch := filepath.Join(b.Location, "bin", "launch")
+	run := filepath.Join(b.Location, "bin", "run")
 	cmd := NewCommand(
-		launch,
+		run,
 		b.EnvWhitelist,
-		buildContext.SourceDir,
-		buildContext.MetadataDir,
-		buildContext.OutputDir,
-		buildContext.LaunchDir,
+		bldDir,
+		launchDir,
 	)
 
-	err = RunCommand(b.Logger, cmd)
-	if err != nil {
-		return errors.Wrapf(err, "builder '%s' failed", b.Name)
-	}
+	rs := NewRunStatus()
 
-	return nil
+	go func() {
+		defer os.RemoveAll(launchDir)
+		err := RunCommand(b.Logger, cmd)
+		if err != nil {
+			rs.Notify(errors.Wrapf(err, "builder '%s' run failed", b.Name))
+			return
+		}
+		rs.Notify(nil)
+	}()
+
+	return rs, nil
 }
 
 // NewCommand creates an exec.Cmd that is configured to prune the calling

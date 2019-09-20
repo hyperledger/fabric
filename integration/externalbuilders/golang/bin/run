@@ -6,18 +6,15 @@
 
 set -euo pipefail
 
-if [ "$#" -ne 4 ]; then
-    echo "Expected 4 directories got $#"
+if [ "$#" -ne 2 ]; then
+    echo "Expected 2 directories got $#"
     exit 1
 fi
 
-SOURCE=$1
-PACKAGE_ID=$(jq -r .package_id $2/metadata.json)
-OUTPUT=$3
-ARTIFACTS=$4
+OUTPUT=$1
+ARTIFACTS=$2
 
-export CORE_CHAINCODE_ID_NAME="${PACKAGE_ID}"
-
+export CORE_CHAINCODE_ID_NAME="$(jq -r .chaincode_id $ARTIFACTS/chaincode.json)"
 export CORE_TLS_CLIENT_CERT_PATH="$ARTIFACTS/client.crt"
 export CORE_TLS_CLIENT_KEY_PATH="$ARTIFACTS/client.key"
 export CORE_PEER_TLS_ROOTCERT_FILE="$ARTIFACTS/root.crt"
@@ -28,20 +25,11 @@ jq -r .client_cert $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_CERT_PATH"
 jq -r .client_key $ARTIFACTS/chaincode.json > "$CORE_TLS_CLIENT_KEY_PATH"
 jq -r .root_cert $ARTIFACTS/chaincode.json | base64 --decode > "$CORE_PEER_TLS_ROOTCERT_FILE"
 
+
 if [ -z "$(cat $CORE_TLS_CLIENT_CERT_PATH)" ]  ; then
     export CORE_PEER_TLS_ENABLED=false
 else 
     export CORE_PEER_TLS_ENABLED=true
 fi
 
-"$OUTPUT/chaincode" -peer.address=$(jq -r .peer_address "$ARTIFACTS/chaincode.json") &
-
-PID=$?
-
-sleep 5
-
-disown
-
-kill -0 $PID
-exit $?
-
+"$OUTPUT/chaincode" -peer.address=$(jq -r .peer_address "$ARTIFACTS/chaincode.json")
