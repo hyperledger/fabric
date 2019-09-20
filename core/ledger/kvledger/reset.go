@@ -33,18 +33,18 @@ func ResetAllKVLedgers(rootFSPath string) error {
 	return nil
 }
 
-// LoadPreResetHeight returns the prereset height of all ledgers.
-func LoadPreResetHeight(rootFSPath string) (map[string]uint64, error) {
+// LoadPreResetHeight returns the prereset height for the specified ledgers.
+func LoadPreResetHeight(rootFSPath string, ledgerIDs []string) (map[string]uint64, error) {
 	blockstorePath := BlockStorePath(rootFSPath)
 	logger.Infof("Loading prereset height from path [%s]", blockstorePath)
-	return fsblkstorage.LoadPreResetHeight(blockstorePath)
+	return fsblkstorage.LoadPreResetHeight(blockstorePath, ledgerIDs)
 }
 
-// ClearPreResetHeight removes the prereset height recorded in the file system.
-func ClearPreResetHeight(rootFSPath string) error {
+// ClearPreResetHeight removes the prereset height recorded in the file system for the specified ledgers.
+func ClearPreResetHeight(rootFSPath string, ledgerIDs []string) error {
 	blockstorePath := BlockStorePath(rootFSPath)
-	logger.Infof("Clearing off prereset height files from path [%s]", blockstorePath)
-	return fsblkstorage.ClearPreResetHeight(blockstorePath)
+	logger.Infof("Clearing off prereset height files from path [%s] for ledgerIDs [%#v]", blockstorePath, ledgerIDs)
+	return fsblkstorage.ClearPreResetHeight(blockstorePath, ledgerIDs)
 }
 
 func resetBlockStorage(rootFSPath string) error {
