@@ -160,7 +160,7 @@ and packaging them into blocks, ready for distribution.
 
 The third phase of the transaction workflow involves the distribution and
 subsequent validation of blocks from the orderer to the peers, where they can be
-applied to the ledger.
+committed to the ledger.
 
 Phase 3 begins with the orderer distributing blocks to all peers connected to
 it. It's also worth noting that not every peer needs to be connected to an orderer ---
