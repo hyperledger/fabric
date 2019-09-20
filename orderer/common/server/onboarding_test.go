@@ -264,12 +264,16 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	vr := &mocks.VerifierRetriever{}
 	vr.On("RetrieveVerifier", mock.Anything).Return(verifier)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	r := &replicationInitiator{
 		verifierRetriever: vr,
 		lf:                lf,
 		logger:            flogging.MustGetLogger("testOnboarding"),
 		conf:              config,
 		secOpts:           secConfig,
+		cryptoProvider:    cryptoProvider,
 	}
 
 	type event struct {
@@ -681,14 +685,18 @@ func TestReplicate(t *testing.T) {
 			vr := &mocks.VerifierRetriever{}
 			vr.On("RetrieveVerifier", mock.Anything).Return(verifier)
 
+			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+			assert.NoError(t, err)
+
 			r := &replicationInitiator{
 				verifierRetriever: vr,
 				lf:                lf,
 				logger:            flogging.MustGetLogger("testReplicateIfNeeded"),
 				signer:            testCase.signer,
 
-				conf:    testCase.conf,
-				secOpts: testCase.secOpts,
+				conf:           testCase.conf,
+				secOpts:        testCase.secOpts,
+				cryptoProvider: cryptoProvider,
 			}
 
 			if testCase.panicValue != "" {

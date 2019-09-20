@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -42,6 +42,7 @@ func New(
 	nr plugindispatcher.CollectionAndLifecycleResources,
 	policyChecker policy.PolicyChecker,
 	p *peer.Peer,
+	bccsp bccsp.BCCSP,
 ) *PeerConfiger {
 	return &PeerConfiger{
 		policyChecker:          policyChecker,
@@ -51,6 +52,7 @@ func New(
 		legacyLifecycle:        lr,
 		newLifecycle:           nr,
 		peer:                   p,
+		bccsp:                  bccsp,
 	}
 }
 
@@ -68,6 +70,7 @@ type PeerConfiger struct {
 	legacyLifecycle        plugindispatcher.LifecycleResources
 	newLifecycle           plugindispatcher.CollectionAndLifecycleResources
 	peer                   *peer.Peer
+	bccsp                  bccsp.BCCSP
 }
 
 var cnflogger = flogging.MustGetLogger("cscc")
@@ -181,7 +184,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 		}
 
 		// 1. check config block's format and capabilities requirement.
-		if err := validateConfigBlock(block); err != nil {
+		if err := validateConfigBlock(block, e.bccsp); err != nil {
 			return shim.Error(fmt.Sprintf("\"JoinChain\" for chainID = %s failed because of validation "+
 				"of configuration block, because of %s", cid, err))
 		}
@@ -221,7 +224,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 }
 
 // validateConfigBlock validate configuration block to see whenever it's contains valid config transaction
-func validateConfigBlock(block *common.Block) error {
+func validateConfigBlock(block *common.Block, bccsp bccsp.BCCSP) error {
 	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		return errors.Errorf("Failed to %s", err)
@@ -252,7 +255,7 @@ func validateConfigBlock(block *common.Block) error {
 	}
 
 	// Check the capabilities requirement
-	if err = channelconfig.ValidateCapabilities(block, factory.GetDefault()); err != nil {
+	if err = channelconfig.ValidateCapabilities(block, bccsp); err != nil {
 		return errors.Errorf("Failed capabilities check: [%s]", err)
 	}
 

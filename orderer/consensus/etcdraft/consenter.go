@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/comm"
@@ -73,6 +73,7 @@ type Consenter struct {
 	OrdererConfig  localconfig.TopLevel
 	Cert           []byte
 	Metrics        *Metrics
+	BCCSP          bccsp.BCCSP
 }
 
 // TargetChannel extracts the channel from the given proto.Message.
@@ -219,8 +220,9 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		opts,
 		c.Communication,
 		rpc,
+		c.BCCSP,
 		func() (BlockPuller, error) {
-			return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, factory.GetDefault())
+			return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
 		},
 		nil,
 	)
@@ -259,6 +261,7 @@ func New(
 	r *multichannel.Registrar,
 	icr InactiveChainRegistry,
 	metricsProvider metrics.Provider,
+	bccsp bccsp.BCCSP,
 ) *Consenter {
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
@@ -278,6 +281,7 @@ func New(
 		Dialer:                clusterDialer,
 		Metrics:               NewMetrics(metricsProvider),
 		InactiveChainRegistry: icr,
+		BCCSP:                 bccsp,
 	}
 	consenter.Dispatcher = &Dispatcher{
 		Logger:        logger,

@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -151,6 +151,9 @@ type LifeCycleSysCC struct {
 	Support FilesystemSupport
 
 	GetMSPIDs MSPIDsGetter
+
+	// BCCSP instance
+	BCCSP bccsp.BCCSP
 }
 
 // PeerShim adapts the peer instance for use with LSCC by providing methods
@@ -192,6 +195,7 @@ func New(
 	ACLProvider aclmgmt.ACLProvider,
 	getMSPIDs MSPIDsGetter,
 	policyChecker policy.PolicyChecker,
+	bccsp bccsp.BCCSP,
 ) *LifeCycleSysCC {
 	return &LifeCycleSysCC{
 		BuiltinSCCs:   builtinSCCs,
@@ -200,6 +204,7 @@ func New(
 		SCCProvider:   sccp,
 		ACLProvider:   ACLProvider,
 		GetMSPIDs:     getMSPIDs,
+		BCCSP:         bccsp,
 	}
 }
 
@@ -659,7 +664,7 @@ func isValidStatedbArtifactsTar(statedbArtifactsTar []byte) error {
 
 // executeInstall implements the "install" Invoke transaction
 func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte) error {
-	ccpack, err := ccprovider.GetCCPackage(ccbytes, factory.GetDefault())
+	ccpack, err := ccprovider.GetCCPackage(ccbytes, lscc.BCCSP)
 	if err != nil {
 		return err
 	}

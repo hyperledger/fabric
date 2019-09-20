@@ -450,7 +450,7 @@ func serve(args []string) error {
 		"_lifecycle": {},
 	}
 
-	lsccInst := lscc.New(builtinSCCs, &lscc.PeerShim{Peer: peerInstance}, aclProvider, peerInstance.GetMSPIDs, policyChecker)
+	lsccInst := lscc.New(builtinSCCs, &lscc.PeerShim{Peer: peerInstance}, aclProvider, peerInstance.GetMSPIDs, policyChecker, factory.GetDefault())
 
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
@@ -596,6 +596,7 @@ func serve(args []string) error {
 		lifecycleValidatorCommitter,
 		policyChecker,
 		peerInstance,
+		factory.GetDefault(),
 	)
 	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider, peerInstance))
 	if maxConcurrency := coreConfig.LimitsConcurrencyQSCC; maxConcurrency != 0 {

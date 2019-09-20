@@ -138,8 +138,11 @@ func TestInvokedChaincodeName(t *testing.T) {
 func TestConfigerInit(t *testing.T) {
 	mockACLProvider := &mocks.ACLProvider{}
 	mockStub := &mocks.ChaincodeStub{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	cscc := &PeerConfiger{
 		aclProvider: mockACLProvider,
+		bccsp:       cryptoProvider,
 	}
 	res := cscc.Init(mockStub)
 	assert.Equal(t, int32(shim.OK), res.Status)
@@ -147,8 +150,11 @@ func TestConfigerInit(t *testing.T) {
 
 func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	mockACLProvider := &mocks.ACLProvider{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	cscc := &PeerConfiger{
 		aclProvider: mockACLProvider,
+		bccsp:       cryptoProvider,
 	}
 	mockStub := &mocks.ChaincodeStub{}
 
@@ -254,8 +260,11 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	cscc := &PeerConfiger{
 		aclProvider: &mocks.ACLProvider{},
+		bccsp:       cryptoProvider,
 	}
 	mockStub := &mocks.ChaincodeStub{}
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain")})
@@ -269,8 +278,11 @@ func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	cscc := &PeerConfiger{
 		aclProvider: &mocks.ACLProvider{},
+		bccsp:       cryptoProvider,
 	}
 	mockStub := &mocks.ChaincodeStub{}
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain"), []byte("action")})
@@ -364,6 +376,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 			LedgerMgr:      ledgerMgr,
 			CryptoProvider: cryptoProvider,
 		},
+		bccsp: cryptoProvider,
 	}
 	mockStub := &mocks.ChaincodeStub{}
 
@@ -466,9 +479,12 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	block := genesis.NewFactoryImpl(cg).Block("mytestchainid")
 	blockBytes := protoutil.MarshalOrPanic(block)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	mockACLProvider := &mocks.ACLProvider{}
 	cscc := &PeerConfiger{
 		aclProvider: mockACLProvider,
+		bccsp:       cryptoProvider,
 	}
 	mockStub := &mocks.ChaincodeStub{}
 	// Failed path: wrong parameter type

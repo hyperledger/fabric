@@ -49,7 +49,12 @@ func TestChainSupportBlock(t *testing.T) {
 			Specified: &orderer.SeekSpecified{Number: 99},
 		},
 	}).Return(iterator, uint64(99))
-	cs := &ChainSupport{ledgerResources: &ledgerResources{ReadWriter: ledger}}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	cs := &ChainSupport{
+		ledgerResources: &ledgerResources{ReadWriter: ledger},
+		BCCSP:           cryptoProvider,
+	}
 
 	assert.Nil(t, cs.Block(100))
 	assert.Equal(t, uint64(99), cs.Block(99).Header.Number)
@@ -96,6 +101,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 				bccsp:            cryptoProvider,
 			},
 		},
+		BCCSP: cryptoProvider,
 	}
 
 	// Scenario I: Policy manager isn't initialized
@@ -151,6 +157,7 @@ func TestConsensusMetadataValidation(t *testing.T) {
 			},
 		},
 		MetadataValidator: mv,
+		BCCSP:             cryptoProvider,
 	}
 
 	// case 1: valid consensus metadata update

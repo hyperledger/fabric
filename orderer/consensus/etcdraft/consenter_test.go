@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -111,9 +112,11 @@ var _ = Describe("Consenter", func() {
 	})
 
 	When("the consenter is asked for a chain", func() {
-		chainInstance := &etcdraft.Chain{}
+		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		chainInstance := &etcdraft.Chain{CryptoProvider: cryptoProvider}
 		cs := &multichannel.ChainSupport{
 			Chain: chainInstance,
+			BCCSP: cryptoProvider,
 		}
 		BeforeEach(func() {
 			chainGetter.On("GetChain", "mychannel").Return(cs)
@@ -301,6 +304,10 @@ func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
 	icr := &mocks.InactiveChainRegistry{}
 	icr.On("TrackChain", "foo", mock.Anything, mock.Anything)
 	certAsPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert bytes")})
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	Expect(err).NotTo(HaveOccurred())
+
 	c := &etcdraft.Consenter{
 		InactiveChainRegistry: icr,
 		Communication:         communicator,
@@ -318,6 +325,7 @@ func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
 				},
 			},
 		},
+		BCCSP: cryptoProvider,
 	}
 	return &consenter{
 		Consenter: c,

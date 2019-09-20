@@ -178,7 +178,14 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 	globalConfig := GlobalConfig()
 	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
-	lsccImpl := lscc.New(map[string]struct{}{"lscc": {}}, &lscc.PeerShim{Peer: peerInstance}, mockAclProvider, peerInstance.GetMSPIDs, newPolicyChecker(peerInstance))
+	lsccImpl := lscc.New(
+		map[string]struct{}{"lscc": {}},
+		&lscc.PeerShim{Peer: peerInstance},
+		mockAclProvider,
+		peerInstance.GetMSPIDs,
+		newPolicyChecker(peerInstance),
+		cryptoProvider,
+	)
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {

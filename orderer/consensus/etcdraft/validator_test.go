@@ -9,6 +9,7 @@ package etcdraft_test
 import (
 	"github.com/golang/protobuf/proto"
 	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	. "github.com/onsi/ginkgo"
@@ -21,7 +22,8 @@ var _ = Describe("Metadata Validation", func() {
 	)
 
 	BeforeEach(func() {
-		chain = &etcdraft.Chain{}
+		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		chain = &etcdraft.Chain{CryptoProvider: cryptoProvider}
 		chain.ActiveNodes.Store([]uint64{})
 	})
 

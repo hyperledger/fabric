@@ -16,7 +16,6 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -136,6 +135,7 @@ func NewRegistrar(
 	ledgerFactory blockledger.Factory,
 	signer identity.SignerSerializer,
 	metricsProvider metrics.Provider,
+	bccsp bccsp.BCCSP,
 	callbacks ...channelconfig.BundleActor,
 ) *Registrar {
 	r := &Registrar{
@@ -145,7 +145,7 @@ func NewRegistrar(
 		signer:             signer,
 		blockcutterMetrics: blockcutter.NewMetrics(metricsProvider),
 		callbacks:          callbacks,
-		bccsp:              factory.GetDefault(),
+		bccsp:              bccsp,
 	}
 
 	return r
@@ -287,7 +287,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 		logger.Panicf("Error umarshaling config envelope from payload data: %s", err)
 	}
 
-	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config, factory.GetDefault())
+	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config, r.bccsp)
 	if err != nil {
 		logger.Panicf("Error creating channelconfig bundle: %s", err)
 	}
@@ -365,5 +365,5 @@ func (r *Registrar) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfi
 
 // CreateBundle calls channelconfig.NewBundle
 func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
-	return channelconfig.NewBundle(channelID, config, factory.GetDefault())
+	return channelconfig.NewBundle(channelID, config, r.bccsp)
 }
