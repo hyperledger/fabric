@@ -17,7 +17,7 @@ const (
 	MSPv1_0 = iota
 	MSPv1_1
 	MSPv1_3
-	MSPv1_4_2
+	MSPv1_4_3
 )
 
 // NewOpts represent
@@ -56,14 +56,14 @@ func New(opts NewOpts, cryptoProvider bccsp.BCCSP) (MSP, error) {
 			return newBccspMsp(MSPv1_1, cryptoProvider)
 		case MSPv1_3:
 			return newBccspMsp(MSPv1_3, cryptoProvider)
-		case MSPv1_4_2:
-			return newBccspMsp(MSPv1_4_2, cryptoProvider)
+		case MSPv1_4_3:
+			return newBccspMsp(MSPv1_4_3, cryptoProvider)
 		default:
 			return nil, errors.Errorf("Invalid *BCCSPNewOpts. Version not recognized [%v]", opts.GetVersion())
 		}
 	case *IdemixNewOpts:
 		switch opts.GetVersion() {
-		case MSPv1_4_2:
+		case MSPv1_4_3:
 			fallthrough
 		case MSPv1_3:
 			return newIdemixMsp(MSPv1_3)
