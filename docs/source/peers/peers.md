@@ -312,20 +312,22 @@ peer cannot, on its own, update the ledger --- updating requires the consent of 
 peers in the network. A peer requires other peers in the network to approve a
 ledger update before it can be applied to a peer's local ledger. This process is
 called *consensus*, which takes much longer to complete than a simple query. But when
-all the peers required to approve the transaction do so, and the transaction is
+all the peers required to approve the transaction    do so, and the transaction is
 committed to the ledger, peers will notify their connected applications that the
 ledger has been updated. You're about to be shown a lot more detail about how
 peers and orderers manage the consensus process in this section.
 
 Specifically, applications that want to update the ledger are involved in a
 3-phase process, which ensures that all the peers in a blockchain network keep
-their ledgers consistent with each other. In the first phase, applications work
-with a subset of *endorsing peers*, each of which provide an endorsement of the
-proposed ledger update to the application, but do not apply the proposed update
-to their copy of the ledger. In the second phase, these separate endorsements
-are collected together as transactions and packaged into blocks. In the final
-phase, these blocks are distributed back to every peer where each transaction is
-validated before being applied to that peer's copy of the ledger.
+their ledgers consistent with each other. 
+
+* In the first phase, applications work with a subset of *endorsing peers*, each of
+  which provide an endorsement of the proposed ledger update to the application,
+  but do not apply the proposed update to their copy of the ledger.
+* In the second phase, these separate endorsements are collected together
+  as transactions and packaged into blocks.
+* In the third and final phase, these blocks are distributed back to every peer where
+  each transaction is validated before being committed to that peer's copy of the ledger.
 
 As you will see, orderer nodes are central to this process, so let's
 investigate in a little more detail how applications and peers use orderers to
