@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
@@ -38,7 +39,9 @@ func TestMaintenanceNoConfig(t *testing.T) {
 	ms := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: &mocks.OrdererConfig{},
 	}
-	mf := NewMaintenanceFilter(ms)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mf := NewMaintenanceFilter(ms, cryptoProvider)
 	require.NotNil(t, mf)
 	ms.OrdererConfigVal = nil
 	assert.Panics(t, func() { _ = mf.Apply(&common.Envelope{}) }, "No orderer config")
@@ -48,7 +51,9 @@ func TestMaintenanceDisabled(t *testing.T) {
 	msInactive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: newMockOrdererConfig(false, orderer.ConsensusType_STATE_NORMAL),
 	}
-	mf := NewMaintenanceFilter(msInactive)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mf := NewMaintenanceFilter(msInactive, cryptoProvider)
 	require.NotNil(t, mf)
 	current := consensusTypeInfo{ordererType: "kafka", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
 
@@ -79,7 +84,9 @@ func TestMaintenanceParseEvelope(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 	}
-	mf := NewMaintenanceFilter(msActive)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	badBytes := []byte{1, 2, 3, 4}
 
@@ -155,7 +162,9 @@ func TestMaintenanceInspectEntry(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 	}
-	mf := NewMaintenanceFilter(msActive)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	bogusMetadata := []byte{1, 2, 3, 4}
 	current := consensusTypeInfo{ordererType: "kafka", metadata: []byte{}, state: orderer.ConsensusType_STATE_NORMAL}
@@ -188,7 +197,9 @@ func TestMaintenanceInspectChange(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE),
 	}
-	mf := NewMaintenanceFilter(msActive)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	bogusMetadata := []byte{1, 2, 3, 4}
 	validMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{})
@@ -243,7 +254,9 @@ func TestMaintenanceInspectExit(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: mockOrderer,
 	}
-	mf := NewMaintenanceFilter(msActive)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	current := consensusTypeInfo{ordererType: "etcdraft", metadata: validMetadata, state: orderer.ConsensusType_STATE_MAINTENANCE}
 
@@ -288,7 +301,9 @@ func TestMaintenanceExtra(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE),
 	}
-	mf := NewMaintenanceFilter(msActive)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	current := consensusTypeInfo{ordererType: "kafka", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
 	validMetadata := protoutil.MarshalOrPanic(&etcdraft.ConfigMetadata{})
@@ -319,7 +334,9 @@ func TestMaintenanceMissingConsensusType(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_MAINTENANCE),
 	}
-	mf := NewMaintenanceFilter(msActive)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mf := NewMaintenanceFilter(msActive, cryptoProvider)
 	require.NotNil(t, mf)
 	current := consensusTypeInfo{ordererType: "kafka", metadata: nil, state: orderer.ConsensusType_STATE_MAINTENANCE}
 	for i := 1; i < 4; i++ {

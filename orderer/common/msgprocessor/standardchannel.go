@@ -9,6 +9,7 @@ package msgprocessor
 import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -50,11 +51,11 @@ type StandardChannel struct {
 }
 
 // NewStandardChannel creates a new standard message processor
-func NewStandardChannel(support StandardChannelSupport, filters *RuleSet) *StandardChannel {
+func NewStandardChannel(support StandardChannelSupport, filters *RuleSet, bccsp bccsp.BCCSP) *StandardChannel {
 	return &StandardChannel{
 		filters:           filters,
 		support:           support,
-		maintenanceFilter: NewMaintenanceFilter(support),
+		maintenanceFilter: NewMaintenanceFilter(support, bccsp),
 	}
 }
 

@@ -8,6 +8,7 @@ package multichannel
 
 import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
@@ -41,6 +42,7 @@ func newChainSupport(
 	consenters map[string]consensus.Consenter,
 	signer identity.SignerSerializer,
 	blockcutterMetrics *blockcutter.Metrics,
+	bccsp bccsp.BCCSP,
 ) *ChainSupport {
 	// Read in the last block and metadata for the channel
 	lastBlock := blockledger.GetBlock(ledgerResources, ledgerResources.Height()-1)
@@ -63,7 +65,7 @@ func newChainSupport(
 	}
 
 	// Set up the msgprocessor
-	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, registrar.config))
+	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, registrar.config), bccsp)
 
 	// Set up the block writer
 	cs.BlockWriter = newBlockWriter(lastBlock, registrar, cs)

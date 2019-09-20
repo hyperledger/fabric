@@ -107,6 +107,7 @@ type Registrar struct {
 	systemChannel      *ChainSupport
 	templator          msgprocessor.ChannelConfigTemplator
 	callbacks          []channelconfig.BundleActor
+	bccsp              bccsp.BCCSP
 }
 
 // ConfigBlock retrieves the last configuration block from the given ledger.
@@ -144,6 +145,7 @@ func NewRegistrar(
 		signer:             signer,
 		blockcutterMetrics: blockcutter.NewMetrics(metricsProvider),
 		callbacks:          callbacks,
+		bccsp:              factory.GetDefault(),
 	}
 
 	return r
@@ -176,12 +178,14 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r.consenters,
 				r.signer,
 				r.blockcutterMetrics,
+				r.bccsp,
 			)
-			r.templator = msgprocessor.NewDefaultTemplator(chain)
+			r.templator = msgprocessor.NewDefaultTemplator(chain, r.bccsp)
 			chain.Processor = msgprocessor.NewSystemChannel(
 				chain,
 				r.templator,
 				msgprocessor.CreateSystemChannelFilters(r.config, r, chain, chain.MetadataValidator),
+				r.bccsp,
 			)
 
 			// Retrieve genesis block to log its hash. See FAB-5450 for the purpose
@@ -210,6 +214,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r.consenters,
 				r.signer,
 				r.blockcutterMetrics,
+				r.bccsp,
 			)
 			r.chains[channelID] = chain
 			chain.start()
@@ -297,7 +302,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 	return &ledgerResources{
 		configResources: &configResources{
 			mutableResources: channelconfig.NewBundleSource(bundle, r.callbacks...),
-			bccsp:            factory.GetDefault(),
+			bccsp:            r.bccsp,
 		},
 		ReadWriter: ledger,
 	}
@@ -334,12 +339,12 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 		newChains[key] = value
 	}
 
-	cs := newChainSupport(r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics)
-	channelID := ledgerResources.ConfigtxValidator().ChannelID()
+	cs := newChainSupport(r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics, r.bccsp)
+	chainID := ledgerResources.ConfigtxValidator().ChannelID()
 
-	logger.Infof("Created and starting new channel %s", channelID)
+	logger.Infof("Created and starting new channel %s", chainID)
 
-	newChains[string(channelID)] = cs
+	newChains[string(chainID)] = cs
 	cs.start()
 
 	r.chains = newChains

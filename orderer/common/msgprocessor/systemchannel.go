@@ -11,7 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
@@ -39,10 +39,10 @@ type SystemChannel struct {
 }
 
 // NewSystemChannel creates a new system channel message processor.
-func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTemplator, filters *RuleSet) *SystemChannel {
+func NewSystemChannel(support StandardChannelSupport, templator ChannelConfigTemplator, filters *RuleSet, bccsp bccsp.BCCSP) *SystemChannel {
 	logger.Debugf("Creating system channel msg processor for channel %s", support.ChannelID())
 	return &SystemChannel{
-		StandardChannel: NewStandardChannel(support, filters),
+		StandardChannel: NewStandardChannel(support, filters, bccsp),
 		templator:       templator,
 	}
 }
@@ -214,12 +214,14 @@ type DefaultTemplatorSupport interface {
 // DefaultTemplator implements the ChannelConfigTemplator interface and is the one used in production deployments.
 type DefaultTemplator struct {
 	support DefaultTemplatorSupport
+	bccsp   bccsp.BCCSP
 }
 
 // NewDefaultTemplator returns an instance of the DefaultTemplator.
-func NewDefaultTemplator(support DefaultTemplatorSupport) *DefaultTemplator {
+func NewDefaultTemplator(support DefaultTemplatorSupport, bccsp bccsp.BCCSP) *DefaultTemplator {
 	return &DefaultTemplator{
 		support: support,
+		bccsp:   bccsp,
 	}
 }
 
@@ -369,7 +371,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 
 	bundle, err := channelconfig.NewBundle(channelHeader.ChannelId, &cb.Config{
 		ChannelGroup: channelGroup,
-	}, factory.GetDefault())
+	}, dt.bccsp)
 
 	if err != nil {
 		return nil, err
