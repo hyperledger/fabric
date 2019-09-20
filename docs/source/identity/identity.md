@@ -19,7 +19,7 @@ they are the properties which determine their permissions.
 
 For an identity to be **verifiable**, it must come from a **trusted** authority.
 A [membership service provider](../membership/membership.html)
-(MSP) is how this is achieved in Fabric. More specifically, an MSP is a component
+(MSP) is that trusted authority in Fabric. More specifically, an MSP is a component
 that defines the rules that govern the valid identities for this organization.
 The default MSP implementation in Fabric uses X.509 certificates as identities,
 adopting a traditional Public Key Infrastructure (PKI) hierarchical model (more
