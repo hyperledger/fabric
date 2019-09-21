@@ -23,7 +23,7 @@ application and smart contract developers to focus on their business problem,
 rather than the low level details of how to interact with a Fabric network.
 
 Smart contracts are one example of a high level programming abstraction, and it
-is possible to define smart contracts within in a chaincode container. When a
+is possible to define smart contracts within a chaincode container. When a
 chaincode is installed and instantiated, all the smart contracts within it are
 made available to the corresponding channel.
 
