@@ -53,6 +53,8 @@ type DockerVM struct {
 	BuildMetrics *BuildMetrics
 }
 
+//go:generate counterfeiter -o mock/dockerclient.go --fake-name DockerClient . dockerClient
+
 // dockerClient represents a docker client
 type dockerClient interface {
 	// CreateContainer creates a docker container, returns an error in case of failure
