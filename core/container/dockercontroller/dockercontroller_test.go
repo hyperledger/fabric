@@ -420,14 +420,24 @@ func Test_deployImage(t *testing.T) {
 		Pull:         viper.GetBool("chaincode.pull"),
 		InputStream:  nil,
 		OutputStream: bytes.NewBuffer(nil),
+		NetworkMode:  "host",
 	}
 
-	client.BuildImageStub = func(buildOpts docker.BuildImageOptions) error {
-		gt.Expect(buildOpts).To(Equal(expectedOpts))
-		return nil
-	}
 	err = dockerVM.deployImage(client, ccid, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(client.BuildImageCallCount()).To(Equal(1))
+	gt.Expect(client.BuildImageArgsForCall(0)).To(Equal(expectedOpts))
+
+	// set network mode
+	hostConfig = getDockerHostConfig()
+	hostConfig.NetworkMode = "bridge"
+	expectedOpts.NetworkMode = "bridge"
+	err = dockerVM.deployImage(client, ccid, nil)
+
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(client.BuildImageCallCount()).To(Equal(2))
+	gt.Expect(client.BuildImageArgsForCall(1)).To(Equal(expectedOpts))
+	hostConfig = nil
 }
 
 type InMemBuilder struct{}

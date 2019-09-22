@@ -200,12 +200,14 @@ func (vm *DockerVM) deployImage(client dockerClient, ccid ccintf.CCID, reader io
 		return err
 	}
 
+	networkMode := getDockerHostConfig().NetworkMode
 	outputbuf := bytes.NewBuffer(nil)
 	opts := docker.BuildImageOptions{
 		Name:         id,
 		Pull:         viper.GetBool("chaincode.pull"),
 		InputStream:  reader,
 		OutputStream: outputbuf,
+		NetworkMode:  networkMode,
 	}
 
 	startTime := time.Now()
