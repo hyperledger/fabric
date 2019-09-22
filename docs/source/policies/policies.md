@@ -62,7 +62,7 @@ agreed to by the network.
 ## How are policies implemented throughout Fabric
 
 Policies are implemented at different levels of a Fabric network. Each policy
-domain governs different aspects how a network operates.
+domain governs different aspects of how a network operates.
 
 ![policies.policies](./FabricPolicyHierarchy-2.png) *A visual representation
 of the Fabric policy hierarchy.*
