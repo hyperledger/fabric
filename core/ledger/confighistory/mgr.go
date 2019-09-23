@@ -24,7 +24,7 @@ const (
 	collectionConfigNamespace = "lscc" // lscc namespace was introduced in version 1.2 and we continue to use this in order to be compatible with existing data
 )
 
-// Mgr should be registered as a state listener. The state listener builds the history and retriver helps in querying the history
+// Mgr should be registered as a state listener. The state listener builds the history and retriever helps in querying the history
 type Mgr interface {
 	ledger.StateListener
 	GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) ledger.ConfigHistoryRetriever
@@ -65,7 +65,7 @@ func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 		return err
 	}
 	if len(updatedCCs) == 0 {
-		logger.Errorf("Config history manager is expected to recieve events only if at least one chaincode is updated stateUpdates = %#v",
+		logger.Errorf("Config history manager is expected to receive events only if at least one chaincode is updated stateUpdates = %#v",
 			trigger.StateUpdates)
 		return nil
 	}

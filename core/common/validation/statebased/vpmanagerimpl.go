@@ -210,7 +210,7 @@ func (c *validationContext) waitForValidationResults(kid *ledgerKeyID, blockNum 
 	//    that affect us and put them in a local slice; we then release
 	//    the mutex
 	// 2) we traverse the slice of dependencies and for each, retrieve
-	//    the validartion result
+	//    the validation result
 	// The two step approach is required to avoid a deadlock where the
 	// consumer (the caller of this function) holds the mutex and thus
 	// prevents the producer (the caller of signalValidationResult) to

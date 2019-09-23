@@ -164,7 +164,7 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 	dbBatch.Put(savePointKey, height.ToBytes())
 
 	// write the block's history records and savepoint to LevelDB
-	// Setting snyc to true as a precaution, false may be an ok optimization after further testing.
+	// Setting sync to true as a precaution, false may be an ok optimization after further testing.
 	if err := historyDB.db.WriteBatch(dbBatch, true); err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (historyDB *historyDB) NewHistoryQueryExecutor(blockStore blkstorage.BlockS
 	return &LevelHistoryDBQueryExecutor{historyDB, blockStore}, nil
 }
 
-// GetBlockNumFromSavepoint implements method in HistoryDB interface
+// GetLastSavepoint implements method in HistoryDB interface
 func (historyDB *historyDB) GetLastSavepoint() (*version.Height, error) {
 	versionBytes, err := historyDB.db.Get(savePointKey)
 	if err != nil || versionBytes == nil {

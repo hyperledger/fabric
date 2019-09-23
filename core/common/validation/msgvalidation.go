@@ -130,7 +130,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	case common.HeaderType_CONFIG:
 		//which the types are different the validation is the same
 		//viz, validate a proposal to a chaincode. If we need other
-		//special validation for confguration, we would have to implement
+		//special validation for configuration, we would have to implement
 		//special validation
 		fallthrough
 	case common.HeaderType_ENDORSER_TRANSACTION:

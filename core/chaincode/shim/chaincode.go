@@ -766,7 +766,7 @@ func validateCompositeKeyAttribute(str string) error {
 
 //To ensure that simple keys do not go into composite key namespace,
 //we validate simplekey to check whether the key starts with 0x00 (which
-//is the namespace for compositeKey). This helps in avoding simple/composite
+//is the namespace for compositeKey). This helps in avoiding simple/composite
 //key collisions.
 func validateSimpleKeys(simpleKeys ...string) error {
 	for _, key := range simpleKeys {

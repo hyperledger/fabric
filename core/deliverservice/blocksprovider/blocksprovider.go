@@ -153,7 +153,7 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 				continue
 			}
 			if err := b.mcs.VerifyBlock(gossipcommon.ChainID(b.chainID), blockNum, marshaledBlock); err != nil {
-				logger.Errorf("[%s] Error verifying block with sequnce number %d, due to %s", b.chainID, blockNum, err)
+				logger.Errorf("[%s] Error verifying block with sequence number %d, due to %s", b.chainID, blockNum, err)
 				continue
 			}
 

@@ -143,7 +143,7 @@ func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, 
 	}
 }
 
-// loadPlugin loads a pluggagle handler
+// loadPlugin loads a pluggable handler
 func (r *registry) loadPlugin(pluginPath string, handlerType HandlerType, extraArgs ...string) {
 	if _, err := os.Stat(pluginPath); err != nil {
 		logger.Panicf(fmt.Sprintf("Could not find plugin at path %s: %s", pluginPath, err))
@@ -251,7 +251,7 @@ func panicWithDefinitionError(factory string) {
 }
 
 // Lookup returns a list of handlers with the given
-// given type, or nil if none exist
+// type, or nil if none exist
 func (r *registry) Lookup(handlerType HandlerType) interface{} {
 	if handlerType == Auth {
 		return r.filters

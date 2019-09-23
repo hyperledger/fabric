@@ -99,7 +99,7 @@ func (r *rollbackMgr) rollbackBlockIndex() error {
 }
 
 func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) error {
-	// TODO: when more than half of the blocks' indicies are to be deleted, it
+	// TODO: when more than half of the blocks' indices are to be deleted, it
 	// might be efficient to drop the whole index database rather than deleting
 	// entries. However, if there is more than more than 1 channel, dropping of
 	// index would impact the time taken to recover the peer. We need to analyze
@@ -145,7 +145,7 @@ func populateBlockInfoWithDuplicateTxids(blockInfo *serializedBlockInfo, placeme
 	for _, txOffset := range blockInfo.txOffsets {
 		blockLoc, err := indexStore.getBlockLocByTxID(txOffset.txID)
 		// There is a situations where the txid entries for a config transaction may not present in the index. This is caused
-		// by the fact that in the data produced by a release proior to 1.4.2, the txID for a config transaction is used as
+		// by the fact that in the data produced by a release prior to 1.4.2, the txID for a config transaction is used as
 		// an empty string. However, in the data produced by release 1.4.2 (and up), the real txID is used by computing in the
 		// indexing code. So, a mismatch is possible where the generated txID is not present in the index
 		if err == blkstorage.ErrNotFoundInIndex {

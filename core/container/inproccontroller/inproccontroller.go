@@ -35,7 +35,7 @@ var (
 	inprocLogger = flogging.MustGetLogger("inproccontroller")
 
 	// TODO this is a very hacky way to do testing, we should find other ways
-	// to test, or not statically inject these depenencies.
+	// to test, or not statically inject these dependencies.
 	_shimStartInProc    = shim.StartInProc
 	_inprocLoggerErrorf = inprocLogger.Errorf
 )

@@ -66,7 +66,7 @@ func newBlockIndex(indexConfig *blkstorage.IndexConfig, db *leveldbhelper.DBHand
 		indexItemsMap[indexItem] = true
 	}
 	// This dependency is needed because the index 'IndexableAttrTxID' is used for detecting the duplicate txid
-	// and the results are reused in the other two indexes. Ideally, all three index should be merged into one
+	// and the results are reused in the other two indexes. Ideally, all three indexes should be merged into one
 	// for efficiency purpose - [FAB-10587]
 	if (indexItemsMap[blkstorage.IndexableAttrTxValidationCode] || indexItemsMap[blkstorage.IndexableAttrBlockTxID]) &&
 		!indexItemsMap[blkstorage.IndexableAttrTxID] {

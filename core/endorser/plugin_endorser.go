@@ -32,7 +32,7 @@ type TransientStoreRetriever interface {
 
 // ChannelStateRetriever retrieves Channel state
 type ChannelStateRetriever interface {
-	// ChannelState returns a QueryCreator for the given Channel
+	// NewQueryCreator returns a QueryCreator for the given Channel
 	NewQueryCreator(channel string) (QueryCreator, error)
 }
 

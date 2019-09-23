@@ -42,7 +42,7 @@ type privateDataDistributor func(channel string, txID string, privateData *trans
 type Support interface {
 	crypto.SignerSupport
 	// IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
-	// ia system chaincode and it NOT invokable
+	// a system chaincode and it NOT invokable
 	IsSysCCAndNotInvokableExternal(name string) bool
 
 	// GetTxSimulator returns the transaction simulator for the specified ledger

@@ -27,7 +27,7 @@ func (e *InvalidTxError) Error() string {
 // custom representation, an implementation of a `Processor` should be cautious that the custom representation
 // is used for simulation in an deterministic fashion and should take care of compatibility cross fabric versions.
 // 'initializingLedger' true indicates that either the transaction being processed is from the genesis block or the ledger is
-// synching the state (which could happen during peer startup if the statedb is found to be lagging behind the blockchain).
+// syncing the state (which could happen during peer startup if the statedb is found to be lagging behind the blockchain).
 // In the former case, the transactions processed are expected to be valid and in the latter case, only valid transactions
 // are reprocessed and hence any validation can be skipped.
 type Processor interface {

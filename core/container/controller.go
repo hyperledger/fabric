@@ -26,7 +26,7 @@ type Builder interface {
 	Build() (io.Reader, error)
 }
 
-//VM is an abstract virtual image for supporting arbitrary virual machines
+//VM is an abstract virtual image for supporting arbitrary virtual machines
 type VM interface {
 	Start(ccid ccintf.CCID, args []string, env []string, filesToUpload map[string][]byte, builder Builder) error
 	Stop(ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
