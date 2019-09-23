@@ -108,12 +108,13 @@ var _ = Describe("Lifecycle", func() {
 		testPeers := network.PeersWithChannel("testchannel")
 		org1peer2 := network.Peer("org1", "peer2")
 
+		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
 		chaincode := nwo.Chaincode{
 			Name:                "My_1st-Chaincode",
 			Version:             "Version-0.0",
-			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Lang:                "golang",
-			PackageFile:         filepath.Join(tempDir, "simplecc.tar.gz"),
+			Path:                chaincodePath,
+			Lang:                "binary",
+			PackageFile:         filepath.Join(tempDir, "modulecc.tar.gz"),
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
@@ -128,7 +129,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
 
 		By("deploying the chaincode")
-		nwo.PackageChaincode(network, chaincode, testPeers[0])
+		nwo.PackageChaincodeBinary(chaincode)
 
 		// we set the PackageID so that we can pass it to the approve step
 		chaincode.SetPackageIDFromPackageFile()
@@ -206,9 +207,9 @@ var _ = Describe("Lifecycle", func() {
 		nwo.DeployChaincode(network, "testchannel", orderer, nwo.Chaincode{
 			Name:                "Your_Chaincode",
 			Version:             "Version+0_0",
-			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Lang:                "golang",
-			PackageFile:         filepath.Join(tempDir, "simplecc.tar.gz"),
+			Path:                chaincodePath,
+			Lang:                "binary",
+			PackageFile:         filepath.Join(tempDir, "modulecc.tar.gz"),
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
@@ -324,9 +325,9 @@ var _ = Describe("Lifecycle", func() {
 		chaincode = nwo.Chaincode{
 			Name:         "defaultpolicycc",
 			Version:      "0.0",
-			Path:         "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Lang:         "golang",
-			PackageFile:  filepath.Join(tempDir, "simplecc.tar.gz"),
+			Path:         chaincodePath,
+			Lang:         "binary",
+			PackageFile:  filepath.Join(tempDir, "modulecc.tar.gz"),
 			Ctor:         `{"Args":["init","a","100","b","200"]}`,
 			Sequence:     "1",
 			InitRequired: true,

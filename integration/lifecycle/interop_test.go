@@ -126,13 +126,13 @@ var _ = Describe("Release interoperability", func() {
 			chaincode = nwo.Chaincode{
 				Name:            "mycc",
 				Version:         "0.0",
-				Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Lang:            "golang",
-				PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
+				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+				Lang:            "binary",
+				PackageFile:     filepath.Join(tempDir, "modulecc.tar.gz"),
 				SignaturePolicy: `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 				Sequence:        "1",
 				InitRequired:    false,
-				Label:           "my_simple_chaincode",
+				Label:           "my_prebuilt_chaincode",
 			}
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
@@ -217,13 +217,13 @@ var _ = Describe("Release interoperability", func() {
 				chaincode = nwo.Chaincode{
 					Name:            "mycc",
 					Version:         "0.0",
-					Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-					Lang:            "golang",
-					PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
+					Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+					Lang:            "binary",
+					PackageFile:     filepath.Join(tempDir, "modulecc.tar.gz"),
 					SignaturePolicy: `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 					Sequence:        "1",
 					InitRequired:    false,
-					Label:           "my_simple_chaincode",
+					Label:           "my_prebuilt_chaincode",
 				}
 				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
@@ -242,13 +242,13 @@ var _ = Describe("Release interoperability", func() {
 				chaincode := nwo.Chaincode{
 					Name:            "mycc",
 					Version:         "0.0",
-					Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-					Lang:            "golang",
-					PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
+					Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+					Lang:            "binary",
+					PackageFile:     filepath.Join(tempDir, "modulecc.tar.gz"),
 					SignaturePolicy: `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 					Sequence:        "1",
 					InitRequired:    true,
-					Label:           "my_simple_chaincode",
+					Label:           "my_prebuilt_chaincode",
 					Ctor:            `{"Args":["init","a","100","b","200"]}`,
 				}
 				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
@@ -275,17 +275,9 @@ var _ = Describe("Release interoperability", func() {
 				Expect(env).NotTo(BeNil())
 
 				By("upgrading the chaincode definition using _lifecycle")
-				chaincode = nwo.Chaincode{
-					Name:            "mycc",
-					Version:         "0.0",
-					Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-					Lang:            "golang",
-					PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
-					SignaturePolicy: `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
-					Sequence:        "2",
-					InitRequired:    false,
-					Label:           "my_simple_chaincode",
-				}
+				chaincode.Sequence = "2"
+				chaincode.SignaturePolicy = `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`
+				chaincode.InitRequired = false
 				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 				By("committing the old transaction, expecting to hit an MVCC conflict")
@@ -321,24 +313,24 @@ var _ = Describe("Release interoperability", func() {
 					callerDefNew = nwo.Chaincode{
 						Name:            "caller",
 						Version:         "0.0",
-						Path:            "github.com/hyperledger/fabric/integration/lifecycle/chaincode/caller/cmd",
-						Lang:            "golang",
+						Path:            components.Build("github.com/hyperledger/fabric/integration/lifecycle/chaincode/caller/cmd"),
+						Lang:            "binary",
 						PackageFile:     filepath.Join(tempDir, "caller.tar.gz"),
 						SignaturePolicy: ccEP,
 						Sequence:        "1",
-						Label:           "my_caller_chaincode",
+						Label:           "my_prebuilt_caller_chaincode",
 						InitRequired:    true,
 						Ctor:            `{"Args":[""]}`,
 					}
 					calleeDefNew = nwo.Chaincode{
 						Name:            "callee",
 						Version:         "0.0",
-						Path:            "github.com/hyperledger/fabric/integration/lifecycle/chaincode/callee/cmd",
-						Lang:            "golang",
+						Path:            components.Build("github.com/hyperledger/fabric/integration/lifecycle/chaincode/callee/cmd"),
+						Lang:            "binary",
 						PackageFile:     filepath.Join(tempDir, "callee.tar.gz"),
 						SignaturePolicy: ccEP,
 						Sequence:        "1",
-						Label:           "my_callee_chaincode",
+						Label:           "my_prebuilt_callee_chaincode",
 						InitRequired:    true,
 						Ctor:            `{"Args":[""]}`,
 					}

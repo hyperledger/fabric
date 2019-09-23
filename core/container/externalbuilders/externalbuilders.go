@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	DefaultEnvWhitelist = []string{"GOCACHE", "HOME", "LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"}
+	DefaultEnvWhitelist = []string{"GOCACHE", "GOPATH", "HOME", "LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"}
 	logger              = flogging.MustGetLogger("chaincode.externalbuilders")
 )
 
@@ -274,7 +274,7 @@ type buildMetadata struct {
 func writeMetadataFile(ccid string, md *persistence.ChaincodePackageMetadata, dst string) error {
 	buildMetadata := &buildMetadata{
 		Path:      md.Path,
-		Type:      md.Type,
+		Type:      strings.ToLower(md.Type),
 		PackageID: ccid,
 	}
 	mdBytes, err := json.Marshal(buildMetadata)
