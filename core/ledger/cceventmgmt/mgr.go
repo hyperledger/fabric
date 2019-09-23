@@ -93,7 +93,7 @@ func (m *Mgr) HandleChaincodeDeploy(chainid string, chaincodeDefinitions []*Chai
 
 // ChaincodeDeployDone is expected to be called when the deploy transaction state is committed
 func (m *Mgr) ChaincodeDeployDone(chainid string) {
-	// release the lock aquired in function `HandleChaincodeDeploy`
+	// release the lock acquired in function `HandleChaincodeDeploy`
 	defer m.rwlock.RUnlock()
 	if m.callbackStatus.isDeployPending(chainid) {
 		m.invokeDoneOnHandlers(chainid, true)

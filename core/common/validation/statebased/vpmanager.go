@@ -39,7 +39,7 @@ type KeyLevelValidationParameterManager interface {
 	// height h. The function returns the validation parameter and no error in case of
 	// success, or nil and an error otherwise. One particular error that may be
 	// returned is ValidationParameterUpdatedErr, which is returned in case the
-	// validation parmeters for the given KVS key have been changed by a transaction
+	// validation parameters for the given KVS key have been changed by a transaction
 	// with txNum smaller than the one supplied by the caller. This protects from a
 	// scenario where a transaction changing validation parameters is marked as valid
 	// by VSCC and is later invalidated by the committer for other reasons (e.g. MVCC

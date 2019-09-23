@@ -56,7 +56,7 @@ func (combiner *itrCombiner) Next() (commonledger.QueryResult, error) {
 			if err != nil {
 				return nil, err
 			}
-			if removed { // if the current iterator is exhaused and hence removed, decrement the index
+			if removed { // if the current iterator is exhausted and hence removed, decrement the index
 				// because indexes of the remaining iterators are decremented by one
 				i--
 			}

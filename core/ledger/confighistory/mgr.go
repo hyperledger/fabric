@@ -23,7 +23,7 @@ const (
 	collectionConfigNamespace = "lscc" // lscc namespace was introduced in version 1.2 and we continue to use this in order to be compatible with existing data
 )
 
-// Mgr should be registered as a state listener. The state listener builds the history and retriver helps in querying the history
+// Mgr should be registered as a state listener. The state listener builds the history and retriever helps in querying the history
 type Mgr interface {
 	ledger.StateListener
 	GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) ledger.ConfigHistoryRetriever

@@ -19,13 +19,13 @@ type UpdatesBytesBuilder struct {
 
 // DeterministicBytesForPubAndHashUpdates constructs the bytes for a given UpdateBatch
 // while constructing the bytes, it considers only public writes and hashed writes for
-// the collections. For achieveing the determinism, it constructs a slice of proto messages
+// the collections. For achieving the determinism, it constructs a slice of proto messages
 // of type 'KVWriteProto'. In the slice, all the writes for a namespace "ns1" appear before
 // the writes for another namespace "ns2" if "ns1" < "ns2" (lexicographically). Within a
 // namespace, all the public writes appear before the collection writes. Like namespaces,
 // the collections writes within a namespace appear in the order of lexicographical order.
-// If an entry has the same namespace as its preceding entry, the namespcae field is skipped.
-// A Similar treatment is given to the repeative entries for a collection within a namespace.
+// If an entry has the same namespace as its preceding entry, the namespace field is skipped.
+// A Similar treatment is given to the repetitive entries for a collection within a namespace.
 // For illustration, see the corresponding unit tests
 func (bb *UpdatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateBatch) ([]byte, error) {
 	pubUpdates := u.PubUpdates

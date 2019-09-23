@@ -60,7 +60,7 @@ type CollectionAccessPolicy interface {
 	IsMemberOnlyWrite() bool
 }
 
-// CollectionPersistenceConfigs encapsulates configurations related to persistece of a collection
+// CollectionPersistenceConfigs encapsulates configurations related to persistence of a collection
 type CollectionPersistenceConfigs interface {
 	// BlockToLive returns the number of blocks after which the collection data expires.
 	// For instance if the value is set to 10, a key last modified by block number 100
@@ -120,13 +120,13 @@ type CollectionFilter interface {
 }
 
 const (
-	// Collecion-specific constants
+	// Collection-specific constants
 
 	// CollectionSeparator is the separator used to build the KVS
 	// key storing the collections of a chaincode; note that we are
 	// using as separator a character which is illegal for either the
 	// name or the version of a chaincode so there cannot be any
-	// collisions when chosing the name
+	// collisions when choosing the name
 	collectionSeparator = "~"
 	// collectionSuffix is the suffix of the KVS key storing the
 	// collections of a chaincode

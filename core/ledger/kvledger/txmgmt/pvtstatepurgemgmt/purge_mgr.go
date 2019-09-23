@@ -22,7 +22,7 @@ import (
 type PurgeMgr interface {
 	// PrepareForExpiringKeys gives a chance to the PurgeMgr to do background work in advance if any
 	PrepareForExpiringKeys(expiringAtBlk uint64)
-	// WaitForPrepareToFinish holds the caller till the background goroutine lauched by 'PrepareForExpiringKeys' is finished
+	// WaitForPrepareToFinish holds the caller till the background goroutine launched by 'PrepareForExpiringKeys' is finished
 	WaitForPrepareToFinish()
 	// DeleteExpiredAndUpdateBookkeeping updates the bookkeeping and modifies the update batch by adding the deletes for the expired pvtdata
 	DeleteExpiredAndUpdateBookkeeping(
@@ -197,8 +197,8 @@ func (p *purgeMgr) DeleteExpiredAndUpdateBookkeeping(
 
 // BlockCommitDone implements function in the interface 'PurgeMgr'
 // These orphan entries for purge-schedule can be cleared off in bulk in a separate background routine as well
-// If we maintian the following logic (i.e., clear off entries just after block commit), we need a TODO -
-// We need to perform a check in the start, becasue there could be a crash between the block commit and
+// If we maintain the following logic (i.e., clear off entries just after block commit), we need a TODO -
+// We need to perform a check in the start, because there could be a crash between the block commit and
 // invocation to this function resulting in the orphan entry for the deletes scheduled for the last block
 // Also, the another way is to club the delete of these entries in the same batch that adds entries for the future expirations -
 // however, that requires updating the expiry store by replaying the last block from blockchain in order to sustain a crash between
@@ -229,7 +229,7 @@ func (p *purgeMgr) prepareWorkingsetFor(expiringAtBlk uint64) *workingset {
 		logger.Debugf("No expiry entry found for expiringAtBlk [%d]", expiringAtBlk)
 		return workingset
 	}
-	logger.Debugf("Total [%d] expiring entries found. Evaluaitng whether some of these keys have been overwritten in later blocks...", len(toPurge))
+	logger.Debugf("Total [%d] expiring entries found. Evaluating whether some of these keys have been overwritten in later blocks...", len(toPurge))
 
 	for purgeEntryK, purgeEntryV := range toPurge {
 		logger.Debugf("Evaluating for hashedKey [%s]", purgeEntryK)
