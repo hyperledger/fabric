@@ -7,9 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package localconfig
 
 import (
-	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -22,15 +20,11 @@ import (
 )
 
 const (
-	// Prefix identifies the prefix for the configtxgen-related ENV vars.
-	Prefix string = "CONFIGTX"
-
 	// The type key for etcd based RAFT consensus.
 	EtcdRaft = "etcdraft"
 )
 
 var logger = flogging.MustGetLogger("common.tools.configtxgen.localconfig")
-var configName = strings.ToLower(Prefix)
 
 const (
 	// TestChannelID is the channel name used for testing purposes when one is
@@ -224,17 +218,10 @@ func LoadTopLevel(configPaths ...string) *TopLevel {
 		for _, p := range configPaths {
 			config.AddConfigPath(p)
 		}
-		config.SetConfigName(configName)
+		config.SetConfigName("configtx")
 	} else {
-		cf.InitViper(config, configName)
+		cf.InitViper(config, "configtx")
 	}
-
-	// For environment variables
-	config.SetEnvPrefix(Prefix)
-	config.AutomaticEnv()
-
-	replacer := strings.NewReplacer(".", "_")
-	config.SetEnvKeyReplacer(replacer)
 
 	err := config.ReadInConfig()
 	if err != nil {
@@ -264,19 +251,10 @@ func Load(profile string, configPaths ...string) *Profile {
 		for _, p := range configPaths {
 			config.AddConfigPath(p)
 		}
-		config.SetConfigName(configName)
+		config.SetConfigName("configtx")
 	} else {
-		cf.InitViper(config, configName)
+		cf.InitViper(config, "configtx")
 	}
-
-	// For environment variables
-	config.SetEnvPrefix(Prefix)
-	config.AutomaticEnv()
-
-	// This replacer allows substitution within the particular profile without
-	// having to fully qualify the name
-	replacer := strings.NewReplacer(strings.ToUpper(fmt.Sprintf("profiles.%s.", profile)), "", ".", "_")
-	config.SetEnvKeyReplacer(replacer)
 
 	err := config.ReadInConfig()
 	if err != nil {
