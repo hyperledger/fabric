@@ -42,16 +42,16 @@ specified to allow for identity (certificate) validation and signature
 verification. These parameters are deduced by
 `RFC5280 <http://www.ietf.org/rfc/rfc5280.txt>`_, and include:
 
-- A list of self-signed (X.509) certificates to constitute the *root of
+- A list of self-signed (X.509) CA certificates to constitute the *root of
   trust*
 - A list of X.509 certificates to represent intermediate CAs this provider
   considers for certificate validation; these certificates ought to be
   certified by exactly one of the certificates in the root of trust;
   intermediate CAs are optional parameters
-- A list of X.509 certificates with a verifiable certificate path to
-  exactly one of the certificates of the root of trust to represent the
-  administrators of this MSP; owners of these certificates are authorized
-  to request changes to this MSP configuration (e.g. root CAs, intermediate CAs)
+- A list of X.509 certificates representing the administrators of this MSP with a
+  verifiable certificate path to exactly one of the CA certificates of the
+  root of trust; owners of these certificates are authorized to request changes
+  to this MSP configuration (e.g. root CAs, intermediate CAs)
 - A list of Organizational Units that valid members of this MSP should
   include in their X.509 certificate; this is an optional configuration
   parameter, used when, e.g., multiple organizations leverage the same
