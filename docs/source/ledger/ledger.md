@@ -314,7 +314,7 @@ implemented. Options for the world state database currently include LevelDB and
 CouchDB.
 
 LevelDB is the default and is particularly appropriate when ledger states are
-simple key-value pairs. A LevelDB database is closely co-located with a network
+simple key-value pairs. A LevelDB database is co-located with the peer
 node -- it is embedded within the same operating system process.
 
 CouchDB is a particularly appropriate choice when ledger states are structured
