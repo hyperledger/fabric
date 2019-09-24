@@ -29,7 +29,7 @@ check out the [Fabric CA user's guide](https://hyperledger-fabric-ca.readthedocs
 
 ## Configure your node
 
-The configuration of the orderer is handled through a `yaml` filed called
+The configuration of the orderer is handled through a `yaml` file called
 `orderer.yaml`. The `FABRIC_CFG_PATH` environment variable is used to point to
 an `orderer.yaml` file you've configured, which will extract a series of files
 and certificates on your file system.
