@@ -111,14 +111,14 @@ func (s *StandardChannel) ProcessNormalMsg(env *cb.Envelope) (configSeq uint64, 
 // return the resulting config message and the configSeq the config was computed from.  If the config impetus message
 // is invalid, an error is returned.
 func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.Envelope, configSeq uint64, err error) {
-	logger.Debugf("Processing config update message for channel %s", s.support.ChainID())
+	logger.Debugf("Processing config update message for exisitng channel %s", s.support.ChainID())
 
 	// Call Sequence first.  If seq advances between proposal and acceptance, this is okay, and will cause reprocessing
 	// however, if Sequence is called last, then a success could be falsely attributed to a newer configSeq
 	seq := s.support.Sequence()
 	err = s.filters.Apply(env)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.WithMessage(err, "config update for existing channel did not pass initial checks")
 	}
 
 	configEnvelope, err := s.support.ProposeConfigUpdate(env)
@@ -138,12 +138,12 @@ func (s *StandardChannel) ProcessConfigUpdateMsg(env *cb.Envelope) (config *cb.E
 	// check is negligible, as this is the reconfig path and not the normal path.
 	err = s.filters.Apply(config)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.WithMessage(err, "config update for existing channel did not pass final checks")
 	}
 
 	err = s.maintenanceFilter.Apply(config)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.WithMessage(err, "config update for existing channel did not pass maintenance checks")
 	}
 
 	return config, seq, nil
