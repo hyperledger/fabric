@@ -7,7 +7,7 @@ Membership Service Provider (MSP) is a component that aims to offer an
 abstraction of a membership operation architecture.
 
 In particular, MSP abstracts away all cryptographic mechanisms and protocols
-behind issuing and validating certificates, and user authentication. An
+behind issuing certificates, validating certificates and user authentication. An
 MSP may define their own notion of identity, and the rules by which those
 identities are governed (identity validation) and authenticated (signature
 generation and verification).
