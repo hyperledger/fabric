@@ -133,15 +133,16 @@ type Profile struct {
 
 // Network holds information about a fabric network.
 type Network struct {
-	RootDir           string
-	StartPort         uint16
-	Components        *Components
-	DockerClient      *docker.Client
-	ExternalBuilders  []corepeer.ExternalBuilder
-	NetworkID         string
-	EventuallyTimeout time.Duration
-	MetricsProvider   string
-	StatsdEndpoint    string
+	RootDir            string
+	StartPort          uint16
+	Components         *Components
+	DockerClient       *docker.Client
+	ExternalBuilders   []corepeer.ExternalBuilder
+	NetworkID          string
+	EventuallyTimeout  time.Duration
+	MetricsProvider    string
+	StatsdEndpoint     string
+	ClientAuthRequired bool
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -810,9 +811,10 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 		sess, err = n.PeerAdminSession(p, commands.ChannelUpdate{
-			ChannelID: channelName,
-			Orderer:   n.OrdererAddress(o, ListenPort),
-			File:      tempFile.Name(),
+			ChannelID:  channelName,
+			Orderer:    n.OrdererAddress(o, ListenPort),
+			File:       tempFile.Name(),
+			ClientAuth: n.ClientAuthRequired,
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -848,6 +850,7 @@ func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additio
 			Orderer:     n.OrdererAddress(o, ListenPort),
 			File:        channelCreateTxPath,
 			OutputBlock: "/dev/null",
+			ClientAuth:  n.ClientAuthRequired,
 		})
 		Expect(err).NotTo(HaveOccurred())
 		return sess.Wait(n.EventuallyTimeout).ExitCode()
@@ -870,6 +873,7 @@ func (n *Network) CreateChannelExitCode(channelName string, o *Orderer, p *Peer,
 		Orderer:     n.OrdererAddress(o, ListenPort),
 		File:        channelCreateTxPath,
 		OutputBlock: "/dev/null",
+		ClientAuth:  n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	return sess.Wait(n.EventuallyTimeout).ExitCode()
@@ -880,14 +884,16 @@ func (n *Network) signConfigTransaction(channelTxPath string, submittingPeer *Pe
 		switch signer := signer.(type) {
 		case *Peer:
 			sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
-				File: channelTxPath,
+				File:       channelTxPath,
+				ClientAuth: n.ClientAuthRequired,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 		case *Orderer:
 			sess, err := n.OrdererAdminSession(signer, submittingPeer, commands.SignConfigTx{
-				File: channelTxPath,
+				File:       channelTxPath,
+				ClientAuth: n.ClientAuthRequired,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -917,13 +923,15 @@ func (n *Network) JoinChannel(name string, o *Orderer, peers ...*Peer) {
 		ChannelID:  name,
 		Orderer:    n.OrdererAddress(o, ListenPort),
 		OutputFile: tempFile.Name(),
+		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChannelJoin{
-			BlockPath: tempFile.Name(),
+			BlockPath:  tempFile.Name(),
+			ClientAuth: n.ClientAuthRequired,
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -1073,9 +1081,9 @@ func (n *Network) OrdererGroupRunner() ifrit.Runner {
 // PeerRunner returns an ifrit.Runner for the specified peer. The runner can be
 // used to start and manage a peer process.
 func (n *Network) PeerRunner(p *Peer, env ...string) *ginkgomon.Runner {
-
 	cmd := n.peerCommand(
 		commands.NodeStart{PeerID: p.ID()},
+		"",
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 	)
 	cmd.Env = append(cmd.Env, env...)
@@ -1110,12 +1118,20 @@ func (n *Network) NetworkGroupRunner() ifrit.Runner {
 	return grouper.NewOrdered(syscall.SIGTERM, members)
 }
 
-func (n *Network) peerCommand(command Command, env ...string) *exec.Cmd {
+func (n *Network) peerCommand(command Command, tlsDir string, env ...string) *exec.Cmd {
 	cmd := NewCommand(n.Components.Peer(), command)
 	cmd.Env = append(cmd.Env, env...)
 	if ConnectsToOrderer(command) {
 		cmd.Args = append(cmd.Args, "--tls")
 		cmd.Args = append(cmd.Args, "--cafile", n.CACertsBundlePath())
+	}
+
+	if ClientAuthEnabled(command) {
+		certfilePath := filepath.Join(tlsDir, "client.crt")
+		keyfilePath := filepath.Join(tlsDir, "client.key")
+
+		cmd.Args = append(cmd.Args, "--certfile", certfilePath)
+		cmd.Args = append(cmd.Args, "--keyfile", keyfilePath)
 	}
 
 	// In case we have a peer invoke with multiple certificates,
@@ -1154,6 +1170,7 @@ func (n *Network) PeerAdminSession(p *Peer, command Command) (*gexec.Session, er
 func (n *Network) PeerUserSession(p *Peer, user string, command Command) (*gexec.Session, error) {
 	cmd := n.peerCommand(
 		command,
+		n.PeerUserTLSDir(p, user),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.PeerUserMSPDir(p, user)),
 	)
@@ -1166,6 +1183,7 @@ func (n *Network) PeerUserSession(p *Peer, user string, command Command) (*gexec
 func (n *Network) IdemixUserSession(p *Peer, idemixOrg *Organization, user string, command Command) (*gexec.Session, error) {
 	cmd := n.peerCommand(
 		command,
+		n.PeerUserTLSDir(p, user),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.IdemixUserMSPDir(idemixOrg, user)),
 		fmt.Sprintf("CORE_PEER_LOCALMSPTYPE=%s", "idemix"),
@@ -1179,6 +1197,7 @@ func (n *Network) IdemixUserSession(p *Peer, idemixOrg *Organization, user strin
 func (n *Network) OrdererAdminSession(o *Orderer, p *Peer, command Command) (*gexec.Session, error) {
 	cmd := n.peerCommand(
 		command,
+		n.ordererUserCryptoDir(o, "Admin", "tls"),
 		fmt.Sprintf("CORE_PEER_LOCALMSPID=%s", n.Organization(o.Organization).MSPID),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.OrdererUserMSPDir(o, "Admin")),

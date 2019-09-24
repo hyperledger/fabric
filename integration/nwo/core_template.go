@@ -73,10 +73,14 @@ peer:
       minInterval: 60s
   tls:
     enabled:  true
-    clientAuthRequired: false
+    clientAuthRequired: {{ .ClientAuthRequired }}
     cert:
       file: {{ .PeerLocalTLSDir Peer }}/server.crt
     key:
+      file: {{ .PeerLocalTLSDir Peer }}/server.key
+    clientCert:
+      file: {{ .PeerLocalTLSDir Peer }}/server.crt
+    clientKey:
       file: {{ .PeerLocalTLSDir Peer }}/server.key
     rootcert:
       file: {{ .PeerLocalTLSDir Peer }}/ca.crt
@@ -203,7 +207,7 @@ operations:
       file: {{ .PeerLocalTLSDir Peer }}/server.crt
     key:
       file: {{ .PeerLocalTLSDir Peer }}/server.key
-    clientAuthRequired: false
+    clientAuthRequired: {{ .ClientAuthRequired }}
     clientRootCAs:
       files:
       - {{ .PeerLocalTLSDir Peer }}/ca.crt
