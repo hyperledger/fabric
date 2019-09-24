@@ -169,7 +169,7 @@ access to data and smart contracts on a channel.
 ## How do you write a policy in Fabric
 
 If you want to change anything in Fabric, the policy associated with the resource
-describes **who** needs approve it, either with an explicit sign off from
+describes **who** needs to approve it, either with an explicit sign off from
 individuals, or an implicit sign off by a group. In the insurance domain, an
 explicit sign off could be a single member of the homeowners insurance agents
 group. And an implicit sign off would be analogous to requiring approval from a
