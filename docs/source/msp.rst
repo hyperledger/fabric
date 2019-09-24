@@ -24,7 +24,7 @@ MSP Configuration
 -----------------
 
 To setup an instance of the MSP, its configuration needs to be specified
-locally at each peer and orderer (to enable peer, and orderer signing),
+locally at each peer and orderer (to enable peer and orderer signing),
 and on the channels to enable peer, orderer, client identity validation, and
 respective signature verification (authentication) by and for all channel
 members.
