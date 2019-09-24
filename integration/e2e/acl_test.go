@@ -240,13 +240,10 @@ var _ = Describe("EndToEndACL", func() {
 		// _lifecycle ACL policies
 		//
 
-		chaincodePath, err := filepath.Abs(components.Chaincode())
-		Expect(err).NotTo(HaveOccurred())
-
 		chaincode = nwo.Chaincode{
 			Name:                "mycc",
 			Version:             "0.0",
-			Path:                chaincodePath,
+			Path:                components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
 			Lang:                "binary",
 			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
