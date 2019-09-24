@@ -3,8 +3,8 @@ Membership Service Providers (MSP)
 
 The document serves to provide details on the setup and best practices for MSPs.
 
-Membership Service Provider (MSP) is a component that aims to offer an
-abstraction of a membership operation architecture.
+Membership Service Provider (MSP) is a Hyperledger Fabric component that offers
+an abstraction of membership operations.
 
 In particular, MSP abstracts away all cryptographic mechanisms and protocols
 behind issuing and validating certificates, and user authentication. An
