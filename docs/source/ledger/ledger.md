@@ -66,13 +66,12 @@ In Hyperledger Fabric, a ledger consists of two distinct, though related, parts
 -- a world state and a blockchain. Each of these represents a set of facts about
 a set of business objects.
 
-Firstly, there's a **world state** -- a database that holds a cache of the
-**current values** of a set of ledger states. The world state makes it easy for
-a program to directly access the current value of a state rather than having to
-calculate it by traversing the entire transaction log. Ledger states are, by
-default, expressed as **key-value** pairs, and we'll see later how Hyperledger
-Fabric provides flexibility in this regard. The world state can change
-frequently, as states can be created, updated and deleted.
+Firstly, there's a **world state** -- a database that holds **current values**
+of a set of ledger states. The world state makes it easy for a program to directly
+access the current value of a state rather than having to calculate it by traversing
+the entire transaction log. Ledger states are, by default, expressed as **key-value** pairs,
+and we'll see later how Hyperledger Fabric provides flexibility in this regard.
+The world state can change frequently, as states can be created, updated and deleted.
 
 Secondly, there's a **blockchain** -- a transaction log that records all the
 changes that have resulted in the current the world state. Transactions are
