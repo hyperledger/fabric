@@ -19,6 +19,7 @@ package mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/pkg/errors"
 )
 
@@ -42,7 +43,7 @@ func NewLocalMSPPrincipalGetter() MSPPrincipalGetter {
 type localMSPPrincipalGetter struct{}
 
 func (m *localMSPPrincipalGetter) Get(role string) (*msp.MSPPrincipal, error) {
-	mspid, err := GetLocalMSP().GetIdentifier()
+	mspid, err := GetLocalMSP(factory.GetDefault()).GetIdentifier()
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not extract local msp identifier")
 	}

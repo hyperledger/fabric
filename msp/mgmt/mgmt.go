@@ -30,7 +30,7 @@ func LoadLocalMspWithType(dir string, bccspConfig *factory.FactoryOpts, mspID, m
 		return err
 	}
 
-	return GetLocalMSP().Setup(conf)
+	return GetLocalMSP(factory.GetDefault()).Setup(conf)
 }
 
 // LoadLocalMsp loads the local MSP from the specified directory
@@ -44,7 +44,7 @@ func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) er
 		return err
 	}
 
-	return GetLocalMSP().Setup(conf)
+	return GetLocalMSP(factory.GetDefault()).Setup(conf)
 }
 
 // FIXME: AS SOON AS THE CHAIN MANAGEMENT CODE IS COMPLETE,
@@ -131,7 +131,7 @@ func XXXSetMSPManager(chainID string, manager msp.MSPManager) {
 }
 
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)
-func GetLocalMSP() msp.MSP {
+func GetLocalMSP(cryptoProvider bccsp.BCCSP) msp.MSP {
 	m.Lock()
 	defer m.Unlock()
 
@@ -139,7 +139,7 @@ func GetLocalMSP() msp.MSP {
 		return localMsp
 	}
 
-	localMsp = loadLocaMSP(factory.GetDefault())
+	localMsp = loadLocaMSP(cryptoProvider)
 
 	return localMsp
 }
@@ -180,7 +180,7 @@ func loadLocaMSP(bccsp bccsp.BCCSP) msp.MSP {
 // GetIdentityDeserializer returns the IdentityDeserializer for the given chain
 func GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 	if chainID == "" {
-		return GetLocalMSP()
+		return GetLocalMSP(factory.GetDefault())
 	}
 
 	return GetManagerForChain(chainID)
@@ -189,7 +189,7 @@ func GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 // GetLocalSigningIdentityOrPanic returns the local signing identity or panic in case
 // or error
 func GetLocalSigningIdentityOrPanic() msp.SigningIdentity {
-	id, err := GetLocalMSP().GetDefaultSigningIdentity()
+	id, err := GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	if err != nil {
 		mspLogger.Panicf("Failed getting local signing identity [%+v]", err)
 	}

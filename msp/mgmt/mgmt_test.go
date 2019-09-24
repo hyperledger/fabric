@@ -9,6 +9,7 @@ package mgmt
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
@@ -57,12 +58,14 @@ func TestUpdateLocalMspCache(t *testing.T) {
 	// reset localMsp to force it to be initialized on the first call
 	localMsp = nil
 
+	cryptoProvider := factory.GetDefault()
+
 	// first call should initialize local MSP and returned the cached version
-	firstMsp := GetLocalMSP()
+	firstMsp := GetLocalMSP(cryptoProvider)
 	// second call should return the same
-	secondMsp := GetLocalMSP()
+	secondMsp := GetLocalMSP(cryptoProvider)
 	// third call should return the same
-	thirdMsp := GetLocalMSP()
+	thirdMsp := GetLocalMSP(cryptoProvider)
 
 	// the same (non-cached if not patched) instance
 	if thirdMsp != secondMsp {
@@ -122,12 +125,14 @@ func LoadMSPSetupForTesting() error {
 		return err
 	}
 
-	err = GetLocalMSP().Setup(conf)
+	cryptoProvider := factory.GetDefault()
+
+	err = GetLocalMSP(cryptoProvider).Setup(conf)
 	if err != nil {
 		return err
 	}
 
-	err = GetManagerForChain(util.GetTestChannelID()).Setup([]msp.MSP{GetLocalMSP()})
+	err = GetManagerForChain(util.GetTestChannelID()).Setup([]msp.MSP{GetLocalMSP(cryptoProvider)})
 	if err != nil {
 		return err
 	}

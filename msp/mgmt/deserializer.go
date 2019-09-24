@@ -19,6 +19,7 @@ package mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
 )
@@ -58,12 +59,12 @@ func (m *mspDeserializersManager) Deserialize(raw []byte) (*mspproto.SerializedI
 }
 
 func (m *mspDeserializersManager) GetLocalMSPIdentifier() string {
-	id, _ := GetLocalMSP().GetIdentifier()
+	id, _ := GetLocalMSP(factory.GetDefault()).GetIdentifier()
 	return id
 }
 
 func (m *mspDeserializersManager) GetLocalDeserializer() msp.IdentityDeserializer {
-	return GetLocalMSP()
+	return GetLocalMSP(factory.GetDefault())
 }
 
 func (m *mspDeserializersManager) GetChannelDeserializers() map[string]msp.IdentityDeserializer {
