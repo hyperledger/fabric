@@ -81,13 +81,16 @@ We'll also see how to configure MSPs to achieve this later.
 
 ### Local and Channel MSPs
 
-MSPs appear in two places in a blockchain network: channel configuration
-(**channel MSPs**), and locally on an actor's premise (**local MSP**). **Local MSPs are
-defined for clients (users) and for nodes (peers and orderers)**. Node local MSPs define
-the permissions for that node (who the peer admins are, for example). The local MSPs
-of the users allow the user side to authenticate itself in its transactions as a member
-of a channel (e.g. in chaincode transactions), or as the owner of a specific role
-into the system (an org admin, for example, in configuration transactions).
+MSPs appear in two types of places in a blockchain network:
+
+* In channel configuration (**channel MSP**)
+* Locally on an actor's node (**local MSP**)
+
+**Local MSPs are defined for clients (users) and for nodes (peers and orderers)**.
+Local MSPs define the permissions for that node (who the peer admins are, for example).
+The local MSPs of the users allow the user side to authenticate itself in its transactions
+as a member of a channel (e.g. in chaincode transactions), or as the owner of a
+specific role into the system (an org admin, for example, in configuration transactions).
 
 **Every node and user must have a local MSP defined**, as it defines who has
 administrative or participatory rights at that level (peer admins will not necessarily
