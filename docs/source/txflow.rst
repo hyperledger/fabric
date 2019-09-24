@@ -111,8 +111,8 @@ Transactions in the block are tagged as being valid or invalid.
 
 Each peer appends the block to the channel’s chain, and for each valid
 transaction the write sets are committed to current state database. An event is
-emitted, to notify the client application that the transaction (invocation) has
-been immutably appended to the chain, as well as notification of whether the
+emitted by each peer to notify the client application that the transaction (invocation)
+has been immutably appended to the chain, as well as notification of whether the
 transaction was validated or invalidated.
 
 .. note:: Applications should listen for the transaction event after submitting
