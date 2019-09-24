@@ -83,7 +83,7 @@ func (rlf *ramLedgerFactory) ChannelIDs() []string {
 
 // Close is a no-op for the RAM ledger
 func (rlf *ramLedgerFactory) Close() {
-	return // nothing to do
+	// nothing to do
 }
 
 // New creates a new ledger factory

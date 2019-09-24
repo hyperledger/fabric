@@ -26,7 +26,7 @@ func newAPIsProvider(acls map[string]*pb.APIResource) *aclsProvider {
 	for key, acl := range acls {
 		// If the policy is fully qualified, ie to /Channel/Application/Readers leave it alone
 		// otherwise, make it fully qualified referring to /Channel/Application/policyName
-		if '/' != acl.PolicyRef[0] {
+		if acl.PolicyRef[0] != '/' {
 			aclPolicyRefs[key] = "/" + ChannelGroupKey + "/" + ApplicationGroupKey + "/" + acl.PolicyRef
 		} else {
 			aclPolicyRefs[key] = acl.PolicyRef

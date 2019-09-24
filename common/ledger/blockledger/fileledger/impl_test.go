@@ -153,6 +153,7 @@ func TestReinitialization(t *testing.T) {
 	assert.NoError(t, err, "Expected to successfully get test channel")
 	assert.Equal(t, 1, len(tev.flf.ChannelIDs()), "Exptected not new channel to be created")
 	assert.True(t, ok, "Exptected type assertion to succeed")
+	assert.Equal(t, uint64(2), ledger1.Height(), "Block height should be 2. Got %v", ledger1.Height())
 
 	// shut down the ledger provider
 	tev.shutDown()

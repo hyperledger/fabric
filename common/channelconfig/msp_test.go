@@ -40,7 +40,7 @@ func TestMSPConfigManager(t *testing.T) {
 		msps, err := mgr.GetMSPs()
 		assert.NoError(t, err)
 
-		if msps == nil || len(msps) == 0 {
+		if len(msps) == 0 {
 			t.Fatalf("There are no MSPS in the manager")
 		}
 

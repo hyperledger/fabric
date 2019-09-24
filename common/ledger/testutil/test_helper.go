@@ -29,9 +29,8 @@ import (
 var signer msp.SigningIdentity
 
 func init() {
-	var err error
 	// setup the MSP manager so that we can sign/verify
-	err = msptesttools.LoadMSPSetupForTesting()
+	var err error = msptesttools.LoadMSPSetupForTesting()
 	if err != nil {
 		panic(fmt.Errorf("Could not load msp config, err %s", err))
 	}
@@ -411,7 +410,8 @@ func ConstructSignedTxEnv(
 
 	} else {
 		// if txid is set, we should not generate a txid instead reuse the given txid
-		nonce, err := crypto.GetRandomNonce()
+		var nonce []byte
+		nonce, err = crypto.GetRandomNonce()
 		if err != nil {
 			return nil, "", err
 		}

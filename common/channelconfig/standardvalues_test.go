@@ -85,7 +85,7 @@ func TestNonProtosStruct(t *testing.T) {
 }
 
 func TestUnexportedField(t *testing.T) {
-	_, err := NewStandardValues(&unexported{})
+	_, err := NewStandardValues(&unexported{msg: nil})
 	assert.Error(t, err, "Structure with unexported fields")
 }
 

@@ -61,8 +61,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 	cc = &ChannelConfig{protos: &ChannelProtos{BlockDataHashingStructure: &cb.BlockDataHashingStructure{Width: 7}}}
 	assert.Error(t, cc.validateBlockDataHashingStructure(), "Invalid Merkle tree width supplied")
 
-	var width uint32
-	width = math.MaxUint32
+	var width uint32 = math.MaxUint32
 	cc = &ChannelConfig{protos: &ChannelProtos{BlockDataHashingStructure: &cb.BlockDataHashingStructure{Width: width}}}
 	assert.NoError(t, cc.validateBlockDataHashingStructure(), "Valid Merkle tree width supplied")
 

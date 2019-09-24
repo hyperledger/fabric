@@ -50,7 +50,7 @@ BASEIMAGE_RELEASE = 0.4.15
 # 3rd party image version
 COUCHDB_VER ?= 2.3
 
-# Disable impliicit rules
+# Disable implicit rules
 .SUFFIXES:
 MAKEFLAGS += --no-builtin-rules
 

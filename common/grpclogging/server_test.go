@@ -77,18 +77,16 @@ var _ = Describe("Server", func() {
 			return msg, nil
 		}
 		fakeEchoService.EchoStreamStub = func(stream testpb.EchoService_EchoStreamServer) error {
-			for {
-				msg, err := stream.Recv()
-				if err == io.EOF {
-					return nil
-				}
-				if err != nil {
-					return err
-				}
-
-				msg.Sequence++
-				return stream.Send(msg)
+			msg, err := stream.Recv()
+			if err == io.EOF {
+				return nil
 			}
+			if err != nil {
+				return err
+			}
+
+			msg.Sequence++
+			return stream.Send(msg)
 		}
 
 		serverTLSConfig := &tls.Config{
