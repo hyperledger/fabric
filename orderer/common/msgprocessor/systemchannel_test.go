@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -239,7 +240,7 @@ func TestSystemChannelConfigUpdateMsg(t *testing.T) {
 				},
 			}),
 		})
-		assert.Equal(t, RejectRule.Apply(nil), err)
+		assert.Equal(t, RejectRule.Apply(nil), errors.Cause(err))
 	})
 	t.Run("Good", func(t *testing.T) {
 		mscs := &mockSystemChannelSupport{
