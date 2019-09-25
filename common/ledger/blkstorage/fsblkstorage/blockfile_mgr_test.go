@@ -139,8 +139,8 @@ func TestBlockfileMgrBlockIterator(t *testing.T) {
 func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
 	firstBlockNum int, lastBlockNum int, expectedBlocks []*common.Block) {
 	itr, err := blockfileMgr.retrieveBlocks(uint64(firstBlockNum))
-	defer itr.Close()
 	assert.NoError(t, err, "Error while getting blocks iterator")
+	defer itr.Close()
 	numBlocksItrated := 0
 	for {
 		block, err := itr.Next()

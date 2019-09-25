@@ -121,6 +121,7 @@ func TestBlockStoreProvider(t *testing.T) {
 		defer store.Shutdown()
 		stores = append(stores, store)
 	}
+	assert.Equal(t, numStores, len(stores))
 
 	storeNames, _ := provider.List()
 	assert.Equal(t, numStores, len(storeNames))

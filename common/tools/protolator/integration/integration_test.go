@@ -45,9 +45,9 @@ func bidirectionalMarshal(t *testing.T, doc proto.Message) {
 
 	var remarshaled bytes.Buffer
 	assert.NoError(t, protolator.DeepMarshalJSON(&remarshaled, newRoot))
-	assert.Equal(t, string(buffer.Bytes()), string(remarshaled.Bytes()))
-	//t.Log(string(buffer.Bytes()))
-	//t.Log(string(remarshaled.Bytes()))
+	assert.Equal(t, buffer.String(), remarshaled.String())
+	//t.Log(buffer.String())
+	//t.Log(remarshaled.String())
 }
 
 func TestConfigUpdate(t *testing.T) {

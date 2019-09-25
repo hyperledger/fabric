@@ -44,7 +44,7 @@ func FileOptions(f *ast.File) ([]interface{}, error) {
 
 	// If the file contains gendoc:ignore, ignore the file
 	for _, c := range f.Comments {
-		if strings.Index(c.Text(), "gendoc:ignore") != -1 {
+		if strings.Contains(c.Text(), "gendoc:ignore") {
 			return nil, nil
 		}
 	}

@@ -64,7 +64,7 @@ func CopyDir(srcroot, destroot string, copyOnlySubdirs bool) error {
 		destroot = filepath.Join(destroot, lastSegment)
 	}
 
-	walkFunc := func(srcpath string, info os.FileInfo, err error) error {
+	walkFunc := func(srcpath string, info os.FileInfo, errDummy error) error {
 		srcsubpath, err := filepath.Rel(srcroot, srcpath)
 		if err != nil {
 			return err

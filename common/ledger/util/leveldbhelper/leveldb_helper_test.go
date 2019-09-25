@@ -79,6 +79,7 @@ func TestLevelDBHelper(t *testing.T) {
 
 	val3, err3 := db.Get([]byte("key3"))
 	assert.Error(t, err3)
+	assert.Equal(t, "", string(val3))
 
 	db.Open()
 	IsEmpty, err = db.IsEmpty()

@@ -234,7 +234,7 @@ func pemBlocksFromFileDecodeHook() mapstructure.DecodeHookFunc {
 				var fileI interface{}
 				fileI, ok = d["File"]
 				if !ok {
-					fileI, _ = d["file"]
+					fileI = d["file"]
 				}
 				fileName, ok = fileI.(string)
 			}

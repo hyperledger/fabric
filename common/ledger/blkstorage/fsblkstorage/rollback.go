@@ -119,7 +119,11 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 	if err != nil {
 		return err
 	}
+
 	stream, err := newBlockStream(r.ledgerDir, lp.fileSuffixNum, int64(lp.offset), -1)
+	if err != nil {
+		return err
+	}
 	defer stream.close()
 
 	numberOfBlocksToRetrieve := endBlkNum - startBlkNum + 1
@@ -242,7 +246,7 @@ func ValidateRollbackParams(blockStorageDir, ledgerID string, targetBlockNum uin
 }
 
 func validateLedgerID(ledgerDir, ledgerID string) error {
-	logger.Debugf("Validating the existance of ledgerID [%s]", ledgerID)
+	logger.Debugf("Validating the existence of ledgerID [%s]", ledgerID)
 	exists, _, err := util.FileExists(ledgerDir)
 	if err != nil {
 		return err
@@ -254,7 +258,7 @@ func validateLedgerID(ledgerDir, ledgerID string) error {
 }
 
 func validateTargetBlkNum(ledgerDir string, targetBlockNum uint64) error {
-	logger.Debugf("Validating the given block number [%d] agains the ledger block height", targetBlockNum)
+	logger.Debugf("Validating the given block number [%d] against the ledger block height", targetBlockNum)
 	cpInfo, err := constructCheckpointInfoFromBlockFiles(ledgerDir)
 	if err != nil {
 		return err
