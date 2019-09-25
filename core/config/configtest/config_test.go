@@ -30,8 +30,7 @@ func TestConfig_AddDevConfigPath(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	os.Setenv("GOPATH", "")
 	defer os.Setenv("GOPATH", gopath)
-	err = configtest.AddDevConfigPath(v)
-	assert.Error(t, err, "GOPATH is empty, expected error from AddDevConfigPath")
+	assert.Panics(t, func() { configtest.AddDevConfigPath(v) }, "GOPATH is empty, expected panic from AddDevConfigPath")
 }
 
 func TestConfig_GetDevMspDir(t *testing.T) {
@@ -43,22 +42,21 @@ func TestConfig_GetDevMspDir(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	os.Setenv("GOPATH", "")
 	defer os.Setenv("GOPATH", gopath)
-	_, err = configtest.GetDevMspDir()
-	assert.Error(t, err, "GOPATH is empty, expected error from GetDevMspDir")
+
+	assert.Panics(t, func() { configtest.GetDevMspDir() }, "GOPATH is empty, expected error from GetDevMspDir")
 
 	// Error case: GOPATH is set to temp dir
 	dir, err1 := ioutil.TempDir("/tmp", "devmspdir")
 	assert.NoError(t, err1)
 	defer os.RemoveAll(dir)
 	os.Setenv("GOPATH", dir)
-	_, err = configtest.GetDevMspDir()
-	assert.Error(t, err, "GOPATH is set to temp dir, expected error from GetDevMspDir")
+
+	assert.Panics(t, func() { configtest.GetDevMspDir() }, "GOPATH is set to temp dir, expected error from GetDevMspDir")
 }
 
 func TestConfig_GetDevConfigDir(t *testing.T) {
 	gopath := os.Getenv("GOPATH")
 	os.Setenv("GOPATH", "")
 	defer os.Setenv("GOPATH", gopath)
-	_, err := configtest.GetDevConfigDir()
-	assert.Error(t, err, "GOPATH is empty, expected error from GetDevConfigDir")
+	assert.Panics(t, func() { configtest.GetDevConfigDir() })
 }

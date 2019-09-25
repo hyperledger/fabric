@@ -132,8 +132,7 @@ func TestConfigTxFlags(t *testing.T) {
 
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
-	devConfigDir, err := configtest.GetDevConfigDir()
-	assert.NoError(t, err, "failed to get dev config dir")
+	devConfigDir := configtest.GetDevConfigDir()
 
 	os.Args = []string{
 		"cmd",
@@ -149,7 +148,7 @@ func TestConfigTxFlags(t *testing.T) {
 
 	main()
 
-	_, err = os.Stat(configTxDest)
+	_, err := os.Stat(configTxDest)
 	assert.NoError(t, err, "Configtx file is written successfully")
 	_, err = os.Stat(configTxDestAnchorPeers)
 	assert.NoError(t, err, "Configtx anchor peers file is written successfully")

@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestLoadProfile(t *testing.T) {
@@ -35,8 +34,7 @@ func TestLoadProfile(t *testing.T) {
 }
 
 func TestLoadProfileWithPath(t *testing.T) {
-	devConfigDir, err := configtest.GetDevConfigDir()
-	assert.NoError(t, err, "failed to get dev config dir")
+	devConfigDir := configtest.GetDevConfigDir()
 
 	pNames := []string{
 		SampleDevModeKafkaProfile,
@@ -66,8 +64,7 @@ func TestLoadTopLevel(t *testing.T) {
 }
 
 func TestLoadTopLevelWithPath(t *testing.T) {
-	devConfigDir, err := configtest.GetDevConfigDir()
-	require.NoError(t, err)
+	devConfigDir := configtest.GetDevConfigDir()
 
 	topLevel := LoadTopLevel(devConfigDir)
 	assert.NotNil(t, topLevel.Application, "application should not be nil")
@@ -81,8 +78,7 @@ func TestConsensusSpecificInit(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	devConfigDir, err := configtest.GetDevConfigDir()
-	require.NoError(t, err)
+	devConfigDir := configtest.GetDevConfigDir()
 
 	t.Run("nil orderer type", func(t *testing.T) {
 		profile := &Profile{
