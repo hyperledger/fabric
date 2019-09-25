@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	DefaultEnvWhitelist = []string{"GOCACHE", "GOPATH", "HOME", "LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"}
+	DefaultEnvWhitelist = []string{"LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"}
 	logger              = flogging.MustGetLogger("chaincode.externalbuilders")
 )
 
@@ -463,7 +463,7 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 
 // NewCommand creates an exec.Cmd that is configured to prune the calling
 // environment down to the environment variables specified in the external
-// builder's EnvironmentWhiteList and the DefaultEnvWhiteList defined above.
+// builder's EnvironmentWhitelist and the DefaultEnvWhitelist defined above.
 func NewCommand(name string, envWhiteList []string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
 	whitelist := appendDefaultWhitelist(envWhiteList)
