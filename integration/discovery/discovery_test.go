@@ -93,10 +93,6 @@ var _ = Describe("DiscoveryService", func() {
 	})
 
 	It("discovers channel information", func() {
-		org1Peer0 := network.Peer("org1", "peer0")
-		org2Peer0 := network.Peer("org2", "peer0")
-		org3Peer0 := network.Peer("org3", "peer0")
-
 		By("discovering endorsers when missing chaincode")
 		endorsers := commands.Endorsers{
 			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
@@ -274,21 +270,22 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc-lifecycle"`))
 
 		By("deploying chaincode using org1.peer0 and org2.peer0")
+		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
 		chaincode = nwo.Chaincode{
 			Name:                "mycc-lifecycle",
 			Version:             "1.0",
-			Lang:                "golang",
-			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
-			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Lang:                "binary",
+			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
+			Path:                chaincodePath,
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
 			InitRequired:        true,
-			Label:               "simplecc",
+			Label:               "my_prebuilt_chaincode",
 		}
 
 		By("packaging chaincode")
-		nwo.PackageChaincode(network, chaincode, org1Peer0)
+		nwo.PackageChaincodeBinary(chaincode)
 
 		By("installing chaincode to org1.peer0 and org2.peer0")
 		nwo.InstallChaincode(network, chaincode, org1Peer0, org2Peer0)
@@ -379,13 +376,13 @@ var _ = Describe("DiscoveryService", func() {
 		nwo.DeployChaincode(network, "testchannel", orderer, nwo.Chaincode{
 			Name:              "mycc",
 			Version:           "2.0",
-			Path:              "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Lang:              "binary",
+			PackageFile:       filepath.Join(testDir, "modulecc.tar.gz"),
+			Path:              chaincodePath,
 			SignaturePolicy:   `AND ('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`,
-			Lang:              "golang",
-			PackageFile:       filepath.Join(testDir, "simplecc.tar.gz"),
 			Sequence:          "1",
 			CollectionsConfig: filepath.Join("testdata", "collections_config_org1_org2_org3.json"),
-			Label:             "simplecc",
+			Label:             "my_prebuilt_chaincode",
 		})
 
 		By("discovering endorsers for chaincode that has been installed to all peers")
@@ -486,14 +483,14 @@ var _ = Describe("DiscoveryService", func() {
 		chaincode = nwo.Chaincode{
 			Name:                "mycc-lifecycle",
 			Version:             "1.0",
-			Lang:                "golang",
-			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
-			Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Lang:                "binary",
+			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
+			Path:                components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
 			InitRequired:        true,
-			Label:               "simplecc",
+			Label:               "my_prebuilt_chaincode",
 		}
 
 		nwo.DeployChaincode(network, "testchannel", orderer, chaincode, org1Peer1, org2Peer1, org3Peer1)
