@@ -41,7 +41,7 @@ func TestInspectMissing(t *testing.T) {
 func TestInspectBlock(t *testing.T) {
 	blockDest := filepath.Join(tmpDir, "block")
 
-	config := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 
 	assert.NoError(t, doOutputBlock(config, "foo", blockDest), "Good block generation request")
 	assert.NoError(t, doInspectBlock(blockDest), "Good block inspection request")
@@ -50,7 +50,7 @@ func TestInspectBlock(t *testing.T) {
 func TestMissingOrdererSection(t *testing.T) {
 	blockDest := filepath.Join(tmpDir, "block")
 
-	config := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	config.Orderer = nil
 
 	assert.Error(t, doOutputBlock(config, "foo", blockDest), "Missing orderer section")
@@ -59,7 +59,7 @@ func TestMissingOrdererSection(t *testing.T) {
 func TestMissingConsortiumSection(t *testing.T) {
 	blockDest := filepath.Join(tmpDir, "block")
 
-	config := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	config.Consortiums = nil
 
 	assert.NoError(t, doOutputBlock(config, "foo", blockDest), "Missing consortiums section")
@@ -68,7 +68,7 @@ func TestMissingConsortiumSection(t *testing.T) {
 func TestMissingConsortiumValue(t *testing.T) {
 	configTxDest := filepath.Join(tmpDir, "configtx")
 
-	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
 	config.Consortium = ""
 
 	assert.Error(t, doOutputChannelCreateTx(config, nil, "foo", configTxDest), "Missing Consortium value in Application Profile definition")
@@ -77,7 +77,7 @@ func TestMissingConsortiumValue(t *testing.T) {
 func TestMissingApplicationValue(t *testing.T) {
 	configTxDest := filepath.Join(tmpDir, "configtx")
 
-	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
 	config.Application = nil
 
 	assert.Error(t, doOutputChannelCreateTx(config, nil, "foo", configTxDest), "Missing Application value in Application Profile definition")
@@ -90,7 +90,7 @@ func TestInspectMissingConfigTx(t *testing.T) {
 func TestInspectConfigTx(t *testing.T) {
 	configTxDest := filepath.Join(tmpDir, "configtx")
 
-	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
 
 	assert.NoError(t, doOutputChannelCreateTx(config, nil, "foo", configTxDest), "Good outputChannelCreateTx generation request")
 	assert.NoError(t, doInspectChannelCreateTx(configTxDest), "Good configtx inspection request")
@@ -99,7 +99,7 @@ func TestInspectConfigTx(t *testing.T) {
 func TestGenerateAnchorPeersUpdate(t *testing.T) {
 	configTxDest := filepath.Join(tmpDir, "anchorPeerUpdate")
 
-	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
 
 	assert.NoError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Good anchorPeerUpdate request")
 }
@@ -107,7 +107,7 @@ func TestGenerateAnchorPeersUpdate(t *testing.T) {
 func TestBadAnchorPeersUpdates(t *testing.T) {
 	configTxDest := filepath.Join(tmpDir, "anchorPeerUpdate")
 
-	config := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
 
 	assert.Error(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, ""), "Bad anchorPeerUpdate request - asOrg empty")
 

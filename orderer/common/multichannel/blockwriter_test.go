@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -201,7 +201,7 @@ func TestWriteConfigBlock(t *testing.T) {
 }
 
 func TestGoodWriteConfig(t *testing.T) {
-	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 	_, l := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
 
@@ -243,7 +243,7 @@ func TestGoodWriteConfig(t *testing.T) {
 }
 
 func TestMigrationWriteConfig(t *testing.T) {
-	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 	_, l := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
 
@@ -286,7 +286,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 }
 
 func TestRaceWriteConfig(t *testing.T) {
-	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 	_, l := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
 

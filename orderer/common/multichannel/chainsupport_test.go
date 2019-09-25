@@ -17,9 +17,10 @@ import (
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	mockblockledger "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	msgprocessormocks "github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -178,7 +179,7 @@ func TestConsensusMetadataValidation(t *testing.T) {
 }
 
 func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
-	conf := configtxgentest.Load(localconfig.SampleInsecureSoloProfile)
+	conf := genesisconfig.Load(localconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(conf)
 	assert.NoError(t, err)
 	group.Groups["Orderer"].Values["ConsensusType"].Value, err = proto.Marshal(&orderer.ConsensusType{

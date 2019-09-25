@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -104,7 +104,7 @@ func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainS
 
 func TestConfigTx(t *testing.T) {
 	//system channel
-	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
 	// Tests for a normal chain which contains 3 config transactions and other normal transactions to make
@@ -147,7 +147,7 @@ func TestConfigTx(t *testing.T) {
 
 func TestNewRegistrar(t *testing.T) {
 	//system channel
-	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
@@ -207,7 +207,7 @@ func TestNewRegistrar(t *testing.T) {
 
 func TestCreateChain(t *testing.T) {
 	//system channel
-	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
@@ -260,7 +260,7 @@ func TestCreateChain(t *testing.T) {
 
 		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		manager.Initialize(consenters)
-		orglessChannelConf := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+		orglessChannelConf := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
 		orglessChannelConf.Application.Organizations = nil
 		envConfigUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, mockCrypto(), orglessChannelConf)
 		assert.NoError(t, err, "Constructing chain creation tx")
@@ -409,7 +409,7 @@ func TestResourcesCheck(t *testing.T) {
 // The registrar's BroadcastChannelSupport implementation should reject message types which should not be processed directly.
 func TestBroadcastChannelSupportRejection(t *testing.T) {
 	//system channel
-	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())

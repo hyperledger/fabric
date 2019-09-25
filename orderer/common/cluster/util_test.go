@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
@@ -552,7 +552,7 @@ func TestEndpointconfigFromConfigBlockGreenPath(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Make a second config.
-		gConf := configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile)
+		gConf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile, configtest.GetDevConfigDir())
 		gConf.Orderer.Capabilities = map[string]bool{
 			capabilities.OrdererV2_0: true,
 		}
@@ -717,7 +717,7 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 
 func TestBlockValidationPolicyVerifier(t *testing.T) {
 	t.Parallel()
-	config := configtxgentest.Load(localconfig.SampleInsecureSoloProfile)
+	config := genesisconfig.Load(localconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(config)
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
@@ -780,7 +780,7 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 				Logger:    flogging.MustGetLogger("test"),
 				Channel:   "mychannel",
 				PolicyMgr: mockPolicyManager,
-				BCCSP: cryptoProvider,
+				BCCSP:     cryptoProvider,
 			}
 
 			err := verifier.VerifyBlockSignature(nil, testCase.envelope)
@@ -795,7 +795,7 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 
 func TestBlockVerifierAssembler(t *testing.T) {
 	t.Parallel()
-	config := configtxgentest.Load(localconfig.SampleInsecureSoloProfile)
+	config := genesisconfig.Load(localconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(config)
 	assert.NoError(t, err)
 	assert.NotNil(t, group)

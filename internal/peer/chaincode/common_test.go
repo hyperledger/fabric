@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
@@ -161,7 +160,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 
 	mockchain := "mockchain"
 	factory.InitFactories(nil)
-	config := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	pgen := encoder.New(config)
 	genesisBlock := pgen.GenesisBlockForChannel(mockchain)
 
