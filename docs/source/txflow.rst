@@ -73,7 +73,7 @@ payload for the application to consume.
 
 The application verifies the endorsing peer signatures and compares the proposal
 responses to determine if the proposal responses are the same. If the chaincode
-is only queried the ledger, the application would inspect the query response and
+is only querying the ledger, the application would only inspect the query response and
 would typically not submit the transaction to the ordering service. If the client
 application intends to submit the transaction to the ordering service to update the
 ledger, the application determines if the specified endorsement policy has been
