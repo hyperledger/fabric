@@ -85,9 +85,8 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 }
 
 func TestGetLocalMspConfig(t *testing.T) {
-	mspDir, err := configtest.GetDevMspDir()
-	assert.NoError(t, err)
-	_, err = GetLocalMspConfig(mspDir, nil, "SampleOrg")
+	mspDir := configtest.GetDevMspDir()
+	_, err := GetLocalMspConfig(mspDir, nil, "SampleOrg")
 	assert.NoError(t, err)
 }
 
@@ -108,9 +107,7 @@ func TestGetPemMaterialFromDirWithFile(t *testing.T) {
 }
 
 func TestGetPemMaterialFromDirWithSymlinks(t *testing.T) {
-	mspDir, err := configtest.GetDevMspDir()
-	assert.NoError(t, err)
-
+	mspDir := configtest.GetDevMspDir()
 	tempDir, err := ioutil.TempDir("", "fabric-msp-test")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)

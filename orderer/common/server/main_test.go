@@ -315,7 +315,7 @@ func TestSelectClusterBootBlock(t *testing.T) {
 
 func TestLoadLocalMSP(t *testing.T) {
 	t.Run("Happy", func(t *testing.T) {
-		localMSPDir, _ := configtest.GetDevMspDir()
+		localMSPDir := configtest.GetDevMspDir()
 		localMSP := loadLocalMSP(
 			&localconfig.TopLevel{
 				General: localconfig.General{
@@ -779,7 +779,7 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 
 func genesisConfig(t *testing.T) *localconfig.TopLevel {
 	t.Helper()
-	localMSPDir, _ := configtest.GetDevMspDir()
+	localMSPDir := configtest.GetDevMspDir()
 	return &localconfig.TopLevel{
 		General: localconfig.General{
 			LedgerType:     "ram",

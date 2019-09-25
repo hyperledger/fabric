@@ -71,11 +71,7 @@ func TestMspDeserializersManager_GetLocalDeserializer(t *testing.T) {
 
 func TestMain(m *testing.M) {
 
-	mspDir, err := configtest.GetDevMspDir()
-	if err != nil {
-		fmt.Printf("Error getting DevMspDir: %s", err)
-		os.Exit(-1)
-	}
+	mspDir := configtest.GetDevMspDir()
 
 	testConf, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")
 	if err != nil {

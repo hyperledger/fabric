@@ -66,9 +66,9 @@ func TestInitCryptoMissingDir(t *testing.T) {
 }
 
 func TestInitCrypto(t *testing.T) {
-	mspConfigPath, err := configtest.GetDevMspDir()
+	mspConfigPath := configtest.GetDevMspDir()
 	localMspId := "SampleOrg"
-	err = common.InitCrypto(mspConfigPath, localMspId, msp.ProviderTypeToString(msp.FABRIC))
+	err := common.InitCrypto(mspConfigPath, localMspId, msp.ProviderTypeToString(msp.FABRIC))
 	assert.NoError(t, err, "Unexpected error [%s] calling InitCrypto()", err)
 	err = common.InitCrypto("/etc/foobaz", localMspId, msp.ProviderTypeToString(msp.FABRIC))
 	assert.Error(t, err, fmt.Sprintf("Expected error [%s] calling InitCrypto()", err))

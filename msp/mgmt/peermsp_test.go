@@ -15,12 +15,8 @@ import (
 )
 
 func TestLocalMSP(t *testing.T) {
-	mspDir, err := configtest.GetDevMspDir()
-	if err != nil {
-		t.Fatalf("GetDevMspDir failed, err %s", err)
-	}
-
-	err = LoadLocalMsp(mspDir, nil, "SampleOrg")
+	mspDir := configtest.GetDevMspDir()
+	err := LoadLocalMsp(mspDir, nil, "SampleOrg")
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
 	}

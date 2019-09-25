@@ -17,15 +17,13 @@ import (
 )
 
 // AddDevConfigPath adds the DevConfigDir to the viper path.
-func AddDevConfigPath(v *viper.Viper) error {
+func AddDevConfigPath(v *viper.Viper) {
 	devPath := GetDevConfigDir()
 	if v != nil {
 		v.AddConfigPath(devPath)
 	} else {
 		viper.AddConfigPath(devPath)
 	}
-
-	return nil
 }
 
 func dirExists(path string) bool {
@@ -54,9 +52,9 @@ func GetDevConfigDir() string {
 // GetDevMspDir gets the path to the sampleconfig/msp tree that is maintained
 // with the source tree.  This should only be used in a test/development
 // context.
-func GetDevMspDir() (string, error) {
+func GetDevMspDir() string {
 	devDir := GetDevConfigDir()
-	return filepath.Join(devDir, "msp"), nil
+	return filepath.Join(devDir, "msp")
 }
 
 func SetDevFabricConfigPath(t *testing.T) (cleanup func()) {

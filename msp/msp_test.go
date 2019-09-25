@@ -87,12 +87,7 @@ func TestGetSigningIdentityFromConfWithWrongPrivateCert(t *testing.T) {
 }
 
 func TestMSPSetupNoCryptoConf(t *testing.T) {
-	mspDir, err := configtest.GetDevMspDir()
-	if err != nil {
-		fmt.Printf("Errog getting DevMspDir: %s", err)
-		os.Exit(-1)
-	}
-
+	mspDir := configtest.GetDevMspDir()
 	conf, err := GetLocalMspConfig(mspDir, nil, "SampleOrg")
 	if err != nil {
 		fmt.Printf("Setup should have succeeded, got err %s instead", err)
@@ -181,8 +176,7 @@ func TestNotFoundInBCCSP(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 
-	dir, err := configtest.GetDevMspDir()
-	assert.NoError(t, err)
+	dir := configtest.GetDevMspDir()
 	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 
 	assert.NoError(t, err)
@@ -229,12 +223,7 @@ func TestGetSigningIdentityFromVerifyingMSP(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 
-	mspDir, err := configtest.GetDevMspDir()
-	if err != nil {
-		fmt.Printf("Errog getting DevMspDir: %s", err)
-		os.Exit(-1)
-	}
-
+	mspDir := configtest.GetDevMspDir()
 	conf, err = GetVerifyingMspConfig(mspDir, "SampleOrg", ProviderTypeToString(FABRIC))
 	if err != nil {
 		fmt.Printf("Setup should have succeeded, got err %s instead", err)
@@ -1105,12 +1094,7 @@ var mspMgr MSPManager
 func TestMain(m *testing.M) {
 	var err error
 
-	mspDir, err := configtest.GetDevMspDir()
-	if err != nil {
-		fmt.Printf("Error getting DevMspDir: %s", err)
-		os.Exit(-1)
-	}
-
+	mspDir := configtest.GetDevMspDir()
 	conf, err = GetLocalMspConfig(mspDir, nil, "SampleOrg")
 	if err != nil {
 		fmt.Printf("Setup should have succeeded, got err %s instead", err)
@@ -1194,9 +1178,7 @@ func TestMain(m *testing.M) {
 }
 
 func getIdentity(t *testing.T, path string) Identity {
-	mspDir, err := configtest.GetDevMspDir()
-	assert.NoError(t, err)
-
+	mspDir := configtest.GetDevMspDir()
 	pems, err := getPemMaterialFromDir(filepath.Join(mspDir, path))
 	assert.NoError(t, err)
 

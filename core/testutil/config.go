@@ -31,13 +31,10 @@ func SetupTestConfig() {
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	viper.SetConfigName("core") // name of config file (without extension)
-	err := configtest.AddDevConfigPath(nil)
-	if err != nil {
-		panic(fmt.Errorf("Fatal error adding DevConfigPath: %s \n", err))
-	}
+	configtest.AddDevConfigPath(nil)
 
-	err = viper.ReadInConfig() // Find and read the config file
-	if err != nil {            // Handle errors reading the config file
+	err := viper.ReadInConfig() // Find and read the config file
+	if err != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
 

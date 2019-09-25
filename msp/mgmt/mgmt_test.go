@@ -124,10 +124,7 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 }
 
 func LoadMSPSetupForTesting() (bccsp.BCCSP, error) {
-	dir, err := configtest.GetDevMspDir()
-	if err != nil {
-		return nil, err
-	}
+	dir := configtest.GetDevMspDir()
 	conf, err := msp.GetLocalMspConfig(dir, nil, "SampleOrg")
 	if err != nil {
 		return nil, err
