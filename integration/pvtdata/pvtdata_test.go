@@ -74,8 +74,8 @@ var _ bool = Describe("PrivateData", func() {
 		newLifecycleChaincode = nwo.Chaincode{
 			Name:              "marblesp",
 			Version:           "1.0",
-			Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
-			Lang:              "golang",
+			Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd"),
+			Lang:              "binary",
 			PackageFile:       filepath.Join(testDir, "marbles-pvtdata.tar.gz"),
 			Label:             "marbles-private-20",
 			SignaturePolicy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
