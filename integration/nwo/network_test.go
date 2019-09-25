@@ -268,10 +268,8 @@ var _ = Describe("Network", func() {
 				InitRequired:      true,
 				Label:             "my_simple_chaincode",
 			}
-			nwo.PackageChaincode(network, chaincode, testPeers[0])
 
-			// we set the PackageID so that we can pass it to the approve step
-			chaincode.SetPackageIDFromPackageFile()
+			nwo.PackageChaincode(network, chaincode, testPeers[0])
 
 			nwo.InstallChaincode(network, chaincode, testPeers...)
 

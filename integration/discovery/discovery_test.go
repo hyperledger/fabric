@@ -8,7 +8,6 @@ package discovery
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	pm "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/msp"
@@ -292,9 +290,6 @@ var _ = Describe("DiscoveryService", func() {
 		By("packaging chaincode")
 		nwo.PackageChaincode(network, chaincode, org1Peer0)
 
-		// we set the PackageID so that we can pass it to the approve step
-		chaincode.SetPackageIDFromPackageFile()
-
 		By("installing chaincode to org1.peer0 and org2.peer0")
 		nwo.InstallChaincode(network, chaincode, org1Peer0, org2Peer0)
 
@@ -513,14 +508,6 @@ var _ = Describe("DiscoveryService", func() {
 		))
 
 		By("installing the chaincode to the remaining peers")
-		nwo.PackageChaincode(network, chaincode, org1Peer0)
-
-		// set the PackageID in order to verify the install step
-		filebytes, err := ioutil.ReadFile(chaincode.PackageFile)
-		Expect(err).NotTo(HaveOccurred())
-		hashStr := fmt.Sprintf("%x", util.ComputeSHA256(filebytes))
-		chaincode.PackageID = chaincode.Label + ":" + hashStr
-
 		nwo.InstallChaincode(network, chaincode, org1Peer0, org2Peer0, org3Peer0)
 
 		By("ensuring all peers are discovered")

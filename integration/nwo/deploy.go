@@ -137,9 +137,6 @@ func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer)
 		}
 	}
 
-	// we set the PackageID so that we can pass it to the approve step
-	chaincode.SetPackageIDFromPackageFile()
-
 	// install on all peers
 	InstallChaincode(n, chaincode, peers...)
 }
@@ -168,6 +165,10 @@ func PackageChaincodeLegacy(n *Network, chaincode Chaincode, peer *Peer) {
 }
 
 func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
+	if chaincode.PackageID == "" {
+		chaincode.SetPackageIDFromPackageFile()
+	}
+
 	for _, p := range peers {
 		sess, err := n.PeerAdminSession(p, commands.ChaincodeInstall{
 			PackageFile: chaincode.PackageFile,
@@ -200,10 +201,7 @@ func InstallChaincodeLegacy(n *Network, chaincode Chaincode, peers ...*Peer) {
 
 func ApproveChaincodeForMyOrg(n *Network, channel string, orderer *Orderer, chaincode Chaincode, peers ...*Peer) {
 	if chaincode.PackageID == "" {
-		pkgBytes, err := ioutil.ReadFile(chaincode.PackageFile)
-		Expect(err).NotTo(HaveOccurred())
-		hash := util.ComputeSHA256(pkgBytes)
-		chaincode.PackageID = fmt.Sprintf("%s:%x", chaincode.Label, hash)
+		chaincode.SetPackageIDFromPackageFile()
 	}
 
 	// used to ensure we only approve once per org

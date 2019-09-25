@@ -130,8 +130,6 @@ var _ = Describe("Lifecycle", func() {
 
 		By("deploying the chaincode")
 		nwo.PackageChaincodeBinary(chaincode)
-
-		// we set the PackageID so that we can pass it to the approve step
 		chaincode.SetPackageIDFromPackageFile()
 
 		nwo.InstallChaincode(network, chaincode, testPeers...)

@@ -552,8 +552,6 @@ func getBody(client *http.Client, url string) func() string {
 
 func packageInstallApproveChaincode(network *nwo.Network, channel string, orderer *nwo.Orderer, chaincode nwo.Chaincode, peers ...*nwo.Peer) {
 	nwo.PackageChaincode(network, chaincode, peers[0])
-	// set the PackageID so that we can pass it to the approve step
-	chaincode.SetPackageIDFromPackageFile()
 	nwo.InstallChaincode(network, chaincode, peers...)
 	nwo.ApproveChaincodeForMyOrg(network, channel, orderer, chaincode, peers...)
 }

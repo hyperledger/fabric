@@ -136,7 +136,6 @@ var _ = Describe("CouchDB indexes", func() {
 			newlifecycleChaincode.Label = "marbles-two-indexes"
 
 			nwo.PackageChaincode(network, newlifecycleChaincode, network.Peer("Org1", "peer0"))
-			newlifecycleChaincode.SetPackageIDFromPackageFile()
 			nwo.InstallChaincode(network, newlifecycleChaincode, network.Peers...)
 			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, newlifecycleChaincode, network.Peers...)
 			nwo.CheckCommitReadinessUntilReady(network, "testchannel", newlifecycleChaincode, network.PeerOrgs(), network.Peers...)

@@ -255,9 +255,6 @@ var _ = Describe("EndToEndACL", func() {
 
 		nwo.PackageChaincodeBinary(chaincode)
 
-		// we set the PackageID so that we can pass it to the approve step
-		chaincode.SetPackageIDFromPackageFile()
-
 		//
 		// when the ACL policy for _lifecycle/InstallChaincode is not satisfied
 		//
