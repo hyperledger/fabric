@@ -29,7 +29,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var _ bool = Describe("Rollback & Reset Ledger", func() {
+var _ = Describe("Rollback & Reset Ledger", func() {
 	// at the beginning of each test under this block, we have defined two collections:
 	// 1. collectionMarbles - Org1 and Org2 have access to this collection
 	// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
@@ -57,8 +57,8 @@ var _ bool = Describe("Rollback & Reset Ledger", func() {
 		chaincode := nwo.Chaincode{
 			Name:              "marblesp",
 			Version:           "1.0",
-			Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
-			Lang:              "golang",
+			Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd"),
+			Lang:              "binary",
 			PackageFile:       filepath.Join(setup.testDir, "marbles-pvtdata.tar.gz"),
 			Label:             "marbles-private-20",
 			SignaturePolicy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
