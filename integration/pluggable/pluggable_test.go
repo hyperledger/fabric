@@ -82,15 +82,21 @@ var _ = Describe("EndToEnd", func() {
 		Eventually(process.Ready()).Should(BeClosed())
 
 		chaincode = nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
+			Name:            "mycc",
+			Version:         "0.0",
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+			Lang:            "binary",
+			PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+			Ctor:            `{"Args":["init","a","100","b","200"]}`,
+			SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
+			Sequence:        "1",
+			InitRequired:    true,
+			Label:           "my_prebuilt_chaincode",
 		}
 		orderer := network.Orderer("orderer")
 		network.CreateAndJoinChannel(orderer, "testchannel")
-		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 	})
 
 	AfterEach(func() {
