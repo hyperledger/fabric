@@ -107,6 +107,13 @@ func TestInitializeServerConfig(t *testing.T) {
 		},
 	}
 	sc := initializeServerConfig(conf, nil)
+	expectedContent, _ := ioutil.ReadFile("main.go")
+	assert.Equal(t, expectedContent, sc.SecOpts.Certificate)
+	assert.Equal(t, expectedContent, sc.SecOpts.Key)
+	assert.Equal(t, [][]byte{expectedContent}, sc.SecOpts.ServerRootCAs)
+	assert.Equal(t, [][]byte{expectedContent}, sc.SecOpts.ClientRootCAs)
+
+	sc = initializeServerConfig(conf, nil)
 	defaultOpts := comm.DefaultKeepaliveOptions
 	assert.Equal(t, defaultOpts.ServerMinInterval, sc.KaOpts.ServerMinInterval)
 	assert.Equal(t, time.Duration(0), sc.KaOpts.ServerInterval)

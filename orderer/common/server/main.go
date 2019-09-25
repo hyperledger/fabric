@@ -520,6 +520,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		}
 		secureOpts.Key = serverKey
 		secureOpts.Certificate = serverCertificate
+		secureOpts.ServerRootCAs = serverRootCAs
 		secureOpts.ClientRootCAs = clientRootCAs
 		logger.Infof("Starting orderer with %s enabled", msg)
 	}
