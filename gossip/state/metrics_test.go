@@ -68,7 +68,7 @@ func TestMetrics(t *testing.T) {
 
 	// ensure the right height was reported
 	assert.Equal(t,
-		[]string{"channel", "testchainid"},
+		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeHeightGauge.WithArgsForCall(0),
 	)
 	assert.EqualValues(t,
@@ -78,11 +78,11 @@ func TestMetrics(t *testing.T) {
 
 	// after push or pop payload buffer size should be reported
 	assert.Equal(t,
-		[]string{"channel", "testchainid"},
+		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakePayloadBufferSizeGauge.WithArgsForCall(0),
 	)
 	assert.Equal(t,
-		[]string{"channel", "testchainid"},
+		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakePayloadBufferSizeGauge.WithArgsForCall(1),
 	)
 	// both 0 and 1 as size can be reported, depends on timing

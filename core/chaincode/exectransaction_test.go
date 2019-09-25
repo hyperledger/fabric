@@ -203,9 +203,9 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 			closeListenerAndSleep(lis)
 			return nil, nil, nil, nil, err
 		}
-		// any channel other than the default testchainid does not have a MSP set up -> create one
-		if id != util.GetTestChannelID() {
-			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain(util.GetTestChannelID()))
+		// any channel other than the default testchannelid does not have a MSP set up -> create one
+		if id != "testchannelid" {
+			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain("testchannelid"))
 		}
 	}
 
@@ -609,7 +609,7 @@ const (
 
 // Test the execution of a chaincode that invokes another chaincode.
 func TestChaincodeInvokeChaincode(t *testing.T) {
-	channel := util.GetTestChannelID()
+	channel := "testchannelid"
 	channel2 := channel + "2"
 	ml, lis, chaincodeSupport, cleanup, err := initPeer(channel, channel2)
 	if err != nil {
@@ -757,7 +757,7 @@ func stopChaincode(chaincodeCtx *CCContext, chaincodeSupport *ChaincodeSupport) 
 // Test the execution of a chaincode that invokes another chaincode with wrong parameters. Should receive error from
 // from the called chaincode
 func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
-	channelID := util.GetTestChannelID()
+	channelID := "testchannelid"
 
 	ml, _, chaincodeSupport, cleanup, err := initPeer(channelID)
 	if err != nil {
@@ -851,7 +851,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 }
 
 func TestChaincodeInit(t *testing.T) {
-	channelID := util.GetTestChannelID()
+	channelID := "testchannelid"
 
 	_, _, chaincodeSupport, cleanup, err := initPeer(channelID)
 	if err != nil {
@@ -905,7 +905,7 @@ func TestQueries(t *testing.T) {
 	// Allow queries test alone so that end to end test can be performed. It takes less than 5 seconds.
 	//testForSkip(t)
 
-	channelID := util.GetTestChannelID()
+	channelID := "testchannelid"
 
 	_, _, chaincodeSupport, cleanup, err := initPeer(channelID)
 	if err != nil {

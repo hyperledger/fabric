@@ -79,13 +79,6 @@ func ToChaincodeArgs(args ...string) [][]byte {
 	return bargs
 }
 
-const testchainid = "testchainid"
-
-//GetTestChannelID returns the CHANNELID constant in use by orderer
-func GetTestChannelID() string {
-	return testchainid
-}
-
 // ConcatenateBytes is useful for combining multiple arrays of bytes, especially for
 // signatures or digests over multiple fields
 func ConcatenateBytes(data ...[]byte) []byte {

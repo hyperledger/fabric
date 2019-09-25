@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -109,7 +108,7 @@ func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentit
 
 func TestGoodPath(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChannelID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -171,7 +170,7 @@ func TestGoodPath(t *testing.T) {
 
 func TestTXWithTwoActionsRejected(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChannelID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -211,7 +210,7 @@ func corrupt(bytes []byte) {
 
 func TestBadTx(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChannelID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -270,7 +269,7 @@ func TestBadTx(t *testing.T) {
 
 func Test2EndorsersAgree(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChannelID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -315,7 +314,7 @@ func Test2EndorsersAgree(t *testing.T) {
 
 func Test2EndorsersDisagree(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChannelID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return

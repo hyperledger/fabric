@@ -28,7 +28,6 @@ import (
 	errors2 "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/common/util"
 	corecomm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -381,7 +380,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		g = gossip.New(config, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID, secureDialOpts, gossipMetrics)
 	}
 
-	g.JoinChan(&joinChanMsg{}, common.ChannelID(util.GetTestChannelID()))
+	g.JoinChan(&joinChanMsg{}, common.ChannelID("testchannelid"))
 
 	go func() {
 		gRPCServer.Start()
@@ -414,7 +413,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		StateChannelSize:     DefStateChannelSize,
 		StateEnabled:         DefStateEnabled,
 	}
-	sp := NewGossipStateProvider(util.GetTestChannelID(), servicesAdapater, coord, gossipMetrics.StateMetrics, blocking, stateConfig)
+	sp := NewGossipStateProvider("testchannelid", servicesAdapater, coord, gossipMetrics.StateMetrics, blocking, stateConfig)
 	if sp == nil {
 		gRPCServer.Stop()
 		return nil, port
@@ -551,7 +550,7 @@ func TestLargeBlockGap(t *testing.T) {
 		// Construct a skeleton for the response
 		res := &proto.GossipMessage{
 			Nonce:   msg.Nonce,
-			Channel: []byte(util.GetTestChannelID()),
+			Channel: []byte("testchannelid"),
 			Content: &proto.GossipMessage_StateResponse{
 				StateResponse: &proto.RemoteStateResponse{},
 			},
@@ -748,7 +747,7 @@ func TestHaltChainProcessing(t *testing.T) {
 	}
 	newBlockMsg := func(i int) *proto.GossipMessage {
 		return &proto.GossipMessage{
-			Channel: []byte("testchainid"),
+			Channel: []byte("testchannelid"),
 			Content: &proto.GossipMessage_DataMsg{
 				DataMsg: &proto.DataMessage{
 					Payload: &proto.Payload{
@@ -854,7 +853,7 @@ func TestGossipReception(t *testing.T) {
 			// Simulate a message reception from the gossip component with an invalid channel
 			c <- newMsg("AAA")
 			// Simulate a message reception from the gossip component
-			c <- newMsg(util.GetTestChannelID())
+			c <- newMsg("testchannelid")
 		}(c)
 		return c
 	}
@@ -1045,7 +1044,7 @@ func TestAccessControl(t *testing.T) {
 
 	waitUntilTrueOrTimeout(t, func() bool {
 		for _, p := range peersSet {
-			if len(p.g.PeersOfChannel(common.ChannelID(util.GetTestChannelID()))) != bootstrapSetSize+standardPeerSetSize-1 {
+			if len(p.g.PeersOfChannel(common.ChannelID("testchannelid"))) != bootstrapSetSize+standardPeerSetSize-1 {
 				t.Log("Peer discovery has not finished yet")
 				return false
 			}
@@ -1126,7 +1125,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	waitUntilTrueOrTimeout(t, func() bool {
 		for _, p := range peersSet {
-			if len(p.g.PeersOfChannel(common.ChannelID(util.GetTestChannelID()))) != bootstrapSetSize+standartPeersSize-1 {
+			if len(p.g.PeersOfChannel(common.ChannelID("testchannelid"))) != bootstrapSetSize+standartPeersSize-1 {
 				t.Log("Peer discovery has not finished yet")
 				return false
 			}
@@ -1199,7 +1198,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 	// Once we got message which indicate of two batches being received,
 	// making sure messages indeed committed.
 	waitUntilTrueOrTimeout(t, func() bool {
-		if len(peer.g.PeersOfChannel(common.ChannelID(util.GetTestChannelID()))) != 1 {
+		if len(peer.g.PeersOfChannel(common.ChannelID("testchannelid"))) != 1 {
 			t.Log("Peer discovery has not finished yet")
 			return false
 		}

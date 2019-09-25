@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/assert"
@@ -107,7 +106,7 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 	assert.Nil(t, idBack, "deserialized identity should have been nil")
 
 	// test for existing channel
-	mspMgmtMgr = GetManagerForChain(util.GetTestChannelID())
+	mspMgmtMgr = GetManagerForChain("testchannelid")
 
 	id = GetLocalSigningIdentityOrPanic(cryptoProvider)
 	assert.NotNil(t, id)
@@ -137,7 +136,7 @@ func LoadMSPSetupForTesting() (bccsp.BCCSP, error) {
 		return nil, err
 	}
 
-	err = GetManagerForChain(util.GetTestChannelID()).Setup([]msp.MSP{GetLocalMSP(cryptoProvider)})
+	err = GetManagerForChain("testchannelid").Setup([]msp.MSP{GetLocalMSP(cryptoProvider)})
 	if err != nil {
 		return nil, err
 	}

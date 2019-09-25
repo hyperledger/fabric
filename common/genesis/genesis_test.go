@@ -15,12 +15,12 @@ import (
 
 func TestBasicSanity(t *testing.T) {
 	impl := NewFactoryImpl(protoutil.NewConfigGroup())
-	impl.Block("testchainid")
+	impl.Block("testchannelid")
 }
 
 func TestForTransactionID(t *testing.T) {
 	impl := NewFactoryImpl(protoutil.NewConfigGroup())
-	block := impl.Block("testchainid")
+	block := impl.Block("testchannelid")
 	configEnv, _ := protoutil.ExtractEnvelope(block, 0)
 	configEnvPayload, _ := protoutil.UnmarshalPayload(configEnv.Payload)
 	configEnvPayloadChannelHeader, _ := protoutil.UnmarshalChannelHeader(configEnvPayload.GetHeader().ChannelHeader)

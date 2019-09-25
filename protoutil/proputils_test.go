@@ -59,7 +59,7 @@ func TestCDSProposals(t *testing.T) {
 	policy := []byte("policy")
 	escc := []byte("escc")
 	vscc := []byte("vscc")
-	chainID := "testchainid"
+	chainID := "testchannelid"
 
 	// install
 	prop, txid, err = protoutil.CreateInstallProposalFromCDS(cds, creator)

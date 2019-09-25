@@ -1278,7 +1278,7 @@ func TestLifecycleChaincodeRegularExpressionsMatch(t *testing.T) {
 }
 
 var id msp.SigningIdentity
-var channelID = util.GetTestChannelID()
+var channelID = "testchannelid"
 var mockAclProvider *mocks.MockACLProvider
 
 func NewMockProvider() *mscc.MocksccProviderImpl {

@@ -84,7 +84,7 @@ func TestRetrievePrivateData(t *testing.T) {
 	ts := testSupport{
 		preHash:            []byte("rws-pre-image"),
 		hash:               util2.ComputeSHA256([]byte("rws-pre-image")),
-		channelID:          util2.GetTestChannelID(),
+		channelID:          "testchannelid",
 		blockNum:           uint64(1),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,
@@ -719,7 +719,7 @@ func TestRetrievePrivateDataFailure(t *testing.T) {
 	ts := testSupport{
 		preHash:            []byte("rws-pre-image"),
 		hash:               util2.ComputeSHA256([]byte("rws-pre-image")),
-		channelID:          util2.GetTestChannelID(),
+		channelID:          "testchannelid",
 		blockNum:           uint64(1),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,
@@ -788,7 +788,7 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	ts := testSupport{
 		preHash:            []byte("rws-pre-image"),
 		hash:               util2.ComputeSHA256([]byte("rws-pre-image")),
-		channelID:          util2.GetTestChannelID(),
+		channelID:          "testchannelid",
 		blockNum:           uint64(1),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,
@@ -877,7 +877,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	ts := testSupport{
 		preHash:            []byte("rws-pre-image"),
 		hash:               util2.ComputeSHA256([]byte("rws-pre-image")),
-		channelID:          util2.GetTestChannelID(),
+		channelID:          "testchannelid",
 		blockNum:           uint64(9),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,

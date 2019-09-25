@@ -368,7 +368,7 @@ func TestMockSignedEndorserProposalOrPanic(t *testing.T) {
 
 	ccProposal := &pb.ChaincodeProposalPayload{}
 	cis := &pb.ChaincodeInvocationSpec{}
-	chainID := "testchainid"
+	chainID := "testchannelid"
 	sig := []byte("signature")
 	creator := []byte("creator")
 	cs := &pb.ChaincodeSpec{
@@ -398,7 +398,7 @@ func TestMockSignedEndorserProposal2OrPanic(t *testing.T) {
 
 	ccProposal := &pb.ChaincodeProposalPayload{}
 	cis := &pb.ChaincodeInvocationSpec{}
-	chainID := "testchainid"
+	chainID := "testchannelid"
 	sig := []byte("signature")
 	signID, err := mockmsp.NewNoopMsp().GetDefaultSigningIdentity()
 	assert.NoError(t, err, "Unexpected error getting signing identity")

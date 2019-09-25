@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/semaphore"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	txvalidatorplugin "github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
@@ -81,7 +80,7 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(pType, util.GetTestChannelID(), cis, signerSerialized)
+	proposal, _, err := protoutil.CreateProposalFromCIS(pType, "testchannelid", cis, signerSerialized)
 	return proposal, err
 }
 

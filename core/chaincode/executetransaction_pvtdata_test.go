@@ -26,7 +26,7 @@ func TestQueriesPrivateData(t *testing.T) {
 	// see function RegisterSysCCs in file 'fabric/core/scc/register.go'. In absence of this lscc returns error while deploying a chaincode with collection configurations.
 	// This test should be moved as an integration test outside of chaincode package.
 	t.Skip()
-	channelID := util.GetTestChannelID()
+	channelID := "testchannelid"
 	_, _, chaincodeSupport, cleanup, err := initPeer(channelID)
 	if err != nil {
 		t.Fail()

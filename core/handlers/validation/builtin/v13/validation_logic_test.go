@@ -28,7 +28,6 @@ import (
 	mc "github.com/hyperledger/fabric/common/mocks/config"
 	lm "github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/common/mocks/scc"
-	"github.com/hyperledger/fabric/common/util"
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
 	mocks2 "github.com/hyperledger/fabric/core/committer/txvalidator/v14/mocks"
@@ -52,7 +51,7 @@ func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 	ccid := &peer.ChaincodeID{Name: "foo", Version: "v1"}
 	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: ccid}}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +229,7 @@ func createLSCCTxPutCdsWithCollection(ccname, ccver, f string, res, cdsbytes []b
 		}
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +286,7 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 		}
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +338,7 @@ func newCustomValidationInstance(qec txvalidator.QueryExecutorCreator, c validat
 	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
-		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChannelID()),
+		IdentityDeserializer: mspmgmt.GetManagerForChain("testchannelid"),
 	}
 	v := New(c, sf, is, pe)
 
@@ -358,7 +357,7 @@ func TestStateBasedValidationFailure(t *testing.T) {
 	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
-		IdentityDeserializer: mspmgmt.GetManagerForChain(util.GetTestChannelID()),
+		IdentityDeserializer: mspmgmt.GetManagerForChain("testchannelid"),
 	}
 	v := New(&mc.MockApplicationCapabilities{}, sf, is, pe)
 	v.stateBasedValidator = sbvm
@@ -919,7 +918,7 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 		},
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, sid)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
 	assert.NoError(t, err)
 
 	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
@@ -1855,7 +1854,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 var id msp.SigningIdentity
 var sid []byte
 var mspid string
-var channelID string = util.GetTestChannelID()
+var channelID string = "testchannelid"
 
 type mockPolicyChecker struct{}
 
@@ -2156,7 +2155,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// also set the MSP for the "test" chain
-	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain(util.GetTestChannelID()))
+	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain("testchannelid"))
 
 	os.Exit(m.Run())
 }

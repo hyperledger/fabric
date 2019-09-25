@@ -135,7 +135,7 @@ func TestConfigTxFlags(t *testing.T) {
 
 	os.Args = []string{
 		"cmd",
-		"-channelID=testchainid",
+		"-channelID=testchannelid",
 		"-outputCreateChannelTx=" + configTxDest,
 		"-channelCreateTxBaseProfile=" + genesisconfig.SampleSingleMSPSoloProfile,
 		"-profile=" + genesisconfig.SampleSingleMSPChannelProfile,
@@ -162,7 +162,7 @@ func TestBlockFlags(t *testing.T) {
 	}()
 	os.Args = []string{
 		"cmd",
-		"-channelID=testchainid",
+		"-channelID=testchannelid",
 		"-profile=" + genesisconfig.SampleSingleMSPSoloProfile,
 		"-outputBlock=" + blockDest,
 		"-inspectBlock=" + blockDest,
