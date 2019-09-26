@@ -18,21 +18,18 @@ package fsblkstorage
 
 import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/metrics"
 )
 
-const (
-	dataFormatVersion20 = "2.0"
-)
-
 func dataFormatVersion(indexConfig *blkstorage.IndexConfig) string {
 	// in version 2.0 we merged three indexable into one `IndexableAttrTxID`
 	if indexConfig.Contains(blkstorage.IndexableAttrTxID) {
-		return dataFormatVersion20
+		return dataformat.Version20
 	}
-	return ""
+	return dataformat.Version1x
 }
 
 // FsBlockstoreProvider provides handle to block storage - this is not thread-safe

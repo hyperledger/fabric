@@ -7,12 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/pkg/errors"
 )
 
-// UpgradeDataFormat upgrades existing ledger databases to the v2.0 formats
-func UpgradeDataFormat(rootFSPath string) error {
+// UpgradeDBs upgrades existing ledger databases to the latest formats
+func UpgradeDBs(rootFSPath string) error {
 	fileLockPath := fileLockPath(rootFSPath)
 	fileLock := leveldbhelper.NewFileLock(fileLockPath)
 	if err := fileLock.Lock(); err != nil {
@@ -21,14 +23,24 @@ func UpgradeDataFormat(rootFSPath string) error {
 	}
 	defer fileLock.Unlock()
 
-	// For now, it only upgrades idStore.
-	// More upgrades will be added.
-	return UpgradeIDStoreFormat(rootFSPath)
+	logger.Infof("Ledger data folder from config = [%s]", rootFSPath)
+
+	// upgrades idStore (ledgerProvider) and drop databases
+	if err := UpgradeIDStoreFormat(rootFSPath); err != nil {
+		return err
+	}
+
+	if err := dropDBs(rootFSPath); err != nil {
+		return err
+	}
+
+	blockstorePath := BlockStorePath(rootFSPath)
+	return fsblkstorage.DeleteBlockStoreIndex(blockstorePath)
 }
 
 // UpgradeIDStoreFormat upgrades the format for idStore
 func UpgradeIDStoreFormat(rootFSPath string) error {
-	logger.Debugf("Attempting to upgrade idStore data format to current format %s", string(idStoreFormatVersion))
+	logger.Debugf("Attempting to upgrade idStore data format to current format %s", dataformat.Version20)
 
 	dbPath := LedgerProviderPath(rootFSPath)
 	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})

@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
@@ -53,7 +54,7 @@ func TestLedgerProvider(t *testing.T) {
 	s := provider.idStore
 	val, err := s.db.Get(formatKey)
 	require.NoError(t, err)
-	require.Equal(t, []byte(idStoreFormatVersion), val)
+	require.Equal(t, []byte(dataformat.Version20), val)
 
 	provider.Close()
 
