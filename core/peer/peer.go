@@ -49,7 +49,7 @@ import (
 
 var peerLogger = flogging.MustGetLogger("peer")
 
-var peerServer *comm.GRPCServer
+var peerServers []*comm.GRPCServer
 
 var configTxProcessor = newConfigTxProcessor()
 var tokenTxProcessor = &transaction.Processor{
@@ -590,9 +590,8 @@ func updateTrustedRoots(cm channelconfig.Resources) {
 			trustedRoots = append(trustedRoots, serverConfig.SecOpts.ServerRootCAs...)
 		}
 
-		server := peerServer
-		// now update the client roots for the peerServer
-		if server != nil {
+		for _, server := range peerServers {
+			// now update the client roots for the peerServers
 			err := server.SetClientRootCAs(trustedRoots)
 			if err != nil {
 				msg := "Failed to update trusted roots for peer from latest config " +
@@ -765,12 +764,12 @@ func (c *channelPolicyManagerGetter) Manager(channelID string) (policies.Manager
 // NewPeerServer creates an instance of comm.GRPCServer
 // This server is used for peer communications
 func NewPeerServer(listenAddress string, serverConfig comm.ServerConfig) (*comm.GRPCServer, error) {
-	var err error
-	peerServer, err = comm.NewGRPCServer(listenAddress, serverConfig)
+	peerServer, err := comm.NewGRPCServer(listenAddress, serverConfig)
 	if err != nil {
 		peerLogger.Errorf("Failed to create peer server (%s)", err)
 		return nil, err
 	}
+	peerServers = append(peerServers, peerServer)
 	return peerServer, nil
 }
 

@@ -312,6 +312,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Logf("Running test %s ...", test.name)
+			peer.ZeroPeerServersSingleton()
 			server, err := peer.NewPeerServer("localhost:0", test.serverConfig)
 			if err != nil {
 				t.Fatalf("NewPeerServer failed with error [%s]", err)
