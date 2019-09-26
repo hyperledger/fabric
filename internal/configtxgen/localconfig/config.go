@@ -27,10 +27,6 @@ const (
 var logger = flogging.MustGetLogger("common.tools.configtxgen.localconfig")
 
 const (
-	// TestChannelID is the channel name used for testing purposes when one is
-	// not given
-	TestChannelID = "testchannelid"
-
 	// SampleInsecureSoloProfile references the sample profile which does not
 	// include any MSPs and uses solo for ordering.
 	SampleInsecureSoloProfile = "SampleInsecureSolo"

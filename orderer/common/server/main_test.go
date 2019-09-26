@@ -229,7 +229,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 					GenesisMethod:  tc.genesisMethod,
 					GenesisProfile: "SampleSingleMSPSolo",
 					GenesisFile:    "genesisblock",
-					SystemChannel:  genesisconfig.TestChannelID,
+					SystemChannel:  "testchannelid",
 				},
 			}
 
@@ -256,7 +256,7 @@ func TestExtractSysChanLastConfig(t *testing.T) {
 	lastConf := extractSysChanLastConfig(rlf, genesisBlock)
 	assert.Nil(t, lastConf)
 
-	rl, err := rlf.GetOrCreate(genesisconfig.TestChannelID)
+	rl, err := rlf.GetOrCreate("testchannelid")
 	require.NoError(t, err)
 
 	err = rl.Append(genesisBlock)
@@ -270,7 +270,7 @@ func TestExtractSysChanLastConfig(t *testing.T) {
 		_ = extractSysChanLastConfig(rlf, nil)
 	})
 
-	configTx, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, genesisconfig.TestChannelID, nil, &common.ConfigEnvelope{}, 0, 0)
+	configTx, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, "testchannelid", nil, &common.ConfigEnvelope{}, 0, 0)
 	require.NoError(t, err)
 
 	nextBlock := blockledger.CreateNextBlock(rl, []*common.Envelope{configTx})
@@ -462,11 +462,11 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		cryptoProvider,
 		callback,
 	)
-	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain[genesisconfig.TestChannelID]))
-	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain[genesisconfig.TestChannelID]))
+	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain["testchannelid"]))
+	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	// mutual TLS not required so no updates should have occurred
-	assert.Equal(t, 0, len(caMgr.appRootCAsByChain[genesisconfig.TestChannelID]))
-	assert.Equal(t, 0, len(caMgr.ordererRootCAsByChain[genesisconfig.TestChannelID]))
+	assert.Equal(t, 0, len(caMgr.appRootCAsByChain["testchannelid"]))
+	assert.Equal(t, 0, len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	grpcServer.Listener().Close()
 
 	conf = &localconfig.TopLevel{
@@ -513,12 +513,12 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		cryptoProvider,
 		callback,
 	)
-	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain[genesisconfig.TestChannelID]))
-	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain[genesisconfig.TestChannelID]))
+	t.Logf("# app CAs: %d", len(caMgr.appRootCAsByChain["testchannelid"]))
+	t.Logf("# orderer CAs: %d", len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	// mutual TLS is required so updates should have occurred
 	// we expect an intermediate and root CA for apps and orderers
-	assert.Equal(t, 2, len(caMgr.appRootCAsByChain[genesisconfig.TestChannelID]))
-	assert.Equal(t, 2, len(caMgr.ordererRootCAsByChain[genesisconfig.TestChannelID]))
+	assert.Equal(t, 2, len(caMgr.appRootCAsByChain["testchannelid"]))
+	assert.Equal(t, 2, len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	assert.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 2)
 	grpcServer.Listener().Close()
 }
@@ -784,7 +784,7 @@ func genesisConfig(t *testing.T) *localconfig.TopLevel {
 			LedgerType:     "ram",
 			GenesisMethod:  "provisional",
 			GenesisProfile: "SampleDevModeSolo",
-			SystemChannel:  genesisconfig.TestChannelID,
+			SystemChannel:  "testchannelid",
 			LocalMSPDir:    localMSPDir,
 			LocalMSPID:     "SampleOrg",
 			BCCSP: &factory.FactoryOpts{

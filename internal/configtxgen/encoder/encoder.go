@@ -606,7 +606,8 @@ func New(config *genesisconfig.Profile) *Bootstrapper {
 
 // GenesisBlock produces a genesis block for the default test channel id
 func (bs *Bootstrapper) GenesisBlock() *cb.Block {
-	return genesis.NewFactoryImpl(bs.channelGroup).Block(genesisconfig.TestChannelID)
+	// TODO(mjs): remove
+	return genesis.NewFactoryImpl(bs.channelGroup).Block("testchannelid")
 }
 
 // GenesisBlockForChannel produces a genesis block for a given channel ID

@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,7 +66,7 @@ func TestMultiReinitialization(t *testing.T) {
 
 	flf, err := New(dir, metricsProvider)
 	assert.NoError(t, err)
-	_, err = flf.GetOrCreate(genesisconfig.TestChannelID)
+	_, err = flf.GetOrCreate("testchannelid")
 	assert.NoError(t, err, "Error GetOrCreate channel")
 	assert.Equal(t, 1, len(flf.ChannelIDs()), "Expected 1 channel")
 	flf.Close()

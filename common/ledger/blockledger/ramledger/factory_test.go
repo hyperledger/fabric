@@ -8,17 +8,15 @@ package ramledger
 
 import (
 	"testing"
-
-	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 )
 
 func TestGetOrCreate(t *testing.T) {
 	rlf := New(3)
-	channel, err := rlf.GetOrCreate(genesisconfig.TestChannelID)
+	channel, err := rlf.GetOrCreate("testchannelid")
 	if err != nil {
 		panic(err)
 	}
-	channel2, err := rlf.GetOrCreate(genesisconfig.TestChannelID)
+	channel2, err := rlf.GetOrCreate("testchannelid")
 	if err != nil {
 		panic(err)
 	}
