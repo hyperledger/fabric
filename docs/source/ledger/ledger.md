@@ -165,13 +165,12 @@ what's important is that block sequencing, as well as transaction sequencing
 within blocks, is established when blocks are first created by a Hyperledger
 Fabric component called the **ordering service**.
 
-Each block's header includes a hash of the block's transactions, as well a copy
-of the hash of the prior block's header. In this way, all transactions on the
-ledger are sequenced and cryptographically linked together. This hashing and
-linking makes the ledger data very secure. Even if one node hosting the ledger
-was tampered with, it would not be able to convince all the other nodes that it
-has the 'correct' blockchain because the ledger is distributed throughout a
-network of independent nodes.
+Each block's header includes a hash of the block's transactions, as well a hash
+of the prior block's header. In this way, all transactions on the ledger are sequenced
+and cryptographically linked together. This hashing and linking makes the ledger data
+very secure. Even if one node hosting the ledger was tampered with, it would not be able to
+convince all the other nodes that it has the 'correct' blockchain because the ledger is
+distributed throughout a network of independent nodes.
 
 The blockchain is always implemented as a file, in contrast to the world state,
 which uses a database. This is a sensible design choice as the blockchain data
@@ -188,9 +187,9 @@ In the above diagram, we can see that **block** B2 has a **block data** D2 which
 contains all its transactions: T5, T6, T7.
 
 Most importantly, B2 has a **block header** H2, which contains a cryptographic
-**hash** of all the transactions in D2 as well as with the equivalent hash from
-the previous block B1. In this way, blocks are inextricably and immutably linked
-to each other, which the term **blockchain** so neatly captures!
+**hash** of all the transactions in D2 as well as a hash of H1. In this way,
+blocks are inextricably and immutably linked to each other, which the term **blockchain**
+so neatly captures!
 
 Finally, as you can see in the diagram, the first block in the blockchain is
 called the **genesis block**.  It's the starting point for the ledger, though it
@@ -214,8 +213,7 @@ sections
   * **Current Block Hash**: The hash of all the transactions contained in the
   current block.
 
-  * **Previous Block Hash**: A copy of the hash from the previous block in the
-  blockchain.
+  * **Previous Block Header Hash**: The hash from the previous block header.
 
   These fields are internally derived by cryptographically hashing the block
   data. They ensure that each and every block is inextricably linked to its
@@ -223,7 +221,7 @@ sections
 
   ![ledger.blocks](./ledger.diagram.4.png) *Block header details. The header H2
   of block B2 consists of block number 2, the hash CH2 of the current block data
-  D2, and a copy of a hash PH1 from the previous block, block number 1.*
+  D2, and the hash of the prior block header H1.*
 
 
 * **Block Data**
