@@ -104,12 +104,6 @@ type PeerLedger interface {
 	DoesPvtDataInfoExist(blockNum uint64) (bool, error)
 }
 
-// ValidatedLedger represents the 'final ledger' after filtering out invalid transactions from PeerLedger.
-// Post-v1
-type ValidatedLedger interface {
-	commonledger.Ledger
-}
-
 // SimpleQueryExecutor encapsulates basic functions
 type SimpleQueryExecutor interface {
 	// GetState gets the value for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
