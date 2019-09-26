@@ -361,7 +361,7 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 		StreamInterceptors: generalConf.StreamInterceptors,
 		UnaryInterceptors:  generalConf.UnaryInterceptors,
 		ConnectionTimeout:  generalConf.ConnectionTimeout,
-		MetricsProvider:    generalConf.MetricsProvider,
+		ServerStatsHandler: generalConf.ServerStatsHandler,
 		Logger:             generalConf.Logger,
 		KaOpts:             generalConf.KaOpts,
 		SecOpts: &comm.SecureOptions{
@@ -488,16 +488,17 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 	kaOpts.ServerTimeout = conf.General.Keepalive.ServerTimeout
 
 	commLogger := flogging.MustGetLogger("core.comm").With("server", "Orderer")
+
 	if metricsProvider == nil {
 		metricsProvider = &disabled.Provider{}
 	}
 
 	return comm.ServerConfig{
-		SecOpts:           secureOpts,
-		KaOpts:            kaOpts,
-		Logger:            commLogger,
-		MetricsProvider:   metricsProvider,
-		ConnectionTimeout: conf.General.ConnectionTimeout,
+		SecOpts:            secureOpts,
+		KaOpts:             kaOpts,
+		Logger:             commLogger,
+		ServerStatsHandler: comm.NewServerStatsHandler(metricsProvider),
+		ConnectionTimeout:  conf.General.ConnectionTimeout,
 		StreamInterceptors: []grpc.StreamServerInterceptor{
 			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
