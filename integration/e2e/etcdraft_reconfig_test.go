@@ -148,7 +148,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ServerTlsCert: secondOrdererCertificate,
 				ClientTlsCert: secondOrdererCertificate,
 				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(orderer2, nwo.ListenPort)),
+				Port:          uint32(network.OrdererPort(orderer2, nwo.ClusterPort)),
 			})
 
 			By("Obtaining the last config block from the orderer")
@@ -242,7 +242,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					return ret
 				}()
 				submitterOrderer := network.Orderers[submitter]
-				port := network.OrdererPort(targetOrderer, nwo.ListenPort)
+				port := network.OrdererPort(targetOrderer, nwo.ClusterPort)
 
 				fmt.Fprintf(GinkgoWriter, "Rotating certificate of orderer node %d\n", target+1)
 				swap(submitterOrderer, rotation.oldCert, etcdraft.Consenter{
@@ -262,7 +262,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					ChannelID:  network.SystemChannel.Name,
 					Block:      "newest",
 					OutputFile: "/dev/null",
-					Orderer:    network.OrdererAddress(targetOrderer, nwo.ListenPort),
+					Orderer:    network.OrdererAddress(targetOrderer, nwo.ClusterPort),
 				}
 				Eventually(func() string {
 					sess, err := network.OrdererAdminSession(targetOrderer, peer, c)
@@ -394,7 +394,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			for i, rotation := range certificateRotations {
 				o := network.Orderers[i]
-				port := network.OrdererPort(o, nwo.ListenPort)
+				port := network.OrdererPort(o, nwo.ClusterPort)
 
 				By(fmt.Sprintf("Adding the future certificate of orderer node %d", i))
 				for _, channelName := range []string{"systemchannel", "testchannel"} {
@@ -468,7 +468,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					ServerTlsCert: orderer4Certificate,
 					ClientTlsCert: orderer4Certificate,
 					Host:          "127.0.0.1",
-					Port:          uint32(network.OrdererPort(o4, nwo.ListenPort)),
+					Port:          uint32(network.OrdererPort(o4, nwo.ClusterPort)),
 				})
 			}
 
@@ -535,7 +535,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ServerTlsCert: orderer4Certificate,
 				ClientTlsCert: orderer4Certificate,
 				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(o4, nwo.ListenPort)),
+				Port:          uint32(network.OrdererPort(o4, nwo.ClusterPort)),
 			})
 
 			By("Waiting for orderer4 and to replicate testchannel2")
@@ -619,7 +619,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ServerTlsCert: ordererCertificate,
 				ClientTlsCert: ordererCertificate,
 				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(o2, nwo.ListenPort)),
+				Port:          uint32(network.OrdererPort(o2, nwo.ClusterPort)),
 			})
 
 			By("Waiting for orderer2 to join the channel")
@@ -635,7 +635,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ServerTlsCert: ordererCertificate,
 				ClientTlsCert: ordererCertificate,
 				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(o3, nwo.ListenPort)),
+				Port:          uint32(network.OrdererPort(o3, nwo.ClusterPort)),
 			})
 
 			By("Waiting for orderer3 to join the channel")
@@ -816,7 +816,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ServerTlsCert: certificatesOfOrderers[0].oldCert,
 				ClientTlsCert: certificatesOfOrderers[0].oldCert,
 				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(orderers[0], nwo.ListenPort)),
+				Port:          uint32(network.OrdererPort(orderers[0], nwo.ClusterPort)),
 			})
 
 			By("Ensuring the re-added orderer joins the Raft cluster")
@@ -915,7 +915,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					ServerTlsCert: ordererCertificate,
 					ClientTlsCert: ordererCertificate,
 					Host:          "127.0.0.1",
-					Port:          uint32(network.OrdererPort(orderers[i], nwo.ListenPort)),
+					Port:          uint32(network.OrdererPort(orderers[i], nwo.ClusterPort)),
 				})
 				blockSeq++
 
