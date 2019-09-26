@@ -1036,7 +1036,7 @@ func prepareRaftMetadata(network *nwo.Network) []byte {
 		fullTlsPath := network.OrdererLocalTLSDir(o)
 		certBytes, err := ioutil.ReadFile(filepath.Join(fullTlsPath, "server.crt"))
 		Expect(err).NotTo(HaveOccurred())
-		port := network.OrdererPort(o, nwo.ListenPort)
+		port := network.OrdererPort(o, nwo.ClusterPort)
 
 		consenter := &protosraft.Consenter{
 			ClientTlsCert: certBytes,
