@@ -97,9 +97,9 @@ var _ bool = Describe("all shim APIs for non-private data", func() {
 
 		By("getting history for marble-0")
 		expectedHistoryResult := []*marbleHistoryResult{
-			&marbleHistoryResult{IsDelete: "true"},
-			&marbleHistoryResult{IsDelete: "false", Value: newMarble("marble-0", "blue", 35, "jerry")},
-			&marbleHistoryResult{IsDelete: "false", Value: newMarble("marble-0", "blue", 35, "tom")},
+			{IsDelete: "true"},
+			{IsDelete: "false", Value: newMarble("marble-0", "blue", 35, "jerry")},
+			{IsDelete: "false", Value: newMarble("marble-0", "blue", 35, "tom")},
 		}
 		helper.assertGetHistoryForMarble(ccName, peer, expectedHistoryResult, "marble-0")
 	}
