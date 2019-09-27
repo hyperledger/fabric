@@ -403,7 +403,7 @@ The most important piece of information supplied within the chaincode definition
 is the [endorsement policy](../glossary.html#endorsement-policy). It describes
 which organizations must approve transactions before they will be accepted by other
 organizations onto their copy of the ledger. In our sample network, transactions
-can be only be accepted onto ledger L1 if R1 or R2 endorse them.
+can only be accepted onto ledger L1 if R1 or R2 endorse them.
 
 Committing the chaincode definition to the channel places the endorsement policy
 on the channel ledger; it enables it to be accessed by any member of the channel.
