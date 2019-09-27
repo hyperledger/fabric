@@ -71,17 +71,19 @@ func (*deliveryFactoryImpl) Service(g GossipService, ec OrdererAddressConfig, mc
 		ConnFactory: deliverclient.DefaultConnectionFactory,
 		ABCFactory:  deliverclient.DefaultABCFactory,
 	}, deliverclient.ConnectionCriteria{
-		OrdererEndpointsByOrg: ec.AddressesByOrg,
-		Organizations:         ec.Organizations,
-		OrdererEndpoints:      ec.Addresses,
+		OrdererEndpointsByOrg:    ec.AddressesByOrg,
+		Organizations:            ec.Organizations,
+		OrdererEndpoints:         ec.Addresses,
+		OrdererEndpointOverrides: ec.AddressOverrides,
 	})
 }
 
 // OrdererAddressConfig defines the addresses of the ordering service nodes
 type OrdererAddressConfig struct {
-	Addresses      []string
-	AddressesByOrg map[string][]string
-	Organizations  []string
+	Addresses        []string
+	AddressesByOrg   map[string][]string
+	Organizations    []string
+	AddressOverrides map[string]string
 }
 
 type privateHandler struct {
@@ -139,22 +141,49 @@ func (jcm *joinChannelMessage) AnchorPeersOf(org api.OrgIdentityType) []api.Anch
 var logger = util.GetLogger(util.ServiceLogger, "")
 
 // InitGossipService initialize gossip service
-func InitGossipService(peerIdentity []byte, metricsProvider metrics.Provider, endpoint string, s *grpc.Server,
-	certs *gossipCommon.TLSCertificates, mcs api.MessageCryptoService, secAdv api.SecurityAdvisor,
-	secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) error {
+func InitGossipService(
+	peerIdentity []byte,
+	metricsProvider metrics.Provider,
+	endpoint string, s *grpc.Server,
+	certs *gossipCommon.TLSCertificates,
+	mcs api.MessageCryptoService,
+	secAdv api.SecurityAdvisor,
+	secureDialOpts api.PeerSecureDialOpts,
+	bootPeers ...string,
+) error {
 	// TODO: Remove this.
 	// TODO: This is a temporary work-around to make the gossip leader election module load its logger at startup
 	// TODO: in order for the flogging package to register this logger in time so it can set the log levels as requested in the config
 	util.GetLogger(util.ElectionLogger, "")
-	return InitGossipServiceCustomDeliveryFactory(peerIdentity, metricsProvider, endpoint, s, certs, &deliveryFactoryImpl{},
-		mcs, secAdv, secureDialOpts, bootPeers...)
+	return InitGossipServiceCustomDeliveryFactory(
+		peerIdentity,
+		metricsProvider,
+		endpoint,
+		s,
+		certs,
+		&deliveryFactoryImpl{},
+		mcs,
+		secAdv,
+		secureDialOpts,
+		bootPeers...,
+	)
 }
 
 // InitGossipServiceCustomDeliveryFactory initialize gossip service with customize delivery factory
 // implementation, might be useful for testing and mocking purposes
-func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, metricsProvider metrics.Provider, endpoint string,
-	s *grpc.Server, certs *gossipCommon.TLSCertificates, factory DeliveryServiceFactory, mcs api.MessageCryptoService,
-	secAdv api.SecurityAdvisor, secureDialOpts api.PeerSecureDialOpts, bootPeers ...string) error {
+func InitGossipServiceCustomDeliveryFactory(
+	peerIdentity []byte,
+	metricsProvider metrics.Provider,
+	endpoint string,
+	s *grpc.Server,
+	certs *gossipCommon.TLSCertificates,
+	factory DeliveryServiceFactory,
+	mcs api.MessageCryptoService,
+	secAdv api.SecurityAdvisor,
+	secureDialOpts api.PeerSecureDialOpts,
+	bootPeers ...string,
+) error {
+
 	var err error
 	var gossip gossip.Gossip
 	once.Do(func() {

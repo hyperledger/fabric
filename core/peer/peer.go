@@ -325,7 +325,15 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 }
 
 // createChain creates a new chain object and insert it into the chains
-func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccprovider.ChaincodeProvider, sccp sysccprovider.SystemChaincodeProvider, pm txvalidator.PluginMapper) error {
+func createChain(
+	cid string,
+	ledger ledger.PeerLedger,
+	cb *common.Block,
+	ccp ccprovider.ChaincodeProvider,
+	sccp sysccprovider.SystemChaincodeProvider,
+	pm txvalidator.PluginMapper,
+) error {
+
 	chanConf, err := retrievePersistedChannelConfig(ledger)
 	if err != nil {
 		return err
@@ -458,6 +466,11 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 		return errors.New("no ordering service endpoint provided in configuration block")
 	}
 
+	ordererAddressOverrides, err := GetOrdererAddressOverrides()
+	if err != nil {
+		return errors.Errorf("failed to get override addresses: %s", err)
+	}
+
 	// TODO: does someone need to call Close() on the transientStoreFactory at shutdown of the peer?
 	store, err := TransientStoreFactory.OpenStore(bundle.ConfigtxValidator().ChainID())
 	if err != nil {
@@ -470,9 +483,10 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block, ccp ccp
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(csStoreSupport)
 
 	oac := service.OrdererAddressConfig{
-		Addresses:      ordererAddresses,
-		AddressesByOrg: ordererAddressesByOrg,
-		Organizations:  ordererOrganizations,
+		Addresses:        ordererAddresses,
+		AddressesByOrg:   ordererAddressesByOrg,
+		Organizations:    ordererOrganizations,
+		AddressOverrides: ordererAddressOverrides,
 	}
 	service.GetGossipService().InitializeChannel(bundle.ConfigtxValidator().ChainID(), oac, service.Support{
 		Validator:            validator,

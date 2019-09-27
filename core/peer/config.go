@@ -256,3 +256,25 @@ func GetClientCertificate() (tls.Certificate, error) {
 	}
 	return cert, nil
 }
+
+type addressOverride struct {
+	From string `mapstructure:"from"`
+	To   string `mapstructure:"to"`
+}
+
+func GetOrdererAddressOverrides() (map[string]string, error) {
+	var overrides []addressOverride
+	err := viper.UnmarshalKey("peer.deliveryclient.addressOverrides", &overrides)
+	if err != nil {
+		return nil, err
+	}
+
+	var overrideMap map[string]string
+	if len(overrides) > 0 {
+		overrideMap = make(map[string]string)
+		for _, override := range overrides {
+			overrideMap[override.From] = override.To
+		}
+	}
+	return overrideMap, nil
+}

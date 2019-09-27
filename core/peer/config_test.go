@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package peer
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -317,4 +318,31 @@ func TestGetClientCertificate(t *testing.T) {
 	cert, err = GetClientCertificate()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, cert)
+}
+
+func TestGetOrdererAddressOverrides(t *testing.T) {
+	conf := `
+  peer:
+    deliveryclient:
+      addressOverrides:
+        - from: myaddress
+          to: youraddress
+        - from: myaddress2
+          to: youraddress2`
+
+	viper.SetConfigType("yaml")
+	err := viper.ReadConfig(bytes.NewBuffer([]byte(conf)))
+	if err != nil {
+		t.Fatalf("Failed to read test config: %s", err)
+	}
+
+	expected := map[string]string{
+		"myaddress":  "youraddress",
+		"myaddress2": "youraddress2",
+	}
+	overrides, err := GetOrdererAddressOverrides()
+	if err != nil {
+		t.Fatalf("Failed to get overrides: %s", err)
+	}
+	assert.Equal(t, expected, overrides)
 }

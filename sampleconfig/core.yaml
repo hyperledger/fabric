@@ -317,15 +317,24 @@ peer:
 
     # Delivery service related config
     deliveryclient:
-        # It sets the total time the delivery service may spend in reconnection
-        # attempts until its retry logic gives up and returns an error
+        # The total time to spend retrying connections to ordering nodes
+        # before giving up and returning an error.
         reconnectTotalTimeThreshold: 3600s
 
-        # It sets the delivery service <-> ordering service node connection timeout
+        # The connection timeout when connecting to ordering service nodes.
         connTimeout: 3s
 
-        # It sets the delivery service maximal delay between consecutive retries
+        # The maximum delay between consecutive connection retry attempts to
+        # ordering nodes.
         reConnectBackoffThreshold: 3600s
+
+        # A list of orderer endpoint addresses which should be overridden
+        # when found in channel configurations.
+        addressOverrides:
+        #  - from:
+        #    to:
+        #  - from:
+        #    to:
 
     # Type for the local MSP - by default it's of type bccsp
     localMspType: bccsp
