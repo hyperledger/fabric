@@ -108,6 +108,10 @@ type ConnectionCriteria struct {
 	Organizations []string
 	// OrdererEndpointsByOrg specifies the endpoints of the ordering service grouped by orgs.
 	OrdererEndpointsByOrg map[string][]string
+	// OrdererEndpointOverrides specifies a map of endpoints to override.  The map
+	// key is the configured endpoint address to match and the value is the
+	// endpoint to use instead.
+	OrdererEndpointOverrides map[string]string
 }
 
 func (cc ConnectionCriteria) toEndpointCriteria() []comm.EndpointCriteria {
@@ -122,6 +126,10 @@ func (cc ConnectionCriteria) toEndpointCriteria() []comm.EndpointCriteria {
 		}
 
 		for _, endpoint := range endpoints {
+			// check if we need to override the endpoint
+			if override, ok := cc.OrdererEndpointOverrides[endpoint]; ok {
+				endpoint = override
+			}
 			res = append(res, comm.EndpointCriteria{
 				Organizations: []string{org},
 				Endpoint:      endpoint,
@@ -135,6 +143,10 @@ func (cc ConnectionCriteria) toEndpointCriteria() []comm.EndpointCriteria {
 	}
 
 	for _, endpoint := range cc.OrdererEndpoints {
+		// check if we need to override the endpoint
+		if override, ok := cc.OrdererEndpointOverrides[endpoint]; ok {
+			endpoint = override
+		}
 		res = append(res, comm.EndpointCriteria{
 			Organizations: cc.Organizations,
 			Endpoint:      endpoint,
