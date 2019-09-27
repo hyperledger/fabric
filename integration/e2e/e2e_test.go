@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package e2e
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -350,6 +351,93 @@ var _ = Describe("EndToEnd", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
 			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say("channel creation request not allowed because the orderer system channel is not yet defined"))
+		})
+	})
+
+	Describe("basic solo network with containers being interroped", func() {
+		BeforeEach(func() {
+			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		})
+
+		It("kills chaincode containers as unexpected", func() {
+			chaincode := nwo.Chaincode{
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:            "golang",
+				PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
+				Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				SignaturePolicy: `OR ('Org1MSP.peer', 'Org2MSP.peer')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_simple_chaincode",
+			}
+
+			peer := network.Peers[0]
+			orderer := network.Orderer("orderer")
+
+			By("creating and joining channels")
+			network.CreateAndJoinChannels(orderer)
+
+			By("enabling new lifecycle capabilities")
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer1"), network.Peer("Org2", "peer1"))
+			By("deploying the chaincode")
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+			By("querying and invoking chaincode")
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
+
+			By("removing chaincode containers from all peers")
+			ctx := context.Background()
+			containers, err := client.ListContainers(docker.ListContainersOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			originalContainerIDs := []string{}
+			for _, container := range containers {
+				if strings.Contains(container.Command, "chaincode") {
+					originalContainerIDs = append(originalContainerIDs, container.ID)
+					err = client.RemoveContainer(docker.RemoveContainerOptions{
+						ID:            container.ID,
+						RemoveVolumes: true,
+						Force:         true,
+						Context:       ctx,
+					})
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
+
+			By("invoking chaincode against all peers in test channel")
+			for _, peer := range network.Peers {
+				sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+					ChannelID: "testchannel",
+					Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
+					Name:      "mycc",
+					Ctor:      `{"Args":["invoke","a","b","10"]}`,
+					PeerAddresses: []string{
+						network.PeerAddress(peer, nwo.ListenPort),
+					},
+					WaitForEvent: true,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+				Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
+			}
+
+			By("checking successful removals of all old chaincode containers")
+			newContainers, err := client.ListContainers(docker.ListContainersOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(newContainers)).To(BeEquivalentTo(len(containers)))
+
+			for _, container := range newContainers {
+				Expect(originalContainerIDs).NotTo(ContainElement(container.ID))
+			}
 		})
 	})
 })
