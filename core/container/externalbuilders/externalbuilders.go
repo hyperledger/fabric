@@ -274,7 +274,7 @@ type buildMetadata struct {
 func writeMetadataFile(ccid string, md *persistence.ChaincodePackageMetadata, dst string) error {
 	buildMetadata := &buildMetadata{
 		Path:      md.Path,
-		Type:      strings.ToLower(md.Type),
+		Type:      md.Type,
 		PackageID: ccid,
 	}
 	mdBytes, err := json.Marshal(buildMetadata)
