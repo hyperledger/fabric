@@ -390,7 +390,7 @@ The most important piece of additional information supplied at instantiation is
 an [endorsement policy](../glossary.html#endorsement-policy). It describes which
 organizations must approve transactions before they will be accepted by other
 organizations onto their copy of the ledger. In our sample network, transactions
-can be only be accepted onto ledger L1 if R1 or R2 endorse them.
+can only be accepted onto ledger L1 if R1 or R2 endorse them.
 
 The act of instantiation places the endorsement policy in channel configuration
 CC1; it enables it to be accessed by any member of the channel. You can read
