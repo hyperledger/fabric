@@ -959,7 +959,7 @@ R4 however, could grant even more power over the network configuration to R1! R4
 could add R1 to the mod_policy such that R1 would be able to manage change of
 the network policy too.
 
-This second power is much more powerful than the first, because now R1 now has
+This second power is much more powerful than the first, because R1 now has
 **full control** over the network configuration NC4! This means that R1 can, in
 principle remove R4's management rights from the network.  In practice, R4 would
 configure the mod_policy such that R4 would need to also approve the change, or
