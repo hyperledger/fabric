@@ -28,6 +28,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+//go:generate counterfeiter -o mocks/connection_producer.go -fake-name ConnectionProducer . connectionProducer
+
+type connectionProducer interface {
+	comm.ConnectionProducer
+}
+
 func init() {
 	msptesttools.LoadMSPSetupForTesting()
 }
@@ -262,59 +268,46 @@ func TestDeliverServiceFailover(t *testing.T) {
 }
 
 func TestDeliverServiceUpdateEndpoints(t *testing.T) {
-	// TODO: Add test case to check the endpoints update
-	// Case: Start service with given ordering service endpoint
-	// send a block, switch to new endpoint and send a new block
-	// Expected: Delivery service should be able to switch to
-	// updated endpoint and receive second block within timely manner.
-	defer ensureNoGoroutineLeak(t)()
+	connProd := &mocks.ConnectionProducer{}
+	testChannel := "test_channel"
 
-	os1 := mocks.NewOrderer(5612, t)
-
-	time.Sleep(time.Second)
-	gossipServiceAdapter := &mocks.MockGossipServiceAdapter{GossipBlockDisseminations: make(chan uint64)}
-
-	service, err := NewDeliverService(&Config{
-		Gossip:      gossipServiceAdapter,
-		CryptoSvc:   &mockMCS{},
-		ABCFactory:  DefaultABCFactory,
-		ConnFactory: DefaultConnectionFactory,
-	}, ConnectionCriteria{
-		Organizations: []string{"org"},
-		OrdererEndpointsByOrg: map[string][]string{
-			"org": {"localhost:5612"},
+	ds := &deliverServiceImpl{
+		connConfig: ConnectionCriteria{
+			Organizations: []string{"org1"},
+			OrdererEndpointsByOrg: map[string][]string{
+				"org1": {"localhost:5612"},
+			},
+			OrdererEndpointOverrides: map[string]string{
+				"localhost:5612": "localhost:5614",
+			},
 		},
-	})
-	defer service.Stop()
-
-	assert.NoError(t, err)
-	li := &mocks.MockLedgerInfo{Height: uint64(100)}
-	os1.SetNextExpectedSeek(uint64(100))
-
-	err = service.StartDeliverForChannel("TEST_CHAINID", li, func() {})
-	assert.NoError(t, err, "can't start delivery")
-
-	go os1.SendBlock(uint64(100))
-	assertBlockDissemination(100, gossipServiceAdapter.GossipBlockDisseminations, t)
-
-	os2 := mocks.NewOrderer(5613, t)
-	defer os2.Shutdown()
-	os2.SetNextExpectedSeek(uint64(101))
-
-	newConnCriteria := ConnectionCriteria{
-		Organizations: []string{"org"},
-		OrdererEndpointsByOrg: map[string][]string{
-			"org": {"localhost:5613"},
+		deliverClients: map[string]*deliverClient{
+			testChannel: {
+				bclient: &broadcastClient{
+					prod: connProd,
+				},
+			},
 		},
 	}
-	service.UpdateEndpoints("TEST_CHAINID", newConnCriteria)
-	// Shutdown old ordering service to make sure block will now come from
-	// updated ordering service
-	os1.Shutdown()
 
-	atomic.StoreUint64(&li.Height, uint64(101))
-	go os2.SendBlock(uint64(101))
-	assertBlockDissemination(101, gossipServiceAdapter.GossipBlockDisseminations, t)
+	expectedEC := []comm.EndpointCriteria{
+		{Organizations: []string{"org1"}, Endpoint: "localhost:5614"},
+		{Organizations: []string{"org2"}, Endpoint: "localhost:5613"},
+	}
+
+	ds.UpdateEndpoints(
+		testChannel,
+		ConnectionCriteria{
+			Organizations: []string{"org1", "org2"},
+			OrdererEndpointsByOrg: map[string][]string{
+				"org1": {"localhost:5612"},
+				"org2": {"localhost:5613"},
+			},
+		},
+	)
+	assert.Equal(t, 1, connProd.UpdateEndpointsCallCount())
+	assert.Equal(t, expectedEC, connProd.UpdateEndpointsArgsForCall(0))
+
 }
 
 func TestDeliverServiceServiceUnavailable(t *testing.T) {
