@@ -784,6 +784,21 @@ func TestToEndpointCriteria(t *testing.T) {
 			},
 		},
 		{
+			description: "globally defined endpoints with overrides",
+			input: ConnectionCriteria{
+				Organizations:    []string{"foo", "bar"},
+				OrdererEndpoints: []string{"a", "b", "c"},
+				OrdererEndpointOverrides: map[string]string{
+					"b": "d",
+				},
+			},
+			expectedOut: []comm.EndpointCriteria{
+				{Organizations: []string{"foo", "bar"}, Endpoint: "a"},
+				{Organizations: []string{"foo", "bar"}, Endpoint: "d"},
+				{Organizations: []string{"foo", "bar"}, Endpoint: "c"},
+			},
+		},
+		{
 			description: "per org defined endpoints",
 			input: ConnectionCriteria{
 				Organizations: []string{"foo", "bar"},
@@ -797,6 +812,26 @@ func TestToEndpointCriteria(t *testing.T) {
 			expectedOut: []comm.EndpointCriteria{
 				{Organizations: []string{"foo"}, Endpoint: "a"},
 				{Organizations: []string{"foo"}, Endpoint: "b"},
+				{Organizations: []string{"bar"}, Endpoint: "c"},
+			},
+		},
+		{
+			description: "per org defined endpoints with overrides",
+			input: ConnectionCriteria{
+				Organizations: []string{"foo", "bar"},
+				// Even if OrdererEndpoints are defined, the OrdererEndpointsByOrg take precedence.
+				OrdererEndpoints: []string{"a", "b", "c"},
+				OrdererEndpointsByOrg: map[string][]string{
+					"foo": {"a", "b"},
+					"bar": {"c"},
+				},
+				OrdererEndpointOverrides: map[string]string{
+					"b": "d",
+				},
+			},
+			expectedOut: []comm.EndpointCriteria{
+				{Organizations: []string{"foo"}, Endpoint: "a"},
+				{Organizations: []string{"foo"}, Endpoint: "d"},
 				{Organizations: []string{"bar"}, Endpoint: "c"},
 			},
 		},
