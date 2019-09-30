@@ -23,11 +23,15 @@ General:
   Cluster:
     ClientCertificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
     ClientPrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key
+    ServerCertificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
+    ServerPrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key
     DialTimeout: 5s
     RPCTimeout: 7s
     ReplicationBufferSize: 20971520
     ReplicationPullTimeout: 5s
     ReplicationRetryTimeout: 5s
+    ListenAddress: 127.0.0.1
+    ListenPort: {{ .OrdererPort Orderer "Cluster" }}
   Keepalive:
     ServerMinInterval: 60s
     ServerInterval: 7200s
