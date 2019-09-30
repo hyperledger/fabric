@@ -55,11 +55,16 @@ var _ = Describe("Kafka2RaftMigration", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		chaincode = nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
+			Name:            "mycc",
+			Version:         "0.0",
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+			Lang:            "binary",
+			PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+			Ctor:            `{"Args":["init","a","100","b","200"]}`,
+			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
+			Sequence:        "1",
+			InitRequired:    true,
+			Label:           "my_prebuilt_chaincode",
 		}
 	})
 
@@ -125,7 +130,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Create & join first channel, deploy and invoke chaincode")
 			network.CreateAndJoinChannel(orderer, channel1)
-			nwo.DeployChaincodeLegacy(network, channel1, orderer, chaincode)
+			nwo.EnableCapabilities(network, channel1, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, channel1, orderer, chaincode)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 90)
 		})
@@ -195,7 +201,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("3) Verify: create new channel, executing transaction")
 			network.CreateAndJoinChannel(orderer, channel2)
-			nwo.InstantiateChaincodeLegacy(network, channel2, orderer, chaincode, peer, network.PeersWithChannel(channel2)...)
+			nwo.EnableCapabilities(network, channel2, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, channel2, orderer, chaincode, network.PeersWithChannel(channel2)...)
 			RunExpectQueryRetry(network, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 90)
@@ -565,7 +572,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Create & join first channel, deploy and invoke chaincode")
 			network.CreateAndJoinChannel(o1, channel1)
-			nwo.DeployChaincodeLegacy(network, channel1, o1, chaincode)
+			nwo.EnableCapabilities(network, channel1, "Application", "V2_0", o1, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, channel1, o1, chaincode)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 100)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 90)
 		})
@@ -703,7 +711,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("12) Create new channel, executing transaction with restarted orderer")
 			network.CreateAndJoinChannel(o1, channel2)
-			nwo.InstantiateChaincodeLegacy(network, channel2, o1, chaincode, peer, network.PeersWithChannel(channel2)...)
+			nwo.EnableCapabilities(network, channel2, "Application", "V2_0", o1, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, channel2, o1, chaincode)
 			RunExpectQueryRetry(network, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 90)
@@ -747,7 +756,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Create & join first channel, deploy and invoke chaincode")
 			network.CreateAndJoinChannel(orderer, channel1)
-			nwo.DeployChaincodeLegacy(network, channel1, orderer, chaincode)
+			nwo.EnableCapabilities(network, channel1, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, channel1, orderer, chaincode)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 90)
 		})
@@ -868,7 +878,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("12) Create new channel, executing transaction with restarted orderer")
 			network.CreateAndJoinChannel(orderer, channel2)
-			nwo.InstantiateChaincodeLegacy(network, channel2, orderer, chaincode, peer, network.PeersWithChannel(channel2)...)
+			nwo.EnableCapabilities(network, channel2, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, channel2, orderer, chaincode)
 			RunExpectQueryRetry(network, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 90)
