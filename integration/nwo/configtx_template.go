@@ -122,7 +122,7 @@ Profiles:{{ range .Profiles }}
           SnapshotIntervalSize: 1 KB
         Consenters:{{ range .Orderers }}{{ with $w.Orderer . }}
         - Host: 127.0.0.1
-          Port: {{ $w.OrdererPort . "Listen" }}
+          Port: {{ $w.OrdererPort . "Cluster" }}
           ClientTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
           ServerTLSCert: {{ $w.OrdererLocalCryptoDir . "tls" }}/server.crt
         {{- end }}{{- end }}

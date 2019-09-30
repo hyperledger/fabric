@@ -419,17 +419,12 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			for i, runner := range []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner} {
 				// Switch between the general port and the cluster listener port
-				port := network.OrdererPort(network.Orderers[i], nwo.ListenPort)
-				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", port))
-				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", network.ReservePort()))
 				runner.Command.Env = append(runner.Command.Env, "ORDERER_GENERAL_CLUSTER_TLSHANDSHAKETIMESHIFT=90s")
-				runner.Command.Env = append(runner.Command.Env, "ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1")
 				tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(network.Orderers[i]), "server.crt")
 				tlsKeyPath := filepath.Join(network.OrdererLocalTLSDir(network.Orderers[i]), "server.key")
 				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", tlsCertPath))
 				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", tlsKeyPath))
 				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_ROOTCAS=%s", ordererTLSCACertPath))
-				runner.Command.Env = append(runner.Command.Env, "ORDERER_METRICS_PROVIDER=disabled")
 			}
 
 			o1Proc = ifrit.Invoke(o1Runner)
