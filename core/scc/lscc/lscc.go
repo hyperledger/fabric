@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -126,6 +127,10 @@ type FilesystemSupport interface {
 	CheckInstantiationPolicy(signedProposal *pb.SignedProposal, chainName string, instantiationPolicy []byte) error
 }
 
+type ChaincodeBuilder interface {
+	Build(ccid string) error
+}
+
 // MSPsIDGetter is used to get the MSP IDs for a channel.
 type MSPIDsGetter func(string) []string
 
@@ -151,6 +156,10 @@ type LifeCycleSysCC struct {
 	Support FilesystemSupport
 
 	GetMSPIDs MSPIDsGetter
+
+	BuildRegistry *container.BuildRegistry
+
+	ChaincodeBuilder ChaincodeBuilder
 
 	// BCCSP instance
 	BCCSP bccsp.BCCSP
@@ -196,15 +205,19 @@ func New(
 	getMSPIDs MSPIDsGetter,
 	policyChecker policy.PolicyChecker,
 	bccsp bccsp.BCCSP,
+	buildRegistry *container.BuildRegistry,
+	chaincodeBuilder ChaincodeBuilder,
 ) *LifeCycleSysCC {
 	return &LifeCycleSysCC{
-		BuiltinSCCs:   builtinSCCs,
-		Support:       &supportImpl{GetMSPIDs: getMSPIDs},
-		PolicyChecker: policyChecker,
-		SCCProvider:   sccp,
-		ACLProvider:   ACLProvider,
-		GetMSPIDs:     getMSPIDs,
-		BCCSP:         bccsp,
+		BuiltinSCCs:      builtinSCCs,
+		Support:          &supportImpl{GetMSPIDs: getMSPIDs},
+		PolicyChecker:    policyChecker,
+		SCCProvider:      sccp,
+		ACLProvider:      ACLProvider,
+		GetMSPIDs:        getMSPIDs,
+		BCCSP:            bccsp,
+		BuildRegistry:    buildRegistry,
+		ChaincodeBuilder: chaincodeBuilder,
 	}
 }
 
@@ -687,6 +700,25 @@ func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 		return errors.Errorf("cannot install: %s is the name of a system chaincode", cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
+	// We must put the chaincode package on the filesystem prior to building it.
+	// This creates a race for endorsements coming in and executing the chaincode
+	// prior to indexes being installed, but, such is life, and this case is already
+	// present when an already installed chaincode is instantiated.
+	if err = lscc.Support.PutChaincodeToLocalStorage(ccpack); err != nil {
+		return err
+	}
+
+	ccid := ccpack.GetChaincodeData().Name + ":" + ccpack.GetChaincodeData().Version
+	buildStatus, ok := lscc.BuildRegistry.BuildStatus(ccid)
+	if !ok {
+		err := lscc.ChaincodeBuilder.Build(ccid)
+		buildStatus.Notify(err)
+	}
+	<-buildStatus.Done()
+	if err := buildStatus.Err(); err != nil {
+		return errors.WithMessage(err, "could not build chaincode")
+	}
+
 	// Get any statedb artifacts from the chaincode package, e.g. couchdb index definitions
 	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack)
 	if err != nil {
@@ -711,11 +743,6 @@ func (lscc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, ccb
 		cceventmgmt.GetMgr().ChaincodeInstallDone(err == nil)
 	}()
 	if err != nil {
-		return err
-	}
-
-	// Finally, if everything is good above, install the chaincode to local peer file system so that endorsements can start
-	if err = lscc.Support.PutChaincodeToLocalStorage(ccpack); err != nil {
 		return err
 	}
 

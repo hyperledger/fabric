@@ -178,6 +178,27 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 	globalConfig := GlobalConfig()
 	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
+
+	buildRegistry := &container.BuildRegistry{}
+
+	client, err := docker.NewClientFromEnv()
+	if err != nil {
+		panic(err)
+	}
+
+	containerRouter := &container.Router{
+		DockerVM: &dockercontroller.DockerVM{
+			PlatformBuilder: &platforms.Builder{
+				Registry: platforms.NewRegistry(&golang.Platform{}),
+				Client:   client,
+			},
+		},
+		PackageProvider: &persistence.FallbackPackageLocator{
+			ChaincodePackageLocator: &persistence.ChaincodePackageLocator{},
+			LegacyCCPackageLocator:  &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider},
+		},
+	}
+
 	lsccImpl := lscc.New(
 		map[string]struct{}{"lscc": {}},
 		&lscc.PeerShim{Peer: peerInstance},
@@ -185,7 +206,10 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 		peerInstance.GetMSPIDs,
 		newPolicyChecker(peerInstance),
 		cryptoProvider,
+		buildRegistry,
+		containerRouter,
 	)
+
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
@@ -202,27 +226,11 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 		}
 	}
 
-	client, err := docker.NewClientFromEnv()
-	if err != nil {
-		panic(err)
-	}
-
 	containerRuntime := &ContainerRuntime{
-		CACert:        ca.CertBytes(),
-		CertGenerator: certGenerator,
-		BuildRegistry: &container.BuildRegistry{},
-		ContainerRouter: &container.Router{
-			DockerVM: &dockercontroller.DockerVM{
-				PlatformBuilder: &platforms.Builder{
-					Registry: platforms.NewRegistry(&golang.Platform{}),
-					Client:   client,
-				},
-			},
-			PackageProvider: &persistence.FallbackPackageLocator{
-				ChaincodePackageLocator: &persistence.ChaincodePackageLocator{},
-				LegacyCCPackageLocator:  &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider},
-			},
-		},
+		CACert:          ca.CertBytes(),
+		CertGenerator:   certGenerator,
+		BuildRegistry:   buildRegistry,
+		ContainerRouter: containerRouter,
 	}
 	if !globalConfig.TLSEnabled {
 		containerRuntime.CertGenerator = nil

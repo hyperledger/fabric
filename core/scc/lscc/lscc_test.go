@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/policy"
@@ -151,6 +152,8 @@ func TestInstall(t *testing.T) {
 	ledgerMgr := ledgermgmt.NewLedgerMgr(initializer)
 	defer ledgerMgr.Close()
 
+	chaincodeBuilder := &mock.ChaincodeBuilder{}
+
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 	scc := New(
@@ -160,6 +163,8 @@ func TestInstall(t *testing.T) {
 		getMSPIDs,
 		nil,
 		cryptoProvider,
+		&container.BuildRegistry{},
+		chaincodeBuilder,
 	)
 	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
@@ -181,6 +186,18 @@ func TestInstall(t *testing.T) {
 	path := "mychaincode"
 
 	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub, nil)
+
+	assert.Equal(t, 1, chaincodeBuilder.BuildCallCount())
+	assert.Equal(t, "example02:0", chaincodeBuilder.BuildArgsForCall(0))
+
+	// Re-install, should not build a second time
+	testInstall(t, "example02", "0", path, false, "", "Alice", scc, stub, nil)
+	assert.Equal(t, 1, chaincodeBuilder.BuildCallCount())
+
+	chaincodeBuilder.BuildReturns(fmt.Errorf("fake-build-error"))
+	testInstall(t, "example02-different", "0", path, false, "could not build chaincode: fake-build-error", "Alice", scc, stub, nil)
+	chaincodeBuilder.BuildReturns(nil)
+
 	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub, nil)
 	testInstall(t, "example02.go", "0", path, false, InvalidChaincodeNameErr("example02.go").Error(), "Alice", scc, stub, nil)
 	testInstall(t, "", "0", path, false, InvalidChaincodeNameErr("").Error(), "Alice", scc, stub, nil)
@@ -250,7 +267,16 @@ func TestNewLifecycleEnabled(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, mocksccProvider, mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		mocksccProvider,
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte("test"), nil}, nil)
 	assert.NotEqual(t, int32(shim.OK), res.Status)
@@ -272,7 +298,16 @@ func TestDeploy(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -293,7 +328,16 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "chaincode with name 'example02' already exists", scc, stub, nil)
 
-	scc = New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -302,7 +346,16 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub, nil)
 
-	scc = New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -311,7 +364,16 @@ func TestDeploy(t *testing.T) {
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "barf", scc, stub, nil)
 
-	scc = New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -332,7 +394,16 @@ func TestDeploy(t *testing.T) {
 		},
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
-	scc = New(map[string]struct{}{"lscc": {}}, mocksccProvider, mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		mocksccProvider,
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -359,7 +430,16 @@ func TestDeploy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
 
-	scc = New(map[string]struct{}{"lscc": {}}, mocksccProvider, mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		mocksccProvider,
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -375,7 +455,16 @@ func TestDeploy(t *testing.T) {
 	assert.Equal(t, true, ok)
 	assert.Equal(t, ccpBytes, actualccpBytes)
 
-	scc = New(map[string]struct{}{"lscc": {}}, mocksccProvider, mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		mocksccProvider,
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -415,7 +504,16 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 func testDeploy(t *testing.T, ccname string, version string, path string, forceBlankCCName bool, forceBlankVersion bool, install bool, expectedErrorMsg string, scc *LifeCycleSysCC, stub *shimtest.MockStub, collectionConfigBytes []byte) {
 	if scc == nil {
 		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		scc = New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+		scc = New(
+			map[string]struct{}{"lscc": {}},
+			NewMockProvider(),
+			mockAclProvider,
+			getMSPIDs,
+			nil,
+			cryptoProvider,
+			&container.BuildRegistry{},
+			&mock.ChaincodeBuilder{},
+		)
 		scc.Support = &MockSupport{}
 		stub = shimtest.NewMockStub("lscc", scc)
 		res := stub.MockInit("1", nil)
@@ -533,7 +631,16 @@ func TestUpgrade(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -543,7 +650,16 @@ func TestUpgrade(t *testing.T) {
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
-	scc = New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -551,7 +667,16 @@ func TestUpgrade(t *testing.T) {
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "instantiation policy missing", scc, stub, nil)
 
-	scc = New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -562,7 +687,16 @@ func TestUpgrade(t *testing.T) {
 
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
-	scc = New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -583,7 +717,16 @@ func TestUpgrade(t *testing.T) {
 		},
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
-	scc = New(map[string]struct{}{"lscc": {}}, mocksccProvider, mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		mocksccProvider,
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -616,7 +759,16 @@ func TestUpgrade(t *testing.T) {
 		},
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
-	scc = New(map[string]struct{}{"lscc": {}}, mocksccProvider, mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		mocksccProvider,
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -630,7 +782,16 @@ func TestUpgrade(t *testing.T) {
 	_, ok := stub.State["example02"]
 	assert.Equal(t, true, ok)
 
-	scc = New(map[string]struct{}{"lscc": {}}, mocksccProvider, mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc = New(
+		map[string]struct{}{"lscc": {}},
+		mocksccProvider,
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub = shimtest.NewMockStub("lscc", scc)
 	res = stub.MockInit("1", nil)
@@ -655,7 +816,16 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		assert.NoError(t, err)
 		if scc == nil {
-			scc = New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+			scc = New(
+				map[string]struct{}{"lscc": {}},
+				NewMockProvider(),
+				mockAclProvider,
+				getMSPIDs,
+				nil,
+				cryptoProvider,
+				&container.BuildRegistry{},
+				&mock.ChaincodeBuilder{},
+			)
 			scc.Support = &MockSupport{}
 			stub = shimtest.NewMockStub("lscc", scc)
 			res := stub.MockInit("1", nil)
@@ -720,7 +890,16 @@ func testUpgrade(t *testing.T, ccname string, version string, newccname string, 
 func TestFunctionsWithAliases(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -772,7 +951,16 @@ func TestFunctionsWithAliases(t *testing.T) {
 func TestGetChaincodes(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	stub.ChannelID = "test"
@@ -805,7 +993,16 @@ func TestGetChaincodes(t *testing.T) {
 func TestGetChaincodesFilter(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{GetChaincodeFromLocalStorageErr: errors.New("banana")}
 
 	sqi := &mock.StateQueryIterator{}
@@ -838,7 +1035,16 @@ func TestGetChaincodesFilter(t *testing.T) {
 func TestGetInstalledChaincodes(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	scc.Support = &MockSupport{}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -902,7 +1108,16 @@ func TestGetInstalledChaincodes(t *testing.T) {
 func TestNewLifeCycleSysCC(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	assert.NotNil(t, scc)
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -916,7 +1131,16 @@ func TestNewLifeCycleSysCC(t *testing.T) {
 func TestGetChaincodeData(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	assert.NotNil(t, scc)
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -933,7 +1157,16 @@ func TestGetChaincodeData(t *testing.T) {
 func TestExecuteInstall(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	assert.NotNil(t, scc)
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -994,7 +1227,16 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 func TestGetChaincodeCollectionData(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	scc := New(map[string]struct{}{"lscc": {}}, NewMockProvider(), mockAclProvider, getMSPIDs, nil, cryptoProvider)
+	scc := New(
+		map[string]struct{}{"lscc": {}},
+		NewMockProvider(),
+		mockAclProvider,
+		getMSPIDs,
+		nil,
+		cryptoProvider,
+		&container.BuildRegistry{},
+		&mock.ChaincodeBuilder{},
+	)
 	stub := shimtest.NewMockStub("lscc", scc)
 	stub.ChannelID = "test"
 	scc.Support = &MockSupport{}

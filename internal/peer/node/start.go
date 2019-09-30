@@ -443,27 +443,11 @@ func serve(args []string) error {
 	// create chaincode specific tls CA
 	authenticator := accesscontrol.NewAuthenticator(ca)
 
-	builtinSCCs := map[string]struct{}{
-		"lscc":       {},
-		"qscc":       {},
-		"cscc":       {},
-		"_lifecycle": {},
-	}
-
-	lsccInst := lscc.New(builtinSCCs, &lscc.PeerShim{Peer: peerInstance}, aclProvider, peerInstance.GetMSPIDs, policyChecker, factory.GetDefault())
-
 	chaincodeHandlerRegistry := chaincode.NewHandlerRegistry(userRunsCC)
 	lifecycleTxQueryExecutorGetter := &chaincode.TxQueryExecutorGetter{
 		CCID:            scc.ChaincodeID(lifecycle.LifecycleNamespace),
 		HandlerRegistry: chaincodeHandlerRegistry,
 	}
-	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfoSource{
-		LegacyImpl:  lsccInst,
-		Resources:   lifecycleResources,
-		Cache:       lifecycleCache,
-		BuiltinSCCs: builtinSCCs,
-	}
-
 	var client *docker.Client
 	if coreConfig.VMDockerTLSEnabled {
 		client, err = docker.NewTLSClient(coreConfig.VMEndpoint, coreConfig.DockerCert, coreConfig.DockerKey, coreConfig.DockerCA)
@@ -523,6 +507,30 @@ func serve(args []string) error {
 			},
 			LegacyCCPackageLocator: &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()},
 		},
+	}
+
+	builtinSCCs := map[string]struct{}{
+		"lscc":       {},
+		"qscc":       {},
+		"cscc":       {},
+		"_lifecycle": {},
+	}
+
+	lsccInst := lscc.New(
+		builtinSCCs,
+		&lscc.PeerShim{Peer: peerInstance},
+		aclProvider, peerInstance.GetMSPIDs,
+		policyChecker,
+		factory.GetDefault(),
+		buildRegistry,
+		containerRouter,
+	)
+
+	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfoSource{
+		LegacyImpl:  lsccInst,
+		Resources:   lifecycleResources,
+		Cache:       lifecycleCache,
+		BuiltinSCCs: builtinSCCs,
 	}
 
 	containerRuntime := &chaincode.ContainerRuntime{
