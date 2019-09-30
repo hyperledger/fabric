@@ -216,7 +216,7 @@ func serve(args []string) error {
 	}
 
 	serverConfig.Logger = flogging.MustGetLogger("core.comm").With("server", "PeerServer")
-	serverConfig.MetricsProvider = metricsProvider
+	serverConfig.ServerStatsHandler = comm.NewServerStatsHandler(metricsProvider)
 	serverConfig.UnaryInterceptors = append(
 		serverConfig.UnaryInterceptors,
 		grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
