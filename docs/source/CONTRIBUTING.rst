@@ -1,3 +1,15 @@
+.. note::
+
+   The following repositories now use GitHub for source control.
+   Please see the :doc:`GitHub Contributions <github/github>` page for
+   contribution guidelines for these repositories:
+
+   - `Fabric-CA <https://github.com/hyperledger/fabric-ca>`_
+   - `Fabric-Protos <https://github.com/hyperledger/fabric-protos>`_
+   - `Fabric-Chaincode-Go <https://github.com/hyperledger/fabric-chaincode-go>`_
+
+=====================
+
 Contributions Welcome!
 ======================
 
