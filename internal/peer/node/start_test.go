@@ -60,22 +60,6 @@ func TestStartCmd(t *testing.T) {
 	g.Eventually(grpcProbe("localhost:6051")).Should(BeTrue())
 }
 
-func TestAdminHasSeparateListener(t *testing.T) {
-	assert.False(t, adminHasSeparateListener("0.0.0.0:7051", ""))
-
-	assert.Panics(t, func() {
-		adminHasSeparateListener("foo", "blabla")
-	})
-
-	assert.Panics(t, func() {
-		adminHasSeparateListener("0.0.0.0:7051", "blabla")
-	})
-
-	assert.False(t, adminHasSeparateListener("0.0.0.0:7051", "0.0.0.0:7051"))
-	assert.False(t, adminHasSeparateListener("0.0.0.0:7051", "127.0.0.1:7051"))
-	assert.True(t, adminHasSeparateListener("0.0.0.0:7051", "0.0.0.0:7055"))
-}
-
 func TestHandlerMap(t *testing.T) {
 	config1 := `
   peer:
