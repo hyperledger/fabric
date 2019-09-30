@@ -225,7 +225,9 @@ const (
 	// Mutual TLS auth client key and cert paths in the chaincode container
 	TLSClientKeyPath      string = "/etc/hyperledger/fabric/client.key"
 	TLSClientCertPath     string = "/etc/hyperledger/fabric/client.crt"
-	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
+	TLSClientKeyFile      string = "/etc/hyperledger/fabric/client_pem.key"
+	TLSClientCertFile     string = "/etc/hyperledger/fabric/client_pem.crt"
+	TLSClientRootCertFile string = "/etc/hyperledger/fabric/peer.crt"
 )
 
 func (vm *DockerVM) GetEnv(ccid string, tlsConfig *ccintf.TLSConfig) []string {
@@ -235,7 +237,7 @@ func (vm *DockerVM) GetEnv(ccid string, tlsConfig *ccintf.TLSConfig) []string {
 	// same but now they are not, so we should use a different env
 	// variable. However chaincodes built by older versions of the
 	// peer still adopt this broken convention. (FAB-14630)
-	envs := []string{"CORE_CHAINCODE_ID_NAME=" + string(ccid)}
+	envs := []string{fmt.Sprintf("CORE_CHAINCODE_ID_NAME=%s", ccid)}
 	envs = append(envs, vm.LoggingEnv...)
 
 	// Pass TLS options to chaincode
@@ -243,13 +245,14 @@ func (vm *DockerVM) GetEnv(ccid string, tlsConfig *ccintf.TLSConfig) []string {
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
 		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_PATH=%s", TLSClientKeyPath))
 		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_CERT_PATH=%s", TLSClientCertPath))
-		envs = append(envs, fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=%s", TLSClientRootCertPath))
+		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_FILE=%s", TLSClientKeyFile))
+		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_CERT_FILE=%s", TLSClientCertFile))
+		envs = append(envs, fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=%s", TLSClientRootCertFile))
 	} else {
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
 	}
 
 	return envs
-
 }
 
 // Start starts a container using a previously created docker image
@@ -297,7 +300,9 @@ func (vm *DockerVM) Start(ccid string, ccType string, peerConnection *ccintf.Pee
 		err = addFiles(tw, map[string][]byte{
 			TLSClientKeyPath:      []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientKey)),
 			TLSClientCertPath:     []byte(base64.StdEncoding.EncodeToString(peerConnection.TLSConfig.ClientCert)),
-			TLSClientRootCertPath: peerConnection.TLSConfig.RootCert,
+			TLSClientKeyFile:      peerConnection.TLSConfig.ClientKey,
+			TLSClientCertFile:     peerConnection.TLSConfig.ClientCert,
+			TLSClientRootCertFile: peerConnection.TLSConfig.RootCert,
 		})
 		if err != nil {
 			return fmt.Errorf("error writing files to upload to Docker instance into a temporary tar blob: %s", err)
