@@ -1015,25 +1015,6 @@ func computeChaincodeEndpoint(chaincodeAddress string, chaincodeListenAddress st
 	return ccEndpoint, nil
 }
 
-func adminHasSeparateListener(peerListenAddr string, adminListenAddress string) bool {
-	// By default, admin listens on the same port as the peer data service
-	if adminListenAddress == "" {
-		return false
-	}
-	_, peerPort, err := net.SplitHostPort(peerListenAddr)
-	if err != nil {
-		logger.Panicf("Failed parsing peer listen address")
-	}
-
-	_, adminPort, err := net.SplitHostPort(adminListenAddress)
-	if err != nil {
-		logger.Panicf("Failed parsing admin listen address")
-	}
-	// Admin service has a separate listener in case it doesn't match the peer's
-	// configured service
-	return adminPort != peerPort
-}
-
 // secureDialOpts is the callback function for secure dial options for gossip service
 func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOption {
 	return func() []grpc.DialOption {
