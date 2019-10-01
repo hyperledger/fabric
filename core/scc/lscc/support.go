@@ -15,13 +15,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-type supportImpl struct {
+type SupportImpl struct {
 	GetMSPIDs MSPIDsGetter
 }
 
 // PutChaincodeToLocalStorage stores the supplied chaincode
 // package to local storage (i.e. the file system)
-func (s *supportImpl) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) error {
+func (s *SupportImpl) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) error {
 	if err := ccpack.PutChaincodeToFS(); err != nil {
 		return errors.Errorf("error installing chaincode code %s:%s(%s)", ccpack.GetChaincodeData().Name, ccpack.GetChaincodeData().Version, err)
 	}
@@ -31,19 +31,19 @@ func (s *supportImpl) PutChaincodeToLocalStorage(ccpack ccprovider.CCPackage) er
 
 // GetChaincodeFromLocalStorage retrieves the chaincode package
 // for the requested chaincode, specified by name and version
-func (s *supportImpl) GetChaincodeFromLocalStorage(ccNameVersion string) (ccprovider.CCPackage, error) {
+func (s *SupportImpl) GetChaincodeFromLocalStorage(ccNameVersion string) (ccprovider.CCPackage, error) {
 	return ccprovider.GetChaincodeFromFS(ccNameVersion)
 }
 
 // GetChaincodesFromLocalStorage returns an array of all chaincode
 // data that have previously been persisted to local storage
-func (s *supportImpl) GetChaincodesFromLocalStorage() (*pb.ChaincodeQueryResponse, error) {
+func (s *SupportImpl) GetChaincodesFromLocalStorage() (*pb.ChaincodeQueryResponse, error) {
 	return ccprovider.GetInstalledChaincodes()
 }
 
 // GetInstantiationPolicy returns the instantiation policy for the
 // supplied chaincode (or the channel's default if none was specified)
-func (s *supportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.CCPackage) ([]byte, error) {
+func (s *SupportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.CCPackage) ([]byte, error) {
 	var ip []byte
 	var err error
 	// if ccpack is a SignedCDSPackage, return its IP, otherwise use a default IP
@@ -70,7 +70,7 @@ func (s *supportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 
 // CheckInstantiationPolicy checks whether the supplied signed proposal
 // complies with the supplied instantiation policy
-func (s *supportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, chainName string, instantiationPolicy []byte) error {
+func (s *SupportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, chainName string, instantiationPolicy []byte) error {
 	// create a policy object from the policy bytes
 	mgr := mgmt.GetManagerForChain(chainName)
 	if mgr == nil {

@@ -199,16 +199,19 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 		},
 	}
 
-	lsccImpl := lscc.New(
-		map[string]struct{}{"lscc": {}},
-		&lscc.PeerShim{Peer: peerInstance},
-		mockAclProvider,
-		peerInstance.GetMSPIDs,
-		newPolicyChecker(peerInstance),
-		cryptoProvider,
-		buildRegistry,
-		containerRouter,
-	)
+	lsccImpl := &lscc.SCC{
+		BuiltinSCCs: map[string]struct{}{"lscc": {}},
+		Support: &lscc.SupportImpl{
+			GetMSPIDs: peerInstance.GetMSPIDs,
+		},
+		SCCProvider:      &lscc.PeerShim{Peer: peerInstance},
+		ACLProvider:      mockAclProvider,
+		GetMSPIDs:        peerInstance.GetMSPIDs,
+		PolicyChecker:    newPolicyChecker(peerInstance),
+		BCCSP:            cryptoProvider,
+		BuildRegistry:    buildRegistry,
+		ChaincodeBuilder: containerRouter,
+	}
 
 	ml := &mock.Lifecycle{}
 	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {

@@ -516,15 +516,19 @@ func serve(args []string) error {
 		"_lifecycle": {},
 	}
 
-	lsccInst := lscc.New(
-		builtinSCCs,
-		&lscc.PeerShim{Peer: peerInstance},
-		aclProvider, peerInstance.GetMSPIDs,
-		policyChecker,
-		factory.GetDefault(),
-		buildRegistry,
-		containerRouter,
-	)
+	lsccInst := &lscc.SCC{
+		BuiltinSCCs: builtinSCCs,
+		Support: &lscc.SupportImpl{
+			GetMSPIDs: peerInstance.GetMSPIDs,
+		},
+		SCCProvider:      &lscc.PeerShim{Peer: peerInstance},
+		ACLProvider:      aclProvider,
+		GetMSPIDs:        peerInstance.GetMSPIDs,
+		PolicyChecker:    policyChecker,
+		BCCSP:            factory.GetDefault(),
+		BuildRegistry:    buildRegistry,
+		ChaincodeBuilder: containerRouter,
+	}
 
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfoSource{
 		LegacyImpl:  lsccInst,
