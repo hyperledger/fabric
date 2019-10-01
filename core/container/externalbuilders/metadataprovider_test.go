@@ -1,0 +1,72 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package externalbuilders_test
+
+import (
+	"archive/tar"
+	"bytes"
+	"io"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
+)
+
+var _ = Describe("Metadataprovider", func() {
+	var (
+		mp *externalbuilders.MetadataProvider
+	)
+
+	BeforeEach(func() {
+		mp = &externalbuilders.MetadataProvider{
+			DurablePath: "testdata",
+		}
+	})
+
+	It("packages up the metadata", func() {
+		data, err := mp.PackageMetadata("persisted_build")
+		Expect(err).NotTo(HaveOccurred())
+		tr := tar.NewReader(bytes.NewBuffer(data))
+
+		headerSizes := map[string]int64{
+			"release/":   0,
+			"index.json": 3,
+		}
+
+		headers := 0
+		for {
+			header, err := tr.Next()
+			if err != nil {
+				Expect(err).To(Equal(io.EOF))
+				break
+			}
+
+			headers++
+			size, ok := headerSizes[header.Name]
+			Expect(ok).To(BeTrue())
+			Expect(size).To(Equal(header.Size))
+		}
+
+		Expect(headers).To(Equal(2))
+	})
+
+	When("the build does not exist", func() {
+		It("returns nil", func() {
+			data, err := mp.PackageMetadata("fake_missing_build")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(data).To(BeNil())
+		})
+	})
+
+	When("the build is not a directory", func() {
+		It("returns an error", func() {
+			_, err := mp.PackageMetadata("normal_archive.tar.gz")
+			Expect(err).To(MatchError("could not stat path: stat testdata/normal_archive.tar.gz/release: not a directory"))
+		})
+	})
+})
