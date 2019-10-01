@@ -20,6 +20,7 @@ import (
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -65,7 +66,7 @@ func TestRetrievePrivateData(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic()
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
 
 	ts := testSupport{
 		preHash:   []byte("rws-pre-image"),
@@ -296,7 +297,7 @@ func TestRetrievePrivateDataFailure(t *testing.T) {
 
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic()
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
 
 	ts := testSupport{
 		preHash:   []byte("rws-pre-image"),
@@ -355,7 +356,7 @@ func TestRetrievePrivateDataFailure(t *testing.T) {
 func TestRetryFetchFromPeer(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic()
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
 
 	ts := testSupport{
 		preHash:   []byte("rws-pre-image"),
