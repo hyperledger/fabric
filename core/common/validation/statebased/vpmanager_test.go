@@ -761,7 +761,7 @@ func TestForRaces(t *testing.T) {
 
 	// scenario to stress test the parallel validation
 	// this is an extended combined test
-	// run with go test -race and GOMAXPROCS >> 1
+	// run with go test -race
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
 	spe := cauthdsl.SignedByMspMember("foo")

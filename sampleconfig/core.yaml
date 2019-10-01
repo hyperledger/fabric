@@ -43,10 +43,6 @@ peer:
     # This case is useful for docker containers.
     addressAutoDetect: false
 
-    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the
-    # current setting
-    gomaxprocs: -1
-
     # Keepalive settings for peer server and clients
     keepalive:
         # Interval is the duration after which if the server does not see

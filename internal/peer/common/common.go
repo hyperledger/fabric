@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 
@@ -318,6 +317,4 @@ func InitCmd(cmd *cobra.Command, args []string) {
 		mainLogger.Errorf("Cannot run peer because %s", err.Error())
 		os.Exit(1)
 	}
-
-	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 }
