@@ -355,31 +355,75 @@ func TestGetLDFlagsOpts(t *testing.T) {
 func TestDockerBuildOptions(t *testing.T) {
 	platform := &Platform{}
 
-	opts, err := platform.DockerBuildOptions("the-path")
-	assert.NoError(t, err, "unexpected error from DockerBuildOptions")
+	t.Run("GOPROXY and GOSUMDB not set", func(t *testing.T) {
+		opts, err := platform.DockerBuildOptions("the-path")
+		assert.NoError(t, err, "unexpected error from DockerBuildOptions")
 
-	expectedOpts := util.DockerBuildOptions{
-		Cmd: `
+		expectedOpts := util.DockerBuildOptions{
+			Cmd: `
 set -e
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
     GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 elif [ -f "/chaincode/input/src/go.mod" ]; then
     cd /chaincode/input/src
-    GO111MODULE=on GOPROXY=https://proxy.golang.org go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 elif [ -f "/chaincode/input/src/the-path/go.mod" ] && [ -d "/chaincode/input/src/the-path/vendor" ]; then
     cd /chaincode/input/src/the-path
-    GO111MODULE=on GOPROXY=https://proxy.golang.org go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 elif [ -f "/chaincode/input/src/the-path/go.mod" ]; then
     cd /chaincode/input/src/the-path
-    GO111MODULE=on GOPROXY=https://proxy.golang.org go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 else
     GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 fi
 echo Done!
 `,
-	}
-	assert.Equal(t, expectedOpts, opts)
+			Env: []string{"GOPROXY=https://proxy.golang.org"},
+		}
+		assert.Equal(t, expectedOpts, opts)
+	})
+
+	t.Run("GOPROXY and GOSUMDB set", func(t *testing.T) {
+		oldGoproxy, set := os.LookupEnv("GOPROXY")
+		if set {
+			defer os.Setenv("GOPROXY", oldGoproxy)
+		}
+		os.Setenv("GOPROXY", "the-goproxy")
+
+		oldGosumdb, set := os.LookupEnv("GOSUMDB")
+		if set {
+			defer os.Setenv("GOSUMDB", oldGosumdb)
+		}
+		os.Setenv("GOSUMDB", "the-gosumdb")
+
+		opts, err := platform.DockerBuildOptions("the-path")
+		assert.NoError(t, err, "unexpected error from DockerBuildOptions")
+
+		expectedOpts := util.DockerBuildOptions{
+			Cmd: `
+set -e
+if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
+    cd /chaincode/input/src
+    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+elif [ -f "/chaincode/input/src/go.mod" ]; then
+    cd /chaincode/input/src
+    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+elif [ -f "/chaincode/input/src/the-path/go.mod" ] && [ -d "/chaincode/input/src/the-path/vendor" ]; then
+    cd /chaincode/input/src/the-path
+    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+elif [ -f "/chaincode/input/src/the-path/go.mod" ]; then
+    cd /chaincode/input/src/the-path
+    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
+else
+    GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+fi
+echo Done!
+`,
+			Env: []string{"GOPROXY=the-goproxy", "GOSUMDB=the-gosumdb"},
+		}
+		assert.Equal(t, expectedOpts, opts)
+	})
 }
 
 func TestDescribeCode(t *testing.T) {
