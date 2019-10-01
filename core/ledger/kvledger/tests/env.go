@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
@@ -203,7 +204,9 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 		identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
 			return mgmt.GetManagerForChain(chainID)
 		}
-		membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(cryptoProvider), identityDeserializerFactory)
 		initializer.MembershipInfoProvider = membershipInfoProvider
 	}
 
@@ -243,8 +246,8 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 	}
 }
 
-func createSelfSignedData() protoutil.SignedData {
-	sID := mgmt.GetLocalSigningIdentityOrPanic()
+func createSelfSignedData(cryptoProvider bccsp.BCCSP) protoutil.SignedData {
+	sID := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 	msg := make([]byte, 32)
 	sig, err := sID.Sign(msg)
 	if err != nil {

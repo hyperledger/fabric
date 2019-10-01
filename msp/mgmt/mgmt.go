@@ -178,9 +178,9 @@ func loadLocaMSP(bccsp bccsp.BCCSP) msp.MSP {
 }
 
 // GetIdentityDeserializer returns the IdentityDeserializer for the given chain
-func GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
+func GetIdentityDeserializer(chainID string, cryptoProvider bccsp.BCCSP) msp.IdentityDeserializer {
 	if chainID == "" {
-		return GetLocalMSP(factory.GetDefault())
+		return GetLocalMSP(cryptoProvider)
 	}
 
 	return GetManagerForChain(chainID)
@@ -188,8 +188,8 @@ func GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 
 // GetLocalSigningIdentityOrPanic returns the local signing identity or panic in case
 // or error
-func GetLocalSigningIdentityOrPanic() msp.SigningIdentity {
-	id, err := GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+func GetLocalSigningIdentityOrPanic(cryptoProvider bccsp.BCCSP) msp.SigningIdentity {
+	id, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		mspLogger.Panicf("Failed getting local signing identity [%+v]", err)
 	}

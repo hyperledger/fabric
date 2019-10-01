@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -323,7 +324,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		var err error
 		var txResult peer.TxValidationCode
 
-		if payload, txResult = validation.ValidateTransaction(env); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = validation.ValidateTransaction(env, factory.GetDefault()); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,

@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
@@ -118,17 +119,20 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	chdr, shdr, err := validateCommonHeader(payload.Header)
 	assert.NoError(t, err, "validateCommonHeader returns err %s", err)
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, chdr.ChannelId)
+	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, chdr.ChannelId, cryptoProvider)
 	assert.NoError(t, err, "checkSignatureFromCreator returns err %s", err)
 
 	// corrupt the creator
-	err = checkSignatureFromCreator([]byte("junk"), env.Signature, env.Payload, chdr.ChannelId)
+	err = checkSignatureFromCreator([]byte("junk"), env.Signature, env.Payload, chdr.ChannelId, cryptoProvider)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "MSP error: could not deserialize")
 
 	// check nonexistent channel
-	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, "junkchannel")
+	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, "junkchannel", cryptoProvider)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "MSP error: channel doesn't exist")
 }

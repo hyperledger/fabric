@@ -133,7 +133,9 @@ func TestGoodPath(t *testing.T) {
 	}
 
 	// validate the transaction
-	payl, txResult := ValidateTransaction(tx)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	payl, txResult := ValidateTransaction(tx, cryptoProvider)
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -193,7 +195,9 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, txResult := ValidateTransaction(tx)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	_, txResult := ValidateTransaction(tx, cryptoProvider)
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction should have failed")
 		return
@@ -232,12 +236,14 @@ func TestBadTx(t *testing.T) {
 
 	// mess with the transaction payload
 	paylOrig := tx.Payload
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	for i := 0; i < len(paylOrig); i++ {
 		paylCopy := make([]byte, len(paylOrig))
 		copy(paylCopy, paylOrig)
 		paylCopy[i] = byte(int(paylCopy[i]+1) % 255)
 		// validate the transaction it should fail
-		_, txResult := ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy})
+		_, txResult := ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy}, cryptoProvider)
 		if txResult == peer.TxValidationCode_VALID {
 			t.Fatal("ValidateTransaction should have failed")
 			return
@@ -255,7 +261,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Signature)
 
 	// validate the transaction it should fail
-	_, txResult := ValidateTransaction(tx)
+	_, txResult := ValidateTransaction(tx, cryptoProvider)
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatal("ValidateTransaction should have failed")
 		return
@@ -298,7 +304,9 @@ func Test2EndorsersAgree(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, txResult := ValidateTransaction(tx)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	_, txResult := ValidateTransaction(tx, cryptoProvider)
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -342,9 +350,12 @@ func Test2EndorsersDisagree(t *testing.T) {
 }
 
 func TestInvocationsBadArgs(t *testing.T) {
-	_, code := ValidateTransaction(nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	_, code := ValidateTransaction(nil, cryptoProvider)
 	assert.Equal(t, code, peer.TxValidationCode_NIL_ENVELOPE)
-	err := validateEndorserTransaction(nil, nil)
+	err = validateEndorserTransaction(nil, nil)
 	assert.Error(t, err)
 	err = validateConfigTransaction(nil, nil)
 	assert.Error(t, err)
@@ -360,7 +371,7 @@ func TestInvocationsBadArgs(t *testing.T) {
 	assert.Error(t, err)
 	err = validateSignatureHeader(&common.SignatureHeader{Nonce: []byte("a")})
 	assert.Error(t, err)
-	err = checkSignatureFromCreator(nil, nil, nil, "")
+	err = checkSignatureFromCreator(nil, nil, nil, "", cryptoProvider)
 	assert.Error(t, err)
 }
 
