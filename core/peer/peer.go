@@ -353,6 +353,7 @@ func (p *Peer) createChannel(
 			p.validationWorkersSemaphore,
 			channel,
 			p.pluginMapper,
+			p.CryptoProvider,
 		),
 		V20Validator: validatorv20.NewTxValidator(
 			cid,
@@ -369,6 +370,7 @@ func (p *Peer) createChannel(
 			},
 			p.pluginMapper,
 			policies.PolicyManagerGetterFunc(p.GetPolicyManager),
+			p.CryptoProvider,
 		),
 	}
 

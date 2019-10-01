@@ -50,6 +50,8 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	mockVsccValidator := &validator.MockVsccValidator{}
 	mockCapabilities := &mocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(false)
@@ -58,6 +60,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: mockCapabilities},
 		Vscc:             mockVsccValidator,
+		CryptoProvider:   cryptoProvider,
 	}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -127,6 +130,8 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		t.Fatalf("Could not construct ProposalResponsePayload bytes, err: %s", err)
 	}
 
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	mockVsccValidator := &validator.MockVsccValidator{}
 	acv := &mocks.ApplicationCapabilities{}
 	tValidator := &TxValidator{
@@ -134,6 +139,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: acv},
 		Vscc:             mockVsccValidator,
+		CryptoProvider:   cryptoProvider,
 	}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -216,15 +222,15 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	mockCapabilities := &mocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(false)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	tValidator := &TxValidator{
 		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: mockCapabilities},
 		Vscc:             &validator.MockVsccValidator{},
+		CryptoProvider:   cryptoProvider,
 	}
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
 
 	mockSigner, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
@@ -359,7 +365,9 @@ func TestGetTxCCInstance(t *testing.T) {
 		ChaincodeVersion: upgradeCCVersion,
 	}
 
-	tValidator := &TxValidator{}
+	tValidator := &TxValidator{
+		CryptoProvider: cryptoProvider,
+	}
 	invokeCCIns, upgradeCCIns, err := tValidator.getTxCCInstance(payload)
 	if err != nil {
 		t.Fatalf("Get chaincode from tx error: %s", err)
@@ -405,7 +413,11 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	expectTxsFltr.SetFlag(6, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
 	expectTxsFltr.SetFlag(7, peer.TxValidationCode_VALID)
 
-	tValidator := &TxValidator{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	tValidator := &TxValidator{
+		CryptoProvider: cryptoProvider,
+	}
 	tValidator.invalidTXsForUpgradeCC(txsChaincodeNames, upgradedChaincodes, txsfltr)
 
 	assert.EqualValues(t, expectTxsFltr, txsfltr)

@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -74,6 +74,7 @@ type TxValidator struct {
 	Semaphore        Semaphore
 	ChannelResources ChannelResources
 	Vscc             vsccValidator
+	CryptoProvider   bccsp.BCCSP
 }
 
 var logger = flogging.MustGetLogger("committer.txvalidator")
@@ -94,14 +95,16 @@ type blockValidationResult struct {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(channelID string, sem Semaphore, cr ChannelResources, pm plugin.Mapper) *TxValidator {
+func NewTxValidator(channelID string, sem Semaphore, cr ChannelResources, pm plugin.Mapper, cryptoProvider bccsp.BCCSP) *TxValidator {
 	// Encapsulates interface implementation
 	pluginValidator := NewPluginValidator(pm, cr.Ledger(), &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
 	return &TxValidator{
 		ChannelID:        channelID,
 		Semaphore:        sem,
 		ChannelResources: cr,
-		Vscc:             newVSCCValidator(channelID, cr, pluginValidator)}
+		Vscc:             newVSCCValidator(channelID, cr, pluginValidator),
+		CryptoProvider:   cryptoProvider,
+	}
 }
 
 func (v *TxValidator) chainExists(chain string) bool {
@@ -297,7 +300,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		var txsChaincodeName *sysccprovider.ChaincodeInstance
 		var txsUpgradedChaincode *sysccprovider.ChaincodeInstance
 
-		if payload, txResult = validation.ValidateTransaction(env, factory.GetDefault()); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = validation.ValidateTransaction(env, v.CryptoProvider); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,
