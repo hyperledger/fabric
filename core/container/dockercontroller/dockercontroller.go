@@ -206,6 +206,19 @@ func (vm *DockerVM) Build(ccid string, metadata *persistence.ChaincodePackageMet
 	}, nil
 }
 
+// In order to support starting chaincode containers built with Fabric v1.4 and earlier,
+// we must check for the precense of the start.sh script for Node.js chaincode before
+// attempting to call it.
+var nodeStartScript = `
+set -e
+if [ -x /chaincode/start.sh ]; then
+	/chaincode/start.sh --peer.address %[1]s
+else
+	cd /usr/local/src
+	npm start -- --peer.address %[1]s
+fi
+`
+
 func (vm *DockerVM) GetArgs(ccType string, peerAddress string) ([]string, error) {
 	// language specific arguments, possibly should be pushed back into platforms, but were simply
 	// ported from the container_runtime chaincode component
@@ -215,7 +228,7 @@ func (vm *DockerVM) GetArgs(ccType string, peerAddress string) ([]string, error)
 	case pb.ChaincodeSpec_JAVA.String():
 		return []string{"/root/chaincode-java/start", "--peerAddress", peerAddress}, nil
 	case pb.ChaincodeSpec_NODE.String():
-		return []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", peerAddress)}, nil
+		return []string{"/bin/sh", "-c", fmt.Sprintf(nodeStartScript, peerAddress)}, nil
 	default:
 		return nil, errors.Errorf("unknown chaincodeType: %s", ccType)
 	}

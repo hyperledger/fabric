@@ -174,9 +174,18 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
+var buildScript = `
+set -e
+if [ -x /chaincode/build.sh ]; then
+	/chaincode/build.sh
+else
+	cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production
+fi
+`
+
 func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
 	return util.DockerBuildOptions{
 		Image: util.GetDockerImageFromConfig("chaincode.node.runtime"),
-		Cmd:   fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
+		Cmd:   buildScript,
 	}, nil
 }
