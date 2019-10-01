@@ -101,9 +101,9 @@ where `Admins` is eventually being specified by lower level `Signature` policy.
 Access control defaults exist inside `configtx.yaml`, the file that `configtxgen`
 uses to build channel configurations.
 
-Access control can be updated one of two ways, either by editing `configtx.yaml`
-itself, which will propagate the ACL change to any new channels, or by updating
-access control in the channel configuration of a particular channel.
+Access control can be updated in one of two ways, either by editing `configtx.yaml`
+itself, which will be used when creating new channel configurations, or by updating
+access control in the channel configuration of an existing channel.
 
 ## How ACLs are formatted in `configtx.yaml`
 
