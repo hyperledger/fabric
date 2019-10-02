@@ -99,6 +99,9 @@ type CollectionStore interface {
 	// RetrieveCollectionAccessPolicy retrieves a collection's access policy
 	RetrieveCollectionAccessPolicy(common.CollectionCriteria) (CollectionAccessPolicy, error)
 
+	// RetrieveCollectionConfig retrieves a collection's config
+	RetrieveCollectionConfig(common.CollectionCriteria) (*common.StaticCollectionConfig, error)
+
 	// RetrieveCollectionConfigPackage retrieves the whole configuration package
 	// for the chaincode with the supplied criteria
 	RetrieveCollectionConfigPackage(common.CollectionCriteria) (*common.CollectionConfigPackage, error)

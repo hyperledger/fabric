@@ -110,8 +110,9 @@ type ledgerResources interface {
 	// StorePvtData used to persist private date into transient store
 	StorePvtData(txid string, privData *transientstore.TxPvtReadWriteSetWithConfigInfo, blckHeight uint64) error
 
-	// GetPvtDataAndBlockByNum get block by number and returns also all related private data
-	// the order of private data in slice of PvtDataCollections doesn't imply the order of
+	// GetPvtDataAndBlockByNum gets block by number and also returns all related private data
+	// that requesting peer is eligible for.
+	// The order of private data in slice of PvtDataCollections doesn't imply the order of
 	// transactions in the block related to these private data, to get the correct placement
 	// need to read TxPvtData.SeqInBlock field
 	GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protoutil.SignedData) (*common.Block, util.PvtDataCollections, error)

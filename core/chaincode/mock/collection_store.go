@@ -51,6 +51,19 @@ type CollectionStore struct {
 		result1 privdata.CollectionAccessPolicy
 		result2 error
 	}
+	RetrieveCollectionConfigStub        func(common.CollectionCriteria) (*common.StaticCollectionConfig, error)
+	retrieveCollectionConfigMutex       sync.RWMutex
+	retrieveCollectionConfigArgsForCall []struct {
+		arg1 common.CollectionCriteria
+	}
+	retrieveCollectionConfigReturns struct {
+		result1 *common.StaticCollectionConfig
+		result2 error
+	}
+	retrieveCollectionConfigReturnsOnCall map[int]struct {
+		result1 *common.StaticCollectionConfig
+		result2 error
+	}
 	RetrieveCollectionConfigPackageStub        func(common.CollectionCriteria) (*common.CollectionConfigPackage, error)
 	retrieveCollectionConfigPackageMutex       sync.RWMutex
 	retrieveCollectionConfigPackageArgsForCall []struct {
@@ -288,6 +301,69 @@ func (fake *CollectionStore) RetrieveCollectionAccessPolicyReturnsOnCall(i int, 
 	}{result1, result2}
 }
 
+func (fake *CollectionStore) RetrieveCollectionConfig(arg1 common.CollectionCriteria) (*common.StaticCollectionConfig, error) {
+	fake.retrieveCollectionConfigMutex.Lock()
+	ret, specificReturn := fake.retrieveCollectionConfigReturnsOnCall[len(fake.retrieveCollectionConfigArgsForCall)]
+	fake.retrieveCollectionConfigArgsForCall = append(fake.retrieveCollectionConfigArgsForCall, struct {
+		arg1 common.CollectionCriteria
+	}{arg1})
+	fake.recordInvocation("RetrieveCollectionConfig", []interface{}{arg1})
+	fake.retrieveCollectionConfigMutex.Unlock()
+	if fake.RetrieveCollectionConfigStub != nil {
+		return fake.RetrieveCollectionConfigStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.retrieveCollectionConfigReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *CollectionStore) RetrieveCollectionConfigCallCount() int {
+	fake.retrieveCollectionConfigMutex.RLock()
+	defer fake.retrieveCollectionConfigMutex.RUnlock()
+	return len(fake.retrieveCollectionConfigArgsForCall)
+}
+
+func (fake *CollectionStore) RetrieveCollectionConfigCalls(stub func(common.CollectionCriteria) (*common.StaticCollectionConfig, error)) {
+	fake.retrieveCollectionConfigMutex.Lock()
+	defer fake.retrieveCollectionConfigMutex.Unlock()
+	fake.RetrieveCollectionConfigStub = stub
+}
+
+func (fake *CollectionStore) RetrieveCollectionConfigArgsForCall(i int) common.CollectionCriteria {
+	fake.retrieveCollectionConfigMutex.RLock()
+	defer fake.retrieveCollectionConfigMutex.RUnlock()
+	argsForCall := fake.retrieveCollectionConfigArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *CollectionStore) RetrieveCollectionConfigReturns(result1 *common.StaticCollectionConfig, result2 error) {
+	fake.retrieveCollectionConfigMutex.Lock()
+	defer fake.retrieveCollectionConfigMutex.Unlock()
+	fake.RetrieveCollectionConfigStub = nil
+	fake.retrieveCollectionConfigReturns = struct {
+		result1 *common.StaticCollectionConfig
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *CollectionStore) RetrieveCollectionConfigReturnsOnCall(i int, result1 *common.StaticCollectionConfig, result2 error) {
+	fake.retrieveCollectionConfigMutex.Lock()
+	defer fake.retrieveCollectionConfigMutex.Unlock()
+	fake.RetrieveCollectionConfigStub = nil
+	if fake.retrieveCollectionConfigReturnsOnCall == nil {
+		fake.retrieveCollectionConfigReturnsOnCall = make(map[int]struct {
+			result1 *common.StaticCollectionConfig
+			result2 error
+		})
+	}
+	fake.retrieveCollectionConfigReturnsOnCall[i] = struct {
+		result1 *common.StaticCollectionConfig
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *CollectionStore) RetrieveCollectionConfigPackage(arg1 common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
 	fake.retrieveCollectionConfigPackageMutex.Lock()
 	ret, specificReturn := fake.retrieveCollectionConfigPackageReturnsOnCall[len(fake.retrieveCollectionConfigPackageArgsForCall)]
@@ -491,6 +567,8 @@ func (fake *CollectionStore) Invocations() map[string][][]interface{} {
 	defer fake.retrieveCollectionMutex.RUnlock()
 	fake.retrieveCollectionAccessPolicyMutex.RLock()
 	defer fake.retrieveCollectionAccessPolicyMutex.RUnlock()
+	fake.retrieveCollectionConfigMutex.RLock()
+	defer fake.retrieveCollectionConfigMutex.RUnlock()
 	fake.retrieveCollectionConfigPackageMutex.RLock()
 	defer fake.retrieveCollectionConfigPackageMutex.RUnlock()
 	fake.retrieveCollectionPersistenceConfigsMutex.RLock()
@@ -515,3 +593,5 @@ func (fake *CollectionStore) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ privdata.CollectionStore = new(CollectionStore)

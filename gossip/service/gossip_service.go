@@ -313,7 +313,8 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		Committer:          support.Committer,
 		Fetcher:            fetcher,
 		CapabilityProvider: support.CapabilityProvider,
-	}, store, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
+	}, store, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig,
+		support.IdDeserializeFactory)
 
 	privdataConfig := gossipprivdata.GlobalConfig()
 	var reconciler gossipprivdata.PvtDataReconciler

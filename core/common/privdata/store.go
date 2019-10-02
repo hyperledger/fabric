@@ -123,6 +123,11 @@ func ParseCollectionConfig(colBytes []byte) (*common.CollectionConfigPackage, er
 	return collections, nil
 }
 
+// RetrieveCollectionConfig retrieves a collection's config
+func (c *SimpleCollectionStore) RetrieveCollectionConfig(cc common.CollectionCriteria) (*common.StaticCollectionConfig, error) {
+	return c.retrieveCollectionConfig(cc, nil)
+}
+
 func (c *SimpleCollectionStore) retrieveCollectionConfig(cc common.CollectionCriteria, qe ledger.QueryExecutor) (*common.StaticCollectionConfig, error) {
 	var err error
 	if qe == nil {

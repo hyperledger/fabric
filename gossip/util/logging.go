@@ -48,6 +48,7 @@ type Logger interface {
 	Warning(args ...interface{})
 	Warningf(format string, args ...interface{})
 	IsEnabledFor(l zapcore.Level) bool
+	With(args ...interface{}) *flogging.FabricLogger
 }
 
 // GetLogger returns a logger for given gossip logger name and peerID

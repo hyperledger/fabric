@@ -12,6 +12,7 @@ import (
 	"os"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
@@ -95,7 +96,7 @@ func TestRetrievePvtdata(t *testing.T) {
 		storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool
 		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer     []rwSet
 		expectedDigKeys                                         []privdatacommon.DigKey
-		txPvtdataQuery                                          []*ledger.TxPvtdataInfo
+		pvtdataToRetrieve                                       []*ledger.TxPvtdataInfo
 		expectedBlockPvtdata                                    *ledger.BlockPvtdata
 	}{
 		{
@@ -116,7 +117,7 @@ func TestRetrievePvtdata(t *testing.T) {
 			rwSetsInTransientStore: []rwSet{},
 			rwSetsInPeer:           []rwSet{},
 			expectedDigKeys:        []privdatacommon.DigKey{},
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
 					Invalid:    false,
@@ -183,7 +184,7 @@ func TestRetrievePvtdata(t *testing.T) {
 				},
 			},
 			expectedDigKeys: []privdatacommon.DigKey{},
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
 					Invalid:    false,
@@ -263,7 +264,7 @@ func TestRetrievePvtdata(t *testing.T) {
 			},
 			rwSetsInPeer:    []rwSet{},
 			expectedDigKeys: []privdatacommon.DigKey{},
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
 					Invalid:    false,
@@ -367,7 +368,7 @@ func TestRetrievePvtdata(t *testing.T) {
 					SeqInBlock: 3,
 				},
 			},
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
 					Invalid:    false,
@@ -470,7 +471,7 @@ func TestRetrievePvtdata(t *testing.T) {
 			rwSetsInTransientStore: []rwSet{},
 			rwSetsInPeer:           []rwSet{},
 			expectedDigKeys:        []privdatacommon.DigKey{},
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
 					Invalid:    true,
@@ -534,7 +535,7 @@ func TestRetrievePvtdata(t *testing.T) {
 			rwSetsInTransientStore: []rwSet{},
 			rwSetsInPeer:           []rwSet{},
 			expectedDigKeys:        []privdatacommon.DigKey{},
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
 					Invalid:    true,
@@ -609,7 +610,7 @@ func TestRetrievePvtdata(t *testing.T) {
 					SeqInBlock: 1,
 				},
 			},
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
 					Invalid:    false,
@@ -683,7 +684,7 @@ func TestRetrievePvtdata(t *testing.T) {
 				},
 			},
 			// Only requesting tx3, ns1, c1, should skip all extra data found in all sources
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx3",
 					Invalid:    false,
@@ -749,7 +750,7 @@ func TestRetrievePvtdata(t *testing.T) {
 				},
 			},
 			expectedDigKeys: []privdatacommon.DigKey{},
-			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+			pvtdataToRetrieve: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
 					Invalid:    true,
@@ -824,7 +825,7 @@ func TestRetrievePvtdata(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.scenario, func(t *testing.T) {
 			testRetrievePvtdataSuccess(t, test.scenario, ts, test.storePvtdataOfInvalidTx, test.skipPullingInvalidTransactions,
-				test.rwSetsInCache, test.rwSetsInTransientStore, test.rwSetsInPeer, test.expectedDigKeys, test.txPvtdataQuery, test.expectedBlockPvtdata)
+				test.rwSetsInCache, test.rwSetsInTransientStore, test.rwSetsInPeer, test.expectedDigKeys, test.pvtdataToRetrieve, test.expectedBlockPvtdata)
 		})
 	}
 }
@@ -868,7 +869,7 @@ func TestRetrievePvtdataFailure(t *testing.T) {
 	rwSetsInTransientStore := []rwSet{}
 	rwSetsInPeer := []rwSet{}
 	expectedDigKeys := []privdatacommon.DigKey{}
-	txPvtdataQuery := []*ledger.TxPvtdataInfo{
+	pvtdataToRetrieve := []*ledger.TxPvtdataInfo{
 		{
 			TxID:       "tx1",
 			Invalid:    false,
@@ -884,7 +885,7 @@ func TestRetrievePvtdataFailure(t *testing.T) {
 	testRetrievePvtdataFailure(t, scenario, ts,
 		peerSelfSignedData, storePvtdataOfInvalidTx, skipPullingInvalidTransactions,
 		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer,
-		expectedDigKeys, txPvtdataQuery,
+		expectedDigKeys, pvtdataToRetrieve,
 		expectedErr)
 }
 
@@ -951,7 +952,7 @@ func TestRetryFetchFromPeer(t *testing.T) {
 			SeqInBlock: 1,
 		},
 	}
-	txPvtdataQuery := []*ledger.TxPvtdataInfo{
+	pvtdataToRetrieve := []*ledger.TxPvtdataInfo{
 		{
 			TxID:       "tx1",
 			Invalid:    false,
@@ -970,8 +971,11 @@ func TestRetryFetchFromPeer(t *testing.T) {
 
 	fakeSleeper := &mocks.Sleeper{}
 	SetSleeper(pdp, fakeSleeper)
+	fakeSleeper.SleepStub = func(sleepDur time.Duration) {
+		time.Sleep(sleepDur)
+	}
 
-	_, err = pdp.RetrievePvtdata(txPvtdataQuery)
+	_, err = pdp.RetrievePvtdata(pvtdataToRetrieve)
 	assert.NoError(t, err)
 	var maxRetries int
 
@@ -1074,7 +1078,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	rwSetsInPeer := []rwSet{}
 	expectedDigKeys := []privdatacommon.DigKey{}
 	// request tx9 which is found in both the cache and transient store
-	txPvtdataQuery := []*ledger.TxPvtdataInfo{
+	pvtdataToRetrieve := []*ledger.TxPvtdataInfo{
 		{
 			TxID:       "tx9",
 			Invalid:    false,
@@ -1089,7 +1093,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer, expectedDigKeys)
 	require.NotNil(t, pdp)
 
-	retrievedPvtdata, err := pdp.RetrievePvtdata(txPvtdataQuery)
+	retrievedPvtdata, err := pdp.RetrievePvtdata(pvtdataToRetrieve)
 	require.NoError(t, err)
 
 	retrievedPvtdata.Purge()
@@ -1113,7 +1117,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 
 	// increment blockNum to a multiple of transientBlockRetention
 	pdp.blockNum = 10
-	retrievedPvtdata, err = pdp.RetrievePvtdata(txPvtdataQuery)
+	retrievedPvtdata, err = pdp.RetrievePvtdata(pvtdataToRetrieve)
 	require.NoError(t, err)
 
 	retrievedPvtdata.Purge()
@@ -1142,7 +1146,7 @@ func testRetrievePvtdataSuccess(t *testing.T,
 	storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool,
 	rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer []rwSet,
 	expectedDigKeys []privdatacommon.DigKey,
-	txPvtdataQuery []*ledger.TxPvtdataInfo,
+	pvtdataToRetrieve []*ledger.TxPvtdataInfo,
 	expectedBlockPvtdata *ledger.BlockPvtdata) {
 
 	fmt.Println("\n" + scenario)
@@ -1162,7 +1166,7 @@ func testRetrievePvtdataSuccess(t *testing.T,
 		expectedDigKeys)
 	require.NotNil(t, pdp, scenario)
 
-	retrievedPvtdata, err := pdp.RetrievePvtdata(txPvtdataQuery)
+	retrievedPvtdata, err := pdp.RetrievePvtdata(pvtdataToRetrieve)
 	assert.NoError(t, err, scenario)
 
 	// sometimes the collection private write sets are added out of order
@@ -1171,7 +1175,7 @@ func testRetrievePvtdataSuccess(t *testing.T,
 	assert.Equal(t, expectedBlockPvtdata, blockPvtdata, scenario)
 
 	// Test pvtdata is purged from store on Done() call
-	testPurged(t, scenario, retrievedPvtdata, store, txPvtdataQuery)
+	testPurged(t, scenario, retrievedPvtdata, store, pvtdataToRetrieve)
 }
 
 func testRetrievePvtdataFailure(t *testing.T,
@@ -1181,7 +1185,7 @@ func testRetrievePvtdataFailure(t *testing.T,
 	storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool,
 	rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer []rwSet,
 	expectedDigKeys []privdatacommon.DigKey,
-	txPvtdataQuery []*ledger.TxPvtdataInfo,
+	pvtdataToRetrieve []*ledger.TxPvtdataInfo,
 	expectedErr string) {
 
 	fmt.Println("\n" + scenario)
@@ -1201,7 +1205,7 @@ func testRetrievePvtdataFailure(t *testing.T,
 		expectedDigKeys)
 	require.NotNil(t, pdp, scenario)
 
-	_, err = pdp.RetrievePvtdata(txPvtdataQuery)
+	_, err = pdp.RetrievePvtdata(pvtdataToRetrieve)
 	assert.EqualError(t, err, expectedErr, scenario)
 }
 

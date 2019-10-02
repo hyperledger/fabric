@@ -96,6 +96,10 @@ func (cs mockCollectionStore) RetrieveCollection(fcommon.CollectionCriteria) (pr
 	panic("implement me")
 }
 
+func (cs mockCollectionStore) RetrieveCollectionConfig(fcommon.CollectionCriteria) (*fcommon.StaticCollectionConfig, error) {
+	panic("implement me")
+}
+
 func (cs mockCollectionStore) RetrieveCollectionConfigPackage(fcommon.CollectionCriteria) (*fcommon.CollectionConfigPackage, error) {
 	panic("implement me")
 }
