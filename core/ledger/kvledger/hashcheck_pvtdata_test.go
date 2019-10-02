@@ -85,7 +85,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	assert.NoError(t, lg.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtData1))
 
 	// construct pvtData from missing data in tx3, tx6, and tx7
-	blocksPvtData := []*ledger.BlockPvtData{
+	pvtdata := []*ledger.ReconciledPvtdata{
 		{
 			BlockNum: 1,
 			WriteSets: map[uint64]*ledger.TxPvtData{
@@ -104,7 +104,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		},
 	}
 
-	blocksValidPvtData, hashMismatched, err := constructValidAndInvalidPvtData(blocksPvtData, lg.(*kvLedger).blockStore)
+	blocksValidPvtData, hashMismatched, err := constructValidAndInvalidPvtData(pvtdata, lg.(*kvLedger).blockStore)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expectedValidBlocksPvtData), len(blocksValidPvtData))
 	assert.ElementsMatch(t, expectedValidBlocksPvtData[1], blocksValidPvtData[1])
@@ -113,7 +113,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 
 	// construct pvtData from missing data in tx7 with wrong pvtData
 	wrongPvtDataBlk1Tx7, pubSimResBytesBlk1Tx7 = produceSamplePvtdata(t, 7, []string{"ns-1:coll-2"}, [][]byte{v6})
-	blocksPvtData = []*ledger.BlockPvtData{
+	pvtdata = []*ledger.ReconciledPvtdata{
 		{
 			BlockNum: 1,
 			WriteSets: map[uint64]*ledger.TxPvtData{
@@ -133,7 +133,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		},
 	}
 
-	blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(blocksPvtData, lg.(*kvLedger).blockStore)
+	blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(pvtdata, lg.(*kvLedger).blockStore)
 	assert.NoError(t, err)
 	assert.Len(t, blocksValidPvtData, 0)
 

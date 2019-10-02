@@ -259,14 +259,14 @@ func (r *Reconciler) getMostRecentCollectionConfig(chaincodeName string, collect
 	return staticCollectionConfig.StaticCollectionConfig, nil
 }
 
-func (r *Reconciler) preparePvtDataToCommit(elements []*protosgossip.PvtDataElement) []*ledger.BlockPvtData {
+func (r *Reconciler) preparePvtDataToCommit(elements []*protosgossip.PvtDataElement) []*ledger.ReconciledPvtdata {
 	rwSetByBlockByKeys := r.groupRwsetByBlock(elements)
 
 	// populate the private RWSets passed to the ledger
-	var pvtDataToCommit []*ledger.BlockPvtData
+	var pvtDataToCommit []*ledger.ReconciledPvtdata
 
 	for blockNum, rwSetKeys := range rwSetByBlockByKeys {
-		blockPvtData := &ledger.BlockPvtData{
+		blockPvtData := &ledger.ReconciledPvtdata{
 			BlockNum:  blockNum,
 			WriteSets: make(map[uint64]*ledger.TxPvtData),
 		}

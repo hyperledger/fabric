@@ -172,7 +172,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 
 // RemoveStaleAndCommitPvtDataOfOldBlocks implements method in interface `txmgmt.TxMgr`
 // The following six operations are performed:
-// (1) contructs the unique pvt data from the passed blocksPvtData
+// (1) contructs the unique pvt data from the passed reconciledPvtdata
 // (2) acquire a lock on oldBlockCommit
 // (3) checks for stale pvtData by comparing [version, valueHash] and removes stale data
 // (4) creates update batch from the the non-stale pvtData
@@ -190,7 +190,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 // constructUniquePvtData(). Other than a bug, there is another scenario in which this
 // function might receive pvtData of both valid and invalid tx. Such a scenario is explained
 // in FAB-12924 and is related to state fork and rebuilding ledger state.
-func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
+func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(reconciledPvtdata map[uint64][]*ledger.TxPvtData) error {
 	// (0) Among ValidateAndPrepare(), PrepareExpiringKeys(), and
 	// RemoveStaleAndCommitPvtDataOfOldBlocks(), we can allow only one
 	// function to execute at a time. The reason is that each function calls
@@ -209,11 +209,11 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 	defer txmgr.oldBlockCommit.Unlock()
 	logger.Debug("lock acquired on oldBlockCommit for committing pvtData of old blocks to state database")
 
-	// (1) as the blocksPvtData can contain multiple versions of pvtData for
+	// (1) as the reconciledPvtdata can contain multiple versions of pvtData for
 	// a given <ns, coll, key>, we need to find duplicate tuples with different
 	// versions and use the one with the higher version
 	logger.Debug("Constructing unique pvtData by removing duplicate entries")
-	uniquePvtData, err := constructUniquePvtData(blocksPvtData)
+	uniquePvtData, err := constructUniquePvtData(reconciledPvtdata)
 	if len(uniquePvtData) == 0 || err != nil {
 		return err
 	}
@@ -249,19 +249,19 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtDat
 
 type uniquePvtDataMap map[privacyenabledstate.HashedCompositeKey]*privacyenabledstate.PvtKVWrite
 
-func constructUniquePvtData(blocksPvtData map[uint64][]*ledger.TxPvtData) (uniquePvtDataMap, error) {
+func constructUniquePvtData(reconciledPvtdata map[uint64][]*ledger.TxPvtData) (uniquePvtDataMap, error) {
 	uniquePvtData := make(uniquePvtDataMap)
-	// go over the blocksPvtData to find duplicate <ns, coll, key>
+	// go over the reconciledPvtdata to find duplicate <ns, coll, key>
 	// in the pvtWrites and use the one with the higher version number
-	for blkNum, blockPvtData := range blocksPvtData {
-		if err := uniquePvtData.updateUsingBlockPvtData(blockPvtData, blkNum); err != nil {
+	for blkNum, blockPvtData := range reconciledPvtdata {
+		if err := uniquePvtData.updateUsingBlockPvtdata(blockPvtData, blkNum); err != nil {
 			return nil, err
 		}
 	} // for each block
 	return uniquePvtData, nil
 }
 
-func (uniquePvtData uniquePvtDataMap) updateUsingBlockPvtData(blockPvtData []*ledger.TxPvtData, blkNum uint64) error {
+func (uniquePvtData uniquePvtDataMap) updateUsingBlockPvtdata(blockPvtData []*ledger.TxPvtData, blkNum uint64) error {
 	for _, txPvtData := range blockPvtData {
 		ver := version.NewHeight(blkNum, txPvtData.SeqInBlock)
 		if err := uniquePvtData.updateUsingTxPvtData(txPvtData, ver); err != nil {

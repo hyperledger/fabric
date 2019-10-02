@@ -28,7 +28,7 @@ type PeerLedgerSupport interface {
 
 	CommitLegacy(blockAndPvtdata *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error
 
-	CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error)
+	CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error)
 
 	GetBlockchainInfo() (*common.BlockchainInfo, error)
 

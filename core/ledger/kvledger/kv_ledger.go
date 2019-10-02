@@ -573,11 +573,11 @@ func (l *kvLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, e
 	return l.configHistoryRetriever, nil
 }
 
-func (l *kvLedger) CommitPvtDataOfOldBlocks(pvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+func (l *kvLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
 	logger.Debugf("[%s:] Comparing pvtData of [%d] old blocks against the hashes in transaction's rwset to find valid and invalid data",
-		l.ledgerID, len(pvtData))
+		l.ledgerID, len(reconciledPvtdata))
 
-	hashVerifiedPvtData, hashMismatches, err := constructValidAndInvalidPvtData(pvtData, l.blockStore)
+	hashVerifiedPvtData, hashMismatches, err := constructValidAndInvalidPvtData(reconciledPvtdata, l.blockStore)
 	if err != nil {
 		return nil, err
 	}
@@ -587,7 +587,7 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(pvtData []*ledger.BlockPvtData) ([]*
 		return nil, err
 	}
 
-	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the pvtdatastore", l.ledgerID, len(pvtData))
+	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the pvtdatastore", l.ledgerID, len(reconciledPvtdata))
 	err = l.blockStore.CommitPvtDataOfOldBlocks(hashVerifiedPvtData)
 	if err != nil {
 		return nil, err

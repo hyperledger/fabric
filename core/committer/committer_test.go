@@ -112,7 +112,7 @@ func (m *mockLedger) CommitLegacy(blockAndPvtdata *ledger2.BlockAndPvtData, comm
 	return args.Error(0)
 }
 
-func (m *mockLedger) CommitPvtDataOfOldBlocks(blockPvtData []*ledger2.BlockPvtData) ([]*ledger2.PvtdataHashMismatch, error) {
+func (m *mockLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger2.ReconciledPvtdata) ([]*ledger2.PvtdataHashMismatch, error) {
 	panic("implement me")
 }
 

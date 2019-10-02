@@ -1517,7 +1517,7 @@ func (m *mockLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever,
 	return args.Get(0).(ledger.ConfigHistoryRetriever), nil
 }
 
-func (m *mockLedger) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+func (m *mockLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
 	return nil, nil
 }
 

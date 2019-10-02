@@ -27,10 +27,10 @@ type PeerLedger struct {
 	commitLegacyReturnsOnCall map[int]struct {
 		result1 error
 	}
-	CommitPvtDataOfOldBlocksStub        func([]*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error)
+	CommitPvtDataOfOldBlocksStub        func([]*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error)
 	commitPvtDataOfOldBlocksMutex       sync.RWMutex
 	commitPvtDataOfOldBlocksArgsForCall []struct {
-		arg1 []*ledger.BlockPvtData
+		arg1 []*ledger.ReconciledPvtdata
 	}
 	commitPvtDataOfOldBlocksReturns struct {
 		result1 []*ledger.PvtdataHashMismatch
@@ -320,16 +320,16 @@ func (fake *PeerLedger) CommitLegacyReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *PeerLedger) CommitPvtDataOfOldBlocks(arg1 []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
-	var arg1Copy []*ledger.BlockPvtData
+func (fake *PeerLedger) CommitPvtDataOfOldBlocks(arg1 []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
+	var arg1Copy []*ledger.ReconciledPvtdata
 	if arg1 != nil {
-		arg1Copy = make([]*ledger.BlockPvtData, len(arg1))
+		arg1Copy = make([]*ledger.ReconciledPvtdata, len(arg1))
 		copy(arg1Copy, arg1)
 	}
 	fake.commitPvtDataOfOldBlocksMutex.Lock()
 	ret, specificReturn := fake.commitPvtDataOfOldBlocksReturnsOnCall[len(fake.commitPvtDataOfOldBlocksArgsForCall)]
 	fake.commitPvtDataOfOldBlocksArgsForCall = append(fake.commitPvtDataOfOldBlocksArgsForCall, struct {
-		arg1 []*ledger.BlockPvtData
+		arg1 []*ledger.ReconciledPvtdata
 	}{arg1Copy})
 	fake.recordInvocation("CommitPvtDataOfOldBlocks", []interface{}{arg1Copy})
 	fake.commitPvtDataOfOldBlocksMutex.Unlock()
@@ -349,13 +349,13 @@ func (fake *PeerLedger) CommitPvtDataOfOldBlocksCallCount() int {
 	return len(fake.commitPvtDataOfOldBlocksArgsForCall)
 }
 
-func (fake *PeerLedger) CommitPvtDataOfOldBlocksCalls(stub func([]*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error)) {
+func (fake *PeerLedger) CommitPvtDataOfOldBlocksCalls(stub func([]*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error)) {
 	fake.commitPvtDataOfOldBlocksMutex.Lock()
 	defer fake.commitPvtDataOfOldBlocksMutex.Unlock()
 	fake.CommitPvtDataOfOldBlocksStub = stub
 }
 
-func (fake *PeerLedger) CommitPvtDataOfOldBlocksArgsForCall(i int) []*ledger.BlockPvtData {
+func (fake *PeerLedger) CommitPvtDataOfOldBlocksArgsForCall(i int) []*ledger.ReconciledPvtdata {
 	fake.commitPvtDataOfOldBlocksMutex.RLock()
 	defer fake.commitPvtDataOfOldBlocksMutex.RUnlock()
 	argsForCall := fake.commitPvtDataOfOldBlocksArgsForCall[i]

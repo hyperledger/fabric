@@ -131,7 +131,7 @@ type PeerLedger interface {
 	// If hashes for some of the private data supplied in this function does not match
 	// the corresponding hash present in the block, the unmatched private data is not
 	// committed and instead the mismatch inforation is returned back
-	CommitPvtDataOfOldBlocks(blockPvtData []*BlockPvtData) ([]*PvtdataHashMismatch, error)
+	CommitPvtDataOfOldBlocks(reconciledPvtdata []*ReconciledPvtdata) ([]*PvtdataHashMismatch, error)
 	// GetMissingPvtDataTracker return the MissingPvtDataTracker
 	GetMissingPvtDataTracker() (MissingPvtDataTracker, error)
 	// DoesPvtDataInfoExist returns true when
@@ -295,8 +295,8 @@ type BlockAndPvtData struct {
 	MissingPvtData TxMissingPvtDataMap
 }
 
-// BlockPvtData contains the private data for a block
-type BlockPvtData struct {
+// ReconciledPvtdata contains the private data for a block for reconciliation
+type ReconciledPvtdata struct {
 	BlockNum  uint64
 	WriteSets TxPvtDataMap
 }

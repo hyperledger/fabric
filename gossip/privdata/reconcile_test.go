@@ -156,12 +156,12 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 	blockNum = 3
 	seqInBlock = 1
 	committer.On("CommitPvtDataOfOldBlocks", mock.Anything).Run(func(args mock.Arguments) {
-		var blockPvtData = args.Get(0).([]*ledger.BlockPvtData)
-		assert.Equal(t, 1, len(blockPvtData))
-		assert.Equal(t, blockNum, blockPvtData[0].BlockNum)
-		assert.Equal(t, seqInBlock, blockPvtData[0].WriteSets[1].SeqInBlock)
-		assert.Equal(t, "ns1", blockPvtData[0].WriteSets[1].WriteSet.NsPvtRwset[0].Namespace)
-		assert.Equal(t, "col1", blockPvtData[0].WriteSets[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
+		var reconciledPvtdata = args.Get(0).([]*ledger.ReconciledPvtdata)
+		assert.Equal(t, 1, len(reconciledPvtdata))
+		assert.Equal(t, blockNum, reconciledPvtdata[0].BlockNum)
+		assert.Equal(t, seqInBlock, reconciledPvtdata[0].WriteSets[1].SeqInBlock)
+		assert.Equal(t, "ns1", reconciledPvtdata[0].WriteSets[1].WriteSet.NsPvtRwset[0].Namespace)
+		assert.Equal(t, "col1", reconciledPvtdata[0].WriteSets[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
 		commitPvtDataOfOldBlocksHappened = true
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
 
@@ -249,12 +249,12 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 	blockNum = 3
 	seqInBlock = 1
 	committer.On("CommitPvtDataOfOldBlocks", mock.Anything).Run(func(args mock.Arguments) {
-		var blockPvtData = args.Get(0).([]*ledger.BlockPvtData)
-		assert.Equal(t, 1, len(blockPvtData))
-		assert.Equal(t, blockNum, blockPvtData[0].BlockNum)
-		assert.Equal(t, seqInBlock, blockPvtData[0].WriteSets[1].SeqInBlock)
-		assert.Equal(t, "ns1", blockPvtData[0].WriteSets[1].WriteSet.NsPvtRwset[0].Namespace)
-		assert.Equal(t, "col1", blockPvtData[0].WriteSets[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
+		var reconciledPvtdata = args.Get(0).([]*ledger.ReconciledPvtdata)
+		assert.Equal(t, 1, len(reconciledPvtdata))
+		assert.Equal(t, blockNum, reconciledPvtdata[0].BlockNum)
+		assert.Equal(t, seqInBlock, reconciledPvtdata[0].WriteSets[1].SeqInBlock)
+		assert.Equal(t, "ns1", reconciledPvtdata[0].WriteSets[1].WriteSet.NsPvtRwset[0].Namespace)
+		assert.Equal(t, "col1", reconciledPvtdata[0].WriteSets[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].CollectionName)
 		commitPvtDataOfOldBlocksHappened = true
 		wg.Done()
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)
@@ -368,11 +368,11 @@ func TestReconciliationPullingMissingPrivateDataAtOnePass(t *testing.T) {
 	wg.Add(2)
 
 	var commitPvtDataOfOldBlocksHappened bool
-	pvtDataStore := make([][]*ledger.BlockPvtData, 0)
+	pvtDataStore := make([][]*ledger.ReconciledPvtdata, 0)
 	committer.On("CommitPvtDataOfOldBlocks", mock.Anything).Run(func(args mock.Arguments) {
-		var blockPvtData = args.Get(0).([]*ledger.BlockPvtData)
-		assert.Equal(t, 1, len(blockPvtData))
-		pvtDataStore = append(pvtDataStore, blockPvtData)
+		var reconciledPvtdata = args.Get(0).([]*ledger.ReconciledPvtdata)
+		assert.Equal(t, 1, len(reconciledPvtdata))
+		pvtDataStore = append(pvtDataStore, reconciledPvtdata)
 		commitPvtDataOfOldBlocksHappened = true
 		wg.Done()
 	}).Return([]*ledger.PvtdataHashMismatch{}, nil)

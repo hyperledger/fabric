@@ -241,7 +241,7 @@ func (*mockCommitter) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, 
 	panic("implement me")
 }
 
-func (*mockCommitter) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+func (*mockCommitter) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
 	panic("implement me")
 }
 
@@ -257,7 +257,7 @@ func (mock *ramLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker,
 	panic("implement me")
 }
 
-func (mock *ramLedger) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
+func (mock *ramLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
 	panic("implement me")
 }
 
