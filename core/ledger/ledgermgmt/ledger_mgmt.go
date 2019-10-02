@@ -31,9 +31,14 @@ var ErrLedgerMgmtNotInitialized = errors.New("ledger mgmt should be initialized 
 
 // LedgerMgr manages ledgers for all channels
 type LedgerMgr struct {
-	lock           sync.Mutex
-	openedLedgers  map[string]ledger.PeerLedger
-	ledgerProvider ledger.PeerLedgerProvider
+	lock               sync.Mutex
+	openedLedgers      map[string]ledger.PeerLedger
+	ledgerProvider     ledger.PeerLedgerProvider
+	ebMetadataProvider MetadataProvider
+}
+
+type MetadataProvider interface {
+	PackageMetadata(ccid string) ([]byte, error)
 }
 
 // Initializer encapsulates all the external dependencies for the ledger module
@@ -47,6 +52,7 @@ type Initializer struct {
 	HealthCheckRegistry             ledger.HealthCheckRegistry
 	Config                          *ledger.Config
 	Hasher                          ledger.Hasher
+	EbMetadataProvider              MetadataProvider
 }
 
 // NewLedgerMgr creates a new LedgerMgr
@@ -73,8 +79,9 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 		panic(fmt.Sprintf("Error in instantiating ledger provider: %s", err))
 	}
 	ledgerMgr := &LedgerMgr{
-		openedLedgers:  make(map[string]ledger.PeerLedger),
-		ledgerProvider: provider,
+		openedLedgers:      make(map[string]ledger.PeerLedger),
+		ledgerProvider:     provider,
+		ebMetadataProvider: initializer.EbMetadataProvider,
 	}
 	// TODO remove the following package level init
 	cceventmgmt.Initialize(&chaincodeInfoProviderImpl{
@@ -219,5 +226,13 @@ func (p *chaincodeInfoProviderImpl) GetDeployedChaincodeInfo(chainid string,
 
 // RetrieveChaincodeArtifacts implements function in the interface cceventmgmt.ChaincodeInfoProvider
 func (p *chaincodeInfoProviderImpl) RetrieveChaincodeArtifacts(chaincodeDefinition *cceventmgmt.ChaincodeDefinition) (installed bool, dbArtifactsTar []byte, err error) {
-	return ccprovider.ExtractStatedbArtifactsForChaincode(chaincodeDefinition.Name + ":" + chaincodeDefinition.Version)
+	ccid := chaincodeDefinition.Name + ":" + chaincodeDefinition.Version
+	md, err := p.ledgerMgr.ebMetadataProvider.PackageMetadata(ccid)
+	if err != nil {
+		return false, nil, err
+	}
+	if md != nil {
+		return true, md, nil
+	}
+	return ccprovider.ExtractStatedbArtifactsForChaincode(ccid)
 }

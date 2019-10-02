@@ -8,6 +8,7 @@ package lifecycle
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
@@ -15,6 +16,7 @@ import (
 // EventBroker receives events from lifecycle cache and in turn invokes the registered listeners
 type EventBroker struct {
 	chaincodeStore       ChaincodeStore
+	ebMetadata           *externalbuilders.MetadataProvider
 	pkgParser            PackageParser
 	defineCallbackStatus *sync.Map
 
@@ -22,9 +24,10 @@ type EventBroker struct {
 	listeners map[string][]ledger.ChaincodeLifecycleEventListener
 }
 
-func NewEventBroker(chaincodeStore ChaincodeStore, pkgParser PackageParser) *EventBroker {
+func NewEventBroker(chaincodeStore ChaincodeStore, pkgParser PackageParser, ebMetadata *externalbuilders.MetadataProvider) *EventBroker {
 	return &EventBroker{
 		chaincodeStore:       chaincodeStore,
+		ebMetadata:           ebMetadata,
 		pkgParser:            pkgParser,
 		listeners:            make(map[string][]ledger.ChaincodeLifecycleEventListener),
 		defineCallbackStatus: &sync.Map{},
@@ -154,6 +157,15 @@ func (b *EventBroker) invokeDoneOnListeners(channelID string, succeeded bool) {
 }
 
 func (b *EventBroker) loadDBArtifacts(packageID string) ([]byte, error) {
+	md, err := b.ebMetadata.PackageMetadata(packageID)
+	if err != nil {
+		return nil, err
+	}
+
+	if md != nil {
+		return md, nil
+	}
+
 	pkgBytes, err := b.chaincodeStore.Load(packageID)
 	if err != nil {
 		return nil, err

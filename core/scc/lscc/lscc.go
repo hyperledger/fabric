@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -160,6 +161,8 @@ type SCC struct {
 	BuildRegistry *container.BuildRegistry
 
 	ChaincodeBuilder ChaincodeBuilder
+
+	EbMetadataProvider *externalbuilders.MetadataProvider
 
 	// BCCSP instance
 	BCCSP bccsp.BCCSP
@@ -694,13 +697,20 @@ func (lscc *SCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte
 		return errors.WithMessage(err, "could not build chaincode")
 	}
 
-	// Get any statedb artifacts from the chaincode package, e.g. couchdb index definitions
-	statedbArtifactsTar, err := ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack)
+	md, err := lscc.EbMetadataProvider.PackageMetadata(ccid)
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "external builder release metadata found, but could not be packaged")
 	}
 
-	if err = isValidStatedbArtifactsTar(statedbArtifactsTar); err != nil {
+	if md == nil {
+		// Get any statedb artifacts from the chaincode package, e.g. couchdb index definitions
+		md, err = ccprovider.ExtractStatedbArtifactsFromCCPackage(ccpack)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err = isValidStatedbArtifactsTar(md); err != nil {
 		return InvalidStatedbArtifactsErr(err.Error())
 	}
 
@@ -713,7 +723,7 @@ func (lscc *SCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte
 	// any channel's statedb where the chaincode is already instantiated
 	// Note - this step is done prior to PutChaincodeToLocalStorage() since this step is idempotent and harmless until endorsements start,
 	// that is, if there are errors deploying the indexes the chaincode install can safely be re-attempted later.
-	err = cceventmgmt.GetMgr().HandleChaincodeInstall(chaincodeDefinition, statedbArtifactsTar)
+	err = cceventmgmt.GetMgr().HandleChaincodeInstall(chaincodeDefinition, md)
 	defer func() {
 		cceventmgmt.GetMgr().ChaincodeInstallDone(err == nil)
 	}()

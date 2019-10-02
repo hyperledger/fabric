@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/policy"
@@ -164,6 +165,9 @@ func TestInstall(t *testing.T) {
 		BCCSP:            cryptoProvider,
 		BuildRegistry:    &container.BuildRegistry{},
 		ChaincodeBuilder: chaincodeBuilder,
+		EbMetadataProvider: &externalbuilders.MetadataProvider{
+			DurablePath: "testdata",
+		},
 	}
 	stub := shimtest.NewMockStub("lscc", scc)
 	res := stub.MockInit("1", nil)
@@ -195,6 +199,10 @@ func TestInstall(t *testing.T) {
 	chaincodeBuilder.BuildReturns(fmt.Errorf("fake-build-error"))
 	testInstall(t, "example02-different", "0", path, false, "could not build chaincode: fake-build-error", "Alice", scc, stub, nil)
 	chaincodeBuilder.BuildReturns(nil)
+
+	// This is a bad test, but it does at least exercise the external builder md path
+	// The integration tests will ultimately ensure that it actually works.
+	testInstall(t, "external-built", "cc", path, false, "", "Alice", scc, stub, nil)
 
 	testInstall(t, "example02-2", "1.0", path, false, "", "Alice", scc, stub, nil)
 	testInstall(t, "example02.go", "0", path, false, InvalidChaincodeNameErr("example02.go").Error(), "Alice", scc, stub, nil)

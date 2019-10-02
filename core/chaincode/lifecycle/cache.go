@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
 
@@ -121,14 +122,14 @@ func (l *LocalChaincode) createMetadataMapFromReferences() map[string][]*chainco
 	return references
 }
 
-func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler, custodian *ChaincodeCustodian) *Cache {
+func NewCache(resources *Resources, myOrgMSPID string, metadataManager MetadataHandler, custodian *ChaincodeCustodian, ebMetadata *externalbuilders.MetadataProvider) *Cache {
 	return &Cache{
 		chaincodeCustodian: custodian,
 		definedChaincodes:  map[string]*ChannelCache{},
 		localChaincodes:    map[string]*LocalChaincode{},
 		Resources:          resources,
 		MyOrgMSPID:         myOrgMSPID,
-		eventBroker:        NewEventBroker(resources.ChaincodeStore, resources.PackageParser),
+		eventBroker:        NewEventBroker(resources.ChaincodeStore, resources.PackageParser, ebMetadata),
 		MetadataHandler:    metadataManager,
 	}
 }

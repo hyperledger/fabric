@@ -369,7 +369,16 @@ func serve(args []string) error {
 
 	chaincodeCustodian := lifecycle.NewChaincodeCustodian()
 
-	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager, chaincodeCustodian)
+	externalBuilderOutput := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "externalbuilders", "builds")
+	if err := os.MkdirAll(externalBuilderOutput, 0700); err != nil {
+		logger.Panicf("could not create externalbuilders build output dir: %s", err)
+	}
+
+	ebMetadataProvider := &externalbuilders.MetadataProvider{
+		DurablePath: externalBuilderOutput,
+	}
+
+	lifecycleCache := lifecycle.NewCache(lifecycleResources, mspID, metadataManager, chaincodeCustodian, ebMetadataProvider)
 
 	txProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
 		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
@@ -386,6 +395,7 @@ func serve(args []string) error {
 			StateListeners:                  []ledger.StateListener{lifecycleCache},
 			Config:                          ledgerConfig(),
 			Hasher:                          factory.GetDefault(),
+			EbMetadataProvider:              ebMetadataProvider,
 		},
 	)
 
@@ -486,11 +496,6 @@ func serve(args []string) error {
 		logger.Panicf("failed to register docker health check: %s", err)
 	}
 
-	externalBuilderOutput := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "externalbuilders", "builds")
-	if err := os.MkdirAll(externalBuilderOutput, 0700); err != nil {
-		logger.Panicf("could not create externalbuilders build output dir: %s", err)
-	}
-
 	externalVM := &externalbuilders.Detector{
 		Builders:    externalbuilders.CreateBuilders(coreConfig.ExternalBuilders),
 		DurablePath: externalBuilderOutput,
@@ -521,13 +526,14 @@ func serve(args []string) error {
 		Support: &lscc.SupportImpl{
 			GetMSPIDs: peerInstance.GetMSPIDs,
 		},
-		SCCProvider:      &lscc.PeerShim{Peer: peerInstance},
-		ACLProvider:      aclProvider,
-		GetMSPIDs:        peerInstance.GetMSPIDs,
-		PolicyChecker:    policyChecker,
-		BCCSP:            factory.GetDefault(),
-		BuildRegistry:    buildRegistry,
-		ChaincodeBuilder: containerRouter,
+		SCCProvider:        &lscc.PeerShim{Peer: peerInstance},
+		ACLProvider:        aclProvider,
+		GetMSPIDs:          peerInstance.GetMSPIDs,
+		PolicyChecker:      policyChecker,
+		BCCSP:              factory.GetDefault(),
+		BuildRegistry:      buildRegistry,
+		ChaincodeBuilder:   containerRouter,
+		EbMetadataProvider: ebMetadataProvider,
 	}
 
 	chaincodeEndorsementInfo := &lifecycle.ChaincodeEndorsementInfoSource{
