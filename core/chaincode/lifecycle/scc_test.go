@@ -745,7 +745,7 @@ var _ = Describe("SCC", func() {
 				It("wraps and returns error", func() {
 					res := scc.Invoke(fakeStub)
 					Expect(res.Status).To(Equal(int32(500)))
-					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': collection-name: test-collection -- maximum peer count (10) cannot be greater than the required peer count (20)"))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'ApproveChaincodeDefinitionForMyOrg': collection-name: test-collection -- maximum peer count (10) cannot be less than the required peer count (20)"))
 				})
 			})
 

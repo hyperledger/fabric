@@ -2040,7 +2040,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	blockToLive = 10000
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "collection-name: mycollection3 -- maximum peer count (1) cannot be greater than the required peer count (2)")
+	assert.EqualError(t, err, "collection-name: mycollection3 -- maximum peer count (1) cannot be less than the required peer count (2)")
 
 	// Test 12: AND concatenation of orgs in access policy -> error
 	requiredPeerCount = 1

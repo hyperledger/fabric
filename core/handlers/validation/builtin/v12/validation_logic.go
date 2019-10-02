@@ -226,7 +226,7 @@ func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfi
 		maximumPeerCount := newCollection.GetMaximumPeerCount()
 		requiredPeerCount := newCollection.GetRequiredPeerCount()
 		if maximumPeerCount < requiredPeerCount {
-			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
+			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be less than the required peer count (%d)",
 				collectionName, maximumPeerCount, requiredPeerCount)
 
 		}
