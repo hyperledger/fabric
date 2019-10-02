@@ -701,7 +701,7 @@ func validateCollectionConfigs(collConfigs []*common.StaticCollectionConfig, msp
 		collNamesMap[c.Name] = struct{}{}
 		// Validate gossip related parameters present in the collection config
 		if c.MaximumPeerCount < c.RequiredPeerCount {
-			return errors.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
+			return errors.Errorf("collection-name: %s -- maximum peer count (%d) cannot be less than the required peer count (%d)",
 				c.Name, c.MaximumPeerCount, c.RequiredPeerCount)
 		}
 		if c.RequiredPeerCount < 0 {
