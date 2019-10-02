@@ -195,15 +195,15 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	// if the peer is configured to not pull private rwset of invalid
 	// transaction during block commit, we need to delete those
-	// missing entries from the missingKeys list (to be used for pulling rwset
+	// missing entries from the eligibleMissingKeys list (to be used for pulling rwset
 	// from other peers). Instead add them to the block's private data
 	// missing list so that the private data reconciler can pull them later.
 	if c.skipPullingInvalidTransactions {
 		txsFilter := txValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-		for missingRWS := range privateInfo.missingKeys {
+		for missingRWS := range privateInfo.eligibleMissingKeys {
 			if txsFilter[missingRWS.seqInBlock] != uint8(peer.TxValidationCode_VALID) {
 				blockAndPvtData.MissingPvtData.Add(missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, true)
-				delete(privateInfo.missingKeys, missingRWS)
+				delete(privateInfo.eligibleMissingKeys, missingRWS)
 			}
 		}
 	}
@@ -212,20 +212,20 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	retryThresh := c.pullRetryThreshold
 	var bFetchFromPeers bool // defaults to false
-	if len(privateInfo.missingKeys) == 0 {
+	if len(privateInfo.eligibleMissingKeys) == 0 {
 		logger.Debugf("[%s] No missing collection private write sets to fetch from remote peers", c.ChainID)
 	} else {
 		bFetchFromPeers = true
 		logger.Debugf("[%s] Could not find all collection private write sets in local peer transient store for block [%d].", c.ChainID, block.Header.Number)
-		logger.Debugf("[%s] Fetching %d collection private write sets from remote peers for a maximum duration of %s", c.ChainID, len(privateInfo.missingKeys), retryThresh)
+		logger.Debugf("[%s] Fetching %d collection private write sets from remote peers for a maximum duration of %s", c.ChainID, len(privateInfo.eligibleMissingKeys), retryThresh)
 	}
 	startPull := time.Now()
 	limit := startPull.Add(retryThresh)
-	for len(privateInfo.missingKeys) > 0 && time.Now().Before(limit) {
+	for len(privateInfo.eligibleMissingKeys) > 0 && time.Now().Before(limit) {
 		c.fetchFromPeers(block.Header.Number, ownedRWsets, privateInfo)
 		// If succeeded to fetch everything, no need to sleep before
 		// retry
-		if len(privateInfo.missingKeys) == 0 {
+		if len(privateInfo.eligibleMissingKeys) == 0 {
 			break
 		}
 		time.Sleep(pullRetrySleepInterval)
@@ -236,11 +236,11 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	// Only log results if we actually attempted to fetch
 	if bFetchFromPeers {
-		if len(privateInfo.missingKeys) == 0 {
+		if len(privateInfo.eligibleMissingKeys) == 0 {
 			logger.Infof("[%s] Fetched all missing collection private write sets from remote peers for block [%d] (%dms)", c.ChainID, block.Header.Number, elapsedPull)
 		} else {
 			logger.Warningf("[%s] Could not fetch all missing collection private write sets from remote peers. Will commit block [%d] with missing private write sets:[%v]",
-				c.ChainID, block.Header.Number, privateInfo.missingKeys)
+				c.ChainID, block.Header.Number, privateInfo.eligibleMissingKeys)
 		}
 	}
 
@@ -255,12 +255,12 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 
 	// populate missing RWSets to be passed to the ledger
-	for missingRWS := range privateInfo.missingKeys {
+	for missingRWS := range privateInfo.eligibleMissingKeys {
 		blockAndPvtData.MissingPvtData.Add(missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, true)
 	}
 
 	// populate missing RWSets for ineligible collections to be passed to the ledger
-	for missingRWS := range privateInfo.missingRWSButIneligible {
+	for missingRWS := range privateInfo.ineligibleMissingKeys {
 		blockAndPvtData.MissingPvtData.Add(missingRWS.seqInBlock, missingRWS.namespace, missingRWS.collection, false)
 	}
 
@@ -283,7 +283,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 	seq := block.Header.Number
 	if seq%c.transientBlockRetention == 0 && seq > c.transientBlockRetention {
-		err := c.store.PurgeByHeight(seq - c.transientBlockRetention)
+		err := c.store.PurgeBelowHeight(seq - c.transientBlockRetention)
 		if err != nil {
 			logger.Error("Failed purging data from transient store at block", seq, ":", err)
 		}
@@ -296,7 +296,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 
 func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][]byte, privateInfo *pvtdataInfo) {
 	dig2src := make(map[privdatacommon.DigKey][]*peer.Endorsement)
-	privateInfo.missingKeys.foreach(func(k rwSetKey) {
+	privateInfo.eligibleMissingKeys.foreach(func(k rwSetKey) {
 		logger.Debug("Fetching", k, "from peers")
 		dig := privdatacommon.DigKey{
 			TxId:       k.txID,
@@ -325,23 +325,23 @@ func (c *coordinator) fetchFromPeers(blockSeq uint64, ownedRWsets map[rwSetKey][
 				seqInBlock: dig.SeqInBlock,
 				hash:       hash,
 			}
-			if _, isMissing := privateInfo.missingKeys[key]; !isMissing {
+			if _, isMissing := privateInfo.eligibleMissingKeys[key]; !isMissing {
 				logger.Debug("Ignoring", key, "because it wasn't found in the block")
 				continue
 			}
 			ownedRWsets[key] = rws
-			delete(privateInfo.missingKeys, key)
+			delete(privateInfo.eligibleMissingKeys, key)
 			logger.Debug("Fetched", key)
 		}
 	}
 	// Iterate over purged data
 	for _, dig := range fetchedData.PurgedElements {
 		// delete purged key from missing keys
-		for missingPvtRWKey := range privateInfo.missingKeys {
+		for missingPvtRWKey := range privateInfo.eligibleMissingKeys {
 			if missingPvtRWKey.namespace == dig.Namespace &&
 				missingPvtRWKey.collection == dig.Collection &&
 				missingPvtRWKey.txID == dig.TxId {
-				delete(privateInfo.missingKeys, missingPvtRWKey)
+				delete(privateInfo.eligibleMissingKeys, missingPvtRWKey)
 				logger.Warningf("Missing key because was purged or will soon be purged, "+
 					"continue block commit without [%+v] in private rwset", missingPvtRWKey)
 			}
@@ -662,11 +662,11 @@ func endorsersFromOrgs(ns string, col string, endorsers []*peer.Endorsement, org
 }
 
 type pvtdataInfo struct {
-	sources                 map[rwSetKey][]*peer.Endorsement
-	missingKeysByTxIDs      rwSetKeysByTxIDs
-	missingKeys             rwsetKeys
-	txns                    txns
-	missingRWSButIneligible rwsetKeys
+	sources                    map[rwSetKey][]*peer.Endorsement
+	txns                       txns
+	eligibleMissingKeysByTxIDs rwSetKeysByTxIDs
+	eligibleMissingKeys        rwsetKeys
+	ineligibleMissingKeys      rwsetKeys
 }
 
 // listMissingPrivateData identifies missing private write sets and attempts to retrieve them from local transient store
@@ -681,16 +681,16 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 
 	sources := make(map[rwSetKey][]*peer.Endorsement)
 	requestedEligiblePrivateRWSets := make(map[rwSetKey]struct{})
-	missing := make(rwSetKeysByTxIDs)
-	missingButIneligible := make(rwSetKeysByTxIDs)
+	eligibleMissingKeysByTxIDs := make(rwSetKeysByTxIDs)
+	ineligibleMissingKeysByTxIDs := make(rwSetKeysByTxIDs)
 	data := blockData(block.Data.Data)
 	bi := &transactionInspector{
-		sources:                        sources,
-		missingKeys:                    missing,
-		ownedRWsets:                    ownedRWsets,
-		requestedEligiblePrivateRWSets: requestedEligiblePrivateRWSets,
 		coordinator:                    c,
-		missingRWSButIneligible:        missingButIneligible,
+		sources:                        sources,
+		ownedRWsets:                    ownedRWsets,
+		eligibleMissingKeysByTxIDs:     eligibleMissingKeysByTxIDs,
+		ineligibleMissingKeysByTxIDs:   ineligibleMissingKeysByTxIDs,
+		requestedEligiblePrivateRWSets: requestedEligiblePrivateRWSets,
 	}
 	storePvtDataOfInvalidTx := c.Support.CapabilityProvider.Capabilities().StorePvtDataOfInvalidTx()
 	txList, err := data.forEachTxn(storePvtDataOfInvalidTx, txsFilter, bi.inspectTransaction)
@@ -699,16 +699,16 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 	}
 
 	privateInfo := &pvtdataInfo{
-		sources:                 sources,
-		missingKeysByTxIDs:      missing,
-		missingRWSButIneligible: bi.missingRWSButIneligible.flatten(),
-		txns:                    txList,
+		sources:                    sources,
+		eligibleMissingKeysByTxIDs: eligibleMissingKeysByTxIDs,
+		ineligibleMissingKeys:      bi.ineligibleMissingKeysByTxIDs.flatten(),
+		txns:                       txList,
 	}
 
-	logger.Debug("Retrieving private write sets for", len(privateInfo.missingKeysByTxIDs), "transactions from transient store")
+	logger.Debug("Retrieving private write sets for", len(privateInfo.eligibleMissingKeysByTxIDs), "transactions from transient store")
 
 	// Put into ownedRWsets RW sets that are missing and found in the transient store
-	c.fetchMissingFromTransientStore(privateInfo.missingKeysByTxIDs, ownedRWsets)
+	c.fetchMissingFromTransientStore(privateInfo.eligibleMissingKeysByTxIDs, ownedRWsets)
 
 	// In the end, iterate over the ownedRWsets, and if the key doesn't exist in
 	// the requestedEligiblePrivateRWSets - delete it from the ownedRWsets
@@ -719,9 +719,9 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 		}
 	}
 
-	privateInfo.missingKeys = privateInfo.missingKeysByTxIDs.flatten()
+	privateInfo.eligibleMissingKeys = privateInfo.eligibleMissingKeysByTxIDs.flatten()
 	// Remove all keys we already own
-	privateInfo.missingKeys.exclude(func(key rwSetKey) bool {
+	privateInfo.eligibleMissingKeys.exclude(func(key rwSetKey) bool {
 		_, exists := ownedRWsets[key]
 		return exists
 	})
@@ -731,11 +731,11 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 
 type transactionInspector struct {
 	*coordinator
-	requestedEligiblePrivateRWSets rwsetKeys
-	missingKeys                    rwSetKeysByTxIDs
 	sources                        map[rwSetKey][]*peer.Endorsement
 	ownedRWsets                    map[rwSetKey][]byte
-	missingRWSButIneligible        rwSetKeysByTxIDs
+	eligibleMissingKeysByTxIDs     rwSetKeysByTxIDs
+	ineligibleMissingKeysByTxIDs   rwSetKeysByTxIDs
+	requestedEligiblePrivateRWSets rwsetKeys
 }
 
 func (bi *transactionInspector) inspectTransaction(seqInBlock uint64, chdr *common.ChannelHeader, txRWSet *rwsetutil.TxRwSet, endorsers []*peer.Endorsement) error {
@@ -776,13 +776,13 @@ func (bi *transactionInspector) inspectTransaction(seqInBlock uint64, chdr *comm
 				logger.Debugf("Peer is not eligible for collection, channel [%s], chaincode [%s], "+
 					"collection name [%s], txID [%s] the policy is [%#v]. Skipping.",
 					chdr.ChannelId, ns.NameSpace, hashedCollection.CollectionName, chdr.TxId, policy)
-				bi.missingRWSButIneligible[txAndSeq] = append(bi.missingRWSButIneligible[txAndSeq], key)
+				bi.ineligibleMissingKeysByTxIDs[txAndSeq] = append(bi.ineligibleMissingKeysByTxIDs[txAndSeq], key)
 				continue
 			}
 
 			bi.requestedEligiblePrivateRWSets[key] = struct{}{}
 			if _, exists := bi.ownedRWsets[key]; !exists {
-				bi.missingKeys[txAndSeq] = append(bi.missingKeys[txAndSeq], key)
+				bi.eligibleMissingKeysByTxIDs[txAndSeq] = append(bi.eligibleMissingKeysByTxIDs[txAndSeq], key)
 				bi.sources[key] = endorsersFromOrgs(ns.NameSpace, hashedCollection.CollectionName, endorsers, policy.MemberOrgs())
 			}
 		} // for all hashed RW sets

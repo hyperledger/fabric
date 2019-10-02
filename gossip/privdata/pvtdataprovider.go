@@ -49,7 +49,8 @@ func (r *RetrievedPvtdata) GetBlockPvtdata() *ledger.BlockPvtdata {
 	return r.blockPvtdata
 }
 
-// Purge purges transactions in the block
+// Purge purges private data for transactions in the block from the transient store.
+// Transactions older than the retention period are considered orphaned and also purged.
 func (r *RetrievedPvtdata) Purge() {
 	purgeStart := time.Now()
 
@@ -62,7 +63,7 @@ func (r *RetrievedPvtdata) Purge() {
 
 	blockNum := r.blockNum
 	if blockNum%r.transientBlockRetention == 0 && blockNum > r.transientBlockRetention {
-		err := r.transientStore.PurgeByHeight(blockNum - r.transientBlockRetention)
+		err := r.transientStore.PurgeBelowHeight(blockNum - r.transientBlockRetention)
 		if err != nil {
 			r.logger.Error("Failed purging data from transient store at block", blockNum, ":", err)
 		}
@@ -83,8 +84,8 @@ type eligibilityComputer struct {
 // marks all private data as missing prior to fetching
 func (ec *eligibilityComputer) computeEligibility(txPvtdataQuery []*ledger.TxPvtdataInfo) (*pvtdataInfo, error) {
 	sources := make(map[rwSetKey][]*peer.Endorsement)
-	missing := make(rwsetKeys)
-	missingRWSButIneligible := make(rwsetKeys)
+	eligibleMissingKeys := make(rwsetKeys)
+	ineligibleMissingKeys := make(rwsetKeys)
 
 	var txList []string
 	for _, txPvtdata := range txPvtdataQuery {
@@ -123,21 +124,21 @@ func (ec *eligibilityComputer) computeEligibility(txPvtdataQuery []*ledger.TxPvt
 				ec.logger.Debugf("Peer is not eligible for collection: chaincode [%s], "+
 					"collection name [%s], txID [%s] the policy is [%#v]. Skipping.",
 					ns, col, txID, policy)
-				missingRWSButIneligible[key] = struct{}{}
+				ineligibleMissingKeys[key] = struct{}{}
 				continue
 			}
 
 			// treat all eligible keys as missing
-			missing[key] = struct{}{}
+			eligibleMissingKeys[key] = struct{}{}
 			sources[key] = endorsersFromOrgs(ns, col, endorsers, policy.MemberOrgs())
 		}
 	}
 
 	return &pvtdataInfo{
-		sources:                 sources,
-		missingKeys:             missing,
-		txns:                    txList,
-		missingRWSButIneligible: missingRWSButIneligible,
+		sources:               sources,
+		txns:                  txList,
+		eligibleMissingKeys:   eligibleMissingKeys,
+		ineligibleMissingKeys: ineligibleMissingKeys,
 	}, nil
 }
 
@@ -149,7 +150,7 @@ type PvtdataProvider struct {
 	purgeDurationHistogram                  metrics.Histogram
 	transientStore                          *transientstore.Store
 	pullRetryThreshold                      time.Duration
-	cachedPvtdata                           util.PvtDataCollections
+	prefetchedPvtdata                       util.PvtDataCollections
 	transientBlockRetention                 uint64
 	channelID                               string
 	blockNum                                uint64
@@ -187,37 +188,37 @@ func (pdp *PvtdataProvider) RetrievePrivatedata(txPvtdataQuery []*ledger.TxPvtda
 
 	pvtdata := make(rwsetByKeys)
 
-	// CACHE
-	pdp.populateFromCache(pvtdata, privateInfo, pdp.cachedPvtdata, txPvtdataQuery)
-	if len(privateInfo.missingKeys) == 0 {
+	// POPULATE FROM CACHE
+	pdp.populateFromCache(pvtdata, privateInfo, txPvtdataQuery)
+	if len(privateInfo.eligibleMissingKeys) == 0 {
 		pdp.logger.Debug("No missing collection private write sets")
 		retrievedPvtdata.privateInfo = privateInfo
 		retrievedPvtdata.blockPvtdata = pdp.prepareBlockPvtdata(pvtdata, privateInfo)
 		return retrievedPvtdata, nil
 	}
 
-	// TRANSIENT STORE
+	// POPULATE FROM TRANSIENT STORE
 	pdp.logger.Debug("Could not find all collection private write sets in cache for block [%d]", pdp.blockNum)
-	pdp.logger.Debug("Fetching %d collection private write sets from transient store", len(privateInfo.missingKeys))
+	pdp.logger.Debug("Fetching %d collection private write sets from transient store", len(privateInfo.eligibleMissingKeys))
 	pdp.populateFromTransientStore(pvtdata, privateInfo)
-	if len(privateInfo.missingKeys) == 0 {
+	if len(privateInfo.eligibleMissingKeys) == 0 {
 		pdp.logger.Debug("No missing collection private write sets to fetch from remote peers")
 		retrievedPvtdata.privateInfo = privateInfo
 		retrievedPvtdata.blockPvtdata = pdp.prepareBlockPvtdata(pvtdata, privateInfo)
 		return retrievedPvtdata, nil
 	}
 
-	// PEER
+	// POPULATE FROM REMOTE PEERS
 	retryThresh := pdp.pullRetryThreshold
 	pdp.logger.Debug("Could not find all collection private write sets in local peer transient store for block [%d]", pdp.blockNum)
-	pdp.logger.Debug("Fetching %d collection private write sets from remote peers for a maximum duration of %s", len(privateInfo.missingKeys), retryThresh)
+	pdp.logger.Debug("Fetching %d collection private write sets from remote peers for a maximum duration of %s", len(privateInfo.eligibleMissingKeys), retryThresh)
 	startPull := time.Now()
 	totalDuration := time.Duration(0)
-	for len(privateInfo.missingKeys) > 0 && totalDuration < retryThresh {
-		pdp.populateFromPeers(pvtdata, privateInfo)
+	for len(privateInfo.eligibleMissingKeys) > 0 && totalDuration < retryThresh {
+		pdp.populateFromRemotePeers(pvtdata, privateInfo)
 
 		// If succeeded to fetch everything, break to skip sleep
-		if len(privateInfo.missingKeys) == 0 {
+		if len(privateInfo.eligibleMissingKeys) == 0 {
 			break
 		}
 
@@ -228,7 +229,7 @@ func (pdp *PvtdataProvider) RetrievePrivatedata(txPvtdataQuery []*ledger.TxPvtda
 	elapsedPull := int64(time.Since(startPull) / time.Millisecond) // duration in ms
 	pdp.fetchDurationHistogram.Observe(time.Since(startPull).Seconds())
 
-	if len(privateInfo.missingKeys) == 0 {
+	if len(privateInfo.eligibleMissingKeys) == 0 {
 		pdp.logger.Debugf("Fetched all missing collection private write sets from remote peers for block [%d] (%dms)", pdp.blockNum, elapsedPull)
 	} else {
 		pdp.logger.Debugf("Could not fetch all missing collection private write sets from remote peers for block [%d]",
@@ -242,10 +243,10 @@ func (pdp *PvtdataProvider) RetrievePrivatedata(txPvtdataQuery []*ledger.TxPvtda
 
 // populateFromCache populates pvtdata with data fetched from cache and updates
 // privateInfo by removing missing data that was fetched from cache
-func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, privateInfo *pvtdataInfo, cachedPvtdata util.PvtDataCollections, txPvtdataQuery []*ledger.TxPvtdataInfo) {
-	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.missingKeys), "private write sets from cache")
+func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, privateInfo *pvtdataInfo, txPvtdataQuery []*ledger.TxPvtdataInfo) {
+	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.eligibleMissingKeys), "private write sets from cache")
 
-	for _, txPvtdata := range cachedPvtdata {
+	for _, txPvtdata := range pdp.prefetchedPvtdata {
 		txID := getTxIDBySeqInBlock(txPvtdata.SeqInBlock, txPvtdataQuery)
 		if txID == "" {
 			pdp.logger.Warningf("Failed fetching private data from cache: Could not find txID for SeqInBlock %d", txPvtdata.SeqInBlock)
@@ -261,14 +262,14 @@ func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, privateInfo *
 					hash:       hex.EncodeToString(commonutil.ComputeSHA256(col.Rwset)),
 				}
 				// skip if key not originally missing
-				if _, missing := privateInfo.missingKeys[key]; !missing {
+				if _, missing := privateInfo.eligibleMissingKeys[key]; !missing {
 					pdp.logger.Warning("Found extra data in prefetched:", key.namespace, key.collection, "hash", key.hash, "Skpping.")
 					continue
 				}
 				// populate the pvtdata with the RW set from the cache
 				pvtdata[key] = col.Rwset
 				// remove key from missing
-				delete(privateInfo.missingKeys, key)
+				delete(privateInfo.eligibleMissingKeys, key)
 			} // iterate over collections in the namespace
 		} // iterate over the namespaces in the WSet
 	} // iterate over cached private data in the block
@@ -277,10 +278,10 @@ func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, privateInfo *
 // populateFromTransientStore populates pvtdata with data fetched from transient store
 // and updates privateInfo by removing missing data that was fetched from transient store
 func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, privateInfo *pvtdataInfo) {
-	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.missingKeys), "private write sets from transient store")
+	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.eligibleMissingKeys), "private write sets from transient store")
 
 	// Put into pvtdata RW sets that are missing and found in the transient store
-	for k := range privateInfo.missingKeys {
+	for k := range privateInfo.eligibleMissingKeys {
 		filter := ledger.NewPvtNsCollFilter()
 		filter.Add(k.namespace, k.collection)
 		iterator, err := pdp.transientStore.GetTxPvtRWSetByTxid(k.txID, filter)
@@ -318,27 +319,27 @@ func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, priv
 						hash:       hex.EncodeToString(commonutil.ComputeSHA256(col.Rwset)),
 					}
 					// skip if not missing
-					if _, missing := privateInfo.missingKeys[key]; !missing {
+					if _, missing := privateInfo.eligibleMissingKeys[key]; !missing {
 						continue
 					}
 					// populate the pvtdata with the RW set from the transient store
 					pvtdata[key] = col.Rwset
 					// remove key from missing
-					delete(privateInfo.missingKeys, key)
+					delete(privateInfo.eligibleMissingKeys, key)
 				} // iterating over all collections
 			} // iterating over all namespaces
 		} // iterating over the TxPvtRWSet results
 	}
 }
 
-// populateFromPeers populates pvtdata with data fetched from peers and updates
-// privateInfo by removing missing data that was fetched from peers
-func (pdp *PvtdataProvider) populateFromPeers(pvtdata rwsetByKeys, privateInfo *pvtdataInfo) {
-	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.missingKeys), "private write sets from remote peers")
+// populateFromRemotePeers populates pvtdata with data fetched from remote peers and updates
+// privateInfo by removing missing data that was fetched from remote peers
+func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, privateInfo *pvtdataInfo) {
+	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.eligibleMissingKeys), "private write sets from remote peers")
 
 	dig2src := make(map[pvtdatacommon.DigKey][]*peer.Endorsement)
-	for k := range privateInfo.missingKeys {
-		pdp.logger.Debug("Fetching", k, "from peers")
+	for k := range privateInfo.eligibleMissingKeys {
+		pdp.logger.Debug("Fetching", k, "from remote peers")
 		dig := pvtdatacommon.DigKey{
 			TxId:       k.txID,
 			SeqInBlock: k.seqInBlock,
@@ -350,11 +351,11 @@ func (pdp *PvtdataProvider) populateFromPeers(pvtdata rwsetByKeys, privateInfo *
 	}
 	fetchedData, err := pdp.fetcher.fetch(dig2src)
 	if err != nil {
-		pdp.logger.Warningf("Failed fetching private data from peers for dig2src:[%v], err: %s", dig2src, err)
+		pdp.logger.Warningf("Failed fetching private data from remote peers for dig2src:[%v], err: %s", dig2src, err)
 		return
 	}
 
-	// Iterate over data fetched from peers
+	// Iterate over data fetched from remote peers
 	for _, element := range fetchedData.AvailableElements {
 		dig := element.Digest
 		for _, rws := range element.Payload {
@@ -366,7 +367,7 @@ func (pdp *PvtdataProvider) populateFromPeers(pvtdata rwsetByKeys, privateInfo *
 				hash:       hex.EncodeToString(commonutil.ComputeSHA256(rws)),
 			}
 			// skip if not missing
-			if _, missing := privateInfo.missingKeys[key]; !missing {
+			if _, missing := privateInfo.eligibleMissingKeys[key]; !missing {
 				// key isn't missing and was never fetched earlier, log that it wasn't originally requested
 				if _, exists := pvtdata[key]; !exists {
 					pdp.logger.Debug("Ignoring", key, "because it was never requested")
@@ -376,19 +377,19 @@ func (pdp *PvtdataProvider) populateFromPeers(pvtdata rwsetByKeys, privateInfo *
 			// populate the pvtdata with the RW set from the remote peer
 			pvtdata[key] = rws
 			// remove key from missing
-			delete(privateInfo.missingKeys, key)
+			delete(privateInfo.eligibleMissingKeys, key)
 			pdp.logger.Debug("Fetched", key)
 		}
 	}
 	// Iterate over purged data
 	for _, dig := range fetchedData.PurgedElements {
 		// delete purged key from missing keys
-		for missingPvtRWKey := range privateInfo.missingKeys {
+		for missingPvtRWKey := range privateInfo.eligibleMissingKeys {
 			if missingPvtRWKey.namespace == dig.Namespace &&
 				missingPvtRWKey.collection == dig.Collection &&
 				missingPvtRWKey.seqInBlock == dig.SeqInBlock &&
 				missingPvtRWKey.txID == dig.TxId {
-				delete(privateInfo.missingKeys, missingPvtRWKey)
+				delete(privateInfo.eligibleMissingKeys, missingPvtRWKey)
 				pdp.logger.Warningf("Missing key because was purged or will soon be purged, "+
 					"continue block commit without [%+v] in private rwset", missingPvtRWKey)
 			}
@@ -396,18 +397,19 @@ func (pdp *PvtdataProvider) populateFromPeers(pvtdata rwsetByKeys, privateInfo *
 	}
 }
 
-// prepareBlockPvtdata formats the fetched private data and missing private data
+// prepareBlockPvtdata consolidates the fetched private data as well as ineligible and eligible
+// missing private data into a ledger.BlockPvtdata for the PvtdataProvider to return to the consumer
 func (pdp *PvtdataProvider) prepareBlockPvtdata(pvtdata rwsetByKeys, privateInfo *pvtdataInfo) *ledger.BlockPvtdata {
 	blockPvtdata := &ledger.BlockPvtdata{
 		PvtData:        make(ledger.TxPvtDataMap),
 		MissingPvtData: make(ledger.TxMissingPvtDataMap),
 	}
 
-	if len(privateInfo.missingKeys) == 0 {
+	if len(privateInfo.eligibleMissingKeys) == 0 {
 		pdp.logger.Infof("Successfully fetched all collection private write sets for block [%d]", pdp.blockNum)
 	} else {
 		pdp.logger.Warningf("Could not fetch all missing collection private write sets for block [%d]. Will commit block with missing private write sets:[%v]",
-			pdp.blockNum, privateInfo.missingKeys)
+			pdp.blockNum, privateInfo.eligibleMissingKeys)
 	}
 
 	for seqInBlock, nsRWS := range pvtdata.bySeqsInBlock() {
@@ -418,11 +420,11 @@ func (pdp *PvtdataProvider) prepareBlockPvtdata(pvtdata rwsetByKeys, privateInfo
 		}
 	}
 
-	for key := range privateInfo.missingKeys {
+	for key := range privateInfo.eligibleMissingKeys {
 		blockPvtdata.MissingPvtData.Add(key.seqInBlock, key.namespace, key.collection, true)
 	}
 
-	for key := range privateInfo.missingRWSButIneligible {
+	for key := range privateInfo.ineligibleMissingKeys {
 		blockPvtdata.MissingPvtData.Add(key.seqInBlock, key.namespace, key.collection, false)
 	}
 
