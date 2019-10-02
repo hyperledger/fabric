@@ -646,6 +646,13 @@ type Hasher interface {
 	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
 }
 
+// RetrievedPvtdata is a dependency that is implemented by coordinator/gossip for ledger
+// to be able to purge the transactions from the block after retrieving private data
+type RetrievedPvtdata interface {
+	GetBlockPvtdata() *BlockPvtdata
+	Purge()
+}
+
 // TxPvtdataInfo captures information about the requested private data to be retrieved
 // and is populated by ledger during commit
 type TxPvtdataInfo struct {

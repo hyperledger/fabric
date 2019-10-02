@@ -44,6 +44,11 @@ type RetrievedPvtdata struct {
 	transientBlockRetention uint64
 }
 
+// GetBlockPvtdata returns the BlockPvtdata
+func (r *RetrievedPvtdata) GetBlockPvtdata() *ledger.BlockPvtdata {
+	return r.blockPvtdata
+}
+
 // Purge purges transactions in the block
 func (r *RetrievedPvtdata) Purge() {
 	purgeStart := time.Now()
