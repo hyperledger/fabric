@@ -3,12 +3,6 @@
 **Audience**: Architects, application and smart contract developers,
 administrators
 
-*Note: This tutorial describes a network that uses the
-[1.4.x and older lifecycle process](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html)
-in which a chaincode is instantiated on a channel. This topic will be updated
-to reflect the [Fabric chaincode lifecycle](../chaincode4noah.html) feature
-that is first introduced in the alpha release of v2.0.0.*
-
 From an application developer's perspective, a **smart contract**, together with
 the [ledger](../ledger/ledger.html), form the heart of a Hyperledger Fabric
 blockchain system. Whereas a ledger holds facts about the current and historical
@@ -27,7 +21,7 @@ In this topic, we'll cover:
 * [How to develop a smart contract](#developing)
 * [The importance of endorsement policies](#endorsement)
 * [Valid transactions](#valid-transactions)
-* [Smart contracts and channels](#channels)
+* [Channels and chaincode definitions](#channels)
 * [Communicating between smart contracts](#intercommunication)
 * [What is system chaincode?](#system-chaincode)
 
@@ -81,7 +75,7 @@ aspects of the business process relating to vehicles and insurance. In this
 topic, we will use the `car` contract as an example. We can see that a smart
 contract is a domain specific program which relates to specific business
 processes, whereas a chaincode is a technical container of a group of related
-smart contracts for installation and instantiation.
+smart contracts.
 
 
 ## Ledger
@@ -244,35 +238,50 @@ topic](../developapps/chaincodenamespace.html).
 ## Channels
 
 Hyperledger Fabric allows an organization to simultaneously participate in
-multiple, overlaid blockchains within a blockchain network via **channels**.
-By joining multiple channels within the same blockchain network, an organization can
-participate in a so-called **network of networks**. Channels provide an efficient
-sharing of infrastructure while maintaining data and communications privacy. They are
-independent enough to help organizations separate their work traffic with different
-counterparties, but integrated enough to allow them to coordinate independent activities
-when necessary.
+multiple, separate blockchain networks via **channels**. By joining multiple
+channels, an organization can participate in a so-called **network of networks**.
+Channels provide an efficient sharing of infrastructure while maintaining data
+and communications privacy. They are independent enough to help organizations
+separate their work traffic with different counterparties, but integrated enough
+to allow them to coordinate independent activities when necessary.
 
 ![smart.diagram5](./smartcontract.diagram.05.png) *A channel provides a
 completely separate communication mechanism between a set of organizations. When
-a chaincode is instantiated on a channel, an endorsement policy is defined for
-it; all the smart contracts within the chaincode are made available to the
-applications on that channel.*
+a chaincode definition is committed to a channel, all the smart contracts within
+the chaincode are made available to the applications on that channel.*
 
-An administrator defines an endorsement policy for a chaincode when it is
-[instantiated](../endorsement-policies.html#specifying-endorsement-policies-for-a-chaincode)
-on a channel, and can change it when the chaincode is upgraded. The endorsement
-policy applies equally to all smart contracts defined within the same chaincode
-deployed to a channel. It also means that a single smart contract can be
-deployed to different channels with different endorsement policies.
+While the smart contract code is installed inside a chaincode package on an
+organizations peers, channel members can only execute a smart contract after
+the chaincode has been defined on a channel. The **chaincode definition** is a
+struct that contains the parameters that govern how a chaincode operates. These
+parameters include the chaincode name, version, and the endorsement policy.
+Each channel member agrees to the parameters of a chaincode by approving a
+chaincode definition for their organization. When a sufficient number of
+organizations (a majority by default) have approved to the same chaincode
+definition, the definition can be committed to the channel. The smart contracts
+inside the chaincode can then be executed by channel members, subject to the
+endorsement policy specified in the chaincode definition. The endorsement policy
+applies equally to all smart contracts defined within the same chaincode.
 
-In the example [above](#channels), the `car` contract is deployed to the
-`VEHICLE` channel, and an `insurance` contract is deployed to the `INSURANCE`
-channel.  The `car` contract has an endorsement policy that requires `ORG1` and
-`ORG2` to sign transactions before they are considered valid, whereas the
-`insurance` contract has an endorsement policy that only requires `ORG3` to sign
-valid transactions. `ORG1` participates in two networks, the `VEHICLE` channel
-and the `INSURANCE` network, and can coordinate activity across these two
-networks with `ORG2` and `ORG3` respectively.
+In the example [above](#channels), a `car` contract is defined on the `VEHICLE`
+channel, and an `insurance` contract is defined on the `INSURANCE` channel.
+The chaincode definition of `car` specifies an endorsement policy that requires
+both `ORG1` and `ORG2` to sign transactions before they can be considered valid.
+The chaincode definition of the `insurance` contract specifies that only `ORG3`
+is required to endorse a transaction. `ORG1` participates in two networks, the
+`VEHICLE` channel and the `INSURANCE` network, and can coordinate activity with
+`ORG2` and `ORG3` across these two networks.
+
+The chaincode definition provides a way for channel members to agree on the
+governance of a chaincode before they start using the smart contract to
+transact on the channel. Building on the example above, both `ORG1` and `ORG2`
+want to endorse transactions that invoke the `car` contract. Because the default
+policy requires that a majority of organizations approve a chaincode definition,
+both organizations need to approve an endorsement policy of `AND{ORG1,ORG2}`.
+Otherwise, `ORG1` and `ORG2` would approve different chaincode definitions and
+would be unable to commit the chaincode definition to the channel as a result.
+This process guarantees that a transaction from the `car` smart contract needs
+to be approved by both organizations.
 
 ## Intercommunication
 
@@ -282,9 +291,7 @@ world state data to which they would not otherwise have access due to smart
 contract namespaces.
 
 There are limitations to this inter-contract communication, which are described
-fully in the [chaincode
-namespace](../developapps/chaincodenamespace.html#cross-chaincode-access) topic.
-
+fully in the [chaincode namespace](../developapps/chaincodenamespace.html#cross-chaincode-access) topic.
 
 ## System chaincode
 
@@ -297,10 +304,17 @@ for business processes.
 The following are the different types of system chaincodes and their associated
 abbreviations:
 
-* **Lifecycle system chaincode (LSCC)** runs in all peers to handle package signing,
-  install, instantiate, and upgrade chaincode requests. You can read more about
-  the LSCC implements this
-  [process](../chaincode4noah.html#chaincode-lifecycle).
+* `_lifecycle` runs in all peers and manages the installation of chaincode on
+  your peers, the approval of chaincode definitions for your organization, and
+  the committing of chaincode definitions to channels. You can read more about
+  how `_lifecycle` implements the Fabric chaincode lifecycle [process](../chaincode4noah.html).
+
+* Lifecycle system chaincode (LSCC) manages the chaincode lifecycle for the
+  1.x releases of Fabric. This version of lifecycle required that chaincode be
+  instantiated or upgraded on channels. You can read more about how the LSCC
+  implements this [process](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html).
+  You can still use LSCC to manage your chaincode if you have the channel
+  application capability set to V1_4_x or below.
 
 * **Configuration system chaincode (CSCC)** runs in all peers to handle changes to a
   channel configuration, such as a policy update.  You can read more about this
