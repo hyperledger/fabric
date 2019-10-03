@@ -372,7 +372,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	assert.Equal(err, ErrStoreEmpty)
 }
 
-func TestTransientStorePurgeByHeight(t *testing.T) {
+func TestTransientStorePurgeBelowHeight(t *testing.T) {
 	testStore, cleanup := testStore(t)
 	defer cleanup()
 	assert := assert.New(t)
@@ -428,7 +428,7 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 
 	// Retain results generate at block height greater than or equal to 12
 	minTransientBlkHtToRetain := uint64(12)
-	err = testStore.PurgeByHeight(minTransientBlkHtToRetain)
+	err = testStore.PurgeBelowHeight(minTransientBlkHtToRetain)
 	assert.NoError(err)
 
 	// Retrieve simulation results of txid-1 from  store
@@ -472,7 +472,7 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 
 	// Retain results at block height greater than or equal to 15
 	minTransientBlkHtToRetain = uint64(15)
-	err = testStore.PurgeByHeight(minTransientBlkHtToRetain)
+	err = testStore.PurgeBelowHeight(minTransientBlkHtToRetain)
 	assert.NoError(err)
 
 	// There should be no entries in the  store
@@ -482,7 +482,7 @@ func TestTransientStorePurgeByHeight(t *testing.T) {
 
 	// Retain results at block height greater than or equal to 15
 	minTransientBlkHtToRetain = uint64(15)
-	err = testStore.PurgeByHeight(minTransientBlkHtToRetain)
+	err = testStore.PurgeBelowHeight(minTransientBlkHtToRetain)
 	// Should not return any error
 	assert.NoError(err)
 }
@@ -677,7 +677,7 @@ func (s *Store) persistOldProto(txid string, blockHeight uint64,
 	// Create compositeKey for purge index by height with appropriate prefix, blockHeight,
 	// txid, uuid and store the compositeKey (purge index) with a nil byte as value. Note that
 	// the purge index is used to remove orphan entries in the transient store (which are not removed
-	// by PurgeTxids()) using BTL policy by PurgeByHeight(). Note that orphan entries are due to transaction
+	// by PurgeTxids()) using BTL policy by PurgeBelowHeight(). Note that orphan entries are due to transaction
 	// that gets endorsed but not submitted by the client for commit)
 	compositeKeyPurgeIndexByHeight := createCompositeKeyForPurgeIndexByHeight(blockHeight, txid, uuid)
 	dbBatch.Put(compositeKeyPurgeIndexByHeight, emptyValue)

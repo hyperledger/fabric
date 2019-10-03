@@ -306,6 +306,37 @@ func (txMissingPvtData TxMissingPvtDataMap) Add(txNum uint64, ns, coll string, i
 	txMissingPvtData[txNum] = append(txMissingPvtData[txNum], &MissingPvtData{ns, coll, isEligible})
 }
 
+// RetrievedPvtdata is a dependency that is implemented by coordinator/gossip for ledger
+// to be able to purge the transactions from the block after retrieving private data
+type RetrievedPvtdata interface {
+	GetBlockPvtdata() *BlockPvtdata
+	Purge()
+}
+
+// TxPvtdataInfo captures information about the requested private data to be retrieved
+// and is populated by ledger during commit
+type TxPvtdataInfo struct {
+	TxID                  string
+	Invalid               bool
+	SeqInBlock            uint64
+	CollectionPvtdataInfo []*CollectionPvtdataInfo
+}
+
+// CollectionPvtdataInfo contains information about the private data for a given collection
+type CollectionPvtdataInfo struct {
+	Namespace, Collection string
+	ExpectedHash          []byte
+	CollectionConfig      *common.StaticCollectionConfig
+	Endorsers             []*peer.Endorsement
+}
+
+// BlockPvtdata contains the retrieved private data as well as missing and ineligible
+// private data for use at commit time
+type BlockPvtdata struct {
+	PvtData        TxPvtDataMap
+	MissingPvtData TxMissingPvtDataMap
+}
+
 // CommitOptions encapsulates options associated with a block commit.
 type CommitOptions struct {
 	FetchPvtDataFromLedger bool
@@ -644,37 +675,6 @@ func (e *InvalidTxError) Error() string {
 // Currently works at a stepping stone to decrease surface area of bccsp
 type Hasher interface {
 	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
-}
-
-// RetrievedPvtdata is a dependency that is implemented by coordinator/gossip for ledger
-// to be able to purge the transactions from the block after retrieving private data
-type RetrievedPvtdata interface {
-	GetBlockPvtdata() *BlockPvtdata
-	Purge()
-}
-
-// TxPvtdataInfo captures information about the requested private data to be retrieved
-// and is populated by ledger during commit
-type TxPvtdataInfo struct {
-	TxID                  string
-	Invalid               bool
-	SeqInBlock            uint64
-	CollectionPvtdataInfo []*CollectionPvtdataInfo
-}
-
-// CollectionPvtdataInfo contains information about the private data for a given collection
-type CollectionPvtdataInfo struct {
-	Namespace, Collection string
-	ExpectedHash          []byte
-	CollectionConfig      *common.StaticCollectionConfig
-	Endorsers             []*peer.Endorsement
-}
-
-// BlockPvtdata contains the retrieved private data as well as missing and ineligible
-// private data for use at commit time
-type BlockPvtdata struct {
-	PvtData        TxPvtDataMap
-	MissingPvtData TxMissingPvtDataMap
 }
 
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener

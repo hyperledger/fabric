@@ -537,7 +537,7 @@ func setupPrivateDataProvider(t *testing.T,
 	})
 
 	// set up data in cache
-	cachedPvtdata := storePvtdataInCache(rwSetsInCache)
+	prefetchedPvtdata := storePvtdataInCache(rwSetsInCache)
 	// set up data in transient store
 	err := storePvtdataInTransientStore(rwSetsInTransientStore, store)
 	require.NoError(t, err, fmt.Sprintf("Failed to store private data in transient store: got err %s", err))
@@ -554,7 +554,7 @@ func setupPrivateDataProvider(t *testing.T,
 		purgeDurationHistogram:                  metrics.PurgeDuration.With("channel", ts.channelID),
 		transientStore:                          store,
 		pullRetryThreshold:                      testConfig.PullRetryThreshold,
-		cachedPvtdata:                           cachedPvtdata,
+		prefetchedPvtdata:                       prefetchedPvtdata,
 		transientBlockRetention:                 testConfig.TransientBlockRetention,
 		channelID:                               ts.channelID,
 		blockNum:                                ts.blockNum,

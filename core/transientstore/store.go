@@ -130,7 +130,7 @@ func (s *Store) Persist(txid string, blockHeight uint64,
 	// Create compositeKey for purge index by height with appropriate prefix, blockHeight,
 	// txid, uuid and store the compositeKey (purge index) with a nil byte as value. Note that
 	// the purge index is used to remove orphan entries in the transient store (which are not removed
-	// by PurgeTxids()) using BTL policy by PurgeByHeight(). Note that orphan entries are due to transaction
+	// by PurgeTxids()) using BTL policy by PurgeBelowHeight(). Note that orphan entries are due to transaction
 	// that gets endorsed but not submitted by the client for commit)
 	compositeKeyPurgeIndexByHeight := createCompositeKeyForPurgeIndexByHeight(blockHeight, txid, uuid)
 	dbBatch.Put(compositeKeyPurgeIndexByHeight, emptyValue)
@@ -207,17 +207,17 @@ func (s *Store) PurgeByTxids(txids []string) error {
 		iter.Release()
 	}
 	// If peer fails before/while writing the batch to golevelDB, these entries will be
-	// removed as per BTL policy later by PurgeByHeight()
+	// removed as per BTL policy later by PurgeBelowHeight()
 	return s.db.WriteBatch(dbBatch, true)
 }
 
-// PurgeByHeight removes private write sets at block height lesser than
+// PurgeBelowHeight removes private write sets at block height lesser than
 // a given maxBlockNumToRetain. In other words, Purge only retains private write sets
 // that were persisted at block height of maxBlockNumToRetain or higher. Though the private
 // write sets stored in transient store is removed by coordinator using PurgebyTxids()
-// after successful block commit, PurgeByHeight() is still required to remove orphan entries (as
+// after successful block commit, PurgeBelowHeight() is still required to remove orphan entries (as
 // transaction that gets endorsed may not be submitted by the client for commit)
-func (s *Store) PurgeByHeight(maxBlockNumToRetain uint64) error {
+func (s *Store) PurgeBelowHeight(maxBlockNumToRetain uint64) error {
 
 	logger.Debugf("Purging orphaned private data from transient store received prior to block [%d]", maxBlockNumToRetain)
 
