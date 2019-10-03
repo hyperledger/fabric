@@ -1468,7 +1468,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestPurgeByHeight(t *testing.T) {
+func TestPurgeBelowHeight(t *testing.T) {
 	conf := testConfig
 	conf.TransientBlockRetention = 5
 	peerSelfSignedData := protoutil.SignedData{}
