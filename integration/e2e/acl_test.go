@@ -273,7 +273,7 @@ var _ = Describe("EndToEndACL", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-		Expect(sess.Err).To(gbytes.Say(`Error: chaincode install failed with status: 500 - Failed to authorize invocation due to failed ACL check: Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy \[Admins\]: \[This identity is not an admin\]`))
+		Expect(sess.Err).To(gbytes.Say(`Error: chaincode install failed with status: 500 - Failed to authorize invocation due to failed ACL check: Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy \Q[Admins]\E: \Q[The identity is not an admin under this MSP [Org1MSP]: The identity does not contain OU [ADMIN], MSP: [Org1MSP]]\E`))
 
 		//
 		// when the ACL policy for _lifecycle/InstallChaincode is satisfied

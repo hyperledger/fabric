@@ -118,7 +118,7 @@ func TestMain(m *testing.M) {
 
 func TestGreenPath(t *testing.T) {
 	t.Parallel()
-	client, service := createClientAndService(t, testdir)
+	client, admin, service := createClientAndService(t, testdir)
 	defer service.Stop()
 	defer client.conn.Close()
 
@@ -143,17 +143,20 @@ func TestGreenPath(t *testing.T) {
 	nonExistentCollection := &ChaincodeCall{Name: "cc2", CollectionNames: []string{"col3"}}
 	_ = nonExistentCollection
 	req, err := req.AddPeersQuery().AddPeersQuery(col1).AddPeersQuery(nonExistentCollection).AddConfigQuery().AddEndorsersQuery(cc2cc, ccWithCollection)
-	assert.NoError(t, err)
-	res, err := client.Send(context.Background(), req, client.AuthInfo)
-	assert.NoError(t, err)
 
 	t.Run("Local peer query", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := admin.Send(context.Background(), req, admin.AuthInfo)
+		assert.NoError(t, err)
 		returnedPeers, err := res.ForLocal().Peers()
 		assert.NoError(t, err)
 		assert.True(t, peersToTestPeers(returnedPeers).Equal(testPeers.withoutStateInfo()))
 	})
 
 	t.Run("Channel peer queries", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := client.Send(context.Background(), req, client.AuthInfo)
+		assert.NoError(t, err)
 		returnedPeers, err := res.ForChannel("mychannel").Peers()
 		assert.NoError(t, err)
 		assert.True(t, peersToTestPeers(returnedPeers).Equal(testPeers))
@@ -172,6 +175,9 @@ func TestGreenPath(t *testing.T) {
 	})
 
 	t.Run("Endorser chaincode to chaincode", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := client.Send(context.Background(), req, client.AuthInfo)
+		assert.NoError(t, err)
 		endorsers, err := res.ForChannel("mychannel").Endorsers(cc2cc.Chaincodes, disc.NoFilter)
 		assert.NoError(t, err)
 		endorsersByMSP := map[string][]string{}
@@ -185,6 +191,9 @@ func TestGreenPath(t *testing.T) {
 	})
 
 	t.Run("Endorser chaincode with collection", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := client.Send(context.Background(), req, client.AuthInfo)
+		assert.NoError(t, err)
 		endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
 		assert.NoError(t, err)
 
@@ -197,6 +206,9 @@ func TestGreenPath(t *testing.T) {
 	})
 
 	t.Run("Config query", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := client.Send(context.Background(), req, client.AuthInfo)
+		assert.NoError(t, err)
 		conf, err := res.ForChannel("mychannel").Config()
 		assert.NoError(t, err)
 		// Ensure MSP Configs are exactly as they appear in the config block
@@ -217,7 +229,7 @@ func TestGreenPath(t *testing.T) {
 
 func TestEndorsementComputationFailure(t *testing.T) {
 	t.Parallel()
-	client, service := createClientAndService(t, testdir)
+	client, _, service := createClientAndService(t, testdir)
 	defer service.Stop()
 	defer client.conn.Close()
 
@@ -244,7 +256,7 @@ func TestEndorsementComputationFailure(t *testing.T) {
 
 func TestLedgerFailure(t *testing.T) {
 	t.Parallel()
-	client, service := createClientAndService(t, testdir)
+	client, _, service := createClientAndService(t, testdir)
 	defer service.Stop()
 	defer client.conn.Close()
 
@@ -270,7 +282,7 @@ func TestLedgerFailure(t *testing.T) {
 
 func TestRevocation(t *testing.T) {
 	t.Parallel()
-	client, service := createClientAndService(t, testdir)
+	client, _, service := createClientAndService(t, testdir)
 	defer service.Stop()
 	defer client.conn.Close()
 
@@ -443,7 +455,7 @@ func createSupport(t *testing.T, dir string, lsccMetadataManager *lsccMetadataMa
 	}
 }
 
-func createClientAndService(t *testing.T, testdir string) (*client, *service) {
+func createClientAndService(t *testing.T, testdir string) (*client, *client, *service) {
 	ca, err := tlsgen.NewCA()
 	assert.NoError(t, err)
 
@@ -476,13 +488,6 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 	clientKeyPair, err := ca.NewClientCertKeyPair()
 	assert.NoError(t, err)
 
-	signer := createSigner(t)
-
-	authInfo := &AuthInfo{
-		ClientIdentity:    signer.Creator,
-		ClientTlsCertHash: util.ComputeSHA256(clientKeyPair.TLSCert.Raw),
-	}
-
 	dialer, err := comm.NewGRPCClient(comm.ClientConfig{
 		Timeout: time.Second * 3,
 		SecOpts: comm.SecureOptions{
@@ -497,15 +502,39 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 	conn, err := dialer.NewConnection(gRPCServer.Address())
 	assert.NoError(t, err)
 
-	wrapperClient := &client{AuthInfo: authInfo, conn: conn}
+	userSigner := createUserSigner(t)
+	wrapperUserClient := &client{AuthInfo: &AuthInfo{
+		ClientIdentity:    userSigner.Creator,
+		ClientTlsCertHash: util.ComputeSHA256(clientKeyPair.TLSCert.Raw),
+	}, conn: conn}
 	var signerCacheSize uint = 10
-	c := disc.NewClient(wrapperClient.newConnection, signer.Sign, signerCacheSize)
-	wrapperClient.Client = c
+	wrapperUserClient.Client = disc.NewClient(wrapperUserClient.newConnection, userSigner.Sign, signerCacheSize)
+
+	adminSigner := createAdminSigner(t)
+	wrapperAdminClient := &client{AuthInfo: &AuthInfo{
+		ClientIdentity:    adminSigner.Creator,
+		ClientTlsCertHash: util.ComputeSHA256(clientKeyPair.TLSCert.Raw),
+	}, conn: conn}
+	wrapperAdminClient.Client = disc.NewClient(wrapperAdminClient.newConnection, adminSigner.Sign, signerCacheSize)
+
 	service := &service{Server: gRPCServer.Server(), lsccMetadataManager: l, sup: sup}
-	return wrapperClient, service
+	return wrapperUserClient, wrapperAdminClient, service
 }
 
-func createSigner(t *testing.T) *signer {
+func createUserSigner(t *testing.T) *signer {
+	identityDir := filepath.Join(testdir, "crypto-config", "peerOrganizations", "org1.example.com", "users", "User1@org1.example.com", "msp")
+	certPath := filepath.Join(identityDir, "signcerts", "User1@org1.example.com-cert.pem")
+	keyPath := filepath.Join(identityDir, "keystore")
+	keys, err := ioutil.ReadDir(keyPath)
+	assert.NoError(t, err)
+	assert.Len(t, keys, 1)
+	keyPath = filepath.Join(keyPath, keys[0].Name())
+	signer, err := newSigner("Org1MSP", certPath, keyPath)
+	assert.NoError(t, err)
+	return signer
+}
+
+func createAdminSigner(t *testing.T) *signer {
 	identityDir := filepath.Join(testdir, "crypto-config", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	certPath := filepath.Join(identityDir, "signcerts", "Admin@org1.example.com-cert.pem")
 	keyPath := filepath.Join(identityDir, "keystore")
@@ -522,7 +551,7 @@ func createMSP(t *testing.T, dir, mspID string) (msp.MSP, *msprotos.FabricMSPCon
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 	channelMSP, err := msp.New(
-		&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_1}},
+		&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_4_3}},
 		cryptoProvider,
 	)
 	assert.NoError(t, err)
