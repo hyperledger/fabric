@@ -63,7 +63,7 @@ func TestIntegrationPath(t *testing.T) {
 		DockerVM: &dc,
 	}, instance)
 
-	err = dc.Start(ccid, "NODE", &ccintf.PeerConnection{
+	err = dc.Start(ccid, "GOLANG", &ccintf.PeerConnection{
 		Address: "peer-address",
 	})
 	require.NoError(t, err)
@@ -71,6 +71,16 @@ func TestIntegrationPath(t *testing.T) {
 	err = dc.Stop(ccid)
 	require.NoError(t, err)
 }
+
+var expectedNodeStartScript = `
+set -e
+if [ -x /chaincode/start.sh ]; then
+	/chaincode/start.sh --peer.address peer-address
+else
+	cd /usr/local/src
+	npm start -- --peer.address peer-address
+fi
+`
 
 func TestGetArgs(t *testing.T) {
 	tests := []struct {
@@ -81,7 +91,7 @@ func TestGetArgs(t *testing.T) {
 	}{
 		{"golang-chaincode", pb.ChaincodeSpec_GOLANG, []string{"chaincode", "-peer.address=peer-address"}, ""},
 		{"java-chaincode", pb.ChaincodeSpec_JAVA, []string{"/root/chaincode-java/start", "--peerAddress", "peer-address"}, ""},
-		{"node-chaincode", pb.ChaincodeSpec_NODE, []string{"/bin/sh", "-c", "cd /usr/local/src; npm start -- --peer.address peer-address"}, ""},
+		{"node-chaincode", pb.ChaincodeSpec_NODE, []string{"/bin/sh", "-c", expectedNodeStartScript}, ""},
 		{"unknown-chaincode", pb.ChaincodeSpec_Type(999), []string{}, "unknown chaincodeType: 999"},
 	}
 	for _, tc := range tests {
@@ -491,6 +501,7 @@ type InMemBuilder struct{}
 func (imb InMemBuilder) Build() (io.Reader, error) {
 	buf := &bytes.Buffer{}
 	fmt.Fprintln(buf, "FROM busybox:latest")
+	fmt.Fprintln(buf, `RUN ln -s /bin/true /bin/chaincode`)
 	fmt.Fprintln(buf, `CMD ["tail", "-f", "/dev/null"]`)
 
 	startTime := time.Now()
