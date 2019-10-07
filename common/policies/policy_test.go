@@ -11,16 +11,26 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/common/policies/mocks"
 	mspi "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o mocks/identity_deserializer.go --fake-name IdentityDeserializer . identityDeserializer
+type identityDeserializer interface {
+	mspi.IdentityDeserializer
+}
+
+//go:generate counterfeiter -o mocks/identity.go --fake-name Identity . identity
+type identity interface {
+	mspi.Identity
+}
 
 type mockProvider struct{}
 
@@ -239,62 +249,6 @@ func TestPrincipalSetContainingOnly(t *testing.T) {
 	assert.True(t, principalSets[0].ContainingOnly(between20And30))
 }
 
-type fakeID struct {
-	id     *mspi.IdentityIdentifier
-	mspid  string
-	valid  error
-	verify error
-}
-
-func (f *fakeID) ExpiresAt() time.Time {
-	return time.Time{}
-}
-
-func (f *fakeID) GetIdentifier() *mspi.IdentityIdentifier {
-	return f.id
-}
-
-func (f *fakeID) GetMSPIdentifier() string {
-	return f.mspid
-}
-
-func (f *fakeID) Validate() error {
-	return f.valid
-}
-
-func (f *fakeID) GetOrganizationalUnits() []*mspi.OUIdentifier {
-	return nil
-}
-
-func (f *fakeID) Anonymous() bool {
-	return false
-}
-
-func (f *fakeID) Verify(msg []byte, sig []byte) error {
-	return f.verify
-}
-
-func (f *fakeID) Serialize() ([]byte, error) {
-	return nil, nil
-}
-
-func (f *fakeID) SatisfiesPrincipal(principal *msp.MSPPrincipal) error {
-	return nil
-}
-
-type fakeIdDs struct {
-	DeserializeIdentityRv  mspi.Identity
-	DeserializeIdentityErr error
-}
-
-func (f *fakeIdDs) DeserializeIdentity(serializedIdentity []byte) (mspi.Identity, error) {
-	return f.DeserializeIdentityRv, f.DeserializeIdentityErr
-}
-
-func (f *fakeIdDs) IsWellFormed(identity *msp.SerializedIdentity) error {
-	return nil
-}
-
 func TestSignatureSetToValidIdentities(t *testing.T) {
 	sd := []*protoutil.SignedData{
 		{
@@ -309,19 +263,25 @@ func TestSignatureSetToValidIdentities(t *testing.T) {
 		},
 	}
 
-	fIDDs := &fakeIdDs{}
-	fIDDs.DeserializeIdentityRv = &fakeID{
-		id: &mspi.IdentityIdentifier{
-			Id:    "id",
-			Mspid: "mspid",
-		},
-	}
+	fIDDs := &mocks.IdentityDeserializer{}
+	fID := &mocks.Identity{}
+	fID.VerifyReturns(nil)
+	fID.GetIdentifierReturns(&mspi.IdentityIdentifier{
+		Id:    "id",
+		Mspid: "mspid",
+	})
+	fIDDs.DeserializeIdentityReturns(fID, nil)
 
 	ids := SignatureSetToValidIdentities(sd, fIDDs)
 	assert.Len(t, ids, 1)
 	assert.NotNil(t, ids[0].GetIdentifier())
 	assert.Equal(t, "id", ids[0].GetIdentifier().Id)
 	assert.Equal(t, "mspid", ids[0].GetIdentifier().Mspid)
+	data, sig := fID.VerifyArgsForCall(0)
+	assert.Equal(t, []byte("data1"), data)
+	assert.Equal(t, []byte("signature1"), sig)
+	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
+	assert.Equal(t, []byte("identity1"), sidBytes)
 }
 
 func TestSignatureSetToValidIdentitiesDeserialiseErr(t *testing.T) {
@@ -333,11 +293,13 @@ func TestSignatureSetToValidIdentitiesDeserialiseErr(t *testing.T) {
 		},
 	}
 
-	fIDDs := &fakeIdDs{}
-	fIDDs.DeserializeIdentityErr = errors.New("bad identity")
+	fIDDs := &mocks.IdentityDeserializer{}
+	fIDDs.DeserializeIdentityReturns(nil, errors.New("bad identity"))
 
 	ids := SignatureSetToValidIdentities(sd, fIDDs)
 	assert.Len(t, ids, 0)
+	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
+	assert.Equal(t, []byte("identity1"), sidBytes)
 }
 
 func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
@@ -349,16 +311,20 @@ func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
 		},
 	}
 
-	fIDDs := &fakeIdDs{}
-	fID := &fakeID{
-		id: &mspi.IdentityIdentifier{
-			Id:    "id",
-			Mspid: "mspid",
-		},
-	}
-	fID.verify = errors.New("bad signature")
-	fIDDs.DeserializeIdentityRv = fID
+	fIDDs := &mocks.IdentityDeserializer{}
+	fID := &mocks.Identity{}
+	fID.VerifyReturns(errors.New("bad signature"))
+	fID.GetIdentifierReturns(&mspi.IdentityIdentifier{
+		Id:    "id",
+		Mspid: "mspid",
+	})
+	fIDDs.DeserializeIdentityReturns(fID, nil)
 
 	ids := SignatureSetToValidIdentities(sd, fIDDs)
 	assert.Len(t, ids, 0)
+	data, sig := fID.VerifyArgsForCall(0)
+	assert.Equal(t, []byte("data1"), data)
+	assert.Equal(t, []byte("signature1"), sig)
+	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
+	assert.Equal(t, []byte("identity1"), sidBytes)
 }

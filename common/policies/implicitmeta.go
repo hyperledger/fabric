@@ -109,21 +109,24 @@ func (imp *ImplicitMetaPolicy) EvaluateIdentities(identities []msp.Identity) err
 	remaining := imp.Threshold
 
 	defer func() {
-		if remaining != 0 {
-			// This log message may be large and expensive to construct, so worth checking the log level
-			if logger.IsEnabledFor(zapcore.DebugLevel) {
-				var b bytes.Buffer
-				b.WriteString(fmt.Sprintf("Evaluation Failed: Only %d policies were satisfied, but needed %d of [ ", imp.Threshold-remaining, imp.Threshold))
-				for m := range imp.managers {
-					b.WriteString(m)
-					b.WriteString("/")
-					b.WriteString(imp.SubPolicyName)
-					b.WriteString(" ")
-				}
-				b.WriteString("]")
-				logger.Debugf(b.String())
-			}
+		// This log message may be large and expensive to construct, so worth checking the log level
+		if remaining == 0 {
+			return
 		}
+		if !logger.IsEnabledFor(zapcore.DebugLevel) {
+			return
+		}
+
+		var b bytes.Buffer
+		b.WriteString(fmt.Sprintf("Evaluation Failed: Only %d policies were satisfied, but needed %d of [ ", imp.Threshold-remaining, imp.Threshold))
+		for m := range imp.managers {
+			b.WriteString(m)
+			b.WriteString("/")
+			b.WriteString(imp.SubPolicyName)
+			b.WriteString(" ")
+		}
+		b.WriteString("]")
+		logger.Debugf(b.String())
 	}()
 
 	for _, policy := range imp.SubPolicies {

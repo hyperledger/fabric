@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package cauthdsl
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -15,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 type provider struct {
@@ -86,7 +86,7 @@ type policy struct {
 // 2) the signing identities satisfy the policy
 func (p *policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	if p == nil {
-		return fmt.Errorf("No such policy")
+		return errors.New("no such policy")
 	}
 
 	ids := policies.SignatureSetToValidIdentities(signatureSet, p.deserializer)
