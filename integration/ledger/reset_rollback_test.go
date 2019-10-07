@@ -29,7 +29,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var _ = Describe("Rollback & Reset Ledger", func() {
+var _ = Describe("rollback, reset, pause and resume peer node commands", func() {
 	// at the beginning of each test under this block, we have defined two collections:
 	// 1. collectionMarbles - Org1 and Org2 have access to this collection
 	// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
@@ -82,181 +82,103 @@ var _ = Describe("Rollback & Reset Ledger", func() {
 			helper.assertPresentInCollectionM("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
 			helper.assertPresentInCollectionMPD("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
 		}
-
 	})
 
 	AfterEach(func() {
 		setup.cleanup()
 	})
 
-	assertPostRollbackOrReset := func(createNewBlocks bool) {
-		org2peer0 := setup.network.Peer("org2", "peer0")
-
-		By("verifying that the endorsement is disabled")
-		setup.startPeer(org2peer0)
-		helper.assertDisabledEndorser("marblesp", org2peer0)
-
-		By("bringing the peer0.org2 to recent height by starting the orderer")
-		setup.startBrokerAndOrderer()
-		helper.waitUntilEndorserEnabled(org2peer0)
-
-		By("verifying marble1 to marble5 exist in collectionMarbles & collectionMarblePrivateDetails in peer0.org2")
-		for i := 1; i <= 5; i++ {
-			helper.assertPresentInCollectionM("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
-			helper.assertPresentInCollectionMPD("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
+	// This test executes the rollback, reset, pause, and resume commands on the following peerss
+	// org1.peer0 - rollback
+	// org2.peer0 - reset
+	// org3.peer0 - pause/rollback/resume
+	//
+	// There are 14 blocks created in BeforeEach (before rollback/reset).
+	// block 0: genesis, block 1: org1Anchor, block 2: org2Anchor, block 3: org3Anchor
+	// block 4 to 8: chaincode instantiation, block 9 to 13: chaincode invoke to add marbles.
+	It("pauses and resumes channels and rolls back and resets the ledger", func() {
+		By("Checking ledger height on each peer")
+		for _, peer := range helper.peers {
+			Expect(helper.getLedgerHeight(peer)).Should(Equal(14))
 		}
 
-		By("verifying preResetHeightFile has been removed after peer restart")
-		preResetHeightFile := filepath.Join(setup.network.RootDir, "peers/org2.peer0/filesystem/ledgersData/chains/chains", helper.channelID, "__preResetHeight")
-		Expect(preResetHeightFile).NotTo(BeAnExistingFile())
+		org1peer0 := setup.network.Peer("org1", "peer0")
+		org2peer0 := setup.network.Peer("org2", "peer0")
+		org3peer0 := setup.network.Peer("org3", "peer0")
 
-		By("starting org1 and org3 peer")
-		setup.startPeer(setup.peers[0])
-		setup.startPeer(setup.peers[2])
+		// Negative test: rollback, reset, pause, and resume should fail when the peer is online
+		expectedErrMessage := "as another peer node command is executing," +
+			" wait for that command to complete its execution or terminate it before retrying"
+		By("Rolling back the peer to block 6 from block 13 while the peer node is online")
+		helper.rollback(org1peer0, 6, expectedErrMessage, false)
+		By("Resetting the peer to the genesis block while the peer node is online")
+		helper.reset(org2peer0, expectedErrMessage, false)
+		By("Pausing the peer while the peer node is online")
+		helper.pause(org3peer0, expectedErrMessage, false)
+		By("Resuming the peer while the peer node is online")
+		helper.resume(org3peer0, expectedErrMessage, false)
+
+		By("Stopping the network to test commands")
+		setup.terminateAllProcess()
+
+		By("Rolling back the channel to block 6 from block 14 on org1peer0")
+		helper.rollback(org1peer0, 6, "", true)
+
+		By("Resetting org2peer0 to the genesis block")
+		helper.reset(org2peer0, "", true)
+
+		By("Pausing the channel on org3peer0")
+		helper.pause(org3peer0, "", true)
+
+		By("Rolling back the paused channel to block 6 from block 14 on org3peer0")
+		helper.rollback(org3peer0, 6, "", true)
+
+		By("Verifying paused channel is not found upon peer restart")
+		setup.startPeer(org3peer0)
+		helper.assertPausedChannel(org3peer0)
+
+		By("Checking preResetHeightFile exists for a paused channel that is also rolled back or reset")
+		setup.startBrokerAndOrderer()
+		preResetHeightFile := filepath.Join(setup.network.PeerLedgerDir(org3peer0), "chains/chains", helper.channelID, "__preResetHeight")
+		Expect(preResetHeightFile).To(BeARegularFile())
+
+		setup.terminateAllProcess()
+
+		By("Resuming the peer")
+		helper.resume(org3peer0, "", true)
+
+		By("Verifying that the endorsement is disabled when the peer has not received missing blocks")
+		setup.startPeers()
+		for _, peer := range setup.peers {
+			helper.assertDisabledEndorser("marblesp", peer)
+		}
+
+		By("Bringing the peers to recent height by starting the orderer")
+		setup.startBrokerAndOrderer()
+		for _, peer := range setup.peers {
+			By("Verifying endorsement is enabled and preResetHeightFile is removed on peer " + peer.ID())
+			helper.waitUntilEndorserEnabled(peer)
+			preResetHeightFile := filepath.Join(setup.network.PeerLedgerDir(peer), "chains/chains", helper.channelID, "__preResetHeight")
+			Expect(preResetHeightFile).NotTo(BeAnExistingFile())
+		}
+
 		setup.network.VerifyMembership(setup.peers, setup.channelID, "marblesp")
 
-		By("verifying leger height on all peers")
+		By("Verifying leger height on all peers")
 		helper.waitUntilEqualLedgerHeight(14)
 
-		if !createNewBlocks {
-			return
-		}
-
-		By("creating 2 more blocks")
+		// Test chaincode works correctly after the commands
+		By("Creating 2 more blocks post rollback/reset")
 		for i := 6; i <= 7; i++ {
 			helper.addMarble("marblesp", fmt.Sprintf(`{"name":"marble%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), org2peer0)
 			helper.waitUntilEqualLedgerHeight(14 + i - 5)
 		}
 
-		By("verifying marble1 to marble7 exist in collectionMarbles & collectionMarblePrivateDetails in peer0.org2")
+		By("Verifying marble1 to marble7 exist in collectionMarbles & collectionMarblePrivateDetails on org2peer0")
 		for i := 1; i <= 7; i++ {
 			helper.assertPresentInCollectionM("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
 			helper.assertPresentInCollectionMPD("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
 		}
-
-	}
-
-	assertPostPause := func() {
-		// verify orderer and peers can be started successfully after pause and reset
-		org2peer0 := setup.network.Peer("org2", "peer0")
-
-		By("starting org2Peer0")
-		setup.startPeer(org2peer0)
-
-		By("starting the orderer")
-		setup.startBrokerAndOrderer()
-
-		// paused channel should not be found by ChannelInfo
-		sess, err := helper.PeerUserSession(org2peer0, "User1", commands.ChannelInfo{
-			ChannelID: helper.channelID,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, helper.EventuallyTimeout).Should(gexec.Exit(1))
-		Expect(sess.Err).To(gbytes.Say("Invalid chain ID"))
-
-		By("starting org1 and org3 peer")
-		setup.startPeer(setup.peers[0])
-		setup.startPeer(setup.peers[2])
-	}
-
-	It("rolls back the ledger to a past block with paused channel", func() {
-		org2peer0 := setup.network.Peer("org2", "peer0")
-		// block 0: genesis, block 1: org1Anchor, block 2: org2Anchor, block 3: org3Anchor
-		// block 4 to 8: chaincode instantiation, block 9 to 13: chaincode invoke to add marbles.
-		By("Rolling back peer0.org2 to block 6 from block 13 while the peer node is online")
-		expectedErrMessage := "as another peer node command is executing," +
-			" wait for that command to complete its execution or terminate it before retrying"
-		helper.rollback(org2peer0, 6, expectedErrMessage, false)
-
-		// When rollback first and then pause
-		By("Rolling back peer0.org2 to block 6 from block 13 while the peer node is offline")
-		Expect(helper.getLedgerHeight(org2peer0)).Should(Equal(14))
-		setup.terminateAllProcess()
-		helper.rollback(org2peer0, 6, "", true)
-
-		By("Pausing peer0.org2 (after rollback) while the peer node is offline")
-		helper.pause(org2peer0, "", true)
-
-		By("Checking preResetHeightFile exists for paused channel after peer restart")
-		assertPostPause()
-		preResetHeightFile := filepath.Join(setup.network.RootDir, "peers/org2.peer0/filesystem/ledgersData/chains/chains", helper.channelID, "__preResetHeight")
-		Expect(preResetHeightFile).To(BeARegularFile())
-
-		// resume the channel and restart to clear preResetHeightFile
-		By("Resuming peer0.org2 and restarting processes")
-		setup.terminateAllProcess()
-		helper.resume(org2peer0, "", true)
-		assertPostRollbackOrReset(false)
-
-		// When pause first and then rollback
-		By("Pausing peer0.org2 (before rollback) while the peer node is offline")
-		setup.terminateAllProcess()
-		helper.pause(org2peer0, "", true)
-
-		By("Rolling back (after pasue) peer0.org2 to block 6 from block 13 while the peer node is offline")
-		helper.rollback(org2peer0, 6, "", true)
-
-		By("Checking preResetHeightFile exists for paused channel after peer restart")
-		assertPostPause()
-		Expect(preResetHeightFile).To(BeARegularFile())
-
-		By("Resuming peer0.org2 while the peer node is offline")
-		setup.terminateAllProcess()
-		helper.resume(org2peer0, "", true)
-
-		assertPostRollbackOrReset(true)
-	})
-
-	It("resets the ledger to the genesis block with paused channel", func() {
-		org2peer0 := setup.network.Peer("org2", "peer0")
-		By("Resetting peer0.org2 to the genesis block while the peer node is online")
-		expectedErrMessage := "as another peer node command is executing," +
-			" wait for that command to complete its execution or terminate it before retrying"
-		helper.reset(org2peer0, expectedErrMessage, false)
-
-		By("Pausing peer0.org2 while the peer node is online")
-		helper.pause(org2peer0, expectedErrMessage, false)
-
-		By("Resuming peer0.org2 while the peer node is online")
-		helper.resume(org2peer0, expectedErrMessage, false)
-
-		// When reset first and then pause
-		By("Resetting peer0.org2 (before pause) to the genesis block while the peer node is offline")
-		Expect(helper.getLedgerHeight(org2peer0)).Should(Equal(14))
-		setup.terminateAllProcess()
-		helper.reset(org2peer0, "", true)
-
-		By("Pausing peer0.org2 (after reset) while the peer node is offline")
-		helper.pause(org2peer0, "", true)
-
-		By("Checking preResetHeightFile exists for paused channel after peer restart")
-		assertPostPause()
-		preResetHeightFile := filepath.Join(setup.network.RootDir, "peers/org2.peer0/filesystem/ledgersData/chains/chains", helper.channelID, "__preResetHeight")
-		Expect(preResetHeightFile).To(BeARegularFile())
-
-		// resume the channel and restart to clear preResetHeightFile
-		By("Resuming peer0.org2 while the peer node is offline")
-		setup.terminateAllProcess()
-		helper.resume(org2peer0, "", true)
-		assertPostRollbackOrReset(false)
-
-		// When pause first and then reset
-		By("Pausing peer0.org2 (before reset) while the peer node is offline")
-		setup.terminateAllProcess()
-		helper.pause(org2peer0, "", true)
-
-		By("Resetting peer0.org2 (before pausing) to the genesis block while the peer node is offline")
-		helper.reset(org2peer0, "", true)
-
-		By("Checking preResetHeightFile exists for paused channel after peer restart")
-		assertPostPause()
-		Expect(preResetHeightFile).To(BeARegularFile())
-
-		By("Resuming peer0.org2 while the peer node is offline")
-		setup.terminateAllProcess()
-		helper.resume(org2peer0, "", true)
-
-		assertPostRollbackOrReset(true)
 	})
 })
 
@@ -364,6 +286,7 @@ func (s *setup) startPeer(peer *nwo.Peer) {
 }
 
 func (s *setup) startBrokerAndOrderer() {
+
 	brokerRunner := s.network.BrokerGroupRunner()
 	brokerProcess := ifrit.Invoke(brokerRunner)
 	Eventually(brokerProcess.Ready(), s.network.EventuallyTimeout).Should(BeClosed())
@@ -544,4 +467,13 @@ func (th *testHelper) assertDisabledEndorser(chaincodeName string, peer *nwo.Pee
 	}
 	expectedMsg := "endorse requests are blocked while ledgers are being rebuilt"
 	th.queryChaincode(peer, command, expectedMsg, false)
+}
+
+func (th *testHelper) assertPausedChannel(peer *nwo.Peer) {
+	sess, err := th.PeerUserSession(peer, "User1", commands.ChannelInfo{
+		ChannelID: th.channelID,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, th.EventuallyTimeout).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say("Invalid chain ID"))
 }
