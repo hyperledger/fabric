@@ -248,8 +248,9 @@ func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, privateInfo *
 
 	for _, txPvtdata := range pdp.prefetchedPvtdata {
 		txID := getTxIDBySeqInBlock(txPvtdata.SeqInBlock, txPvtdataQuery)
+		// if can't match txID from query, then the data was never requested so skip the entire tx
 		if txID == "" {
-			pdp.logger.Warningf("Failed fetching private data from cache: Could not find txID for SeqInBlock %d", txPvtdata.SeqInBlock)
+			pdp.logger.Warning("Found extra data in prefetched at sequence", txPvtdata.SeqInBlock, " Skipping.")
 			continue
 		}
 		for _, ns := range txPvtdata.WriteSet.NsPvtRwset {
@@ -406,9 +407,9 @@ func (pdp *PvtdataProvider) prepareBlockPvtdata(pvtdata rwsetByKeys, privateInfo
 	}
 
 	if len(privateInfo.eligibleMissingKeys) == 0 {
-		pdp.logger.Infof("Successfully fetched all collection private write sets for block [%d]", pdp.blockNum)
+		pdp.logger.Infof("Successfully fetched all eligible collection private write sets for block [%d]", pdp.blockNum)
 	} else {
-		pdp.logger.Warningf("Could not fetch all missing collection private write sets for block [%d]. Will commit block with missing private write sets:[%v]",
+		pdp.logger.Warningf("Could not fetch all missing eligible collection private write sets for block [%d]. Will commit block with missing private write sets:[%v]",
 			pdp.blockNum, privateInfo.eligibleMissingKeys)
 	}
 
