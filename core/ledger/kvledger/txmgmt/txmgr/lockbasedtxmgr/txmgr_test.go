@@ -995,17 +995,22 @@ func TestFindAndRemoveStalePvtData(t *testing.T) {
 
 	// construct pvt data for some of the above missing data. note that no
 	// duplicate entries are expected
-	// old value and hence should not get accepted
+
+	// existent keyhash - a kvwrite with lower version (than the version of existent keyhash) should be considered stale
 	hashedCompositeKeyNs1Coll1Key1 := privacyenabledstate.HashedCompositeKey{Namespace: "ns1", CollectionName: "coll1", KeyHash: string(util.ComputeStringHash("key1"))}
 	pvtKVWriteNs1Coll1Key1 := &privacyenabledstate.PvtKVWrite{Key: "key1", IsDelete: false, Value: []byte("old_value_1_1_1"), Version: version.NewHeight(1, 0)}
 
-	// new value and hence should get accepted
+	// existent keyhash - a kvwrite with higher version (than the version of existent keyhash) should not be considered stale
 	hashedCompositeKeyNs2Coll1Key2 := privacyenabledstate.HashedCompositeKey{Namespace: "ns2", CollectionName: "coll1", KeyHash: string(util.ComputeStringHash("key2"))}
 	pvtKVWriteNs2Coll1Key2 := &privacyenabledstate.PvtKVWrite{Key: "key2", IsDelete: false, Value: []byte("value_2_1_2"), Version: version.NewHeight(2, 1)}
 
-	// delete -- should get accepted
+	// non existent keyhash (because deleted earlier or expired) - a kvwrite for delete should not be considered stale
 	hashedCompositeKeyNs1Coll3Key3 := privacyenabledstate.HashedCompositeKey{Namespace: "ns1", CollectionName: "coll3", KeyHash: string(util.ComputeStringHash("key3"))}
 	pvtKVWriteNs1Coll3Key3 := &privacyenabledstate.PvtKVWrite{Key: "key3", IsDelete: true, Value: nil, Version: version.NewHeight(2, 3)}
+
+	// non existent keyhash (because deleted earlier or expired) - a kvwrite for value set should be considered stale
+	hashedCompositeKeyNs1Coll4Key4 := privacyenabledstate.HashedCompositeKey{Namespace: "ns1", CollectionName: "coll4", KeyHash: string(util.ComputeStringHash("key4"))}
+	pvtKVWriteNs1Coll4Key4 := &privacyenabledstate.PvtKVWrite{Key: "key4", Value: []byte("value_1_4_4"), Version: version.NewHeight(2, 3)}
 
 	// there would be a version mismatch but the hash value must be the same. hence,
 	// this should be accepted too
@@ -1017,6 +1022,7 @@ func TestFindAndRemoveStalePvtData(t *testing.T) {
 		hashedCompositeKeyNs2Coll1Key2: pvtKVWriteNs2Coll1Key2,
 		hashedCompositeKeyNs1Coll3Key3: pvtKVWriteNs1Coll3Key3,
 		hashedCompositeKeyNs2Coll2Key3: pvtKVWriteNs2Coll2Key3,
+		hashedCompositeKeyNs1Coll4Key4: pvtKVWriteNs1Coll4Key4,
 	}
 
 	// created the expected batch from ValidateAndPrepareBatchForPvtDataofOldBlocks
