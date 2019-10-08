@@ -193,7 +193,7 @@ var genesisDefaults = TopLevel{
 				ElectionTick:         10,
 				HeartbeatTick:        1,
 				MaxInflightBlocks:    5,
-				SnapshotIntervalSize: 20 * 1024 * 1024, // 20 MB
+				SnapshotIntervalSize: 16 * 1024 * 1024, // 16 MB
 			},
 		},
 	},

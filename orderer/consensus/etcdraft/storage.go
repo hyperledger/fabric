@@ -29,7 +29,7 @@ import (
 // intact file is found. The more snapshot files we keep around, the more we
 // mitigate the impact of a corrupted snapshots. This is exported for testing
 // purpose. This MUST be greater equal than 1.
-var MaxSnapshotFiles = 5
+var MaxSnapshotFiles = 4
 
 // MemoryStorage is currently backed by etcd/raft.MemoryStorage. This interface is
 // defined to expose dependencies of fsm so that it may be swapped in the

@@ -42,12 +42,12 @@ const (
 	// DefaultSnapshotCatchUpEntries is the default number of entries
 	// to preserve in memory when a snapshot is taken. This is for
 	// slow followers to catch up.
-	DefaultSnapshotCatchUpEntries = uint64(20)
+	DefaultSnapshotCatchUpEntries = uint64(4)
 
 	// DefaultSnapshotIntervalSize is the default snapshot interval. It is
 	// used if SnapshotIntervalSize is not provided in channel config options.
 	// It is needed to enforce snapshot being set.
-	DefaultSnapshotIntervalSize = 20 * MEGABYTE // 20 MB
+	DefaultSnapshotIntervalSize = 16 * MEGABYTE
 
 	// DefaultEvictionSuspicion is the threshold that a node will start
 	// suspecting its own eviction if it has been leaderless for this
