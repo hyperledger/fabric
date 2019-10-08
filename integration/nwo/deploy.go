@@ -107,8 +107,10 @@ func DeployChaincodeLegacy(n *Network, channel string, orderer *Orderer, chainco
 		chaincode.PackageFile = tempFile.Name()
 	}
 
-	// package using the first peer
-	PackageChaincodeLegacy(n, chaincode, peers[0])
+	// only create chaincode package if it doesn't already exist
+	if fi, err := os.Stat(chaincode.PackageFile); os.IsNotExist(err) || fi.Size() == 0 {
+		PackageChaincodeLegacy(n, chaincode, peers[0])
+	}
 
 	// install on all peers
 	InstallChaincodeLegacy(n, chaincode, peers...)

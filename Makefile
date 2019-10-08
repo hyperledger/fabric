@@ -148,6 +148,8 @@ unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker
 unit-tests: unit-test
 
 # Pull thirdparty docker images based on the latest baseimage release version
+# Also pull ccenv-1.4 for compatibility test to ensure pre-2.0 installed chaincodes
+# can be built by a peer configured to use the ccenv-1.4 as the builder image.
 .PHONY: docker-thirdparty
 docker-thirdparty:
 	docker pull couchdb:${COUCHDB_VER}
@@ -155,6 +157,7 @@ docker-thirdparty:
 	docker tag $(BASE_DOCKER_NS)/fabric-zookeeper:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-zookeeper
 	docker pull $(BASE_DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG)
 	docker tag $(BASE_DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-kafka
+	docker pull hyperledger/fabric-ccenv:1.4
 
 .PHONY: verify
 verify: export JOB_TYPE=VERIFY

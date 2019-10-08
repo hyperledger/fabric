@@ -802,4 +802,60 @@ var _ = Describe("Release interoperability", func() {
 			})
 		})
 	})
+
+	Describe("solo network using ccenv-1.4", func() {
+		var network *nwo.Network
+		var process ifrit.Process
+
+		BeforeEach(func() {
+			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+
+			// Generate config and bootstrap the network
+			network.GenerateConfigTree()
+
+			for _, peer := range network.PeersWithChannel("testchannel") {
+				core := network.ReadPeerConfig(peer)
+				core.Chaincode.Builder = "$(DOCKER_NS)/fabric-ccenv:1.4"
+				network.WritePeerConfig(peer, core)
+			}
+
+			network.Bootstrap()
+
+			// Start all of the fabric processes
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		})
+
+		AfterEach(func() {
+			// Shutdown processes and cleanup
+			process.Signal(syscall.SIGTERM)
+			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+			network.Cleanup()
+		})
+
+		It("deploys and executes chaincode (simple)", func() {
+			By("deploying the chaincode using LSCC on a channel with V1_4 application capabilities")
+			orderer := network.Orderer("orderer")
+			peer := network.Peer("Org1", "peer1")
+
+			cwd, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			// this chaincode was packaged using the v1.4.3 fabric-tools
+			// (image id: 18ed4db0cd57) and peer (image id: fa87ccaed0ef)
+			// images. It was packaged with name "mycc" and version "0.0".
+			chaincode := nwo.Chaincode{
+				Name:        "mycc",
+				Version:     "0.0",
+				PackageFile: filepath.Join(cwd, "testdata/mycc-0_0-v14.cds"),
+				Ctor:        `{"Args":["init","a","100","b","200"]}`,
+				Policy:      `AND ('Org1MSP.member','Org2MSP.member')`,
+			}
+
+			network.CreateAndJoinChannels(orderer)
+			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
+			RunQueryInvokeQuery(network, orderer, peer, "mycc", 100)
+		})
+	})
 })
