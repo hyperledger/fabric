@@ -661,6 +661,7 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA, msp.ORDERER, orgSpec.EnableNodeOUs)
 
 	adminUser := NodeSpec{
+		isAdmin:    true,
 		CommonName: fmt.Sprintf("%s@%s", adminBaseName, orgName),
 	}
 
