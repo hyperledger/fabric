@@ -55,3 +55,28 @@ func TestEmptyACLs(t *testing.T) {
 	assert.NotNil(t, ccg.aclPolicyRefs)
 	assert.Empty(t, ccg.aclPolicyRefs)
 }
+
+func TestEmptyPolicyRef(t *testing.T) {
+	var ars = map[string]*pb.APIResource{
+		"unsetAPI": {PolicyRef: ""},
+	}
+
+	ccg := newAPIsProvider(ars)
+
+	assert.NotNil(t, ccg)
+	assert.NotNil(t, ccg.aclPolicyRefs)
+	assert.Empty(t, ccg.aclPolicyRefs)
+
+	ars = map[string]*pb.APIResource{
+		"unsetAPI": {PolicyRef: ""},
+		"setAPI":   {PolicyRef: sampleAPI2PolicyRef},
+	}
+
+	ccg = newAPIsProvider(ars)
+
+	assert.NotNil(t, ccg)
+	assert.NotNil(t, ccg.aclPolicyRefs)
+	assert.NotEmpty(t, ccg.aclPolicyRefs)
+	assert.NotContains(t, ccg.aclPolicyRefs, sampleAPI1Name)
+
+}
