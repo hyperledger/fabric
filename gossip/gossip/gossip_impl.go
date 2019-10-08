@@ -972,6 +972,10 @@ func (da *discoveryAdapter) PresumedDead() <-chan common.PKIidType {
 	return da.presumedDead
 }
 
+func (da *discoveryAdapter) IdentitySwitch() <-chan common.PKIidType {
+	return da.c.IdentitySwitch()
+}
+
 func (da *discoveryAdapter) CloseConn(peer *discovery.NetworkMember) {
 	da.c.CloseConn(&comm.RemotePeer{PKIID: peer.PKIid})
 }

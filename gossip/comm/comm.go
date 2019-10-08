@@ -44,6 +44,9 @@ type Comm interface {
 	// PresumedDead returns a read-only channel for node endpoints that are suspected to be offline
 	PresumedDead() <-chan common.PKIidType
 
+	// IdentitySwitch returns a read-only channel about identity change events
+	IdentitySwitch() <-chan common.PKIidType
+
 	// CloseConn closes a connection to a certain endpoint
 	CloseConn(peer *RemotePeer)
 

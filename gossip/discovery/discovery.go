@@ -66,6 +66,9 @@ type CommService interface {
 	// Forward sends message to the next hop, excluding the hop
 	// from which message was initially received
 	Forward(msg proto.ReceivedMessage)
+
+	// IdentitySwitch returns a read-only channel about identity change events
+	IdentitySwitch() <-chan common.PKIidType
 }
 
 // NetworkMember is a peer's representation

@@ -134,6 +134,10 @@ func (mock *commMock) start() {
 	}
 }
 
+func (mock *commMock) IdentitySwitch() <-chan common.PKIidType {
+	panic("implement me")
+}
+
 // GetPKIid returns this instance's PKI id
 func (mock *commMock) GetPKIid() common.PKIidType {
 	return common.PKIidType(mock.id)

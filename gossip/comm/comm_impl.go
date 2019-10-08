@@ -57,26 +57,27 @@ func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore iden
 	commMetrics *metrics.CommMetrics, config CommConfig, dialOpts ...grpc.DialOption) (Comm, error) {
 
 	commInst := &commImpl{
-		sa:             sa,
-		pubSub:         util.NewPubSub(),
-		PKIID:          idStore.GetPKIidOfCert(peerIdentity),
-		idMapper:       idStore,
-		logger:         util.GetLogger(util.CommLogger, ""),
-		peerIdentity:   peerIdentity,
-		opts:           dialOpts,
-		secureDialOpts: secureDialOpts,
-		msgPublisher:   NewChannelDemultiplexer(),
-		lock:           &sync.Mutex{},
-		deadEndpoints:  make(chan common.PKIidType, 100),
-		stopping:       int32(0),
-		exitChan:       make(chan struct{}),
-		subscriptions:  make([]chan proto.ReceivedMessage, 0),
-		tlsCerts:       certs,
-		metrics:        commMetrics,
-		dialTimeout:    config.DialTimeout,
-		connTimeout:    config.ConnTimeout,
-		recvBuffSize:   config.RecvBuffSize,
-		sendBuffSize:   config.SendBuffSize,
+		sa:              sa,
+		pubSub:          util.NewPubSub(),
+		PKIID:           idStore.GetPKIidOfCert(peerIdentity),
+		idMapper:        idStore,
+		logger:          util.GetLogger(util.CommLogger, ""),
+		peerIdentity:    peerIdentity,
+		opts:            dialOpts,
+		secureDialOpts:  secureDialOpts,
+		msgPublisher:    NewChannelDemultiplexer(),
+		lock:            &sync.Mutex{},
+		deadEndpoints:   make(chan common.PKIidType, 100),
+		identityChanges: make(chan common.PKIidType, 1),
+		stopping:        int32(0),
+		exitChan:        make(chan struct{}),
+		subscriptions:   make([]chan proto.ReceivedMessage, 0),
+		tlsCerts:        certs,
+		metrics:         commMetrics,
+		dialTimeout:     config.DialTimeout,
+		connTimeout:     config.ConnTimeout,
+		recvBuffSize:    config.RecvBuffSize,
+		sendBuffSize:    config.SendBuffSize,
 	}
 
 	connConfig := ConnConfig{
@@ -100,28 +101,29 @@ type CommConfig struct {
 }
 
 type commImpl struct {
-	sa             api.SecurityAdvisor
-	tlsCerts       *common.TLSCertificates
-	pubSub         *util.PubSub
-	peerIdentity   api.PeerIdentityType
-	idMapper       identity.Mapper
-	logger         util.Logger
-	opts           []grpc.DialOption
-	secureDialOpts func() []grpc.DialOption
-	connStore      *connectionStore
-	PKIID          []byte
-	deadEndpoints  chan common.PKIidType
-	msgPublisher   *ChannelDeMultiplexer
-	lock           *sync.Mutex
-	exitChan       chan struct{}
-	stopWG         sync.WaitGroup
-	subscriptions  []chan proto.ReceivedMessage
-	stopping       int32
-	metrics        *metrics.CommMetrics
-	dialTimeout    time.Duration
-	connTimeout    time.Duration
-	recvBuffSize   int
-	sendBuffSize   int
+	sa              api.SecurityAdvisor
+	tlsCerts        *common.TLSCertificates
+	pubSub          *util.PubSub
+	peerIdentity    api.PeerIdentityType
+	idMapper        identity.Mapper
+	logger          util.Logger
+	opts            []grpc.DialOption
+	secureDialOpts  func() []grpc.DialOption
+	connStore       *connectionStore
+	PKIID           []byte
+	deadEndpoints   chan common.PKIidType
+	identityChanges chan common.PKIidType
+	msgPublisher    *ChannelDeMultiplexer
+	lock            *sync.Mutex
+	exitChan        chan struct{}
+	stopWG          sync.WaitGroup
+	subscriptions   []chan proto.ReceivedMessage
+	stopping        int32
+	metrics         *metrics.CommMetrics
+	dialTimeout     time.Duration
+	connTimeout     time.Duration
+	recvBuffSize    int
+	sendBuffSize    int
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
@@ -175,6 +177,9 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 					cc.Close()
 					cancel()
 					return nil, errors.New("authentication failure")
+				} else {
+					c.logger.Infof("Peer %s changed its PKI-ID from %s to %s", endpoint, expectedPKIID, pkiID)
+					c.identityChanges <- expectedPKIID
 				}
 			}
 			connConfig := ConnConfig{
@@ -232,6 +237,7 @@ func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.SignedGossipMessa
 		disConnectOnErr := func(err error) {
 			c.logger.Warningf("%v isn't responsive: %v", peer, err)
 			c.disconnect(peer.PKIID)
+			conn.close()
 		}
 		conn.send(msg, disConnectOnErr, shouldBlock)
 		return
@@ -350,6 +356,10 @@ func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan proto.Received
 
 func (c *commImpl) PresumedDead() <-chan common.PKIidType {
 	return c.deadEndpoints
+}
+
+func (c *commImpl) IdentitySwitch() <-chan common.PKIidType {
+	return c.identityChanges
 }
 
 func (c *commImpl) CloseConn(peer *RemotePeer) {
