@@ -525,3 +525,10 @@ var _ = Describe("Externalbuilders", func() {
 		})
 	})
 })
+
+var _ = Describe("SanitizeCCIDPath", func() {
+	It("forbids the set of forbidden windows characters", func() {
+		sanitizedPath := externalbuilders.SanitizeCCIDPath(`<>:"/\|?*&`)
+		Expect(sanitizedPath).To(Equal("----------"))
+	})
+})

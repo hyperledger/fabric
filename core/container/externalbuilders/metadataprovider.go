@@ -27,7 +27,7 @@ type MetadataProvider struct {
 // will be an empty tar.  An error is returned only if the build output is
 // found but some other error occurs.
 func (mp *MetadataProvider) PackageMetadata(ccid string) ([]byte, error) {
-	releasePath := filepath.Join(mp.DurablePath, ccid, "release")
+	releasePath := filepath.Join(mp.DurablePath, SanitizeCCIDPath(ccid), "release")
 
 	_, err := os.Stat(releasePath)
 	if os.IsNotExist(err) {
