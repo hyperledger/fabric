@@ -110,15 +110,15 @@ func TestConfigTx(t *testing.T) {
 	// Tests for a normal chain which contains 3 config transactions and other normal transactions to make
 	// sure the right one returned
 	t.Run("GetConfigTx - ok", func(t *testing.T) {
-		_, rl := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+		_, rl := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 		for i := 0; i < 5; i++ {
-			rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChannelID, i)}))
+			rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", i)}))
 		}
-		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(genesisconfig.TestChannelID, 5)}))
-		ctx := makeConfigTx(genesisconfig.TestChannelID, 6)
+		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx("testchannelid", 5)}))
+		ctx := makeConfigTx("testchannelid", 6)
 		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
 
-		block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChannelID, 7)})
+		block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", 7)})
 		block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{Value: protoutil.MarshalOrPanic(&cb.LastConfig{Index: 7})})
 		rl.Append(block)
 
@@ -129,17 +129,17 @@ func TestConfigTx(t *testing.T) {
 	// Tests a chain which contains blocks with multi-transactions mixed with config txs,
 	// and a single tx which is not a config tx, none count as config blocks so nil should return
 	t.Run("GetConfigTx - failure", func(t *testing.T) {
-		_, rl := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+		_, rl := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 		for i := 0; i < 10; i++ {
 			rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{
-				makeNormalTx(genesisconfig.TestChannelID, i),
-				makeConfigTx(genesisconfig.TestChannelID, i),
+				makeNormalTx("testchannelid", i),
+				makeConfigTx("testchannelid", i),
 			}))
 		}
-		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChannelID, 11)}))
+		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", 11)}))
 		assert.Panics(t, func() { configTx(rl) }, "Should have panicked because there was no config tx")
 
-		block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(genesisconfig.TestChannelID, 12)})
+		block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", 12)})
 		block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = []byte("bad metadata")
 		assert.Panics(t, func() { configTx(rl) }, "Should have panicked because of bad last config metadata")
 	})
@@ -187,7 +187,7 @@ func TestNewRegistrar(t *testing.T) {
 
 	// This test essentially brings the entire system up and is ultimately what main.go will replicate
 	t.Run("Correct flow", func(t *testing.T) {
-		lf, rl := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+		lf, rl := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
@@ -198,10 +198,10 @@ func TestNewRegistrar(t *testing.T) {
 		chainSupport := manager.GetChain("Fake")
 		assert.Nilf(t, chainSupport, "Should not have found a chain that was not created")
 
-		chainSupport = manager.GetChain(genesisconfig.TestChannelID)
+		chainSupport = manager.GetChain("testchannelid")
 		assert.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ramledger")
 
-		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, genesisconfig.TestChannelID, chainSupport, rl, t)
+		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, "testchannelid", chainSupport, rl, t)
 	})
 }
 
@@ -214,7 +214,7 @@ func TestCreateChain(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("Create chain", func(t *testing.T) {
-		lf, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+		lf, _ := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
@@ -253,7 +253,7 @@ func TestCreateChain(t *testing.T) {
 		expectedLastConfigSeq := uint64(1)
 		newChainID := "test-new-chain"
 
-		lf, rl := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+		lf, rl := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
@@ -417,12 +417,12 @@ func TestBroadcastChannelSupportRejection(t *testing.T) {
 
 	t.Run("Rejection", func(t *testing.T) {
 
-		ledgerFactory, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+		ledgerFactory, _ := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
 		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		registrar.Initialize(mockConsenters)
 		randomValue := 1
-		configTx := makeConfigTx(genesisconfig.TestChannelID, randomValue)
+		configTx := makeConfigTx("testchannelid", randomValue)
 		_, _, _, err := registrar.BroadcastChannelSupport(configTx)
 		assert.Error(t, err, "Messages of type HeaderType_CONFIG should return an error.")
 	})

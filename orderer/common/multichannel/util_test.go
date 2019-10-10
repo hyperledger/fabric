@@ -160,7 +160,7 @@ func makeConfigTxMig(chainID string, i int) *cb.Envelope {
 }
 
 func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
-	result, err := protoutil.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, genesisconfig.TestChannelID, mockCrypto(), env, msgVersion, epoch)
+	result, err := protoutil.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, "testchannelid", mockCrypto(), env, msgVersion, epoch)
 	if err != nil {
 		panic(err)
 	}

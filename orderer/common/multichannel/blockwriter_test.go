@@ -203,7 +203,7 @@ func TestWriteConfigBlock(t *testing.T) {
 func TestGoodWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
-	_, l := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+	_, l := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")
@@ -212,7 +212,7 @@ func TestGoodWriteConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockValidator := &mocks.ConfigTXValidator{}
-	mockValidator.ChannelIDReturns(genesisconfig.TestChannelID)
+	mockValidator.ChannelIDReturns("testchannelid")
 	bw := newBlockWriter(genesisBlockSys, nil,
 		&mockBlockWriterSupport{
 			SignerSerializer:  mockCrypto(),
@@ -223,7 +223,7 @@ func TestGoodWriteConfig(t *testing.T) {
 		},
 	)
 
-	ctx := makeConfigTxFull(genesisconfig.TestChannelID, 1)
+	ctx := makeConfigTxFull("testchannelid", 1)
 	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
 	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
@@ -245,7 +245,7 @@ func TestGoodWriteConfig(t *testing.T) {
 func TestMigrationWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
-	_, l := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+	_, l := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")
@@ -255,7 +255,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockValidator := &mocks.ConfigTXValidator{}
-	mockValidator.ChannelIDReturns(genesisconfig.TestChannelID)
+	mockValidator.ChannelIDReturns("testchannelid")
 	bw := newBlockWriter(genesisBlockSys, nil,
 		&mockBlockWriterSupport{
 			SignerSerializer:  mockCrypto(),
@@ -266,7 +266,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 		},
 	)
 
-	ctx := makeConfigTxMig(genesisconfig.TestChannelID, 1)
+	ctx := makeConfigTxMig("testchannelid", 1)
 	block := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
 	block.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata := []byte("foo")
@@ -288,7 +288,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 func TestRaceWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
-	_, l := newRAMLedgerAndFactory(10, genesisconfig.TestChannelID, genesisBlockSys)
+	_, l := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
 
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")
@@ -307,13 +307,13 @@ func TestRaceWriteConfig(t *testing.T) {
 		},
 	)
 
-	ctx := makeConfigTxFull(genesisconfig.TestChannelID, 1)
+	ctx := makeConfigTxFull("testchannelid", 1)
 	block1 := protoutil.NewBlock(1, protoutil.BlockHeaderHash(genesisBlockSys.Header))
 	block1.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata1 := []byte("foo")
 	mockValidator.SequenceReturnsOnCall(1, 1)
 
-	ctx = makeConfigTxFull(genesisconfig.TestChannelID, 1)
+	ctx = makeConfigTxFull("testchannelid", 1)
 	block2 := protoutil.NewBlock(2, protoutil.BlockHeaderHash(block1.Header))
 	block2.Data.Data = [][]byte{protoutil.MarshalOrPanic(ctx)}
 	consenterMetadata2 := []byte("bar")
