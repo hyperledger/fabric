@@ -7,6 +7,7 @@
    - `Fabric-CA <https://github.com/hyperledger/fabric-ca>`_
    - `Fabric-Protos <https://github.com/hyperledger/fabric-protos>`_
    - `Fabric-Chaincode-Go <https://github.com/hyperledger/fabric-chaincode-go>`_
+   - `Fabric-Chaincode-EVM <https://github.com/hyperledger/fabric-chaincode-evm>`_
 
 =====================
 
