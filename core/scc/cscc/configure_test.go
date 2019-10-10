@@ -38,7 +38,7 @@ import (
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"

@@ -30,8 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/localconfig"
-	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -717,7 +716,7 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 
 func TestBlockValidationPolicyVerifier(t *testing.T) {
 	t.Parallel()
-	config := genesisconfig.Load(localconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(config)
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
@@ -795,7 +794,7 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 
 func TestBlockVerifierAssembler(t *testing.T) {
 	t.Parallel()
-	config := genesisconfig.Load(localconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(config)
 	assert.NoError(t, err)
 	assert.NotNil(t, group)

@@ -26,7 +26,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -147,7 +147,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			sysProfile := localconfig.Load(network.SystemChannel.Profile, network.RootDir)
+			sysProfile := genesisconfig.Load(network.SystemChannel.Profile, network.RootDir)
 			Expect(sysProfile.Orderer).NotTo(BeNil())
 			sysProfile.Orderer.EtcdRaft.Options.ElectionTick = sysProfile.Orderer.EtcdRaft.Options.HeartbeatTick
 			pgen := encoder.New(sysProfile)
@@ -183,9 +183,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Creating malformed channel creation config tx")
 			channel := "testchannel"
-			sysProfile = localconfig.Load(network.SystemChannel.Profile, network.RootDir)
+			sysProfile = genesisconfig.Load(network.SystemChannel.Profile, network.RootDir)
 			Expect(sysProfile.Orderer).NotTo(BeNil())
-			appProfile := localconfig.Load(network.ProfileForChannel(channel), network.RootDir)
+			appProfile := genesisconfig.Load(network.ProfileForChannel(channel), network.RootDir)
 			Expect(appProfile).NotTo(BeNil())
 			o := *sysProfile.Orderer
 			appProfile.Orderer = &o
