@@ -33,7 +33,7 @@ import (
 // iterating over a key range if the modifications of the preceding valid transactions
 // were to be applied to the db
 //
-// This can be used to perfrom validation for phantom reads in a transactions rwset
+// This can be used to perform validation for phantom reads in a transactions rwset
 type combinedIterator struct {
 	// input
 	ns            string

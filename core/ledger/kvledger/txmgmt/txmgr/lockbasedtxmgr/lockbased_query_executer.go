@@ -10,7 +10,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
-// LockBasedQueryExecutor is a query executor used in `LockBasedTxMgr`
+// lockBasedQueryExecutor is a query executor used in `LockBasedTxMgr`
 type lockBasedQueryExecutor struct {
 	helper *queryHelper
 	txid   string
@@ -41,7 +41,7 @@ func (q *lockBasedQueryExecutor) GetStateMultipleKeys(namespace string, keys []s
 // GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
 // startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 // and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
-// can be supplied as empty strings. However, a full scan shuold be used judiciously for performance reasons.
+// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 func (q *lockBasedQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
 	return q.helper.getStateRangeScanIterator(namespace, startKey, endKey)
 }
@@ -49,7 +49,7 @@ func (q *lockBasedQueryExecutor) GetStateRangeScanIterator(namespace string, sta
 // GetStateRangeScanIteratorWithMetadata implements method in interface `ledger.QueryExecutor`
 // startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 // and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
-// can be supplied as empty strings. However, a full scan shuold be used judiciously for performance reasons.
+// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
 // metadata is a map of additional query parameters
 func (q *lockBasedQueryExecutor) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
 	return q.helper.getStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, metadata)

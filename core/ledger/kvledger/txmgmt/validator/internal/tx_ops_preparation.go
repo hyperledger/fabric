@@ -54,7 +54,7 @@ func prepareTxOps(rwset *rwsetutil.TxRwSet, txht *version.Height,
 }
 
 // applyTxRwset records the upsertion/deletion of a kv and updatation/deletion
-// of asociated metadata present in a txrwset
+// of associated metadata present in a txrwset
 func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 	for _, nsRWSet := range rwset.NsRwSets {
 		ns := nsRWSet.NameSpace

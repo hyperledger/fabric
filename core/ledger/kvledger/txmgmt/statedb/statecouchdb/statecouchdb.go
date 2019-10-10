@@ -134,7 +134,7 @@ func (l *lsccStateCache) setState(key string, value *statedb.VersionedValue) {
 		l.evictARandomEntry()
 	}
 
-	logger.Debugf("key:[%s] is stoed in lsccStateCache", key)
+	logger.Debugf("key:[%s] is stored in lsccStateCache", key)
 	l.cache[key] = value
 }
 

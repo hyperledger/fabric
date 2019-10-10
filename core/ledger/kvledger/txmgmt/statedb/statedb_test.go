@@ -44,10 +44,10 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	expectedResult = false
 	assert.Equal(t, expectedResult, actualResult)
 
-	//Get() should return nill as key2 does not exist
+	//Get() should return nil as key2 does not exist
 	actualVersionedValue = batch.Get("ns1", "key2")
 	assert.Nil(t, actualVersionedValue)
-	//Get() should return nill as ns3 does not exist
+	//Get() should return nil as ns3 does not exist
 	actualVersionedValue = batch.Get("ns3", "key2")
 	assert.Nil(t, actualVersionedValue)
 
