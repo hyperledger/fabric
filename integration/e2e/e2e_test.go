@@ -227,10 +227,10 @@ var _ = Describe("EndToEnd", func() {
 			peer := network.Peer("Org1", "peer1")
 
 			By("Create first channel and deploy the chaincode")
-			network.CreateAndJoinChannel(orderer, "testchannel1")
-			nwo.EnableCapabilities(network, "testchannel1", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincode(network, "testchannel1", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer, "testchannel1")
+			network.CreateAndJoinChannel(orderer, "testchannel")
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
 			By("Create second channel and deploy chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel2")
@@ -243,12 +243,12 @@ var _ = Describe("EndToEnd", func() {
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel2")
 
 			By("Update consensus metadata to increase snapshot interval")
-			snapDir := path.Join(network.RootDir, "orderers", orderer.ID(), "etcdraft", "snapshot", "testchannel1")
+			snapDir := path.Join(network.RootDir, "orderers", orderer.ID(), "etcdraft", "snapshot", "testchannel")
 			files, err := ioutil.ReadDir(snapDir)
 			Expect(err).NotTo(HaveOccurred())
 			numOfSnaps := len(files)
 
-			nwo.UpdateConsensusMetadata(network, peer, orderer, "testchannel1", func(originalMetadata []byte) []byte {
+			nwo.UpdateConsensusMetadata(network, peer, orderer, "testchannel", func(originalMetadata []byte) []byte {
 				metadata := &etcdraft.ConfigMetadata{}
 				err := proto.Unmarshal(originalMetadata, metadata)
 				Expect(err).NotTo(HaveOccurred())

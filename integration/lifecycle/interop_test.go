@@ -25,18 +25,17 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-	"gopkg.in/yaml.v2"
 )
 
 var _ = Describe("Release interoperability", func() {
 	var (
 		client  *docker.Client
-		tempDir string
+		testDir string
 	)
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = ioutil.TempDir("", "nwo")
+		testDir, err = ioutil.TempDir("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -44,7 +43,7 @@ var _ = Describe("Release interoperability", func() {
 	})
 
 	AfterEach(func() {
-		os.RemoveAll(tempDir)
+		os.RemoveAll(testDir)
 	})
 
 	Describe("solo network", func() {
@@ -52,14 +51,7 @@ var _ = Describe("Release interoperability", func() {
 		var process ifrit.Process
 
 		BeforeEach(func() {
-			soloBytes, err := ioutil.ReadFile("solo.yaml")
-			Expect(err).NotTo(HaveOccurred())
-
-			var config *nwo.Config
-			err = yaml.Unmarshal(soloBytes, &config)
-			Expect(err).NotTo(HaveOccurred())
-
-			network = nwo.New(config, tempDir, client, StartPort(), components)
+			network = nwo.New(nwo.MultiChannelBasicSolo(), testDir, client, StartPort(), components)
 
 			// Generate config and bootstrap the network
 			network.GenerateConfigTree()
@@ -80,15 +72,15 @@ var _ = Describe("Release interoperability", func() {
 
 		It("deploys and executes chaincode (simple), upgrades the channel application capabilities to V2_0 and uses _lifecycle to update the endorsement policy", func() {
 			By("deploying the chaincode using LSCC on a channel with V1_4 application capabilities")
-			orderer := network.Orderer("orderer0")
-			peer := network.Peer("org1", "peer2")
+			orderer := network.Orderer("orderer")
+			peer := network.Peer("Org1", "peer1")
 
 			chaincode := nwo.Chaincode{
 				Name:    "mycc",
 				Version: "0.0",
 				Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 				Ctor:    `{"Args":["init","a","100","b","200"]}`,
-				Policy:  `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
 			}
 
 			network.CreateAndJoinChannels(orderer)
@@ -96,7 +88,7 @@ var _ = Describe("Release interoperability", func() {
 			RunQueryInvokeQuery(network, orderer, peer, "mycc", 100)
 
 			By("enabling V2_0 application capabilities")
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("ensuring that the chaincode is still operational after the upgrade")
 			RunQueryInvokeQuery(network, orderer, peer, "mycc", 90)
@@ -114,7 +106,7 @@ var _ = Describe("Release interoperability", func() {
 				Name:      "mycc",
 				Ctor:      `{"Args":["invoke","a","b","10"]}`,
 				PeerAddresses: []string{
-					network.PeerAddress(network.Peer("org1", "peer1"), nwo.ListenPort),
+					network.PeerAddress(network.Peer("Org1", "peer0"), nwo.ListenPort),
 				},
 				WaitForEvent: true,
 			})
@@ -128,8 +120,8 @@ var _ = Describe("Release interoperability", func() {
 				Version:         "0.0",
 				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
 				Lang:            "binary",
-				PackageFile:     filepath.Join(tempDir, "modulecc.tar.gz"),
-				SignaturePolicy: `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+				SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
 				Sequence:        "1",
 				InitRequired:    false,
 				Label:           "my_prebuilt_chaincode",
@@ -137,13 +129,13 @@ var _ = Describe("Release interoperability", func() {
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			By("querying/invoking/querying the chaincode with the new definition")
-			RunQueryInvokeQueryWithAddresses(network, orderer, peer, "mycc", 70, network.PeerAddress(network.Peer("org1", "peer2"), nwo.ListenPort))
+			RunQueryInvokeQueryWithAddresses(network, orderer, peer, "mycc", 70, network.PeerAddress(network.Peer("Org1", "peer1"), nwo.ListenPort))
 
 			By("restarting the network from persistence")
 			RestartNetwork(&process, network)
 
 			By("querying/invoking/querying the chaincode with the new definition again")
-			RunQueryInvokeQueryWithAddresses(network, orderer, peer, "mycc", 60, network.PeerAddress(network.Peer("org1", "peer2"), nwo.ListenPort))
+			RunQueryInvokeQueryWithAddresses(network, orderer, peer, "mycc", 60, network.PeerAddress(network.Peer("Org1", "peer1"), nwo.ListenPort))
 		})
 
 		Describe("Interoperability scenarios", func() {
@@ -158,8 +150,8 @@ var _ = Describe("Release interoperability", func() {
 			)
 
 			BeforeEach(func() {
-				orderer = network.Orderer("orderer0")
-				peer = network.Peer("org1", "peer2")
+				orderer = network.Orderer("orderer")
+				peer = network.Peer("Org1", "peer1")
 				userSigner, serialisedUserSigner = Signer(network.PeerUserMSPDir(peer, "User1"))
 				endorserClient = EndorserClient(
 					network.PeerAddress(peer, nwo.ListenPort),
@@ -182,7 +174,7 @@ var _ = Describe("Release interoperability", func() {
 					Version: "0.0",
 					Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 					Ctor:    `{"Args":["init","a","100","b","200"]}`,
-					Policy:  `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+					Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
 				}
 
 				network.CreateAndJoinChannels(orderer)
@@ -211,7 +203,7 @@ var _ = Describe("Release interoperability", func() {
 				Expect(env).NotTo(BeNil())
 
 				By("enabling V2_0 application capabilities")
-				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 				By("upgrading the chaincode definition using _lifecycle")
 				chaincode = nwo.Chaincode{
@@ -219,8 +211,8 @@ var _ = Describe("Release interoperability", func() {
 					Version:         "0.0",
 					Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
 					Lang:            "binary",
-					PackageFile:     filepath.Join(tempDir, "modulecc.tar.gz"),
-					SignaturePolicy: `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+					PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+					SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
 					Sequence:        "1",
 					InitRequired:    false,
 					Label:           "my_prebuilt_chaincode",
@@ -236,7 +228,7 @@ var _ = Describe("Release interoperability", func() {
 			It("deploys a chaincode with the new lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {
 				By("enabling V2_0 application capabilities")
 				network.CreateAndJoinChannels(orderer)
-				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 				By("deploying the chaincode definition using _lifecycle")
 				chaincode := nwo.Chaincode{
@@ -244,8 +236,8 @@ var _ = Describe("Release interoperability", func() {
 					Version:         "0.0",
 					Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
 					Lang:            "binary",
-					PackageFile:     filepath.Join(tempDir, "modulecc.tar.gz"),
-					SignaturePolicy: `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+					PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+					SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
 					Sequence:        "1",
 					InitRequired:    true,
 					Label:           "my_prebuilt_chaincode",
@@ -276,7 +268,7 @@ var _ = Describe("Release interoperability", func() {
 
 				By("upgrading the chaincode definition using _lifecycle")
 				chaincode.Sequence = "2"
-				chaincode.SignaturePolicy = `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`
+				chaincode.SignaturePolicy = `OR ('Org1MSP.member','Org2MSP.member')`
 				chaincode.InitRequired = false
 				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
@@ -295,7 +287,7 @@ var _ = Describe("Release interoperability", func() {
 				)
 
 				BeforeEach(func() {
-					ccEP := `OR ('Org1ExampleCom.member','Org2ExampleCom.member')`
+					ccEP := `OR ('Org1MSP.member','Org2MSP.member')`
 					callerDefOld = nwo.Chaincode{
 						Name:    "caller",
 						Version: "0.0",
@@ -315,7 +307,7 @@ var _ = Describe("Release interoperability", func() {
 						Version:         "0.0",
 						Path:            components.Build("github.com/hyperledger/fabric/integration/lifecycle/chaincode/caller/cmd"),
 						Lang:            "binary",
-						PackageFile:     filepath.Join(tempDir, "caller.tar.gz"),
+						PackageFile:     filepath.Join(testDir, "caller.tar.gz"),
 						SignaturePolicy: ccEP,
 						Sequence:        "1",
 						Label:           "my_prebuilt_caller_chaincode",
@@ -327,7 +319,7 @@ var _ = Describe("Release interoperability", func() {
 						Version:         "0.0",
 						Path:            components.Build("github.com/hyperledger/fabric/integration/lifecycle/chaincode/callee/cmd"),
 						Lang:            "binary",
-						PackageFile:     filepath.Join(tempDir, "callee.tar.gz"),
+						PackageFile:     filepath.Join(testDir, "callee.tar.gz"),
 						SignaturePolicy: ccEP,
 						Sequence:        "1",
 						Label:           "my_prebuilt_callee_chaincode",
@@ -340,7 +332,7 @@ var _ = Describe("Release interoperability", func() {
 
 				It("Deploys two chaincodes with the new lifecycle and performs a successful cc2cc invocation", func() {
 					By("enabling the 2.0 capability on the channel")
-					nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+					nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 					By("deploying the caller chaincode using _lifecycle")
 					nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
@@ -392,7 +384,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(sess).To(gbytes.Say("callee:bar"))
 
 					By("enabling the 2.0 capability on channel2")
-					nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+					nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 					By("deploying the callee chaincode using _lifecycle on channel2")
 					nwo.DeployChaincode(network, "testchannel2", orderer, calleeDefNew)
@@ -444,7 +436,7 @@ var _ = Describe("Release interoperability", func() {
 				When("the network starts with new definitions", func() {
 					BeforeEach(func() {
 						By("enabling the 2.0 capability on the channel")
-						nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+						nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 						By("upgrading the caller with the new definition")
 						nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
@@ -610,7 +602,7 @@ var _ = Describe("Release interoperability", func() {
 						nwo.DeployChaincodeLegacy(network, "testchannel", orderer, calleeDefOld)
 
 						By("enabling the 2.0 capability on the channel")
-						nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+						nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 					})
 
 					It("upgrades the caller with the new and performs a successful cc2cc invocation", func() {
