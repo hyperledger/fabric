@@ -81,6 +81,7 @@ type dummyCommModule struct {
 	msgsReceived      uint32
 	msgsSent          uint32
 	id                string
+	identitySwitch    chan common.PKIidType
 	presumeDead       chan common.PKIidType
 	detectedDead      chan string
 	streams           map[string]proto.Gossip_GossipStreamClient
@@ -114,6 +115,10 @@ func (comm *dummyCommModule) ValidateAliveMsg(am *protoext.SignedGossipMessage) 
 		c <- am
 	}
 	return true
+}
+
+func (comm *dummyCommModule) IdentitySwitch() <-chan common.PKIidType {
+	return comm.identitySwitch
 }
 
 func (comm *dummyCommModule) recordValidation(validatedMessages chan *protoext.SignedGossipMessage) {
@@ -374,16 +379,17 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 
 func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy, f func(*protoext.SignedGossipMessage), config DiscoveryConfig) *gossipInstance {
 	comm := &dummyCommModule{
-		conns:        make(map[string]*grpc.ClientConn),
-		streams:      make(map[string]proto.Gossip_GossipStreamClient),
-		incMsgs:      make(chan protoext.ReceivedMessage, 1000),
-		presumeDead:  make(chan common.PKIidType, 10000),
-		id:           id,
-		detectedDead: make(chan string, 10000),
-		lock:         &sync.RWMutex{},
-		lastSeqs:     make(map[string]uint64),
-		shouldGossip: shouldGossip,
-		disableComm:  false,
+		conns:          make(map[string]*grpc.ClientConn),
+		streams:        make(map[string]proto.Gossip_GossipStreamClient),
+		incMsgs:        make(chan protoext.ReceivedMessage, 1000),
+		presumeDead:    make(chan common.PKIidType, 10000),
+		id:             id,
+		detectedDead:   make(chan string, 10000),
+		identitySwitch: make(chan common.PKIidType),
+		lock:           &sync.RWMutex{},
+		lastSeqs:       make(map[string]uint64),
+		shouldGossip:   shouldGossip,
+		disableComm:    false,
 	}
 
 	endpoint := fmt.Sprintf("localhost:%d", port)
@@ -1100,6 +1106,73 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 				return envelope
 			}
 	}
+}
+
+func TestCertificateChange(t *testing.T) {
+	t.Parallel()
+
+	bootPeers := []string{bootPeer(42611), bootPeer(42612), bootPeer(42613)}
+	p1 := createDiscoveryInstance(42611, "d1", bootPeers)
+	p2 := createDiscoveryInstance(42612, "d2", bootPeers)
+	p3 := createDiscoveryInstance(42613, "d3", bootPeers)
+
+	// Wait for membership establishment
+	assertMembership(t, []*gossipInstance{p1, p2, p3}, 2)
+
+	// Shutdown the second peer
+	waitUntilOrFailBlocking(t, p2.Stop)
+
+	var pingCountFrom1 uint32
+	var pingCountFrom3 uint32
+	// Program mocks to increment ping counters
+	p1.comm.lock.Lock()
+	p1.comm.mock = &mock.Mock{}
+	p1.comm.mock.On("SendToPeer", mock.Anything, mock.Anything)
+	p1.comm.mock.On("Ping").Run(func(arguments mock.Arguments) {
+		atomic.AddUint32(&pingCountFrom1, 1)
+	})
+	p1.comm.lock.Unlock()
+
+	p3.comm.lock.Lock()
+	p3.comm.mock = &mock.Mock{}
+	p3.comm.mock.On("SendToPeer", mock.Anything, mock.Anything)
+	p3.comm.mock.On("Ping").Run(func(arguments mock.Arguments) {
+		atomic.AddUint32(&pingCountFrom3, 1)
+	})
+	p3.comm.lock.Unlock()
+
+	pingCount1 := func() uint32 {
+		return atomic.LoadUint32(&pingCountFrom1)
+	}
+
+	pingCount3 := func() uint32 {
+		return atomic.LoadUint32(&pingCountFrom3)
+	}
+
+	c1 := pingCount1()
+	c3 := pingCount3()
+
+	// Ensure the first peer and third peer try to reconnect to it
+	waitUntilTimeoutOrFail(t, func() bool {
+		return pingCount1() > c1 && pingCount3() > c3
+	}, timeout)
+
+	// Tell the first peer that the second peer's PKI-ID has changed
+	// So that it will purge it from the membership entirely
+	p1.comm.identitySwitch <- common.PKIidType("localhost:42612")
+
+	c1 = pingCount1()
+	c3 = pingCount3()
+	// Ensure third peer tries to reconnect to it
+	waitUntilTimeoutOrFail(t, func() bool {
+		return pingCount3() > c3
+	}, timeout)
+
+	// Ensure the first peer ceases from trying
+	assert.Equal(t, c1, pingCount1())
+
+	waitUntilOrFailBlocking(t, p1.Stop)
+	waitUntilOrFailBlocking(t, p3.Stop)
 }
 
 func TestMsgStoreExpiration(t *testing.T) {
