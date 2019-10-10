@@ -15,7 +15,6 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/stretchr/testify/assert"
 )
@@ -179,7 +178,7 @@ func TestBlockFlags(t *testing.T) {
 
 func TestPrintOrg(t *testing.T) {
 	factory.InitFactories(nil)
-	config := configtxgentest.LoadTopLevel()
+	config := genesisconfig.LoadTopLevel(configtest.GetDevConfigDir())
 
 	assert.NoError(t, doPrintOrg(config, genesisconfig.SampleOrgName), "Good org to print")
 
