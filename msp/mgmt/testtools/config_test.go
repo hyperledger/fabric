@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,12 +27,12 @@ func TestFakeSetup(t *testing.T) {
 		t.Fatalf("GetDefaultSigningIdentity failed, err %s", err)
 	}
 
-	msps, err := mgmt.GetManagerForChain(util.GetTestChannelID()).GetMSPs()
+	msps, err := mgmt.GetManagerForChain("testchannelid").GetMSPs()
 	if err != nil {
 		t.Fatalf("EnlistedMSPs failed, err %s", err)
 	}
 
 	if msps == nil || len(msps) == 0 {
-		t.Fatalf("There are no MSPS in the manager for chain %s", util.GetTestChannelID())
+		t.Fatalf("There are no MSPS in the manager for chain %s", "testchannelid")
 	}
 }

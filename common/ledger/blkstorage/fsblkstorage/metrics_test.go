@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +27,7 @@ func TestStatsBlockchainHeight(t *testing.T) {
 	defer store.Shutdown()
 
 	// add genesis block
-	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, util.GetTestChannelID(), false)
+	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, "testchannelid", false)
 	err = store.AddBlock(genesisBlock)
 	assert.NoError(t, err)
 
@@ -81,7 +80,7 @@ func TestStatsBlockCommit(t *testing.T) {
 	defer store.Shutdown()
 
 	// add a genesis block
-	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, util.GetTestChannelID(), false)
+	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, "testchannelid", false)
 	err = store.AddBlock(genesisBlock)
 	assert.NoError(t, err)
 

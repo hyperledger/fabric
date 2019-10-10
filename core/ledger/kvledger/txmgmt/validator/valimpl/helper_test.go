@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -211,7 +210,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	assert.NoError(t, err)
 	expected := fmt.Sprintf(
 		"Channel [%s]: Block [%d] Transaction index [%d] TxId [%s] marked as invalid by committer. Reason code [%s]",
-		util.GetTestChannelID(), blockNum, 0, txid, peer.TxValidationCode_BAD_HEADER_EXTENSION,
+		"testchannelid", blockNum, 0, txid, peer.TxValidationCode_BAD_HEADER_EXTENSION,
 	)
 	assert.NotEmpty(t, recorder.MessagesContaining(expected))
 }

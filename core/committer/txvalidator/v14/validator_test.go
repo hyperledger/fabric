@@ -164,7 +164,7 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(pType, util.GetTestChannelID(), cis, signerSerialized)
+	proposal, _, err := protoutil.CreateProposalFromCIS(pType, "testchannelid", cis, signerSerialized)
 	return proposal, err
 }
 
@@ -1037,10 +1037,10 @@ func testInvokeOKSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator)
 	cis := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: &peer.ChaincodeID{Name: "lscc", Version: ccVersion},
-			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(util.GetTestChannelID()), cds}},
+			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("testchannelid"), cds}},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChannelID(), cis, signerSerialized)
+	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, signerSerialized)
 	assert.NoError(t, err)
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder.AddToWriteSet("lscc", "cc", protoutil.MarshalOrPanic(&ccp.ChaincodeData{Name: "cc", Version: "ver", InstantiationPolicy: cauthdsl.MarshaledAcceptAllPolicy}))

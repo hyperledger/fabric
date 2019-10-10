@@ -13,7 +13,6 @@ import (
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -25,7 +24,7 @@ func init() {
 
 func newTestChain(maxSize int) *ramLedger {
 	rlf := New(maxSize)
-	chain, err := rlf.GetOrCreate(genesisconfig.TestChannelID)
+	chain, err := rlf.GetOrCreate("testchannelid")
 	if err != nil {
 		panic(err)
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -107,7 +106,7 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	response := &peer.Response{Status: 200}
 	simRes := []byte("simulation_result")
 
-	env, err := createTestTransactionEnvelope(util.GetTestChannelID(), response, simRes)
+	env, err := createTestTransactionEnvelope("testchannelid", response, simRes)
 	assert.Nil(t, err, "failed to create test transaction: %s", err)
 	assert.NotNil(t, env)
 

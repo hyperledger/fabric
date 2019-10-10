@@ -243,7 +243,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 			ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
 				TxId:      "INVALID TXID!!!",
 				Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
-				ChannelId: util2.GetTestChannelID(),
+				ChannelId: "testchannelid",
 			}),
 			SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{
 				Nonce:   []byte("nonce"),
@@ -343,7 +343,7 @@ func TestGetTxCCInstance(t *testing.T) {
 	signer, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
-	channelID := util2.GetTestChannelID()
+	channelID := "testchannelid"
 	upgradeCCName := "mycc"
 	upgradeCCVersion := "v1"
 

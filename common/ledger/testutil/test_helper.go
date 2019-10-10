@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
 	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
-	"github.com/hyperledger/fabric/common/util"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -160,7 +159,7 @@ func ConstructTransactionFromTxDetails(txDetails *TxDetails, sign bool) (*common
 	var txID string
 	if sign {
 		txEnv, txID, err = ConstructSignedTxEnvWithDefaultSigner(
-			util.GetTestChannelID(),
+			"testchannelid",
 			ccid,
 			nil,
 			txDetails.SimulationResults,
@@ -171,7 +170,7 @@ func ConstructTransactionFromTxDetails(txDetails *TxDetails, sign bool) (*common
 		)
 	} else {
 		txEnv, txID, err = ConstructUnsignedTxEnv(
-			util.GetTestChannelID(),
+			"testchannelid",
 			ccid,
 			nil,
 			txDetails.SimulationResults,
@@ -273,7 +272,7 @@ func ConstructTestBlock(t *testing.T, blockNum uint64, numTx int, txSize int) *c
 // The first block in the returned array is a config tx block that represents a genesis block
 // Except the genesis block, the size of each of the block would be the same.
 func ConstructTestBlocks(t *testing.T, numBlocks int) []*common.Block {
-	bg, gb := NewBlockGenerator(t, util.GetTestChannelID(), false)
+	bg, gb := NewBlockGenerator(t, "testchannelid", false)
 	blocks := []*common.Block{}
 	if numBlocks != 0 {
 		blocks = append(blocks, gb)
@@ -287,7 +286,7 @@ func ConstructBytesProposalResponsePayload(version string, simulationResults []b
 		Name:    "foo",
 		Version: version,
 	}
-	return constructBytesProposalResponsePayload(util.GetTestChannelID(), ccid, nil, simulationResults)
+	return constructBytesProposalResponsePayload("testchannelid", ccid, nil, simulationResults)
 }
 
 func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *common.Block {
