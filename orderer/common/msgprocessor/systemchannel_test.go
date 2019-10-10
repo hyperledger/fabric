@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -481,7 +481,7 @@ func (mdts *mockDefaultTemplatorSupport) Signer() identity.SignerSerializer {
 
 func TestNewChannelConfig(t *testing.T) {
 	channelID := "foo"
-	gConf := configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile)
+	gConf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile, configtest.GetDevConfigDir())
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV2_0: true,
 	}
@@ -748,7 +748,7 @@ func TestNewChannelConfig(t *testing.T) {
 
 	// Successful
 	t.Run("Success", func(t *testing.T) {
-		createTx, err := encoder.MakeChannelCreationTransaction("foo", nil, configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile))
+		createTx, err := encoder.MakeChannelCreationTransaction("foo", nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
 		assert.Nil(t, err)
 		res, err := templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)
@@ -758,7 +758,12 @@ func TestNewChannelConfig(t *testing.T) {
 
 	// Successful new channel config type
 	t.Run("SuccessWithNewCreateType", func(t *testing.T) {
-		createTx, err := encoder.MakeChannelCreationTransactionWithSystemChannelContext("foo", nil, configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile), configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile))
+		createTx, err := encoder.MakeChannelCreationTransactionWithSystemChannelContext(
+			"foo",
+			nil,
+			genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()),
+			genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile, configtest.GetDevConfigDir()),
+		)
 		assert.Nil(t, err)
 		_, err = templator.NewChannelConfig(createTx)
 		assert.Nil(t, err)

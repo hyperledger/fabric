@@ -18,8 +18,8 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
@@ -136,7 +136,7 @@ func newTestHelper(t *testing.T) *testHelper {
 }
 
 func (h *testHelper) sampleChannelConfig(sequence uint64, enableV11Capability bool) *common.Config {
-	profile := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
+	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	if enableV11Capability {
 		profile.Orderer.Capabilities = make(map[string]bool)
 		profile.Orderer.Capabilities[capabilities.ApplicationV1_1] = true

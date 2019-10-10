@@ -11,11 +11,6 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 )
 
-func Load(profile string) *localconfig.Profile {
-	devConfigDir := configtest.GetDevConfigDir()
-	return localconfig.Load(profile, devConfigDir)
-}
-
 func LoadTopLevel() *localconfig.TopLevel {
 	devConfigDir := configtest.GetDevConfigDir()
 	return localconfig.LoadTopLevel(devConfigDir)

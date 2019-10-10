@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
@@ -19,7 +19,7 @@ import (
 )
 
 func TestWithRealConfigtx(t *testing.T) {
-	conf := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
+	conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 
 	gb := encoder.New(conf).GenesisBlockForChannel("foo")
 	env := protoutil.ExtractEnvelopeOrPanic(gb, 0)
@@ -32,7 +32,7 @@ func TestWithRealConfigtx(t *testing.T) {
 
 func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 	t.Run("Without_Capability", func(t *testing.T) {
-		conf := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
+		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 		conf.Capabilities = map[string]bool{"V1_3": true}
 
 		cg, err := encoder.NewChannelGroup(conf)
@@ -45,7 +45,7 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 	})
 
 	t.Run("Without_Capability_NoOSNs", func(t *testing.T) {
-		conf := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
+		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 		conf.Capabilities = map[string]bool{"V1_3": true}
 		conf.Orderer.Organizations[0].OrdererEndpoints = nil
 		conf.Orderer.Addresses = []string{}
@@ -60,7 +60,7 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 	})
 
 	t.Run("With_Capability", func(t *testing.T) {
-		conf := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
+		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 		conf.Capabilities = map[string]bool{"V2_0": true}
 		assert.NotEmpty(t, conf.Orderer.Organizations[0].OrdererEndpoints)
 

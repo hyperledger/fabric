@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
@@ -36,7 +37,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/service"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
@@ -473,7 +473,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 }
 
 func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
-	conf := configtxgentest.Load(genesisconfig.SampleSingleMSPSoloProfile)
+	conf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile, configtest.GetDevConfigDir())
 	conf.Application = nil
 	cg, err := encoder.NewChannelGroup(conf)
 	assert.NoError(t, err)

@@ -14,8 +14,8 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
@@ -25,7 +25,7 @@ var logger = flogging.MustGetLogger("common.configtx.test")
 
 // MakeGenesisBlock creates a genesis block using the test templates for the given chainID
 func MakeGenesisBlock(chainID string) (*cb.Block, error) {
-	profile := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
+	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	channelGroup, err := encoder.NewChannelGroup(profile)
 	if err != nil {
 		logger.Panicf("Error creating channel config: %s", err)
@@ -44,7 +44,7 @@ func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 
 // MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given chainID
 func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig, appOrgID, ordererOrgID string) (*cb.Block, error) {
-	profile := configtxgentest.Load(genesisconfig.SampleDevModeSoloProfile)
+	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	profile.Orderer.Organizations = nil
 	channelGroup, err := encoder.NewChannelGroup(profile)
 	if err != nil {

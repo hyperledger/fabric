@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
@@ -124,7 +124,7 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 }
 
 func makeConfigTxFull(chainID string, i int) *cb.Envelope {
-	gConf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	gConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV2_0: true,
 	}
@@ -142,7 +142,7 @@ func makeConfigTxFull(chainID string, i int) *cb.Envelope {
 }
 
 func makeConfigTxMig(chainID string, i int) *cb.Envelope {
-	gConf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	gConf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	gConf.Orderer.Capabilities = map[string]bool{
 		capabilities.OrdererV2_0: true,
 	}

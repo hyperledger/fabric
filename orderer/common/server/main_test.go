@@ -30,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/configtxgentest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	genesisconfig "github.com/hyperledger/fabric/internal/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -251,7 +250,7 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 
 func TestExtractSysChanLastConfig(t *testing.T) {
 	rlf := ramledger.New(10)
-	conf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlock := encoder.New(conf).GenesisBlock()
 
 	lastConf := extractSysChanLastConfig(rlf, genesisBlock)
@@ -745,7 +744,7 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 	consenters := make(map[string]consensus.Consenter)
 	rlf := ramledger.New(10)
 
-	conf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
+	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlock := encoder.New(conf).GenesisBlock()
 
 	ca, _ := tlsgen.NewCA()
