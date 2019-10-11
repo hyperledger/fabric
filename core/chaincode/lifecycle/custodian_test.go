@@ -63,12 +63,12 @@ var _ = Describe("Custodian", func() {
 
 		buildStatus, ok := buildRegistry.BuildStatus("ccid1")
 		Expect(ok).To(BeTrue())
-		Expect(buildStatus.Done()).To(BeClosed())
+		Eventually(buildStatus.Done()).Should(BeClosed())
 		Expect(buildStatus.Err()).To(BeNil())
 
 		buildStatus, ok = buildRegistry.BuildStatus("ccid2")
 		Expect(ok).To(BeTrue())
-		Expect(buildStatus.Done()).To(BeClosed())
+		Eventually(buildStatus.Done()).Should(BeClosed())
 		Expect(buildStatus.Err()).To(MatchError("fake-build-error"))
 	})
 
