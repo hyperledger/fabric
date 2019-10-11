@@ -57,7 +57,7 @@ func (r *RetrievedPvtdata) Purge() {
 	if len(r.blockPvtdata.PvtData) > 0 {
 		// Finally, purge all transactions in block - valid or not valid.
 		if err := r.transientStore.PurgeByTxids(r.privateInfo.txns); err != nil {
-			r.logger.Error("Purging transactions", r.privateInfo.txns, "failed:", err)
+			r.logger.Errorf("Purging transactions %v failed: %s", r.privateInfo.txns, err)
 		}
 	}
 
@@ -65,7 +65,7 @@ func (r *RetrievedPvtdata) Purge() {
 	if blockNum%r.transientBlockRetention == 0 && blockNum > r.transientBlockRetention {
 		err := r.transientStore.PurgeBelowHeight(blockNum - r.transientBlockRetention)
 		if err != nil {
-			r.logger.Error("Failed purging data from transient store at block", blockNum, ":", err)
+			r.logger.Errorf("Failed purging data from transient store at block [%d]: %s", blockNum, err)
 		}
 	}
 
@@ -94,7 +94,7 @@ func (ec *eligibilityComputer) computeEligibility(txPvtdataQuery []*ledger.TxPvt
 		invalid := txPvtdata.Invalid
 		txList = append(txList, txID)
 		if invalid && !ec.storePvtdataOfInvalidTx {
-			ec.logger.Debugf("Skipping Tx", txID, "at sequence", seqInBlock, "because it's invalid.")
+			ec.logger.Debugf("Skipping Tx [%s] at sequence [%d] because it's invalid.", txID, seqInBlock)
 			continue
 		}
 		deserializer := ec.idDeserializerFactory.GetIdentityDeserializer(ec.channelID)
@@ -198,8 +198,8 @@ func (pdp *PvtdataProvider) RetrievePrivatedata(txPvtdataQuery []*ledger.TxPvtda
 	}
 
 	// POPULATE FROM TRANSIENT STORE
-	pdp.logger.Debug("Could not find all collection private write sets in cache for block [%d]", pdp.blockNum)
-	pdp.logger.Debug("Fetching %d collection private write sets from transient store", len(privateInfo.eligibleMissingKeys))
+	pdp.logger.Debugf("Could not find all collection private write sets in cache for block [%d]", pdp.blockNum)
+	pdp.logger.Debugf("Fetching %d collection private write sets from transient store", len(privateInfo.eligibleMissingKeys))
 	pdp.populateFromTransientStore(pvtdata, privateInfo)
 	if len(privateInfo.eligibleMissingKeys) == 0 {
 		pdp.logger.Debug("No missing collection private write sets to fetch from remote peers")
@@ -210,8 +210,8 @@ func (pdp *PvtdataProvider) RetrievePrivatedata(txPvtdataQuery []*ledger.TxPvtda
 
 	// POPULATE FROM REMOTE PEERS
 	retryThresh := pdp.pullRetryThreshold
-	pdp.logger.Debug("Could not find all collection private write sets in local peer transient store for block [%d]", pdp.blockNum)
-	pdp.logger.Debug("Fetching %d collection private write sets from remote peers for a maximum duration of %s", len(privateInfo.eligibleMissingKeys), retryThresh)
+	pdp.logger.Debugf("Could not find all collection private write sets in local peer transient store for block [%d]", pdp.blockNum)
+	pdp.logger.Debugf("Fetching %d collection private write sets from remote peers for a maximum duration of %s", len(privateInfo.eligibleMissingKeys), retryThresh)
 	startPull := time.Now()
 	totalDuration := time.Duration(0)
 	for len(privateInfo.eligibleMissingKeys) > 0 && totalDuration < retryThresh {
@@ -244,13 +244,13 @@ func (pdp *PvtdataProvider) RetrievePrivatedata(txPvtdataQuery []*ledger.TxPvtda
 // populateFromCache populates pvtdata with data fetched from cache and updates
 // privateInfo by removing missing data that was fetched from cache
 func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, privateInfo *pvtdataInfo, txPvtdataQuery []*ledger.TxPvtdataInfo) {
-	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.eligibleMissingKeys), "private write sets from cache")
+	pdp.logger.Debugf("Attempting to retrieve %d private write sets from cache.", len(privateInfo.eligibleMissingKeys))
 
 	for _, txPvtdata := range pdp.prefetchedPvtdata {
 		txID := getTxIDBySeqInBlock(txPvtdata.SeqInBlock, txPvtdataQuery)
 		// if can't match txID from query, then the data was never requested so skip the entire tx
 		if txID == "" {
-			pdp.logger.Warning("Found extra data in prefetched at sequence", txPvtdata.SeqInBlock, " Skipping.")
+			pdp.logger.Warningf("Found extra data in prefetched at sequence [%d]. Skipping.", txPvtdata.SeqInBlock)
 			continue
 		}
 		for _, ns := range txPvtdata.WriteSet.NsPvtRwset {
@@ -264,7 +264,7 @@ func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, privateInfo *
 				}
 				// skip if key not originally missing
 				if _, missing := privateInfo.eligibleMissingKeys[key]; !missing {
-					pdp.logger.Warning("Found extra data in prefetched:", key.namespace, key.collection, "hash", key.hash, "Skpping.")
+					pdp.logger.Warningf("Found extra data in prefetched:[%v]. Skipping.", key)
 					continue
 				}
 				// populate the pvtdata with the RW set from the cache
@@ -279,7 +279,7 @@ func (pdp *PvtdataProvider) populateFromCache(pvtdata rwsetByKeys, privateInfo *
 // populateFromTransientStore populates pvtdata with data fetched from transient store
 // and updates privateInfo by removing missing data that was fetched from transient store
 func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, privateInfo *pvtdataInfo) {
-	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.eligibleMissingKeys), "private write sets from transient store")
+	pdp.logger.Debugf("Attempting to retrieve %d private write sets from transient store.", len(privateInfo.eligibleMissingKeys))
 
 	// Put into pvtdata RW sets that are missing and found in the transient store
 	for k := range privateInfo.eligibleMissingKeys {
@@ -302,12 +302,12 @@ func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, priv
 				break
 			}
 			if res.PvtSimulationResultsWithConfig == nil {
-				pdp.logger.Warning("Resultset's PvtSimulationResultsWithConfig for", k.txID, "is nil, skipping")
+				pdp.logger.Warningf("Resultset's PvtSimulationResultsWithConfig for txID [%s] is nil. Skipping.", k.txID)
 				continue
 			}
 			simRes := res.PvtSimulationResultsWithConfig
 			if simRes.PvtRwset == nil {
-				pdp.logger.Warning("The PvtRwset of PvtSimulationResultsWithConfig for", k.txID, "is nil, skipping")
+				pdp.logger.Warningf("The PvtRwset of PvtSimulationResultsWithConfig for txID [%s] is nil. Skipping.", k.txID)
 				continue
 			}
 			for _, ns := range simRes.PvtRwset.NsPvtRwset {
@@ -336,11 +336,11 @@ func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, priv
 // populateFromRemotePeers populates pvtdata with data fetched from remote peers and updates
 // privateInfo by removing missing data that was fetched from remote peers
 func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, privateInfo *pvtdataInfo) {
-	pdp.logger.Debug("Attempting to retrieve", len(privateInfo.eligibleMissingKeys), "private write sets from remote peers")
+	pdp.logger.Debugf("Attempting to retrieve %d private write sets from remote peers.", len(privateInfo.eligibleMissingKeys))
 
 	dig2src := make(map[pvtdatacommon.DigKey][]*peer.Endorsement)
 	for k := range privateInfo.eligibleMissingKeys {
-		pdp.logger.Debug("Fetching", k, "from remote peers")
+		pdp.logger.Debugf("Fetching [%v] from remote peers", k)
 		dig := pvtdatacommon.DigKey{
 			TxId:       k.txID,
 			SeqInBlock: k.seqInBlock,
@@ -371,7 +371,7 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, private
 			if _, missing := privateInfo.eligibleMissingKeys[key]; !missing {
 				// key isn't missing and was never fetched earlier, log that it wasn't originally requested
 				if _, exists := pvtdata[key]; !exists {
-					pdp.logger.Debug("Ignoring", key, "because it was never requested")
+					pdp.logger.Debugf("Ignoring [%v] because it was never requested.", key)
 				}
 				continue
 			}
@@ -379,7 +379,7 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, private
 			pvtdata[key] = rws
 			// remove key from missing
 			delete(privateInfo.eligibleMissingKeys, key)
-			pdp.logger.Debug("Fetched", key)
+			pdp.logger.Debugf("Fetched [%v]", key)
 		}
 	}
 	// Iterate over purged data
