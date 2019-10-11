@@ -218,7 +218,9 @@ the defect fixed.
 .. note:: If the defect is security-related, please follow the Hyperledger
           `security bug reporting process <https://wiki.hyperledger.org/display/HYP/Defect+Response>`__.
 
-If it has not been previously reported, create a new JIRA. Please try to provide
+If it has not been previously reported, you may either submit a CR with a
+well documented commit message describing the defect and the fix, or you 
+may create a new JIRA. Please try to provide
 sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
