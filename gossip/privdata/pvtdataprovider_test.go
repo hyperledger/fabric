@@ -50,10 +50,6 @@ type rwSet struct {
 	namespace     string
 	collections   []string
 	preHash, hash []byte
-	endorsers     []string
-	ineligible    bool
-	invalid       bool
-	missing       bool
 	seqInBlock    uint64
 }
 
@@ -61,7 +57,7 @@ func init() {
 	util.SetupTestLoggingWithLevel("INFO")
 }
 
-func TestRetrievePrivateData(t *testing.T) {
+func TestRetrievePvtdata(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
@@ -95,16 +91,18 @@ func TestRetrievePrivateData(t *testing.T) {
 	ineligiblens1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", "different-org", ts.hash, endorser, signature)
 
 	tests := []struct {
-		scenario                                                            string
-		storePvtdataOfInvalidTx                                             bool
-		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer, rwSetsNotFound []rwSet
-		txPvtdataQuery                                                      []*ledger.TxPvtdataInfo
-		expectedBlockPvtdata                                                *ledger.BlockPvtdata
+		scenario                                                string
+		storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool
+		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer     []rwSet
+		expectedDigKeys                                         []privdatacommon.DigKey
+		txPvtdataQuery                                          []*ledger.TxPvtdataInfo
+		expectedBlockPvtdata                                    *ledger.BlockPvtdata
 	}{
 		{
 			// Scenario I
-			scenario:                "Scenario I: Only eligible private data in cache, no missing private data",
-			storePvtdataOfInvalidTx: true,
+			scenario:                       "Scenario I: Only eligible private data in cache, no missing private data",
+			storePvtdataOfInvalidTx:        true,
+			skipPullingInvalidTransactions: false,
 			rwSetsInCache: []rwSet{
 				{
 					txID:        "tx1",
@@ -117,7 +115,7 @@ func TestRetrievePrivateData(t *testing.T) {
 			},
 			rwSetsInTransientStore: []rwSet{},
 			rwSetsInPeer:           []rwSet{},
-			rwSetsNotFound:         []rwSet{},
+			expectedDigKeys:        []privdatacommon.DigKey{},
 			txPvtdataQuery: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
@@ -151,8 +149,9 @@ func TestRetrievePrivateData(t *testing.T) {
 		},
 		{
 			// Scenario II
-			scenario:                "Scenario II: No eligible private data, skip ineligible private data from all sources even if found in cache",
-			storePvtdataOfInvalidTx: true,
+			scenario:                       "Scenario II: No eligible private data, skip ineligible private data from all sources even if found in cache",
+			storePvtdataOfInvalidTx:        true,
+			skipPullingInvalidTransactions: false,
 			rwSetsInCache: []rwSet{
 				{
 					txID:        "tx1",
@@ -160,7 +159,6 @@ func TestRetrievePrivateData(t *testing.T) {
 					collections: []string{"c1"},
 					preHash:     ts.preHash,
 					hash:        ts.hash,
-					ineligible:  true,
 					seqInBlock:  1,
 				},
 			},
@@ -171,7 +169,6 @@ func TestRetrievePrivateData(t *testing.T) {
 					collections: []string{"c1"},
 					preHash:     ts.preHash,
 					hash:        ts.hash,
-					ineligible:  true,
 					seqInBlock:  2,
 				},
 			},
@@ -182,11 +179,10 @@ func TestRetrievePrivateData(t *testing.T) {
 					collections: []string{"c1"},
 					preHash:     ts.preHash,
 					hash:        ts.hash,
-					ineligible:  true,
 					seqInBlock:  3,
 				},
 			},
-			rwSetsNotFound: []rwSet{},
+			expectedDigKeys: []privdatacommon.DigKey{},
 			txPvtdataQuery: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
@@ -242,8 +238,9 @@ func TestRetrievePrivateData(t *testing.T) {
 		},
 		{
 			// Scenario III
-			scenario:                "Scenario III: Missing private data in cache, found in transient store",
-			storePvtdataOfInvalidTx: true,
+			scenario:                       "Scenario III: Missing private data in cache, found in transient store",
+			storePvtdataOfInvalidTx:        true,
+			skipPullingInvalidTransactions: false,
 			rwSetsInCache: []rwSet{
 				{
 					txID:        "tx1",
@@ -264,8 +261,8 @@ func TestRetrievePrivateData(t *testing.T) {
 					seqInBlock:  2,
 				},
 			},
-			rwSetsInPeer:   []rwSet{},
-			rwSetsNotFound: []rwSet{},
+			rwSetsInPeer:    []rwSet{},
+			expectedDigKeys: []privdatacommon.DigKey{},
 			txPvtdataQuery: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
@@ -321,8 +318,9 @@ func TestRetrievePrivateData(t *testing.T) {
 		},
 		{
 			// Scenario IV
-			scenario:                "Scenario IV: Missing private data in cache, found some in transient store and some in peer",
-			storePvtdataOfInvalidTx: true,
+			scenario:                       "Scenario IV: Missing private data in cache, found some in transient store and some in peer",
+			storePvtdataOfInvalidTx:        true,
+			skipPullingInvalidTransactions: false,
 			rwSetsInCache: []rwSet{
 				{
 					txID:        "tx1",
@@ -353,7 +351,22 @@ func TestRetrievePrivateData(t *testing.T) {
 					seqInBlock:  3,
 				},
 			},
-			rwSetsNotFound: []rwSet{},
+			expectedDigKeys: []privdatacommon.DigKey{
+				{
+					TxId:       "tx3",
+					Namespace:  "ns1",
+					Collection: "c1",
+					BlockSeq:   ts.blockNum,
+					SeqInBlock: 3,
+				},
+				{
+					TxId:       "tx3",
+					Namespace:  "ns1",
+					Collection: "c2",
+					BlockSeq:   ts.blockNum,
+					SeqInBlock: 3,
+				},
+			},
 			txPvtdataQuery: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
@@ -433,8 +446,9 @@ func TestRetrievePrivateData(t *testing.T) {
 		},
 		{
 			// Scenario V
-			scenario:                "Scenario V: Skip invalid txs when storePvtdataOfInvalidTx is false",
-			storePvtdataOfInvalidTx: false,
+			scenario:                       "Scenario V: Skip invalid txs when storePvtdataOfInvalidTx is false",
+			storePvtdataOfInvalidTx:        false,
+			skipPullingInvalidTransactions: false,
 			rwSetsInCache: []rwSet{
 				{
 					txID:        "tx1",
@@ -442,7 +456,6 @@ func TestRetrievePrivateData(t *testing.T) {
 					collections: []string{"c1"},
 					preHash:     ts.preHash,
 					hash:        ts.hash,
-					invalid:     true,
 					seqInBlock:  1,
 				},
 				{
@@ -456,7 +469,7 @@ func TestRetrievePrivateData(t *testing.T) {
 			},
 			rwSetsInTransientStore: []rwSet{},
 			rwSetsInPeer:           []rwSet{},
-			rwSetsNotFound:         []rwSet{},
+			expectedDigKeys:        []privdatacommon.DigKey{},
 			txPvtdataQuery: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
@@ -497,8 +510,9 @@ func TestRetrievePrivateData(t *testing.T) {
 		},
 		{
 			// Scenario VI
-			scenario:                "Scenario VI: Don't skip invalid txs when storePvtdataOfInvalidTx is true",
-			storePvtdataOfInvalidTx: true,
+			scenario:                       "Scenario VI: Don't skip invalid txs when storePvtdataOfInvalidTx is true",
+			storePvtdataOfInvalidTx:        true,
+			skipPullingInvalidTransactions: false,
 			rwSetsInCache: []rwSet{
 				{
 					txID:        "tx1",
@@ -506,7 +520,6 @@ func TestRetrievePrivateData(t *testing.T) {
 					collections: []string{"c1"},
 					preHash:     ts.preHash,
 					hash:        ts.hash,
-					invalid:     true,
 					seqInBlock:  1,
 				},
 				{
@@ -520,7 +533,7 @@ func TestRetrievePrivateData(t *testing.T) {
 			},
 			rwSetsInTransientStore: []rwSet{},
 			rwSetsInPeer:           []rwSet{},
-			rwSetsNotFound:         []rwSet{},
+			expectedDigKeys:        []privdatacommon.DigKey{},
 			txPvtdataQuery: []*ledger.TxPvtdataInfo{
 				{
 					TxID:       "tx1",
@@ -580,15 +593,20 @@ func TestRetrievePrivateData(t *testing.T) {
 			rwSetsInCache:           []rwSet{},
 			rwSetsInTransientStore:  []rwSet{},
 			rwSetsInPeer:            []rwSet{},
-			rwSetsNotFound: []rwSet{
+			expectedDigKeys: []privdatacommon.DigKey{
 				{
-					txID:        "tx1",
-					namespace:   "ns1",
-					collections: []string{"c1", "c2"},
-					preHash:     ts.preHash,
-					hash:        ts.hash,
-					missing:     true,
-					seqInBlock:  1,
+					TxId:       "tx1",
+					Namespace:  "ns1",
+					Collection: "c1",
+					BlockSeq:   ts.blockNum,
+					SeqInBlock: 1,
+				},
+				{
+					TxId:       "tx1",
+					Namespace:  "ns1",
+					Collection: "c2",
+					BlockSeq:   ts.blockNum,
+					SeqInBlock: 1,
 				},
 			},
 			txPvtdataQuery: []*ledger.TxPvtdataInfo{
@@ -622,8 +640,9 @@ func TestRetrievePrivateData(t *testing.T) {
 		},
 		{
 			// Scenario VIII
-			scenario:                "Scenario VIII: Extra data not requested",
-			storePvtdataOfInvalidTx: true,
+			scenario:                       "Scenario VIII: Extra data not requested",
+			storePvtdataOfInvalidTx:        true,
+			skipPullingInvalidTransactions: false,
 			rwSetsInCache: []rwSet{
 				{
 					txID:        "tx1",
@@ -648,13 +667,21 @@ func TestRetrievePrivateData(t *testing.T) {
 				{
 					txID:        "tx3",
 					namespace:   "ns1",
-					collections: []string{"c1"},
+					collections: []string{"c1", "c2"},
 					preHash:     ts.preHash,
 					hash:        ts.hash,
 					seqInBlock:  3,
 				},
 			},
-			rwSetsNotFound: []rwSet{},
+			expectedDigKeys: []privdatacommon.DigKey{
+				{
+					TxId:       "tx3",
+					Namespace:  "ns1",
+					Collection: "c1",
+					BlockSeq:   ts.blockNum,
+					SeqInBlock: 3,
+				},
+			},
 			// Only requesting tx3, ns1, c1, should skip all extra data found in all sources
 			txPvtdataQuery: []*ledger.TxPvtdataInfo{
 				{
@@ -686,17 +713,123 @@ func TestRetrievePrivateData(t *testing.T) {
 				MissingPvtData: ledger.TxMissingPvtDataMap{},
 			},
 		},
+		{
+			// Scenario IX
+			scenario:                       "Scenario IX: Skip pulling invalid txs when skipPullingInvalidTransactions is true",
+			storePvtdataOfInvalidTx:        true,
+			skipPullingInvalidTransactions: true,
+			rwSetsInCache: []rwSet{
+				{
+					txID:        "tx1",
+					namespace:   "ns1",
+					collections: []string{"c1"},
+					preHash:     ts.preHash,
+					hash:        ts.hash,
+					seqInBlock:  1,
+				},
+			},
+			rwSetsInTransientStore: []rwSet{
+				{
+					txID:        "tx2",
+					namespace:   "ns1",
+					collections: []string{"c1"},
+					preHash:     ts.preHash,
+					hash:        ts.hash,
+					seqInBlock:  2,
+				},
+			},
+			rwSetsInPeer: []rwSet{
+				{
+					txID:        "tx3",
+					namespace:   "ns1",
+					collections: []string{"c1"},
+					preHash:     ts.preHash,
+					hash:        ts.hash,
+					seqInBlock:  2,
+				},
+			},
+			expectedDigKeys: []privdatacommon.DigKey{},
+			txPvtdataQuery: []*ledger.TxPvtdataInfo{
+				{
+					TxID:       "tx1",
+					Invalid:    true,
+					SeqInBlock: 1,
+					CollectionPvtdataInfo: []*ledger.CollectionPvtdataInfo{
+						ns1c1,
+					},
+				},
+				{
+					TxID:       "tx2",
+					Invalid:    true,
+					SeqInBlock: 2,
+					CollectionPvtdataInfo: []*ledger.CollectionPvtdataInfo{
+						ns1c1,
+					},
+				},
+				{
+					TxID:       "tx3",
+					Invalid:    true,
+					SeqInBlock: 3,
+					CollectionPvtdataInfo: []*ledger.CollectionPvtdataInfo{
+						ns1c1,
+					},
+				},
+			},
+			// tx1 and tx2 are still fetched despite being invalid
+			expectedBlockPvtdata: &ledger.BlockPvtdata{
+				PvtData: ledger.TxPvtDataMap{
+					1: &ledger.TxPvtData{
+						SeqInBlock: 1,
+						WriteSet: &rwset.TxPvtReadWriteSet{
+							NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+								{
+									Namespace: "ns1",
+									CollectionPvtRwset: getCollectionPvtReadWriteSet(rwSet{
+										preHash:     ts.preHash,
+										collections: []string{"c1"},
+									}),
+								},
+							},
+						},
+					},
+					2: &ledger.TxPvtData{
+						SeqInBlock: 2,
+						WriteSet: &rwset.TxPvtReadWriteSet{
+							NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+								{
+									Namespace: "ns1",
+									CollectionPvtRwset: getCollectionPvtReadWriteSet(rwSet{
+										preHash:     ts.preHash,
+										collections: []string{"c1"},
+									}),
+								},
+							},
+						},
+					},
+				},
+				// Only tx3 is missing since we skip pulling invalid tx from peers
+				MissingPvtData: ledger.TxMissingPvtDataMap{
+					3: []*ledger.MissingPvtData{
+						{
+							Namespace:  "ns1",
+							Collection: "c1",
+							IsEligible: true,
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.scenario, func(t *testing.T) {
-			testRetrievePrivateDataSuccess(t, test.scenario, ts, test.storePvtdataOfInvalidTx,
-				test.rwSetsInCache, test.rwSetsInTransientStore, test.rwSetsInPeer, test.rwSetsNotFound, test.txPvtdataQuery, test.expectedBlockPvtdata)
+			testRetrievePvtdataSuccess(t, test.scenario, ts, test.storePvtdataOfInvalidTx, test.skipPullingInvalidTransactions,
+				test.rwSetsInCache, test.rwSetsInTransientStore, test.rwSetsInPeer, test.expectedDigKeys, test.txPvtdataQuery, test.expectedBlockPvtdata)
 		})
 	}
 }
 
-func TestRetrievePrivateDataFailure(t *testing.T) {
+func TestRetrievePvtdataFailure(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
@@ -730,25 +863,16 @@ func TestRetrievePrivateDataFailure(t *testing.T) {
 
 	scenario := "Scenario I: Invalid collection config policy"
 	storePvtdataOfInvalidTx := true
+	skipPullingInvalidTransactions := false
 	rwSetsInCache := []rwSet{}
 	rwSetsInTransientStore := []rwSet{}
 	rwSetsInPeer := []rwSet{}
-	rwSetsNotFound := []rwSet{
-		{
-			txID:        "tx1",
-			namespace:   "ns1",
-			collections: []string{"c1"},
-			preHash:     ts.preHash,
-			hash:        ts.hash,
-			missing:     true,
-			seqInBlock:  1,
-		},
-	}
+	expectedDigKeys := []privdatacommon.DigKey{}
 	txPvtdataQuery := []*ledger.TxPvtdataInfo{
 		{
-			TxID:       "tx3",
+			TxID:       "tx1",
 			Invalid:    false,
-			SeqInBlock: 3,
+			SeqInBlock: 1,
 			CollectionPvtdataInfo: []*ledger.CollectionPvtdataInfo{
 				invalidns1c1,
 			},
@@ -757,11 +881,10 @@ func TestRetrievePrivateDataFailure(t *testing.T) {
 
 	expectedErr := "Collection config policy is nil"
 
-	testRetrievePrivateDataFailure(t, scenario, ts,
-		peerSelfSignedData, storePvtdataOfInvalidTx,
+	testRetrievePvtdataFailure(t, scenario, ts,
+		peerSelfSignedData, storePvtdataOfInvalidTx, skipPullingInvalidTransactions,
 		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer,
-		rwSetsNotFound,
-		txPvtdataQuery,
+		expectedDigKeys, txPvtdataQuery,
 		expectedErr)
 }
 
@@ -808,18 +931,24 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 
 	storePvtdataOfInvalidTx := true
+	skipPullingInvalidTransactions := false
 	rwSetsInCache := []rwSet{}
 	rwSetsInTransientStore := []rwSet{}
 	rwSetsInPeer := []rwSet{}
-	rwSetsNotFound := []rwSet{
+	expectedDigKeys := []privdatacommon.DigKey{
 		{
-			txID:        "tx1",
-			namespace:   "ns1",
-			collections: []string{"c1", "c2"},
-			preHash:     ts.preHash,
-			hash:        ts.hash,
-			missing:     true,
-			seqInBlock:  1,
+			TxId:       "tx1",
+			Namespace:  "ns1",
+			Collection: "c1",
+			BlockSeq:   ts.blockNum,
+			SeqInBlock: 1,
+		},
+		{
+			TxId:       "tx1",
+			Namespace:  "ns1",
+			Collection: "c2",
+			BlockSeq:   ts.blockNum,
+			SeqInBlock: 1,
 		},
 	}
 	txPvtdataQuery := []*ledger.TxPvtdataInfo{
@@ -834,15 +963,15 @@ func TestRetryFetchFromPeer(t *testing.T) {
 		},
 	}
 	pdp := setupPrivateDataProvider(t, ts, testConfig,
-		storePvtdataOfInvalidTx, store,
+		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,
 		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer,
-		rwSetsNotFound)
+		expectedDigKeys)
 	require.NotNil(t, pdp)
 
 	fakeSleeper := &mocks.Sleeper{}
 	SetSleeper(pdp, fakeSleeper)
 
-	_, err = pdp.RetrievePrivatedata(txPvtdataQuery)
+	_, err = pdp.RetrievePvtdata(txPvtdataQuery)
 	assert.NoError(t, err)
 	var maxRetries int
 
@@ -930,6 +1059,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	}
 
 	storePvtdataOfInvalidTx := true
+	skipPullingInvalidTransactions := false
 	rwSetsInCache := []rwSet{
 		{
 			txID:        "tx9",
@@ -942,7 +1072,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	}
 	rwSetsInTransientStore := []rwSet{}
 	rwSetsInPeer := []rwSet{}
-	rwSetsNotFound := []rwSet{}
+	expectedDigKeys := []privdatacommon.DigKey{}
 	// request tx9 which is found in both the cache and transient store
 	txPvtdataQuery := []*ledger.TxPvtdataInfo{
 		{
@@ -955,12 +1085,11 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 		},
 	}
 	pdp := setupPrivateDataProvider(t, ts, conf,
-		storePvtdataOfInvalidTx, store,
-		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer,
-		rwSetsNotFound)
+		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,
+		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer, expectedDigKeys)
 	require.NotNil(t, pdp)
 
-	retrievedPvtdata, err := pdp.RetrievePrivatedata(txPvtdataQuery)
+	retrievedPvtdata, err := pdp.RetrievePvtdata(txPvtdataQuery)
 	require.NoError(t, err)
 
 	retrievedPvtdata.Purge()
@@ -984,7 +1113,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 
 	// increment blockNum to a multiple of transientBlockRetention
 	pdp.blockNum = 10
-	retrievedPvtdata, err = pdp.RetrievePrivatedata(txPvtdataQuery)
+	retrievedPvtdata, err = pdp.RetrievePvtdata(txPvtdataQuery)
 	require.NoError(t, err)
 
 	retrievedPvtdata.Purge()
@@ -1007,12 +1136,12 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	}
 }
 
-func testRetrievePrivateDataSuccess(t *testing.T,
+func testRetrievePvtdataSuccess(t *testing.T,
 	scenario string,
 	ts testSupport,
-	storePvtdataOfInvalidTx bool,
+	storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool,
 	rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer []rwSet,
-	rwSetsNotFound []rwSet,
+	expectedDigKeys []privdatacommon.DigKey,
 	txPvtdataQuery []*ledger.TxPvtdataInfo,
 	expectedBlockPvtdata *ledger.BlockPvtdata) {
 
@@ -1028,12 +1157,12 @@ func testRetrievePrivateDataSuccess(t *testing.T,
 	defer os.RemoveAll(tempdir)
 
 	pdp := setupPrivateDataProvider(t, ts, testConfig,
-		storePvtdataOfInvalidTx, store,
+		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,
 		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer,
-		rwSetsNotFound)
+		expectedDigKeys)
 	require.NotNil(t, pdp, scenario)
 
-	retrievedPvtdata, err := pdp.RetrievePrivatedata(txPvtdataQuery)
+	retrievedPvtdata, err := pdp.RetrievePvtdata(txPvtdataQuery)
 	assert.NoError(t, err, scenario)
 
 	// sometimes the collection private write sets are added out of order
@@ -1045,13 +1174,13 @@ func testRetrievePrivateDataSuccess(t *testing.T,
 	testPurged(t, scenario, retrievedPvtdata, store, txPvtdataQuery)
 }
 
-func testRetrievePrivateDataFailure(t *testing.T,
+func testRetrievePvtdataFailure(t *testing.T,
 	scenario string,
 	ts testSupport,
 	peerSelfSignedData protoutil.SignedData,
-	storePvtdataOfInvalidTx bool,
+	storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool,
 	rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer []rwSet,
-	rwSetsNotFound []rwSet,
+	expectedDigKeys []privdatacommon.DigKey,
 	txPvtdataQuery []*ledger.TxPvtdataInfo,
 	expectedErr string) {
 
@@ -1067,21 +1196,21 @@ func testRetrievePrivateDataFailure(t *testing.T,
 	defer os.RemoveAll(tempdir)
 
 	pdp := setupPrivateDataProvider(t, ts, testConfig,
-		storePvtdataOfInvalidTx, store,
+		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,
 		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer,
-		rwSetsNotFound)
+		expectedDigKeys)
 	require.NotNil(t, pdp, scenario)
 
-	_, err = pdp.RetrievePrivatedata(txPvtdataQuery)
+	_, err = pdp.RetrievePvtdata(txPvtdataQuery)
 	assert.EqualError(t, err, expectedErr, scenario)
 }
 
 func setupPrivateDataProvider(t *testing.T,
 	ts testSupport,
 	config CoordinatorConfig,
-	storePvtdataOfInvalidTx bool, store *transientstore.Store,
+	storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool, store *transientstore.Store,
 	rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer []rwSet,
-	rwSetsNotFound []rwSet) *PvtdataProvider {
+	expectedDigKeys []privdatacommon.DigKey) *PvtdataProvider {
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
@@ -1097,7 +1226,7 @@ func setupPrivateDataProvider(t *testing.T,
 
 	// set up data in peer
 	fetcher := &fetcherMock{t: t}
-	storePvtdataInPeer(rwSetsInPeer, rwSetsNotFound, fetcher, ts)
+	storePvtdataInPeer(rwSetsInPeer, expectedDigKeys, fetcher, ts, skipPullingInvalidTransactions)
 
 	pdp := &PvtdataProvider{
 		selfSignedData:                          ts.peerSelfSignedData,
@@ -1112,6 +1241,7 @@ func setupPrivateDataProvider(t *testing.T,
 		channelID:                               ts.channelID,
 		blockNum:                                ts.blockNum,
 		storePvtdataOfInvalidTx:                 storePvtdataOfInvalidTx,
+		skipPullingInvalidTransactions:          skipPullingInvalidTransactions,
 		fetcher:                                 fetcher,
 		idDeserializerFactory:                   idDeserializerFactory,
 	}
@@ -1186,67 +1316,32 @@ func storePvtdataInTransientStore(rwsets []rwSet, store *transientstore.Store) e
 	return nil
 }
 
-func storePvtdataInPeer(rwSets, missing []rwSet, fetcher *fetcherMock, ts testSupport) {
-	digKeys := []privdatacommon.DigKey{}
+func storePvtdataInPeer(rwSets []rwSet, expectedDigKeys []privdatacommon.DigKey, fetcher *fetcherMock, ts testSupport, skipPullingInvalidTransactions bool) {
 	availableElements := []*proto.PvtDataElement{}
 	for _, rws := range rwSets {
-		if !rws.ineligible {
-			for _, c := range rws.collections {
-				digKeys = append(digKeys, privdatacommon.DigKey{
+		for _, c := range rws.collections {
+			availableElements = append(availableElements, &proto.PvtDataElement{
+				Digest: &proto.PvtDataDigest{
 					TxId:       rws.txID,
 					Namespace:  rws.namespace,
 					Collection: c,
 					BlockSeq:   ts.blockNum,
 					SeqInBlock: rws.seqInBlock,
-				})
-				availableElements = append(availableElements, &proto.PvtDataElement{
-					Digest: &proto.PvtDataDigest{
-						TxId:       rws.txID,
-						Namespace:  rws.namespace,
-						Collection: c,
-						BlockSeq:   ts.blockNum,
-						SeqInBlock: rws.seqInBlock,
-					},
-					Payload: [][]byte{ts.preHash},
-				})
-			}
-		}
-	}
-	for _, rws := range missing {
-		if !rws.ineligible {
-			for _, c := range rws.collections {
-				digKeys = append(digKeys, privdatacommon.DigKey{
-					TxId:       rws.txID,
-					Namespace:  rws.namespace,
-					Collection: c,
-					BlockSeq:   ts.blockNum,
-					SeqInBlock: rws.seqInBlock,
-				})
-			}
+				},
+				Payload: [][]byte{ts.preHash},
+			})
 		}
 	}
 
-	fetcher.On("fetch", mock.Anything).expectingDigests(digKeys).expectingEndorsers(ts.endorsers...).Return(&privdatacommon.FetchedPvtDataContainer{
+	endorsers := []string{}
+	if len(expectedDigKeys) > 0 {
+		endorsers = ts.endorsers
+	}
+	fetcher.On("fetch", mock.Anything).expectingDigests(expectedDigKeys).expectingEndorsers(endorsers...).Return(&privdatacommon.FetchedPvtDataContainer{
 		AvailableElements: availableElements,
 	}, nil)
 }
 
-func getMissingPvtdata(rws rwSet) []*ledger.MissingPvtData {
-	missing := []*ledger.MissingPvtData{}
-	for _, c := range rws.collections {
-		missing = append(missing, &ledger.MissingPvtData{
-			Namespace:  rws.namespace,
-			Collection: c,
-			IsEligible: !rws.ineligible,
-		})
-	}
-
-	sort.Slice(missing, func(i, j int) bool {
-		return missing[i].Collection < missing[j].Collection
-	})
-
-	return missing
-}
 func getCollectionPvtReadWriteSet(rws rwSet) []*rwset.CollectionPvtReadWriteSet {
 	colPvtRwSet := []*rwset.CollectionPvtReadWriteSet{}
 	for _, c := range rws.collections {
