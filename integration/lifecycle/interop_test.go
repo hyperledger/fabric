@@ -842,9 +842,13 @@ var _ = Describe("Release interoperability", func() {
 			cwd, err := os.Getwd()
 			Expect(err).NotTo(HaveOccurred())
 
-			// this chaincode was packaged using the v1.4.3 fabric-tools
-			// (image id: 18ed4db0cd57) and peer (image id: fa87ccaed0ef)
-			// images. It was packaged with name "mycc" and version "0.0".
+			// The chaincode in the CDS file for this test was packaged using
+			// the cli container created via the docker-compose.yaml in this directory.
+			// At the time of packaging, hyperledger/fabric-tools:1.4 had
+			// image id '18ed4db0cd57'.
+			//
+			// It was packaged using the following command:
+			// peer chaincode package --name mycc --version 0.0 --lang golang --path github.com/chaincode/simple-v14 mycc-0_0-v14.cds
 			chaincode := nwo.Chaincode{
 				Name:        "mycc",
 				Version:     "0.0",
