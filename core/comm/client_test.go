@@ -248,6 +248,7 @@ func TestNewConnection(t *testing.T) {
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
+				MaxVersion:   tls.VersionTLS12, // https://github.com/golang/go/issues/33368
 			},
 			success:  false,
 			errorMsg: "tls: bad certificate",
