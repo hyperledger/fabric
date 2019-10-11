@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -76,7 +77,11 @@ func TestUpgradeIDStoreWrongFormat(t *testing.T) {
 	require.NoError(t, err)
 
 	err = UpgradeIDStoreFormat(conf.RootFSPath)
-	expectedErr := &leveldbhelper.ErrFormatVersionMismatch{ExpectedFormatVersion: "", DataFormatVersion: "x.0", DBPath: LedgerProviderPath(conf.RootFSPath)}
+	expectedErr := &dataformat.ErrVersionMismatch{
+		ExpectedVersion: "",
+		Version:         "x.0",
+		DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", LedgerProviderPath(conf.RootFSPath)),
+	}
 	require.EqualError(t, err, expectedErr.Error())
 }
 

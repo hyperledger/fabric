@@ -152,7 +152,7 @@ func TestNewProviderIdStoreFormatError(t *testing.T) {
 			Config:                        conf,
 		},
 	)
-	require.EqualError(t, err, fmt.Sprintf("unexpected format. db path = [%s], data format = [], expected format = [2.0]", LedgerProviderPath(conf.RootFSPath)))
+	require.EqualError(t, err, fmt.Sprintf("unexpected format. db info = [leveldb for channel-IDs at [%s]], data format = [], expected format = [2.0]", LedgerProviderPath(conf.RootFSPath)))
 }
 
 func TestUpgradeIDStoreFormatDBError(t *testing.T) {

@@ -37,19 +37,6 @@ const (
 	dataformatVersionDocID = "dataformatVersion"
 )
 
-// ErrFormatVersionMismatch is returned if it is detected that the version of the format recorded in
-// the internal database is not "2.0"
-type ErrFormatVersionMismatch struct {
-	ExpectedFormatVersion string
-	DataFormatVersion     string
-}
-
-func (e *ErrFormatVersionMismatch) Error() string {
-	return fmt.Sprintf("unexpected format. data format = [%s], expected format = [%s]",
-		e.DataFormatVersion, e.ExpectedFormatVersion,
-	)
-}
-
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
 	couchInstance      *couchdb.CouchInstance
@@ -98,9 +85,10 @@ func checkExpectedDataformatVersion(couchInstance *couchdb.CouchInstance) error 
 		return err
 	}
 	if dataformatVersion != dataformat.Version20 {
-		return &ErrFormatVersionMismatch{
-			ExpectedFormatVersion: dataformat.Version20,
-			DataFormatVersion:     dataformatVersion,
+		return &dataformat.ErrVersionMismatch{
+			DBInfo:          "CouchDB for state database",
+			ExpectedVersion: dataformat.Version20,
+			Version:         dataformatVersion,
 		}
 	}
 	return nil

@@ -808,15 +808,19 @@ func assertQueryResults(t *testing.T, results []*couchdb.QueryResult, expectedId
 
 func TestFormatCheck(t *testing.T) {
 	testCases := []struct {
-		dataFormat     string                    // precondition
-		dataExists     bool                      // precondition
-		expectedFormat string                    // postcondition
-		expectedErr    *ErrFormatVersionMismatch // postcondition
+		dataFormat     string                         // precondition
+		dataExists     bool                           // precondition
+		expectedFormat string                         // postcondition
+		expectedErr    *dataformat.ErrVersionMismatch // postcondition
 	}{
 		{
-			dataFormat:     "",
-			dataExists:     true,
-			expectedErr:    &ErrFormatVersionMismatch{DataFormatVersion: "", ExpectedFormatVersion: "2.0"},
+			dataFormat: "",
+			dataExists: true,
+			expectedErr: &dataformat.ErrVersionMismatch{
+				DBInfo:          "CouchDB for state database",
+				Version:         "",
+				ExpectedVersion: "2.0",
+			},
 			expectedFormat: "does not matter as the test should not reach to check this",
 		},
 
@@ -842,9 +846,13 @@ func TestFormatCheck(t *testing.T) {
 		},
 
 		{
-			dataFormat:     "3.0",
-			dataExists:     true,
-			expectedErr:    &ErrFormatVersionMismatch{DataFormatVersion: "3.0", ExpectedFormatVersion: dataformat.Version20},
+			dataFormat: "3.0",
+			dataExists: true,
+			expectedErr: &dataformat.ErrVersionMismatch{
+				DBInfo:          "CouchDB for state database",
+				Version:         "3.0",
+				ExpectedVersion: dataformat.Version20,
+			},
 			expectedFormat: "does not matter as the test should not reach to check this",
 		},
 	}
@@ -858,7 +866,7 @@ func TestFormatCheck(t *testing.T) {
 	}
 }
 
-func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedErr *ErrFormatVersionMismatch, expectedFormat string) {
+func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedErr *dataformat.ErrVersionMismatch, expectedFormat string) {
 	redoPath, err := ioutil.TempDir("", "redoPath")
 	require.NoError(t, err)
 	defer os.RemoveAll(redoPath)

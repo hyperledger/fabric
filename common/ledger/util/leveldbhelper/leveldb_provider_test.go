@@ -11,6 +11,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
+
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/assert"
 )
@@ -92,7 +94,7 @@ func TestFormatCheck(t *testing.T) {
 		dataFormat     string
 		dataExists     bool
 		expectedFormat string
-		expectedErr    *ErrFormatVersionMismatch
+		expectedErr    *dataformat.ErrVersionMismatch
 	}{
 		{
 			dataFormat:     "",
@@ -116,7 +118,7 @@ func TestFormatCheck(t *testing.T) {
 			dataFormat:     "",
 			dataExists:     true,
 			expectedFormat: "2.0",
-			expectedErr:    &ErrFormatVersionMismatch{DataFormatVersion: "", ExpectedFormatVersion: "2.0"},
+			expectedErr:    &dataformat.ErrVersionMismatch{Version: "", ExpectedVersion: "2.0"},
 		},
 		{
 			dataFormat:     "2.0",
@@ -128,7 +130,7 @@ func TestFormatCheck(t *testing.T) {
 			dataFormat:     "2.0",
 			dataExists:     true,
 			expectedFormat: "3.0",
-			expectedErr:    &ErrFormatVersionMismatch{DataFormatVersion: "2.0", ExpectedFormatVersion: "3.0"},
+			expectedErr:    &dataformat.ErrVersionMismatch{Version: "2.0", ExpectedVersion: "3.0"},
 		},
 	}
 
@@ -141,7 +143,7 @@ func TestFormatCheck(t *testing.T) {
 	}
 }
 
-func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *ErrFormatVersionMismatch) {
+func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *dataformat.ErrVersionMismatch) {
 	assert.NoError(t, os.RemoveAll(testDBPath))
 	defer func() {
 		assert.NoError(t, os.RemoveAll(testDBPath))
@@ -161,7 +163,7 @@ func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists
 	p.Close()
 	p, err = NewProvider(&Conf{DBPath: testDBPath, ExpectedFormatVersion: expectedFormat})
 	if expectedErr != nil {
-		expectedErr.DBPath = testDBPath
+		expectedErr.DBInfo = fmt.Sprintf("leveldb at [%s]", testDBPath)
 		assert.Equal(t, err, expectedErr)
 		return
 	}
