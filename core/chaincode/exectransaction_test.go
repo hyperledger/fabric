@@ -111,13 +111,45 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 	pr := platforms.NewRegistry(&golang.Platform{})
 	mockAclProvider := &mock.ACLProvider{}
 	builtinSCCs := map[string]struct{}{"lscc": {}}
-	lsccImpl := lscc.New(
-		builtinSCCs,
-		&lscc.PeerShim{Peer: peerInstance},
-		mockAclProvider, peerInstance.GetMSPIDs,
-		newPolicyChecker(peerInstance),
-		cryptoProvider,
-	)
+
+	client, err := docker.NewClientFromEnv()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	containerRouter := &container.Router{
+		DockerVM: &dockercontroller.DockerVM{
+			PeerID:       "",
+			NetworkID:    "",
+			BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
+			Client:       client,
+			PlatformBuilder: &platforms.Builder{
+				Registry: pr,
+				Client:   client,
+			},
+		},
+		PackageProvider: &persistence.FallbackPackageLocator{
+			ChaincodePackageLocator: &persistence.ChaincodePackageLocator{},
+			LegacyCCPackageLocator:  &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider},
+		},
+	}
+
+	buildRegistry := &container.BuildRegistry{}
+
+	lsccImpl := &lscc.SCC{
+		BuiltinSCCs: map[string]struct{}{"lscc": {}},
+		Support: &lscc.SupportImpl{
+			GetMSPIDs: peerInstance.GetMSPIDs,
+		},
+		SCCProvider:      &lscc.PeerShim{Peer: peerInstance},
+		ACLProvider:      mockAclProvider,
+		GetMSPIDs:        peerInstance.GetMSPIDs,
+		PolicyChecker:    newPolicyChecker(peerInstance),
+		BCCSP:            cryptoProvider,
+		BuildRegistry:    buildRegistry,
+		ChaincodeBuilder: containerRouter,
+	}
+
 	ml := &cm.Lifecycle{}
 	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
@@ -131,10 +163,6 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 			}, nil
 		}
 	}
-	client, err := docker.NewClientFromEnv()
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
 	globalConfig := &Config{
 		TLSEnabled:      false,
 		Keepalive:       time.Second,
@@ -146,25 +174,10 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 		TotalQueryLimit: 10000,
 	}
 	containerRuntime := &ContainerRuntime{
-		BuildRegistry: &container.BuildRegistry{},
-		CACert:        ca.CertBytes(),
-		ContainerRouter: &container.Router{
-			DockerVM: &dockercontroller.DockerVM{
-				PeerID:       "",
-				NetworkID:    "",
-				BuildMetrics: dockercontroller.NewBuildMetrics(&disabled.Provider{}),
-				Client:       client,
-				PlatformBuilder: &platforms.Builder{
-					Registry: pr,
-					Client:   client,
-				},
-			},
-			PackageProvider: &persistence.FallbackPackageLocator{
-				ChaincodePackageLocator: &persistence.ChaincodePackageLocator{},
-				LegacyCCPackageLocator:  &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider},
-			},
-		},
-		PeerAddress: peerAddress,
+		BuildRegistry:   buildRegistry,
+		CACert:          ca.CertBytes(),
+		ContainerRouter: containerRouter,
+		PeerAddress:     peerAddress,
 	}
 	userRunsCC := false
 	metricsProviders := &disabled.Provider{}

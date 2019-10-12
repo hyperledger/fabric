@@ -11,6 +11,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,13 +27,17 @@ var _ = Describe("EventBroker", func() {
 		eventBroker        *lifecycle.EventBroker
 		cachedChaincodeDef *lifecycle.CachedChaincodeDefinition
 		localChaincode     *lifecycle.LocalChaincode
+		ebMetadata         *externalbuilders.MetadataProvider
 	)
 
 	BeforeEach(func() {
 		fakeListener = &ledgermock.ChaincodeLifecycleEventListener{}
 		chaincodeStore = &mock.ChaincodeStore{}
 		pkgParser = &mock.PackageParser{}
-		eventBroker = lifecycle.NewEventBroker(chaincodeStore, pkgParser)
+		ebMetadata = &externalbuilders.MetadataProvider{
+			DurablePath: "testdata",
+		}
+		eventBroker = lifecycle.NewEventBroker(chaincodeStore, pkgParser, ebMetadata)
 		cachedChaincodeDef = &lifecycle.CachedChaincodeDefinition{}
 		localChaincode = &lifecycle.LocalChaincode{
 			Info: &lifecycle.ChaincodeInstallInfo{
@@ -141,6 +147,14 @@ var _ = Describe("EventBroker", func() {
 		It("invokes listener", func() {
 			eventBroker.ProcessInstallEvent(localChaincode)
 			Expect(fakeListener.HandleChaincodeDeployCallCount()).To(Equal(1))
+			def, md := fakeListener.HandleChaincodeDeployArgsForCall(0)
+			Expect(def).To(Equal(&ledger.ChaincodeDefinition{
+				Name:    "chaincode-1",
+				Hash:    []byte("PackageID"),
+				Version: "version-1",
+			}))
+			Expect(md).To(Equal([]byte("db-artifacts")))
+
 			Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
 		})
 
@@ -151,6 +165,24 @@ var _ = Describe("EventBroker", func() {
 			Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(0))
 			eventBroker.ApproveOrDefineCommitted("channel-1")
 			Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
+		})
+
+		When("the metadata is defined by the external builders", func() {
+			BeforeEach(func() {
+				localChaincode.Info.PackageID = "external-built-cc"
+			})
+
+			It("does not invoke listener", func() {
+				eventBroker.ProcessInstallEvent(localChaincode)
+				Expect(fakeListener.HandleChaincodeDeployCallCount()).To(Equal(1))
+				def, md := fakeListener.HandleChaincodeDeployArgsForCall(0)
+				Expect(def).To(Equal(&ledger.ChaincodeDefinition{
+					Name:    "chaincode-1",
+					Hash:    []byte("external-built-cc"),
+					Version: "version-1",
+				}))
+				Expect(len(md)).To(Equal(2560)) // A tar, and not our mock value
+			})
 		})
 
 		Context("when chaincode store returns error", func() {

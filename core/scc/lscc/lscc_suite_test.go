@@ -18,6 +18,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+//go:generate counterfeiter -o mock/chaincode_builder.go --fake-name ChaincodeBuilder . chaincodeBuilder
+type chaincodeBuilder interface {
+	lscc.ChaincodeBuilder
+}
+
 //go:generate counterfeiter -o mock/sysccprovider.go --fake-name SystemChaincodeProvider . systemChaincodeProvider
 type systemChaincodeProvider interface {
 	sysccprovider.SystemChaincodeProvider

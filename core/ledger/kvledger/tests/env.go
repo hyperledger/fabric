@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/common/privdata"
+	"github.com/hyperledger/fabric/core/container/externalbuilders"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -48,7 +49,12 @@ type env struct {
 func newEnv(t *testing.T) *env {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	return newEnvWithInitializer(t, &ledgermgmt.Initializer{Hasher: cryptoProvider})
+	return newEnvWithInitializer(t, &ledgermgmt.Initializer{
+		Hasher: cryptoProvider,
+		EbMetadataProvider: &externalbuilders.MetadataProvider{
+			DurablePath: "testdata",
+		},
+	})
 }
 
 func newEnvWithInitializer(t *testing.T, initializer *ledgermgmt.Initializer) *env {

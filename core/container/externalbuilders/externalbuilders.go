@@ -86,8 +86,7 @@ func (d *Detector) Detect(buildContext *BuildContext) *Builder {
 // CachedBuild returns a build instance that was already built, or nil, or
 // when an unexpected error is encountered, an error.
 func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
-	durablePath := filepath.Join(d.DurablePath, ccid)
-
+	durablePath := filepath.Join(d.DurablePath, SanitizeCCIDPath(ccid))
 	_, err := os.Stat(durablePath)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -159,7 +158,7 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		return nil, errors.WithMessage(err, "external builder failed to release")
 	}
 
-	durablePath := filepath.Join(d.DurablePath, ccid)
+	durablePath := filepath.Join(d.DurablePath, SanitizeCCIDPath(ccid))
 
 	err = os.Mkdir(durablePath, 0700)
 	if err != nil {
@@ -210,10 +209,14 @@ type BuildContext struct {
 	BldDir      string
 }
 
-var pkgIDreg = regexp.MustCompile("[^a-zA-Z0-9]+")
+var pkgIDreg = regexp.MustCompile("[<>:\"/\\\\|\\?\\*&]")
+
+func SanitizeCCIDPath(ccid string) string {
+	return pkgIDreg.ReplaceAllString(ccid, "-")
+}
 
 func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, codePackage io.Reader) (bc *BuildContext, err error) {
-	scratchDir, err := ioutil.TempDir("", "fabric-"+pkgIDreg.ReplaceAllString(ccid, "-"))
+	scratchDir, err := ioutil.TempDir("", "fabric-"+SanitizeCCIDPath(ccid))
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create temp dir")
 	}

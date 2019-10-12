@@ -21,7 +21,7 @@ import (
 
 var _ = Describe("LSCC", func() {
 	var (
-		l                 *lscc.LifeCycleSysCC
+		l                 *lscc.SCC
 		fakeSupport       *mock.FileSystemSupport
 		fakeCCPackage     *mock.CCPackage
 		fakeSCCProvider   *mock.SystemChaincodeProvider
@@ -44,7 +44,7 @@ var _ = Describe("LSCC", func() {
 		fakeQueryExecutor = &mock.QueryExecutor{}
 		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 
-		l = &lscc.LifeCycleSysCC{
+		l = &lscc.SCC{
 			Support:     fakeSupport,
 			SCCProvider: fakeSCCProvider,
 			BCCSP:       cryptoProvider,
