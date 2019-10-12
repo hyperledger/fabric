@@ -106,6 +106,23 @@ func BasicSoloWithIdemix() *Config {
 	return config
 }
 
+func MultiChannelBasicSolo() *Config {
+	config := BasicSolo()
+
+	config.Channels = []*Channel{
+		{Name: "testchannel", Profile: "TwoOrgsChannel"},
+		{Name: "testchannel2", Profile: "TwoOrgsChannel"}}
+
+	for _, peer := range config.Peers {
+		peer.Channels = []*PeerChannel{
+			{Name: "testchannel", Anchor: true},
+			{Name: "testchannel2", Anchor: true},
+		}
+	}
+
+	return config
+}
+
 func BasicKafka() *Config {
 	config := BasicSolo()
 	config.Consensus.Type = "kafka"
@@ -130,7 +147,8 @@ func BasicEtcdRaft() *Config {
 }
 
 func MultiChannelEtcdRaft() *Config {
-	config := BasicSolo()
+	config := MultiChannelBasicSolo()
+
 	config.Consensus.Type = "etcdraft"
 	config.Profiles = []*Profile{{
 		Name:     "SampleDevModeEtcdRaft",
@@ -141,16 +159,6 @@ func MultiChannelEtcdRaft() *Config {
 		Organizations: []string{"Org1", "Org2"},
 	}}
 	config.SystemChannel.Profile = "SampleDevModeEtcdRaft"
-	config.Channels = []*Channel{
-		{Name: "testchannel1", Profile: "TwoOrgsChannel"},
-		{Name: "testchannel2", Profile: "TwoOrgsChannel"}}
-
-	for _, peer := range config.Peers {
-		peer.Channels = []*PeerChannel{
-			{Name: "testchannel1", Anchor: true},
-			{Name: "testchannel2", Anchor: true},
-		}
-	}
 
 	return config
 }

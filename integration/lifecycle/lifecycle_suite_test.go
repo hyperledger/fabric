@@ -76,8 +76,8 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, c
 		peer,
 		chaincodeName,
 		initialQueryResult,
-		n.PeerAddress(n.Peer("org1", "peer1"), nwo.ListenPort),
-		n.PeerAddress(n.Peer("org2", "peer2"), nwo.ListenPort),
+		n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
+		n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
 	)
 }
 
@@ -150,10 +150,10 @@ func LoadLocalMSPAt(dir, id, mspType string) (msp.MSP, error) {
 }
 
 func Signer(dir string) (msp.SigningIdentity, []byte) {
-	MSP, err := LoadLocalMSPAt(dir, "Org1ExampleCom", "bccsp")
+	MSP, err := LoadLocalMSPAt(dir, "Org1MSP", "bccsp")
 	Expect(err).To(BeNil())
 	Expect(MSP).NotTo(BeNil())
-	Expect(err).To(BeNil(), "failed getting singer for %s", dir)
+	Expect(err).To(BeNil(), "failed getting signer for %s", dir)
 	signer, err := MSP.GetDefaultSigningIdentity()
 	Expect(err).To(BeNil())
 	Expect(signer).NotTo(BeNil())
