@@ -23,8 +23,8 @@ role an application plays.
 Components of the Fabcar Network
 --------------------------------
 
-Fabcar uses the "basic-network" sample as its limited development network. It
-consists of a single peer node configured to use CouchDB as the state database,
+Fabcar uses the "first-network" sample as its limited development network. It
+consists of four peer nodes configured to use CouchDB as the state database,
 a single "solo" ordering node, a certificate authority (CA) and a CLI container
 for executing commands.
 
