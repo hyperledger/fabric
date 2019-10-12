@@ -111,11 +111,11 @@ The `ConsensusType` is represented by three values: `Type`, `Metadata`, and
      changed while in maintenance mode.
   * `Metadata` will be empty if the `Type` is kafka, but must carry valid Raft
      metadata if the `ConsensusType` is `etcdraft`. More on this below.
-  * `State` is either `NORMAL`, when the channel is processing transactions, or
-    `MAINTENANCE`, during the migration process.
+  * `State` is either `STATE_NORMAL`, when the channel is processing transactions, or
+    `STATE_MAINTENANCE`, during the migration process.
 
 In the first step of the channel configuration update, only change the `State`
-from `NORMAL` to `MAINTENANCE`. Do not change the `Type` or the `Metadata` field
+from `STATE_NORMAL` to `STATE_MAINTENANCE`. Do not change the `Type` or the `Metadata` field
 yet. Note that the `Type` should currently be `kafka`.
 
 While in maintenance mode, normal transactions, config updates unrelated to
@@ -131,7 +131,7 @@ continue the migration process).
 **Verify** that each ordering service node has entered maintenance mode on each
 of the channels. This can be done by fetching the last config block and making
 sure that the `Type`, `Metadata`, `State` on each channel is `kafka`, empty
-(recall that there is no metadata for Kafka), and `MAINTENANCE`, respectively.
+(recall that there is no metadata for Kafka), and `STATE_MAINTENANCE`, respectively.
 
 If the channels have been updated successfully, the ordering service is now
 ready for backup.
@@ -153,7 +153,7 @@ service and then the ordering service nodes.
 
 The next step in the migration process is another channel configuration update
 for each channel. In this configuration update, switch the `Type` to `etcdraft`
-(for Raft) while keeping the `State` in `MAINTENANCE`, and fill in the
+(for Raft) while keeping the `State` in `STATE_MAINTENANCE`, and fill in the
 `Metadata` configuration​. It is highly recommended that the `Metadata` configuration​ be
 identical​ on all channels. If you want to establish different consenter sets
 with different nodes, you will be able to reconfigure the `Metadata` configuration​
@@ -168,7 +168,7 @@ Then, validate that each ordering service node has committed the `ConsensusType`
 change configuration update by pulling and inspecting the configuration of each
 channel.
 
-Note: the transaction that changes the `ConsensusType` must be the last
+Note: For each channel, the transaction that changes the `ConsensusType` must be the last
 configuration transaction before restarting the nodes (in the next step). If
 some other configuration transaction happens after this step, the nodes will
 most likely crash on restart, or result in undefined behavior.
@@ -180,7 +180,13 @@ Note: exit of maintenance mode **must** be done **after** restart.
 After the `ConsensusType` update has been completed on each channel, stop all
 ordering service nodes, stop all Kafka brokers and Zookeepers, and then restart
 only the ordering service nodes. They should restart as Raft nodes, form a cluster per
-channel, and elect a leader on each channel. Make sure to **validate** that a
+channel, and elect a leader on each channel.
+
+**Note**: Since Raft-based ordering service requires mutual TLS between orderer nodes,
+**additional configurations** are required before you start them again, see
+[Section: Local Configuration](./raft_configuration.md#local-configuration) for more details.
+
+After restart process finished, make sure to **validate** that a
 leader has been elected on each channel by inspecting the node logs (you can see
 what to look for below). This will confirm that the process has been completed
 successfully.
@@ -206,11 +212,11 @@ In this example `​node 2​` reports that a leader was elected (the leader is
 
 Perform another channel configuration update on each channel (sending the config
 update to the same ordering node you have been sending configuration updates to
-until now), switching the `State` from `MAINTENANCE` to `NORMAL`. Start with the
+until now), switching the `State` from `STATE_MAINTENANCE` to `STATE_NORMAL`. Start with the
 system channel, as usual. If it succeeds on the ordering system channel,
 migration is likely to succeed on all channels. To verify, fetch the last config
 block of the system channel from the ordering node, verifying that the `State`
-is now `NORMAL`. For completeness, verify this on each ordering node.
+is now `STATE_NORMAL`. For completeness, verify this on each ordering node.
 
 When this process is completed, the ordering service is now ready to accept all
 transactions on all channels. If you stopped your peers and application as
@@ -236,7 +242,7 @@ There are a few states which might indicate migration has failed:
 
 1. Some nodes crash or shutdown.
 2. There is no record of a successful leader election per channel in the logs.
-3. The attempt to flip to `NORMAL` mode on the system channel fails.
+3. The attempt to flip to `STATE_NORMAL` mode on the system channel fails.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/) -->
