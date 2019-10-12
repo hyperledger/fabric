@@ -19,7 +19,7 @@ type Provider interface {
 }
 
 // Store manages the permanent storage of private write sets for a ledger
-// Beacsue the pvt data is supposed to be in sync with the blocks in the
+// Because the pvt data is supposed to be in sync with the blocks in the
 // ledger, both should logically happen in an atomic operation. In order
 // to accomplish this, an implementation of this store should provide
 // support for a two-phase like commit/rollback capability.

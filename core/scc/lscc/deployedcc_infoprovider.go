@@ -20,7 +20,7 @@ const (
 	lsccNamespace = "lscc"
 )
 
-// DeployedCCInfoProvider implements ineterface ledger.DeployedChaincodeInfoProvider
+// DeployedCCInfoProvider implements interface ledger.DeployedChaincodeInfoProvider
 type DeployedCCInfoProvider struct {
 }
 

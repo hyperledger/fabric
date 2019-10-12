@@ -24,7 +24,7 @@ const maxBlockFileSize = 64 * 1024 * 1024
 
 var logger = flogging.MustGetLogger("ledgerstorage")
 
-// Provider encapusaltes two providers 1) block store provider and 2) and pvt data store provider
+// Provider encapsulates two providers 1) block store provider and 2) and pvt data store provider
 type Provider struct {
 	blkStoreProvider     blkstorage.BlockStoreProvider
 	pvtdataStoreProvider pvtdatastorage.Provider

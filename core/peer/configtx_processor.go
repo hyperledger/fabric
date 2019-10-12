@@ -24,12 +24,12 @@ const (
 type ConfigTxProcessor struct{}
 
 // GenerateSimulationResults implements function in the interface 'github.com/hyperledger/fabric/core/ledger/customtx/Processor'
-// This implemantation processes following two types of transactions.
+// This implementation processes following two types of transactions.
 // CONFIG  - simply stores the config in the statedb. Additionally, stores the resource config seed if the transaction is from the genesis block.
 // PEER_RESOURCE_UPDATE - In a normal course, this validates the transaction against the current resource bundle,
 // computes the full configuration, and stores the full configuration if the transaction is found valid.
 // However, if 'initializingLedger' is true (i.e., either the ledger is being created from the genesis block
-// or the ledger is synching the state with the blockchain, during start up), the full config is computed using
+// or the ledger is syncing the state with the blockchain, during start up), the full config is computed using
 // the most recent configs from statedb
 func (tp *ConfigTxProcessor) GenerateSimulationResults(txEnv *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	payload := protoutil.UnmarshalPayloadOrPanic(txEnv.Payload)
