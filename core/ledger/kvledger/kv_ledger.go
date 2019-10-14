@@ -447,7 +447,7 @@ func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitO
 
 	startBlockstorageAndPvtdataCommit := time.Now()
 	logger.Debugf("[%s] Adding CommitHash to the block [%d]", l.ledgerID, blockNo)
-	// we need to ensure that only after a gensis block, commitHash is computed
+	// we need to ensure that only after a genesis block, commitHash is computed
 	// and added to the block. In other words, only after joining a new channel
 	// or peer reset, the commitHash would be added to the block
 	if block.Header.Number == 1 || l.commitHash != nil {
@@ -683,7 +683,7 @@ func filterPvtDataOfInvalidTx(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData
 	committedPvtData := make(map[uint64][]*ledger.TxPvtData)
 	for blkNum, txsPvtData := range hashVerifiedPvtData {
 
-		// TODO: Instead of retrieving the whole block, we need to retireve only
+		// TODO: Instead of retrieving the whole block, we need to retrieve only
 		// the TxValidationFlags from the block metadata. For that, we would need
 		// to add a new index for the block metadata. FAB- FAB-15808
 		block, err := blockStore.RetrieveBlockByNumber(blkNum)

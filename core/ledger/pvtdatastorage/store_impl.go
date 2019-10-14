@@ -311,7 +311,7 @@ func (s *store) constructUpdateEntriesFromDataEntries(dataEntries []*dataEntry) 
 			return nil, err
 		}
 
-		// get the existing expiryData ntry
+		// get the existing expiryData entry
 		var expiryData *ExpiryData
 		if !neverExpires(expiryKey.expiringBlk) {
 			if expiryData, err = s.getExpiryDataFromUpdateEntriesOrStore(updateEntries, expiryKey); err != nil {
@@ -337,7 +337,7 @@ func (s *store) constructUpdateEntriesFromDataEntries(dataEntries []*dataEntry) 
 		}
 
 		updateEntries.addDataEntry(dataEntry)
-		if expiryData != nil { // would be nill for the never expiring entry
+		if expiryData != nil { // would be nil for the never expiring entry
 			expiryEntry := &expiryEntry{&expiryKey, expiryData}
 			updateEntries.updateAndAddExpiryEntry(expiryEntry, dataEntry.key)
 		}
@@ -671,7 +671,7 @@ func (s *store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 		missingDataKey := decodeMissingDataKey(missingDataKeyBytes)
 
 		if isMaxBlockLimitReached && (missingDataKey.blkNum != lastProcessedBlock) {
-			// esnures that exactly maxBlock number
+			// ensures that exactly maxBlock number
 			// of blocks' entries are processed
 			break
 		}
@@ -870,7 +870,7 @@ func (s *store) processCollElgEvents() {
 	} // event loop
 
 	s.db.WriteBatch(batch, true)
-	logger.Debugf("Converted [%d] inelligible mising data entries to elligible", totalEntriesConverted)
+	logger.Debugf("Converted [%d] ineligible missing data entries to eligible", totalEntriesConverted)
 }
 
 // LastCommittedBlockHeight implements the function in the interface `Store`

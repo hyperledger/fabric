@@ -414,9 +414,9 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 }
 
 // StateListener allows a custom code for performing additional stuff upon state change
-// for a perticular namespace against which the listener is registered.
+// for a particular namespace against which the listener is registered.
 // This helps to perform custom tasks other than the state updates.
-// A ledger implemetation is expected to invoke Function `HandleStateUpdates` once per block and
+// A ledger implementation is expected to invoke Function `HandleStateUpdates` once per block and
 // the `stateUpdates` parameter passed to the function captures the state changes caused by the block
 // for the namespace. The actual data type of stateUpdates depends on the data model enabled.
 // For instance, for KV data model, the actual type would be proto message
@@ -545,7 +545,7 @@ type PvtdataHashMismatch struct {
 }
 
 // DeployedChaincodeInfoProvider is a dependency that is used by ledger to build collection config history
-// LSCC module is expected to provide an implementation for this dependencys
+// LSCC module is expected to provide an implementation for this dependencies
 type DeployedChaincodeInfoProvider interface {
 	// Namespaces returns the slice of the namespaces that are used for maintaining chaincode lifecycle data
 	Namespaces() []string

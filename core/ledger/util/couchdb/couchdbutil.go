@@ -255,12 +255,12 @@ func ConstructNamespaceDBName(chainName, namespace string) string {
 //CouchDB Rules: Only lowercase characters (a-z), digits (0-9), and any of the characters
 //_, $, (, ), +, -, and / are allowed. Must begin with a letter.
 //
-//Restictions have already been applied to the database name from Orderer based on
+//Restrictions have already been applied to the database name from Orderer based on
 //restrictions required by Kafka and couchDB (except a '.' char). The databaseName
 // passed in here is expected to follow `[a-z][a-z0-9.$_-]*` pattern.
 //
 //This validation will simply check whether the database name matches the above pattern and will replace
-// all occurence of '.' by '$'. This will not cause collisions in the transformed named
+// all occurrence of '.' by '$'. This will not cause collisions in the transformed named
 func mapAndValidateDatabaseName(databaseName string) (string, error) {
 	// test Length
 	if len(databaseName) <= 0 {

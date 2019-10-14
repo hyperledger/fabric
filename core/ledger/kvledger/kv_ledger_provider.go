@@ -249,7 +249,7 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		}
 	}
 
-	// Create a kvLedger for this chain/ledger, which encasulates the underlying data stores
+	// Create a kvLedger for this chain/ledger, which encapsulates the underlying data stores
 	// (id store, blockstore, state database, history database)
 	l, err := newKVLedger(
 		ledgerID,
