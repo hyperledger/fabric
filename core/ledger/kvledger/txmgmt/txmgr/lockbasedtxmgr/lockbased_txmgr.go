@@ -172,7 +172,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 
 // RemoveStaleAndCommitPvtDataOfOldBlocks implements method in interface `txmgmt.TxMgr`
 // The following six operations are performed:
-// (1) contructs the unique pvt data from the passed reconciledPvtdata
+// (1) constructs the unique pvt data from the passed reconciledPvtdata
 // (2) acquire a lock on oldBlockCommit
 // (3) checks for stale pvtData by comparing [version, valueHash] and removes stale data
 // (4) creates update batch from the the non-stale pvtData
@@ -373,7 +373,7 @@ func checkIfPvtWriteIsStale(hashedKey *privacyenabledstate.HashedCompositeKey,
 		TODO: FAB-12922
 		In the first round, we need to the check version of passed pvtData
 		against the version of pvtdata stored in the stateDB. In second round,
-		for the remaining pvtData, we need to check for stalenss using hashed
+		for the remaining pvtData, we need to check for staleness using hashed
 		version. In the third round, for the still remaining pvtdata, we need
 		to check against hashed values. In each phase we would require to
 		perform bulkload of relevant data from the stateDB.
@@ -521,7 +521,7 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	if err := txmgr.pvtdataPurgeMgr.BlockCommitDone(); err != nil {
 		return err
 	}
-	// In the case of error state listeners will not recieve this call - instead a peer panic is caused by the ledger upon receiveing
+	// In the case of error state listeners will not receive this call - instead a peer panic is caused by the ledger upon receiving
 	// an error from this function
 	txmgr.updateStateListeners()
 	return nil

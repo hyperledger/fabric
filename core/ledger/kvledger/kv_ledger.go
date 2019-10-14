@@ -34,7 +34,7 @@ import (
 
 var logger = flogging.MustGetLogger("kvledger")
 
-// KVLedger provides an implementation of `ledger.PeerLedger`.
+// kvLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
 	ledgerID               string
@@ -47,7 +47,7 @@ type kvLedger struct {
 	commitHash             []byte
 }
 
-// NewKVLedger constructs new `KVLedger`
+// newKVLedger constructs new `KVLedger`
 func newKVLedger(
 	ledgerID string,
 	blockStore *ledgerstorage.Store,
@@ -63,7 +63,7 @@ func newKVLedger(
 	hasher ledger.Hasher,
 ) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
-	// Create a kvLedger for this chain/ledger, which encasulates the underlying
+	// Create a kvLedger for this chain/ledger, which encapsulates the underlying
 	// id store, blockstore, txmgr (state database), history database
 	l := &kvLedger{ledgerID: ledgerID, blockStore: blockStore, historyDB: historyDB, blockAPIsRWLock: &sync.RWMutex{}}
 
@@ -91,7 +91,7 @@ func newKVLedger(
 	}
 
 	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
-	// this functionality of regiserting for events to ledgermgmt package so that this
+	// this functionality of registering for events to ledgermgmt package so that this
 	// is reused across other future ledger implementations
 	ccEventListener := versionedDB.GetChaincodeEventListener()
 	logger.Debugf("Register state db for chaincode lifecycle events: %t", ccEventListener != nil)
@@ -220,7 +220,7 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 		// of the state DB and block store to ensure that the state DB is dropped.
 
 		// firstBlockNum is nothing but the nextBlockNum expected by the state DB.
-		// In otherwords, the firstBlockNum is nothing but the height of stateDB.
+		// In other words, the firstBlockNum is nothing but the height of stateDB.
 		if firstBlockNum > lastAvailableBlockNum+1 {
 			dbName := recoverable.Name()
 			return fmt.Errorf("the %s database [height=%d] is ahead of the block store [height=%d]. "+

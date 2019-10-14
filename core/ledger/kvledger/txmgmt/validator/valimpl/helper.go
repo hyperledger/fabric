@@ -70,8 +70,8 @@ func validateAndPreparePvtBatch(
 
 // requiresPvtdataValidation returns whether or not a hashes of the collection should be computed
 // for the collections of present in the private data
-// TODO for now always return true. Add capabilty of checking if this data was produced by
-// the validating peer itself during similation and in that case return false
+// TODO for now always return true. Add capability of checking if this data was produced by
+// the validating peer itself during simulation and in that case return false
 func requiresPvtdataValidation(tx *ledger.TxPvtData) bool {
 	return true
 }
@@ -99,7 +99,7 @@ func validatePvtdata(tx *internal.Transaction, pvtdata *ledger.TxPvtData) error 
 }
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
-// The retuned 'Block' structure contains only transactions that are endorser transactions and are not alredy marked as invalid
+// The returned 'Block' structure contains only transactions that are endorser transactions and are not already marked as invalid
 func preprocessProtoBlock(txMgr txmgr.TxMgr,
 	validateKVFunc func(key string, value []byte) error,
 	block *common.Block, doMVCCValidation bool,
@@ -257,7 +257,7 @@ func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch 
 }
 
 // incrementPvtdataVersionIfNeeded changes the versions of the private data keys if the version of the corresponding hashed key has
-// been upgrded. A metadata-update-only type of transaction may have caused the version change of the existing value in the hashed space.
+// been upgraded. A metadata-update-only type of transaction may have caused the version change of the existing value in the hashed space.
 // Iterate through all the metadata writes and try to get these keys and increment the version in the private writes to be the same as of the hashed key version - if the latest
 // value of the key is available. Otherwise, in this scenario, we end up having the latest value in the private state but the version
 // gets left as stale and will cause simulation failure because of wrongly assuming that we have stale value

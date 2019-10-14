@@ -123,7 +123,7 @@ func (v *Validator) validateEndorserTX(
 
 	var validationCode = peer.TxValidationCode_VALID
 	var err error
-	//mvccvalidation, may invalidate transaction
+	//mvcc validation, may invalidate transaction
 	if doMVCCValidation {
 		validationCode, err = v.validateTx(txRWSet, updates)
 	}

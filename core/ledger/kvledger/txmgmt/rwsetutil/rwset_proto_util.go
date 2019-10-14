@@ -51,7 +51,7 @@ type CollHashedRwSet struct {
 func (txRwSet *TxRwSet) GetPvtDataHash(ns, coll string) []byte {
 	// we could build and use a map to reduce the number of lookup
 	// in the future call. However, we decided to defer such optimization
-	// due to the following assumptions (mainly to avoid additioan LOC).
+	// due to the following assumptions (mainly to avoid additional LOC).
 	// we assume that the number of namespaces and collections in a txRWSet
 	// to be very minimal (in a single digit),
 	for _, nsRwSet := range txRwSet.NsRwSets {

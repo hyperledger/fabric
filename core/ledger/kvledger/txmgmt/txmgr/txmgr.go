@@ -57,7 +57,7 @@ func (e *ErrUnsupportedTransaction) Error() string {
 
 // ErrPvtdataNotAvailable is to be thrown when an application seeks a private data item
 // during simulation and the simulator is not capable of returning the version of the
-// private data item consistent with the snapshopt exposed to the simulation
+// private data item consistent with the snapshot exposed to the simulation
 type ErrPvtdataNotAvailable struct {
 	Msg string
 }
