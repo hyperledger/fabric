@@ -191,8 +191,9 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 	cwd, err := os.Getwd()
 	Expect(err).NotTo(HaveOccurred())
 	network.ExternalBuilders = append(network.ExternalBuilders, corepeer.ExternalBuilder{
-		Path: filepath.Join(cwd, "..", "externalbuilders", "binary"),
-		Name: "binary",
+		Path:                 filepath.Join(cwd, "..", "externalbuilders", "binary"),
+		Name:                 "binary",
+		EnvironmentWhitelist: []string{"GOPROXY"},
 	})
 
 	if network.Templates == nil {
