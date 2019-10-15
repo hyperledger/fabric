@@ -14,6 +14,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/flogging"
+	mspi "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
@@ -329,4 +330,41 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 		Policy:     policy,
 		policyName: PathSeparator + pm.path + PathSeparator + relpath,
 	}, true
+}
+
+// SignatureSetToValidIdentities takes a slice of pointers to signed data,
+// checks the validity of the signature and of the signer and returns a
+// slice of associated identities
+func SignatureSetToValidIdentities(signedData []*protoutil.SignedData, identityDeserializer mspi.IdentityDeserializer) []mspi.Identity {
+	idMap := make(map[string]struct{})
+	identities := make([]mspi.Identity, 0, len(signedData))
+
+	for i, sd := range signedData {
+		identity, err := identityDeserializer.DeserializeIdentity(sd.Identity)
+		if err != nil {
+			logger.Warningf("principal deserialization failure (%s) for identity %x", err, sd.Identity)
+			continue
+		}
+
+		key := identity.GetIdentifier().Mspid + identity.GetIdentifier().Id
+
+		// We check if this identity has already appeared before doing a signature check, to ensure that
+		// someone cannot force us to waste time checking the same signature thousands of times
+		if _, ok := idMap[key]; ok {
+			logger.Warningf("De-duplicating identity [%+v] at index %d in signature set", key, i)
+			continue
+		}
+
+		err = identity.Verify(sd.Data, sd.Signature)
+		if err != nil {
+			logger.Warningf("%p signature for identity %d is invalid: %s", signedData, i, err)
+			continue
+		}
+		logger.Debugf("signature for identity %d validated", i)
+
+		idMap[key] = struct{}{}
+		identities = append(identities, identity)
+	}
+
+	return identities
 }

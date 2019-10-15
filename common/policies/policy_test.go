@@ -11,10 +11,14 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	mspi "github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -233,4 +237,128 @@ func TestPrincipalSetContainingOnly(t *testing.T) {
 
 	assert.Len(t, principalSets, 1)
 	assert.True(t, principalSets[0].ContainingOnly(between20And30))
+}
+
+type fakeID struct {
+	id     *mspi.IdentityIdentifier
+	mspid  string
+	valid  error
+	verify error
+}
+
+func (f *fakeID) ExpiresAt() time.Time {
+	return time.Time{}
+}
+
+func (f *fakeID) GetIdentifier() *mspi.IdentityIdentifier {
+	return f.id
+}
+
+func (f *fakeID) GetMSPIdentifier() string {
+	return f.mspid
+}
+
+func (f *fakeID) Validate() error {
+	return f.valid
+}
+
+func (f *fakeID) GetOrganizationalUnits() []*mspi.OUIdentifier {
+	return nil
+}
+
+func (f *fakeID) Anonymous() bool {
+	return false
+}
+
+func (f *fakeID) Verify(msg []byte, sig []byte) error {
+	return f.verify
+}
+
+func (f *fakeID) Serialize() ([]byte, error) {
+	return nil, nil
+}
+
+func (f *fakeID) SatisfiesPrincipal(principal *msp.MSPPrincipal) error {
+	return nil
+}
+
+type fakeIdDs struct {
+	DeserializeIdentityRv  mspi.Identity
+	DeserializeIdentityErr error
+}
+
+func (f *fakeIdDs) DeserializeIdentity(serializedIdentity []byte) (mspi.Identity, error) {
+	return f.DeserializeIdentityRv, f.DeserializeIdentityErr
+}
+
+func (f *fakeIdDs) IsWellFormed(identity *msp.SerializedIdentity) error {
+	return nil
+}
+
+func TestSignatureSetToValidIdentities(t *testing.T) {
+	sd := []*protoutil.SignedData{
+		{
+			Data:      []byte("data1"),
+			Identity:  []byte("identity1"),
+			Signature: []byte("signature1"),
+		},
+		{
+			Data:      []byte("data1"),
+			Identity:  []byte("identity1"),
+			Signature: []byte("signature1"),
+		},
+	}
+
+	fIDDs := &fakeIdDs{}
+	fIDDs.DeserializeIdentityRv = &fakeID{
+		id: &mspi.IdentityIdentifier{
+			Id:    "id",
+			Mspid: "mspid",
+		},
+	}
+
+	ids := SignatureSetToValidIdentities(sd, fIDDs)
+	assert.Len(t, ids, 1)
+	assert.NotNil(t, ids[0].GetIdentifier())
+	assert.Equal(t, "id", ids[0].GetIdentifier().Id)
+	assert.Equal(t, "mspid", ids[0].GetIdentifier().Mspid)
+}
+
+func TestSignatureSetToValidIdentitiesDeserialiseErr(t *testing.T) {
+	sd := []*protoutil.SignedData{
+		{
+			Data:      []byte("data1"),
+			Identity:  []byte("identity1"),
+			Signature: []byte("signature1"),
+		},
+	}
+
+	fIDDs := &fakeIdDs{}
+	fIDDs.DeserializeIdentityErr = errors.New("bad identity")
+
+	ids := SignatureSetToValidIdentities(sd, fIDDs)
+	assert.Len(t, ids, 0)
+}
+
+func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
+	sd := []*protoutil.SignedData{
+		{
+			Data:      []byte("data1"),
+			Identity:  []byte("identity1"),
+			Signature: []byte("signature1"),
+		},
+	}
+
+	fIDDs := &fakeIdDs{}
+	fID := &fakeID{
+		id: &mspi.IdentityIdentifier{
+			Id:    "id",
+			Mspid: "mspid",
+		},
+	}
+	fID.verify = errors.New("bad signature")
+	fIDDs.DeserializeIdentityRv = fID
+
+	ids := SignatureSetToValidIdentities(sd, fIDDs)
+	assert.Len(t, ids, 0)
 }
