@@ -48,7 +48,7 @@ func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory(EndorserNotRequired, PeerDeliverNotRequired, OrdererRequired)
+		cf, err = InitCmdFactory(EndorserNotRequired, PeerDeliverNotRequired, OrdererNotRequired)
 		if err != nil {
 			return err
 		}
