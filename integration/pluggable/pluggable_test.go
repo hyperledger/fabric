@@ -129,13 +129,16 @@ var _ = Describe("EndToEnd", func() {
 func compilePlugin(pluginType string) string {
 	pluginFilePath := filepath.Join("testdata", "plugins", pluginType, "plugin.so")
 	cmd := exec.Command(
-		"go", "build", "-buildmode=plugin",
+		"go", "build",
+		"-x", // print build commands while running
+		"-buildmode=plugin",
 		"-o", pluginFilePath,
 		fmt.Sprintf("github.com/hyperledger/fabric/integration/pluggable/testdata/plugins/%s", pluginType),
 	)
-	sess, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[build-plugin-%s] ", pluginType), GinkgoWriter)
+	sess, err := gexec.Start(cmd, pw, pw)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, 2*time.Minute).Should(gexec.Exit(0))
 
 	Expect(pluginFilePath).To(BeARegularFile())
 	return pluginFilePath
