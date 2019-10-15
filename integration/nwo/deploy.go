@@ -36,7 +36,8 @@ type Chaincode struct {
 	Lang                string
 	CollectionsConfig   string // optional
 	PackageFile         string
-	PackageID           string // if unspecified, chaincode won't be executable
+	PackageID           string            // if unspecified, chaincode won't be executable
+	CodeFiles           map[string]string // map from paths on the filesystem to code.tar.gz paths
 	Sequence            string
 	EndorsementPlugin   string
 	ValidationPlugin    string

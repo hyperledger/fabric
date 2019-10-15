@@ -13,7 +13,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	. "github.com/onsi/gomega"
 )
@@ -31,13 +30,11 @@ func PackageChaincodeBinary(c Chaincode) {
 func writeTarGz(c Chaincode, w io.Writer) {
 	gw := gzip.NewWriter(w)
 	tw := tar.NewWriter(gw)
+	defer closeAll(tw, gw)
 
-	_, normalizedPath := filepath.Split(c.Path)
-	writeMetadataJSON(tw, normalizedPath, "binary", c.Label)
-	writeCodeTarGz(tw, c.Path)
+	writeMetadataJSON(tw, c.Path, "binary", c.Label)
 
-	// close down the tar streams
-	closeAll(tw, gw)
+	writeCodeTarGz(tw, c.CodeFiles)
 }
 
 // packageMetadata holds the path, type, and label for a chaincode package
@@ -65,7 +62,7 @@ func writeMetadataJSON(tw *tar.Writer, path, ccType, label string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func writeCodeTarGz(tw *tar.Writer, path string) {
+func writeCodeTarGz(tw *tar.Writer, codeFiles map[string]string) {
 	// create temp file to hold code.tar.gz
 	tempfile, err := ioutil.TempFile("", "code.tar.gz")
 	Expect(err).NotTo(HaveOccurred())
@@ -74,12 +71,15 @@ func writeCodeTarGz(tw *tar.Writer, path string) {
 	gzipWriter := gzip.NewWriter(tempfile)
 	tarWriter := tar.NewWriter(gzipWriter)
 
-	code, err := os.Open(path)
-	Expect(err).NotTo(HaveOccurred())
-	writeFileToTar(tarWriter, code, "chaincode")
+	for source, target := range codeFiles {
+		file, err := os.Open(source)
+		Expect(err).NotTo(HaveOccurred())
+		writeFileToTar(tarWriter, file, target)
+		file.Close()
+	}
 
 	// close down the inner tar
-	closeAll(code, tarWriter, gzipWriter)
+	closeAll(tarWriter, gzipWriter)
 
 	writeFileToTar(tw, tempfile, "code.tar.gz")
 }

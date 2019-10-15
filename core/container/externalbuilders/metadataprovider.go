@@ -42,15 +42,32 @@ func (mp *MetadataProvider) PackageMetadata(ccid string) ([]byte, error) {
 
 	tw := tar.NewWriter(buffer)
 
+	logger.Debugf("Walking package release dir '%s'", releasePath)
 	err = filepath.Walk(releasePath, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
+		}
+
+		if releasePath == file {
+			// No need to add '.' to our tar
+			return nil
 		}
 
 		header, err := tar.FileInfoHeader(fi, file)
 		if err != nil {
 			return err
 		}
+
+		header.Name, err = filepath.Rel(releasePath, file)
+		if err != nil {
+			return err
+		}
+
+		if fi.IsDir() {
+			header.Name += "/"
+		}
+
+		logger.Debugf("Adding file '%s' to tar with header name '%s'", file, header.Name)
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err

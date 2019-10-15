@@ -30,6 +30,17 @@ const (
 	chaincodePathWithIndexes = "github.com/hyperledger/fabric/integration/chaincode/marbles/cmdwithindexspecs"
 )
 
+var (
+	filesWithIndex = map[string]string{
+		"../chaincode/marbles/cmdwithindexspec/META-INF/statedb/couchdb/indexes/indexSizeSortDoc.json": "metadata/statedb/couchdb/indexes/indexSizeSortDoc.json",
+	}
+
+	filesWithIndices = map[string]string{
+		"../chaincode/marbles/cmdwithindexspecs/META-INF/statedb/couchdb/indexes/indexSizeSortDoc.json":  "metadata/statedb/couchdb/indexes/indexSizeSortDoc.json",
+		"../chaincode/marbles/cmdwithindexspecs/META-INF/statedb/couchdb/indexes/indexColorSortDoc.json": "metadata/statedb/couchdb/indexes/indexColorSortDoc.json",
+	}
+)
+
 var _ = Describe("CouchDB indexes", func() {
 	var (
 		testDir string
@@ -93,8 +104,9 @@ var _ = Describe("CouchDB indexes", func() {
 		newlifecycleChaincode = nwo.Chaincode{
 			Name:            "marbles",
 			Version:         "0.0",
-			Path:            chaincodePathWithIndex,
-			Lang:            "golang",
+			Path:            components.Build(chaincodePathWithIndex),
+			Lang:            "binary",
+			CodeFiles:       filesWithIndex,
 			PackageFile:     filepath.Join(testDir, "marbles.tar.gz"),
 			SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
 			Sequence:        "1",
@@ -131,11 +143,11 @@ var _ = Describe("CouchDB indexes", func() {
 
 			By("upgrading the chaincode to include an additional index")
 			newlifecycleChaincode.Sequence = "2"
-			newlifecycleChaincode.Path = chaincodePathWithIndexes
+			newlifecycleChaincode.CodeFiles = filesWithIndices
 			newlifecycleChaincode.PackageFile = filepath.Join(testDir, "marbles-two-indexes.tar.gz")
 			newlifecycleChaincode.Label = "marbles-two-indexes"
 
-			nwo.PackageChaincode(network, newlifecycleChaincode, network.Peer("Org1", "peer0"))
+			nwo.PackageChaincodeBinary(newlifecycleChaincode)
 			nwo.InstallChaincode(network, newlifecycleChaincode, network.Peers...)
 			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, newlifecycleChaincode, network.Peers...)
 			nwo.CheckCommitReadinessUntilReady(network, "testchannel", newlifecycleChaincode, network.PeerOrgs(), network.Peers...)
@@ -149,7 +161,7 @@ var _ = Describe("CouchDB indexes", func() {
 	When("chaincode is installed and instantiated via legacy lifecycle and then defined and installed via new lifecycle", func() {
 		BeforeEach(func() {
 			legacyChaincode.Path = chaincodePathWithNoIndex
-			newlifecycleChaincode.Path = chaincodePathWithIndex
+			newlifecycleChaincode.CodeFiles = filesWithIndex
 		})
 
 		It("create indexes from the new lifecycle package", func() {
@@ -171,7 +183,7 @@ var _ = Describe("CouchDB indexes", func() {
 	When("chaincode is instantiated via legacy lifecycle, then defined and installed via new lifecycle and, finally installed via legacy lifecycle", func() {
 		BeforeEach(func() {
 			legacyChaincode.Path = chaincodePathWithIndex
-			newlifecycleChaincode.Path = chaincodePathWithNoIndex
+			newlifecycleChaincode.CodeFiles = nil
 		})
 
 		It("does not create indexes upon final installation of legacy chaincode", func() {
@@ -199,7 +211,7 @@ var _ = Describe("CouchDB indexes", func() {
 	When("chaincode is installed using legacy lifecycle, then defined and installed using new lifecycle", func() {
 		BeforeEach(func() {
 			legacyChaincode.Path = chaincodePathWithIndex
-			newlifecycleChaincode.Path = chaincodePathWithNoIndex
+			newlifecycleChaincode.CodeFiles = nil
 		})
 
 		It("does not use legacy package to create indexes", func() {
