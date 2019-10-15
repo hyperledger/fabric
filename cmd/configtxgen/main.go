@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -46,7 +47,7 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 	}
 	genesisBlock := pgen.GenesisBlockForChannel(channelID)
 	logger.Info("Writing genesis block")
-	err = ioutil.WriteFile(outputBlock, protoutil.MarshalOrPanic(genesisBlock), 0644)
+	err = writeFile(outputBlock, protoutil.MarshalOrPanic(genesisBlock), 0640)
 	if err != nil {
 		return fmt.Errorf("Error writing genesis block: %s", err)
 	}
@@ -68,7 +69,7 @@ func doOutputChannelCreateTx(conf, baseProfile *genesisconfig.Profile, channelID
 	}
 
 	logger.Info("Writing new channel tx")
-	err = ioutil.WriteFile(outputChannelCreateTx, protoutil.MarshalOrPanic(configtx), 0644)
+	err = writeFile(outputChannelCreateTx, protoutil.MarshalOrPanic(configtx), 0640)
 	if err != nil {
 		return fmt.Errorf("Error writing channel create tx: %s", err)
 	}
@@ -117,7 +118,7 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	updateTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, nil, newConfigUpdateEnv, 0, 0)
 
 	logger.Info("Writing anchor peer update")
-	err = ioutil.WriteFile(outputAnchorPeersUpdate, protoutil.MarshalOrPanic(updateTx), 0644)
+	err = writeFile(outputAnchorPeersUpdate, protoutil.MarshalOrPanic(updateTx), 0640)
 	if err != nil {
 		return fmt.Errorf("Error writing channel anchor peer update: %s", err)
 	}
@@ -179,6 +180,32 @@ func doPrintOrg(t *genesisconfig.TopLevel, printOrg string) error {
 		}
 	}
 	return errors.Errorf("organization %s not found", printOrg)
+}
+
+func writeFile(filename string, data []byte, perm os.FileMode) error {
+	dirPath := filepath.Dir(filename)
+	exists, err := dirExists(dirPath)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		err = os.MkdirAll(dirPath, 0750)
+		if err != nil {
+			return err
+		}
+	}
+	return ioutil.WriteFile(filename, data, perm)
+}
+
+func dirExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
 
 func main() {
