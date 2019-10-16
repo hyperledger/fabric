@@ -74,7 +74,7 @@ func (id *identity) ExpiresAt() time.Time {
 	return id.cert.NotAfter
 }
 
-// SatisfiesPrincipal returns null if this instance matches the supplied principal or an error otherwise
+// SatisfiesPrincipal returns nil if this instance matches the supplied principal or an error otherwise
 func (id *identity) SatisfiesPrincipal(principal *msp.MSPPrincipal) error {
 	return id.msp.SatisfiesPrincipal(id, principal)
 }

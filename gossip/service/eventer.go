@@ -31,7 +31,7 @@ type Config interface {
 
 // ConfigProcessor receives config updates
 type ConfigProcessor interface {
-	// ProcessConfig should be invoked whenever a channel's configuration is initialized or updated
+	// ProcessConfigUpdate should be invoked whenever a channel's configuration is initialized or updated
 	ProcessConfigUpdate(config Config)
 }
 

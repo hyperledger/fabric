@@ -42,7 +42,7 @@ type DeserializersManager interface {
 	GetChannelDeserializers() map[string]msp.IdentityDeserializer
 }
 
-// DeserializersManager returns a new instance of DeserializersManager
+// NewDeserializersManager returns a new instance of DeserializersManager
 func NewDeserializersManager(cryptoProvider bccsp.BCCSP) DeserializersManager {
 	return &mspDeserializersManager{
 		cryptoProvider: cryptoProvider,
