@@ -198,10 +198,10 @@ repository from which you created your fork and begin the code review process.
 - You can now choose one of two options for creating your pull request.
   In the green `Create Pull Request` box select the down-arrow to the right of it.
 - You can choose the first option to open your pull request as-is.
-  This will automatically assign the repostiories maintainers as reviewers for 
+  This will automatically assign the repostiories maintainers as reviewers for
   your pull request.
 - You can choose the second option to open your pull request as a draft.
-  Opening your pull request as a draft will not assign any reviewers, but will 
+  Opening your pull request as a draft will not assign any reviewers, but will
   still allow your change to run through CI.
 
 Congratulations, you have now submitted your first pull request to a Hyperledger project.
@@ -213,6 +213,48 @@ by navigating to the `Checks` tab of the pull request.
    If you bypass the perscribed pull request process and generate a pull request
    from an edit you made using GitHub's editor UI, you must manually add your
    signature to the commit message when the commit is generated in the UI.
+
+Updating a Pull Request
+-----------------------
+As you receive review comments on your pull request, you may need to make edits
+to your commit. In the local branch you are working from, you may add additional
+commits and re-push as documented above. This will automatically add the new
+commits to the pull request and CI checks will be re-triggered.
+
+However, it is usually not desired to keep a history of all the changes.
+You can keep the pull request and the ultimate merge into the upstream
+'clean' by squashing your commits into a single final commit. For example
+to squash your two most recent commits into a single commit:
+
+.. code::
+
+   git rebase -i HEAD~2
+
+This will open an interactive dialog. Change the second (and any subsequent)
+commit action from 'pick' to 'squash' in the dialog. The dialog will then
+present all the commit messages, which you can edit into a final message.
+
+Then do a force push to your remote origin:
+
+.. code::
+
+   git push origin <feature_branch_name> -f
+
+This will update your remote origin to be at the final single commit, and
+will update the pull request accordingly.
+
+Alternatively, rather than creating a second commit and squashing, you
+could amend the original commit and force push it back to your
+remote origin:
+
+.. code::
+
+   git add -p
+   git commit --amend
+   git push origin <feature_branch_name> -f
+
+Again, the pull request will be updated accordingly and CI checks
+will be re-triggered.
 
 Cleaning Up Local And Remote Feature branches
 ---------------------------------------------
