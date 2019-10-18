@@ -48,7 +48,10 @@ PREV_VERSION = 2.0.0-alpha
 BASEIMAGE_RELEASE = 0.4.16
 
 # 3rd party image version
+# These versions are also set in the runners in ./integration/runners/
 COUCHDB_VER ?= 2.3
+KAFKA_VER ?= 5.3.1
+ZOOKEEPER_VER ?= 5.3.1
 
 # Disable implicit rules
 .SUFFIXES:
@@ -153,10 +156,8 @@ unit-tests: unit-test
 .PHONY: docker-thirdparty
 docker-thirdparty:
 	docker pull couchdb:${COUCHDB_VER}
-	docker pull $(BASE_DOCKER_NS)/fabric-zookeeper:$(BASE_DOCKER_TAG)
-	docker tag $(BASE_DOCKER_NS)/fabric-zookeeper:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-zookeeper
-	docker pull $(BASE_DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG)
-	docker tag $(BASE_DOCKER_NS)/fabric-kafka:$(BASE_DOCKER_TAG) $(DOCKER_NS)/fabric-kafka
+	docker pull confluentinc/cp-zookeeper:${ZOOKEEPER_VER}
+	docker pull confluentinc/cp-kafka:${KAFKA_VER}
 	docker pull hyperledger/fabric-ccenv:1.4
 
 .PHONY: verify
