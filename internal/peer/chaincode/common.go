@@ -68,7 +68,7 @@ func getChaincodeDeploymentSpec(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.Chainc
 	return &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}, nil
 }
 
-// getChaincodeSpec get chaincode spec from the cli cmd pramameters
+// getChaincodeSpec get chaincode spec from the cli cmd parameters
 func getChaincodeSpec(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
 	if err := checkChaincodeCmdParams(cmd); err != nil {
@@ -408,7 +408,7 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool, 
 	}
 	certificate, err := common.GetCertificateFnc()
 	if err != nil {
-		return nil, errors.WithMessage(err, "error getting client cerificate")
+		return nil, errors.WithMessage(err, "error getting client certificate")
 	}
 
 	signer, err := common.GetDefaultSignerFnc()

@@ -113,7 +113,7 @@ type ConsenterSupport interface {
 	// WriteConfigBlock commits a block to the ledger, and applies the config update inside.
 	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte)
 
-	// Sequence returns the current config squence.
+	// Sequence returns the current config sequence.
 	Sequence() uint64
 
 	// ChannelID returns the channel ID this support is associated with.

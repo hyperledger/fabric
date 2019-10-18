@@ -156,7 +156,7 @@ func (chain *chainImpl) Halt() {
 		select {
 		case <-chain.haltChan:
 			// This construct is useful because it allows Halt() to be called
-			// multiple times (by a single thread) w/o panicking. Recal that a
+			// multiple times (by a single thread) w/o panicking. Recall that a
 			// receive from a closed channel returns (the zero value) immediately.
 			logger.Warningf("[channel: %s] Halting of chain requested again", chain.ChannelID())
 		default:
@@ -817,7 +817,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		// Any messages coming in here may or may not have been re-validated
 		// and re-ordered, BUT they are definitely valid here
 
-		// advance lastOriginalOffsetProcessed iff message is re-validated and re-ordered
+		// advance lastOriginalOffsetProcessed if message is re-validated and re-ordered
 		offset := regularMessage.OriginalOffset
 		if offset == 0 {
 			offset = chain.lastOriginalOffsetProcessed
@@ -851,7 +851,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			}
 
 			// Somebody resubmitted message at offset X, whereas we didn't. This is due to non-determinism where
-			// that message was considered invalid by us during revalidation, however somebody else deemed it to
+			// that message was considered invalid by us during re-validation, however somebody else deemed it to
 			// be valid, and resubmitted it. We need to advance lastResubmittedConfigOffset in this case in order
 			// to enforce consistency across the network.
 			if chain.lastResubmittedConfigOffset < regularMessage.OriginalOffset {
@@ -883,7 +883,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		// Any messages coming in here may or may not have been re-validated
 		// and re-ordered, BUT they are definitely valid here
 
-		// advance lastOriginalOffsetProcessed iff message is re-validated and re-ordered
+		// advance lastOriginalOffsetProcessed if message is re-validated and re-ordered
 		offset := regularMessage.OriginalOffset
 		if offset == 0 {
 			offset = chain.lastOriginalOffsetProcessed
@@ -933,7 +933,7 @@ func (chain *chainImpl) WriteBlock(block *cb.Block, metadata *ab.KafkaMetadata) 
 	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChannelID()).Set(float64(metadata.LastOffsetPersisted))
 }
 
-// WriteBlock acts as a wrapper around the consenter support WriteConfigBlock, encoding the metadata,
+// WriteConfigBlock acts as a wrapper around the consenter support WriteConfigBlock, encoding the metadata,
 // and updating the metrics.
 func (chain *chainImpl) WriteConfigBlock(block *cb.Block, metadata *ab.KafkaMetadata) {
 	chain.ConsenterSupport.WriteConfigBlock(block, protoutil.MarshalOrPanic(metadata))

@@ -424,7 +424,7 @@ func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Ide
 	return newIdentity(cert, pub, msp)
 }
 
-// SatisfiesPrincipal returns null if the identity matches the principal or an error otherwise
+// SatisfiesPrincipal returns nil if the identity matches the principal or an error otherwise
 func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
 	principals, err := collectPrincipals(principal, msp.GetVersion())
 	if err != nil {

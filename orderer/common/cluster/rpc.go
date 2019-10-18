@@ -64,7 +64,7 @@ const (
 	SubmitOperation
 )
 
-// Consensus passes the given ConsensusRequest message to the raft.Node instance.
+// SendConsensus passes the given ConsensusRequest message to the raft.Node instance.
 func (s *RPC) SendConsensus(destination uint64, msg *orderer.ConsensusRequest) error {
 	if s.Logger.IsEnabledFor(zapcore.DebugLevel) {
 		defer s.consensusSent(time.Now(), destination, msg)
@@ -127,7 +127,7 @@ func (s *RPC) consensusSent(start time.Time, to uint64, msg *orderer.ConsensusRe
 	s.Logger.Debugf("Sending msg of %d bytes to %d on channel %s took %v", len(msg.Payload), to, s.Channel, time.Since(start))
 }
 
-// getProposeStream obtains a Submit stream for the given destination node
+// getOrCreateStream obtains a Submit stream for the given destination node
 func (s *RPC) getOrCreateStream(destination uint64, operationType OperationType) (orderer.Cluster_StepClient, error) {
 	stream := s.getStream(destination, operationType)
 	if stream != nil {

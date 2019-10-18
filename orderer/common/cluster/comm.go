@@ -131,7 +131,7 @@ func (c *Comm) DispatchConsensus(ctx context.Context, request *orderer.Consensus
 	return c.H.OnConsensus(reqCtx.channel, reqCtx.sender, request)
 }
 
-// classifyRequest identifies the sender and channel of the request and returns
+// requestContext identifies the sender and channel of the request and returns
 // it wrapped in a requestContext
 func (c *Comm) requestContext(ctx context.Context, msg proto.Message) (*requestContext, error) {
 	channel := c.ChanExt.TargetChannel(msg)

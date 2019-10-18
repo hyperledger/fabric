@@ -82,7 +82,7 @@ func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, 
 
 // commonConsenter allows us to retrieve the configuration options set on the
 // consenter object. These will be common across all chain objects derived by
-// this consenter. They are set using using local configuration settings. This
+// this consenter. They are set using local configuration settings. This
 // interface is satisfied by consenterImpl.
 type commonConsenter interface {
 	brokerConfig() *sarama.Config
