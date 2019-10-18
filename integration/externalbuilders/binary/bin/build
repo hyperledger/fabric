@@ -4,14 +4,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# set -euo pipefail
+set -euo pipefail
 
 if [ "$#" -ne 3 ]; then
     echo "Expected 3 directories got $#"
     exit 1
 fi
 
-SOURCE=$1
-OUTPUT=$3
+SRC="$1"
+META="$2"
+BLD="$3"
 
-cp "$SOURCE/chaincode" "$OUTPUT/chaincode"
+if [ -e "$SRC/metadata" ] ; then
+  mkdir "$BLD/metadata"
+  mv "$SRC/metadata" "$BLD/metadata/META-INF"
+fi
+
+cp "$(jq -r .path "$META/metadata.json")" "$BLD/chaincode"

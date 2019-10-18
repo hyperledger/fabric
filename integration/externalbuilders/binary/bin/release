@@ -11,12 +11,9 @@ if [ "$#" -ne 2 ]; then
     exit 2
 fi
 
-# SRC="$1"
-META="$2"
+BLD="$1"
+RELEASE="$2"
 
-if [ "$(jq -r .type "$META/metadata.json")" == "binary" ]; then
-    exit 0
+if [ -d "$BLD/metadata/META-INF" ] ; then
+   cp -a "$BLD/metadata/META-INF" "$RELEASE"
 fi
-
-echo "binary is the only supported type"
-exit 1

@@ -181,7 +181,7 @@ var _ = Describe("EventBroker", func() {
 					Hash:    []byte("external-built-cc"),
 					Version: "version-1",
 				}))
-				Expect(len(md)).To(Equal(2560)) // A tar, and not our mock value
+				Expect(len(md)).To(Equal(2048)) // A tar, and not our mock value
 			})
 		})
 

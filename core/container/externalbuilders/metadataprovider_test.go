@@ -34,8 +34,8 @@ var _ = Describe("Metadataprovider", func() {
 		tr := tar.NewReader(bytes.NewBuffer(data))
 
 		headerSizes := map[string]int64{
-			"release/":   0,
-			"index.json": 3,
+			"META-INF/":           0,
+			"META-INF/index.json": 3,
 		}
 
 		headers := 0
@@ -47,6 +47,7 @@ var _ = Describe("Metadataprovider", func() {
 			}
 
 			headers++
+			By("checking " + header.Name)
 			size, ok := headerSizes[header.Name]
 			Expect(ok).To(BeTrue())
 			Expect(size).To(Equal(header.Size))
