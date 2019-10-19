@@ -163,7 +163,7 @@ func GenerateLocalMSP(
 
 	// rename the generated TLS X509 cert
 	tlsFilePrefix := "server"
-	if nodeType == CLIENT {
+	if nodeType == CLIENT || nodeType == ADMIN {
 		tlsFilePrefix = "client"
 	}
 	err = os.Rename(filepath.Join(tlsDir, x509Filename(name)),
