@@ -93,7 +93,7 @@ approved.
 Maintainers
 ~~~~~~~~~~~
 
-The Fabric project is lead by the project's top level :doc:`maintainers <MAINTAINERS>`.
+The Fabric project is lead by the project's top level `maintainers <https://github.com/hyperledger/fabric/blob/master/MAINTAINERS.md>`__.
 The maintainers are responsible for reviewing and merging all patches submitted
 for review, and they guide the overall technical direction of the project within
 the guidelines established by the Hyperledger Technical Steering Committee (TSC).
@@ -103,7 +103,7 @@ Becoming a maintainer
 
 The project's maintainers will, from time-to-time, consider
 adding or removing a maintainer. An existing maintainer can submit a
-change set to the :doc:`MAINTAINERS.rst <MAINTAINERS>` file. A nominated
+change set to the `maintainers <https://github.com/hyperledger/fabric/blob/master/MAINTAINERS.md>`__ file. A nominated
 Contributor may become a Maintainer by a majority approval of the proposal
 by the existing Maintainers. Once approved, the change set is then merged
 and the individual is added to (or alternatively, removed from) the maintainers
