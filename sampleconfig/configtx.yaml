@@ -244,7 +244,7 @@ Application: &ApplicationDefaults
 Orderer: &OrdererDefaults
 
     # Orderer Type: The orderer implementation to start.
-    # Available types are "solo" and "kafka".
+    # Available types are "solo", "kafka" and "etcdraft".
     OrdererType: solo
 
     # Addresses used to be the list of orderer addresses that clients and peers
