@@ -54,6 +54,22 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	assert.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(retrievedchanConf))
 }
 
+func TestConfigTxErrorScenarios(t *testing.T) {
+	configTxProcessor := &ConfigTxProcessor{}
+	// wrong tx type
+	configEnvWrongTxType := &common.ConfigEnvelope{}
+	txEnvelope, err := protoutil.CreateSignedEnvelope(common.HeaderType_PEER_ADMIN_OPERATION, "channelID", nil, configEnvWrongTxType, 0, 0)
+	require.NoError(t, err)
+	err = configTxProcessor.GenerateSimulationResults(txEnvelope, nil, false)
+	require.EqualError(t, err, "tx type [PEER_ADMIN_OPERATION] is not expected")
+
+	// empty channelConfig
+	txEnvelope, err = protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, "channelID", nil, &common.ConfigEnvelope{}, 0, 0)
+	require.NoError(t, err)
+	err = configTxProcessor.GenerateSimulationResults(txEnvelope, nil, false)
+	require.EqualError(t, err, "channel config found nil")
+}
+
 func TestConfigTxUpdateChanConfig(t *testing.T) {
 	helper := newTestHelper(t)
 	channelID := "testchain1"

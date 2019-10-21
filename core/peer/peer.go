@@ -230,7 +230,7 @@ func retrievePersistedChannelConfig(ledger ledger.PeerLedger) (*common.Config, e
 		return nil, err
 	}
 	defer qe.Done()
-	return retrievePersistedConf(qe, channelConfigKey)
+	return retrieveChannelConfig(qe)
 }
 
 // createChannel creates a new channel object and insert it into the channels slice.
@@ -248,24 +248,9 @@ func (p *Peer) createChannel(
 		return err
 	}
 
-	var bundle *channelconfig.Bundle
-	if chanConf != nil {
-		bundle, err = channelconfig.NewBundle(cid, chanConf, p.CryptoProvider)
-		if err != nil {
-			return err
-		}
-	} else {
-		// Config was only stored in the statedb starting with v1.1 binaries
-		// so if the config is not found there, extract it manually from the config block
-		envelopeConfig, err := protoutil.ExtractEnvelope(cb, 0)
-		if err != nil {
-			return err
-		}
-
-		bundle, err = channelconfig.NewBundleFromEnvelope(envelopeConfig, p.CryptoProvider)
-		if err != nil {
-			return err
-		}
+	bundle, err := channelconfig.NewBundle(cid, chanConf, p.CryptoProvider)
+	if err != nil {
+		return err
 	}
 
 	capabilitiesSupportedOrPanic(bundle)
