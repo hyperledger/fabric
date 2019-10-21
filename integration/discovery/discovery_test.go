@@ -28,7 +28,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-	yaml "gopkg.in/yaml.v2"
 )
 
 var _ = Describe("DiscoveryService", func() {
@@ -39,11 +38,8 @@ var _ = Describe("DiscoveryService", func() {
 		process   ifrit.Process
 		orderer   *nwo.Orderer
 		org1Peer0 *nwo.Peer
-		org1Peer1 *nwo.Peer
 		org2Peer0 *nwo.Peer
-		org2Peer1 *nwo.Peer
 		org3Peer0 *nwo.Peer
-		org3Peer1 *nwo.Peer
 	)
 
 	BeforeEach(func() {
@@ -54,14 +50,31 @@ var _ = Describe("DiscoveryService", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		configBytes, err := ioutil.ReadFile(filepath.Join("testdata", "network.yaml"))
-		Expect(err).NotTo(HaveOccurred())
+		config := nwo.BasicSolo()
+		config.RemovePeer("Org1", "peer1")
+		config.RemovePeer("Org2", "peer1")
+		Expect(config.Peers).To(HaveLen(2))
 
-		var networkConfig *nwo.Config
-		err = yaml.Unmarshal(configBytes, &networkConfig)
-		Expect(err).NotTo(HaveOccurred())
+		// add org3 with one peer
+		config.Organizations = append(config.Organizations, &nwo.Organization{
+			Name:          "Org3",
+			MSPID:         "Org3MSP",
+			Domain:        "org3.example.com",
+			EnableNodeOUs: true,
+			Users:         2,
+			CA:            &nwo.CA{Hostname: "ca"},
+		})
+		config.Consortiums[0].Organizations = append(config.Consortiums[0].Organizations, "Org3")
+		config.Profiles[1].Organizations = append(config.Profiles[1].Organizations, "Org3")
+		config.Peers = append(config.Peers, &nwo.Peer{
+			Name:         "peer0",
+			Organization: "Org3",
+			Channels: []*nwo.PeerChannel{
+				{Name: "testchannel", Anchor: true},
+			},
+		})
 
-		network = nwo.New(networkConfig, testDir, client, StartPort(), components)
+		network = nwo.New(config, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
@@ -73,12 +86,9 @@ var _ = Describe("DiscoveryService", func() {
 		network.CreateAndJoinChannel(orderer, "testchannel")
 		network.UpdateChannelAnchors(orderer, "testchannel")
 
-		org1Peer0 = network.Peer("org1", "peer0")
-		org1Peer1 = network.Peer("org1", "peer1")
-		org2Peer0 = network.Peer("org2", "peer0")
-		org2Peer1 = network.Peer("org2", "peer1")
-		org3Peer0 = network.Peer("org3", "peer0")
-		org3Peer1 = network.Peer("org3", "peer1")
+		org1Peer0 = network.Peer("Org1", "peer0")
+		org2Peer0 = network.Peer("Org2", "peer0")
+		org3Peer0 = network.Peer("Org3", "peer0")
 	})
 
 	AfterEach(func() {
@@ -92,435 +102,11 @@ var _ = Describe("DiscoveryService", func() {
 		os.RemoveAll(testDir)
 	})
 
-	It("discovers channel information", func() {
-		By("discovering endorsers when missing chaincode")
-		endorsers := commands.Endorsers{
-			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
-			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
-			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
-			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
-			Channel:   "testchannel",
-			Chaincode: "mycc",
-		}
-		sess, err := network.Discover(endorsers)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
-
-		By("installing and instantiating chaincode on org1.peer0")
-		chaincode := nwo.Chaincode{
-			Name:    "mycc",
-			Version: "1.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `OR (AND ('Org1MSP.member','Org2MSP.member'), AND ('Org1MSP.member','Org3MSP.member'), AND ('Org2MSP.member','Org3MSP.member'))`,
-		}
-		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode, org1Peer0)
-
-		By("discovering endorsers for chaincode that has not been installed to enough orgs to satisfy endorsement policy")
-		sess, err = network.Discover(endorsers)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
-
-		By("installing chaincode to enough organizations to satisfy the endorsement policy")
-		nwo.InstallChaincodeLegacy(network, chaincode, org2Peer0)
-
-		By("discovering endorsers for chaincode that has been installed to some orgs")
-		de := discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-		))
-		discovered := de()
-		Expect(discovered).To(HaveLen(1))
-		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-
-		By("installing chaincode to all orgs")
-		nwo.InstallChaincodeLegacy(network, chaincode, org3Peer0)
-
-		By("discovering endorsers for chaincode that has been installed to all orgs")
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
-		))
-		discovered = de()
-		Expect(discovered).To(HaveLen(1))
-		Expect(discovered[0].Layouts).To(HaveLen(3))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-		Expect(discovered[0].Layouts[1].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-		Expect(discovered[0].Layouts[2].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-
-		By("upgrading chaincode and adding a collections config")
-		chaincode.Name = "mycc"
-		chaincode.Version = "2.0"
-		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config_org1_org2.json")
-		nwo.UpgradeChaincodeLegacy(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0, org3Peer0)
-
-		By("discovering endorsers for chaincode with a private collection")
-		endorsers.Collection = "mycc:collectionMarbles"
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-		))
-		discovered = de()
-		Expect(discovered).To(HaveLen(1))
-		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-
-		By("installing chaincode to all peers")
-		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, nwo.Chaincode{
-			Name:    "mycc2",
-			Version: "1.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `AND ('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`,
-		})
-
-		By("discovering endorsers for chaincode that has been installed to all peers")
-		endorsers.Collection = ""
-		endorsers.Chaincode = "mycc2"
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(org1Peer1)),
-			ConsistOf(network.DiscoveredPeer(org2Peer0), network.DiscoveredPeer(org2Peer1)),
-			ConsistOf(network.DiscoveredPeer(org3Peer0), network.DiscoveredPeer(org3Peer1)),
-		))
-		discovered = de()
-		Expect(discovered).To(HaveLen(1))
-		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1), uint32(1)))
-
-		By("changing the channel policy")
-		currentConfig := nwo.GetConfig(network, org3Peer0, orderer, "testchannel")
-		updatedConfig := proto.Clone(currentConfig).(*common.Config)
-		updatedConfig.ChannelGroup.Groups["Application"].Groups["org3"].Policies["Writers"].Policy.Value = protoutil.MarshalOrPanic(cauthdsl.SignedByMspAdmin("Org3MSP"))
-		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, org3Peer0)
-
-		By("trying to discover peers as an org3 member")
-		endorsers = commands.Endorsers{
-			UserCert:  network.PeerUserCert(org3Peer0, "User1"),
-			UserKey:   network.PeerUserKey(org3Peer0, "User1"),
-			MSPID:     network.Organization(org3Peer0.Organization).MSPID,
-			Server:    network.PeerAddress(org3Peer0, nwo.ListenPort),
-			Channel:   "testchannel",
-			Chaincode: "mycc",
-		}
-		sess, err = network.Discover(endorsers)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-		Expect(sess.Err).To(gbytes.Say(`access denied`))
-
+	It("discovers network configuration, endorsers, and peer membership", func() {
 		//
-		// using _lifecycle
+		// discovering network configuration information
 		//
 
-		By("enabling V2_0 application capabilities on the channel")
-		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer0, org2Peer0, org3Peer0)
-
-		By("ensuring mycc is still discoverable after upgrading to V2_0 application capabilities")
-		endorsers = commands.Endorsers{
-			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
-			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
-			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
-			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
-			Channel:   "testchannel",
-			Chaincode: "mycc",
-		}
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
-		))
-
-		By("ensuring mycc's collection is still discoverable after upgrading to V2_0 application capabilities")
-		endorsers.Collection = "mycc:collectionMarbles"
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-		))
-
-		By("ensuring mycc2 is still discoverable after upgrading to V2_0 application capabilities")
-		endorsers.Collection = ""
-		endorsers.Chaincode = "mycc2"
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(org1Peer1)),
-			ConsistOf(network.DiscoveredPeer(org2Peer0), network.DiscoveredPeer(org2Peer1)),
-			ConsistOf(network.DiscoveredPeer(org3Peer0), network.DiscoveredPeer(org3Peer1)),
-		))
-
-		By("discovering endorsers when missing chaincode")
-		endorsers = commands.Endorsers{
-			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
-			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
-			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
-			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
-			Channel:   "testchannel",
-			Chaincode: "mycc-lifecycle",
-		}
-		sess, err = network.Discover(endorsers)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc-lifecycle"`))
-
-		By("deploying chaincode using org1.peer0 and org2.peer0")
-		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
-		chaincode = nwo.Chaincode{
-			Name:                "mycc-lifecycle",
-			Version:             "1.0",
-			Lang:                "binary",
-			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
-			Path:                chaincodePath,
-			Ctor:                `{"Args":["init","a","100","b","200"]}`,
-			ChannelConfigPolicy: "/Channel/Application/Endorsement",
-			Sequence:            "1",
-			InitRequired:        true,
-			Label:               "my_prebuilt_chaincode",
-		}
-
-		By("packaging chaincode")
-		nwo.PackageChaincodeBinary(chaincode)
-
-		By("installing chaincode to org1.peer0 and org2.peer0")
-		nwo.InstallChaincode(network, chaincode, org1Peer0, org2Peer0)
-
-		By("approving chaincode definition for org1 and org2")
-		for _, org := range []string{"org1", "org2"} {
-			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg(org)...)
-		}
-
-		By("committing chaincode definition using org1.peer0 and org2.peer0")
-		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
-		nwo.InitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
-
-		By("discovering endorsers for chaincode that has been installed to some orgs")
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-		))
-		discovered = de()
-		Expect(discovered).To(HaveLen(1))
-		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-
-		By("installing chaincode to all orgs")
-		nwo.InstallChaincode(network, chaincode, org3Peer0)
-
-		By("discovering endorsers for chaincode that has been installed to all orgs but not yet approved by org3")
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-		))
-
-		By("approving chaincode definition for org3")
-		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg("org3")...)
-
-		By("discovering endorsers for chaincode that has been installed and approved by all orgs")
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
-		))
-
-		By("updating the chaincode definition to sequence 2 to add a collections config")
-		chaincode.Sequence = "2"
-		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config_org1_org2.json")
-		for _, org := range []string{"org1", "org2"} {
-			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg(org)...)
-		}
-
-		By("committing the new chaincode definition using org1 and org2")
-		nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, []*nwo.Organization{network.Organization("org1"), network.Organization("org2")}, org1Peer0, org2Peer0, org3Peer0)
-		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
-
-		By("discovering endorsers for sequence 2 that has only been approved by org1 and org2")
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-		))
-
-		By("approving the chaincode definition at sequence 2 by org3")
-		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", org1Peer0, org2Peer0, org3Peer0)
-		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg("org3")...)
-		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+1, org1Peer0, org2Peer0, org3Peer0)
-
-		By("discovering endorsers for sequence 2 that has been approved by all orgs")
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
-		))
-
-		By("discovering endorsers for chaincode with a private collection")
-		endorsers.Collection = "mycc-lifecycle:collectionMarbles"
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
-			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
-		))
-		discovered = de()
-		Expect(discovered).To(HaveLen(1))
-		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
-
-		By("upgrading a legacy chaincode for all peers")
-		nwo.DeployChaincode(network, "testchannel", orderer, nwo.Chaincode{
-			Name:              "mycc",
-			Version:           "2.0",
-			Lang:              "binary",
-			PackageFile:       filepath.Join(testDir, "modulecc.tar.gz"),
-			Path:              chaincodePath,
-			SignaturePolicy:   `AND ('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`,
-			Sequence:          "1",
-			CollectionsConfig: filepath.Join("testdata", "collections_config_org1_org2_org3.json"),
-			Label:             "my_prebuilt_chaincode",
-		})
-
-		By("discovering endorsers for chaincode that has been installed to all peers")
-		endorsers.Chaincode = "mycc"
-		endorsers.Collection = ""
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(org1Peer1)),
-			ConsistOf(network.DiscoveredPeer(org2Peer0), network.DiscoveredPeer(org2Peer1)),
-			ConsistOf(network.DiscoveredPeer(org3Peer0), network.DiscoveredPeer(org3Peer1)),
-		))
-		discovered = de()
-		Expect(discovered).To(HaveLen(1))
-		Expect(discovered[0].Layouts).To(HaveLen(1))
-		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1), uint32(1)))
-
-		By("discovering endorsers for collection available on all peers")
-		endorsers.Collection = "mycc:collectionMarbles"
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(org1Peer1)),
-			ConsistOf(network.DiscoveredPeer(org2Peer0), network.DiscoveredPeer(org2Peer1)),
-			ConsistOf(network.DiscoveredPeer(org3Peer0), network.DiscoveredPeer(org3Peer1)),
-		))
-
-		By("trying to discover endorsers as an org3 admin")
-		endorsers = commands.Endorsers{
-			UserCert:  network.PeerUserCert(org3Peer0, "Admin"),
-			UserKey:   network.PeerUserKey(org3Peer0, "Admin"),
-			MSPID:     network.Organization(org3Peer0.Organization).MSPID,
-			Server:    network.PeerAddress(org3Peer0, nwo.ListenPort),
-			Channel:   "testchannel",
-			Chaincode: "mycc",
-		}
-		de = discoverEndorsers(network, endorsers)
-		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
-			ConsistOf(network.DiscoveredPeer(org1Peer0), network.DiscoveredPeer(org1Peer1)),
-			ConsistOf(network.DiscoveredPeer(org2Peer0), network.DiscoveredPeer(org2Peer1)),
-			ConsistOf(network.DiscoveredPeer(org3Peer0), network.DiscoveredPeer(org3Peer1)),
-		))
-
-		By("trying to discover endorsers as an org3 member")
-		endorsers = commands.Endorsers{
-			UserCert:  network.PeerUserCert(org3Peer0, "User1"),
-			UserKey:   network.PeerUserKey(org3Peer0, "User1"),
-			MSPID:     network.Organization(org3Peer0.Organization).MSPID,
-			Server:    network.PeerAddress(org3Peer0, nwo.ListenPort),
-			Channel:   "testchannel",
-			Chaincode: "mycc-lifecycle",
-		}
-		sess, err = network.Discover(endorsers)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-		Expect(sess.Err).To(gbytes.Say(`access denied`))
-	})
-
-	It("discovers peer membership", func() {
-		By("discovering peers")
-		Eventually(nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
-			network.DiscoveredPeer(org1Peer0),
-			network.DiscoveredPeer(org1Peer1),
-			network.DiscoveredPeer(org2Peer0),
-			network.DiscoveredPeer(org2Peer1),
-			network.DiscoveredPeer(org3Peer0),
-			network.DiscoveredPeer(org3Peer1),
-		))
-
-		By("installing and instantiating chaincode on a peer")
-		chaincode := nwo.Chaincode{
-			Name:    "mycc",
-			Version: "1.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-		}
-		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode, org1Peer0)
-
-		By("discovering peers after installing and instantiating chaincode on a peer")
-		dp := nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
-		Eventually(peersWithChaincode(dp, "mycc"), network.EventuallyTimeout).Should(HaveLen(1))
-		peersWithCC := peersWithChaincode(dp, "mycc")()
-		Expect(peersWithCC).To(ConsistOf(network.DiscoveredPeer(org1Peer0, "mycc")))
-
-		//
-		// using _lifecycle
-		//
-
-		By("enabling V2_0 application capabilities on the channel")
-		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer0, org2Peer0, org3Peer0)
-
-		By("ensuring peer is still discoverable after enabling V2_0 application capabilities")
-		dp = nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
-		Eventually(peersWithChaincode(dp, "mycc"), network.EventuallyTimeout).Should(HaveLen(1))
-		peersWithCC = peersWithChaincode(dp, "mycc")()
-		Expect(peersWithCC).To(ConsistOf(network.DiscoveredPeer(org1Peer0, "mycc")))
-
-		By("deploying chaincode using _lifecycle to one peer per org")
-		chaincode = nwo.Chaincode{
-			Name:                "mycc-lifecycle",
-			Version:             "1.0",
-			Lang:                "binary",
-			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
-			Path:                components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
-			Ctor:                `{"Args":["init","a","100","b","200"]}`,
-			ChannelConfigPolicy: "/Channel/Application/Endorsement",
-			Sequence:            "1",
-			InitRequired:        true,
-			Label:               "my_prebuilt_chaincode",
-		}
-
-		nwo.DeployChaincode(network, "testchannel", orderer, chaincode, org1Peer1, org2Peer1, org3Peer1)
-
-		By("ensuring only the peers that have installed the chaincode are discovered")
-		Eventually(peersWithChaincode(dp, "mycc-lifecycle"), network.EventuallyTimeout).Should(HaveLen(3))
-		peersWithCC = peersWithChaincode(dp, "mycc-lifecycle")()
-		Expect(peersWithCC).To(ConsistOf(
-			network.DiscoveredPeer(org1Peer1, "mycc-lifecycle"),
-			network.DiscoveredPeer(org2Peer1, "mycc-lifecycle"),
-			network.DiscoveredPeer(org3Peer1, "mycc-lifecycle"),
-		))
-
-		By("installing the chaincode to the remaining peers")
-		nwo.InstallChaincode(network, chaincode, org1Peer0, org2Peer0, org3Peer0)
-
-		By("ensuring all peers are discovered")
-		Eventually(peersWithChaincode(dp, "mycc-lifecycle"), network.EventuallyTimeout).Should(HaveLen(6))
-		peersWithCC = peersWithChaincode(dp, "mycc-lifecycle")()
-		Expect(peersWithCC).To(ConsistOf(
-			network.DiscoveredPeer(org1Peer0, "mycc-lifecycle", "mycc"),
-			network.DiscoveredPeer(org1Peer1, "mycc-lifecycle"),
-			network.DiscoveredPeer(org2Peer0, "mycc-lifecycle"),
-			network.DiscoveredPeer(org2Peer1, "mycc-lifecycle"),
-			network.DiscoveredPeer(org3Peer0, "mycc-lifecycle"),
-			network.DiscoveredPeer(org3Peer1, "mycc-lifecycle"),
-		))
-	})
-
-	It("discovers network configuration information", func() {
 		By("retrieving the configuration")
 		config := commands.Config{
 			UserCert: network.PeerUserCert(org1Peer0, "User1"),
@@ -561,6 +147,399 @@ var _ = Describe("DiscoveryService", func() {
 				&discovery.Endpoint{Host: "127.0.0.1", Port: uint32(network.OrdererPort(orderer, nwo.ListenPort))},
 			))
 		}
+
+		//
+		// discovering peers and endorsers
+		//
+
+		By("discovering peers before deploying any chaincodes")
+		Eventually(nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
+			network.DiscoveredPeer(org1Peer0),
+			network.DiscoveredPeer(org2Peer0),
+			network.DiscoveredPeer(org3Peer0),
+		))
+
+		By("discovering endorsers when missing chaincode")
+		endorsers := commands.Endorsers{
+			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
+			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
+			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: "mycc",
+		}
+		sess, err = network.Discover(endorsers)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
+
+		By("installing and instantiating chaincode on org1.peer0")
+		chaincode := nwo.Chaincode{
+			Name:    "mycc",
+			Version: "1.0",
+			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Ctor:    `{"Args":["init","a","100","b","200"]}`,
+			Policy:  `OR (AND ('Org1MSP.member','Org2MSP.member'), AND ('Org1MSP.member','Org3MSP.member'), AND ('Org2MSP.member','Org3MSP.member'))`,
+		}
+		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode, org1Peer0)
+
+		By("discovering peers after installing and instantiating chaincode using org1's peer")
+		dp := nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
+		Eventually(peersWithChaincode(dp, "mycc"), network.EventuallyTimeout).Should(HaveLen(1))
+		peersWithCC := peersWithChaincode(dp, "mycc")()
+		Expect(peersWithCC).To(ConsistOf(network.DiscoveredPeer(org1Peer0, "mycc")))
+
+		By("discovering endorsers for chaincode that has not been installed to enough orgs to satisfy endorsement policy")
+		sess, err = network.Discover(endorsers)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
+
+		By("installing chaincode to enough organizations to satisfy the endorsement policy")
+		nwo.InstallChaincodeLegacy(network, chaincode, org2Peer0)
+
+		By("discovering peers after installing chaincode to org2's peer")
+		dp = nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
+		Eventually(peersWithChaincode(dp, "mycc"), network.EventuallyTimeout).Should(HaveLen(2))
+		peersWithCC = peersWithChaincode(dp, "mycc")()
+		Expect(peersWithCC).To(ConsistOf(
+			network.DiscoveredPeer(org1Peer0, "mycc"),
+			network.DiscoveredPeer(org2Peer0, "mycc"),
+		))
+
+		By("discovering endorsers for chaincode that has been installed to org1 and org2")
+		de := discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+		discovered := de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+
+		By("installing chaincode to all orgs")
+		nwo.InstallChaincodeLegacy(network, chaincode, org3Peer0)
+
+		By("discovering peers after installing and instantiating chaincode all org peers")
+		dp = nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
+		Eventually(peersWithChaincode(dp, "mycc"), network.EventuallyTimeout).Should(HaveLen(3))
+		peersWithCC = peersWithChaincode(dp, "mycc")()
+		Expect(peersWithCC).To(ConsistOf(
+			network.DiscoveredPeer(org1Peer0, "mycc"),
+			network.DiscoveredPeer(org2Peer0, "mycc"),
+			network.DiscoveredPeer(org3Peer0, "mycc"),
+		))
+
+		By("discovering endorsers for chaincode that has been installed to all orgs")
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
+		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(3))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[1].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+		Expect(discovered[0].Layouts[2].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+
+		By("upgrading chaincode and adding a collections config")
+		chaincode.Name = "mycc"
+		chaincode.Version = "2.0"
+		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config_org1_org2.json")
+		nwo.UpgradeChaincodeLegacy(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0, org3Peer0)
+
+		By("discovering endorsers for chaincode with a private collection")
+		endorsers.Collection = "mycc:collectionMarbles"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+
+		By("changing the channel policy")
+		currentConfig := nwo.GetConfig(network, org3Peer0, orderer, "testchannel")
+		updatedConfig := proto.Clone(currentConfig).(*common.Config)
+		updatedConfig.ChannelGroup.Groups["Application"].Groups["Org3"].Policies["Writers"].Policy.Value = protoutil.MarshalOrPanic(cauthdsl.SignedByMspAdmin("Org3MSP"))
+		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, org3Peer0)
+
+		By("trying to discover endorsers as an org3 admin")
+		endorsers = commands.Endorsers{
+			UserCert:  network.PeerUserCert(org3Peer0, "Admin"),
+			UserKey:   network.PeerUserKey(org3Peer0, "Admin"),
+			MSPID:     network.Organization(org3Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org3Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: "mycc",
+		}
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			ConsistOf(network.DiscoveredPeer(org1Peer0)),
+			ConsistOf(network.DiscoveredPeer(org2Peer0)),
+			ConsistOf(network.DiscoveredPeer(org3Peer0)),
+		))
+
+		By("trying to discover endorsers as an org3 member")
+		endorsers = commands.Endorsers{
+			UserCert:  network.PeerUserCert(org3Peer0, "User1"),
+			UserKey:   network.PeerUserKey(org3Peer0, "User1"),
+			MSPID:     network.Organization(org3Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org3Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: "mycc",
+		}
+		sess, err = network.Discover(endorsers)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(`access denied`))
+
+		//
+		// using _lifecycle
+		//
+
+		By("enabling V2_0 application capabilities on the channel")
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, org1Peer0, org2Peer0, org3Peer0)
+
+		By("ensuring peers are still discoverable after enabling V2_0 application capabilities")
+		dp = nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
+		Eventually(peersWithChaincode(dp, "mycc"), network.EventuallyTimeout).Should(HaveLen(3))
+		peersWithCC = peersWithChaincode(dp, "mycc")()
+		Expect(peersWithCC).To(ConsistOf(
+			network.DiscoveredPeer(org1Peer0, "mycc"),
+			network.DiscoveredPeer(org2Peer0, "mycc"),
+			network.DiscoveredPeer(org3Peer0, "mycc"),
+		))
+
+		By("ensuring endorsers for mycc are still discoverable after upgrading to V2_0 application capabilities")
+		endorsers = commands.Endorsers{
+			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
+			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
+			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: "mycc",
+		}
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
+		))
+
+		By("ensuring endorsers for mycc's collection are still discoverable after upgrading to V2_0 application capabilities")
+		endorsers.Collection = "mycc:collectionMarbles"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+
+		By("discovering endorsers when missing chaincode")
+		endorsers = commands.Endorsers{
+			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
+			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
+			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: "mycc-lifecycle",
+		}
+		sess, err = network.Discover(endorsers)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc-lifecycle"`))
+
+		By("deploying chaincode using org1 and org2")
+		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
+		chaincode = nwo.Chaincode{
+			Name:                "mycc-lifecycle",
+			Version:             "1.0",
+			Lang:                "binary",
+			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
+			Path:                chaincodePath,
+			Ctor:                `{"Args":["init","a","100","b","200"]}`,
+			ChannelConfigPolicy: "/Channel/Application/Endorsement",
+			Sequence:            "1",
+			InitRequired:        true,
+			Label:               "my_prebuilt_chaincode",
+		}
+
+		By("packaging chaincode")
+		nwo.PackageChaincodeBinary(chaincode)
+
+		By("installing chaincode to org1.peer0 and org2.peer0")
+		nwo.InstallChaincode(network, chaincode, org1Peer0, org2Peer0)
+
+		By("approving chaincode definition for org1 and org2")
+		for _, org := range []string{"Org1", "Org2"} {
+			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg(org)...)
+		}
+
+		By("committing chaincode definition using org1.peer0 and org2.peer0")
+		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
+		nwo.InitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org2Peer0)
+
+		By("discovering endorsers for chaincode that has been installed to some orgs")
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+
+		By("installing chaincode to all orgs")
+		nwo.InstallChaincode(network, chaincode, org3Peer0)
+
+		By("discovering endorsers for chaincode that has been installed to all orgs but not yet approved by org3")
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+
+		By("ensuring peers are only discoverable that have the chaincode installed and approved")
+		dp = nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
+		Eventually(peersWithChaincode(dp, "mycc-lifecycle"), network.EventuallyTimeout).Should(HaveLen(2))
+		peersWithCC = peersWithChaincode(dp, "mycc-lifecycle")()
+		Expect(peersWithCC).To(ConsistOf(
+			network.DiscoveredPeer(org1Peer0, "mycc-lifecycle", "mycc"),
+			network.DiscoveredPeer(org2Peer0, "mycc-lifecycle", "mycc"),
+		))
+
+		By("approving chaincode definition for org3")
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg("Org3")...)
+
+		By("discovering endorsers for chaincode that has been installed and approved by all orgs")
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
+		))
+
+		By("discovering peers for chaincode that has been installed and approved by all orgs")
+		dp = nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel")
+		Eventually(peersWithChaincode(dp, "mycc-lifecycle"), network.EventuallyTimeout).Should(HaveLen(3))
+		peersWithCC = peersWithChaincode(dp, "mycc-lifecycle")()
+		Expect(peersWithCC).To(ConsistOf(
+			network.DiscoveredPeer(org1Peer0, "mycc-lifecycle", "mycc"),
+			network.DiscoveredPeer(org2Peer0, "mycc-lifecycle", "mycc"),
+			network.DiscoveredPeer(org3Peer0, "mycc-lifecycle", "mycc"),
+		))
+
+		By("updating the chaincode definition to sequence 2 to add a collections config")
+		chaincode.Sequence = "2"
+		chaincode.CollectionsConfig = filepath.Join("testdata", "collections_config_org1_org2.json")
+		for _, org := range []string{"Org1", "Org2"} {
+			nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg(org)...)
+		}
+
+		By("committing the new chaincode definition using org1 and org2")
+		nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, []*nwo.Organization{network.Organization("Org1"), network.Organization("Org2")}, org1Peer0, org2Peer0, org3Peer0)
+		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
+
+		By("discovering endorsers for sequence 2 that has only been approved by org1 and org2")
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+
+		By("approving the chaincode definition at sequence 2 by org3")
+		maxLedgerHeight := nwo.GetMaxLedgerHeight(network, "testchannel", org1Peer0, org2Peer0, org3Peer0)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, network.PeersInOrg("Org3")...)
+		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight+1, org1Peer0, org2Peer0, org3Peer0)
+
+		By("discovering endorsers for sequence 2 that has been approved by all orgs")
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
+		))
+
+		By("discovering endorsers for chaincode with a private collection")
+		endorsers.Collection = "mycc-lifecycle:collectionMarbles"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
+
+		By("upgrading a legacy chaincode for all peers")
+		nwo.DeployChaincode(network, "testchannel", orderer, nwo.Chaincode{
+			Name:              "mycc",
+			Version:           "2.0",
+			Lang:              "binary",
+			PackageFile:       filepath.Join(testDir, "modulecc.tar.gz"),
+			Path:              chaincodePath,
+			SignaturePolicy:   `AND ('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`,
+			Sequence:          "1",
+			CollectionsConfig: filepath.Join("testdata", "collections_config_org1_org2_org3.json"),
+			Label:             "my_prebuilt_chaincode",
+		})
+
+		By("discovering endorsers for chaincode that has been installed to all peers")
+		endorsers.Chaincode = "mycc"
+		endorsers.Collection = ""
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			ConsistOf(network.DiscoveredPeer(org1Peer0)),
+			ConsistOf(network.DiscoveredPeer(org2Peer0)),
+			ConsistOf(network.DiscoveredPeer(org3Peer0)),
+		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1), uint32(1)))
+
+		By("discovering endorsers for collection available on all peers")
+		endorsers.Collection = "mycc:collectionMarbles"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			ConsistOf(network.DiscoveredPeer(org1Peer0)),
+			ConsistOf(network.DiscoveredPeer(org2Peer0)),
+			ConsistOf(network.DiscoveredPeer(org3Peer0)),
+		))
+
+		By("trying to discover endorsers as an org3 admin")
+		endorsers = commands.Endorsers{
+			UserCert:  network.PeerUserCert(org3Peer0, "Admin"),
+			UserKey:   network.PeerUserKey(org3Peer0, "Admin"),
+			MSPID:     network.Organization(org3Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org3Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: "mycc",
+		}
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			ConsistOf(network.DiscoveredPeer(org1Peer0)),
+			ConsistOf(network.DiscoveredPeer(org2Peer0)),
+			ConsistOf(network.DiscoveredPeer(org3Peer0)),
+		))
+
+		By("trying to discover endorsers as an org3 member")
+		endorsers = commands.Endorsers{
+			UserCert:  network.PeerUserCert(org3Peer0, "User1"),
+			UserKey:   network.PeerUserKey(org3Peer0, "User1"),
+			MSPID:     network.Organization(org3Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org3Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: "mycc-lifecycle",
+		}
+		sess, err = network.Discover(endorsers)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(`access denied`))
 	})
 })
 
