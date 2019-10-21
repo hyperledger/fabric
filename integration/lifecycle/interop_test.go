@@ -47,8 +47,12 @@ var _ = Describe("Release interoperability", func() {
 	})
 
 	Describe("solo network", func() {
-		var network *nwo.Network
-		var process ifrit.Process
+		var (
+			network   *nwo.Network
+			process   ifrit.Process
+			orderer   *nwo.Orderer
+			endorsers []*nwo.Peer
+		)
 
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiChannelBasicSolo(), testDir, client, StartPort(), components)
@@ -61,6 +65,12 @@ var _ = Describe("Release interoperability", func() {
 			networkRunner := network.NetworkGroupRunner()
 			process = ifrit.Invoke(networkRunner)
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			orderer = network.Orderer("orderer")
+			endorsers = []*nwo.Peer{
+				network.Peer("Org1", "peer0"),
+				network.Peer("Org2", "peer1"),
+			}
 		})
 
 		AfterEach(func() {
@@ -72,9 +82,6 @@ var _ = Describe("Release interoperability", func() {
 
 		It("deploys and executes chaincode (simple), upgrades the channel application capabilities to V2_0 and uses _lifecycle to update the endorsement policy", func() {
 			By("deploying the chaincode using LSCC on a channel with V1_4 application capabilities")
-			orderer := network.Orderer("orderer")
-			peer := network.Peer("Org1", "peer1")
-
 			chaincode := nwo.Chaincode{
 				Name:    "mycc",
 				Version: "0.0",
@@ -85,28 +92,28 @@ var _ = Describe("Release interoperability", func() {
 
 			network.CreateAndJoinChannels(orderer)
 			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer, "mycc", 100)
+			RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
 
 			By("enabling V2_0 application capabilities")
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, endorsers...)
 
 			By("ensuring that the chaincode is still operational after the upgrade")
-			RunQueryInvokeQuery(network, orderer, peer, "mycc", 90)
+			RunQueryInvokeQuery(network, orderer, "mycc", 90, endorsers...)
 
 			By("restarting the network from persistence")
 			RestartNetwork(&process, network)
 
 			By("ensuring that the chaincode is still operational after the upgrade and restart")
-			RunQueryInvokeQuery(network, orderer, peer, "mycc", 80)
+			RunQueryInvokeQuery(network, orderer, "mycc", 80, endorsers...)
 
 			By("attempting to invoke the chaincode without sufficient endorsements")
-			sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+			sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeInvoke{
 				ChannelID: "testchannel",
 				Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 				Name:      "mycc",
 				Ctor:      `{"Args":["invoke","a","b","10"]}`,
 				PeerAddresses: []string{
-					network.PeerAddress(network.Peer("Org1", "peer0"), nwo.ListenPort),
+					network.PeerAddress(endorsers[0], nwo.ListenPort),
 				},
 				WaitForEvent: true,
 			})
@@ -129,19 +136,17 @@ var _ = Describe("Release interoperability", func() {
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			By("querying/invoking/querying the chaincode with the new definition")
-			RunQueryInvokeQueryWithAddresses(network, orderer, peer, "mycc", 70, network.PeerAddress(network.Peer("Org1", "peer1"), nwo.ListenPort))
+			RunQueryInvokeQuery(network, orderer, "mycc", 70, endorsers[0])
 
 			By("restarting the network from persistence")
 			RestartNetwork(&process, network)
 
 			By("querying/invoking/querying the chaincode with the new definition again")
-			RunQueryInvokeQueryWithAddresses(network, orderer, peer, "mycc", 60, network.PeerAddress(network.Peer("Org1", "peer1"), nwo.ListenPort))
+			RunQueryInvokeQuery(network, orderer, "mycc", 60, endorsers[1])
 		})
 
 		Describe("Interoperability scenarios", func() {
 			var (
-				orderer              *nwo.Orderer
-				peer                 *nwo.Peer
 				userSigner           msp.SigningIdentity
 				serialisedUserSigner []byte
 				endorserClient       pb.EndorserClient
@@ -150,16 +155,14 @@ var _ = Describe("Release interoperability", func() {
 			)
 
 			BeforeEach(func() {
-				orderer = network.Orderer("orderer")
-				peer = network.Peer("Org1", "peer1")
-				userSigner, serialisedUserSigner = Signer(network.PeerUserMSPDir(peer, "User1"))
+				userSigner, serialisedUserSigner = Signer(network.PeerUserMSPDir(endorsers[0], "User1"))
 				endorserClient = EndorserClient(
-					network.PeerAddress(peer, nwo.ListenPort),
-					filepath.Join(network.PeerLocalTLSDir(peer), "ca.crt"),
+					network.PeerAddress(endorsers[0], nwo.ListenPort),
+					filepath.Join(network.PeerLocalTLSDir(endorsers[0]), "ca.crt"),
 				)
 				deliveryClient = DeliverClient(
-					network.PeerAddress(peer, nwo.ListenPort),
-					filepath.Join(network.PeerLocalTLSDir(peer), "ca.crt"),
+					network.PeerAddress(endorsers[0], nwo.ListenPort),
+					filepath.Join(network.PeerLocalTLSDir(endorsers[0]), "ca.crt"),
 				)
 				ordererClient = OrdererClient(
 					network.OrdererAddress(orderer, nwo.ListenPort),
@@ -179,7 +182,7 @@ var _ = Describe("Release interoperability", func() {
 
 				network.CreateAndJoinChannels(orderer)
 				nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-				RunQueryInvokeQuery(network, orderer, peer, "mycc", 100)
+				RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
 
 				By("invoking the chaincode with the legacy definition and keeping the transaction")
 				signedProp, prop, txid := SignedProposal(
@@ -220,7 +223,7 @@ var _ = Describe("Release interoperability", func() {
 				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 				By("committing the old transaction, expecting to hit an MVCC conflict")
-				err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+				err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
 			})
@@ -273,7 +276,7 @@ var _ = Describe("Release interoperability", func() {
 				nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 				By("committing the old transaction, expecting to hit an MVCC conflict")
-				err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+				err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
 			})
@@ -360,11 +363,11 @@ var _ = Describe("Release interoperability", func() {
 					Expect(env).NotTo(BeNil())
 
 					By("committing the transaction")
-					err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+					err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 					Expect(err).NotTo(HaveOccurred())
 
 					By("querying the caller chaincode")
-					sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+					sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "caller",
 						Ctor:      `{"Args":["QUERY"]}`,
@@ -374,7 +377,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(sess).To(gbytes.Say("caller:bar"))
 
 					By("querying the callee chaincode")
-					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "callee",
 						Ctor:      `{"Args":["QUERY"]}`,
@@ -390,7 +393,7 @@ var _ = Describe("Release interoperability", func() {
 					nwo.DeployChaincode(network, "testchannel2", orderer, calleeDefNew)
 
 					By("invoking the chaincode on callee on channel2")
-					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeInvoke{
 						ChannelID:    "testchannel2",
 						Orderer:      network.OrdererAddress(orderer, nwo.ListenPort),
 						Name:         "callee",
@@ -402,7 +405,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
 					By("querying the callee chaincode on channel2")
-					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel2",
 						Name:      "callee",
 						Ctor:      `{"Args":["QUERY"]}`,
@@ -412,7 +415,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(sess).To(gbytes.Say("callee:bar"))
 
 					By("querying (QUERYCALLEE) the callee chaincode on channel2 from caller on channel")
-					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "caller",
 						Ctor:      `{"Args":["QUERYCALLEE", "callee", "testchannel2"]}`,
@@ -422,7 +425,7 @@ var _ = Describe("Release interoperability", func() {
 					Expect(sess).To(gbytes.Say("callee:bar"))
 
 					By("querying (QUERYCALLEE) the callee chaincode from caller on non-existing channel and expecting the invocation to fail")
-					sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+					sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 						ChannelID: "testchannel",
 						Name:      "caller",
 						Ctor:      `{"Args":["QUERYCALLEE", "callee", "nonExistingChannel2"]}`,
@@ -466,11 +469,11 @@ var _ = Describe("Release interoperability", func() {
 						Expect(env).NotTo(BeNil())
 
 						By("committing the transaction")
-						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 						Expect(err).NotTo(HaveOccurred())
 
 						By("querying the caller chaincode")
-						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "caller",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -480,7 +483,7 @@ var _ = Describe("Release interoperability", func() {
 						Expect(sess).To(gbytes.Say("caller:bar"))
 
 						By("querying the callee chaincode")
-						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "callee",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -516,12 +519,12 @@ var _ = Describe("Release interoperability", func() {
 						nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
 
 						By("committing the transaction")
-						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 						Expect(err).To(HaveOccurred())
 						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
 
 						By("querying the caller chaincode")
-						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "caller",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -531,7 +534,7 @@ var _ = Describe("Release interoperability", func() {
 						Expect(sess).To(gbytes.Say("caller:foo"))
 
 						By("querying the callee chaincode")
-						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "callee",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -567,12 +570,12 @@ var _ = Describe("Release interoperability", func() {
 						nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
 
 						By("committing the transaction")
-						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 						Expect(err).To(HaveOccurred())
 						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
 
 						By("querying the caller chaincode")
-						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "caller",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -582,7 +585,7 @@ var _ = Describe("Release interoperability", func() {
 						Expect(sess).To(gbytes.Say("caller:foo"))
 
 						By("querying the callee chaincode")
-						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "callee",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -629,11 +632,11 @@ var _ = Describe("Release interoperability", func() {
 						Expect(env).NotTo(BeNil())
 
 						By("committing the transaction")
-						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 						Expect(err).NotTo(HaveOccurred())
 
 						By("querying the caller chaincode")
-						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "caller",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -643,7 +646,7 @@ var _ = Describe("Release interoperability", func() {
 						Expect(sess).To(gbytes.Say("caller:bar"))
 
 						By("querying the callee chaincode")
-						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "callee",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -677,11 +680,11 @@ var _ = Describe("Release interoperability", func() {
 						Expect(env).NotTo(BeNil())
 
 						By("committing the transaction")
-						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 						Expect(err).NotTo(HaveOccurred())
 
 						By("querying the caller chaincode")
-						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "caller",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -691,7 +694,7 @@ var _ = Describe("Release interoperability", func() {
 						Expect(sess).To(gbytes.Say("caller:bar"))
 
 						By("querying the callee chaincode")
-						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "callee",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -725,12 +728,12 @@ var _ = Describe("Release interoperability", func() {
 						nwo.DeployChaincode(network, "testchannel", orderer, calleeDefNew)
 
 						By("committing the transaction")
-						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 						Expect(err).To(HaveOccurred())
 						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
 
 						By("querying the caller chaincode")
-						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "caller",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -740,7 +743,7 @@ var _ = Describe("Release interoperability", func() {
 						Expect(sess).To(gbytes.Say("caller:foo"))
 
 						By("querying the callee chaincode")
-						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "callee",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -774,12 +777,12 @@ var _ = Describe("Release interoperability", func() {
 						nwo.DeployChaincode(network, "testchannel", orderer, callerDefNew)
 
 						By("committing the transaction")
-						err = CommitTx(network, env, peer, deliveryClient, ordererClient, userSigner, txid)
+						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
 						Expect(err).To(HaveOccurred())
 						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
 
 						By("querying the caller chaincode")
-						sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "caller",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -789,7 +792,7 @@ var _ = Describe("Release interoperability", func() {
 						Expect(sess).To(gbytes.Say("caller:foo"))
 
 						By("querying the callee chaincode")
-						sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+						sess, err = network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
 							ChannelID: "testchannel",
 							Name:      "callee",
 							Ctor:      `{"Args":["QUERY"]}`,
@@ -837,7 +840,10 @@ var _ = Describe("Release interoperability", func() {
 		It("deploys and executes chaincode (simple)", func() {
 			By("deploying the chaincode using LSCC on a channel with V1_4 application capabilities")
 			orderer := network.Orderer("orderer")
-			peer := network.Peer("Org1", "peer1")
+			endorsers := []*nwo.Peer{
+				network.Peer("Org1", "peer0"),
+				network.Peer("Org2", "peer1"),
+			}
 
 			cwd, err := os.Getwd()
 			Expect(err).NotTo(HaveOccurred())
@@ -859,7 +865,7 @@ var _ = Describe("Release interoperability", func() {
 
 			network.CreateAndJoinChannels(orderer)
 			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
-			RunQueryInvokeQuery(network, orderer, peer, "mycc", 100)
+			RunQueryInvokeQuery(network, orderer, "mycc", 100, endorsers...)
 		})
 	})
 })

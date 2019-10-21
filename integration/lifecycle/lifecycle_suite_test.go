@@ -69,30 +69,28 @@ func StartPort() int {
 	return integration.LifecyclePort.StartPortForNode()
 }
 
-func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, chaincodeName string, initialQueryResult int) {
-	RunQueryInvokeQueryWithAddresses(
-		n,
-		orderer,
-		peer,
-		chaincodeName,
-		initialQueryResult,
-		n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
-		n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
-	)
-}
+func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName string, initialQueryResult int, peers ...*nwo.Peer) {
+	if len(peers) == 0 {
+		peers = n.PeersWithChannel("testchannel")
+	}
 
-func RunQueryInvokeQueryWithAddresses(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, chaincodeName string, initialQueryResult int, addresses ...string) {
+	addresses := make([]string, len(peers))
+	for i, peer := range peers {
+		addresses[i] = n.PeerAddress(peer, nwo.ListenPort)
+	}
+
 	By("querying the chaincode")
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	sess, err := n.PeerUserSession(peers[0], "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      chaincodeName,
 		Ctor:      `{"Args":["query","a"]}`,
 	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult)))
 
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+	By("invoking the chaincode")
+	sess, err = n.PeerUserSession(peers[0], "User1", commands.ChaincodeInvoke{
 		ChannelID:     "testchannel",
 		Orderer:       n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:          chaincodeName,
@@ -100,18 +98,19 @@ func RunQueryInvokeQueryWithAddresses(n *nwo.Network, orderer *nwo.Orderer, peer
 		PeerAddresses: addresses,
 		WaitForEvent:  true,
 	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	ExpectWithOffset(1, sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
-	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+	By("querying the chaincode")
+	sess, err = n.PeerUserSession(peers[0], "User1", commands.ChaincodeQuery{
 		ChannelID: "testchannel",
 		Name:      chaincodeName,
 		Ctor:      `{"Args":["query","a"]}`,
 	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess).To(gbytes.Say(fmt.Sprint(initialQueryResult - 10)))
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult - 10)))
 }
 
 func RestartNetwork(process *ifrit.Process, network *nwo.Network) {
