@@ -5,9 +5,10 @@
    contribution guidelines for these repositories:
 
    - `Fabric-CA <https://github.com/hyperledger/fabric-ca>`_
-   - `Fabric-Protos <https://github.com/hyperledger/fabric-protos>`_
-   - `Fabric-Chaincode-Go <https://github.com/hyperledger/fabric-chaincode-go>`_
    - `Fabric-Chaincode-EVM <https://github.com/hyperledger/fabric-chaincode-evm>`_
+   - `Fabric-Chaincode-Go <https://github.com/hyperledger/fabric-chaincode-go>`_
+   - `Fabric-Protos <https://github.com/hyperledger/fabric-protos>`_
+   - `Fabric-Samples <https://github.com/hyperledger/fabric-samples>`_
 
 =====================
 
