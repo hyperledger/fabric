@@ -129,6 +129,8 @@ func TestGetEnv(t *testing.T) {
 			"CORE_PEER_TLS_ENABLED=true",
 			"CORE_TLS_CLIENT_KEY_PATH=/etc/hyperledger/fabric/client.key",
 			"CORE_TLS_CLIENT_CERT_PATH=/etc/hyperledger/fabric/client.crt",
+			"CORE_TLS_CLIENT_KEY_FILE=/etc/hyperledger/fabric/client_pem.key",
+			"CORE_TLS_CLIENT_CERT_FILE=/etc/hyperledger/fabric/client_pem.crt",
 			"CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt",
 		}, env)
 	})
