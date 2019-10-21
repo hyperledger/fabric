@@ -146,7 +146,11 @@ var _ = Describe("Lifecycle", func() {
 		nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
 		By("ensuring the chaincode can be invoked and queried")
-		RunQueryInvokeQuery(network, orderer, org1peer1, "My_1st-Chaincode", 100)
+		endorsers := []*nwo.Peer{
+			network.Peer("Org1", "peer0"),
+			network.Peer("Org2", "peer1"),
+		}
+		RunQueryInvokeQuery(network, orderer, "My_1st-Chaincode", 100, endorsers...)
 
 		By("setting a bad package ID to temporarily disable endorsements on org1")
 		savedPackageID := chaincode.PackageID
@@ -191,7 +195,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 
 		By("ensuring the chaincode can still be invoked and queried")
-		RunQueryInvokeQuery(network, orderer, testPeers[0], "My_1st-Chaincode", 90)
+		RunQueryInvokeQuery(network, orderer, "My_1st-Chaincode", 90, endorsers...)
 
 		By("deploying another chaincode using the same chaincode package")
 		nwo.DeployChaincode(network, "testchannel", orderer, nwo.Chaincode{
@@ -309,7 +313,11 @@ var _ = Describe("Lifecycle", func() {
 		nwo.EnsureChaincodeCommitted(network, "testchannel", chaincode.Name, chaincode.Version, chaincode.Sequence, []*nwo.Organization{network.Organization("Org1"), network.Organization("Org2"), network.Organization("Org3")}, org3peer0)
 
 		By("ensuring chaincode can be invoked and queried by org3")
-		RunQueryInvokeQueryWithAddresses(network, orderer, org3peer0, "My_1st-Chaincode", 80, org3AndOrg1PeerAddresses...)
+		org3andOrg1Endorsers := []*nwo.Peer{
+			network.Peer("Org3", "peer0"),
+			network.Peer("Org1", "peer1"),
+		}
+		RunQueryInvokeQuery(network, orderer, "My_1st-Chaincode", 80, org3andOrg1Endorsers...)
 
 		By("deploying a chaincode without an endorsement policy specified")
 		chaincode = nwo.Chaincode{
