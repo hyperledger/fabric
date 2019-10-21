@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
@@ -35,26 +36,6 @@ var (
 type Conf struct {
 	DBPath                string
 	ExpectedFormatVersion string
-}
-
-// ErrFormatVersionMismatch is returned if it is detected that the version of the format recorded in
-// the internal database is different from what is specified in the `Conf` that is used for opening the db
-type ErrFormatVersionMismatch struct {
-	DBPath                string
-	ExpectedFormatVersion string
-	DataFormatVersion     string
-}
-
-func (e *ErrFormatVersionMismatch) Error() string {
-	return fmt.Sprintf("unexpected format. db path = [%s], data format = [%s], expected format = [%s]",
-		e.DBPath, e.DataFormatVersion, e.ExpectedFormatVersion,
-	)
-}
-
-// IsFormatVersionMismatch returns true if err is an errFormatMismatch
-func IsFormatVersionMismatch(err error) bool {
-	_, ok := err.(*ErrFormatVersionMismatch)
-	return ok
 }
 
 // Provider enables to use a single leveldb as multiple logical leveldbs
@@ -114,9 +95,12 @@ func openDBAndCheckFormat(conf *Conf) (d *DB, e error) {
 	if !bytes.Equal(formatVersion, []byte(conf.ExpectedFormatVersion)) {
 		logger.Errorf("The db at path [%s] contains data in unexpected format. expected data format = [%s] (%#v), data format = [%s] (%#v).",
 			conf.DBPath, conf.ExpectedFormatVersion, []byte(conf.ExpectedFormatVersion), formatVersion, formatVersion)
-		return nil, &ErrFormatVersionMismatch{ExpectedFormatVersion: conf.ExpectedFormatVersion, DataFormatVersion: string(formatVersion), DBPath: conf.DBPath}
+		return nil, &dataformat.ErrVersionMismatch{
+			ExpectedVersion: conf.ExpectedFormatVersion,
+			Version:         string(formatVersion),
+			DBInfo:          fmt.Sprintf("leveldb at [%s]", conf.DBPath),
+		}
 	}
-
 	logger.Debug("format is latest, nothing to do")
 	return db, nil
 }

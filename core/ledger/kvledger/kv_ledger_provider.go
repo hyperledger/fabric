@@ -78,8 +78,8 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	defer func() {
 		if e != nil {
 			p.Close()
-			if errFormatMismatch, ok := e.(*leveldbhelper.ErrFormatVersionMismatch); ok {
-				if errFormatMismatch.DataFormatVersion == dataformat.Version1x && errFormatMismatch.ExpectedFormatVersion == dataformat.Version20 {
+			if errFormatMismatch, ok := e.(*dataformat.ErrVersionMismatch); ok {
+				if errFormatMismatch.Version == dataformat.Version1x && errFormatMismatch.ExpectedVersion == dataformat.Version20 {
 					logger.Errorf("Please execute the 'peer node upgrade-dbs' command to upgrade the database format: %s", errFormatMismatch)
 				} else {
 					logger.Errorf("Please check the Fabric version matches the ledger data format: %s", errFormatMismatch)
@@ -402,7 +402,11 @@ func openIDStore(path string) (s *idStore, e error) {
 	if !bytes.Equal(formatVersion, expectedFormatBytes) {
 		logger.Errorf("The db at path [%s] contains data in unexpected format. expected data format = [%s] (%#v), data format = [%s] (%#v).",
 			path, dataformat.Version20, expectedFormatBytes, formatVersion, formatVersion)
-		return nil, &leveldbhelper.ErrFormatVersionMismatch{ExpectedFormatVersion: dataformat.Version20, DataFormatVersion: string(formatVersion), DBPath: path}
+		return nil, &dataformat.ErrVersionMismatch{
+			ExpectedVersion: dataformat.Version20,
+			Version:         string(formatVersion),
+			DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", path),
+		}
 	}
 	return &idStore{db, path}, nil
 }
@@ -418,7 +422,11 @@ func (s *idStore) upgradeFormat() error {
 		return nil
 	}
 	if format != nil {
-		err = &leveldbhelper.ErrFormatVersionMismatch{ExpectedFormatVersion: "", DataFormatVersion: string(format), DBPath: s.dbPath}
+		err = &dataformat.ErrVersionMismatch{
+			ExpectedVersion: "",
+			Version:         string(format),
+			DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", s.dbPath),
+		}
 		logger.Errorf("Failed to upgrade format [%#v] to new format [%#v]: %s", format, idStoreFormatBytes, err)
 		return err
 	}

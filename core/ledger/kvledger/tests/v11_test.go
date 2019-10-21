@@ -32,7 +32,7 @@ func TestV11(t *testing.T) {
 	idStorePath := kvledger.LedgerProviderPath(ledgerFSRoot)
 	assert.PanicsWithValue(
 		t,
-		fmt.Sprintf("Error in instantiating ledger provider: unexpected format. db path = [%s], data format = [], expected format = [2.0]",
+		fmt.Sprintf("Error in instantiating ledger provider: unexpected format. db info = [leveldb for channel-IDs at [%s]], data format = [], expected format = [2.0]",
 			idStorePath),
 		func() { env.initLedgerMgmt() },
 		"A panic should occur because idstore is in format 1.x",
@@ -43,7 +43,7 @@ func TestV11(t *testing.T) {
 	blkIndexPath := path.Join(kvledger.BlockStorePath(ledgerFSRoot), "index")
 	require.PanicsWithValue(
 		t,
-		fmt.Sprintf("Error in instantiating ledger provider: unexpected format. db path = [%s], data format = [], expected format = [2.0]",
+		fmt.Sprintf("Error in instantiating ledger provider: unexpected format. db info = [leveldb at [%s]], data format = [], expected format = [2.0]",
 			blkIndexPath),
 		func() { env.initLedgerMgmt() },
 		"A panic should occur because block store index is in format 1.x",
@@ -54,7 +54,7 @@ func TestV11(t *testing.T) {
 	historyDBPath := kvledger.HistoryDBPath(ledgerFSRoot)
 	require.PanicsWithValue(
 		t,
-		fmt.Sprintf("Error in instantiating ledger provider: unexpected format. db path = [%s], data format = [], expected format = [2.0]",
+		fmt.Sprintf("Error in instantiating ledger provider: unexpected format. db info = [leveldb at [%s]], data format = [], expected format = [2.0]",
 			historyDBPath),
 		func() { env.initLedgerMgmt() },
 		"A panic should occur because history is in format 1.x",
@@ -66,7 +66,7 @@ func TestV11(t *testing.T) {
 	require.PanicsWithValue(
 		t,
 		fmt.Sprintf(
-			"Error in instantiating ledger provider: unexpected format. db path = [%s], data format = [], expected format = [2.0]",
+			"Error in instantiating ledger provider: unexpected format. db info = [leveldb at [%s]], data format = [], expected format = [2.0]",
 			stateLevelDBPath,
 		),
 		func() { env.initLedgerMgmt() },
