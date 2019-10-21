@@ -124,12 +124,15 @@ func (ec *eligibilityComputer) computeEligibility(txPvtdataQuery []*ledger.TxPvt
 				ec.logger.Debugf("Peer is not eligible for collection: chaincode [%s], "+
 					"collection name [%s], txID [%s] the policy is [%#v]. Skipping.",
 					ns, col, txID, policy)
-				ineligibleMissingKeys[key] = struct{}{}
+				ineligibleMissingKeys[key] = rwsetInfo{}
 				continue
 			}
 
 			// treat all eligible keys as missing
-			eligibleMissingKeys[key] = struct{}{}
+			eligibleMissingKeys[key] = rwsetInfo{
+				invalid: invalid,
+			}
+
 			sources[key] = endorsersFromOrgs(ns, col, endorsers, policy.MemberOrgs())
 		}
 	}
@@ -155,6 +158,7 @@ type PvtdataProvider struct {
 	channelID                               string
 	blockNum                                uint64
 	storePvtdataOfInvalidTx                 bool
+	skipPullingInvalidTransactions          bool
 	idDeserializerFactory                   IdentityDeserializerFactory
 	fetcher                                 Fetcher
 
@@ -162,7 +166,7 @@ type PvtdataProvider struct {
 }
 
 // RetrievePvtdata retrieves the private data for the given txs containing private data
-func (pdp *PvtdataProvider) RetrievePrivatedata(txPvtdataQuery []*ledger.TxPvtdataInfo) (*RetrievedPvtdata, error) {
+func (pdp *PvtdataProvider) RetrievePvtdata(txPvtdataQuery []*ledger.TxPvtdataInfo) (*RetrievedPvtdata, error) {
 	retrievedPvtdata := &RetrievedPvtdata{
 		transientStore:          pdp.transientStore,
 		logger:                  pdp.logger,
@@ -339,7 +343,11 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, private
 	pdp.logger.Debugf("Attempting to retrieve %d private write sets from remote peers.", len(privateInfo.eligibleMissingKeys))
 
 	dig2src := make(map[pvtdatacommon.DigKey][]*peer.Endorsement)
-	for k := range privateInfo.eligibleMissingKeys {
+	for k, v := range privateInfo.eligibleMissingKeys {
+		if v.invalid && pdp.skipPullingInvalidTransactions {
+			pdp.logger.Debugf("Skipping invalid key [%v] because peer is configured to skip pulling rwsets of invalid transactions.", k)
+			continue
+		}
 		pdp.logger.Debugf("Fetching [%v] from remote peers", k)
 		dig := pvtdatacommon.DigKey{
 			TxId:       k.txID,

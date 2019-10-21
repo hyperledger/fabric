@@ -484,7 +484,11 @@ func (s rwsetByKeys) bySeqsInBlock() map[uint64]readWriteSets {
 	return res
 }
 
-type rwsetKeys map[rwSetKey]struct{}
+type rwsetInfo struct {
+	invalid bool
+}
+
+type rwsetKeys map[rwSetKey]rwsetInfo
 
 // String returns a string representation of the rwsetKeys
 func (s rwsetKeys) String() string {
@@ -519,10 +523,10 @@ type txAndSeqInBlock struct {
 type rwSetKeysByTxIDs map[txAndSeqInBlock][]rwSetKey
 
 func (s rwSetKeysByTxIDs) flatten() rwsetKeys {
-	m := make(map[rwSetKey]struct{})
+	m := make(rwsetKeys)
 	for _, keys := range s {
 		for _, k := range keys {
-			m[k] = struct{}{}
+			m[k] = rwsetInfo{}
 		}
 	}
 	return m
@@ -680,7 +684,7 @@ func (c *coordinator) listMissingPrivateData(block *common.Block, ownedRWsets ma
 	}
 
 	sources := make(map[rwSetKey][]*peer.Endorsement)
-	requestedEligiblePrivateRWSets := make(map[rwSetKey]struct{})
+	requestedEligiblePrivateRWSets := make(rwsetKeys)
 	eligibleMissingKeysByTxIDs := make(rwSetKeysByTxIDs)
 	ineligibleMissingKeysByTxIDs := make(rwSetKeysByTxIDs)
 	data := blockData(block.Data.Data)
@@ -780,7 +784,7 @@ func (bi *transactionInspector) inspectTransaction(seqInBlock uint64, chdr *comm
 				continue
 			}
 
-			bi.requestedEligiblePrivateRWSets[key] = struct{}{}
+			bi.requestedEligiblePrivateRWSets[key] = rwsetInfo{}
 			if _, exists := bi.ownedRWsets[key]; !exists {
 				bi.eligibleMissingKeysByTxIDs[txAndSeq] = append(bi.eligibleMissingKeysByTxIDs[txAndSeq], key)
 				bi.sources[key] = endorsersFromOrgs(ns.NameSpace, hashedCollection.CollectionName, endorsers, policy.MemberOrgs())
