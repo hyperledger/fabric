@@ -55,10 +55,10 @@ Then proceed as follows:
    block.** If you are using ``configtxgen``, edit ``configtx.yaml``. Alternatively,
    pick a preset profile for the system channel's genesis block—  so that:
 
-  * ``Orderer.OrdererType`` is set to ``kafka``.
-  * ``Orderer.Kafka.Brokers`` contains the address of *at least two* of the Kafka
-    brokers in your cluster in ``IP:port`` notation. The list does not need to be
-    exhaustive. (These are your bootstrap brokers.)
+   * ``Orderer.OrdererType`` is set to ``kafka``.
+   * ``Orderer.Kafka.Brokers`` contains the address of *at least two* of the Kafka
+     brokers in your cluster in ``IP:port`` notation. The list does not need to be
+     exhaustive. (These are your bootstrap brokers.)
 
 4. Orderers: **Set the maximum block size.** Each block will have at most
    ``Orderer.AbsoluteMaxBytes`` bytes (not including headers), a value that you can
@@ -70,7 +70,7 @@ Then proceed as follows:
    network for all the OSNs. Make note of the genesis block's location.
 
 6. Kafka cluster: **Configure your Kafka brokers appropriately.** Ensure that every
-#Kafka broker has these keys configured:
+   Kafka broker has these keys configured:
 
    * ``unclean.leader.election.enable = false`` — Data consistency is key in a
      blockchain environment. We cannot have a channel leader chosen outside of
@@ -78,19 +78,19 @@ Then proceed as follows:
      the previous leader produced, and —as a result— rewrite the blockchain that
      the orderers produce.
 
-       * ``min.insync.replicas = M`` — Where you pick a value ``M`` such that
-         ``1 < M < N`` (see ``default.replication.factor`` below). Data is
-         considered committed when it is written to at least ``M`` replicas
-         (which are then considered in-sync and belong to the in-sync replica
-         set, or ISR). In any other case, the write operation returns an error.
-         Then:
+   * ``min.insync.replicas = M`` — Where you pick a value ``M`` such that
+     ``1 < M < N`` (see ``default.replication.factor`` below). Data is
+     considered committed when it is written to at least ``M`` replicas
+     (which are then considered in-sync and belong to the in-sync replica
+     set, or ISR). In any other case, the write operation returns an error.
+     Then:
 
-         * If up to ``N-M`` replicas —out of the ``N`` that the channel data is
-           written to become unavailable, operations proceed normally.
+     * If up to ``N-M`` replicas —out of the ``N`` that the channel data is
+       written to become unavailable, operations proceed normally.
 
-         * If more replicas become unavailable, Kafka cannot maintain an ISR set
-           of ``M,`` so it stops accepting writes. Reads work without issues.
-           The channel becomes writeable again when ``M`` replicas get in-sync.
+     * If more replicas become unavailable, Kafka cannot maintain an ISR set
+       of ``M,`` so it stops accepting writes. Reads work without issues.
+       The channel becomes writeable again when ``M`` replicas get in-sync.
 
    * ``default.replication.factor = N`` — Where you pick a value ``N`` such
      that ``N < K``. A replication factor of ``N`` means that each channel will
@@ -106,25 +106,29 @@ Then proceed as follows:
      Based on what we've described above, the minimum allowed values for ``M``
      and ``N`` are 2 and 3 respectively. This configuration allows for the
      creation of new channels to go forward, and for all channels to continue
-     to be writeable. #. ``message.max.bytes`` and ``replica.fetch.max.bytes``
-     should be set to a value larger than ``A``, the value you picked in
-     ``Orderer.AbsoluteMaxBytes`` in Step 4 above. Add some buffer to account
-     for headers —-- 1 MiB is more than enough. The following condition applies:
+     to be writeable.
+
+   * ``message.max.bytes`` and ``replica.fetch.max.bytes`` should be set to
+     a value larger than ``A``, the value you picked in ``Orderer.AbsoluteMaxBytes``
+     in Step 4 above. Add some buffer to account for headers —-- 1 MiB is more than
+     enough. The following condition applies:
 
      ::
 
          Orderer.AbsoluteMaxBytes < replica.fetch.max.bytes <= message.max.bytes
 
-      (For completeness, we note that ``message.max.bytes`` should be strictly
-      smaller to ``socket.request.max.bytes`` which is set by default to 100
-      MiB. If you wish to have blocks larger than 100 MiB you will need to edit
-      the hard-coded value in ``brokerConfig.Producer.MaxMessageBytes`` in
-      ``fabric/orderer/kafka/config.go`` and rebuild the binary from source.
-      This is not advisable.) #. ``log.retention.ms = -1``. Until the ordering
-      service adds support for pruning of the Kafka logs, you should disable
-      time-based retention and prevent segments from expiring. (Size-based
-      retention —see ``log.retention.bytes``— is disabled by default in Kafka at
-      the time of this writing, so there's no need to set it explicitly.)
+     (For completeness, we note that ``message.max.bytes`` should be strictly
+     smaller to ``socket.request.max.bytes`` which is set by default to 100
+     MiB. If you wish to have blocks larger than 100 MiB you will need to edit
+     the hard-coded value in ``brokerConfig.Producer.MaxMessageBytes`` in
+     ``fabric/orderer/kafka/config.go`` and rebuild the binary from source.
+     This is not advisable.)
+
+   * ``log.retention.ms = -1``. Until the ordering service adds support for
+     pruning of the Kafka logs, you should disable time-based retention and
+     prevent segments from expiring. (Size-based retention
+     — see ``log.retention.bytes`` — is disabled by default in Kafka at the time
+     of this writing, so there's no need to set it explicitly.)
 
 7. Orderers: **Point each OSN to the genesis block.** Edit
    ``General.GenesisFile`` in ``orderer.yaml`` so that it points to the genesis
@@ -142,18 +146,18 @@ Then proceed as follows:
      reloaded (in case of a just-restarted orderer), the orderer interacts with
      the Kafka cluster in the following ways:
 
-      * It creates a Kafka producer (writer) for the Kafka partition that
-        corresponds to the channel. . It uses that producer to post a no-op
-        ``CONNECT`` message to that partition. . It creates a Kafka consumer
-        (reader) for that partition.
+     * It creates a Kafka producer (writer) for the Kafka partition that
+       corresponds to the channel. . It uses that producer to post a no-op
+       ``CONNECT`` message to that partition. . It creates a Kafka consumer
+       (reader) for that partition.
 
-      * If any of these steps fail, you can adjust the frequency with which they
-        are repeated. Specifically they will be re-attempted every
-        ``Kafka.Retry.ShortInterval`` for a total of ``Kafka.Retry.ShortTotal``,
-        and then every ``Kafka.Retry.LongInterval`` for a total of
-        ``Kafka.Retry.LongTotal`` until they succeed. Note that the orderer will
-        be unable to write to or read from a channel until all of the steps above
-        have been completed successfully.
+     * If any of these steps fail, you can adjust the frequency with which they
+       are repeated. Specifically they will be re-attempted every
+       ``Kafka.Retry.ShortInterval`` for a total of ``Kafka.Retry.ShortTotal``,
+       and then every ``Kafka.Retry.LongInterval`` for a total of
+       ``Kafka.Retry.LongTotal`` until they succeed. Note that the orderer will
+       be unable to write to or read from a channel until all of the steps above
+       have been completed successfully.
 
 9. **Set up the OSNs and Kafka cluster so that they communicate over SSL.**
    (Optional step, but highly recommended.) Refer to `the Confluent guide <https://docs.confluent.io/2.0.0/kafka/ssl.html>`_
@@ -167,21 +171,21 @@ Additional considerations
 -------------------------
 
 1. **Preferred message size.** In Step 4 above (see `Steps`_ section) you can
-#also set the preferred size of blocks by setting the
-``Orderer.Batchsize.PreferredMaxBytes`` key. Kafka offers higher throughput
-#when dealing with relatively small messages; aim for a value no bigger than 1
-#MiB.
+   also set the preferred size of blocks by setting the
+   ``Orderer.Batchsize.PreferredMaxBytes`` key. Kafka offers higher throughput
+   when dealing with relatively small messages; aim for a value no bigger than 1
+   MiB.
 
 2. **Using environment variables to override settings.** When using the
-sample Kafka and Zookeeper Docker images provided with Fabric (see
-``images/kafka`` and ``images/zookeeper`` respectively), you can override a
-Kafka broker or a ZooKeeper server's settings by using environment variables.
-Replace the dots of the configuration key with underscores. For example,
-``KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false`` will allow you to override the
-default value of ``unclean.leader.election.enable``. The same applies to the
-OSNs for their *local* configuration, i.e. what can be set in ``orderer.yaml``.
-For example ``ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s`` allows you to override the
-#default value for ``Orderer.Kafka.Retry.ShortInterval``.
+   sample Kafka and Zookeeper Docker images provided with Fabric (see
+   ``images/kafka`` and ``images/zookeeper`` respectively), you can override a
+   Kafka broker or a ZooKeeper server's settings by using environment variables.
+   Replace the dots of the configuration key with underscores. For example,
+   ``KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false`` will allow you to override the
+   default value of ``unclean.leader.election.enable``. The same applies to the
+   OSNs for their *local* configuration, i.e. what can be set in ``orderer.yaml``.
+   For example ``ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s`` allows you to override the
+   default value for ``Orderer.Kafka.Retry.ShortInterval``.
 
 Kafka Protocol Version Compatibility
 ------------------------------------
