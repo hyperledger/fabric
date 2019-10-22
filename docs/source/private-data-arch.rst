@@ -194,6 +194,19 @@ data), to chaincode invocation on the peer.  The chaincode can retrieve the
 ``transient`` field by calling the `GetTransient() API <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub.GetTransient>`_.
 This ``transient`` field gets excluded from the channel transaction.
 
+Protecting private data content
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If the private data is relatively simple and predictable (e.g. transaction dollar
+amount), channel members who are not authorized to the private data collection
+could try to guess the content of the private data via brute force hashing of
+the domain space, in hopes of finding a match with the private data hash on the
+chain. Private data that is predictable should therefore include a random "salt"
+that is concatenated with the private data key and included in the private data
+value, so that a matching hash cannot realistically be found via brute force.
+The random "salt" can be generated at the client side (e.g. by sampling a secure
+psuedo-random source) and then passed along with the private data in the transient
+field at the time of chaincode invocation.
+
 Access control for private data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
