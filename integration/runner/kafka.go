@@ -21,7 +21,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-const KafkaDefaultImage = "hyperledger/fabric-kafka:latest"
+const KafkaDefaultImage = "confluentinc/cp-kafka:5.3.1"
 
 // Kafka manages the execution of an instance of a dockerized CouchDB
 // for tests.
