@@ -125,24 +125,6 @@ func TestConfigTx(t *testing.T) {
 		pctx := configTx(rl)
 		assert.True(t, proto.Equal(pctx, ctx), "Did not select most recent config transaction")
 	})
-
-	// Tests a chain which contains blocks with multi-transactions mixed with config txs,
-	// and a single tx which is not a config tx, none count as config blocks so nil should return
-	t.Run("GetConfigTx - failure", func(t *testing.T) {
-		_, rl := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
-		for i := 0; i < 10; i++ {
-			rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{
-				makeNormalTx("testchannelid", i),
-				makeConfigTx("testchannelid", i),
-			}))
-		}
-		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", 11)}))
-		assert.Panics(t, func() { configTx(rl) }, "Should have panicked because there was no config tx")
-
-		block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", 12)})
-		block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = []byte("bad metadata")
-		assert.Panics(t, func() { configTx(rl) }, "Should have panicked because of bad last config metadata")
-	})
 }
 
 func TestNewRegistrar(t *testing.T) {
