@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	channelConfigKey = "resourcesconfigtx.CHANNEL_CONFIG_KEY"
+	channelConfigKey = "CHANNEL_CONFIG_ENV_BYTES"
 	peerNamespace    = ""
 )
 
@@ -24,13 +24,7 @@ const (
 type ConfigTxProcessor struct{}
 
 // GenerateSimulationResults implements function in the interface 'github.com/hyperledger/fabric/core/ledger/customtx/Processor'
-// This implementation processes following two types of transactions.
-// CONFIG  - simply stores the config in the statedb. Additionally, stores the resource config seed if the transaction is from the genesis block.
-// PEER_RESOURCE_UPDATE - In a normal course, this validates the transaction against the current resource bundle,
-// computes the full configuration, and stores the full configuration if the transaction is found valid.
-// However, if 'initializingLedger' is true (i.e., either the ledger is being created from the genesis block
-// or the ledger is syncing the state with the blockchain, during start up), the full config is computed using
-// the most recent configs from statedb
+// This implementation processes CONFIG transactions which simply stores the config-envelope-bytes
 func (tp *ConfigTxProcessor) GenerateSimulationResults(txEnv *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	payload := protoutil.UnmarshalPayloadOrPanic(txEnv.Payload)
 	channelHdr := protoutil.UnmarshalChannelHeaderOrPanic(payload.Header.ChannelHeader)
@@ -39,55 +33,26 @@ func (tp *ConfigTxProcessor) GenerateSimulationResults(txEnv *common.Envelope, s
 	switch txType {
 	case common.HeaderType_CONFIG:
 		peerLogger.Debugf("Processing CONFIG")
-		return processChannelConfigTx(txEnv, simulator)
-
+		if payload.Data == nil {
+			return fmt.Errorf("channel config found nil")
+		}
+		return simulator.SetState(peerNamespace, channelConfigKey, payload.Data)
 	default:
 		return fmt.Errorf("tx type [%s] is not expected", txType)
 	}
 }
 
-func processChannelConfigTx(txEnv *common.Envelope, simulator ledger.TxSimulator) error {
-	configEnvelope := &common.ConfigEnvelope{}
-	if _, err := protoutil.UnmarshalEnvelopeOfType(txEnv, common.HeaderType_CONFIG, configEnvelope); err != nil {
-		return err
-	}
-	channelConfig := configEnvelope.Config
-	if channelConfig == nil {
-		return fmt.Errorf("channel config found nil")
-	}
-
-	if err := persistConf(simulator, channelConfigKey, channelConfig); err != nil {
-		return err
-	}
-
-	peerLogger.Debugf("channelConfig=%s", channelConfig)
-
-	return nil
-}
-
-func persistConf(simulator ledger.TxSimulator, key string, config *common.Config) error {
-	serializedConfig, err := proto.Marshal(config)
-	if err != nil {
-		return err
-	}
-	return simulator.SetState(peerNamespace, key, serializedConfig)
-}
-
-func retrievePersistedConf(queryExecuter ledger.QueryExecutor, key string) (*common.Config, error) {
-	serializedConfig, err := queryExecuter.GetState(peerNamespace, key)
+func retrieveChannelConfig(queryExecuter ledger.QueryExecutor) (*common.Config, error) {
+	configBytes, err := queryExecuter.GetState(peerNamespace, channelConfigKey)
 	if err != nil {
 		return nil, err
 	}
-	if serializedConfig == nil {
+	if configBytes == nil {
 		return nil, nil
 	}
-	return deserialize(serializedConfig)
-}
-
-func deserialize(serializedConf []byte) (*common.Config, error) {
-	conf := &common.Config{}
-	if err := proto.Unmarshal(serializedConf, conf); err != nil {
+	configEnvelope := &common.ConfigEnvelope{}
+	if err := proto.Unmarshal(configBytes, configEnvelope); err != nil {
 		return nil, err
 	}
-	return conf, nil
+	return configEnvelope.Config, nil
 }
