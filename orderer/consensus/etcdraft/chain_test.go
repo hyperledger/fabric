@@ -586,7 +586,7 @@ var _ = Describe("Chain", func() {
 								Consistently(support.WriteConfigBlockCallCount).Should(Equal(0))
 
 								clock.Increment(30 * time.Minute)
-								Eventually(support.WriteBlockCallCount).Should(Equal(1))
+								Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 							})
 						})
 					})
