@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -15,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -29,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //go:generate counterfeiter -o mocks/resources.go --fake-name Resources . resources
@@ -71,9 +74,12 @@ func mockCrypto() *mocks.SignerSerializer {
 	return &mocks.SignerSerializer{}
 }
 
-func newRAMLedgerAndFactory(maxSize int,
-	chainID string, genesisBlockSys *cb.Block) (blockledger.Factory, blockledger.ReadWriter) {
-	rlf := ramledger.New(maxSize)
+func newLedgerAndFactory(dir string, chainID string, genesisBlockSys *cb.Block) (blockledger.Factory, blockledger.ReadWriter) {
+	rlf, err := fileledger.New(dir, &disabled.Provider{})
+	if err != nil {
+		panic(err)
+	}
+
 	rl, err := rlf.GetOrCreate(chainID)
 	if err != nil {
 		panic(err)
@@ -110,7 +116,11 @@ func TestConfigTx(t *testing.T) {
 	// Tests for a normal chain which contains 3 config transactions and other normal transactions to make
 	// sure the right one returned
 	t.Run("GetConfigTx - ok", func(t *testing.T) {
-		_, rl := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		_, rl := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 		for i := 0; i < 5; i++ {
 			rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", i)}))
 		}
@@ -137,7 +147,12 @@ func TestNewRegistrar(t *testing.T) {
 
 	// This test checks to make sure the orderer refuses to come up if it cannot find a system channel
 	t.Run("No system chain - failure", func(t *testing.T) {
-		lf := ramledger.New(10)
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		lf, err := fileledger.New(tmpdir, &disabled.Provider{})
+		require.NoError(t, err)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
@@ -149,7 +164,12 @@ func TestNewRegistrar(t *testing.T) {
 
 	// This test checks to make sure that the orderer refuses to come up if there are multiple system channels
 	t.Run("Multiple system chains - failure", func(t *testing.T) {
-		lf := ramledger.New(10)
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		lf, err := fileledger.New(tmpdir, &disabled.Provider{})
+		require.NoError(t, err)
 
 		for _, id := range []string{"foo", "bar"} {
 			rl, err := lf.GetOrCreate(id)
@@ -169,7 +189,11 @@ func TestNewRegistrar(t *testing.T) {
 
 	// This test essentially brings the entire system up and is ultimately what main.go will replicate
 	t.Run("Correct flow", func(t *testing.T) {
-		lf, rl := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		lf, rl := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
@@ -181,7 +205,7 @@ func TestNewRegistrar(t *testing.T) {
 		assert.Nilf(t, chainSupport, "Should not have found a chain that was not created")
 
 		chainSupport = manager.GetChain("testchannelid")
-		assert.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ramledger")
+		assert.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ledger")
 
 		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, "testchannelid", chainSupport, rl, t)
 	})
@@ -196,7 +220,11 @@ func TestCreateChain(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("Create chain", func(t *testing.T) {
-		lf, _ := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		lf, _ := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
@@ -235,7 +263,11 @@ func TestCreateChain(t *testing.T) {
 		expectedLastConfigSeq := uint64(1)
 		newChainID := "test-new-chain"
 
-		lf, rl := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		lf, rl := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
@@ -398,14 +430,17 @@ func TestBroadcastChannelSupportRejection(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("Rejection", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
 
-		ledgerFactory, _ := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
 		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		registrar.Initialize(mockConsenters)
 		randomValue := 1
 		configTx := makeConfigTx("testchannelid", randomValue)
-		_, _, _, err := registrar.BroadcastChannelSupport(configTx)
+		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
 		assert.Error(t, err, "Messages of type HeaderType_CONFIG should return an error.")
 	})
 }

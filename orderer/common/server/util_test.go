@@ -22,14 +22,12 @@ func TestCreateLedgerFactory(t *testing.T) {
 	defer cleanup()
 	testCases := []struct {
 		name            string
-		ledgerType      string
 		ledgerDir       string
 		ledgerDirPrefix string
 		expectPanic     bool
 	}{
-		{"RAM", "ram", "", "", false},
-		{"FilewithPathSet", "file", filepath.Join(os.TempDir(), "test-dir"), "", false},
-		{"FilewithPathUnset", "file", "", "test-prefix", false},
+		{"FilewithPathSet", filepath.Join(os.TempDir(), "test-dir"), "", false},
+		{"FilewithPathUnset", "", "test-prefix", false},
 	}
 
 	conf, err := config.Load()
@@ -49,7 +47,6 @@ func TestCreateLedgerFactory(t *testing.T) {
 				}
 			}()
 
-			conf.General.LedgerType = tc.ledgerType
 			conf.FileLedger.Location = tc.ledgerDir
 			conf.FileLedger.Prefix = tc.ledgerDirPrefix
 			lf, ld, err := createLedgerFactory(conf, &disabled.Provider{})

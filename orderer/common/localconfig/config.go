@@ -30,7 +30,6 @@ var logger = flogging.MustGetLogger("localconfig")
 type TopLevel struct {
 	General    General
 	FileLedger FileLedger
-	RAMLedger  RAMLedger
 	Kafka      Kafka
 	Debug      Debug
 	Consensus  interface{}
@@ -40,7 +39,6 @@ type TopLevel struct {
 
 // General contains config which should be common among all orderer types.
 type General struct {
-	LedgerType        string
 	ListenAddress     string
 	ListenPort        uint16
 	TLS               TLS
@@ -119,11 +117,6 @@ type Profile struct {
 type FileLedger struct {
 	Location string
 	Prefix   string
-}
-
-// RAMLedger contains configuration for the RAM ledger.
-type RAMLedger struct {
-	HistorySize uint
 }
 
 // Kafka contains configuration for the Kafka-based orderer.
@@ -213,7 +206,6 @@ type Statsd struct {
 // Defaults carries the default orderer configuration values.
 var Defaults = TopLevel{
 	General: General{
-		LedgerType:     "file",
 		ListenAddress:  "127.0.0.1",
 		ListenPort:     7050,
 		GenesisMethod:  "provisional",
@@ -241,9 +233,6 @@ var Defaults = TopLevel{
 		Authentication: Authentication{
 			TimeWindow: time.Duration(15 * time.Minute),
 		},
-	},
-	RAMLedger: RAMLedger{
-		HistorySize: 10000,
 	},
 	FileLedger: FileLedger{
 		Location: "/var/hyperledger/production/orderer",
@@ -339,10 +328,6 @@ func (c *TopLevel) completeInitialization(configDir string) {
 
 	for {
 		switch {
-		case c.General.LedgerType == "":
-			logger.Infof("General.LedgerType unset, setting to %s", Defaults.General.LedgerType)
-			c.General.LedgerType = Defaults.General.LedgerType
-
 		case c.General.ListenAddress == "":
 			logger.Infof("General.ListenAddress unset, setting to %s", Defaults.General.ListenAddress)
 			c.General.ListenAddress = Defaults.General.ListenAddress

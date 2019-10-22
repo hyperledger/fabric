@@ -26,7 +26,6 @@ import (
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -860,16 +859,6 @@ func TestTrackChainNilGenesisBlock(t *testing.T) {
 	assert.PanicsWithValue(t, "Called with a nil genesis block", func() {
 		icr.TrackChain("foo", nil, func() {})
 	})
-}
-
-func TestLedgerFactory(t *testing.T) {
-	lf := &ledgerFactory{
-		Factory:       ramledger.New(1),
-		onBlockCommit: func(_ *common.Block, _ string) {},
-	}
-	lw, err := lf.GetOrCreate("mychannel")
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), lw.Height())
 }
 
 func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byte) {

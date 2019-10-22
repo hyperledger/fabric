@@ -9,6 +9,7 @@ package fileledger
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
@@ -63,6 +64,7 @@ func TestMultiReinitialization(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "hyperledger_fabric")
 	assert.NoError(t, err, "Error creating temp dir: %s", err)
+	defer os.RemoveAll(dir)
 
 	flf, err := New(dir, metricsProvider)
 	assert.NoError(t, err)

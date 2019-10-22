@@ -24,8 +24,8 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
 	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/core/comm"
@@ -198,58 +198,41 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	testCases := []struct {
-		genesisMethod string
-		ledgerType    string
-		panics        bool
-	}{
-		{"provisional", "ram", false},
-		{"provisional", "file", false},
-		{"invalid", "ram", true},
-		{"file", "ram", true},
+	fileLedgerLocation, _ := ioutil.TempDir("", "main_test-")
+	ledgerFactory, _, err := createLedgerFactory(
+		&localconfig.TopLevel{
+			FileLedger: localconfig.FileLedger{
+				Location: fileLedgerLocation,
+			},
+		},
+		&disabled.Provider{},
+	)
+	assert.NoError(t, err)
+	bootstrapConfig := &localconfig.TopLevel{
+		General: localconfig.General{
+			GenesisMethod:  "provisional",
+			GenesisProfile: "SampleSingleMSPSolo",
+			GenesisFile:    "genesisblock",
+			SystemChannel:  "testchannelid",
+		},
 	}
 
-	for _, tc := range testCases {
+	genesisBlock := extractBootstrapBlock(bootstrapConfig)
+	initializeBootstrapChannel(genesisBlock, ledgerFactory)
 
-		t.Run(tc.genesisMethod+"/"+tc.ledgerType, func(t *testing.T) {
-
-			fileLedgerLocation, _ := ioutil.TempDir("", "test-ledger")
-			ledgerFactory, _, err := createLedgerFactory(
-				&localconfig.TopLevel{
-					General: localconfig.General{LedgerType: tc.ledgerType},
-					FileLedger: localconfig.FileLedger{
-						Location: fileLedgerLocation,
-					},
-				},
-				&disabled.Provider{},
-			)
-			assert.NoError(t, err)
-			bootstrapConfig := &localconfig.TopLevel{
-				General: localconfig.General{
-					GenesisMethod:  tc.genesisMethod,
-					GenesisProfile: "SampleSingleMSPSolo",
-					GenesisFile:    "genesisblock",
-					SystemChannel:  "testchannelid",
-				},
-			}
-
-			if tc.panics {
-				assert.Panics(t, func() {
-					genesisBlock := extractBootstrapBlock(bootstrapConfig)
-					initializeBootstrapChannel(genesisBlock, ledgerFactory)
-				})
-			} else {
-				assert.NotPanics(t, func() {
-					genesisBlock := extractBootstrapBlock(bootstrapConfig)
-					initializeBootstrapChannel(genesisBlock, ledgerFactory)
-				})
-			}
-		})
-	}
+	ledger, err := ledgerFactory.GetOrCreate("testchannelid")
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(1), ledger.Height())
 }
 
 func TestExtractSysChanLastConfig(t *testing.T) {
-	rlf := ramledger.New(10)
+	tmpdir, err := ioutil.TempDir("", "main_test-")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
+	require.NoError(t, err)
+
 	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlock := encoder.New(conf).GenesisBlock()
 
@@ -742,7 +725,12 @@ func TestReuseListener(t *testing.T) {
 
 func TestInitializeEtcdraftConsenter(t *testing.T) {
 	consenters := make(map[string]consensus.Consenter)
-	rlf := ramledger.New(10)
+
+	tmpdir, err := ioutil.TempDir("", "main_test-")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
+	require.NoError(t, err)
 
 	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlock := encoder.New(conf).GenesisBlock()
@@ -781,7 +769,6 @@ func genesisConfig(t *testing.T) *localconfig.TopLevel {
 	localMSPDir := configtest.GetDevMspDir()
 	return &localconfig.TopLevel{
 		General: localconfig.General{
-			LedgerType:     "ram",
 			GenesisMethod:  "provisional",
 			GenesisProfile: "SampleDevModeSolo",
 			SystemChannel:  "testchannelid",

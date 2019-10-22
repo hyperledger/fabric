@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -17,7 +19,8 @@ import (
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/common/ledger/blockledger/ramledger"
+	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
@@ -71,7 +74,13 @@ func TestCreateBlock(t *testing.T) {
 }
 
 func TestBlockSignature(t *testing.T) {
-	rlf := ramledger.New(2)
+	dir, err := ioutil.TempDir("", "file-ledger")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	rlf, err := fileledger.New(dir, &disabled.Provider{})
+	require.NoError(t, err)
+
 	l, err := rlf.GetOrCreate("mychannel")
 	assert.NoError(t, err)
 	lastBlock := protoutil.NewBlock(0, nil)
@@ -203,7 +212,12 @@ func TestWriteConfigBlock(t *testing.T) {
 func TestGoodWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
-	_, l := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
+
+	tmpdir, err := ioutil.TempDir("", "file-ledger")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	_, l := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")
@@ -245,7 +259,12 @@ func TestGoodWriteConfig(t *testing.T) {
 func TestMigrationWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
-	_, l := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
+
+	tmpdir, err := ioutil.TempDir("", "file-ledger")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	_, l := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")
@@ -288,7 +307,12 @@ func TestMigrationWriteConfig(t *testing.T) {
 func TestRaceWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
-	_, l := newRAMLedgerAndFactory(10, "testchannelid", genesisBlockSys)
+
+	tmpdir, err := ioutil.TempDir("", "file-ledger")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	_, l := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 	fakeConfig := &mock.OrdererConfig{}
 	fakeConfig.ConsensusTypeReturns("solo")

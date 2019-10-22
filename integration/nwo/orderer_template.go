@@ -9,7 +9,6 @@ package nwo
 const DefaultOrdererTemplate = `---
 {{ with $w := . -}}
 General:
-  LedgerType: file
   ListenAddress: 127.0.0.1
   ListenPort: {{ .OrdererPort Orderer "Listen" }}
   TLS:
@@ -57,8 +56,6 @@ General:
 FileLedger:
   Location: {{ .OrdererDir Orderer }}/system
   Prefix: hyperledger-fabric-ordererledger
-RAMLedger:
-  HistorySize: 1000
 {{ if eq .Consensus.Type "kafka" -}}
 Kafka:
   Retry:
