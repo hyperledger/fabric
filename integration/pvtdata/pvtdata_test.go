@@ -489,7 +489,7 @@ func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []
 
 	networkRunner := n.NetworkGroupRunner()
 	process := ifrit.Invoke(networkRunner)
-	Eventually(process.Ready()).Should(BeClosed())
+	Eventually(process.Ready(), n.EventuallyTimeout).Should(BeClosed())
 
 	orderer := n.Orderer("orderer")
 	n.CreateAndJoinChannel(orderer, "testchannel")
@@ -891,12 +891,12 @@ type deliverEvent struct {
 // getEventFromDeliverService send a request to DeliverWithPrivateData grpc service
 // and receive the response
 func getEventFromDeliverService(network *nwo.Network, peer *nwo.Peer, channelID string, signingIdentity msp.SigningIdentity, blockNum uint64) *deliverEvent {
-	ctx, cancelFunc1 := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancelFunc1 := context.WithTimeout(context.Background(), network.EventuallyTimeout)
 	defer cancelFunc1()
 	eventCh, conn := registerForDeliverEvent(ctx, network, peer, channelID, signingIdentity, blockNum)
 	defer conn.Close()
 	event := &deliverEvent{}
-	Eventually(eventCh, 30*time.Second).Should(Receive(event))
+	Eventually(eventCh, network.EventuallyTimeout).Should(Receive(event))
 	Expect(event.Err).NotTo(HaveOccurred())
 	return event
 }

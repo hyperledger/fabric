@@ -243,7 +243,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ordererRunners = append(ordererRunners, runner)
 
 				process := ifrit.Invoke(grouper.Member{Name: o.ID(), Runner: runner})
-				Eventually(process.Ready()).Should(BeClosed())
+				Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 				ordererProcesses = append(ordererProcesses, process)
 			}
 
@@ -297,8 +297,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Waiting for the existing orderer to relinquish its leadership")
-			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("1 stepped down to follower since quorum is not active"))
-			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("No leader is present, cluster size is 2"))
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout).Should(gbytes.Say("1 stepped down to follower since quorum is not active"))
+			Eventually(ordererRunners[0].Err(), network.EventuallyTimeout).Should(gbytes.Say("No leader is present, cluster size is 2"))
 			By("Launching the second orderer")
 			launch(orderer2)
 			By("Waiting for a leader to be re-elected")
@@ -327,7 +327,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			for _, ordererProc := range ordererProcesses {
-				Eventually(ordererProc.Ready()).Should(BeClosed())
+				Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
 			By("Finding leader")
@@ -425,7 +425,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ordererRunner := network.OrdererRunner(targetOrderer)
 				ordererRunners = append(ordererRunners, ordererRunner)
 				ordererProcesses[target] = ifrit.Invoke(grouper.Member{Name: orderers[target].ID(), Runner: ordererRunner})
-				Eventually(ordererProcesses[target].Ready()).Should(BeClosed())
+				Eventually(ordererProcesses[target].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 				By("And waiting for it to stabilize")
 				assertBlockReception(map[string]int{
@@ -442,7 +442,6 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					rotate(i)
 				}
 			}
-
 		})
 
 		It("is still possible to onboard new orderers", func() {
@@ -496,7 +495,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			for _, ordererProc := range ordererProcesses {
-				Eventually(ordererProc.Ready()).Should(BeClosed())
+				Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
 			By("Checking that all orderers are online")
@@ -549,7 +548,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ordererRunner := network.OrdererRunner(orderers[i])
 				ordererRunners = append(ordererRunners, ordererRunner)
 				ordererProcesses[i] = ifrit.Invoke(grouper.Member{Name: orderers[i].ID(), Runner: ordererRunner})
-				Eventually(ordererProcesses[i].Ready()).Should(BeClosed())
+				Eventually(ordererProcesses[i].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 				By("And waiting for it to stabilize")
 				assertBlockReception(expectedBlockHeightsPerChannel[i*2], orderers, peer, network)
@@ -635,7 +634,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererRunners = append(ordererRunners, orderer4Runner)
 			// Spawn orderer4's process
 			o4process := ifrit.Invoke(grouper.Member{Name: o4.ID(), Runner: orderer4Runner})
-			Eventually(o4process.Ready()).Should(BeClosed())
+			Eventually(o4process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			ordererProcesses = append(ordererProcesses, o4process)
 
 			By("And waiting for it to sync with the rest of the orderers")
@@ -721,7 +720,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			for _, ordererProc := range ordererProcesses {
-				Eventually(ordererProc.Ready()).Should(BeClosed())
+				Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 
 			By("Waiting for the system channel to be available")
@@ -797,7 +796,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			for _, ordererProc := range ordererProcesses {
-				Eventually(ordererProc.Ready()).Should(BeClosed())
+				Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 		})
 
@@ -866,7 +865,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			for _, ordererProc := range ordererProcesses {
-				Eventually(ordererProc.Ready()).Should(BeClosed())
+				Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			}
 		})
 
@@ -909,9 +908,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}
 			}
 
-			fmt.Fprintln(GinkgoWriter, "Ensuring the evicted orderer stops rafting on channel", "systemchannel")
-			stopMSg := fmt.Sprintf("Raft node stopped channel=%s", "systemchannel")
-			Eventually(ordererRunners[firstEvictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMSg))
+			const stopMsg = "Raft node stopped channel=systemchannel"
+			fmt.Fprintln(GinkgoWriter, "Ensuring the evicted orderer stops rafting on channel systemchannel")
+			Eventually(ordererRunners[firstEvictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMsg))
 
 			By("Ensuring the evicted orderer now doesn't serve clients")
 			ensureEvicted(orderers[firstEvictedNode], peer, network, "systemchannel")
@@ -923,8 +922,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			nwo.RemoveConsenter(network, peer, orderers[surviver], "systemchannel", serverCertBytes)
 			findLeader([]*ginkgomon.Runner{ordererRunners[surviver]})
 
-			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderer detect the eviction of the node on channel", "systemchannel")
-			Eventually(ordererRunners[secondEvictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMSg))
+			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderer detect the eviction of the node on channel systemchannel")
+			Eventually(ordererRunners[secondEvictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMsg))
 
 			By("Ensuring the evicted orderer now doesn't serve clients")
 			ensureEvicted(orderers[secondEvictedNode], peer, network, "systemchannel")
@@ -975,7 +974,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererRunner := network.OrdererRunner(orderers[0])
 			ordererRunners[0] = ordererRunner
 			ordererProcesses[0] = ifrit.Invoke(grouper.Member{Name: orderers[0].ID(), Runner: ordererRunner})
-			Eventually(ordererProcesses[0].Ready()).Should(BeClosed())
+			Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Ensuring the remaining OSNs reject authentication")
 			Eventually(ordererRunners[1].Err(), time.Minute, time.Second).Should(gbytes.Say("certificate extracted from TLS connection isn't authorized"))
@@ -997,7 +996,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererRunner = network.OrdererRunner(orderers[0])
 			ordererRunners[0] = ordererRunner
 			ordererProcesses[0] = ifrit.Invoke(grouper.Member{Name: orderers[0].ID(), Runner: ordererRunner})
-			Eventually(ordererProcesses[0].Ready()).Should(BeClosed())
+			Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Ensuring the evicted orderer starts up marked the channel is inactive")
 			Eventually(ordererRunner.Err(), time.Minute, time.Second).Should(gbytes.Say("Found 1 inactive chains"))
@@ -1225,7 +1224,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		}
 
 		for _, ordererProc := range ordererProcesses {
-			Eventually(ordererProc.Ready()).Should(BeClosed())
+			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		}
 
 		By("Creating an application channel with a subset of orderers in system channel")
@@ -1253,7 +1252,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		}
 
 		for _, ordererProc := range ordererProcesses {
-			Eventually(ordererProc.Ready()).Should(BeClosed())
+			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		}
 
 		By("Waiting for system channel to be ready")

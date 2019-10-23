@@ -79,7 +79,7 @@ var _ = Describe("EndToEnd", func() {
 
 		networkRunner := network.NetworkGroupRunner()
 		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready()).Should(BeClosed())
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
@@ -102,7 +102,7 @@ var _ = Describe("EndToEnd", func() {
 	AfterEach(func() {
 		// stop the network
 		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait()).Should(Receive())
+		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 
 		// cleanup the network artifacts
 		network.Cleanup()

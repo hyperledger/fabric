@@ -239,9 +239,7 @@ func CheckCommitReadinessUntilReady(n *Network, channel string, chaincode Chainc
 		for _, org := range checkOrgs {
 			keys[org.MSPID] = BeTrue()
 		}
-		Eventually(checkCommitReadiness(n, p, channel, chaincode), n.EventuallyTimeout).Should(
-			MatchKeys(IgnoreExtras, keys),
-		)
+		Eventually(checkCommitReadiness(n, p, channel, chaincode), n.EventuallyTimeout).Should(MatchKeys(IgnoreExtras, keys))
 	}
 }
 

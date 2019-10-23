@@ -96,8 +96,8 @@ func FetchBlock(n *nwo.Network, o *nwo.Orderer, seq uint64, channel string) *com
 	Expect(denv).NotTo(BeNil())
 
 	var blk *common.Block
-	var err error
 	Eventually(func() error {
+		var err error
 		blk, err = Deliver(n, o, denv)
 		return err
 	}, n.EventuallyTimeout).ShouldNot(HaveOccurred())

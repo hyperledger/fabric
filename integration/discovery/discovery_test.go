@@ -80,7 +80,7 @@ var _ = Describe("DiscoveryService", func() {
 
 		networkRunner := network.NetworkGroupRunner()
 		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready()).Should(BeClosed())
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		orderer = network.Orderer("orderer")
 		network.CreateAndJoinChannel(orderer, "testchannel")

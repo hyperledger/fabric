@@ -85,7 +85,7 @@ var _ = Describe("Health", func() {
 
 			peerRunner := network.PeerRunner(peer)
 			process = ginkgomon.Invoke(peerRunner)
-			Eventually(process.Ready()).Should(BeClosed())
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			authClient, _ = PeerOperationalClients(network, peer)
 			healthURL = fmt.Sprintf("https://127.0.0.1:%d/healthz", network.PeerPort(peer, nwo.OperationsPort))

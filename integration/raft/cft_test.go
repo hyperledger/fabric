@@ -97,8 +97,8 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			o1Proc = ifrit.Invoke(o1Runner)
 			ordererProc = ifrit.Invoke(ordererGroup)
-			Eventually(o1Proc.Ready()).Should(BeClosed())
-			Eventually(ordererProc.Ready()).Should(BeClosed())
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			findLeader([]*ginkgomon.Runner{o1Runner})
 
@@ -126,7 +126,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("restarting orderer1")
 			o1Runner = network.OrdererRunner(o1)
 			o1Proc = ifrit.Invoke(o1Runner)
-			Eventually(o1Proc.Ready()).Should(BeClosed())
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			findLeader([]*ginkgomon.Runner{o1Runner})
 
 			By("broadcasting envelope to restarted orderer")
@@ -164,7 +164,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Starting 2/3 of cluster")
 			ordererProc = ifrit.Invoke(ordererGroup)
-			Eventually(ordererProc.Ready()).Should(BeClosed())
+			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Creating testchannel")
 			channelID := "testchannel"
@@ -202,7 +202,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			}
 			ordererGroup = grouper.NewParallel(syscall.SIGTERM, orderers)
 			ordererProc = ifrit.Invoke(ordererGroup)
-			Eventually(ordererProc.Ready()).Should(BeClosed())
+			Eventually(ordererProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			o1SnapDir := path.Join(network.RootDir, "orderers", o1.ID(), "etcdraft", "snapshot")
 
@@ -251,9 +251,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			o2Proc = ifrit.Invoke(o2Runner)
 			o3Proc = ifrit.Invoke(o3Runner)
 
-			Eventually(o1Proc.Ready()).Should(BeClosed())
-			Eventually(o2Proc.Ready()).Should(BeClosed())
-			Eventually(o3Proc.Ready()).Should(BeClosed())
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Waiting for them to elect a leader")
 			ordererProcesses := []ifrit.Process{o1Proc, o2Proc, o3Proc}
@@ -295,9 +295,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			o2Proc = ifrit.Invoke(o2Runner)
 			o3Proc = ifrit.Invoke(o3Runner)
 
-			Eventually(o1Proc.Ready()).Should(BeClosed())
-			Eventually(o2Proc.Ready()).Should(BeClosed())
-			Eventually(o3Proc.Ready()).Should(BeClosed())
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Waiting for them to elect a leader")
 			ordererProcesses := []ifrit.Process{o1Proc, o2Proc, o3Proc}
@@ -398,14 +398,14 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			o2Proc = ifrit.Invoke(o2Runner)
 			o3Proc = ifrit.Invoke(o3Runner)
 
-			Eventually(o1Proc.Ready()).Should(BeClosed())
-			Eventually(o2Proc.Ready()).Should(BeClosed())
-			Eventually(o3Proc.Ready()).Should(BeClosed())
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Waiting for TLS handshakes to fail")
-			Eventually(o1Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("tls: bad certificate"))
-			Eventually(o2Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("tls: bad certificate"))
-			Eventually(o3Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("tls: bad certificate"))
+			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("tls: bad certificate"))
+			Eventually(o2Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("tls: bad certificate"))
+			Eventually(o3Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("tls: bad certificate"))
 
 			By("Killing orderers")
 			o1Proc.Signal(syscall.SIGTERM)
@@ -431,9 +431,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			o2Proc = ifrit.Invoke(o2Runner)
 			o3Proc = ifrit.Invoke(o3Runner)
 
-			Eventually(o1Proc.Ready()).Should(BeClosed())
-			Eventually(o2Proc.Ready()).Should(BeClosed())
-			Eventually(o3Proc.Ready()).Should(BeClosed())
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Waiting for a leader to be elected")
 			findLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
@@ -451,14 +451,12 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			orderer := network.Orderer("orderer")
 
 			ordererDomain := network.Organization(orderer.Organization).Domain
-			ordererCAKeyPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
-				ordererDomain, "ca", "priv_sk")
+			ordererCAKeyPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "ca", "priv_sk")
 
 			ordererCAKey, err := ioutil.ReadFile(ordererCAKeyPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			ordererCACertPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
-				ordererDomain, "ca", fmt.Sprintf("ca.%s-cert.pem", ordererDomain))
+			ordererCACertPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "ca", fmt.Sprintf("ca.%s-cert.pem", ordererDomain))
 			ordererCACert, err := ioutil.ReadFile(ordererCACertPath)
 			Expect(err).NotTo(HaveOccurred())
 
