@@ -34,6 +34,7 @@ type CouchDB struct {
 	ContainerPort docker.Port
 	Name          string
 	StartTimeout  time.Duration
+	Binds         []string
 
 	ErrorStream  io.Writer
 	OutputStream io.Writer
@@ -85,6 +86,7 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 				HostPort: strconv.Itoa(c.HostPort),
 			}},
 		},
+		Binds: c.Binds,
 	}
 
 	container, err := c.Client.CreateContainer(

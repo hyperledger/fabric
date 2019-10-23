@@ -31,9 +31,23 @@ const (
 )
 
 var (
+	leveldbTestDir = "/tmp/fabric/ledgertests"
+	couchdbTestDir = "/tmp/fabric/ledgertests_couchdb"
+
 	defaultConfig = config{
-		"peer.fileSystemPath":        "/tmp/fabric/ledgertests",
-		"ledger.state.stateDatabase": "goleveldb",
+		"peer.fileSystemPath":                  leveldbTestDir,
+		"ledger.state.stateDatabase":           "goleveldb",
+		"ledger.history.enableHistoryDatabase": true,
+	}
+
+	defaultConfigWithStateCouchdb = config{
+		"peer.fileSystemPath":                            couchdbTestDir,
+		"ledger.history.enableHistoryDatabase":           true,
+		"ledger.state.stateDatabase":                     "CouchDB",
+		"ledger.state.couchDBConfig.couchDBAddress":      "127.0.0.1:5984",
+		"ledger.state.couchDBConfig.maxRetries":          3,
+		"ledger.state.couchDBConfig.MaxRetriesOnStartup": 3,
+		"ledger.state.couchDBConfig.RequestTimeout":      "30s",
 	}
 )
 

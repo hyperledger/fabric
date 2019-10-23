@@ -7,6 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
+	"archive/zip"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/golang/protobuf/proto"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -78,4 +84,61 @@ func setBlockFlagsToValid(block *common.Block) {
 	utils.InitBlockMetadata(block)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlagsSetValue(len(block.Data.Data), protopeer.TxValidationCode_VALID)
+}
+
+// createZipFile will zip a source directory or file into targetZipFile.
+func createZipFile(sourcePath, targetZipFile string) error {
+	zipfile, err := os.Create(targetZipFile)
+	if err != nil {
+		return err
+	}
+	defer zipfile.Close()
+	zipWriter := zip.NewWriter(zipfile)
+	defer zipWriter.Close()
+
+	baseDirName := ""
+	fileInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		return nil
+	}
+	if fileInfo.IsDir() {
+		baseDirName = filepath.Base(sourcePath)
+	}
+
+	filepath.Walk(sourcePath, func(path string, fileInfo os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(fileInfo)
+		if err != nil {
+			return err
+		}
+
+		if baseDirName != "" {
+			header.Name = filepath.Join(baseDirName, strings.TrimPrefix(path, sourcePath))
+		}
+		if fileInfo.IsDir() {
+			header.Name += "/"
+		} else {
+			header.Method = zip.Deflate
+		}
+
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+		if fileInfo.IsDir() {
+			return nil
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = io.Copy(writer, file)
+		return err
+	})
+
+	return err
 }
