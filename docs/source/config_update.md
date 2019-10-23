@@ -10,7 +10,7 @@ batch sizes.
 
 This configuration is stored on the ledger in a **block**, and is therefore
 known as a configuration (config) block. Configuration blocks contain a single
-configuration. The first of these blocks is known as the “genesis block” and
+configuration. The first of these blocks is known as the "genesis block" and
 contains the initial configuration required to bootstrap a channel. Each time
 the configuration of a channel changes it is done through a new configuration
 block, with the latest configuration block representing the current channel
@@ -19,7 +19,7 @@ memory to facilitate all channel operations such as cutting a new block and
 validating block transactions.
 
 Because configurations are stored in blocks, updating a config happens through a
-process called a “configuration transaction” (even though the process is a
+process called a "configuration transaction" (even though the process is a
 little different from a normal transaction). Updating a config is a process of
 pulling the config, translating into a format that humans can read, modifying it
 and then submitting it for approval.
@@ -746,7 +746,7 @@ Visual Studio).
 ```
 </details>
 
-A config might look intimidating in this form, but once you study it you’ll see
+A config might look intimidating in this form, but once you study it you'll see
 that it has a logical structure.
 
 Beyond the definitions of the policies -- defining who can do certain things
@@ -889,14 +889,14 @@ There is another important channel configuration (especially for v1.1) known as
 **Capability Requirements**. It has its own doc that can be found
 [here](./capability_requirements.html).
 
-Let’s say you want to edit the block batch size for the channel (because this is
-a single numeric field, it’s one of the easiest changes to make). First to make
+Let's say you want to edit the block batch size for the channel (because this is
+a single numeric field, it's one of the easiest changes to make). First to make
 referencing the JSON path easy, we define it as an environment variable.
 
-To establish this, take a look at your config, find what you’re looking for, and
+To establish this, take a look at your config, find what you're looking for, and
 back track the path.
 
-If you find batch size, for example, you’ll see that it’s a `value` of the
+If you find batch size, for example, you'll see that it's a `value` of the
 `Orderer`. `Orderer` can be found under `groups`, which is under
 `channel_group`. The batch size value has a parameter under `value` of
 `max_message_count`.
@@ -915,53 +915,53 @@ jq "$MAXBATCHSIZEPATH" config.json
 
 Which should return a value of `10` (in our sample network at least).
 
-Now, let’s set the new batch size and display the new value:
+Now, let's set the new batch size and display the new value:
 
 ```
- jq “$MAXBATCHSIZEPATH = 20” config.json > modified_config.json
- jq “$MAXBATCHSIZEPATH” modified_config.json
+ jq "$MAXBATCHSIZEPATH = 20" config.json > modified_config.json
+ jq "$MAXBATCHSIZEPATH" modified_config.json
 ```
 
-Once you’ve modified the JSON, it’s ready to be converted and submitted. The
+Once you've modified the JSON, it's ready to be converted and submitted. The
 scripts and steps in [Adding an Org to a Channel](./channel_update_tutorial.html)
 will take you through the process for converting the JSON, so let's look at the
 process of submitting it.
 
 ## Get the Necessary Signatures
 
-Once you’ve successfully generated the protobuf file, it’s time to get it
-signed. To do this, you need to know the relevant policy for whatever it is you’re
+Once you've successfully generated the protobuf file, it's time to get it
+signed. To do this, you need to know the relevant policy for whatever it is you're
 trying to change.
 
 By default, editing the configuration of:
 * **A particular org** (for example, changing anchor peers) requires only the admin
 signature of that org.
 * **The application** (like who the member orgs are) requires a majority of the
-application organizations’ admins to sign.
-* **The orderer** requires a majority of the ordering organizations’ admins (of
+application organizations' admins to sign.
+* **The orderer** requires a majority of the ordering organizations' admins (of
 which there are by default only 1).
 * **The top level `channel` group** requires both the agreement of a majority of
 application organization admins and orderer organization admins.
 
-If you have made changes to the default policies in the channel, you’ll need to
+If you have made changes to the default policies in the channel, you'll need to
 compute your signature requirements accordingly.
 
 *Note: you may be able to script the signature collection, dependent on your
 application. In general, you may always collect more signatures than are
 required.*
 
-The actual process of getting these signatures will depend on how you’ve set up
+The actual process of getting these signatures will depend on how you've set up
 your system, but there are two main implementations. Currently, the Fabric
-command line defaults to a “pass it along” system. That is, the Admin of the Org
+command line defaults to a "pass it along" system. That is, the Admin of the Org
 proposing a config update sends the update to someone else (another Admin,
-typically) who needs to sign it. This Admin signs it (or doesn’t) and passes it
+typically) who needs to sign it. This Admin signs it (or doesn't) and passes it
 along to the next Admin, and so on, until there are enough signatures for the
 config to be submitted.
 
 This has the virtue of simplicity -- when there are enough signatures, the last
 Admin can simply submit the config transaction (in Fabric, the `peer channel update`
 command includes a signature by default). However, this process will only be
-practical in smaller channels, since the “pass it along” method can be time
+practical in smaller channels, since the "pass it along" method can be time
 consuming.
 
 The other option is to submit the update to every Admin on a channel and wait
