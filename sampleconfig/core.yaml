@@ -297,8 +297,6 @@ peer:
             Pin:
             Hash:
             Security:
-            FileKeyStore:
-                KeyStore:
 
     # Path on the file system where peer will find MSP local configurations
     mspConfigPath: msp
