@@ -123,6 +123,7 @@ func TestLedgerMetataDataUnmarshalError(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 	provider := testutilNewProvider(conf, t)
+	defer provider.Close()
 
 	ledgerID := constructTestLedgerID(0)
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(ledgerID)
@@ -229,93 +230,99 @@ func TestLedgerProviderHistoryDBDisabled(t *testing.T) {
 func TestRecovery(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider1 := testutilNewProvider(conf, t)
+	defer provider1.Close()
 
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
-	ledger, err := provider.openInternal(constructTestLedgerID(1))
+	ledger, err := provider1.openInternal(constructTestLedgerID(1))
 	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
 	// a failure where ledgerid is being created - ie., block is written but flag is not unset
-	provider.idStore.setUnderConstructionFlag(constructTestLedgerID(1))
-	provider.Close()
+	provider1.idStore.setUnderConstructionFlag(constructTestLedgerID(1))
+	provider1.Close()
 
-	// construct a new provider to invoke recovery
-	provider = testutilNewProvider(conf, t)
+	// construct a new provider1 to invoke recovery
+	provider1 = testutilNewProvider(conf, t)
 	// verify the underecoveryflag and open the ledger
-	flag, err := provider.idStore.getUnderConstructionFlag()
+	flag, err := provider1.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
 	assert.Equal(t, "", flag)
-	ledger, err = provider.Open(constructTestLedgerID(1))
+	ledger, err = provider1.Open(constructTestLedgerID(1))
 	assert.NoError(t, err, "Failed to open the ledger")
 	ledger.Close()
 
 	// Case 0: assume a crash happens before the genesis block of ledger 2 is committed
 	// Open the ID store (inventory of chainIds/ledgerIds)
-	provider.idStore.setUnderConstructionFlag(constructTestLedgerID(2))
-	provider.Close()
+	provider1.idStore.setUnderConstructionFlag(constructTestLedgerID(2))
+	provider1.Close()
 
 	// construct a new provider to invoke recovery
-	provider = testutilNewProvider(conf, t)
+	provider2 := testutilNewProvider(conf, t)
+	defer provider2.Close()
 	assert.NoError(t, err, "Provider failed to recover an underConstructionLedger")
-	flag, err = provider.idStore.getUnderConstructionFlag()
+	flag, err = provider2.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
 	assert.Equal(t, "", flag)
-
 }
 
 func TestRecoveryHistoryDBDisabled(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider1 := testutilNewProvider(conf, t)
+	defer provider1.Close()
 
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
-	ledger, err := provider.openInternal(constructTestLedgerID(1))
+	ledger, err := provider1.openInternal(constructTestLedgerID(1))
+	assert.NoError(t, err, "Failed to open the ledger")
 	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
 	ledger.Close()
 
 	// Case 1: assume a crash happens, force underconstruction flag to be set to simulate
 	// a failure where ledgerid is being created - ie., block is written but flag is not unset
-	provider.idStore.setUnderConstructionFlag(constructTestLedgerID(1))
-	provider.Close()
+	provider1.idStore.setUnderConstructionFlag(constructTestLedgerID(1))
+	provider1.Close()
 
 	// construct a new provider to invoke recovery
-	provider = testutilNewProvider(conf, t)
+	provider2 := testutilNewProvider(conf, t)
+	defer provider2.Close()
 	// verify the underecoveryflag and open the ledger
-	flag, err := provider.idStore.getUnderConstructionFlag()
+	flag, err := provider2.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
 	assert.Equal(t, "", flag)
-	ledger, err = provider.Open(constructTestLedgerID(1))
+	ledger, err = provider2.Open(constructTestLedgerID(1))
 	assert.NoError(t, err, "Failed to open the ledger")
 	ledger.Close()
 
 	// Case 0: assume a crash happens before the genesis block of ledger 2 is committed
 	// Open the ID store (inventory of chainIds/ledgerIds)
-	provider.idStore.setUnderConstructionFlag(constructTestLedgerID(2))
-	provider.Close()
+	provider2.idStore.setUnderConstructionFlag(constructTestLedgerID(2))
+	provider2.Close()
 
 	// construct a new provider to invoke recovery
-	provider = testutilNewProvider(conf, t)
+	provider3 := testutilNewProvider(conf, t)
+	defer provider3.Close()
 	assert.NoError(t, err, "Provider failed to recover an underConstructionLedger")
-	flag, err = provider.idStore.getUnderConstructionFlag()
+	flag, err = provider3.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
 	assert.Equal(t, "", flag)
-
 }
 
 func TestMultipleLedgerBasicRW(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider1 := testutilNewProvider(conf, t)
+	defer provider1.Close()
+
 	numLedgers := 10
 	ledgers := make([]lgr.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		bg, gb := testutil.NewBlockGenerator(t, constructTestLedgerID(i), false)
-		l, err := provider.Create(gb)
+		l, err := provider1.Create(gb)
 		assert.NoError(t, err)
 		ledgers[i] = l
 		txid := util.GenerateUUID()
@@ -332,13 +339,13 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	provider.Close()
+	provider1.Close()
 
-	provider = testutilNewProvider(conf, t)
-	defer provider.Close()
+	provider2 := testutilNewProvider(conf, t)
+	defer provider2.Close()
 	ledgers = make([]lgr.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
-		l, err := provider.Open(constructTestLedgerID(i))
+		l, err := provider2.Open(constructTestLedgerID(i))
 		assert.NoError(t, err)
 		ledgers[i] = l
 	}
@@ -356,9 +363,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 func TestLedgerBackup(t *testing.T) {
 	ledgerid := "TestLedger"
 	basePath, err := ioutil.TempDir("", "kvledger")
-	if err != nil {
-		t.Fatalf("Failed to create ledger directory: %s", err)
-	}
+	require.NoError(t, err, "Failed to create ledger directory")
 	defer os.RemoveAll(basePath)
 	originalPath := filepath.Join(basePath, "kvledger1")
 	restorePath := filepath.Join(basePath, "kvledger2")
@@ -499,9 +504,7 @@ func constructTestLedgerID(i int) string {
 
 func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 	path, err := ioutil.TempDir("", "kvledger")
-	if err != nil {
-		t.Fatalf("Failed to create test ledger directory: %s", err)
-	}
+	require.NoError(t, err, "Failed to create test ledger directory")
 	conf = &lgr.Config{
 		RootFSPath:    path,
 		StateDBConfig: &lgr.StateDBConfig{},
@@ -533,9 +536,7 @@ func testutilNewProvider(conf *lgr.Config, t *testing.T) *Provider {
 			Hasher:                        cryptoProvider,
 		},
 	)
-	if err != nil {
-		t.Fatalf("Failed to create new Provider: %s", err)
-	}
+	require.NoError(t, err, "Failed to create new Provider")
 	return provider
 }
 
