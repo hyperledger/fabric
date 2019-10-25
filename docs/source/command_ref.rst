@@ -10,7 +10,6 @@ Commands Reference
    commands/peerchannel.md
    commands/peerversion.md
    commands/peernode.md
-   commands/token.md
    commands/configtxgen.md
    commands/configtxlator.md
    commands/cryptogen.md
