@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 	"os"
 	"syscall"
-	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -114,7 +113,7 @@ var _ = Describe("Gossip Test", func() {
 			for _, peer := range []*nwo.Peer{peer0Org1, peer1Org1, peer0Org2, peer1Org2} {
 				Eventually(func() int {
 					return nwo.GetLedgerHeight(network, peer, channelName)
-				}).Should(BeNumerically(">=", 2))
+				}, network.EventuallyTimeout).Should(BeNumerically(">=", 2))
 			}
 
 			By("stop peers except peer0Org1 to make sure they cannot get blocks from orderer")
@@ -159,7 +158,7 @@ var _ = Describe("Gossip Test", func() {
 			Eventually(proc.Wait(), network.EventuallyTimeout).Should(Receive())
 
 			expectedMsg := "Stopped being a leader"
-			Eventually(peerRunners[id].Err(), time.Minute).Should(gbytes.Say(expectedMsg))
+			Eventually(peerRunners[id].Err(), network.EventuallyTimeout).Should(gbytes.Say(expectedMsg))
 
 			delete(peerProcesses, id)
 
@@ -215,6 +214,6 @@ func assertPeersLedgerHeight(n *nwo.Network, orderer *nwo.Orderer, peerList []*n
 	for _, peer := range peerList {
 		Eventually(func() int {
 			return nwo.GetLedgerHeight(n, peer, channelID)
-		}, time.Second*10).Should(Equal(expectedVal))
+		}, n.EventuallyTimeout).Should(Equal(expectedVal))
 	}
 }

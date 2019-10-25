@@ -484,7 +484,7 @@ func (nh *networkHelper) waitUntilEndorserEnabled(peer *nwo.Peer) {
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit())
 		return sess.Buffer()
-	}, "60s", "2s").Should(gbytes.Say("Blockchain info"))
+	}, nh.EventuallyTimeout).Should(gbytes.Say("Blockchain info"))
 }
 
 type testHelper struct {

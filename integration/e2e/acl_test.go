@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
@@ -208,12 +207,12 @@ var _ = Describe("EndToEndACL", func() {
 			By("evaluating " + policyName + " for a permitted subject")
 			sess, err := network.PeerAdminSession(org1Peer0, chaincodeQuery)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, 30*time.Second).Should(gexec.Exit(0))
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
 			By("evaluating " + policyName + " for a forbidden subject")
 			sess, err = network.PeerAdminSession(org2Peer0, chaincodeQuery)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, 30*time.Second).Should(gexec.Exit())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
 			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf(`access denied for \[%s\]\[%s\](.*)signature set did not satisfy policy`, operation, "testchannel")))
 		}
 

@@ -545,7 +545,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			brokerGroup := network.BrokerGroupRunner()
 			brokerProc = ifrit.Invoke(brokerGroup)
-			Eventually(brokerProc.Ready()).Should(BeClosed())
+			Eventually(brokerProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			o1Runner = network.OrdererRunner(o1)
 			o2Runner = network.OrdererRunner(o2)
@@ -557,12 +557,12 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			o2Proc = ifrit.Invoke(o2Runner)
 			o3Proc = ifrit.Invoke(o3Runner)
 
-			Eventually(o1Proc.Ready()).Should(BeClosed())
-			Eventually(o2Proc.Ready()).Should(BeClosed())
-			Eventually(o3Proc.Ready()).Should(BeClosed())
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			peerProc = ifrit.Invoke(peerGroup)
-			Eventually(peerProc.Ready()).Should(BeClosed())
+			Eventually(peerProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			raftMetadata = prepareRaftMetadata(network)
 
@@ -739,14 +739,14 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			brokerGroup := network.BrokerGroupRunner()
 			brokerProc = ifrit.Invoke(brokerGroup)
-			Eventually(brokerProc.Ready()).Should(BeClosed())
+			Eventually(brokerProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			o1Runner = network.OrdererRunner(orderer)
 			peerGroup := network.PeerGroupRunner()
 			o1Proc = ifrit.Invoke(o1Runner)
-			Eventually(o1Proc.Ready()).Should(BeClosed())
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			peerProc = ifrit.Invoke(peerGroup)
-			Eventually(peerProc.Ready()).Should(BeClosed())
+			Eventually(peerProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			raftMetadata = prepareRaftMetadata(network)
 

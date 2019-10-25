@@ -322,7 +322,7 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 		WaitForEvent: true,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:300"))
 
 	By("responding with a 400")
@@ -338,7 +338,7 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 		WaitForEvent: true,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(1))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
 	Expect(sess.Err).To(gbytes.Say(`Error: endorsement failure during invoke.`))
 }
 

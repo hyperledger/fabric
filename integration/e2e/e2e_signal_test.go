@@ -67,13 +67,13 @@ var _ = Describe("SignalHandling", func() {
 	It("handles signals", func() {
 		By("verifying SIGUSR1 to the peer dumps go routines")
 		peerProcess.Signal(syscall.SIGUSR1)
-		Eventually(peerRunner.Err()).Should(gbytes.Say("Received signal: "))
-		Eventually(peerRunner.Err()).Should(gbytes.Say(`Go routines report`))
+		Eventually(peerRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received signal: "))
+		Eventually(peerRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say(`Go routines report`))
 
 		By("verifying SIGUSR1 to the orderer dumps go routines")
 		ordererProcess.Signal(syscall.SIGUSR1)
-		Eventually(ordererRunner.Err()).Should(gbytes.Say("Received signal: "))
-		Eventually(ordererRunner.Err()).Should(gbytes.Say(`Go routines report`))
+		Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received signal: "))
+		Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say(`Go routines report`))
 
 		By("verifying SIGUSR1 does not terminate processes")
 		Consistently(peerProcess.Wait()).ShouldNot(Receive())
@@ -81,14 +81,14 @@ var _ = Describe("SignalHandling", func() {
 
 		By("verifying SIGTERM to the peer stops the process")
 		peerProcess.Signal(syscall.SIGTERM)
-		Eventually(peerRunner.Err()).Should(gbytes.Say("Received signal: "))
-		Eventually(peerProcess.Wait()).Should(Receive())
+		Eventually(peerRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received signal: "))
+		Eventually(peerProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		peerProcess = nil
 
 		By("verifying SIGTERM to the orderer stops the process")
 		ordererProcess.Signal(syscall.SIGTERM)
-		Eventually(ordererRunner.Err()).Should(gbytes.Say("Received signal: "))
-		Eventually(ordererProcess.Wait()).Should(Receive())
+		Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Received signal: "))
+		Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 		ordererProcess = nil
 	})
 })
