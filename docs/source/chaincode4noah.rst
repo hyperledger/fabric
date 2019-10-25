@@ -230,7 +230,7 @@ the state with ``john`` and ``0``, the command would look like the following:
 
 .. code:: bash
 
-    peer chaincode instantiate -n sacc -v 1.0 -c '{"Args":["john","0"]}' -P "AND ('Org1.member','Org2.member')"
+    peer chaincode instantiate -n sacc -v 1.0 -c '{"Args":["john","0"]}' -C mychannel -P "AND ('Org1.member','Org2.member')"
 
 .. note:: Note the endorsement policy (CLI uses polish notation), which requires an
           endorsement from both a member of Org1 and Org2 for all transactions to
