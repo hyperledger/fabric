@@ -8,6 +8,7 @@ package fsblkstorage
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -17,32 +18,68 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMultipleBlockStores(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
-	defer env.Cleanup()
+	tempdir := testPath()
+	defer os.RemoveAll(tempdir)
 
+	env := newTestEnv(t, NewConf(tempdir, 0))
 	provider := env.provider
-	store1, _ := provider.OpenBlockStore("ledger1")
-	defer store1.Shutdown()
+	defer provider.Close()
 
-	store2, _ := provider.CreateBlockStore("ledger2")
+	subdirs, err := provider.List()
+	require.NoError(t, err)
+	require.Empty(t, subdirs)
+
+	store1, err := provider.OpenBlockStore("ledger1")
+	require.NoError(t, err)
+	defer store1.Shutdown()
+	store2, err := provider.CreateBlockStore("ledger2")
+	require.NoError(t, err)
 	defer store2.Shutdown()
 
 	blocks1 := testutil.ConstructTestBlocks(t, 5)
 	for _, b := range blocks1 {
-		store1.AddBlock(b)
+		err := store1.AddBlock(b)
+		require.NoError(t, err)
 	}
 
 	blocks2 := testutil.ConstructTestBlocks(t, 10)
 	for _, b := range blocks2 {
-		store2.AddBlock(b)
+		err := store2.AddBlock(b)
+		require.NoError(t, err)
 	}
 	checkBlocks(t, blocks1, store1)
 	checkBlocks(t, blocks2, store2)
 	checkWithWrongInputs(t, store1, 5)
 	checkWithWrongInputs(t, store2, 10)
+
+	store1.Shutdown()
+	store2.Shutdown()
+	provider.Close()
+
+	// Reopen provider
+	newenv := newTestEnv(t, NewConf(tempdir, 0))
+	newprovider := newenv.provider
+	defer newprovider.Close()
+
+	subdirs, err = newprovider.List()
+	require.NoError(t, err)
+	require.Len(t, subdirs, 2)
+
+	newstore1, err := newprovider.OpenBlockStore("ledger1")
+	require.NoError(t, err)
+	defer newstore1.Shutdown()
+	newstore2, err := newprovider.CreateBlockStore("ledger2")
+	require.NoError(t, err)
+	defer newstore2.Shutdown()
+
+	checkBlocks(t, blocks1, newstore1)
+	checkBlocks(t, blocks2, newstore2)
+	checkWithWrongInputs(t, newstore1, 5)
+	checkWithWrongInputs(t, newstore2, 10)
 }
 
 func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.BlockStore) {
@@ -114,7 +151,11 @@ func TestBlockStoreProvider(t *testing.T) {
 	defer env.Cleanup()
 
 	provider := env.provider
-	stores := []blkstorage.BlockStore{}
+	storeNames, err := provider.List()
+	assert.NoError(t, err)
+	assert.Empty(t, storeNames)
+
+	var stores []blkstorage.BlockStore
 	numStores := 10
 	for i := 0; i < numStores; i++ {
 		store, _ := provider.OpenBlockStore(constructLedgerid(i))
@@ -123,7 +164,8 @@ func TestBlockStoreProvider(t *testing.T) {
 	}
 	assert.Equal(t, numStores, len(stores))
 
-	storeNames, _ := provider.List()
+	storeNames, err = provider.List()
+	assert.NoError(t, err)
 	assert.Equal(t, numStores, len(storeNames))
 
 	for i := 0; i < numStores; i++ {
