@@ -155,7 +155,7 @@ func SetBCCSPKeystorePath() {
 		config.GetPath("peer.BCCSP.SW.FileKeyStore.KeyStore"))
 }
 
-// GetDefaultSigner return a default Signer(Default/PERR) for cli
+// GetDefaultSigner return a default Signer(Default/PEER) for cli
 func GetDefaultSigner() (msp.SigningIdentity, error) {
 	signer, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
 	if err != nil {
