@@ -117,7 +117,7 @@ For more information on how endorsement policies work, check out
 :doc:`endorsement-policies`.
 
 For a deeper dive into the architecture of Hyperledger Fabric, check out
-:doc:`arch-deep-dive`.
+:doc:`architecture`.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
