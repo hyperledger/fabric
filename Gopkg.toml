@@ -58,7 +58,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/miekg/pkcs11"
-  version = "v1.0.2"
+  version = "v1.0.3"
 
 [[constraint]]
   name = "github.com/mitchellh/mapstructure"
