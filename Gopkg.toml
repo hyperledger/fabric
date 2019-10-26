@@ -12,7 +12,6 @@ ignored = [
 ]
 
 noverify = [
-    "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/konsorten/go-windows-terminal-sequences",
 ]
 
@@ -142,7 +141,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/grpc-ecosystem/go-grpc-middleware"
-  version = "1.0.0"
+  version = "1.1.0"
 
 [[constraint]]
   name = "github.com/willf/bitset"
