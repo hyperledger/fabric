@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
@@ -15,9 +18,13 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/tests/fakes"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
+	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/stretchr/testify/require"
 )
 
 var logger = flogging.MustGetLogger("test2")
@@ -75,6 +82,9 @@ func convertToMemberOrgsPolicy(members []string) *common.CollectionPolicyConfig 
 }
 
 func convertFromMemberOrgsPolicy(policy *common.CollectionPolicyConfig) []string {
+	if policy.GetSignaturePolicy() == nil {
+		return nil
+	}
 	ids := policy.GetSignaturePolicy().Identities
 	var members []string
 	for _, id := range ids {
@@ -210,4 +220,35 @@ func setBlockFlagsToValid(block *common.Block) {
 	protoutil.InitBlockMetadata(block)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlagsSetValue(len(block.Data.Data), protopeer.TxValidationCode_VALID)
+}
+
+func couchDBSetup(t *testing.T, couchdbMountDir string, localdHostDir string) (addr string, cleanup func()) {
+	couchDB := &runner.CouchDB{
+		Name: "ledger13_upgrade_test",
+		Binds: []string{
+			fmt.Sprintf("%s:%s", couchdbMountDir, "/opt/couchdb/data"),
+			fmt.Sprintf("%s:%s", localdHostDir, "/opt/couchdb/etc/local.d"),
+		},
+	}
+	err := couchDB.Start()
+	require.NoError(t, err)
+	return couchDB.Address(), func() {
+		couchDB.Stop()
+	}
+}
+
+func dropCouchDBs(t *testing.T, couchdbConfig *couchdb.Config) {
+	couchInstance, err := couchdb.CreateCouchInstance(couchdbConfig, &disabled.Provider{})
+	require.NoError(t, err)
+	dbNames, err := couchInstance.RetrieveApplicationDBNames()
+	require.NoError(t, err)
+	for _, dbName := range dbNames {
+		db := &couchdb.CouchDatabase{
+			CouchInstance: couchInstance,
+			DBName:        dbName,
+		}
+		response, err := db.DropDatabase()
+		require.NoError(t, err)
+		require.True(t, response.Ok)
+	}
 }

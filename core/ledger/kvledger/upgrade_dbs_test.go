@@ -30,7 +30,7 @@ func TestUpgradeDBs(t *testing.T) {
 
 	// load v11 ledger data for upgrade
 	rootFSPath := conf.RootFSPath
-	testutil.CopyDir("tests/testdata/v11/sample_ledgers/ledgersData", rootFSPath, true)
+	require.NoError(t, testutil.Unzip("tests/testdata/v11/sample_ledgers/ledgersData.zip", rootFSPath, false))
 	v11LedgerIDs := getLedgerIDs(t, rootFSPath)
 	require.NoError(t, UpgradeIDStoreFormat(rootFSPath))
 
