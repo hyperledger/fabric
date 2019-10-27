@@ -79,9 +79,6 @@ METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 GO_VER = 1.12.7
 GO_TAGS ?=
 
-# No sense rebuilding when non production code is changed
-PROJECT_FILES = $(shell git ls-files  | grep -Ev '^integration/|^vagrant/|.png$|^LICENSE|^vendor/')
-
 RELEASE_EXES = orderer $(TOOLS_EXES)
 RELEASE_IMAGES = baseos ccenv orderer peer tools
 RELEASE_PLATFORMS = darwin-amd64 linux-amd64 linux-ppc64le linux-s390x windows-amd64
@@ -206,7 +203,7 @@ $(RELEASE_EXES): %: $(BUILD_DIR)/bin/%
 $(BUILD_DIR)/bin/%: GO_LDFLAGS = -X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
 $(BUILD_DIR)/bin/peer: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 $(BUILD_DIR)/bin/orderer: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
-$(BUILD_DIR)/bin/%: $(PROJECT_FILES)
+$(BUILD_DIR)/bin/%:
 	@echo "Building $@"
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
@@ -249,7 +246,7 @@ release/%/bin/orderer: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metada
 release/%/bin/peer: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 
 # explicit targets for all platform executables
-$(foreach platform, $(RELEASE_PLATFORMS), $(RELEASE_EXES:%=release/$(platform)/bin/%)): $(PROJECT_FILES)
+$(foreach platform, $(RELEASE_PLATFORMS), $(RELEASE_EXES:%=release/$(platform)/bin/%)):
 	$(eval platform = $(patsubst release/%/bin,%,$(@D)))
 	$(eval GOOS = $(word 1,$(subst -, ,$(platform))))
 	$(eval GOARCH = $(word 2,$(subst -, ,$(platform))))
