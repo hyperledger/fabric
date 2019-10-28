@@ -383,3 +383,37 @@ func CheckTxID(txid string, nonce, creator []byte) error {
 
 	return nil
 }
+
+// InvokedChaincodeName takes the proposal bytes of a SignedProposal, and unpacks it all the way down,
+// until either an error is encountered, or the chaincode name is found.  This is useful primarilly
+// for chaincodes which wish to know the chaincode name originally invoked, in order to deny cc2cc
+// invocations (or, perhaps to deny direct invocations and require cc2cc).
+func InvokedChaincodeName(proposalBytes []byte) (string, error) {
+	proposal := &peer.Proposal{}
+	err := proto.Unmarshal(proposalBytes, proposal)
+	if err != nil {
+		return "", errors.WithMessage(err, "could not unmarshal proposal")
+	}
+
+	proposalPayload := &peer.ChaincodeProposalPayload{}
+	err = proto.Unmarshal(proposal.Payload, proposalPayload)
+	if err != nil {
+		return "", errors.WithMessage(err, "could not unmarshal chaincode proposal payload")
+	}
+
+	cis := &peer.ChaincodeInvocationSpec{}
+	err = proto.Unmarshal(proposalPayload.Input, cis)
+	if err != nil {
+		return "", errors.WithMessage(err, "could not unmarshal chaincode invocation spec")
+	}
+
+	if cis.ChaincodeSpec == nil {
+		return "", errors.Errorf("chaincode spec is nil")
+	}
+
+	if cis.ChaincodeSpec.ChaincodeId == nil {
+		return "", errors.Errorf("chaincode id is nil")
+	}
+
+	return cis.ChaincodeSpec.ChaincodeId.Name, nil
+}
