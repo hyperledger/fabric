@@ -7,8 +7,13 @@
    - `Fabric-CA <https://github.com/hyperledger/fabric-ca>`_
    - `Fabric-Chaincode-EVM <https://github.com/hyperledger/fabric-chaincode-evm>`_
    - `Fabric-Chaincode-Go <https://github.com/hyperledger/fabric-chaincode-go>`_
+   - `Fabric-Chaincode-Java <https://github.com/hyperledger/fabric-chaincode-java>`_
+   - `Fabric-Chaincode-Node <https://github.com/hyperledger/fabric-chaincode-node>`_
+   - `Fabric-Gateway-Java <https://github.com/hyperledger/fabric-gateway-java>`_
    - `Fabric-Protos <https://github.com/hyperledger/fabric-protos>`_
    - `Fabric-Samples <https://github.com/hyperledger/fabric-samples>`_
+   - `Fabric-SDK-Go <https://github.com/hyperledger/fabric-sdk-go>`_
+   - `Fabric-SDK-Java <https://github.com/hyperledger/fabric-sdk-java>`_
 
 =====================
 
