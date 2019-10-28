@@ -118,7 +118,6 @@ func (csp *impl) returnSession(session pkcs11.SessionHandle) {
 }
 
 // Look for an EC key by SKI, stored in CKA_ID
-// This function can probably be adapted for both EC and RSA keys.
 func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err error) {
 	p11lib := csp.ctx
 	session := csp.getSession()
