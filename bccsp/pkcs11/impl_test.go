@@ -5,6 +5,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package pkcs11
 
 import (
@@ -130,7 +131,7 @@ func TestNew(t *testing.T) {
 	// Test for nil keystore
 	_, err := New(opts, nil)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid bccsp.KeyStore instance. It must be different from nil.")
+	assert.Contains(t, err.Error(), "Invalid bccsp.KeyStore instance. It must be different from nil")
 
 	// Test for invalid PKCS11 loadLib
 	opts.Library = ""

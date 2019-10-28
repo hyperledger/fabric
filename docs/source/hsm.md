@@ -53,9 +53,6 @@ bccsp:
     Label: fabric
     hash: SHA2
     security: 256
-    filekeystore:
-      # The directory used for the software file-based keystore
-      keystore: msp/keystore
 ```
 
 You can also use environment variables to override the relevant fields of the
