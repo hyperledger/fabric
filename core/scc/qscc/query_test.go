@@ -73,6 +73,18 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 
 //pass the prop so we can conveniently inline it in the call and get it back
 func resetProvider(res, chainid string, prop *peer2.SignedProposal, retErr error) *peer2.SignedProposal {
+	if prop == nil {
+		prop, _ = protoutil.MockSignedEndorserProposalOrPanic(
+			chainid,
+			&peer2.ChaincodeSpec{
+				ChaincodeId: &peer2.ChaincodeID{
+					Name: "qscc",
+				},
+			},
+			[]byte("Alice"),
+			[]byte("msg1"),
+		)
+	}
 	mockAclProvider.Reset()
 	mockAclProvider.On("CheckACL", res, chainid, prop).Return(retErr)
 	return prop
@@ -96,7 +108,7 @@ func TestQueryGetChainInfo(t *testing.T) {
 	defer cleanup()
 
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}
-	prop := resetProvider(resources.Qscc_GetChainInfo, chainid, &peer2.SignedProposal{}, nil)
+	prop := resetProvider(resources.Qscc_GetChainInfo, chainid, nil, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
 	assert.Equal(t, int32(shim.OK), res.Status, "GetChainInfo failed with err: %s", res.Message)
 
@@ -148,7 +160,7 @@ func TestQueryGetBlockByNumber(t *testing.T) {
 
 	// block number 0 (genesis block) would already be present in the ledger
 	args := [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("0")}
-	prop := resetProvider(resources.Qscc_GetBlockByNumber, chainid, &peer2.SignedProposal{}, nil)
+	prop := resetProvider(resources.Qscc_GetBlockByNumber, chainid, nil, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
 	assert.Equal(t, int32(shim.OK), res.Status, "GetBlockByNumber should have succeeded for block number: 0")
 
@@ -201,6 +213,43 @@ func TestQueryGetBlockByTxID(t *testing.T) {
 	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByTxID should have failed with blank txId.")
 }
 
+func TestFailingCC2CC(t *testing.T) {
+	t.Run("BadProposal", func(t *testing.T) {
+		stub := shimtest.NewMockStub("testchannel", &LedgerQuerier{})
+		args := [][]byte{[]byte("funcname"), []byte("testchannel")}
+		sProp := &peer2.SignedProposal{
+			ProposalBytes: []byte("garbage"),
+		}
+		sProp.Signature = sProp.ProposalBytes
+		// Set the ACLProvider to have a failure
+		resetProvider(resources.Qscc_GetChainInfo, "testchannel", sProp, nil)
+		res := stub.MockInvokeWithSignedProposal("2", args, sProp)
+		assert.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
+		assert.Contains(t, res.Message, "Failed to identify the called chaincode: could not unmarshal proposal: proto: can't skip unknown wire type 7")
+	})
+
+	t.Run("DifferentInvokedCC", func(t *testing.T) {
+		stub := shimtest.NewMockStub("testchannel", &LedgerQuerier{})
+		args := [][]byte{[]byte("funcname"), []byte("testchannel")}
+		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(
+			"testchannel",
+			&peer2.ChaincodeSpec{
+				ChaincodeId: &peer2.ChaincodeID{
+					Name: "usercc",
+				},
+			},
+			[]byte("Alice"),
+			[]byte("msg1"),
+		)
+		sProp.Signature = sProp.ProposalBytes
+		// Set the ACLProvider to have a failure
+		resetProvider(resources.Qscc_GetChainInfo, "testchannel", sProp, nil)
+		res := stub.MockInvokeWithSignedProposal("2", args, sProp)
+		assert.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
+		assert.Contains(t, res.Message, "Rejecting invoke of QSCC from another chaincode because of potential for deadlocks, original invocation for 'usercc'")
+	})
+}
+
 func TestFailingAccessControl(t *testing.T) {
 	chainid := "mytestchainid6"
 	path := tempDir(t, "test6")
@@ -219,7 +268,14 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetChainInfo
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}
-	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(chainid,
+		&peer2.ChaincodeSpec{
+			ChaincodeId: &peer2.ChaincodeID{
+				Name: "qscc"},
+		},
+		[]byte("Alice"),
+		[]byte("msg1"),
+	)
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetChainInfo, chainid, sProp, errors.New("Failed access control"))
@@ -231,7 +287,16 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetBlockByNumber
 	args = [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("1")}
-	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(
+		chainid,
+		&peer2.ChaincodeSpec{
+			ChaincodeId: &peer2.ChaincodeID{
+				Name: "qscc",
+			},
+		},
+		[]byte("Alice"),
+		[]byte("msg1"),
+	)
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByNumber, chainid, sProp, errors.New("Failed access control"))
@@ -243,7 +308,16 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetBlockByHash
 	args = [][]byte{[]byte(GetBlockByHash), []byte(chainid), []byte("1")}
-	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(
+		chainid,
+		&peer2.ChaincodeSpec{
+			ChaincodeId: &peer2.ChaincodeID{
+				Name: "qscc",
+			},
+		},
+		[]byte("Alice"),
+		[]byte("msg1"),
+	)
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByHash, chainid, sProp, errors.New("Failed access control"))
@@ -255,7 +329,16 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetBlockByTxID
 	args = [][]byte{[]byte(GetBlockByTxID), []byte(chainid), []byte("1")}
-	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(
+		chainid,
+		&peer2.ChaincodeSpec{
+			ChaincodeId: &peer2.ChaincodeID{
+				Name: "qscc",
+			},
+		},
+		[]byte("Alice"),
+		[]byte("msg1"),
+	)
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByTxID, chainid, sProp, errors.New("Failed access control"))
@@ -267,7 +350,16 @@ func TestFailingAccessControl(t *testing.T) {
 
 	// GetTransactionByID
 	args = [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte("1")}
-	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(chainid, &peer2.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic(
+		chainid,
+		&peer2.ChaincodeSpec{
+			ChaincodeId: &peer2.ChaincodeID{
+				Name: "qscc",
+			},
+		},
+		[]byte("Alice"),
+		[]byte("msg1"),
+	)
 	sProp.Signature = sProp.ProposalBytes
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetTransactionByID, chainid, sProp, errors.New("Failed access control"))
@@ -312,13 +404,13 @@ func TestQueryGeneratedBlock(t *testing.T) {
 
 	// block number 1 should now exist
 	args := [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("1")}
-	prop := resetProvider(resources.Qscc_GetBlockByNumber, chainid, &peer2.SignedProposal{}, nil)
+	prop := resetProvider(resources.Qscc_GetBlockByNumber, chainid, nil, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
 	assert.Equal(t, int32(shim.OK), res.Status, "GetBlockByNumber should have succeeded for block number 1")
 
 	// block number 1
 	args = [][]byte{[]byte(GetBlockByHash), []byte(chainid), protoutil.BlockHeaderHash(block1.Header)}
-	prop = resetProvider(resources.Qscc_GetBlockByHash, chainid, &peer2.SignedProposal{}, nil)
+	prop = resetProvider(resources.Qscc_GetBlockByHash, chainid, nil, nil)
 	res = stub.MockInvokeWithSignedProposal("2", args, prop)
 	assert.Equal(t, int32(shim.OK), res.Status, "GetBlockByHash should have succeeded for block 1 hash")
 
@@ -340,12 +432,12 @@ func TestQueryGeneratedBlock(t *testing.T) {
 				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 					args = [][]byte{[]byte(GetBlockByTxID), []byte(chainid), []byte(chdr.TxId)}
 					mockAclProvider.Reset()
-					prop = resetProvider(resources.Qscc_GetBlockByTxID, chainid, &peer2.SignedProposal{}, nil)
+					prop = resetProvider(resources.Qscc_GetBlockByTxID, chainid, nil, nil)
 					res = stub.MockInvokeWithSignedProposal("3", args, prop)
 					assert.Equal(t, int32(shim.OK), res.Status, "GetBlockByTxId should have succeeded for txid: %s", chdr.TxId)
 
 					args = [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte(chdr.TxId)}
-					prop = resetProvider(resources.Qscc_GetTransactionByID, chainid, &peer2.SignedProposal{}, nil)
+					prop = resetProvider(resources.Qscc_GetTransactionByID, chainid, nil, nil)
 					res = stub.MockInvokeWithSignedProposal("4", args, prop)
 					assert.Equal(t, int32(shim.OK), res.Status, "GetTransactionById should have succeeded for txid: %s", chdr.TxId)
 				}

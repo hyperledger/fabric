@@ -122,11 +122,11 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	name, err := protoutil.InvokedChaincodeName(sp.ProposalBytes)
 	if err != nil {
-		return shim.Error(fmt.Sprintf("Could not identify the called chaincode: [%s]", err))
+		return shim.Error(fmt.Sprintf("Failed to identify the called chaincode: %s", err))
 	}
 
 	if name != e.Name() {
-		return shim.Error(fmt.Sprintf("Cannot invoke CSCC from another chaincode, original invocation for '%s'", name))
+		return shim.Error(fmt.Sprintf("Rejecting invoke of CSCC from another chaincode, original invocation for '%s'", name))
 	}
 
 	return e.InvokeNoShim(args, sp)

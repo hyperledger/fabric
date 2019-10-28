@@ -78,8 +78,23 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	if len(args) < 2 {
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments, %d", len(args)))
 	}
+
 	fname := string(args[0])
 	cid := string(args[1])
+
+	sp, err := stub.GetSignedProposal()
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub, %s: %s", cid, err))
+	}
+
+	name, err := protoutil.InvokedChaincodeName(sp.ProposalBytes)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to identify the called chaincode: %s", err))
+	}
+
+	if name != e.Name() {
+		return shim.Error(fmt.Sprintf("Rejecting invoke of QSCC from another chaincode because of potential for deadlocks, original invocation for '%s'", name))
+	}
 
 	if fname != GetChainInfo && len(args) < 3 {
 		return shim.Error(fmt.Sprintf("missing 3rd argument for %s", fname))
@@ -93,13 +108,6 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	qscclogger.Debugf("Invoke function: %s on chain: %s", fname, cid)
 
 	// Handle ACL:
-	// 1. get the signed proposal
-	sp, err := stub.GetSignedProposal()
-	if err != nil {
-		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub, %s: %s", cid, err))
-	}
-
-	// 2. check the channel reader policy
 	res := getACLResource(fname)
 	if err = e.aclProvider.CheckACL(res, cid, sp); err != nil {
 		return shim.Error(fmt.Sprintf("access denied for [%s][%s]: [%s]", fname, cid, err))
