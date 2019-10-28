@@ -58,7 +58,6 @@ ZOOKEEPER_VER ?= 5.3.1
 MAKEFLAGS += --no-builtin-rules
 
 BUILD_DIR ?= build
-NEXUS_REPO = nexus3.hyperledger.org:10001/hyperledger
 
 EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
 PROJECT_VERSION=$(BASE_VERSION)-snapshot-$(EXTRA_VERSION)

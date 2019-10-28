@@ -29,8 +29,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var exitCode = 0
-
 var logger = flogging.MustGetLogger("common.tools.configtxgen")
 
 func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock string) error {
@@ -234,7 +232,7 @@ func main() {
 	// show version
 	if *version {
 		printVersion()
-		os.Exit(exitCode)
+		os.Exit(0)
 	}
 
 	// don't need to panic when running via command line
