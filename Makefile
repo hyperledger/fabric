@@ -69,7 +69,6 @@ MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
 # defined in common/metadata/metadata.go
 METADATA_VAR = Version=$(BASE_VERSION)
 METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
-METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
@@ -199,9 +198,7 @@ native: $(RELEASE_EXES)
 .PHONY: $(RELEASE_EXES)
 $(RELEASE_EXES): %: $(BUILD_DIR)/bin/%
 
-$(BUILD_DIR)/bin/%: GO_LDFLAGS = -X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
-$(BUILD_DIR)/bin/peer: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
-$(BUILD_DIR)/bin/orderer: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
+$(BUILD_DIR)/bin/%: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 $(BUILD_DIR)/bin/%:
 	@echo "Building $@"
 	@mkdir -p $(@D)
@@ -238,11 +235,8 @@ release: check-go-version $(MARCH:%=release/%)
 release-all: check-go-version $(RELEASE_PLATFORMS:%=release/%)
 
 .PHONY: $(RELEASE_PLATFORMS:%=release/%)
+$(RELEASE_PLATFORMS:%=release/%): GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 $(RELEASE_PLATFORMS:%=release/%): release/%: $(foreach exe,$(RELEASE_EXES),release/%/bin/$(exe))
-
-release/%: GO_LDFLAGS = -X $(pkgmap.$(@F))/metadata.CommitSHA=$(EXTRA_VERSION)
-release/%/bin/orderer: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
-release/%/bin/peer: GO_LDFLAGS = $(METADATA_VAR:%=-X $(PKGNAME)/common/metadata.%)
 
 # explicit targets for all platform executables
 $(foreach platform, $(RELEASE_PLATFORMS), $(RELEASE_EXES:%=release/$(platform)/bin/%)):
