@@ -21,7 +21,6 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -137,7 +136,7 @@ type Network struct {
 	StartPort          uint16
 	Components         *Components
 	DockerClient       *docker.Client
-	ExternalBuilders   []corepeer.ExternalBuilder
+	ExternalBuilders   []fabricconfig.ExternalBuilder
 	NetworkID          string
 	EventuallyTimeout  time.Duration
 	MetricsProvider    string
@@ -165,11 +164,10 @@ type Network struct {
 // allocated sequentially from the specified startPort.
 func New(c *Config, rootDir string, client *docker.Client, startPort int, components *Components) *Network {
 	network := &Network{
-		StartPort:        uint16(startPort),
-		RootDir:          rootDir,
-		Components:       components,
-		DockerClient:     client,
-		ExternalBuilders: []corepeer.ExternalBuilder{},
+		StartPort:    uint16(startPort),
+		RootDir:      rootDir,
+		Components:   components,
+		DockerClient: client,
 
 		NetworkID:         helpers.UniqueName(),
 		EventuallyTimeout: time.Minute,
@@ -191,11 +189,11 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 
 	cwd, err := os.Getwd()
 	Expect(err).NotTo(HaveOccurred())
-	network.ExternalBuilders = append(network.ExternalBuilders, corepeer.ExternalBuilder{
+	network.ExternalBuilders = []fabricconfig.ExternalBuilder{{
 		Path:                 filepath.Join(cwd, "..", "externalbuilders", "binary"),
 		Name:                 "binary",
 		EnvironmentWhitelist: []string{"GOPROXY"},
-	})
+	}}
 
 	if network.Templates == nil {
 		network.Templates = &Templates{}
