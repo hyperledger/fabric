@@ -231,7 +231,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			sess := nwo.UpdateOrdererConfigSession(network, orderer, channel, config, updatedConfig, peer1org1, orderer)
-			Expect(sess.ExitCode()).NotTo(Equal(0))
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
 			Expect(sess.Err).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 		})
 	})
@@ -819,7 +819,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			current, updated := nwo.ConsenterRemover(network, peer, o2, network.SystemChannel.Name, certificatesOfOrderers[1].oldCert)
 			Eventually(func() []byte {
 				sess := nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
-				Expect(sess.ExitCode()).NotTo(BeZero())
+				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
 				return sess.Err.Contents()
 			}, network.EventuallyTimeout).Should(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
 
@@ -837,7 +837,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				},
 			)
 			sess := nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
-			Expect(sess.ExitCode()).NotTo(BeZero())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
 			Expect(string(sess.Err.Contents())).To(ContainSubstring("2 out of 3 nodes are alive, configuration will result in quorum loss"))
 		})
 	})

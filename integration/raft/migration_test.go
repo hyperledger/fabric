@@ -1106,7 +1106,7 @@ func checkPeerDeliverRequest(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.N
 
 func updateOrdererConfigFailed(n *nwo.Network, orderer *nwo.Orderer, channel string, current, updated *common.Config, peer *nwo.Peer, additionalSigners ...*nwo.Orderer) {
 	sess := nwo.UpdateOrdererConfigSession(n, orderer, channel, current, updated, peer, additionalSigners...)
-	Expect(sess.ExitCode()).NotTo(Equal(0))
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
 	Expect(sess.Err).NotTo(gbytes.Say("Successfully submitted channel update"))
 }
 
