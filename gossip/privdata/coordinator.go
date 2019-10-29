@@ -107,8 +107,14 @@ type Support struct {
 
 // CoordinatorConfig encapsulates the config that is passed to a new coordinator
 type CoordinatorConfig struct {
-	TransientBlockRetention        uint64
-	PullRetryThreshold             time.Duration
+	// TransientBlockRetention indicates the number of blocks to retain in the transient store
+	// when purging below height on commiting every TransientBlockRetention-th block
+	TransientBlockRetention uint64
+	// PullRetryThreshold indicates the max duration an attempted fetch from a remote peer will retry
+	// for before giving up and leaving the private data as missing
+	PullRetryThreshold time.Duration
+	// SkipPullingInvalidTransactions if true will skip the fetch from remote peer step for transactions
+	// marked as invalid
 	SkipPullingInvalidTransactions bool
 }
 
@@ -241,17 +247,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 	}
 
 	seqs2Namespaces := aggregatedCollections{}
-	for seqInBlock, envBytes := range blockAndPvtData.Block.Data.Data {
-
-		// TODO Remove getTxInfoFromTransactionBytes from here, there is no need to parse the transaction here.
-		// The only fields used are channelID and txID.
-		// channelID can be passed more efficiently.
-		// txID is never even used by c.CollectionStore.RetrieveCollectionAccessPolicy(cc) and should be removed from CollectionCriteria.
-		txInfo, err := getTxInfoFromTransactionBytes(envBytes)
-		if err != nil {
-			continue
-		}
-
+	for seqInBlock := range blockAndPvtData.Block.Data.Data {
 		txPvtDataItem, exists := blockAndPvtData.PvtData[uint64(seqInBlock)]
 		if !exists {
 			continue
@@ -261,8 +257,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 		for _, ns := range txPvtDataItem.WriteSet.NsPvtRwset {
 			for _, col := range ns.CollectionPvtRwset {
 				cc := common.CollectionCriteria{
-					Channel:    txInfo.channelID,
-					TxId:       txInfo.txID,
+					Channel:    c.ChainID,
 					Namespace:  ns.Namespace,
 					Collection: col.CollectionName,
 				}
@@ -320,7 +315,6 @@ func (c *coordinator) getTxPvtdataInfoFromBlock(block *common.Block) ([]*ledger.
 					Channel:    txInfo.channelID,
 					Namespace:  ns.NameSpace,
 					Collection: hashedCollection.CollectionName,
-					TxId:       txInfo.txID,
 				}
 
 				colConfig, err := c.CollectionStore.RetrieveCollectionConfig(cc)
