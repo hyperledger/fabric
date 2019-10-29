@@ -9,7 +9,6 @@ package endorsertx
 import (
 	"regexp"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 
 	"github.com/hyperledger/fabric/pkg/tx"
@@ -27,67 +26,20 @@ var (
 // EndorserTx represents a parsed common.Envelope protobuf
 type EndorserTx struct {
 	ComputedTxID string
-	ChID         string
-	CCName       string
+	ChannelID    string
+	ChaincodeID  *peer.ChaincodeID
 	Creator      []byte
 	Response     *peer.Response
 	Events       []byte
 	Results      []byte
 	Endorsements []*peer.Endorsement
+	Type         int32
+	Version      int32
+	Epoch        uint64
+	Nonce        []byte
 }
 
-func validateHeaders(
-	cHdr *common.ChannelHeader,
-	sHdr *common.SignatureHeader,
-	hdrExt *peer.ChaincodeHeaderExtension,
-) error {
-	/******************************************/
-	/*****VALIDATION OF THE CHANNEL HEADER*****/
-	/******************************************/
-
-	if cHdr.Epoch != 0 {
-		return errors.Errorf("invalid Epoch in ChannelHeader. Expected 0, got [%d]", cHdr.Epoch)
-	}
-
-	if cHdr.Version != 0 {
-		return errors.Errorf("invalid version in ChannelHeader. Expected 0, got [%d]", cHdr.Version)
-	}
-
-	if err := ValidateChannelID(cHdr.ChannelId); err != nil {
-		return err
-	}
-
-	/********************************************/
-	/*****VALIDATION OF THE SIGNATURE HEADER*****/
-	/********************************************/
-
-	if len(sHdr.Nonce) == 0 {
-		return errors.New("empty nonce")
-	}
-
-	if len(sHdr.Creator) == 0 {
-		return errors.New("empty creator")
-	}
-
-	/********************************************/
-	/*****VALIDATION OF THE HEADER EXTENSION*****/
-	/********************************************/
-
-	if hdrExt.ChaincodeId == nil {
-		return errors.New("nil ChaincodeId")
-	}
-
-	if hdrExt.ChaincodeId.Name == "" {
-		return errors.New("empty chaincode name in chaincode id")
-	}
-
-	return nil
-}
-
-// NewEndorserTx receives a tx.Envelope containing a partially
-// unmarshalled endorser transaction and returns an EndorserTx
-// instance (or an error)
-func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
+func unmarshalEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 
 	if len(txenv.ChannelHeader.Extension) == 0 {
 		return nil, errors.New("empty header extension")
@@ -95,15 +47,6 @@ func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 
 	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(
 		txenv.ChannelHeader.Extension,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	err = validateHeaders(
-		txenv.ChannelHeader,
-		txenv.SignatureHeader,
-		hdrExt,
 	)
 	if err != nil {
 		return nil, err
@@ -127,8 +70,6 @@ func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 	if txAction == nil {
 		return nil, errors.New("nil action")
 	}
-
-	// TODO FAB-16170: check that header in the tx action and channel header match bitwise
 
 	if len(txAction.Payload) == 0 {
 		return nil, errors.New("empty ChaincodeActionPayload")
@@ -163,25 +104,81 @@ func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 		return nil, err
 	}
 
-	// TODO FAB-16170: check proposal hash
-
 	computedTxID := protoutil.ComputeTxID(
 		txenv.SignatureHeader.Nonce,
 		txenv.SignatureHeader.Creator,
 	)
 
-	// TODO FAB-16170: verify that txid matches the one in the header
-
 	return &EndorserTx{
 		ComputedTxID: computedTxID,
-		ChID:         txenv.ChannelHeader.ChannelId,
+		ChannelID:    txenv.ChannelHeader.ChannelId,
 		Creator:      txenv.SignatureHeader.Creator,
 		Response:     ccAction.Response,
 		Events:       ccAction.Events,
 		Results:      ccAction.Results,
 		Endorsements: ccActionPayload.Action.Endorsements,
-		CCName:       hdrExt.ChaincodeId.Name, // FIXME: we might have to get the ccid from the CIS
+		ChaincodeID:  hdrExt.ChaincodeId,
+		Type:         txenv.ChannelHeader.Type,
+		Version:      txenv.ChannelHeader.Version,
+		Epoch:        txenv.ChannelHeader.Epoch,
+		Nonce:        txenv.SignatureHeader.Nonce,
 	}, nil
+}
+
+func (e *EndorserTx) validate() error {
+
+	if e.Epoch != 0 {
+		return errors.Errorf("invalid epoch in ChannelHeader. Expected 0, got [%d]", e.Epoch)
+	}
+
+	if e.Version != 0 {
+		return errors.Errorf("invalid version in ChannelHeader. Expected 0, got [%d]", e.Version)
+	}
+
+	if err := ValidateChannelID(e.ChannelID); err != nil {
+		return err
+	}
+
+	if len(e.Nonce) == 0 {
+		return errors.New("empty nonce")
+	}
+
+	if len(e.Creator) == 0 {
+		return errors.New("empty creator")
+	}
+
+	if e.ChaincodeID == nil {
+		return errors.New("nil ChaincodeId")
+	}
+
+	if e.ChaincodeID.Name == "" {
+		return errors.New("empty chaincode name in chaincode id")
+	}
+
+	// TODO FAB-16170: check proposal hash
+
+	// TODO FAB-16170: verify that txid matches the one in the header
+
+	// TODO FAB-16170: check that header in the tx action and channel header match bitwise
+
+	return nil
+}
+
+// UnmarshalEndorserTxAndValidate receives a tx.Envelope containing
+// a partially unmarshalled endorser transaction and returns an EndorserTx
+// instance (or an error)
+func UnmarshalEndorserTxAndValidate(txenv *tx.Envelope) (*EndorserTx, error) {
+	etx, err := unmarshalEndorserTx(txenv)
+	if err != nil {
+		return nil, err
+	}
+
+	err = etx.validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return etx, nil
 }
 
 // ValidateChannelID makes sure that proposed channel IDs comply with the
