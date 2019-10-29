@@ -935,7 +935,7 @@
   revision = "eb59cef1c072c61ea4f7623910448d5e9c6a4455"
 
 [[projects]]
-  digest = "1:eeae08e293eb14baf135ba8227e50c3e488539c17e78d47fbfe0a6ada1b55779"
+  digest = "1:35a2be7619445f1285bfc82fdcb2a328d389e98e6df127d1365d025749d94c4e"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -969,13 +969,14 @@
     "resolver",
     "resolver/dns",
     "resolver/passthrough",
+    "serviceconfig",
     "stats",
     "status",
     "tap",
   ]
   pruneopts = "NUT"
-  revision = "501c41df7f472c740d0674ff27122f3f48c80ce7"
-  version = "v1.21.1"
+  revision = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef"
+  version = "v1.24.0"
 
 [[projects]]
   digest = "1:22b2dee6f30bc8601f087449a2a819df8388e54e9547349c658f14d8f8c590f2"
