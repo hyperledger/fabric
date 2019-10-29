@@ -109,8 +109,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'channelID' is empty. Rerun the command with -C flag"))
+				Expect(err).To(MatchError("The required parameter 'channelID' is empty. Rerun the command with -C flag"))
 			})
 		})
 
@@ -121,8 +120,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'name' is empty. Rerun the command with -n flag"))
+				Expect(err).To(MatchError("The required parameter 'name' is empty. Rerun the command with -n flag"))
 			})
 		})
 
@@ -133,8 +131,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'version' is empty. Rerun the command with -v flag"))
+				Expect(err).To(MatchError("The required parameter 'version' is empty. Rerun the command with -v flag"))
 			})
 		})
 
@@ -145,8 +142,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'sequence' is empty. Rerun the command with --sequence flag"))
+				Expect(err).To(MatchError("The required parameter 'sequence' is empty. Rerun the command with --sequence flag"))
 			})
 		})
 
@@ -157,8 +153,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create proposal: failed to serialize identity: cafe"))
+				Expect(err).To(MatchError("failed to create proposal: failed to serialize identity: cafe"))
 			})
 		})
 
@@ -169,8 +164,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create signed proposal: tea"))
+				Expect(err).To(MatchError("failed to create signed proposal: tea"))
 			})
 		})
 
@@ -181,8 +175,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to endorse proposal: latte"))
+				Expect(err).To(MatchError("failed to endorse proposal: latte"))
 			})
 		})
 
@@ -194,8 +187,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("received nil proposal response"))
+				Expect(err).To(MatchError("received nil proposal response"))
 			})
 		})
 
@@ -207,8 +199,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("received proposal response with nil response"))
+				Expect(err).To(MatchError("received proposal response with nil response"))
 			})
 		})
 
@@ -223,8 +214,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("query failed with status: 500 - capuccino"))
+				Expect(err).To(MatchError("query failed with status: 500 - capuccino"))
 			})
 		})
 
@@ -239,8 +229,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := commitReadinessChecker.ReadinessCheck()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
+				Expect(err).To(MatchError(ContainSubstring("failed to unmarshal proposal response's response payload")))
 			})
 		})
 	})
@@ -271,8 +260,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 		It("sets up the commit readiness checker and checks whether the chaincode definition is ready to commit", func() {
 			err := checkCommitReadinessCmd.Execute()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client"))
+			Expect(err).To(MatchError(ContainSubstring("failed to retrieve endorser client")))
 		})
 
 		Context("when the policy is invalid", func() {
@@ -290,8 +278,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := checkCommitReadinessCmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("invalid signature policy: notapolicy"))
+				Expect(err).To(MatchError("invalid signature policy: notapolicy"))
 			})
 		})
 
@@ -310,8 +297,7 @@ var _ = Describe("CheckCommitReadiness", func() {
 
 			It("returns an error", func() {
 				err := checkCommitReadinessCmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("invalid collection configuration in file idontexist.json: could not read file 'idontexist.json': open idontexist.json: no such file or directory"))
+				Expect(err).To(MatchError("invalid collection configuration in file idontexist.json: could not read file 'idontexist.json': open idontexist.json: no such file or directory"))
 			})
 		})
 	})

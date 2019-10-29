@@ -101,8 +101,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create proposal: failed to serialize identity: cafe"))
+				Expect(err).To(MatchError("failed to create proposal: failed to serialize identity: cafe"))
 			})
 		})
 
@@ -113,8 +112,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'package-id' is empty. Rerun the command with --package-id flag"))
+				Expect(err).To(MatchError("The required parameter 'package-id' is empty. Rerun the command with --package-id flag"))
 			})
 		})
 
@@ -125,8 +123,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create proposal: failed to serialize identity: cafe"))
+				Expect(err).To(MatchError("failed to create proposal: failed to serialize identity: cafe"))
 			})
 		})
 
@@ -137,8 +134,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create signed proposal: tea"))
+				Expect(err).To(MatchError("failed to create signed proposal: tea"))
 			})
 		})
 
@@ -149,8 +145,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to endorse proposal: latte"))
+				Expect(err).To(MatchError("failed to endorse proposal: latte"))
 			})
 		})
 
@@ -162,8 +157,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("received nil proposal response"))
+				Expect(err).To(MatchError("received nil proposal response"))
 			})
 		})
 
@@ -175,8 +169,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("received proposal response with nil response"))
+				Expect(err).To(MatchError("received proposal response with nil response"))
 			})
 		})
 
@@ -191,8 +184,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("proposal failed with status: 500 - capuccino"))
+				Expect(err).To(MatchError("proposal failed with status: 500 - capuccino"))
 			})
 		})
 
@@ -207,8 +199,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
+				Expect(err).To(MatchError(ContainSubstring("failed to unmarshal proposal response's response payload")))
 			})
 		})
 
@@ -219,8 +210,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := installedPackageGetter.Get()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(fmt.Sprintf("failed to write chaincode package to %s: frappuccino", filepath.Join(testDir, "pkgFile.tar.gz"))))
+				Expect(err).To(MatchError(fmt.Sprintf("failed to write chaincode package to %s: frappuccino", filepath.Join(testDir, "pkgFile.tar.gz"))))
 			})
 		})
 	})
@@ -247,8 +237,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 		It("sets up the installedPackageGetter and attempts to get the installed chaincode package", func() {
 			err := getInstalledPackageCmd.Execute()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client for getinstalledpackage"))
+			Expect(err).To(MatchError(ContainSubstring("failed to retrieve endorser client for getinstalledpackage")))
 		})
 
 		Context("when more than one peer address is provided", func() {
@@ -261,8 +250,7 @@ var _ = Describe("GetInstalledPackage", func() {
 
 			It("returns an error", func() {
 				err := getInstalledPackageCmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to validate peer connection parameters"))
+				Expect(err).To(MatchError(ContainSubstring("failed to validate peer connection parameters")))
 			})
 		})
 	})

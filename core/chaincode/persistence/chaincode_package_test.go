@@ -157,8 +157,7 @@ var _ = Describe("ChaincodePackageParser", func() {
 
 				ccPackage, err := ccpp.Parse(data)
 				Expect(ccPackage).To(BeNil())
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("error retrieving DB artifacts from code package"))
+				Expect(err).To(MatchError(ContainSubstring("error retrieving DB artifacts from code package")))
 			})
 		})
 

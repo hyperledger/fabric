@@ -3664,8 +3664,7 @@ func TestHealthCheck(t *testing.T) {
 	mockSyncProducer.SendMessageReturns(int32(1), int64(1), sarama.ErrNotEnoughReplicas)
 	chain.replicaIDs = []int32{int32(1), int32(2)}
 	err = chain.HealthCheck(context.Background())
-	gt.Expect(err).To(HaveOccurred())
-	gt.Expect(err.Error()).To(Equal(fmt.Sprintf("[replica ids: [1 2]]: %s", sarama.ErrNotEnoughReplicas.Error())))
+	gt.Expect(err).To(MatchError(fmt.Sprintf("[replica ids: [1 2]]: %s", sarama.ErrNotEnoughReplicas.Error())))
 	gt.Expect(mockSyncProducer.SendMessageCallCount()).To(Equal(2))
 
 	// If another type of error is returned, it should be ignored by health check

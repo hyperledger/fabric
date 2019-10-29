@@ -224,8 +224,7 @@ var _ = Describe("Release interoperability", func() {
 
 				By("committing the old transaction, expecting to hit an MVCC conflict")
 				err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+				Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
 			})
 
 			It("deploys a chaincode with the new lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {
@@ -277,8 +276,7 @@ var _ = Describe("Release interoperability", func() {
 
 				By("committing the old transaction, expecting to hit an MVCC conflict")
 				err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+				Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
 			})
 
 			Describe("Chaincode-to-chaincode interoperability", func() {
@@ -520,8 +518,7 @@ var _ = Describe("Release interoperability", func() {
 
 						By("committing the transaction")
 						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+						Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
 
 						By("querying the caller chaincode")
 						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
@@ -571,8 +568,7 @@ var _ = Describe("Release interoperability", func() {
 
 						By("committing the transaction")
 						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+						Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
 
 						By("querying the caller chaincode")
 						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
@@ -729,8 +725,7 @@ var _ = Describe("Release interoperability", func() {
 
 						By("committing the transaction")
 						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+						Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
 
 						By("querying the caller chaincode")
 						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{
@@ -778,8 +773,7 @@ var _ = Describe("Release interoperability", func() {
 
 						By("committing the transaction")
 						err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)"))
+						Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
 
 						By("querying the caller chaincode")
 						sess, err := network.PeerUserSession(endorsers[0], "User1", commands.ChaincodeQuery{

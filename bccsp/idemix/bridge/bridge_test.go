@@ -140,7 +140,6 @@ var _ = Describe("Idemix Bridge", func() {
 					Expect(raw).NotTo(BeEmpty())
 
 					pk, err = Issuer.NewPublicKeyFromBytes(raw, nil)
-					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("invalid issuer public key: zero knowledge proof in public key invalid"))
 					Expect(pk).To(BeNil())
 				})

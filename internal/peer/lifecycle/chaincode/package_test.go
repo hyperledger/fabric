@@ -91,8 +91,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packager.Package()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("chaincode path must be specified"))
+				Expect(err).To(MatchError("chaincode path must be specified"))
 			})
 		})
 
@@ -103,8 +102,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packager.Package()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("chaincode language must be specified"))
+				Expect(err).To(MatchError("chaincode language must be specified"))
 			})
 		})
 
@@ -115,8 +113,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packager.Package()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("output file must be specified"))
+				Expect(err).To(MatchError("output file must be specified"))
 			})
 		})
 
@@ -127,8 +124,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packager.Package()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("package label must be specified"))
+				Expect(err).To(MatchError("package label must be specified"))
 			})
 		})
 
@@ -139,8 +135,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packager.Package()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to normalize chaincode path: cortado"))
+				Expect(err).To(MatchError("failed to normalize chaincode path: cortado"))
 			})
 		})
 
@@ -151,8 +146,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packager.Package()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("error getting chaincode bytes: americano"))
+				Expect(err).To(MatchError("error getting chaincode bytes: americano"))
 			})
 		})
 
@@ -163,8 +157,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packager.Package()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("error writing chaincode package to testDir/testPackage: espresso"))
+				Expect(err).To(MatchError("error writing chaincode package to testDir/testPackage: espresso"))
 			})
 		})
 	})
@@ -186,8 +179,7 @@ var _ = Describe("Package", func() {
 
 		It("sets up the packager and attempts to package the chaincode", func() {
 			err := packageCmd.Execute()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("error getting chaincode bytes"))
+			Expect(err).To(MatchError(ContainSubstring("error getting chaincode bytes")))
 		})
 
 		Context("when more than one argument is provided", func() {
@@ -201,8 +193,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packageCmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("invalid number of args. expected only the output file"))
+				Expect(err).To(MatchError("invalid number of args. expected only the output file"))
 			})
 		})
 
@@ -214,8 +205,7 @@ var _ = Describe("Package", func() {
 
 			It("returns an error", func() {
 				err := packageCmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("invalid number of args. expected only the output file"))
+				Expect(err).To(MatchError("invalid number of args. expected only the output file"))
 			})
 		})
 	})

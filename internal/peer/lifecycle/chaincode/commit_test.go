@@ -84,8 +84,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'channelID' is empty. Rerun the command with -C flag"))
+				Expect(err).To(MatchError("The required parameter 'channelID' is empty. Rerun the command with -C flag"))
 			})
 		})
 
@@ -96,8 +95,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'name' is empty. Rerun the command with -n flag"))
+				Expect(err).To(MatchError("The required parameter 'name' is empty. Rerun the command with -n flag"))
 			})
 		})
 
@@ -108,8 +106,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'version' is empty. Rerun the command with -v flag"))
+				Expect(err).To(MatchError("The required parameter 'version' is empty. Rerun the command with -v flag"))
 			})
 		})
 
@@ -120,8 +117,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("The required parameter 'sequence' is empty. Rerun the command with --sequence flag"))
+				Expect(err).To(MatchError("The required parameter 'sequence' is empty. Rerun the command with --sequence flag"))
 			})
 		})
 
@@ -132,8 +128,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create proposal: failed to serialize identity: cafe"))
+				Expect(err).To(MatchError("failed to create proposal: failed to serialize identity: cafe"))
 			})
 		})
 
@@ -144,8 +139,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create signed proposal: tea"))
+				Expect(err).To(MatchError("failed to create signed proposal: tea"))
 			})
 		})
 
@@ -156,8 +150,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to endorse proposal: latte"))
+				Expect(err).To(MatchError("failed to endorse proposal: latte"))
 			})
 		})
 
@@ -168,8 +161,7 @@ var _ = Describe("Commit", func() {
 
 			It("doesn't receive any responses and returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("no proposal responses received"))
+				Expect(err).To(MatchError("no proposal responses received"))
 			})
 		})
 
@@ -181,8 +173,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("received nil proposal response"))
+				Expect(err).To(MatchError("received nil proposal response"))
 			})
 		})
 
@@ -194,8 +185,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("received proposal response with nil response"))
+				Expect(err).To(MatchError("received proposal response with nil response"))
 			})
 		})
 
@@ -210,8 +200,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("proposal failed with status: 500 - capuccino"))
+				Expect(err).To(MatchError("proposal failed with status: 500 - capuccino"))
 			})
 		})
 
@@ -222,8 +211,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create signed transaction: peaberry"))
+				Expect(err).To(MatchError("failed to create signed transaction: peaberry"))
 				Expect(mockSigner.SignCallCount()).To(Equal(2))
 			})
 		})
@@ -235,8 +223,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to send transaction: arabica"))
+				Expect(err).To(MatchError("failed to send transaction: arabica"))
 			})
 		})
 
@@ -275,8 +262,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to connect to deliver on all peers: error connecting to deliver filtered at commitpeer0: robusta"))
+				Expect(err).To(MatchError("failed to connect to deliver on all peers: error connecting to deliver filtered at commitpeer0: robusta"))
 			})
 		})
 
@@ -304,8 +290,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := committer.Commit()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("timed out waiting for txid on all peers"))
+				Expect(err).To(MatchError("timed out waiting for txid on all peers"))
 			})
 		})
 	})
@@ -336,8 +321,7 @@ var _ = Describe("Commit", func() {
 
 		It("sets up the committer and attempts to commit the chaincode definition", func() {
 			err := commitCmd.Execute()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client"))
+			Expect(err).To(MatchError(ContainSubstring("failed to retrieve endorser client")))
 		})
 
 		Context("when the policy is invalid", func() {
@@ -355,8 +339,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := commitCmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("invalid signature policy: notapolicy"))
+				Expect(err).To(MatchError("invalid signature policy: notapolicy"))
 			})
 		})
 
@@ -375,8 +358,7 @@ var _ = Describe("Commit", func() {
 
 			It("returns an error", func() {
 				err := commitCmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("invalid collection configuration in file idontexist.json: could not read file 'idontexist.json': open idontexist.json: no such file or directory"))
+				Expect(err).To(MatchError("invalid collection configuration in file idontexist.json: could not read file 'idontexist.json': open idontexist.json: no such file or directory"))
 			})
 		})
 	})

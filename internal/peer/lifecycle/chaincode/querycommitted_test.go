@@ -167,8 +167,7 @@ var _ = Describe("QueryCommitted", func() {
 
 				It("returns an error", func() {
 					err := committedQuerier.Query()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
+					Expect(err).To(MatchError(ContainSubstring("failed to unmarshal proposal response's response payload")))
 				})
 			})
 
@@ -203,8 +202,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("channel name must be specified"))
+				Expect(err).To(MatchError("channel name must be specified"))
 			})
 		})
 
@@ -215,8 +213,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create proposal: failed to serialize identity: cafe"))
+				Expect(err).To(MatchError("failed to create proposal: failed to serialize identity: cafe"))
 			})
 		})
 
@@ -227,8 +224,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to create signed proposal: tea"))
+				Expect(err).To(MatchError("failed to create signed proposal: tea"))
 			})
 		})
 
@@ -239,8 +235,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("failed to endorse proposal: latte"))
+				Expect(err).To(MatchError("failed to endorse proposal: latte"))
 			})
 		})
 
@@ -252,8 +247,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("received nil proposal response"))
+				Expect(err).To(MatchError("received nil proposal response"))
 			})
 		})
 
@@ -265,8 +259,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("received proposal response with nil response"))
+				Expect(err).To(MatchError("received proposal response with nil response"))
 			})
 		})
 
@@ -281,8 +274,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("query failed with status: 500 - capuccino"))
+				Expect(err).To(MatchError("query failed with status: 500 - capuccino"))
 			})
 		})
 
@@ -297,8 +289,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload"))
+				Expect(err).To(MatchError(ContainSubstring("failed to unmarshal proposal response's response payload")))
 			})
 		})
 
@@ -314,8 +305,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := committedQuerier.Query()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to unmarshal proposal response's response payload as type *lifecycle.QueryChaincodeDefinitionsResult"))
+				Expect(err).To(MatchError(ContainSubstring("failed to unmarshal proposal response's response payload as type *lifecycle.QueryChaincodeDefinitionsResult")))
 			})
 		})
 	})
@@ -343,8 +333,7 @@ var _ = Describe("QueryCommitted", func() {
 
 		It("attempts to connect to the endorser", func() {
 			err := queryCommittedCmd.Execute()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to retrieve endorser client"))
+			Expect(err).To(MatchError(ContainSubstring("failed to retrieve endorser client")))
 		})
 
 		Context("when more than one peer address is provided", func() {
@@ -361,8 +350,7 @@ var _ = Describe("QueryCommitted", func() {
 
 			It("returns an error", func() {
 				err := queryCommittedCmd.Execute()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to validate peer connection parameters"))
+				Expect(err).To(MatchError(ContainSubstring("failed to validate peer connection parameters")))
 			})
 		})
 	})

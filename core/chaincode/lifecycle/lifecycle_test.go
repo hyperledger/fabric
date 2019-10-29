@@ -620,8 +620,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("could not set defaults for chaincode definition in channel my-channel: Policy '/Channel/Application/Endorsement' must be defined for channel 'my-channel' before chaincode operations can be attempted"))
+					Expect(err).To(MatchError(ContainSubstring("could not set defaults for chaincode definition in channel my-channel: Policy '/Channel/Application/Endorsement' must be defined for channel 'my-channel' before chaincode operations can be attempted")))
 				})
 			})
 
@@ -632,8 +631,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("could not get channel config for channel 'my-channel'"))
+					Expect(err).To(MatchError(ContainSubstring("could not get channel config for channel 'my-channel'")))
 				})
 			})
 		})
@@ -863,8 +861,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns an error", func() {
 				_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure"))
+				Expect(err).To(MatchError(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure")))
 			})
 		})
 
@@ -904,10 +901,9 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("could not set defaults for chaincode definition in " +
+					Expect(err).To(MatchError(ContainSubstring("could not set defaults for chaincode definition in " +
 						"channel my-channel: Policy '/Channel/Application/Endorsement' must be defined " +
-						"for channel 'my-channel' before chaincode operations can be attempted"))
+						"for channel 'my-channel' before chaincode operations can be attempted")))
 				})
 			})
 
@@ -918,8 +914,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("could not get channel config for channel 'my-channel'"))
+					Expect(err).To(MatchError(ContainSubstring("could not get channel config for channel 'my-channel'")))
 
 				})
 			})
@@ -1035,8 +1030,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns an error", func() {
 				_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure"))
+				Expect(err).To(MatchError(ContainSubstring("serialization check failed for key cc-name#5: could not get value for key namespaces/metadata/cc-name#5: bad bad failure")))
 			})
 		})
 
@@ -1076,10 +1070,9 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("could not set defaults for chaincode definition in " +
+					Expect(err).To(MatchError(ContainSubstring("could not set defaults for chaincode definition in " +
 						"channel my-channel: Policy '/Channel/Application/Endorsement' must be defined " +
-						"for channel 'my-channel' before chaincode operations can be attempted"))
+						"for channel 'my-channel' before chaincode operations can be attempted")))
 				})
 			})
 
@@ -1090,9 +1083,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("could not get channel config for channel 'my-channel'"))
-
+					Expect(err).To(MatchError(ContainSubstring("could not get channel config for channel 'my-channel'")))
 				})
 			})
 		})

@@ -51,9 +51,8 @@ var _ = Describe("PackageProvider", func() {
 
 			It("lists the chaincodes from only the persistence store package provider ", func() {
 				installedChaincodes, err := packageProvider.ListInstalledChaincodesLegacy()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("football"))
-				Expect(len(installedChaincodes)).To(Equal(0))
+				Expect(err).To(MatchError(ContainSubstring("football")))
+				Expect(installedChaincodes).To(HaveLen(0))
 			})
 		})
 	})

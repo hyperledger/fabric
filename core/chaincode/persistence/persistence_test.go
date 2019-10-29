@@ -109,7 +109,7 @@ var _ = Describe("Persistence", func() {
 
 			files, err := filesystemIO.ReadDir(testDir)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(files)).To(Equal(1))
+			Expect(files).To(HaveLen(1))
 		})
 
 		It("makes a directory (and any necessary parent directories)", func() {
@@ -256,8 +256,7 @@ var _ = Describe("Persistence", func() {
 			It("returns an error", func() {
 				packageID, err := store.Save("testcc", pkgBytes)
 				Expect(packageID).To(Equal(""))
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("error writing chaincode install package to testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.tar.gz: soccer"))
+				Expect(err).To(MatchError(ContainSubstring("error writing chaincode install package to testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.tar.gz: soccer")))
 			})
 		})
 	})
@@ -290,10 +289,9 @@ var _ = Describe("Persistence", func() {
 
 			It("returns an error", func() {
 				ccInstallPkgBytes, err := store.Load("hash")
-				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(&persistence.CodePackageNotFoundErr{PackageID: "hash"}))
-				Expect(err.Error()).To(Equal("chaincode install package 'hash' not found"))
-				Expect(len(ccInstallPkgBytes)).To(Equal(0))
+				Expect(err).To(MatchError("chaincode install package 'hash' not found"))
+				Expect(ccInstallPkgBytes).To(HaveLen(0))
 			})
 		})
 
@@ -304,9 +302,8 @@ var _ = Describe("Persistence", func() {
 
 			It("returns an error", func() {
 				ccInstallPkgBytes, err := store.Load("hash")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("could not determine whether chaincode install package 'hash' exists: goodness me!"))
-				Expect(len(ccInstallPkgBytes)).To(Equal(0))
+				Expect(err).To(MatchError("could not determine whether chaincode install package 'hash' exists: goodness me!"))
+				Expect(ccInstallPkgBytes).To(HaveLen(0))
 			})
 		})
 
@@ -317,9 +314,8 @@ var _ = Describe("Persistence", func() {
 
 			It("returns an error", func() {
 				ccInstallPkgBytes, err := store.Load("hash")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("error reading chaincode install package"))
-				Expect(len(ccInstallPkgBytes)).To(Equal(0))
+				Expect(err).To(MatchError(ContainSubstring("error reading chaincode install package")))
+				Expect(ccInstallPkgBytes).To(HaveLen(0))
 			})
 		})
 	})
@@ -345,7 +341,7 @@ var _ = Describe("Persistence", func() {
 		It("returns the list of installed chaincodes", func() {
 			installedChaincodes, err := store.ListInstalledChaincodes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(installedChaincodes)).To(Equal(2))
+			Expect(installedChaincodes).To(HaveLen(2))
 			Expect(installedChaincodes[0]).To(Equal(chaincode.InstalledChaincode{
 				Hash:      []byte("hash1"),
 				Label:     "label1",
@@ -374,7 +370,7 @@ var _ = Describe("Persistence", func() {
 			It("returns the list of installed chaincodes", func() {
 				installedChaincodes, err := store.ListInstalledChaincodes()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(len(installedChaincodes)).To(Equal(2))
+				Expect(installedChaincodes).To(HaveLen(2))
 				Expect(installedChaincodes[0]).To(Equal(chaincode.InstalledChaincode{
 					Hash:      []byte("hash1"),
 					Label:     "label1",
@@ -396,7 +392,7 @@ var _ = Describe("Persistence", func() {
 			It("returns an error", func() {
 				installedChaincodes, err := store.ListInstalledChaincodes()
 				Expect(err).To(HaveOccurred())
-				Expect(len(installedChaincodes)).To(Equal(0))
+				Expect(installedChaincodes).To(HaveLen(0))
 			})
 		})
 	})
