@@ -40,7 +40,6 @@ fi
 # referenced is in the generated protos.
 echo "Checking for golang.org/x/net/context"
 context_whitelist=(
-    "^github.com/hyperledger/fabric/protos(:|/.*:)"
     "^github.com/hyperledger/fabric/core/comm/testpb:"
     "^github.com/hyperledger/fabric/orderer/common/broadcast/mock:"
     "^github.com/hyperledger/fabric/common/grpclogging/fakes:"

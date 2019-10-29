@@ -47,7 +47,7 @@ There are presently two different types of policies implemented:
    the organization admin policies".
 
 Policies are encoded in a ``common.Policy`` message as defined in
-``fabric/protos/common/policies.proto``. They are defined by the
+``fabric-protos/common/policies.proto``. They are defined by the
 following message:
 
 ::
@@ -265,7 +265,7 @@ cryptography other than X.509, for the purposes of this document, the
 discussion will assume that the underlying MSP implementation is the
 default MSP type, based on X.509 cryptography.
 
-An MSP Principal is defined in ``fabric/protos/msp_principal.proto`` as
+An MSP Principal is defined in ``fabric-protos/msp_principal.proto`` as
 follows:
 
 ::
@@ -330,7 +330,7 @@ The ``ImplicitMetaPolicy`` is only validly defined in the context of
 channel configuration. It is ``Implicit`` because it is constructed
 implicitly based on the current configuration, and it is ``Meta``
 because its evaluation is not against MSP principals, but rather against
-other policies. It is defined in ``fabric/protos/common/policies.proto``
+other policies. It is defined in ``fabric-protos/common/policies.proto``
 as follows:
 
 ::

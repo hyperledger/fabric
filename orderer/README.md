@@ -4,7 +4,7 @@ The Hyperledger Fabric ordering service provides an atomic broadcast ordering se
 
 ## Protocol definition
 
-The atomic broadcast ordering protocol for Hyperledger Fabric is described in `hyperledger/fabric/protos/orderer/ab.proto`. There are two services: the `Broadcast` service for injecting messages into the system and the `Deliver` service for receiving ordered batches from the service.
+The atomic broadcast ordering protocol for Hyperledger Fabric is described in `hyperledger/fabric-protos/orderer/ab.proto`. There are two services: the `Broadcast` service for injecting messages into the system and the `Deliver` service for receiving ordered batches from the service.
 
 ## Service types
 
