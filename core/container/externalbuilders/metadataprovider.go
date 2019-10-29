@@ -33,13 +33,11 @@ func (mp *MetadataProvider) PackageMetadata(ccid string) ([]byte, error) {
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
-
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not stat path")
 	}
 
 	buffer := bytes.NewBuffer(nil)
-
 	tw := tar.NewWriter(buffer)
 
 	logger.Debugf("Walking package release dir '%s'", releasePath)
@@ -48,21 +46,17 @@ func (mp *MetadataProvider) PackageMetadata(ccid string) ([]byte, error) {
 			return err
 		}
 
-		if releasePath == file {
-			// No need to add '.' to our tar
-			return nil
-		}
-
 		header, err := tar.FileInfoHeader(fi, file)
 		if err != nil {
 			return err
 		}
 
-		header.Name, err = filepath.Rel(releasePath, file)
+		name, err := filepath.Rel(releasePath, file)
 		if err != nil {
 			return err
 		}
 
+		header.Name = filepath.Join("META-INF", name)
 		if fi.IsDir() {
 			header.Name += "/"
 		}

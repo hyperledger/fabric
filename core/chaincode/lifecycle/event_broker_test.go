@@ -7,6 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
+	"archive/tar"
+	"bytes"
+	"io"
+
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
@@ -143,8 +147,7 @@ var _ = Describe("EventBroker", func() {
 			}
 		})
 
-		By("invoking ProcessInstallEvent function")
-		It("invokes listener", func() {
+		It("invokes listener when ProcessInstallEvent is called", func() {
 			eventBroker.ProcessInstallEvent(localChaincode)
 			Expect(fakeListener.HandleChaincodeDeployCallCount()).To(Equal(1))
 			def, md := fakeListener.HandleChaincodeDeployArgsForCall(0)
@@ -158,8 +161,7 @@ var _ = Describe("EventBroker", func() {
 			Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
 		})
 
-		By("invoking ProcessApproveOrDefineEvent function")
-		It("invokes listener", func() {
+		It("invokes listener when ProcessApproveOrDefineEvent is called", func() {
 			eventBroker.ProcessApproveOrDefineEvent("channel-1", "chaincode-1", cachedChaincodeDef)
 			Expect(fakeListener.HandleChaincodeDeployCallCount()).To(Equal(1))
 			Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(0))
@@ -181,7 +183,19 @@ var _ = Describe("EventBroker", func() {
 					Hash:    []byte("external-built-cc"),
 					Version: "version-1",
 				}))
-				Expect(len(md)).To(Equal(2048)) // A tar, and not our mock value
+
+				mdContents := map[string]struct{}{}
+				tr := tar.NewReader(bytes.NewBuffer(md))
+				for {
+					hdr, err := tr.Next()
+					if err == io.EOF {
+						break
+					}
+					Expect(err).NotTo(HaveOccurred())
+					mdContents[hdr.Name] = struct{}{}
+				}
+				Expect(mdContents).To(HaveKey("META-INF/"))
+				Expect(mdContents).To(HaveKey("META-INF/index.json"))
 			})
 		})
 
