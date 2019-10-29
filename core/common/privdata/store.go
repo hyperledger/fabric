@@ -45,6 +45,8 @@ type ChaincodeInfoProvider interface {
 	// CollectionInfo returns the proto msg that defines the named collection.
 	// This function can be used for both explicit and implicit collections.
 	CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
+	// AllCollectionsConfigPkg returns a combined collection config pkg that contains both explicit and implicit collections
+	AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error)
 }
 
 // IdentityDeserializerFactory creates msp.IdentityDeserializer for
@@ -94,14 +96,7 @@ func (c *SimpleCollectionStore) retrieveCollectionConfigPackage(cc CollectionCri
 		}
 		defer qe.Done()
 	}
-	ccInfo, err := c.ccInfoProvider.ChaincodeInfo(cc.Channel, cc.Namespace, qe)
-	if err != nil {
-		return nil, err
-	}
-	if ccInfo == nil {
-		return nil, errors.Errorf("Chaincode [%s] does not exist", cc.Namespace)
-	}
-	return ccInfo.AllCollectionsConfigPkg(), nil
+	return c.ccInfoProvider.AllCollectionsConfigPkg(cc.Channel, cc.Namespace, qe)
 }
 
 // RetrieveCollectionConfigPackageFromState retrieves the collection config package from the given key from the given state

@@ -43,6 +43,7 @@ func TestNewSimpleCollectionStore(t *testing.T) {
 func TestCollectionStore(t *testing.T) {
 	mockQueryExecutorFactory := &mock.QueryExecutorFactory{}
 	mockCCInfoProvider := &mock.ChaincodeInfoProvider{}
+	mockCCInfoProvider.AllCollectionsConfigPkgReturns(nil, errors.New("Chaincode [non-existing-chaincode] does not exist"))
 	mockIDDeserializerFactory := &mock.IdentityDeserializerFactory{}
 	mockIDDeserializerFactory.GetIdentityDeserializerReturns(&mockDeserializer{})
 
@@ -109,6 +110,7 @@ func TestCollectionStore(t *testing.T) {
 		&ledger.DeployedChaincodeInfo{ExplicitCollectionConfigPkg: ccp},
 		nil,
 	)
+	mockCCInfoProvider.AllCollectionsConfigPkgReturns(ccp, nil)
 
 	ccc, err := cs.RetrieveCollectionConfigPackage(ccr)
 	assert.NoError(t, err)

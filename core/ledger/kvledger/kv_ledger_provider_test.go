@@ -567,6 +567,13 @@ func testutilNewProviderWithCollectionConfig(
 		return nil, nil
 	}
 
+	mockCCInfoProvider.AllCollectionsConfigPkgStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
+		if ccName == namespace {
+			return collectionConfPkg, nil
+		}
+		return nil, nil
+	}
+
 	mockCCInfoProvider.CollectionInfoStub = func(channelName, ccName, collName string, qe lgr.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
 		if ccName == namespace {
 			return collMap[collName], nil

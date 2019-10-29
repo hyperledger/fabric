@@ -59,11 +59,10 @@ func AssemblePvtRWSet(channelName string,
 	for _, pvtRwset := range privData.NsPvtRwset {
 		namespace := pvtRwset.Namespace
 		if _, found := txPvtRwSetWithConfig.CollectionConfigs[namespace]; !found {
-			ccInfo, err := deployedCCInfoProvider.ChaincodeInfo(channelName, namespace, txsim)
+			colCP, err := deployedCCInfoProvider.AllCollectionsConfigPkg(channelName, namespace, txsim)
 			if err != nil {
 				return nil, errors.WithMessagef(err, "error while retrieving collection config for chaincode %#v", namespace)
 			}
-			colCP := ccInfo.AllCollectionsConfigPkg()
 			if colCP == nil {
 				return nil, errors.New(fmt.Sprintf("no collection config for chaincode %#v", namespace))
 			}

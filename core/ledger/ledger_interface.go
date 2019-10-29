@@ -556,6 +556,8 @@ type DeployedChaincodeInfoProvider interface {
 	CollectionInfo(channelName, chaincodeName, collectionName string, qe SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
 	// ImplicitCollections returns a slice that contains one proto msg for each of the implicit collections
 	ImplicitCollections(channelName, chaincodeName string, qe SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)
+	// AllCollectionsConfigPkg returns a combined collection config pkg that contains both explicit and implicit collections
+	AllCollectionsConfigPkg(channelName, chaincodeName string, qe SimpleQueryExecutor) (*common.CollectionConfigPackage, error)
 }
 
 // DeployedChaincodeInfo encapsulates chaincode information from the deployed chaincodes
@@ -564,27 +566,7 @@ type DeployedChaincodeInfo struct {
 	Hash                        []byte
 	Version                     string
 	ExplicitCollectionConfigPkg *common.CollectionConfigPackage
-	ImplicitCollections         []*common.StaticCollectionConfig
 	IsLegacy                    bool
-}
-
-// GetAllCollectionsConfigPkg returns a combined collection config pkg that contains both explicit and implicit collections
-func (dci DeployedChaincodeInfo) AllCollectionsConfigPkg() *common.CollectionConfigPackage {
-	var combinedColls []*common.CollectionConfig
-	if dci.ExplicitCollectionConfigPkg != nil {
-		combinedColls = append(combinedColls, dci.ExplicitCollectionConfigPkg.Config...)
-	}
-	for _, implicitColl := range dci.ImplicitCollections {
-		c := &common.CollectionConfig{}
-		c.Payload = &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
-		combinedColls = append(combinedColls, c)
-	}
-	if combinedColls == nil {
-		return nil
-	}
-	return &common.CollectionConfigPackage{
-		Config: combinedColls,
-	}
 }
 
 // ChaincodeLifecycleInfo captures the update info of a chaincode

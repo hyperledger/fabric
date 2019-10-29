@@ -504,7 +504,7 @@ func (p *Peer) Initialize(
 		peerLogger.Infof("Loading chain %s", cid)
 		ledger, err := p.LedgerMgr.OpenLedger(cid)
 		if err != nil {
-			peerLogger.Errorf("Failed to load ledger %s(%s)", cid, err)
+			peerLogger.Errorf("Failed to load ledger %s(%+v)", cid, err)
 			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}

@@ -87,6 +87,14 @@ func TestCollectionInfo(t *testing.T) {
 	collInfo3, err := ccInfoProvdier.CollectionInfo("", "cc2", "non-existing-coll-in-cc2", mockQE)
 	assert.NoError(t, err)
 	assert.Nil(t, collInfo3)
+
+	ccPkg1, err := ccInfoProvdier.AllCollectionsConfigPkg("", "cc1", mockQE)
+	assert.NoError(t, err)
+	assert.Nil(t, ccPkg1)
+
+	ccPkg2, err := ccInfoProvdier.AllCollectionsConfigPkg("", "cc2", mockQE)
+	assert.NoError(t, err)
+	assert.Equal(t, prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}), ccPkg2)
 }
 
 func prepareMockQE(t *testing.T, deployedChaincodes []*ledger.DeployedChaincodeInfo) *mock.QueryExecutor {

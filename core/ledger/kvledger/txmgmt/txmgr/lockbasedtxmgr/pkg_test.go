@@ -188,9 +188,9 @@ func populateCollConfigForTest(t *testing.T, txMgr *LockBasedTxMgr, nsColls []co
 		pkg.Config = append(pkg.Config, &common.CollectionConfig{Payload: sCollConfig})
 	}
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	ccInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+	ccInfoProvider.AllCollectionsConfigPkgStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
 		fmt.Printf("retrieveing info for [%s] from [%s]\n", ccName, m)
-		return &ledger.DeployedChaincodeInfo{Name: ccName, ExplicitCollectionConfigPkg: m[ccName]}, nil
+		return m[ccName], nil
 	}
 	txMgr.ccInfoProvider = ccInfoProvider
 }
