@@ -30,7 +30,7 @@ in a block with no other transactions. These blocks are referred to as
 *Genesis Block*.
 
 The proto structures for configuration are stored in
-``fabric/protos/common/configtx.proto``. The Envelope of type
+``fabric-protos/common/configtx.proto``. The Envelope of type
 ``HeaderType_CONFIG`` encodes a ``ConfigEnvelope`` message as the
 ``Payload`` ``data`` field. The proto for ``ConfigEnvelope`` is defined
 as follows:
@@ -266,12 +266,12 @@ Permitted configuration groups and values
 Any valid configuration is a subset of the following configuration. Here
 we use the notation ``peer.<MSG>`` to define a ``ConfigValue`` whose
 ``value`` field is a marshaled proto message of name ``<MSG>`` defined
-in ``fabric/protos/peer/configuration.proto``. The notations
+in ``fabric-protos/peer/configuration.proto``. The notations
 ``common.<MSG>``, ``msp.<MSG>``, and ``orderer.<MSG>`` correspond
 similarly, but with their messages defined in
-``fabric/protos/common/configuration.proto``,
-``fabric/protos/msp/mspconfig.proto``, and
-``fabric/protos/orderer/configuration.proto`` respectively.
+``fabric-protos/common/configuration.proto``,
+``fabric-protos/msp/mspconfig.proto``, and
+``fabric-protos/orderer/configuration.proto`` respectively.
 
 Note, that the keys ``{{org_name}}`` and ``{{consortium_name}}``
 represent arbitrary names, and indicate an element which may be repeated

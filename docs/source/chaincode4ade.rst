@@ -99,7 +99,7 @@ First, let's start with some housekeeping. As with every chaincode, it implement
 in particular, ``Init`` and ``Invoke`` functions. So, let's add the Go import
 statements for the necessary dependencies for our chaincode. We'll import the
 chaincode shim package and the
-`peer protobuf package <https://godoc.org/github.com/hyperledger/fabric/protos/peer>`_.
+`peer protobuf package <https://godoc.org/github.com/hyperledger/fabric-protos-go/peer>`_.
 Next, let's add a struct ``SimpleAsset`` as a receiver for Chaincode shim functions.
 
 .. code:: go

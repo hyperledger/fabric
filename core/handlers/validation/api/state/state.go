@@ -19,7 +19,7 @@ type State interface {
 	// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 	// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
 	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
-	// The returned ResultsIterator contains results of type *KV which is defined in protos/ledger/queryresult.
+	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
 
 	// GetStateMetadata returns the metadata for given namespace and key
