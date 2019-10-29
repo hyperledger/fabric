@@ -53,7 +53,7 @@ func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
 	return internal.NewRegisterClient(conn)
 }
 
-// chaincodes.
+// Start chaincodes
 func Start(cc Chaincode) error {
 	flag.Parse()
 	chaincodename := os.Getenv("CORE_CHAINCODE_ID_NAME")

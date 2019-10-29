@@ -17,13 +17,16 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+// Config ...
 type Config struct {
 	ChaincodeName string
 	TLS           *tls.Config
 	KaOpts        keepalive.ClientParameters
 }
 
+// LoadConfig ...
 func LoadConfig() (Config, error) {
+	var err error
 	tlsEnabled, err := strconv.ParseBool(os.Getenv("CORE_PEER_TLS_ENABLED"))
 	if err != nil {
 		return Config{}, errors.New("'CORE_PEER_TLS_ENABLED' must be set to 'true' or 'false'")
@@ -43,22 +46,42 @@ func LoadConfig() (Config, error) {
 		return conf, nil
 	}
 
-	data, err := ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_KEY_PATH"))
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to read private key file: %s", err)
+	var key []byte
+	path, set := os.LookupEnv("CORE_TLS_CLIENT_KEY_FILE")
+	if set {
+		key, err = ioutil.ReadFile(path)
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to read private key file: %s", err)
+		}
+	} else {
+		data, err := ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_KEY_PATH"))
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to read private key file: %s", err)
+		}
+		key, err = base64.StdEncoding.DecodeString(string(data))
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to decode private key file: %s", err)
+		}
 	}
-	key, err := base64.StdEncoding.DecodeString(string(data))
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to decode private key file: %s", err)
+
+	var cert []byte
+	path, set = os.LookupEnv("CORE_TLS_CLIENT_CERT_FILE")
+	if set {
+		cert, err = ioutil.ReadFile(path)
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to read public key file: %s", err)
+		}
+	} else {
+		data, err := ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_CERT_PATH"))
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to read public key file: %s", err)
+		}
+		cert, err = base64.StdEncoding.DecodeString(string(data))
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to decode public key file: %s", err)
+		}
 	}
-	data, err = ioutil.ReadFile(os.Getenv("CORE_TLS_CLIENT_CERT_PATH"))
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to read public key file: %s", err)
-	}
-	cert, err := base64.StdEncoding.DecodeString(string(data))
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to decode public key file: %s", err)
-	}
+
 	root, err := ioutil.ReadFile(os.Getenv("CORE_PEER_TLS_ROOTCERT_FILE"))
 	if err != nil {
 		return Config{}, fmt.Errorf("failed to read root cert file: %s", err)

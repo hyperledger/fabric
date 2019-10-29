@@ -19,6 +19,7 @@ const (
 	ERROR = 500
 )
 
+// Success ...
 func Success(payload []byte) pb.Response {
 	return pb.Response{
 		Status:  OK,
@@ -26,6 +27,7 @@ func Success(payload []byte) pb.Response {
 	}
 }
 
+// Error ...
 func Error(msg string) pb.Response {
 	return pb.Response{
 		Status:  ERROR,

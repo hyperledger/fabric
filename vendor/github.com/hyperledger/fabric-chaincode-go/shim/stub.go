@@ -21,7 +21,7 @@ import (
 // APIs.
 type ChaincodeStub struct {
 	TxID                       string
-	ChannelId                  string
+	ChannelID                  string
 	chaincodeEvent             *pb.ChaincodeEvent
 	args                       [][]byte
 	handler                    *Handler
@@ -39,10 +39,10 @@ type ChaincodeStub struct {
 
 // ChaincodeInvocation functionality
 
-func newChaincodeStub(handler *Handler, channelId, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) (*ChaincodeStub, error) {
+func newChaincodeStub(handler *Handler, channelID, txid string, input *pb.ChaincodeInput, signedProposal *pb.SignedProposal) (*ChaincodeStub, error) {
 	stub := &ChaincodeStub{
 		TxID:                       txid,
-		ChannelId:                  channelId,
+		ChannelID:                  channelID,
 		args:                       input.Args,
 		handler:                    handler,
 		signedProposal:             signedProposal,
@@ -124,9 +124,10 @@ func (s *ChaincodeStub) GetTxID() string {
 
 // GetChannelID returns the channel for the proposal
 func (s *ChaincodeStub) GetChannelID() string {
-	return s.ChannelId
+	return s.ChannelID
 }
 
+// GetDecorations ...
 func (s *ChaincodeStub) GetDecorations() map[string][]byte {
 	return s.decorations
 }
@@ -139,7 +140,7 @@ func (s *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte, cha
 	if channel != "" {
 		chaincodeName = chaincodeName + "/" + channel
 	}
-	return s.handler.handleInvokeChaincode(chaincodeName, args, s.ChannelId, s.TxID)
+	return s.handler.handleInvokeChaincode(chaincodeName, args, s.ChannelID, s.TxID)
 }
 
 // --------- State functions ----------
@@ -148,17 +149,17 @@ func (s *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte, cha
 func (s *ChaincodeStub) GetState(key string) ([]byte, error) {
 	// Access public data by setting the collection to empty string
 	collection := ""
-	return s.handler.handleGetState(collection, key, s.ChannelId, s.TxID)
+	return s.handler.handleGetState(collection, key, s.ChannelID, s.TxID)
 }
 
 // SetStateValidationParameter documentation can be found in interfaces.go
 func (s *ChaincodeStub) SetStateValidationParameter(key string, ep []byte) error {
-	return s.handler.handlePutStateMetadataEntry("", key, s.validationParameterMetakey, ep, s.ChannelId, s.TxID)
+	return s.handler.handlePutStateMetadataEntry("", key, s.validationParameterMetakey, ep, s.ChannelID, s.TxID)
 }
 
 // GetStateValidationParameter documentation can be found in interfaces.go
 func (s *ChaincodeStub) GetStateValidationParameter(key string) ([]byte, error) {
-	md, err := s.handler.handleGetStateMetadata("", key, s.ChannelId, s.TxID)
+	md, err := s.handler.handleGetStateMetadata("", key, s.ChannelID, s.TxID)
 	if err != nil {
 		return nil, err
 	}
@@ -175,14 +176,14 @@ func (s *ChaincodeStub) PutState(key string, value []byte) error {
 	}
 	// Access public data by setting the collection to empty string
 	collection := ""
-	return s.handler.handlePutState(collection, key, value, s.ChannelId, s.TxID)
+	return s.handler.handlePutState(collection, key, value, s.ChannelID, s.TxID)
 }
 
 func (s *ChaincodeStub) createStateQueryIterator(response *pb.QueryResponse) *StateQueryIterator {
 	return &StateQueryIterator{
 		CommonIterator: &CommonIterator{
 			handler:    s.handler,
-			channelId:  s.ChannelId,
+			channelID:  s.ChannelID,
 			txid:       s.TxID,
 			response:   response,
 			currentLoc: 0,
@@ -204,7 +205,7 @@ func (s *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInterfac
 func (s *ChaincodeStub) DelState(key string) error {
 	// Access public data by setting the collection to empty string
 	collection := ""
-	return s.handler.handleDelState(collection, key, s.ChannelId, s.TxID)
+	return s.handler.handleDelState(collection, key, s.ChannelID, s.TxID)
 }
 
 //  ---------  private state functions  ---------
@@ -214,7 +215,7 @@ func (s *ChaincodeStub) GetPrivateData(collection string, key string) ([]byte, e
 	if collection == "" {
 		return nil, fmt.Errorf("collection must not be an empty string")
 	}
-	return s.handler.handleGetState(collection, key, s.ChannelId, s.TxID)
+	return s.handler.handleGetState(collection, key, s.ChannelID, s.TxID)
 }
 
 // GetPrivateDataHash documentation can be found in interfaces.go
@@ -222,7 +223,7 @@ func (s *ChaincodeStub) GetPrivateDataHash(collection string, key string) ([]byt
 	if collection == "" {
 		return nil, fmt.Errorf("collection must not be an empty string")
 	}
-	return s.handler.handleGetPrivateDataHash(collection, key, s.ChannelId, s.TxID)
+	return s.handler.handleGetPrivateDataHash(collection, key, s.ChannelID, s.TxID)
 }
 
 // PutPrivateData documentation can be found in interfaces.go
@@ -233,7 +234,7 @@ func (s *ChaincodeStub) PutPrivateData(collection string, key string, value []by
 	if key == "" {
 		return fmt.Errorf("key must not be an empty string")
 	}
-	return s.handler.handlePutState(collection, key, value, s.ChannelId, s.TxID)
+	return s.handler.handlePutState(collection, key, value, s.ChannelID, s.TxID)
 }
 
 // DelPrivateData documentation can be found in interfaces.go
@@ -241,7 +242,7 @@ func (s *ChaincodeStub) DelPrivateData(collection string, key string) error {
 	if collection == "" {
 		return fmt.Errorf("collection must not be an empty string")
 	}
-	return s.handler.handleDelState(collection, key, s.ChannelId, s.TxID)
+	return s.handler.handleDelState(collection, key, s.ChannelID, s.TxID)
 }
 
 // GetPrivateDataByRange documentation can be found in interfaces.go
@@ -301,7 +302,7 @@ func (s *ChaincodeStub) GetPrivateDataQueryResult(collection, query string) (Sta
 
 // GetPrivateDataValidationParameter documentation can be found in interfaces.go
 func (s *ChaincodeStub) GetPrivateDataValidationParameter(collection, key string) ([]byte, error) {
-	md, err := s.handler.handleGetStateMetadata(collection, key, s.ChannelId, s.TxID)
+	md, err := s.handler.handleGetStateMetadata(collection, key, s.ChannelID, s.TxID)
 	if err != nil {
 		return nil, err
 	}
@@ -313,13 +314,13 @@ func (s *ChaincodeStub) GetPrivateDataValidationParameter(collection, key string
 
 // SetPrivateDataValidationParameter documentation can be found in interfaces.go
 func (s *ChaincodeStub) SetPrivateDataValidationParameter(collection, key string, ep []byte) error {
-	return s.handler.handlePutStateMetadataEntry(collection, key, s.validationParameterMetakey, ep, s.ChannelId, s.TxID)
+	return s.handler.handlePutStateMetadataEntry(collection, key, s.validationParameterMetakey, ep, s.ChannelID, s.TxID)
 }
 
 // CommonIterator documentation can be found in interfaces.go
 type CommonIterator struct {
 	handler    *Handler
-	channelId  string
+	channelID  string
 	txid       string
 	response   *pb.QueryResponse
 	currentLoc int
@@ -341,9 +342,13 @@ type queryResult interface{}
 
 type resultType uint8
 
+// TODO: Document constants
+/*
+	Constants ...
+ */
 const (
-	STATE_QUERY_RESULT resultType = iota + 1
-	HISTORY_QUERY_RESULT
+	StateQueryResult resultType = iota + 1
+	HistoryQueryResult
 )
 
 func createQueryResponseMetadata(metadataBytes []byte) (*pb.QueryResponseMetadata, error) {
@@ -359,7 +364,7 @@ func createQueryResponseMetadata(metadataBytes []byte) (*pb.QueryResponseMetadat
 func (s *ChaincodeStub) handleGetStateByRange(collection, startKey, endKey string,
 	metadata []byte) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 
-	response, err := s.handler.handleGetStateByRange(collection, startKey, endKey, metadata, s.ChannelId, s.TxID)
+	response, err := s.handler.handleGetStateByRange(collection, startKey, endKey, metadata, s.ChannelID, s.TxID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -376,7 +381,7 @@ func (s *ChaincodeStub) handleGetStateByRange(collection, startKey, endKey strin
 func (s *ChaincodeStub) handleGetQueryResult(collection, query string,
 	metadata []byte) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 
-	response, err := s.handler.handleGetQueryResult(collection, query, metadata, s.ChannelId, s.TxID)
+	response, err := s.handler.handleGetQueryResult(collection, query, metadata, s.ChannelID, s.TxID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -408,11 +413,11 @@ func (s *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryIter
 
 // GetHistoryForKey documentation can be found in interfaces.go
 func (s *ChaincodeStub) GetHistoryForKey(key string) (HistoryQueryIteratorInterface, error) {
-	response, err := s.handler.handleGetHistoryForKey(key, s.ChannelId, s.TxID)
+	response, err := s.handler.handleGetHistoryForKey(key, s.ChannelID, s.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &HistoryQueryIterator{CommonIterator: &CommonIterator{s.handler, s.ChannelId, s.TxID, response, 0}}, nil
+	return &HistoryQueryIterator{CommonIterator: &CommonIterator{s.handler, s.ChannelID, s.TxID, response, 0}}, nil
 }
 
 //CreateCompositeKey documentation can be found in interfaces.go
@@ -425,6 +430,7 @@ func (s *ChaincodeStub) SplitCompositeKey(compositeKey string) (string, []string
 	return splitCompositeKey(compositeKey)
 }
 
+// CreateCompositeKey ...
 func CreateCompositeKey(objectType string, attributes []string) (string, error) {
 	if err := validateCompositeKeyAttribute(objectType); err != nil {
 		return "", err
@@ -505,6 +511,7 @@ func createQueryMetadata(pageSize int32, bookmark string) ([]byte, error) {
 	return metadataBytes, nil
 }
 
+// GetStateByRangeWithPagination ...
 func (s *ChaincodeStub) GetStateByRangeWithPagination(startKey, endKey string, pageSize int32,
 	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 
@@ -525,6 +532,7 @@ func (s *ChaincodeStub) GetStateByRangeWithPagination(startKey, endKey string, p
 	return s.handleGetStateByRange(collection, startKey, endKey, metadata)
 }
 
+// GetStateByPartialCompositeKeyWithPagination ...
 func (s *ChaincodeStub) GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string,
 	pageSize int32, bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 
@@ -542,6 +550,7 @@ func (s *ChaincodeStub) GetStateByPartialCompositeKeyWithPagination(objectType s
 	return s.handleGetStateByRange(collection, startKey, endKey, metadata)
 }
 
+// GetQueryResultWithPagination ...
 func (s *ChaincodeStub) GetQueryResultWithPagination(query string, pageSize int32,
 	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 	// Access public data by setting the collection to empty string
@@ -554,20 +563,22 @@ func (s *ChaincodeStub) GetQueryResultWithPagination(query string, pageSize int3
 	return s.handleGetQueryResult(collection, query, metadata)
 }
 
+// Next ...
 func (iter *StateQueryIterator) Next() (*queryresult.KV, error) {
-	if result, err := iter.nextResult(STATE_QUERY_RESULT); err == nil {
-		return result.(*queryresult.KV), err
-	} else {
+	result, err := iter.nextResult(StateQueryResult)
+	if err != nil {
 		return nil, err
 	}
+	return result.(*queryresult.KV), err
 }
 
+// Next ...
 func (iter *HistoryQueryIterator) Next() (*queryresult.KeyModification, error) {
-	if result, err := iter.nextResult(HISTORY_QUERY_RESULT); err == nil {
-		return result.(*queryresult.KeyModification), err
-	} else {
+	result, err := iter.nextResult(HistoryQueryResult)
+	if err != nil {
 		return nil, err
 	}
+	return result.(*queryresult.KeyModification), err
 }
 
 // HasNext documentation can be found in interfaces.go
@@ -585,14 +596,14 @@ func (iter *CommonIterator) HasNext() bool {
 func (iter *CommonIterator) getResultFromBytes(queryResultBytes *pb.QueryResultBytes,
 	rType resultType) (queryResult, error) {
 
-	if rType == STATE_QUERY_RESULT {
+	if rType == StateQueryResult {
 		stateQueryResult := &queryresult.KV{}
 		if err := proto.Unmarshal(queryResultBytes.ResultBytes, stateQueryResult); err != nil {
 			return nil, fmt.Errorf("error unmarshaling result from bytes: %s", err)
 		}
 		return stateQueryResult, nil
 
-	} else if rType == HISTORY_QUERY_RESULT {
+	} else if rType == HistoryQueryResult {
 		historyQueryResult := &queryresult.KeyModification{}
 		if err := proto.Unmarshal(queryResultBytes.ResultBytes, historyQueryResult); err != nil {
 			return nil, err
@@ -603,13 +614,13 @@ func (iter *CommonIterator) getResultFromBytes(queryResultBytes *pb.QueryResultB
 }
 
 func (iter *CommonIterator) fetchNextQueryResult() error {
-	if response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.channelId, iter.txid); err == nil {
-		iter.currentLoc = 0
-		iter.response = response
-		return nil
-	} else {
+	response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.channelID, iter.txid)
+	if err != nil {
 		return err
 	}
+	iter.currentLoc = 0
+	iter.response = response
+	return nil
 }
 
 // nextResult returns the next QueryResult (i.e., either a KV struct or KeyModification)
@@ -644,7 +655,7 @@ func (iter *CommonIterator) nextResult(rType resultType) (queryResult, error) {
 
 // Close documentation can be found in interfaces.go
 func (iter *CommonIterator) Close() error {
-	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.channelId, iter.txid)
+	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.channelID, iter.txid)
 	return err
 }
 

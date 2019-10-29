@@ -365,7 +365,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d34c45c3c23a248b5e6fbe81f5663410ec779c36ccbfa6652f19d14c29d1c79b"
+  digest = "1:3744d14df8305f7573c5aeaa3752b57c8bb187d56a814ecbd775086b429c8727"
   name = "github.com/hyperledger/fabric-chaincode-go"
   packages = [
     "pkg/statebased",
@@ -374,7 +374,7 @@
     "shimtest",
   ]
   pruneopts = "NUT"
-  revision = "04390e015b8579092f488172f9d333df7f0f6b28"
+  revision = "d970cbc54e830c5dc8480ce3e71ffdc663d20fa5"
 
 [[projects]]
   digest = "1:0f4305e5a43e324844412168385a23ff23dafc55369fcbbc2ea77fb974f828cc"
@@ -386,7 +386,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:81ad31cdce826d64d33a2b9703ddd9982148ffedeea28768016d21b3efa55b73"
+  digest = "1:2e498febb5ff81551a3f2a2fb3f18dbae3845ee5491fe94750739f090b240e56"
   name = "github.com/hyperledger/fabric-protos-go"
   packages = [
     "common",
@@ -403,7 +403,7 @@
     "transientstore",
   ]
   pruneopts = "NUT"
-  revision = "26c33c998676be969a8e0f4824defb3ee90a3d05"
+  revision = "2a87503ac7c970614232720fc4a278536fe12a6f"
 
 [[projects]]
   branch = "master"
