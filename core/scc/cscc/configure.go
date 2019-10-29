@@ -120,7 +120,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub: [%s]", err))
 	}
 
-	name, err := InvokedChaincodeName(sp.ProposalBytes)
+	name, err := protoutil.InvokedChaincodeName(sp.ProposalBytes)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Could not identify the called chaincode: [%s]", err))
 	}
@@ -130,36 +130,6 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	return e.InvokeNoShim(args, sp)
-}
-
-func InvokedChaincodeName(proposalBytes []byte) (string, error) {
-	proposal := &pb.Proposal{}
-	err := proto.Unmarshal(proposalBytes, proposal)
-	if err != nil {
-		return "", errors.WithMessage(err, "could not unmarshal proposal")
-	}
-
-	proposalPayload := &pb.ChaincodeProposalPayload{}
-	err = proto.Unmarshal(proposal.Payload, proposalPayload)
-	if err != nil {
-		return "", errors.WithMessage(err, "could not unmarshal chaincode proposal payload")
-	}
-
-	cis := &pb.ChaincodeInvocationSpec{}
-	err = proto.Unmarshal(proposalPayload.Input, cis)
-	if err != nil {
-		return "", errors.WithMessage(err, "could not unmarshal chaincode invocation spec")
-	}
-
-	if cis.ChaincodeSpec == nil {
-		return "", errors.Errorf("chaincode spec is nil")
-	}
-
-	if cis.ChaincodeSpec.ChaincodeId == nil {
-		return "", errors.Errorf("chaincode id is nil")
-	}
-
-	return cis.ChaincodeSpec.ChaincodeId.Name, nil
 }
 
 func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Response {

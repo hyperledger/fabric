@@ -88,55 +88,6 @@ func TestMain(m *testing.M) {
 
 }
 
-func TestInvokedChaincodeName(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		name, err := InvokedChaincodeName(validSignedProposal().ProposalBytes)
-		assert.NoError(t, err)
-		assert.Equal(t, "cscc", name)
-	})
-
-	t.Run("BadProposalBytes", func(t *testing.T) {
-		_, err := InvokedChaincodeName([]byte("garbage"))
-		assert.EqualError(t, err, "could not unmarshal proposal: proto: can't skip unknown wire type 7")
-	})
-
-	t.Run("BadChaincodeProposalBytes", func(t *testing.T) {
-		_, err := InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
-			Payload: []byte("garbage"),
-		}))
-		assert.EqualError(t, err, "could not unmarshal chaincode proposal payload: proto: can't skip unknown wire type 7")
-	})
-
-	t.Run("BadChaincodeInvocationSpec", func(t *testing.T) {
-		_, err := InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
-			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
-				Input: []byte("garbage"),
-			}),
-		}))
-		assert.EqualError(t, err, "could not unmarshal chaincode invocation spec: proto: can't skip unknown wire type 7")
-	})
-
-	t.Run("NilChaincodeSpec", func(t *testing.T) {
-		_, err := InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
-			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
-				Input: protoutil.MarshalOrPanic(&pb.ChaincodeInvocationSpec{}),
-			}),
-		}))
-		assert.EqualError(t, err, "chaincode spec is nil")
-	})
-
-	t.Run("NilChaincodeID", func(t *testing.T) {
-		_, err := InvokedChaincodeName(protoutil.MarshalOrPanic(&pb.Proposal{
-			Payload: protoutil.MarshalOrPanic(&pb.ChaincodeProposalPayload{
-				Input: protoutil.MarshalOrPanic(&pb.ChaincodeInvocationSpec{
-					ChaincodeSpec: &pb.ChaincodeSpec{},
-				}),
-			}),
-		}))
-		assert.EqualError(t, err, "chaincode id is nil")
-	})
-}
-
 func TestConfigerInit(t *testing.T) {
 	mockACLProvider := &mocks.ACLProvider{}
 	mockStub := &mocks.ChaincodeStub{}
