@@ -38,6 +38,7 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 		Block:      "config",
 		Orderer:    n.OrdererAddress(orderer, ListenPort),
 		OutputFile: output,
+		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -96,7 +97,10 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
-		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{File: updateFile})
+		sess, err := n.PeerAdminSession(signer, commands.SignConfigTx{
+			File:       updateFile,
+			ClientAuth: n.ClientAuthRequired,
+		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
@@ -110,9 +114,10 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	}
 
 	sess, err := n.PeerAdminSession(submitter, commands.ChannelUpdate{
-		ChannelID: channel,
-		Orderer:   n.OrdererAddress(orderer, ListenPort),
-		File:      updateFile,
+		ChannelID:  channel,
+		Orderer:    n.OrdererAddress(orderer, ListenPort),
+		File:       updateFile,
+		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -161,6 +166,7 @@ func CurrentConfigBlockNumberFromPeer(n *Network, peer *Peer, channel, output st
 		ChannelID:  channel,
 		Block:      "config",
 		OutputFile: output,
+		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
@@ -179,6 +185,7 @@ func FetchConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string, 
 			Block:      "config",
 			Orderer:    n.OrdererAddress(orderer, ListenPort),
 			OutputFile: output,
+			ClientAuth: n.ClientAuthRequired,
 		})
 		Expect(err).NotTo(HaveOccurred())
 		code := sess.Wait(n.EventuallyTimeout).ExitCode()
@@ -203,9 +210,10 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 
 	Eventually(func() bool {
 		sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
-			ChannelID: channel,
-			Orderer:   n.OrdererAddress(orderer, ListenPort),
-			File:      updateFile,
+			ChannelID:  channel,
+			Orderer:    n.OrdererAddress(orderer, ListenPort),
+			File:       updateFile,
+			ClientAuth: n.ClientAuthRequired,
 		})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -235,9 +243,10 @@ func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, cu
 
 	//session should not return with a zero exit code nor with a success response
 	sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
-		ChannelID: channel,
-		Orderer:   n.OrdererAddress(orderer, ListenPort),
-		File:      updateFile,
+		ChannelID:  channel,
+		Orderer:    n.OrdererAddress(orderer, ListenPort),
+		File:       updateFile,
+		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())

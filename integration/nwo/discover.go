@@ -8,6 +8,7 @@ package nwo
 
 import (
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/gomega"
@@ -33,6 +34,10 @@ func DiscoverPeers(n *Network, p *Peer, user, channelName string) func() []Disco
 			MSPID:    n.Organization(p.Organization).MSPID,
 			Server:   n.PeerAddress(p, ListenPort),
 			Channel:  channelName,
+		}
+		if n.ClientAuthRequired {
+			peers.ClientCert = filepath.Join(n.PeerUserTLSDir(p, user), "client.crt")
+			peers.ClientKey = filepath.Join(n.PeerUserTLSDir(p, user), "client.key")
 		}
 		sess, err := n.Discover(peers)
 		Expect(err).NotTo(HaveOccurred())

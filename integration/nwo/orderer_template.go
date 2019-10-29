@@ -17,7 +17,7 @@ General:
     Certificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
     RootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
-    ClientAuthRequired: false
+    ClientAuthRequired: {{ $w.ClientAuthRequired }}
     ClientRootCAs:
   Cluster:
     ClientCertificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
@@ -103,7 +103,7 @@ Operations:
     Certificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
     RootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
-    ClientAuthRequired: false
+    ClientAuthRequired: {{ $w.ClientAuthRequired }}
     ClientRootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
 Metrics:

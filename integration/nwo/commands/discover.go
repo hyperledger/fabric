@@ -7,11 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package commands
 
 type Peers struct {
-	UserCert string
-	UserKey  string
-	MSPID    string
-	Server   string
-	Channel  string
+	UserCert   string
+	UserKey    string
+	MSPID      string
+	Server     string
+	Channel    string
+	ClientCert string
+	ClientKey  string
 }
 
 func (p Peers) SessionName() string {
@@ -19,7 +21,7 @@ func (p Peers) SessionName() string {
 }
 
 func (p Peers) Args() []string {
-	return []string{
+	args := []string{
 		"--userCert", p.UserCert,
 		"--userKey", p.UserKey,
 		"--MSP", p.MSPID,
@@ -27,14 +29,23 @@ func (p Peers) Args() []string {
 		"--server", p.Server,
 		"--channel", p.Channel,
 	}
+	if p.ClientCert != "" {
+		args = append(args, "--tlsCert", p.ClientCert)
+	}
+	if p.ClientKey != "" {
+		args = append(args, "--tlsKey", p.ClientKey)
+	}
+	return args
 }
 
 type Config struct {
-	UserCert string
-	UserKey  string
-	MSPID    string
-	Server   string
-	Channel  string
+	UserCert   string
+	UserKey    string
+	MSPID      string
+	Server     string
+	Channel    string
+	ClientCert string
+	ClientKey  string
 }
 
 func (c Config) SessionName() string {
@@ -42,7 +53,7 @@ func (c Config) SessionName() string {
 }
 
 func (c Config) Args() []string {
-	return []string{
+	args := []string{
 		"--userCert", c.UserCert,
 		"--userKey", c.UserKey,
 		"--MSP", c.MSPID,
@@ -50,6 +61,13 @@ func (c Config) Args() []string {
 		"--server", c.Server,
 		"--channel", c.Channel,
 	}
+	if c.ClientCert != "" {
+		args = append(args, "--tlsCert", c.ClientCert)
+	}
+	if c.ClientKey != "" {
+		args = append(args, "--tlsKey", c.ClientKey)
+	}
+	return args
 }
 
 type Endorsers struct {
@@ -62,6 +80,8 @@ type Endorsers struct {
 	Chaincodes  []string
 	Collection  string
 	Collections []string
+	ClientCert  string
+	ClientKey   string
 }
 
 func (e Endorsers) SessionName() string {
@@ -76,6 +96,12 @@ func (e Endorsers) Args() []string {
 		"endorsers",
 		"--server", e.Server,
 		"--channel", e.Channel,
+	}
+	if e.ClientCert != "" {
+		args = append(args, "--tlsCert", e.ClientCert)
+	}
+	if e.ClientKey != "" {
+		args = append(args, "--tlsKey", e.ClientKey)
 	}
 	if e.Chaincode != "" {
 		args = append(args, "--chaincode", e.Chaincode)
