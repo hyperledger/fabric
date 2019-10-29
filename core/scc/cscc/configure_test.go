@@ -161,7 +161,7 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	)
 	assert.Equal(
 		t,
-		"Could not identify the called chaincode: [could not unmarshal proposal: proto: can't skip unknown wire type 7]",
+		"Failed to identify the called chaincode: could not unmarshal proposal: proto: can't skip unknown wire type 7",
 		res.Message,
 	)
 
@@ -190,7 +190,7 @@ func TestConfigerInvokeInvalidParameters(t *testing.T) {
 	)
 	assert.Equal(
 		t,
-		"Cannot invoke CSCC from another chaincode, original invocation for 'fake-cc2cc'",
+		"Rejecting invoke of CSCC from another chaincode, original invocation for 'fake-cc2cc'",
 		res.Message,
 	)
 
