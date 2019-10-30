@@ -115,7 +115,7 @@ func main() {
 	var quiet bool
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort), "The RPC server to connect to.")
-	flag.StringVar(&channelID, "channelID", localconfig.Defaults.General.SystemChannel, "The channel ID to deliver from.")
+	flag.StringVar(&channelID, "channelID", "mychannel", "The channel ID to deliver from.")
 	flag.BoolVar(&quiet, "quiet", false, "Only print the block number, will not attempt to print its block contents.")
 	flag.IntVar(&seek, "seek", -2, "Specify the range of requested blocks."+
 		"Acceptable values:"+

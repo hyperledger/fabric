@@ -46,7 +46,7 @@ func (s *broadcastClient) getAck() error {
 		return err
 	}
 	if msg.Status != cb.Status_SUCCESS {
-		return fmt.Errorf("Got unexpected status: %v - %s", msg.Status, msg.Info)
+		return fmt.Errorf("got unexpected status: %v - %s", msg.Status, msg.Info)
 	}
 	return nil
 }
@@ -79,7 +79,7 @@ func main() {
 	var bar *pb.ProgressBar
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort), "The RPC server to connect to.")
-	flag.StringVar(&channelID, "channelID", localconfig.Defaults.General.SystemChannel, "The channel ID to broadcast to.")
+	flag.StringVar(&channelID, "channelID", "mychannel", "The channel ID to broadcast to.")
 	flag.Uint64Var(&messages, "messages", 1, "The number of messages to broadcast.")
 	flag.Uint64Var(&goroutines, "goroutines", 1, "The number of concurrent go routines to broadcast the messages on")
 	flag.Uint64Var(&msgSize, "size", 1024, "The size in bytes of the data section for the payload")
