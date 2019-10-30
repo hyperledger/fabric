@@ -51,9 +51,8 @@ mandatory for Raft nodes.
 * `GenesisFile` --- this is the name of the genesis block you will generate for
 this ordering service.
 
-* `GenesisMethod` --- the method by which the genesis block is created. This can
-be either `file`, in which the file in the `GenesisFile` is specified, and
-`provisional`, in which the profile in `GenesisProfile` is used.
+* `GenesisMethod` --- the method by which the genesis block is created. For now,
+this can only be `file`, in which the file in the `GenesisFile` is specified.
 
 If you are deploying this node as part of a cluster (for example, as part of a
 cluster of Raft nodes), make note of the `Cluster` and `Consensus` sections.

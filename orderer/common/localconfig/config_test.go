@@ -162,14 +162,6 @@ func TestClusterDefaults(t *testing.T) {
 	assert.Equal(t, cfg.General.Cluster.ReplicationMaxRetries, Defaults.General.Cluster.ReplicationMaxRetries)
 }
 
-func TestSystemChannel(t *testing.T) {
-	cleanup := configtest.SetDevFabricConfigPath(t)
-	defer cleanup()
-	conf, _ := Load()
-	assert.Equal(t, Defaults.General.SystemChannel, conf.General.SystemChannel,
-		"Expected default system channel ID to be '%s', got '%s' instead", Defaults.General.SystemChannel, conf.General.SystemChannel)
-}
-
 func TestConsensusConfig(t *testing.T) {
 	name, err := ioutil.TempDir("", "hyperledger_fabric")
 	assert.Nil(t, err, "Error creating temp dir: %s", err)

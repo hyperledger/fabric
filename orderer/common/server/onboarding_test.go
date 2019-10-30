@@ -239,7 +239,6 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 
 	config := &localconfig.TopLevel{
 		General: localconfig.General{
-			SystemChannel: "system",
 			Cluster: localconfig.Cluster{
 				ReplicationPullTimeout:  time.Hour,
 				DialTimeout:             time.Hour,
@@ -593,8 +592,7 @@ func TestReplicate(t *testing.T) {
 			bootBlock:          &bootBlock,
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
-					SystemChannel: "system",
-					Cluster:       clusterConfig,
+					Cluster: clusterConfig,
 				},
 			},
 			secOpts: comm.SecureOptions{
@@ -615,8 +613,7 @@ func TestReplicate(t *testing.T) {
 			bootBlock:          &bootBlock,
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
-					SystemChannel: "system",
-					Cluster:       clusterConfig,
+					Cluster: clusterConfig,
 				},
 			},
 			secOpts: comm.SecureOptions{
@@ -652,8 +649,7 @@ func TestReplicate(t *testing.T) {
 			bootBlock:          &bootBlock,
 			conf: &localconfig.TopLevel{
 				General: localconfig.General{
-					SystemChannel: "system",
-					Cluster:       clusterConfig,
+					Cluster: clusterConfig,
 				},
 			},
 			secOpts: comm.SecureOptions{

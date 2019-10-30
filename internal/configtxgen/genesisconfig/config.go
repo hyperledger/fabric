@@ -147,8 +147,7 @@ type AnchorPeer struct {
 	Port int    `yaml:"Port"`
 }
 
-// Orderer contains configuration which is used for the
-// bootstrapping of an orderer by the provisional bootstrapper.
+// Orderer contains configuration associated to a channel.
 type Orderer struct {
 	OrdererType   string                   `yaml:"OrdererType"`
 	Addresses     []string                 `yaml:"Addresses"`

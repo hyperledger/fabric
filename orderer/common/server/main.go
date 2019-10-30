@@ -41,8 +41,6 @@ import (
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/operations"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
@@ -573,9 +571,7 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 
 	// Select the bootstrapping mechanism
 	switch conf.General.GenesisMethod {
-	case "provisional":
-		bootstrapBlock = encoder.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlockForChannel(conf.General.SystemChannel)
-	case "file":
+	case "file": // For now, "file" is the only supported genesis method
 		bootstrapBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 	default:
 		logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)

@@ -46,8 +46,6 @@ type General struct {
 	Keepalive         Keepalive
 	ConnectionTimeout time.Duration
 	GenesisMethod     string
-	GenesisProfile    string
-	SystemChannel     string
 	GenesisFile       string
 	Profile           Profile
 	LocalMSPDir       string
@@ -206,12 +204,10 @@ type Statsd struct {
 // Defaults carries the default orderer configuration values.
 var Defaults = TopLevel{
 	General: General{
-		ListenAddress:  "127.0.0.1",
-		ListenPort:     7050,
-		GenesisMethod:  "provisional",
-		GenesisProfile: "SampleSingleMSPSolo",
-		SystemChannel:  "test-system-channel-name",
-		GenesisFile:    "genesisblock",
+		ListenAddress: "127.0.0.1",
+		ListenPort:    7050,
+		GenesisMethod: "file",
+		GenesisFile:   "genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
@@ -334,15 +330,10 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.ListenPort == 0:
 			logger.Infof("General.ListenPort unset, setting to %v", Defaults.General.ListenPort)
 			c.General.ListenPort = Defaults.General.ListenPort
-
 		case c.General.GenesisMethod == "":
 			c.General.GenesisMethod = Defaults.General.GenesisMethod
 		case c.General.GenesisFile == "":
 			c.General.GenesisFile = Defaults.General.GenesisFile
-		case c.General.GenesisProfile == "":
-			c.General.GenesisProfile = Defaults.General.GenesisProfile
-		case c.General.SystemChannel == "":
-			c.General.SystemChannel = Defaults.General.SystemChannel
 		case c.General.Cluster.RPCTimeout == 0:
 			c.General.Cluster.RPCTimeout = Defaults.General.Cluster.RPCTimeout
 		case c.General.Cluster.DialTimeout == 0:
