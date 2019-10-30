@@ -314,7 +314,6 @@ type RetrievedPvtdata interface {
 }
 
 // TxPvtdataInfo captures information about the requested private data to be retrieved
-// and is populated by ledger during commit
 type TxPvtdataInfo struct {
 	TxID                  string
 	Invalid               bool

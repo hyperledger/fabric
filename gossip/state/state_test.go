@@ -403,7 +403,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		Validator:          v,
 		Committer:          committer,
 		CapabilityProvider: capabilityProvider,
-	}, &transientstore.Store{}, protoutil.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig)
+	}, &transientstore.Store{}, protoutil.SignedData{}, gossipMetrics.PrivdataMetrics, coordConfig, nil)
 	stateConfig := &StateConfig{
 		StateCheckInterval:   DefStateCheckInterval,
 		StateResponseTimeout: DefStateResponseTimeout,

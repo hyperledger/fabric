@@ -22,9 +22,10 @@ import (
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -37,9 +38,14 @@ import (
 	"github.com/hyperledger/fabric/gossip/privdata/mocks"
 	capabilitymock "github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/msp/mgmt"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 var testConfig = CoordinatorConfig{
@@ -100,7 +106,7 @@ func (fc *fetchCall) expectingEndorsers(orgs ...string) *fetchCall {
 		fc.fetcher.expectedEndorsers = make(map[string]struct{})
 	}
 	for _, org := range orgs {
-		sID := &msp.SerializedIdentity{Mspid: org, IdBytes: []byte(fmt.Sprintf("p0%s", org))}
+		sID := &mspproto.SerializedIdentity{Mspid: org, IdBytes: []byte(fmt.Sprintf("p0%s", org))}
 		b, _ := pb.Marshal(sID)
 		fc.fetcher.expectedEndorsers[string(b)] = struct{}{}
 	}
@@ -171,7 +177,7 @@ func newTransientStore(t *testing.T) *testTransientStore {
 		t.Fatalf("Failed to open store, got err %s", err)
 		return s
 	}
-	s.store, err = s.storeProvider.OpenStore("test")
+	s.store, err = s.storeProvider.OpenStore("testchannelid")
 	if err != nil {
 		t.Fatalf("Failed to open store, got err %s", err)
 		return s
@@ -206,6 +212,7 @@ type collectionStore struct {
 	acceptsAll         bool
 	acceptsNone        bool
 	lenient            bool
+	mspIdentifier      string
 	store              map[CollectionCriteria]collectionAccessPolicy
 	policies           map[collectionAccessPolicy]CollectionCriteria
 }
@@ -230,6 +237,11 @@ func (cs *collectionStore) thatAccepts(cc CollectionCriteria) *collectionStore {
 	return cs
 }
 
+func (cs *collectionStore) withMSPIdentity(identifier string) *collectionStore {
+	cs.mspIdentifier = identifier
+	return cs
+}
+
 func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
 	if sp, exists := cs.store[fromCollectionCriteria(cc)]; exists {
 		return &sp, nil
@@ -245,6 +257,37 @@ func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCr
 
 func (cs *collectionStore) RetrieveCollection(common.CollectionCriteria) (privdata.Collection, error) {
 	panic("implement me")
+}
+
+func (cs *collectionStore) RetrieveCollectionConfig(cc common.CollectionCriteria) (*common.StaticCollectionConfig, error) {
+	mspIdentifier := "different-org"
+	if _, exists := cs.store[fromCollectionCriteria(cc)]; exists || cs.acceptsAll {
+		mspIdentifier = cs.mspIdentifier
+	}
+	return &common.StaticCollectionConfig{
+		Name:           cc.Collection,
+		MemberOnlyRead: true,
+		MemberOrgsPolicy: &common.CollectionPolicyConfig{
+			Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+				SignaturePolicy: &common.SignaturePolicyEnvelope{
+					Rule: &common.SignaturePolicy{
+						Type: &common.SignaturePolicy_SignedBy{
+							SignedBy: 0,
+						},
+					},
+					Identities: []*mspproto.MSPPrincipal{
+						{
+							PrincipalClassification: mspproto.MSPPrincipal_ROLE,
+							Principal: protoutil.MarshalOrPanic(&mspproto.MSPRole{
+								MspIdentifier: mspIdentifier,
+								Role:          mspproto.MSPRole_MEMBER,
+							}),
+						},
+					},
+				},
+			},
+		},
+	}, nil
 }
 
 func (cs *collectionStore) RetrieveReadWritePermission(cc common.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, bool, error) {
@@ -534,19 +577,28 @@ var expectedCommittedPrivateData2 = map[uint64]*ledger.TxPvtData{
 var expectedCommittedPrivateData3 = map[uint64]*ledger.TxPvtData{}
 
 func TestCoordinatorStoreInvalidBlock(t *testing.T) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	peerSelfSignedData := protoutil.SignedData{
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
+	}
+
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
-	peerSelfSignedData := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
-	}
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		t.Fatal("Shouldn't have committed")
 	}).Return(nil)
-	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 
 	store := newTransientStore(t)
 	defer store.tearDown()
@@ -572,9 +624,12 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	fetcher := &fetcherMock{t: t}
 	pdFactory := &pvtDataFactory{}
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
 
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
 	block := bf.withoutMetadata().create()
 	// Scenario I: Block we got doesn't have any metadata with it
 	pvtData := pdFactory.create()
@@ -584,13 +639,14 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
-	err := coordinator.StoreBlock(block, pvtData)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
+	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
 
@@ -598,12 +654,13 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	block = bf.create()
 	pvtData = pdFactory.create()
 	coordinator = NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{fmt.Errorf("failed validating block")},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed validating block")
@@ -612,14 +669,16 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	block = bf.withMetadataSize(100).create()
 	pvtData = pdFactory.create()
 	coordinator = NewCoordinator(Support{
-		CollectionStore: cs,
-		Committer:       committer,
-		Fetcher:         fetcher,
-		Validator:       &validatorMock{},
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+		ChainID:            "testchannelid",
+		CollectionStore:    cs,
+		Committer:          committer,
+		Fetcher:            fetcher,
+		Validator:          &validatorMock{},
+		CapabilityProvider: capabilityProvider,
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Block data size")
+	assert.Contains(t, err.Error(), "block data size")
 	assert.Contains(t, err.Error(), "is different from Tx filter size")
 
 	// Scenario IV: The second transaction in the block we got is invalid, and we have no private data for that.
@@ -631,6 +690,19 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		assert.True(t, commitHappened)
 		commitHappened = false
 	}
+	digKeys := []privdatacommon.DigKey{
+		{
+			TxId:       "tx2",
+			Namespace:  "ns2",
+			Collection: "c1",
+			BlockSeq:   1,
+			SeqInBlock: 1,
+		},
+	}
+	fetcher = &fetcherMock{t: t}
+	fetcher.On("fetch", mock.Anything).expectingDigests(digKeys).expectingEndorsers(identity.GetMSPIdentifier()).Return(&privdatacommon.FetchedPvtDataContainer{
+		AvailableElements: nil,
+	}, nil)
 	committer = &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
@@ -652,12 +724,13 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(false)
 	coordinator = NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -707,13 +780,19 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	appCapability = &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
+	digKeys = []privdatacommon.DigKey{}
+	fetcher = &fetcherMock{t: t}
+	fetcher.On("fetch", mock.Anything).expectingDigests(digKeys).Return(&privdatacommon.FetchedPvtDataContainer{
+		AvailableElements: nil,
+	}, nil)
 	coordinator = NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -750,6 +829,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		assert.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
+	fetcher = &fetcherMock{t: t}
 	fetcher.On("fetch", mock.Anything).expectingDigests([]privdatacommon.DigKey{
 		{
 			TxId: "tx2", Namespace: "ns2", Collection: "c1", BlockSeq: 1, SeqInBlock: 1,
@@ -774,12 +854,13 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	coordinator = NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
@@ -804,10 +885,18 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 		it has ns1:c1 in transient store, while it has wrong
 		hash, hence it will fetch ns1:c1 from other peers
 	*/
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
 	peerSelfSignedData := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
 	}
 
 	expectedPvtData := map[uint64]*ledger.TxPvtData{
@@ -827,7 +916,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 		}},
 	}
 
-	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -869,8 +958,12 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 
 	hash := util2.ComputeSHA256([]byte("rws-original"))
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
@@ -882,18 +975,19 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 
 	fetcher.On("fetch", mock.Anything).expectingDigests([]privdatacommon.DigKey{
 		{
 			TxId: "tx1", Namespace: "ns1", Collection: "c1", BlockSeq: 1,
 		},
-	}).expectingEndorsers("org1").Return(&privdatacommon.FetchedPvtDataContainer{
+	}).Return(&privdatacommon.FetchedPvtDataContainer{
 		AvailableElements: []*proto.PvtDataElement{
 			{
 				Digest: &proto.PvtDataDigest{
@@ -916,14 +1010,22 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 }
 
 func TestCoordinatorStoreBlock(t *testing.T) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
 	peerSelfSignedData := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
 	}
 	// Green path test, all private data should be obtained successfully
 
-	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 
 	var commitHappened bool
 	assertCommitHappened := func() {
@@ -969,8 +1071,13 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	pdFactory := &pvtDataFactory{}
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
+
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
 		AddTxnWithEndorsement("tx2", "ns2", hash, "org2", true, "c1").create()
 
@@ -988,13 +1095,14 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
-	err := coordinator.StoreBlock(block, pvtData)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
+	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
 	assertPurged("tx1", "tx2")
@@ -1037,7 +1145,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		{
 			TxId: "tx2", Namespace: "ns2", Collection: "c1", BlockSeq: 1, SeqInBlock: 1,
 		},
-	}).expectingEndorsers("org1").Return(&privdatacommon.FetchedPvtDataContainer{
+	}).Return(&privdatacommon.FetchedPvtDataContainer{
 		AvailableElements: []*proto.PvtDataElement{
 			{
 				Digest: &proto.PvtDataDigest{
@@ -1080,14 +1188,15 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// policy of collections due to databse unavailability error.
 	// we verify that the error propagates properly.
 	mockCs := &mocks.CollectionStore{}
-	mockCs.On("RetrieveCollectionAccessPolicy", mock.Anything).Return(nil, errors.New("test error"))
+	mockCs.On("RetrieveCollectionConfig", mock.Anything).Return(nil, errors.New("test error"))
 	coordinator = NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    mockCs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, nil)
 	assert.Error(t, err)
 	assert.Equal(t, "test error", err.Error())
@@ -1128,12 +1237,13 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	}).Return(nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	coordinator = NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, nil)
 	assertPurged("tx3")
 	assert.NoError(t, err)
@@ -1149,8 +1259,8 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		TxId:       "tx3",
 		Collection: "c3",
 		Namespace:  "ns3",
-		Channel:    "test",
-	})
+		Channel:    "testchannelid",
+	}).withMSPIdentity(identity.GetMSPIdentifier())
 	fetcher = &fetcherMock{t: t}
 	committer = &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -1165,12 +1275,13 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	}).Return(nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	coordinator = NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns3", "c3").create()
 	err = coordinator.StoreBlock(block, pvtData)
@@ -1181,10 +1292,18 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 }
 
 func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
 	peerSelfSignedData := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
 	}
 
 	var commitHappened bool
@@ -1207,8 +1326,13 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	pdFactory := &pvtDataFactory{}
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
+
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
 		AddTxnWithEndorsement("tx2", "ns2", hash, "org2", true, "c1").create()
 
@@ -1226,13 +1350,14 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    nil,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, nil, peerSelfSignedData, metrics, testConfig)
-	err := coordinator.StoreBlock(block, pvtData)
+	}, nil, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
+	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
 }
@@ -1240,12 +1365,20 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 func TestProceedWithoutPrivateData(t *testing.T) {
 	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
 	// Block needs to be committed with missing private data.
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
 	peerSelfSignedData := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
 	}
-	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 	var commitHappened bool
 	assertCommitHappened := func() {
 		assert.True(t, commitHappened)
@@ -1313,8 +1446,12 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	pdFactory := &pvtDataFactory{}
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
@@ -1327,13 +1464,14 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
-	err := coordinator.StoreBlock(block, pvtData)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
+	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 	assertCommitHappened()
 	assertPurged("tx1")
@@ -1342,13 +1480,21 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
 	// Block needs to be committed with missing private data.
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
 	peerSelfSignedData := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
 	}
 
-	cs := createcollectionStore(peerSelfSignedData).thatAcceptsNone()
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsNone().withMSPIdentity(identity.GetMSPIdentifier())
 
 	var commitHappened bool
 	assertCommitHappened := func() {
@@ -1374,8 +1520,12 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
 
 	block := bf.AddTxn("tx1", "ns3", hash, "c2").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
@@ -1387,29 +1537,42 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            nil,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, nil, peerSelfSignedData, metrics, testConfig)
-	err := coordinator.StoreBlock(block, nil)
+	}, nil, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
+	err = coordinator.StoreBlock(block, nil)
 	assert.NoError(t, err)
 	assertCommitHappened()
 }
 
 func TestCoordinatorGetBlocks(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
-	sd := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	peerSelfSignedData := protoutil.SignedData{
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
 	}
-	cs := createcollectionStore(sd).thatAcceptsAll()
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
 	defer store.tearDown()
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
 
 	fetcher := &fetcherMock{t: t}
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
@@ -1419,27 +1582,28 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, sd, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
 	block := bf.AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 
 	// Green path - block and private data is returned, but the requester isn't eligible for all the private data,
 	// but only to a subset of it.
-	cs = createcollectionStore(sd).thatAccepts(CollectionCriteria{
+	cs = createcollectionStore(peerSelfSignedData).thatAccepts(CollectionCriteria{
 		Namespace:  "ns1",
 		Collection: "c2",
 		TxId:       "tx1",
-		Channel:    "test",
-	})
+		Channel:    "testchannelid",
+	}).withMSPIdentity(identity.GetMSPIdentifier())
 	committer.Mock = mock.Mock{}
 	committer.On("GetPvtDataAndBlockByNum", mock.Anything).Return(&ledger.BlockAndPvtData{
 		Block:   block,
@@ -1447,14 +1611,15 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	}, nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	coordinator = NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, sd, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	expectedPrivData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c2").create()
-	block2, returnedPrivateData, err := coordinator.GetPvtDataAndBlockByNum(1, sd)
+	block2, returnedPrivateData, err := coordinator.GetPvtDataAndBlockByNum(1, peerSelfSignedData)
 	assert.NoError(t, err)
 	assert.Equal(t, block, block2)
 	assert.Equal(t, expectedPrivData, []*ledger.TxPvtData(returnedPrivateData))
@@ -1462,7 +1627,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	// Bad path - error occurs when trying to retrieve the block and private data
 	committer.Mock = mock.Mock{}
 	committer.On("GetPvtDataAndBlockByNum", mock.Anything).Return(nil, errors.New("uh oh"))
-	block2, returnedPrivateData, err = coordinator.GetPvtDataAndBlockByNum(1, sd)
+	block2, returnedPrivateData, err = coordinator.GetPvtDataAndBlockByNum(1, peerSelfSignedData)
 	assert.Nil(t, block2)
 	assert.Empty(t, returnedPrivateData)
 	assert.Error(t, err)
@@ -1531,8 +1696,13 @@ func TestPurgeBelowHeight(t *testing.T) {
 	fetcher := &fetcherMock{t: t}
 
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
+
 	pdFactory := &pvtDataFactory{}
 
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
@@ -1544,12 +1714,13 @@ func TestPurgeBelowHeight(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, conf)
+	}, store.store, peerSelfSignedData, metrics, conf, idDeserializerFactory)
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	block := bf.AddTxn("tx10", "ns1", hash, "c1").create()
@@ -1571,6 +1742,10 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	store := newTransientStore(t)
 	defer store.tearDown()
 
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
+
 	fetcher := &fetcherMock{t: t}
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
@@ -1579,12 +1754,13 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, protoutil.SignedData{}, metrics, testConfig)
+	}, store.store, protoutil.SignedData{}, metrics, testConfig, idDeserializerFactory)
 	pvtData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c1").create()
 	// Green path: ledger height can be retrieved from ledger/committer
 	err := coordinator.StorePvtData("tx1", &tspb.TxPvtReadWriteSetWithConfigInfo{
@@ -1619,12 +1795,20 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	// transient store or other peers, the test would fail.
 	// Also - we check that at commit time - the coordinator concluded that
 	// no missing private data was found.
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
 	peerSelfSignedData := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
 	}
-	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 	var commitHappened bool
 	assertCommitHappened := func() {
 		assert.True(t, commitHappened)
@@ -1650,8 +1834,13 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	fetcher := &fetcherMock{t: t}
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
+
 	// The block contains a read only private data transaction
 	block := bf.AddReadOnlyTxn("tx1", "ns3", hash, "c3", "c2").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
@@ -1662,27 +1851,36 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
 		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	// We pass a nil private data slice to indicate no pre-images though the block contains
 	// private data reads.
-	err := coordinator.StoreBlock(block, nil)
+	err = coordinator.StoreBlock(block, nil)
 	assert.NoError(t, err)
 	assertCommitHappened()
 }
 
 func TestCoordinatorMetrics(t *testing.T) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
 	peerSelfSignedData := protoutil.SignedData{
-		Identity:  []byte{0, 1, 2},
-		Signature: []byte{3, 4, 5},
-		Data:      []byte{6, 7, 8},
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
 	}
 
-	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Return(nil)
@@ -1693,12 +1891,38 @@ func TestCoordinatorMetrics(t *testing.T) {
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	pdFactory := &pvtDataFactory{}
 	bf := &blockFactory{
-		channelID: "test",
+		channelID: "testchannelid",
 	}
+
+	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
+		return mgmt.GetManagerForChain("testchannelid")
+	})
+
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
-		AddTxnWithEndorsement("tx2", "ns2", hash, "org2", true, "c1").create()
+		AddTxnWithEndorsement("tx2", "ns2", hash, "org2", true, "c1").
+		AddTxnWithEndorsement("tx3", "ns3", hash, "org3", true, "c1").create()
 
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1").create()
+	// fetch duration metric only reported when fetching from remote peer
+	fetcher := &fetcherMock{t: t}
+	fetcher.On("fetch", mock.Anything).expectingDigests([]privdatacommon.DigKey{
+		{
+			TxId: "tx3", Namespace: "ns3", Collection: "c1", BlockSeq: 1, SeqInBlock: 2,
+		},
+	}).Return(&privdatacommon.FetchedPvtDataContainer{
+		AvailableElements: []*proto.PvtDataElement{
+			{
+				Digest: &proto.PvtDataDigest{
+					SeqInBlock: 2,
+					BlockSeq:   1,
+					Collection: "c1",
+					Namespace:  "ns3",
+					TxId:       "tx3",
+				},
+				Payload: [][]byte{[]byte("rws-pre-image")},
+			},
+		},
+	}, nil)
 
 	testMetricProvider := gmetricsmocks.TestUtilConstructMetricProvider()
 	metrics := metrics.NewGossipMetrics(testMetricProvider.FakeProvider).PrivdataMetrics
@@ -1710,40 +1934,41 @@ func TestCoordinatorMetrics(t *testing.T) {
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(Support{
+		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
-		Fetcher:            &fetcherMock{t: t},
+		Fetcher:            fetcher,
 		Validator:          &validatorMock{},
-		ChainID:            "test",
 		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig)
-	err := coordinator.StoreBlock(block, pvtData)
+	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
+	err = coordinator.StoreBlock(block, pvtData)
 	assert.NoError(t, err)
 
 	// make sure all coordinator metrics were reported
 
 	assert.Equal(t,
-		[]string{"channel", "test"},
+		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeValidationDuration.WithArgsForCall(0),
 	)
 	assert.True(t, testMetricProvider.FakeValidationDuration.ObserveArgsForCall(0) > 0)
 	assert.Equal(t,
-		[]string{"channel", "test"},
+		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeListMissingPrivateDataDuration.WithArgsForCall(0),
 	)
 	assert.True(t, testMetricProvider.FakeListMissingPrivateDataDuration.ObserveArgsForCall(0) > 0)
 	assert.Equal(t,
-		[]string{"channel", "test"},
+		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeFetchDuration.WithArgsForCall(0),
 	)
+	// fetch duration metric only reported when fetching from remote peer
 	assert.True(t, testMetricProvider.FakeFetchDuration.ObserveArgsForCall(0) > 0)
 	assert.Equal(t,
-		[]string{"channel", "test"},
+		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeCommitPrivateDataDuration.WithArgsForCall(0),
 	)
 	assert.True(t, testMetricProvider.FakeCommitPrivateDataDuration.ObserveArgsForCall(0) > 0)
 	assert.Equal(t,
-		[]string{"channel", "test"},
+		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakePurgeDuration.WithArgsForCall(0),
 	)
 	assert.True(t, testMetricProvider.FakePurgeDuration.ObserveArgsForCall(0) > 0)
