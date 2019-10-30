@@ -58,14 +58,12 @@ var testConfig = CoordinatorConfig{
 // a collection
 type CollectionCriteria struct {
 	Channel    string
-	TxId       string
 	Collection string
 	Namespace  string
 }
 
 func fromCollectionCriteria(criteria common.CollectionCriteria) CollectionCriteria {
 	return CollectionCriteria{
-		TxId:       criteria.TxId,
 		Collection: criteria.Collection,
 		Namespace:  criteria.Namespace,
 		Channel:    criteria.Channel,
@@ -1256,7 +1254,6 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// for from the transient store or from peers - the test would fail because the Mock wasn't initialized.
 	block = bf.AddTxn("tx3", "ns3", hash, "c3", "c2", "c1").AddTxn("tx1", "ns1", hash, "c1").create()
 	cs = createcollectionStore(peerSelfSignedData).thatAccepts(CollectionCriteria{
-		TxId:       "tx3",
 		Collection: "c3",
 		Namespace:  "ns3",
 		Channel:    "testchannelid",
@@ -1601,7 +1598,6 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	cs = createcollectionStore(peerSelfSignedData).thatAccepts(CollectionCriteria{
 		Namespace:  "ns1",
 		Collection: "c2",
-		TxId:       "tx1",
 		Channel:    "testchannelid",
 	}).withMSPIdentity(identity.GetMSPIdentifier())
 	committer.Mock = mock.Mock{}
