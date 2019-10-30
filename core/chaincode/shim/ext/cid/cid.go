@@ -101,9 +101,8 @@ func New(stub ChaincodeStubInterface) (ClientIdentity, error) {
 func (c *clientIdentityImpl) GetID() (string, error) {
 	// When IdeMix, c.cert is nil for x509 type
 	// Here will return "", as there is no x509 type cert for generate id value with logic below.
-	cert, _ := c.GetX509Certificate()
-	if cert == nil {
-		return "", nil
+	if c.cert == nil {
+		return "", fmt.Errorf("Cannot determine identity")
 	}
 	// The leading "x509::" distinguishes this as an X509 certificate, and
 	// the subject and issuer DNs uniquely identify the X509 certificate.
