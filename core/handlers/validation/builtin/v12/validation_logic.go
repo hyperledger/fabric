@@ -414,7 +414,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	// The following condition check added in v1.1 may not be needed as it is not possible to have the chaincodeName~collection key in
 	// the lscc namespace before a chaincode deploy. To avoid forks in v1.2, the following condition is retained.
 	if lsccFunc == lscc.DEPLOY {
-		colCriteria := common.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
+		colCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
 		ccp, err := privdata.RetrieveCollectionConfigPackageFromState(colCriteria, state)
 		if err != nil {
 			// fail if we get any error other than NoSuchCollectionError
@@ -453,7 +453,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 
 		if lsccFunc == lscc.UPGRADE {
 
-			collectionCriteria := common.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
+			collectionCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
 			// oldCollectionConfigPackage denotes the existing collection config package in the ledger
 			oldCollectionConfigPackage, err := privdata.RetrieveCollectionConfigPackageFromState(collectionCriteria, state)
 			if err != nil {

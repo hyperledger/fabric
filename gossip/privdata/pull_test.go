@@ -88,27 +88,27 @@ func (cs *mockCollectionStore) withAccessFilter(filter privdata.Filter) *mockCol
 	return cs
 }
 
-func (cs mockCollectionStore) RetrieveCollectionAccessPolicy(cc fcommon.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
+func (cs mockCollectionStore) RetrieveCollectionAccessPolicy(cc privdata.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
 	return cs.m[cc.Collection], nil
 }
 
-func (cs mockCollectionStore) RetrieveCollection(fcommon.CollectionCriteria) (privdata.Collection, error) {
+func (cs mockCollectionStore) RetrieveCollection(privdata.CollectionCriteria) (privdata.Collection, error) {
 	panic("implement me")
 }
 
-func (cs mockCollectionStore) RetrieveCollectionConfig(fcommon.CollectionCriteria) (*fcommon.StaticCollectionConfig, error) {
+func (cs mockCollectionStore) RetrieveCollectionConfig(privdata.CollectionCriteria) (*fcommon.StaticCollectionConfig, error) {
 	panic("implement me")
 }
 
-func (cs mockCollectionStore) RetrieveCollectionConfigPackage(fcommon.CollectionCriteria) (*fcommon.CollectionConfigPackage, error) {
+func (cs mockCollectionStore) RetrieveCollectionConfigPackage(privdata.CollectionCriteria) (*fcommon.CollectionConfigPackage, error) {
 	panic("implement me")
 }
 
-func (cs mockCollectionStore) RetrieveCollectionPersistenceConfigs(cc fcommon.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
+func (cs mockCollectionStore) RetrieveCollectionPersistenceConfigs(cc privdata.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
 	return cs.m[cc.Collection], nil
 }
 
-func (cs mockCollectionStore) RetrieveReadWritePermission(cc fcommon.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, bool, error) {
+func (cs mockCollectionStore) RetrieveReadWritePermission(cc privdata.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, bool, error) {
 	panic("implement me")
 }
 

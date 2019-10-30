@@ -256,7 +256,7 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 		// Iterate through the private write sets and include them in response if requesting peer is eligible for it
 		for _, ns := range txPvtDataItem.WriteSet.NsPvtRwset {
 			for _, col := range ns.CollectionPvtRwset {
-				cc := common.CollectionCriteria{
+				cc := privdata.CollectionCriteria{
 					Channel:    c.ChainID,
 					Namespace:  ns.Namespace,
 					Collection: col.CollectionName,
@@ -311,7 +311,7 @@ func (c *coordinator) getTxPvtdataInfoFromBlock(block *common.Block) ([]*ledger.
 				if !containsWrites(txInfo.txID, ns.NameSpace, hashedCollection) {
 					continue
 				}
-				cc := common.CollectionCriteria{
+				cc := privdata.CollectionCriteria{
 					Channel:    txInfo.channelID,
 					Namespace:  ns.NameSpace,
 					Collection: hashedCollection.CollectionName,
