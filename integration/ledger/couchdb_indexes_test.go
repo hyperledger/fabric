@@ -133,6 +133,20 @@ var _ = Describe("CouchDB indexes", func() {
 		})
 	})
 
+	When("chaincode is deployed via new lifecycle (using the docker chaincode build) ", func() {
+		BeforeEach(func() {
+			newlifecycleChaincode.Path = chaincodePathWithIndex
+			newlifecycleChaincode.Lang = "golang"
+		})
+
+		It("creates indexes", func() {
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
+			nwo.DeployChaincode(network, "testchannel", orderer, newlifecycleChaincode, network.Peers...)
+			initMarble(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles", "marble_indexed")
+			verifySizeIndexExists(network, "testchannel", orderer, network.Peer("Org1", "peer0"), "marbles")
+		})
+	})
+
 	When("chaincode is defined and installed via new lifecycle and then upgraded with an additional index", func() {
 		It("creates indexes", func() {
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
