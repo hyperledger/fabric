@@ -73,8 +73,7 @@ METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
-# GO_VER = $(shell grep "GO_VER" ci.properties |cut -d'=' -f2-)
-GO_VER = 1.12.7
+GO_VER = $(shell grep "GO_VER" ci.properties |cut -d'=' -f2-)
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
