@@ -75,18 +75,22 @@ type MockStub struct {
 	Decorations map[string][]byte
 }
 
+// GetTxID ...
 func (stub *MockStub) GetTxID() string {
 	return stub.TxID
 }
 
+// GetChannelID ...
 func (stub *MockStub) GetChannelID() string {
 	return stub.ChannelID
 }
 
+// GetArgs ...
 func (stub *MockStub) GetArgs() [][]byte {
 	return stub.args
 }
 
+// GetStringArgs ...
 func (stub *MockStub) GetStringArgs() []string {
 	args := stub.GetArgs()
 	strargs := make([]string, 0, len(args))
@@ -96,6 +100,7 @@ func (stub *MockStub) GetStringArgs() []string {
 	return strargs
 }
 
+// GetFunctionAndParameters ...
 func (stub *MockStub) GetFunctionAndParameters() (function string, params []string) {
 	allargs := stub.GetStringArgs()
 	function = ""
@@ -107,7 +112,7 @@ func (stub *MockStub) GetFunctionAndParameters() (function string, params []stri
 	return
 }
 
-// Used to indicate to a chaincode that it is part of a transaction.
+// MockTransactionStart Used to indicate to a chaincode that it is part of a transaction.
 // This is important when chaincodes invoke each other.
 // MockStub doesn't support concurrent transactions at present.
 func (stub *MockStub) MockTransactionStart(txid string) {
@@ -116,13 +121,13 @@ func (stub *MockStub) MockTransactionStart(txid string) {
 	stub.setTxTimestamp(ptypes.TimestampNow())
 }
 
-// End a mocked transaction, clearing the UUID.
+// MockTransactionEnd End a mocked transaction, clearing the UUID.
 func (stub *MockStub) MockTransactionEnd(uuid string) {
 	stub.signedProposal = nil
 	stub.TxID = ""
 }
 
-// Register another MockStub chaincode with this MockStub.
+// MockPeerChaincode Register another MockStub chaincode with this MockStub.
 // invokableChaincodeName is the name of a chaincode.
 // otherStub is a MockStub of the chaincode, already initialized.
 // channel is the name of a channel on which another MockStub is called.
@@ -134,7 +139,7 @@ func (stub *MockStub) MockPeerChaincode(invokableChaincodeName string, otherStub
 	stub.Invokables[invokableChaincodeName] = otherStub
 }
 
-// Initialise this chaincode,  also starts and ends a transaction.
+// MockInit Initialise this chaincode,  also starts and ends a transaction.
 func (stub *MockStub) MockInit(uuid string, args [][]byte) pb.Response {
 	stub.args = args
 	stub.MockTransactionStart(uuid)
@@ -143,7 +148,7 @@ func (stub *MockStub) MockInit(uuid string, args [][]byte) pb.Response {
 	return res
 }
 
-// Invoke this chaincode, also starts and ends a transaction.
+// MockInvoke Invoke this chaincode, also starts and ends a transaction.
 func (stub *MockStub) MockInvoke(uuid string, args [][]byte) pb.Response {
 	stub.args = args
 	stub.MockTransactionStart(uuid)
@@ -152,11 +157,12 @@ func (stub *MockStub) MockInvoke(uuid string, args [][]byte) pb.Response {
 	return res
 }
 
+// GetDecorations ...
 func (stub *MockStub) GetDecorations() map[string][]byte {
 	return stub.Decorations
 }
 
-// Invoke this chaincode, also starts and ends a transaction.
+// MockInvokeWithSignedProposal Invoke this chaincode, also starts and ends a transaction.
 func (stub *MockStub) MockInvokeWithSignedProposal(uuid string, args [][]byte, sp *pb.SignedProposal) pb.Response {
 	stub.args = args
 	stub.MockTransactionStart(uuid)
@@ -166,6 +172,7 @@ func (stub *MockStub) MockInvokeWithSignedProposal(uuid string, args [][]byte, s
 	return res
 }
 
+// GetPrivateData ...
 func (stub *MockStub) GetPrivateData(collection string, key string) ([]byte, error) {
 	m, in := stub.PvtState[collection]
 
@@ -176,10 +183,12 @@ func (stub *MockStub) GetPrivateData(collection string, key string) ([]byte, err
 	return m[key], nil
 }
 
+// GetPrivateDataHash ...
 func (stub *MockStub) GetPrivateDataHash(collection, key string) ([]byte, error) {
 	return nil, errors.New("Not Implemented")
 }
 
+// PutPrivateData ...
 func (stub *MockStub) PutPrivateData(collection string, key string, value []byte) error {
 	m, in := stub.PvtState[collection]
 	if !in {
@@ -192,18 +201,22 @@ func (stub *MockStub) PutPrivateData(collection string, key string, value []byte
 	return nil
 }
 
+// DelPrivateData ...
 func (stub *MockStub) DelPrivateData(collection string, key string) error {
 	return errors.New("Not Implemented")
 }
 
+// GetPrivateDataByRange ...
 func (stub *MockStub) GetPrivateDataByRange(collection, startKey, endKey string) (shim.StateQueryIteratorInterface, error) {
 	return nil, errors.New("Not Implemented")
 }
 
+// GetPrivateDataByPartialCompositeKey ...
 func (stub *MockStub) GetPrivateDataByPartialCompositeKey(collection, objectType string, attributes []string) (shim.StateQueryIteratorInterface, error) {
 	return nil, errors.New("Not Implemented")
 }
 
+// GetPrivateDataQueryResult ...
 func (stub *MockStub) GetPrivateDataQueryResult(collection, query string) (shim.StateQueryIteratorInterface, error) {
 	// Not implemented since the mock engine does not have a query engine.
 	// However, a very simple query engine that supports string matching
@@ -271,6 +284,7 @@ func (stub *MockStub) DelState(key string) error {
 	return nil
 }
 
+// GetStateByRange ...
 func (stub *MockStub) GetStateByRange(startKey, endKey string) (shim.StateQueryIteratorInterface, error) {
 	if err := validateSimpleKeys(startKey, endKey); err != nil {
 		return nil, err
@@ -309,12 +323,12 @@ func (stub *MockStub) GetHistoryForKey(key string) (shim.HistoryQueryIteratorInt
 	return nil, errors.New("not implemented")
 }
 
-//GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
-//state based on a given partial composite key. This function returns an
-//iterator which can be used to iterate over all composite keys whose prefix
-//matches the given partial composite key. This function should be used only for
-//a partial composite key. For a full composite key, an iter with empty response
-//would be returned.
+// GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
+// state based on a given partial composite key. This function returns an
+// iterator which can be used to iterate over all composite keys whose prefix
+// matches the given partial composite key. This function should be used only for
+// a partial composite key. For a full composite key, an iter with empty response
+// would be returned.
 func (stub *MockStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (shim.StateQueryIteratorInterface, error) {
 	partialCompositeKey, err := stub.CreateCompositeKey(objectType, attributes)
 	if err != nil {
@@ -324,7 +338,7 @@ func (stub *MockStub) GetStateByPartialCompositeKey(objectType string, attribute
 }
 
 // CreateCompositeKey combines the list of attributes
-//to form a composite key.
+// to form a composite key.
 func (stub *MockStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
 	return shim.CreateCompositeKey(objectType, attributes)
 }
@@ -347,16 +361,19 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 	return components[0], components[1:], nil
 }
 
+// GetStateByRangeWithPagination ...
 func (stub *MockStub) GetStateByRangeWithPagination(startKey, endKey string, pageSize int32,
 	bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 	return nil, nil, nil
 }
 
+// GetStateByPartialCompositeKeyWithPagination ...
 func (stub *MockStub) GetStateByPartialCompositeKeyWithPagination(objectType string, keys []string,
 	pageSize int32, bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 	return nil, nil, nil
 }
 
+// GetQueryResultWithPagination ...
 func (stub *MockStub) GetQueryResultWithPagination(query string, pageSize int32,
 	bookmark string) (shim.StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
 	return nil, nil, nil
@@ -378,21 +395,22 @@ func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte, chann
 	return res
 }
 
+// GetCreator ...
 func (stub *MockStub) GetCreator() ([]byte, error) {
 	return stub.Creator, nil
 }
 
-// Not implemented
+// GetTransient Not implemented ...
 func (stub *MockStub) GetTransient() (map[string][]byte, error) {
 	return nil, nil
 }
 
-// Not implemented
+// GetBinding Not implemented ...
 func (stub *MockStub) GetBinding() ([]byte, error) {
 	return nil, nil
 }
 
-// Not implemented
+// GetSignedProposal Not implemented ...
 func (stub *MockStub) GetSignedProposal() (*pb.SignedProposal, error) {
 	return stub.signedProposal, nil
 }
@@ -401,7 +419,7 @@ func (stub *MockStub) setSignedProposal(sp *pb.SignedProposal) {
 	stub.signedProposal = sp
 }
 
-// Not implemented
+// GetArgsSlice Not implemented ...
 func (stub *MockStub) GetArgsSlice() ([]byte, error) {
 	return nil, nil
 }
@@ -410,26 +428,31 @@ func (stub *MockStub) setTxTimestamp(time *timestamp.Timestamp) {
 	stub.TxTimestamp = time
 }
 
+// GetTxTimestamp ...
 func (stub *MockStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 	if stub.TxTimestamp == nil {
-		return nil, errors.New("TxTimestamp not set.")
+		return nil, errors.New("TxTimestamp not set")
 	}
 	return stub.TxTimestamp, nil
 }
 
+// SetEvent ...
 func (stub *MockStub) SetEvent(name string, payload []byte) error {
 	stub.ChaincodeEventsChannel <- &pb.ChaincodeEvent{EventName: name, Payload: payload}
 	return nil
 }
 
+// SetStateValidationParameter ...
 func (stub *MockStub) SetStateValidationParameter(key string, ep []byte) error {
 	return stub.SetPrivateDataValidationParameter("", key, ep)
 }
 
+// GetStateValidationParameter ...
 func (stub *MockStub) GetStateValidationParameter(key string) ([]byte, error) {
 	return stub.GetPrivateDataValidationParameter("", key)
 }
 
+// SetPrivateDataValidationParameter ...
 func (stub *MockStub) SetPrivateDataValidationParameter(collection, key string, ep []byte) error {
 	m, in := stub.EndorsementPolicies[collection]
 	if !in {
@@ -441,6 +464,7 @@ func (stub *MockStub) SetPrivateDataValidationParameter(collection, key string, 
 	return nil
 }
 
+// GetPrivateDataValidationParameter ...
 func (stub *MockStub) GetPrivateDataValidationParameter(collection, key string) ([]byte, error) {
 	m, in := stub.EndorsementPolicies[collection]
 
@@ -451,7 +475,7 @@ func (stub *MockStub) GetPrivateDataValidationParameter(collection, key string) 
 	return m[key], nil
 }
 
-// Constructor to initialise the internal State map
+// NewMockStub Constructor to initialise the internal State map
 func NewMockStub(name string, cc shim.Chaincode) *MockStub {
 	s := new(MockStub)
 	s.Name = name
@@ -471,6 +495,7 @@ func NewMockStub(name string, cc shim.Chaincode) *MockStub {
  Range Query Iterator
 *****************************/
 
+// MockStateRangeQueryIterator ...
 type MockStateRangeQueryIterator struct {
 	Closed   bool
 	Stub     *MockStub
@@ -502,10 +527,8 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 		if comp1 >= 0 {
 			if comp2 < 0 {
 				return true
-			} else {
-				return false
-
 			}
+			return false
 		}
 		current = current.Next()
 	}
@@ -553,6 +576,7 @@ func (iter *MockStateRangeQueryIterator) Close() error {
 	return nil
 }
 
+// NewMockStateRangeQueryIterator ...
 func NewMockStateRangeQueryIterator(stub *MockStub, startKey string, endKey string) *MockStateRangeQueryIterator {
 	iter := new(MockStateRangeQueryIterator)
 	iter.Closed = false

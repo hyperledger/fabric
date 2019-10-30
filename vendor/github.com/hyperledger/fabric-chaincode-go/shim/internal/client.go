@@ -20,6 +20,7 @@ const (
 	maxSendMessageSize = 100 * 1024 * 1024 // 100 MiB
 )
 
+// NewClientConn ...
 func NewClientConn(
 	address string,
 	tlsConf *tls.Config,
@@ -48,6 +49,7 @@ func NewClientConn(
 	return grpc.DialContext(ctx, address, dialOpts...)
 }
 
+// NewRegisterClient ...
 func NewRegisterClient(conn *grpc.ClientConn) (peerpb.ChaincodeSupport_RegisterClient, error) {
 	return peerpb.NewChaincodeSupportClient(conn).Register(context.Background())
 }

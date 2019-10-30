@@ -46,14 +46,15 @@ type ChaincodeStubInterface interface {
 	GetArgsSlice() ([]byte, error)
 
 	// GetTxID returns the tx_id of the transaction proposal, which is unique per
-	// transaction and per client. See ChannelHeader in protos/common/common.proto
+	// transaction and per client. See
+	// https://godoc.org/github.com/hyperledger/fabric-protos-go/common#ChannelHeader
 	// for further details.
 	GetTxID() string
 
 	// GetChannelID returns the channel the proposal is sent to for chaincode to process.
-	// This would be the channel_id of the transaction proposal (see ChannelHeader
-	// in protos/common/common.proto) except where the chaincode is calling another on
-	// a different channel
+	// This would be the channel_id of the transaction proposal (see
+	// https://godoc.org/github.com/hyperledger/fabric-protos-go/common#ChannelHeader )
+	// except where the chaincode is calling another on a different channel.
 	GetChannelID() string
 
 	// InvokeChaincode locally calls the specified chaincode `Invoke` using the
