@@ -10,7 +10,6 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/core/peer"
 )
 
 type Core struct {
@@ -195,19 +194,18 @@ type Docker struct {
 }
 
 type Chaincode struct {
-	Builder          string                 `yaml:"builder,omitempty"`
-	Pull             bool                   `yaml:"pull"`
-	Golang           *Golang                `yaml:"golang,omitempty"`
-	Car              *Car                   `yaml:"car,omitempty"`
-	Java             *Java                  `yaml:"java,omitempty"`
-	Node             *Node                  `yaml:"node,omitempty"`
-	StartupTimeout   time.Duration          `yaml:"startupTimeout,omitempty"`
-	ExecuteTimeout   time.Duration          `yaml:"executeTimeout,omitempty"`
-	Mode             string                 `yaml:"mode,omitempty"`
-	Keepalive        int                    `yaml:"keepalive,omitempty"`
-	System           SystemFlags            `yaml:"system,omitempty"`
-	Logging          *Logging               `yaml:"logging,omitempty"`
-	ExternalBuilders []peer.ExternalBuilder `yaml:"externalBuilders"`
+	Builder          string            `yaml:"builder,omitempty"`
+	Pull             bool              `yaml:"pull"`
+	Golang           *Golang           `yaml:"golang,omitempty"`
+	Java             *Java             `yaml:"java,omitempty"`
+	Node             *Node             `yaml:"node,omitempty"`
+	StartupTimeout   time.Duration     `yaml:"startupTimeout,omitempty"`
+	ExecuteTimeout   time.Duration     `yaml:"executeTimeout,omitempty"`
+	Mode             string            `yaml:"mode,omitempty"`
+	Keepalive        int               `yaml:"keepalive,omitempty"`
+	System           SystemFlags       `yaml:"system,omitempty"`
+	Logging          *Logging          `yaml:"logging,omitempty"`
+	ExternalBuilders []ExternalBuilder `yaml:"externalBuilders"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
@@ -219,16 +217,18 @@ type Golang struct {
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
 
-type Car struct {
-	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
-}
-
 type Java struct {
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
 
 type Node struct {
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+}
+
+type ExternalBuilder struct {
+	EnvironmentWhitelist []string `json:"environmentWhitelist,omitempty"`
+	Name                 string   `json:"name,omitempty"`
+	Path                 string   `json:"path,omitempty"`
 }
 
 type SystemFlags struct {
