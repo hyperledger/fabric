@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	fcommon "github.com/hyperledger/fabric-protos-go/common"
 	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
 	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -522,7 +521,7 @@ func (p *puller) computeReconciliationFilters(dig2collectionConfig privdatacommo
 }
 
 func (p *puller) getLatestCollectionConfigRoutingFilter(chaincode string, collection string) (filter.RoutingFilter, error) {
-	cc := fcommon.CollectionCriteria{
+	cc := privdata.CollectionCriteria{
 		Channel:    p.channel,
 		Collection: collection,
 		Namespace:  chaincode,
@@ -579,9 +578,8 @@ func (p *puller) getPurgedCollections(members []discovery.NetworkMember, dig2Fil
 }
 
 func (p *puller) purgedFilter(dig privdatacommon.DigKey) (filter.RoutingFilter, error) {
-	cc := fcommon.CollectionCriteria{
+	cc := privdata.CollectionCriteria{
 		Channel:    p.channel,
-		TxId:       dig.TxId,
 		Collection: dig.Collection,
 		Namespace:  dig.Namespace,
 	}
@@ -607,7 +605,7 @@ func (p *puller) purgedFilter(dig privdatacommon.DigKey) (filter.RoutingFilter, 
 		if isPurged {
 			logger.Debugf("skipping peer [%s], since pvt for channel [%s], txID = [%s], "+
 				"collection [%s] has been purged or will soon be purged, BTL=[%d]",
-				peer.Endpoint, p.channel, cc.TxId, cc.Collection, colPersistConfig.BlockToLive())
+				peer.Endpoint, p.channel, dig.TxId, cc.Collection, colPersistConfig.BlockToLive())
 		}
 		return isPurged
 	}, nil
@@ -662,7 +660,7 @@ func (p *puller) filterNotEligible(dig2rwSets Dig2PvtRWSetWithConfig, shouldChec
 }
 
 func (p *puller) isEligibleByLatestConfig(channel string, collection string, chaincode string, signedData protoutil.SignedData) bool {
-	cc := fcommon.CollectionCriteria{
+	cc := privdata.CollectionCriteria{
 		Channel:    channel,
 		Collection: collection,
 		Namespace:  chaincode,

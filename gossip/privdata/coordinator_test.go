@@ -62,7 +62,7 @@ type CollectionCriteria struct {
 	Namespace  string
 }
 
-func fromCollectionCriteria(criteria common.CollectionCriteria) CollectionCriteria {
+func fromCollectionCriteria(criteria privdata.CollectionCriteria) CollectionCriteria {
 	return CollectionCriteria{
 		Collection: criteria.Collection,
 		Namespace:  criteria.Namespace,
@@ -240,7 +240,7 @@ func (cs *collectionStore) withMSPIdentity(identifier string) *collectionStore {
 	return cs
 }
 
-func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
+func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc privdata.CollectionCriteria) (privdata.CollectionAccessPolicy, error) {
 	if sp, exists := cs.store[fromCollectionCriteria(cc)]; exists {
 		return &sp, nil
 	}
@@ -253,11 +253,11 @@ func (cs *collectionStore) RetrieveCollectionAccessPolicy(cc common.CollectionCr
 	return nil, privdata.NoSuchCollectionError{}
 }
 
-func (cs *collectionStore) RetrieveCollection(common.CollectionCriteria) (privdata.Collection, error) {
+func (cs *collectionStore) RetrieveCollection(privdata.CollectionCriteria) (privdata.Collection, error) {
 	panic("implement me")
 }
 
-func (cs *collectionStore) RetrieveCollectionConfig(cc common.CollectionCriteria) (*common.StaticCollectionConfig, error) {
+func (cs *collectionStore) RetrieveCollectionConfig(cc privdata.CollectionCriteria) (*common.StaticCollectionConfig, error) {
 	mspIdentifier := "different-org"
 	if _, exists := cs.store[fromCollectionCriteria(cc)]; exists || cs.acceptsAll {
 		mspIdentifier = cs.mspIdentifier
@@ -288,11 +288,11 @@ func (cs *collectionStore) RetrieveCollectionConfig(cc common.CollectionCriteria
 	}, nil
 }
 
-func (cs *collectionStore) RetrieveReadWritePermission(cc common.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, bool, error) {
+func (cs *collectionStore) RetrieveReadWritePermission(cc privdata.CollectionCriteria, sp *peer.SignedProposal, qe ledger.QueryExecutor) (bool, bool, error) {
 	panic("implement me")
 }
 
-func (cs *collectionStore) RetrieveCollectionConfigPackage(cc common.CollectionCriteria) (*common.CollectionConfigPackage, error) {
+func (cs *collectionStore) RetrieveCollectionConfigPackage(cc privdata.CollectionCriteria) (*common.CollectionConfigPackage, error) {
 	return &common.CollectionConfigPackage{
 		Config: []*common.CollectionConfig{
 			{
@@ -308,7 +308,7 @@ func (cs *collectionStore) RetrieveCollectionConfigPackage(cc common.CollectionC
 	}, nil
 }
 
-func (cs *collectionStore) RetrieveCollectionPersistenceConfigs(cc common.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
+func (cs *collectionStore) RetrieveCollectionPersistenceConfigs(cc privdata.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error) {
 	panic("implement me")
 }
 

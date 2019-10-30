@@ -94,25 +94,25 @@ type CollectionStore interface {
 	// latest configuration that was committed into the ledger before this txID
 	// was committed.
 	// Else - it's the latest configuration for the collection.
-	RetrieveCollection(common.CollectionCriteria) (Collection, error)
+	RetrieveCollection(CollectionCriteria) (Collection, error)
 
 	// RetrieveCollectionAccessPolicy retrieves a collection's access policy
-	RetrieveCollectionAccessPolicy(common.CollectionCriteria) (CollectionAccessPolicy, error)
+	RetrieveCollectionAccessPolicy(CollectionCriteria) (CollectionAccessPolicy, error)
 
 	// RetrieveCollectionConfig retrieves a collection's config
-	RetrieveCollectionConfig(common.CollectionCriteria) (*common.StaticCollectionConfig, error)
+	RetrieveCollectionConfig(CollectionCriteria) (*common.StaticCollectionConfig, error)
 
 	// RetrieveCollectionConfigPackage retrieves the whole configuration package
 	// for the chaincode with the supplied criteria
-	RetrieveCollectionConfigPackage(common.CollectionCriteria) (*common.CollectionConfigPackage, error)
+	RetrieveCollectionConfigPackage(CollectionCriteria) (*common.CollectionConfigPackage, error)
 
 	// RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
-	RetrieveCollectionPersistenceConfigs(common.CollectionCriteria) (CollectionPersistenceConfigs, error)
+	RetrieveCollectionPersistenceConfigs(CollectionCriteria) (CollectionPersistenceConfigs, error)
 
 	// RetrieveReadWritePermission retrieves the read-write persmission of the creator of the
 	// signedProposal for a given collection using collection access policy and flags such as
 	// memberOnlyRead & memberOnlyWrite
-	RetrieveReadWritePermission(common.CollectionCriteria, *pb.SignedProposal, ledger.QueryExecutor) (bool, bool, error)
+	RetrieveReadWritePermission(CollectionCriteria, *pb.SignedProposal, ledger.QueryExecutor) (bool, bool, error)
 
 	CollectionFilter
 }
