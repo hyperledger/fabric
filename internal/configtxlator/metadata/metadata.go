@@ -9,25 +9,18 @@ package metadata
 import (
 	"fmt"
 	"runtime"
+
+	"github.com/hyperledger/fabric/internal/cryptogen/metadata"
 )
 
-// package-scoped variables
-
-// Package version
-const Version = "2.0.0"
-
-var CommitSHA string
-
-// package-scoped constants
-
-// Program name
 const ProgramName = "configtxlator"
 
-func GetVersionInfo() string {
-	if CommitSHA == "" {
-		CommitSHA = "development build"
-	}
+var (
+	CommitSHA = metadata.CommitSHA
+	Version   = metadata.Version
+)
 
+func GetVersionInfo() string {
 	return fmt.Sprintf("%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s",
 		ProgramName, Version, CommitSHA, runtime.Version(),
 		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH))

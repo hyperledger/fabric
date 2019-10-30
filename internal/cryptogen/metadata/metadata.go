@@ -9,25 +9,18 @@ package metadata
 import (
 	"fmt"
 	"runtime"
+
+	"github.com/hyperledger/fabric/common/metadata"
 )
 
-// package-scoped variables
-
-// Package version
-const Version = "2.0.0"
-
-var CommitSHA string
-
-// package-scoped constants
-
-// Program name
 const ProgramName = "cryptogen"
 
-func GetVersionInfo() string {
-	if CommitSHA == "" {
-		CommitSHA = "development build"
-	}
+var (
+	CommitSHA = metadata.CommitSHA
+	Version   = metadata.Version
+)
 
+func GetVersionInfo() string {
 	return fmt.Sprintf(
 		"%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s",
 		ProgramName,

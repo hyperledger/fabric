@@ -20,9 +20,6 @@ func TestGetVersionInfo(t *testing.T) {
 
 	for _, sha := range testSHAs {
 		metadata.CommitSHA = sha
-		if sha == "" {
-			sha = "development build"
-		}
 
 		expected := fmt.Sprintf("%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s",
 			metadata.ProgramName, metadata.Version, sha, runtime.Version(),
