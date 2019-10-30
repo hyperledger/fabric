@@ -360,7 +360,7 @@ Orderer: &OrdererDefaults
             MaxInflightBlocks: 5
 
             # SnapshotIntervalSize defines number of bytes per which a snapshot is taken
-            SnapshotIntervalSize: 20 MB
+            SnapshotIntervalSize: 16 MB
 
     # Organizations lists the orgs participating on the orderer side of the
     # network.
