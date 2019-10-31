@@ -86,10 +86,6 @@ func NewDeliverService(conf *Config) DeliverService {
 	return ds
 }
 
-func (d *deliverServiceImpl) UpdateEndpoints(chainID string, endpoints []string) error {
-	return nil
-}
-
 type DialerAdapter struct {
 	Client *comm.GRPCClient
 }
