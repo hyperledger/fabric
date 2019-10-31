@@ -385,7 +385,7 @@ func CheckTxID(txid string, nonce, creator []byte) error {
 }
 
 // InvokedChaincodeName takes the proposal bytes of a SignedProposal, and unpacks it all the way down,
-// until either an error is encountered, or the chaincode name is found.  This is useful primarilly
+// until either an error is encountered, or the chaincode name is found. This is useful primarily
 // for chaincodes which wish to know the chaincode name originally invoked, in order to deny cc2cc
 // invocations (or, perhaps to deny direct invocations and require cc2cc).
 func InvokedChaincodeName(proposalBytes []byte) (string, error) {
