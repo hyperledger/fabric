@@ -4,16 +4,15 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/discovery/support/acl"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
 type Verifier struct {
-	VerifyByChannelStub        func(channel string, sd *protoutil.SignedData) error
+	VerifyByChannelStub        func(string, *protoutil.SignedData) error
 	verifyByChannelMutex       sync.RWMutex
 	verifyByChannelArgsForCall []struct {
-		channel string
-		sd      *protoutil.SignedData
+		arg1 string
+		arg2 *protoutil.SignedData
 	}
 	verifyByChannelReturns struct {
 		result1 error
@@ -25,22 +24,23 @@ type Verifier struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Verifier) VerifyByChannel(channel string, sd *protoutil.SignedData) error {
+func (fake *Verifier) VerifyByChannel(arg1 string, arg2 *protoutil.SignedData) error {
 	fake.verifyByChannelMutex.Lock()
 	ret, specificReturn := fake.verifyByChannelReturnsOnCall[len(fake.verifyByChannelArgsForCall)]
 	fake.verifyByChannelArgsForCall = append(fake.verifyByChannelArgsForCall, struct {
-		channel string
-		sd      *protoutil.SignedData
-	}{channel, sd})
-	fake.recordInvocation("VerifyByChannel", []interface{}{channel, sd})
+		arg1 string
+		arg2 *protoutil.SignedData
+	}{arg1, arg2})
+	fake.recordInvocation("VerifyByChannel", []interface{}{arg1, arg2})
 	fake.verifyByChannelMutex.Unlock()
 	if fake.VerifyByChannelStub != nil {
-		return fake.VerifyByChannelStub(channel, sd)
+		return fake.VerifyByChannelStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.verifyByChannelReturns.result1
+	fakeReturns := fake.verifyByChannelReturns
+	return fakeReturns.result1
 }
 
 func (fake *Verifier) VerifyByChannelCallCount() int {
@@ -49,13 +49,22 @@ func (fake *Verifier) VerifyByChannelCallCount() int {
 	return len(fake.verifyByChannelArgsForCall)
 }
 
+func (fake *Verifier) VerifyByChannelCalls(stub func(string, *protoutil.SignedData) error) {
+	fake.verifyByChannelMutex.Lock()
+	defer fake.verifyByChannelMutex.Unlock()
+	fake.VerifyByChannelStub = stub
+}
+
 func (fake *Verifier) VerifyByChannelArgsForCall(i int) (string, *protoutil.SignedData) {
 	fake.verifyByChannelMutex.RLock()
 	defer fake.verifyByChannelMutex.RUnlock()
-	return fake.verifyByChannelArgsForCall[i].channel, fake.verifyByChannelArgsForCall[i].sd
+	argsForCall := fake.verifyByChannelArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Verifier) VerifyByChannelReturns(result1 error) {
+	fake.verifyByChannelMutex.Lock()
+	defer fake.verifyByChannelMutex.Unlock()
 	fake.VerifyByChannelStub = nil
 	fake.verifyByChannelReturns = struct {
 		result1 error
@@ -63,6 +72,8 @@ func (fake *Verifier) VerifyByChannelReturns(result1 error) {
 }
 
 func (fake *Verifier) VerifyByChannelReturnsOnCall(i int, result1 error) {
+	fake.verifyByChannelMutex.Lock()
+	defer fake.verifyByChannelMutex.Unlock()
 	fake.VerifyByChannelStub = nil
 	if fake.verifyByChannelReturnsOnCall == nil {
 		fake.verifyByChannelReturnsOnCall = make(map[int]struct {
@@ -97,5 +108,3 @@ func (fake *Verifier) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ acl.Verifier = new(Verifier)

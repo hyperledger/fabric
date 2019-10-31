@@ -5,14 +5,13 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/discovery/support/config"
 )
 
 type ConfigBlockGetter struct {
-	GetCurrConfigBlockStub        func(channel string) *common.Block
+	GetCurrConfigBlockStub        func(string) *common.Block
 	getCurrConfigBlockMutex       sync.RWMutex
 	getCurrConfigBlockArgsForCall []struct {
-		channel string
+		arg1 string
 	}
 	getCurrConfigBlockReturns struct {
 		result1 *common.Block
@@ -24,21 +23,22 @@ type ConfigBlockGetter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ConfigBlockGetter) GetCurrConfigBlock(channel string) *common.Block {
+func (fake *ConfigBlockGetter) GetCurrConfigBlock(arg1 string) *common.Block {
 	fake.getCurrConfigBlockMutex.Lock()
 	ret, specificReturn := fake.getCurrConfigBlockReturnsOnCall[len(fake.getCurrConfigBlockArgsForCall)]
 	fake.getCurrConfigBlockArgsForCall = append(fake.getCurrConfigBlockArgsForCall, struct {
-		channel string
-	}{channel})
-	fake.recordInvocation("GetCurrConfigBlock", []interface{}{channel})
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetCurrConfigBlock", []interface{}{arg1})
 	fake.getCurrConfigBlockMutex.Unlock()
 	if fake.GetCurrConfigBlockStub != nil {
-		return fake.GetCurrConfigBlockStub(channel)
+		return fake.GetCurrConfigBlockStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.getCurrConfigBlockReturns.result1
+	fakeReturns := fake.getCurrConfigBlockReturns
+	return fakeReturns.result1
 }
 
 func (fake *ConfigBlockGetter) GetCurrConfigBlockCallCount() int {
@@ -47,13 +47,22 @@ func (fake *ConfigBlockGetter) GetCurrConfigBlockCallCount() int {
 	return len(fake.getCurrConfigBlockArgsForCall)
 }
 
+func (fake *ConfigBlockGetter) GetCurrConfigBlockCalls(stub func(string) *common.Block) {
+	fake.getCurrConfigBlockMutex.Lock()
+	defer fake.getCurrConfigBlockMutex.Unlock()
+	fake.GetCurrConfigBlockStub = stub
+}
+
 func (fake *ConfigBlockGetter) GetCurrConfigBlockArgsForCall(i int) string {
 	fake.getCurrConfigBlockMutex.RLock()
 	defer fake.getCurrConfigBlockMutex.RUnlock()
-	return fake.getCurrConfigBlockArgsForCall[i].channel
+	argsForCall := fake.getCurrConfigBlockArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *ConfigBlockGetter) GetCurrConfigBlockReturns(result1 *common.Block) {
+	fake.getCurrConfigBlockMutex.Lock()
+	defer fake.getCurrConfigBlockMutex.Unlock()
 	fake.GetCurrConfigBlockStub = nil
 	fake.getCurrConfigBlockReturns = struct {
 		result1 *common.Block
@@ -61,6 +70,8 @@ func (fake *ConfigBlockGetter) GetCurrConfigBlockReturns(result1 *common.Block) 
 }
 
 func (fake *ConfigBlockGetter) GetCurrConfigBlockReturnsOnCall(i int, result1 *common.Block) {
+	fake.getCurrConfigBlockMutex.Lock()
+	defer fake.getCurrConfigBlockMutex.Unlock()
 	fake.GetCurrConfigBlockStub = nil
 	if fake.getCurrConfigBlockReturnsOnCall == nil {
 		fake.getCurrConfigBlockReturnsOnCall = make(map[int]struct {
@@ -95,5 +106,3 @@ func (fake *ConfigBlockGetter) recordInvocation(key string, args []interface{}) 
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ config.CurrentConfigBlockGetter = new(ConfigBlockGetter)

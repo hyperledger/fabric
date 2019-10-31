@@ -599,7 +599,7 @@ func createChannelConfigGetter(s *sequenceWrapper, mspMgr msp.MSPManager) discac
 	resources := &mocks.Resources{}
 	resources.ConfigtxValidatorReturns(s)
 	resources.MSPManagerReturns(mspMgr)
-	chConfig := &mocks.ChanConfig{}
+	chConfig := &mocks.ChannelConfigGetter{}
 	chConfig.GetChannelConfigReturns(resources)
 	return chConfig
 }
