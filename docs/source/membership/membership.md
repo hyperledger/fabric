@@ -35,10 +35,9 @@ MSPs do in general.
 ### Mapping MSPs to Organizations
 
 An **organization** is a managed group of members. This can be something as big
-as a multinational corporation or a small as a flower shop. What's most
-important about organizations (or **orgs**) is that they manage their
-members under a single MSP. Note that this is different from the organization
-concept defined in an X.509 certificate, which we'll talk about later.
+as a multinational corporation or a small as a flower shop. Typically an organization is
+represented as a single MSP. Note that this is different from the organization concept
+defined in an X.509 certificate, which we'll talk about later.
 
 The exclusive relationship between an organization and its MSP makes it sensible to
 name the MSP after the organization, a convention you'll find adopted in most policy
