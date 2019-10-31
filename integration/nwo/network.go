@@ -317,6 +317,11 @@ func (n *Network) PeerConfigPath(p *Peer) string {
 	return filepath.Join(n.PeerDir(p), "core.yaml")
 }
 
+// PeerLedgerDir returns the ledger root directory for the specified peer.
+func (n *Network) PeerLedgerDir(p *Peer) string {
+	return filepath.Join(n.PeerDir(p), "filesystem/ledgersData")
+}
+
 // ReadPeerConfig unmarshals a peer's core.yaml and returns an object
 // approximating its contents.
 func (n *Network) ReadPeerConfig(p *Peer) *fabricconfig.Core {
