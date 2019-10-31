@@ -7,7 +7,7 @@
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
-    echo "Expected 2 directories got $#"
+    >&2 echo "Expected 2 directories got $#"
     exit 1
 fi
 

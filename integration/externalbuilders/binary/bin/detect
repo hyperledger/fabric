@@ -7,7 +7,7 @@
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
-    echo "Expected 2 directories got $#"
+    >&2 echo "Expected 2 directories got $#"
     exit 2
 fi
 
@@ -18,5 +18,5 @@ if [ "$(jq -r .type "$META/metadata.json")" == "binary" ]; then
     exit 0
 fi
 
-echo "binary is the only supported type"
+>&2 echo "binary is the only supported type"
 exit 1

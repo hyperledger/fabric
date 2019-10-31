@@ -7,7 +7,7 @@
 set -euo pipefail
 
 if [ "$#" -ne 3 ]; then
-    echo "Expected 3 directories got $#"
+    >&2 echo "Expected 3 directories got $#"
     exit 1
 fi
 
@@ -16,8 +16,7 @@ META="$2"
 BLD="$3"
 
 if [ -e "$SRC/metadata" ] ; then
-  mkdir "$BLD/metadata"
-  mv "$SRC/metadata" "$BLD/metadata/META-INF"
+  cp -a "$SRC/metadata" "$BLD"
 fi
 
 cp "$(jq -r .path "$META/metadata.json")" "$BLD/chaincode"

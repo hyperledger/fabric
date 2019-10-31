@@ -18,9 +18,7 @@ import (
 )
 
 var _ = Describe("Metadataprovider", func() {
-	var (
-		mp *externalbuilders.MetadataProvider
-	)
+	var mp *externalbuilders.MetadataProvider
 
 	BeforeEach(func() {
 		mp = &externalbuilders.MetadataProvider{
