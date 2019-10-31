@@ -173,6 +173,9 @@ func NewDeliverService(conf *Config, connConfig ConnectionCriteria) (*deliverSer
 }
 
 func (d *deliverServiceImpl) UpdateEndpoints(chainID string, connCriteria ConnectionCriteria) error {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+
 	// update the overrides
 	connCriteria.OrdererEndpointOverrides = d.connConfig.OrdererEndpointOverrides
 	// Use chainID to obtain blocks provider and pass endpoints
