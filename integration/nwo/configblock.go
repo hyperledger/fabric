@@ -27,7 +27,7 @@ import (
 
 // GetConfigBlock retrieves the current config block for a channel
 func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Block {
-	tempDir, err := ioutil.TempDir("", "getConfigBlock")
+	tempDir, err := ioutil.TempDir(n.RootDir, "getConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -141,7 +141,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 // has completed. If an orderer is not provided, the current config block will
 // be fetched from the peer.
 func CurrentConfigBlockNumber(n *Network, peer *Peer, orderer *Orderer, channel string) uint64 {
-	tempDir, err := ioutil.TempDir("", "currentConfigBlock")
+	tempDir, err := ioutil.TempDir(n.RootDir, "currentConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
@@ -200,7 +200,7 @@ func FetchConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string, 
 // UpdateOrdererConfig computes, signs, and submits a configuration update which requires orderers signature and waits
 // for the update to complete.
 func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
-	tempDir, err := ioutil.TempDir("", "updateConfig")
+	tempDir, err := ioutil.TempDir(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	updateFile := filepath.Join(tempDir, "update.pb")
 	defer os.RemoveAll(tempDir)
@@ -230,14 +230,13 @@ func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, 
 	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
 }
 
-// UpdateOrdererConfigSession computes, signs, and submits a configuration update which requires orderers signature
-// and waits for the update to complete. The command session is returned to the caller to enable ExitCode and command
-// output assertions.
+// UpdateOrdererConfigSession computes, signs, and submits a configuration
+// update which requires orderer signatures. The caller should wait on the
+// returned seession retrieve the exit code.
 func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) *gexec.Session {
-	tempDir, err := ioutil.TempDir("", "updateConfig")
+	tempDir, err := ioutil.TempDir(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	updateFile := filepath.Join(tempDir, "update.pb")
-	defer os.RemoveAll(tempDir)
 
 	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
@@ -249,7 +248,6 @@ func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, cu
 		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
 	return sess
 }
 
