@@ -132,6 +132,15 @@ func (r *Replicator) ReplicateChains() []string {
 			if err != nil {
 				r.Logger.Panicf("Failed to create a ledger for channel %s: %v", channel.ChannelName, err)
 			}
+
+			if channel.GenesisBlock == nil {
+				if ledger.Height() == 0 {
+					r.Logger.Panicf("Expecting channel %s to at least contain genesis block, but it doesn't", channel.ChannelName)
+				}
+
+				continue
+			}
+
 			gb, err := ChannelCreationBlockToGenesisBlock(channel.GenesisBlock)
 			if err != nil {
 				r.Logger.Panicf("Failed converting channel creation block for channel %s to genesis block: %v",
