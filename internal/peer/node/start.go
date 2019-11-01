@@ -252,12 +252,16 @@ func serve(args []string) error {
 	if err != nil {
 		return errors.WithMessage(err, "failed to open transient store")
 	}
+
+	deliverServiceConfig := deliverservice.GlobalConfig()
+
 	peerInstance := &peer.Peer{
-		Server:            peerServer,
-		ServerConfig:      serverConfig,
-		CredentialSupport: cs,
-		StoreProvider:     transientStoreProvider,
-		CryptoProvider:    factory.GetDefault(),
+		Server:                   peerServer,
+		ServerConfig:             serverConfig,
+		CredentialSupport:        cs,
+		StoreProvider:            transientStoreProvider,
+		CryptoProvider:           factory.GetDefault(),
+		OrdererEndpointOverrides: deliverServiceConfig.OrdererEndpointOverrides,
 	}
 
 	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
@@ -266,8 +270,6 @@ func serve(args []string) error {
 		logger.Panicf("Could not get the default signing identity from the local MSP: [%+v]", err)
 	}
 	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
-
-	deliverServiceConfig := deliverservice.GlobalConfig()
 
 	deliverGRPCClient, err := comm.NewGRPCClient(comm.ClientConfig{
 		Timeout: deliverServiceConfig.ConnectionTimeout,

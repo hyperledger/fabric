@@ -24,6 +24,7 @@ type ConnectionSource struct {
 	allEndpoints       []*Endpoint
 	orgToEndpointsHash map[string][]byte
 	logger             *flogging.FabricLogger
+	overrides          map[string]*Endpoint
 }
 
 type Endpoint struct {
@@ -37,10 +38,11 @@ type OrdererOrg struct {
 	RootCerts [][]byte
 }
 
-func NewConnectionSource(logger *flogging.FabricLogger) *ConnectionSource {
+func NewConnectionSource(logger *flogging.FabricLogger, overrides map[string]*Endpoint) *ConnectionSource {
 	return &ConnectionSource{
 		orgToEndpointsHash: map[string][]byte{},
 		logger:             logger,
+		overrides:          overrides,
 	}
 }
 
@@ -132,7 +134,7 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		// Alert any existing consumers that have a reference to the old endpoints
 		// that their reference is now stale and they should get a new one.
 		// This is done even for endpoints which have the same TLS certs and address
-		// but this is deseriable to help load balance.  For instance if only
+		// but this is desirable to help load balance.  For instance if only
 		// one orderer were defined, and the config is updated to include 4 more, we
 		// want the peers to disconnect from that original orderer and reconnect
 		// evenly across the now five.
@@ -161,6 +163,16 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		// Note, if !hasOrgEndpoints, this for loop is a no-op, so
 		// certPool is never referenced.
 		for _, address := range org.Addresses {
+			overrideEndpoint, ok := cs.overrides[address]
+			if ok {
+				cs.allEndpoints = append(cs.allEndpoints, &Endpoint{
+					Address:   overrideEndpoint.Address,
+					CertPool:  overrideEndpoint.CertPool,
+					Refreshed: make(chan struct{}),
+				})
+				continue
+			}
+
 			cs.allEndpoints = append(cs.allEndpoints, &Endpoint{
 				Address:   address,
 				CertPool:  certPool,
@@ -177,6 +189,16 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 	}
 
 	for _, address := range globalAddrs {
+		overrideEndpoint, ok := cs.overrides[address]
+		if ok {
+			cs.allEndpoints = append(cs.allEndpoints, &Endpoint{
+				Address:   overrideEndpoint.Address,
+				CertPool:  overrideEndpoint.CertPool,
+				Refreshed: make(chan struct{}),
+			})
+			continue
+		}
+
 		cs.allEndpoints = append(cs.allEndpoints, &Endpoint{
 			Address:   address,
 			CertPool:  globalCertPool,

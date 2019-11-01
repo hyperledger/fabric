@@ -126,7 +126,7 @@ func TestLeaderYield(t *testing.T) {
 			},
 			deliverGRPCClient: grpcClient,
 		}}
-		gs.InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers")), store.Store, Support{
+		gs.InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		})
 		return gs
