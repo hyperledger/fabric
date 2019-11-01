@@ -882,10 +882,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			firstEvictedNode := findLeader(ordererRunners) - 1
 
 			By("Removing the leader from 3-node channel")
-			serverCertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[firstEvictedNode]), "server.crt"))
+			server1CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[firstEvictedNode]), "server.crt"))
 			Expect(err).To(Not(HaveOccurred()))
 
-			removeConsenter(network, peer, network.Orderers[(firstEvictedNode+1)%3], "systemchannel", serverCertBytes)
+			removeConsenter(network, peer, network.Orderers[(firstEvictedNode+1)%3], "systemchannel", server1CertBytes)
 
 			var survivedOrdererRunners []*ginkgomon.Runner
 			for i := range orderers {
@@ -914,10 +914,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ensureEvicted(orderers[firstEvictedNode], peer, network, "systemchannel")
 
 			By("Removing the leader from 2-node channel")
-			serverCertBytes, err = ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
+			server2CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
 			Expect(err).To(Not(HaveOccurred()))
 
-			removeConsenter(network, peer, orderers[surviver], "systemchannel", serverCertBytes)
+			removeConsenter(network, peer, orderers[surviver], "systemchannel", server2CertBytes)
 			findLeader([]*ginkgomon.Runner{ordererRunners[surviver]})
 
 			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderer detect the eviction of the node on channel systemchannel")
@@ -925,6 +925,24 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Ensuring the evicted orderer now doesn't serve clients")
 			ensureEvicted(orderers[secondEvictedNode], peer, network, "systemchannel")
+
+			By("Re-adding first evicted orderer")
+			addConsenter(network, peer, network.Orderers[surviver], "systemchannel", etcdraft.Consenter{
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderers[firstEvictedNode], nwo.ClusterPort)),
+				ClientTlsCert: server1CertBytes,
+				ServerTlsCert: server1CertBytes,
+			})
+
+			By("Ensuring re-added orderer starts serving system channel")
+			assertBlockReception(map[string]int{
+				"systemchannel": 3,
+			}, []*nwo.Orderer{orderers[firstEvictedNode]}, peer, network)
+
+			env := CreateBroadcastEnvelope(network, orderers[secondEvictedNode], network.SystemChannel.Name, []byte("foo"))
+			resp, err := Broadcast(network, orderers[surviver], env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 		})
 
 		It("notices it even if it is down at the time of its eviction", func() {

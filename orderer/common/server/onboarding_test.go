@@ -871,18 +871,12 @@ func TestInactiveChainReplicatorChannels(t *testing.T) {
 		chains2CreationCallbacks: make(map[string]chainCreation),
 	}
 	icr.TrackChain("foo", &common.Block{}, func() {})
+	assert.Contains(t, icr.Channels(), cluster.ChannelGenesisBlock{ChannelName: "foo", GenesisBlock: &common.Block{}})
 
-	assert.Equal(t, []cluster.ChannelGenesisBlock{{ChannelName: "foo", GenesisBlock: &common.Block{}}}, icr.Channels())
+	icr.TrackChain("bar", nil, func() {})
+	assert.Contains(t, icr.Channels(), cluster.ChannelGenesisBlock{ChannelName: "bar", GenesisBlock: nil})
+
 	icr.Close()
-}
-
-func TestTrackChainNilGenesisBlock(t *testing.T) {
-	icr := &inactiveChainReplicator{
-		logger: flogging.MustGetLogger("test"),
-	}
-	assert.PanicsWithValue(t, "Called with a nil genesis block", func() {
-		icr.TrackChain("foo", nil, func() {})
-	})
 }
 
 func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byte) {
