@@ -20,6 +20,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	version "github.com/hashicorp/go-version"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -305,6 +306,21 @@ func kafkaVersionDecodeHook() mapstructure.DecodeHookFunc {
 	}
 }
 
+func bccspHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+	if t != reflect.TypeOf(&factory.FactoryOpts{}) {
+		return data, nil
+	}
+
+	config := factory.GetDefaultOpts()
+
+	err := mapstructure.Decode(data, config)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not decode bcssp type")
+	}
+
+	return config, nil
+}
+
 // EnhancedExactUnmarshal is intended to unmarshal a config file into a structure
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
@@ -330,6 +346,7 @@ func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 		Result:           output,
 		WeaklyTypedInput: true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
+			bccspHook,
 			customDecodeHook(),
 			byteSizeDecodeHook(),
 			stringFromFileDecodeHook(),
