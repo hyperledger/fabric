@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+    >&2 echo "Expected 2 directories got $#"
+    exit 1
+fi
+
+OUTPUT=$1
+ARTIFACTS=$2
+
+# shellcheck disable=SC2155
+export CORE_CHAINCODE_ID_NAME="$(jq -r .chaincode_id "$ARTIFACTS/chaincode.json")"
+export CORE_TLS_CLIENT_CERT_PATH="$ARTIFACTS/client.crt"
+export CORE_TLS_CLIENT_KEY_PATH="$ARTIFACTS/client.key"
+export CORE_PEER_TLS_ROOTCERT_FILE="$ARTIFACTS/root.crt"
+
+# Note, for strange historical reasons, the chaincode expects the cert and key
+# to be base64 encoded, but not the root cert.
+jq -r .client_cert "$ARTIFACTS/chaincode.json" > "$CORE_TLS_CLIENT_CERT_PATH"
+jq -r .client_key "$ARTIFACTS/chaincode.json" > "$CORE_TLS_CLIENT_KEY_PATH"
+jq -r .root_cert "$ARTIFACTS/chaincode.json" | base64 --decode > "$CORE_PEER_TLS_ROOTCERT_FILE"
+
+if [ -z "$(cat "$CORE_TLS_CLIENT_CERT_PATH")" ]  ; then
+    export CORE_PEER_TLS_ENABLED=false
+else
+    export CORE_PEER_TLS_ENABLED=true
+fi
+
+exec "$OUTPUT/chaincode" -peer.address="$(jq -r .peer_address "$ARTIFACTS/chaincode.json")"
