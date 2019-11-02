@@ -242,9 +242,9 @@ type Node struct {
 }
 
 type ExternalBuilder struct {
-	EnvironmentWhitelist []string `json:"environmentWhitelist,omitempty"`
-	Name                 string   `json:"name,omitempty"`
-	Path                 string   `json:"path,omitempty"`
+	EnvironmentWhitelist []string `yaml:"environmentWhitelist,omitempty"`
+	Name                 string   `yaml:"name,omitempty"`
+	Path                 string   `yaml:"path,omitempty"`
 }
 
 type SystemFlags struct {

@@ -37,9 +37,9 @@ import (
 // ExternalBuilder represents the configuration structure of
 // a chaincode external builder
 type ExternalBuilder struct {
-	EnvironmentWhitelist []string `json:"environmentWhitelist"`
-	Name                 string   `json:"name"`
-	Path                 string   `json:"path"`
+	EnvironmentWhitelist []string `yaml:"environmentWhitelist"`
+	Name                 string   `yaml:"name"`
+	Path                 string   `yaml:"path"`
 }
 
 // Config is the struct that defines the Peer configurations.
