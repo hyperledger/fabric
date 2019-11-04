@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -29,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	protosorderer "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
@@ -75,7 +77,7 @@ var _ = Describe("EndToEnd", func() {
 		if network != nil {
 			network.Cleanup()
 		}
-		os.RemoveAll(testDir)
+		// os.RemoveAll(testDir)
 	})
 
 	Describe("basic solo network with 2 orgs", func() {
@@ -461,6 +463,124 @@ var _ = Describe("EndToEnd", func() {
 
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel2")
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel1")
+		})
+	})
+
+	Describe("single node etcdraft network with remapped orderer endpoints", func() {
+		BeforeEach(func() {
+			network = nwo.New(nwo.MinimalRaft(), testDir, client, BasePort(), components)
+			network.GenerateConfigTree()
+
+			ordererMSPDir := network.OrdererOrgMSPDir(network.OrdererOrgs()[0])
+			modifiedOrdererMSPDir := filepath.Join(network.RootDir, "TLSLessOrdererMSP")
+
+			configtxConfig := network.ReadConfigTxConfig()
+			ordererOrg := configtxConfig.Profiles["SampleDevModeEtcdRaft"].Orderer.Organizations[0]
+			ordererOrg.MSPDir = modifiedOrdererMSPDir
+			ordererEndpoints := ordererOrg.OrdererEndpoints
+			correctOrdererEndpoint := ordererEndpoints[0]
+			ordererEndpoints[0] = "127.0.0.1:1"
+			network.WriteConfigTxConfig(configtxConfig)
+
+			peer := network.Peer("Org1", "peer0")
+			peerConfig := network.ReadPeerConfig(peer)
+			peerConfig.Peer.Deliveryclient.AddressOverrides = []*fabricconfig.AddressOverride{
+				{
+					From:        "127.0.0.1:1",
+					To:          correctOrdererEndpoint,
+					CACertsFile: network.CACertsBundlePath(),
+				},
+			}
+			network.WritePeerConfig(peer, peerConfig)
+
+			_, err := network.DockerClient.CreateNetwork(
+				docker.CreateNetworkOptions{
+					Name:   network.NetworkID,
+					Driver: "bridge",
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			sess, err := network.Cryptogen(commands.Generate{
+				Config: network.CryptoConfigPath(),
+				Output: network.CryptoPath(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+			// Make a copy of the orderer MSP, stripping out the TLS certs
+			filepath.Walk(ordererMSPDir, func(path string, info os.FileInfo, err error) error {
+				Expect(err).NotTo(HaveOccurred())
+
+				relPath, err := filepath.Rel(ordererMSPDir, path)
+				Expect(err).NotTo(HaveOccurred())
+
+				relDir := filepath.Dir(relPath)
+				err = os.MkdirAll(filepath.Join(modifiedOrdererMSPDir, relDir), 0700)
+				Expect(err).NotTo(HaveOccurred())
+
+				if info.IsDir() {
+					return nil
+				}
+
+				switch filepath.Base(relDir) {
+				case "tlscacerts", "tlsintermediatecerts":
+					return nil
+				default:
+				}
+
+				s, err := os.OpenFile(path, os.O_RDONLY, info.Mode())
+				Expect(err).NotTo(HaveOccurred())
+				defer s.Close()
+
+				target := filepath.Join(modifiedOrdererMSPDir, relPath)
+				f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, info.Mode())
+				Expect(err).NotTo(HaveOccurred())
+
+				if _, err := io.Copy(f, s); err != nil {
+					return err
+				}
+
+				f.Close()
+				return nil
+			})
+
+			sess, err = network.ConfigTxGen(commands.OutputBlock{
+				ChannelID:   network.SystemChannel.Name,
+				Profile:     network.SystemChannel.Profile,
+				ConfigPath:  network.RootDir,
+				OutputBlock: network.OutputBlockPath(network.SystemChannel.Name),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+
+			for _, c := range network.Channels {
+				sess, err := network.ConfigTxGen(commands.CreateChannelTx{
+					ChannelID:             c.Name,
+					Profile:               c.Profile,
+					BaseProfile:           c.BaseProfile,
+					ConfigPath:            network.RootDir,
+					OutputCreateChannelTx: network.CreateChannelTxPath(c.Name),
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			}
+
+			network.ConcatenateTLSCACertificates()
+
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		})
+
+		It("creates and updates channel", func() {
+			orderer := network.Orderer("orderer")
+
+			network.CreateAndJoinChannel(orderer, "testchannel")
+
+			// The below call waits for the config update to commit on the peer, so
+			// it will fail if the orderer addresses are wrong.
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V1_4_2", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 		})
 	})
 })
