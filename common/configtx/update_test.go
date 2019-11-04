@@ -109,7 +109,7 @@ func TestVerifyDeltaSet(t *testing.T) {
 
 		deltaSet["foo"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1, ModPolicy: "foo"}}
 		fakePolicy := &mockpolicies.Policy{}
-		fakePolicy.EvaluateReturns(fmt.Errorf("MockErr-fakePolicy.Evaluate-1557327297"))
+		fakePolicy.EvaluateSignedDataReturns(fmt.Errorf("MockErr-fakePolicy.Evaluate-1557327297"))
 		vi.pm.(*mockpolicies.PolicyManager).GetPolicyReturns(fakePolicy, true)
 
 		assert.Error(t, vi.verifyDeltaSet(deltaSet, nil), "Policy evaluation should have failed")
@@ -126,7 +126,7 @@ func TestPolicyForItem(t *testing.T) {
 	// Policies are set to different error values to differentiate them in equal assertion
 
 	fakeFooPolicy := &mockpolicies.Policy{}
-	fakeFooPolicy.EvaluateReturns(fmt.Errorf("MockErr-fooPolicy-1557327481"))
+	fakeFooPolicy.EvaluateSignedDataReturns(fmt.Errorf("MockErr-fooPolicy-1557327481"))
 	fakeFooPolicyManager := &mockpolicies.PolicyManager{}
 	fakeFooPolicyManager.GetPolicyStub = func(s string) (i policies.Policy, b bool) {
 		if s == "foo" {
@@ -135,7 +135,7 @@ func TestPolicyForItem(t *testing.T) {
 		return nil, false
 	}
 	fakeRootPolicy := &mockpolicies.Policy{}
-	fakeRootPolicy.EvaluateReturns(fmt.Errorf("MockErr-rootPolicy-1557327456"))
+	fakeRootPolicy.EvaluateSignedDataReturns(fmt.Errorf("MockErr-rootPolicy-1557327456"))
 	fakeRootPolicyManager := &mockpolicies.PolicyManager{}
 	fakeRootPolicyManager.GetPolicyStub = func(s string) (i policies.Policy, b bool) {
 		if s == "rootPolicy" {

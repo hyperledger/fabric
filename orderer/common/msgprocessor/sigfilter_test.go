@@ -54,7 +54,7 @@ func makeEnvelope() *cb.Envelope {
 
 func newMockResources(hasPolicy bool, policyErr error) *mocks.Resources {
 	policy := &mocks.Policy{}
-	policy.EvaluateReturns(policyErr)
+	policy.EvaluateSignedDataReturns(policyErr)
 	policyManager := &mocks.PolicyManager{}
 	policyManager.GetPolicyReturns(policy, hasPolicy)
 	ordererConfig := newMockOrdererConfig(false, orderer.ConsensusType_STATE_NORMAL)
@@ -96,7 +96,7 @@ func TestMaintenance(t *testing.T) {
 	mockPolicyManager.GetPolicyStub = func(name string) (policies.Policy, bool) {
 		mockPolicy := &mocks.Policy{}
 		if name == policies.ChannelOrdererWriters {
-			mockPolicy.EvaluateReturns(fmt.Errorf("Error"))
+			mockPolicy.EvaluateSignedDataReturns(fmt.Errorf("Error"))
 		}
 		return mockPolicy, true
 	}

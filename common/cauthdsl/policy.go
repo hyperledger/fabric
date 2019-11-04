@@ -12,59 +12,16 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	mspp "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
-type Identity interface {
-	// SatisfiesPrincipal checks whether this instance matches
-	// the description supplied in MSPPrincipal. The check may
-	// involve a byte-by-byte comparison (if the principal is
-	// a serialized identity) or may require MSP validation
-	SatisfiesPrincipal(principal *mspp.MSPPrincipal) error
-
-	// GetIdentifier returns the identifier of that identity
-	GetIdentifier() *msp.IdentityIdentifier
-}
-
-type IdentityAndSignature interface {
-	// Identity returns the identity associated to this instance
-	Identity() (Identity, error)
-
-	// Verify returns the validity status of this identity's signature over the message
-	Verify() error
-}
-
-type deserializeAndVerify struct {
-	signedData           *protoutil.SignedData
-	deserializer         msp.IdentityDeserializer
-	deserializedIdentity msp.Identity
-}
-
-func (d *deserializeAndVerify) Identity() (Identity, error) {
-	deserializedIdentity, err := d.deserializer.DeserializeIdentity(d.signedData.Identity)
-	if err != nil {
-		return nil, err
-	}
-
-	d.deserializedIdentity = deserializedIdentity
-	return deserializedIdentity, nil
-}
-
-func (d *deserializeAndVerify) Verify() error {
-	if d.deserializedIdentity == nil {
-		cauthdslLogger.Panicf("programming error, Identity must be called prior to Verify")
-	}
-	return d.deserializedIdentity.Verify(d.signedData.Data, d.signedData.Signature)
-}
-
 type provider struct {
 	deserializer msp.IdentityDeserializer
 }
 
-// NewProviderImpl provides a policy generator for cauthdsl type policies
+// NewPolicyProvider provides a policy generator for cauthdsl type policies
 func NewPolicyProvider(deserializer msp.IdentityDeserializer) policies.Provider {
 	return &provider{
 		deserializer: deserializer,
@@ -82,7 +39,7 @@ func (pr *provider) NewPolicy(data []byte) (policies.Policy, proto.Message, erro
 		return nil, nil, fmt.Errorf("This evaluator only understands messages of version 0, but version was %d", sigPolicy.Version)
 	}
 
-	compiled, err := compile(sigPolicy.Rule, sigPolicy.Identities, pr.deserializer)
+	compiled, err := compile(sigPolicy.Rule, sigPolicy.Identities)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -106,7 +63,7 @@ func (pp *EnvelopeBasedPolicyProvider) NewPolicy(sigPolicy *cb.SignaturePolicyEn
 		return nil, errors.New("invalid arguments")
 	}
 
-	compiled, err := compile(sigPolicy.Rule, sigPolicy.Identities, pp.Deserializer)
+	compiled, err := compile(sigPolicy.Rule, sigPolicy.Identities)
 	if err != nil {
 		return nil, err
 	}
@@ -120,24 +77,31 @@ func (pp *EnvelopeBasedPolicyProvider) NewPolicy(sigPolicy *cb.SignaturePolicyEn
 
 type policy struct {
 	signaturePolicyEnvelope *cb.SignaturePolicyEnvelope
-	evaluator               func([]IdentityAndSignature, []bool) bool
+	evaluator               func([]msp.Identity, []bool) bool
 	deserializer            msp.IdentityDeserializer
 }
 
-// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (p *policy) Evaluate(signatureSet []*protoutil.SignedData) error {
+// EvaluateSignedData takes a set of SignedData and evaluates whether
+// 1) the signatures are valid over the related message
+// 2) the signing identities satisfy the policy
+func (p *policy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	if p == nil {
 		return fmt.Errorf("No such policy")
 	}
-	idAndS := make([]IdentityAndSignature, len(signatureSet))
-	for i, sd := range signatureSet {
-		idAndS[i] = &deserializeAndVerify{
-			signedData:   sd,
-			deserializer: p.deserializer,
-		}
+
+	ids := policies.SignatureSetToValidIdentities(signatureSet, p.deserializer)
+
+	return p.EvaluateIdentities(ids)
+}
+
+// EvaluateIdentities takes an array of identities and evaluates whether
+// they satisfy the policy
+func (p *policy) EvaluateIdentities(identities []msp.Identity) error {
+	if p == nil {
+		return fmt.Errorf("No such policy")
 	}
 
-	ok := p.evaluator(deduplicate(idAndS), make([]bool, len(signatureSet)))
+	ok := p.evaluator(identities, make([]bool, len(identities)))
 	if !ok {
 		return errors.New("signature set did not satisfy policy")
 	}

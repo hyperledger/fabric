@@ -109,7 +109,7 @@ func (*MockIdentity) GetOrganizationalUnits() []*msp.OUIdentifier {
 }
 
 func (*MockIdentity) Verify(msg []byte, sig []byte) error {
-	panic("implement me")
+	return nil
 }
 
 func (*MockIdentity) Serialize() ([]byte, error) {

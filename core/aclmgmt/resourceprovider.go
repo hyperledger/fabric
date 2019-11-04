@@ -64,7 +64,7 @@ func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.SignedDa
 		return PolicyNotFound(polName)
 	}
 
-	return policy.Evaluate(sd)
+	return policy.EvaluateSignedData(sd)
 }
 
 //------ resourcePolicyProvider ----------

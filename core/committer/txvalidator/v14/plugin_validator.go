@@ -209,7 +209,7 @@ func (id *PolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*protouti
 	if err != nil {
 		return err
 	}
-	return policy.Evaluate(signatureSet)
+	return policy.EvaluateSignedData(signatureSet)
 }
 
 // DeserializeIdentity unmarshals the given identity to msp.Identity

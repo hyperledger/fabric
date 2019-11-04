@@ -94,7 +94,7 @@ func (vi *ValidatorImpl) verifyDeltaSet(deltaSet map[string]comparable, signedDa
 		}
 
 		// Ensure the policy is satisfied
-		if err := policy.Evaluate(signedData); err != nil {
+		if err := policy.EvaluateSignedData(signedData); err != nil {
 			return errors.Wrapf(err, "policy for %s not satisfied", key)
 		}
 	}

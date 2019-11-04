@@ -13,6 +13,7 @@ import (
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -856,7 +857,11 @@ func TestImplicitMetaPolicy_Convert6(t *testing.T) {
 
 type inconvertiblePolicy struct{}
 
-func (i *inconvertiblePolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
+func (i *inconvertiblePolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
+	return nil
+}
+
+func (i *inconvertiblePolicy) EvaluateIdentities(signatureSet []msp.Identity) error {
 	return nil
 }
 
@@ -878,7 +883,11 @@ func TestImplicitMetaPolicy_Convert7(t *testing.T) {
 
 type convertFailurePolicy struct{}
 
-func (i *convertFailurePolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
+func (i *convertFailurePolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
+	return nil
+}
+
+func (i *convertFailurePolicy) EvaluateIdentities(identities []msp.Identity) error {
 	return nil
 }
 

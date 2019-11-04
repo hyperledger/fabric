@@ -206,7 +206,7 @@ func (cs *ChainSupport) VerifyBlockSignature(sd []*protoutil.SignedData, envelop
 	if !exists {
 		return errors.Errorf("policy %s wasn't found", policies.BlockValidation)
 	}
-	err := policy.Evaluate(sd)
+	err := policy.EvaluateSignedData(sd)
 	if err != nil {
 		return errors.Wrap(err, "block verification failed")
 	}

@@ -567,7 +567,7 @@ func (bv *BlockValidationPolicyVerifier) VerifyBlockSignature(sd []*protoutil.Si
 	if !exists {
 		return errors.Errorf("policy %s wasn't found", policies.BlockValidation)
 	}
-	return policy.Evaluate(sd)
+	return policy.EvaluateSignedData(sd)
 }
 
 //go:generate mockery -dir . -name BlockRetriever -case underscore -output ./mocks/

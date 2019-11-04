@@ -1252,14 +1252,20 @@ type CreatorPolicy struct {
 	Creators [][]byte
 }
 
-// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-func (c *CreatorPolicy) Evaluate(signatureSet []*protoutil.SignedData) error {
+// EvaluateSignedData takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
+func (c *CreatorPolicy) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	for _, value := range c.Creators {
 		if bytes.Equal(signatureSet[0].Identity, value) {
 			return nil
 		}
 	}
 	return fmt.Errorf("Creator not recognized [%s]", string(signatureSet[0].Identity))
+}
+
+// EvaluateIdentities takes an array of identities and evaluates whether
+// they satisfy the policy
+func (c *CreatorPolicy) EvaluateIdentities(identities []msp.Identity) error {
+	return nil
 }
 
 func newPolicyChecker(peerInstance *peer.Peer) policy.PolicyChecker {

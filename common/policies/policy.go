@@ -129,8 +129,14 @@ type Converter interface {
 
 // Policy is used to determine if a signature is valid
 type Policy interface {
-	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-	Evaluate(signatureSet []*protoutil.SignedData) error
+	// EvaluateSignedData takes a set of SignedData and evaluates whether
+	// 1) the signatures are valid over the related message
+	// 2) the signing identities satisfy the policy
+	EvaluateSignedData(signatureSet []*protoutil.SignedData) error
+
+	// EvaluateIdentities takes an array of identities and evaluates whether
+	// they satisfy the policy
+	EvaluateIdentities(identities []mspi.Identity) error
 }
 
 // InquireablePolicy is a Policy that one can inquire
@@ -240,7 +246,11 @@ func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGr
 
 type rejectPolicy string
 
-func (rp rejectPolicy) Evaluate(signedData []*protoutil.SignedData) error {
+func (rp rejectPolicy) EvaluateSignedData(signedData []*protoutil.SignedData) error {
+	return errors.Errorf("no such policy: '%s'", rp)
+}
+
+func (rp rejectPolicy) EvaluateIdentities(identities []mspi.Identity) error {
 	return errors.Errorf("no such policy: '%s'", rp)
 }
 
@@ -267,13 +277,28 @@ type PolicyLogger struct {
 	policyName string
 }
 
-func (pl *PolicyLogger) Evaluate(signatureSet []*protoutil.SignedData) error {
+func (pl *PolicyLogger) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
 	if logger.IsEnabledFor(zapcore.DebugLevel) {
 		logger.Debugf("== Evaluating %T Policy %s ==", pl.Policy, pl.policyName)
 		defer logger.Debugf("== Done Evaluating %T Policy %s", pl.Policy, pl.policyName)
 	}
 
-	err := pl.Policy.Evaluate(signatureSet)
+	err := pl.Policy.EvaluateSignedData(signatureSet)
+	if err != nil {
+		logger.Debugf("Signature set did not satisfy policy %s", pl.policyName)
+	} else {
+		logger.Debugf("Signature set satisfies policy %s", pl.policyName)
+	}
+	return err
+}
+
+func (pl *PolicyLogger) EvaluateIdentities(identities []mspi.Identity) error {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
+		logger.Debugf("== Evaluating %T Policy %s ==", pl.Policy, pl.policyName)
+		defer logger.Debugf("== Done Evaluating %T Policy %s", pl.Policy, pl.policyName)
+	}
+
+	err := pl.Policy.EvaluateIdentities(identities)
 	if err != nil {
 		logger.Debugf("Signature set did not satisfy policy %s", pl.policyName)
 	} else {

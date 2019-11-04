@@ -32,7 +32,7 @@ var defaultChannel = "default.channel.id"
 
 func defaultPolicyManager() *mockpolicies.PolicyManager {
 	fakePolicy := &mockpolicies.Policy{}
-	fakePolicy.EvaluateReturns(nil)
+	fakePolicy.EvaluateSignedDataReturns(nil)
 	fakePolicyManager := &mockpolicies.PolicyManager{}
 	fakePolicyManager.GetPolicyReturns(fakePolicy, true)
 	fakePolicyManager.ManagerReturns(fakePolicyManager, true)
@@ -301,7 +301,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	}
 	// Set the mock policy to error
 	fakePolicy := &mockpolicies.Policy{}
-	fakePolicy.EvaluateReturns(fmt.Errorf("err"))
+	fakePolicy.EvaluateSignedDataReturns(fmt.Errorf("err"))
 	pm.GetPolicyReturns(fakePolicy, true)
 
 	newConfig := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
@@ -356,7 +356,7 @@ func TestInvalidProposal(t *testing.T) {
 	}
 
 	fakePolicy := &mockpolicies.Policy{}
-	fakePolicy.EvaluateReturns(fmt.Errorf("err"))
+	fakePolicy.EvaluateSignedDataReturns(fmt.Errorf("err"))
 	pm.GetPolicyReturns(fakePolicy, true)
 
 	newConfig := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
