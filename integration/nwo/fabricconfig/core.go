@@ -168,7 +168,14 @@ type SoftwareProvider struct {
 }
 
 type DeliveryClient struct {
-	ReconnectTotalTimeThreshold time.Duration `yaml:"reconnectTotalTimeThreshold,omitempty"`
+	ReconnectTotalTimeThreshold time.Duration      `yaml:"reconnectTotalTimeThreshold,omitempty"`
+	AddressOverrides            []*AddressOverride `yaml:"addressOverrides,omitempty"`
+}
+
+type AddressOverride struct {
+	From        string `yaml:"from"`
+	To          string `yaml:"to"`
+	CACertsFile string `yaml:"caCertsFile"`
 }
 
 type Service struct {

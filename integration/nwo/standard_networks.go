@@ -146,6 +146,15 @@ func BasicEtcdRaft() *Config {
 	return config
 }
 
+func MinimalRaft() *Config {
+	config := BasicEtcdRaft()
+	config.Peers[1].Channels = nil
+	config.Peers[2].Channels = nil
+	config.Peers[3].Channels = nil
+	config.Profiles[1].Organizations = []string{"Org1"}
+	return config
+}
+
 func MultiChannelEtcdRaft() *Config {
 	config := MultiChannelBasicSolo()
 
