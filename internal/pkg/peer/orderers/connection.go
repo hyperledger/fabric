@@ -60,6 +60,8 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 	defer cs.mutex.Unlock()
 	cs.logger.Debug("Processing updates for orderer endpoints")
 
+	newOrgToEndpointsHash := map[string][]byte{}
+
 	anyChange := false
 	hasOrgEndpoints := false
 	for orgName, org := range orgs {
@@ -73,8 +75,9 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 		}
 		hash := hasher.Sum(nil)
 
+		newOrgToEndpointsHash[orgName] = hash
+
 		lastHash, ok := cs.orgToEndpointsHash[orgName]
-		cs.orgToEndpointsHash[orgName] = hash
 		if ok && bytes.Equal(hash, lastHash) {
 			continue
 		}
@@ -90,6 +93,8 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 			anyChange = true
 		}
 	}
+
+	cs.orgToEndpointsHash = newOrgToEndpointsHash
 
 	if hasOrgEndpoints && len(globalAddrs) > 0 {
 		cs.logger.Warning("Config defines both orderer org specific endpoints and global endpoints, global endpoints will be ignored")

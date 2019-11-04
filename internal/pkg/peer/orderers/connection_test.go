@@ -297,6 +297,39 @@ var _ = Describe("Connection", func() {
 				Expect(endpoint.Refreshed).To(BeClosed())
 			}
 		})
+
+		When("the org is added back", func() {
+			BeforeEach(func() {
+				cs.Update(nil, map[string]orderers.OrdererOrg{
+					"org1": org1,
+					"org2": org2,
+				})
+			})
+
+			It("returns to the set of orderer endpoints", func() {
+				newEndpoints := cs.Endpoints()
+				Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
+					stripEndpoints([]*orderers.Endpoint{
+						{
+							Address:  "org1-address1",
+							CertPool: org1CertPool,
+						},
+						{
+							Address:  "org1-address2",
+							CertPool: org1CertPool,
+						},
+						{
+							Address:  "org2-address1",
+							CertPool: org2CertPool,
+						},
+						{
+							Address:  "org2-address2",
+							CertPool: org2CertPool,
+						},
+					}),
+				))
+			})
+		})
 	})
 
 	When("an update modifies the global endpoints but does does not affect the org endpoints", func() {
