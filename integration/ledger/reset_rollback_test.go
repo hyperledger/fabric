@@ -179,6 +179,18 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 			helper.assertPresentInCollectionM("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
 			helper.assertPresentInCollectionMPD("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
 		}
+
+		// statedb rebuild test
+		By("Stopping peers and deleting the statedb folder on peer org2.peer0")
+		peer := setup.network.Peer("org2", "peer0")
+		setup.stopPeers()
+		dbPath := filepath.Join(setup.network.PeerLedgerDir(peer), "stateLeveldb")
+		Expect(os.RemoveAll(dbPath)).NotTo(HaveOccurred())
+		Expect(dbPath).NotTo(BeADirectory())
+		By("Restarting the peer org2.peer0")
+		setup.startPeer(peer)
+		Expect(dbPath).To(BeADirectory())
+		helper.assertPresentInCollectionM("marblesp", "marble2", peer)
 	})
 })
 

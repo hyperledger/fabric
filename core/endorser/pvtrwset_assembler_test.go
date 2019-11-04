@@ -47,6 +47,7 @@ func TestAssemblePvtRWSet(t *testing.T) {
 		},
 		nil,
 	)
+	mockDeployedCCInfoProvider.AllCollectionsConfigPkgReturns(collectionsConfigCC1, nil)
 
 	privData := &rwset.TxPvtReadWriteSet{
 		DataModel: rwset.TxReadWriteSet_KV,

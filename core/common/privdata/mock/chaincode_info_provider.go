@@ -9,6 +9,21 @@ import (
 )
 
 type ChaincodeInfoProvider struct {
+	AllCollectionsConfigPkgStub        func(string, string, ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error)
+	allCollectionsConfigPkgMutex       sync.RWMutex
+	allCollectionsConfigPkgArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 ledger.SimpleQueryExecutor
+	}
+	allCollectionsConfigPkgReturns struct {
+		result1 *common.CollectionConfigPackage
+		result2 error
+	}
+	allCollectionsConfigPkgReturnsOnCall map[int]struct {
+		result1 *common.CollectionConfigPackage
+		result2 error
+	}
 	ChaincodeInfoStub        func(string, string, ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error)
 	chaincodeInfoMutex       sync.RWMutex
 	chaincodeInfoArgsForCall []struct {
@@ -42,6 +57,71 @@ type ChaincodeInfoProvider struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *ChaincodeInfoProvider) AllCollectionsConfigPkg(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
+	fake.allCollectionsConfigPkgMutex.Lock()
+	ret, specificReturn := fake.allCollectionsConfigPkgReturnsOnCall[len(fake.allCollectionsConfigPkgArgsForCall)]
+	fake.allCollectionsConfigPkgArgsForCall = append(fake.allCollectionsConfigPkgArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 ledger.SimpleQueryExecutor
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("AllCollectionsConfigPkg", []interface{}{arg1, arg2, arg3})
+	fake.allCollectionsConfigPkgMutex.Unlock()
+	if fake.AllCollectionsConfigPkgStub != nil {
+		return fake.AllCollectionsConfigPkgStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.allCollectionsConfigPkgReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ChaincodeInfoProvider) AllCollectionsConfigPkgCallCount() int {
+	fake.allCollectionsConfigPkgMutex.RLock()
+	defer fake.allCollectionsConfigPkgMutex.RUnlock()
+	return len(fake.allCollectionsConfigPkgArgsForCall)
+}
+
+func (fake *ChaincodeInfoProvider) AllCollectionsConfigPkgCalls(stub func(string, string, ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error)) {
+	fake.allCollectionsConfigPkgMutex.Lock()
+	defer fake.allCollectionsConfigPkgMutex.Unlock()
+	fake.AllCollectionsConfigPkgStub = stub
+}
+
+func (fake *ChaincodeInfoProvider) AllCollectionsConfigPkgArgsForCall(i int) (string, string, ledger.SimpleQueryExecutor) {
+	fake.allCollectionsConfigPkgMutex.RLock()
+	defer fake.allCollectionsConfigPkgMutex.RUnlock()
+	argsForCall := fake.allCollectionsConfigPkgArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *ChaincodeInfoProvider) AllCollectionsConfigPkgReturns(result1 *common.CollectionConfigPackage, result2 error) {
+	fake.allCollectionsConfigPkgMutex.Lock()
+	defer fake.allCollectionsConfigPkgMutex.Unlock()
+	fake.AllCollectionsConfigPkgStub = nil
+	fake.allCollectionsConfigPkgReturns = struct {
+		result1 *common.CollectionConfigPackage
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ChaincodeInfoProvider) AllCollectionsConfigPkgReturnsOnCall(i int, result1 *common.CollectionConfigPackage, result2 error) {
+	fake.allCollectionsConfigPkgMutex.Lock()
+	defer fake.allCollectionsConfigPkgMutex.Unlock()
+	fake.AllCollectionsConfigPkgStub = nil
+	if fake.allCollectionsConfigPkgReturnsOnCall == nil {
+		fake.allCollectionsConfigPkgReturnsOnCall = make(map[int]struct {
+			result1 *common.CollectionConfigPackage
+			result2 error
+		})
+	}
+	fake.allCollectionsConfigPkgReturnsOnCall[i] = struct {
+		result1 *common.CollectionConfigPackage
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *ChaincodeInfoProvider) ChaincodeInfo(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
@@ -178,6 +258,8 @@ func (fake *ChaincodeInfoProvider) CollectionInfoReturnsOnCall(i int, result1 *c
 func (fake *ChaincodeInfoProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.allCollectionsConfigPkgMutex.RLock()
+	defer fake.allCollectionsConfigPkgMutex.RUnlock()
 	fake.chaincodeInfoMutex.RLock()
 	defer fake.chaincodeInfoMutex.RUnlock()
 	fake.collectionInfoMutex.RLock()

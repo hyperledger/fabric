@@ -84,6 +84,13 @@ func (p *DeployedCCInfoProvider) ChaincodeInfo(channelName, chaincodeName string
 	}, nil
 }
 
+// AllCollectionsConfigPkg implements function in interface ledger.DeployedChaincodeInfoProvider
+// this implementation returns just the explicit collection config package as the implicit collections
+// are not used with legacy lifecycle
+func (p *DeployedCCInfoProvider) AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
+	return fetchCollConfigPkg(chaincodeName, qe)
+}
+
 // CollectionInfo implements function in interface ledger.DeployedChaincodeInfoProvider
 func (p *DeployedCCInfoProvider) CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
 	collConfigPkg, err := fetchCollConfigPkg(chaincodeName, qe)
