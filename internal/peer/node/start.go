@@ -1061,22 +1061,6 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 	}
 }
 
-// deliverClientDialOpts creates GRPC dial options for deliver client service.
-func deliverClientDialOpts(coreConfig *peer.Config) []grpc.DialOption {
-	dialOpts := []grpc.DialOption{grpc.WithBlock()}
-	// set max send/recv msg sizes
-	dialOpts = append(
-		dialOpts,
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
-	// set the keepalive options
-	kaOpts := coreConfig.DeliverClientKeepaliveOptions
-	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
-
-	return dialOpts
-}
-
 // initGossipService will initialize the gossip service by:
 // 1. Enable TLS if configured;
 // 2. Init the message crypto service;
