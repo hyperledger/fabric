@@ -21,16 +21,13 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"go.uber.org/zap/zapcore"
-	"google.golang.org/grpc"
-	"gopkg.in/alecthomas/kingpin.v2"
-
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
@@ -53,6 +50,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/kafka"
 	"github.com/hyperledger/fabric/orderer/consensus/solo"
 	"github.com/hyperledger/fabric/protoutil"
+	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var logger = flogging.MustGetLogger("orderer.common.server")
@@ -157,6 +157,20 @@ func Main() {
 		// we need to update its TLS CA certificate pool.
 		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
 	}
+
+	identityBytes, err := signer.Serialize()
+	if err != nil {
+		logger.Panicf("Failed serializing signing identity: %v", err)
+	}
+
+	crypto.TrackExpiration(
+		serverConfig.SecOpts.UseTLS,
+		serverConfig.SecOpts.Certificate,
+		[][]byte{clusterClientConfig.SecOpts.Certificate},
+		identityBytes,
+		logger.Warnf, // This can be used to piggyback a metric event in the future
+		time.Now(),
+		time.AfterFunc)
 
 	// if cluster is reusing client-facing server, then it is already
 	// appended to serversToUpdate at this point.

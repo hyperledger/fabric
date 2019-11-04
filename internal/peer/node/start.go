@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ccdef "github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -269,6 +270,22 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panicf("Could not get the default signing identity from the local MSP: [%+v]", err)
 	}
+
+	signingIdentityBytes, err := signingIdentity.Serialize()
+	if err != nil {
+		logger.Panicf("Failed to serialize the signing identity: %v", err)
+	}
+
+	// Log warnings if some certificate (e-cert, TLS certs) expires soon
+	crypto.TrackExpiration(
+		serverConfig.SecOpts.UseTLS,
+		serverConfig.SecOpts.Certificate,
+		cs.GetClientCertificate().Certificate,
+		signingIdentityBytes,
+		logger.Warnf, // This can be used to piggyback a metric event in the future
+		time.Now(),
+		time.AfterFunc)
+
 	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
 
 	deliverGRPCClient, err := comm.NewGRPCClient(comm.ClientConfig{
