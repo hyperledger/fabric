@@ -33,6 +33,7 @@ type VM interface {
 // 'image' also seemed inappropriate.  So, the vague 'Instance' is used here.
 type Instance interface {
 	Start(peerConnection *ccintf.PeerConnection) error
+	ChaincodeServerInfo() (*ccintf.ChaincodeServerInfo, error)
 	Stop() error
 	Wait() (int, error)
 }
@@ -41,6 +42,10 @@ type UninitializedInstance struct{}
 
 func (UninitializedInstance) Start(peerConnection *ccintf.PeerConnection) error {
 	return errors.Errorf("instance has not yet been built, cannot be started")
+}
+
+func (UninitializedInstance) ChaincodeServerInfo() (*ccintf.ChaincodeServerInfo, error) {
+	return nil, errors.Errorf("instance has not yet been built, cannot get chaincode server info")
 }
 
 func (UninitializedInstance) Stop() error {
@@ -120,6 +125,10 @@ func (r *Router) Build(ccid string) error {
 	r.containers[ccid] = instance
 
 	return nil
+}
+
+func (r *Router) ChaincodeServerInfo(ccid string) (*ccintf.ChaincodeServerInfo, error) {
+	return r.getInstance(ccid).ChaincodeServerInfo()
 }
 
 func (r *Router) Start(ccid string, peerConnection *ccintf.PeerConnection) error {

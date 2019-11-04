@@ -19,6 +19,19 @@ type ContainerRouter struct {
 	buildReturnsOnCall map[int]struct {
 		result1 error
 	}
+	ChaincodeServerInfoStub        func(string) (*ccintf.ChaincodeServerInfo, error)
+	chaincodeServerInfoMutex       sync.RWMutex
+	chaincodeServerInfoArgsForCall []struct {
+		arg1 string
+	}
+	chaincodeServerInfoReturns struct {
+		result1 *ccintf.ChaincodeServerInfo
+		result2 error
+	}
+	chaincodeServerInfoReturnsOnCall map[int]struct {
+		result1 *ccintf.ChaincodeServerInfo
+		result2 error
+	}
 	StartStub        func(string, *ccintf.PeerConnection) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
@@ -117,6 +130,69 @@ func (fake *ContainerRouter) BuildReturnsOnCall(i int, result1 error) {
 	fake.buildReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *ContainerRouter) ChaincodeServerInfo(arg1 string) (*ccintf.ChaincodeServerInfo, error) {
+	fake.chaincodeServerInfoMutex.Lock()
+	ret, specificReturn := fake.chaincodeServerInfoReturnsOnCall[len(fake.chaincodeServerInfoArgsForCall)]
+	fake.chaincodeServerInfoArgsForCall = append(fake.chaincodeServerInfoArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("ChaincodeServerInfo", []interface{}{arg1})
+	fake.chaincodeServerInfoMutex.Unlock()
+	if fake.ChaincodeServerInfoStub != nil {
+		return fake.ChaincodeServerInfoStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.chaincodeServerInfoReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ContainerRouter) ChaincodeServerInfoCallCount() int {
+	fake.chaincodeServerInfoMutex.RLock()
+	defer fake.chaincodeServerInfoMutex.RUnlock()
+	return len(fake.chaincodeServerInfoArgsForCall)
+}
+
+func (fake *ContainerRouter) ChaincodeServerInfoCalls(stub func(string) (*ccintf.ChaincodeServerInfo, error)) {
+	fake.chaincodeServerInfoMutex.Lock()
+	defer fake.chaincodeServerInfoMutex.Unlock()
+	fake.ChaincodeServerInfoStub = stub
+}
+
+func (fake *ContainerRouter) ChaincodeServerInfoArgsForCall(i int) string {
+	fake.chaincodeServerInfoMutex.RLock()
+	defer fake.chaincodeServerInfoMutex.RUnlock()
+	argsForCall := fake.chaincodeServerInfoArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *ContainerRouter) ChaincodeServerInfoReturns(result1 *ccintf.ChaincodeServerInfo, result2 error) {
+	fake.chaincodeServerInfoMutex.Lock()
+	defer fake.chaincodeServerInfoMutex.Unlock()
+	fake.ChaincodeServerInfoStub = nil
+	fake.chaincodeServerInfoReturns = struct {
+		result1 *ccintf.ChaincodeServerInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ContainerRouter) ChaincodeServerInfoReturnsOnCall(i int, result1 *ccintf.ChaincodeServerInfo, result2 error) {
+	fake.chaincodeServerInfoMutex.Lock()
+	defer fake.chaincodeServerInfoMutex.Unlock()
+	fake.ChaincodeServerInfoStub = nil
+	if fake.chaincodeServerInfoReturnsOnCall == nil {
+		fake.chaincodeServerInfoReturnsOnCall = make(map[int]struct {
+			result1 *ccintf.ChaincodeServerInfo
+			result2 error
+		})
+	}
+	fake.chaincodeServerInfoReturnsOnCall[i] = struct {
+		result1 *ccintf.ChaincodeServerInfo
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *ContainerRouter) Start(arg1 string, arg2 *ccintf.PeerConnection) error {
@@ -308,6 +384,8 @@ func (fake *ContainerRouter) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.buildMutex.RLock()
 	defer fake.buildMutex.RUnlock()
+	fake.chaincodeServerInfoMutex.RLock()
+	defer fake.chaincodeServerInfoMutex.RUnlock()
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	fake.stopMutex.RLock()
