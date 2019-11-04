@@ -80,7 +80,7 @@ var _ = Describe("Release interoperability", func() {
 			network.Cleanup()
 		})
 
-		It("deploys and executes chaincode (simple), upgrades the channel application capabilities to V2_0 and uses _lifecycle to update the endorsement policy", func() {
+		It("deploys and executes chaincode, upgrades the channel application capabilities to V2_0, and uses _lifecycle to update the endorsement policy", func() {
 			By("deploying the chaincode using LSCC on a channel with V1_4 application capabilities")
 			chaincode := nwo.Chaincode{
 				Name:    "mycc",
