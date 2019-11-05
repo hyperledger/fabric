@@ -188,7 +188,7 @@ var genesisDefaults = TopLevel{
 		},
 		EtcdRaft: &etcdraft.ConfigMetadata{
 			Options: &etcdraft.Options{
-				TickInterval:         "3000ms", // test only: set default to 3000ms
+				TickInterval:         "500ms", // test only: set default to 500ms
 				ElectionTick:         10,
 				HeartbeatTick:        1,
 				MaxInflightBlocks:    5,
@@ -410,8 +410,8 @@ loop:
 		}
 
 		// Test only: always set TickInterval to "3000ms"
-		ord.EtcdRaft.Options.TickInterval = "3000ms"
-		logger.Infof("always set TickInterval to be 3000ms")
+		// ord.EtcdRaft.Options.TickInterval = "3000ms"
+		logger.Infof("EtcdRaft TickInterval is: %s", ord.EtcdRaft.Options.TickInterval)
 
 		if _, err := time.ParseDuration(ord.EtcdRaft.Options.TickInterval); err != nil {
 			logger.Panicf("Etcdraft TickInterval (%s) must be in time duration format", ord.EtcdRaft.Options.TickInterval)
