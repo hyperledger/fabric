@@ -394,11 +394,11 @@ var _ = Describe("Externalbuilders", func() {
 			logger = flogging.NewFabricLogger(zap.New(core).Named("logger"))
 		})
 
-		It("runs the command directs stderr to the logger", func() {
+		It("runs the command, directs stderr to the logger, and includes the command name", func() {
 			cmd := exec.Command("/bin/sh", "-c", `echo stdout && echo stderr >&2`)
 			err := externalbuilders.RunCommand(logger, cmd)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(buf.String()).To(Equal("stderr\n"))
+			Expect(buf.String()).To(Equal("stderr\t" + `{"command": "sh"}` + "\n"))
 		})
 
 		Context("when start fails", func() {
