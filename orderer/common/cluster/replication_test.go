@@ -174,31 +174,6 @@ func TestReplicateChainsFailures(t *testing.T) {
 			ledgerFactoryError: errors.New("IO error"),
 			expectedPanic:      "Failed to create a ledger for channel channelWeAreNotPartOf: IO error",
 		},
-		{
-			name:                    "pulled genesis block is malformed",
-			latestBlockSeqInOrderer: 21,
-			channelsReturns: []cluster.ChannelGenesisBlock{
-				{ChannelName: "channelWeAreNotPartOf", GenesisBlock: &common.Block{Header: &common.BlockHeader{}}},
-			},
-			expectedPanic: "Failed converting channel creation block for channel channelWeAreNotPartOf to genesis" +
-				" block: block data is nil",
-		},
-		{
-			name:                    "pulled genesis block is malformed - bad payload",
-			latestBlockSeqInOrderer: 21,
-			channelsReturns: []cluster.ChannelGenesisBlock{
-				{ChannelName: "channelWeAreNotPartOf", GenesisBlock: &common.Block{
-					Header: &common.BlockHeader{},
-					Data: &common.BlockData{
-						Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
-							Payload: []byte{1, 2, 3},
-						})},
-					},
-				}},
-			},
-			expectedPanic: "Failed converting channel creation block for channel channelWeAreNotPartOf" +
-				" to genesis block: error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
-		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			systemChannelBlocks := createBlockChain(0, 21)
@@ -1136,12 +1111,13 @@ func injectTLSCACert(t *testing.T, block *common.Block, tlsCA []byte) {
 	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
 }
 
-func TestIsNewChannelBlock(t *testing.T) {
+func TestExtractGenesisBlock(t *testing.T) {
 	for _, testCase := range []struct {
-		name         string
-		expectedErr  string
-		returnedName string
-		block        *common.Block
+		name               string
+		expectedErr        string
+		returnedName       string
+		block              *common.Block
+		returnGenesisBlock bool
 	}{
 		{
 			name:        "nil block",
@@ -1381,16 +1357,22 @@ func TestIsNewChannelBlock(t *testing.T) {
 					})},
 				},
 			},
+			returnGenesisBlock: true,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			channelName, err := cluster.IsNewChannelBlock(testCase.block)
+			channelName, gb, err := cluster.ExtractGenesisBlock(flogging.MustGetLogger("test"), testCase.block)
 			if testCase.expectedErr != "" {
 				assert.EqualError(t, err, testCase.expectedErr)
 			} else {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, testCase.returnedName, channelName)
+			if testCase.returnGenesisBlock {
+				assert.NotNil(t, gb)
+			} else {
+				assert.Nil(t, gb)
+			}
 		})
 	}
 }
@@ -1494,9 +1476,9 @@ func TestChannels(t *testing.T) {
 				systemChain[len(systemChain)-2].Data.Data = [][]byte{{1, 2, 3}}
 			},
 			assertion: func(t *testing.T, ci *cluster.ChainInspector) {
-				panicValue := "Failed classifying block [2]: block data does not carry" +
-					" an envelope at index 0: error unmarshaling Envelope: " +
-					"proto: common.Envelope: illegal tag 0 (wire type 1)"
+				panicValue := "Failed extracting channel genesis block from config block: " +
+					"block data does not carry an envelope at index 0: error unmarshaling " +
+					"Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)"
 				assert.PanicsWithValue(t, panicValue, func() {
 					ci.Channels()
 				})
@@ -1601,47 +1583,6 @@ func simulateNonParticipantChannelPull(osn *deliverServer) {
 	}
 
 	osn.blockResponses <- nil
-}
-
-func TestChannelCreationBlockToGenesisBlock(t *testing.T) {
-	for _, testCase := range []struct {
-		name        string
-		expectedErr string
-		block       *common.Block
-	}{
-		{
-			name:        "nil block",
-			expectedErr: "nil block",
-		},
-		{
-			name:        "no data",
-			expectedErr: "block data is nil",
-			block:       &common.Block{},
-		},
-		{
-			name:        "no block data",
-			expectedErr: "envelope index out of bounds",
-			block: &common.Block{
-				Data: &common.BlockData{},
-			},
-		},
-		{
-			name: "bad block data",
-			expectedErr: "block data does not carry an envelope at index 0:" +
-				" error unmarshaling Envelope: proto: common.Envelope:" +
-				" illegal tag 0 (wire type 1)",
-			block: &common.Block{
-				Data: &common.BlockData{
-					Data: [][]byte{{1, 2, 3}},
-				},
-			},
-		},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			_, err := cluster.ChannelCreationBlockToGenesisBlock(testCase.block)
-			assert.EqualError(t, err, testCase.expectedErr)
-		})
-	}
 }
 
 func TestFilter(t *testing.T) {
