@@ -62,7 +62,6 @@ var (
 	app = kingpin.New("orderer", "Hyperledger Fabric orderer node")
 
 	_       = app.Command("start", "Start the orderer node").Default() // preserved for cli compatibility
-	_       = app.Command("benchmark", "Run orderer in benchmark mode")
 	version = app.Command("version", "Show version information")
 
 	clusterTypes = map[string]struct{}{"etcdraft": {}}
