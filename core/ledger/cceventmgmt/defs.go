@@ -22,7 +22,10 @@ type ChaincodeDefinition struct {
 }
 
 func (cdef *ChaincodeDefinition) String() string {
-	return fmt.Sprintf("Name=%s, Version=%s, Hash=%#v", cdef.Name, cdef.Version, cdef.Hash)
+	if cdef != nil {
+		return fmt.Sprintf("Name=%s, Version=%s, Hash=%x", cdef.Name, cdef.Version, cdef.Hash)
+	}
+	return "<nil>"
 }
 
 // ChaincodeLifecycleEventListener interface enables ledger components (mainly, intended for statedb)

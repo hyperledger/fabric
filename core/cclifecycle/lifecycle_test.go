@@ -252,7 +252,7 @@ func TestHandleChaincodeDeployFailures(t *testing.T) {
 	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 2)
 	sub.HandleChaincodeDeploy(&cceventmgmt.ChaincodeDefinition{Name: "cc1", Version: "1.0", Hash: []byte{42}}, nil)
 	sub.ChaincodeDeployDone(true)
-	assertLogged(t, recorder, "Query for channel mychannel for Name=cc1, Version=1.0, Hash=[]byte{0x2a} failed with error failed accessing DB")
+	assertLogged(t, recorder, "Query for channel mychannel for Name=cc1, Version=1.0, Hash=2a failed with error failed accessing DB")
 	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 2)
 
 	// Scenario IV: A channel subscription is made successfully, and obtaining a new query succeeds at subscription initialization,
@@ -265,7 +265,7 @@ func TestHandleChaincodeDeployFailures(t *testing.T) {
 	sub.HandleChaincodeDeploy(&cceventmgmt.ChaincodeDefinition{Name: "cc1", Version: "1.1", Hash: []byte{42}}, nil)
 	sub.ChaincodeDeployDone(false)
 	lsnr.AssertNumberOfCalls(t, "HandleMetadataUpdate", 3)
-	assertLogged(t, recorder, "Chaincode deploy for updates [Name=cc1, Version=1.1, Hash=[]byte{0x2a}] failed")
+	assertLogged(t, recorder, "Chaincode deploy for updates [Name=cc1, Version=1.1, Hash=2a] failed")
 }
 
 func TestMultipleUpdates(t *testing.T) {
