@@ -72,7 +72,7 @@ func GetConfig(n *Network, peer *Peer, orderer *Orderer, channel string) *common
 
 // UpdateConfig computes, signs, and submits a configuration update and waits
 // for the update to complete.
-func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Peer) {
+func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, getConfigBlockFromOrderer bool, submitter *Peer, additionalSigners ...*Peer) {
 	tempDir, err := ioutil.TempDir("", "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
@@ -103,8 +103,13 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	}
 
+	var currentBlockNumber uint64
 	// get current configuration block number
-	currentBlockNumber := CurrentConfigBlockNumber(n, submitter, orderer, channel)
+	if getConfigBlockFromOrderer {
+		currentBlockNumber = CurrentConfigBlockNumber(n, submitter, orderer, channel)
+	} else {
+		currentBlockNumber = CurrentConfigBlockNumber(n, submitter, nil, channel)
+	}
 
 	sess, err := n.PeerAdminSession(submitter, commands.ChannelUpdate{
 		ChannelID: channel,
@@ -115,10 +120,16 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
 
+	if getConfigBlockFromOrderer {
+		ccb := func() uint64 { return CurrentConfigBlockNumber(n, submitter, orderer, channel) }
+		Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
+		return
+	}
+
 	// wait for the block to be committed to all peers that
 	// have joined the channel
 	for _, peer := range n.PeersWithChannel(channel) {
-		ccb := func() uint64 { return CurrentConfigBlockNumber(n, peer, orderer, channel) }
+		ccb := func() uint64 { return CurrentConfigBlockNumber(n, peer, nil, channel) }
 		Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
 	}
 }
