@@ -65,17 +65,7 @@ var _ bool = Describe("PrivateData", func() {
 	)
 
 	BeforeEach(func() {
-		testDir, network, process, orderer, allPeers = initThreeOrgsSetup()
-		helper = &testHelper{
-			networkHelper: &networkHelper{
-				Network:   network,
-				orderer:   orderer,
-				peers:     allPeers,
-				testDir:   testDir,
-				channelID: "testchannel",
-			},
-		}
-
+		testDir, network = initThreeOrgsSetup()
 		legacyChaincode = nwo.Chaincode{
 			Name:    "marblesp",
 			Version: "1.0",
@@ -101,12 +91,61 @@ var _ bool = Describe("PrivateData", func() {
 		}
 	})
 
+	JustBeforeEach(func() {
+		process, orderer, allPeers = startNetwork(network)
+		helper = &testHelper{
+			networkHelper: &networkHelper{
+				Network:   network,
+				orderer:   orderer,
+				peers:     allPeers,
+				testDir:   testDir,
+				channelID: "testchannel",
+			},
+		}
+	})
+
 	AfterEach(func() {
 		testCleanup(testDir, network, process)
 	})
 
-	Describe("Reconciliation", func() {
-		BeforeEach(func() {
+	Describe("Dissemination", func() {
+		When("pulling is disabled by setting the pull retry threshold to 0", func() {
+			BeforeEach(func() {
+				// set pull retry threshold to 0
+				peers := []*nwo.Peer{
+					network.Peer("org1", "peer0"),
+					network.Peer("org2", "peer0"),
+					network.Peer("org3", "peer0"),
+				}
+				for _, p := range peers {
+					core := network.ReadPeerConfig(p)
+					core.Peer.Gossip.PvtData.PullRetryThreshold = 0
+					network.WritePeerConfig(p, core)
+				}
+			})
+
+			JustBeforeEach(func() {
+				By("deploying legacy chaincode and adding marble1")
+				testChaincode = chaincode{
+					Chaincode: legacyChaincode,
+					isLegacy:  true,
+				}
+				helper.deployChaincode(testChaincode)
+				helper.addMarble(testChaincode.Name,
+					`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`,
+					network.Peer("org1", "peer0"),
+				)
+			})
+
+			It("disseminates private data per collections_config1", func() {
+				helper.assertPvtdataPresencePerCollectionConfig1(testChaincode.Name, "marble1")
+			})
+		})
+
+	})
+
+	Describe("Reconciliation and pulling", func() {
+		JustBeforeEach(func() {
 			By("deploying legacy chaincode and adding marble1")
 			testChaincode = chaincode{
 				Chaincode: legacyChaincode,
@@ -125,7 +164,7 @@ var _ bool = Describe("PrivateData", func() {
 			})
 
 			When("org3 is added to collectionMarbles via chaincode upgrade with collections_config2", func() {
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					// collections_config2.json defines the access as follows:
 					// 1. collectionMarbles - Org1, Org2 and Org3 have access to this collection
 					// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
@@ -151,7 +190,7 @@ var _ bool = Describe("PrivateData", func() {
 				var (
 					newPeer *nwo.Peer
 				)
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					newPeer = network.Peer("org1", "peer1")
 					helper.addPeer(newPeer)
 					allPeers = append(allPeers, newPeer)
@@ -159,14 +198,14 @@ var _ bool = Describe("PrivateData", func() {
 					network.VerifyMembership(allPeers, "testchannel", "marblesp")
 				})
 
-				It("causes the new peer to receive the existing private data only for collectionMarbles", func() {
+				It("causes the new peer to pull the existing private data only for collectionMarbles", func() {
 					helper.assertPvtdataPresencePerCollectionConfig1(testChaincode.Name, "marble1", newPeer)
 				})
 			})
 		}
 
 		Context("chaincode in legacy lifecycle", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				testChaincode = chaincode{
 					Chaincode: legacyChaincode,
 					isLegacy:  true,
@@ -176,7 +215,7 @@ var _ bool = Describe("PrivateData", func() {
 		})
 
 		Context("chaincode is migrated from legacy to new lifecycle with same collection config", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				testChaincode = chaincode{
 					Chaincode: newLifecycleChaincode,
 					isLegacy:  false,
@@ -228,7 +267,7 @@ var _ bool = Describe("PrivateData", func() {
 		}
 
 		Context("chaincode in legacy lifecycle", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				testChaincode = chaincode{
 					Chaincode: legacyChaincode,
 					isLegacy:  true,
@@ -238,7 +277,7 @@ var _ bool = Describe("PrivateData", func() {
 		})
 
 		Context("chaincode in new lifecycle", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				testChaincode = chaincode{
 					Chaincode: newLifecycleChaincode,
 					isLegacy:  false,
@@ -270,7 +309,7 @@ var _ bool = Describe("PrivateData", func() {
 		}
 
 		Context("chaincode in legacy lifecycle", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				testChaincode = chaincode{
 					Chaincode: legacyChaincode,
 					isLegacy:  true,
@@ -280,7 +319,7 @@ var _ bool = Describe("PrivateData", func() {
 		})
 
 		Context("chaincode in new lifecycle", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				testChaincode = chaincode{
 					Chaincode: newLifecycleChaincode,
 					isLegacy:  false,
@@ -292,7 +331,7 @@ var _ bool = Describe("PrivateData", func() {
 	})
 
 	Describe("Collection Config Updates", func() {
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			By("deploying legacy chaincode")
 			testChaincode = chaincode{
 				Chaincode: legacyChaincode,
@@ -302,7 +341,7 @@ var _ bool = Describe("PrivateData", func() {
 		})
 
 		When("migrating a chaincode from legacy lifecycle to new lifecycle", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, allPeers...)
 				newLifecycleChaincode.CollectionsConfig = collectionConfig("short_btl_config.json")
 				newLifecycleChaincode.PackageID = "test-package-id"
@@ -433,7 +472,7 @@ var _ bool = Describe("PrivateData", func() {
 		}
 
 		Context("chaincode in legacy lifecycle", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				testChaincode = chaincode{
 					Chaincode: legacyChaincode,
 					isLegacy:  true,
@@ -449,7 +488,7 @@ var _ bool = Describe("PrivateData", func() {
 		})
 
 		Context("chaincode in new lifecycle", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				testChaincode = chaincode{
 					Chaincode: newLifecycleChaincode,
 					isLegacy:  false,
@@ -468,7 +507,7 @@ var _ bool = Describe("PrivateData", func() {
 
 })
 
-func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []*nwo.Peer) {
+func initThreeOrgsSetup() (string, *nwo.Network) {
 	var err error
 	testDir, err := ioutil.TempDir("", "e2e-pvtdata")
 	Expect(err).NotTo(HaveOccurred())
@@ -485,8 +524,12 @@ func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []
 
 	n := nwo.New(networkConfig, testDir, client, StartPort(), components)
 	n.GenerateConfigTree()
-	n.Bootstrap()
 
+	return testDir, n
+}
+
+func startNetwork(n *nwo.Network) (ifrit.Process, *nwo.Orderer, []*nwo.Peer) {
+	n.Bootstrap()
 	networkRunner := n.NetworkGroupRunner()
 	process := ifrit.Invoke(networkRunner)
 	Eventually(process.Ready(), n.EventuallyTimeout).Should(BeClosed())
@@ -504,7 +547,7 @@ func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []
 	By("verifying membership")
 	n.VerifyMembership(expectedPeers, "testchannel")
 
-	return testDir, n, process, orderer, expectedPeers
+	return process, orderer, expectedPeers
 }
 
 func testCleanup(testDir string, network *nwo.Network, process ifrit.Process) {
@@ -732,6 +775,10 @@ func (th *testHelper) assertPvtdataPresencePerCollectionConfig2(chaincodeName, m
 			th.assertPresentInCollectionMPD(chaincodeName, marbleName, peer)
 		}
 	}
+}
+
+func (th *testHelper) assertPvtdataPresencePerCollectionConfig5(chaincodeName, marbleName string, peers ...*nwo.Peer) {
+	th.assertPvtdataPresencePerCollectionConfig1(chaincodeName, marbleName, peers...)
 }
 
 // assertPresentInCollectionM asserts that the private data for given marble is present in collection
