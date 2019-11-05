@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -83,7 +84,7 @@ type OrdererAddressConfig struct {
 	Addresses        []string
 	AddressesByOrg   map[string][]string
 	Organizations    []string
-	AddressOverrides map[string]string
+	AddressOverrides map[string]*comm.OrdererEndpoint
 }
 
 type privateHandler struct {

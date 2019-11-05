@@ -102,7 +102,7 @@ func TestNewDeliverService(t *testing.T) {
 		}
 	}
 
-	connFactory := func(_ string) func(comm.EndpointCriteria) (*grpc.ClientConn, error) {
+	connFactory := func(string, map[string]*comm.OrdererEndpoint) func(comm.EndpointCriteria) (*grpc.ClientConn, error) {
 		return func(endpoint comm.EndpointCriteria) (*grpc.ClientConn, error) {
 			lock.Lock()
 			defer lock.Unlock()
@@ -277,8 +277,10 @@ func TestDeliverServiceUpdateEndpoints(t *testing.T) {
 			OrdererEndpointsByOrg: map[string][]string{
 				"org1": {"localhost:5612"},
 			},
-			OrdererEndpointOverrides: map[string]string{
-				"localhost:5612": "localhost:5614",
+			OrdererEndpointOverrides: map[string]*comm.OrdererEndpoint{
+				"localhost:5612": {
+					Address: "localhost:5614",
+				},
 			},
 		},
 		deliverClients: map[string]*deliverClient{
@@ -698,7 +700,7 @@ func TestDeliverServiceBadConfig(t *testing.T) {
 }
 
 func TestRetryPolicyOverflow(t *testing.T) {
-	connFactory := func(channelID string) func(comm.EndpointCriteria) (*grpc.ClientConn, error) {
+	connFactory := func(channelID string, _ map[string]*comm.OrdererEndpoint) func(comm.EndpointCriteria) (*grpc.ClientConn, error) {
 		return func(_ comm.EndpointCriteria) (*grpc.ClientConn, error) {
 			return nil, errors.New("")
 		}
@@ -781,8 +783,10 @@ func TestToEndpointCriteria(t *testing.T) {
 			input: ConnectionCriteria{
 				Organizations:    []string{"foo", "bar"},
 				OrdererEndpoints: []string{"a", "b", "c"},
-				OrdererEndpointOverrides: map[string]string{
-					"b": "d",
+				OrdererEndpointOverrides: map[string]*comm.OrdererEndpoint{
+					"b": {
+						Address: "d",
+					},
 				},
 			},
 			expectedOut: []comm.EndpointCriteria{
@@ -818,8 +822,10 @@ func TestToEndpointCriteria(t *testing.T) {
 					"foo": {"a", "b"},
 					"bar": {"c"},
 				},
-				OrdererEndpointOverrides: map[string]string{
-					"b": "d",
+				OrdererEndpointOverrides: map[string]*comm.OrdererEndpoint{
+					"b": {
+						Address: "d",
+					},
 				},
 			},
 			expectedOut: []comm.EndpointCriteria{

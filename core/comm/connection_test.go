@@ -178,20 +178,20 @@ func TestCredentialSupport(t *testing.T) {
 	cs.ServerRootCAs = [][]byte{rootCAs[5]}
 	cs.ClientRootCAs = [][]byte{rootCAs[5]}
 
-	creds, _ := cs.GetDeliverServiceCredentials("channel1", false, []string{"SampleOrg"})
+	creds, _ := cs.GetDeliverServiceCredentials("channel1", false, []string{"SampleOrg"}, nil)
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 	creds = cs.GetPeerCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 
-	_, err := cs.GetDeliverServiceCredentials("channel99", false, nil)
+	_, err := cs.GetDeliverServiceCredentials("channel99", false, nil, nil)
 	assert.EqualError(t, err, "didn't find any root CA certs for channel channel99")
 
 	// append some bad certs and make sure things still work
 	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte("badcert"))
 	cs.ServerRootCAs = append(cs.ServerRootCAs, []byte(badPEM))
-	creds, _ = cs.GetDeliverServiceCredentials("channel1", false, []string{"SampleOrg"})
+	creds, _ = cs.GetDeliverServiceCredentials("channel1", false, []string{"SampleOrg"}, nil)
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
 	creds = cs.GetPeerCredentials()
@@ -284,7 +284,7 @@ func TestImpersonation(t *testing.T) {
 		AppRootCAsByChain:           make(map[string]CertificateBundle),
 		OrdererRootCAsByChainAndOrg: make(OrgRootCAs),
 	}
-	_, err := cs.GetDeliverServiceCredentials("C", false, []string{"SampleOrg"})
+	_, err := cs.GetDeliverServiceCredentials("C", false, []string{"SampleOrg"}, nil)
 	assert.Error(t, err)
 
 	cs.OrdererRootCAsByChainAndOrg.AppendCertificates("A", "SampleOrg", [][]byte{osA.caCert})
@@ -307,7 +307,7 @@ func testInvoke(
 	staticRoots bool,
 	shouldSucceed bool) {
 
-	creds, err := cs.GetDeliverServiceCredentials(channelID, staticRoots, []string{"SampleOrg"})
+	creds, err := cs.GetDeliverServiceCredentials(channelID, staticRoots, []string{"SampleOrg"}, nil)
 	assert.NoError(t, err)
 
 	endpoint := s.address

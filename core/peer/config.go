@@ -258,22 +258,36 @@ func GetClientCertificate() (tls.Certificate, error) {
 }
 
 type addressOverride struct {
-	From string `mapstructure:"from"`
-	To   string `mapstructure:"to"`
+	From        string `mapstructure:"from"`
+	To          string `mapstructure:"to"`
+	CACertsFile string `mapstructure:"caCertsFile"`
 }
 
-func GetOrdererAddressOverrides() (map[string]string, error) {
+type OrdererEndpoint struct {
+	Address string
+	PEMs    []byte
+}
+
+func GetOrdererAddressOverrides() (map[string]*comm.OrdererEndpoint, error) {
 	var overrides []addressOverride
 	err := viper.UnmarshalKey("peer.deliveryclient.addressOverrides", &overrides)
 	if err != nil {
 		return nil, err
 	}
 
-	var overrideMap map[string]string
+	var overrideMap map[string]*comm.OrdererEndpoint
 	if len(overrides) > 0 {
-		overrideMap = make(map[string]string)
+		overrideMap = make(map[string]*comm.OrdererEndpoint)
 		for _, override := range overrides {
-			overrideMap[override.From] = override.To
+			pem, err := ioutil.ReadFile(override.CACertsFile)
+			if err != nil {
+				return nil, errors.WithMessage(err, fmt.Sprintf("could not read file '%s' specified for caCertsFile of orderer endpoint override from '%s' to '%s'", override.CACertsFile, override.From, override.To))
+			}
+
+			overrideMap[override.From] = &comm.OrdererEndpoint{
+				Address: override.To,
+				PEMs:    pem,
+			}
 		}
 	}
 	return overrideMap, nil

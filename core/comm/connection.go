@@ -41,6 +41,11 @@ type PerOrgCertificateBundle map[string]CertificateBundle
 // channel --> organization --> certificates
 type OrgRootCAs map[string]PerOrgCertificateBundle
 
+type OrdererEndpoint struct {
+	Address string
+	PEMs    []byte
+}
+
 // CertificatesByChannelAndOrg returns the certificates of the given organization in the context
 // of the given channel.
 func (orc OrgRootCAs) CertificatesByChannelAndOrg(channel string, org string) CertificateBundle {
@@ -104,6 +109,7 @@ func (cs *CredentialSupport) GetDeliverServiceCredentials(
 	channelID string,
 	appendStaticRoots bool,
 	orgs []string,
+	endpointOverrides map[string]*OrdererEndpoint,
 ) (credentials.TransportCredentials, error) {
 	cs.RLock()
 	defer cs.RUnlock()
@@ -143,6 +149,10 @@ func (cs *CredentialSupport) GetDeliverServiceCredentials(
 		} else {
 			commLogger.Warning("Failed to add root cert to credentials")
 		}
+	}
+
+	for _, override := range endpointOverrides {
+		certPool.AppendCertsFromPEM(override.PEMs)
 	}
 
 	// Finally, create a TLS client config with the computed TLS root CAs.

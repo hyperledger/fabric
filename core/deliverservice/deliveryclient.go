@@ -89,7 +89,7 @@ type deliverClient struct {
 // and how it disseminates the messages to other peers
 type Config struct {
 	// ConnFactory returns a function that creates a connection to an endpoint
-	ConnFactory func(channelID string) func(endpointCriteria comm.EndpointCriteria) (*grpc.ClientConn, error)
+	ConnFactory func(channelID string, endpointOverrides map[string]*comm.OrdererEndpoint) func(endpointCriteria comm.EndpointCriteria) (*grpc.ClientConn, error)
 	// ABCFactory creates an AtomicBroadcastClient out of a connection
 	ABCFactory func(*grpc.ClientConn) orderer.AtomicBroadcastClient
 	// CryptoSvc performs cryptographic actions like message verification and signing
@@ -111,7 +111,7 @@ type ConnectionCriteria struct {
 	// OrdererEndpointOverrides specifies a map of endpoints to override.  The map
 	// key is the configured endpoint address to match and the value is the
 	// endpoint to use instead.
-	OrdererEndpointOverrides map[string]string
+	OrdererEndpointOverrides map[string]*comm.OrdererEndpoint
 }
 
 func (cc ConnectionCriteria) toEndpointCriteria() []comm.EndpointCriteria {
@@ -128,7 +128,7 @@ func (cc ConnectionCriteria) toEndpointCriteria() []comm.EndpointCriteria {
 		for _, endpoint := range endpoints {
 			// check if we need to override the endpoint
 			if override, ok := cc.OrdererEndpointOverrides[endpoint]; ok {
-				endpoint = override
+				endpoint = override.Address
 			}
 			res = append(res, comm.EndpointCriteria{
 				Organizations: []string{org},
@@ -145,7 +145,7 @@ func (cc ConnectionCriteria) toEndpointCriteria() []comm.EndpointCriteria {
 	for _, endpoint := range cc.OrdererEndpoints {
 		// check if we need to override the endpoint
 		if override, ok := cc.OrdererEndpointOverrides[endpoint]; ok {
-			endpoint = override
+			endpoint = override.Address
 		}
 		res = append(res, comm.EndpointCriteria{
 			Organizations: cc.Organizations,
@@ -298,13 +298,13 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		attempt := float64(attemptNum)
 		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reconnectBackoffThreshold)), true
 	}
-	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID), d.connConfig.toEndpointCriteria())
+	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID, d.connConfig.OrdererEndpointOverrides), d.connConfig.toEndpointCriteria())
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
 	requester.client = bClient
 	return bClient
 }
 
-func DefaultConnectionFactory(channelID string) func(endpointCriteria comm.EndpointCriteria) (*grpc.ClientConn, error) {
+func DefaultConnectionFactory(channelID string, endpointOverrides map[string]*comm.OrdererEndpoint) func(endpointCriteria comm.EndpointCriteria) (*grpc.ClientConn, error) {
 	return func(criteria comm.EndpointCriteria) (*grpc.ClientConn, error) {
 		dialOpts := []grpc.DialOption{grpc.WithBlock()}
 		// set max send/recv msg sizes
@@ -323,7 +323,7 @@ func DefaultConnectionFactory(channelID string) func(endpointCriteria comm.Endpo
 		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
 
 		if viper.GetBool("peer.tls.enabled") {
-			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID, staticRootsEnabled(), criteria.Organizations)
+			creds, err := comm.GetCredentialSupport().GetDeliverServiceCredentials(channelID, staticRootsEnabled(), criteria.Organizations, endpointOverrides)
 			if err != nil {
 				return nil, fmt.Errorf("failed obtaining credentials for channel %s: %v", channelID, err)
 			}
