@@ -11,7 +11,7 @@ if [ "$#" -ne 2 ]; then
     exit 2
 fi
 
->&2 jq <"$2/metadata.json"
+>&2 jq . "$2/metadata.json"
 
 if [ "$(jq -r .type "$2/metadata.json" | tr '[:upper:]' '[:lower:]')" != "golang" ]; then
     >&2 echo "only golang chaincode supported"
