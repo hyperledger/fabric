@@ -263,7 +263,7 @@ func TestDistributor(t *testing.T) {
 		},
 	}, 0)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed disseminating 4 out of 4 private dissemination plans")
+	assert.Contains(t, err.Error(), "Failed disseminating 2 out of 2 private dissemination plans")
 
 	assert.Equal(t,
 		[]string{"channel", channelID},
