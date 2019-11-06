@@ -9,6 +9,8 @@ package server
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -34,12 +36,30 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+// the path to configtxgen, which can be used to by tests to create
+// genesis blocks
+var configtxgen string
+
+func TestMain(m *testing.M) {
+	var err error
+	configtxgen, err = gexec.Build("github.com/hyperledger/fabric/cmd/configtxgen")
+	if err != nil {
+		os.Exit(-1)
+	}
+	defer gexec.CleanupBuildArtifacts()
+
+	os.Exit(m.Run())
+}
 
 func newServerNode(t *testing.T, key, cert []byte) *deliverServer {
 	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{
@@ -122,7 +142,7 @@ func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverSer
 }
 
 func loadPEM(suffix string, t *testing.T) []byte {
-	b, err := ioutil.ReadFile(filepath.Join("testdata", "tls", suffix))
+	b, err := ioutil.ReadFile(filepath.Join("testdata", "example.com", "tls", suffix))
 	assert.NoError(t, err)
 	return b
 }
@@ -165,7 +185,6 @@ func channelCreationBlock(systemChannel, applicationChannel string, prevBlock *c
 }
 
 func TestOnboardingChannelUnavailable(t *testing.T) {
-	t.Parallel()
 	// Scenario: During the probing phase of the onboarding,
 	// a channel is deemed relevant and we try to pull it during the
 	// second phase, but alas - precisely at that time - it becomes
@@ -181,15 +200,21 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	deliverServer := newServerNode(t, key, cert)
 	defer deliverServer.srv.Stop()
 
-	systemChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "system.block"))
+	tempDir, err := ioutil.TempDir("", "TestOnboarding")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	systemChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
+	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
 	assert.NoError(t, err)
 
-	applicationChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "genesis.block"))
+	applicationChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
+	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
 	assert.NoError(t, err)
 
-	testchainidGB := &common.Block{}
-	proto.Unmarshal(applicationChannelBlockBytes, testchainidGB)
-	testchainidGB.Header.Number = 0
+	testchannelGB := &common.Block{}
+	assert.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, testchannelGB))
+	testchannelGB.Header.Number = 0
 
 	systemChannelGenesisBlock := &common.Block{
 		Header: &common.BlockHeader{
@@ -206,14 +231,14 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	}
 	systemChannelGenesisBlock.Header.DataHash = protoutil.BlockDataHash(systemChannelGenesisBlock.Data)
 
-	channelCreationBlock := channelCreationBlock("system", "testchainid", systemChannelGenesisBlock)
+	channelCreationBlock := channelCreationBlock("system", "testchannel", systemChannelGenesisBlock)
 
 	bootBlock := &common.Block{}
 	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, bootBlock))
 	bootBlock.Header.Number = 2
 	bootBlock.Header.PreviousHash = protoutil.BlockHeaderHash(channelCreationBlock.Header)
 	injectOrdererEndpoint(t, bootBlock, deliverServer.srv.Address())
-	injectConsenterCertificate(t, testchainidGB, cert)
+	injectConsenterCertificate(t, testchannelGB, cert)
 
 	blocksCommittedToSystemLedger := make(chan uint64, 3)
 	blocksCommittedToApplicationLedger := make(chan uint64, 1)
@@ -234,7 +259,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 
 	lf := &mocks.LedgerFactory{}
 	lf.On("GetOrCreate", "system").Return(systemLedger, nil)
-	lf.On("GetOrCreate", "testchainid").Return(appLedger, nil)
+	lf.On("GetOrCreate", "testchannel").Return(appLedger, nil)
 	lf.On("Close")
 
 	config := &localconfig.TopLevel{
@@ -285,37 +310,37 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 
 	for _, e := range []event{
 		{
-			expectedLog: "Probing whether I should pull channel testchainid",
+			expectedLog: "Probing whether I should pull channel testchannel",
 			responseFunc: func(blockResponses chan *orderer.DeliverResponse) {
 				probe = true
 
 				// At this point the client will re-connect, so close the stream.
 				blockResponses <- nil
-				// And send the genesis block of the application channel 'testchainid'
+				// And send the genesis block of the application channel 'testchannel'
 				blockResponses <- &orderer.DeliverResponse{
 					Type: &orderer.DeliverResponse_Block{
-						Block: testchainidGB,
+						Block: testchannelGB,
 					},
 				}
 				blockResponses <- &orderer.DeliverResponse{
 					Type: &orderer.DeliverResponse_Block{
-						Block: testchainidGB,
+						Block: testchannelGB,
 					},
 				}
 				blockResponses <- &orderer.DeliverResponse{
 					Type: &orderer.DeliverResponse_Block{
-						Block: testchainidGB,
+						Block: testchannelGB,
 					},
 				}
 				blockResponses <- nil
 				blockResponses <- &orderer.DeliverResponse{
 					Type: &orderer.DeliverResponse_Block{
-						Block: testchainidGB,
+						Block: testchannelGB,
 					},
 				}
 				blockResponses <- &orderer.DeliverResponse{
 					Type: &orderer.DeliverResponse_Block{
-						Block: testchainidGB,
+						Block: testchannelGB,
 					},
 				}
 				blockResponses <- nil
@@ -354,7 +379,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 			},
 		},
 		{
-			expectedLog: "Pulling channel testchainid",
+			expectedLog: "Pulling channel testchannel",
 			responseFunc: func(blockResponses chan *orderer.DeliverResponse) {
 				pullAppChannel = true
 
@@ -362,7 +387,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 					// Send once the genesis block, to make the client think this is a valid OSN endpoint
 					deliverServer.blockResponses <- &orderer.DeliverResponse{
 						Type: &orderer.DeliverResponse_Block{
-							Block: testchainidGB,
+							Block: testchannelGB,
 						},
 					}
 					// Send EOF to make the client abort and retry again
@@ -371,7 +396,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 			},
 		},
 		{
-			expectedLog: "Failed pulling channel testchainid: retry attempts exhausted",
+			expectedLog: "Failed pulling channel testchannel: retry attempts exhausted",
 			responseFunc: func(blockResponses chan *orderer.DeliverResponse) {
 				failedPulling = true
 			},
@@ -401,7 +426,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 			Block: systemChannelGenesisBlock,
 		},
 	}
-	// Send a channel creation block (sequence 1) that denotes creation of 'testchainid'
+	// Send a channel creation block (sequence 1) that denotes creation of 'testchannel'
 	deliverServer.blockResponses <- &orderer.DeliverResponse{
 		Type: &orderer.DeliverResponse_Block{
 			Block: channelCreationBlock,
@@ -423,8 +448,6 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 }
 
 func TestReplicate(t *testing.T) {
-	t.Parallel()
-
 	clusterConfig := localconfig.Cluster{
 		ReplicationPullTimeout:  time.Hour,
 		DialTimeout:             time.Hour,
@@ -441,7 +464,12 @@ func TestReplicate(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	blockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "genesis.block"))
+	tempDir, err := ioutil.TempDir("", "TestReplicate")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	applicationChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
+	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
 	assert.NoError(t, err)
 
 	caCert := loadPEM("ca.crt", t)
@@ -451,22 +479,22 @@ func TestReplicate(t *testing.T) {
 	prepareTestCase := func() *deliverServer {
 		deliverServer := newServerNode(t, key, cert)
 
-		assert.NoError(t, proto.Unmarshal(blockBytes, &bootBlock))
+		assert.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, &bootBlock))
 		bootBlock.Header.Number = 10
 		injectOrdererEndpoint(t, &bootBlock, deliverServer.srv.Address())
 
 		copyBlock := func(block *common.Block, seq uint64) common.Block {
 			res := common.Block{}
-			proto.Unmarshal(protoutil.MarshalOrPanic(block), &res)
+			assert.NoError(t, proto.Unmarshal(protoutil.MarshalOrPanic(block), &res))
 			res.Header.Number = seq
 			return res
 		}
 
 		bootBlockWithCorruptedPayload = copyBlock(&bootBlock, 100)
 		env := &common.Envelope{}
-		proto.Unmarshal(bootBlockWithCorruptedPayload.Data.Data[0], env)
+		assert.NoError(t, proto.Unmarshal(bootBlockWithCorruptedPayload.Data.Data[0], env))
 		payload := &common.Payload{}
-		proto.Unmarshal(env.Payload, payload)
+		assert.NoError(t, proto.Unmarshal(env.Payload, payload))
 		payload.Data = []byte{1, 2, 3}
 
 		deliverServer.blockResponses <- &orderer.DeliverResponse{
@@ -586,7 +614,7 @@ func TestReplicate(t *testing.T) {
 		{
 			name: "Replication is needed, but pulling fails",
 			panicValue: "Failed pulling system channel: " +
-				"failed obtaining the latest block for channel testchainid",
+				"failed obtaining the latest block for channel testchannel",
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
 			bootBlock:          &bootBlock,
@@ -629,7 +657,7 @@ func TestReplicate(t *testing.T) {
 				func(entry zapcore.Entry) error {
 					possibleLogs := []string{
 						"Will now replicate chains [foo]",
-						"Channel testchainid shouldn't be pulled. Skipping it",
+						"Channel testchannel shouldn't be pulled. Skipping it",
 					}
 					for _, possibleLog := range possibleLogs {
 						if entry.Message == possibleLog {
@@ -643,7 +671,7 @@ func TestReplicate(t *testing.T) {
 		{
 			name: "Explicit replication is requested, but the channel cannot be pulled",
 			panicValue: "Failed pulling system channel: " +
-				"failed obtaining the latest block for channel testchainid",
+				"failed obtaining the latest block for channel testchannel",
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
 			bootBlock:          &bootBlock,
@@ -659,7 +687,7 @@ func TestReplicate(t *testing.T) {
 				ServerRootCAs: [][]byte{caCert},
 			},
 			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
-				ri.ReplicateChains(bootstrapBlock, []string{"testchainid"})
+				ri.ReplicateChains(bootstrapBlock, []string{"testchannel"})
 			},
 		},
 	} {
@@ -902,12 +930,16 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 }
 
 func TestVerifierLoader(t *testing.T) {
-	systemChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "system.block"))
+	tempDir, err := ioutil.TempDir("", "TestVerifierLoader")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	systemChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
+	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
 	assert.NoError(t, err)
 
 	configBlock := &common.Block{}
-	err = proto.Unmarshal(systemChannelBlockBytes, configBlock)
-	assert.NoError(t, err)
+	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, configBlock))
 
 	verifier := &mocks.BlockVerifier{}
 
@@ -1045,19 +1077,23 @@ func TestVerifierLoader(t *testing.T) {
 }
 
 func TestValidateBootstrapBlock(t *testing.T) {
-	systemChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "system.block"))
+	tempDir, err := ioutil.TempDir("", "TestValidateBootstrapBlock")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	systemChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
+	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
 	assert.NoError(t, err)
 
-	applicationChannelBlockBytes, err := ioutil.ReadFile(filepath.Join("testdata", "mychannel.block"))
+	applicationChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "mychannel", "SampleOrgChannel")
+	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
 	assert.NoError(t, err)
 
 	appBlock := &common.Block{}
-	err = proto.Unmarshal(applicationChannelBlockBytes, appBlock)
-	assert.NoError(t, err)
+	assert.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, appBlock))
 
 	systemBlock := &common.Block{}
-	err = proto.Unmarshal(systemChannelBlockBytes, systemBlock)
-	assert.NoError(t, err)
+	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, systemBlock))
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
@@ -1106,4 +1142,19 @@ func TestValidateBootstrapBlock(t *testing.T) {
 			assert.EqualError(t, err, testCase.expectedError)
 		})
 	}
+}
+
+func createBootstrapBlock(t *testing.T, tempDir, configtxgen, channel, profile string) string {
+	gt := NewGomegaWithT(t)
+	// create a genesis block for the specified channel and profile
+	genesisBlockPath := filepath.Join(tempDir, channel+".block")
+	cmd := exec.Command(configtxgen, "-channelID", channel, "-profile", profile,
+		"-outputBlock", genesisBlockPath)
+	cmd.Env = append(cmd.Env, "FABRIC_CFG_PATH=testdata")
+	configtxgenProcess, err := gexec.Start(cmd, nil, nil)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Eventually(configtxgenProcess, time.Minute).Should(gexec.Exit(0))
+	gt.Expect(configtxgenProcess.Err).To(gbytes.Say("Writing genesis block"))
+
+	return genesisBlockPath
 }

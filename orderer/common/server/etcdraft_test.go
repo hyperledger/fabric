@@ -28,11 +28,7 @@ func nextPort() int32 {
 }
 
 func TestSpawnEtcdRaft(t *testing.T) {
-
 	gt := NewGomegaWithT(t)
-
-	cwd, err := filepath.Abs(".")
-	gt.Expect(err).NotTo(HaveOccurred())
 
 	// Set the fabric root folder for easy navigation to sampleconfig folder
 	fabricRootDir, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -55,7 +51,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		t.Run("Invalid bootstrap block", func(t *testing.T) {
-			testEtcdRaftOSNFailureInvalidBootstrapBlock(NewGomegaWithT(t), tempDir, orderer, fabricRootDir)
+			testEtcdRaftOSNFailureInvalidBootstrapBlock(NewGomegaWithT(t), tempDir, orderer, fabricRootDir, configtxgen)
 		})
 
 		t.Run("TLS disabled single listener", func(t *testing.T) {
@@ -81,17 +77,17 @@ func TestSpawnEtcdRaft(t *testing.T) {
 			gt.Expect(err).NotTo(HaveOccurred())
 			defer os.RemoveAll(tempDir)
 
-			testEtcdRaftOSNSuccess(gt, tempDir, configtxgen, cwd, orderer, fabricRootDir)
+			testEtcdRaftOSNSuccess(gt, tempDir, configtxgen, orderer, fabricRootDir)
 		})
 	})
 }
 
-func createBootstrapBlock(gt *GomegaWithT, tempDir, configtxgen, cwd string) string {
-	// Create the genesis block for the system channel
+func createBootstrapBlock(gt *GomegaWithT, tempDir, configtxgen, channel, profile string) string {
+	// create a genesis block for the specified channel and profile
 	genesisBlockPath := filepath.Join(tempDir, "genesis.block")
-	cmd := exec.Command(configtxgen, "-channelID", "system", "-profile", "SampleDevModeEtcdRaft",
+	cmd := exec.Command(configtxgen, "-channelID", channel, "-profile", profile,
 		"-outputBlock", genesisBlockPath)
-	cmd.Env = append(cmd.Env, fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(cwd, "testdata")))
+	cmd.Env = append(cmd.Env, "FABRIC_CFG_PATH=testdata")
 	configtxgenProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Eventually(configtxgenProcess, time.Minute).Should(gexec.Exit(0))
@@ -100,8 +96,8 @@ func createBootstrapBlock(gt *GomegaWithT, tempDir, configtxgen, cwd string) str
 	return genesisBlockPath
 }
 
-func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer, fabricRootDir string) {
-	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, cwd)
+func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, orderer, fabricRootDir string) {
+	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, "system", "SampleEtcdRaftSystemChannel")
 
 	// Launch the OSN
 	ordererProcess := launchOrderer(gt, orderer, tempDir, genesisBlockPath, fabricRootDir)
@@ -126,9 +122,9 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, cwd, orderer,
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))
 }
 
-func testEtcdRaftOSNFailureInvalidBootstrapBlock(gt *GomegaWithT, tempDir, orderer, fabricRootDir string) {
-	// Grab an application channel genesis block
-	genesisBlockPath := filepath.Join(filepath.Join("testdata", "mychannel.block"))
+func testEtcdRaftOSNFailureInvalidBootstrapBlock(gt *GomegaWithT, tempDir, orderer, fabricRootDir, configtxgen string) {
+	// create an application channel genesis block
+	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, "mychannel", "SampleOrgChannel")
 	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -146,10 +142,7 @@ func testEtcdRaftOSNFailureInvalidBootstrapBlock(gt *GomegaWithT, tempDir, order
 }
 
 func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, tempDir, orderer, fabricRootDir string, configtxgen string) {
-	cwd, err := filepath.Abs(".")
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, cwd)
+	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, "system", "SampleEtcdRaftSystemChannel")
 
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
@@ -169,10 +162,10 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, tempDir, orderer, fabri
 }
 
 func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricRootDir string, configtxgen string) {
-	cwd, err := filepath.Abs(".")
+	cwd, err := os.Getwd()
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, cwd)
+	genesisBlockPath := createBootstrapBlock(gt, tempDir, configtxgen, "system", "SampleEtcdRaftSystemChannel")
 
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
@@ -185,11 +178,11 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricR
 		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1",
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_ROOTCAS=[%s]", filepath.Join(cwd, "testdata", "tls", "ca.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.key")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.key")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_ROOTCAS=[%s]", filepath.Join(cwd, "testdata", "example.com", "tls", "ca.crt")),
 		fmt.Sprintf("ORDERER_CONSENSUS_WALDIR=%s", filepath.Join(tempDir, "wal")),
 		fmt.Sprintf("ORDERER_CONSENSUS_SNAPDIR=%s", filepath.Join(tempDir, "snapshot")),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(fabricRootDir, "sampleconfig")),
@@ -204,7 +197,7 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricR
 }
 
 func launchOrderer(gt *GomegaWithT, orderer, tempDir, genesisBlockPath, fabricRootDir string) *gexec.Session {
-	cwd, err := filepath.Abs(".")
+	cwd, err := os.Getwd()
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// Launch the orderer process
@@ -220,14 +213,14 @@ func launchOrderer(gt *GomegaWithT, orderer, tempDir, genesisBlockPath, fabricRo
 		fmt.Sprintf("ORDERER_GENERAL_GENESISFILE=%s", genesisBlockPath),
 		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_LISTENPORT=%d", nextPort()),
 		"ORDERER_GENERAL_CLUSTER_LISTENADDRESS=127.0.0.1",
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
-		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_ROOTCAS=[%s]", filepath.Join(cwd, "testdata", "tls", "ca.crt")),
-		fmt.Sprintf("ORDERER_GENERAL_TLS_ROOTCAS=[%s]", filepath.Join(cwd, "testdata", "tls", "ca.crt")),
-		fmt.Sprintf("ORDERER_GENERAL_TLS_CERTIFICATE=%s", filepath.Join(cwd, "testdata", "tls", "server.crt")),
-		fmt.Sprintf("ORDERER_GENERAL_TLS_PRIVATEKEY=%s", filepath.Join(cwd, "testdata", "tls", "server.key")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.key")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.key")),
+		fmt.Sprintf("ORDERER_GENERAL_CLUSTER_ROOTCAS=[%s]", filepath.Join(cwd, "testdata", "example.com", "tls", "ca.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_TLS_ROOTCAS=[%s]", filepath.Join(cwd, "testdata", "example.com", "tls", "ca.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_TLS_CERTIFICATE=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.crt")),
+		fmt.Sprintf("ORDERER_GENERAL_TLS_PRIVATEKEY=%s", filepath.Join(cwd, "testdata", "example.com", "tls", "server.key")),
 		fmt.Sprintf("ORDERER_CONSENSUS_WALDIR=%s", filepath.Join(tempDir, "wal")),
 		fmt.Sprintf("ORDERER_CONSENSUS_SNAPDIR=%s", filepath.Join(tempDir, "snapshot")),
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", filepath.Join(fabricRootDir, "sampleconfig")),

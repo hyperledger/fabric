@@ -8,7 +8,7 @@ Organizations:
     - &SampleOrg
         Name: SampleOrg
         ID: SampleOrg
-        MSPDir: ../../../../sampleconfig/msp
+        MSPDir: example.com/msp
         Policies: &SampleOrgPolicies
             Readers:
                 Type: Signature
@@ -79,21 +79,8 @@ Orderer: &OrdererDefaults
         Consenters:
             - Host: raft0.example.com
               Port: 7050
-              ClientTLSCert: path/to/ClientTLSCert0
-              ServerTLSCert: path/to/ServerTLSCert0
-            - Host: raft1.example.com
-              Port: 7050
-              ClientTLSCert: path/to/ClientTLSCert1
-              ServerTLSCert: path/to/ServerTLSCert1
-            - Host: raft2.example.com
-              Port: 7050
-              ClientTLSCert: path/to/ClientTLSCert2
-              ServerTLSCert: path/to/ServerTLSCert2
-        Options:
-            TickInterval: 500
-            ElectionTick: 10
-            HeartbeatTick: 1
-            MaxInflightBlocks: 5
+              ClientTLSCert: example.com/tls/server.crt
+              ServerTLSCert: example.com/tls/server.crt
     Organizations:
     Policies:
         Readers:
@@ -126,17 +113,11 @@ Channel: &ChannelDefaults
         <<: *ChannelCapabilities
 
 Profiles:
-    SampleDevModeEtcdRaft:
+    SampleEtcdRaftSystemChannel:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
             OrdererType: etcdraft
-            EtcdRaft:
-                Consenters:
-                    - Host: raft0.example.com
-                      Port: 7050
-                      ClientTLSCert: tls/server.crt
-                      ServerTLSCert: tls/server.crt
             Organizations:
                 - <<: *SampleOrg
                   Policies:
@@ -162,3 +143,50 @@ Profiles:
                           Admins:
                               Type: Signature
                               Rule: "OR('SampleOrg.member')"
+    SampleSoloSystemChannel:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      Policies:
+                          <<: *SampleOrgPolicies
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"
+    SampleOrgChannel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *SampleOrg
+            Capabilities:
+                <<: *ApplicationCapabilities
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"

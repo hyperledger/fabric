@@ -498,8 +498,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			TLS: localconfig.TLS{
 				Enabled:            true,
 				ClientAuthRequired: true,
-				PrivateKey:         filepath.Join(".", "testdata", "tls", "server.key"),
-				Certificate:        filepath.Join(".", "testdata", "tls", "server.crt"),
+				PrivateKey:         filepath.Join(".", "testdata", "example.com", "tls", "server.key"),
+				Certificate:        filepath.Join(".", "testdata", "example.com", "tls", "server.crt"),
 			},
 		},
 	}
