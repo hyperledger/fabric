@@ -138,9 +138,10 @@ var _ = Describe("Externalbuilders", func() {
 					detector.Builders = nil
 				})
 
-				It("returns an error", func() {
-					_, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError("no builders defined"))
+				It("returns a nil instance", func() {
+					i, err := detector.Build("fake-package-id", md, codePackage)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(i).To(BeNil())
 				})
 			})
 
@@ -276,7 +277,7 @@ var _ = Describe("Externalbuilders", func() {
 
 				It("returns an error", func() {
 					err := builder.Build(buildContext)
-					Expect(err).To(MatchError("builder 'failbuilder' build failed: exit status 1"))
+					Expect(err).To(MatchError("external builder 'failbuilder' failed: exit status 1"))
 				})
 			})
 		})

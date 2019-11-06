@@ -135,7 +135,16 @@ func (e externalVMAdapter) Build(
 	metadata *persistence.ChaincodePackageMetadata,
 	codePackage io.Reader,
 ) (container.Instance, error) {
-	return e.detector.Build(ccid, metadata, codePackage)
+	i, err := e.detector.Build(ccid, metadata, codePackage)
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure <nil> is returned instead of (*externalbuilder.Instance)(nil)
+	if i == nil {
+		return nil, nil
+	}
+	return i, err
 }
 
 type endorserChannelAdapter struct {
