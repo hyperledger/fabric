@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -54,7 +54,7 @@ func addToMap(cg comparable, result map[string]comparable) error {
 	}
 
 	if err := validateConfigID(cg.key); err != nil {
-		return fmt.Errorf("Illegal characters in key: %s", fqPath)
+		return errors.WithMessagef(err, "illegal characters in key: %s", fqPath)
 	}
 
 	if len(cg.path) == 0 {
@@ -113,11 +113,11 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 	groupPath := groupPrefix + path
 	group, ok := configMap[groupPath]
 	if !ok {
-		return nil, fmt.Errorf("Missing group at path: %s", groupPath)
+		return nil, errors.Errorf("missing group at path: %s", groupPath)
 	}
 
 	if group.ConfigGroup == nil {
-		return nil, fmt.Errorf("ConfigGroup not found at group path: %s", groupPath)
+		return nil, errors.Errorf("ConfigGroup not found at group path: %s", groupPath)
 	}
 
 	newConfigGroup := protoutil.NewConfigGroup()
@@ -135,10 +135,10 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		valuePath := valuePrefix + path + pathSeparator + key
 		value, ok := configMap[valuePath]
 		if !ok {
-			return nil, fmt.Errorf("Missing value at path: %s", valuePath)
+			return nil, errors.Errorf("missing value at path: %s", valuePath)
 		}
 		if value.ConfigValue == nil {
-			return nil, fmt.Errorf("ConfigValue not found at value path: %s", valuePath)
+			return nil, errors.Errorf("ConfigValue not found at value path: %s", valuePath)
 		}
 		newConfigGroup.Values[key] = proto.Clone(value.ConfigValue).(*cb.ConfigValue)
 	}
@@ -147,10 +147,10 @@ func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigG
 		policyPath := policyPrefix + path + pathSeparator + key
 		policy, ok := configMap[policyPath]
 		if !ok {
-			return nil, fmt.Errorf("Missing policy at path: %s", policyPath)
+			return nil, errors.Errorf("missing policy at path: %s", policyPath)
 		}
 		if policy.ConfigPolicy == nil {
-			return nil, fmt.Errorf("ConfigPolicy not found at policy path: %s", policyPath)
+			return nil, errors.Errorf("ConfigPolicy not found at policy path: %s", policyPath)
 		}
 		newConfigGroup.Policies[key] = proto.Clone(policy.ConfigPolicy).(*cb.ConfigPolicy)
 		logger.Debugf("Setting policy for key %s to %+v", key, group.Policies[key])
