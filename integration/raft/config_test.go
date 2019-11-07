@@ -34,7 +34,6 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
-	"github.com/tedsuo/ifrit/grouper"
 )
 
 var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
@@ -242,7 +241,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				runner := network.OrdererRunner(o)
 				ordererRunners = append(ordererRunners, runner)
 
-				process := ifrit.Invoke(grouper.Member{Name: o.ID(), Runner: runner})
+				process := ifrit.Invoke(runner)
 				Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 				ordererProcesses = append(ordererProcesses, process)
 			}
@@ -424,7 +423,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				By("Starting the orderer again")
 				ordererRunner := network.OrdererRunner(targetOrderer)
 				ordererRunners = append(ordererRunners, ordererRunner)
-				ordererProcesses[target] = ifrit.Invoke(grouper.Member{Name: orderers[target].ID(), Runner: ordererRunner})
+				ordererProcesses[target] = ifrit.Invoke(ordererRunner)
 				Eventually(ordererProcesses[target].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 				By("And waiting for it to stabilize")
@@ -547,7 +546,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				By("Starting the orderer again")
 				ordererRunner := network.OrdererRunner(orderers[i])
 				ordererRunners = append(ordererRunners, ordererRunner)
-				ordererProcesses[i] = ifrit.Invoke(grouper.Member{Name: orderers[i].ID(), Runner: ordererRunner})
+				ordererProcesses[i] = ifrit.Invoke(ordererRunner)
 				Eventually(ordererProcesses[i].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 				By("And waiting for it to stabilize")
@@ -590,8 +589,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			network.GenerateOrdererConfig(network.Orderer("orderer4"))
 
 			By("Adding orderer4 to the channels")
-			orderer4CertificatePath := filepath.Join(testDir, "crypto", "ordererOrganizations", "example.com",
-				"orderers", "orderer4.example.com", "tls", "server.crt")
+			orderer4CertificatePath := filepath.Join(network.OrdererLocalTLSDir(o4), "server.crt")
 			orderer4Certificate, err := ioutil.ReadFile(orderer4CertificatePath)
 			Expect(err).NotTo(HaveOccurred())
 			for _, channel := range []string{"systemchannel", "testchannel"} {
@@ -633,7 +631,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			orderer4Runner := network.OrdererRunner(o4)
 			ordererRunners = append(ordererRunners, orderer4Runner)
 			// Spawn orderer4's process
-			o4process := ifrit.Invoke(grouper.Member{Name: o4.ID(), Runner: orderer4Runner})
+			o4process := ifrit.Invoke(orderer4Runner)
 			Eventually(o4process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			ordererProcesses = append(ordererProcesses, o4process)
 
@@ -654,8 +652,11 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 
-			Expect(string(orderer4Runner.Err().Contents())).To(ContainSubstring("I do not belong to channel testchannel2 or am forbidden pulling it (not in the channel), skipping chain retrieval"))
-			Expect(string(orderer4Runner.Err().Contents())).To(ContainSubstring("I do not belong to channel testchannel3 or am forbidden pulling it (forbidden pulling the channel), skipping chain retrieval"))
+			belongRegex := `\QI do not belong to channel testchannel2 or am forbidden pulling it (not in the channel), skipping chain retrieval\E`
+			forbiddenRegex := `\QI do not belong to channel testchannel3 or am forbidden pulling it (forbidden pulling the channel), skipping chain retrieval\E`
+
+			Expect(orderer4Runner.Err()).To(gbytes.Say(belongRegex + "|" + forbiddenRegex))
+			Expect(orderer4Runner.Err()).To(gbytes.Say(belongRegex + "|" + forbiddenRegex))
 
 			By("Adding orderer4 to testchannel2")
 			nwo.AddConsenter(network, peer, o1, "testchannel2", etcdraft.Consenter{
@@ -671,10 +672,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{o4}, peer, network)
 
 			By("Ensuring orderer4 doesn't have any errors in the logs")
-			Expect(orderer4Runner.Err()).NotTo(gbytes.Say("ERRO"))
-
-			By("Ensuring that all orderers don't log errors to the log")
-			assertNoErrorsAreLogged(ordererRunners)
+			Consistently(orderer4Runner.Err()).ShouldNot(gbytes.Say("ERRO"))
 
 			By("Submitting a transaction through orderer4")
 			env = CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
@@ -973,7 +971,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Starting the orderer again")
 			ordererRunner := network.OrdererRunner(orderers[0])
 			ordererRunners[0] = ordererRunner
-			ordererProcesses[0] = ifrit.Invoke(grouper.Member{Name: orderers[0].ID(), Runner: ordererRunner})
+			ordererProcesses[0] = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Ensuring the remaining OSNs reject authentication")
@@ -995,7 +993,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Starting the evicted orderer again")
 			ordererRunner = network.OrdererRunner(orderers[0])
 			ordererRunners[0] = ordererRunner
-			ordererProcesses[0] = ifrit.Invoke(grouper.Member{Name: orderers[0].ID(), Runner: ordererRunner})
+			ordererProcesses[0] = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Ensuring the evicted orderer starts up marked the channel is inactive")
@@ -1487,40 +1485,6 @@ func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Net
 		}
 		return sessErr
 	}, network.EventuallyTimeout, time.Second).Should(BeEmpty())
-}
-
-func assertNoErrorsAreLogged(ordererRunners []*ginkgomon.Runner) {
-	var wg sync.WaitGroup
-	wg.Add(len(ordererRunners))
-
-	assertNoErrors := func(runner *ginkgomon.Runner) {
-		buff := runner.Err()
-		readOutput := func() string {
-			out := bytes.Buffer{}
-			// Read until no new input is detected
-			for {
-				b := make([]byte, 1024)
-				n, _ := buff.Read(b)
-				if n == 0 {
-					break
-				}
-				bytesRead := make([]byte, n)
-				copy(bytesRead, b)
-				out.Write(bytesRead)
-			}
-			return out.String()
-		}
-		Eventually(readOutput, time.Minute, time.Second*5).Should(Not(ContainSubstring("ERRO")))
-	}
-
-	for _, runner := range ordererRunners {
-		go func(runner *ginkgomon.Runner) {
-			defer GinkgoRecover()
-			defer wg.Done()
-			assertNoErrors(runner)
-		}(runner)
-	}
-	wg.Wait()
 }
 
 func revokeReaderAccess(network *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer) {
