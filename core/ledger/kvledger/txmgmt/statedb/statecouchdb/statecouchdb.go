@@ -631,7 +631,7 @@ func validateQueryMetadata(metadata map[string]interface{}) error {
 // ApplyUpdates implements method in VersionedDB interface
 func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *version.Height) error {
 	if height != nil && updates.ContainsPostOrderWrites {
-		// height is passed nil when commiting missing private data for previously committed blocks
+		// height is passed nil when committing missing private data for previously committed blocks
 		r := &redoRecord{
 			UpdateBatch: updates,
 			Version:     height,
@@ -648,15 +648,15 @@ func (vdb *VersionedDB) applyUpdates(updates *statedb.UpdateBatch, height *versi
 	// the function `Apply update can be split into three functions. Each carrying out one of the following three stages`.
 	// The write lock is needed only for the stage 2.
 
-	// stage 1 - PrepareForUpdates - db transforms the given batch in the form of underlying db
-	// and keep it in memory
-	var updateBatches []batch
-	var err error
-	if updateBatches, err = vdb.buildCommitters(updates); err != nil {
+	// stage 1 - buildCommitters builds committers per namespace (per DB). Each committer transforms the
+	// given batch in the form of underlying db and keep it in memory.
+	committers, err := vdb.buildCommitters(updates)
+	if err != nil {
 		return err
 	}
-	// stage 2 - ApplyUpdates push the changes to the DB
-	if err = executeBatches(updateBatches); err != nil {
+
+	// stage 2 -- executeCommitter executes each committer to push the changes to the DB
+	if err = vdb.executeCommitter(committers); err != nil {
 		return err
 	}
 
@@ -703,16 +703,34 @@ func (vdb *VersionedDB) Close() {
 func (vdb *VersionedDB) ensureFullCommitAndRecordSavepoint(height *version.Height, namespaces []string) error {
 	// ensure full commit to flush all changes on updated namespaces until now to disk
 	// namespace also includes empty namespace which is nothing but metadataDB
-	var dbs []*couchdb.CouchDatabase
+	errsChan := make(chan error, len(namespaces))
+	defer close(errsChan)
+	var commitWg sync.WaitGroup
+	commitWg.Add(len(namespaces))
 	for _, ns := range namespaces {
-		db, err := vdb.getNamespaceDBHandle(ns)
-		if err != nil {
-			return err
-		}
-		dbs = append(dbs, db)
+		go func(ns string) {
+			defer commitWg.Done()
+			db, err := vdb.getNamespaceDBHandle(ns)
+			if err != nil {
+				errsChan <- err
+				return
+			}
+			_, err = db.EnsureFullCommit()
+			if err != nil {
+				errsChan <- err
+				return
+			}
+		}(ns)
 	}
-	if err := vdb.ensureFullCommit(dbs); err != nil {
-		return err
+
+	commitWg.Wait()
+
+	select {
+	case err := <-errsChan:
+		logger.Errorf("Failed to perform full commit")
+		return errors.WithMessage(err, "failed to perform full commit")
+	default:
+		logger.Debugf("All changes have been flushed to the disk")
 	}
 
 	// If a given height is nil, it denotes that we are committing pvt data of old blocks.
