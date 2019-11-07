@@ -79,7 +79,7 @@ var _ = Describe("Network", func() {
 			orderer := network.Orderer("orderer0")
 			peer := network.Peer("org1", "peer2")
 
-			chaincode := nwo.Chaincode{
+			legacyChaincode := nwo.Chaincode{
 				Name:    "mycc",
 				Version: "0.0",
 				Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
@@ -88,7 +88,7 @@ var _ = Describe("Network", func() {
 			}
 
 			network.CreateAndJoinChannels(orderer)
-			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincode)
+			nwo.DeployChaincodeLegacy(network, "testchannel", orderer, legacyChaincode)
 			RunQueryInvokeQuery(network, orderer, peer, 100)
 		})
 
@@ -97,17 +97,16 @@ var _ = Describe("Network", func() {
 			peer := network.Peer("org1", "peer2")
 
 			chaincode := nwo.Chaincode{
-				Name:                "mycc",
-				Version:             "0.0",
-				Path:                "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-				Lang:                "golang",
-				PackageFile:         filepath.Join(tempDir, "simplecc.tar.gz"),
-				Ctor:                `{"Args":["init","a","100","b","200"]}`,
-				Policy:              `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
-				ChannelConfigPolicy: "/Channel/Application/Endorsement",
-				Sequence:            "1",
-				InitRequired:        true,
-				Label:               "my_simple_chaincode",
+				Name:            "mycc",
+				Version:         "0.0",
+				Path:            "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+				Lang:            "golang",
+				PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
+				Ctor:            `{"Args":["init","a","100","b","200"]}`,
+				SignaturePolicy: `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				Sequence:        "1",
+				InitRequired:    true,
+				Label:           "my_simple_chaincode",
 			}
 
 			network.CreateAndJoinChannels(orderer)
@@ -195,15 +194,15 @@ var _ = Describe("Network", func() {
 			network.CreateChannel("testchannel", orderer, testPeers[0])
 			network.JoinChannel("testchannel", orderer, testPeers...)
 
-			chaincode := nwo.Chaincode{
+			legacyChaincode := nwo.Chaincode{
 				Name:    "mycc",
 				Version: "0.0",
 				Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 				Ctor:    `{"Args":["init","a","100","b","200"]}`,
 				Policy:  `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
 			}
-			nwo.InstallChaincodeLegacy(network, chaincode, testPeers...)
-			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, chaincode, testPeers[0])
+			nwo.InstallChaincodeLegacy(network, legacyChaincode, testPeers...)
+			nwo.InstantiateChaincodeLegacy(network, "testchannel", orderer, legacyChaincode, testPeers[0])
 			nwo.EnsureInstantiatedLegacy(network, "testchannel", "mycc", "0.0", testPeers...)
 
 			RunQueryInvokeQuery(network, orderer, testPeers[0], 100)
