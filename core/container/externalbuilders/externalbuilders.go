@@ -497,6 +497,8 @@ func contains(envWhiteList []string, key string) bool {
 }
 
 func RunCommand(logger *flogging.FabricLogger, cmd *exec.Cmd) error {
+	logger = logger.With("command", filepath.Base(cmd.Path))
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return err
