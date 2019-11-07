@@ -126,14 +126,14 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		// A small optimization, especially while the launcher feature is under development
 		// let's not explode the build package out into the filesystem unless there are
 		// external builders to run against it.
-		return nil, errors.Errorf("no builders defined")
+		return nil, nil
 	}
 
+	// Look for a cached instance.
 	i, err := d.CachedBuild(ccid)
 	if err != nil {
 		return nil, errors.WithMessage(err, "existing build could not be restored")
 	}
-
 	if i != nil {
 		return i, nil
 	}
@@ -142,12 +142,12 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create build context")
 	}
-
 	defer buildContext.Cleanup()
 
 	builder := d.Detect(buildContext)
 	if builder == nil {
-		return nil, errors.Errorf("no builder found")
+		logger.Debugf("no external builder detected for %s", ccid)
+		return nil, nil
 	}
 
 	if err := builder.Build(buildContext); err != nil {
@@ -344,7 +344,7 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		return errors.Wrapf(err, "builder '%s' build failed", b.Name)
+		return errors.Wrapf(err, "external builder '%s' failed", b.Name)
 	}
 
 	return nil
