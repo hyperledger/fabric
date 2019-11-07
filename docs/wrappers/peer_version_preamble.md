@@ -8,7 +8,7 @@ information. For example:
  peer:
    Version: 1.4.0
    Commit SHA: 0efc897
-   Go version: go1.11.1
+   Go version: go1.12.12
    OS/Arch: linux/amd64
    Chaincode:
     Base Image Version: 0.4.14
