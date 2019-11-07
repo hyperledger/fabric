@@ -121,6 +121,8 @@ type Handler struct {
 	UUIDGenerator UUIDGenerator
 	// AppConfig is used to retrieve the application config for a channel
 	AppConfig ApplicationConfigRetriever
+	// Metrics holds chaincode handler metrics
+	Metrics *HandlerMetrics
 
 	// state holds the current handler state. It will be created, established, or
 	// ready.
@@ -135,8 +137,10 @@ type Handler struct {
 	chatStream ccintf.ChaincodeStream
 	// errChan is used to communicate errors from the async send to the receive loop
 	errChan chan error
-	// Metrics holds chaincode handler metrics
-	Metrics *HandlerMetrics
+	// mutex is used to serialze the stream closed chan.
+	mutex sync.Mutex
+	// streamDoneChan is closed when the chaincode stream terminates.
+	streamDoneChan chan struct{}
 }
 
 // handleMessage is called by ProcessStream to dispatch messages.
@@ -342,8 +346,19 @@ func (h *Handler) deregister() {
 	h.Registry.Deregister(h.chaincodeID)
 }
 
+func (h *Handler) streamDone() <-chan struct{} {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+	return h.streamDoneChan
+}
+
 func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 	defer h.deregister()
+
+	h.mutex.Lock()
+	h.streamDoneChan = make(chan struct{})
+	h.mutex.Unlock()
+	defer close(h.streamDoneChan)
 
 	h.chatStream = stream
 	h.errChan = make(chan error, 1)
@@ -1198,9 +1213,9 @@ func (h *Handler) Execute(txParams *ccprovider.TransactionParams, namespace stri
 		// are typically treated as error
 	case <-time.After(timeout):
 		err = errors.New("timeout expired while executing transaction")
-		h.Metrics.ExecuteTimeouts.With(
-			"chaincode", h.chaincodeID,
-		).Add(1)
+		h.Metrics.ExecuteTimeouts.With("chaincode", h.chaincodeID).Add(1)
+	case <-h.streamDone():
+		err = errors.New("chaincode stream terminated")
 	}
 
 	return ccresp, err

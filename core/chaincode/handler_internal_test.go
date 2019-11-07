@@ -19,3 +19,11 @@ func SetHandlerChaincodeID(h *Handler, chaincodeID string) {
 func SetHandlerChatStream(h *Handler, chatStream ccintf.ChaincodeStream) {
 	h.chatStream = chatStream
 }
+
+func StreamDone(h *Handler) <-chan struct{} {
+	return h.streamDone()
+}
+
+func SetStreamDoneChan(h *Handler, ch chan struct{}) {
+	h.streamDoneChan = ch
+}
