@@ -572,6 +572,8 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 	switch conf.General.GenesisMethod {
 	case "file": // For now, "file" is the only supported genesis method
 		bootstrapBlock = file.New(conf.General.GenesisFile).GenesisBlock()
+	case "none": // simply honor the configuration value
+		return nil
 	default:
 		logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)
 	}
@@ -680,10 +682,9 @@ func initializeMultichannelRegistrar(
 	bccsp bccsp.BCCSP,
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
-	genesisBlock := extractBootstrapBlock(conf)
 	// Are we bootstrapping?
 	if len(lf.ChannelIDs()) == 0 {
-		initializeBootstrapChannel(genesisBlock, lf)
+		initializeBootstrapChannel(bootstrapBlock, lf)
 	} else {
 		logger.Info("Not bootstrapping because of existing channels")
 	}

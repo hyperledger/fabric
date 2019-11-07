@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -225,6 +226,36 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	ledger, err := ledgerFactory.GetOrCreate("testchannelid")
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), ledger.Height())
+}
+
+func TestExtractBootstrapBlock(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
+	defer os.Remove(genesisFile)
+
+	tests := []struct {
+		config *localconfig.TopLevel
+		block  *common.Block
+	}{
+		{
+			config: &localconfig.TopLevel{
+				General: localconfig.General{GenesisMethod: "file", GenesisFile: genesisFile},
+			},
+			block: file.New(genesisFile).GenesisBlock(),
+		},
+		{
+			config: &localconfig.TopLevel{
+				General: localconfig.General{GenesisMethod: "none"},
+			},
+			block: nil,
+		},
+	}
+	for _, tt := range tests {
+		b := extractBootstrapBlock(tt.config)
+		assert.Truef(t, proto.Equal(tt.block, b), "wanted %v, got %v", tt.block, b)
+	}
 }
 
 func TestExtractSysChanLastConfig(t *testing.T) {
