@@ -2583,6 +2583,23 @@ var _ = Describe("Handler", func() {
 			})
 		})
 
+		Context("when the chaincode stream terminates", func() {
+			It("returns an error", func() {
+				streamDoneChan := make(chan struct{})
+				chaincode.SetStreamDoneChan(handler, streamDoneChan)
+
+				errCh := make(chan error, 1)
+				go func() {
+					_, err := handler.Execute(txParams, cccid, incomingMessage, time.Hour)
+					errCh <- err
+				}()
+				Consistently(errCh).ShouldNot(Receive())
+
+				close(streamDoneChan)
+				Eventually(errCh).Should(Receive(MatchError("chaincode stream terminated")))
+			})
+		})
+
 		Context("when execute times out", func() {
 			It("returns an error", func() {
 				errCh := make(chan error, 1)
@@ -2769,6 +2786,22 @@ var _ = Describe("Handler", func() {
 			Eventually(fakeChatStream.RecvCallCount).Should(Equal(100))
 		})
 
+		It("manages the stream done channel", func() {
+			releaseChan := make(chan struct{})
+			fakeChatStream.RecvStub = func() (*pb.ChaincodeMessage, error) {
+				<-releaseChan
+				return nil, errors.New("cc-went-away")
+			}
+			go handler.ProcessStream(fakeChatStream)
+			Eventually(fakeChatStream.RecvCallCount).Should(Equal(1))
+
+			streamDoneChan := chaincode.StreamDone(handler)
+			Consistently(streamDoneChan).ShouldNot(Receive())
+
+			close(releaseChan)
+			Eventually(streamDoneChan).Should(BeClosed())
+		})
+
 		Context("when receive fails with an io.EOF", func() {
 			BeforeEach(func() {
 				fakeChatStream.RecvReturns(nil, io.EOF)
@@ -2871,8 +2904,7 @@ var _ = Describe("Handler", func() {
 			var (
 				cccid           *ccprovider.CCContext
 				incomingMessage *pb.ChaincodeMessage
-
-				recvChan chan *pb.ChaincodeMessage
+				recvChan        chan *pb.ChaincodeMessage
 			)
 
 			BeforeEach(func() {
