@@ -271,8 +271,8 @@ func NewGossipStateProvider(chainID string, services *ServicesMediator, ledger l
 		stateMetrics: stateMetrics,
 	}
 
-	logger.Infof("Updating metadata information, "+
-		"current ledger sequence is at = %d, next expected block is = %d", height-1, s.payloads.Next())
+	logger.Infof("Updating metadata information for channel %s, "+
+		"current ledger sequence is at = %d, next expected block is = %d", chainID, height-1, s.payloads.Next())
 	logger.Debug("Updating gossip ledger height to", height)
 	services.UpdateLedgerHeight(height, common2.ChainID(s.chainID))
 

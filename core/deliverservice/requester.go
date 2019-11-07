@@ -42,12 +42,12 @@ func (b *blocksRequester) RequestBlocks(ledgerInfoProvider blocksprovider.Ledger
 	}
 
 	if height > 0 {
-		logger.Debugf("Starting deliver with block [%d] for channel %s", height, b.chainID)
+		logger.Infof("Starting deliver with block [%d] for channel %s", height, b.chainID)
 		if err := b.seekLatestFromCommitter(height); err != nil {
 			return err
 		}
 	} else {
-		logger.Debugf("Starting deliver with oldest block for channel %s", b.chainID)
+		logger.Infof("Starting deliver with oldest block for channel %s", b.chainID)
 		if err := b.seekOldest(); err != nil {
 			return err
 		}
