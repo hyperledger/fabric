@@ -11,13 +11,14 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
 
@@ -480,7 +481,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			b, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(b).NotTo(BeNil())
-			policy := &pb.ApplicationPolicy{}
+			policy := &cb.ApplicationPolicy{}
 			err = proto.Unmarshal(b, policy)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(policy.GetChannelConfigPolicyReference()).To(Equal("/Channel/Application/LifecycleEndorsement"))
@@ -494,7 +495,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			It("returns an error", func() {
 				b, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
 				Expect(err).NotTo(HaveOccurred())
-				policy := &pb.ApplicationPolicy{}
+				policy := &cb.ApplicationPolicy{}
 				err = proto.Unmarshal(b, policy)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(policy.GetSignaturePolicy()).NotTo(BeNil())
@@ -650,6 +651,53 @@ var _ = Describe("ValidatorCommitter", func() {
 				})
 			})
 		})
+
+		Context("when the endorsement policy is specified in the collection config", func() {
+			var expectedPolicy *cb.ApplicationPolicy
+
+			BeforeEach(func() {
+				expectedPolicy = &cb.ApplicationPolicy{
+					Type: &cb.ApplicationPolicy_SignaturePolicy{
+						SignaturePolicy: &cb.SignaturePolicyEnvelope{
+							Identities: []*msp.MSPPrincipal{
+								{
+									Principal: []byte("test"),
+								},
+							},
+						},
+					},
+				}
+				err := resources.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.ChaincodeDefinition{
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version: "version",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationPlugin:    "validation-plugin",
+						ValidationParameter: []byte("validation-parameter"),
+					},
+					Collections: &cb.CollectionConfigPackage{
+						Config: []*cb.CollectionConfig{
+							{
+								Payload: &cb.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &cb.StaticCollectionConfig{
+										Name:              "collection-name",
+										EndorsementPolicy: expectedPolicy,
+									},
+								},
+							},
+						},
+					},
+				}, fakePublicState)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns the endorsement policy from the collection config", func() {
+				ep, uErr, vErr := vc.CollectionValidationInfo("channel-id", "cc-name", "collection-name", fakeValidationState)
+				Expect(uErr).NotTo(HaveOccurred())
+				Expect(vErr).NotTo(HaveOccurred())
+				Expect(ep).To(Equal(protoutil.MarshalOrPanic(expectedPolicy)))
+			})
+		})
 	})
 
 	Describe("ImplicitCollectionEndorsementPolicyAsBytes", func() {
@@ -657,7 +705,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			ep, uErr, vErr := vc.ImplicitCollectionEndorsementPolicyAsBytes("channel-id", "first-mspid")
 			Expect(uErr).NotTo(HaveOccurred())
 			Expect(vErr).NotTo(HaveOccurred())
-			policy := &pb.ApplicationPolicy{}
+			policy := &cb.ApplicationPolicy{}
 			err := proto.Unmarshal(ep, policy)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(policy.GetChannelConfigPolicyReference()).To(Equal("/Channel/Application/org0/Endorsement"))
@@ -672,7 +720,7 @@ var _ = Describe("ValidatorCommitter", func() {
 				ep, uErr, vErr := vc.ImplicitCollectionEndorsementPolicyAsBytes("channel-id", "first-mspid")
 				Expect(uErr).NotTo(HaveOccurred())
 				Expect(vErr).NotTo(HaveOccurred())
-				policy := &pb.ApplicationPolicy{}
+				policy := &cb.ApplicationPolicy{}
 				err := proto.Unmarshal(ep, policy)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(policy.GetSignaturePolicy()).NotTo(BeNil())

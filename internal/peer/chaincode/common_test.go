@@ -210,12 +210,73 @@ const sampleCollectionConfigGood = `[
 	}
 ]`
 
+const sampleCollectionConfigGoodWithSignaturePolicy = `[
+	{
+		"name": "foo",
+		"policy": "OR('A.member', 'B.member')",
+		"requiredPeerCount": 3,
+		"maxPeerCount": 483279847,
+		"blockToLive":10,
+		"memberOnlyRead": true,
+		"memberOnlyWrite": true,
+		"endorsementPolicy": {
+			"signaturePolicy": "OR('A.member', 'B.member')"
+		}
+	}
+]`
+
+const sampleCollectionConfigGoodWithChannelConfigPolicy = `[
+	{
+		"name": "foo",
+		"policy": "OR('A.member', 'B.member')",
+		"requiredPeerCount": 3,
+		"maxPeerCount": 483279847,
+		"blockToLive":10,
+		"memberOnlyRead": true,
+		"memberOnlyWrite": true,
+		"endorsementPolicy": {
+			"channelConfigPolicy": "/Channel/Application/Endorsement"
+		}
+	}
+]`
+
 const sampleCollectionConfigBad = `[
 	{
 		"name": "foo",
 		"policy": "barf",
 		"requiredPeerCount": 3,
 		"maxPeerCount": 483279847
+	}
+]`
+
+const sampleCollectionConfigBadInvalidSignaturePolicy = `[
+	{
+		"name": "foo",
+		"policy": "OR('A.member', 'B.member')",
+		"requiredPeerCount": 3,
+		"maxPeerCount": 483279847,
+		"blockToLive":10,
+		"memberOnlyRead": true,
+		"memberOnlyWrite": true,
+		"endorsementPolicy": {
+			"signaturePolicy": "invalid"
+		}
+	}
+]`
+
+const sampleCollectionConfigBadSignaturePolicyAndChannelConfigPolicy = `[
+	{
+		"name": "foo",
+		"policy": "OR('A.member', 'B.member')",
+		"requiredPeerCount": 3,
+		"maxPeerCount": 483279847,
+		"blockToLive":10,
+		"memberOnlyRead": true,
+		"memberOnlyWrite": true,
+		"endorsementPolicy": {
+			"signaturePolicy": "OR('A.member', 'B.member')",
+			"channelConfigPolicy": "/Channel/Application/Endorsement"
+		}
 	}
 ]`
 
@@ -232,17 +293,74 @@ func TestCollectionParsing(t *testing.T) {
 	assert.True(t, proto.Equal(pol, conf.MemberOrgsPolicy.GetSignaturePolicy()))
 	assert.Equal(t, 10, int(conf.BlockToLive))
 	assert.Equal(t, true, conf.MemberOnlyRead)
+	assert.Nil(t, conf.EndorsementPolicy)
 	t.Logf("conf=%s", conf)
 
-	ccp, ccpBytes, err = getCollectionConfigFromBytes([]byte(sampleCollectionConfigBad))
-	assert.Error(t, err)
-	assert.Nil(t, ccp)
-	assert.Nil(t, ccpBytes)
+	ccp, ccpBytes, err = getCollectionConfigFromBytes([]byte(sampleCollectionConfigGoodWithSignaturePolicy))
+	assert.NoError(t, err)
+	assert.NotNil(t, ccp)
+	assert.NotNil(t, ccpBytes)
+	conf = ccp.Config[0].GetStaticCollectionConfig()
+	pol, _ = cauthdsl.FromString("OR('A.member', 'B.member')")
+	assert.Equal(t, 3, int(conf.RequiredPeerCount))
+	assert.Equal(t, 483279847, int(conf.MaximumPeerCount))
+	assert.Equal(t, "foo", conf.Name)
+	assert.True(t, proto.Equal(pol, conf.MemberOrgsPolicy.GetSignaturePolicy()))
+	assert.Equal(t, 10, int(conf.BlockToLive))
+	assert.Equal(t, true, conf.MemberOnlyRead)
+	assert.True(t, proto.Equal(pol, conf.EndorsementPolicy.GetSignaturePolicy()))
+	t.Logf("conf=%s", conf)
 
-	ccp, ccpBytes, err = getCollectionConfigFromBytes([]byte("barf"))
-	assert.Error(t, err)
-	assert.Nil(t, ccp)
-	assert.Nil(t, ccpBytes)
+	ccp, ccpBytes, err = getCollectionConfigFromBytes([]byte(sampleCollectionConfigGoodWithChannelConfigPolicy))
+	assert.NoError(t, err)
+	assert.NotNil(t, ccp)
+	assert.NotNil(t, ccpBytes)
+	conf = ccp.Config[0].GetStaticCollectionConfig()
+	pol, _ = cauthdsl.FromString("OR('A.member', 'B.member')")
+	assert.Equal(t, 3, int(conf.RequiredPeerCount))
+	assert.Equal(t, 483279847, int(conf.MaximumPeerCount))
+	assert.Equal(t, "foo", conf.Name)
+	assert.True(t, proto.Equal(pol, conf.MemberOrgsPolicy.GetSignaturePolicy()))
+	assert.Equal(t, 10, int(conf.BlockToLive))
+	assert.Equal(t, true, conf.MemberOnlyRead)
+	assert.Equal(t, "/Channel/Application/Endorsement", conf.EndorsementPolicy.GetChannelConfigPolicyReference())
+	t.Logf("conf=%s", conf)
+
+	failureTests := []struct {
+		name             string
+		collectionConfig string
+		expectedErr      string
+	}{
+		{
+			name:             "Invalid member orgs policy",
+			collectionConfig: sampleCollectionConfigBad,
+			expectedErr:      "invalid policy barf: unrecognized token 'barf' in policy string",
+		},
+		{
+			name:             "Invalid collection config",
+			collectionConfig: "barf",
+			expectedErr:      "could not parse the collection configuration: invalid character 'b' looking for beginning of value",
+		},
+		{
+			name:             "Invalid signature policy",
+			collectionConfig: sampleCollectionConfigBadInvalidSignaturePolicy,
+			expectedErr:      `invalid endorsement policy [&chaincode.endorsementPolicy{ChannelConfigPolicy:"", SignaturePolicy:"invalid"}]: invalid signature policy: invalid`,
+		},
+		{
+			name:             "Signature policy and channel config policy both specified",
+			collectionConfig: sampleCollectionConfigBadSignaturePolicyAndChannelConfigPolicy,
+			expectedErr:      `invalid endorsement policy [&chaincode.endorsementPolicy{ChannelConfigPolicy:"/Channel/Application/Endorsement", SignaturePolicy:"OR('A.member', 'B.member')"}]: cannot specify both "--signature-policy" and "--channel-config-policy"`,
+		},
+	}
+
+	for _, test := range failureTests {
+		t.Run(test.name, func(t *testing.T) {
+			ccp, ccpBytes, err = getCollectionConfigFromBytes([]byte(test.collectionConfig))
+			assert.EqualError(t, err, test.expectedErr)
+			assert.Nil(t, ccp)
+			assert.Nil(t, ccpBytes)
+		})
+	}
 }
 
 func TestValidatePeerConnectionParams(t *testing.T) {
