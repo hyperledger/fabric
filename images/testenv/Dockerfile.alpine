@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-FROM golang:1.11-alpine as builder
+FROM golang:1.12-alpine as builder
 
 RUN apk add --no-cache \
 	alpine-sdk \
@@ -35,7 +35,7 @@ USER root
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 RUN EXECUTABLES= make gotools
 
-FROM golang:1.11-alpine
+FROM golang:1.12-alpine
 RUN apk add --no-cache \
 	gcc \
 	bash \

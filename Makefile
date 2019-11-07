@@ -47,7 +47,7 @@
 BASE_VERSION = 1.4.4
 PREV_VERSION = 1.4.3
 CHAINTOOL_RELEASE=1.1.3
-BASEIMAGE_RELEASE=0.4.16
+BASEIMAGE_RELEASE=0.4.18
 
 # Allow to build as a submodule setting the main project to
 # the PROJECT_NAME env variable, for example,
@@ -231,10 +231,12 @@ $(BUILD_DIR)/%/chaintool: Makefile
 $(BUILD_DIR)/docker/bin/%: $(PROJECT_FILES)
 	$(eval TARGET = ${patsubst $(BUILD_DIR)/docker/bin/%,%,${@}})
 	@echo "Building $@"
-	@mkdir -p $(BUILD_DIR)/docker/bin $(BUILD_DIR)/docker/$(TARGET)/pkg
+	@mkdir -p $(BUILD_DIR)/docker/bin $(BUILD_DIR)/docker/$(TARGET)/pkg $(BUILD_DIR)/docker/gocache
 	@$(DRUN) \
 		-v $(abspath $(BUILD_DIR)/docker/bin):/opt/gopath/bin \
 		-v $(abspath $(BUILD_DIR)/docker/$(TARGET)/pkg):/opt/gopath/pkg \
+		-v $(abspath $(BUILD_DIR)/docker/gocache):/opt/gopath/cache \
+		-e GOCACHE=/opt/gopath/cache \
 		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		go install -tags "$(GO_TAGS)" -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
@@ -249,10 +251,12 @@ $(BUILD_DIR)/docker/gotools/bin/protoc-gen-go: $(BUILD_DIR)/docker/gotools
 
 $(BUILD_DIR)/docker/gotools: gotools.mk
 	@echo "Building dockerized gotools"
-	@mkdir -p $@/bin $@/obj
+	@mkdir -p $@/bin $@/obj $(BUILD_DIR)/docker/gocache
 	@$(DRUN) \
 		-v $(abspath $@):/opt/gotools \
 		-w /opt/gopath/src/$(PKGNAME) \
+		-v $(abspath $(BUILD_DIR)/docker/gocache):/opt/gopath/cache \
+		-e GOCACHE=/opt/gopath/cache \
 		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		make -f gotools.mk GOTOOLS_BINDIR=/opt/gotools/bin GOTOOLS_GOPATH=/opt/gotools/obj
 
