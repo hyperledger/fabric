@@ -25,6 +25,7 @@ type Config struct {
 	TLSEnabled      bool
 	Keepalive       time.Duration
 	ExecuteTimeout  time.Duration
+	InstallTimeout  time.Duration
 	StartupTimeout  time.Duration
 	LogFormat       string
 	LogLevel        string
@@ -51,6 +52,7 @@ func (c *Config) load() {
 	if c.ExecuteTimeout < time.Second {
 		c.ExecuteTimeout = defaultExecutionTimeout
 	}
+	c.InstallTimeout = viper.GetDuration("chaincode.installTimeout")
 	c.StartupTimeout = viper.GetDuration("chaincode.startuptimeout")
 	if c.StartupTimeout < minimumStartupTimeout {
 		c.StartupTimeout = minimumStartupTimeout

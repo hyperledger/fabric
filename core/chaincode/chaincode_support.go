@@ -58,6 +58,7 @@ type ChaincodeSupport struct {
 	BuiltinSCCs            scc.BuiltinSCCs
 	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	ExecuteTimeout         time.Duration
+	InstallTimeout         time.Duration
 	HandlerMetrics         *HandlerMetrics
 	HandlerRegistry        *HandlerRegistry
 	Keepalive              time.Duration
@@ -266,12 +267,42 @@ func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *cc
 		ChannelId: txParams.ChannelID,
 	}
 
-	ccresp, err := h.Execute(txParams, namespace, ccMsg, cs.ExecuteTimeout)
+	timeout := cs.executeTimeout(namespace, input)
+	ccresp, err := h.Execute(txParams, namespace, ccMsg, timeout)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error sending")
 	}
 
 	return ccresp, nil
+}
+
+func (cs *ChaincodeSupport) executeTimeout(namespace string, input *pb.ChaincodeInput) time.Duration {
+	operation := chaincodeOperation(input.Args)
+	switch {
+	case namespace == "lscc" && operation == "install":
+		return maxDuration(cs.InstallTimeout, cs.ExecuteTimeout)
+	case namespace == lifecycle.LifecycleNamespace && operation == lifecycle.InstallChaincodeFuncName:
+		return maxDuration(cs.InstallTimeout, cs.ExecuteTimeout)
+	default:
+		return cs.ExecuteTimeout
+	}
+}
+
+func maxDuration(durations ...time.Duration) time.Duration {
+	var result time.Duration
+	for _, d := range durations {
+		if d > result {
+			result = d
+		}
+	}
+	return result
+}
+
+func chaincodeOperation(args [][]byte) string {
+	if len(args) == 0 {
+		return ""
+	}
+	return string(args[0])
 }
 
 func logDevModeError(userRunsCC bool) {

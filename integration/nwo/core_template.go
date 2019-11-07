@@ -171,6 +171,7 @@ chaincode:
     runtime: $(DOCKER_NS)/fabric-javaenv:latest
   node:
     runtime: $(DOCKER_NS)/fabric-nodeenv:latest
+  installTimeout: 300s
   startuptimeout: 300s
   executetimeout: 30s
   mode: net

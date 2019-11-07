@@ -176,8 +176,9 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 	ca, _ := tlsgen.NewCA()
 	certGenerator := accesscontrol.NewAuthenticator(ca)
 	globalConfig := GlobalConfig()
-	globalConfig.StartupTimeout = 10 * time.Second
 	globalConfig.ExecuteTimeout = 1 * time.Second
+	globalConfig.InstallTimeout = 90 * time.Second
+	globalConfig.StartupTimeout = 10 * time.Second
 
 	buildRegistry := &container.BuildRegistry{}
 
@@ -252,6 +253,7 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 		AppConfig:              peerInstance,
 		DeployedCCInfoProvider: &ledgermock.DeployedChaincodeInfoProvider{},
 		ExecuteTimeout:         globalConfig.ExecuteTimeout,
+		InstallTimeout:         globalConfig.InstallTimeout,
 		HandlerMetrics:         NewHandlerMetrics(metricsProviders),
 		HandlerRegistry:        chaincodeHandlerRegistry,
 		Keepalive:              globalConfig.Keepalive,
@@ -1190,4 +1192,102 @@ func TestCCFramework(t *testing.T) {
 	getHistory(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	ccSide.Quit()
+}
+
+func TestExecuteTimeout(t *testing.T) {
+	_, cs, cleanup, err := initMockPeer("testchannel")
+	assert.NoError(t, err)
+	defer cleanup()
+
+	tests := []struct {
+		executeTimeout  time.Duration
+		installTimeout  time.Duration
+		namespace       string
+		command         string
+		expectedTimeout time.Duration
+	}{
+		{
+			executeTimeout:  time.Second,
+			installTimeout:  time.Minute,
+			namespace:       "lscc",
+			command:         "install",
+			expectedTimeout: time.Minute,
+		},
+		{
+			executeTimeout:  time.Minute,
+			installTimeout:  time.Second,
+			namespace:       "lscc",
+			command:         "install",
+			expectedTimeout: time.Minute,
+		},
+		{
+			executeTimeout:  time.Second,
+			installTimeout:  time.Minute,
+			namespace:       "_lifecycle",
+			command:         "InstallChaincode",
+			expectedTimeout: time.Minute,
+		},
+		{
+			executeTimeout:  time.Minute,
+			installTimeout:  time.Second,
+			namespace:       "_lifecycle",
+			command:         "InstallChaincode",
+			expectedTimeout: time.Minute,
+		},
+		{
+			executeTimeout:  time.Second,
+			installTimeout:  time.Minute,
+			namespace:       "_lifecycle",
+			command:         "anything",
+			expectedTimeout: time.Second,
+		},
+		{
+			executeTimeout:  time.Second,
+			installTimeout:  time.Minute,
+			namespace:       "lscc",
+			command:         "anything",
+			expectedTimeout: time.Second,
+		},
+		{
+			executeTimeout:  time.Second,
+			installTimeout:  time.Minute,
+			namespace:       "anything",
+			command:         "",
+			expectedTimeout: time.Second,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.namespace+"_"+tt.command, func(t *testing.T) {
+			cs.ExecuteTimeout = tt.executeTimeout
+			cs.InstallTimeout = tt.installTimeout
+			input := &pb.ChaincodeInput{Args: util.ToChaincodeArgs(tt.command)}
+
+			result := cs.executeTimeout(tt.namespace, input)
+			assert.Equalf(t, tt.expectedTimeout, result, "want %s, got %s", tt.expectedTimeout, result)
+		})
+	}
+}
+
+func TestMaxDuration(t *testing.T) {
+	tests := []struct {
+		durations []time.Duration
+		expected  time.Duration
+	}{
+		{
+			durations: []time.Duration{},
+			expected:  time.Duration(0),
+		},
+		{
+			durations: []time.Duration{time.Second, time.Hour, time.Minute},
+			expected:  time.Hour,
+		},
+		{
+			durations: []time.Duration{-time.Second},
+			expected:  time.Duration(0),
+		},
+	}
+	for _, tt := range tests {
+		result := maxDuration(tt.durations...)
+		assert.Equalf(t, tt.expected, result, "want %s got %s", tt.expected, result)
+	}
 }

@@ -215,6 +215,7 @@ type Chaincode struct {
 	Golang           *Golang           `yaml:"golang,omitempty"`
 	Java             *Java             `yaml:"java,omitempty"`
 	Node             *Node             `yaml:"node,omitempty"`
+	InstallTimeout   time.Duration     `yaml:"installTimeout,omitempty"`
 	StartupTimeout   time.Duration     `yaml:"startupTimeout,omitempty"`
 	ExecuteTimeout   time.Duration     `yaml:"executeTimeout,omitempty"`
 	Mode             string            `yaml:"mode,omitempty"`
