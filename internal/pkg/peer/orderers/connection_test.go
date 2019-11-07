@@ -50,8 +50,9 @@ var _ = Describe("Connection", func() {
 		org1 orderers.OrdererOrg
 		org2 orderers.OrdererOrg
 
-		org1CertPool *x509.CertPool
-		org2CertPool *x509.CertPool
+		org1CertPool     *x509.CertPool
+		org2CertPool     *x509.CertPool
+		overrideCertPool *x509.CertPool
 
 		cs *orderers.ConnectionSource
 
@@ -89,7 +90,16 @@ var _ = Describe("Connection", func() {
 		added = org2CertPool.AppendCertsFromPEM(cert3)
 		Expect(added).To(BeTrue())
 
-		cs = orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"))
+		overrideCertPool = x509.NewCertPool()
+		added = overrideCertPool.AppendCertsFromPEM(cert2)
+		Expect(added).To(BeTrue())
+
+		cs = orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), map[string]*orderers.Endpoint{
+			"override-address": {
+				Address:  "re-mapped-address",
+				CertPool: overrideCertPool,
+			},
+		})
 		cs.Update(nil, map[string]orderers.OrdererOrg{
 			"org1": org1,
 			"org2": org2,
@@ -229,6 +239,33 @@ var _ = Describe("Connection", func() {
 			for _, endpoint := range endpoints {
 				Expect(endpoint.Refreshed).To(BeClosed())
 			}
+		})
+	})
+
+	When("an update references an overridden org endpoint address", func() {
+		BeforeEach(func() {
+			cs.Update(nil, map[string]orderers.OrdererOrg{
+				"org1": {
+					Addresses: []string{"org1-address1", "override-address"},
+					RootCerts: [][]byte{cert1, cert2},
+				},
+			})
+		})
+
+		It("creates a new set of orderer endpoints with overrides", func() {
+			newEndpoints := cs.Endpoints()
+			Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
+				stripEndpoints([]*orderers.Endpoint{
+					{
+						Address:  "org1-address1",
+						CertPool: org1CertPool,
+					},
+					{
+						Address:  "re-mapped-address",
+						CertPool: overrideCertPool,
+					},
+				}),
+			))
 		})
 	})
 
@@ -417,6 +454,32 @@ var _ = Describe("Connection", func() {
 				for _, endpoint := range endpoints {
 					Expect(endpoint.Refreshed).To(BeClosed())
 				}
+			})
+		})
+
+		When("an update to the global addrs references an overridden org endpoint address", func() {
+			BeforeEach(func() {
+				cs.Update([]string{"global-addr1", "override-address"}, map[string]orderers.OrdererOrg{
+					"org1": org1,
+					"org2": org2,
+				},
+				)
+			})
+
+			It("creates a new set of orderer endpoints with overrides", func() {
+				newEndpoints := cs.Endpoints()
+				Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
+					stripEndpoints([]*orderers.Endpoint{
+						{
+							Address:  "global-addr1",
+							CertPool: globalCertPool,
+						},
+						{
+							Address:  "re-mapped-address",
+							CertPool: overrideCertPool,
+						},
+					}),
+				))
 			})
 		})
 

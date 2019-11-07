@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package deliverservice_test
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -126,4 +127,103 @@ func TestGlobalConfigDefault(t *testing.T) {
 	}
 
 	assert.Equal(t, expectedConfig, coreConfig)
+}
+
+func TestLoadOverridesMap(t *testing.T) {
+	defer viper.Reset()
+
+	t.Run("GreenPath", func(t *testing.T) {
+		config := `
+                  peer:
+                    deliveryclient:
+                      addressOverrides:
+                        - from: addressFrom1
+                          to: addressTo1
+                          caCertsFile: testdata/cert.pem
+                        - from: addressFrom2
+                          to: addressTo2
+                          caCertsFile: testdata/cert.pem
+                `
+
+		viper.Reset()
+		viper.SetConfigType("yaml")
+		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		res, err := deliverservice.LoadOverridesMap()
+		require.NoError(t, err)
+		require.Len(t, res, 2)
+		ep1, ok := res["addressFrom1"]
+		require.True(t, ok)
+		assert.Equal(t, "addressTo1", ep1.Address)
+		ep2, ok := res["addressFrom2"]
+		require.True(t, ok)
+		assert.Equal(t, "addressTo2", ep2.Address)
+	})
+
+	t.Run("MissingCAFiles", func(t *testing.T) {
+		config := `
+                  peer:
+                    deliveryclient:
+                      addressOverrides:
+                        - from: addressFrom1
+                          to: addressTo1
+                          caCertsFile: missing/cert.pem
+                        - from: addressFrom2
+                          to: addressTo2
+                          caCertsFile: testdata/cert.pem
+                `
+
+		viper.Reset()
+		viper.SetConfigType("yaml")
+		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		res, err := deliverservice.LoadOverridesMap()
+		require.NoError(t, err)
+		assert.Len(t, res, 1)
+	})
+
+	t.Run("EmptyCAFiles", func(t *testing.T) {
+		config := `
+                  peer:
+                    deliveryclient:
+                      addressOverrides:
+                        - from: addressFrom1
+                          to: addressTo1
+                        - from: addressFrom2
+                          to: addressTo2
+                `
+
+		viper.Reset()
+		viper.SetConfigType("yaml")
+		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		res, err := deliverservice.LoadOverridesMap()
+		require.NoError(t, err)
+		assert.Len(t, res, 2)
+	})
+
+	t.Run("BadYaml", func(t *testing.T) {
+		config := `
+                  peer:
+                    deliveryclient:
+                      addressOverrides: foo
+                `
+
+		viper.Reset()
+		viper.SetConfigType("yaml")
+		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		_, err := deliverservice.LoadOverridesMap()
+		require.EqualError(t, err, "could not unmarshal peer.deliveryclient.addressOverrides: '': source data must be an array or slice, got string")
+	})
+
+	t.Run("EmptyYaml", func(t *testing.T) {
+		config := `
+                  peer:
+                    deliveryclient:
+                `
+
+		viper.Reset()
+		viper.SetConfigType("yaml")
+		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		res, err := deliverservice.LoadOverridesMap()
+		require.NoError(t, err)
+		assert.Nil(t, res)
+	})
 }
