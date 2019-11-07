@@ -212,8 +212,6 @@ func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionPara
 
 	needsInitialization := false
 	if cii.EnforceInit {
-		// Note, RequiresInit() is only ever true for non-legacy definitions, and is always false for system chaincodes
-		// so performing this txSimulator read is safe.
 
 		value, err := txParams.TXSimulator.GetState(chaincodeName, InitializedKeyName)
 		if err != nil {
