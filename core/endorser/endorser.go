@@ -104,11 +104,11 @@ type Endorser struct {
 
 // call specified chaincode (system or user)
 func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *pb.ChaincodeInput, chaincodeName string) (*pb.Response, *pb.ChaincodeEvent, error) {
-	endorserLogger.Infof("[%s][%s] Entry chaincode: %s", txParams.ChannelID, shorttxid(txParams.TxID), chaincodeName)
 	defer func(start time.Time) {
 		logger := endorserLogger.WithOptions(zap.AddCallerSkip(1))
-		elapsedMillisec := time.Since(start).Round(time.Millisecond) / time.Millisecond
-		logger.Infof("[%s][%s] Exit chaincode: %s (%dms)", txParams.ChannelID, shorttxid(txParams.TxID), chaincodeName, elapsedMillisec)
+		logger = decorateLogger(logger, txParams)
+		elapsedMillisec := time.Since(start).Milliseconds()
+		logger.Infof("finished chaincode: %s duration: %dms", chaincodeName, elapsedMillisec)
 	}(time.Now())
 
 	res, ccevent, err := e.Support.Execute(txParams, chaincodeName, input)
@@ -167,13 +167,12 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 
 // SimulateProposal simulates the proposal by calling the chaincode
 func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chaincodeName string, chaincodeInput *pb.ChaincodeInput) (*pb.Response, []byte, *pb.ChaincodeEvent, error) {
-	endorserLogger.Debugf("[%s][%s] Entry chaincode: %s", txParams.ChannelID, shorttxid(txParams.TxID), chaincodeName)
-	defer endorserLogger.Debugf("[%s][%s] Exit", txParams.ChannelID, shorttxid(txParams.TxID))
+	logger := decorateLogger(endorserLogger, txParams)
 
 	// ---3. execute the proposal and get simulation results
 	res, ccevent, err := e.callChaincode(txParams, chaincodeInput, chaincodeName)
 	if err != nil {
-		endorserLogger.Errorf("[%s][%s] failed to invoke chaincode %s, error: %+v", txParams.ChannelID, shorttxid(txParams.TxID), chaincodeName, err)
+		logger.Errorf("failed to invoke chaincode %s, error: %+v", chaincodeName, err)
 		return nil, nil, nil, err
 	}
 
@@ -237,8 +236,6 @@ func (e *Endorser) preProcess(up *UnpackedProposal, channel *Channel) error {
 		return errors.WithMessage(err, "error validating proposal")
 	}
 
-	endorserLogger.Debugf("[%s][%s] processing txid: %s", up.ChannelHeader.ChannelId, shorttxid(up.ChannelHeader.TxId), up.ChannelHeader.TxId)
-
 	if up.ChannelHeader.ChannelId == "" {
 		// chainless proposals do not/cannot affect ledger and cannot be submitted as transactions
 		// ignore uniqueness checks; also, chainless proposals are not validated using the policies
@@ -282,8 +279,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	e.Metrics.ProposalsReceived.Add(1)
 
 	addr := util.ExtractRemoteAddress(ctx)
-	endorserLogger.Debug("Entering: request from", addr)
-	defer endorserLogger.Debug("Exit: request from", addr)
+	endorserLogger.Debug("request from", addr)
 
 	// variables to capture proposal duration metric
 	success := false
@@ -346,6 +342,8 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		Proposal:   up.Proposal,
 	}
 
+	logger := decorateLogger(endorserLogger, txParams)
+
 	if acquireTxSimulator(up.ChannelHeader.ChannelId, up.ChaincodeName) {
 		txSim, err := e.Support.GetTxSimulator(up.ChannelID(), up.TxID())
 		if err != nil {
@@ -391,7 +389,7 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		Version: cdLedger.Version,
 	})
 	if err != nil {
-		endorserLogger.Warning("Failed marshaling the proposal response payload to bytes", err)
+		logger.Warning("Failed marshaling the proposal response payload to bytes", err)
 		return nil, errors.WithMessage(err, "failed to create the proposal response")
 	}
 
@@ -417,7 +415,7 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 	case res.Status >= shim.ERRORTHRESHOLD:
 		meterLabels = append(meterLabels, "chaincodeerror", strconv.FormatBool(true))
 		e.Metrics.EndorsementsFailed.With(meterLabels...).Add(1)
-		endorserLogger.Debugf("[%s][%s] endorseProposal() resulted in chaincode %s error for txid: %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, up.TxID())
+		logger.Debugf("chaincode error %d", res.Status)
 		return &pb.ProposalResponse{
 			Response: res,
 		}, nil
@@ -425,7 +423,7 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 
 	escc := cdLedger.EndorsementPlugin
 
-	endorserLogger.Debugf("[%s][%s] escc for chaincode %s is %s", up.ChannelID(), shorttxid(up.TxID()), up.ChaincodeName, escc)
+	logger.Debugf("escc for chaincode %s is %s", up.ChaincodeName, escc)
 
 	// Note, mPrpBytes is the same as prpBytes by default endorsement plugin, but others could change it.
 	endorsement, mPrpBytes, err := e.Support.EndorseWithPlugin(escc, up.ChannelID(), prpBytes, up.SignedProposal)
@@ -477,4 +475,8 @@ func CreateCCEventBytes(ccevent *pb.ChaincodeEvent) ([]byte, error) {
 	}
 
 	return proto.Marshal(ccevent)
+}
+
+func decorateLogger(logger *flogging.FabricLogger, txParams *ccprovider.TransactionParams) *flogging.FabricLogger {
+	return logger.With("channel", txParams.ChannelID, "txID", shorttxid(txParams.TxID))
 }
