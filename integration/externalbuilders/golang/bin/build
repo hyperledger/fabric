@@ -15,7 +15,14 @@ SOURCE=$1
 METADATA=$2
 OUTPUT=$3
 
-GO_PACKAGE_PATH=$(jq -r .path "$METADATA/metadata.json")
+>&2 jq . "$2/metadata.json"
+
+if [[ "$(jq -r .package_id "$METADATA/metadata.json")" == *fail* ]]; then
+    >&2 echo "Exiting with failure..."
+    exit 1
+fi
+
+GO_PACKAGE_PATH="$(jq -r .path "$METADATA/metadata.json")"
 if [ -f "$SOURCE/src/go.mod" ]; then
     cd "$SOURCE/src"
     go build -v -mod=readonly -o "$OUTPUT/chaincode" "$GO_PACKAGE_PATH"
