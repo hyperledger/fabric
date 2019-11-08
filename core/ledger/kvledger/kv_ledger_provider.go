@@ -96,15 +96,51 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	}
 
 	p.fileLock = fileLock
-	// initialize the ID store (inventory of chainIds/ledgerIds)
-	idStore, err := openIDStore(LedgerProviderPath(p.initializer.Config.RootFSPath))
-	if err != nil {
+
+	if err := p.initLedgerIDInventory(); err != nil {
 		return nil, err
 	}
+
+	if err := p.initLedgerStorageProvider(); err != nil {
+		return nil, err
+	}
+
+	if err := p.initHistoryDBProvider(); err != nil {
+		return nil, err
+	}
+
+	if err := p.initConfigHistoryManager(); err != nil {
+		return nil, err
+	}
+
+	p.initCollElgNotifier()
+
+	p.initStateListeners()
+
+	if err := p.initStateDBProvider(); err != nil {
+		return nil, err
+	}
+
+	p.initLedgerStatistics()
+
+	p.recoverUnderConstructionLedger()
+
+	return p, nil
+}
+
+func (p *Provider) initLedgerIDInventory() error {
+	idStore, err := openIDStore(LedgerProviderPath(p.initializer.Config.RootFSPath))
+	if err != nil {
+		return err
+	}
 	p.idStore = idStore
+	return nil
+}
+
+func (p *Provider) initLedgerStorageProvider() error {
 	// initialize ledger storage
 	privateData := &pvtdatastorage.PrivateDataConfig{
-		PrivateDataConfig: initializer.Config.PrivateDataConfig,
+		PrivateDataConfig: p.initializer.Config.PrivateDataConfig,
 		StorePath:         PvtDataStorePath(p.initializer.Config.RootFSPath),
 	}
 
@@ -114,64 +150,79 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 		p.initializer.MetricsProvider,
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	p.ledgerStoreProvider = ledgerStoreProvider
-	if initializer.Config.HistoryDBConfig.Enabled {
-		// Initialize the history database (index for history of values by key)
-		historydbProvider, err := history.NewDBProvider(
-			HistoryDBPath(p.initializer.Config.RootFSPath),
-		)
-		if err != nil {
-			return nil, err
-		}
-		p.historydbProvider = historydbProvider
+	return nil
+}
+
+func (p *Provider) initHistoryDBProvider() error {
+	if !p.initializer.Config.HistoryDBConfig.Enabled {
+		return nil
 	}
-	// initialize config history for chaincode
-	configHistoryMgr, err := confighistory.NewMgr(
-		ConfigHistoryDBPath(p.initializer.Config.RootFSPath),
-		initializer.DeployedChaincodeInfoProvider,
+	// Initialize the history database (index for history of values by key)
+	historydbProvider, err := history.NewDBProvider(
+		HistoryDBPath(p.initializer.Config.RootFSPath),
 	)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	p.historydbProvider = historydbProvider
+	return nil
+}
+
+func (p *Provider) initConfigHistoryManager() error {
+	var err error
+	configHistoryMgr, err := confighistory.NewMgr(
+		ConfigHistoryDBPath(p.initializer.Config.RootFSPath),
+		p.initializer.DeployedChaincodeInfoProvider,
+	)
+	if err != nil {
+		return err
 	}
 	p.configHistoryMgr = configHistoryMgr
-	// initialize the collection eligibility notifier
+	return nil
+}
 
+func (p *Provider) initCollElgNotifier() {
 	collElgNotifier := &collElgNotifier{
-		initializer.DeployedChaincodeInfoProvider,
-		initializer.MembershipInfoProvider,
+		p.initializer.DeployedChaincodeInfoProvider,
+		p.initializer.MembershipInfoProvider,
 		make(map[string]collElgListener),
 	}
 	p.collElgNotifier = collElgNotifier
-	// initialize the state listeners
-	stateListeners := initializer.StateListeners
-	stateListeners = append(stateListeners, collElgNotifier)
-	stateListeners = append(stateListeners, configHistoryMgr)
-	p.stateListeners = stateListeners
+}
 
+func (p *Provider) initStateListeners() {
+	stateListeners := p.initializer.StateListeners
+	stateListeners = append(stateListeners, p.collElgNotifier)
+	stateListeners = append(stateListeners, p.configHistoryMgr)
+	p.stateListeners = stateListeners
+}
+
+func (p *Provider) initStateDBProvider() error {
+	var err error
 	p.bookkeepingProvider, err = bookkeeping.NewProvider(
 		BookkeeperDBPath(p.initializer.Config.RootFSPath),
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	stateDB := &privacyenabledstate.StateDBConfig{
-		StateDBConfig: initializer.Config.StateDBConfig,
+		StateDBConfig: p.initializer.Config.StateDBConfig,
 		LevelDBPath:   StateDBPath(p.initializer.Config.RootFSPath),
 	}
 	p.vdbProvider, err = privacyenabledstate.NewCommonStorageDBProvider(
 		p.bookkeepingProvider,
-		initializer.MetricsProvider,
-		initializer.HealthCheckRegistry,
+		p.initializer.MetricsProvider,
+		p.initializer.HealthCheckRegistry,
 		stateDB,
 	)
-	if err != nil {
-		return nil, err
-	}
-	p.stats = newStats(initializer.MetricsProvider)
-	p.recoverUnderConstructionLedger()
-	return p, nil
+	return err
+}
+
+func (p *Provider) initLedgerStatistics() {
+	p.stats = newStats(p.initializer.MetricsProvider)
 }
 
 // Create implements the corresponding method from interface ledger.PeerLedgerProvider
