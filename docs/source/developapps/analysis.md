@@ -188,7 +188,7 @@ transfers the commercial paper back to MagnetoCorp:
 Txn = redeem
 Issuer = MagnetoCorp
 Paper = 00001
-Current owner = HedgeMatic
+Current owner = DigiBank
 Redeem time = 30 Nov 2020 12:00:00 EST
 ```
 
