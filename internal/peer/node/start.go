@@ -285,13 +285,13 @@ func serve(args []string) error {
 		logger.Panicf("Failed to serialize the signing identity: %v", err)
 	}
 
-	// Log warnings if some certificate (e-cert, TLS certs) expires soon
+	expirationLogger := flogging.MustGetLogger("certmonitor")
 	crypto.TrackExpiration(
 		serverConfig.SecOpts.UseTLS,
 		serverConfig.SecOpts.Certificate,
 		cs.GetClientCertificate().Certificate,
 		signingIdentityBytes,
-		logger.Warnf, // This can be used to piggyback a metric event in the future
+		expirationLogger.Warnf, // This can be used to piggyback a metric event in the future
 		time.Now(),
 		time.AfterFunc)
 

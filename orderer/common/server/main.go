@@ -163,12 +163,13 @@ func Main() {
 		logger.Panicf("Failed serializing signing identity: %v", err)
 	}
 
+	expirationLogger := flogging.MustGetLogger("certmonitor")
 	crypto.TrackExpiration(
 		serverConfig.SecOpts.UseTLS,
 		serverConfig.SecOpts.Certificate,
 		[][]byte{clusterClientConfig.SecOpts.Certificate},
 		identityBytes,
-		logger.Warnf, // This can be used to piggyback a metric event in the future
+		expirationLogger.Warnf, // This can be used to piggyback a metric event in the future
 		time.Now(),
 		time.AfterFunc)
 
