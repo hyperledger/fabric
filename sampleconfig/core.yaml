@@ -523,8 +523,12 @@ chaincode:
     # builders in the order specified below.
     externalBuilders: []
 
+    # The maximum duration to wait for the chaincode build and install process
+    # to complete.
+    installTimeout: 300s
+
     # Timeout duration for starting up a container and waiting for Register
-    # to come through. 1sec should be plenty for chaincode unit tests
+    # to come through.
     startuptimeout: 300s
 
     # Timeout duration for Invoke and Init calls to prevent runaway.

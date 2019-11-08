@@ -601,6 +601,7 @@ func serve(args []string) error {
 		AppConfig:              peerInstance,
 		DeployedCCInfoProvider: lifecycleValidatorCommitter,
 		ExecuteTimeout:         chaincodeConfig.ExecuteTimeout,
+		InstallTimeout:         chaincodeConfig.InstallTimeout,
 		HandlerRegistry:        chaincodeHandlerRegistry,
 		HandlerMetrics:         chaincode.NewHandlerMetrics(opsSystem.Provider),
 		Keepalive:              chaincodeConfig.Keepalive,
