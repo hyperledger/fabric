@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -121,6 +122,11 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 }
 
 func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) error {
+	logger := decorateLogger(endorserLogger, &ccprovider.TransactionParams{
+		ChannelID: up.ChannelHeader.ChannelId,
+		TxID:      up.TxID(),
+	})
+
 	// validate the header type
 	switch common.HeaderType(up.ChannelHeader.Type) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
@@ -171,29 +177,29 @@ func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) er
 	// get the identity of the creator
 	creator, err := idDeserializer.DeserializeIdentity(up.SignatureHeader.Creator)
 	if err != nil {
-		endorserLogger.Warningf("%s access denied: channel [%s]: %s", up.TxID(), up.ChannelID(), err)
+		logger.Warningf("access denied: channel %s", err)
 		return genericAuthError
 	}
-
-	endorserLogger.Debugf("%s creator is %s", up.TxID(), creator.GetIdentifier())
 
 	// ensure that creator is a valid certificate
 	err = creator.Validate()
 	if err != nil {
-		endorserLogger.Warningf("%s access denied: channel [%s]: identity is not valid: %s", up.TxID(), up.ChannelID(), err)
+		logger.Warningf("access denied: identity is not valid: %s", err)
 		return genericAuthError
 	}
 
-	endorserLogger.Debugf("%s creator is valid", up.TxID())
+	logger = logger.With("mspID", creator.GetMSPIdentifier())
+
+	logger.Debug("creator is valid")
 
 	// validate the signature
 	err = creator.Verify(up.SignedProposal.ProposalBytes, up.SignedProposal.Signature)
 	if err != nil {
-		endorserLogger.Warningf("%s access denied: channel [%s]: creator's signature over the proposal is not valid: %s", up.TxID(), up.ChannelID(), err)
+		logger.Warningf("access denied: creator's signature over the proposal is not valid: %s", err)
 		return genericAuthError
 	}
 
-	endorserLogger.Debugf("%s signature is valid", up.TxID())
+	logger.Debug("signature is valid")
 
 	return nil
 }
