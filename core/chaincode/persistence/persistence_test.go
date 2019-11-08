@@ -261,6 +261,40 @@ var _ = Describe("Persistence", func() {
 		})
 	})
 
+	Describe("Delete", func() {
+		var (
+			mockReadWriter *mock.IOReadWriter
+			store          *persistence.Store
+		)
+
+		BeforeEach(func() {
+			mockReadWriter = &mock.IOReadWriter{}
+			store = &persistence.Store{
+				ReadWriter: mockReadWriter,
+				Path:       "foo",
+			}
+		})
+
+		It("removes the chaincode from the filesystem", func() {
+			err := store.Delete("hash")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(mockReadWriter.RemoveCallCount()).To(Equal(1))
+			Expect(mockReadWriter.RemoveArgsForCall(0)).To(Equal("foo/hash.tar.gz"))
+		})
+
+		When("remove returns an error", func() {
+			BeforeEach(func() {
+				mockReadWriter.RemoveReturns(fmt.Errorf("fake-remove-error"))
+			})
+
+			It("returns the error", func() {
+				err := store.Delete("hash")
+				Expect(err).To(MatchError("fake-remove-error"))
+			})
+		})
+	})
+
 	Describe("Load", func() {
 		var (
 			mockReadWriter *mock.IOReadWriter
