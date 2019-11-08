@@ -90,6 +90,12 @@ height (block height and transaction height within block).
 This will allow applications to iterate through the top results
 to understand recent changes to a key.
 
+FAB-16722 - The 'provisional' genesis method of generating the system channel
+for orderers has been removed. Existing users of the provisional genesis method
+should instead set GenesisMethod to 'file', and generate a genesis block file
+using configtxgen. Orderer nodes will then use the generated file for the
+orderer system channel.
+
 Known Vulnerabilities
 ---------------------
 FAB-8664 - Peer should detect and react when its org has been removed
