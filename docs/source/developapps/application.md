@@ -351,7 +351,7 @@ you're interested in what the SDK does under the covers, read the detailed
 That’s it! In this topic you’ve understood how to call a smart contract from a
 sample application by examining how MagnetoCorp's application issues a new
 commercial paper in PaperNet. Now examine the key ledger and smart contract data
-structures are designed by in the [architecture topic](./architecture.md) behind
+structures are designed by in the [architecture topic](./architecture.html) behind
 them.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
