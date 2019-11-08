@@ -159,6 +159,21 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		}
 	}
 
+	sigHdr, err := signer.NewSignatureHeader()
+	if err != nil {
+		logger.Panicf("Failed creating a signature header: %v", err)
+	}
+
+	expirationLogger := flogging.MustGetLogger("certmonitor")
+	crypto.TrackExpiration(
+		serverConfig.SecOpts.UseTLS,
+		serverConfig.SecOpts.Certificate,
+		[][]byte{clusterClientConfig.SecOpts.Certificate},
+		sigHdr.Creator,
+		expirationLogger.Warnf, // This can be used to piggyback a metric event in the future
+		time.Now(),
+		time.AfterFunc)
+
 	manager := initializeMultichannelRegistrar(clusterBootBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	expiration := conf.General.Authentication.NoExpirationChecks
