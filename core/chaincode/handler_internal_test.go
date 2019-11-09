@@ -25,3 +25,11 @@ func SetHandlerChatStream(h *Handler, chatStream ccintf.ChaincodeStream) {
 func SetHandlerCCInstance(h *Handler, ccInstance *sysccprovider.ChaincodeInstance) {
 	h.ccInstance = ccInstance
 }
+
+func StreamDone(h *Handler) <-chan struct{} {
+	return h.streamDone()
+}
+
+func SetStreamDoneChan(h *Handler, ch chan struct{}) {
+	h.streamDoneChan = ch
+}
