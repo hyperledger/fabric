@@ -37,7 +37,7 @@ var _ bool = Describe("PrivateData", func() {
 	// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
 	// when calling QueryChaincode with first arg "readMarble", it will query collectionMarbles[1]
 	// when calling QueryChaincode with first arg "readMarblePrivateDetails", it will query collectionMarblePrivateDetails[2]
-	Describe("reconciliation", func() {
+	Describe("dissemination", func() {
 		var (
 			testDir       string
 			network       *nwo.Network
@@ -47,8 +47,66 @@ var _ bool = Describe("PrivateData", func() {
 		)
 
 		BeforeEach(func() {
-			testDir, network, process, orderer, expectedPeers = initThreeOrgsSetup()
+			testDir, network = initThreeOrgsSetup()
 
+			By("disabling pulling by setting pullRetryThreshold to 0")
+			// set pull retry threshold to 0, this ensures private data can only be transfered via dissemination
+			peers := []*nwo.Peer{
+				network.Peer("org1", "peer0"),
+				network.Peer("org2", "peer0"),
+				network.Peer("org3", "peer0"),
+			}
+			for _, p := range peers {
+				core := network.ReadPeerConfig(p)
+				core.Peer.Gossip.PvtData.PullRetryThreshold = 0
+				network.WritePeerConfig(p, core)
+			}
+		})
+
+		JustBeforeEach(func() {
+			process, orderer, expectedPeers = startNetwork(network)
+			By("installing and instantiating chaincode on all peers")
+			chaincode := nwo.Chaincode{
+				Name:              "marblesp",
+				Version:           "1.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config1.json")}
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+			By("invoking initMarble function of the chaincode")
+			invokeChaincode(network, "org1", "peer0", "marblesp", `{"Args":["initMarble","marble1","blue","35","tom","99"]}`, "testchannel", orderer)
+
+			By("waiting for block to propagate")
+			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"))
+		})
+
+		AfterEach(func() {
+			testCleanup(testDir, network, process)
+		})
+
+		It("verifies private data was disseminated", func() {
+			By("verify access of initial setup")
+			verifyAccessInitialSetup(network)
+		})
+	})
+
+	Describe("reconciliation and pulling", func() {
+		var (
+			testDir       string
+			network       *nwo.Network
+			process       ifrit.Process
+			orderer       *nwo.Orderer
+			expectedPeers []*nwo.Peer
+		)
+
+		BeforeEach(func() {
+			testDir, network = initThreeOrgsSetup()
+		})
+
+		JustBeforeEach(func() {
+			process, orderer, expectedPeers = startNetwork(network)
 			By("installing and instantiating chaincode on all peers")
 			chaincode := nwo.Chaincode{
 				Name:              "marblesp",
@@ -141,7 +199,7 @@ var _ bool = Describe("PrivateData", func() {
 				`{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}`)
 		})
 
-		It("verify private data reconciliation when joining a new peer in an org that belongs to collection config", func() {
+		It("verify private data is pulled when joining a new peer in an org that belongs to collection config", func() {
 			By("verify access of initial setup")
 			verifyAccessInitialSetup(network)
 
@@ -222,7 +280,11 @@ var _ bool = Describe("PrivateData", func() {
 		)
 
 		BeforeEach(func() {
-			testDir, network, process, orderer, expectedPeers = initThreeOrgsSetup()
+			testDir, network = initThreeOrgsSetup()
+		})
+
+		JustBeforeEach(func() {
+			process, orderer, expectedPeers = startNetwork(network)
 
 			By("installing and instantiating chaincode on all peers")
 			chaincode := nwo.Chaincode{
@@ -282,7 +344,11 @@ var _ bool = Describe("PrivateData", func() {
 			orderer *nwo.Orderer
 		)
 		BeforeEach(func() {
-			testDir, network, process, orderer, _ = initThreeOrgsSetup()
+			testDir, network = initThreeOrgsSetup()
+		})
+
+		JustBeforeEach(func() {
+			process, orderer, _ = startNetwork(network)
 		})
 
 		AfterEach(func() {
@@ -558,7 +624,11 @@ var _ bool = Describe("PrivateData", func() {
 		)
 
 		BeforeEach(func() {
-			testDir, network, process, orderer, expectedPeers = initThreeOrgsSetup()
+			testDir, network = initThreeOrgsSetup()
+		})
+
+		JustBeforeEach(func() {
+			process, orderer, expectedPeers = startNetwork(network)
 
 			By("installing and instantiating chaincode on all peers")
 			chaincode := nwo.Chaincode{
@@ -623,7 +693,7 @@ var _ bool = Describe("PrivateData", func() {
 	})
 })
 
-func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []*nwo.Peer) {
+func initThreeOrgsSetup() (string, *nwo.Network) {
 	var err error
 	testDir, err := ioutil.TempDir("", "e2e-pvtdata")
 	Expect(err).NotTo(HaveOccurred())
@@ -640,6 +710,11 @@ func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []
 
 	n := nwo.New(networkConfig, testDir, client, 35000+1000*GinkgoParallelNode(), components)
 	n.GenerateConfigTree()
+
+	return testDir, n
+}
+
+func startNetwork(n *nwo.Network) (ifrit.Process, *nwo.Orderer, []*nwo.Peer) {
 	n.Bootstrap()
 
 	networkRunner := n.NetworkGroupRunner()
@@ -659,7 +734,8 @@ func initThreeOrgsSetup() (string, *nwo.Network, ifrit.Process, *nwo.Orderer, []
 	By("verifying membership")
 	verifyMembership(n, expectedPeers, "testchannel")
 
-	return testDir, n, process, orderer, expectedPeers
+	return process, orderer, expectedPeers
+
 }
 
 func verifyAccessInitialSetup(network *nwo.Network) {
