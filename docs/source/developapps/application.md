@@ -116,7 +116,7 @@ options](./connectionoptions.html).
 
 Spend a few moments examining the connection
 [profile](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
-`./gateway/connectionProfile.yaml`. It uses
+`./gateway/networkConnection.yaml`. It uses
 [YAML](http://yaml.org/spec/1.2/spec.html#Preview), making it easy to read.
 
 It was loaded and converted into a JSON object:
