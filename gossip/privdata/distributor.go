@@ -178,6 +178,7 @@ func (d *distributorImpl) computeDisseminationPlan(txID string,
 				return nil, errors.WithStack(err)
 			}
 
+			logger.Debugf("Computing dissemination plan for collection [%s]", collectionName)
 			dPlan, err := d.disseminationPlanForMsg(colAP, colFilter, pvtDataMsg)
 			if err != nil {
 				return nil, errors.WithStack(err)
@@ -215,20 +216,37 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		return nil, err
 	}
 
+	m := pvtDataMsg.GetPrivateData().Payload
+
 	eligiblePeers := d.eligiblePeersOfChannel(routingFilter)
 	identitySets := d.identitiesOfEligiblePeers(eligiblePeers, colAP)
 
-	// Select one representative from each org
+	peerEndpoints := map[string]string{}
+	for _, peer := range eligiblePeers {
+		epToAdd := peer.Endpoint
+		if epToAdd == "" {
+			epToAdd = peer.InternalEndpoint
+		}
+		peerEndpoints[string(peer.PKIid)] = epToAdd
+	}
+
 	maximumPeerCount := colAP.MaximumPeerCount()
 	requiredPeerCount := colAP.RequiredPeerCount()
 
+	remainingPeers := []api.PeerIdentityInfo{}
+	selectedPeerEndpoints := []string{}
+
+	rand.Seed(time.Now().Unix())
+	// Select one representative from each org
 	if maximumPeerCount > 0 {
 		for _, selectionPeers := range identitySets {
 			required := 1
 			if requiredPeerCount == 0 {
 				required = 0
 			}
-			peer2SendPerOrg := selectionPeers[rand.Intn(len(selectionPeers))]
+			selectedPeerIndex := rand.Intn(len(selectionPeers))
+			peer2SendPerOrg := selectionPeers[selectedPeerIndex]
+			selectedPeerEndpoints = append(selectedPeerEndpoints, peerEndpoints[string(peer2SendPerOrg.PKIId)])
 			sc := gossipgossip.SendCriteria{
 				Timeout:  d.pushAckTimeout,
 				Channel:  gossipCommon.ChannelID(d.chainID),
@@ -246,34 +264,70 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 				},
 			})
 
+			// Add unselected peers to remainingPeers
+			for i, peer := range selectionPeers {
+				if i != selectedPeerIndex {
+					remainingPeers = append(remainingPeers, peer)
+				}
+			}
+
 			if requiredPeerCount > 0 {
 				requiredPeerCount--
 			}
 
 			maximumPeerCount--
 			if maximumPeerCount == 0 {
+				logger.Debug("MaximumPeerCount satisfied")
+				logger.Debugf("Disseminating private RWSet for TxID [%s] namespace [%s] collection [%s] to peers: %v", m.TxId, m.Namespace, m.CollectionName, selectedPeerEndpoints)
 				return disseminationPlan, nil
 			}
 		}
 	}
 
-	// criteria to select remaining peers to satisfy colAP.MaximumPeerCount()
-	// collection policy parameters
-	sc := gossipgossip.SendCriteria{
-		Timeout:  d.pushAckTimeout,
-		Channel:  gossipCommon.ChannelID(d.chainID),
-		MaxPeers: maximumPeerCount,
-		MinAck:   requiredPeerCount,
-		IsEligible: func(member discovery.NetworkMember) bool {
-			return routingFilter(member)
-		},
+	// criteria to select remaining peers to satisfy colAP.MaximumPeerCount() if there are still
+	// unselected peers remaining for dissemination
+	numPeersToSelect := maximumPeerCount
+	if len(remainingPeers) < maximumPeerCount {
+		numPeersToSelect = len(remainingPeers)
+	}
+	if numPeersToSelect > 0 {
+		logger.Debugf("MaximumPeerCount not satisfied, selecting %d more peer(s) for dissemination", numPeersToSelect)
+	}
+	for maximumPeerCount > 0 && len(remainingPeers) > 0 {
+		required := 1
+		if requiredPeerCount == 0 {
+			required = 0
+		}
+		selectedPeerIndex := rand.Intn(len(remainingPeers))
+		peer2Send := remainingPeers[selectedPeerIndex]
+		selectedPeerEndpoints = append(selectedPeerEndpoints, peerEndpoints[string(peer2Send.PKIId)])
+		sc := gossipgossip.SendCriteria{
+			Timeout:  d.pushAckTimeout,
+			Channel:  gossipCommon.ChannelID(d.chainID),
+			MaxPeers: 1,
+			MinAck:   required,
+			IsEligible: func(member discovery.NetworkMember) bool {
+				return bytes.Equal(member.PKIid, peer2Send.PKIId)
+			},
+		}
+		disseminationPlan = append(disseminationPlan, &dissemination{
+			criteria: sc,
+			msg: &protoext.SignedGossipMessage{
+				Envelope:      proto.Clone(pvtDataMsg.Envelope).(*protosgossip.Envelope),
+				GossipMessage: proto.Clone(pvtDataMsg.GossipMessage).(*protosgossip.GossipMessage),
+			},
+		})
+		if requiredPeerCount > 0 {
+			requiredPeerCount--
+		}
+
+		maximumPeerCount--
+
+		// remove the selected peer from remaining peers
+		remainingPeers = append(remainingPeers[:selectedPeerIndex], remainingPeers[selectedPeerIndex+1:]...)
 	}
 
-	disseminationPlan = append(disseminationPlan, &dissemination{
-		criteria: sc,
-		msg:      pvtDataMsg,
-	})
-
+	logger.Debugf("Disseminating private RWSet for TxID [%s] namespace [%s] collection [%s] to peers: %v", m.TxId, m.Namespace, m.CollectionName, selectedPeerEndpoints)
 	return disseminationPlan, nil
 }
 
