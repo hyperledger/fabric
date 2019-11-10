@@ -182,7 +182,7 @@ func EnableCapabilities(network *Network, channel, capabilitiesGroup, capabiliti
 		),
 	}
 
-	UpdateConfig(network, orderer, channel, config, updatedConfig, peers[0], peers...)
+	UpdateConfig(network, orderer, channel, config, updatedConfig, false, peers[0], peers...)
 }
 
 // EnableCapabilitiesOrdererAdmin enables a specific capabilities flag for a running network,
