@@ -16,7 +16,8 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
-	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
+
+	"github.com/hyperledger/fabric/common/ledger/testutil/fakes"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -62,6 +63,12 @@ type BlockDetails struct {
 	BlockNum     uint64
 	PreviousHash []byte
 	Txs          []*TxDetails
+}
+
+//go:generate counterfeiter -o fakes/signing_identity.go --fake-name SigningIdentity . signingIdentity
+
+type signingIdentity interface {
+	msp.SigningIdentity
 }
 
 // NewBlockGenerator instantiates new BlockGenerator for testing
@@ -360,8 +367,8 @@ func ConstructUnsignedTxEnv(
 	visibility []byte,
 	headerType common.HeaderType,
 ) (*common.Envelope, string, error) {
-	mspLcl := mmsp.NewNoopMsp()
-	sigId, _ := mspLcl.GetDefaultSigningIdentity()
+
+	sigId := &fakes.SigningIdentity{}
 
 	return ConstructSignedTxEnv(
 		chainID,

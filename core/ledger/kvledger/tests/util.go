@@ -15,7 +15,7 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
-	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/tests/fakes"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protoutil"
 )
@@ -36,6 +36,13 @@ type txAndPvtdata struct {
 	Txid     string
 	Envelope *common.Envelope
 	Pvtws    *rwset.TxPvtReadWriteSet
+}
+
+//go:generate counterfeiter -o fakes/signer.go --fake-name Signer . signer
+
+type signer interface {
+	Sign(msg []byte) ([]byte, error)
+	Serialize() ([]byte, error)
 }
 
 func convertToCollConfigProtoBytes(collConfs []*collConf) ([]byte, error) {
@@ -122,8 +129,10 @@ func constructUnsignedTxEnv(
 	visibility []byte,
 	headerType common.HeaderType,
 ) (*common.Envelope, string, error) {
-	mspLcl := mmsp.NewNoopMsp()
-	sigID, _ := mspLcl.GetDefaultSigningIdentity()
+
+	sigID := &fakes.Signer{}
+	sigID.SerializeReturns([]byte("signer"), nil)
+	sigID.SignReturns([]byte("signature"), nil)
 
 	ss, err := sigID.Serialize()
 	if err != nil {
