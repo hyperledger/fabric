@@ -32,7 +32,6 @@ var _ = Describe("Gossip Test", func() {
 		client    *docker.Client
 		network   *nwo.Network
 		chaincode nwo.Chaincode
-		process   ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -53,17 +52,13 @@ var _ = Describe("Gossip Test", func() {
 	})
 
 	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-		}
 		if network != nil {
 			network.Cleanup()
 		}
 		os.RemoveAll(testDir)
 	})
 
-	PDescribe("Gossip state transfer test", func() {
+	Describe("Gossip state transfer test", func() {
 		var (
 			ordererProcess ifrit.Process
 			peerProcesses  = map[string]ifrit.Process{}
@@ -119,6 +114,7 @@ var _ = Describe("Gossip Test", func() {
 			orderer := network.Orderer("orderer")
 			ordererRunner := network.OrdererRunner(orderer)
 			ordererProcess = ifrit.Invoke(ordererRunner)
+			Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			peer0Org1, peer1Org1 := network.Peer("Org1", "peer0"), network.Peer("Org1", "peer1")
 			peer0Org2, peer1Org2 := network.Peer("Org2", "peer0"), network.Peer("Org2", "peer1")
@@ -146,6 +142,10 @@ var _ = Describe("Gossip Test", func() {
 			peersToStop := []*nwo.Peer{peer1Org1, peer1Org2}
 			stopPeers(network, peersToStop, peerProcesses)
 
+			By("confirm peer0Org1 elected to be a leader")
+			expectedMsg := "Elected as a leader, starting delivery service for channel testchannel"
+			Eventually(peerRunners[peer0Org1.ID()].Err(), network.EventuallyTimeout).Should(gbytes.Say(expectedMsg))
+
 			peersToSyncUp := []*nwo.Peer{peer1Org1, peer1Org2}
 			sendTransactionsAndSyncUpPeers(network, orderer, basePeerForTransactions, peersToSyncUp, channelName, &ordererProcess, ordererRunner, peerProcesses, peerRunners)
 
@@ -156,6 +156,9 @@ var _ = Describe("Gossip Test", func() {
 			By("stop peer0Org1 (currently elected leader in Org1) and peer1Org2 (static leader in Org2)")
 			peersToStop = []*nwo.Peer{peer0Org1, peer1Org2}
 			stopPeers(network, peersToStop, peerProcesses)
+
+			By("confirm peer1Org1 elected to be a leader")
+			Eventually(peerRunners[peer1Org1.ID()].Err(), network.EventuallyTimeout).Should(gbytes.Say(expectedMsg))
 
 			peersToSyncUp = []*nwo.Peer{peer0Org1, peer1Org2}
 			// Note that with the static leader in Org2 down, the static follower peer0Org2 will also get blocks via state transfer
@@ -198,7 +201,10 @@ func startPeers(network *nwo.Network, peersToStart []*nwo.Peer, peerProc map[str
 
 	for _, peer := range peersToStart {
 		runner := network.PeerRunner(peer, env...)
-		peerProc[peer.ID()] = ifrit.Invoke(runner)
+		process := ifrit.Invoke(runner)
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		peerProc[peer.ID()] = process
 		peerRun[peer.ID()] = runner
 	}
 }
@@ -245,5 +251,5 @@ func sendTransactionsAndSyncUpPeers(network *nwo.Network, orderer *nwo.Orderer, 
 	orderer = network.Orderer("orderer")
 	ordererRunner = network.OrdererRunner(orderer)
 	*ordererProcess = ifrit.Invoke(ordererRunner)
-
+	Eventually((*ordererProcess).Ready(), network.EventuallyTimeout).Should(BeClosed())
 }
