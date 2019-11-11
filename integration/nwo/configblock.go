@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
-	ectdraft_protos "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
 	"github.com/hyperledger/fabric/protoutil"
@@ -25,7 +23,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-// GetConfigBlock retrieves the current config block for a channel
+// GetConfigBlock retrieves the current config block for a channel.
 func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Block {
 	tempDir, err := ioutil.TempDir(n.RootDir, "getConfigBlock")
 	Expect(err).NotTo(HaveOccurred())
@@ -49,7 +47,7 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 	return configBlock
 }
 
-// GetConfig retrieves the last config of the given channel
+// GetConfig retrieves the last config of the given channel.
 func GetConfig(n *Network, peer *Peer, orderer *Orderer, channel string) *common.Config {
 	configBlock := GetConfigBlock(n, peer, orderer, channel)
 	// unmarshal the envelope bytes
@@ -197,8 +195,8 @@ func FetchConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string, 
 	Eventually(fetch, n.EventuallyTimeout).Should(Equal(0))
 }
 
-// UpdateOrdererConfig computes, signs, and submits a configuration update which requires orderers signature and waits
-// for the update to complete.
+// UpdateOrdererConfig computes, signs, and submits a configuration update
+// which requires orderers signature and waits for the update to complete.
 func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
 	tempDir, err := ioutil.TempDir(n.RootDir, "updateConfig")
 	Expect(err).NotTo(HaveOccurred())
@@ -240,7 +238,7 @@ func UpdateOrdererConfigSession(n *Network, orderer *Orderer, channel string, cu
 
 	ComputeUpdateOrdererConfig(updateFile, n, channel, current, updated, submitter, additionalSigners...)
 
-	//session should not return with a zero exit code nor with a success response
+	// session should not return with a zero exit code nor with a success response
 	sess, err := n.OrdererAdminSession(orderer, submitter, commands.ChannelUpdate{
 		ChannelID:  channel,
 		Orderer:    n.OrdererAddress(orderer, ListenPort),
@@ -289,93 +287,11 @@ func UnmarshalBlockFromFile(blockFile string) *common.Block {
 	return block
 }
 
-// AddConsenter adds a new consenter to the given channel
-func AddConsenter(n *Network, peer *Peer, orderer *Orderer, channel string, consenter ectdraft_protos.Consenter) {
-	UpdateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *ectdraft_protos.ConfigMetadata) {
-		metadata.Consenters = append(metadata.Consenters, &consenter)
-	})
-}
-
-// RemoveConsenter removes a consenter with the given certificate in PEM format from the given channel
-func RemoveConsenter(n *Network, peer *Peer, orderer *Orderer, channel string, certificate []byte) {
-	UpdateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *ectdraft_protos.ConfigMetadata) {
-		var newConsenters []*ectdraft_protos.Consenter
-		for _, consenter := range metadata.Consenters {
-			if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
-				continue
-			}
-			newConsenters = append(newConsenters, consenter)
-		}
-
-		metadata.Consenters = newConsenters
-	})
-}
-
-// ConsenterRemover constructs configs that can be used by `UpdateOrdererConfig` to remove a consenter
-func ConsenterRemover(n *Network, peer *Peer, orderer *Orderer, channel string, certificate []byte) (current, updated *common.Config) {
-	config := GetConfig(n, peer, orderer, channel)
-	updatedConfig := proto.Clone(config).(*common.Config)
-
-	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-	consensusTypeValue := &protosorderer.ConsensusType{}
-	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
-	Expect(err).NotTo(HaveOccurred())
-
-	metadata := &ectdraft_protos.ConfigMetadata{}
-	err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
-	Expect(err).NotTo(HaveOccurred())
-
-	var newConsenters []*ectdraft_protos.Consenter
-	for _, consenter := range metadata.Consenters {
-		if bytes.Equal(consenter.ClientTlsCert, certificate) || bytes.Equal(consenter.ServerTlsCert, certificate) {
-			continue
-		}
-		newConsenters = append(newConsenters, consenter)
-	}
-
-	metadata.Consenters = newConsenters
-	consensusTypeValue.Metadata, err = proto.Marshal(metadata)
-	Expect(err).NotTo(HaveOccurred())
-
-	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
-		ModPolicy: "Admins",
-		Value:     protoutil.MarshalOrPanic(consensusTypeValue),
-	}
-
-	return config, updatedConfig
-}
-
-// ConsenterAdder constructs configs that can be used by `UpdateOrdererConfig` to add a consenter
-func ConsenterAdder(n *Network, peer *Peer, orderer *Orderer, channel string, consenter ectdraft_protos.Consenter) (current, updated *common.Config) {
-	config := GetConfig(n, peer, orderer, channel)
-	updatedConfig := proto.Clone(config).(*common.Config)
-
-	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-	consensusTypeValue := &protosorderer.ConsensusType{}
-	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
-	Expect(err).NotTo(HaveOccurred())
-
-	metadata := &ectdraft_protos.ConfigMetadata{}
-	err = proto.Unmarshal(consensusTypeValue.Metadata, metadata)
-	Expect(err).NotTo(HaveOccurred())
-
-	metadata.Consenters = append(metadata.Consenters, &consenter)
-
-	consensusTypeValue.Metadata, err = proto.Marshal(metadata)
-	Expect(err).NotTo(HaveOccurred())
-
-	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
-		ModPolicy: "Admins",
-		Value:     protoutil.MarshalOrPanic(consensusTypeValue),
-	}
-
-	return config, updatedConfig
-}
-
-// ConsensusMetadataMutator receives ConsensusType.Metadata and mutates it
+// ConsensusMetadataMutator receives ConsensusType.Metadata and mutates it.
 type ConsensusMetadataMutator func([]byte) []byte
 
-// UpdateConsensusMetadata executes a config update that updates the consensus metadata according to the given ConsensusMetadataMutator
+// UpdateConsensusMetadata executes a config update that updates the consensus
+// metadata according to the given ConsensusMetadataMutator.
 func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, channel string, mutateMetadata ConsensusMetadataMutator) {
 	config := GetConfig(network, peer, orderer, channel)
 	updatedConfig := proto.Clone(config).(*common.Config)
@@ -393,19 +309,4 @@ func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, cha
 	}
 
 	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
-}
-
-// UpdateEtcdRaftMetadata executes a config update that updates the etcdraft metadata according to the given function f
-func UpdateEtcdRaftMetadata(network *Network, peer *Peer, orderer *Orderer, channel string, f func(md *ectdraft_protos.ConfigMetadata)) {
-	UpdateConsensusMetadata(network, peer, orderer, channel, func(originalMetadata []byte) []byte {
-		metadata := &ectdraft_protos.ConfigMetadata{}
-		err := proto.Unmarshal(originalMetadata, metadata)
-		Expect(err).NotTo(HaveOccurred())
-
-		f(metadata)
-
-		newMetadata, err := proto.Marshal(metadata)
-		Expect(err).NotTo(HaveOccurred())
-		return newMetadata
-	})
 }
