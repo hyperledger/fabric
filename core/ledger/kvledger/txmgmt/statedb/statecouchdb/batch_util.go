@@ -39,8 +39,11 @@ func executeBatches(batches []batch) error {
 		}(b)
 	}
 	batchWG.Wait()
-	if len(errsChan) > 0 {
-		return <-errsChan
+
+	select {
+	case err := <-errsChan:
+		return err
+	default:
+		return nil
 	}
-	return nil
 }
