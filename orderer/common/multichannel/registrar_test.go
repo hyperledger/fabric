@@ -84,9 +84,12 @@ func newLedgerAndFactory(dir string, chainID string, genesisBlockSys *cb.Block) 
 	if err != nil {
 		panic(err)
 	}
-	err = rl.Append(genesisBlockSys)
-	if err != nil {
-		panic(err)
+
+	if genesisBlockSys != nil {
+		err = rl.Append(genesisBlockSys)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return rlf, rl
 }
@@ -157,9 +160,9 @@ func TestNewRegistrar(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		assert.Panics(t, func() {
+		assert.NotPanics(t, func() {
 			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider).Initialize(consenters)
-		}, "Should have panicked when starting without a system chain")
+		}, "Should not panic when starting without a system channel")
 	})
 
 	// This test checks to make sure that the orderer refuses to come up if there are multiple system channels
@@ -421,8 +424,8 @@ func TestResourcesCheck(t *testing.T) {
 }
 
 // The registrar's BroadcastChannelSupport implementation should reject message types which should not be processed directly.
-func TestBroadcastChannelSupportRejection(t *testing.T) {
-	//system channel
+func TestBroadcastChannelSupport(t *testing.T) {
+	// system channel
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
@@ -442,5 +445,23 @@ func TestBroadcastChannelSupportRejection(t *testing.T) {
 		configTx := makeConfigTx("testchannelid", randomValue)
 		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
 		assert.Error(t, err, "Messages of type HeaderType_CONFIG should return an error.")
+	})
+
+	t.Run("No system channel", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
+		config := localconfig.TopLevel{}
+		config.General.GenesisMethod = "none"
+		config.General.GenesisFile = ""
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar.Initialize(mockConsenters)
+		configTx := makeConfigTxFull("testchannelid", 1)
+		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
+		assert.Error(t, err)
+		assert.Equal(t, "channel creation request not allowed because the orderer system channel is not yet defined", err.Error())
 	})
 }

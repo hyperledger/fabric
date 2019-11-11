@@ -371,7 +371,7 @@ func TestLoadLocalMSP(t *testing.T) {
 	})
 }
 
-func TestInitializeMultiChainManager(t *testing.T) {
+func TestInitializeMultichannelRegistrar(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, "testchannelid")
@@ -382,22 +382,50 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	assert.NoError(t, err)
 
 	signer := &server_mocks.SignerSerializer{}
-	lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
-	assert.NoError(t, err)
-	bootBlock := file.New(genesisFile).GenesisBlock()
-	initializeMultichannelRegistrar(
-		bootBlock,
-		&replicationInitiator{cryptoProvider: cryptoProvider},
-		&cluster.PredicateDialer{},
-		comm.ServerConfig{},
-		nil,
-		conf,
-		signer,
-		&disabled.Provider{},
-		&server_mocks.HealthChecker{},
-		lf,
-		cryptoProvider,
-	)
+
+	t.Run("registrar with system channel", func(t *testing.T) {
+		lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
+		assert.NoError(t, err)
+		bootBlock := file.New(genesisFile).GenesisBlock()
+		initializeBootstrapChannel(bootBlock, lf)
+		registrar := initializeMultichannelRegistrar(
+			bootBlock,
+			&replicationInitiator{cryptoProvider: cryptoProvider},
+			&cluster.PredicateDialer{},
+			comm.ServerConfig{},
+			nil,
+			conf,
+			signer,
+			&disabled.Provider{},
+			&server_mocks.HealthChecker{},
+			lf,
+			cryptoProvider,
+		)
+		assert.NotNil(t, registrar)
+		assert.Equal(t, "testchannelid", registrar.SystemChannelID())
+	})
+
+	t.Run("registrar with no system channel", func(t *testing.T) {
+		conf.General.GenesisMethod = "none"
+		conf.General.GenesisFile = ""
+		lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
+		assert.NoError(t, err)
+		registrar := initializeMultichannelRegistrar(
+			nil,
+			&replicationInitiator{cryptoProvider: cryptoProvider},
+			&cluster.PredicateDialer{},
+			comm.ServerConfig{},
+			nil,
+			conf,
+			signer,
+			&disabled.Provider{},
+			&server_mocks.HealthChecker{},
+			lf,
+			cryptoProvider,
+		)
+		assert.NotNil(t, registrar)
+		assert.Empty(t, registrar.SystemChannelID())
+	})
 }
 
 func TestInitializeGrpcServer(t *testing.T) {
@@ -465,6 +493,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
 	assert.NoError(t, err)
 	bootBlock := file.New(genesisFile).GenesisBlock()
+	initializeBootstrapChannel(bootBlock, lf)
 	signer := &server_mocks.SignerSerializer{}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())

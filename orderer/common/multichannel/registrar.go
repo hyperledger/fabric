@@ -223,7 +223,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 	}
 
 	if r.systemChannelID == "" {
-		logger.Panicf("No system chain found.  If bootstrapping, does your system channel contain a consortiums group definition?")
+		logger.Info("registrar initializing with no system channel")
 	}
 }
 
@@ -244,6 +244,9 @@ func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader
 	cs := r.GetChain(chdr.ChannelId)
 	// New channel creation
 	if cs == nil {
+		if r.systemChannel == nil {
+			return nil, false, nil, errors.New("channel creation request not allowed because the orderer system channel is not yet defined")
+		}
 		cs = r.systemChannel
 	}
 
