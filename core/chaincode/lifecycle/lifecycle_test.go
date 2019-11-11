@@ -289,6 +289,12 @@ var _ = Describe("ExternalFunctions", func() {
 				_, err := ef.InstallChaincode([]byte("cc-package"))
 				Expect(err).To(MatchError("could not build chaincode: fake-build-error"))
 			})
+
+			It("deletes the chaincode from disk", func() {
+				ef.InstallChaincode([]byte("cc-package"))
+				Expect(fakeCCStore.DeleteCallCount()).To(Equal(1))
+				Expect(fakeCCStore.DeleteArgsForCall(0)).To(Equal("fake-hash"))
+			})
 		})
 
 		When("the chaincode is already being built", func() {

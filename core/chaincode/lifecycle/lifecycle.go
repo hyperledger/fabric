@@ -184,6 +184,7 @@ type ChaincodeStore interface {
 	Save(label string, ccInstallPkg []byte) (string, error)
 	ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error)
 	Load(packageID string) (ccInstallPkg []byte, err error)
+	Delete(packageID string) error
 }
 
 type PackageParser interface {
@@ -495,10 +496,6 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 		return nil, errors.WithMessage(err, "could not save cc install package")
 	}
 
-	if ef.InstallListener != nil {
-		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, packageID)
-	}
-
 	buildStatus, ok := ef.BuildRegistry.BuildStatus(packageID)
 	if !ok {
 		err := ef.ChaincodeBuilder.Build(packageID)
@@ -506,7 +503,12 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 	}
 	<-buildStatus.Done()
 	if err := buildStatus.Err(); err != nil {
+		ef.Resources.ChaincodeStore.Delete(packageID)
 		return nil, errors.WithMessage(err, "could not build chaincode")
+	}
+
+	if ef.InstallListener != nil {
+		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, packageID)
 	}
 
 	logger.Infof("successfully installed chaincode with package ID '%s'", packageID)
