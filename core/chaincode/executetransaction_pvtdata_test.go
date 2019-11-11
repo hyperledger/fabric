@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,6 +35,8 @@ func TestQueriesPrivateData(t *testing.T) {
 	}
 
 	defer cleanup()
+
+	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, nil)
 
 	url := "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/map"
 	cID := &pb.ChaincodeID{Name: "tmap", Path: url, Version: "0"}

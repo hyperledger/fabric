@@ -13,7 +13,6 @@ import (
 	"time"
 
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
@@ -23,7 +22,9 @@ import (
 type ChannelPolicyManagerGetter struct{}
 
 func (c *ChannelPolicyManagerGetter) Manager(channelID string) policies.Manager {
-	return &mockpolicies.Manager{Policy: &mockpolicies.Policy{Err: nil}}
+	policyMgr := &PolicyManager{}
+	policyMgr.GetPolicyReturns(nil, true)
+	return policyMgr
 }
 
 type ChannelPolicyManagerGetterWithManager struct {

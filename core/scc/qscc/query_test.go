@@ -58,7 +58,7 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 		LedgerMgr:      ledgerMgr,
 		CryptoProvider: cryptoProvider,
 	}
-	peer.CreateMockChannel(peerInstance, chainid)
+	peer.CreateMockChannel(peerInstance, chainid, nil)
 
 	lq := &LedgerQuerier{
 		aclProvider: mockAclProvider,
