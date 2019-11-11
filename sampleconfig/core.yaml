@@ -333,8 +333,10 @@ peer:
         addressOverrides:
         #  - from:
         #    to:
+        #    caCertsFile:
         #  - from:
         #    to:
+        #    caCertsFile:
 
     # Type for the local MSP - by default it's of type bccsp
     localMspType: bccsp

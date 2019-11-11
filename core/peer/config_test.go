@@ -325,9 +325,11 @@ func TestGetOrdererAddressOverrides(t *testing.T) {
   peer:
     deliveryclient:
       addressOverrides:
-        - from: myaddress
-          to: youraddress
-          caCertsFile: testdata/Org1-cert.pem
+        - from: myaddress0
+          to: youraddress0
+        - from: myaddress1
+          to: youraddress1
+          caCertsFile: testdata/missing.pem
         - from: myaddress2
           to: youraddress2
           caCertsFile: testdata/Org1-cert.pem`
@@ -339,22 +341,8 @@ func TestGetOrdererAddressOverrides(t *testing.T) {
 	}
 
 	expected := map[string]*comm.OrdererEndpoint{
-		"myaddress": {
-			Address: "youraddress",
-			PEMs: []byte(`-----BEGIN CERTIFICATE-----
-MIIB8TCCAZegAwIBAgIQU59imQ+xl+FmwuiFyUgFezAKBggqhkjOPQQDAjBYMQsw
-CQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy
-YW5jaXNjbzENMAsGA1UEChMET3JnMTENMAsGA1UEAxMET3JnMTAeFw0xNzA1MDgw
-OTMwMzRaFw0yNzA1MDYwOTMwMzRaMFgxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpD
-YWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMQ0wCwYDVQQKEwRPcmcx
-MQ0wCwYDVQQDEwRPcmcxMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFkpP6EqE
-87ghFi25UWLvgPatxDiYKYaVSPvpo/XDJ0+9uUmK/C2r5Bvvxx1t8eTROwN77tEK
-r+jbJIxX3ZYQMKNDMEEwDgYDVR0PAQH/BAQDAgGmMA8GA1UdJQQIMAYGBFUdJQAw
-DwYDVR0TAQH/BAUwAwEB/zANBgNVHQ4EBgQEAQIDBDAKBggqhkjOPQQDAgNIADBF
-AiEA1Xkrpq+wrmfVVuY12dJfMQlSx+v0Q3cYce9BE1i2mioCIAzqyduK/lHPI81b
-nWiU9JF9dRQ69dEV9dxd/gzamfFU
------END CERTIFICATE-----
-`),
+		"myaddress0": {
+			Address: "youraddress0",
 		},
 		"myaddress2": {
 			Address: "youraddress2",

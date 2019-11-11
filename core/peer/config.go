@@ -279,9 +279,17 @@ func GetOrdererAddressOverrides() (map[string]*comm.OrdererEndpoint, error) {
 	if len(overrides) > 0 {
 		overrideMap = make(map[string]*comm.OrdererEndpoint)
 		for _, override := range overrides {
+			if override.CACertsFile == "" {
+				overrideMap[override.From] = &comm.OrdererEndpoint{
+					Address: override.To,
+				}
+				continue
+			}
+
 			pem, err := ioutil.ReadFile(override.CACertsFile)
 			if err != nil {
-				return nil, errors.WithMessage(err, fmt.Sprintf("could not read file '%s' specified for caCertsFile of orderer endpoint override from '%s' to '%s'", override.CACertsFile, override.From, override.To))
+				logger.Warningf("could not read file '%s' specified for caCertsFile of orderer endpoint override from '%s' to '%s', skipping: %s", override.CACertsFile, override.From, override.To, err)
+				continue
 			}
 
 			overrideMap[override.From] = &comm.OrdererEndpoint{
