@@ -381,9 +381,9 @@ func (b *Builder) Release(buildContext *BuildContext) error {
 type RunConfig struct {
 	CCID        string `json:"chaincode_id"`
 	PeerAddress string `json:"peer_address"`
-	ClientCert  []byte `json:"client_cert"`
-	ClientKey   []byte `json:"client_key"`
-	RootCert    []byte `json:"root_cert"`
+	ClientCert  string `json:"client_cert"` // PEM encoded client certifcate
+	ClientKey   string `json:"client_key"`  // PEM encoded client key
+	RootCert    string `json:"root_cert"`   // PEM encoded peer chaincode certificate
 }
 
 type RunStatus struct {
@@ -422,9 +422,9 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 	}
 
 	if peerConnection.TLSConfig != nil {
-		lc.ClientCert = peerConnection.TLSConfig.ClientCert
-		lc.ClientKey = peerConnection.TLSConfig.ClientKey
-		lc.RootCert = peerConnection.TLSConfig.RootCert
+		lc.ClientCert = string(peerConnection.TLSConfig.ClientCert)
+		lc.ClientKey = string(peerConnection.TLSConfig.ClientKey)
+		lc.RootCert = string(peerConnection.TLSConfig.RootCert)
 	}
 
 	launchDir, err := ioutil.TempDir("", "fabric-run")

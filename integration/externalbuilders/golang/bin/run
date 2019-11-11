@@ -21,9 +21,9 @@ export CORE_TLS_CLIENT_CERT_FILE="$ARTIFACTS/client.crt"
 export CORE_TLS_CLIENT_KEY_FILE="$ARTIFACTS/client.key"
 export CORE_PEER_TLS_ROOTCERT_FILE="$ARTIFACTS/root.crt"
 
-jq -r .root_cert   "$ARTIFACTS/chaincode.json" | base64 --decode > "$CORE_PEER_TLS_ROOTCERT_FILE"
-jq -r .client_key  "$ARTIFACTS/chaincode.json" | base64 --decode > "$CORE_TLS_CLIENT_KEY_FILE"
-jq -r .client_cert "$ARTIFACTS/chaincode.json" | base64 --decode > "$CORE_TLS_CLIENT_CERT_FILE"
+jq -r .client_cert "$ARTIFACTS/chaincode.json" > "$CORE_TLS_CLIENT_CERT_FILE"
+jq -r .client_key  "$ARTIFACTS/chaincode.json" > "$CORE_TLS_CLIENT_KEY_FILE"
+jq -r .root_cert   "$ARTIFACTS/chaincode.json" > "$CORE_PEER_TLS_ROOTCERT_FILE"
 
 if [ -z "$(jq -r .client_cert "$ARTIFACTS/chaincode.json")" ]; then
     export CORE_PEER_TLS_ENABLED="false"
