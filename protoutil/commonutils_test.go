@@ -15,7 +15,6 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/protoutil/fakes"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +22,7 @@ import (
 //go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer . signerSerializer
 
 type signerSerializer interface {
-	identity.SignerSerializer
+	Signer
 }
 
 func TestNonceRandomness(t *testing.T) {

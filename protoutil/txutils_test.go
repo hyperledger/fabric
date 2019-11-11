@@ -15,7 +15,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	mockmsp "github.com/hyperledger/fabric/common/mocks/msp"
+
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/protoutil/fakes"
 	"github.com/stretchr/testify/assert"
@@ -121,8 +121,8 @@ func TestCreateSignedTx(t *testing.T) {
 	var err error
 	prop := &pb.Proposal{}
 
-	signID, err := mockmsp.NewNoopMsp().GetDefaultSigningIdentity()
-	assert.NoError(t, err, "Unexpected error getting signing identity")
+	signID := &fakes.SignerSerializer{}
+	signID.SerializeReturns([]byte("signer"), nil)
 	signerBytes, err := signID.Serialize()
 	assert.NoError(t, err, "Unexpected error serializing signing identity")
 
@@ -240,8 +240,8 @@ func TestCreateSignedTxStatus(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	signingID, err := mockmsp.NewNoopMsp().GetDefaultSigningIdentity()
-	assert.NoError(t, err)
+	signingID := &fakes.SignerSerializer{}
+	signingID.SerializeReturns([]byte("signer"), nil)
 	serializedSigningID, err := signingID.Serialize()
 	assert.NoError(t, err)
 	serializedSignatureHeader, err := proto.Marshal(&cb.SignatureHeader{
@@ -343,8 +343,10 @@ func TestGetSignedProposal(t *testing.T) {
 	var signedProp *pb.SignedProposal
 	var err error
 
-	signID, err := mockmsp.NewNoopMsp().GetDefaultSigningIdentity()
-	assert.NoError(t, err, "Unexpected error getting signing identity")
+	sig := []byte("signature")
+
+	signID := &fakes.SignerSerializer{}
+	signID.SignReturns(sig, nil)
 
 	prop := &pb.Proposal{}
 	propBytes, _ := proto.Marshal(prop)
@@ -352,7 +354,7 @@ func TestGetSignedProposal(t *testing.T) {
 	assert.NoError(t, err, "Unexpected error getting signed proposal")
 	assert.Equal(t, propBytes, signedProp.ProposalBytes,
 		"Proposal bytes did not match expected value")
-	assert.Equal(t, []byte("signature"), signedProp.Signature,
+	assert.Equal(t, sig, signedProp.Signature,
 		"Signature did not match expected value")
 
 	_, err = protoutil.GetSignedProposal(nil, signID)
@@ -400,8 +402,8 @@ func TestMockSignedEndorserProposal2OrPanic(t *testing.T) {
 	cis := &pb.ChaincodeInvocationSpec{}
 	chainID := "testchannelid"
 	sig := []byte("signature")
-	signID, err := mockmsp.NewNoopMsp().GetDefaultSigningIdentity()
-	assert.NoError(t, err, "Unexpected error getting signing identity")
+	signID := &fakes.SignerSerializer{}
+	signID.SignReturns(sig, nil)
 
 	signedProp, prop = protoutil.MockSignedEndorserProposal2OrPanic(chainID,
 		&pb.ChaincodeSpec{}, signID)
@@ -410,7 +412,7 @@ func TestMockSignedEndorserProposal2OrPanic(t *testing.T) {
 	propBytes, _ := proto.Marshal(prop)
 	assert.Equal(t, propBytes, signedProp.ProposalBytes,
 		"Proposal bytes do not match expected value")
-	err = proto.Unmarshal(prop.Payload, ccProposal)
+	err := proto.Unmarshal(prop.Payload, ccProposal)
 	assert.NoError(t, err, "Expected ChaincodeProposalPayload")
 	err = proto.Unmarshal(ccProposal.Input, cis)
 	assert.NoError(t, err, "Expected ChaincodeInvocationSpec")
