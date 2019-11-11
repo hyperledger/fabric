@@ -26,8 +26,6 @@ import (
 var logger = flogging.MustGetLogger("statecouchdb")
 
 const (
-	// lsccCacheSize denotes the number of entries allowed in the lsccStateCache
-	lsccCacheSize = 50
 	// savepointDocID is used as a key for maintaining savepoint (maintained in metadatadb for a channel)
 	savepointDocID = "statedb_savepoint"
 	// fabricInternalDBName is used to create a db in couch that would be used for internal data such as the version of the data format
@@ -171,57 +169,7 @@ type VersionedDB struct {
 	committedDataCache *versionsCache                    // Used as a local cache during bulk processing of a block.
 	verCacheLock       sync.RWMutex
 	mux                sync.RWMutex
-	lsccStateCache     *lsccStateCache
 	redoLogger         *redoLogger
-}
-
-type lsccStateCache struct {
-	cache   map[string]*statedb.VersionedValue
-	rwMutex sync.RWMutex
-}
-
-func (l *lsccStateCache) getState(key string) *statedb.VersionedValue {
-	l.rwMutex.RLock()
-	defer l.rwMutex.RUnlock()
-
-	if versionedValue, ok := l.cache[key]; ok {
-		logger.Debugf("key:[%s] found in the lsccStateCache", key)
-		return versionedValue
-	}
-	return nil
-}
-
-func (l *lsccStateCache) updateState(key string, value *statedb.VersionedValue) {
-	l.rwMutex.Lock()
-	defer l.rwMutex.Unlock()
-
-	if _, ok := l.cache[key]; ok {
-		logger.Debugf("key:[%s] is updated in lsccStateCache", key)
-		l.cache[key] = value
-	}
-}
-
-func (l *lsccStateCache) setState(key string, value *statedb.VersionedValue) {
-	l.rwMutex.Lock()
-	defer l.rwMutex.Unlock()
-
-	if l.isCacheFull() {
-		l.evictARandomEntry()
-	}
-
-	logger.Debugf("key:[%s] is stored in lsccStateCache", key)
-	l.cache[key] = value
-}
-
-func (l *lsccStateCache) isCacheFull() bool {
-	return len(l.cache) == lsccCacheSize
-}
-
-func (l *lsccStateCache) evictARandomEntry() {
-	for key := range l.cache {
-		delete(l.cache, key)
-		return
-	}
 }
 
 // newVersionedDB constructs an instance of VersionedDB
@@ -241,10 +189,7 @@ func newVersionedDB(couchInstance *couchdb.CouchInstance, redoLogger *redoLogger
 		chainName:          chainName,
 		namespaceDBs:       namespaceDBMap,
 		committedDataCache: newVersionCache(),
-		lsccStateCache: &lsccStateCache{
-			cache: make(map[string]*statedb.VersionedValue),
-		},
-		redoLogger: redoLogger,
+		redoLogger:         redoLogger,
 	}
 	logger.Debugf("chain [%s]: checking for redolog record", chainName)
 	redologRecord, err := redoLogger.load()
@@ -398,11 +343,6 @@ func (vdb *VersionedDB) BytesKeySupported() bool {
 // GetState implements method in VersionedDB interface
 func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
-	if namespace == "lscc" {
-		if value := vdb.lsccStateCache.getState(key); value != nil {
-			return value, nil
-		}
-	}
 
 	db, err := vdb.getNamespaceDBHandle(namespace)
 	if err != nil {
@@ -418,10 +358,6 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 	kv, err := couchDocToKeyValue(couchDoc)
 	if err != nil {
 		return nil, err
-	}
-
-	if namespace == "lscc" {
-		vdb.lsccStateCache.setState(key, kv.VersionedValue)
 	}
 
 	return kv.VersionedValue, nil
@@ -668,10 +604,6 @@ func (vdb *VersionedDB) applyUpdates(updates *statedb.UpdateBatch, height *versi
 		return err
 	}
 
-	lsccUpdates := updates.GetUpdates("lscc")
-	for key, value := range lsccUpdates {
-		vdb.lsccStateCache.updateState(key, value)
-	}
 	return nil
 }
 
