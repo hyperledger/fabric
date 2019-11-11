@@ -188,3 +188,7 @@ noverify = [
 [[constraint]]
   branch = "master"
   name = "github.com/hyperledger/fabric-chaincode-go"
+
+[[constraint]]
+  name = "github.com/VictoriaMetrics/fastcache"
+  version = "1.4.6"
