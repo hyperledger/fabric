@@ -56,7 +56,7 @@ func (mbs *mockBroadcastSrv) Recv() (*cb.Envelope, error) {
 }
 
 func (mbs *mockBroadcastSrv) Send(br *ab.BroadcastResponse) error {
-	panic("Unimplimented")
+	panic("Unimplemented")
 }
 
 type mockDeliverSrv mockSrv
@@ -78,7 +78,7 @@ func (mds *mockDeliverSrv) Recv() (*cb.Envelope, error) {
 }
 
 func (mds *mockDeliverSrv) Send(br *ab.DeliverResponse) error {
-	panic("Unimplimented")
+	panic("Unimplemented")
 }
 
 func testMsgTrace(handler func(dir string, msg *cb.Envelope) recvr, t *testing.T) {
