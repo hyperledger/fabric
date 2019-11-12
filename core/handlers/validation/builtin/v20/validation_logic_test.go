@@ -215,8 +215,8 @@ func TestToApplicationPolicyTranslator_Translate(t *testing.T) {
 
 	res, err = tr.Translate(protoutil.MarshalOrPanic(cauthdsl.SignedByMspMember("the right honourable member for Ipswich")))
 	assert.NoError(t, err)
-	assert.Equal(t, res, protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
-		Type: &peer.ApplicationPolicy_SignaturePolicy{
+	assert.Equal(t, res, protoutil.MarshalOrPanic(&common.ApplicationPolicy{
+		Type: &common.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: cauthdsl.SignedByMspMember("the right honourable member for Ipswich"),
 		},
 	}))

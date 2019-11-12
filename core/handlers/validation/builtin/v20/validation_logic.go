@@ -58,8 +58,8 @@ func (n *toApplicationPolicyTranslator) Translate(b []byte) ([]byte, error) {
 		return nil, errors.Wrap(err, "could not unmarshal signature policy envelope")
 	}
 
-	return protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
-		Type: &peer.ApplicationPolicy_SignaturePolicy{
+	return protoutil.MarshalOrPanic(&common.ApplicationPolicy{
+		Type: &common.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: spe,
 		},
 	}), nil

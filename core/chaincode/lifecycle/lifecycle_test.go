@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -610,8 +609,8 @@ var _ = Describe("ExternalFunctions", func() {
 				Expect(proto.Equal(committedDefinition.ValidationInfo, &lb.ChaincodeValidationInfo{
 					ValidationPlugin: "vscc",
 					ValidationParameter: protoutil.MarshalOrPanic(
-						&pb.ApplicationPolicy{
-							Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+						&cb.ApplicationPolicy{
+							Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
 								ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
 							},
 						}),
@@ -876,8 +875,8 @@ var _ = Describe("ExternalFunctions", func() {
 				testDefinition.EndorsementInfo.EndorsementPlugin = "escc"
 				testDefinition.ValidationInfo.ValidationPlugin = "vscc"
 				testDefinition.ValidationInfo.ValidationParameter = protoutil.MarshalOrPanic(
-					&pb.ApplicationPolicy{
-						Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+					&cb.ApplicationPolicy{
+						Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
 							ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
 						},
 					})
@@ -1045,8 +1044,8 @@ var _ = Describe("ExternalFunctions", func() {
 				testDefinition.EndorsementInfo.EndorsementPlugin = "escc"
 				testDefinition.ValidationInfo.ValidationPlugin = "vscc"
 				testDefinition.ValidationInfo.ValidationParameter = protoutil.MarshalOrPanic(
-					&pb.ApplicationPolicy{
-						Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+					&cb.ApplicationPolicy{
+						Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
 							ChannelConfigPolicyReference: "/Channel/Application/Endorsement",
 						},
 					})
