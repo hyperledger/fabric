@@ -72,13 +72,6 @@ generateHelpText \
         docs/wrappers/peer_node_postscript.md \
         "${commands[@]}"
 
-commands=("token issue" "token list" "token transfer" "token redeem" "token saveConfig")
-generateHelpText \
-        docs/source/commands/token.md \
-        docs/wrappers/token_preamble.md \
-        docs/wrappers/token_postscript.md \
-        "${commands[@]}"
-
 commands=("configtxgen")
 generateHelpText \
         docs/source/commands/configtxgen.md \
