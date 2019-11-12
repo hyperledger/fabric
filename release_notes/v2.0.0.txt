@@ -96,6 +96,11 @@ should instead set GenesisMethod to 'file', and generate a genesis block file
 using configtxgen. Orderer nodes will then use the generated file for the
 orderer system channel.
 
+FAB-15754 - The 'Solo' consensus type is officially deprecated.  The 'Solo'
+consensus type has always been marked non-production and should be in use only
+in test environments, however for compatibility it is still available, but may
+be removed entirely in a future release.
+
 Known Vulnerabilities
 ---------------------
 FAB-8664 - Peer should detect and react when its org has been removed

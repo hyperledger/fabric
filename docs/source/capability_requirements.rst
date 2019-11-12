@@ -66,7 +66,7 @@ it for your network. For example:
 
 .. code:: bash
 
-    SampleSingleMSPSoloV1_1:
+    SampleSingleMSPRaftV1_1:
         Capabilities:
             <<: *GlobalCapabilities
         Orderer:

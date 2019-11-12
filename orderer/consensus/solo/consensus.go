@@ -40,6 +40,7 @@ func New() consensus.Consenter {
 }
 
 func (solo *consenter) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
+	logger.Warningf("Use of the Solo orderer is deprecated and remains only for use in test environments but may be removed in the future.")
 	return newChain(support), nil
 }
 
