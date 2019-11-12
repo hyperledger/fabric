@@ -78,6 +78,17 @@ var _ = Describe("System", func() {
 		}
 	})
 
+	It("hosts an unsecured endpoint for the version information", func() {
+		err := system.Start()
+		Expect(err).NotTo(HaveOccurred())
+
+		versionURL := fmt.Sprintf("https://%s/version", system.Addr())
+		resp, err := client.Get(versionURL)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		resp.Body.Close()
+	})
+
 	It("hosts a secure endpoint for logging", func() {
 		err := system.Start()
 		Expect(err).NotTo(HaveOccurred())
