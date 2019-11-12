@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilders_test
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -29,6 +29,7 @@ import (
 var _ = Describe("Externalbuilders", func() {
 	var (
 		codePackage *os.File
+		logger      *flogging.FabricLogger
 		md          *persistence.ChaincodePackageMetadata
 	)
 
@@ -41,6 +42,10 @@ var _ = Describe("Externalbuilders", func() {
 			Path: "fake-path",
 			Type: "fake-type",
 		}
+
+		enc := zapcore.NewConsoleEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+		core := zapcore.NewCore(enc, zapcore.AddSync(GinkgoWriter), zap.NewAtomicLevel())
+		logger = flogging.NewFabricLogger(zap.New(core).Named("logger"))
 	})
 
 	AfterEach(func() {
@@ -49,7 +54,7 @@ var _ = Describe("Externalbuilders", func() {
 		}
 	})
 
-	Describe("NewBuildContext()", func() {
+	Describe("NewBuildContext", func() {
 		It("creates a new context, including temporary locations", func() {
 			buildContext, err := externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
 			Expect(err).NotTo(HaveOccurred())
@@ -102,18 +107,9 @@ var _ = Describe("Externalbuilders", func() {
 
 			detector = &externalbuilders.Detector{
 				Builders: externalbuilders.CreateBuilders([]peer.ExternalBuilder{
-					{
-						Path: "bad1",
-						Name: "bad1",
-					},
-					{
-						Path: "testdata/goodbuilder",
-						Name: "goodbuilder",
-					},
-					{
-						Path: "bad2",
-						Name: "bad2",
-					},
+					{Path: "bad1", Name: "bad1"},
+					{Path: "testdata/goodbuilder", Name: "goodbuilder"},
+					{Path: "bad2", Name: "bad2"},
 				}),
 				DurablePath: durablePath,
 			}
@@ -167,9 +163,7 @@ var _ = Describe("Externalbuilders", func() {
 		})
 
 		Describe("CachedBuild", func() {
-			var (
-				existingInstance *externalbuilders.Instance
-			)
+			var existingInstance *externalbuilders.Instance
 
 			BeforeEach(func() {
 				var err error
@@ -233,7 +227,7 @@ var _ = Describe("Externalbuilders", func() {
 			builder = &externalbuilders.Builder{
 				Location: "testdata/goodbuilder",
 				Name:     "goodbuilder",
-				Logger:   flogging.MustGetLogger("builder.test"),
+				Logger:   logger,
 			}
 
 			var err error
@@ -385,11 +379,11 @@ var _ = Describe("Externalbuilders", func() {
 	Describe("RunCommand", func() {
 		var (
 			logger *flogging.FabricLogger
-			buf    *bytes.Buffer
+			buf    *gbytes.Buffer
 		)
 
 		BeforeEach(func() {
-			buf = &bytes.Buffer{}
+			buf = gbytes.NewBuffer()
 			enc := zapcore.NewConsoleEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
 			core := zapcore.NewCore(enc, zapcore.AddSync(buf), zap.NewAtomicLevel())
 			logger = flogging.NewFabricLogger(zap.New(core).Named("logger"))
@@ -399,7 +393,7 @@ var _ = Describe("Externalbuilders", func() {
 			cmd := exec.Command("/bin/sh", "-c", `echo stdout && echo stderr >&2`)
 			err := externalbuilders.RunCommand(logger, cmd)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(buf.String()).To(Equal("stderr\t" + `{"command": "sh"}` + "\n"))
+			Expect(buf).To(gbytes.Say("stderr\t" + `{"command": "sh"}` + "\n"))
 		})
 
 		Context("when start fails", func() {
@@ -428,9 +422,7 @@ var _ = Describe("Externalbuilders", func() {
 	})
 
 	Describe("RunStatus", func() {
-		var (
-			rs *externalbuilders.RunStatus
-		)
+		var rs *externalbuilders.RunStatus
 
 		BeforeEach(func() {
 			rs = externalbuilders.NewRunStatus()
@@ -456,16 +448,14 @@ var _ = Describe("Externalbuilders", func() {
 	})
 
 	Describe("Instance", func() {
-		var (
-			i *externalbuilders.Instance
-		)
+		var i *externalbuilders.Instance
 
 		BeforeEach(func() {
 			i = &externalbuilders.Instance{
 				PackageID: "test-ccid",
 				Builder: &externalbuilders.Builder{
 					Location: "testdata/goodbuilder",
-					Logger:   flogging.MustGetLogger("builder.test"),
+					Logger:   logger,
 				},
 			}
 		})
@@ -525,11 +515,11 @@ var _ = Describe("Externalbuilders", func() {
 			})
 		})
 	})
-})
 
-var _ = Describe("SanitizeCCIDPath", func() {
-	It("forbids the set of forbidden windows characters", func() {
-		sanitizedPath := externalbuilders.SanitizeCCIDPath(`<>:"/\|?*&`)
-		Expect(sanitizedPath).To(Equal("----------"))
+	Describe("SanitizeCCIDPath", func() {
+		It("forbids the set of forbidden windows characters", func() {
+			sanitizedPath := externalbuilders.SanitizeCCIDPath(`<>:"/\|?*&`)
+			Expect(sanitizedPath).To(Equal("----------"))
+		})
 	})
 })
