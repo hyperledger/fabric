@@ -270,7 +270,7 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 
 	globalBlockNum = make(map[string]uint64, len(channelIDs))
 	for _, id := range channelIDs {
-		if err := peer.CreateMockChannel(peerInstance, id); err != nil {
+		if err := peer.CreateMockChannel(peerInstance, id, &mock.PolicyManager{}); err != nil {
 			cleanup()
 			return nil, nil, func() {}, err
 		}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -134,4 +135,14 @@ type applicationCapabilities interface {
 //go:generate counterfeiter -o mock/application_config.go --fake-name ApplicationConfig . applicationConfig
 type applicationConfig interface {
 	channelconfig.Application
+}
+
+//go:generate counterfeiter -o mock/policy_manager.go -fake-name PolicyManager . policyManager
+type policyManager interface {
+	policies.Manager
+}
+
+//go:generate counterfeiter -o mock/policy.go -fake-name Policy . policy
+type policy interface {
+	policies.Policy
 }

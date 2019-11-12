@@ -36,7 +36,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt"
@@ -57,7 +57,7 @@ import (
 	cut "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
-	"github.com/hyperledger/fabric/core/policy/mocks"
+	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/internal/peer/packaging"
@@ -210,17 +210,6 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincodeSupport)
 
 	scc.DeploySysCC(lsccImpl, chaincodeSupport)
-
-	for _, id := range channelIDs {
-		if err = peer.CreateMockChannel(peerInstance, id); err != nil {
-			closeListenerAndSleep(lis)
-			return nil, nil, nil, nil, err
-		}
-		// any channel other than the default testchannelid does not have a MSP set up -> create one
-		if id != "testchannelid" {
-			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain("testchannelid"))
-		}
-	}
 
 	go grpcServer.Serve(lis)
 
@@ -622,15 +611,32 @@ const (
 
 // Test the execution of a chaincode that invokes another chaincode.
 func TestChaincodeInvokeChaincode(t *testing.T) {
-	channel := "testchannelid"
-	channel2 := channel + "2"
-	ml, lis, chaincodeSupport, cleanup, err := initPeer(channel, channel2)
+	channel1 := "testchannelid"
+	channel2 := channel1 + "2"
+	ml, lis, chaincodeSupport, cleanup, err := initPeer(channel1, channel2)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error creating peer: %s", err)
 	}
 	defer cleanup()
 	defer closeListenerAndSleep(lis)
+
+	mockPolicy := &mock.Policy{}
+	mockPolicy.EvaluateSignedDataReturns(nil)
+
+	polMgrChannel1 := &mock.PolicyManager{}
+	polMgrChannel1.GetPolicyReturns(mockPolicy, true)
+	err = peer.CreateMockChannel(chaincodeSupport.Peer, channel1, polMgrChannel1)
+	if err != nil {
+		t.Fatalf("Failed to create mock channel: %s", err)
+	}
+
+	polMgrChannel2 := &mock.PolicyManager{}
+	polMgrChannel2.GetPolicyReturns(mockPolicy, true)
+	err = peer.CreateMockChannel(chaincodeSupport.Peer, channel2, polMgrChannel2)
+	if err != nil {
+		t.Fatalf("Failed to create mock channel: %s", err)
+	}
 
 	peerInstance := chaincodeSupport.Peer
 
@@ -661,7 +667,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 		pb.ChaincodeSpec_GOLANG,
 		chaincodeExample02GolangPath,
 		util.ToChaincodeArgs("init", "a", strconv.Itoa(initialA), "b", strconv.Itoa(initialB)),
-		channel,
+		channel1,
 		nextBlockNumber1,
 		chaincodeSupport,
 	)
@@ -682,7 +688,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 		chaincode2Type,
 		chaincode2Path,
 		util.ToChaincodeArgs("init"),
-		channel,
+		channel1,
 		nextBlockNumber1,
 		chaincodeSupport,
 	)
@@ -703,27 +709,21 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 			Args: util.ToChaincodeArgs(ccContext1.Name, "invoke", "a", "b", "10", ""),
 		},
 	}
-	_, _, _, err = invoke(channel, chaincode2InvokeSpec, nextBlockNumber1, []byte("Alice"), chaincodeSupport)
+	_, _, _, err = invoke(channel1, chaincode2InvokeSpec, nextBlockNumber1, []byte("Alice"), chaincodeSupport)
 	require.NoErrorf(t, err, "error invoking %s: %s", chaincode2Name, err)
 	nextBlockNumber1++
 
 	// Check the state in the ledger
-	err = checkFinalState(peerInstance, channel, ccContext1, initialA-10, initialB+10)
+	err = checkFinalState(peerInstance, channel1, ccContext1, initialA-10, initialB+10)
 	require.NoErrorf(t, err, "incorrect final state after transaction for %s: %s", chaincode1Name, err)
 
 	// Change the policies of the two channels in such a way:
 	// 1. Alice has reader access to both the channels.
 	// 2. Bob has access only to chainID2.
 	// Therefore the chaincode invocation should fail.
-	pm := peerInstance.GetPolicyManager(channel)
-	pm.(*mockpolicies.Manager).PolicyMap = map[string]policies.Policy{
-		policies.ChannelApplicationWriters: &CreatorPolicy{Creators: [][]byte{[]byte("Alice")}},
-	}
 
-	pm = peerInstance.GetPolicyManager(channel2)
-	pm.(*mockpolicies.Manager).PolicyMap = map[string]policies.Policy{
-		policies.ChannelApplicationWriters: &CreatorPolicy{Creators: [][]byte{[]byte("Alice"), []byte("Bob")}},
-	}
+	polMgrChannel1.GetPolicyReturns(&CreatorPolicy{Creators: [][]byte{[]byte("Alice")}}, true)
+	polMgrChannel2.GetPolicyReturns(&CreatorPolicy{Creators: [][]byte{[]byte("Alice"), []byte("Bob")}}, true)
 
 	// deploy chaincode2 on channel2
 	_, ccContext3, err := deployChaincode(
@@ -748,18 +748,18 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 			Version: chaincode2Version,
 		},
 		Input: &pb.ChaincodeInput{
-			Args: util.ToChaincodeArgs(ccContext1.Name, "invoke", "a", "b", "10", channel),
+			Args: util.ToChaincodeArgs(ccContext1.Name, "invoke", "a", "b", "10", channel1),
 		},
 	}
 
 	// as Bob, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel
 	_, _, _, err = invoke(channel2, chaincode2InvokeSpec, nextBlockNumber2, []byte("Bob"), chaincodeSupport)
-	require.Errorf(t, err, "as Bob, invoking <%s/%s> via <%s/%s> should fail, but it succeeded.", ccContext1.Name, channel, chaincode2Name, channel2)
+	require.Errorf(t, err, "as Bob, invoking <%s/%s> via <%s/%s> should fail, but it succeeded.", ccContext1.Name, channel1, chaincode2Name, channel2)
 	assert.True(t, strings.Contains(err.Error(), "[Creator not recognized [Bob]]"))
 
 	// as Alice, invoke chaincode2 on channel2 so that it invokes chaincode1 on channel
 	_, _, _, err = invoke(channel2, chaincode2InvokeSpec, nextBlockNumber2, []byte("Alice"), chaincodeSupport)
-	require.NoError(t, err, "as Alice, invoking <%s/%s> via <%s/%s> should should of succeeded, but it failed: %s", ccContext1.Name, channel, chaincode2Name, channel2, err)
+	require.NoError(t, err, "as Alice, invoking <%s/%s> via <%s/%s> should should of succeeded, but it failed: %s", ccContext1.Name, channel1, chaincode2Name, channel2, err)
 	nextBlockNumber2++
 }
 
@@ -778,6 +778,14 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 		t.Logf("Error creating peer: %s", err)
 	}
 	defer cleanup()
+
+	polMgr := &mock.PolicyManager{}
+	mockPolicy := &mock.Policy{}
+	mockPolicy.EvaluateIdentitiesReturns(nil)
+	mockPolicy.EvaluateSignedDataReturns(nil)
+	polMgr.GetPolicyReturns(mockPolicy, true)
+
+	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, polMgr)
 
 	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
@@ -874,6 +882,8 @@ func TestChaincodeInit(t *testing.T) {
 
 	defer cleanup()
 
+	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, nil)
+
 	url := "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/init_private_data"
 	cID := &pb.ChaincodeID{Name: "init_pvtdata", Path: url, Version: "0"}
 
@@ -927,6 +937,8 @@ func TestQueries(t *testing.T) {
 	}
 
 	defer cleanup()
+
+	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, nil)
 
 	url := "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/map"
 	cID := &pb.ChaincodeID{Name: "tmap", Path: url, Version: "0"}
@@ -1271,10 +1283,10 @@ func (c *CreatorPolicy) EvaluateIdentities(identities []msp.Identity) error {
 func newPolicyChecker(peerInstance *peer.Peer) policy.PolicyChecker {
 	return policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
-		&mocks.MockIdentityDeserializer{
+		&policymocks.MockIdentityDeserializer{
 			Identity: []byte("Admin"),
 			Msg:      []byte("msg1"),
 		},
-		&mocks.MockMSPPrincipalGetter{Principal: []byte("Admin")},
+		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Admin")},
 	)
 }

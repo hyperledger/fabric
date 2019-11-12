@@ -21,8 +21,6 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 )
@@ -61,10 +59,6 @@ func (ms *Support) MSPManager() msp.MSPManager {
 // Apply returns ApplyVal
 func (ms *Support) Apply(configtx *common.ConfigEnvelope) error {
 	return ms.ApplyVal
-}
-
-func (ms *Support) PolicyManager() policies.Manager {
-	return &mockpolicies.Manager{}
 }
 
 func (ms *Support) GetMSPIDs() []string {

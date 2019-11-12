@@ -31,6 +31,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+//go:generate counterfeiter -o mocks/policy_manager.go -fake-name PolicyManager . policyManager
+
+type policyManager interface {
+	policies.Manager
+}
+
 //go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
 
 type signerSerializer interface {

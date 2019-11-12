@@ -593,5 +593,3 @@ func (fake *CollectionStore) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ privdata.CollectionStore = new(CollectionStore)

@@ -11,11 +11,11 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
-func CreateMockChannel(p *Peer, cid string) error {
+func CreateMockChannel(p *Peer, cid string, policyMgr policies.Manager) error {
 	var ledger ledger.PeerLedger
 	var err error
 
@@ -41,9 +41,7 @@ func CreateMockChannel(p *Peer, cid string) error {
 	p.channels[cid] = &Channel{
 		ledger: ledger,
 		resources: &mockchannelconfig.Resources{
-			PolicyManagerVal: &mockpolicies.Manager{
-				Policy: &mockpolicies.Policy{},
-			},
+			PolicyManagerVal:     policyMgr,
 			ConfigtxValidatorVal: &mockconfigtx.Validator{},
 			ApplicationConfigVal: &mockchannelconfig.MockApplication{CapabilitiesRv: &mockchannelconfig.MockApplicationCapabilities{}},
 		},
