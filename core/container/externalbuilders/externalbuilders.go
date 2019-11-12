@@ -33,38 +33,6 @@ var (
 
 const MetadataFile = "metadata.json"
 
-type Instance struct {
-	PackageID string
-	BldDir    string
-	Builder   *Builder
-	RunStatus *RunStatus
-}
-
-func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
-	rs, err := i.Builder.Run(i.PackageID, i.BldDir, peerConnection)
-	if err != nil {
-		return errors.WithMessage(err, "could not execute run")
-	}
-	i.RunStatus = rs
-	return nil
-}
-
-func (i *Instance) Stop() error {
-	return errors.Errorf("stop is not implemented for external builders yet")
-}
-
-func (i *Instance) Wait() (int, error) {
-	if i.RunStatus == nil {
-		return 0, errors.Errorf("instance was not successfully started")
-	}
-	<-i.RunStatus.Done()
-	err := i.RunStatus.Err()
-	if exitErr, ok := errors.Cause(err).(*exec.ExitError); ok {
-		return exitErr.ExitCode(), err
-	}
-	return 0, err
-}
-
 type BuildInfo struct {
 	BuilderName string `json:"builder_name"`
 }
@@ -91,7 +59,6 @@ func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
-
 	if err != nil {
 		return nil, errors.WithMessage(err, "existing build detected, but something went wrong inspecting it")
 	}
@@ -209,12 +176,6 @@ type BuildContext struct {
 	BldDir      string
 }
 
-var pkgIDreg = regexp.MustCompile("[<>:\"/\\\\|\\?\\*&]")
-
-func SanitizeCCIDPath(ccid string) string {
-	return pkgIDreg.ReplaceAllString(ccid, "-")
-}
-
 func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, codePackage io.Reader) (bc *BuildContext, err error) {
 	scratchDir, err := ioutil.TempDir("", "fabric-"+SanitizeCCIDPath(ccid))
 	if err != nil {
@@ -268,6 +229,16 @@ func NewBuildContext(ccid string, md *persistence.ChaincodePackageMetadata, code
 	}, nil
 }
 
+func (bc *BuildContext) Cleanup() {
+	os.RemoveAll(bc.ScratchDir)
+}
+
+var pkgIDreg = regexp.MustCompile("[<>:\"/\\\\|\\?\\*&]")
+
+func SanitizeCCIDPath(ccid string) string {
+	return pkgIDreg.ReplaceAllString(ccid, "-")
+}
+
 type buildMetadata struct {
 	Path      string `json:"path"`
 	Type      string `json:"type"`
@@ -288,10 +259,6 @@ func writeMetadataFile(ccid string, md *persistence.ChaincodePackageMetadata, ds
 	return ioutil.WriteFile(filepath.Join(dst, MetadataFile), mdBytes, 0700)
 }
 
-func (bc *BuildContext) Cleanup() {
-	os.RemoveAll(bc.ScratchDir)
-}
-
 type Builder struct {
 	EnvWhitelist []string
 	Location     string
@@ -300,7 +267,7 @@ type Builder struct {
 }
 
 func CreateBuilders(builderConfs []peer.ExternalBuilder) []*Builder {
-	builders := []*Builder{}
+	var builders []*Builder
 	for _, builderConf := range builderConfs {
 		builders = append(builders, &Builder{
 			Location:     builderConf.Path,
@@ -314,18 +281,11 @@ func CreateBuilders(builderConfs []peer.ExternalBuilder) []*Builder {
 
 func (b *Builder) Detect(buildContext *BuildContext) bool {
 	detect := filepath.Join(b.Location, "bin", "detect")
-	cmd := NewCommand(
-		detect,
-		b.EnvWhitelist,
-		buildContext.SourceDir,
-		buildContext.MetadataDir,
-	)
+	cmd := b.NewCommand(detect, buildContext.SourceDir, buildContext.MetadataDir)
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
-		logger.Debugf("Detection for builder '%s' detect failed: %s", b.Name, err)
-		// XXX, we probably also want to differentiate between a 'not detected'
-		// and a 'I failed nastily', but, again, good enough for now
+		logger.Debugf("builder '%s' detect failed: %s", b.Name, err)
 		return false
 	}
 
@@ -334,13 +294,7 @@ func (b *Builder) Detect(buildContext *BuildContext) bool {
 
 func (b *Builder) Build(buildContext *BuildContext) error {
 	build := filepath.Join(b.Location, "bin", "build")
-	cmd := NewCommand(
-		build,
-		b.EnvWhitelist,
-		buildContext.SourceDir,
-		buildContext.MetadataDir,
-		buildContext.BldDir,
-	)
+	cmd := b.NewCommand(build, buildContext.SourceDir, buildContext.MetadataDir, buildContext.BldDir)
 
 	err := RunCommand(b.Logger, cmd)
 	if err != nil {
@@ -363,12 +317,7 @@ func (b *Builder) Release(buildContext *BuildContext) error {
 		return errors.WithMessagef(err, "could not stat release binary '%s'", release)
 	}
 
-	cmd := NewCommand(
-		release,
-		b.EnvWhitelist,
-		buildContext.BldDir,
-		buildContext.ReleaseDir,
-	)
+	cmd := b.NewCommand(release, buildContext.BldDir, buildContext.ReleaseDir)
 
 	if err := RunCommand(b.Logger, cmd); err != nil {
 		return errors.Wrapf(err, "builder '%s' release failed", b.Name)
@@ -442,12 +391,7 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 	}
 
 	run := filepath.Join(b.Location, "bin", "run")
-	cmd := NewCommand(
-		run,
-		b.EnvWhitelist,
-		bldDir,
-		launchDir,
-	)
+	cmd := b.NewCommand(run, bldDir, launchDir)
 
 	rs := NewRunStatus()
 
@@ -466,10 +410,10 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 
 // NewCommand creates an exec.Cmd that is configured to prune the calling
 // environment down to the environment variables specified in the external
-// builder's EnvironmentWhitelist and the DefaultEnvWhitelist defined above.
-func NewCommand(name string, envWhiteList []string, args ...string) *exec.Cmd {
+// builder's EnvironmentWhitelist and the DefaultEnvWhitelist.
+func (b *Builder) NewCommand(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	whitelist := appendDefaultWhitelist(envWhiteList)
+	whitelist := appendDefaultWhitelist(b.EnvWhitelist)
 	for _, key := range whitelist {
 		if val, ok := os.LookupEnv(key); ok {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
