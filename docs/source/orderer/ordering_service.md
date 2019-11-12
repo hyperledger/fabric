@@ -203,17 +203,6 @@ between ordering service nodes.
 For information about how to stand up an ordering node (regardless of the
 implementation the node will be used in), check out [our documentation on standing up an ordering node](../orderer_deploy.html).
 
-* **Solo**
-
-  The Solo implementation of the ordering service is aptly named: it features
-  only a single ordering node. As a result, it is not, and never will be, fault
-  tolerant. For that reason, Solo implementations cannot be considered for
-  production, but they are a good choice for testing applications and smart
-  contracts, or for creating proofs of concept. However, if you ever want to
-  extend this PoC network into production, you might want to start with a single
-  node Raft cluster, as it may be reconfigured to add additional nodes.
-
-
 * **Raft**
 
   New as of v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
@@ -233,19 +222,12 @@ implementation the node will be used in), check out [our documentation on standi
   available since Fabric v1.0, but many users may find the additional
   administrative overhead of managing a Kafka cluster intimidating or undesirable.
 
-## Solo
+* **Solo**
 
-As stated above, a Solo ordering service is a good choice when developing test,
-development, or proofs-of-concept networks. For that reason, it is the default
-ordering service deployed in our [Build your first network tutorial](../build_network.html)),
-as, from the perspective of other network components, a Solo ordering service
-processes transactions identically to the more elaborate Kafka and Raft
-implementations while saving on the administrative overhead of maintaining and
-upgrading multiple nodes and clusters. Because a Solo ordering service is not
-crash-fault tolerant, it should never be considered a viable alternative for a
-production blockchain network. For networks which wish to start with only a
-single ordering node but might wish to grow in the future, a single node Raft
-cluster is a better option.
+  The Solo implementation of the ordering service is intended for test only and
+  consists only of a single ordering node.  It has been deprecated and may be
+  removed entirely in a future release.  Existing users of Solo should move to
+  a single node Raft network for equivalent function.
 
 ## Raft
 

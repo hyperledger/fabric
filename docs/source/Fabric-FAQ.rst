@@ -243,12 +243,12 @@ Ordering Service
 :Answer:
   A consensus plugin needs to implement the ``Consenter`` and ``Chain``
   interfaces defined in the `consensus package`_. There are two plugins built
-  against these interfaces already: solo_ and kafka_. You can study them to take
+  against these interfaces already: raft_ and kafka_. You can study them to take
   cues for your own implementation. The ordering service code can be found under
   the `orderer package`_.
 
 .. _consensus package: https://github.com/hyperledger/fabric/blob/master/orderer/consensus/consensus.go
-.. _solo: https://github.com/hyperledger/fabric/tree/master/orderer/consensus/solo
+.. _raft: https://github.com/hyperledger/fabric/tree/master/orderer/consensus/etcdraft
 .. _kafka: https://github.com/hyperledger/fabric/tree/master/orderer/consensus/kafka
 .. _orderer package: https://github.com/hyperledger/fabric/tree/master/orderer
 
@@ -270,7 +270,8 @@ Solo
 
 :Answer:
   Solo is not intended for production.  It is not, and will never be, fault
-  tolerant.
+  tolerant.  It has been deprecated in favor of Raft and may be removed in a
+  future release.
 
 Kafka
 ~~~~~

@@ -124,8 +124,7 @@ across the world to contribute nodes to a decentralized ordering service.
 
 * :doc:`orderer/ordering_service`:
   Describes the role of an ordering service in Fabric and an overview of the
-  three ordering service implementations currently available: Solo, Kafka, and
-  Raft.
+  two ordering service implementations currently available: Kafka and Raft.
 
 * :doc:`raft_configuration`:
   Shows the configuration parameters and considerations when deploying a Raft
