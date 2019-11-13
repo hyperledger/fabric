@@ -25,11 +25,6 @@ type osFileInfo interface {
 	os.FileInfo
 }
 
-//go:generate counterfeiter -o mock/legacy_package_provider.go -fake-name LegacyPackageProvider . legacyPackageProvider
-type legacyPackageProvider interface {
-	persistence.LegacyPackageProvider
-}
-
 //go:generate mockery -dir . -name MetadataProvider -case underscore -output mock/ -outpkg mock
 
 func TestPersistence(t *testing.T) {
