@@ -41,10 +41,18 @@ var _ = Describe("Instance", func() {
 		It("invokes the builder's run command and sets the run status", func() {
 			err := instance.Start(&ccintf.PeerConnection{
 				Address: "fake-peer-address",
+				TLSConfig: &ccintf.TLSConfig{
+					ClientCert: []byte("fake-client-cert"),
+					ClientKey:  []byte("fake-client-key"),
+					RootCert:   []byte("fake-root-cert"),
+				},
 			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(instance.RunStatus).NotTo(BeNil())
-			Eventually(instance.RunStatus.Done()).Should(BeClosed())
+			Expect(instance.Session).NotTo(BeNil())
+
+			errCh := make(chan error)
+			go func() { errCh <- instance.Session.Wait() }()
+			Eventually(errCh).Should(Receive(BeNil()))
 		})
 	})
 

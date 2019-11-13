@@ -335,24 +335,12 @@ var _ = Describe("Externalbuilders", func() {
 			})
 
 			It("runs the package by invoking external builder", func() {
-				rs, err := builder.Run("test-ccid", bldDir, fakeConnection)
+				sess, err := builder.Run("test-ccid", bldDir, fakeConnection)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(rs.Done()).Should(BeClosed())
-				Expect(rs.Err()).NotTo(HaveOccurred())
-			})
 
-			Context("when the run exits with a non-zero status", func() {
-				BeforeEach(func() {
-					builder.Location = "testdata/failbuilder"
-					builder.Name = "failbuilder"
-				})
-
-				It("returns an error", func() {
-					rs, err := builder.Run("test-ccid", bldDir, fakeConnection)
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(rs.Done()).Should(BeClosed())
-					Expect(rs.Err()).To(MatchError("builder 'failbuilder' run failed: exit status 1"))
-				})
+				errCh := make(chan error)
+				go func() { errCh <- sess.Wait() }()
+				Eventually(errCh).Should(Receive(BeNil()))
 			})
 		})
 
@@ -417,32 +405,6 @@ var _ = Describe("Externalbuilders", func() {
 				exitErr, ok := err.(*exec.ExitError)
 				Expect(ok).To(BeTrue())
 				Expect(exitErr.ExitCode()).To(Equal(1))
-			})
-		})
-	})
-
-	Describe("RunStatus", func() {
-		var rs *externalbuilders.RunStatus
-
-		BeforeEach(func() {
-			rs = externalbuilders.NewRunStatus()
-		})
-
-		It("has a blocking ready channel", func() {
-			Consistently(rs.Done()).ShouldNot(BeClosed())
-		})
-
-		When("notify is called with an error", func() {
-			BeforeEach(func() {
-				rs.Notify(fmt.Errorf("fake-status-error"))
-			})
-
-			It("closes the blocking ready channel", func() {
-				Expect(rs.Done()).To(BeClosed())
-			})
-
-			It("sets the error value", func() {
-				Expect(rs.Err()).To(MatchError("fake-status-error"))
 			})
 		})
 	})

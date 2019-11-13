@@ -17,15 +17,15 @@ type Instance struct {
 	PackageID string
 	BldDir    string
 	Builder   *Builder
-	RunStatus *RunStatus
+	Session   *Session
 }
 
 func (i *Instance) Start(peerConnection *ccintf.PeerConnection) error {
-	rs, err := i.Builder.Run(i.PackageID, i.BldDir, peerConnection)
+	sess, err := i.Builder.Run(i.PackageID, i.BldDir, peerConnection)
 	if err != nil {
 		return errors.WithMessage(err, "could not execute run")
 	}
-	i.RunStatus = rs
+	i.Session = sess
 	return nil
 }
 
@@ -34,11 +34,11 @@ func (i *Instance) Stop() error {
 }
 
 func (i *Instance) Wait() (int, error) {
-	if i.RunStatus == nil {
+	if i.Session == nil {
 		return 0, errors.Errorf("instance was not successfully started")
 	}
-	<-i.RunStatus.Done()
-	err := i.RunStatus.Err()
+	err := i.Session.Wait()
+	err = errors.Wrapf(err, "builder '%s' run failed", i.Builder.Name)
 	if exitErr, ok := errors.Cause(err).(*exec.ExitError); ok {
 		return exitErr.ExitCode(), err
 	}

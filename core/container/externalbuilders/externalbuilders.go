@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilders
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,8 +15,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strings"
-	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -335,36 +332,7 @@ type RunConfig struct {
 	RootCert    string `json:"root_cert"`   // PEM encoded peer chaincode certificate
 }
 
-type RunStatus struct {
-	mutex sync.Mutex
-	doneC chan struct{}
-	err   error
-}
-
-func NewRunStatus() *RunStatus {
-	return &RunStatus{
-		doneC: make(chan struct{}),
-	}
-}
-
-func (rs *RunStatus) Err() error {
-	rs.mutex.Lock()
-	defer rs.mutex.Unlock()
-	return rs.err
-}
-
-func (rs *RunStatus) Done() <-chan struct{} {
-	return rs.doneC
-}
-
-func (rs *RunStatus) Notify(err error) {
-	rs.mutex.Lock()
-	defer rs.mutex.Unlock()
-	rs.err = err
-	close(rs.doneC)
-}
-
-func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection) (*RunStatus, error) {
+func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection) (*Session, error) {
 	lc := &RunConfig{
 		PeerAddress: peerConnection.Address,
 		CCID:        ccid,
@@ -392,20 +360,18 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 
 	run := filepath.Join(b.Location, "bin", "run")
 	cmd := b.NewCommand(run, bldDir, launchDir)
-
-	rs := NewRunStatus()
+	sess, err := Start(b.Logger, cmd)
+	if err != nil {
+		os.RemoveAll(launchDir)
+		return nil, errors.Wrapf(err, "builder '%s' run failed to start", b.Name)
+	}
 
 	go func() {
 		defer os.RemoveAll(launchDir)
-		err := RunCommand(b.Logger, cmd)
-		if err != nil {
-			rs.Notify(errors.Wrapf(err, "builder '%s' run failed", b.Name))
-			return
-		}
-		rs.Notify(nil)
+		sess.Wait()
 	}()
 
-	return rs, nil
+	return sess, nil
 }
 
 // NewCommand creates an exec.Cmd that is configured to prune the calling
@@ -441,34 +407,9 @@ func contains(envWhiteList []string, key string) bool {
 }
 
 func RunCommand(logger *flogging.FabricLogger, cmd *exec.Cmd) error {
-	logger = logger.With("command", filepath.Base(cmd.Path))
-
-	stderr, err := cmd.StderrPipe()
+	sess, err := Start(logger, cmd)
 	if err != nil {
 		return err
 	}
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	is := bufio.NewReader(stderr)
-	for done := false; !done; {
-		// read output line by line
-		line, err := is.ReadString('\n')
-		switch err {
-		case nil:
-			logger.Info(strings.TrimSuffix(line, "\n"))
-		case io.EOF:
-			if len(line) > 0 {
-				logger.Info(line)
-			}
-			done = true
-		default:
-			logger.Error("error reading command output", err)
-			return err
-		}
-	}
-
-	return cmd.Wait()
+	return sess.Wait()
 }
