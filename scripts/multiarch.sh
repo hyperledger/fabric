@@ -64,19 +64,18 @@ IMAGES="fabric-peer fabric-orderer fabric-ccenv fabric-tools"
 # check that all images have been published
 for image in ${IMAGES}; do
   docker pull ${NS_PULL}/${image}:amd64-${VERSION} || missing
-  docker pull ${NS_PULL}/${image}:s390x-${VERSION} || missing
 done
 
 # push the multiarch manifest and tag with $VERSION,$TWO_DIGIT_VERSION and latest tag
 for image in ${IMAGES}; do
   manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
-   --platforms linux/amd64,linux/s390x --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
+   --platforms linux/amd64 --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
    --target "${NS_PUSH}/${image}:${VERSION}"
   manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
-   --platforms linux/amd64,linux/s390x --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
+   --platforms linux/amd64 --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
    --target "${NS_PUSH}/${image}:latest"
   manifest-tool --username ${USER} --password ${PASSWORD} push from-args\
-   --platforms linux/amd64,linux/s390x --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
+   --platforms linux/amd64 --template "${NS_PULL}/${image}:ARCH-${VERSION}"\
    --target "${NS_PUSH}/${image}:${TWO_DIGIT_VERSION}"
 done
 
