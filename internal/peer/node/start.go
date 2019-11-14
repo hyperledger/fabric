@@ -572,9 +572,6 @@ func serve(args []string) error {
 
 	containerRuntime := &chaincode.ContainerRuntime{
 		BuildRegistry:   buildRegistry,
-		CACert:          ca.CertBytes(),
-		CertGenerator:   authenticator,
-		PeerAddress:     ccEndpoint,
 		ContainerRouter: containerRouter,
 	}
 
@@ -598,16 +595,19 @@ func serve(args []string) error {
 		ACLProvider:            aclProvider,
 	}
 
-	// Keep TestQueries working
-	if !chaincodeConfig.TLSEnabled {
-		containerRuntime.CertGenerator = nil
-	}
-
 	chaincodeLauncher := &chaincode.RuntimeLauncher{
 		Metrics:        chaincode.NewLaunchMetrics(opsSystem.Provider),
 		Registry:       chaincodeHandlerRegistry,
 		Runtime:        containerRuntime,
 		StartupTimeout: chaincodeConfig.StartupTimeout,
+		CertGenerator:  authenticator,
+		CACert:         ca.CertBytes(),
+		PeerAddress:    ccEndpoint,
+	}
+
+	// Keep TestQueries working
+	if !chaincodeConfig.TLSEnabled {
+		chaincodeLauncher.CertGenerator = nil
 	}
 
 	go chaincodeCustodian.Work(buildRegistry, containerRouter, chaincodeLauncher)

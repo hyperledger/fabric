@@ -3,13 +3,29 @@ package mock
 
 import (
 	"sync"
+
+	"github.com/hyperledger/fabric/core/container/ccintf"
 )
 
 type Runtime struct {
-	StartStub        func(string) error
+	BuildStub        func(string) (*ccintf.ChaincodeServerInfo, error)
+	buildMutex       sync.RWMutex
+	buildArgsForCall []struct {
+		arg1 string
+	}
+	buildReturns struct {
+		result1 *ccintf.ChaincodeServerInfo
+		result2 error
+	}
+	buildReturnsOnCall map[int]struct {
+		result1 *ccintf.ChaincodeServerInfo
+		result2 error
+	}
+	StartStub        func(string, *ccintf.PeerConnection) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 string
+		arg2 *ccintf.PeerConnection
 	}
 	startReturns struct {
 		result1 error
@@ -45,16 +61,80 @@ type Runtime struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Runtime) Start(arg1 string) error {
+func (fake *Runtime) Build(arg1 string) (*ccintf.ChaincodeServerInfo, error) {
+	fake.buildMutex.Lock()
+	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
+	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("Build", []interface{}{arg1})
+	fake.buildMutex.Unlock()
+	if fake.BuildStub != nil {
+		return fake.BuildStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.buildReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Runtime) BuildCallCount() int {
+	fake.buildMutex.RLock()
+	defer fake.buildMutex.RUnlock()
+	return len(fake.buildArgsForCall)
+}
+
+func (fake *Runtime) BuildCalls(stub func(string) (*ccintf.ChaincodeServerInfo, error)) {
+	fake.buildMutex.Lock()
+	defer fake.buildMutex.Unlock()
+	fake.BuildStub = stub
+}
+
+func (fake *Runtime) BuildArgsForCall(i int) string {
+	fake.buildMutex.RLock()
+	defer fake.buildMutex.RUnlock()
+	argsForCall := fake.buildArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Runtime) BuildReturns(result1 *ccintf.ChaincodeServerInfo, result2 error) {
+	fake.buildMutex.Lock()
+	defer fake.buildMutex.Unlock()
+	fake.BuildStub = nil
+	fake.buildReturns = struct {
+		result1 *ccintf.ChaincodeServerInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Runtime) BuildReturnsOnCall(i int, result1 *ccintf.ChaincodeServerInfo, result2 error) {
+	fake.buildMutex.Lock()
+	defer fake.buildMutex.Unlock()
+	fake.BuildStub = nil
+	if fake.buildReturnsOnCall == nil {
+		fake.buildReturnsOnCall = make(map[int]struct {
+			result1 *ccintf.ChaincodeServerInfo
+			result2 error
+		})
+	}
+	fake.buildReturnsOnCall[i] = struct {
+		result1 *ccintf.ChaincodeServerInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Runtime) Start(arg1 string, arg2 *ccintf.PeerConnection) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
 		arg1 string
-	}{arg1})
-	fake.recordInvocation("Start", []interface{}{arg1})
+		arg2 *ccintf.PeerConnection
+	}{arg1, arg2})
+	fake.recordInvocation("Start", []interface{}{arg1, arg2})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
-		return fake.StartStub(arg1)
+		return fake.StartStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -69,17 +149,17 @@ func (fake *Runtime) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *Runtime) StartCalls(stub func(string) error) {
+func (fake *Runtime) StartCalls(stub func(string, *ccintf.PeerConnection) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *Runtime) StartArgsForCall(i int) string {
+func (fake *Runtime) StartArgsForCall(i int) (string, *ccintf.PeerConnection) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Runtime) StartReturns(result1 error) {
@@ -231,6 +311,8 @@ func (fake *Runtime) WaitReturnsOnCall(i int, result1 int, result2 error) {
 func (fake *Runtime) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.buildMutex.RLock()
+	defer fake.buildMutex.RUnlock()
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	fake.stopMutex.RLock()

@@ -7,18 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
-
-// CertGenerator generates client certificates for chaincode.
-type CertGenerator interface {
-	// Generate returns a certificate and private key and associates
-	// the hash of the certificates with the given chaincode name
-	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
-}
 
 // ContainerRouter is a poor abstraction used for building, and running chaincode processes.
 // This management probably does not belong in this package, chaincode process lifecycle should
@@ -35,29 +27,13 @@ type ContainerRouter interface {
 
 // ContainerRuntime is responsible for managing containerized chaincode.
 type ContainerRuntime struct {
-	CertGenerator   CertGenerator
 	ContainerRouter ContainerRouter
-	CACert          []byte
-	PeerAddress     string
 	BuildRegistry   *container.BuildRegistry
 }
 
-// Start launches chaincode in a runtime environment.
-func (c *ContainerRuntime) Start(ccid string) error {
-	var tlsConfig *ccintf.TLSConfig
-	if c.CertGenerator != nil {
-		certKeyPair, err := c.CertGenerator.Generate(string(ccid))
-		if err != nil {
-			return errors.WithMessagef(err, "failed to generate TLS certificates for %s", ccid)
-		}
-
-		tlsConfig = &ccintf.TLSConfig{
-			ClientCert: certKeyPair.Cert,
-			ClientKey:  certKeyPair.Key,
-			RootCert:   c.CACert,
-		}
-	}
-
+// Build builds the chaincode if necessary and returns ChaincodeServerInfo if
+// the chaincode is a server
+func (c *ContainerRuntime) Build(ccid string) (*ccintf.ChaincodeServerInfo, error) {
 	buildStatus, ok := c.BuildRegistry.BuildStatus(ccid)
 	if !ok {
 		err := c.ContainerRouter.Build(ccid)
@@ -66,18 +42,17 @@ func (c *ContainerRuntime) Start(ccid string) error {
 	<-buildStatus.Done()
 
 	if err := buildStatus.Err(); err != nil {
-		return errors.WithMessage(err, "error building image")
+		return nil, errors.WithMessage(err, "error building image")
 	}
 
+	return c.ContainerRouter.ChaincodeServerInfo(ccid)
+}
+
+// Start launches chaincode in a runtime environment.
+func (c *ContainerRuntime) Start(ccid string, ccinfo *ccintf.PeerConnection) error {
 	chaincodeLogger.Debugf("start container: %s", ccid)
 
-	if err := c.ContainerRouter.Start(
-		ccid,
-		&ccintf.PeerConnection{
-			Address:   c.PeerAddress,
-			TLSConfig: tlsConfig,
-		},
-	); err != nil {
+	if err := c.ContainerRouter.Start(ccid, ccinfo); err != nil {
 		return errors.WithMessage(err, "error starting container")
 	}
 

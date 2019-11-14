@@ -42,6 +42,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
@@ -231,13 +232,8 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 	}
 
 	containerRuntime := &ContainerRuntime{
-		CACert:          ca.CertBytes(),
-		CertGenerator:   certGenerator,
 		BuildRegistry:   buildRegistry,
 		ContainerRouter: containerRouter,
-	}
-	if !globalConfig.TLSEnabled {
-		containerRuntime.CertGenerator = nil
 	}
 	userRunsCC := true
 	metricsProviders := &disabled.Provider{}
@@ -247,6 +243,11 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 		Runtime:        containerRuntime,
 		Registry:       chaincodeHandlerRegistry,
 		StartupTimeout: globalConfig.StartupTimeout,
+		CACert:         ca.CertBytes(),
+		CertGenerator:  certGenerator,
+	}
+	if !globalConfig.TLSEnabled {
+		chaincodeLauncher.CertGenerator = nil
 	}
 	chaincodeSupport := &ChaincodeSupport{
 		ACLProvider:            mockAclProvider,
@@ -903,7 +904,7 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ string) error {
+	fakeRuntime.StartStub = func(_ string, _ *ccintf.PeerConnection) error {
 		handlerRegistry.Ready("testcc:0")
 		return nil
 	}
@@ -925,7 +926,7 @@ func TestStartAndWaitSuccess(t *testing.T) {
 //test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ string) error {
+	fakeRuntime.StartStub = func(_ string, _ *ccintf.PeerConnection) error {
 		time.Sleep(time.Second)
 		return nil
 	}
@@ -947,7 +948,7 @@ func TestStartAndWaitTimeout(t *testing.T) {
 //test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
-	fakeRuntime.StartStub = func(_ string) error {
+	fakeRuntime.StartStub = func(_ string, _ *ccintf.PeerConnection) error {
 		return errors.New("Bad lunch; upset stomach")
 	}
 
