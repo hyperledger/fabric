@@ -16,7 +16,7 @@ The atomic broadcast ordering protocol for Hyperledger Fabric is described in `h
 
 In order to set a service type, the ordering service administrator needs to set the right value in the genesis block that the ordering service nodes will be bootstrapped from.
 
-Specifically, the value corresponding to the `ConsensusType` key of the `Values` map of the `Orderer` config group on the system channel should be set to either `solo` or `kafka`.
+Specifically, the value corresponding to the `ConsensusType` key of the `Values` map of the `Orderer` config group on the system channel should be set to either `solo`, `kafka` or `etcdraft`.
 
 For details on the configuration structure of channels, refer to the [Channel Configuration](../docs/source/configtx.rst) guide.
 
