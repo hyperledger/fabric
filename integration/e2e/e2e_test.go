@@ -311,6 +311,49 @@ var _ = Describe("EndToEnd", func() {
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 		})
 	})
+
+	Describe("basic solo network without a system channel", func() {
+		var ordererProcess ifrit.Process
+		BeforeEach(func() {
+			soloConfig := nwo.BasicSolo()
+			soloConfig.RemovePeer("Org1", "peer1")
+			soloConfig.RemovePeer("Org2", "peer1")
+			network = nwo.New(soloConfig, testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+
+			orderer := network.Orderer("orderer")
+			ordererConfig := network.ReadOrdererConfig(orderer)
+			ordererConfig.General.GenesisMethod = "none"
+			network.WriteOrdererConfig(orderer, ordererConfig)
+			network.Bootstrap()
+
+			ordererRunner := network.OrdererRunner(orderer)
+			ordererProcess = ifrit.Invoke(ordererRunner)
+			Eventually(ordererProcess.Ready, network.EventuallyTimeout).Should(BeClosed())
+			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("registrar initializing with no system channel"))
+		})
+
+		AfterEach(func() {
+			if ordererProcess != nil {
+				ordererProcess.Signal(syscall.SIGTERM)
+				Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+		})
+
+		It("starts the orderer but rejects channel creation requests", func() {
+			By("attempting to create a channel without a system channel defined")
+			sess, err := network.PeerAdminSession(network.Peer("Org1", "peer0"), commands.ChannelCreate{
+				ChannelID:   "testchannel",
+				Orderer:     network.OrdererAddress(network.Orderer("orderer"), nwo.ListenPort),
+				File:        network.CreateChannelTxPath("testchannel"),
+				OutputBlock: "/dev/null",
+				ClientAuth:  network.ClientAuthRequired,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say("channel creation request not allowed because the orderer system channel is not yet defined"))
+		})
+	})
 })
 
 func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
