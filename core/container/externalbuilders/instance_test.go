@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilders_test
 
 import (
+	"os/exec"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
@@ -57,9 +60,47 @@ var _ = Describe("Instance", func() {
 	})
 
 	Describe("Stop", func() {
-		It("statically returns an error", func() {
-			err := instance.Stop()
-			Expect(err).To(MatchError("stop is not implemented for external builders yet"))
+		It("terminates the process", func() {
+			cmd := exec.Command("sleep", "90")
+			sess, err := externalbuilders.Start(logger, cmd)
+			Expect(err).NotTo(HaveOccurred())
+			instance.Session = sess
+			instance.TermTimeout = time.Minute
+
+			errCh := make(chan error)
+			go func() { errCh <- instance.Session.Wait() }()
+			Consistently(errCh).ShouldNot(Receive())
+
+			err = instance.Stop()
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(errCh).Should(Receive(MatchError("signal: terminated")))
+		})
+
+		Context("when the process doesn't respond to SIGTERM within TermTimeout", func() {
+			It("kills the process with malice", func() {
+				cmd := exec.Command("testdata/ignoreterm.sh")
+				sess, err := externalbuilders.Start(logger, cmd)
+				Expect(err).NotTo(HaveOccurred())
+
+				instance.Session = sess
+				instance.TermTimeout = time.Second
+
+				errCh := make(chan error)
+				go func() { errCh <- instance.Session.Wait() }()
+				Consistently(errCh).ShouldNot(Receive())
+
+				err = instance.Stop()
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(errCh).Should(Receive(MatchError("signal: killed")))
+			})
+		})
+
+		Context("when the instance session has not been started", func() {
+			It("returns an error", func() {
+				instance.Session = nil
+				err := instance.Stop()
+				Expect(err).To(MatchError("instance has not been started"))
+			})
 		})
 	})
 
@@ -82,7 +123,7 @@ var _ = Describe("Instance", func() {
 			Expect(code).To(Equal(0))
 		})
 
-		When("run exits with a non-zero status", func() {
+		Context("when run exits with a non-zero status", func() {
 			BeforeEach(func() {
 				instance.Builder.Location = "testdata/failbuilder"
 				instance.Builder.Name = "failbuilder"
@@ -96,6 +137,15 @@ var _ = Describe("Instance", func() {
 				code, err := instance.Wait()
 				Expect(err).To(MatchError("builder 'failbuilder' run failed: exit status 1"))
 				Expect(code).To(Equal(1))
+			})
+		})
+
+		Context("when the instance session has not been started", func() {
+			It("returns an error", func() {
+				instance.Session = nil
+				exitCode, err := instance.Wait()
+				Expect(err).To(MatchError("instance was not successfully started"))
+				Expect(exitCode).To(Equal(-1))
 			})
 		})
 	})

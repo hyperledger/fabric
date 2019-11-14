@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -75,9 +76,10 @@ func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
 	for _, builder := range d.Builders {
 		if builder.Name == buildInfo.BuilderName {
 			return &Instance{
-				PackageID: ccid,
-				Builder:   builder,
-				BldDir:    filepath.Join(durablePath, "bld"),
+				PackageID:   ccid,
+				Builder:     builder,
+				BldDir:      filepath.Join(durablePath, "bld"),
+				TermTimeout: 5 * time.Second,
 			}, nil
 		}
 	}
@@ -157,9 +159,10 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 	}
 
 	return &Instance{
-		PackageID: ccid,
-		Builder:   builder,
-		BldDir:    durableBldDir,
+		PackageID:   ccid,
+		Builder:     builder,
+		BldDir:      durableBldDir,
+		TermTimeout: 5 * time.Second,
 	}, nil
 }
 
