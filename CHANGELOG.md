@@ -1,3 +1,66 @@
+## v1.4.4
+Thu Nov 14 14:20:45 EST 2019
+
+* [b8bd253](https://github.com/hyperledger/fabric/commit/b8bd253) Add release notes for v1.4.4
+* [95ffcdc](https://github.com/hyperledger/fabric/commit/95ffcdc) [FAB-15814](https://jira.hyperledger.org/browse/FAB-15814) Add endpoint for versioning metadata
+* [06f4ad8](https://github.com/hyperledger/fabric/commit/06f4ad8) [FAB-17060](https://jira.hyperledger.org/browse/FAB-17060) Remove s390x from multiarch script
+* [707f763](https://github.com/hyperledger/fabric/commit/707f763) [FAB-16544](https://jira.hyperledger.org/browse/FAB-16544) Homogenize orderer endpoint overrides
+* [07db0a8](https://github.com/hyperledger/fabric/commit/07db0a8) Do not require reboot when re-adding consenter
+* [96028fd](https://github.com/hyperledger/fabric/commit/96028fd) [FAB-15389](https://jira.hyperledger.org/browse/FAB-15389) Fix private data dissemination
+* [1989eee](https://github.com/hyperledger/fabric/commit/1989eee) [FAB-17000](https://jira.hyperledger.org/browse/FAB-17000) Warn when cert expiration is nigh
+* [c77496c](https://github.com/hyperledger/fabric/commit/c77496c) Complete chaincode execution on stream termination
+* [5416aef](https://github.com/hyperledger/fabric/commit/5416aef) [FAB-16544](https://jira.hyperledger.org/browse/FAB-16544) IT for orderer endpoint overrides
+* [83e3cb4](https://github.com/hyperledger/fabric/commit/83e3cb4) [FAB-16852](https://jira.hyperledger.org/browse/FAB-16852) Update doc to Go v1.12.12
+* [4b0e995](https://github.com/hyperledger/fabric/commit/4b0e995) Add Info message for delivery client
+* [d7f8962](https://github.com/hyperledger/fabric/commit/d7f8962) [FAB-16852](https://jira.hyperledger.org/browse/FAB-16852) Update Go to v1.12.12
+* [1a1c71a](https://github.com/hyperledger/fabric/commit/1a1c71a) [FAB-16544](https://jira.hyperledger.org/browse/FAB-16544) Backport orderer TLS cert overrides
+* [63e1563](https://github.com/hyperledger/fabric/commit/63e1563) [FAB-16544](https://jira.hyperledger.org/browse/FAB-16544) Fix IT UpdateChannel to match doc
+* [5879cd3](https://github.com/hyperledger/fabric/commit/5879cd3) [FAB-16980](https://jira.hyperledger.org/browse/FAB-16980) add lock to UpdateEndpoints
+* [31f85f6](https://github.com/hyperledger/fabric/commit/31f85f6) [FAB-14819](https://jira.hyperledger.org/browse/FAB-14819) Remove duplicate call to GetTxReadWriteSet
+* [3b7b8f0](https://github.com/hyperledger/fabric/commit/3b7b8f0) [FAB-16948](https://jira.hyperledger.org/browse/FAB-16948) To make same with github
+* [8196d66](https://github.com/hyperledger/fabric/commit/8196d66) [FAB-16948](https://jira.hyperledger.org/browse/FAB-16948) Fabric go cid interface enhancement
+* [0c221f4](https://github.com/hyperledger/fabric/commit/0c221f4) [FAB-16932](https://jira.hyperledger.org/browse/FAB-16932) Typo in Chaincode Command
+* [1485c3d](https://github.com/hyperledger/fabric/commit/1485c3d) Clarify configtx.yaml capability settings
+* [dc14773](https://github.com/hyperledger/fabric/commit/dc14773) [FAB-16922](https://jira.hyperledger.org/browse/FAB-16922) Symbol encoding format error in doc
+* [d0eecba](https://github.com/hyperledger/fabric/commit/d0eecba) [FAB-16885](https://jira.hyperledger.org/browse/FAB-16885) Doc usage of salt for private data
+* [3d49575](https://github.com/hyperledger/fabric/commit/3d49575) Fix Raft UT flake by prolong eventual timeout
+* [76383ac](https://github.com/hyperledger/fabric/commit/76383ac) [FAB-16883](https://jira.hyperledger.org/browse/FAB-16883) fix kafka.rst doc formatting
+* [d6669bf](https://github.com/hyperledger/fabric/commit/d6669bf) [FAB-16873](https://jira.hyperledger.org/browse/FAB-16873) fix cryptogen server TLS to admins
+* [a2bdb34](https://github.com/hyperledger/fabric/commit/a2bdb34) [FAB-16868](https://jira.hyperledger.org/browse/FAB-16868): fix `txn` typo error in documents
+* [76efd6d](https://github.com/hyperledger/fabric/commit/76efd6d) [FAB-16881](https://jira.hyperledger.org/browse/FAB-16881) sample configtx.yaml comment fix
+* [5cbfc4f](https://github.com/hyperledger/fabric/commit/5cbfc4f) Set DOCKER_DYNAMIC_LINK to true
+* [59d4adc](https://github.com/hyperledger/fabric/commit/59d4adc) [FAB-16756](https://jira.hyperledger.org/browse/FAB-16756) kafka migration guide fix
+* [cea596a](https://github.com/hyperledger/fabric/commit/cea596a) [FAB-16783](https://jira.hyperledger.org/browse/FAB-16783) the cryptogen gen admin cert ou error
+* [81953e5](https://github.com/hyperledger/fabric/commit/81953e5) [FAB-16652](https://jira.hyperledger.org/browse/FAB-16652) check for empty acl api ref
+* [b0de151](https://github.com/hyperledger/fabric/commit/b0de151) [FAB-16241](https://jira.hyperledger.org/browse/FAB-16241) update documentation
+* [0c9848a](https://github.com/hyperledger/fabric/commit/0c9848a) [FAB-16052](https://jira.hyperledger.org/browse/FAB-16052) Fix peerchaincode doc
+* [0acd6e9](https://github.com/hyperledger/fabric/commit/0acd6e9) [FAB-16643](https://jira.hyperledger.org/browse/FAB-16643) - Fix a bug in pvt data reconciliation
+* [6197789](https://github.com/hyperledger/fabric/commit/6197789) [FAB-16651](https://jira.hyperledger.org/browse/FAB-16651) Fix conn leak if certs renewed
+* [54f027d](https://github.com/hyperledger/fabric/commit/54f027d) Fabric update to baseimage 0.4.16
+* [456e9ad](https://github.com/hyperledger/fabric/commit/456e9ad) [FAB-16715](https://jira.hyperledger.org/browse/FAB-16715) Wire orderer endpoint overrides via config
+* [3345371](https://github.com/hyperledger/fabric/commit/3345371) [FAB-16695](https://jira.hyperledger.org/browse/FAB-16695) Enable split admin, cluster ports in IT
+* [0554664](https://github.com/hyperledger/fabric/commit/0554664) [FAB-16729](https://jira.hyperledger.org/browse/FAB-16729) Remove extra "now" typo
+* [a78be91](https://github.com/hyperledger/fabric/commit/a78be91) [IN-68] Add default GitHub SECURITY policy
+* [bbb3616](https://github.com/hyperledger/fabric/commit/bbb3616) [FAB-16728](https://jira.hyperledger.org/browse/FAB-16728) Remove extra unneeded "be"
+* [23de844](https://github.com/hyperledger/fabric/commit/23de844) [FAB-16695](https://jira.hyperledger.org/browse/FAB-16695) Make peerServer singleton a slice
+* [ad1b514](https://github.com/hyperledger/fabric/commit/ad1b514) [FAB-16695](https://jira.hyperledger.org/browse/FAB-16695) Re-use metrics for comm GRPCServer
+* [1a4ff3f](https://github.com/hyperledger/fabric/commit/1a4ff3f) [FAB-16715](https://jira.hyperledger.org/browse/FAB-16715) Wire endpoint override in UpdateEndpoints
+* [994f15c](https://github.com/hyperledger/fabric/commit/994f15c) [FAB-16715](https://jira.hyperledger.org/browse/FAB-16715) Add overrides to ConnectionCriteria
+* [0ac4069](https://github.com/hyperledger/fabric/commit/0ac4069) [FAB-16706](https://jira.hyperledger.org/browse/FAB-16706) remove validate ledger
+* [cdaa9dd](https://github.com/hyperledger/fabric/commit/cdaa9dd) [FAB-16483](https://jira.hyperledger.org/browse/FAB-16483) Improve error message
+* [14e85ce](https://github.com/hyperledger/fabric/commit/14e85ce) [FAB-16274](https://jira.hyperledger.org/browse/FAB-16274) - Add link to off_chain_data sample
+* [7775c13](https://github.com/hyperledger/fabric/commit/7775c13) [FAB-15666](https://jira.hyperledger.org/browse/FAB-15666) Pass NetworkMode in DockerBuildOptions
+* [003c8c5](https://github.com/hyperledger/fabric/commit/003c8c5) Add test for deployImage
+* [1483166](https://github.com/hyperledger/fabric/commit/1483166) [FAB-16687](https://jira.hyperledger.org/browse/FAB-16687) reduce mutex contention in validator
+* [bc2d289](https://github.com/hyperledger/fabric/commit/bc2d289) [FAB-16630](https://jira.hyperledger.org/browse/FAB-16630) Fix comment error
+* [fcfd12e](https://github.com/hyperledger/fabric/commit/fcfd12e) [FAB-16165](https://jira.hyperledger.org/browse/FAB-16165) Change pkcs11 test keystore directory
+* [0abcce8](https://github.com/hyperledger/fabric/commit/0abcce8) [FAB-16650](https://jira.hyperledger.org/browse/FAB-16650) align sentence for eventclient readme
+* [a5d9a93](https://github.com/hyperledger/fabric/commit/a5d9a93) [FAB-16605](https://jira.hyperledger.org/browse/FAB-16605) Add log message for slow WAL
+* [157f500](https://github.com/hyperledger/fabric/commit/157f500) [FAB-16571](https://jira.hyperledger.org/browse/FAB-16571) Fix peer panic when package java chaincode
+* [7f1abdb](https://github.com/hyperledger/fabric/commit/7f1abdb) [FAB-16580](https://jira.hyperledger.org/browse/FAB-16580) Remove Hyperledger Composer references
+* [48a1c86](https://github.com/hyperledger/fabric/commit/48a1c86) [FAB-16413](https://jira.hyperledger.org/browse/FAB-16413) Prepare for next fabric rel (1.4.4)
+* [05479d9](https://github.com/hyperledger/fabric/commit/05479d9) [FAB-16376](https://jira.hyperledger.org/browse/FAB-16376) MSP_1.4.3: support for admincerts
+
 ## v1.4.3
 Mon Aug 26 15:15:42 EDT 2019
 
