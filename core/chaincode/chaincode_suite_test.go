@@ -146,3 +146,8 @@ type policyManager interface {
 type policy interface {
 	policies.Policy
 }
+
+//go:generate counterfeiter -o mock/connectionhandler.go --fake-name ConnectionHandler . connectionHandler
+type connectionHandler interface {
+	chaincode.ConnectionHandler
+}

@@ -916,8 +916,9 @@ func TestStartAndWaitSuccess(t *testing.T) {
 		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
+	fakeStreamHandler := &mock.ChaincodeStreamHandler{}
 	//actual test - everythings good
-	err := launcher.Launch("testcc:0")
+	err := launcher.Launch("testcc:0", fakeStreamHandler)
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
@@ -938,8 +939,9 @@ func TestStartAndWaitTimeout(t *testing.T) {
 		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
+	fakeStreamHandler := &mock.ChaincodeStreamHandler{}
 	//the actual test - timeout 1000 > 500
-	err := launcher.Launch("testcc:0")
+	err := launcher.Launch("testcc:0", fakeStreamHandler)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
@@ -959,8 +961,9 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 		Metrics:        NewLaunchMetrics(&disabled.Provider{}),
 	}
 
+	fakeStreamHandler := &mock.ChaincodeStreamHandler{}
 	//actual test - container launch gives error
-	err := launcher.Launch("testcc:0")
+	err := launcher.Launch("testcc:0", fakeStreamHandler)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
