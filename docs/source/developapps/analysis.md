@@ -181,7 +181,7 @@ proof of the mutual agreement among the two parties that are part of the deal.
 ### Redeem
 
 The **redeem** transaction for paper 00001 represents the end of its lifecycle.
-In our relatively simple example, DigiBank initiates the transaction which
+In our relatively simple example, HedgeMatic initiates the transaction which
 transfers the commercial paper back to MagnetoCorp:
 
 ```
