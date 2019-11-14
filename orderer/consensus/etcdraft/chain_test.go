@@ -185,7 +185,7 @@ var _ = Describe("Chain", func() {
 		}
 
 		JustBeforeEach(func() {
-			chain, err = etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, observeC)
+			chain, err = etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, nil, observeC)
 			Expect(err).NotTo(HaveOccurred())
 
 			chain.Start()
@@ -799,7 +799,7 @@ var _ = Describe("Chain", func() {
 								os.Chmod(path.Join(walDir, f.Name()), 0300)
 							}
 
-							c, err := etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, observeC)
+							c, err := etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, nil, observeC)
 							Expect(c).To(BeNil())
 							Expect(err).To(MatchError(ContainSubstring("permission denied")))
 						})
@@ -1216,6 +1216,7 @@ var _ = Describe("Chain", func() {
 							nil,
 							cryptoProvider,
 							nil,
+							nil,
 							observeC)
 						Expect(chain).NotTo(BeNil())
 						Expect(err).NotTo(HaveOccurred())
@@ -1249,6 +1250,7 @@ var _ = Describe("Chain", func() {
 							nil,
 							cryptoProvider,
 							noOpBlockPuller,
+							nil,
 							nil)
 						Expect(chain).NotTo(BeNil())
 						Expect(err).NotTo(HaveOccurred())
@@ -1278,6 +1280,7 @@ var _ = Describe("Chain", func() {
 							nil,
 							cryptoProvider,
 							noOpBlockPuller,
+							nil,
 							nil)
 						Expect(chain).To(BeNil())
 						Expect(err).To(MatchError(ContainSubstring("failed to initialize WAL: mkdir")))
@@ -3386,6 +3389,7 @@ func (c *chain) init() {
 		c.rpc,
 		c.cryptoProvider,
 		func() (etcdraft.BlockPuller, error) { return c.puller, nil },
+		nil,
 		c.observe,
 	)
 	Expect(err).NotTo(HaveOccurred())

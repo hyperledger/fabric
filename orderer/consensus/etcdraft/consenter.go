@@ -224,6 +224,9 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		func() (BlockPuller, error) {
 			return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
 		},
+		func() {
+			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.CreateChain(support.ChannelID()) })
+		},
 		nil,
 	)
 }
