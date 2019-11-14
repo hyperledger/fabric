@@ -175,7 +175,7 @@ var _ = Describe("Chain", func() {
 		}
 
 		JustBeforeEach(func() {
-			chain, err = etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, observeC)
+			chain, err = etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, nil, observeC)
 			Expect(err).NotTo(HaveOccurred())
 
 			chain.Start()
@@ -850,7 +850,7 @@ var _ = Describe("Chain", func() {
 								os.Chmod(path.Join(walDir, f.Name()), 0300)
 							}
 
-							c, err := etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, observeC)
+							c, err := etcdraft.NewChain(support, opts, configurator, nil, noOpBlockPuller, nil, observeC)
 							Expect(c).To(BeNil())
 							Expect(err).To(MatchError(ContainSubstring("permission denied")))
 						})
@@ -1266,6 +1266,7 @@ var _ = Describe("Chain", func() {
 							configurator,
 							nil,
 							nil,
+							nil,
 							observeC)
 						Expect(chain).NotTo(BeNil())
 						Expect(err).NotTo(HaveOccurred())
@@ -1298,6 +1299,7 @@ var _ = Describe("Chain", func() {
 							nil,
 							nil,
 							noOpBlockPuller,
+							nil,
 							nil)
 						Expect(chain).NotTo(BeNil())
 						Expect(err).ToNot(HaveOccurred())
@@ -1326,6 +1328,7 @@ var _ = Describe("Chain", func() {
 							nil,
 							nil,
 							noOpBlockPuller,
+							nil,
 							nil)
 						Expect(chain).To(BeNil())
 						Expect(err).To(MatchError(ContainSubstring("failed to initialize WAL: mkdir")))
@@ -3610,6 +3613,7 @@ func (c *chain) init() {
 		c.configurator,
 		c.rpc,
 		func() (etcdraft.BlockPuller, error) { return c.puller, nil },
+		nil,
 		c.observe,
 	)
 	Expect(err).NotTo(HaveOccurred())

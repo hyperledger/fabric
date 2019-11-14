@@ -191,6 +191,8 @@ type Chain struct {
 	logger  *flogging.FabricLogger
 
 	periodicChecker *PeriodicCheck
+
+	haltCallback func()
 }
 
 // NewChain constructs a chain object.
@@ -200,6 +202,7 @@ func NewChain(
 	conf Configurator,
 	rpc RPC,
 	f CreateBlockPuller,
+	haltCallback func(),
 	observeC chan<- raft.SoftState) (*Chain, error) {
 
 	lg := opts.Logger.With("channel", support.ChainID(), "node", opts.RaftID)
@@ -258,6 +261,7 @@ func NewChain(
 		confState:        cc,
 		createPuller:     f,
 		clock:            opts.Clock,
+		haltCallback:     haltCallback,
 		Metrics: &Metrics{
 			ClusterSize:             opts.Metrics.ClusterSize.With("channel", support.ChainID()),
 			IsLeader:                opts.Metrics.IsLeader.With("channel", support.ChainID()),
@@ -484,6 +488,10 @@ func (c *Chain) Halt() {
 		return
 	}
 	<-c.doneC
+
+	if c.haltCallback != nil {
+		c.haltCallback()
+	}
 }
 
 func (c *Chain) isRunning() error {

@@ -687,10 +687,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			firstEvictedNode := findLeader(ordererRunners) - 1
 
 			By("Removing the leader from 3-node channel")
-			serverCertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[firstEvictedNode]), "server.crt"))
+			server1CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[firstEvictedNode]), "server.crt"))
 			Expect(err).To(Not(HaveOccurred()))
 
-			nwo.RemoveConsenter(network, peer, network.Orderers[(firstEvictedNode+1)%3], "systemchannel", serverCertBytes)
+			nwo.RemoveConsenter(network, peer, network.Orderers[(firstEvictedNode+1)%3], "systemchannel", server1CertBytes)
 			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderers detect the eviction of the node on channel", "systemchannel")
 			Eventually(ordererRunners[(firstEvictedNode+1)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Deactivated node"))
 			Eventually(ordererRunners[(firstEvictedNode+2)%3].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Deactivated node"))
@@ -722,10 +722,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			By("Removing the leader from 2-node channel")
-			serverCertBytes, err = ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
+			server2CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
 			Expect(err).To(Not(HaveOccurred()))
 
-			nwo.RemoveConsenter(network, peer, orderers[surviver], "systemchannel", serverCertBytes)
+			nwo.RemoveConsenter(network, peer, orderers[surviver], "systemchannel", server2CertBytes)
 			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderer detect the eviction of the node on channel", "systemchannel")
 			Eventually(ordererRunners[secondEvictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMSg))
 
@@ -734,6 +734,24 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Asserting the only remaining node elects itself")
 			findLeader([]*ginkgomon.Runner{ordererRunners[surviver]})
+
+			By("Re-adding first evicted orderer")
+			nwo.AddConsenter(network, peer, network.Orderers[surviver], "systemchannel", etcdraft.Consenter{
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderers[firstEvictedNode], nwo.ClusterPort)),
+				ClientTlsCert: server1CertBytes,
+				ServerTlsCert: server1CertBytes,
+			})
+
+			By("Ensuring re-added orderer starts serving system channel")
+			assertBlockReception(map[string]int{
+				"systemchannel": 3,
+			}, []*nwo.Orderer{orderers[firstEvictedNode]}, peer, network)
+
+			env := CreateBroadcastEnvelope(network, orderers[secondEvictedNode], network.SystemChannel.Name, []byte("foo"))
+			resp, err := Broadcast(network, orderers[surviver], env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 		})
 
 		It("notices it even if it is down at the time of its eviction", func() {
