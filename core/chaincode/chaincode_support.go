@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/extcc"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -42,7 +43,7 @@ type Runtime interface {
 
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
-	Launch(ccid string) error
+	Launch(ccid string, streamHandler extcc.StreamHandler) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
@@ -79,7 +80,7 @@ func (cs *ChaincodeSupport) Launch(ccid string) (*Handler, error) {
 		return h, nil
 	}
 
-	if err := cs.Launcher.Launch(ccid); err != nil {
+	if err := cs.Launcher.Launch(ccid, cs); err != nil {
 		return nil, errors.Wrapf(err, "could not launch chaincode %s", ccid)
 	}
 
