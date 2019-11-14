@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -270,5 +271,61 @@ func createSelfSignedData(cryptoProvider bccsp.BCCSP) protoutil.SignedData {
 		Data:      msg,
 		Signature: sig,
 		Identity:  peerIdentity,
+	}
+}
+
+// deployedCCInfoProviderWrapper is a wrapper type that overrides ChaincodeImplicitCollections
+type deployedCCInfoProviderWrapper struct {
+	*lifecycle.ValidatorCommitter
+	orgMSPIDs []string
+}
+
+// AllCollectionsConfigPkg overrides the same method in lifecycle.AllCollectionsConfigPkg.
+// It is basically a copy of lifecycle.AllCollectionsConfigPkg and invokes ImplicitCollections in the wrapper.
+// This method is called when the unit test code gets private data code path.
+func (dc *deployedCCInfoProviderWrapper) AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
+	chaincodeInfo, err := dc.ChaincodeInfo(channelName, chaincodeName, qe)
+	if err != nil {
+		return nil, err
+	}
+	explicitCollectionConfigPkg := chaincodeInfo.ExplicitCollectionConfigPkg
+
+	implicitCollections, _ := dc.ImplicitCollections(channelName, "", nil)
+
+	var combinedColls []*common.CollectionConfig
+	if explicitCollectionConfigPkg != nil {
+		combinedColls = append(combinedColls, explicitCollectionConfigPkg.Config...)
+	}
+	for _, implicitColl := range implicitCollections {
+		c := &common.CollectionConfig{}
+		c.Payload = &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
+		combinedColls = append(combinedColls, c)
+	}
+	return &common.CollectionConfigPackage{
+		Config: combinedColls,
+	}, nil
+}
+
+// ImplicitCollections overrides the same method in lifecycle.ValidatorCommitter.
+// It constructs static collection config using known mspids from the sample ledger.
+// This method is called when the unit test code gets collection configuration.
+func (dc *deployedCCInfoProviderWrapper) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error) {
+	collConfigs := make([]*common.StaticCollectionConfig, 0, len(dc.orgMSPIDs))
+	for _, mspID := range dc.orgMSPIDs {
+		collConfigs = append(collConfigs, lifecycle.GenerateImplicitCollectionForOrg(mspID))
+	}
+	return collConfigs, nil
+}
+
+func createDeployedCCInfoProvider(orgMSPIDs []string) ledger.DeployedChaincodeInfoProvider {
+	deployedCCInfoProvider := &lifecycle.ValidatorCommitter{
+		Resources: &lifecycle.Resources{
+			Serializer: &lifecycle.Serializer{},
+		},
+		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
+	}
+	return &deployedCCInfoProviderWrapper{
+		ValidatorCommitter: deployedCCInfoProvider,
+		orgMSPIDs:          orgMSPIDs,
 	}
 }
