@@ -75,6 +75,9 @@ is the recommended release for production operations.
   * The ``/metrics`` endpoint allows operators to utilize Prometheus to pull operational
     metrics from peer and orderer nodes. Metrics can also be pushed to StatsD.
 
+  * As of v1.4.4, the ``/version`` endpoint allows operators to query the release version
+    of the peer and orderer and the commit SHA from which the release was cut.
+
 Improved programming model for developing applications
 ------------------------------------------------------
 
