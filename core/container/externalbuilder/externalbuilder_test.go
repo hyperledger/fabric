@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package externalbuilders_test
+package externalbuilder_test
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -26,7 +26,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var _ = Describe("Externalbuilders", func() {
+var _ = Describe("externalbuilder", func() {
 	var (
 		codePackage *os.File
 		logger      *flogging.FabricLogger
@@ -56,7 +56,7 @@ var _ = Describe("Externalbuilders", func() {
 
 	Describe("NewBuildContext", func() {
 		It("creates a new context, including temporary locations", func() {
-			buildContext, err := externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
+			buildContext, err := externalbuilder.NewBuildContext("fake-package-id", md, codePackage)
 			Expect(err).NotTo(HaveOccurred())
 			defer buildContext.Cleanup()
 
@@ -80,14 +80,14 @@ var _ = Describe("Externalbuilders", func() {
 				codePackage, err := os.Open("testdata/archive_with_absolute.tar.gz")
 				Expect(err).NotTo(HaveOccurred())
 				defer codePackage.Close()
-				_, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
+				_, err = externalbuilder.NewBuildContext("fake-package-id", md, codePackage)
 				Expect(err).To(MatchError(ContainSubstring("could not untar source package")))
 			})
 		})
 
 		Context("when package id contains inappropriate chars", func() {
 			It("replaces them with dash", func() {
-				buildContext, err := externalbuilders.NewBuildContext("i&am/pkg:id", md, codePackage)
+				buildContext, err := externalbuilder.NewBuildContext("i&am/pkg:id", md, codePackage)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(buildContext.ScratchDir).To(ContainSubstring("fabric-i-am-pkg-id"))
 			})
@@ -97,7 +97,7 @@ var _ = Describe("Externalbuilders", func() {
 	Describe("Detector", func() {
 		var (
 			durablePath string
-			detector    *externalbuilders.Detector
+			detector    *externalbuilder.Detector
 		)
 
 		BeforeEach(func() {
@@ -105,8 +105,8 @@ var _ = Describe("Externalbuilders", func() {
 			durablePath, err = ioutil.TempDir("", "detect-test")
 			Expect(err).NotTo(HaveOccurred())
 
-			detector = &externalbuilders.Detector{
-				Builders: externalbuilders.CreateBuilders([]peer.ExternalBuilder{
+			detector = &externalbuilder.Detector{
+				Builders: externalbuilder.CreateBuilders([]peer.ExternalBuilder{
 					{Path: "bad1", Name: "bad1"},
 					{Path: "testdata/goodbuilder", Name: "goodbuilder"},
 					{Path: "bad2", Name: "bad2"},
@@ -163,7 +163,7 @@ var _ = Describe("Externalbuilders", func() {
 		})
 
 		Describe("CachedBuild", func() {
-			var existingInstance *externalbuilders.Instance
+			var existingInstance *externalbuilder.Instance
 
 			BeforeEach(func() {
 				var err error
@@ -219,19 +219,19 @@ var _ = Describe("Externalbuilders", func() {
 
 	Describe("Builders", func() {
 		var (
-			builder      *externalbuilders.Builder
-			buildContext *externalbuilders.BuildContext
+			builder      *externalbuilder.Builder
+			buildContext *externalbuilder.BuildContext
 		)
 
 		BeforeEach(func() {
-			builder = &externalbuilders.Builder{
+			builder = &externalbuilder.Builder{
 				Location: "testdata/goodbuilder",
 				Name:     "goodbuilder",
 				Logger:   logger,
 			}
 
 			var err error
-			buildContext, err = externalbuilders.NewBuildContext("fake-package-id", md, codePackage)
+			buildContext, err = externalbuilder.NewBuildContext("fake-package-id", md, codePackage)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -347,7 +347,7 @@ var _ = Describe("Externalbuilders", func() {
 		Describe("NewCommand", func() {
 			It("only propagates expected variables", func() {
 				var expectedEnv []string
-				for _, key := range externalbuilders.DefaultEnvWhitelist {
+				for _, key := range externalbuilder.DefaultEnvWhitelist {
 					if val, ok := os.LookupEnv(key); ok {
 						expectedEnv = append(expectedEnv, fmt.Sprintf("%s=%s", key, val))
 					}
@@ -379,7 +379,7 @@ var _ = Describe("Externalbuilders", func() {
 
 		It("runs the command, directs stderr to the logger, and includes the command name", func() {
 			cmd := exec.Command("/bin/sh", "-c", `echo stdout && echo stderr >&2`)
-			err := externalbuilders.RunCommand(logger, cmd)
+			err := externalbuilder.RunCommand(logger, cmd)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(buf).To(gbytes.Say("stderr\t" + `{"command": "sh"}` + "\n"))
 		})
@@ -387,7 +387,7 @@ var _ = Describe("Externalbuilders", func() {
 		Context("when start fails", func() {
 			It("returns the error", func() {
 				cmd := exec.Command("nonsense-program")
-				err := externalbuilders.RunCommand(logger, cmd)
+				err := externalbuilder.RunCommand(logger, cmd)
 				Expect(err).To(HaveOccurred())
 
 				execError, ok := err.(*exec.Error)
@@ -399,7 +399,7 @@ var _ = Describe("Externalbuilders", func() {
 		Context("when the process exits with a non-zero return", func() {
 			It("returns the exec.ExitErr for the command", func() {
 				cmd := exec.Command("false")
-				err := externalbuilders.RunCommand(logger, cmd)
+				err := externalbuilder.RunCommand(logger, cmd)
 				Expect(err).To(HaveOccurred())
 
 				exitErr, ok := err.(*exec.ExitError)
@@ -411,7 +411,7 @@ var _ = Describe("Externalbuilders", func() {
 
 	Describe("SanitizeCCIDPath", func() {
 		It("forbids the set of forbidden windows characters", func() {
-			sanitizedPath := externalbuilders.SanitizeCCIDPath(`<>:"/\|?*&`)
+			sanitizedPath := externalbuilder.SanitizeCCIDPath(`<>:"/\|?*&`)
 			Expect(sanitizedPath).To(Equal("----------"))
 		})
 	})

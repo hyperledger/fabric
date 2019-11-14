@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package externalbuilders_test
+package externalbuilder_test
 
 import (
 	"os/exec"
@@ -17,13 +17,13 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 )
 
 var _ = Describe("Instance", func() {
 	var (
 		logger   *flogging.FabricLogger
-		instance *externalbuilders.Instance
+		instance *externalbuilder.Instance
 	)
 
 	BeforeEach(func() {
@@ -31,9 +31,9 @@ var _ = Describe("Instance", func() {
 		core := zapcore.NewCore(enc, zapcore.AddSync(GinkgoWriter), zap.NewAtomicLevel())
 		logger = flogging.NewFabricLogger(zap.New(core).Named("logger"))
 
-		instance = &externalbuilders.Instance{
+		instance = &externalbuilder.Instance{
 			PackageID: "test-ccid",
-			Builder: &externalbuilders.Builder{
+			Builder: &externalbuilder.Builder{
 				Location: "testdata/goodbuilder",
 				Logger:   logger,
 			},
@@ -62,7 +62,7 @@ var _ = Describe("Instance", func() {
 	Describe("Stop", func() {
 		It("terminates the process", func() {
 			cmd := exec.Command("sleep", "90")
-			sess, err := externalbuilders.Start(logger, cmd)
+			sess, err := externalbuilder.Start(logger, cmd)
 			Expect(err).NotTo(HaveOccurred())
 			instance.Session = sess
 			instance.TermTimeout = time.Minute
@@ -79,7 +79,7 @@ var _ = Describe("Instance", func() {
 		Context("when the process doesn't respond to SIGTERM within TermTimeout", func() {
 			It("kills the process with malice", func() {
 				cmd := exec.Command("testdata/ignoreterm.sh")
-				sess, err := externalbuilders.Start(logger, cmd)
+				sess, err := externalbuilder.Start(logger, cmd)
 				Expect(err).NotTo(HaveOccurred())
 
 				instance.Session = sess

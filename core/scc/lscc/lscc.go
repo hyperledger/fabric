@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -162,7 +162,7 @@ type SCC struct {
 
 	ChaincodeBuilder ChaincodeBuilder
 
-	EbMetadataProvider *externalbuilders.MetadataProvider
+	EbMetadataProvider *externalbuilder.MetadataProvider
 
 	// BCCSP instance
 	BCCSP bccsp.BCCSP

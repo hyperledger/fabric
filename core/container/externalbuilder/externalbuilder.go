@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package externalbuilders
+package externalbuilder
 
 import (
 	"encoding/json"
@@ -26,7 +26,7 @@ import (
 
 var (
 	DefaultEnvWhitelist = []string{"LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"}
-	logger              = flogging.MustGetLogger("chaincode.externalbuilders")
+	logger              = flogging.MustGetLogger("chaincode.externalbuilder")
 )
 
 const MetadataFile = "metadata.json"

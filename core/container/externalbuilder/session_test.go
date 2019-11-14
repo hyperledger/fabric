@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package externalbuilders_test
+package externalbuilder_test
 
 import (
 	"io"
@@ -12,7 +12,7 @@ import (
 	"syscall"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -36,7 +36,7 @@ var _ = Describe("Session", func() {
 
 	It("starts commands and returns a session handle to wait on", func() {
 		cmd := exec.Command("true")
-		sess, err := externalbuilders.Start(logger, cmd)
+		sess, err := externalbuilder.Start(logger, cmd)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sess).NotTo(BeNil())
 
@@ -46,7 +46,7 @@ var _ = Describe("Session", func() {
 
 	It("captures stderr to the provided logger", func() {
 		cmd := exec.Command("sh", "-c", "echo 'this is a message to stderr' >&2")
-		sess, err := externalbuilders.Start(logger, cmd)
+		sess, err := externalbuilder.Start(logger, cmd)
 		Expect(err).NotTo(HaveOccurred())
 		err = sess.Wait()
 		Expect(err).NotTo(HaveOccurred())
@@ -60,7 +60,7 @@ var _ = Describe("Session", func() {
 		Expect(err).NotTo(HaveOccurred())
 		defer stdin.Close()
 
-		sess, err := externalbuilders.Start(logger, cmd)
+		sess, err := externalbuilder.Start(logger, cmd)
 		Expect(err).NotTo(HaveOccurred())
 
 		exitCh := make(chan error)
@@ -74,7 +74,7 @@ var _ = Describe("Session", func() {
 	When("start fails", func() {
 		It("returns an error", func() {
 			cmd := exec.Command("./this-is-not-a-command")
-			_, err := externalbuilders.Start(logger, cmd)
+			_, err := externalbuilder.Start(logger, cmd)
 			Expect(err).To(MatchError("fork/exec ./this-is-not-a-command: no such file or directory"))
 		})
 	})
@@ -82,7 +82,7 @@ var _ = Describe("Session", func() {
 	When("the command fails", func() {
 		It("returns the exit error from the command", func() {
 			cmd := exec.Command("false")
-			sess, err := externalbuilders.Start(logger, cmd)
+			sess, err := externalbuilder.Start(logger, cmd)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = sess.Wait()
