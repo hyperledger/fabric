@@ -223,7 +223,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 	}
 
 	if r.systemChannelID == "" {
-		logger.Info("registrar initializing with no system channel")
+		logger.Warning("registrar initializing without a system channel")
 	}
 }
 

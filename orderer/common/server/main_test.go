@@ -383,7 +383,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 
 	signer := &server_mocks.SignerSerializer{}
 
-	t.Run("registrar with system channel", func(t *testing.T) {
+	t.Run("registrar with a system channel", func(t *testing.T) {
 		lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
 		assert.NoError(t, err)
 		bootBlock := file.New(genesisFile).GenesisBlock()
@@ -405,7 +405,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 		assert.Equal(t, "testchannelid", registrar.SystemChannelID())
 	})
 
-	t.Run("registrar with no system channel", func(t *testing.T) {
+	t.Run("registrar without a system channel", func(t *testing.T) {
 		conf.General.GenesisMethod = "none"
 		conf.General.GenesisFile = ""
 		lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
