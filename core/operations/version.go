@@ -10,11 +10,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/hyperledger/fabric/common/flogging"
 )
 
 type VersionInfoHandler struct {
+	Logger      Logger
+	VersionInfo *VersionInfo
+}
+
+type VersionInfo struct {
 	CommitSHA string `json:"CommitSHA,omitempty"`
 	Version   string `json:"Version,omitempty"`
 }
@@ -22,10 +25,10 @@ type VersionInfoHandler struct {
 func (m *VersionInfoHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case http.MethodGet:
-		m.sendResponse(resp, http.StatusOK, m)
+		m.SendResponse(resp, http.StatusOK, m.VersionInfo)
 	default:
 		err := fmt.Errorf("invalid request method: %s", req.Method)
-		m.sendResponse(resp, http.StatusBadRequest, err)
+		m.SendResponse(resp, http.StatusBadRequest, err)
 	}
 }
 
@@ -33,14 +36,13 @@ type errorResponse struct {
 	Error string `json:"Error"`
 }
 
-func (m *VersionInfoHandler) sendResponse(resp http.ResponseWriter, code int, payload interface{}) {
+func (m *VersionInfoHandler) SendResponse(resp http.ResponseWriter, code int, payload interface{}) {
 	if err, ok := payload.(error); ok {
 		payload = &errorResponse{Error: err.Error()}
 	}
 	js, err := json.Marshal(payload)
 	if err != nil {
-		logger := flogging.MustGetLogger("operations.runner")
-		logger.Errorw("failed to encode payload", "error", err)
+		m.Logger.Errorf("failed to encode payload: %s", err)
 		resp.WriteHeader(http.StatusInternalServerError)
 	} else {
 		resp.WriteHeader(code)

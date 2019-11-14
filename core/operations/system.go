@@ -33,6 +33,7 @@ import (
 //go:generate counterfeiter -o fakes/logger.go -fake-name Logger . Logger
 
 type Logger interface {
+	Errorf(template string, args ...interface{})
 	Warn(args ...interface{})
 	Warnf(template string, args ...interface{})
 }
@@ -204,11 +205,14 @@ func (s *System) initializeHealthCheckHandler() {
 }
 
 func (s *System) initializeVersionInfoHandler() {
-	versionInfo := &VersionInfoHandler{
-		CommitSHA: metadata.CommitSHA,
-		Version:   metadata.Version,
+	versionInfoHandler := &VersionInfoHandler{
+		Logger: flogging.MustGetLogger("operations.runner"),
+		VersionInfo: &VersionInfo{
+			CommitSHA: metadata.CommitSHA,
+			Version:   metadata.Version,
+		},
 	}
-	s.mux.Handle("/version", s.handlerChain(versionInfo, false))
+	s.mux.Handle("/version", s.handlerChain(versionInfoHandler, false))
 }
 
 func (s *System) startMetricsTickers() error {

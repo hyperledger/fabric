@@ -8,6 +8,12 @@ import (
 )
 
 type Logger struct {
+	ErrorfStub        func(string, ...interface{})
+	errorfMutex       sync.RWMutex
+	errorfArgsForCall []struct {
+		arg1 string
+		arg2 []interface{}
+	}
 	WarnStub        func(...interface{})
 	warnMutex       sync.RWMutex
 	warnArgsForCall []struct {
@@ -21,6 +27,38 @@ type Logger struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Logger) Errorf(arg1 string, arg2 ...interface{}) {
+	fake.errorfMutex.Lock()
+	fake.errorfArgsForCall = append(fake.errorfArgsForCall, struct {
+		arg1 string
+		arg2 []interface{}
+	}{arg1, arg2})
+	fake.recordInvocation("Errorf", []interface{}{arg1, arg2})
+	fake.errorfMutex.Unlock()
+	if fake.ErrorfStub != nil {
+		fake.ErrorfStub(arg1, arg2...)
+	}
+}
+
+func (fake *Logger) ErrorfCallCount() int {
+	fake.errorfMutex.RLock()
+	defer fake.errorfMutex.RUnlock()
+	return len(fake.errorfArgsForCall)
+}
+
+func (fake *Logger) ErrorfCalls(stub func(string, ...interface{})) {
+	fake.errorfMutex.Lock()
+	defer fake.errorfMutex.Unlock()
+	fake.ErrorfStub = stub
+}
+
+func (fake *Logger) ErrorfArgsForCall(i int) (string, []interface{}) {
+	fake.errorfMutex.RLock()
+	defer fake.errorfMutex.RUnlock()
+	argsForCall := fake.errorfArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Logger) Warn(arg1 ...interface{}) {
@@ -89,6 +127,8 @@ func (fake *Logger) WarnfArgsForCall(i int) (string, []interface{}) {
 func (fake *Logger) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.errorfMutex.RLock()
+	defer fake.errorfMutex.RUnlock()
 	fake.warnMutex.RLock()
 	defer fake.warnMutex.RUnlock()
 	fake.warnfMutex.RLock()
