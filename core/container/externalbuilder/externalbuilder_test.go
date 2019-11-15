@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -131,7 +129,9 @@ var _ = Describe("externalbuilder", func() {
 
 			Context("when no builder can be found", func() {
 				BeforeEach(func() {
-					detector.Builders = nil
+					detector.Builders = externalbuilder.CreateBuilders([]peer.ExternalBuilder{
+						{Path: "bad1", Name: "bad1"},
+					})
 				})
 
 				It("returns a nil instance", func() {
@@ -157,7 +157,7 @@ var _ = Describe("externalbuilder", func() {
 
 				It("wraps and returns the error", func() {
 					_, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError("could not create dir 'path/to/nowhere/fake-package-id' to persist build ouput: mkdir path/to/nowhere/fake-package-id: no such file or directory"))
+					Expect(err).To(MatchError("could not create dir 'path/to/nowhere/fake-package-id' to persist build output: mkdir path/to/nowhere/fake-package-id: no such file or directory"))
 				})
 			})
 		})
@@ -360,51 +360,6 @@ var _ = Describe("externalbuilder", func() {
 				Expect(err).NotTo(HaveOccurred())
 				env := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
 				Expect(env).To(ConsistOf(expectedEnv))
-			})
-		})
-	})
-
-	Describe("RunCommand", func() {
-		var (
-			logger *flogging.FabricLogger
-			buf    *gbytes.Buffer
-		)
-
-		BeforeEach(func() {
-			buf = gbytes.NewBuffer()
-			enc := zapcore.NewConsoleEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
-			core := zapcore.NewCore(enc, zapcore.AddSync(buf), zap.NewAtomicLevel())
-			logger = flogging.NewFabricLogger(zap.New(core).Named("logger"))
-		})
-
-		It("runs the command, directs stderr to the logger, and includes the command name", func() {
-			cmd := exec.Command("/bin/sh", "-c", `echo stdout && echo stderr >&2`)
-			err := externalbuilder.RunCommand(logger, cmd)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(buf).To(gbytes.Say("stderr\t" + `{"command": "sh"}` + "\n"))
-		})
-
-		Context("when start fails", func() {
-			It("returns the error", func() {
-				cmd := exec.Command("nonsense-program")
-				err := externalbuilder.RunCommand(logger, cmd)
-				Expect(err).To(HaveOccurred())
-
-				execError, ok := err.(*exec.Error)
-				Expect(ok).To(BeTrue())
-				Expect(execError.Name).To(Equal("nonsense-program"))
-			})
-		})
-
-		Context("when the process exits with a non-zero return", func() {
-			It("returns the exec.ExitErr for the command", func() {
-				cmd := exec.Command("false")
-				err := externalbuilder.RunCommand(logger, cmd)
-				Expect(err).To(HaveOccurred())
-
-				exitErr, ok := err.(*exec.ExitError)
-				Expect(ok).To(BeTrue())
-				Expect(exitErr.ExitCode()).To(Equal(1))
 			})
 		})
 	})
