@@ -609,7 +609,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Broadcasting envelope to testchannel")
 			env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
-			resp, err := Broadcast(network, o1, env)
+			resp, err := nwo.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -643,12 +643,12 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Ensuring orderer4 doesn't serve testchannel2 and testchannel3")
 			env = CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
-			resp, err = Broadcast(network, o4, env)
+			resp, err = nwo.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 
 			env = CreateBroadcastEnvelope(network, peer, "testchannel3", []byte("hello"))
-			resp, err = Broadcast(network, o4, env)
+			resp, err = nwo.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 
@@ -676,7 +676,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Submitting a transaction through orderer4")
 			env = CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
-			resp, err = Broadcast(network, o4, env)
+			resp, err = nwo.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -940,7 +940,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{orderers[firstEvictedNode]}, peer, network)
 
 			env := CreateBroadcastEnvelope(network, orderers[secondEvictedNode], network.SystemChannel.Name, []byte("foo"))
-			resp, err := Broadcast(network, orderers[surviver], env)
+			resp, err := nwo.Broadcast(network, orderers[surviver], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 		})
@@ -1165,7 +1165,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			env := CreateBroadcastEnvelope(network, orderers[4], network.SystemChannel.Name, []byte("hello"))
-			resp, err := Broadcast(network, orderers[4], env)
+			resp, err := nwo.Broadcast(network, orderers[4], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 			blockSeq++
