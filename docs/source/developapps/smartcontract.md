@@ -98,7 +98,7 @@ default contract class is useful in some smart contracts which have multiple con
 If you are using a TypeScript implementation, there are similar `@Contract(...)` annotations that fulfill the same purpose as in Java.
 
 For more information on the available annotations, consult the available API documentation:
-* [API documentation for Java smart contracts](https://fabric-chaincode-java.github.io/)
+* [API documentation for Java smart contracts](https://hyperledger.github.io/fabric-chaincode-java/)
 * [API documentation for Node.js smart contracts](https://fabric-shim.github.io/)
 
 These classes, annotations, and the `Context` class, were brought into scope earlier:
