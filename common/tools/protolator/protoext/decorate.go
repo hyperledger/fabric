@@ -38,6 +38,8 @@ func Decorate(msg proto.Message) proto.Message {
 		return &commonext.Envelope{Envelope: m}
 	case *common.Header:
 		return &commonext.Header{Header: m}
+	case *common.ChannelHeader:
+		return &commonext.ChannelHeader{ChannelHeader: m}
 	case *common.SignatureHeader:
 		return &commonext.SignatureHeader{SignatureHeader: m}
 	case *common.Payload:

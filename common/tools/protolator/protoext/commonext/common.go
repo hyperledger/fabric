@@ -42,8 +42,6 @@ func (p *Payload) VariablyOpaqueFields() []string {
 	return []string{"data"}
 }
 
-var PayloadDataMap = map[int32]proto.Message{}
-
 func (p *Payload) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
 	if name != p.VariablyOpaqueFields()[0] {
 		return nil, fmt.Errorf("not a marshaled field: %s", name)
@@ -70,6 +68,29 @@ func (p *Payload) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
 		return &peer.Transaction{}, nil
 	default:
 		return nil, fmt.Errorf("decoding type %v is unimplemented", ch.Type)
+	}
+}
+
+type ChannelHeader struct{ *common.ChannelHeader }
+
+func (ch *ChannelHeader) Underlying() proto.Message {
+	return ch.ChannelHeader
+}
+
+func (ch *ChannelHeader) VariablyOpaqueFields() []string {
+	return []string{"extension"}
+}
+
+func (ch *ChannelHeader) VariablyOpaqueFieldProto(name string) (proto.Message, error) {
+	if name != "extension" {
+		return nil, fmt.Errorf("not an opaque field")
+	}
+
+	switch ch.Type {
+	case int32(common.HeaderType_ENDORSER_TRANSACTION):
+		return &peer.ChaincodeHeaderExtension{}, nil
+	default:
+		return nil, fmt.Errorf("channel header extension only valid for endorser transactions")
 	}
 }
 
