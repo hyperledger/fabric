@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -358,16 +359,14 @@ func serve(args []string) error {
 		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
 	}
 
-	packageProvider := &persistence.PackageProvider{
-		LegacyPP: &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()},
-	}
+	ccInfoFSImpl := &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()}
 
 	// legacyMetadataManager collects metadata information from the legacy
 	// lifecycle (lscc). This is expected to disappear with FAB-15061.
 	legacyMetadataManager, err := cclifecycle.NewMetadataManager(
 		cclifecycle.EnumerateFunc(
 			func() ([]ccdef.InstalledChaincode, error) {
-				return packageProvider.ListInstalledChaincodesLegacy()
+				return ccInfoFSImpl.ListInstalledChaincodes(ccInfoFSImpl.GetChaincodeInstallPath(), ioutil.ReadDir, ccprovider.LoadPackage)
 			},
 		),
 	)
