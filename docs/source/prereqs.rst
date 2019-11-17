@@ -6,6 +6,12 @@ you have all the prerequisites below installed on the platform(s)
 on which you'll be developing blockchain applications and/or operating
 Hyperledger Fabric.
 
+Install Git
+-----------
+Download the latest version of `git
+<https://git-scm.com/downloads>`_ if it is not already installed, 
+or if you have problems running the curl commands.
+
 Install cURL
 ------------
 
