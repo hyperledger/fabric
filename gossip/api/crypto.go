@@ -7,9 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package api
 
 import (
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/gossip/common"
 	"google.golang.org/grpc"
 )
@@ -107,6 +114,42 @@ func (pis PeerIdentitySet) Filter(filter PeerIdentityFilter) PeerIdentitySet {
 
 // PeerIdentityType is the peer's certificate
 type PeerIdentityType []byte
+
+// String returns a string representation of this PeerIdentityType
+func (pit PeerIdentityType) String() string {
+	base64Representation := base64.StdEncoding.EncodeToString(pit)
+	sID := &msp.SerializedIdentity{}
+	err := proto.Unmarshal(pit, sID)
+	if err != nil {
+		return fmt.Sprintf("non SerializedIdentity: %s", base64Representation)
+	}
+
+	bl, _ := pem.Decode(sID.IdBytes)
+	if bl == nil {
+		return fmt.Sprintf("non PEM encoded identity: %s", base64Representation)
+	}
+
+	cert, _ := x509.ParseCertificate(bl.Bytes)
+	if cert == nil {
+		return fmt.Sprintf("non x509 identity: %s", base64Representation)
+	}
+	m := make(map[string]interface{})
+	m["MSP"] = sID.Mspid
+	s := cert.Subject
+	m["CN"] = s.CommonName
+	m["OU"] = s.OrganizationalUnit
+	m["L-ST-C"] = fmt.Sprintf("%s-%s-%s", s.Locality, s.StreetAddress, s.Country)
+	i := cert.Issuer
+	m["Issuer-CN"] = i.CommonName
+	m["Issuer-OU"] = i.OrganizationalUnit
+	m["Issuer-L-ST-C"] = fmt.Sprintf("%s-%s-%s", i.Locality, i.StreetAddress, i.Country)
+
+	rawJSON, err := json.Marshal(m)
+	if err != nil {
+		return base64Representation
+	}
+	return string(rawJSON)
+}
 
 // PeerSuspector returns whether a peer with a given identity is suspected
 // as being revoked, or its CA is revoked
