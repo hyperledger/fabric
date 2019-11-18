@@ -8,8 +8,11 @@ package cluster
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -344,6 +347,47 @@ func VerifyBlockSignature(block *common.Block, verifier BlockVerifier, config *c
 type EndpointCriteria struct {
 	Endpoint   string   // Endpoint of the form host:port
 	TLSRootCAs [][]byte // PEM encoded TLS root CA certificates
+}
+
+// String returns a string representation of this EndpointCriteria
+func (ep EndpointCriteria) String() string {
+	var formattedCAs []interface{}
+	for _, rawCAFile := range ep.TLSRootCAs {
+		var bl *pem.Block
+		pemContent := rawCAFile
+		for {
+			bl, pemContent = pem.Decode(pemContent)
+			if bl == nil {
+				break
+			}
+			cert, err := x509.ParseCertificate(bl.Bytes)
+			if err != nil {
+				break
+			}
+
+			issuedBy := cert.Issuer.String()
+			if cert.Issuer.String() == cert.Subject.String() {
+				issuedBy = "self"
+			}
+
+			info := make(map[string]interface{})
+			info["Expired"] = time.Now().After(cert.NotAfter)
+			info["Subject"] = cert.Subject.String()
+			info["Issuer"] = issuedBy
+			formattedCAs = append(formattedCAs, info)
+		}
+	}
+
+	formattedEndpointCriteria := make(map[string]interface{})
+	formattedEndpointCriteria["Endpoint"] = ep.Endpoint
+	formattedEndpointCriteria["CAs"] = formattedCAs
+
+	rawJSON, err := json.Marshal(formattedEndpointCriteria)
+	if err != nil {
+		return fmt.Sprintf("{\"Endpoint\": \"%s\"}", ep.Endpoint)
+	}
+
+	return string(rawJSON)
 }
 
 // EndpointconfigFromConfigBlock retrieves TLS CA certificates and endpoints
