@@ -42,6 +42,26 @@ command from a terminal prompt:
 
   docker --version
 
+.. note:: The following applies to linux systems running systemd.
+
+Make sure the docker daemon is running.
+
+.. code:: bash
+
+  sudo systemctl start docker
+
+Optional: If you want the docker daemon to start when the system starts, use the following:
+
+.. code:: bash
+
+  sudo systemctl enable docker
+
+Add your user to the docker group.
+
+.. code:: bash
+
+  sudo usermod -a -G docker <username>
+
 .. note:: Installing Docker for Mac or Windows, or Docker Toolbox will also
           install Docker Compose. If you already had Docker installed, you
           should check that you have Docker Compose version 1.14.0 or greater
