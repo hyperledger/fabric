@@ -7,89 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package raft
 
 import (
-	"context"
-	"io/ioutil"
-	"path"
-	"time"
-
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/cmd/common/signer"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 )
-
-// Broadcast sends given env to Broadcast API of specified orderer.
-func Broadcast(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*orderer.BroadcastResponse, error) {
-	gRPCclient, err := CreateGRPCClient(n, o)
-	if err != nil {
-		return nil, err
-	}
-
-	addr := n.OrdererAddress(o, nwo.ListenPort)
-	conn, err := gRPCclient.NewConnection(addr)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	broadcaster, err := orderer.NewAtomicBroadcastClient(conn).Broadcast(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	err = broadcaster.Send(env)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := broadcaster.Recv()
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
-}
-
-// Deliver sends given env to Deliver API of specified orderer.
-func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Block, error) {
-	gRPCclient, err := CreateGRPCClient(n, o)
-	if err != nil {
-		return nil, err
-	}
-
-	addr := n.OrdererAddress(o, nwo.ListenPort)
-	conn, err := gRPCclient.NewConnection(addr)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	deliverer, err := orderer.NewAtomicBroadcastClient(conn).Deliver(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	err = deliverer.Send(env)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := deliverer.Recv()
-	if err != nil {
-		return nil, err
-	}
-
-	blk := resp.GetBlock()
-	if blk == nil {
-		return nil, errors.Errorf("block not found")
-	}
-
-	return blk, nil
-}
 
 func FetchBlock(n *nwo.Network, o *nwo.Orderer, seq uint64, channel string) *common.Block {
 	denv := CreateDeliverEnvelope(n, o, seq, channel)
@@ -98,36 +22,11 @@ func FetchBlock(n *nwo.Network, o *nwo.Orderer, seq uint64, channel string) *com
 	var blk *common.Block
 	Eventually(func() error {
 		var err error
-		blk, err = Deliver(n, o, denv)
+		blk, err = nwo.Deliver(n, o, denv)
 		return err
 	}, n.EventuallyTimeout).ShouldNot(HaveOccurred())
 
 	return blk
-}
-
-func CreateGRPCClient(n *nwo.Network, o *nwo.Orderer) (*comm.GRPCClient, error) {
-	config := comm.ClientConfig{}
-	config.Timeout = 5 * time.Second
-
-	secOpts := comm.SecureOptions{
-		UseTLS:            true,
-		RequireClientCert: false,
-	}
-
-	caPEM, err := ioutil.ReadFile(path.Join(n.OrdererLocalTLSDir(o), "ca.crt"))
-	if err != nil {
-		return nil, err
-	}
-
-	secOpts.ServerRootCAs = [][]byte{caPEM}
-	config.SecOpts = secOpts
-
-	grpcClient, err := comm.NewGRPCClient(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return grpcClient, nil
 }
 
 func CreateBroadcastEnvelope(n *nwo.Network, signer interface{}, channel string, data []byte) *common.Envelope {
