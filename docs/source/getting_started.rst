@@ -27,7 +27,7 @@ in various programming languages. Smart contract SDKs are available for Go, Node
 
   * `Go SDK documentation <https://github.com/hyperledger/fabric-chaincode-go>`__.
   * `Node.js SDK <https://github.com/hyperledger/fabric-chaincode-node>`__ and `Node.js SDK documentation <https://fabric-shim.github.io/>`__.
-  * `Java SDK <https://github.com/hyperledger/fabric-chaincode-java>`__ and `Java SDK documentation <https://fabric-chaincode-java.github.io/>`__.
+  * `Java SDK <https://github.com/hyperledger/fabric-chaincode-java>`__ and `Java SDK documentation <https://hyperledger.github.io/fabric-chaincode-java/>`__.
 
 Currently, Node.js and Java support the new smart contract programming model delivered in
 Hyperledger Fabric v1.4. Support for Go is planned to be delivered in a later release.
