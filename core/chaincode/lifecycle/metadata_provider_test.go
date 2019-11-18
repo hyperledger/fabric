@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/pkg/errors"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
@@ -40,8 +39,8 @@ var _ = Describe("MetadataProvider", func() {
 					Version: "cc-version",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{
-					ValidationParameter: protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
-						Type: &peer.ApplicationPolicy_SignaturePolicy{
+					ValidationParameter: protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
+						Type: &cb.ApplicationPolicy_SignaturePolicy{
 							SignaturePolicy: cauthdsl.AcceptAllPolicy,
 						},
 					}),
@@ -115,8 +114,8 @@ var _ = Describe("MetadataProvider", func() {
 	Context("when the policy is of the channel reference type", func() {
 		BeforeEach(func() {
 			ccInfo.Definition.ValidationInfo.ValidationParameter = protoutil.MarshalOrPanic(
-				&peer.ApplicationPolicy{
-					Type: &peer.ApplicationPolicy_ChannelConfigPolicyReference{
+				&cb.ApplicationPolicy{
+					Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
 						ChannelConfigPolicyReference: "barf",
 					},
 				})

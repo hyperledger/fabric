@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/valinforetriever"
@@ -144,8 +143,8 @@ func TestValidationInfoRetrieverFromLegacyWithConversion(t *testing.T) {
 	assert.NoError(t, unexpectedErr)
 	assert.NoError(t, validationErr)
 	assert.Equal(t, "vscc", plugin)
-	assert.Equal(t, protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
-		Type: &peer.ApplicationPolicy_SignaturePolicy{
+	assert.Equal(t, protoutil.MarshalOrPanic(&common.ApplicationPolicy{
+		Type: &common.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: &common.SignaturePolicyEnvelope{Version: 1},
 		},
 	}), args)

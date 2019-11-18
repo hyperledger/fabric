@@ -9,7 +9,6 @@ package policy
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -146,16 +145,16 @@ func (a *ApplicationPolicyEvaluator) evaluateChannelConfigPolicyReference(channe
 }
 
 func (a *ApplicationPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*protoutil.SignedData) error {
-	p := &peer.ApplicationPolicy{}
+	p := &common.ApplicationPolicy{}
 	err := proto.Unmarshal(policyBytes, p)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal ApplicationPolicy bytes")
 	}
 
 	switch policy := p.Type.(type) {
-	case *peer.ApplicationPolicy_SignaturePolicy:
+	case *common.ApplicationPolicy_SignaturePolicy:
 		return a.evaluateSignaturePolicy(policy.SignaturePolicy, signatureSet)
-	case *peer.ApplicationPolicy_ChannelConfigPolicyReference:
+	case *common.ApplicationPolicy_ChannelConfigPolicyReference:
 		return a.evaluateChannelConfigPolicyReference(policy.ChannelConfigPolicyReference, signatureSet)
 	default:
 		return errors.Errorf("unsupported policy type %T", policy)
