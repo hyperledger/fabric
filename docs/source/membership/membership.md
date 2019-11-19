@@ -16,7 +16,7 @@ network.
 ![MSP1a](./membership.msp.diagram.png)
 
 *Identities are similar to your credit cards that are used to prove
-you can pay. The MSP is similar to the list of accept credit cards.*
+you can pay. The MSP is similar to the list of accepted credit cards.*
 
 Or consider a consortium of banks that each operate peer
 nodes that both endorse and validate transactions. They could also optionally
@@ -74,7 +74,7 @@ In addition, an MSP can allow for the identification of a list of identities tha
 have been revoked --- as discussed in the [Identity](../identity/identity.html)
 documentation --- but we will talk about how that process also extends to an MSP.
 
-### What role does an organization play in an MSP?
+## What role does an organization play in an MSP?
 
 An **organization** is a logical managed group of members. This can be
 something as big as a multinational corporation or a small as a flower
@@ -102,7 +102,7 @@ the list of members of an organization. In the second configuration, different M
 are used to represent different organizational groups with national, international,
 and governmental affiliation.*
 
-#### Organizational Units (OUs) and MSPs
+### Organizational Units (OUs) and MSPs
 
 An organization can also be divided into multiple **organizational units**, each
 of which has a certain set of responsibilities. Think of an OU as a department
@@ -123,7 +123,7 @@ Specifying OUs is optional. If no OUs are listed, all the identities that are pa
 an MSP --- as identified by the Root CA and Intermediate CA folders --- will be considered
 members of the organization.
 
-#### Roles and MSPs
+### Roles and MSPs
 
 Inside the X.509 certificate is a `ROLE` attribute, (identified as `hf.Type`),
 which refers to an actor's role within its organization, (specifying, for example, that
@@ -182,10 +182,9 @@ We'll also see how to configure MSPs to achieve this later.
 
 ## MSP domains
 
-MSPs occur in three domains in a blockchain network:
+MSPs occur in two domains in a blockchain network:
 
 * Locally on an actor's node (**local MSP**)
-* In a member's organizations (**organization MSP**)
 * In channel configuration (**channel MSP**)
 
 #### Local MSPs
@@ -206,22 +205,6 @@ allows for authenticating member messages outside the context of a
 channel and to define the permissions over a particular node (who has
 the ability to install chaincode on a peer, for example).
 
-
-#### Organization MSPs
-
-**Every organization participating in a channel must have an MSP
-defined for it**. In fact, it is recommended that there is a one-to-one mapping
-between organizations and MSPs. If all network members are in part of
-a single organization or MSP, data privacy is sacrificed. Multiple
-organization facilitate privacy and if more granularity is needed within an
-organization, the organization can be divided in organization units (OUs).
-More on this later.
-
-**The organization MSP identifies the organization admins**. The org
-admin (identified in the MSP) has the right to act on behalf of the org.
-But the organization itself can have a limited set of permissions outlined in
-the channel MSP.
-
 #### Channel MSPs
 
 In contrast, **channel MSPs define administrative and participatory rights at the
@@ -230,15 +213,37 @@ MSPs, and will therefore be able to correctly authenticate the channel participa
 This means that if an organization wishes to join the channel, an MSP incorporating
 the chain of trust for the organization's members would need to be included in the
 channel configuration. Otherwise transactions originating from this organization's
-identities will be rejected.
+identities will be rejected. Whereas local MSPs are represented as a folder
+structure on the file system, channel MSPs are described in a channel
+config.json file.
+
+![MSP1c](./ChannelMSP.png)
+
+*Snippet from a channel config.json file that includes two organization
+MSPs.*
 
 **Channel MSPs identify who has permissions at a channel level**.
 
 The channel MSP defines the _relationship_ between the identities of
 channel members (which themselves are MSPs) and the enforcement of
-channel level policies.
+channel level policies. Channel MSPs contain the MSPs of the organizations of the
+channel members.
 
-The key difference here between local, organization, and channel MSPs
+**Every organization participating in a channel must have an MSP
+defined for it**. In fact, it is recommended that there is a one-to-one mapping
+between organizations and MSPs. If all network members are in part of
+a single organization or MSP, data privacy is sacrificed. Multiple
+organizations facilitate privacy by segregating ledger data to only channel
+members. If more granularity is required within an
+organization, the organization can be divided into organization units (OUs).
+More on this later.
+
+**The organization MSP identifies the organization admins**. The org
+admin (identified in the MSP) has the right to act on behalf of the org.
+But the organization itself can have a limited set of permissions outlined in
+the channel MSP.
+
+The key difference here between local and channel MSPs
 is not how they function -- both turn identities into roles -- but their **scope**.
 Each MSP lists roles and permissions at a particular level of administration.
 
@@ -266,8 +271,8 @@ identities from RCA2. Note that these are administration identities, reflecting
 who can administer these components. So while ORG1 administers the network,
 ORG2.MSP does exist in the network definition.*
 
- * **Network MSP:** The configuration of a network defines who are the
- members in the network, the consortium,  --- by defining the MSPs of
+ * **Network MSP:** The configuration of a network, in the system channel,
+ defines who are the members in the network, the consortium,  --- by defining the MSPs of
  the participant organizations --- as well as which of these members
  are authorized to perform administrative tasks (e.g., creating a channel).
  This MSP originates when the ordering service is created and is updated
@@ -293,7 +298,6 @@ ORG2.MSP does exist in the network definition.*
  * **Orderer MSP:** Like a peer MSP, an orderer local MSP is also defined on the file system
  of the node and only applies to that node. Like peer nodes, orderers are also owned by a single
  organization and therefore have a single MSP to list the actors or nodes it trusts.
-
 
 <a name="msp2img"></a>
 
@@ -350,10 +354,9 @@ A Local MSP folder contains the following sub-folders:
 
 ![MSP6](./membership.diagram.6.png)
 
-*The figure above shows the subfolders in an MSP on the file system*
+*The figure above shows the subfolders in a local MSP on the file system*
 
-
-* **admincerts (Deprecated from Fabric v1.4.4 and higher):** This folder
+* **admincerts (Deprecated from Fabric v1.4.3 and higher):** This folder
   contains a list of identities that define the actors who have the
   role of administrators for this organization. For the standard MSP type,
   there should be one or more X.509 certificates in this list.
