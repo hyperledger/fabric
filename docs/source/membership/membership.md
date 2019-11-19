@@ -294,7 +294,6 @@ ORG2.MSP does exist in the network definition.*
  of the node and only applies to that node. Like peer nodes, orderers are also owned by a single
  organization and therefore have a single MSP to list the actors or nodes it trusts.
 
-
 <a name="msp2img"></a>
 
 ![MSP2](./membership.diagram.4.png)
