@@ -1,0 +1,27 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:.rrr)
+trigger:
+- release-1.*
+pr: none
+
+variables:
+  GOPATH: $(Agent.BuildDirectory)/go
+  PATH: $(Agent.BuildDirectory)/go/bin:/usr/local/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+  GOVER: 1.12.12
+
+jobs:
+  - job: UnitTests
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: install_deps.yml
+      - checkout: self
+        path: 'go/src/github.com/hyperledger/fabric'
+        displayName: Checkout Fabric Code
+      - script: ./ci/scripts/setup_hsm.sh
+        displayName: Install SoftHSM
+      - script: make unit-test
+        displayName: Run Unit Tests
