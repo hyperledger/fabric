@@ -20,7 +20,7 @@ import (
 
 // Broadcast sends given env to Broadcast API of specified orderer.
 func Broadcast(n *Network, o *Orderer, env *common.Envelope) (*orderer.BroadcastResponse, error) {
-	gRPCclient, err := CreateGRPCClient(n, o)
+	gRPCclient, err := createOrdererGRPCClient(n, o)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func Broadcast(n *Network, o *Orderer, env *common.Envelope) (*orderer.Broadcast
 
 // Deliver sends given env to Deliver API of specified orderer.
 func Deliver(n *Network, o *Orderer, env *common.Envelope) (*common.Block, error) {
-	gRPCclient, err := CreateGRPCClient(n, o)
+	gRPCclient, err := createOrdererGRPCClient(n, o)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func Deliver(n *Network, o *Orderer, env *common.Envelope) (*common.Block, error
 	return blk, nil
 }
 
-func CreateGRPCClient(n *Network, o *Orderer) (*comm.GRPCClient, error) {
+func createOrdererGRPCClient(n *Network, o *Orderer) (*comm.GRPCClient, error) {
 	config := comm.ClientConfig{}
 	config.Timeout = 5 * time.Second
 
