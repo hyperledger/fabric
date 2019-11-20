@@ -42,8 +42,6 @@ type StateDBConfig struct {
 	// It is internally computed by the ledger component,
 	// so it is not in ledger.StateDBConfig and not exposed to other components.
 	LevelDBPath string
-	// Size of the stateDB cache.
-	CacheSizeMBs int
 }
 
 // CommonStorageDBProvider implements interface DBProvider
@@ -59,15 +57,14 @@ func NewCommonStorageDBProvider(
 	metricsProvider metrics.Provider,
 	healthCheckRegistry ledger.HealthCheckRegistry,
 	stateDBConf *StateDBConfig,
+	sysNamespaces []string,
 ) (DBProvider, error) {
+
 	var vdbProvider statedb.VersionedDBProvider
 	var err error
-	// TODO: system namespaces needed for the cache would be passed from kvLedger using
-	// the DeployedChaincodeProvider in FAB-13314
-	sysNamespaces := []string{"lscc", "_lifecycle"}
-	cache := statedb.NewCache(stateDBConf.CacheSizeMBs, sysNamespaces)
 
 	if stateDBConf != nil && stateDBConf.StateDatabase == couchDB {
+		cache := statedb.NewCache(stateDBConf.CouchDB.UserCacheSizeMBs, sysNamespaces)
 		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, cache); err != nil {
 			return nil, err
 		}
@@ -87,6 +84,7 @@ func NewCommonStorageDBProvider(
 	return dbProvider, nil
 }
 
+// RegisterHealthChecker implements function from interface DBProvider
 func (p *CommonStorageDBProvider) RegisterHealthChecker() error {
 	if healthChecker, ok := p.VersionedDBProvider.(healthz.HealthChecker); ok {
 		return p.HealthCheckRegistry.RegisterChecker("couchdb", healthChecker)

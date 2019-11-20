@@ -72,6 +72,7 @@ func ledgerConfig() *ledger.Config {
 			WarmIndexesAfterNBlocks: warmAfterNBlocks,
 			CreateGlobalChangesDB:   viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
 			RedoLogPath:             filepath.Join(rootFSPath, "couchdbRedoLogs"),
+			UserCacheSizeMBs:        viper.GetInt("ledger.state.couchDBConfig.cacheSize"),
 		}
 	}
 	return conf
