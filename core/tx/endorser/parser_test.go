@@ -44,7 +44,7 @@ var _ = Describe("Parser", func() {
 		})
 
 		It("returns an instance of EndorserTx", func() {
-			pe, err := endorsertx.NewEndorserTx(txenv)
+			pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pe).To(Equal(&endorsertx.EndorserTx{
 				Response: &peer.Response{
@@ -59,9 +59,13 @@ var _ = Describe("Parser", func() {
 						Signature: []byte("signature"),
 					},
 				},
-				ChID:    "my-channel",
-				Creator: []byte("creator"),
-				CCName:  "my-called-cc",
+				ChannelID:   "my-channel",
+				Creator:     []byte("creator"),
+				ChaincodeID: &peer.ChaincodeID{Name: "my-called-cc"},
+				Type:        0,
+				Version:     0,
+				Epoch:       0,
+				Nonce:       []byte("1234"),
 			}))
 		})
 	})
@@ -90,7 +94,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("nil payload data"))
 				Expect(pe).To(BeNil())
 			})
@@ -102,7 +106,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("error unmarshaling Transaction: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
@@ -116,7 +120,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("only one transaction action is supported, 2 were present"))
 				Expect(pe).To(BeNil())
 			})
@@ -130,7 +134,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("empty ChaincodeActionPayload"))
 				Expect(pe).To(BeNil())
 			})
@@ -144,7 +148,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("error unmarshaling ChaincodeActionPayload: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
@@ -167,7 +171,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("nil ChaincodeEndorsedAction"))
 				Expect(pe).To(BeNil())
 			})
@@ -179,7 +183,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("empty header extension"))
 				Expect(pe).To(BeNil())
 			})
@@ -191,7 +195,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("error unmarshaling ChaincodeHeaderExtension: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
@@ -203,7 +207,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("empty ProposalResponsePayload"))
 				Expect(pe).To(BeNil())
 			})
@@ -215,7 +219,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("error unmarshaling ProposalResponsePayload: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
@@ -227,7 +231,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("nil Extension"))
 				Expect(pe).To(BeNil())
 			})
@@ -239,7 +243,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("error unmarshaling ChaincodeAction: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
@@ -254,8 +258,8 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
-				Expect(err).To(MatchError("invalid Epoch in ChannelHeader. Expected 0, got [35]"))
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
+				Expect(err).To(MatchError("invalid epoch in ChannelHeader. Expected 0, got [35]"))
 				Expect(pe).To(BeNil())
 			})
 		})
@@ -269,7 +273,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("invalid version in ChannelHeader. Expected 0, got [35]"))
 				Expect(pe).To(BeNil())
 			})
@@ -283,7 +287,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("channel ID illegal, cannot be empty"))
 				Expect(pe).To(BeNil())
 			})
@@ -297,7 +301,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("'.foo' contains illegal characters"))
 				Expect(pe).To(BeNil())
 			})
@@ -311,7 +315,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("empty nonce"))
 				Expect(pe).To(BeNil())
 			})
@@ -325,7 +329,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("empty creator"))
 				Expect(pe).To(BeNil())
 			})
@@ -346,7 +350,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("nil ChaincodeId"))
 				Expect(pe).To(BeNil())
 			})
@@ -362,7 +366,7 @@ var _ = Describe("Parser", func() {
 			})
 
 			It("returns an error", func() {
-				pe, err := endorsertx.NewEndorserTx(txenv)
+				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
 				Expect(err).To(MatchError("empty chaincode name in chaincode id"))
 				Expect(pe).To(BeNil())
 			})
