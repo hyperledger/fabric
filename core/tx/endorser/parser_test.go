@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/configtx"
 	endorsertx "github.com/hyperledger/fabric/core/tx/endorser"
 	"github.com/hyperledger/fabric/pkg/tx"
 	txpkg "github.com/hyperledger/fabric/pkg/tx"
@@ -331,6 +332,34 @@ var _ = Describe("Parser", func() {
 			})
 		})
 
+		When("there is an empty channel name", func() {
+			BeforeEach(func() {
+				chHeader = &common.ChannelHeader{
+					ChannelId: "",
+				}
+			})
+
+			It("returns an error", func() {
+				pe, err := endorsertx.NewEndorserTx(txenv)
+				Expect(err).To(MatchError("channel ID illegal, cannot be empty"))
+				Expect(pe).To(BeNil())
+			})
+		})
+
+		When("there is an invalid channel name", func() {
+			BeforeEach(func() {
+				chHeader = &common.ChannelHeader{
+					ChannelId: ".foo",
+				}
+			})
+
+			It("returns an error", func() {
+				pe, err := endorsertx.NewEndorserTx(txenv)
+				Expect(err).To(MatchError("'.foo' contains illegal characters"))
+				Expect(pe).To(BeNil())
+			})
+		})
+
 		When("there is an empty nonce", func() {
 			BeforeEach(func() {
 				sigHeader = &common.SignatureHeader{
@@ -397,6 +426,54 @@ var _ = Describe("Parser", func() {
 				pe, err := endorsertx.NewEndorserTx(txenv)
 				Expect(err).To(MatchError("empty chaincode name in chaincode id"))
 				Expect(pe).To(BeNil())
+			})
+		})
+	})
+
+	Describe("Validation of the channel ID", func() {
+		Context("the used constants", func() {
+			It("ensures that are kept in sync", func() {
+				Expect(endorsertx.ChannelAllowedChars).To(Equal(configtx.ChannelAllowedChars))
+				Expect(endorsertx.MaxLength).To(Equal(configtx.MaxLength))
+			})
+		})
+
+		Context("the validation function", func() {
+			It("behaves as the one in the configtx package", func() {
+				err1 := endorsertx.ValidateChannelID(randomLowerAlphaString(endorsertx.MaxLength + 1))
+				err2 := configtx.ValidateChannelID(randomLowerAlphaString(endorsertx.MaxLength + 1))
+				Expect(err1).To(HaveOccurred())
+				Expect(err2).To(HaveOccurred())
+				Expect(err1.Error()).To(Equal(err2.Error()))
+
+				err1 = endorsertx.ValidateChannelID("foo_bar")
+				err2 = configtx.ValidateChannelID("foo_bar")
+				Expect(err1).To(HaveOccurred())
+				Expect(err2).To(HaveOccurred())
+				Expect(err1.Error()).To(Equal(err2.Error()))
+
+				err1 = endorsertx.ValidateChannelID("8foo")
+				err2 = configtx.ValidateChannelID("8foo")
+				Expect(err1).To(HaveOccurred())
+				Expect(err2).To(HaveOccurred())
+				Expect(err1.Error()).To(Equal(err2.Error()))
+
+				err1 = endorsertx.ValidateChannelID(".foo")
+				err2 = configtx.ValidateChannelID(".foo")
+				Expect(err1).To(HaveOccurred())
+				Expect(err2).To(HaveOccurred())
+				Expect(err1.Error()).To(Equal(err2.Error()))
+
+				err1 = endorsertx.ValidateChannelID("")
+				err2 = configtx.ValidateChannelID("")
+				Expect(err1).To(HaveOccurred())
+				Expect(err2).To(HaveOccurred())
+				Expect(err1.Error()).To(Equal(err2.Error()))
+
+				err1 = endorsertx.ValidateChannelID("f-oo.bar")
+				err2 = configtx.ValidateChannelID("f-oo.bar")
+				Expect(err1).NotTo(HaveOccurred())
+				Expect(err2).NotTo(HaveOccurred())
 			})
 		})
 	})

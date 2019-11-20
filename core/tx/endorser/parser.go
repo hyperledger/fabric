@@ -7,11 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package endorsertx
 
 import (
+	"regexp"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+
 	"github.com/hyperledger/fabric/pkg/tx"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+)
+
+var (
+	// ChannelAllowedChars tracks the permitted characters for a channel name
+	ChannelAllowedChars = "[a-z][a-z0-9.-]*"
+	// MaxLength tracks the maximum length of a channel name
+	MaxLength = 249
 )
 
 // EndorserTx represents a parsed common.Envelope protobuf
@@ -41,6 +51,10 @@ func validateHeaders(
 
 	if cHdr.Version != 0 {
 		return errors.Errorf("invalid version in ChannelHeader. Expected 0, got [%d]", cHdr.Version)
+	}
+
+	if err := ValidateChannelID(cHdr.ChannelId); err != nil {
+		return err
 	}
 
 	/********************************************/
@@ -166,4 +180,36 @@ func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 		Endorsements: ccActionPayload.Action.Endorsements,
 		CcID:         hdrExt.ChaincodeId.Name, // FIXME: we might have to get the ccid from the CIS
 	}, nil
+}
+
+// ValidateChannelID makes sure that proposed channel IDs comply with the
+// following restrictions:
+//      1. Contain only lower case ASCII alphanumerics, dots '.', and dashes '-'
+//      2. Are shorter than 250 characters.
+//      3. Start with a letter
+//
+// This is the intersection of the Kafka restrictions and CouchDB restrictions
+// with the following exception: '.' is converted to '_' in the CouchDB naming
+// This is to accommodate existing channel names with '.', especially in the
+// behave tests which rely on the dot notation for their sluggification.
+//
+// note: this function is a copy of the same in common/configtx/validator.go
+//
+func ValidateChannelID(channelID string) error {
+	re, _ := regexp.Compile(ChannelAllowedChars)
+	// Length
+	if len(channelID) <= 0 {
+		return errors.Errorf("channel ID illegal, cannot be empty")
+	}
+	if len(channelID) > MaxLength {
+		return errors.Errorf("channel ID illegal, cannot be longer than %d", MaxLength)
+	}
+
+	// Illegal characters
+	matched := re.FindString(channelID)
+	if len(matched) != len(channelID) {
+		return errors.Errorf("'%s' contains illegal characters", channelID)
+	}
+
+	return nil
 }
