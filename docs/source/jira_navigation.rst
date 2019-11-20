@@ -48,7 +48,7 @@ The meanings to these columns are as follows:
    defined in 2 week iterations), but are not currently in progress
 -  In progress – items currently being worked by someone in the
    community.
--  In Review – items waiting to be reviewed and merged in Gerrit
+-  In Review – items waiting to be reviewed and merged in GitHub
 -  Done – items merged and complete in the sprint.
 
 If you want to see all items in the backlog for a given feature set,
