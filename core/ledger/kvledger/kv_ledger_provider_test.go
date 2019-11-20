@@ -143,7 +143,7 @@ func TestNewProviderIdStoreFormatError(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 
-	testutil.CopyDir("tests/testdata/v11/sample_ledgers/ledgersData", conf.RootFSPath, true)
+	require.NoError(t, testutil.Unzip("tests/testdata/v11/sample_ledgers/ledgersData.zip", conf.RootFSPath, false))
 
 	// NewProvider fails because ledgerProvider (idStore) has old format
 	_, err := NewProvider(

@@ -8,11 +8,13 @@ package testutil
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"crypto/rand"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -105,6 +107,53 @@ func copyFile(srcpath, destpath string) error {
 	}
 	if err = destFile.Close(); err != nil {
 		return err
+	}
+	return nil
+}
+
+// Unzip will decompress the src zip file to the dest directory.
+// If createTopLevelDirInZip is true, it creates the top level dir when unzipped.
+// Otherwise, it trims off the top level dir when unzipped. For example, ledersData/historydb/abc will become historydb/abc.
+func Unzip(src string, dest string, createTopLevelDirInZip bool) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	// iterate all the dirs and files in the zip file
+	for _, file := range r.File {
+		filePath := file.Name
+		if !createTopLevelDirInZip {
+			// trim off the top level dir - for example, trim ledgersData/historydb/abc to historydb/abc
+			index := strings.Index(filePath, string(filepath.Separator))
+			filePath = filePath[index+1:]
+		}
+
+		fullPath := filepath.Join(dest, filePath)
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(fullPath, os.ModePerm)
+			continue
+		}
+		if err = os.MkdirAll(filepath.Dir(fullPath), os.ModePerm); err != nil {
+			return err
+		}
+		outFile, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(outFile, rc)
+
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

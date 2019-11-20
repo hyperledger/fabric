@@ -70,7 +70,10 @@ func (e *env) cleanup() {
 	if e.ledgerMgr != nil {
 		e.ledgerMgr.Close()
 	}
-	e.assert.NoError(os.RemoveAll(e.initializer.Config.RootFSPath))
+	// Ignore RemoveAll error because when a test mounts a dir to a couchdb container,
+	// the mounted dir cannot be deleted in CI builds. This has no impact to CI because it gets a new VM for each build.
+	// When running the test locally (macOS and linux VM), the mounted dirs are deleted without any error.
+	os.RemoveAll(e.initializer.Config.RootFSPath)
 }
 
 func (e *env) closeAllLedgersAndDrop(flags rebuildable) {
@@ -221,7 +224,7 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 	}
 
 	if initializer.Config == nil {
-		rootPath, err := ioutil.TempDir("", "ledgersData")
+		rootPath, err := ioutil.TempDir("/tmp", "ledgersData")
 		if err != nil {
 			t.Fatalf("Failed to create root directory: %s", err)
 		}
