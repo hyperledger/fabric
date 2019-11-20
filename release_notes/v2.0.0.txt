@@ -92,7 +92,7 @@ to understand recent changes to a key.
 
 FAB-16722 - The 'provisional' genesis method of generating the system channel
 for orderers has been removed. Existing users of the provisional genesis method
-should instead set GenesisMethod to 'file', and generate a genesis block file
+should instead set BootstrapMethod to 'file', and generate a genesis block file
 using configtxgen. Orderer nodes will then use the generated file for the
 orderer system channel.
 

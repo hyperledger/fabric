@@ -147,7 +147,7 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, tempDir, orderer, fabri
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
 		fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", nextPort()),
-		"ORDERER_GENERAL_GENESISMETHOD=file",
+		"ORDERER_GENERAL_BOOTSTRAPMETHOD=file",
 		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
 		fmt.Sprintf("ORDERER_FILELEDGER_LOCATION=%s", filepath.Join(tempDir, "ledger")),
 		fmt.Sprintf("ORDERER_GENERAL_BOOTSTRAPFILE=%s", genesisBlockPath),
@@ -170,7 +170,7 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricR
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
 		fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", nextPort()),
-		"ORDERER_GENERAL_GENESISMETHOD=file",
+		"ORDERER_GENERAL_BOOTSTRAPMETHOD=file",
 		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
 		"ORDERER_GENERAL_TLS_ENABLED=false",
 		"ORDERER_OPERATIONS_TLS_ENABLED=false",
@@ -204,7 +204,7 @@ func launchOrderer(gt *GomegaWithT, orderer, tempDir, genesisBlockPath, fabricRo
 	cmd := exec.Command(orderer)
 	cmd.Env = []string{
 		fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", nextPort()),
-		"ORDERER_GENERAL_GENESISMETHOD=file",
+		"ORDERER_GENERAL_BOOTSTRAPMETHOD=file",
 		"ORDERER_GENERAL_SYSTEMCHANNEL=system",
 		"ORDERER_GENERAL_TLS_CLIENTAUTHREQUIRED=true",
 		"ORDERER_GENERAL_TLS_ENABLED=true",
