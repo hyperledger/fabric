@@ -48,11 +48,11 @@ to [enable TLS](enable_tls.html). If you set this value to `true`, you will have
 to specify the locations of the relevant TLS certificates. Note that this is
 mandatory for Raft nodes.
 
-* `GenesisFile` --- this is the name of the genesis block you will generate for
+* `BootstrapFile` --- this is the name of the genesis block you will generate for
 this ordering service.
 
-* `GenesisMethod` --- the method by which the genesis block is created. For now,
-this can only be `file`, in which the file in the `GenesisFile` is specified.
+* `GenesisMethod` --- the method by which the bootstrap block is given. For now,
+this can only be `file`, in which the file in the `BootstrapFile` is specified.
 
 If you are deploying this node as part of a cluster (for example, as part of a
 cluster of Raft nodes), make note of the `Cluster` and `Consensus` sections.

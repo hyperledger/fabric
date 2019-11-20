@@ -216,12 +216,12 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	bootstrapConfig := &localconfig.TopLevel{
 		General: localconfig.General{
 			GenesisMethod: "file",
-			GenesisFile:   genesisFile,
+			BootstrapFile: genesisFile,
 		},
 	}
 
-	genesisBlock := extractBootstrapBlock(bootstrapConfig)
-	initializeBootstrapChannel(genesisBlock, ledgerFactory)
+	bootstrapBlock := extractBootstrapBlock(bootstrapConfig)
+	initializeBootstrapChannel(bootstrapBlock, ledgerFactory)
 
 	ledger, err := ledgerFactory.GetOrCreate("testchannelid")
 	assert.NoError(t, err)
@@ -241,7 +241,7 @@ func TestExtractBootstrapBlock(t *testing.T) {
 	}{
 		{
 			config: &localconfig.TopLevel{
-				General: localconfig.General{GenesisMethod: "file", GenesisFile: genesisFile},
+				General: localconfig.General{GenesisMethod: "file", BootstrapFile: genesisFile},
 			},
 			block: file.New(genesisFile).GenesisBlock(),
 		},
@@ -470,7 +470,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
 			GenesisMethod: "file",
-			GenesisFile:   genesisFile,
+			BootstrapFile: genesisFile,
 			ListenAddress: "localhost",
 			ListenPort:    uint16(port),
 			TLS: localconfig.TLS{
@@ -838,7 +838,7 @@ func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 	return &localconfig.TopLevel{
 		General: localconfig.General{
 			GenesisMethod: "file",
-			GenesisFile:   genesisFile,
+			BootstrapFile: genesisFile,
 			LocalMSPDir:   localMSPDir,
 			LocalMSPID:    "SampleOrg",
 			BCCSP: &factory.FactoryOpts{
