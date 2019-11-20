@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package endorsertx_test
 
 import (
+	"encoding/hex"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	endorsertx "github.com/hyperledger/fabric/core/tx/endorser"
@@ -24,10 +26,22 @@ var _ = Describe("Parser", func() {
 		payloadData *protomsg
 		prpExt      *protomsg
 		prp         *protomsg
+		chHeader    *common.ChannelHeader
+		sigHeader   *common.SignatureHeader
 	)
 
 	BeforeEach(func() {
 		prp, hdrExt, prpExt, payloadData = nil, nil, nil, nil
+
+		chHeader = &common.ChannelHeader{
+			ChannelId: "my-channel",
+			Epoch:     0,
+		}
+
+		sigHeader = &common.SignatureHeader{
+			Nonce:   []byte("1234"),
+			Creator: []byte("creator"),
+		}
 	})
 
 	JustBeforeEach(func() {
@@ -44,16 +58,7 @@ var _ = Describe("Parser", func() {
 			)
 		}
 
-		chHeader := &common.ChannelHeader{
-			ChannelId: "my-channel",
-			Epoch:     35,
-			Extension: hdrExtBytes,
-		}
-
-		sigHeader := &common.SignatureHeader{
-			Nonce:   []byte("1234"),
-			Creator: []byte("creator"),
-		}
+		chHeader.Extension = hdrExtBytes
 
 		var extBytes []byte
 		if prpExt != nil {
@@ -294,6 +299,105 @@ var _ = Describe("Parser", func() {
 			pe, err := endorsertx.NewEndorserTx(txenv)
 			Expect(err).To(MatchError("error unmarshaling ChaincodeAction: unexpected EOF"))
 			Expect(pe).To(BeNil())
+		})
+
+		When("there is a bad epoch", func() {
+			BeforeEach(func() {
+				chHeader = &common.ChannelHeader{
+					ChannelId: "my-channel",
+					Epoch:     35,
+				}
+			})
+
+			It("returns an error", func() {
+				pe, err := endorsertx.NewEndorserTx(txenv)
+				Expect(err).To(MatchError("invalid Epoch in ChannelHeader. Expected 0, got [35]"))
+				Expect(pe).To(BeNil())
+			})
+		})
+
+		When("there is a bad version", func() {
+			BeforeEach(func() {
+				chHeader = &common.ChannelHeader{
+					ChannelId: "my-channel",
+					Version:   35,
+				}
+			})
+
+			It("returns an error", func() {
+				pe, err := endorsertx.NewEndorserTx(txenv)
+				Expect(err).To(MatchError("invalid version in ChannelHeader. Expected 0, got [35]"))
+				Expect(pe).To(BeNil())
+			})
+		})
+
+		When("there is an empty nonce", func() {
+			BeforeEach(func() {
+				sigHeader = &common.SignatureHeader{
+					Creator: []byte("creator"),
+				}
+			})
+
+			It("returns an error", func() {
+				pe, err := endorsertx.NewEndorserTx(txenv)
+				Expect(err).To(MatchError("empty nonce"))
+				Expect(pe).To(BeNil())
+			})
+		})
+
+		When("there is an empty creator", func() {
+			BeforeEach(func() {
+				sigHeader = &common.SignatureHeader{
+					Nonce: []byte("1234"),
+				}
+			})
+
+			It("returns an error", func() {
+				pe, err := endorsertx.NewEndorserTx(txenv)
+				Expect(err).To(MatchError("empty creator"))
+				Expect(pe).To(BeNil())
+			})
+		})
+
+		When("there is no chaincode ID", func() {
+			BeforeEach(func() {
+				// annoyingly, it's not easy to get a nonzero length
+				// marshalling of a proto message with zero values
+				// everywhere. We simulate this condition by adding
+				// extra bytes for a non-existent second field that
+				// our unmarshaler will skip. Still, the presence of
+				// an extraneous field will get the unmarshaler to
+				// return a non-nil struct
+				bytes, err := hex.DecodeString("1a046369616f")
+				Expect(err).To(BeNil())
+				hdrExt = &protomsg{
+					msg: bytes,
+				}
+			})
+
+			It("returns an error", func() {
+				pe, err := endorsertx.NewEndorserTx(txenv)
+				Expect(err).To(MatchError("nil ChaincodeId"))
+				Expect(pe).To(BeNil())
+			})
+		})
+
+		When("there is an empty chaincode name", func() {
+			BeforeEach(func() {
+				hdrExt = &protomsg{
+					msg: protoutil.MarshalOrPanic(
+						&peer.ChaincodeHeaderExtension{
+							ChaincodeId: &peer.ChaincodeID{},
+						},
+					),
+				}
+			})
+
+			It("returns an error", func() {
+				pe, err := endorsertx.NewEndorserTx(txenv)
+				Expect(err).To(MatchError("empty chaincode name in chaincode id"))
+				Expect(pe).To(BeNil())
+			})
 		})
 	})
 })
