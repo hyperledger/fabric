@@ -322,7 +322,7 @@ var _ = Describe("EndToEnd", func() {
 
 			orderer := network.Orderer("orderer")
 			ordererConfig := network.ReadOrdererConfig(orderer)
-			ordererConfig.General.GenesisMethod = "none"
+			ordererConfig.General.BootstrapMethod = "none"
 			network.WriteOrdererConfig(orderer, ordererConfig)
 			network.Bootstrap()
 

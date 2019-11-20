@@ -45,8 +45,9 @@ type General struct {
 	Cluster           Cluster
 	Keepalive         Keepalive
 	ConnectionTimeout time.Duration
-	GenesisMethod     string
+	GenesisMethod     string // For compatibility only, will be replaced by BootstrapMethod
 	GenesisFile       string // For compatibility only, will be replaced by BootstrapFile
+	BootstrapMethod   string
 	BootstrapFile     string
 	Profile           Profile
 	LocalMSPDir       string
@@ -205,10 +206,10 @@ type Statsd struct {
 // Defaults carries the default orderer configuration values.
 var Defaults = TopLevel{
 	General: General{
-		ListenAddress: "127.0.0.1",
-		ListenPort:    7050,
-		GenesisMethod: "file",
-		BootstrapFile: "genesisblock",
+		ListenAddress:   "127.0.0.1",
+		ListenPort:      7050,
+		BootstrapMethod: "file",
+		BootstrapFile:   "genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
@@ -331,8 +332,14 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.ListenPort == 0:
 			logger.Infof("General.ListenPort unset, setting to %v", Defaults.General.ListenPort)
 			c.General.ListenPort = Defaults.General.ListenPort
-		case c.General.GenesisMethod == "":
-			c.General.GenesisMethod = Defaults.General.GenesisMethod
+		case c.General.BootstrapMethod == "":
+			if c.General.GenesisMethod != "" {
+				// This is to keep the compatibility with old config file that uses genesismethod
+				logger.Warn("General.GenesisMethod should be replaced by General.BootstrapMethod")
+				c.General.BootstrapMethod = c.General.GenesisMethod
+			} else {
+				c.General.BootstrapMethod = Defaults.General.BootstrapMethod
+			}
 		case c.General.BootstrapFile == "":
 			if c.General.GenesisFile != "" {
 				// This is to keep the compatibility with old config file that uses genesisfile

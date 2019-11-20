@@ -51,7 +51,7 @@ mandatory for Raft nodes.
 * `BootstrapFile` --- this is the name of the genesis block you will generate for
 this ordering service.
 
-* `GenesisMethod` --- the method by which the bootstrap block is given. For now,
+* `BootstrapMethod` --- the method by which the bootstrap block is given. For now,
 this can only be `file`, in which the file in the `BootstrapFile` is specified.
 
 If you are deploying this node as part of a cluster (for example, as part of a

@@ -455,7 +455,7 @@ func TestBroadcastChannelSupport(t *testing.T) {
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
 		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
 		config := localconfig.TopLevel{}
-		config.General.GenesisMethod = "none"
+		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		registrar.Initialize(mockConsenters)
