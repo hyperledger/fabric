@@ -276,16 +276,35 @@ func (vdb *VersionedDB) GetDBType() string {
 // committedVersions cache will be used for state validation of readsets
 // revisionNumbers cache will be used during commit phase for couchdb bulk updates
 func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) error {
-	nsKeysMap := map[string][]string{}
+	missingKeys := map[string][]string{}
 	committedDataCache := newVersionCache()
 	for _, compositeKey := range keys {
 		ns, key := compositeKey.Namespace, compositeKey.Key
 		committedDataCache.setVerAndRev(ns, key, nil, "")
 		logger.Debugf("Load into version cache: %s~%s", ns, key)
-		nsKeysMap[ns] = append(nsKeysMap[ns], key)
+
+		if !vdb.cache.Enabled(ns) {
+			missingKeys[ns] = append(missingKeys[ns], key)
+			continue
+		}
+		cv, err := vdb.cache.GetState(vdb.chainName, ns, key)
+		if err != nil {
+			return err
+		}
+		if cv == nil {
+			missingKeys[ns] = append(missingKeys[ns], key)
+			continue
+		}
+		vv, err := constructVersionedValue(cv)
+		if err != nil {
+			return err
+		}
+		rev := string(cv.AdditionalInfo)
+		committedDataCache.setVerAndRev(ns, key, vv.Version, rev)
 	}
-	nsMetadataMap, err := vdb.retrieveMetadata(nsKeysMap)
-	logger.Debugf("nsKeysMap=%s", nsKeysMap)
+
+	nsMetadataMap, err := vdb.retrieveMetadata(missingKeys)
+	logger.Debugf("missingKeys=%s", missingKeys)
 	logger.Debugf("nsMetadataMap=%s", nsMetadataMap)
 	if err != nil {
 		return err
