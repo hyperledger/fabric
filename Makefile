@@ -101,7 +101,7 @@ all: check-go-version native docker checks
 checks: basic-checks unit-test integration-test
 
 .PHONY: basic-checks
-basic-checks: check-go-version license spelling references trailing-spaces linter check-metrics-doc
+basic-checks: check-go-version license spelling references trailing-spaces linter check-metrics-doc filename-spaces
 
 .PHONY: desk-checks
 desk-check: checks verify
@@ -307,3 +307,7 @@ release-clean: $(RELEASE_PLATFORMS:%=%-release-clean)
 
 .PHONY: unit-test-clean
 unit-test-clean:
+
+.PHONY: filename-spaces
+spaces:
+	@scripts/check_file_name_spaces.sh
