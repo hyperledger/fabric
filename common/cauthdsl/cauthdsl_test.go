@@ -67,7 +67,7 @@ func (id *mockIdentity) Serialize() ([]byte, error) {
 	return id.idBytes, nil
 }
 
-func toSignedData(idBytesSlice [][]byte, deserializer msp.IdentityDeserializer) ([]msp.Identity, []bool) {
+func toIdentities(idBytesSlice [][]byte, deserializer msp.IdentityDeserializer) ([]msp.Identity, []bool) {
 	identities := make([]msp.Identity, len(idBytesSlice))
 	for i, idBytes := range idBytesSlice {
 		id, _ := deserializer.DeserializeIdentity(idBytes)
@@ -105,10 +105,10 @@ func TestSimpleSignature(t *testing.T) {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
 
-	if !spe(toSignedData([][]byte{signers[0]}, &mockDeserializer{})) {
+	if !spe(toIdentities([][]byte{signers[0]}, &mockDeserializer{})) {
 		t.Errorf("Expected authentication to succeed with valid signatures")
 	}
-	if spe(toSignedData([][]byte{signers[1]}, &mockDeserializer{})) {
+	if spe(toIdentities([][]byte{signers[1]}, &mockDeserializer{})) {
 		t.Errorf("Expected authentication to fail because signers[1] is not authorized in the policy, despite his valid signature")
 	}
 }
@@ -121,10 +121,10 @@ func TestMultipleSignature(t *testing.T) {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
 
-	if !spe(toSignedData(signers, &mockDeserializer{})) {
+	if !spe(toIdentities(signers, &mockDeserializer{})) {
 		t.Errorf("Expected authentication to succeed with  valid signatures")
 	}
-	if spe(toSignedData([][]byte{signers[0], signers[0]}, &mockDeserializer{})) {
+	if spe(toIdentities([][]byte{signers[0], signers[0]}, &mockDeserializer{})) {
 		t.Errorf("Expected authentication to fail because although there were two valid signatures, one was duplicated")
 	}
 }
@@ -137,16 +137,16 @@ func TestComplexNestedSignature(t *testing.T) {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
 
-	if !spe(toSignedData(append(signers, [][]byte{[]byte("signer0")}...), &mockDeserializer{})) {
+	if !spe(toIdentities(append(signers, [][]byte{[]byte("signer0")}...), &mockDeserializer{})) {
 		t.Errorf("Expected authentication to succeed with valid signatures")
 	}
-	if !spe(toSignedData([][]byte{[]byte("signer0"), []byte("signer0"), []byte("signer0")}, &mockDeserializer{})) {
+	if !spe(toIdentities([][]byte{[]byte("signer0"), []byte("signer0"), []byte("signer0")}, &mockDeserializer{})) {
 		t.Errorf("Expected authentication to succeed with valid signatures")
 	}
-	if spe(toSignedData(signers, &mockDeserializer{})) {
+	if spe(toIdentities(signers, &mockDeserializer{})) {
 		t.Errorf("Expected authentication to fail with too few signatures")
 	}
-	if spe(toSignedData(append(signers, [][]byte{[]byte("signer1")}...), &mockDeserializer{})) {
+	if spe(toIdentities(append(signers, [][]byte{[]byte("signer1")}...), &mockDeserializer{})) {
 		t.Errorf("Expected authentication failure as there was a signature from signer[0] missing")
 	}
 }

@@ -116,7 +116,7 @@ func TestNewPolicyErrorCase(t *testing.T) {
 
 	var pol4 *policy
 	err4 := pol4.EvaluateSignedData([]*protoutil.SignedData{})
-	assert.EqualError(t, err4, "No such policy")
+	assert.EqualError(t, err4, "no such policy")
 }
 
 func TestEnvelopeBasedPolicyProvider(t *testing.T) {
