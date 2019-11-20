@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package externalbuilders_test
+package externalbuilder_test
 
 import (
 	"archive/tar"
@@ -14,14 +14,14 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 )
 
 var _ = Describe("Metadataprovider", func() {
-	var mp *externalbuilders.MetadataProvider
+	var mp *externalbuilder.MetadataProvider
 
 	BeforeEach(func() {
-		mp = &externalbuilders.MetadataProvider{
+		mp = &externalbuilder.MetadataProvider{
 			DurablePath: "testdata",
 		}
 	})

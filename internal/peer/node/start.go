@@ -53,7 +53,7 @@ import (
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/core/endorser"
@@ -129,7 +129,7 @@ var nodeStartCmd = &cobra.Command{
 // externalVMAdapter adapts coerces the result of Build to the
 // container.Interface type expected by the VM interface.
 type externalVMAdapter struct {
-	detector *externalbuilders.Detector
+	detector *externalbuilder.Detector
 }
 
 func (e externalVMAdapter) Build(
@@ -396,12 +396,12 @@ func serve(args []string) error {
 
 	chaincodeCustodian := lifecycle.NewChaincodeCustodian()
 
-	externalBuilderOutput := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "externalbuilders", "builds")
+	externalBuilderOutput := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "externalbuilder", "builds")
 	if err := os.MkdirAll(externalBuilderOutput, 0700); err != nil {
-		logger.Panicf("could not create externalbuilders build output dir: %s", err)
+		logger.Panicf("could not create externalbuilder build output dir: %s", err)
 	}
 
-	ebMetadataProvider := &externalbuilders.MetadataProvider{
+	ebMetadataProvider := &externalbuilder.MetadataProvider{
 		DurablePath: externalBuilderOutput,
 	}
 
@@ -523,8 +523,8 @@ func serve(args []string) error {
 		logger.Panicf("failed to register docker health check: %s", err)
 	}
 
-	externalVM := &externalbuilders.Detector{
-		Builders:    externalbuilders.CreateBuilders(coreConfig.ExternalBuilders),
+	externalVM := &externalbuilder.Detector{
+		Builders:    externalbuilder.CreateBuilders(coreConfig.ExternalBuilders),
 		DurablePath: externalBuilderOutput,
 	}
 

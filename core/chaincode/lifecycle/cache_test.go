@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
@@ -76,7 +76,7 @@ var _ = Describe("Cache", func() {
 		chaincodeCustodian = lifecycle.NewChaincodeCustodian()
 
 		var err error
-		c = lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler, chaincodeCustodian, &externalbuilders.MetadataProvider{})
+		c = lifecycle.NewCache(resources, "my-mspid", fakeMetadataHandler, chaincodeCustodian, &externalbuilder.MetadataProvider{})
 		Expect(err).NotTo(HaveOccurred())
 
 		channelCache = &lifecycle.ChannelCache{

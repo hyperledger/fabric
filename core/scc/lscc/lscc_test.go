@@ -35,7 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/policy"
@@ -165,7 +165,7 @@ func TestInstall(t *testing.T) {
 		BCCSP:            cryptoProvider,
 		BuildRegistry:    &container.BuildRegistry{},
 		ChaincodeBuilder: chaincodeBuilder,
-		EbMetadataProvider: &externalbuilders.MetadataProvider{
+		EbMetadataProvider: &externalbuilder.MetadataProvider{
 			DurablePath: "testdata",
 		},
 	}

@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
-	"github.com/hyperledger/fabric/core/container/externalbuilders"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	. "github.com/onsi/ginkgo"
@@ -31,14 +31,14 @@ var _ = Describe("EventBroker", func() {
 		eventBroker        *lifecycle.EventBroker
 		cachedChaincodeDef *lifecycle.CachedChaincodeDefinition
 		localChaincode     *lifecycle.LocalChaincode
-		ebMetadata         *externalbuilders.MetadataProvider
+		ebMetadata         *externalbuilder.MetadataProvider
 	)
 
 	BeforeEach(func() {
 		fakeListener = &ledgermock.ChaincodeLifecycleEventListener{}
 		chaincodeStore = &mock.ChaincodeStore{}
 		pkgParser = &mock.PackageParser{}
-		ebMetadata = &externalbuilders.MetadataProvider{
+		ebMetadata = &externalbuilder.MetadataProvider{
 			DurablePath: "testdata",
 		}
 		eventBroker = lifecycle.NewEventBroker(chaincodeStore, pkgParser, ebMetadata)

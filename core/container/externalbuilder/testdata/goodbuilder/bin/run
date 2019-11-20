@@ -8,5 +8,5 @@ if [ "$OUTPUT_JSON" = "$EXPECTED_JSON" ] ; then
     exit 0
 fi
 
-echo "got $OUTPUT_JSON; want $EXPECTED_JSON"
+>&2 echo "got $OUTPUT_JSON; want $EXPECTED_JSON"
 exit 1

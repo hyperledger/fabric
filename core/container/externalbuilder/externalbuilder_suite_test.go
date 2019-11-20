@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package externalbuilders_test
+package externalbuilder_test
 
 import (
 	"testing"
@@ -15,5 +15,5 @@ import (
 
 func TestExternalbuilders(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Externalbuilders Suite")
+	RunSpecs(t, "External Builder Suite")
 }
