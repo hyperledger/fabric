@@ -28,7 +28,7 @@ var (
 type EndorserTx struct {
 	ComputedTxID string
 	ChID         string
-	CcID         string
+	CCName       string
 	Creator      []byte
 	Response     *peer.Response
 	Events       []byte
@@ -147,7 +147,9 @@ func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 		return nil, errors.New("empty ProposalResponsePayload")
 	}
 
-	proposalResponsePayload, err := protoutil.UnmarshalProposalResponsePayload(ccActionPayload.Action.ProposalResponsePayload)
+	proposalResponsePayload, err := protoutil.UnmarshalProposalResponsePayload(
+		ccActionPayload.Action.ProposalResponsePayload,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +180,7 @@ func NewEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 		Events:       ccAction.Events,
 		Results:      ccAction.Results,
 		Endorsements: ccActionPayload.Action.Endorsements,
-		CcID:         hdrExt.ChaincodeId.Name, // FIXME: we might have to get the ccid from the CIS
+		CCName:       hdrExt.ChaincodeId.Name, // FIXME: we might have to get the ccid from the CIS
 	}, nil
 }
 

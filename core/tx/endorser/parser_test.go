@@ -23,10 +23,10 @@ import (
 var _ = Describe("Parser", func() {
 	var (
 		txenv       *tx.Envelope
-		hdrExt      *protomsg
-		payloadData *protomsg
-		prpExt      *protomsg
-		prp         *protomsg
+		hdrExt      []byte
+		payloadData []byte
+		prpExt      []byte
+		prp         []byte
 		chHeader    *common.ChannelHeader
 		sigHeader   *common.SignatureHeader
 	)
@@ -48,7 +48,7 @@ var _ = Describe("Parser", func() {
 	JustBeforeEach(func() {
 		var hdrExtBytes []byte
 		if hdrExt != nil {
-			hdrExtBytes = hdrExt.msg
+			hdrExtBytes = hdrExt
 		} else {
 			hdrExtBytes = protoutil.MarshalOrPanic(
 				&peer.ChaincodeHeaderExtension{
@@ -63,7 +63,7 @@ var _ = Describe("Parser", func() {
 
 		var extBytes []byte
 		if prpExt != nil {
-			extBytes = prpExt.msg
+			extBytes = prpExt
 		} else {
 			extBytes = protoutil.MarshalOrPanic(&peer.ChaincodeAction{
 				Results: []byte("results"),
@@ -76,7 +76,7 @@ var _ = Describe("Parser", func() {
 
 		var prpBytes []byte
 		if prp != nil {
-			prpBytes = prp.msg
+			prpBytes = prp
 		} else {
 			prpBytes = protoutil.MarshalOrPanic(&peer.ProposalResponsePayload{
 				Extension:    extBytes,
@@ -108,7 +108,7 @@ var _ = Describe("Parser", func() {
 
 		var txenvPayloadDataBytes []byte
 		if payloadData != nil {
-			txenvPayloadDataBytes = payloadData.msg
+			txenvPayloadDataBytes = payloadData
 		} else {
 			txenvPayloadDataBytes = protoutil.MarshalOrPanic(tx)
 		}
@@ -138,13 +138,13 @@ var _ = Describe("Parser", func() {
 			},
 			ChID:    "my-channel",
 			Creator: []byte("creator"),
-			CcID:    "my-called-cc",
+			CCName:  "my-called-cc",
 		}))
 	})
 
 	When("there is no payload data", func() {
 		BeforeEach(func() {
-			payloadData = &protomsg{}
+			payloadData = []byte{}
 		})
 
 		It("returns an error", func() {
@@ -156,7 +156,7 @@ var _ = Describe("Parser", func() {
 
 	When("there is bad payload data", func() {
 		BeforeEach(func() {
-			payloadData = &protomsg{msg: []byte("barf")}
+			payloadData = []byte("barf")
 		})
 
 		It("returns an error", func() {
@@ -168,9 +168,9 @@ var _ = Describe("Parser", func() {
 
 	When("there is bad payload data", func() {
 		BeforeEach(func() {
-			payloadData = &protomsg{msg: protoutil.MarshalOrPanic(&peer.Transaction{
+			payloadData = protoutil.MarshalOrPanic(&peer.Transaction{
 				Actions: []*peer.TransactionAction{{}, {}},
-			})}
+			})
 		})
 
 		It("returns an error", func() {
@@ -182,9 +182,9 @@ var _ = Describe("Parser", func() {
 
 	When("the transaction action has no payload", func() {
 		BeforeEach(func() {
-			payloadData = &protomsg{msg: protoutil.MarshalOrPanic(&peer.Transaction{
+			payloadData = protoutil.MarshalOrPanic(&peer.Transaction{
 				Actions: []*peer.TransactionAction{{}},
-			})}
+			})
 		})
 
 		It("returns an error", func() {
@@ -196,9 +196,9 @@ var _ = Describe("Parser", func() {
 
 	When("the transaction action has a bad payload", func() {
 		BeforeEach(func() {
-			payloadData = &protomsg{msg: protoutil.MarshalOrPanic(&peer.Transaction{
+			payloadData = protoutil.MarshalOrPanic(&peer.Transaction{
 				Actions: []*peer.TransactionAction{{Payload: []byte("barf")}},
-			})}
+			})
 		})
 
 		It("returns an error", func() {
@@ -210,7 +210,7 @@ var _ = Describe("Parser", func() {
 
 	When("the transaction action has a bad payload", func() {
 		BeforeEach(func() {
-			payloadData = &protomsg{msg: protoutil.MarshalOrPanic(&peer.Transaction{
+			payloadData = protoutil.MarshalOrPanic(&peer.Transaction{
 				Actions: []*peer.TransactionAction{
 					{
 						Payload: protoutil.MarshalOrPanic(
@@ -221,7 +221,7 @@ var _ = Describe("Parser", func() {
 						),
 					},
 				},
-			})}
+			})
 		})
 
 		It("returns an error", func() {
@@ -233,7 +233,7 @@ var _ = Describe("Parser", func() {
 
 	When("there is no header extension", func() {
 		BeforeEach(func() {
-			hdrExt = &protomsg{}
+			hdrExt = []byte{}
 		})
 
 		It("returns an error", func() {
@@ -245,7 +245,7 @@ var _ = Describe("Parser", func() {
 
 	When("there is a bad header extension", func() {
 		BeforeEach(func() {
-			hdrExt = &protomsg{msg: []byte("barf")}
+			hdrExt = []byte("barf")
 		})
 
 		It("returns an error", func() {
@@ -257,7 +257,7 @@ var _ = Describe("Parser", func() {
 
 	When("there is no ProposalResponsePayload", func() {
 		BeforeEach(func() {
-			prp = &protomsg{}
+			prp = []byte{}
 		})
 
 		It("returns an error", func() {
@@ -269,7 +269,7 @@ var _ = Describe("Parser", func() {
 
 	When("there is a bad ProposalResponsePayload", func() {
 		BeforeEach(func() {
-			prp = &protomsg{msg: []byte("barf")}
+			prp = []byte("barf")
 		})
 
 		It("returns an error", func() {
@@ -281,7 +281,7 @@ var _ = Describe("Parser", func() {
 
 	When("there is no ProposalResponsePayload", func() {
 		BeforeEach(func() {
-			prpExt = &protomsg{}
+			prpExt = []byte{}
 		})
 
 		It("returns an error", func() {
@@ -293,7 +293,7 @@ var _ = Describe("Parser", func() {
 
 	When("there is a bad ProposalResponsePayload", func() {
 		BeforeEach(func() {
-			prpExt = &protomsg{msg: []byte("barf")}
+			prpExt = []byte("barf")
 		})
 
 		It("returns an error", func() {
@@ -399,9 +399,7 @@ var _ = Describe("Parser", func() {
 				// return a non-nil struct
 				bytes, err := hex.DecodeString("1a046369616f")
 				Expect(err).To(BeNil())
-				hdrExt = &protomsg{
-					msg: bytes,
-				}
+				hdrExt = bytes
 			})
 
 			It("returns an error", func() {
@@ -413,13 +411,11 @@ var _ = Describe("Parser", func() {
 
 		When("there is an empty chaincode name", func() {
 			BeforeEach(func() {
-				hdrExt = &protomsg{
-					msg: protoutil.MarshalOrPanic(
-						&peer.ChaincodeHeaderExtension{
-							ChaincodeId: &peer.ChaincodeID{},
-						},
-					),
-				}
+				hdrExt = protoutil.MarshalOrPanic(
+					&peer.ChaincodeHeaderExtension{
+						ChaincodeId: &peer.ChaincodeID{},
+					},
+				)
 			})
 
 			It("returns an error", func() {
