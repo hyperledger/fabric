@@ -5,19 +5,20 @@ We offer tutorials to get you started with Hyperledger Fabric.
 The first is oriented to the Hyperledger Fabric **application developer**,
 :doc:`write_first_app`. It takes you through the process of writing your first
 blockchain application for Hyperledger Fabric using the Hyperledger Fabric
-`Node SDK <https://github.com/hyperledger/fabric-sdk-node>`__.
+`Node SDK <https://github.com/hyperledger/fabric-sdk-node>`_. For a more developer
+focused experience for developing apps, check out :doc:`developapps/developing_applications`.
 
-The second tutorial is oriented towards the Hyperledger Fabric network
+We also have a tutorial oriented towards the Hyperledger Fabric network
 operators, :doc:`build_network`. This one walks you through the process of
 establishing a blockchain network using Hyperledger Fabric and provides
 a basic sample application to test it out.
 
-There are also tutorials for updating your channel, :doc:`channel_update_tutorial`, and
-upgrading your network to a later version of Hyperledger Fabric, :doc:`upgrading_your_network_tutorial`.
+There are two tutorials for updating a channel: :doc:`config_update` and
+:doc:`updating_capabilities`, while :doc:`upgrading_your_components` shows how
+to upgrade components like peers, ordering nodes, SDKs, and more.
 
 Finally, we offer two chaincode tutorials. One oriented to developers,
-:doc:`chaincode4ade`, and the other oriented to operators,
-:doc:`chaincode4noah`.
+:doc:`chaincode4ade`, and the other oriented to operators, :doc:`chaincode4noah`.
 
 .. note:: If you have questions not addressed by this documentation, or run into
           issues with any of the tutorials, please visit the :doc:`questions`
@@ -30,8 +31,8 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    write_first_app
    tutorial/commercial_paper
    build_network
+   config_update.md
    channel_update_tutorial
-   upgrading_your_network_tutorial
    private_data_tutorial
    chaincode
    chaincode4ade
