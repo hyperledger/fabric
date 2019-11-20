@@ -14,7 +14,6 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/util"
 	validationState "github.com/hyperledger/fabric/core/handlers/validation/api/state"
@@ -35,8 +34,8 @@ const (
 
 var (
 	// This is a channel which was created with a lifecycle endorsement policy
-	LifecycleDefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
-		Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+	LifecycleDefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
+		Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
 			ChannelConfigPolicyReference: LifecycleEndorsementPolicyRef,
 		},
 	})
@@ -248,8 +247,8 @@ func (vc *ValidatorCommitter) ImplicitCollectionEndorsementPolicyAsBytes(channel
 
 	policyName := fmt.Sprintf("/Channel/Application/%s/Endorsement", matchedOrgName)
 	if _, ok := channelConfig.PolicyManager().GetPolicy(policyName); ok {
-		return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
-			Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+		return protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
+			Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
 				ChannelConfigPolicyReference: policyName,
 			},
 		}), nil, nil
@@ -258,8 +257,8 @@ func (vc *ValidatorCommitter) ImplicitCollectionEndorsementPolicyAsBytes(channel
 	// This was a channel which was upgraded or did not define an org level endorsement policy, use a default
 	// of "any member of the org"
 
-	return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
-		Type: &pb.ApplicationPolicy_SignaturePolicy{
+	return protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
+		Type: &cb.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: cauthdsl.SignedByAnyMember([]string{orgMSPID}),
 		},
 	}), nil, nil
@@ -287,8 +286,8 @@ func (vc *ValidatorCommitter) LifecycleEndorsementPolicyAsBytes(channelID string
 		mspids = append(mspids, org.MSPID())
 	}
 
-	return protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
-		Type: &pb.ApplicationPolicy_SignaturePolicy{
+	return protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
+		Type: &cb.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: cauthdsl.SignedByNOutOfGivenRole(int32(len(mspids)/2+1), msp.MSPRole_MEMBER, mspids),
 		},
 	}), nil
@@ -354,7 +353,10 @@ func (vc *ValidatorCommitter) CollectionValidationInfo(channelID, chaincodeName,
 		for _, conf := range definedChaincode.Collections.Config {
 			staticCollConfig := conf.GetStaticCollectionConfig()
 			if staticCollConfig != nil && staticCollConfig.Name == collectionName {
-				// TODO, return the collection EP if defined
+				if staticCollConfig.EndorsementPolicy != nil {
+					return protoutil.MarshalOrPanic(staticCollConfig.EndorsementPolicy), nil, nil
+				}
+				// default to chaincode endorsement policy
 				return definedChaincode.ValidationInfo.ValidationParameter, nil, nil
 			}
 		}
