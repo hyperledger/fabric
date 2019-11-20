@@ -10,12 +10,12 @@ supplemental rules from the `Go Code Review Comments wiki
 <https://github.com/golang/go/wiki/CodeReviewComments>`__.
 
 We also recommend new contributors review the following before submitting
-change requests:
+pull requests:
 
   - `Practical Go <https://dave.cheney.net/practical-go/presentations/qcon-china.html>`__
   - `Go Proverbs <https://go-proverbs.github.io/>`__
 
-The following tools are executed against all change requests. Any errors flagged
+The following tools are executed against all pull requests. Any errors flagged
 by these tools must be addressed before the code will be merged:
 
   - `gofmt -s <https://golang.org/cmd/gofmt/>`__
