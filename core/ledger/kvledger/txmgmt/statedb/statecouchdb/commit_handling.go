@@ -18,6 +18,40 @@ import (
 type committer struct {
 	db             *couchdb.CouchDatabase
 	batchUpdateMap map[string]*batchableDocument
+	namespace      string
+	cacheKVs       statedb.CacheKVs
+	cacheEnabled   bool
+}
+
+func (c *committer) addToCacheUpdate(kv *keyValue) {
+	if !c.cacheEnabled {
+		return
+	}
+
+	if kv.Value == nil {
+		// nil value denotes a delete operation
+		c.cacheKVs[kv.key] = nil
+		return
+	}
+
+	c.cacheKVs[kv.key] = &statedb.CacheValue{
+		VersionBytes:   kv.Version.ToBytes(),
+		Value:          kv.Value,
+		Metadata:       kv.Metadata,
+		AdditionalInfo: []byte(kv.revision),
+	}
+}
+
+func (c *committer) updateRevisionInCacheUpdate(key, rev string) {
+	if !c.cacheEnabled {
+		return
+	}
+	cv := c.cacheKVs[key]
+	if cv == nil {
+		// nil value denotes a delete
+		return
+	}
+	cv.AdditionalInfo = []byte(rev)
 }
 
 // buildCommitters builds committers per namespace. Each committer transforms the
@@ -69,7 +103,6 @@ func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*st
 	if err != nil {
 		return nil, err
 	}
-
 	// for each namespace, build mutiple committers based on the maxBatchSize
 	maxBatchSize := db.CouchInstance.MaxBatchUpdateSize()
 	numCommitters := 1
@@ -77,10 +110,16 @@ func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*st
 		numCommitters = int(math.Ceil(float64(len(nsUpdates)) / float64(maxBatchSize)))
 	}
 	committers := make([]*committer, numCommitters)
+
+	cacheEnabled := vdb.cache.Enabled(ns)
+
 	for i := 0; i < numCommitters; i++ {
 		committers[i] = &committer{
 			db:             db,
 			batchUpdateMap: make(map[string]*batchableDocument),
+			namespace:      ns,
+			cacheKVs:       make(statedb.CacheKVs),
+			cacheEnabled:   cacheEnabled,
 		}
 	}
 
@@ -93,47 +132,18 @@ func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*st
 
 	i := 0
 	for key, vv := range nsUpdates {
-		couchDoc, err := keyValToCouchDoc(&keyValue{key: key, VersionedValue: vv}, revisions[key])
+		kv := &keyValue{key: key, revision: revisions[key], VersionedValue: vv}
+		couchDoc, err := keyValToCouchDoc(kv)
 		if err != nil {
 			return nil, err
 		}
 		committers[i].batchUpdateMap[key] = &batchableDocument{CouchDoc: *couchDoc, Deleted: vv.Value == nil}
+		committers[i].addToCacheUpdate(kv)
 		if maxBatchSize > 0 && len(committers[i].batchUpdateMap) == maxBatchSize {
 			i++
 		}
 	}
 	return committers, nil
-}
-
-func (vdb *VersionedDB) getRevisions(ns string, nsUpdates map[string]*statedb.VersionedValue) (map[string]string, error) {
-	// for now, getRevisions does not use cache. In FAB-15616, we will ensure that the getRevisions uses
-	// the cache which would be introduced in FAB-15537
-	revisions := make(map[string]string)
-	nsRevs := vdb.committedDataCache.revs[ns]
-
-	var missingKeys []string
-	var ok bool
-	for key := range nsUpdates {
-		if revisions[key], ok = nsRevs[key]; !ok {
-			missingKeys = append(missingKeys, key)
-		}
-	}
-
-	db, err := vdb.getNamespaceDBHandle(ns)
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Debugf("Pulling revisions for the [%d] keys for namsespace [%s] that were not part of the readset", len(missingKeys), db.DBName)
-	retrievedMetadata, err := retrieveNsMetadata(db, missingKeys)
-	if err != nil {
-		return nil, err
-	}
-	for _, metadata := range retrievedMetadata {
-		revisions[metadata.ID] = metadata.Rev
-	}
-
-	return revisions, nil
 }
 
 func (vdb *VersionedDB) executeCommitter(committers []*committer) error {
@@ -172,14 +182,17 @@ func (c *committer) commitUpdates() error {
 	if err != nil {
 		return err
 	}
+
 	// IF INDIVIDUAL DOCUMENTS IN THE BULK UPDATE DID NOT SUCCEED, TRY THEM INDIVIDUALLY
 	// iterate through the response from CouchDB by document
 	for _, resp := range responses {
 		// If the document returned an error, retry the individual document
 		if resp.Ok == true {
+			c.updateRevisionInCacheUpdate(resp.ID, resp.Rev)
 			continue
 		}
 		doc := c.batchUpdateMap[resp.ID]
+
 		var err error
 		//Remove the "_rev" from the JSON before saving
 		//this will allow the CouchDB retry logic to retry revisions without encountering
@@ -201,7 +214,9 @@ func (c *committer) commitUpdates() error {
 			logger.Warningf("CouchDB batch document update encountered an problem. Retrying update for document ID:%s", resp.ID)
 			// Save the individual document to couchdb
 			// Note that this will do retries as needed
-			_, err = c.db.SaveDoc(resp.ID, "", &doc.CouchDoc)
+			var revision string
+			revision, err = c.db.SaveDoc(resp.ID, "", &doc.CouchDoc)
+			c.updateRevisionInCacheUpdate(resp.ID, revision)
 		}
 
 		// If the single document update or delete returns an error, then throw the error
@@ -213,6 +228,79 @@ func (c *committer) commitUpdates() error {
 			return errors.WithMessage(err, errorString)
 		}
 	}
+	return nil
+}
+
+func (vdb *VersionedDB) getRevisions(ns string, nsUpdates map[string]*statedb.VersionedValue) (map[string]string, error) {
+	revisions := make(map[string]string)
+	nsRevs := vdb.committedDataCache.revs[ns]
+
+	var missingKeys []string
+	var ok bool
+	for key := range nsUpdates {
+		if revisions[key], ok = nsRevs[key]; !ok {
+			missingKeys = append(missingKeys, key)
+		}
+	}
+
+	if len(missingKeys) == 0 {
+		// all revisions were present in the committedDataCache
+		return revisions, nil
+	}
+
+	missingKeys, err := vdb.addMissingRevisionsFromCache(ns, missingKeys, revisions)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(missingKeys) == 0 {
+		// remaining revisions were present in the state cache
+		return revisions, nil
+	}
+
+	// don't update the cache for missing entries as
+	// revisions are going to get changed after the commit
+	if err := vdb.addMissingRevisionsFromDB(ns, missingKeys, revisions); err != nil {
+		return nil, err
+	}
+	return revisions, nil
+}
+
+func (vdb *VersionedDB) addMissingRevisionsFromCache(ns string, keys []string, revs map[string]string) ([]string, error) {
+	if !vdb.cache.Enabled(ns) {
+		return keys, nil
+	}
+
+	var missingKeys []string
+	for _, k := range keys {
+		cv, err := vdb.cache.GetState(vdb.chainName, ns, k)
+		if err != nil {
+			return nil, err
+		}
+		if cv == nil {
+			missingKeys = append(missingKeys, k)
+			continue
+		}
+		revs[k] = string(cv.AdditionalInfo)
+	}
+	return missingKeys, nil
+}
+
+func (vdb *VersionedDB) addMissingRevisionsFromDB(ns string, missingKeys []string, revisions map[string]string) error {
+	db, err := vdb.getNamespaceDBHandle(ns)
+	if err != nil {
+		return err
+	}
+
+	logger.Debugf("Pulling revisions for the [%d] keys for namsespace [%s] that were not part of the readset", len(missingKeys), db.DBName)
+	retrievedMetadata, err := retrieveNsMetadata(db, missingKeys)
+	if err != nil {
+		return err
+	}
+	for _, metadata := range retrievedMetadata {
+		revisions[metadata.ID] = metadata.Rev
+	}
+
 	return nil
 }
 
