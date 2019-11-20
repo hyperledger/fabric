@@ -316,8 +316,6 @@ var _ = Describe("EndToEnd", func() {
 		var ordererProcess ifrit.Process
 		BeforeEach(func() {
 			soloConfig := nwo.BasicSolo()
-			soloConfig.RemovePeer("Org1", "peer1")
-			soloConfig.RemovePeer("Org2", "peer1")
 			network = nwo.New(soloConfig, testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 
@@ -330,7 +328,7 @@ var _ = Describe("EndToEnd", func() {
 			ordererRunner := network.OrdererRunner(orderer)
 			ordererProcess = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcess.Ready, network.EventuallyTimeout).Should(BeClosed())
-			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("registrar initializing with no system channel"))
+			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("registrar initializing without a system channel"))
 		})
 
 		AfterEach(func() {
