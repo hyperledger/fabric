@@ -215,8 +215,8 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	assert.NoError(t, err)
 	bootstrapConfig := &localconfig.TopLevel{
 		General: localconfig.General{
-			GenesisMethod: "file",
-			BootstrapFile: genesisFile,
+			BootstrapMethod: "file",
+			BootstrapFile:   genesisFile,
 		},
 	}
 
@@ -241,13 +241,13 @@ func TestExtractBootstrapBlock(t *testing.T) {
 	}{
 		{
 			config: &localconfig.TopLevel{
-				General: localconfig.General{GenesisMethod: "file", BootstrapFile: genesisFile},
+				General: localconfig.General{BootstrapMethod: "file", BootstrapFile: genesisFile},
 			},
 			block: file.New(genesisFile).GenesisBlock(),
 		},
 		{
 			config: &localconfig.TopLevel{
-				General: localconfig.General{GenesisMethod: "none"},
+				General: localconfig.General{BootstrapMethod: "none"},
 			},
 			block: nil,
 		},
@@ -406,7 +406,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	})
 
 	t.Run("registrar without a system channel", func(t *testing.T) {
-		conf.General.GenesisMethod = "none"
+		conf.General.BootstrapMethod = "none"
 		conf.General.GenesisFile = ""
 		lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
 		assert.NoError(t, err)
@@ -469,10 +469,10 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
-			GenesisMethod: "file",
-			BootstrapFile: genesisFile,
-			ListenAddress: "localhost",
-			ListenPort:    uint16(port),
+			BootstrapMethod: "file",
+			BootstrapFile:   genesisFile,
+			ListenAddress:   "localhost",
+			ListenPort:      uint16(port),
 			TLS: localconfig.TLS{
 				Enabled:            false,
 				ClientAuthRequired: false,
@@ -837,10 +837,10 @@ func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 	localMSPDir := configtest.GetDevMspDir()
 	return &localconfig.TopLevel{
 		General: localconfig.General{
-			GenesisMethod: "file",
-			BootstrapFile: genesisFile,
-			LocalMSPDir:   localMSPDir,
-			LocalMSPID:    "SampleOrg",
+			BootstrapMethod: "file",
+			BootstrapFile:   genesisFile,
+			LocalMSPDir:     localMSPDir,
+			LocalMSPID:      "SampleOrg",
 			BCCSP: &factory.FactoryOpts{
 				ProviderName: "SW",
 				SwOpts: &factory.SwOpts{

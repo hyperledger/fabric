@@ -124,7 +124,7 @@ func Main() {
 	var clusterDialer *cluster.PredicateDialer
 	var clusterType, reuseGrpcListener bool
 	var serversToUpdate []*comm.GRPCServer
-	if conf.General.GenesisMethod == "file" {
+	if conf.General.BootstrapMethod == "file" {
 		bootstrapBlock := extractBootstrapBlock(conf)
 		if err := ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
 			logger.Panicf("Failed validating bootstrap block: %v", err)
@@ -143,7 +143,7 @@ func Main() {
 
 			r = createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
 			// Only clusters that are equipped with a recent config block can replicate.
-			if conf.General.GenesisMethod == "file" {
+			if conf.General.BootstrapMethod == "file" {
 				r.replicateIfNeeded(bootstrapBlock)
 			}
 
@@ -590,13 +590,13 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 	var bootstrapBlock *cb.Block
 
 	// Select the bootstrapping mechanism
-	switch conf.General.GenesisMethod {
+	switch conf.General.BootstrapMethod {
 	case "file": // For now, "file" is the only supported genesis method
 		bootstrapBlock = file.New(conf.General.BootstrapFile).GenesisBlock()
 	case "none": // simply honor the configuration value
 		return nil
 	default:
-		logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)
+		logger.Panic("Unknown genesis method:", conf.General.BootstrapMethod)
 	}
 
 	return bootstrapBlock
@@ -712,7 +712,7 @@ func initializeMultichannelRegistrar(
 	// Note, we pass a 'nil' channel here, we could pass a channel that
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
-	if conf.General.GenesisMethod == "file" {
+	if conf.General.BootstrapMethod == "file" {
 		if isClusterType(bootstrapBlock, bccsp) {
 			initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider, bccsp)
 		}

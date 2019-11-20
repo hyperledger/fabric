@@ -18,19 +18,19 @@ type Orderer struct {
 }
 
 type General struct {
-	ListenAddress  string                 `yaml:"ListenAddress,omitempty"`
-	ListenPort     int                    `yaml:"ListenPort,omitempty"`
-	TLS            *OrdererTLS            `yaml:"TLS,omitempty"`
-	Keepalive      *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
-	GenesisMethod  string                 `yaml:"GenesisMethod,omitempty"`
-	GenesisProfile string                 `yaml:"GenesisProfile,omitempty"`
-	GenesisFile    string                 `yaml:"GenesisFile,omitempty"` // will be replaced by the BootstrapFile
-	BootstrapFile  string                 `yaml:"BootstrapFile,omitempty"`
-	LocalMSPDir    string                 `yaml:"LocalMSPDir,omitempty"`
-	LocalMSPID     string                 `yaml:"LocalMSPID,omitempty"`
-	Profile        *OrdererProfile        `yaml:"Profile,omitempty"`
-	BCCSP          *BCCSP                 `yaml:"BCCSP,omitempty"`
-	Authentication *OrdererAuthentication `yaml:"Authentication,omitempty"`
+	ListenAddress   string                 `yaml:"ListenAddress,omitempty"`
+	ListenPort      int                    `yaml:"ListenPort,omitempty"`
+	TLS             *OrdererTLS            `yaml:"TLS,omitempty"`
+	Keepalive       *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
+	BootstrapMethod string                 `yaml:"BootstrapMethod,omitempty"`
+	GenesisProfile  string                 `yaml:"GenesisProfile,omitempty"`
+	GenesisFile     string                 `yaml:"GenesisFile,omitempty"` // will be replaced by the BootstrapFile
+	BootstrapFile   string                 `yaml:"BootstrapFile,omitempty"`
+	LocalMSPDir     string                 `yaml:"LocalMSPDir,omitempty"`
+	LocalMSPID      string                 `yaml:"LocalMSPID,omitempty"`
+	Profile         *OrdererProfile        `yaml:"Profile,omitempty"`
+	BCCSP           *BCCSP                 `yaml:"BCCSP,omitempty"`
+	Authentication  *OrdererAuthentication `yaml:"Authentication,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
