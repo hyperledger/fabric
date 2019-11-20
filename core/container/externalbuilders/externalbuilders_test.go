@@ -152,12 +152,12 @@ var _ = Describe("Externalbuilders", func() {
 
 			Context("when the durable path cannot be created", func() {
 				BeforeEach(func() {
-					detector.DurablePath = "fake/path/to/nowhere"
+					detector.DurablePath = "path/to/nowhere"
 				})
 
 				It("wraps and returns the error", func() {
 					_, err := detector.Build("fake-package-id", md, codePackage)
-					Expect(err).To(MatchError("could not create dir 'fake/path/to/nowhere/fake-package-id' to persist build ouput: mkdir fake/path/to/nowhere/fake-package-id: no such file or directory"))
+					Expect(err).To(MatchError("could not create dir 'path/to/nowhere/fake-package-id' to persist build ouput: mkdir path/to/nowhere/fake-package-id: no such file or directory"))
 				})
 			})
 		})
@@ -355,24 +355,24 @@ var _ = Describe("Externalbuilders", func() {
 				})
 			})
 		})
-	})
 
-	Describe("NewCommand", func() {
-		It("only propagates expected variables", func() {
-			var expectedEnv []string
-			for _, key := range externalbuilders.DefaultEnvWhitelist {
-				if val, ok := os.LookupEnv(key); ok {
-					expectedEnv = append(expectedEnv, fmt.Sprintf("%s=%s", key, val))
+		Describe("NewCommand", func() {
+			It("only propagates expected variables", func() {
+				var expectedEnv []string
+				for _, key := range externalbuilders.DefaultEnvWhitelist {
+					if val, ok := os.LookupEnv(key); ok {
+						expectedEnv = append(expectedEnv, fmt.Sprintf("%s=%s", key, val))
+					}
 				}
-			}
 
-			cmd := externalbuilders.NewCommand("/usr/bin/env", externalbuilders.DefaultEnvWhitelist)
-			Expect(cmd.Env).To(ConsistOf(expectedEnv))
+				cmd := builder.NewCommand("/usr/bin/env")
+				Expect(cmd.Env).To(ConsistOf(expectedEnv))
 
-			output, err := cmd.CombinedOutput()
-			Expect(err).NotTo(HaveOccurred())
-			env := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
-			Expect(env).To(ConsistOf(expectedEnv))
+				output, err := cmd.CombinedOutput()
+				Expect(err).NotTo(HaveOccurred())
+				env := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
+				Expect(env).To(ConsistOf(expectedEnv))
+			})
 		})
 	})
 
@@ -443,75 +443,6 @@ var _ = Describe("Externalbuilders", func() {
 
 			It("sets the error value", func() {
 				Expect(rs.Err()).To(MatchError("fake-status-error"))
-			})
-		})
-	})
-
-	Describe("Instance", func() {
-		var i *externalbuilders.Instance
-
-		BeforeEach(func() {
-			i = &externalbuilders.Instance{
-				PackageID: "test-ccid",
-				Builder: &externalbuilders.Builder{
-					Location: "testdata/goodbuilder",
-					Logger:   logger,
-				},
-			}
-		})
-
-		Describe("Start", func() {
-			It("invokes the builder's run command and sets the run status", func() {
-				err := i.Start(&ccintf.PeerConnection{
-					Address: "fake-peer-address",
-				})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(i.RunStatus).NotTo(BeNil())
-				Eventually(i.RunStatus.Done()).Should(BeClosed())
-			})
-		})
-
-		Describe("Stop", func() {
-			It("statically returns an error", func() {
-				err := i.Stop()
-				Expect(err).To(MatchError("stop is not implemented for external builders yet"))
-			})
-		})
-
-		Describe("Wait", func() {
-			BeforeEach(func() {
-				err := i.Start(&ccintf.PeerConnection{
-					Address: "fake-peer-address",
-					TLSConfig: &ccintf.TLSConfig{
-						ClientCert: []byte("fake-client-cert"),
-						ClientKey:  []byte("fake-client-key"),
-						RootCert:   []byte("fake-root-cert"),
-					},
-				})
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			It("returns the exit status of the run", func() {
-				code, err := i.Wait()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(code).To(Equal(0))
-			})
-
-			When("run exits with a non-zero status", func() {
-				BeforeEach(func() {
-					i.Builder.Location = "testdata/failbuilder"
-					i.Builder.Name = "failbuilder"
-					err := i.Start(&ccintf.PeerConnection{
-						Address: "fake-peer-address",
-					})
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				It("returns the exit status of the run and accompanying error", func() {
-					code, err := i.Wait()
-					Expect(err).To(MatchError("builder 'failbuilder' run failed: exit status 1"))
-					Expect(code).To(Equal(1))
-				})
 			})
 		})
 	})
