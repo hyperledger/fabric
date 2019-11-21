@@ -74,15 +74,11 @@ General:
     #   "none" - allows an orderer to start without a system channel configuration
     GenesisMethod: file
 
-    # The file containing the genesis block to use when initializing the orderer system channel
-    GenesisFile: genesisblock
-
     # Bootstrap file: The file containing the bootstrap block to use when
     # initializing the orderer system channel and GenesisMethod is set to
-    # "file". Ignored if GenesisMethod is set to "provisional".
-    # The bootstrap file can be the genesis block, and it can also be a config block that expands the
-    # network to add orderer.
-    BootstrapFile: genesisblock
+    # "file".  The bootstrap file can be the genesis block, and it can also be 
+    # a config block for late bootstrap of some consensus methods like Raft.
+    BootstrapFile:
 
     # LocalMSPDir is where to find the private crypto material needed by the
     # orderer. It is set relative here as a default for dev environments but
