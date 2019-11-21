@@ -1,13 +1,6 @@
 **GitHub Contributions**
 ========================
 
-Hyperledger Fabric is in the process of migrating source control from Gerrit
-to GitHub. During this process this documentation will be updated to provide
-best practices and accepted policies for contribution. While we work to
-determine these practices and policies and build out the GitHub contribution
-guide, we provide the following guidelines as a starting place for developers
-wishing to contribute to Hyperledger Fabric projects hosted on GitHub.
-
 Forking the repository
 ----------------------
 
