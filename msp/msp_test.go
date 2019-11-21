@@ -1027,23 +1027,33 @@ func TestMSPOus(t *testing.T) {
 	// Set the OUIdentifiers
 	backup := localMsp.(*bccspmsp).ouIdentifiers
 	defer func() { localMsp.(*bccspmsp).ouIdentifiers = backup }()
-	id, err := localMsp.GetDefaultSigningIdentity()
+	sid, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+	sidBytes, err := sid.Serialize()
+	assert.NoError(t, err)
+	id, err := localMsp.DeserializeIdentity(sidBytes)
 	assert.NoError(t, err)
 
 	localMsp.(*bccspmsp).ouIdentifiers = map[string][][]byte{
 		"COP": {id.GetOrganizationalUnits()[0].CertifiersIdentifier},
 	}
-	assert.NoError(t, localMsp.Validate(id.GetPublicVersion()))
+	assert.NoError(t, localMsp.Validate(id))
+
+	id, err = localMsp.DeserializeIdentity(sidBytes)
+	assert.NoError(t, err)
 
 	localMsp.(*bccspmsp).ouIdentifiers = map[string][][]byte{
 		"COP2": {id.GetOrganizationalUnits()[0].CertifiersIdentifier},
 	}
-	assert.Error(t, localMsp.Validate(id.GetPublicVersion()))
+	assert.Error(t, localMsp.Validate(id))
+
+	id, err = localMsp.DeserializeIdentity(sidBytes)
+	assert.NoError(t, err)
 
 	localMsp.(*bccspmsp).ouIdentifiers = map[string][][]byte{
 		"COP": {{0, 1, 2, 3, 4}},
 	}
-	assert.Error(t, localMsp.Validate(id.GetPublicVersion()))
+	assert.Error(t, localMsp.Validate(id))
 }
 
 const othercert = `-----BEGIN CERTIFICATE-----
