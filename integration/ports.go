@@ -26,14 +26,15 @@ const (
 	DiscoveryBasePort TestPortRange = basePort + portsPerSuite*iota
 	E2EBasePort
 	GossipBasePort
+	IdemixBasePort
 	LedgerPort
 	LifecyclePort
+	MSPPort
 	NWOBasePort
 	PluggableBasePort
 	PrivateDataBasePort
 	RaftBasePort
 	SBEBasePort
-	IdemixBasePort
 )
 
 // On linux, the default ephemeral port range is 32768-60999 and can be
