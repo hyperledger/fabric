@@ -523,84 +523,137 @@ var _ bool = Describe("PrivateData", func() {
 		})
 
 		Describe("Collection Config Endorsement Policy", func() {
-			BeforeEach(func() {
-				testChaincode = chaincode{
-					Chaincode: newLifecycleChaincode,
-					isLegacy:  false,
-				}
-				nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peers...)
-			})
-
-			When("a peer specified in the chaincode endorsement policy but not in the collection config endorsement policy is used to invoke the chaincode", func() {
-				It("fails validation", func() {
+			When("using legacy lifecycle chaincode", func() {
+				It("ignores the collection config endorsement policy and successfully invokes the chaincode", func() {
+					testChaincode = chaincode{
+						Chaincode: legacyChaincode,
+						isLegacy:  true,
+					}
 					By("setting the collection config endorsement policy to org2 or org3 peers")
 					testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
 
-					By("deploying new lifecycle chaincode")
-					// set collection endorsement policy to org2 or org3
+					By("deploying legacy chaincode")
 					deployChaincode(network, orderer, testChaincode)
 
-					By("adding marble1 with an org1 peer as endorser")
+					By("adding marble1 with an org 1 peer as endorser")
 					peer := network.Peer("Org1", "peer0")
 					marbleDetails := `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`
-					marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(marbleDetails))
-
-					command := commands.ChaincodeInvoke{
-						ChannelID: channelID,
-						Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
-						Name:      testChaincode.Name,
-						Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
-						Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
-						PeerAddresses: []string{
-							network.PeerAddress(peer, nwo.ListenPort),
-						},
-						WaitForEvent: true,
-					}
-
-					sess, err := network.PeerUserSession(peer, "User1", command)
-					Expect(err).NotTo(HaveOccurred())
-					Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-					Expect(sess.Err).To(gbytes.Say("ENDORSEMENT_POLICY_FAILURE"))
+					addMarble(network, orderer, testChaincode.Name, marbleDetails, peer)
 				})
 			})
 
-			When("a peer specified in the collection endorsement policy but not in the chaincode endorsement policy is used to invoke the chaincode", func() {
-				When("the collection endorsement policy is a signature policy", func() {
-					It("successfully invokes the chaincode", func() {
-						// collection config endorsement policy specifies org2 or org3 peers for endorsement
-						By("setting the collection config endorsement policy to use a signature policy")
-						testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
+			When("using new lifecycle chaincode", func() {
+				BeforeEach(func() {
+					testChaincode = chaincode{
+						Chaincode: newLifecycleChaincode,
+						isLegacy:  false,
+					}
+					nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peers...)
+				})
 
-						By("setting the chaincode endorsement policy to org1 or org2 peers")
-						testChaincode.SignaturePolicy = `OR ('Org1MSP.member','Org2MSP.member')`
+				When("a peer specified in the chaincode endorsement policy but not in the collection config endorsement policy is used to invoke the chaincode", func() {
+					It("fails validation", func() {
+						By("setting the collection config endorsement policy to org2 or org3 peers")
+						testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
 
 						By("deploying new lifecycle chaincode")
 						// set collection endorsement policy to org2 or org3
 						deployChaincode(network, orderer, testChaincode)
 
-						By("adding marble1 with an org3 peer as endorser")
-						peer := network.Peer("Org3", "peer0")
+						By("adding marble1 with an org1 peer as endorser")
+						peer := network.Peer("Org1", "peer0")
 						marbleDetails := `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`
-						addMarble(network, orderer, testChaincode.Name, marbleDetails, peer)
+						marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(marbleDetails))
+
+						command := commands.ChaincodeInvoke{
+							ChannelID: channelID,
+							Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
+							Name:      testChaincode.Name,
+							Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+							Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
+							PeerAddresses: []string{
+								network.PeerAddress(peer, nwo.ListenPort),
+							},
+							WaitForEvent: true,
+						}
+
+						sess, err := network.PeerUserSession(peer, "User1", command)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+						Expect(sess.Err).To(gbytes.Say("ENDORSEMENT_POLICY_FAILURE"))
 					})
 				})
 
-				When("the collection endorsement policy is a channel config policy reference", func() {
-					It("successfully invokes the chaincode", func() {
-						// collection config endorsement policy specifies channel config policy reference /Channel/Application/Readers
-						By("setting the collection config endorsement policy to use a channel config policy reference")
-						testChaincode.CollectionsConfig = collectionConfig("collections_config5.json")
+				When("a peer specified in the collection endorsement policy but not in the chaincode endorsement policy is used to invoke the chaincode", func() {
+					When("the collection endorsement policy is a signature policy", func() {
+						It("successfully invokes the chaincode", func() {
+							// collection config endorsement policy specifies org2 or org3 peers for endorsement
+							By("setting the collection config endorsement policy to use a signature policy")
+							testChaincode.CollectionsConfig = collectionConfig("collections_config4.json")
 
-						By("setting the channel endorsement policy to org1 or org2 peers")
-						testChaincode.SignaturePolicy = `OR ('Org1MSP.member','Org2MSP.member')`
+							By("setting the chaincode endorsement policy to org1 or org2 peers")
+							testChaincode.SignaturePolicy = `OR ('Org1MSP.member','Org2MSP.member')`
+
+							By("deploying new lifecycle chaincode")
+							// set collection endorsement policy to org2 or org3
+							deployChaincode(network, orderer, testChaincode)
+
+							By("adding marble1 with an org3 peer as endorser")
+							peer := network.Peer("Org3", "peer0")
+							marbleDetails := `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`
+							addMarble(network, orderer, testChaincode.Name, marbleDetails, peer)
+						})
+					})
+
+					When("the collection endorsement policy is a channel config policy reference", func() {
+						It("successfully invokes the chaincode", func() {
+							// collection config endorsement policy specifies channel config policy reference /Channel/Application/Readers
+							By("setting the collection config endorsement policy to use a channel config policy reference")
+							testChaincode.CollectionsConfig = collectionConfig("collections_config5.json")
+
+							By("setting the channel endorsement policy to org1 or org2 peers")
+							testChaincode.SignaturePolicy = `OR ('Org1MSP.member','Org2MSP.member')`
+
+							By("deploying new lifecycle chaincode")
+							deployChaincode(network, orderer, testChaincode)
+
+							By("adding marble1 with an org3 peer as endorser")
+							peer := network.Peer("Org3", "peer0")
+							marbleDetails := `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`
+							addMarble(network, orderer, testChaincode.Name, marbleDetails, peer)
+						})
+					})
+				})
+
+				When("the collection config endorsement policy specifies a semantically wrong, but well formed signature policy", func() {
+					It("fails to invoke the chaincode with an endorsement policy failure", func() {
+						By("setting the collection config endorsement policy to non existent org4 peers")
+						testChaincode.CollectionsConfig = collectionConfig("collections_config6.json")
 
 						By("deploying new lifecycle chaincode")
 						deployChaincode(network, orderer, testChaincode)
 
-						By("adding marble1 with an org3 peer as endorser")
-						peer := network.Peer("Org3", "peer0")
+						By("adding marble1 with an org1 peer as endorser")
+						peer := network.Peer("Org1", "peer0")
 						marbleDetails := `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`
-						addMarble(network, orderer, testChaincode.Name, marbleDetails, peer)
+						marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(marbleDetails))
+
+						command := commands.ChaincodeInvoke{
+							ChannelID: channelID,
+							Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
+							Name:      testChaincode.Name,
+							Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+							Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
+							PeerAddresses: []string{
+								network.PeerAddress(peer, nwo.ListenPort),
+							},
+							WaitForEvent: true,
+						}
+
+						sess, err := network.PeerUserSession(peer, "User1", command)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+						Expect(sess.Err).To(gbytes.Say("ENDORSEMENT_POLICY_FAILURE"))
 					})
 				})
 			})
