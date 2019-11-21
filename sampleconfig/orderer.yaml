@@ -120,12 +120,26 @@ General:
             FileKeyStore:
                 KeyStore:
 
+        # Settings for the PKCS#11 crypto provider (i.e. when DEFAULT: PKCS11)
+        PKCS11:
+            # Location of the PKCS11 module library
+            Library:
+            # Token Label
+            Label:
+            # User PIN
+            Pin:
+            Hash:
+            Security:
+            FileKeyStore:
+                KeyStore:
+
     # Authentication contains configuration parameters related to authenticating
     # client messages
     Authentication:
         # the acceptable difference between the current server time and the
         # client's time as specified in a client request message
         TimeWindow: 15m
+
 
 ################################################################################
 #
