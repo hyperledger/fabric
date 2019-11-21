@@ -325,7 +325,7 @@ type TxPvtdataInfo struct {
 type CollectionPvtdataInfo struct {
 	Namespace, Collection string
 	ExpectedHash          []byte
-	CollectionConfig      *common.StaticCollectionConfig
+	CollectionConfig      *peer.StaticCollectionConfig
 	Endorsers             []*peer.Endorsement
 }
 
@@ -473,7 +473,7 @@ type MissingCollectionPvtDataInfo struct {
 
 // CollectionConfigInfo encapsulates a collection config for a chaincode and its committing block number
 type CollectionConfigInfo struct {
-	CollectionConfig   *common.CollectionConfigPackage
+	CollectionConfig   *peer.CollectionConfigPackage
 	CommittingBlockNum uint64
 }
 
@@ -553,11 +553,11 @@ type DeployedChaincodeInfoProvider interface {
 	// ChaincodeInfo returns the info about a deployed chaincode
 	ChaincodeInfo(channelName, chaincodeName string, qe SimpleQueryExecutor) (*DeployedChaincodeInfo, error)
 	// CollectionInfo returns the proto msg that defines the named collection. This function can be called for both explicit and implicit collections
-	CollectionInfo(channelName, chaincodeName, collectionName string, qe SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
+	CollectionInfo(channelName, chaincodeName, collectionName string, qe SimpleQueryExecutor) (*peer.StaticCollectionConfig, error)
 	// ImplicitCollections returns a slice that contains one proto msg for each of the implicit collections
-	ImplicitCollections(channelName, chaincodeName string, qe SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)
+	ImplicitCollections(channelName, chaincodeName string, qe SimpleQueryExecutor) ([]*peer.StaticCollectionConfig, error)
 	// AllCollectionsConfigPkg returns a combined collection config pkg that contains both explicit and implicit collections
-	AllCollectionsConfigPkg(channelName, chaincodeName string, qe SimpleQueryExecutor) (*common.CollectionConfigPackage, error)
+	AllCollectionsConfigPkg(channelName, chaincodeName string, qe SimpleQueryExecutor) (*peer.CollectionConfigPackage, error)
 }
 
 // DeployedChaincodeInfo encapsulates chaincode information from the deployed chaincodes
@@ -565,7 +565,7 @@ type DeployedChaincodeInfo struct {
 	Name                        string
 	Hash                        []byte
 	Version                     string
-	ExplicitCollectionConfigPkg *common.CollectionConfigPackage
+	ExplicitCollectionConfigPkg *peer.CollectionConfigPackage
 	IsLegacy                    bool
 }
 
@@ -589,7 +589,7 @@ type ChaincodeLifecycleDetails struct {
 // a member of a collection. Gossip module is expected to provide the dependency to ledger
 type MembershipInfoProvider interface {
 	// AmMemberOf checks whether the current peer is a member of the given collection
-	AmMemberOf(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (bool, error)
+	AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (bool, error)
 }
 
 type HealthCheckRegistry interface {
@@ -618,7 +618,7 @@ type ChaincodeDefinition struct {
 	Name              string
 	Hash              []byte
 	Version           string
-	CollectionConfigs *common.CollectionConfigPackage
+	CollectionConfigs *peer.CollectionConfigPackage
 }
 
 func (cdef *ChaincodeDefinition) String() string {

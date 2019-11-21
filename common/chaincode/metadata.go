@@ -9,8 +9,8 @@ package chaincode
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/peer"
 )
 
 // InstalledChaincode defines metadata about an installed chaincode
@@ -36,7 +36,7 @@ type Metadata struct {
 	Version           string
 	Policy            []byte
 	Id                []byte
-	CollectionsConfig *common.CollectionConfigPackage
+	CollectionsConfig *peer.CollectionConfigPackage
 	// These two fields (Approved, Installed) are only set for
 	// _lifecycle chaincodes. They are used to ensure service
 	// discovery doesn't publish a stale chaincode definition

@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -35,13 +34,13 @@ var _ = Describe("ChaincodeParameters", func() {
 		lhs = &lifecycle.ChaincodeParameters{
 			EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
 			ValidationInfo:  &lb.ChaincodeValidationInfo{},
-			Collections:     &cb.CollectionConfigPackage{},
+			Collections:     &pb.CollectionConfigPackage{},
 		}
 
 		rhs = &lifecycle.ChaincodeParameters{
 			EndorsementInfo: &lb.ChaincodeEndorsementInfo{},
 			ValidationInfo:  &lb.ChaincodeValidationInfo{},
-			Collections:     &cb.CollectionConfigPackage{},
+			Collections:     &pb.CollectionConfigPackage{},
 		}
 	})
 
@@ -82,11 +81,11 @@ var _ = Describe("ChaincodeParameters", func() {
 
 		Context("when the Collections differ from the current definition", func() {
 			BeforeEach(func() {
-				rhs.Collections = &cb.CollectionConfigPackage{
-					Config: []*cb.CollectionConfig{
+				rhs.Collections = &pb.CollectionConfigPackage{
+					Config: []*pb.CollectionConfig{
 						{
-							Payload: &cb.CollectionConfig_StaticCollectionConfig{
-								StaticCollectionConfig: &cb.StaticCollectionConfig{Name: "foo"},
+							Payload: &pb.CollectionConfig_StaticCollectionConfig{
+								StaticCollectionConfig: &pb.StaticCollectionConfig{Name: "foo"},
 							},
 						},
 					},
@@ -124,7 +123,7 @@ var _ = Describe("Resources", func() {
 					Version: "version",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{},
-				Collections:    &cb.CollectionConfigPackage{},
+				Collections:    &pb.CollectionConfigPackage{},
 			}, fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 			fakeReadableState = &mock.ReadWritableState{}
@@ -539,7 +538,7 @@ var _ = Describe("ExternalFunctions", func() {
 					ValidationPlugin:    "my validation plugin",
 					ValidationParameter: []byte("some awesome policy"),
 				},
-				Collections: &cb.CollectionConfigPackage{},
+				Collections: &pb.CollectionConfigPackage{},
 			}
 
 			fakePublicState = &mock.ReadWritableState{}
@@ -575,7 +574,7 @@ var _ = Describe("ExternalFunctions", func() {
 				ValidationPlugin:    "my validation plugin",
 				ValidationParameter: []byte("some awesome policy"),
 			})).To(BeTrue())
-			Expect(proto.Equal(committedDefinition.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
+			Expect(proto.Equal(committedDefinition.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
 
 			metadata, ok, err = resources.Serializer.DeserializeMetadata("chaincode-sources", "cc-name#5", fakeOrgState)
 			Expect(err).NotTo(HaveOccurred())
@@ -616,7 +615,7 @@ var _ = Describe("ExternalFunctions", func() {
 							},
 						}),
 				})).To(BeTrue())
-				Expect(proto.Equal(committedDefinition.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
+				Expect(proto.Equal(committedDefinition.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
 			})
 
 			Context("when no default endorsement policy is defined on thc channel", func() {
@@ -1185,7 +1184,7 @@ var _ = Describe("ExternalFunctions", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 				},
-				Collections: &cb.CollectionConfigPackage{},
+				Collections: &pb.CollectionConfigPackage{},
 			}
 
 			resources.Serializer.Serialize("namespaces", "cc-name", testDefinition, publicKVS)
@@ -1221,7 +1220,7 @@ var _ = Describe("ExternalFunctions", func() {
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
 			})).To(BeTrue())
-			Expect(proto.Equal(cc.Collections, &cb.CollectionConfigPackage{})).To(BeTrue())
+			Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
 		})
 
 		Context("when the chaincode is not defined", func() {
@@ -1281,7 +1280,7 @@ var _ = Describe("ExternalFunctions", func() {
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
 				},
-				Collections: &cb.CollectionConfigPackage{},
+				Collections: &pb.CollectionConfigPackage{},
 			}
 
 			org0KVS = MapLedgerShim(map[string][]byte{})

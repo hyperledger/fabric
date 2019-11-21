@@ -199,7 +199,7 @@ func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.En
 	return nil
 }
 
-func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfig) error {
+func validateNewCollectionConfigs(newCollectionConfigs []*pb.CollectionConfig) error {
 	newCollectionsMap := make(map[string]bool, len(newCollectionConfigs))
 	// Process each collection config from a set of collection configs
 	for _, newCollectionConfig := range newCollectionConfigs {
@@ -264,7 +264,7 @@ func validateSpOrConcat(sp *common.SignaturePolicy) error {
 	return nil
 }
 
-func checkForMissingCollections(newCollectionsMap map[string]*common.StaticCollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+func checkForMissingCollections(newCollectionsMap map[string]*pb.StaticCollectionConfig, oldCollectionConfigs []*pb.CollectionConfig,
 ) error {
 	var missingCollections []string
 
@@ -294,7 +294,7 @@ func checkForMissingCollections(newCollectionsMap map[string]*common.StaticColle
 	return nil
 }
 
-func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*common.StaticCollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*pb.StaticCollectionConfig, oldCollectionConfigs []*pb.CollectionConfig,
 ) error {
 	var modifiedCollectionsBTL []string
 
@@ -324,9 +324,9 @@ func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*common.StaticC
 	return nil
 }
 
-func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*common.CollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*pb.CollectionConfig, oldCollectionConfigs []*pb.CollectionConfig,
 ) error {
-	newCollectionsMap := make(map[string]*common.StaticCollectionConfig, len(newCollectionConfigs))
+	newCollectionsMap := make(map[string]*pb.StaticCollectionConfig, len(newCollectionConfigs))
 
 	for _, newCollectionConfig := range newCollectionConfigs {
 		newCollection := newCollectionConfig.GetStaticCollectionConfig()
@@ -433,7 +433,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 
 	// TODO: Once the new chaincode lifecycle is available (FAB-8724), the following validation
 	// and other validation performed in ValidateLSCCInvocation can be moved to LSCC itself.
-	newCollectionConfigPackage := &common.CollectionConfigPackage{}
+	newCollectionConfigPackage := &pb.CollectionConfigPackage{}
 
 	if collectionsConfigArg != nil {
 		err := proto.Unmarshal(collectionsConfigArg, newCollectionConfigPackage)

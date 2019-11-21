@@ -507,10 +507,10 @@ func (cs *collPolicyChecker) CheckCollectionPolicy(
 	return eligible, nil
 }
 
-func extractStaticCollectionConfig(configPackage *common.CollectionConfigPackage, collectionName string) *common.StaticCollectionConfig {
+func extractStaticCollectionConfig(configPackage *peer.CollectionConfigPackage, collectionName string) *peer.StaticCollectionConfig {
 	for _, config := range configPackage.Config {
 		switch cconf := config.Payload.(type) {
-		case *common.CollectionConfig_StaticCollectionConfig:
+		case *peer.CollectionConfig_StaticCollectionConfig:
 			if cconf.StaticCollectionConfig.Name == collectionName {
 				return cconf.StaticCollectionConfig
 			}

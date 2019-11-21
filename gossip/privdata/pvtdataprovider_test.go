@@ -1045,7 +1045,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 					},
 				},
 			},
-			CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+			CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 		})
 	}
 
@@ -1309,7 +1309,7 @@ func storePvtdataInTransientStore(rwsets []rwSet, store *transientstore.Store) e
 					},
 				},
 			},
-			CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+			CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 		}
 
 		err := store.Persist(rws.txID, 1, set)
@@ -1389,11 +1389,11 @@ func collectionPvtdataInfoFromTemplate(namespace, collection, mspIdentifier stri
 				Signature: signature,
 			},
 		},
-		CollectionConfig: &common.StaticCollectionConfig{
+		CollectionConfig: &peer.StaticCollectionConfig{
 			Name:           collection,
 			MemberOnlyRead: true,
-			MemberOrgsPolicy: &common.CollectionPolicyConfig{
-				Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+			MemberOrgsPolicy: &peer.CollectionPolicyConfig{
+				Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
 					SignaturePolicy: &common.SignaturePolicyEnvelope{
 						Rule: &common.SignaturePolicy{
 							Type: &common.SignaturePolicy_SignedBy{

@@ -12,6 +12,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/util"
@@ -84,11 +85,11 @@ var _ = Describe("ValidatorCommitter", func() {
 				ValidationPlugin:    "validation-plugin",
 				ValidationParameter: []byte("validation-parameter"),
 			},
-			Collections: &cb.CollectionConfigPackage{
-				Config: []*cb.CollectionConfig{
+			Collections: &pb.CollectionConfigPackage{
+				Config: []*pb.CollectionConfig{
 					{
-						Payload: &cb.CollectionConfig_StaticCollectionConfig{
-							StaticCollectionConfig: &cb.StaticCollectionConfig{
+						Payload: &pb.CollectionConfig_StaticCollectionConfig{
+							StaticCollectionConfig: &pb.StaticCollectionConfig{
 								Name: "collection-name",
 							},
 						},
@@ -228,7 +229,7 @@ var _ = Describe("ValidatorCommitter", func() {
 		It("returns the collection info as defined in the new lifecycle", func() {
 			res, err := vc.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proto.Equal(res, &cb.StaticCollectionConfig{
+			Expect(proto.Equal(res, &pb.StaticCollectionConfig{
 				Name: "collection-name",
 			})).To(BeTrue())
 		})
@@ -262,11 +263,11 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the chaincode is not in the new lifecycle", func() {
 			var (
-				collInfo *cb.StaticCollectionConfig
+				collInfo *pb.StaticCollectionConfig
 			)
 
 			BeforeEach(func() {
-				collInfo = &cb.StaticCollectionConfig{}
+				collInfo = &pb.StaticCollectionConfig{}
 				fakeLegacyProvider.CollectionInfoReturns(collInfo, fmt.Errorf("collection-info-error"))
 			})
 
@@ -300,7 +301,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			res, err := vc.ImplicitCollections("channel-id", "cc-name", fakeQueryExecutor)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(res)).To(Equal(2))
-			var firstOrg, secondOrg *cb.StaticCollectionConfig
+			var firstOrg, secondOrg *pb.StaticCollectionConfig
 			for _, collection := range res {
 				switch collection.Name {
 				case "_implicit_org_first-mspid":
@@ -427,11 +428,11 @@ var _ = Describe("ValidatorCommitter", func() {
 
 		Context("when the chaincode is not in the new lifecycle", func() {
 			var (
-				ccPkg *cb.CollectionConfigPackage
+				ccPkg *pb.CollectionConfigPackage
 			)
 
 			BeforeEach(func() {
-				ccPkg = &cb.CollectionConfigPackage{}
+				ccPkg = &pb.CollectionConfigPackage{}
 				fakeLegacyProvider.ChaincodeInfoReturns(
 					&ledger.DeployedChaincodeInfo{
 						ExplicitCollectionConfigPkg: ccPkg,
@@ -653,11 +654,11 @@ var _ = Describe("ValidatorCommitter", func() {
 		})
 
 		Context("when the endorsement policy is specified in the collection config", func() {
-			var expectedPolicy *cb.ApplicationPolicy
+			var expectedPolicy *pb.ApplicationPolicy
 
 			BeforeEach(func() {
-				expectedPolicy = &cb.ApplicationPolicy{
-					Type: &cb.ApplicationPolicy_SignaturePolicy{
+				expectedPolicy = &pb.ApplicationPolicy{
+					Type: &pb.ApplicationPolicy_SignaturePolicy{
 						SignaturePolicy: &cb.SignaturePolicyEnvelope{
 							Identities: []*msp.MSPPrincipal{
 								{
@@ -675,11 +676,11 @@ var _ = Describe("ValidatorCommitter", func() {
 						ValidationPlugin:    "validation-plugin",
 						ValidationParameter: []byte("validation-parameter"),
 					},
-					Collections: &cb.CollectionConfigPackage{
-						Config: []*cb.CollectionConfig{
+					Collections: &pb.CollectionConfigPackage{
+						Config: []*pb.CollectionConfig{
 							{
-								Payload: &cb.CollectionConfig_StaticCollectionConfig{
-									StaticCollectionConfig: &cb.StaticCollectionConfig{
+								Payload: &pb.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &pb.StaticCollectionConfig{
 										Name:              "collection-name",
 										EndorsementPolicy: expectedPolicy,
 									},

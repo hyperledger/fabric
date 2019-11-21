@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	gossip2 "github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -111,10 +111,10 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 	}
 
 	collectionConfigInfo := ledger.CollectionConfigInfo{
-		CollectionConfig: &common.CollectionConfigPackage{
-			Config: []*common.CollectionConfig{
-				{Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfigPackage{
+			Config: []*peer.CollectionConfig{
+				{Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: "col1",
 					},
 				}},
@@ -201,10 +201,10 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 	}
 
 	collectionConfigInfo := ledger.CollectionConfigInfo{
-		CollectionConfig: &common.CollectionConfigPackage{
-			Config: []*common.CollectionConfig{
-				{Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfigPackage{
+			Config: []*peer.CollectionConfig{
+				{Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: "col1",
 					},
 				}},
@@ -292,15 +292,15 @@ func TestReconciliationPullingMissingPrivateDataAtOnePass(t *testing.T) {
 	}
 
 	collectionConfigInfo := &ledger.CollectionConfigInfo{
-		CollectionConfig: &common.CollectionConfigPackage{
-			Config: []*common.CollectionConfig{
-				{Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfigPackage{
+			Config: []*peer.CollectionConfig{
+				{Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: "col1",
 					},
 				}},
-				{Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+				{Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: "col2",
 					},
 				}},
@@ -423,10 +423,10 @@ func TestReconciliationFailedToCommit(t *testing.T) {
 	}
 
 	collectionConfigInfo := ledger.CollectionConfigInfo{
-		CollectionConfig: &common.CollectionConfigPackage{
-			Config: []*common.CollectionConfig{
-				{Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfigPackage{
+			Config: []*peer.CollectionConfig{
+				{Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: "col1",
 					},
 				}},

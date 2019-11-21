@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -172,23 +173,23 @@ func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet *rwset.TxReadWriteSet) {
 }
 
 func populateCollConfigForTest(t *testing.T, txMgr *LockBasedTxMgr, nsColls []collConfigkey, ht *version.Height) {
-	m := map[string]*common.CollectionConfigPackage{}
+	m := map[string]*peer.CollectionConfigPackage{}
 	for _, nsColl := range nsColls {
 		ns, coll := nsColl.ns, nsColl.coll
 		pkg, ok := m[ns]
 		if !ok {
-			pkg = &common.CollectionConfigPackage{}
+			pkg = &peer.CollectionConfigPackage{}
 			m[ns] = pkg
 		}
-		sCollConfig := &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
+		sCollConfig := &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
 				Name: coll,
 			},
 		}
-		pkg.Config = append(pkg.Config, &common.CollectionConfig{Payload: sCollConfig})
+		pkg.Config = append(pkg.Config, &peer.CollectionConfig{Payload: sCollConfig})
 	}
 	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	ccInfoProvider.AllCollectionsConfigPkgStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
+	ccInfoProvider.AllCollectionsConfigPkgStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error) {
 		fmt.Printf("retrieveing info for [%s] from [%s]\n", ccName, m)
 		return m[ccName], nil
 	}

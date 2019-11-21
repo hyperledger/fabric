@@ -13,7 +13,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
@@ -334,7 +333,7 @@ func (lscc *SCC) putChaincodeData(stub shim.ChaincodeStubInterface, cd *ccprovid
 // Fabric will deal with the situation where some collection configs are no longer meaningful.
 // Therefore, the use of channel config for verifying during endorsement is more
 // towards catching manual errors in the config as oppose to any attempt of serializability.
-func checkCollectionMemberPolicy(collectionConfig *common.CollectionConfig, mspmgr msp.MSPManager) error {
+func checkCollectionMemberPolicy(collectionConfig *pb.CollectionConfig, mspmgr msp.MSPManager) error {
 	if mspmgr == nil {
 		return fmt.Errorf("msp manager not set")
 	}
@@ -432,7 +431,7 @@ func (lscc *SCC) putChaincodeCollectionData(stub shim.ChaincodeStubInterface, cd
 		return nil
 	}
 
-	collections := &common.CollectionConfigPackage{}
+	collections := &pb.CollectionConfigPackage{}
 	err := proto.Unmarshal(collectionConfigBytes, collections)
 	if err != nil {
 		return errors.Errorf("invalid collection configuration supplied for chaincode %s:%s", cd.Name, cd.Version)

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -17,7 +17,7 @@ import (
 // getPolicy creates a new policy from the policy envelope. It will return an error if the envelope has invalid policy config.
 // Some caller (e.g., MembershipProvider.AsMemberOf) may drop the error and treat it as a RejectAll policy.
 // In the future, we must revisit the callers if this method will return different types of errors.
-func getPolicy(collectionPolicyConfig *common.CollectionPolicyConfig, deserializer msp.IdentityDeserializer) (policies.Policy, error) {
+func getPolicy(collectionPolicyConfig *peer.CollectionPolicyConfig, deserializer msp.IdentityDeserializer) (policies.Policy, error) {
 	if collectionPolicyConfig == nil {
 		return nil, errors.New("collection policy config is nil")
 	}

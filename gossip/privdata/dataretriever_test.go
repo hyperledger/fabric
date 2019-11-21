@@ -10,9 +10,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	gossip2 "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/core/ledger"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
@@ -49,12 +49,12 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 				pvtReadWriteSet(namespace, collectionName, []byte{3, 4}),
 			},
 		},
-		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+		CollectionConfigs: map[string]*peer.CollectionConfigPackage{
 			namespace: {
-				Config: []*common.CollectionConfig{
+				Config: []*peer.CollectionConfig{
 					{
-						Payload: &common.CollectionConfig_StaticCollectionConfig{
-							StaticCollectionConfig: &common.StaticCollectionConfig{
+						Payload: &peer.CollectionConfig_StaticCollectionConfig{
+							StaticCollectionConfig: &peer.StaticCollectionConfig{
 								Name: collectionName,
 							},
 						},
@@ -582,11 +582,11 @@ func TestNewDataRetriever_EmptyPvtRWSetInTransientStore(t *testing.T) {
 
 func newCollectionConfig(collectionName string) *ledger.CollectionConfigInfo {
 	return &ledger.CollectionConfigInfo{
-		CollectionConfig: &common.CollectionConfigPackage{
-			Config: []*common.CollectionConfig{
+		CollectionConfig: &peer.CollectionConfigPackage{
+			Config: []*peer.CollectionConfig{
 				{
-					Payload: &common.CollectionConfig_StaticCollectionConfig{
-						StaticCollectionConfig: &common.StaticCollectionConfig{
+					Payload: &peer.CollectionConfig_StaticCollectionConfig{
+						StaticCollectionConfig: &peer.StaticCollectionConfig{
 							Name: collectionName,
 						},
 					},

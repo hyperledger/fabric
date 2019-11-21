@@ -14,6 +14,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/util"
 	validationState "github.com/hyperledger/fabric/core/handlers/validation/api/state"
@@ -103,7 +104,7 @@ var ImplicitCollectionMatcher = regexp.MustCompile("^" + ImplicitCollectionNameF
 
 // AllCollectionsConfigPkg implements function in interface ledger.DeployedChaincodeInfoProvider
 // this implementation returns a combined collection config pkg that contains both explicit and implicit collections
-func (vc *ValidatorCommitter) AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*cb.CollectionConfigPackage, error) {
+func (vc *ValidatorCommitter) AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*pb.CollectionConfigPackage, error) {
 	chaincodeInfo, err := vc.ChaincodeInfo(channelName, chaincodeName, qe)
 	if err != nil {
 		return nil, err
@@ -119,23 +120,23 @@ func (vc *ValidatorCommitter) AllCollectionsConfigPkg(channelName, chaincodeName
 		return nil, err
 	}
 
-	var combinedColls []*cb.CollectionConfig
+	var combinedColls []*pb.CollectionConfig
 	if explicitCollectionConfigPkg != nil {
 		combinedColls = append(combinedColls, explicitCollectionConfigPkg.Config...)
 	}
 	for _, implicitColl := range implicitCollections {
-		c := &cb.CollectionConfig{}
-		c.Payload = &cb.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
+		c := &pb.CollectionConfig{}
+		c.Payload = &pb.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
 		combinedColls = append(combinedColls, c)
 	}
-	return &cb.CollectionConfigPackage{
+	return &pb.CollectionConfigPackage{
 		Config: combinedColls,
 	}, nil
 }
 
 // CollectionInfo implements function in interface ledger.DeployedChaincodeInfoProvider, it returns config for
 // both static and implicit collections.
-func (vc *ValidatorCommitter) CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*cb.StaticCollectionConfig, error) {
+func (vc *ValidatorCommitter) CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*pb.StaticCollectionConfig, error) {
 	exists, definedChaincode, err := vc.Resources.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
@@ -166,7 +167,7 @@ func (vc *ValidatorCommitter) CollectionInfo(channelName, chaincodeName, collect
 
 // ImplicitCollections implements function in interface ledger.DeployedChaincodeInfoProvider.  It returns
 //a slice that contains one proto msg for each of the implicit collections
-func (vc *ValidatorCommitter) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*cb.StaticCollectionConfig, error) {
+func (vc *ValidatorCommitter) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*pb.StaticCollectionConfig, error) {
 	exists, _, err := vc.Resources.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,
 		SimpleQueryExecutor: qe,
@@ -184,7 +185,7 @@ func (vc *ValidatorCommitter) ImplicitCollections(channelName, chaincodeName str
 }
 
 // ChaincodeImplicitCollections assumes the chaincode exists in the new lifecycle and returns the implicit collections
-func (vc *ValidatorCommitter) ChaincodeImplicitCollections(channelName string) ([]*cb.StaticCollectionConfig, error) {
+func (vc *ValidatorCommitter) ChaincodeImplicitCollections(channelName string) ([]*pb.StaticCollectionConfig, error) {
 	channelConfig := vc.Resources.ChannelConfigSource.GetStableChannelConfig(channelName)
 	if channelConfig == nil {
 		return nil, errors.Errorf("could not get channelconfig for channel %s", channelName)
@@ -195,7 +196,7 @@ func (vc *ValidatorCommitter) ChaincodeImplicitCollections(channelName string) (
 	}
 
 	orgs := ac.Organizations()
-	implicitCollections := make([]*cb.StaticCollectionConfig, 0, len(orgs))
+	implicitCollections := make([]*pb.StaticCollectionConfig, 0, len(orgs))
 	for _, org := range orgs {
 		implicitCollections = append(implicitCollections, GenerateImplicitCollectionForOrg(org.MSPID()))
 	}
@@ -203,11 +204,11 @@ func (vc *ValidatorCommitter) ChaincodeImplicitCollections(channelName string) (
 	return implicitCollections, nil
 }
 
-func GenerateImplicitCollectionForOrg(mspid string) *cb.StaticCollectionConfig {
-	return &cb.StaticCollectionConfig{
+func GenerateImplicitCollectionForOrg(mspid string) *pb.StaticCollectionConfig {
+	return &pb.StaticCollectionConfig{
 		Name: ImplicitCollectionNameForOrg(mspid),
-		MemberOrgsPolicy: &cb.CollectionPolicyConfig{
-			Payload: &cb.CollectionPolicyConfig_SignaturePolicy{
+		MemberOrgsPolicy: &pb.CollectionPolicyConfig{
+			Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
 				SignaturePolicy: cauthdsl.SignedByMspMember(mspid),
 			},
 		},

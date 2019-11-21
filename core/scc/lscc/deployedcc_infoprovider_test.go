@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -119,15 +119,15 @@ func prepareMockQE(t *testing.T, deployedChaincodes []*ledger.DeployedChaincodeI
 	return mockQE
 }
 
-func prepapreCollectionConfigPkg(collNames []string) *common.CollectionConfigPackage {
-	pkg := &common.CollectionConfigPackage{}
+func prepapreCollectionConfigPkg(collNames []string) *peer.CollectionConfigPackage {
+	pkg := &peer.CollectionConfigPackage{}
 	for _, collName := range collNames {
-		sCollConfig := &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
+		sCollConfig := &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
 				Name: collName,
 			},
 		}
-		config := &common.CollectionConfig{Payload: sCollConfig}
+		config := &peer.CollectionConfig{Payload: sCollConfig}
 		pkg.Config = append(pkg.Config, config)
 	}
 	return pkg

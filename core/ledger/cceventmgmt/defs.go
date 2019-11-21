@@ -9,7 +9,7 @@ package cceventmgmt
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
@@ -18,7 +18,7 @@ type ChaincodeDefinition struct {
 	Name              string
 	Hash              []byte
 	Version           string
-	CollectionConfigs *common.CollectionConfigPackage
+	CollectionConfigs *peer.CollectionConfigPackage
 }
 
 func (cdef *ChaincodeDefinition) String() string {

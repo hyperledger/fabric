@@ -1155,7 +1155,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 
 	// Test 1: Deploy chaincode with a valid collection configs --> success
-	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
+	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -1187,7 +1187,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 
 	// Test 2: Deploy the chaincode with duplicate collection configs --> no error as the
 	// peer is not in V1_2Validation mode
-	ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2, coll1}}
+	ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2, coll1}}
 	ccpBytes, err = proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -1606,7 +1606,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	// V1_2Validation enabled: success
 	// V1_2Validation disable: fail (as no collection updates are allowed)
 	// Note: We might change V1_2Validation with CollectionUpdate capability
-	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
+	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -1650,7 +1650,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 
 		// Test 2: some existing collections are missing in the updated config and peer in
 		// V1_2Validation mode --> error
-		ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll3}}
+		ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
 		assert.NoError(t, err)
 		assert.NotNil(t, ccpBytes)
@@ -1676,7 +1676,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 
 		// Test 3: some existing collections are missing in the updated config and peer in
 		// V1_2Validation mode --> error
-		ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll3}}
+		ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
 		assert.NoError(t, err)
 		assert.NotNil(t, ccpBytes)
@@ -1702,7 +1702,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 		ccver = "3"
 
 		// Test 4: valid collection config config and peer in V1_2Validation mode --> success
-		ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2, coll3}}
+		ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2, coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
 		assert.NoError(t, err)
 		assert.NotNil(t, ccpBytes)
@@ -2016,17 +2016,17 @@ func (c *mockPolicyChecker) CheckPolicyNoChannel(policyName string, signedProp *
 
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
 	requiredPeerCount int32, maximumPeerCount int32, blockToLive uint64,
-) *common.CollectionConfig {
-	signaturePolicy := &common.CollectionPolicyConfig_SignaturePolicy{
+) *peer.CollectionConfig {
+	signaturePolicy := &peer.CollectionPolicyConfig_SignaturePolicy{
 		SignaturePolicy: signaturePolicyEnvelope,
 	}
-	accessPolicy := &common.CollectionPolicyConfig{
+	accessPolicy := &peer.CollectionPolicyConfig{
 		Payload: signaturePolicy,
 	}
 
-	return &common.CollectionConfig{
-		Payload: &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
+	return &peer.CollectionConfig{
+		Payload: &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
 				Name:              collectionName,
 				MemberOrgsPolicy:  accessPolicy,
 				RequiredPeerCount: requiredPeerCount,
@@ -2037,10 +2037,10 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 	}
 }
 
-func testValidateCollection(t *testing.T, v *Validator, collectionConfigs []*common.CollectionConfig, cdRWSet *ccprovider.ChaincodeData,
+func testValidateCollection(t *testing.T, v *Validator, collectionConfigs []*peer.CollectionConfig, cdRWSet *ccprovider.ChaincodeData,
 	lsccFunc string, ac channelconfig.ApplicationCapabilities, chid string,
 ) error {
-	ccp := &common.CollectionConfigPackage{Config: collectionConfigs}
+	ccp := &peer.CollectionConfigPackage{Config: collectionConfigs}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccpBytes)
@@ -2117,11 +2117,11 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
 	// Test 8: Duplicate collections in the collection config package -> success as the peer is in v1.1 validation mode
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
 	// Test 9: requiredPeerCount > maximumPeerCount -> success as the peer is in v1.1 validation mode
@@ -2130,7 +2130,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	maximumPeerCount = 1
 	blockToLive = 10000
 	coll3 := createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
 	// Enable v1.2 validation mode
@@ -2139,7 +2139,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	})
 
 	// Test 10: Duplicate collections in the collection config package -> error
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "collection-name: mycollection1 -- found duplicate collection configuration")
 
 	// Test 11: requiredPeerCount < 0 -> error
@@ -2147,7 +2147,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	maximumPeerCount = 1
 	blockToLive = 10000
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "collection-name: mycollection3 -- requiredPeerCount (1) cannot be less than zero (-2)",
 		collName3, maximumPeerCount, requiredPeerCount)
 
@@ -2156,7 +2156,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	maximumPeerCount = 1
 	blockToLive = 10000
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "collection-name: mycollection3 -- maximum peer count (1) cannot be less than the required peer count (2)")
 
 	// Test 12: AND concatenation of orgs in access policy -> error
@@ -2164,15 +2164,15 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	maximumPeerCount = 2
 	policyEnvelope = cauthdsl.Envelope(cauthdsl.And(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll3}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "collection-name: mycollection3 -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2")
 
 	// Test 13: deploy with existing collection config on the ledger -> error
-	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
+	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 	state["lscc"][privdata.BuildCollectionKVSKey(ccid)] = ccpBytes
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "collection data should not exist for chaincode mycc:1.0")
 }
 
@@ -2207,37 +2207,37 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	coll3 := createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 
-	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
+	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
 	assert.NoError(t, err)
 
 	// Test 1: no existing collection config package -> success
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
 	state["lscc"][privdata.BuildCollectionKVSKey(ccid)] = ccpBytes
 
 	// Test 2: exactly same as the existing collection config package -> success
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
 	// Test 3: missing one existing collection (check based on the length) -> error
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "the following existing collections are missing in the new collection configuration package: [mycollection2]")
 
 	// Test 4: missing one existing collection (check based on the collection names) -> error
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll3}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "the following existing collections are missing in the new collection configuration package: [mycollection2]")
 
 	// Test 5: adding a new collection along with the existing collections -> success
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.NoError(t, err)
 
 	newBlockToLive := blockToLive + 1
 	coll2 = createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, newBlockToLive)
 
 	// Test 6: modify the BlockToLive in an existing collection -> error
-	err = testValidateCollection(t, v, []*common.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
+	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
 }
 

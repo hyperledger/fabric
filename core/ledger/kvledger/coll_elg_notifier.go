@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
@@ -93,12 +93,12 @@ func (n *collElgNotifier) invokeLedgerSpecificNotifier(ledgerID string, commting
 
 // elgEnabledCollNames returns the names of the collections for which the peer is not eligible as per 'existingPkg' and is eligible as per 'postCommitPkg'
 func (n *collElgNotifier) elgEnabledCollNames(ledgerID string,
-	existingPkg, postCommitPkg *common.CollectionConfigPackage) ([]string, error) {
+	existingPkg, postCommitPkg *peer.CollectionConfigPackage) ([]string, error) {
 
 	collectionNames := []string{}
 	exisingConfs := retrieveCollConfs(existingPkg)
 	postCommitConfs := retrieveCollConfs(postCommitPkg)
-	existingConfMap := map[string]*common.StaticCollectionConfig{}
+	existingConfMap := map[string]*peer.StaticCollectionConfig{}
 	for _, existingConf := range exisingConfs {
 		existingConfMap[existingConf.Name] = existingConf
 	}
@@ -123,7 +123,7 @@ func (n *collElgNotifier) elgEnabledCollNames(ledgerID string,
 }
 
 // elgEnabled returns true if the peer is not eligible for a collection as per 'existingPolicy' and is eligible as per 'postCommitPolicy'
-func (n *collElgNotifier) elgEnabled(ledgerID string, existingPolicy, postCommitPolicy *common.CollectionPolicyConfig) (bool, error) {
+func (n *collElgNotifier) elgEnabled(ledgerID string, existingPolicy, postCommitPolicy *peer.CollectionPolicyConfig) (bool, error) {
 	existingMember, err := n.membershipInfoProvider.AmMemberOf(ledgerID, existingPolicy)
 	if err != nil || existingMember {
 		return false, err
@@ -148,11 +148,11 @@ type collElgListener interface {
 	ProcessCollsEligibilityEnabled(commitingBlk uint64, nsCollMap map[string][]string) error
 }
 
-func retrieveCollConfs(collConfPkg *common.CollectionConfigPackage) []*common.StaticCollectionConfig {
+func retrieveCollConfs(collConfPkg *peer.CollectionConfigPackage) []*peer.StaticCollectionConfig {
 	if collConfPkg == nil {
 		return nil
 	}
-	var staticCollConfs []*common.StaticCollectionConfig
+	var staticCollConfs []*peer.StaticCollectionConfig
 	protoConfArray := collConfPkg.Config
 	for _, protoConf := range protoConfArray {
 		staticCollConfs = append(staticCollConfs, protoConf.GetStaticCollectionConfig())

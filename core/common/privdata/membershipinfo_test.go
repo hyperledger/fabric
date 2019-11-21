@@ -9,7 +9,7 @@ package privdata
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
@@ -49,7 +49,7 @@ func TestMembershipInfoProvider(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func getAccessPolicy(signers []string) *common.CollectionPolicyConfig {
+func getAccessPolicy(signers []string) *peer.CollectionPolicyConfig {
 	var data [][]byte
 	for _, signer := range signers {
 		data = append(data, []byte(signer))
@@ -58,7 +58,7 @@ func getAccessPolicy(signers []string) *common.CollectionPolicyConfig {
 	return createCollectionPolicyConfig(policyEnvelope)
 }
 
-func getBadAccessPolicy(signers []string, badIndex int32) *common.CollectionPolicyConfig {
+func getBadAccessPolicy(signers []string, badIndex int32) *peer.CollectionPolicyConfig {
 	var data [][]byte
 	for _, signer := range signers {
 		data = append(data, []byte(signer))

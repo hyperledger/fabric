@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -601,15 +602,15 @@ func samplePvtDataWithConfigInfo(t *testing.T) *transientstore.TxPvtReadWriteSet
 	pvtWriteSet := samplePvtData(t)
 	pvtRWSetWithConfigInfo := &transientstore.TxPvtReadWriteSetWithConfigInfo{
 		PvtRwset: pvtWriteSet,
-		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+		CollectionConfigs: map[string]*peer.CollectionConfigPackage{
 			"ns-1": {
-				Config: []*common.CollectionConfig{
+				Config: []*peer.CollectionConfig{
 					sampleCollectionConfigPackage("coll-1"),
 					sampleCollectionConfigPackage("coll-2"),
 				},
 			},
 			"ns-2": {
-				Config: []*common.CollectionConfig{
+				Config: []*peer.CollectionConfig{
 					sampleCollectionConfigPackage("coll-1"),
 					sampleCollectionConfigPackage("coll-2"),
 				},
@@ -621,17 +622,17 @@ func samplePvtDataWithConfigInfo(t *testing.T) *transientstore.TxPvtReadWriteSet
 
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
 	requiredPeerCount int32, maximumPeerCount int32,
-) *common.CollectionConfig {
-	signaturePolicy := &common.CollectionPolicyConfig_SignaturePolicy{
+) *peer.CollectionConfig {
+	signaturePolicy := &peer.CollectionPolicyConfig_SignaturePolicy{
 		SignaturePolicy: signaturePolicyEnvelope,
 	}
-	accessPolicy := &common.CollectionPolicyConfig{
+	accessPolicy := &peer.CollectionPolicyConfig{
 		Payload: signaturePolicy,
 	}
 
-	return &common.CollectionConfig{
-		Payload: &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
+	return &peer.CollectionConfig{
+		Payload: &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
 				Name:              collectionName,
 				MemberOrgsPolicy:  accessPolicy,
 				RequiredPeerCount: requiredPeerCount,
@@ -641,7 +642,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 	}
 }
 
-func sampleCollectionConfigPackage(colName string) *common.CollectionConfig {
+func sampleCollectionConfigPackage(colName string) *peer.CollectionConfig {
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
 

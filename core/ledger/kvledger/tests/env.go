@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
@@ -283,7 +284,7 @@ type deployedCCInfoProviderWrapper struct {
 // AllCollectionsConfigPkg overrides the same method in lifecycle.AllCollectionsConfigPkg.
 // It is basically a copy of lifecycle.AllCollectionsConfigPkg and invokes ImplicitCollections in the wrapper.
 // This method is called when the unit test code gets private data code path.
-func (dc *deployedCCInfoProviderWrapper) AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
+func (dc *deployedCCInfoProviderWrapper) AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error) {
 	chaincodeInfo, err := dc.ChaincodeInfo(channelName, chaincodeName, qe)
 	if err != nil {
 		return nil, err
@@ -292,16 +293,16 @@ func (dc *deployedCCInfoProviderWrapper) AllCollectionsConfigPkg(channelName, ch
 
 	implicitCollections, _ := dc.ImplicitCollections(channelName, "", nil)
 
-	var combinedColls []*common.CollectionConfig
+	var combinedColls []*peer.CollectionConfig
 	if explicitCollectionConfigPkg != nil {
 		combinedColls = append(combinedColls, explicitCollectionConfigPkg.Config...)
 	}
 	for _, implicitColl := range implicitCollections {
-		c := &common.CollectionConfig{}
-		c.Payload = &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
+		c := &peer.CollectionConfig{}
+		c.Payload = &peer.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
 		combinedColls = append(combinedColls, c)
 	}
-	return &common.CollectionConfigPackage{
+	return &peer.CollectionConfigPackage{
 		Config: combinedColls,
 	}, nil
 }
@@ -309,8 +310,8 @@ func (dc *deployedCCInfoProviderWrapper) AllCollectionsConfigPkg(channelName, ch
 // ImplicitCollections overrides the same method in lifecycle.ValidatorCommitter.
 // It constructs static collection config using known mspids from the sample ledger.
 // This method is called when the unit test code gets collection configuration.
-func (dc *deployedCCInfoProviderWrapper) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error) {
-	collConfigs := make([]*common.StaticCollectionConfig, 0, len(dc.orgMSPIDs))
+func (dc *deployedCCInfoProviderWrapper) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*peer.StaticCollectionConfig, error) {
+	collConfigs := make([]*peer.StaticCollectionConfig, 0, len(dc.orgMSPIDs))
 	for _, mspID := range dc.orgMSPIDs {
 		collConfigs = append(collConfigs, lifecycle.GenerateImplicitCollectionForOrg(mspID))
 	}

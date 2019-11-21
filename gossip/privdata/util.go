@@ -226,10 +226,10 @@ func sampleCollHashedRwSet(collectionName string, hash []byte, hasWrites bool) *
 	return collHashedRwSet
 }
 
-func extractCollectionConfig(configPackage *common.CollectionConfigPackage, collectionName string) *common.CollectionConfig {
+func extractCollectionConfig(configPackage *peer.CollectionConfigPackage, collectionName string) *peer.CollectionConfig {
 	for _, config := range configPackage.Config {
 		switch cconf := config.Payload.(type) {
-		case *common.CollectionConfig_StaticCollectionConfig:
+		case *peer.CollectionConfig_StaticCollectionConfig:
 			if cconf.StaticCollectionConfig.Name == collectionName {
 				return config
 			}

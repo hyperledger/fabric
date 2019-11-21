@@ -201,7 +201,7 @@ type collectionConfigJson struct {
 // GetCollectionConfigFromFile retrieves the collection configuration
 // from the supplied file; the supplied file must contain a
 // json-formatted array of collectionConfigJson elements
-func GetCollectionConfigFromFile(ccFile string) (*pcommon.CollectionConfigPackage, []byte, error) {
+func GetCollectionConfigFromFile(ccFile string) (*pb.CollectionConfigPackage, []byte, error) {
 	fileBytes, err := ioutil.ReadFile(ccFile)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "could not read file '%s'", ccFile)
@@ -213,27 +213,27 @@ func GetCollectionConfigFromFile(ccFile string) (*pcommon.CollectionConfigPackag
 // getCollectionConfig retrieves the collection configuration
 // from the supplied byte array; the byte array must contain a
 // json-formatted array of collectionConfigJson elements
-func getCollectionConfigFromBytes(cconfBytes []byte) (*pcommon.CollectionConfigPackage, []byte, error) {
+func getCollectionConfigFromBytes(cconfBytes []byte) (*pb.CollectionConfigPackage, []byte, error) {
 	cconf := &[]collectionConfigJson{}
 	err := json.Unmarshal(cconfBytes, cconf)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not parse the collection configuration")
 	}
 
-	ccarray := make([]*pcommon.CollectionConfig, 0, len(*cconf))
+	ccarray := make([]*pb.CollectionConfig, 0, len(*cconf))
 	for _, cconfitem := range *cconf {
 		p, err := cauthdsl.FromString(cconfitem.Policy)
 		if err != nil {
 			return nil, nil, errors.WithMessagef(err, "invalid policy %s", cconfitem.Policy)
 		}
 
-		cpc := &pcommon.CollectionPolicyConfig{
-			Payload: &pcommon.CollectionPolicyConfig_SignaturePolicy{
+		cpc := &pb.CollectionPolicyConfig{
+			Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
 				SignaturePolicy: p,
 			},
 		}
 
-		var ep *pcommon.ApplicationPolicy
+		var ep *pb.ApplicationPolicy
 		if cconfitem.EndorsementPolicy != nil {
 			signaturePolicy := cconfitem.EndorsementPolicy.SignaturePolicy
 			channelConfigPolicy := cconfitem.EndorsementPolicy.ChannelConfigPolicy
@@ -243,9 +243,9 @@ func getCollectionConfigFromBytes(cconfBytes []byte) (*pcommon.CollectionConfigP
 			}
 		}
 
-		cc := &pcommon.CollectionConfig{
-			Payload: &pcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &pcommon.StaticCollectionConfig{
+		cc := &pb.CollectionConfig{
+			Payload: &pb.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &pb.StaticCollectionConfig{
 					Name:              cconfitem.Name,
 					MemberOrgsPolicy:  cpc,
 					RequiredPeerCount: cconfitem.RequiredPeerCount,
@@ -261,12 +261,12 @@ func getCollectionConfigFromBytes(cconfBytes []byte) (*pcommon.CollectionConfigP
 		ccarray = append(ccarray, cc)
 	}
 
-	ccp := &pcommon.CollectionConfigPackage{Config: ccarray}
+	ccp := &pb.CollectionConfigPackage{Config: ccarray}
 	ccpBytes, err := proto.Marshal(ccp)
 	return ccp, ccpBytes, err
 }
 
-func getApplicationPolicy(signaturePolicy, channelConfigPolicy string) (*pcommon.ApplicationPolicy, error) {
+func getApplicationPolicy(signaturePolicy, channelConfigPolicy string) (*pb.ApplicationPolicy, error) {
 	if signaturePolicy == "" && channelConfigPolicy == "" {
 		// no policy, no problem
 		return nil, nil
@@ -277,23 +277,23 @@ func getApplicationPolicy(signaturePolicy, channelConfigPolicy string) (*pcommon
 		return nil, errors.New(`cannot specify both "--signature-policy" and "--channel-config-policy"`)
 	}
 
-	var applicationPolicy *pcommon.ApplicationPolicy
+	var applicationPolicy *pb.ApplicationPolicy
 	if signaturePolicy != "" {
 		signaturePolicyEnvelope, err := cauthdsl.FromString(signaturePolicy)
 		if err != nil {
 			return nil, errors.Errorf("invalid signature policy: %s", signaturePolicy)
 		}
 
-		applicationPolicy = &pcommon.ApplicationPolicy{
-			Type: &pcommon.ApplicationPolicy_SignaturePolicy{
+		applicationPolicy = &pb.ApplicationPolicy{
+			Type: &pb.ApplicationPolicy_SignaturePolicy{
 				SignaturePolicy: signaturePolicyEnvelope,
 			},
 		}
 	}
 
 	if channelConfigPolicy != "" {
-		applicationPolicy = &pcommon.ApplicationPolicy{
-			Type: &pcommon.ApplicationPolicy_ChannelConfigPolicyReference{
+		applicationPolicy = &pb.ApplicationPolicy{
+			Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 				ChannelConfigPolicyReference: channelConfigPolicy,
 			},
 		}

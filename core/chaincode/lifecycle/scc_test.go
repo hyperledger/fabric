@@ -15,8 +15,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -586,7 +586,7 @@ var _ = Describe("SCC", func() {
 			Context("when collection member-org-policy signature policy is nil", func() {
 				BeforeEach(func() {
 					collConfigs[0].UseGivenMemberOrgPolicy = true
-					collConfigs[0].MemberOrgPolicy = &cb.CollectionPolicyConfig{}
+					collConfigs[0].MemberOrgPolicy = &pb.CollectionPolicyConfig{}
 				})
 
 				It("wraps and returns error", func() {
@@ -918,14 +918,14 @@ var _ = Describe("SCC", func() {
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
-					Collections: &cb.CollectionConfigPackage{
-						Config: []*cb.CollectionConfig{
+					Collections: &pb.CollectionConfigPackage{
+						Config: []*pb.CollectionConfig{
 							{
-								Payload: &cb.CollectionConfig_StaticCollectionConfig{
-									StaticCollectionConfig: &cb.StaticCollectionConfig{
+								Payload: &pb.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &pb.StaticCollectionConfig{
 										Name: "test_collection",
-										MemberOrgsPolicy: &cb.CollectionPolicyConfig{
-											Payload: &cb.CollectionPolicyConfig_SignaturePolicy{
+										MemberOrgsPolicy: &pb.CollectionPolicyConfig{
+											Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
 												SignaturePolicy: cauthdsl.SignedByMspMember("org0"),
 											},
 										},
@@ -989,14 +989,14 @@ var _ = Describe("SCC", func() {
 						ValidationPlugin:    "validation-plugin",
 						ValidationParameter: []byte("validation-parameter"),
 					},
-					Collections: &cb.CollectionConfigPackage{
-						Config: []*cb.CollectionConfig{
+					Collections: &pb.CollectionConfigPackage{
+						Config: []*pb.CollectionConfig{
 							{
-								Payload: &cb.CollectionConfig_StaticCollectionConfig{
-									StaticCollectionConfig: &cb.StaticCollectionConfig{
+								Payload: &pb.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &pb.StaticCollectionConfig{
 										Name: "test_collection",
-										MemberOrgsPolicy: &cb.CollectionPolicyConfig{
-											Payload: &cb.CollectionPolicyConfig_SignaturePolicy{
+										MemberOrgsPolicy: &pb.CollectionPolicyConfig{
+											Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
 												SignaturePolicy: cauthdsl.SignedByMspMember("org0"),
 											},
 										},
@@ -1065,11 +1065,11 @@ var _ = Describe("SCC", func() {
 
 			Context("when a collection name contains invalid characters", func() {
 				BeforeEach(func() {
-					arg.Collections = &cb.CollectionConfigPackage{
-						Config: []*cb.CollectionConfig{
+					arg.Collections = &pb.CollectionConfigPackage{
+						Config: []*pb.CollectionConfig{
 							{
-								Payload: &cb.CollectionConfig_StaticCollectionConfig{
-									StaticCollectionConfig: &cb.StaticCollectionConfig{
+								Payload: &pb.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &pb.StaticCollectionConfig{
 										Name: "collection(test",
 									},
 								},
@@ -1091,11 +1091,11 @@ var _ = Describe("SCC", func() {
 
 			Context("when a collection name begins with an invalid character", func() {
 				BeforeEach(func() {
-					arg.Collections = &cb.CollectionConfigPackage{
-						Config: []*cb.CollectionConfig{
+					arg.Collections = &pb.CollectionConfigPackage{
+						Config: []*pb.CollectionConfig{
 							{
-								Payload: &cb.CollectionConfig_StaticCollectionConfig{
-									StaticCollectionConfig: &cb.StaticCollectionConfig{
+								Payload: &pb.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &pb.StaticCollectionConfig{
 										Name: "&collection",
 									},
 								},
@@ -1207,7 +1207,7 @@ var _ = Describe("SCC", func() {
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
-					Collections:         &cb.CollectionConfigPackage{},
+					Collections:         &pb.CollectionConfigPackage{},
 					InitRequired:        true,
 				}
 
@@ -1345,7 +1345,7 @@ var _ = Describe("SCC", func() {
 							ValidationPlugin:    "validation-plugin",
 							ValidationParameter: []byte("validation-parameter"),
 						},
-						Collections: &cb.CollectionConfigPackage{},
+						Collections: &pb.CollectionConfigPackage{},
 					},
 					nil,
 				)
@@ -1371,7 +1371,7 @@ var _ = Describe("SCC", func() {
 					EndorsementPlugin:   "endorsement-plugin",
 					ValidationPlugin:    "validation-plugin",
 					ValidationParameter: []byte("validation-parameter"),
-					Collections:         &cb.CollectionConfigPackage{},
+					Collections:         &pb.CollectionConfigPackage{},
 					Approvals: map[string]bool{
 						"fake-mspid":  true,
 						"other-mspid": true,
@@ -1483,7 +1483,7 @@ var _ = Describe("SCC", func() {
 							ValidationPlugin:    "validation-plugin",
 							ValidationParameter: []byte("validation-parameter"),
 						},
-						Collections: &cb.CollectionConfigPackage{},
+						Collections: &pb.CollectionConfigPackage{},
 					}
 
 					if name == "woo" {
@@ -1508,7 +1508,7 @@ var _ = Describe("SCC", func() {
 						EndorsementPlugin:   "endorsement-plugin",
 						ValidationPlugin:    "validation-plugin",
 						ValidationParameter: []byte("validation-parameter"),
-						Collections:         &cb.CollectionConfigPackage{},
+						Collections:         &pb.CollectionConfigPackage{},
 					},
 					&lb.QueryChaincodeDefinitionsResult_ChaincodeDefinition{
 						Name:                "woo",
@@ -1517,7 +1517,7 @@ var _ = Describe("SCC", func() {
 						EndorsementPlugin:   "endorsement-plugin",
 						ValidationPlugin:    "validation-plugin",
 						ValidationParameter: []byte("validation-parameter"),
-						Collections:         &cb.CollectionConfigPackage{},
+						Collections:         &pb.CollectionConfigPackage{},
 					},
 				))
 				Expect(fakeSCCFuncs.QueryNamespaceDefinitionsCallCount()).To(Equal(1))
@@ -1566,15 +1566,15 @@ func (ccs collectionConfigs) deepCopy() collectionConfigs {
 	return newCCs
 }
 
-func (ccs collectionConfigs) toProtoCollectionConfigPackage() *cb.CollectionConfigPackage {
+func (ccs collectionConfigs) toProtoCollectionConfigPackage() *pb.CollectionConfigPackage {
 	if len(ccs) == 0 {
 		return nil
 	}
-	collConfigsProtos := make([]*cb.CollectionConfig, len(ccs))
+	collConfigsProtos := make([]*pb.CollectionConfig, len(ccs))
 	for i, c := range ccs {
 		collConfigsProtos[i] = c.toCollectionConfigProto()
 	}
-	return &cb.CollectionConfigPackage{
+	return &pb.CollectionConfigPackage{
 		Config: collConfigsProtos,
 	}
 }
@@ -1588,24 +1588,24 @@ type collectionConfig struct {
 	Policy                  string
 	Identities              []*mspprotos.MSPPrincipal
 	UseGivenMemberOrgPolicy bool
-	MemberOrgPolicy         *cb.CollectionPolicyConfig
+	MemberOrgPolicy         *pb.CollectionPolicyConfig
 }
 
-func (cc *collectionConfig) toCollectionConfigProto() *cb.CollectionConfig {
+func (cc *collectionConfig) toCollectionConfigProto() *pb.CollectionConfig {
 	memberOrgPolicy := cc.MemberOrgPolicy
 	if !cc.UseGivenMemberOrgPolicy {
 		spe, err := cauthdsl.FromString(cc.Policy)
 		Expect(err).NotTo(HaveOccurred())
 		spe.Identities = cc.Identities
-		memberOrgPolicy = &cb.CollectionPolicyConfig{
-			Payload: &cb.CollectionPolicyConfig_SignaturePolicy{
+		memberOrgPolicy = &pb.CollectionPolicyConfig{
+			Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
 				SignaturePolicy: spe,
 			},
 		}
 	}
-	return &cb.CollectionConfig{
-		Payload: &cb.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &cb.StaticCollectionConfig{
+	return &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name:              cc.Name,
 				MaximumPeerCount:  cc.MaxPeerCount,
 				RequiredPeerCount: cc.RequiredPeerCount,

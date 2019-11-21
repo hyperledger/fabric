@@ -10,7 +10,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 )
 
@@ -87,7 +87,7 @@ func (p *LSCCBasedBTLPolicy) GetExpiringBlock(namesapce string, collection strin
 }
 
 type collectionInfoProvider interface {
-	CollectionInfo(chaincodeName, collectionName string) (*common.StaticCollectionConfig, error)
+	CollectionInfo(chaincodeName, collectionName string) (*peer.StaticCollectionConfig, error)
 }
 
 //go:generate counterfeiter -o mock/coll_info_provider.go -fake-name CollectionInfoProvider . collectionInfoProvider

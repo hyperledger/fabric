@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/peer"
@@ -53,7 +52,7 @@ func TestQueriesPrivateData(t *testing.T) {
 
 	var nextBlockNumber uint64 = 1
 	// this test assumes four collections
-	collectionConfig := []*common.StaticCollectionConfig{{Name: "c1"}, {Name: "c2"}, {Name: "c3"}, {Name: "c4"}}
+	collectionConfig := []*pb.StaticCollectionConfig{{Name: "c1"}, {Name: "c2"}, {Name: "c3"}, {Name: "c4"}}
 	collectionConfigPkg := constructCollectionConfigPkg(collectionConfig)
 	defer chaincodeSupport.Runtime.Stop(cID.Name + ":" + cID.Version)
 	_, err = deployWithCollectionConfigs(channelID, ccContext, spec, collectionConfigPkg, nextBlockNumber, chaincodeSupport)
@@ -520,12 +519,12 @@ func TestQueriesPrivateData(t *testing.T) {
 	}
 }
 
-func constructCollectionConfigPkg(staticCollectionConfigs []*common.StaticCollectionConfig) *common.CollectionConfigPackage {
-	var cc []*common.CollectionConfig
+func constructCollectionConfigPkg(staticCollectionConfigs []*pb.StaticCollectionConfig) *pb.CollectionConfigPackage {
+	var cc []*pb.CollectionConfig
 	for _, sc := range staticCollectionConfigs {
-		cc = append(cc, &common.CollectionConfig{
-			Payload: &common.CollectionConfig_StaticCollectionConfig{
+		cc = append(cc, &pb.CollectionConfig{
+			Payload: &pb.CollectionConfig_StaticCollectionConfig{
 				StaticCollectionConfig: sc}})
 	}
-	return &common.CollectionConfigPackage{Config: cc}
+	return &pb.CollectionConfigPackage{Config: cc}
 }

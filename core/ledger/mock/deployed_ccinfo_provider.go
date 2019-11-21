@@ -4,13 +4,13 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type DeployedChaincodeInfoProvider struct {
-	AllCollectionsConfigPkgStub        func(string, string, ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error)
+	AllCollectionsConfigPkgStub        func(string, string, ledger.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error)
 	allCollectionsConfigPkgMutex       sync.RWMutex
 	allCollectionsConfigPkgArgsForCall []struct {
 		arg1 string
@@ -18,11 +18,11 @@ type DeployedChaincodeInfoProvider struct {
 		arg3 ledger.SimpleQueryExecutor
 	}
 	allCollectionsConfigPkgReturns struct {
-		result1 *common.CollectionConfigPackage
+		result1 *peer.CollectionConfigPackage
 		result2 error
 	}
 	allCollectionsConfigPkgReturnsOnCall map[int]struct {
-		result1 *common.CollectionConfigPackage
+		result1 *peer.CollectionConfigPackage
 		result2 error
 	}
 	ChaincodeInfoStub        func(string, string, ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error)
@@ -40,7 +40,7 @@ type DeployedChaincodeInfoProvider struct {
 		result1 *ledger.DeployedChaincodeInfo
 		result2 error
 	}
-	CollectionInfoStub        func(string, string, string, ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
+	CollectionInfoStub        func(string, string, string, ledger.SimpleQueryExecutor) (*peer.StaticCollectionConfig, error)
 	collectionInfoMutex       sync.RWMutex
 	collectionInfoArgsForCall []struct {
 		arg1 string
@@ -49,14 +49,14 @@ type DeployedChaincodeInfoProvider struct {
 		arg4 ledger.SimpleQueryExecutor
 	}
 	collectionInfoReturns struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}
 	collectionInfoReturnsOnCall map[int]struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}
-	ImplicitCollectionsStub        func(string, string, ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)
+	ImplicitCollectionsStub        func(string, string, ledger.SimpleQueryExecutor) ([]*peer.StaticCollectionConfig, error)
 	implicitCollectionsMutex       sync.RWMutex
 	implicitCollectionsArgsForCall []struct {
 		arg1 string
@@ -64,11 +64,11 @@ type DeployedChaincodeInfoProvider struct {
 		arg3 ledger.SimpleQueryExecutor
 	}
 	implicitCollectionsReturns struct {
-		result1 []*common.StaticCollectionConfig
+		result1 []*peer.StaticCollectionConfig
 		result2 error
 	}
 	implicitCollectionsReturnsOnCall map[int]struct {
-		result1 []*common.StaticCollectionConfig
+		result1 []*peer.StaticCollectionConfig
 		result2 error
 	}
 	NamespacesStub        func() []string
@@ -98,7 +98,7 @@ type DeployedChaincodeInfoProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkg(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
+func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkg(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error) {
 	fake.allCollectionsConfigPkgMutex.Lock()
 	ret, specificReturn := fake.allCollectionsConfigPkgReturnsOnCall[len(fake.allCollectionsConfigPkgArgsForCall)]
 	fake.allCollectionsConfigPkgArgsForCall = append(fake.allCollectionsConfigPkgArgsForCall, struct {
@@ -124,7 +124,7 @@ func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkgCallCount() in
 	return len(fake.allCollectionsConfigPkgArgsForCall)
 }
 
-func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkgCalls(stub func(string, string, ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error)) {
+func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkgCalls(stub func(string, string, ledger.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error)) {
 	fake.allCollectionsConfigPkgMutex.Lock()
 	defer fake.allCollectionsConfigPkgMutex.Unlock()
 	fake.AllCollectionsConfigPkgStub = stub
@@ -137,28 +137,28 @@ func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkgArgsForCall(i 
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkgReturns(result1 *common.CollectionConfigPackage, result2 error) {
+func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkgReturns(result1 *peer.CollectionConfigPackage, result2 error) {
 	fake.allCollectionsConfigPkgMutex.Lock()
 	defer fake.allCollectionsConfigPkgMutex.Unlock()
 	fake.AllCollectionsConfigPkgStub = nil
 	fake.allCollectionsConfigPkgReturns = struct {
-		result1 *common.CollectionConfigPackage
+		result1 *peer.CollectionConfigPackage
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkgReturnsOnCall(i int, result1 *common.CollectionConfigPackage, result2 error) {
+func (fake *DeployedChaincodeInfoProvider) AllCollectionsConfigPkgReturnsOnCall(i int, result1 *peer.CollectionConfigPackage, result2 error) {
 	fake.allCollectionsConfigPkgMutex.Lock()
 	defer fake.allCollectionsConfigPkgMutex.Unlock()
 	fake.AllCollectionsConfigPkgStub = nil
 	if fake.allCollectionsConfigPkgReturnsOnCall == nil {
 		fake.allCollectionsConfigPkgReturnsOnCall = make(map[int]struct {
-			result1 *common.CollectionConfigPackage
+			result1 *peer.CollectionConfigPackage
 			result2 error
 		})
 	}
 	fake.allCollectionsConfigPkgReturnsOnCall[i] = struct {
-		result1 *common.CollectionConfigPackage
+		result1 *peer.CollectionConfigPackage
 		result2 error
 	}{result1, result2}
 }
@@ -228,7 +228,7 @@ func (fake *DeployedChaincodeInfoProvider) ChaincodeInfoReturnsOnCall(i int, res
 	}{result1, result2}
 }
 
-func (fake *DeployedChaincodeInfoProvider) CollectionInfo(arg1 string, arg2 string, arg3 string, arg4 ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
+func (fake *DeployedChaincodeInfoProvider) CollectionInfo(arg1 string, arg2 string, arg3 string, arg4 ledger.SimpleQueryExecutor) (*peer.StaticCollectionConfig, error) {
 	fake.collectionInfoMutex.Lock()
 	ret, specificReturn := fake.collectionInfoReturnsOnCall[len(fake.collectionInfoArgsForCall)]
 	fake.collectionInfoArgsForCall = append(fake.collectionInfoArgsForCall, struct {
@@ -255,7 +255,7 @@ func (fake *DeployedChaincodeInfoProvider) CollectionInfoCallCount() int {
 	return len(fake.collectionInfoArgsForCall)
 }
 
-func (fake *DeployedChaincodeInfoProvider) CollectionInfoCalls(stub func(string, string, string, ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error)) {
+func (fake *DeployedChaincodeInfoProvider) CollectionInfoCalls(stub func(string, string, string, ledger.SimpleQueryExecutor) (*peer.StaticCollectionConfig, error)) {
 	fake.collectionInfoMutex.Lock()
 	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = stub
@@ -268,33 +268,33 @@ func (fake *DeployedChaincodeInfoProvider) CollectionInfoArgsForCall(i int) (str
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *DeployedChaincodeInfoProvider) CollectionInfoReturns(result1 *common.StaticCollectionConfig, result2 error) {
+func (fake *DeployedChaincodeInfoProvider) CollectionInfoReturns(result1 *peer.StaticCollectionConfig, result2 error) {
 	fake.collectionInfoMutex.Lock()
 	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = nil
 	fake.collectionInfoReturns = struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DeployedChaincodeInfoProvider) CollectionInfoReturnsOnCall(i int, result1 *common.StaticCollectionConfig, result2 error) {
+func (fake *DeployedChaincodeInfoProvider) CollectionInfoReturnsOnCall(i int, result1 *peer.StaticCollectionConfig, result2 error) {
 	fake.collectionInfoMutex.Lock()
 	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = nil
 	if fake.collectionInfoReturnsOnCall == nil {
 		fake.collectionInfoReturnsOnCall = make(map[int]struct {
-			result1 *common.StaticCollectionConfig
+			result1 *peer.StaticCollectionConfig
 			result2 error
 		})
 	}
 	fake.collectionInfoReturnsOnCall[i] = struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DeployedChaincodeInfoProvider) ImplicitCollections(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error) {
+func (fake *DeployedChaincodeInfoProvider) ImplicitCollections(arg1 string, arg2 string, arg3 ledger.SimpleQueryExecutor) ([]*peer.StaticCollectionConfig, error) {
 	fake.implicitCollectionsMutex.Lock()
 	ret, specificReturn := fake.implicitCollectionsReturnsOnCall[len(fake.implicitCollectionsArgsForCall)]
 	fake.implicitCollectionsArgsForCall = append(fake.implicitCollectionsArgsForCall, struct {
@@ -320,7 +320,7 @@ func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsCallCount() int {
 	return len(fake.implicitCollectionsArgsForCall)
 }
 
-func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsCalls(stub func(string, string, ledger.SimpleQueryExecutor) ([]*common.StaticCollectionConfig, error)) {
+func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsCalls(stub func(string, string, ledger.SimpleQueryExecutor) ([]*peer.StaticCollectionConfig, error)) {
 	fake.implicitCollectionsMutex.Lock()
 	defer fake.implicitCollectionsMutex.Unlock()
 	fake.ImplicitCollectionsStub = stub
@@ -333,28 +333,28 @@ func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsArgsForCall(i int)
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsReturns(result1 []*common.StaticCollectionConfig, result2 error) {
+func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsReturns(result1 []*peer.StaticCollectionConfig, result2 error) {
 	fake.implicitCollectionsMutex.Lock()
 	defer fake.implicitCollectionsMutex.Unlock()
 	fake.ImplicitCollectionsStub = nil
 	fake.implicitCollectionsReturns = struct {
-		result1 []*common.StaticCollectionConfig
+		result1 []*peer.StaticCollectionConfig
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsReturnsOnCall(i int, result1 []*common.StaticCollectionConfig, result2 error) {
+func (fake *DeployedChaincodeInfoProvider) ImplicitCollectionsReturnsOnCall(i int, result1 []*peer.StaticCollectionConfig, result2 error) {
 	fake.implicitCollectionsMutex.Lock()
 	defer fake.implicitCollectionsMutex.Unlock()
 	fake.ImplicitCollectionsStub = nil
 	if fake.implicitCollectionsReturnsOnCall == nil {
 		fake.implicitCollectionsReturnsOnCall = make(map[int]struct {
-			result1 []*common.StaticCollectionConfig
+			result1 []*peer.StaticCollectionConfig
 			result2 error
 		})
 	}
 	fake.implicitCollectionsReturnsOnCall[i] = struct {
-		result1 []*common.StaticCollectionConfig
+		result1 []*peer.StaticCollectionConfig
 		result2 error
 	}{result1, result2}
 }

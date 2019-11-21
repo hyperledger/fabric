@@ -4,18 +4,17 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type CollectionStore struct {
-	AccessFilterStub        func(string, *common.CollectionPolicyConfig) (privdata.Filter, error)
+	AccessFilterStub        func(string, *peer.CollectionPolicyConfig) (privdata.Filter, error)
 	accessFilterMutex       sync.RWMutex
 	accessFilterArgsForCall []struct {
 		arg1 string
-		arg2 *common.CollectionPolicyConfig
+		arg2 *peer.CollectionPolicyConfig
 	}
 	accessFilterReturns struct {
 		result1 privdata.Filter
@@ -51,30 +50,30 @@ type CollectionStore struct {
 		result1 privdata.CollectionAccessPolicy
 		result2 error
 	}
-	RetrieveCollectionConfigStub        func(privdata.CollectionCriteria) (*common.StaticCollectionConfig, error)
+	RetrieveCollectionConfigStub        func(privdata.CollectionCriteria) (*peer.StaticCollectionConfig, error)
 	retrieveCollectionConfigMutex       sync.RWMutex
 	retrieveCollectionConfigArgsForCall []struct {
 		arg1 privdata.CollectionCriteria
 	}
 	retrieveCollectionConfigReturns struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}
 	retrieveCollectionConfigReturnsOnCall map[int]struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}
-	RetrieveCollectionConfigPackageStub        func(privdata.CollectionCriteria) (*common.CollectionConfigPackage, error)
+	RetrieveCollectionConfigPackageStub        func(privdata.CollectionCriteria) (*peer.CollectionConfigPackage, error)
 	retrieveCollectionConfigPackageMutex       sync.RWMutex
 	retrieveCollectionConfigPackageArgsForCall []struct {
 		arg1 privdata.CollectionCriteria
 	}
 	retrieveCollectionConfigPackageReturns struct {
-		result1 *common.CollectionConfigPackage
+		result1 *peer.CollectionConfigPackage
 		result2 error
 	}
 	retrieveCollectionConfigPackageReturnsOnCall map[int]struct {
-		result1 *common.CollectionConfigPackage
+		result1 *peer.CollectionConfigPackage
 		result2 error
 	}
 	RetrieveCollectionPersistenceConfigsStub        func(privdata.CollectionCriteria) (privdata.CollectionPersistenceConfigs, error)
@@ -111,12 +110,12 @@ type CollectionStore struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CollectionStore) AccessFilter(arg1 string, arg2 *common.CollectionPolicyConfig) (privdata.Filter, error) {
+func (fake *CollectionStore) AccessFilter(arg1 string, arg2 *peer.CollectionPolicyConfig) (privdata.Filter, error) {
 	fake.accessFilterMutex.Lock()
 	ret, specificReturn := fake.accessFilterReturnsOnCall[len(fake.accessFilterArgsForCall)]
 	fake.accessFilterArgsForCall = append(fake.accessFilterArgsForCall, struct {
 		arg1 string
-		arg2 *common.CollectionPolicyConfig
+		arg2 *peer.CollectionPolicyConfig
 	}{arg1, arg2})
 	fake.recordInvocation("AccessFilter", []interface{}{arg1, arg2})
 	fake.accessFilterMutex.Unlock()
@@ -136,13 +135,13 @@ func (fake *CollectionStore) AccessFilterCallCount() int {
 	return len(fake.accessFilterArgsForCall)
 }
 
-func (fake *CollectionStore) AccessFilterCalls(stub func(string, *common.CollectionPolicyConfig) (privdata.Filter, error)) {
+func (fake *CollectionStore) AccessFilterCalls(stub func(string, *peer.CollectionPolicyConfig) (privdata.Filter, error)) {
 	fake.accessFilterMutex.Lock()
 	defer fake.accessFilterMutex.Unlock()
 	fake.AccessFilterStub = stub
 }
 
-func (fake *CollectionStore) AccessFilterArgsForCall(i int) (string, *common.CollectionPolicyConfig) {
+func (fake *CollectionStore) AccessFilterArgsForCall(i int) (string, *peer.CollectionPolicyConfig) {
 	fake.accessFilterMutex.RLock()
 	defer fake.accessFilterMutex.RUnlock()
 	argsForCall := fake.accessFilterArgsForCall[i]
@@ -301,7 +300,7 @@ func (fake *CollectionStore) RetrieveCollectionAccessPolicyReturnsOnCall(i int, 
 	}{result1, result2}
 }
 
-func (fake *CollectionStore) RetrieveCollectionConfig(arg1 privdata.CollectionCriteria) (*common.StaticCollectionConfig, error) {
+func (fake *CollectionStore) RetrieveCollectionConfig(arg1 privdata.CollectionCriteria) (*peer.StaticCollectionConfig, error) {
 	fake.retrieveCollectionConfigMutex.Lock()
 	ret, specificReturn := fake.retrieveCollectionConfigReturnsOnCall[len(fake.retrieveCollectionConfigArgsForCall)]
 	fake.retrieveCollectionConfigArgsForCall = append(fake.retrieveCollectionConfigArgsForCall, struct {
@@ -325,7 +324,7 @@ func (fake *CollectionStore) RetrieveCollectionConfigCallCount() int {
 	return len(fake.retrieveCollectionConfigArgsForCall)
 }
 
-func (fake *CollectionStore) RetrieveCollectionConfigCalls(stub func(privdata.CollectionCriteria) (*common.StaticCollectionConfig, error)) {
+func (fake *CollectionStore) RetrieveCollectionConfigCalls(stub func(privdata.CollectionCriteria) (*peer.StaticCollectionConfig, error)) {
 	fake.retrieveCollectionConfigMutex.Lock()
 	defer fake.retrieveCollectionConfigMutex.Unlock()
 	fake.RetrieveCollectionConfigStub = stub
@@ -338,33 +337,33 @@ func (fake *CollectionStore) RetrieveCollectionConfigArgsForCall(i int) privdata
 	return argsForCall.arg1
 }
 
-func (fake *CollectionStore) RetrieveCollectionConfigReturns(result1 *common.StaticCollectionConfig, result2 error) {
+func (fake *CollectionStore) RetrieveCollectionConfigReturns(result1 *peer.StaticCollectionConfig, result2 error) {
 	fake.retrieveCollectionConfigMutex.Lock()
 	defer fake.retrieveCollectionConfigMutex.Unlock()
 	fake.RetrieveCollectionConfigStub = nil
 	fake.retrieveCollectionConfigReturns = struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *CollectionStore) RetrieveCollectionConfigReturnsOnCall(i int, result1 *common.StaticCollectionConfig, result2 error) {
+func (fake *CollectionStore) RetrieveCollectionConfigReturnsOnCall(i int, result1 *peer.StaticCollectionConfig, result2 error) {
 	fake.retrieveCollectionConfigMutex.Lock()
 	defer fake.retrieveCollectionConfigMutex.Unlock()
 	fake.RetrieveCollectionConfigStub = nil
 	if fake.retrieveCollectionConfigReturnsOnCall == nil {
 		fake.retrieveCollectionConfigReturnsOnCall = make(map[int]struct {
-			result1 *common.StaticCollectionConfig
+			result1 *peer.StaticCollectionConfig
 			result2 error
 		})
 	}
 	fake.retrieveCollectionConfigReturnsOnCall[i] = struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *CollectionStore) RetrieveCollectionConfigPackage(arg1 privdata.CollectionCriteria) (*common.CollectionConfigPackage, error) {
+func (fake *CollectionStore) RetrieveCollectionConfigPackage(arg1 privdata.CollectionCriteria) (*peer.CollectionConfigPackage, error) {
 	fake.retrieveCollectionConfigPackageMutex.Lock()
 	ret, specificReturn := fake.retrieveCollectionConfigPackageReturnsOnCall[len(fake.retrieveCollectionConfigPackageArgsForCall)]
 	fake.retrieveCollectionConfigPackageArgsForCall = append(fake.retrieveCollectionConfigPackageArgsForCall, struct {
@@ -388,7 +387,7 @@ func (fake *CollectionStore) RetrieveCollectionConfigPackageCallCount() int {
 	return len(fake.retrieveCollectionConfigPackageArgsForCall)
 }
 
-func (fake *CollectionStore) RetrieveCollectionConfigPackageCalls(stub func(privdata.CollectionCriteria) (*common.CollectionConfigPackage, error)) {
+func (fake *CollectionStore) RetrieveCollectionConfigPackageCalls(stub func(privdata.CollectionCriteria) (*peer.CollectionConfigPackage, error)) {
 	fake.retrieveCollectionConfigPackageMutex.Lock()
 	defer fake.retrieveCollectionConfigPackageMutex.Unlock()
 	fake.RetrieveCollectionConfigPackageStub = stub
@@ -401,28 +400,28 @@ func (fake *CollectionStore) RetrieveCollectionConfigPackageArgsForCall(i int) p
 	return argsForCall.arg1
 }
 
-func (fake *CollectionStore) RetrieveCollectionConfigPackageReturns(result1 *common.CollectionConfigPackage, result2 error) {
+func (fake *CollectionStore) RetrieveCollectionConfigPackageReturns(result1 *peer.CollectionConfigPackage, result2 error) {
 	fake.retrieveCollectionConfigPackageMutex.Lock()
 	defer fake.retrieveCollectionConfigPackageMutex.Unlock()
 	fake.RetrieveCollectionConfigPackageStub = nil
 	fake.retrieveCollectionConfigPackageReturns = struct {
-		result1 *common.CollectionConfigPackage
+		result1 *peer.CollectionConfigPackage
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *CollectionStore) RetrieveCollectionConfigPackageReturnsOnCall(i int, result1 *common.CollectionConfigPackage, result2 error) {
+func (fake *CollectionStore) RetrieveCollectionConfigPackageReturnsOnCall(i int, result1 *peer.CollectionConfigPackage, result2 error) {
 	fake.retrieveCollectionConfigPackageMutex.Lock()
 	defer fake.retrieveCollectionConfigPackageMutex.Unlock()
 	fake.RetrieveCollectionConfigPackageStub = nil
 	if fake.retrieveCollectionConfigPackageReturnsOnCall == nil {
 		fake.retrieveCollectionConfigPackageReturnsOnCall = make(map[int]struct {
-			result1 *common.CollectionConfigPackage
+			result1 *peer.CollectionConfigPackage
 			result2 error
 		})
 	}
 	fake.retrieveCollectionConfigPackageReturnsOnCall[i] = struct {
-		result1 *common.CollectionConfigPackage
+		result1 *peer.CollectionConfigPackage
 		result2 error
 	}{result1, result2}
 }

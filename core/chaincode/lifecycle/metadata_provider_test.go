@@ -7,14 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
-	cb "github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/pkg/errors"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
@@ -40,13 +39,13 @@ var _ = Describe("MetadataProvider", func() {
 					Version: "cc-version",
 				},
 				ValidationInfo: &lb.ChaincodeValidationInfo{
-					ValidationParameter: protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
-						Type: &peer.ApplicationPolicy_SignaturePolicy{
+					ValidationParameter: protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
+						Type: &pb.ApplicationPolicy_SignaturePolicy{
 							SignaturePolicy: cauthdsl.AcceptAllPolicy,
 						},
 					}),
 				},
-				Collections: &cb.CollectionConfigPackage{},
+				Collections: &pb.CollectionConfigPackage{},
 			},
 		}
 		fakeChaincodeInfoProvider.ChaincodeInfoReturns(ccInfo, nil)
@@ -55,7 +54,7 @@ var _ = Describe("MetadataProvider", func() {
 			Name:              "legacy-cc",
 			Version:           "legacy-version",
 			Policy:            []byte("legacy-policy"),
-			CollectionsConfig: &cb.CollectionConfigPackage{},
+			CollectionsConfig: &pb.CollectionConfigPackage{},
 		}
 		fakeLegacyMetadataProvider = &mock.LegacyMetadataProvider{}
 		fakeLegacyMetadataProvider.MetadataReturns(legacyCCMetadata)
@@ -70,7 +69,7 @@ var _ = Describe("MetadataProvider", func() {
 				Name:              "cc-name",
 				Version:           "1",
 				Policy:            cauthdsl.MarshaledAcceptAllPolicy,
-				CollectionsConfig: &cb.CollectionConfigPackage{},
+				CollectionsConfig: &pb.CollectionConfigPackage{},
 			},
 		))
 	})
@@ -87,7 +86,7 @@ var _ = Describe("MetadataProvider", func() {
 					Name:              "legacy-cc",
 					Version:           "legacy-version",
 					Policy:            []byte("legacy-policy"),
-					CollectionsConfig: &cb.CollectionConfigPackage{},
+					CollectionsConfig: &pb.CollectionConfigPackage{},
 				},
 			))
 		})
@@ -106,7 +105,7 @@ var _ = Describe("MetadataProvider", func() {
 					Name:              "cc-name",
 					Version:           "1",
 					Policy:            cauthdsl.MarshaledRejectAllPolicy,
-					CollectionsConfig: &cb.CollectionConfigPackage{},
+					CollectionsConfig: &pb.CollectionConfigPackage{},
 				},
 			))
 		})
@@ -115,8 +114,8 @@ var _ = Describe("MetadataProvider", func() {
 	Context("when the policy is of the channel reference type", func() {
 		BeforeEach(func() {
 			ccInfo.Definition.ValidationInfo.ValidationParameter = protoutil.MarshalOrPanic(
-				&peer.ApplicationPolicy{
-					Type: &peer.ApplicationPolicy_ChannelConfigPolicyReference{
+				&pb.ApplicationPolicy{
+					Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 						ChannelConfigPolicyReference: "barf",
 					},
 				})
@@ -137,7 +136,7 @@ var _ = Describe("MetadataProvider", func() {
 					Name:              "cc-name",
 					Version:           "1",
 					Policy:            cauthdsl.MarshaledAcceptAllPolicy,
-					CollectionsConfig: &cb.CollectionConfigPackage{},
+					CollectionsConfig: &pb.CollectionConfigPackage{},
 				},
 			))
 		})
@@ -156,7 +155,7 @@ var _ = Describe("MetadataProvider", func() {
 						Name:              "cc-name",
 						Version:           "1",
 						Policy:            cauthdsl.MarshaledRejectAllPolicy,
-						CollectionsConfig: &cb.CollectionConfigPackage{},
+						CollectionsConfig: &pb.CollectionConfigPackage{},
 					},
 				))
 			})
@@ -176,7 +175,7 @@ var _ = Describe("MetadataProvider", func() {
 						Name:              "cc-name",
 						Version:           "1",
 						Policy:            cauthdsl.MarshaledRejectAllPolicy,
-						CollectionsConfig: &cb.CollectionConfigPackage{},
+						CollectionsConfig: &pb.CollectionConfigPackage{},
 					},
 				))
 			})
@@ -199,7 +198,7 @@ var _ = Describe("MetadataProvider", func() {
 						Name:              "cc-name",
 						Version:           "1",
 						Policy:            cauthdsl.MarshaledRejectAllPolicy,
-						CollectionsConfig: &cb.CollectionConfigPackage{},
+						CollectionsConfig: &pb.CollectionConfigPackage{},
 					},
 				))
 			})

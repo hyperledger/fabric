@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/core/cclifecycle"
@@ -446,14 +446,14 @@ func TestMetadata(t *testing.T) {
 	// and go straight into the stateDB.
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil).Once()
-	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return(protoutil.MarshalOrPanic(&common.CollectionConfigPackage{}), nil).Once()
+	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return(protoutil.MarshalOrPanic(&peer.CollectionConfigPackage{}), nil).Once()
 	md = m.Metadata("mychannel", "cc1", true)
 	assert.Equal(t, &chaincode.Metadata{
 		Name:              "cc1",
 		Version:           "1.0",
 		Id:                []byte{42},
 		Policy:            []byte{1, 2, 3, 4, 5},
-		CollectionsConfig: &common.CollectionConfigPackage{},
+		CollectionsConfig: &peer.CollectionConfigPackage{},
 	}, md)
 	assertLogged(t, recorder, "Retrieved collection config for cc1 from cc1~collection")
 

@@ -8,8 +8,8 @@ package lifecycle_test
 
 import (
 	"github.com/hyperledger/fabric-chaincode-go/shim"
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/util"
@@ -206,7 +206,7 @@ var _ = Describe("Integration", func() {
 				EndorsementPlugin:   "builtin",
 				ValidationPlugin:    "builtin",
 				ValidationParameter: []byte("validation-parameter"),
-				Collections:         &cb.CollectionConfigPackage{},
+				Collections:         &pb.CollectionConfigPackage{},
 				Approvals: map[string]bool{
 					"fake-mspid": true,
 				},

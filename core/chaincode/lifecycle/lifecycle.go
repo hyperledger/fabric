@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"fmt"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -106,7 +105,7 @@ type ChaincodeLocalPackage struct {
 type ChaincodeParameters struct {
 	EndorsementInfo *lb.ChaincodeEndorsementInfo
 	ValidationInfo  *lb.ChaincodeValidationInfo
-	Collections     *cb.CollectionConfigPackage
+	Collections     *pb.CollectionConfigPackage
 }
 
 func (cp *ChaincodeParameters) Equal(ocp *ChaincodeParameters) error {
@@ -135,7 +134,7 @@ type ChaincodeDefinition struct {
 	Sequence        int64
 	EndorsementInfo *lb.ChaincodeEndorsementInfo
 	ValidationInfo  *lb.ChaincodeValidationInfo
-	Collections     *cb.CollectionConfigPackage
+	Collections     *pb.CollectionConfigPackage
 }
 
 // Parameters returns the non-sequence info of the chaincode definition

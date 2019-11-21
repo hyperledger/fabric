@@ -12,15 +12,16 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
-func createCollectionPolicyConfig(accessPolicy *pb.SignaturePolicyEnvelope) *pb.CollectionPolicyConfig {
+func createCollectionPolicyConfig(accessPolicy *cb.SignaturePolicyEnvelope) *pb.CollectionPolicyConfig {
 	cpcSp := &pb.CollectionPolicyConfig_SignaturePolicy{
 		SignaturePolicy: accessPolicy,
 	}

@@ -9,9 +9,9 @@ package lifecycle_test
 import (
 	"fmt"
 
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
@@ -90,7 +90,7 @@ var _ = Describe("Cache", func() {
 						ValidationInfo: &lb.ChaincodeValidationInfo{
 							ValidationParameter: []byte("validation-parameter"),
 						},
-						Collections: &cb.CollectionConfigPackage{},
+						Collections: &pb.CollectionConfigPackage{},
 					},
 					Approved: true,
 					Hashes: []string{
@@ -191,7 +191,7 @@ var _ = Describe("Cache", func() {
 					ValidationInfo: &lb.ChaincodeValidationInfo{
 						ValidationParameter: []byte("validation-parameter"),
 					},
-					Collections: &cb.CollectionConfigPackage{},
+					Collections: &pb.CollectionConfigPackage{},
 				},
 				InstallInfo: &lifecycle.ChaincodeInstallInfo{
 					Type:      "cc-type",
@@ -595,7 +595,7 @@ var _ = Describe("Cache", func() {
 							ValidationInfo: &lb.ChaincodeValidationInfo{
 								ValidationParameter: []byte("validation-parameter"),
 							},
-							Collections: &cb.CollectionConfigPackage{},
+							Collections: &pb.CollectionConfigPackage{},
 						},
 						Approved: true,
 					},
@@ -608,7 +608,7 @@ var _ = Describe("Cache", func() {
 							ValidationInfo: &lb.ChaincodeValidationInfo{
 								ValidationParameter: []byte("validation-parameter"),
 							},
-							Collections: &cb.CollectionConfigPackage{},
+							Collections: &pb.CollectionConfigPackage{},
 						},
 						Approved: false,
 					},
@@ -621,7 +621,7 @@ var _ = Describe("Cache", func() {
 							ValidationInfo: &lb.ChaincodeValidationInfo{
 								ValidationParameter: []byte("validation-parameter"),
 							},
-							Collections: &cb.CollectionConfigPackage{},
+							Collections: &pb.CollectionConfigPackage{},
 						},
 						Approved: true,
 					},
@@ -656,7 +656,7 @@ var _ = Describe("Cache", func() {
 					Name:              "installedAndApprovedCC",
 					Version:           "3",
 					Policy:            []byte("validation-parameter"),
-					CollectionsConfig: &cb.CollectionConfigPackage{},
+					CollectionsConfig: &pb.CollectionConfigPackage{},
 					Approved:          true,
 					Installed:         true,
 				},
@@ -664,7 +664,7 @@ var _ = Describe("Cache", func() {
 					Name:              "ididntinstall",
 					Version:           "3",
 					Policy:            []byte("validation-parameter"),
-					CollectionsConfig: &cb.CollectionConfigPackage{},
+					CollectionsConfig: &pb.CollectionConfigPackage{},
 					Approved:          true,
 					Installed:         false,
 				},
@@ -672,7 +672,7 @@ var _ = Describe("Cache", func() {
 					Name:              "idontapprove",
 					Version:           "3",
 					Policy:            []byte("validation-parameter"),
-					CollectionsConfig: &cb.CollectionConfigPackage{},
+					CollectionsConfig: &pb.CollectionConfigPackage{},
 					Approved:          false,
 					Installed:         true,
 				},

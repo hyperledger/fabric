@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	discoveryprotos "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policies/inquire"
@@ -648,7 +648,7 @@ func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
 	mdf := &metadataFetcher{}
 	mdf.On("Metadata").Return(&chaincode.Metadata{
 		Name:              "mycc",
-		CollectionsConfig: &cb.CollectionConfigPackage{},
+		CollectionsConfig: &peer.CollectionConfigPackage{},
 		Policy:            []byte{1, 2, 3},
 	})
 

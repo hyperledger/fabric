@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
 	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -84,7 +84,7 @@ type distributorImpl struct {
 // CollectionAccessFactory an interface to generate collection access policy
 type CollectionAccessFactory interface {
 	// AccessPolicy based on collection configuration
-	AccessPolicy(config *common.CollectionConfig, chainID string) (privdata.CollectionAccessPolicy, error)
+	AccessPolicy(config *peer.CollectionConfig, chainID string) (privdata.CollectionAccessPolicy, error)
 }
 
 // policyAccessFactory the implementation of CollectionAccessFactory
@@ -92,10 +92,10 @@ type policyAccessFactory struct {
 	IdentityDeserializerFactory
 }
 
-func (p *policyAccessFactory) AccessPolicy(config *common.CollectionConfig, chainID string) (privdata.CollectionAccessPolicy, error) {
+func (p *policyAccessFactory) AccessPolicy(config *peer.CollectionConfig, chainID string) (privdata.CollectionAccessPolicy, error) {
 	colAP := &privdata.SimpleCollection{}
 	switch cconf := config.Payload.(type) {
-	case *common.CollectionConfig_StaticCollectionConfig:
+	case *peer.CollectionConfig_StaticCollectionConfig:
 		err := colAP.Setup(cconf.StaticCollectionConfig, p.GetIdentityDeserializer(chainID))
 		if err != nil {
 			return nil, errors.WithMessagef(err, "error setting up collection  %#v", cconf.StaticCollectionConfig.Name)
@@ -173,7 +173,7 @@ func (d *distributorImpl) computeDisseminationPlan(txID string,
 				return nil, errors.Errorf("No collection access policy filter computed for %v", collectionName)
 			}
 
-			pvtDataMsg, err := d.createPrivateDataMessage(txID, namespace, collection, &common.CollectionConfigPackage{Config: []*common.CollectionConfig{colCP}}, blkHt)
+			pvtDataMsg, err := d.createPrivateDataMessage(txID, namespace, collection, &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{colCP}}, blkHt)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -189,7 +189,7 @@ func (d *distributorImpl) computeDisseminationPlan(txID string,
 	return disseminationPlan, nil
 }
 
-func (d *distributorImpl) getCollectionConfig(config *common.CollectionConfigPackage, collection *rwset.CollectionPvtReadWriteSet) (*common.CollectionConfig, error) {
+func (d *distributorImpl) getCollectionConfig(config *peer.CollectionConfigPackage, collection *rwset.CollectionPvtReadWriteSet) (*peer.CollectionConfig, error) {
 	for _, c := range config.Config {
 		if staticConfig := c.GetStaticCollectionConfig(); staticConfig != nil {
 			if staticConfig.Name == collection.CollectionName {
@@ -393,7 +393,7 @@ func (d *distributorImpl) reportSendDuration(startTime time.Time) {
 
 func (d *distributorImpl) createPrivateDataMessage(txID, namespace string,
 	collection *rwset.CollectionPvtReadWriteSet,
-	ccp *common.CollectionConfigPackage,
+	ccp *peer.CollectionConfigPackage,
 	blkHt uint64) (*protoext.SignedGossipMessage, error) {
 	msg := &protosgossip.GossipMessage{
 		Channel: []byte(d.chainID),

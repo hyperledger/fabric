@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
@@ -73,7 +74,7 @@ func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	if len(updatedCCs) == 0 {
 		return nil
 	}
-	updatedCollConfigs := map[string]*common.CollectionConfigPackage{}
+	updatedCollConfigs := map[string]*peer.CollectionConfigPackage{}
 	for _, cc := range updatedCCs {
 		ccInfo, err := m.ccInfoProvider.ChaincodeInfo(trigger.LedgerID, cc.Name, trigger.PostCommitQueryExecutor)
 		if err != nil {
@@ -157,7 +158,7 @@ func (r *retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*
 	return constructCollectionConfigInfo(compositeKV, implicitColls)
 }
 
-func (r *retriever) getImplicitCollection(chaincodeName string) ([]*common.StaticCollectionConfig, error) {
+func (r *retriever) getImplicitCollection(chaincodeName string) ([]*peer.StaticCollectionConfig, error) {
 	qe, err := r.ledgerInfoRetriever.NewQueryExecutor()
 	if err != nil {
 		return nil, err
@@ -166,7 +167,7 @@ func (r *retriever) getImplicitCollection(chaincodeName string) ([]*common.Stati
 	return r.deployedCCInfoProvider.ImplicitCollections(r.ledgerID, chaincodeName, qe)
 }
 
-func prepareDBBatch(chaincodeCollConfigs map[string]*common.CollectionConfigPackage, committingBlockNum uint64) (*batch, error) {
+func prepareDBBatch(chaincodeCollConfigs map[string]*peer.CollectionConfigPackage, committingBlockNum uint64) (*batch, error) {
 	batch := newBatch()
 	for ccName, collConfig := range chaincodeCollConfigs {
 		key := constructCollectionConfigKey(ccName)
@@ -181,7 +182,7 @@ func prepareDBBatch(chaincodeCollConfigs map[string]*common.CollectionConfigPack
 }
 
 func compositeKVToCollectionConfig(compositeKV *compositeKV) (*ledger.CollectionConfigInfo, error) {
-	conf := &common.CollectionConfigPackage{}
+	conf := &peer.CollectionConfigPackage{}
 	if err := proto.Unmarshal(compositeKV.value, conf); err != nil {
 		return nil, errors.Wrap(err, "error unmarshalling compositeKV to collection config")
 	}
@@ -205,7 +206,7 @@ func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwse
 
 func constructCollectionConfigInfo(
 	compositeKV *compositeKV,
-	implicitColls []*common.StaticCollectionConfig,
+	implicitColls []*peer.StaticCollectionConfig,
 ) (*ledger.CollectionConfigInfo, error) {
 	var collConf *ledger.CollectionConfigInfo
 	var err error
@@ -215,7 +216,7 @@ func constructCollectionConfigInfo(
 	}
 
 	collConf = &ledger.CollectionConfigInfo{
-		CollectionConfig: &common.CollectionConfigPackage{},
+		CollectionConfig: &peer.CollectionConfigPackage{},
 	}
 	if compositeKV != nil {
 		if collConf, err = compositeKVToCollectionConfig(compositeKV); err != nil {
@@ -224,8 +225,8 @@ func constructCollectionConfigInfo(
 	}
 
 	for _, implicitColl := range implicitColls {
-		cc := &common.CollectionConfig{}
-		cc.Payload = &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
+		cc := &peer.CollectionConfig{}
+		cc.Payload = &peer.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
 		collConf.CollectionConfig.Config = append(
 			collConf.CollectionConfig.Config,
 			cc,

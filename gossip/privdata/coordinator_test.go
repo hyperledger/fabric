@@ -257,16 +257,16 @@ func (cs *collectionStore) RetrieveCollection(privdata.CollectionCriteria) (priv
 	panic("implement me")
 }
 
-func (cs *collectionStore) RetrieveCollectionConfig(cc privdata.CollectionCriteria) (*common.StaticCollectionConfig, error) {
+func (cs *collectionStore) RetrieveCollectionConfig(cc privdata.CollectionCriteria) (*peer.StaticCollectionConfig, error) {
 	mspIdentifier := "different-org"
 	if _, exists := cs.store[fromCollectionCriteria(cc)]; exists || cs.acceptsAll {
 		mspIdentifier = cs.mspIdentifier
 	}
-	return &common.StaticCollectionConfig{
+	return &peer.StaticCollectionConfig{
 		Name:           cc.Collection,
 		MemberOnlyRead: true,
-		MemberOrgsPolicy: &common.CollectionPolicyConfig{
-			Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+		MemberOrgsPolicy: &peer.CollectionPolicyConfig{
+			Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
 				SignaturePolicy: &common.SignaturePolicyEnvelope{
 					Rule: &common.SignaturePolicy{
 						Type: &common.SignaturePolicy_SignedBy{
@@ -292,12 +292,12 @@ func (cs *collectionStore) RetrieveReadWritePermission(cc privdata.CollectionCri
 	panic("implement me")
 }
 
-func (cs *collectionStore) RetrieveCollectionConfigPackage(cc privdata.CollectionCriteria) (*common.CollectionConfigPackage, error) {
-	return &common.CollectionConfigPackage{
-		Config: []*common.CollectionConfig{
+func (cs *collectionStore) RetrieveCollectionConfigPackage(cc privdata.CollectionCriteria) (*peer.CollectionConfigPackage, error) {
+	return &peer.CollectionConfigPackage{
+		Config: []*peer.CollectionConfig{
 			{
-				Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name:              cc.Collection,
 						MaximumPeerCount:  1,
 						RequiredPeerCount: 1,
@@ -312,7 +312,7 @@ func (cs *collectionStore) RetrieveCollectionPersistenceConfigs(cc privdata.Coll
 	panic("implement me")
 }
 
-func (cs *collectionStore) AccessFilter(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (privdata.Filter, error) {
+func (cs *collectionStore) AccessFilter(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (privdata.Filter, error) {
 	panic("implement me")
 }
 
@@ -1122,7 +1122,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 				},
 			},
 		},
-		CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+		CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 	})
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1").addRWSet().addNSRWSet("ns2", "c1").create()
 	err = coordinator.StoreBlock(block, pvtData)
@@ -1658,7 +1658,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 					},
 				},
 			},
-			CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+			CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 		})
 	}
 	assertPurged := func(purged bool) {
@@ -1761,7 +1761,7 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	// Green path: ledger height can be retrieved from ledger/committer
 	err := coordinator.StorePvtData("tx1", &tspb.TxPvtReadWriteSetWithConfigInfo{
 		PvtRwset:          pvtData[0].WriteSet,
-		CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+		CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 	}, uint64(5))
 	assert.NoError(t, err)
 }

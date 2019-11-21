@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
@@ -44,9 +44,9 @@ type ChaincodeInfoProvider interface {
 	ChaincodeInfo(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error)
 	// CollectionInfo returns the proto msg that defines the named collection.
 	// This function can be used for both explicit and implicit collections.
-	CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*common.StaticCollectionConfig, error)
+	CollectionInfo(channelName, chaincodeName, collectionName string, qe ledger.SimpleQueryExecutor) (*peer.StaticCollectionConfig, error)
 	// AllCollectionsConfigPkg returns a combined collection config pkg that contains both explicit and implicit collections
-	AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*common.CollectionConfigPackage, error)
+	AllCollectionsConfigPkg(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error)
 }
 
 // IdentityDeserializerFactory creates msp.IdentityDeserializer for
@@ -87,7 +87,7 @@ func NewSimpleCollectionStore(qeFactory QueryExecutorFactory, ccInfoProvider Cha
 	}
 }
 
-func (c *SimpleCollectionStore) retrieveCollectionConfigPackage(cc CollectionCriteria, qe ledger.QueryExecutor) (*common.CollectionConfigPackage, error) {
+func (c *SimpleCollectionStore) retrieveCollectionConfigPackage(cc CollectionCriteria, qe ledger.QueryExecutor) (*peer.CollectionConfigPackage, error) {
 	var err error
 	if qe == nil {
 		qe, err = c.qeFactory.NewQueryExecutor()
@@ -100,7 +100,7 @@ func (c *SimpleCollectionStore) retrieveCollectionConfigPackage(cc CollectionCri
 }
 
 // RetrieveCollectionConfigPackageFromState retrieves the collection config package from the given key from the given state
-func RetrieveCollectionConfigPackageFromState(cc CollectionCriteria, state State) (*common.CollectionConfigPackage, error) {
+func RetrieveCollectionConfigPackageFromState(cc CollectionCriteria, state State) (*peer.CollectionConfigPackage, error) {
 	cb, err := state.GetState("lscc", BuildCollectionKVSKey(cc.Namespace))
 	if err != nil {
 		return nil, errors.WithMessagef(err, "error while retrieving collection for collection criteria %#v", cc)
@@ -116,8 +116,8 @@ func RetrieveCollectionConfigPackageFromState(cc CollectionCriteria, state State
 }
 
 // ParseCollectionConfig parses the collection configuration from the given serialized representation.
-func ParseCollectionConfig(colBytes []byte) (*common.CollectionConfigPackage, error) {
-	collections := &common.CollectionConfigPackage{}
+func ParseCollectionConfig(colBytes []byte) (*peer.CollectionConfigPackage, error) {
+	collections := &peer.CollectionConfigPackage{}
 	err := proto.Unmarshal(colBytes, collections)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -127,11 +127,11 @@ func ParseCollectionConfig(colBytes []byte) (*common.CollectionConfigPackage, er
 }
 
 // RetrieveCollectionConfig retrieves a collection's config
-func (c *SimpleCollectionStore) RetrieveCollectionConfig(cc CollectionCriteria) (*common.StaticCollectionConfig, error) {
+func (c *SimpleCollectionStore) RetrieveCollectionConfig(cc CollectionCriteria) (*peer.StaticCollectionConfig, error) {
 	return c.retrieveCollectionConfig(cc, nil)
 }
 
-func (c *SimpleCollectionStore) retrieveCollectionConfig(cc CollectionCriteria, qe ledger.QueryExecutor) (*common.StaticCollectionConfig, error) {
+func (c *SimpleCollectionStore) retrieveCollectionConfig(cc CollectionCriteria, qe ledger.QueryExecutor) (*peer.StaticCollectionConfig, error) {
 	var err error
 	if qe == nil {
 		qe, err = c.qeFactory.NewQueryExecutor()
@@ -163,7 +163,7 @@ func (c *SimpleCollectionStore) retrieveSimpleCollection(cc CollectionCriteria, 
 	return sc, nil
 }
 
-func (c *SimpleCollectionStore) AccessFilter(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (Filter, error) {
+func (c *SimpleCollectionStore) AccessFilter(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (Filter, error) {
 	sc := &SimpleCollection{}
 	err := sc.setupAccessPolicy(collectionPolicyConfig, c.idDeserializerFactory.GetIdentityDeserializer(channelName))
 	if err != nil {
@@ -180,7 +180,7 @@ func (c *SimpleCollectionStore) RetrieveCollectionAccessPolicy(cc CollectionCrit
 	return c.retrieveSimpleCollection(cc, nil)
 }
 
-func (c *SimpleCollectionStore) RetrieveCollectionConfigPackage(cc CollectionCriteria) (*common.CollectionConfigPackage, error) {
+func (c *SimpleCollectionStore) RetrieveCollectionConfigPackage(cc CollectionCriteria) (*peer.CollectionConfigPackage, error) {
 	return c.retrieveCollectionConfigPackage(cc, nil)
 }
 

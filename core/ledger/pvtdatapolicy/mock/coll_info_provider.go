@@ -4,29 +4,29 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 )
 
 type CollectionInfoProvider struct {
-	CollectionInfoStub        func(string, string) (*common.StaticCollectionConfig, error)
+	CollectionInfoStub        func(string, string) (*peer.StaticCollectionConfig, error)
 	collectionInfoMutex       sync.RWMutex
 	collectionInfoArgsForCall []struct {
 		arg1 string
 		arg2 string
 	}
 	collectionInfoReturns struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}
 	collectionInfoReturnsOnCall map[int]struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CollectionInfoProvider) CollectionInfo(arg1 string, arg2 string) (*common.StaticCollectionConfig, error) {
+func (fake *CollectionInfoProvider) CollectionInfo(arg1 string, arg2 string) (*peer.StaticCollectionConfig, error) {
 	fake.collectionInfoMutex.Lock()
 	ret, specificReturn := fake.collectionInfoReturnsOnCall[len(fake.collectionInfoArgsForCall)]
 	fake.collectionInfoArgsForCall = append(fake.collectionInfoArgsForCall, struct {
@@ -51,7 +51,7 @@ func (fake *CollectionInfoProvider) CollectionInfoCallCount() int {
 	return len(fake.collectionInfoArgsForCall)
 }
 
-func (fake *CollectionInfoProvider) CollectionInfoCalls(stub func(string, string) (*common.StaticCollectionConfig, error)) {
+func (fake *CollectionInfoProvider) CollectionInfoCalls(stub func(string, string) (*peer.StaticCollectionConfig, error)) {
 	fake.collectionInfoMutex.Lock()
 	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = stub
@@ -64,28 +64,28 @@ func (fake *CollectionInfoProvider) CollectionInfoArgsForCall(i int) (string, st
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *CollectionInfoProvider) CollectionInfoReturns(result1 *common.StaticCollectionConfig, result2 error) {
+func (fake *CollectionInfoProvider) CollectionInfoReturns(result1 *peer.StaticCollectionConfig, result2 error) {
 	fake.collectionInfoMutex.Lock()
 	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = nil
 	fake.collectionInfoReturns = struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *CollectionInfoProvider) CollectionInfoReturnsOnCall(i int, result1 *common.StaticCollectionConfig, result2 error) {
+func (fake *CollectionInfoProvider) CollectionInfoReturnsOnCall(i int, result1 *peer.StaticCollectionConfig, result2 error) {
 	fake.collectionInfoMutex.Lock()
 	defer fake.collectionInfoMutex.Unlock()
 	fake.CollectionInfoStub = nil
 	if fake.collectionInfoReturnsOnCall == nil {
 		fake.collectionInfoReturnsOnCall = make(map[int]struct {
-			result1 *common.StaticCollectionConfig
+			result1 *peer.StaticCollectionConfig
 			result2 error
 		})
 	}
 	fake.collectionInfoReturnsOnCall[i] = struct {
-		result1 *common.StaticCollectionConfig
+		result1 *peer.StaticCollectionConfig
 		result2 error
 	}{result1, result2}
 }

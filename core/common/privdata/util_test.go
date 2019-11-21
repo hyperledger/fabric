@@ -9,7 +9,7 @@ package privdata
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +25,7 @@ func TestGetPolicyFailed(t *testing.T) {
 	assert.EqualError(t, err, "collection policy config is nil")
 
 	// nil collectionPolicyConfig.GetSignaturePolicy()
-	_, err = getPolicy(&common.CollectionPolicyConfig{}, &mockDeserializer{})
+	_, err = getPolicy(&peer.CollectionPolicyConfig{}, &mockDeserializer{})
 	assert.EqualError(t, err, "collection config access policy is nil")
 
 	// faulty policy config: index out of range

@@ -31,7 +31,7 @@ import (
 var logger = flogging.MustGetLogger("test2")
 
 // collConf helps writing tests with less verbose code by specifying coll configuration
-// in a simple struct in place of 'common.CollectionConfigPackage'. (the test heplers' apis
+// in a simple struct in place of 'peer.CollectionConfigPackage'. (the test heplers' apis
 // use 'collConf' as parameters and return values and transform back and forth to/from proto
 // message internally (using func 'convertToCollConfigProtoBytes' and 'convertFromCollConfigProto')
 type collConf struct {
@@ -54,11 +54,11 @@ type signer interface {
 }
 
 func convertToCollConfigProtoBytes(collConfs []*collConf) ([]byte, error) {
-	var protoConfArray []*common.CollectionConfig
+	var protoConfArray []*protopeer.CollectionConfig
 	for _, c := range collConfs {
-		protoConf := &common.CollectionConfig{
-			Payload: &common.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &common.StaticCollectionConfig{
+		protoConf := &protopeer.CollectionConfig{
+			Payload: &protopeer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &protopeer.StaticCollectionConfig{
 					Name:             c.name,
 					BlockToLive:      c.btl,
 					MemberOrgsPolicy: convertToMemberOrgsPolicy(c.members),
@@ -67,22 +67,22 @@ func convertToCollConfigProtoBytes(collConfs []*collConf) ([]byte, error) {
 		}
 		protoConfArray = append(protoConfArray, protoConf)
 	}
-	return proto.Marshal(&common.CollectionConfigPackage{Config: protoConfArray})
+	return proto.Marshal(&protopeer.CollectionConfigPackage{Config: protoConfArray})
 }
 
-func convertToMemberOrgsPolicy(members []string) *common.CollectionPolicyConfig {
+func convertToMemberOrgsPolicy(members []string) *protopeer.CollectionPolicyConfig {
 	var data [][]byte
 	for _, member := range members {
 		data = append(data, []byte(member))
 	}
-	return &common.CollectionPolicyConfig{
-		Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+	return &protopeer.CollectionPolicyConfig{
+		Payload: &protopeer.CollectionPolicyConfig_SignaturePolicy{
 			SignaturePolicy: cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), data),
 		},
 	}
 }
 
-func convertFromMemberOrgsPolicy(policy *common.CollectionPolicyConfig) []string {
+func convertFromMemberOrgsPolicy(policy *protopeer.CollectionPolicyConfig) []string {
 	if policy.GetSignaturePolicy() == nil {
 		return nil
 	}
@@ -104,7 +104,7 @@ func convertFromMemberOrgsPolicy(policy *common.CollectionPolicyConfig) []string
 	return members
 }
 
-func convertFromCollConfigProto(collConfPkg *common.CollectionConfigPackage) []*collConf {
+func convertFromCollConfigProto(collConfPkg *protopeer.CollectionConfigPackage) []*collConf {
 	var collConfs []*collConf
 	protoConfArray := collConfPkg.Config
 	for _, protoConf := range protoConfArray {

@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-protos-go/common"
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
@@ -358,7 +357,7 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		return nil, err
 	}
 	collectionName := ImplicitCollectionNameForOrg(i.SCC.OrgMSPID)
-	var collectionConfig []*cb.CollectionConfig
+	var collectionConfig []*pb.CollectionConfig
 	if input.Collections != nil {
 		collectionConfig = input.Collections.Config
 	}
@@ -384,7 +383,7 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 			ValidationPlugin:    input.ValidationPlugin,
 			ValidationParameter: input.ValidationParameter,
 		},
-		Collections: &cb.CollectionConfigPackage{
+		Collections: &pb.CollectionConfigPackage{
 			Config: collectionConfig,
 		},
 	}
@@ -610,7 +609,7 @@ var (
 	}
 )
 
-func (i *Invocation) validateInput(name, version string, collections *cb.CollectionConfigPackage) error {
+func (i *Invocation) validateInput(name, version string, collections *pb.CollectionConfigPackage) error {
 	if !ChaincodeNameRegExp.MatchString(name) {
 		return errors.Errorf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics", name)
 	}
@@ -660,14 +659,14 @@ func (i *Invocation) validateInput(name, version string, collections *cb.Collect
 	return nil
 }
 
-func extractStaticCollectionConfigs(collConfigPkg *common.CollectionConfigPackage) ([]*common.StaticCollectionConfig, error) {
+func extractStaticCollectionConfigs(collConfigPkg *pb.CollectionConfigPackage) ([]*pb.StaticCollectionConfig, error) {
 	if collConfigPkg == nil || len(collConfigPkg.Config) == 0 {
 		return nil, nil
 	}
-	collConfigs := make([]*common.StaticCollectionConfig, len(collConfigPkg.Config))
+	collConfigs := make([]*pb.StaticCollectionConfig, len(collConfigPkg.Config))
 	for i, c := range collConfigPkg.Config {
 		switch t := c.Payload.(type) {
-		case *cb.CollectionConfig_StaticCollectionConfig:
+		case *pb.CollectionConfig_StaticCollectionConfig:
 			collConfig := t.StaticCollectionConfig
 			if collConfig == nil {
 				return nil, errors.Errorf("collection configuration is empty")
@@ -682,7 +681,7 @@ func extractStaticCollectionConfigs(collConfigPkg *common.CollectionConfigPackag
 	return collConfigs, nil
 }
 
-func validateCollectionConfigs(collConfigs []*common.StaticCollectionConfig, mspMgr msp.MSPManager) error {
+func validateCollectionConfigs(collConfigs []*pb.StaticCollectionConfig, mspMgr msp.MSPManager) error {
 	if len(collConfigs) == 0 {
 		return nil
 	}
@@ -717,7 +716,7 @@ func validateCollectionConfigs(collConfigs []*common.StaticCollectionConfig, msp
 
 // validateCollectionConfigAgainstMsp checks whether the supplied collection configuration
 // complies to the given msp configuration
-func validateCollectionConfigMemberOrgsPolicy(coll *common.StaticCollectionConfig, mspMgr msp.MSPManager) error {
+func validateCollectionConfigMemberOrgsPolicy(coll *pb.StaticCollectionConfig, mspMgr msp.MSPManager) error {
 	if coll.MemberOrgsPolicy == nil {
 		return errors.Errorf("collection member policy is not set for collection '%s'", coll.Name)
 	}
@@ -806,8 +805,8 @@ func validateSpOrConcat(sp *common.SignaturePolicy) error {
 }
 
 func validateCollConfigsAgainstCommittedDef(
-	proposedCollConfs []*common.StaticCollectionConfig,
-	committedCollConfPkg *common.CollectionConfigPackage,
+	proposedCollConfs []*pb.StaticCollectionConfig,
+	committedCollConfPkg *pb.CollectionConfigPackage,
 ) error {
 	if committedCollConfPkg == nil || len(committedCollConfPkg.Config) == 0 {
 		return nil
@@ -817,7 +816,7 @@ func validateCollConfigsAgainstCommittedDef(
 		return errors.Errorf("the proposed collection config does not contain previously defined collections")
 	}
 
-	proposedCollsMap := map[string]*common.StaticCollectionConfig{}
+	proposedCollsMap := map[string]*pb.StaticCollectionConfig{}
 	for _, c := range proposedCollConfs {
 		proposedCollsMap[c.Name] = c
 	}

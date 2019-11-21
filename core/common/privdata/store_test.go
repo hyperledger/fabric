@@ -9,7 +9,6 @@ package privdata
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	lm "github.com/hyperledger/fabric/common/mocks/ledger"
@@ -69,7 +68,7 @@ func TestCollectionStore(t *testing.T) {
 	_, err = cs.RetrieveCollection(ccr)
 	assert.EqualError(t, err, "collection-info-error")
 
-	scc := &common.StaticCollectionConfig{Name: "mycollection"}
+	scc := &peer.StaticCollectionConfig{Name: "mycollection"}
 	mockCCInfoProvider.CollectionInfoReturns(scc, nil)
 	_, err = cs.RetrieveCollection(ccr)
 	assert.Contains(t, err.Error(), "error setting up collection for collection criteria")
@@ -78,7 +77,7 @@ func TestCollectionStore(t *testing.T) {
 	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 
-	scc = &common.StaticCollectionConfig{
+	scc = &peer.StaticCollectionConfig{
 		Name:             "mycollection",
 		MemberOrgsPolicy: accessPolicy,
 		MemberOnlyRead:   false,
@@ -94,16 +93,16 @@ func TestCollectionStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ca)
 
-	scc = &common.StaticCollectionConfig{
+	scc = &peer.StaticCollectionConfig{
 		Name:             "mycollection",
 		MemberOrgsPolicy: accessPolicy,
 		MemberOnlyRead:   true,
 		MemberOnlyWrite:  true,
 	}
-	cc := &common.CollectionConfig{
-		Payload: &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: scc},
+	cc := &peer.CollectionConfig{
+		Payload: &peer.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: scc},
 	}
-	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{cc}}
+	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{cc}}
 
 	mockCCInfoProvider.CollectionInfoReturns(scc, nil)
 	mockCCInfoProvider.ChaincodeInfoReturns(
@@ -129,7 +128,7 @@ func TestCollectionStore(t *testing.T) {
 	assert.False(t, readP)
 	assert.False(t, writeP)
 
-	scc = &common.StaticCollectionConfig{
+	scc = &peer.StaticCollectionConfig{
 		Name:             "mycollection",
 		MemberOrgsPolicy: accessPolicy,
 		MemberOnlyRead:   false,

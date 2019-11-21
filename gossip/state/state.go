@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
 	vsccErrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -359,7 +360,7 @@ func (s *GossipStateProviderImpl) privateDataMessage(msg protoext.ReceivedMessag
 
 	txPvtRwSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{
 		PvtRwset: txPvtRwSet,
-		CollectionConfigs: map[string]*common.CollectionConfigPackage{
+		CollectionConfigs: map[string]*peer.CollectionConfigPackage{
 			pvtDataMsg.Payload.Namespace: pvtDataMsg.Payload.CollectionConfigs,
 		},
 	}

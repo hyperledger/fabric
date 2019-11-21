@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
@@ -548,16 +549,16 @@ func testutilNewProviderWithCollectionConfig(
 ) *Provider {
 	provider := testutilNewProvider(conf, t)
 	mockCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
-	collMap := map[string]*common.StaticCollectionConfig{}
-	var collConf []*common.CollectionConfig
+	collMap := map[string]*peer.StaticCollectionConfig{}
+	var collConf []*peer.CollectionConfig
 	for collName, btl := range btlConfigs {
-		staticConf := &common.StaticCollectionConfig{Name: collName, BlockToLive: btl}
+		staticConf := &peer.StaticCollectionConfig{Name: collName, BlockToLive: btl}
 		collMap[collName] = staticConf
-		collectionConf := &common.CollectionConfig{}
-		collectionConf.Payload = &common.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: staticConf}
+		collectionConf := &peer.CollectionConfig{}
+		collectionConf.Payload = &peer.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: staticConf}
 		collConf = append(collConf, collectionConf)
 	}
-	collectionConfPkg := &common.CollectionConfigPackage{Config: collConf}
+	collectionConfPkg := &peer.CollectionConfigPackage{Config: collConf}
 
 	mockCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*lgr.DeployedChaincodeInfo, error) {
 		if ccName == namespace {
@@ -567,14 +568,14 @@ func testutilNewProviderWithCollectionConfig(
 		return nil, nil
 	}
 
-	mockCCInfoProvider.AllCollectionsConfigPkgStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*common.CollectionConfigPackage, error) {
+	mockCCInfoProvider.AllCollectionsConfigPkgStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error) {
 		if ccName == namespace {
 			return collectionConfPkg, nil
 		}
 		return nil, nil
 	}
 
-	mockCCInfoProvider.CollectionInfoStub = func(channelName, ccName, collName string, qe lgr.SimpleQueryExecutor) (*common.StaticCollectionConfig, error) {
+	mockCCInfoProvider.CollectionInfoStub = func(channelName, ccName, collName string, qe lgr.SimpleQueryExecutor) (*peer.StaticCollectionConfig, error) {
 		if ccName == namespace {
 			return collMap[collName], nil
 		}

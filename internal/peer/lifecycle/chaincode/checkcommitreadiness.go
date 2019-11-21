@@ -52,7 +52,7 @@ type CommitReadinessCheckInput struct {
 	EndorsementPlugin        string
 	ValidationPlugin         string
 	ValidationParameterBytes []byte
-	CollectionConfigPackage  *cb.CollectionConfigPackage
+	CollectionConfigPackage  *pb.CollectionConfigPackage
 	InitRequired             bool
 	PeerAddresses            []string
 	TxID                     string

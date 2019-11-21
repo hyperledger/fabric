@@ -14,7 +14,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -425,10 +425,10 @@ func TestHandleChainCodeDeployOnCouchDB(t *testing.T) {
 	}
 }
 
-func createCollectionConfig(collectionName string) *common.CollectionConfig {
-	return &common.CollectionConfig{
-		Payload: &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
+func createCollectionConfig(collectionName string) *peer.CollectionConfig {
+	return &peer.CollectionConfig{
+		Payload: &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
 				Name:              collectionName,
 				MemberOrgsPolicy:  nil,
 				RequiredPeerCount: 0,
@@ -444,7 +444,7 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	db := env.GetDBHandle(generateLedgerID(t))
 
 	coll1 := createCollectionConfig("collectionMarbles")
-	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
+	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1}}
 	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccp}
 
 	commonStorageDB := db.(*CommonStorageDB)
@@ -483,7 +483,7 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	assert.NoError(t, err)
 
 	coll2 := createCollectionConfig("collectionMarblesPrivateDetails")
-	ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
+	ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2}}
 	chaincodeDef = &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccp}
 
 	// The collection config is added to the chaincodeDef and it contains all collections

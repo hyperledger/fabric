@@ -28,6 +28,7 @@ import (
 	. "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	msprotos "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	bccsp "github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -878,14 +879,14 @@ func aliveMsg(pkiID gcommon.PKIidType) gdisc.NetworkMember {
 }
 
 func buildCollectionConfig(col2principals map[string][]*msprotos.MSPPrincipal) []byte {
-	collections := &common.CollectionConfigPackage{}
+	collections := &peer.CollectionConfigPackage{}
 	for col, principals := range col2principals {
-		collections.Config = append(collections.Config, &common.CollectionConfig{
-			Payload: &common.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &common.StaticCollectionConfig{
+		collections.Config = append(collections.Config, &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: col,
-					MemberOrgsPolicy: &common.CollectionPolicyConfig{
-						Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+					MemberOrgsPolicy: &peer.CollectionPolicyConfig{
+						Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
 							SignaturePolicy: &common.SignaturePolicyEnvelope{
 								Identities: principals,
 							},

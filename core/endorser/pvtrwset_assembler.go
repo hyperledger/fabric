@@ -12,8 +12,8 @@ package endorser
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
@@ -53,7 +53,7 @@ func AssemblePvtRWSet(channelName string,
 ) {
 	txPvtRwSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{
 		PvtRwset:          privData,
-		CollectionConfigs: make(map[string]*common.CollectionConfigPackage),
+		CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 	}
 
 	for _, pvtRwset := range privData.NsPvtRwset {
@@ -85,9 +85,9 @@ func trimCollectionConfigs(pvtData *transientstore.TxPvtReadWriteSetWithConfigIn
 		}
 	}
 
-	filteredConfigs := make(map[string]*common.CollectionConfigPackage)
+	filteredConfigs := make(map[string]*peer.CollectionConfigPackage)
 	for namespace, configs := range pvtData.CollectionConfigs {
-		filteredConfigs[namespace] = &common.CollectionConfigPackage{}
+		filteredConfigs[namespace] = &peer.CollectionConfigPackage{}
 		for _, conf := range configs.Config {
 			if colConf := conf.GetStaticCollectionConfig(); colConf != nil {
 				if _, found := flags[namespace][colConf.Name]; found {

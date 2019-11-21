@@ -394,7 +394,7 @@ func getDeploymentSpec(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, err
 }
 
 //getDeployLSCCSpec gets the spec for the chaincode deployment to be sent to LSCC
-func getDeployLSCCSpec(channelID string, cds *pb.ChaincodeDeploymentSpec, ccp *common.CollectionConfigPackage) (*pb.ChaincodeInvocationSpec, error) {
+func getDeployLSCCSpec(channelID string, cds *pb.ChaincodeDeploymentSpec, ccp *pb.CollectionConfigPackage) (*pb.ChaincodeInvocationSpec, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
@@ -439,7 +439,7 @@ func deploy(channelID string, ccContext *CCContext, spec *pb.ChaincodeSpec, bloc
 }
 
 func deployWithCollectionConfigs(channelID string, ccContext *CCContext, spec *pb.ChaincodeSpec,
-	collectionConfigPkg *common.CollectionConfigPackage, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (resp *pb.Response, err error) {
+	collectionConfigPkg *pb.CollectionConfigPackage, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (resp *pb.Response, err error) {
 	// First build and get the deployment spec
 	cdDeploymentSpec, err := getDeploymentSpec(spec)
 	if err != nil {
@@ -449,7 +449,7 @@ func deployWithCollectionConfigs(channelID string, ccContext *CCContext, spec *p
 }
 
 func deploy2(channelID string, ccContext *CCContext, chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec,
-	collectionConfigPkg *common.CollectionConfigPackage, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (resp *pb.Response, err error) {
+	collectionConfigPkg *pb.CollectionConfigPackage, blockNumber uint64, chaincodeSupport *ChaincodeSupport) (resp *pb.Response, err error) {
 	cis, err := getDeployLSCCSpec(channelID, chaincodeDeploymentSpec, collectionConfigPkg)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating lscc spec : %s\n", err)

@@ -15,6 +15,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -64,7 +65,7 @@ func TestWithEmptyCollectionConfig(t *testing.T) {
 	testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
 		mockCCInfoProvider,
 		"chaincode1",
-		&common.CollectionConfigPackage{},
+		&peer.CollectionConfigPackage{},
 	)
 	err = mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
 		LedgerID:           "ledger1",
@@ -168,7 +169,7 @@ func TestWithImplicitColls(t *testing.T) {
 	collConfigPackage := testutilCreateCollConfigPkg([]string{"Explicit-coll-1", "Explicit-coll-2"})
 	mockCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	mockCCInfoProvider.ImplicitCollectionsReturns(
-		[]*common.StaticCollectionConfig{
+		[]*peer.StaticCollectionConfig{
 			{
 				Name: "Implicit-coll-1",
 			},
@@ -188,7 +189,7 @@ func TestWithImplicitColls(t *testing.T) {
 
 	// add explicit collections at height 20
 	batch, err := prepareDBBatch(
-		map[string]*common.CollectionConfigPackage{
+		map[string]*peer.CollectionConfigPackage{
 			"chaincode1": collConfigPackage,
 		},
 		20,
@@ -256,7 +257,7 @@ func TestWithImplicitColls(t *testing.T) {
 
 }
 
-func sampleCollectionConfigPackage(collNamePart1 string, collNamePart2 uint64) *common.CollectionConfigPackage {
+func sampleCollectionConfigPackage(collNamePart1 string, collNamePart2 uint64) *peer.CollectionConfigPackage {
 	collName := fmt.Sprintf("%s-%d", collNamePart1, collNamePart2)
 	return testutilCreateCollConfigPkg([]string{collName})
 }
@@ -264,7 +265,7 @@ func sampleCollectionConfigPackage(collNamePart1 string, collNamePart2 uint64) *
 func testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
 	mockCCInfoProvider *mock.DeployedChaincodeInfoProvider,
 	chaincodeName string,
-	collConfigPackage *common.CollectionConfigPackage) {
+	collConfigPackage *peer.CollectionConfigPackage) {
 	mockCCInfoProvider.UpdatedChaincodesReturns(
 		[]*ledger.ChaincodeLifecycleInfo{
 			{Name: chaincodeName},
@@ -277,15 +278,15 @@ func testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(
 	)
 }
 
-func testutilCreateCollConfigPkg(collNames []string) *common.CollectionConfigPackage {
-	pkg := &common.CollectionConfigPackage{
-		Config: []*common.CollectionConfig{},
+func testutilCreateCollConfigPkg(collNames []string) *peer.CollectionConfigPackage {
+	pkg := &peer.CollectionConfigPackage{
+		Config: []*peer.CollectionConfig{},
 	}
 	for _, collName := range collNames {
 		pkg.Config = append(pkg.Config,
-			&common.CollectionConfig{
-				Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+			&peer.CollectionConfig{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: collName,
 					},
 				},

@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/gossip/api"
 	gcommon "github.com/hyperledger/fabric/gossip/common"
@@ -47,8 +48,8 @@ func TestPrincipalsFromCollectionConfig(t *testing.T) {
 
 func TestNewCollectionFilterInvalidInput(t *testing.T) {
 	t.Run("Invalid collection type", func(t *testing.T) {
-		collections := &common.CollectionConfigPackage{}
-		collections.Config = []*common.CollectionConfig{
+		collections := &peer.CollectionConfigPackage{}
+		collections.Config = []*peer.CollectionConfig{
 			{
 				Payload: nil,
 			},
@@ -59,11 +60,11 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 	})
 
 	t.Run("Invalid membership policy", func(t *testing.T) {
-		collections := &common.CollectionConfigPackage{}
-		collections.Config = []*common.CollectionConfig{
+		collections := &peer.CollectionConfigPackage{}
+		collections.Config = []*peer.CollectionConfig{
 			{
-				Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: "foo",
 					},
 				},
@@ -75,13 +76,13 @@ func TestNewCollectionFilterInvalidInput(t *testing.T) {
 	})
 
 	t.Run("Missing policy", func(t *testing.T) {
-		collections := &common.CollectionConfigPackage{}
-		collections.Config = []*common.CollectionConfig{
+		collections := &peer.CollectionConfigPackage{}
+		collections.Config = []*peer.CollectionConfig{
 			{
-				Payload: &common.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &common.StaticCollectionConfig{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name:             "foo",
-						MemberOrgsPolicy: &common.CollectionPolicyConfig{},
+						MemberOrgsPolicy: &peer.CollectionPolicyConfig{},
 					},
 				},
 			},
@@ -214,15 +215,15 @@ func TestFilterForPrincipalSets(t *testing.T) {
 	})
 }
 
-func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) *common.CollectionConfigPackage {
-	collections := &common.CollectionConfigPackage{}
+func buildCollectionConfig(col2principals map[string][]*msp.MSPPrincipal) *peer.CollectionConfigPackage {
+	collections := &peer.CollectionConfigPackage{}
 	for col, principals := range col2principals {
-		collections.Config = append(collections.Config, &common.CollectionConfig{
-			Payload: &common.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &common.StaticCollectionConfig{
+		collections.Config = append(collections.Config, &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: col,
-					MemberOrgsPolicy: &common.CollectionPolicyConfig{
-						Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+					MemberOrgsPolicy: &peer.CollectionPolicyConfig{
+						Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
 							SignaturePolicy: &common.SignaturePolicyEnvelope{
 								Identities: principals,
 							},

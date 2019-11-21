@@ -9,7 +9,7 @@ package privdata
 import (
 	"strings"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
@@ -100,11 +100,11 @@ type CollectionStore interface {
 	RetrieveCollectionAccessPolicy(CollectionCriteria) (CollectionAccessPolicy, error)
 
 	// RetrieveCollectionConfig retrieves a collection's config
-	RetrieveCollectionConfig(CollectionCriteria) (*common.StaticCollectionConfig, error)
+	RetrieveCollectionConfig(CollectionCriteria) (*peer.StaticCollectionConfig, error)
 
 	// RetrieveCollectionConfigPackage retrieves the whole configuration package
 	// for the chaincode with the supplied criteria
-	RetrieveCollectionConfigPackage(CollectionCriteria) (*common.CollectionConfigPackage, error)
+	RetrieveCollectionConfigPackage(CollectionCriteria) (*peer.CollectionConfigPackage, error)
 
 	// RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
 	RetrieveCollectionPersistenceConfigs(CollectionCriteria) (CollectionPersistenceConfigs, error)
@@ -119,7 +119,7 @@ type CollectionStore interface {
 
 type CollectionFilter interface {
 	// AccessFilter retrieves the collection's filter that matches a given channel and a collectionPolicyConfig
-	AccessFilter(channelName string, collectionPolicyConfig *common.CollectionPolicyConfig) (Filter, error)
+	AccessFilter(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (Filter, error)
 }
 
 const (

@@ -4,16 +4,16 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
 type MembershipInfoProvider struct {
-	AmMemberOfStub        func(string, *common.CollectionPolicyConfig) (bool, error)
+	AmMemberOfStub        func(string, *peer.CollectionPolicyConfig) (bool, error)
 	amMemberOfMutex       sync.RWMutex
 	amMemberOfArgsForCall []struct {
 		arg1 string
-		arg2 *common.CollectionPolicyConfig
+		arg2 *peer.CollectionPolicyConfig
 	}
 	amMemberOfReturns struct {
 		result1 bool
@@ -27,12 +27,12 @@ type MembershipInfoProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *MembershipInfoProvider) AmMemberOf(arg1 string, arg2 *common.CollectionPolicyConfig) (bool, error) {
+func (fake *MembershipInfoProvider) AmMemberOf(arg1 string, arg2 *peer.CollectionPolicyConfig) (bool, error) {
 	fake.amMemberOfMutex.Lock()
 	ret, specificReturn := fake.amMemberOfReturnsOnCall[len(fake.amMemberOfArgsForCall)]
 	fake.amMemberOfArgsForCall = append(fake.amMemberOfArgsForCall, struct {
 		arg1 string
-		arg2 *common.CollectionPolicyConfig
+		arg2 *peer.CollectionPolicyConfig
 	}{arg1, arg2})
 	fake.recordInvocation("AmMemberOf", []interface{}{arg1, arg2})
 	fake.amMemberOfMutex.Unlock()
@@ -52,13 +52,13 @@ func (fake *MembershipInfoProvider) AmMemberOfCallCount() int {
 	return len(fake.amMemberOfArgsForCall)
 }
 
-func (fake *MembershipInfoProvider) AmMemberOfCalls(stub func(string, *common.CollectionPolicyConfig) (bool, error)) {
+func (fake *MembershipInfoProvider) AmMemberOfCalls(stub func(string, *peer.CollectionPolicyConfig) (bool, error)) {
 	fake.amMemberOfMutex.Lock()
 	defer fake.amMemberOfMutex.Unlock()
 	fake.AmMemberOfStub = stub
 }
 
-func (fake *MembershipInfoProvider) AmMemberOfArgsForCall(i int) (string, *common.CollectionPolicyConfig) {
+func (fake *MembershipInfoProvider) AmMemberOfArgsForCall(i int) (string, *peer.CollectionPolicyConfig) {
 	fake.amMemberOfMutex.RLock()
 	defer fake.amMemberOfMutex.RUnlock()
 	argsForCall := fake.amMemberOfArgsForCall[i]

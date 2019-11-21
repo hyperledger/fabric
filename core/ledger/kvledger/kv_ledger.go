@@ -651,7 +651,7 @@ type collectionInfoRetriever struct {
 	infoProvider ledger.DeployedChaincodeInfoProvider
 }
 
-func (r *collectionInfoRetriever) CollectionInfo(chaincodeName, collectionName string) (*common.StaticCollectionConfig, error) {
+func (r *collectionInfoRetriever) CollectionInfo(chaincodeName, collectionName string) (*peer.StaticCollectionConfig, error) {
 	qe, err := r.ledger.NewQueryExecutor()
 	if err != nil {
 		return nil, err

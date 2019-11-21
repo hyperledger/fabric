@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	pb "github.com/golang/protobuf/proto"
-	fcommon "github.com/hyperledger/fabric-protos-go/common"
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -96,11 +95,11 @@ func (cs mockCollectionStore) RetrieveCollection(privdata.CollectionCriteria) (p
 	panic("implement me")
 }
 
-func (cs mockCollectionStore) RetrieveCollectionConfig(privdata.CollectionCriteria) (*fcommon.StaticCollectionConfig, error) {
+func (cs mockCollectionStore) RetrieveCollectionConfig(privdata.CollectionCriteria) (*peer.StaticCollectionConfig, error) {
 	panic("implement me")
 }
 
-func (cs mockCollectionStore) RetrieveCollectionConfigPackage(privdata.CollectionCriteria) (*fcommon.CollectionConfigPackage, error) {
+func (cs mockCollectionStore) RetrieveCollectionConfigPackage(privdata.CollectionCriteria) (*peer.CollectionConfigPackage, error) {
 	panic("implement me")
 }
 
@@ -112,7 +111,7 @@ func (cs mockCollectionStore) RetrieveReadWritePermission(cc privdata.Collection
 	panic("implement me")
 }
 
-func (cs mockCollectionStore) AccessFilter(channelName string, collectionPolicyConfig *fcommon.CollectionPolicyConfig) (privdata.Filter, error) {
+func (cs mockCollectionStore) AccessFilter(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (privdata.Filter, error) {
 	if cs.accessFilter != nil {
 		return cs.accessFilter, nil
 	}
@@ -328,9 +327,9 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 
 	p2TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col1",
 				},
 			},
@@ -498,9 +497,9 @@ func TestPullerPeerNotEligible(t *testing.T) {
 			Namespace:  "ns1",
 		}: &util.PrivateRWSetWithConfig{
 			RWSet: newPRWSet(),
-			CollectionConfig: &fcommon.CollectionConfig{
-				Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+			CollectionConfig: &peer.CollectionConfig{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
 						Name: "col1",
 					},
 				},
@@ -544,9 +543,9 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 
 	p2TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col2",
 				},
 			},
@@ -580,9 +579,9 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 
 	p3TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col3",
 				},
 			},
@@ -650,9 +649,9 @@ func TestPullerRetries(t *testing.T) {
 	// p2, p3, p4, and p5 have the same transient store
 	transientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col1",
 				},
 			},
@@ -756,9 +755,9 @@ func TestPullerPreferEndorsers(t *testing.T) {
 
 	p3TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col2",
 				},
 			},
@@ -767,9 +766,9 @@ func TestPullerPreferEndorsers(t *testing.T) {
 
 	p2TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col2",
 				},
 			},
@@ -858,9 +857,9 @@ func TestPullerFetchReconciledItemsPreferPeersFromOriginalConfig(t *testing.T) {
 
 	p3TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col2",
 				},
 			},
@@ -869,9 +868,9 @@ func TestPullerFetchReconciledItemsPreferPeersFromOriginalConfig(t *testing.T) {
 
 	p2TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col2",
 				},
 			},
@@ -921,14 +920,14 @@ func TestPullerFetchReconciledItemsPreferPeersFromOriginalConfig(t *testing.T) {
 			TxId:       "txID1",
 			Collection: "col1",
 			Namespace:  "ns1",
-		}: &fcommon.StaticCollectionConfig{
+		}: &peer.StaticCollectionConfig{
 			Name: "col1",
 		},
 		privdatacommon.DigKey{
 			TxId:       "txID1",
 			Collection: "col2",
 			Namespace:  "ns1",
-		}: &fcommon.StaticCollectionConfig{
+		}: &peer.StaticCollectionConfig{
 			Name: "col2",
 		},
 	}
@@ -970,9 +969,9 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 
 	privateData1 := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col1",
 				},
 			},
@@ -980,9 +979,9 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 	}
 	privateData2 := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col2",
 				},
 			},
@@ -1187,9 +1186,9 @@ func TestPullerMetrics(t *testing.T) {
 
 	p2TransientStore := &util.PrivateRWSetWithConfig{
 		RWSet: newPRWSet(),
-		CollectionConfig: &fcommon.CollectionConfig{
-			Payload: &fcommon.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &fcommon.StaticCollectionConfig{
+		CollectionConfig: &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: "col1",
 				},
 			},
