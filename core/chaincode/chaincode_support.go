@@ -34,7 +34,8 @@ const (
 
 // Runtime is used to manage chaincode runtime instances.
 type Runtime interface {
-	Start(ccid string) error
+	Build(ccid string) (*ccintf.ChaincodeServerInfo, error)
+	Start(ccid string, ccinfo *ccintf.PeerConnection) error
 	Stop(ccid string) error
 	Wait(ccid string) (int, error)
 }

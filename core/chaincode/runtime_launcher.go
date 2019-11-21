@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
@@ -25,6 +27,37 @@ type RuntimeLauncher struct {
 	Registry       LaunchRegistry
 	StartupTimeout time.Duration
 	Metrics        *LaunchMetrics
+	PeerAddress    string
+	CACert         []byte
+	CertGenerator  CertGenerator
+}
+
+// CertGenerator generates client certificates for chaincode.
+type CertGenerator interface {
+	// Generate returns a certificate and private key and associates
+	// the hash of the certificates with the given chaincode name
+	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
+}
+
+func (r *RuntimeLauncher) ChaincodeClientInfo(ccid string) (*ccintf.PeerConnection, error) {
+	var tlsConfig *ccintf.TLSConfig
+	if r.CertGenerator != nil {
+		certKeyPair, err := r.CertGenerator.Generate(string(ccid))
+		if err != nil {
+			return nil, errors.WithMessagef(err, "failed to generate TLS certificates for %s", ccid)
+		}
+
+		tlsConfig = &ccintf.TLSConfig{
+			ClientCert: certKeyPair.Cert,
+			ClientKey:  certKeyPair.Key,
+			RootCert:   r.CACert,
+		}
+	}
+
+	return &ccintf.PeerConnection{
+		Address:   r.PeerAddress,
+		TLSConfig: tlsConfig,
+	}, nil
 }
 
 func (r *RuntimeLauncher) Launch(ccid string) error {
@@ -38,7 +71,26 @@ func (r *RuntimeLauncher) Launch(ccid string) error {
 		timeoutCh = time.NewTimer(r.StartupTimeout).C
 
 		go func() {
-			if err := r.Runtime.Start(ccid); err != nil {
+			var ccservinfo *ccintf.ChaincodeServerInfo
+			ccservinfo, err := r.Runtime.Build(ccid)
+			if err != nil {
+				startFailCh <- errors.WithMessage(err, "error building chaincode")
+				return
+			}
+			if ccservinfo != nil {
+				startFailCh <- errors.New("peer as client to be implemented")
+				return
+			}
+			ccinfo, err := r.ChaincodeClientInfo(ccid)
+			if err != nil {
+				startFailCh <- errors.WithMessage(err, "could not get connection info")
+				return
+			}
+			if ccinfo == nil {
+				startFailCh <- errors.New("could not get connection info")
+				return
+			}
+			if err = r.Runtime.Start(ccid, ccinfo); err != nil {
 				startFailCh <- errors.WithMessage(err, "error starting container")
 				return
 			}

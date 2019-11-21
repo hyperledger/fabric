@@ -11,8 +11,10 @@ import (
 
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/fake"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -26,6 +28,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeLaunchDuration *metricsfakes.Histogram
 		fakeLaunchFailures *metricsfakes.Counter
 		fakeLaunchTimeouts *metricsfakes.Counter
+		fakeCertGenerator  *mock.CertGenerator
 		exitedCh           chan int
 
 		runtimeLauncher *chaincode.RuntimeLauncher
@@ -37,7 +40,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		fakeRegistry.LaunchingReturns(launchState, false)
 
 		fakeRuntime = &mock.Runtime{}
-		fakeRuntime.StartStub = func(string) error {
+		fakeRuntime.StartStub = func(string, *ccintf.PeerConnection) error {
 			launchState.Notify(nil)
 			return nil
 		}
@@ -59,11 +62,15 @@ var _ = Describe("RuntimeLauncher", func() {
 			LaunchFailures: fakeLaunchFailures,
 			LaunchTimeouts: fakeLaunchTimeouts,
 		}
+		fakeCertGenerator = &mock.CertGenerator{}
+		fakeCertGenerator.GenerateReturns(&accesscontrol.CertAndPrivKeyPair{Cert: []byte("cert"), Key: []byte("key")}, nil)
 		runtimeLauncher = &chaincode.RuntimeLauncher{
 			Runtime:        fakeRuntime,
 			Registry:       fakeRegistry,
 			StartupTimeout: 5 * time.Second,
 			Metrics:        launchMetrics,
+			PeerAddress:    "peer-address",
+			CertGenerator:  fakeCertGenerator,
 		}
 	})
 
@@ -80,13 +87,73 @@ var _ = Describe("RuntimeLauncher", func() {
 		Expect(cname).To(Equal("chaincode-name:chaincode-version"))
 	})
 
+	Context("build does not return external chaincode info", func() {
+		BeforeEach(func() {
+			fakeRuntime.BuildReturns(nil, nil)
+		})
+
+		It("chaincode is launched", func() {
+			err := runtimeLauncher.Launch("chaincode-name:chaincode-version")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeRuntime.BuildCallCount()).To(Equal(1))
+			ccciArg := fakeRuntime.BuildArgsForCall(0)
+			Expect(ccciArg).To(Equal("chaincode-name:chaincode-version"))
+
+			Expect(fakeRuntime.StartCallCount()).To(Equal(1))
+		})
+	})
+
+	Context("build returns external chaincode info", func() {
+		BeforeEach(func() {
+			fakeRuntime.BuildReturns(&ccintf.ChaincodeServerInfo{Address: "ccaddress:12345"}, nil)
+		})
+
+		It("chaincode is not launched", func() {
+			err := runtimeLauncher.Launch("chaincode-name:chaincode-version")
+			Expect(err).To(MatchError("peer as client to be implemented"))
+
+			Expect(fakeRuntime.BuildCallCount()).To(Equal(1))
+			ccciArg := fakeRuntime.BuildArgsForCall(0)
+			Expect(ccciArg).To(Equal("chaincode-name:chaincode-version"))
+
+			Expect(fakeRuntime.StartCallCount()).To(Equal(0))
+		})
+	})
+
 	It("starts the runtime for the chaincode", func() {
 		err := runtimeLauncher.Launch("chaincode-name:chaincode-version")
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(fakeRuntime.StartCallCount()).To(Equal(1))
-		ccciArg := fakeRuntime.StartArgsForCall(0)
+		Expect(fakeRuntime.BuildCallCount()).To(Equal(1))
+		ccciArg := fakeRuntime.BuildArgsForCall(0)
 		Expect(ccciArg).To(Equal("chaincode-name:chaincode-version"))
+		Expect(fakeRuntime.StartCallCount()).To(Equal(1))
+		ccciArg, ccinfoArg := fakeRuntime.StartArgsForCall(0)
+		Expect(ccciArg).To(Equal("chaincode-name:chaincode-version"))
+
+		Expect(ccinfoArg).To(Equal(&ccintf.PeerConnection{Address: "peer-address", TLSConfig: &ccintf.TLSConfig{ClientCert: []byte("cert"), ClientKey: []byte("key"), RootCert: nil}}))
+	})
+
+	Context("tls is not enabled", func() {
+		BeforeEach(func() {
+			runtimeLauncher.CertGenerator = nil
+		})
+
+		It("starts the runtime for the chaincode with no TLS", func() {
+
+			err := runtimeLauncher.Launch("chaincode-name:chaincode-version")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeRuntime.BuildCallCount()).To(Equal(1))
+			ccciArg := fakeRuntime.BuildArgsForCall(0)
+			Expect(ccciArg).To(Equal("chaincode-name:chaincode-version"))
+			Expect(fakeRuntime.StartCallCount()).To(Equal(1))
+			ccciArg, ccinfoArg := fakeRuntime.StartArgsForCall(0)
+			Expect(ccciArg).To(Equal("chaincode-name:chaincode-version"))
+
+			Expect(ccinfoArg).To(Equal(&ccintf.PeerConnection{Address: "peer-address"}))
+		})
 	})
 
 	It("waits for the launch to complete", func() {
@@ -195,7 +262,7 @@ var _ = Describe("RuntimeLauncher", func() {
 
 	Context("when handler registration fails", func() {
 		BeforeEach(func() {
-			fakeRuntime.StartStub = func(string) error {
+			fakeRuntime.StartStub = func(string, *ccintf.PeerConnection) error {
 				launchState.Notify(errors.New("papaya"))
 				return nil
 			}

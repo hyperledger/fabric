@@ -13,25 +13,39 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestContainerRuntimeBuild(t *testing.T) {
+	fakeRouter := &mock.ContainerRouter{}
+	fakeRouter.ChaincodeServerInfoReturns(&ccintf.ChaincodeServerInfo{Address: "ccaddress:12345"}, nil)
+
+	cr := &chaincode.ContainerRuntime{
+		ContainerRouter: fakeRouter,
+		BuildRegistry:   &container.BuildRegistry{},
+	}
+
+	ccinfo, err := cr.Build("chaincode-name:chaincode-version")
+	assert.NoError(t, err)
+	assert.Equal(t, &ccintf.ChaincodeServerInfo{Address: "ccaddress:12345"}, ccinfo)
+
+	assert.Equal(t, 1, fakeRouter.BuildCallCount())
+	packageID := fakeRouter.BuildArgsForCall(0)
+	assert.Equal(t, "chaincode-name:chaincode-version", packageID)
+}
 
 func TestContainerRuntimeStart(t *testing.T) {
 	fakeRouter := &mock.ContainerRouter{}
 
 	cr := &chaincode.ContainerRuntime{
 		ContainerRouter: fakeRouter,
-		PeerAddress:     "peer-address",
 		BuildRegistry:   &container.BuildRegistry{},
 	}
 
-	err := cr.Start("chaincode-name:chaincode-version")
+	err := cr.Start("chaincode-name:chaincode-version", &ccintf.PeerConnection{Address: "peer-address"})
 	assert.NoError(t, err)
-
-	assert.Equal(t, 1, fakeRouter.BuildCallCount())
-	packageID := fakeRouter.BuildArgsForCall(0)
-	assert.Equal(t, "chaincode-name:chaincode-version", packageID)
 
 	assert.Equal(t, 1, fakeRouter.StartCallCount())
 	ccid, peerConnection := fakeRouter.StartArgsForCall(0)
@@ -41,27 +55,22 @@ func TestContainerRuntimeStart(t *testing.T) {
 
 	// Try starting a second time, to ensure build is not invoked again
 	// as the BuildRegistry already holds it
-	err = cr.Start("chaincode-name:chaincode-version")
+	err = cr.Start("chaincode-name:chaincode-version", &ccintf.PeerConnection{Address: "fake-address"})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, fakeRouter.BuildCallCount())
 	assert.Equal(t, 2, fakeRouter.StartCallCount())
 }
 
 func TestContainerRuntimeStartErrors(t *testing.T) {
 	tests := []struct {
 		chaincodeType string
-		buildErr      error
 		startErr      error
 		errValue      string
 	}{
-		{pb.ChaincodeSpec_GOLANG.String(), nil, errors.New("process-failed"), "error starting container: process-failed"},
-		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "error building image: build-failed"},
-		{pb.ChaincodeSpec_GOLANG.String(), errors.New("build-failed"), nil, "error building image: build-failed"},
+		{pb.ChaincodeSpec_GOLANG.String(), errors.New("process-failed"), "error starting container: process-failed"},
 	}
 
 	for _, tc := range tests {
 		fakeRouter := &mock.ContainerRouter{}
-		fakeRouter.BuildReturns(tc.buildErr)
 		fakeRouter.StartReturns(tc.startErr)
 
 		cr := &chaincode.ContainerRuntime{
@@ -69,7 +78,7 @@ func TestContainerRuntimeStartErrors(t *testing.T) {
 			BuildRegistry:   &container.BuildRegistry{},
 		}
 
-		err := cr.Start("ccid")
+		err := cr.Start("ccid", &ccintf.PeerConnection{Address: "fake-address"})
 		assert.EqualError(t, err, tc.errValue)
 	}
 }

@@ -175,9 +175,7 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 	}
 	containerRuntime := &ContainerRuntime{
 		BuildRegistry:   buildRegistry,
-		CACert:          ca.CertBytes(),
 		ContainerRouter: containerRouter,
-		PeerAddress:     peerAddress,
 	}
 	userRunsCC := false
 	metricsProviders := &disabled.Provider{}
@@ -187,6 +185,8 @@ func initPeer(channelIDs ...string) (*cm.Lifecycle, net.Listener, *ChaincodeSupp
 		Registry:       chaincodeHandlerRegistry,
 		Runtime:        containerRuntime,
 		StartupTimeout: globalConfig.StartupTimeout,
+		CACert:         ca.CertBytes(),
+		PeerAddress:    peerAddress,
 	}
 	chaincodeSupport := &ChaincodeSupport{
 		ACLProvider: aclmgmt.NewACLProvider(
