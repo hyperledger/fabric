@@ -113,7 +113,7 @@ The following metrics are currently exported for consumption by Prometheus.
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_request_size                        | gauge     | The mean request size in bytes to brokers.                 | broker_id          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
-| consensus_kafka_response_rate                       | gauge     | Requests/second sent to brokers.                           | broker_id          |
+| consensus_kafka_response_rate                       | gauge     | Responses/second sent from brokers.                           | broker_id          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
 | consensus_kafka_response_size                       | gauge     | The mean response size in bytes from brokers.              | broker_id          |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+--------------------+
@@ -360,7 +360,7 @@ associated with the metric.
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.kafka.request_size.%{broker_id}                                               | gauge     | The mean request size in bytes to brokers.                 |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| consensus.kafka.response_rate.%{broker_id}                                              | gauge     | Requests/second sent to brokers.                           |
+| consensus.kafka.response_rate.%{broker_id}                                              | gauge     | Responses/second sent from brokers.                           |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.kafka.response_size.%{broker_id}                                              | gauge     | The mean response size in bytes from brokers.              |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
