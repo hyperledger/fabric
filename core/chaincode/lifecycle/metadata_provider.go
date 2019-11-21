@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
@@ -72,16 +72,16 @@ type MetadataProvider struct {
 }
 
 func (mp *MetadataProvider) toSignaturePolicyEnvelope(channelID string, policyBytes []byte) ([]byte, error) {
-	p := &common.ApplicationPolicy{}
+	p := &peer.ApplicationPolicy{}
 	err := proto.Unmarshal(policyBytes, p)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal ApplicationPolicy bytes")
 	}
 
 	switch policy := p.Type.(type) {
-	case *common.ApplicationPolicy_SignaturePolicy:
+	case *peer.ApplicationPolicy_SignaturePolicy:
 		return protoutil.MarshalOrPanic(policy.SignaturePolicy), nil
-	case *common.ApplicationPolicy_ChannelConfigPolicyReference:
+	case *peer.ApplicationPolicy_ChannelConfigPolicyReference:
 		p, err := mp.ChannelPolicyReferenceProvider.NewPolicy(channelID, policy.ChannelConfigPolicyReference)
 		if err != nil {
 			return nil, errors.WithMessagef(err, "could not retrieve policy for reference '%s' on channel '%s'", policy.ChannelConfigPolicyReference, channelID)

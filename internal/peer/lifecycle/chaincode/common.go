@@ -82,23 +82,23 @@ func createPolicyBytes(signaturePolicy, channelConfigPolicy string) ([]byte, err
 		return nil, errors.New("cannot specify both \"--signature-policy\" and \"--channel-config-policy\"")
 	}
 
-	var applicationPolicy *cb.ApplicationPolicy
+	var applicationPolicy *pb.ApplicationPolicy
 	if signaturePolicy != "" {
 		signaturePolicyEnvelope, err := cauthdsl.FromString(signaturePolicy)
 		if err != nil {
 			return nil, errors.Errorf("invalid signature policy: %s", signaturePolicy)
 		}
 
-		applicationPolicy = &cb.ApplicationPolicy{
-			Type: &cb.ApplicationPolicy_SignaturePolicy{
+		applicationPolicy = &pb.ApplicationPolicy{
+			Type: &pb.ApplicationPolicy_SignaturePolicy{
 				SignaturePolicy: signaturePolicyEnvelope,
 			},
 		}
 	}
 
 	if channelConfigPolicy != "" {
-		applicationPolicy = &cb.ApplicationPolicy{
-			Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
+		applicationPolicy = &pb.ApplicationPolicy{
+			Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 				ChannelConfigPolicyReference: channelConfigPolicy,
 			},
 		}

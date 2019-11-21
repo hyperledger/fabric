@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -47,8 +48,8 @@ const (
 )
 
 var (
-	DefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
-		Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
+	DefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
+		Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
 			ChannelConfigPolicyReference: DefaultEndorsementPolicyRef,
 		},
 	})
