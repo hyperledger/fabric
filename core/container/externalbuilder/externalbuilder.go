@@ -79,6 +79,7 @@ func (d *Detector) CachedBuild(ccid string) (*Instance, error) {
 				PackageID:   ccid,
 				Builder:     builder,
 				BldDir:      filepath.Join(durablePath, "bld"),
+				ReleaseDir:  filepath.Join(durablePath, "release"),
 				TermTimeout: 5 * time.Second,
 			}, nil
 		}
@@ -150,7 +151,8 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		return nil, errors.WithMessage(err, "could not write build-info.json")
 	}
 
-	err = os.Rename(buildContext.ReleaseDir, filepath.Join(durablePath, "release"))
+	durableReleaseDir := filepath.Join(durablePath, "release")
+	err = os.Rename(buildContext.ReleaseDir, durableReleaseDir)
 	if err != nil {
 		os.RemoveAll(durablePath)
 		return nil, errors.WithMessagef(err, "could not move build context release to persistent location '%s'", durablePath)
@@ -167,6 +169,7 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 		PackageID:   ccid,
 		Builder:     builder,
 		BldDir:      durableBldDir,
+		ReleaseDir:  durableReleaseDir,
 		TermTimeout: 5 * time.Second,
 	}, nil
 }

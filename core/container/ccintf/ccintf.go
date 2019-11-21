@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package ccintf
 
 import (
+	"github.com/hyperledger/fabric/core/comm"
+
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
@@ -29,4 +31,10 @@ type TLSConfig struct {
 	ClientCert []byte
 	ClientKey  []byte
 	RootCert   []byte
+}
+
+// ChaincodeServerInfo provides chaincode connection information
+type ChaincodeServerInfo struct {
+	Address      string
+	ClientConfig comm.ClientConfig
 }

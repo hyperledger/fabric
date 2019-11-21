@@ -86,6 +86,10 @@ func (ci *ContainerInstance) Start(peerConnection *ccintf.PeerConnection) error 
 	return ci.DockerVM.Start(ci.CCID, ci.Type, peerConnection)
 }
 
+func (ci *ContainerInstance) ChaincodeServerInfo() (*ccintf.ChaincodeServerInfo, error) {
+	return nil, nil
+}
+
 func (ci *ContainerInstance) Stop() error {
 	return ci.DockerVM.Stop(ci.CCID)
 }

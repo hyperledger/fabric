@@ -27,6 +27,7 @@ type CertGenerator interface {
 // is removed (or perhaps before), this interface should probably go away entirely.
 type ContainerRouter interface {
 	Build(ccid string) error
+	ChaincodeServerInfo(ccid string) (*ccintf.ChaincodeServerInfo, error)
 	Start(ccid string, peerConnection *ccintf.PeerConnection) error
 	Stop(ccid string) error
 	Wait(ccid string) (int, error)
