@@ -155,7 +155,7 @@ unique **composite** key formed by the concatenation of `org.papernet.paper`,
 
 
   * Hyperlegder Fabric internally uses a concurrency control
-    [mechanism](../arch-deep-dive.html#the-endorsing-peer-simulates-a-transaction-and-produces-an-endorsement-signature)
+    mechanism <!-- Add more information to explain this topic-->
     to update a ledger, such that keeping papers in separate state vectors vastly
     reduces the opportunity for shared-state collisions. Such collisions require
     transaction re-submission, complicate application design, and decrease
