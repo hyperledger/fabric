@@ -354,7 +354,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	Describe("basic solo network with containers being interroped", func() {
+	Describe("basic solo network with containers being interrupted", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
 

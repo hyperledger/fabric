@@ -58,6 +58,12 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		By("setting TLS ClientAuthRequired to be true for all peers and orderers")
 		network.ClientAuthRequired = true
 
+		By("disabling NodeOU for org2")
+		// Org2 Peer0 is used to test chaincode endorsement policy not satisfied due to peer's MSP
+		// does not define Node OU.
+		Org2 := network.Organization("Org2")
+		Org2.EnableNodeOUs = false
+
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
@@ -66,7 +72,8 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		process = ifrit.Invoke(networkRunner)
 		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-		peer := network.Peers[0]
+		org1Peer0 := network.Peer("Org1", "peer0")
+		org2Peer0 := network.Peer("Org2", "peer0")
 		orderer := network.Orderer("orderer")
 
 		By("creating and joining channels")
@@ -91,33 +98,28 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 		By("querying and invoking chaincode with mutual TLS enabled")
-		RunQueryInvokeQuery(network, orderer, peer, 100)
+		RunQueryInvokeQuery(network, orderer, org1Peer0, 100)
 
-		By("replacing org2peer0's identity with a client identity")
-		org2Peer0 := network.Peer("Org2", "peer0")
-		org2Peer0MSPDir := network.PeerLocalMSPDir(org2Peer0)
-		org2User1MSPDir := network.PeerUserMSPDir(org2Peer0, "User1")
-
-		_, err := copyFile(filepath.Join(org2User1MSPDir, "signcerts", "User1@org2.example.com-cert.pem"), filepath.Join(org2Peer0MSPDir, "signcerts", "peer0.org2.example.com-cert.pem"))
+		By("querying the chaincode with org2 peer")
+		sess, err := network.PeerUserSession(org2Peer0, "User1", commands.ChaincodeQuery{
+			ChannelID: "testchannel",
+			Name:      "mycc",
+			Ctor:      `{"Args":["query","a"]}`,
+		})
 		Expect(err).NotTo(HaveOccurred())
-		_, err = copyFile(filepath.Join(org2User1MSPDir, "keystore", "priv_sk"), filepath.Join(org2Peer0MSPDir, "keystore", "priv_sk"))
-		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		Expect(sess).To(gbytes.Say("90"))
 
-		By("restarting all fabric processes to reload MSP identities")
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-		networkRunner = network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-		By("attempting to invoke chaincode on a peer that does not have a valid endorser identity")
-		sess, err := network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+		// Testing scenario one: chaincode endorsement policy not satisfied due to peer's MSP does not define
+		// the peer node OU.
+		By("attempting to invoke chaincode on a peer that does not have a valid endorser identity (endorsing peer has member identity)")
+		sess, err = network.PeerUserSession(org2Peer0, "User1", commands.ChaincodeInvoke{
 			ChannelID: "testchannel",
 			Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 			Name:      "mycc",
 			Ctor:      `{"Args":["invoke","a","b","10"]}`,
 			PeerAddresses: []string{
-				network.PeerAddress(network.Peer("Org2", "peer0"), nwo.ListenPort),
+				network.PeerAddress(network.Peer("Org2", "peer1"), nwo.ListenPort),
 			},
 			WaitForEvent: true,
 			ClientAuth:   network.ClientAuthRequired,
@@ -127,7 +129,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		Expect(sess.Err).To(gbytes.Say(`(ENDORSEMENT_POLICY_FAILURE)`))
 
 		By("reverifying the channel was not affected by the unauthorized endorsement")
-		sess, err = network.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+		sess, err = network.PeerUserSession(org2Peer0, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "mycc",
 			Ctor:      `{"Args":["query","a"]}`,
@@ -135,6 +137,53 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess).To(gbytes.Say("90"))
+
+		// Testing scenario two: chaincode endorsement policy not satisfied due to peer's signer cert does not
+		// satisfy endorsement policy.
+		By("replacing org1peer0's identity with a client identity")
+		// Org1 peer0 is used to test chaincode endorsement policy not satisfied due to peer's signer
+		// cert does not satisfy endorsement policy.
+		org1Peer0MSPDir := network.PeerLocalMSPDir(org1Peer0)
+		org1User1MSPDir := network.PeerUserMSPDir(org1Peer0, "User1")
+
+		_, err = copyFile(filepath.Join(org1User1MSPDir, "signcerts", "User1@org1.example.com-cert.pem"), filepath.Join(org1Peer0MSPDir, "signcerts", "peer0.org1.example.com-cert.pem"))
+		Expect(err).NotTo(HaveOccurred())
+		_, err = copyFile(filepath.Join(org1User1MSPDir, "keystore", "priv_sk"), filepath.Join(org1Peer0MSPDir, "keystore", "priv_sk"))
+		Expect(err).NotTo(HaveOccurred())
+
+		By("restarting all fabric processes to reload MSP identities")
+		process.Signal(syscall.SIGTERM)
+		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		networkRunner = network.NetworkGroupRunner()
+		process = ifrit.Invoke(networkRunner)
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+		By("attempting to invoke chaincode on a peer that does not have a valid endorser identity (endorsing peer has client identity)")
+		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeInvoke{
+			ChannelID: "testchannel",
+			Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
+			Name:      "mycc",
+			Ctor:      `{"Args":["invoke","a","b","10"]}`,
+			PeerAddresses: []string{
+				network.PeerAddress(network.Peer("Org1", "peer0"), nwo.ListenPort),
+			},
+			WaitForEvent: true,
+			ClientAuth:   network.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(`(ENDORSEMENT_POLICY_FAILURE)`))
+
+		By("reverifying the channel was not affected by the unauthorized endorsement")
+		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeQuery{
+			ChannelID: "testchannel",
+			Name:      "mycc",
+			Ctor:      `{"Args":["query","a"]}`,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		Expect(sess).To(gbytes.Say("90"))
+
 	})
 })
 
