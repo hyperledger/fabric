@@ -9,9 +9,6 @@
 [![GoDoc](https://godoc.org/github.com/hyperledger/fabric?status.svg)](https://godoc.org/github.com/hyperledger/fabric)
 [![Documentation Status](https://readthedocs.org/projects/hyperledger-fabric/badge/?version=master)](http://hyperledger-fabric.readthedocs.io/en/master/?badge=master)
 
-**Note:** This is a **read-only mirror** of the formal [Gerrit](https://gerrit.hyperledger.org/r/#/admin/projects/fabric) repository,
-where active development is ongoing. Issue tracking is handled in [Jira](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104).
-
 This project is an _Active_ Hyperledger project. For more information on the history of this project see the [Fabric wiki page](https://wiki.hyperledger.org/display/fabric). Information on what _Active_ entails can be found in
 the [Hyperledger Project Lifecycle document](https://wiki.hyperledger.org/display/HYP/Project+Lifecycle).
 Hyperledger Fabric is a platform for distributed ledger solutions, underpinned
