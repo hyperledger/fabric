@@ -6,7 +6,7 @@ audiences. However, we realize that often there are questions that
 remain unanswered. For any technical questions relating to Hyperledger
 Fabric not answered here, please use
 `StackOverflow <https://stackoverflow.com/questions/tagged/hyperledger-fabric>`__.
-Another approach to getting your questions answered to send an email to
+Another approach to getting your questions answered is to send an email to
 the `mailing
 list <https://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__
 (hyperledger-fabric@lists.hyperledger.org), or ask your questions on
