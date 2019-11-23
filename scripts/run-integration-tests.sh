@@ -28,7 +28,10 @@ main() {
     fi
 
     echo "Running integration tests..."
-    ginkgo -keepGoing --slowSpecThreshold 60 "${dirs[@]}"
+    for dir in "${dirs[@]}"; do
+      echo $dir
+    done
+#    ginkgo -keepGoing --slowSpecThreshold 60 "${dirs[@]}"
 }
 
 main "$@"

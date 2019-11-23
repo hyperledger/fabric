@@ -5,8 +5,8 @@
 name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:.rrr)
 trigger: none
 pr:
-- master
-- release-2.*
+  - master
+  - release-2.*
 
 variables:
   GOPATH: $(Agent.BuildDirectory)/go
@@ -56,10 +56,39 @@ jobs:
     pool:
       vmImage: ubuntu-16.04
     timeoutInMinutes: 120
+    strategy:
+      matrix:
+        Integration:
+          SUITE_DIRECTORY: .
+        Chaincode:
+          SUITE_DIRECTORY: chaincode
+        DiscoveryService:
+          SUITE_DIRECTORY: discovery
+        EndToEnd:
+          SUITE_DIRECTORY: e2e
+        Gossip:
+          SUITE_DIRECTORY: gossip
+        IdeMix:
+          SUITE_DIRECTORY: idemix
+        Ledger:
+          SUITE_DIRECTORY: ledger
+        Lifecycle:
+          SUITE_DIRECTORY: lifecycle
+        NWO:
+          SUITE_DIRECTORY: nwo
+        PluggableEndorsement:
+          SUITE_DIRECTORY: pluggable
+        PrivateData:
+          SUITE_DIRECTORY: pvtdata
+        Raft:
+          SUITE_DIRECTORY: raft
+        StateBasedEndorsement:
+          SUITE_DIRECTORY: sbe
     steps:
       - template: install_deps.yml
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
-      - script: make integration-test
+      - script: make gotool.ginkgo docker
+      - script: cd $(SUITE_DIRECTORY) && ginkgo -keepGoing --slowSpecThreshold 60
         displayName: Run Integration Tests
