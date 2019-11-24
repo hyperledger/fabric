@@ -15,8 +15,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric-chaincode-go/shimtest"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
@@ -25,16 +23,12 @@ import (
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	mc "github.com/hyperledger/fabric/common/mocks/config"
-	lm "github.com/hyperledger/fabric/common/mocks/ledger"
-	"github.com/hyperledger/fabric/common/mocks/scc"
-	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
-	mocks2 "github.com/hyperledger/fabric/core/committer/txvalidator/v14/mocks"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
+	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v12/mocks"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
@@ -45,6 +39,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:generate counterfeiter -o mocks/state.go -fake-name State . vsState
+
+type vsState interface {
+	vs.State
+}
 
 func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 	ccid := &peer.ChaincodeID{Name: "foo", Version: "v1"}
@@ -341,13 +341,25 @@ func getSignedByMSPAdminPolicy(mspID string) ([]byte, error) {
 }
 
 func newValidationInstance(state map[string]map[string][]byte) *Validator {
-	qec := &mocks2.QueryExecutorCreator{}
-	qec.On("NewQueryExecutor").Return(lm.NewMockQueryExecutor(state), nil)
-	return newCustomValidationInstance(qec, &mc.MockApplicationCapabilities{})
+	c := &mocks.Capabilities{}
+	c.On("PrivateChannelData").Return(false)
+	c.On("V1_1Validation").Return(false)
+	c.On("V1_2Validation").Return(false)
+	vs := &mocks.State{}
+	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
+		if ns, ok := state[namespace]; ok {
+			return [][]byte{ns[keys[0]]}, nil
+
+		} else {
+			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
+		}
+	}
+	sf := &mocks.StateFetcher{}
+	sf.On("FetchState").Return(vs, nil)
+	return newCustomValidationInstance(sf, c)
 }
 
-func newCustomValidationInstance(qec txvalidator.QueryExecutorCreator, c validation.Capabilities) *Validator {
-	sf := &txvalidator.StateFetcherImpl{QueryExecutorCreator: qec}
+func newCustomValidationInstance(sf StateFetcher, c validation.Capabilities) *Validator {
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
 		IdentityDeserializer: mspmgmt.GetManagerForChain("testchannelid"),
@@ -478,35 +490,9 @@ func TestInvoke(t *testing.T) {
 
 func TestRWSetTooBig(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
-
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
-	r := stublccc.MockInit("1", [][]byte{})
-	if r.Status != shim.OK {
-		fmt.Println("Init failed", string(r.Message))
-		t.FailNow()
-	}
 
 	ccname := "mycc"
 	ccver := "1"
@@ -545,33 +531,15 @@ func TestRWSetTooBig(t *testing.T) {
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "LSCC can only issue a single putState upon deploy")
+	t.Logf("error: %s", err)
 }
 
 func TestValidateDeployFail(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
 	ccver := "1"
@@ -598,7 +566,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "No read write set for lscc was found")
 
 	/************************/
 	/* test bogus write set */
@@ -628,7 +596,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unmarhsalling of ChaincodeData failed, error unexpected EOF")
 
 	/**********************/
 	/* test bad LSCC args */
@@ -655,7 +623,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "Wrong number of arguments for invocation lscc(deploy): expected at least 2, received 1")
 
 	/**********************/
 	/* test bad LSCC args */
@@ -682,7 +650,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "GetChaincodeDeploymentSpec error error unmarshaling ChaincodeDeploymentSpec: unexpected EOF")
 
 	/***********************/
 	/* test bad cc version */
@@ -709,7 +677,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "expected cc version 1, found 1.1")
 
 	/*************/
 	/* bad rwset */
@@ -733,7 +701,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "txRWSet.FromProtoBytes error unexpected EOF")
 
 	/********************/
 	/* test bad cc name */
@@ -759,7 +727,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "expected key mycc, found mycc.badbad")
 
 	/**********************/
 	/* test bad cc name 2 */
@@ -785,10 +753,10 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "expected cc name mycc, found mycc.badbad")
 
 	/************************/
-	/* test suprious writes */
+	/* test spurious writes */
 	/************************/
 
 	cd := &ccprovider.ChaincodeData{
@@ -822,56 +790,21 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "LSCC invocation is attempting to write to namespace bogusbogus")
 
 }
 
 func TestAlreadyDeployed(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
 	ccver := "alreadydeployed"
-	path := "mychaincode"
 
-	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	if err != nil {
-		fmt.Printf("%s\n", err)
-		t.FailNow()
-	}
-
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
-	}
-
-	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
-	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
-		fmt.Printf("%#v\n", res)
-		t.FailNow()
-	}
+	// create state for ccname to simulate deployment
+	state["lscc"][ccname] = []byte{}
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
 	assert.NoError(t, err)
@@ -894,13 +827,17 @@ func TestAlreadyDeployed(t *testing.T) {
 
 	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "Chaincode mycc is already instantiated")
 }
 
 func TestValidateDeployNoLedger(t *testing.T) {
-	qec := &mocks2.QueryExecutorCreator{}
-	qec.On("NewQueryExecutor").Return(nil, errors.New("failed obtaining query executor"))
-	v := newCustomValidationInstance(qec, &mc.MockApplicationCapabilities{})
+	sf := &mocks.StateFetcher{}
+	sf.On("FetchState").Return(nil, errors.New("failed obtaining query executor"))
+	capabilities := &mocks.Capabilities{}
+	capabilities.On("PrivateChannelData").Return(false)
+	capabilities.On("V1_1Validation").Return(false)
+	capabilities.On("V1_2Validation").Return(false)
+	v := newCustomValidationInstance(sf, capabilities)
 
 	ccname := "mycc"
 	ccver := "1"
@@ -928,34 +865,14 @@ func TestValidateDeployNoLedger(t *testing.T) {
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "could not retrieve QueryExecutor for channel testchannelid, error failed obtaining query executor")
 }
 
 func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
 	ccver := "1"
@@ -1004,29 +921,9 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 
 func TestValidateDeployOK(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
-
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
 	ccver := "1"
@@ -1074,29 +971,9 @@ func TestValidateDeployNOK(t *testing.T) {
 
 	// create validator and policy
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
 
 	policy, err := getSignedByMSPAdminPolicy(mspid)
 	assert.NoError(t, err)
@@ -1129,41 +1006,24 @@ func testChaincodeDeployNOK(t *testing.T, ccName, ccVersion, errMsg string, v *V
 
 func TestValidateDeployWithCollection(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{
-			PrivateChannelDataRv: true,
-		}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
-	qec := &mocks2.QueryExecutorCreator{}
-	qec.On("NewQueryExecutor").Return(lm.NewMockQueryExecutor(state), nil)
-	v := newCustomValidationInstance(qec, &mc.MockApplicationCapabilities{
-		PrivateChannelDataRv: true,
-	})
+	vs := &mocks.State{}
+	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
+		if ns, ok := state[namespace]; ok {
+			return [][]byte{ns[keys[0]]}, nil
 
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
+		} else {
+			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
+		}
 	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
-	r := stublccc.MockInit("1", [][]byte{})
-	if r.Status != shim.OK {
-		fmt.Println("Init failed", string(r.Message))
-		t.FailNow()
-	}
+	sf := &mocks.StateFetcher{}
+	sf.On("FetchState").Return(vs, nil)
+	capabilities := &mocks.Capabilities{}
+	capabilities.On("PrivateChannelData").Return(true)
+	capabilities.On("V1_1Validation").Return(true)
+	capabilities.On("V1_2Validation").Return(false)
+	v := newCustomValidationInstance(sf, capabilities)
 
 	ccname := "mycc"
 	ccver := "1"
@@ -1236,65 +1096,21 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test 3: Once the V1_2Validation is enabled, validation should fail due to duplicate collection configs
-	state = make(map[string]map[string][]byte)
-	mp = (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{
-			PrivateChannelDataRv: true,
-			V1_2ValidationRv:     true,
-		}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
-
-	v = newValidationInstance(state)
-	lccc = &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc = shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
-	r = stublccc.MockInit("1", [][]byte{})
-	if r.Status != shim.OK {
-		fmt.Println("Init failed", string(r.Message))
-		t.FailNow()
-	}
+	capabilities = &mocks.Capabilities{}
+	capabilities.On("PrivateChannelData").Return(true)
+	capabilities.On("V1_2Validation").Return(true)
+	v = newCustomValidationInstance(sf, capabilities)
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
+	assert.EqualError(t, err, "collection-name: mycollection1 -- found duplicate collection configuration")
 }
 
 func TestValidateDeployWithPolicies(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
-
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
 	ccver := "1"
@@ -1351,34 +1167,14 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "chaincode instantiation policy violated, error signature set did not satisfy policy")
 }
 
 func TestInvalidUpgrade(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
-
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
 
 	ccname := "mycc"
 	ccver := "2"
@@ -1404,58 +1200,34 @@ func TestInvalidUpgrade(t *testing.T) {
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "Upgrading non-existent chaincode mycc")
 }
 
 func TestValidateUpgradeOK(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
 
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
 	ccname := "mycc"
 	ccver := "upgradeok"
-	path := "mychaincode"
-
-	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
-	if err != nil {
-		fmt.Printf("%s\n", err)
-		t.FailNow()
-	}
-
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
-	}
-
-	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
-	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
-		fmt.Printf("%#v\n", res)
-		t.FailNow()
-	}
-
 	ccver = "2"
+
+	// policy signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+	}
+
+	// create lscc record
+	cd := &ccprovider.ChaincodeData{
+		InstantiationPolicy: policy,
+	}
+	cdbytes, err := proto.Marshal(cd)
+	if err != nil {
+		t.Fatalf("Failed to marshal ChaincodeData: %s", err)
+	}
+	state["lscc"][ccname] = cdbytes
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
 	assert.NoError(t, err)
@@ -1468,12 +1240,6 @@ func TestValidateUpgradeOK(t *testing.T) {
 	envBytes, err := protoutil.GetBytesEnvelope(tx)
 	if err != nil {
 		t.Fatalf("GetBytesEnvelope returned err %s", err)
-	}
-
-	// good path: signed by the right MSP
-	policy, err := getSignedByMSPMemberPolicy(mspid)
-	if err != nil {
-		t.Fatalf("failed getting policy, err %s", err)
 	}
 
 	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
@@ -1483,51 +1249,29 @@ func TestValidateUpgradeOK(t *testing.T) {
 
 func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
 
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
 	ccname := "mycc"
 	ccver := "upgradebadversion"
-	path := "mychaincode"
 
-	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	// policy signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
 	if err != nil {
-		fmt.Printf("%s\n", err)
-		t.FailNow()
+		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
+	// create lscc record
+	cd := &ccprovider.ChaincodeData{
+		InstantiationPolicy: policy,
+		Version:             ccver,
 	}
-
-	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
-	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
-		fmt.Printf("%#v\n", res)
-		t.FailNow()
+	cdbytes, err := proto.Marshal(cd)
+	if err != nil {
+		t.Fatalf("Failed to marshal ChaincodeData: %s", err)
 	}
+	state["lscc"][ccname] = cdbytes
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
 	assert.NoError(t, err)
@@ -1542,79 +1286,49 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 		t.Fatalf("GetBytesEnvelope returned err %s", err)
 	}
 
-	// good path: signed by the right MSP
+	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
+	err = v.Validate(bl, "lscc", 0, 0, policy)
+	assert.EqualError(t, err, fmt.Sprintf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", ccver))
+}
+
+func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bool) {
+	state := make(map[string]map[string][]byte)
+	state["lscc"] = make(map[string][]byte)
+
+	vs := &mocks.State{}
+	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
+		if ns, ok := state[namespace]; ok {
+			return [][]byte{ns[keys[0]]}, nil
+
+		} else {
+			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
+		}
+	}
+	sf := &mocks.StateFetcher{}
+	sf.On("FetchState").Return(vs, nil)
+	capabilities := &mocks.Capabilities{}
+	capabilities.On("PrivateChannelData").Return(true)
+	capabilities.On("V1_1Validation").Return(true)
+	capabilities.On("V1_2Validation").Return(V1_2Validation)
+	v := newCustomValidationInstance(sf, capabilities)
+
+	ccname := "mycc"
+	ccver = "2"
+
 	policy, err := getSignedByMSPMemberPolicy(mspid)
 	if err != nil {
 		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
-	err = v.Validate(bl, "lscc", 0, 0, policy)
-	assert.Error(t, err)
-}
-
-func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bool) {
-	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{
-			PrivateChannelDataRv: true,
-			V1_2ValidationRv:     V1_2Validation,
-		}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
-
-	qec := &mocks2.QueryExecutorCreator{}
-	qec.On("NewQueryExecutor").Return(lm.NewMockQueryExecutor(state), nil)
-	v := newCustomValidationInstance(qec, &mc.MockApplicationCapabilities{
-		PrivateChannelDataRv: true,
-		V1_2ValidationRv:     V1_2Validation,
-	})
-
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
+	// create lscc record
+	cd := &ccprovider.ChaincodeData{
+		InstantiationPolicy: policy,
 	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
-	r := stublccc.MockInit("1", [][]byte{})
-	if r.Status != shim.OK {
-		fmt.Println("Init failed", string(r.Message))
-		t.FailNow()
-	}
-
-	ccname := "mycc"
-	path := "mychaincode"
-
-	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	cdbytes, err := proto.Marshal(cd)
 	if err != nil {
-		fmt.Printf("%s\n", err)
-		t.FailNow()
+		t.Fatalf("Failed to marshal ChaincodeData: %s", err)
 	}
-
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
-	}
-
-	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
-	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
-		fmt.Printf("%#v\n", res)
-		t.FailNow()
-	}
-
-	ccver = "2"
+	state["lscc"][ccname] = cdbytes
 
 	collName1 := "mycollection1"
 	collName2 := "mycollection2"
@@ -1650,12 +1364,6 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	envBytes, err := protoutil.GetBytesEnvelope(tx)
 	if err != nil {
 		t.Fatalf("GetBytesEnvelope returned err %s", err)
-	}
-
-	// good path: signed by the right MSP
-	policy, err := getSignedByMSPMemberPolicy(mspid)
-	if err != nil {
-		t.Fatalf("failed getting policy, err %s", err)
 	}
 
 	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
@@ -1720,7 +1428,6 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 			t.Fatalf("GetBytesEnvelope returned err %s", err)
 		}
 
-		args = [][]byte{[]byte("dv"), envBytes, policy, ccpBytes}
 		bl = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 		err = v.Validate(bl, "lscc", 0, 0, policy)
 		assert.Error(t, err, "existing collection named mycollection2 is missing in the new collection configuration package")
@@ -1761,55 +1468,28 @@ func TestValidateUpgradeWithCollection(t *testing.T) {
 
 func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
 
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
 	ccname := "mycc"
 	ccver := "upgradewithpoliciesok"
-	path := "mychaincode"
 
-	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	// policy signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
 	if err != nil {
-		fmt.Printf("%s\n", err)
-		t.FailNow()
-	}
-	_, err = processSignedCDS(cds, cauthdsl.AcceptAllPolicy)
-	assert.NoError(t, err)
-
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
+		t.Fatalf("failed getting policy, err %s", err)
 	}
 
-	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
-	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
-		fmt.Printf("%#v\n", res)
-		t.FailNow()
+	// create lscc record
+	cd := &ccprovider.ChaincodeData{
+		InstantiationPolicy: policy,
 	}
-
-	ccver = "2"
+	cdbytes, err := proto.Marshal(cd)
+	if err != nil {
+		t.Fatalf("Failed to marshal ChaincodeData: %s", err)
+	}
+	state["lscc"][ccname] = cdbytes
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
 	assert.NoError(t, err)
@@ -1824,13 +1504,6 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 		t.Fatalf("GetBytesEnvelope returned err %s", err)
 	}
 
-	// good path: signed by the right MSP
-	policy, err := getSignedByMSPMemberPolicy(mspid)
-	if err != nil {
-		t.Fatalf("failed getting policy, err %s", err)
-	}
-
-	args = [][]byte{[]byte("dv"), envBytes, policy}
 	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
 	assert.NoError(t, err)
@@ -1852,65 +1525,43 @@ func TestValidateUpgradeWithNewFailAllIP(t *testing.T) {
 
 func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, expecterr bool) {
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{V1_1ValidationRv: v11capability}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
-	qec := &mocks2.QueryExecutorCreator{}
-	capabilities := &mc.MockApplicationCapabilities{}
-	if v11capability {
-		capabilities.V1_1ValidationRv = true
+	vs := &mocks.State{}
+	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
+		if ns, ok := state[namespace]; ok {
+			return [][]byte{ns[keys[0]]}, nil
+
+		} else {
+			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
+		}
 	}
-	qec.On("NewQueryExecutor").Return(lm.NewMockQueryExecutor(state), nil)
-	v := newCustomValidationInstance(qec, capabilities)
-
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
-	// deploy the chaincode with an accept all policy
+	sf := &mocks.StateFetcher{}
+	sf.On("FetchState").Return(vs, nil)
+	capabilities := &mocks.Capabilities{}
+	capabilities.On("PrivateChannelData").Return(true)
+	capabilities.On("V1_1Validation").Return(v11capability)
+	capabilities.On("V1_2Validation").Return(false)
+	v := newCustomValidationInstance(sf, capabilities)
 
 	ccname := "mycc"
-	path := "mychaincode"
+	ccver = "2"
 
-	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	// create lscc record with accept all instantiation policy
+	ipbytes, err := proto.Marshal(cauthdsl.AcceptAllPolicy)
 	if err != nil {
-		fmt.Printf("%s\n", err)
-		t.FailNow()
+		t.Fatalf("Failed to marshal AcceptAllPolicy: %s", err)
 	}
-	_, err = processSignedCDS(cds, cauthdsl.AcceptAllPolicy)
-	assert.NoError(t, err)
-
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
+	cd := &ccprovider.ChaincodeData{
+		InstantiationPolicy: ipbytes,
 	}
-
-	sProp2, _ := protoutil.MockSignedEndorserProposal2OrPanic(chainId, &peer.ChaincodeSpec{}, id)
-	args := [][]byte{[]byte("deploy"), []byte(ccname), b}
-	if res := stublccc.MockInvokeWithSignedProposal("1", args, sProp2); res.Status != shim.OK {
-		fmt.Printf("%#v\n", res)
-		t.FailNow()
+	cdbytes, err := proto.Marshal(cd)
+	if err != nil {
+		t.Fatalf("Failed to marshal ChaincodeData: %s", err)
 	}
-
-	// if we're here, we have a cc deployed with an accept all IP
+	state["lscc"][ccname] = cdbytes
 
 	// now we upgrade, with v 2 of the same cc, with the crucial difference that it has a reject all IP
-
 	ccver = ccver + ".2"
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver,
@@ -1946,57 +1597,30 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 }
 
 func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
+	ccname := "mycc"
+	ccver := "upgradewithpoliciesfail"
+
 	state := make(map[string]map[string][]byte)
-	mp := (&scc.MocksccProviderFactory{
-		Qe:                    lm.NewMockQueryExecutor(state),
-		ApplicationConfigBool: true,
-		ApplicationConfigRv:   &mc.MockApplication{CapabilitiesRv: &mc.MockApplicationCapabilities{}},
-	}).NewSystemChaincodeProvider().(*scc.MocksccProviderImpl)
+	state["lscc"] = make(map[string][]byte)
 
 	v := newValidationInstance(state)
 
-	mockAclProvider := &aclmocks.MockACLProvider{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	lccc := &lscc.SCC{
-		Support: &lscc.SupportImpl{
-			GetMSPIDs: mockMSPIDGetter,
-		},
-		SCCProvider:   mp,
-		ACLProvider:   mockAclProvider,
-		GetMSPIDs:     mockMSPIDGetter,
-		PolicyChecker: &mockPolicyChecker{},
-		BCCSP:         cryptoProvider,
-	}
-	stublccc := shimtest.NewMockStub("lscc", lccc)
-	state["lscc"] = stublccc.State
-
-	ccname := "mycc"
-	ccver := "upgradewithpoliciesfail"
-	path := "mychaincode"
-
-	cds, err := constructDeploymentSpec(ccname, path, ccver, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	// create lscc record with reject all instantiation policy
+	ipbytes, err := proto.Marshal(cauthdsl.RejectAllPolicy)
 	if err != nil {
-		fmt.Printf("%s\n", err)
-		t.FailNow()
+		t.Fatalf("Failed to marshal RejectAllPolicy: %s", err)
 	}
-	cdbytes, err := processSignedCDS(cds, cauthdsl.RejectAllPolicy)
-	assert.NoError(t, err)
-
-	var b []byte
-	if b, err = proto.Marshal(cds); err != nil || b == nil {
-		t.FailNow()
+	cd := &ccprovider.ChaincodeData{
+		InstantiationPolicy: ipbytes,
+		Version:             ccver,
 	}
-
-	// Simulate the lscc invocation whilst skipping the policy validation,
-	// otherwise we wouldn't be able to deploy a chaincode with a reject all policy
-	stublccc.MockTransactionStart("barf")
-	err = stublccc.PutState(ccname, cdbytes)
-	assert.NoError(t, err)
-	stublccc.MockTransactionEnd("barf")
+	cdbytes, err := proto.Marshal(cd)
+	if err != nil {
+		t.Fatalf("Failed to marshal ChaincodeData: %s", err)
+	}
+	state["lscc"][ccname] = cdbytes
 
 	ccver = "2"
-
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
 	assert.NoError(t, err)
 
@@ -2018,7 +1642,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 
 	bl := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "chaincode instantiation policy violated, error signature set did not satisfy policy")
 }
 
 var id msp.SigningIdentity
