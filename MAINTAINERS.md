@@ -18,8 +18,9 @@ Maintainers
 | Manish Sethi   |  manish-sethi | manish-sethi | manish-sethi | <manish.sethi@gmail.com>
 | Matthew Sykes  |  sykesm    |   sykesm  |  sykesm   | <sykesmat@us.ibm.com>
 | Pam Andrejko  |   pama-ibm  |   pamandrejko | pandrejko | <pama@ibm.com>
-  Srinivasan Muralidharan | muralisr | muralisrini | muralisr | <srinivasan.muralidharan99@gmail.com>
+| Srinivasan Muralidharan | muralisr | muralisrini | muralisr | <srinivasan.muralidharan99@gmail.com>
 | Yacov Manevich |  yacovm    |   yacovm   |   yacovm   | <yacovm@il.ibm.com>
+| Joe Alewine    |  joe-alewine |   joe-alewine  | joe-alewine   | <joe.alewine@ibm.com>
 
 **Release Managers**
 
@@ -40,5 +41,3 @@ Maintainers
 | Yaoguo Jiang   |  jiangyaoguo | jiangyaoguo | jiangyaoguo | <jiangyaoguo@gmail.com>
 | Greg Haskins  |  greg.haskins | ghaskins  |  ghaskins | <gregory.haskins@gmail.com>
 | Keith Smith  |   smithbk   |  smithbk  |  smithbk  | <bksmith@us.ibm.com>
-
-
