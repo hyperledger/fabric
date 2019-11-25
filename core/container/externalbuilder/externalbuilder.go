@@ -152,17 +152,15 @@ func (d *Detector) Build(ccid string, md *persistence.ChaincodePackageMetadata, 
 	}
 
 	durableReleaseDir := filepath.Join(durablePath, "release")
-	err = os.Rename(buildContext.ReleaseDir, durableReleaseDir)
+	err = MoveOrCopyDir(logger, buildContext.ReleaseDir, durableReleaseDir)
 	if err != nil {
-		os.RemoveAll(durablePath)
-		return nil, errors.WithMessagef(err, "could not move build context release to persistent location '%s'", durablePath)
+		return nil, errors.WithMessagef(err, "could not move or copy build context release to persistent location '%s'", durablePath)
 	}
 
 	durableBldDir := filepath.Join(durablePath, "bld")
-	err = os.Rename(buildContext.BldDir, durableBldDir)
+	err = MoveOrCopyDir(logger, buildContext.BldDir, durableBldDir)
 	if err != nil {
-		os.RemoveAll(durablePath)
-		return nil, errors.WithMessagef(err, "could not move build context bld to persistent location '%s'", durablePath)
+		return nil, errors.WithMessagef(err, "could not move or copy build context bld to persistent location '%s'", durablePath)
 	}
 
 	return &Instance{
