@@ -37,7 +37,7 @@ func NewMSPConfigHandler(mspVersion msp.MSPVersion, bccsp bccsp.BCCSP) *MSPConfi
 	}
 }
 
-// ProposeValue called when an org defines an MSP
+// ProposeMSP called when an org defines an MSP
 func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP, error) {
 	var theMsp msp.MSP
 	var err error
