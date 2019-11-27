@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package channel
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -43,6 +44,13 @@ var (
 
 	// fetch related variables
 	bestEffort bool
+
+	// check related variables
+	orgID string
+
+	// used for testing explicit os.Exit(<exit code>) scenarios
+	osExit   = os.Exit
+	exitCode = -1
 )
 
 // Cmd returns the cobra command for Node
@@ -56,6 +64,9 @@ func Cmd(cf *ChannelCmdFactory) *cobra.Command {
 	channelCmd.AddCommand(updateCmd(cf))
 	channelCmd.AddCommand(signconfigtxCmd(cf))
 	channelCmd.AddCommand(getinfoCmd(cf))
+	channelCmd.AddCommand(checkexistsCmd(cf))
+	channelCmd.AddCommand(checkjoinedCmd(cf))
+	channelCmd.AddCommand(checkanchorsCmd(cf))
 
 	return channelCmd
 }
@@ -81,6 +92,7 @@ func resetFlags() {
 	flags.StringVarP(&outputBlock, "outputBlock", "", common.UndefinedParamValue, `The path to write the genesis block for the channel. (default ./<channelID>.block)`)
 	flags.DurationVarP(&timeout, "timeout", "t", 10*time.Second, "Channel creation timeout")
 	flags.BoolVarP(&bestEffort, "bestEffort", "", false, "Whether fetch requests should ignore errors and return blocks on a best effort basis")
+	flags.StringVarP(&orgID, "orgID", "g", common.UndefinedParamValue, `Organization ID`)
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {
