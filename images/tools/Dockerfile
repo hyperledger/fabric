@@ -30,3 +30,11 @@ ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
 VOLUME /etc/hyperledger/fabric
 COPY --from=tools /go/src/github.com/hyperledger/fabric/build/bin /usr/local/bin
 COPY --from=tools /go/src/github.com/hyperledger/fabric/sampleconfig ${FABRIC_CFG_PATH}
+
+# install yq via pip
+RUN apk add --no-cache curl python
+RUN curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py" && \
+    python get-pip.py && \
+    rm get-pip.py && \
+    pip install yq
+

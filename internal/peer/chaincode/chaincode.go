@@ -8,6 +8,7 @@ package chaincode
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp"
@@ -49,6 +50,8 @@ func Cmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeCmd.AddCommand(signpackageCmd(cf, cryptoProvider))
 	chaincodeCmd.AddCommand(upgradeCmd(cf, cryptoProvider))
 	chaincodeCmd.AddCommand(listCmd(cf, cryptoProvider))
+	chaincodeCmd.AddCommand(checkinstalledCmd(cf))
+	chaincodeCmd.AddCommand(checkinstantiatedCmd(cf))
 
 	return chaincodeCmd
 }
@@ -77,6 +80,10 @@ var (
 	connectionProfile     string
 	waitForEvent          bool
 	waitForEventTimeout   time.Duration
+
+	// used for testing explicit os.Exit(<exit code>) scenarios
+	osExit   = os.Exit
+	exitCode = -1
 )
 
 var chaincodeCmd = &cobra.Command{
