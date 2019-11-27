@@ -222,7 +222,7 @@ func ChannelCreationPolicyValue(policy *cb.Policy) *StandardConfigValue {
 	}
 }
 
-// ACLsValues returns the config definition for an applications resources based ACL definitions.
+// ACLValues returns the config definition for an applications resources based ACL definitions.
 // It is a value for the /Channel/Application/.
 func ACLValues(acls map[string]string) *StandardConfigValue {
 	a := &pb.ACLs{

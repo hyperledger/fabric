@@ -22,13 +22,13 @@ type ConsortiumProtos struct {
 	ChannelCreationPolicy *cb.Policy
 }
 
-// ConsortiumConfig holds the consoritums configuration information
+// ConsortiumConfig holds the consortium's configuration information
 type ConsortiumConfig struct {
 	protos *ConsortiumProtos
 	orgs   map[string]Org
 }
 
-// NewConsortiumConfig creates a new instance of the consoritums config
+// NewConsortiumConfig creates a new instance of the consortium's config
 func NewConsortiumConfig(consortiumGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*ConsortiumConfig, error) {
 	cc := &ConsortiumConfig{
 		protos: &ConsortiumProtos{},
