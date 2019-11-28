@@ -25,7 +25,7 @@ type channelState struct {
 	stopping int32
 	sync.RWMutex
 	channels map[string]channel.GossipChannel
-	g        *GossipImpl
+	g        *Node
 }
 
 func (cs *channelState) stop() {
@@ -104,7 +104,7 @@ func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, channelID co
 	defer cs.Unlock()
 	if gc, exists := cs.channels[string(channelID)]; !exists {
 		pkiID := cs.g.comm.GetPKIid()
-		ga := &gossipAdapterImpl{GossipImpl: cs.g, Discovery: cs.g.disc}
+		ga := &gossipAdapterImpl{Node: cs.g, Discovery: cs.g.disc}
 		gc := channel.NewGossipChannel(pkiID, cs.g.selfOrg, cs.g.mcs, channelID, ga, joinMsg, metrics, nil)
 		cs.channels[string(channelID)] = gc
 	} else {
@@ -113,7 +113,7 @@ func (cs *channelState) joinChannel(joinMsg api.JoinChannelMessage, channelID co
 }
 
 type gossipAdapterImpl struct {
-	*GossipImpl
+	*Node
 	discovery.Discovery
 }
 
@@ -154,7 +154,7 @@ func (ga *gossipAdapterImpl) Sign(msg *proto.GossipMessage) (*protoext.SignedGos
 
 // Gossip gossips a message
 func (ga *gossipAdapterImpl) Gossip(msg *protoext.SignedGossipMessage) {
-	ga.GossipImpl.emitter.Add(&emittedGossipMessage{
+	ga.Node.emitter.Add(&emittedGossipMessage{
 		SignedGossipMessage: msg,
 		filter: func(_ common.PKIidType) bool {
 			return true
@@ -164,25 +164,25 @@ func (ga *gossipAdapterImpl) Gossip(msg *protoext.SignedGossipMessage) {
 
 // Forward sends message to the next hops
 func (ga *gossipAdapterImpl) Forward(msg protoext.ReceivedMessage) {
-	ga.GossipImpl.emitter.Add(&emittedGossipMessage{
+	ga.Node.emitter.Add(&emittedGossipMessage{
 		SignedGossipMessage: msg.GetGossipMessage(),
 		filter:              msg.GetConnectionInfo().ID.IsNotSameFilter,
 	})
 }
 
 func (ga *gossipAdapterImpl) Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer) {
-	ga.GossipImpl.comm.Send(msg, peers...)
+	ga.Node.comm.Send(msg, peers...)
 }
 
 // ValidateStateInfoMessage returns error if a message isn't valid
 // nil otherwise
 func (ga *gossipAdapterImpl) ValidateStateInfoMessage(msg *protoext.SignedGossipMessage) error {
-	return ga.GossipImpl.validateStateInfoMsg(msg)
+	return ga.Node.validateStateInfoMsg(msg)
 }
 
 // GetOrgOfPeer returns the organization identifier of a certain peer
 func (ga *gossipAdapterImpl) GetOrgOfPeer(PKIID common.PKIidType) api.OrgIdentityType {
-	return ga.GossipImpl.getOrgOfPeer(PKIID)
+	return ga.Node.getOrgOfPeer(PKIID)
 }
 
 // GetIdentityByPKIID returns an identity of a peer with a certain
