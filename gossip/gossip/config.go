@@ -95,6 +95,7 @@ type Config struct {
 	ReconnectInterval time.Duration
 }
 
+// GlobalConfig builds a Config from the given endpoint, certificate and bootstrap peers.
 func GlobalConfig(endpoint string, certs *common.TLSCertificates, bootPeers ...string) (*Config, error) {
 	c := &Config{}
 	err := c.loadConfig(endpoint, certs, bootPeers...)
