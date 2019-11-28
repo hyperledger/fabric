@@ -18,8 +18,11 @@ import (
 
 func createLedgerFactory(conf *config.TopLevel, metricsProvider metrics.Provider) (blockledger.Factory, string, error) {
 	ld := conf.FileLedger.Location
+	var err error
 	if ld == "" {
-		ld = createTempDir(conf.FileLedger.Prefix)
+		if ld, err = ioutil.TempDir("", conf.FileLedger.Prefix); err != nil {
+			logger.Panic("Error creating temp dir:", err)
+		}
 	}
 
 	logger.Debug("Ledger dir:", ld)
@@ -28,12 +31,4 @@ func createLedgerFactory(conf *config.TopLevel, metricsProvider metrics.Provider
 		return nil, "", errors.WithMessage(err, "Error in opening ledger factory")
 	}
 	return lf, ld, nil
-}
-
-func createTempDir(dirPrefix string) string {
-	dirPath, err := ioutil.TempDir("", dirPrefix)
-	if err != nil {
-		logger.Panic("Error creating temp dir:", err)
-	}
-	return dirPath
 }
