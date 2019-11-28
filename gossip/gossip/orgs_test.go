@@ -139,7 +139,7 @@ func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer 
 	go func() {
 		gRPCServer.Start()
 	}()
-	return &gossipGRPC{GossipImpl: g, grpc: gRPCServer}
+	return &gossipGRPC{Node: g, grpc: gRPCServer}
 }
 
 func TestMultipleOrgEndpointLeakage(t *testing.T) {
@@ -233,7 +233,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 
 	membershipCheck := func() bool {
 		for _, p := range peers {
-			peerNetMember := p.GossipImpl.selfNetworkMember()
+			peerNetMember := p.Node.selfNetworkMember()
 			pkiID := peerNetMember.PKIid
 			peersKnown := p.Peers()
 			peersToKnow := expectedMembershipSize[string(pkiID)]
@@ -391,7 +391,7 @@ func TestConfidentiality(t *testing.T) {
 	for _, p := range peers {
 		wg.Add(1)
 		_, msgs := p.Accept(msgSelector, true)
-		peerNetMember := p.GossipImpl.selfNetworkMember()
+		peerNetMember := p.Node.selfNetworkMember()
 		targetORg := string(cs.OrgByPeerIdentity(api.PeerIdentityType(peerNetMember.InternalEndpoint)))
 		go func(targetOrg string, msgs <-chan protoext.ReceivedMessage) {
 			defer wg.Done()
@@ -447,7 +447,7 @@ func TestConfidentiality(t *testing.T) {
 			for i, p := range orgs2Peers[org] {
 				members := p.Peers()
 				expMemberSize := expectedMembershipSize(peersInOrg, externalEndpointsInOrg, org, i < externalEndpointsInOrg)
-				peerNetMember := p.GossipImpl.selfNetworkMember()
+				peerNetMember := p.Node.selfNetworkMember()
 				membersCount := len(members)
 				if membersCount < expMemberSize {
 					return false
