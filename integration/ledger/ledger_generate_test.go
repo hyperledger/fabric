@@ -1,3 +1,5 @@
+// +build generate
+
 /*
 Copyright IBM Corp All Rights Reserved.
 
@@ -16,7 +18,7 @@ import (
 )
 
 // This test generate sample ledger data that can be used to verify rebuild ledger function and upgrade function (in a future release).
-// It is skipped in general. To generate sample ledger data, comment out the line `xxx` and run this test in isolation.
+// It is skipped in general. To generate sample ledger data, use build tag 'generate' and run this test in isolation.
 // It does not delete the network directory so that you can copy the generated data to a different directory for unit tests.
 // At the end of test, it prints `setup.testDir is <directory>`. Copy the network data under <directory> to
 // the unit test directory for rebuild tests as needed.
@@ -77,12 +79,10 @@ var _ = Describe("sample ledger generation", func() {
 		setup.terminateAllProcess()
 		setup.network.Cleanup()
 		// do not delete testDir and log it so that we can copy the test data to unit tests for verification purpose
-		fmt.Printf("The test dir is %s. Use peers/org2.peer0/filesystem/ledgersData as the sample ledger for kvledger rebuild tests\n", setup.testDir)
+		fmt.Fprintf(GinkgoWriter, "The test dir is %s. Use peers/org2.peer0/filesystem/ledgersData as the sample ledger for kvledger rebuild tests\n", setup.testDir)
 	})
 
 	It("creates marbles", func() {
-		Skip("Uncomment to generate sample ledger in v2.0 with new lifecycle chaincode deployment")
-
 		org2peer0 := setup.network.Peer("org2", "peer0")
 		height := helper.getLedgerHeight(org2peer0)
 
