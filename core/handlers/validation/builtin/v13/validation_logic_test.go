@@ -2246,10 +2246,15 @@ var mockMSPIDGetter = func(cid string) []string {
 }
 
 func TestMain(m *testing.M) {
+	code := -1
+	defer func() {
+		os.Exit(code)
+	}()
+
 	testDir, err := ioutil.TempDir("", "v1.3-validation")
 	if err != nil {
 		fmt.Printf("Could not create temp dir: %s", err)
-		os.Exit(-1)
+		return
 	}
 	defer os.RemoveAll(testDir)
 	ccprovider.SetChaincodesPath(testDir)
@@ -2260,20 +2265,19 @@ func TestMain(m *testing.M) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	if err != nil {
 		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
-		os.Exit(-1)
 		return
 	}
 
 	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Printf("GetSigningIdentity failed with err %s", err)
-		os.Exit(-1)
+		return
 	}
 
 	sid, err = id.Serialize()
 	if err != nil {
 		fmt.Printf("Serialize failed with err %s", err)
-		os.Exit(-1)
+		return
 	}
 
 	// determine the MSP identifier for the first MSP in the default chain
@@ -2282,11 +2286,11 @@ func TestMain(m *testing.M) {
 	msps, err := mspMgr.GetMSPs()
 	if err != nil {
 		fmt.Printf("Could not retrieve the MSPs for the chain manager, err %s", err)
-		os.Exit(-1)
+		return
 	}
 	if len(msps) == 0 {
 		fmt.Printf("At least one MSP was expected")
-		os.Exit(-1)
+		return
 	}
 	for _, m := range msps {
 		msp = m
@@ -2295,13 +2299,12 @@ func TestMain(m *testing.M) {
 	mspid, err = msp.GetIdentifier()
 	if err != nil {
 		fmt.Printf("Failure getting the msp identifier, err %s", err)
-		os.Exit(-1)
+		return
 	}
 
 	// also set the MSP for the "test" chain
 	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain("testchannelid"))
-
-	os.Exit(m.Run())
+	code = m.Run()
 }
 
 func TestInValidCollectionName(t *testing.T) {
