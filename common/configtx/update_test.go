@@ -8,11 +8,12 @@ package configtx
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
-	cb "github.com/hyperledger/fabric/protos/common"
-
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	mockpolicies "github.com/hyperledger/fabric/common/configtx/mock"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -62,10 +63,10 @@ func TestComputeDeltaSet(t *testing.T) {
 }
 
 func TestVerifyDeltaSet(t *testing.T) {
+	pm := &mockpolicies.PolicyManager{}
+	pm.GetPolicyReturns(&mockpolicies.Policy{}, true)
 	vi := &ValidatorImpl{
-		pm: &mockpolicies.Manager{
-			Policy: &mockpolicies.Policy{},
-		},
+		pm:        pm,
 		configMap: make(map[string]comparable),
 	}
 
@@ -107,7 +108,9 @@ func TestVerifyDeltaSet(t *testing.T) {
 		deltaSet := make(map[string]comparable)
 
 		deltaSet["foo"] = comparable{ConfigValue: &cb.ConfigValue{Version: 1, ModPolicy: "foo"}}
-		vi.pm.(*mockpolicies.Manager).Policy = &mockpolicies.Policy{Err: fmt.Errorf("Err")}
+		fakePolicy := &mockpolicies.Policy{}
+		fakePolicy.EvaluateSignedDataReturns(fmt.Errorf("MockErr-fakePolicy.Evaluate-1557327297"))
+		vi.pm.(*mockpolicies.PolicyManager).GetPolicyReturns(fakePolicy, true)
 
 		assert.Error(t, vi.verifyDeltaSet(deltaSet, nil), "Policy evaluation should have failed")
 	})
@@ -121,18 +124,38 @@ func TestVerifyDeltaSet(t *testing.T) {
 
 func TestPolicyForItem(t *testing.T) {
 	// Policies are set to different error values to differentiate them in equal assertion
-	rootPolicy := &mockpolicies.Policy{Err: fmt.Errorf("rootPolicy")}
-	fooPolicy := &mockpolicies.Policy{Err: fmt.Errorf("fooPolicy")}
+
+	fakeFooPolicy := &mockpolicies.Policy{}
+	fakeFooPolicy.EvaluateSignedDataReturns(fmt.Errorf("MockErr-fooPolicy-1557327481"))
+	fakeFooPolicyManager := &mockpolicies.PolicyManager{}
+	fakeFooPolicyManager.GetPolicyStub = func(s string) (i policies.Policy, b bool) {
+		if s == "foo" {
+			return fakeFooPolicy, true
+		}
+		return nil, false
+	}
+	fakeRootPolicy := &mockpolicies.Policy{}
+	fakeRootPolicy.EvaluateSignedDataReturns(fmt.Errorf("MockErr-rootPolicy-1557327456"))
+	fakeRootPolicyManager := &mockpolicies.PolicyManager{}
+	fakeRootPolicyManager.GetPolicyStub = func(s string) (i policies.Policy, b bool) {
+		if s == "rootPolicy" {
+			return fakeRootPolicy, true
+		}
+		return nil, false
+	}
+	fakeRootPolicyManager.ManagerStub = func(path []string) (manager policies.Manager, b bool) {
+		switch {
+		case len(path) == 0:
+			return fakeRootPolicyManager, true
+		case reflect.DeepEqual(path, []string{"foo"}):
+			return fakeFooPolicyManager, true
+		default:
+			return nil, false
+		}
+	}
 
 	vi := &ValidatorImpl{
-		pm: &mockpolicies.Manager{
-			Policy: rootPolicy,
-			SubManagersMap: map[string]*mockpolicies.Manager{
-				"foo": {
-					Policy: fooPolicy,
-				},
-			},
-		},
+		pm: fakeRootPolicyManager,
 	}
 
 	t.Run("Root manager", func(t *testing.T) {
@@ -143,7 +166,7 @@ func TestPolicyForItem(t *testing.T) {
 			},
 		})
 		assert.True(t, ok)
-		assert.Equal(t, policy, rootPolicy, "Should have found relative policy off the root manager")
+		assert.Equal(t, policy, fakeRootPolicy, "Should have found relative policy off the root manager")
 	})
 
 	t.Run("Nonexistent manager", func(t *testing.T) {
@@ -164,7 +187,7 @@ func TestPolicyForItem(t *testing.T) {
 			},
 		})
 		assert.True(t, ok)
-		assert.Equal(t, policy, fooPolicy, "Should have found relative foo policy off the foo manager")
+		assert.Equal(t, policy, fakeFooPolicy, "Should have found relative foo policy off the foo manager")
 	})
 
 	t.Run("Foo group", func(t *testing.T) {
@@ -176,7 +199,7 @@ func TestPolicyForItem(t *testing.T) {
 			},
 		})
 		assert.True(t, ok)
-		assert.Equal(t, policy, fooPolicy, "Should have found relative foo policy for foo group")
+		assert.Equal(t, policy, fakeFooPolicy, "Should have found relative foo policy for foo group")
 	})
 
 	t.Run("Root group manager", func(t *testing.T) {
@@ -188,7 +211,7 @@ func TestPolicyForItem(t *testing.T) {
 			},
 		})
 		assert.True(t, ok)
-		assert.Equal(t, policy, rootPolicy, "Should have found relative policy off the root manager")
+		assert.Equal(t, policy, fakeRootPolicy, "Should have found relative policy off the root manager")
 	})
 }
 

@@ -9,21 +9,21 @@ package configtx
 import (
 	"regexp"
 
+	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
-	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("common/configtx")
+var logger = flogging.MustGetLogger("common.configtx")
 
 // Constraints for valid channel and config IDs
 var (
-	channelAllowedChars = "[a-z][a-z0-9.-]*"
+	ChannelAllowedChars = "[a-z][a-z0-9.-]*"
 	configAllowedChars  = "[a-zA-Z0-9.-]+"
-	maxLength           = 249
+	MaxLength           = 249
 	illegalNames        = map[string]struct{}{
 		".":  {},
 		"..": {},
@@ -51,8 +51,8 @@ func validateConfigID(configID string) error {
 	if len(configID) <= 0 {
 		return errors.New("config ID illegal, cannot be empty")
 	}
-	if len(configID) > maxLength {
-		return errors.Errorf("config ID illegal, cannot be longer than %d", maxLength)
+	if len(configID) > MaxLength {
+		return errors.Errorf("config ID illegal, cannot be longer than %d", MaxLength)
 	}
 	// Illegal name
 	if _, ok := illegalNames[configID]; ok {
@@ -67,7 +67,7 @@ func validateConfigID(configID string) error {
 	return nil
 }
 
-// validateChannelID makes sure that proposed channel IDs comply with the
+// ValidateChannelID makes sure that proposed channel IDs comply with the
 // following restrictions:
 //      1. Contain only lower case ASCII alphanumerics, dots '.', and dashes '-'
 //      2. Are shorter than 250 characters.
@@ -75,22 +75,25 @@ func validateConfigID(configID string) error {
 //
 // This is the intersection of the Kafka restrictions and CouchDB restrictions
 // with the following exception: '.' is converted to '_' in the CouchDB naming
-// This is to accomodate existing channel names with '.', especially in the
+// This is to accommodate existing channel names with '.', especially in the
 // behave tests which rely on the dot notation for their sluggification.
-func validateChannelID(channelID string) error {
-	re, _ := regexp.Compile(channelAllowedChars)
+//
+// note: this function is a copy of the same in core/tx/endorser/parser.go
+//
+func ValidateChannelID(channelID string) error {
+	re, _ := regexp.Compile(ChannelAllowedChars)
 	// Length
 	if len(channelID) <= 0 {
 		return errors.Errorf("channel ID illegal, cannot be empty")
 	}
-	if len(channelID) > maxLength {
-		return errors.Errorf("channel ID illegal, cannot be longer than %d", maxLength)
+	if len(channelID) > MaxLength {
+		return errors.Errorf("channel ID illegal, cannot be longer than %d", MaxLength)
 	}
 
 	// Illegal characters
 	matched := re.FindString(channelID)
 	if len(matched) != len(channelID) {
-		return errors.Errorf("channel ID '%s' contains illegal characters", channelID)
+		return errors.Errorf("'%s' contains illegal characters", channelID)
 	}
 
 	return nil
@@ -106,7 +109,7 @@ func NewValidatorImpl(channelID string, config *cb.Config, namespace string, pm 
 		return nil, errors.Errorf("nil channel group")
 	}
 
-	if err := validateChannelID(channelID); err != nil {
+	if err := ValidateChannelID(channelID); err != nil {
 		return nil, errors.Errorf("bad channel ID: %s", err)
 	}
 
@@ -132,7 +135,7 @@ func (vi *ValidatorImpl) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 }
 
 func (vi *ValidatorImpl) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
-	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
+	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configtx)
 	if err != nil {
 		return nil, errors.Errorf("error converting envelope to config update: %s", err)
 	}
@@ -170,7 +173,7 @@ func (vi *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 		return errors.Errorf("config currently at sequence %d, cannot validate config at sequence %d", vi.sequence, configEnv.Config.Sequence)
 	}
 
-	configUpdateEnv, err := envelopeToConfigUpdate(configEnv.LastUpdate)
+	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnv.LastUpdate)
 	if err != nil {
 		return err
 	}
@@ -193,8 +196,8 @@ func (vi *ValidatorImpl) Validate(configEnv *cb.ConfigEnvelope) error {
 	return nil
 }
 
-// ChainID retrieves the chain ID associated with this manager
-func (vi *ValidatorImpl) ChainID() string {
+// ChannelID retrieves the channel ID associated with this manager
+func (vi *ValidatorImpl) ChannelID() string {
 	return vi.channelID
 }
 

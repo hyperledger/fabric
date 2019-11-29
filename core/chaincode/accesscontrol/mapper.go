@@ -7,13 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package accesscontrol
 
 import (
-	"encoding/base64"
-	"encoding/pem"
+	"context"
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/util"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
@@ -21,6 +20,8 @@ import (
 var ttl = time.Minute * 10
 
 type certHash string
+
+type KeyGenFunc func() (*tlsgen.CertKeyPair, error)
 
 type certMapper struct {
 	keyGen KeyGenFunc
@@ -56,35 +57,14 @@ func (r *certMapper) purge(hash certHash) {
 	delete(r.m, hash)
 }
 
-func certKeyPairFromString(privKey string, pubKey string) (*certKeyPair, error) {
-	priv, err := base64.StdEncoding.DecodeString(privKey)
-	if err != nil {
-		return nil, err
-	}
-	pub, err := base64.StdEncoding.DecodeString(pubKey)
-	if err != nil {
-		return nil, err
-	}
-	return &certKeyPair{
-		CertKeyPair: &CertKeyPair{
-			Key:  priv,
-			Cert: pub,
-		},
-	}, nil
-}
-
-func (r *certMapper) genCert(name string) (*certKeyPair, error) {
+func (r *certMapper) genCert(name string) (*tlsgen.CertKeyPair, error) {
 	keyPair, err := r.keyGen()
 	if err != nil {
 		return nil, err
 	}
-	hash := util.ComputeSHA256(keyPair.cert.Raw)
+	hash := util.ComputeSHA256(keyPair.TLSCert.Raw)
 	r.register(certHash(hash), name)
 	return keyPair, nil
-}
-
-func encodePEM(keyType string, data []byte) []byte {
-	return pem.EncodeToMemory(&pem.Block{Type: keyType, Bytes: data})
 }
 
 // ExtractCertificateHash extracts the hash of the certificate from the stream

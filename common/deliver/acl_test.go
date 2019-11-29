@@ -9,10 +9,10 @@ package deliver_test
 import (
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/deliver/mock"
-	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -28,7 +28,7 @@ var _ = Describe("SessionAccessControl", func() {
 
 	BeforeEach(func() {
 		envelope = &cb.Envelope{
-			Payload: utils.MarshalOrPanic(&cb.Payload{
+			Payload: protoutil.MarshalOrPanic(&cb.Payload{
 				Header: &cb.Header{},
 			}),
 		}
@@ -126,7 +126,7 @@ var _ = Describe("SessionAccessControl", func() {
 		})
 
 		It("returns an error", func() {
-			_, expectedError := envelope.AsSignedData()
+			_, expectedError := protoutil.EnvelopeAsSignedData(envelope)
 			Expect(expectedError).To(HaveOccurred())
 
 			_, err := deliver.NewSessionAC(fakeChain, envelope, fakePolicyChecker, "chain-id", expiresAt)

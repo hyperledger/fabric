@@ -10,13 +10,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 )
 
-func init() {
-	// This is just to satisfy the code coverage tool
-	// miss any methods
-	switch true {
-
-	}
-}
+//go:generate mockery -dir . -name SecurityAdvisor -case underscore -output mocks/
 
 // SecurityAdvisor defines an external auxiliary object
 // that provides security and identity related capabilities
@@ -32,7 +26,7 @@ type SecurityAdvisor interface {
 // ChannelNotifier is implemented by the gossip component and is used for the peer
 // layer to notify the gossip component of a JoinChannel event
 type ChannelNotifier interface {
-	JoinChannel(joinMsg JoinChannelMessage, chainID common.ChainID)
+	JoinChannel(joinMsg JoinChannelMessage, channelID common.ChannelID)
 }
 
 // JoinChannelMessage is the message that asserts a creation or mutation

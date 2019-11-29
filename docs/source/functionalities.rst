@@ -14,7 +14,7 @@ identity service that manages user IDs and authenticates all participants on
 the network. Access control lists can be used to provide additional layers of
 permission through authorization of specific network operations. For example, a
 specific user ID could be permitted to invoke a chaincode application, but
-blocked from deploying new chaincode.
+be blocked from deploying new chaincode.
 
 Privacy and confidentiality
 ---------------------------

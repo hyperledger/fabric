@@ -7,17 +7,20 @@ SPDX-License-Identifier: Apache-2.0
 package pull
 
 import (
+	"encoding/hex"
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/gossip"
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 )
 
 // Constants go here.
@@ -32,12 +35,12 @@ const (
 type MsgType int
 
 // MessageHook defines a function that will run after a certain pull message is received
-type MessageHook func(itemIDs []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage)
+type MessageHook func(itemIDs []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage)
 
 // Sender sends messages to remote peers
 type Sender interface {
 	// Send sends a message to a list of remote peers
-	Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer)
+	Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer)
 }
 
 // MembershipService obtains membership information of alive peers
@@ -50,10 +53,11 @@ type MembershipService interface {
 type Config struct {
 	ID                string
 	PullInterval      time.Duration // Duration between pull invocations
-	Channel           common.ChainID
+	Channel           common.ChannelID
 	PeerCountToSelect int // Number of peers to initiate pull with
 	Tag               proto.GossipMessage_Tag
 	MsgType           proto.PullMsgType
+	PullEngineConfig  algo.PullEngineConfig
 }
 
 // IngressDigestFilter filters out entities in digests that are received from remote peers
@@ -61,24 +65,30 @@ type IngressDigestFilter func(digestMsg *proto.DataDigest) *proto.DataDigest
 
 // EgressDigestFilter filters digests to be sent to a remote peer, that
 // sent a hello with the following message
-type EgressDigestFilter func(helloMsg proto.ReceivedMessage) func(digestItem string) bool
+type EgressDigestFilter func(helloMsg protoext.ReceivedMessage) func(digestItem string) bool
 
 // byContext converts this EgressDigFilter to an algo.DigestFilter
 func (df EgressDigestFilter) byContext() algo.DigestFilter {
 	return func(context interface{}) func(digestItem string) bool {
 		return func(digestItem string) bool {
-			return df(context.(proto.ReceivedMessage))(digestItem)
+			return df(context.(protoext.ReceivedMessage))(digestItem)
 		}
 	}
 }
+
+// MsgConsumer invokes code given a SignedGossipMessage
+type MsgConsumer func(message *protoext.SignedGossipMessage)
+
+// IdentifierExtractor extracts from a SignedGossipMessage an identifier
+type IdentifierExtractor func(*protoext.SignedGossipMessage) string
 
 // PullAdapter defines methods of the pullStore to interact
 // with various modules of gossip
 type PullAdapter struct {
 	Sndr             Sender
 	MemSvc           MembershipService
-	IdExtractor      proto.IdentifierExtractor
-	MsgCons          proto.MsgConsumer
+	IdExtractor      IdentifierExtractor
+	MsgCons          MsgConsumer
 	EgressDigFilter  EgressDigestFilter
 	IngressDigFilter IngressDigestFilter
 }
@@ -97,14 +107,14 @@ type Mediator interface {
 	RegisterMsgHook(MsgType, MessageHook)
 
 	// Add adds a GossipMessage to the Mediator
-	Add(*proto.SignedGossipMessage)
+	Add(*protoext.SignedGossipMessage)
 
 	// Remove removes a GossipMessage from the Mediator with a matching digest,
 	// if such a message exits
 	Remove(digest string)
 
 	// HandleMessage handles a message from some remote peer
-	HandleMessage(msg proto.ReceivedMessage)
+	HandleMessage(msg protoext.ReceivedMessage)
 }
 
 // pullMediatorImpl is an implementation of Mediator
@@ -113,8 +123,8 @@ type pullMediatorImpl struct {
 	*PullAdapter
 	msgType2Hook map[MsgType][]MessageHook
 	config       Config
-	logger       *logging.Logger
-	itemID2Msg   map[string]*proto.SignedGossipMessage
+	logger       util.Logger
+	itemID2Msg   map[string]*protoext.SignedGossipMessage
 	engine       *algo.PullEngine
 }
 
@@ -122,7 +132,7 @@ type pullMediatorImpl struct {
 func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 	egressDigFilter := adapter.EgressDigFilter
 
-	acceptAllFilter := func(_ proto.ReceivedMessage) func(string) bool {
+	acceptAllFilter := func(_ protoext.ReceivedMessage) func(string) bool {
 		return func(_ string) bool {
 			return true
 		}
@@ -136,11 +146,11 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 		PullAdapter:  adapter,
 		msgType2Hook: make(map[MsgType][]MessageHook),
 		config:       config,
-		logger:       util.GetLogger(util.LoggingPullModule, config.ID),
-		itemID2Msg:   make(map[string]*proto.SignedGossipMessage),
+		logger:       util.GetLogger(util.PullLogger, config.ID),
+		itemID2Msg:   make(map[string]*protoext.SignedGossipMessage),
 	}
 
-	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, egressDigFilter.byContext())
+	p.engine = algo.NewPullEngineWithFilter(p, config.PullInterval, egressDigFilter.byContext(), config.PullEngineConfig)
 
 	if adapter.IngressDigFilter == nil {
 		// Create accept all filter
@@ -152,12 +162,12 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 
 }
 
-func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
-	if m.GetGossipMessage() == nil || !m.GetGossipMessage().IsPullMsg() {
+func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
+	if m.GetGossipMessage() == nil || !protoext.IsPullMsg(m.GetGossipMessage().GossipMessage) {
 		return
 	}
 	msg := m.GetGossipMessage()
-	msgType := msg.GetPullMsgType()
+	msgType := protoext.GetPullMsgType(msg.GossipMessage)
 	if msgType != p.config.MsgType {
 		return
 	}
@@ -165,30 +175,27 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 	p.logger.Debug(msg)
 
 	itemIDs := []string{}
-	items := []*proto.SignedGossipMessage{}
+	items := []*protoext.SignedGossipMessage{}
 	var pullMsgType MsgType
 
 	if helloMsg := msg.GetHello(); helloMsg != nil {
 		pullMsgType = HelloMsgType
 		p.engine.OnHello(helloMsg.Nonce, m)
-	}
-	if digest := msg.GetDataDig(); digest != nil {
+	} else if digest := msg.GetDataDig(); digest != nil {
 		d := p.PullAdapter.IngressDigFilter(digest)
-		itemIDs = d.Digests
+		itemIDs = util.BytesToStrings(d.Digests)
 		pullMsgType = DigestMsgType
-		p.engine.OnDigest(d.Digests, d.Nonce, m)
-	}
-	if req := msg.GetDataReq(); req != nil {
-		itemIDs = req.Digests
+		p.engine.OnDigest(itemIDs, d.Nonce, m)
+	} else if req := msg.GetDataReq(); req != nil {
+		itemIDs = util.BytesToStrings(req.Digests)
 		pullMsgType = RequestMsgType
-		p.engine.OnReq(req.Digests, req.Nonce, m)
-	}
-	if res := msg.GetDataUpdate(); res != nil {
+		p.engine.OnReq(itemIDs, req.Nonce, m)
+	} else if res := msg.GetDataUpdate(); res != nil {
 		itemIDs = make([]string, len(res.Data))
-		items = make([]*proto.SignedGossipMessage, len(res.Data))
+		items = make([]*protoext.SignedGossipMessage, len(res.Data))
 		pullMsgType = ResponseMsgType
 		for i, pulledMsg := range res.Data {
-			msg, err := pulledMsg.ToGossipMessage()
+			msg, err := protoext.EnvelopeToGossipMessage(pulledMsg)
 			if err != nil {
 				p.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
 				return
@@ -198,6 +205,7 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 			items[i] = msg
 			p.Lock()
 			p.itemID2Msg[itemIDs[i]] = msg
+			p.logger.Debugf("Added %s to the in memory item map, total items: %d", itemIDs[i], len(p.itemID2Msg))
 			p.Unlock()
 		}
 		p.engine.OnRes(itemIDs, res.Nonce)
@@ -222,12 +230,13 @@ func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType MsgType, hook MessageHook
 }
 
 // Add adds a GossipMessage to the store
-func (p *pullMediatorImpl) Add(msg *proto.SignedGossipMessage) {
+func (p *pullMediatorImpl) Add(msg *protoext.SignedGossipMessage) {
 	p.Lock()
 	defer p.Unlock()
 	itemID := p.IdExtractor(msg)
 	p.itemID2Msg[itemID] = msg
 	p.engine.Add(itemID)
+	p.logger.Debugf("Added %s, total items: %d", itemID, len(p.itemID2Msg))
 }
 
 // Remove removes a GossipMessage from the Mediator with a matching digest,
@@ -237,6 +246,7 @@ func (p *pullMediatorImpl) Remove(digest string) {
 	defer p.Unlock()
 	delete(p.itemID2Msg, digest)
 	p.engine.Remove(digest)
+	p.logger.Debugf("Removed %s, total items: %d", digest, len(p.itemID2Msg))
 }
 
 // SelectPeers returns a slice of peers which the engine will initiate the protocol with
@@ -266,7 +276,7 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 	}
 
 	p.logger.Debug("Sending", p.config.MsgType, "hello to", dest)
-	sMsg, err := helloMsg.NoopSign()
+	sMsg, err := protoext.NoopSign(helloMsg)
 	if err != nil {
 		p.logger.Errorf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
 		return
@@ -285,16 +295,16 @@ func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context int
 			DataDig: &proto.DataDigest{
 				MsgType: p.config.MsgType,
 				Nonce:   nonce,
-				Digests: digest,
+				Digests: util.StringsToBytes(digest),
 			},
 		},
 	}
-	remotePeer := context.(proto.ReceivedMessage).GetConnectionInfo()
-	if p.logger.IsEnabledFor(logging.DEBUG) {
-		p.logger.Debug("Sending", p.config.MsgType, "digest:", digMsg.GetDataDig().FormattedDigests(), "to", remotePeer)
+	remotePeer := context.(protoext.ReceivedMessage).GetConnectionInfo()
+	if p.logger.IsEnabledFor(zapcore.DebugLevel) {
+		p.logger.Debug("Sending", p.config.MsgType, "digest:", formattedDigests(digMsg.GetDataDig()), "to", remotePeer)
 	}
 
-	context.(proto.ReceivedMessage).Respond(digMsg)
+	context.(protoext.ReceivedMessage).Respond(digMsg)
 }
 
 // SendReq sends an array of items to a certain remote PullEngine identified
@@ -308,19 +318,51 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 			DataReq: &proto.DataRequest{
 				MsgType: p.config.MsgType,
 				Nonce:   nonce,
-				Digests: items,
+				Digests: util.StringsToBytes(items),
 			},
 		},
 	}
-	if p.logger.IsEnabledFor(logging.DEBUG) {
-		p.logger.Debug("Sending", req.GetDataReq().FormattedDigests(), "to", dest)
+	if p.logger.IsEnabledFor(zapcore.DebugLevel) {
+		p.logger.Debug("Sending", formattedDigests(req.GetDataReq()), "to", dest)
 	}
-	sMsg, err := req.NoopSign()
+	sMsg, err := protoext.NoopSign(req)
 	if err != nil {
 		p.logger.Warningf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
 		return
 	}
 	p.Sndr.Send(sMsg, p.peersWithEndpoints(dest)...)
+}
+
+// typeDigster normalizes the common digest operations needed to format them
+// for log messages.
+type typedDigester interface {
+	GetMsgType() gossip.PullMsgType
+	GetDigests() [][]byte
+}
+
+func formattedDigests(dd typedDigester) []string {
+	switch dd.GetMsgType() {
+	case gossip.PullMsgType_IDENTITY_MSG:
+		return digestsToHex(dd.GetDigests())
+	default:
+		return digestsAsStrings(dd.GetDigests())
+	}
+}
+
+func digestsAsStrings(digests [][]byte) []string {
+	a := make([]string, len(digests))
+	for i, dig := range digests {
+		a[i] = string(dig)
+	}
+	return a
+}
+
+func digestsToHex(digests [][]byte) []string {
+	a := make([]string, len(digests))
+	for i, dig := range digests {
+		a[i] = hex.EncodeToString(dig)
+	}
+	return a
 }
 
 // SendRes sends an array of items to a remote PullEngine identified by a context.
@@ -345,9 +387,9 @@ func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce ui
 			},
 		},
 	}
-	remotePeer := context.(proto.ReceivedMessage).GetConnectionInfo()
+	remotePeer := context.(protoext.ReceivedMessage).GetConnectionInfo()
 	p.logger.Debug("Sending", len(returnedUpdate.GetDataUpdate().Data), p.config.MsgType, "items to", remotePeer)
-	context.(proto.ReceivedMessage).Respond(returnedUpdate)
+	context.(protoext.ReceivedMessage).Respond(returnedUpdate)
 }
 
 func (p *pullMediatorImpl) peersWithEndpoints(endpoints ...string) []*comm.RemotePeer {

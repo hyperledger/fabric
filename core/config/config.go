@@ -1,17 +1,8 @@
 /*
 Copyright Greg Haskins <gregory.haskins@gmail.com> 2017, All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package config
@@ -25,58 +16,19 @@ import (
 )
 
 func dirExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
+	fi, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return fi.IsDir()
 }
 
-func addConfigPath(v *viper.Viper, p string) {
+func AddConfigPath(v *viper.Viper, p string) {
 	if v != nil {
 		v.AddConfigPath(p)
 	} else {
 		viper.AddConfigPath(p)
 	}
-}
-
-//----------------------------------------------------------------------------------
-// GetDevConfigDir()
-//----------------------------------------------------------------------------------
-// Returns the path to the default configuration that is maintained with the source
-// tree.  Only valid to call from a test/development context.
-//----------------------------------------------------------------------------------
-func GetDevConfigDir() (string, error) {
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		return "", fmt.Errorf("GOPATH not set")
-	}
-
-	for _, p := range filepath.SplitList(gopath) {
-		devPath := filepath.Join(p, "src/github.com/hyperledger/fabric/sampleconfig")
-		if !dirExists(devPath) {
-			continue
-		}
-
-		return devPath, nil
-	}
-
-	return "", fmt.Errorf("DevConfigDir not found in %s", gopath)
-}
-
-//----------------------------------------------------------------------------------
-// GetDevMspDir()
-//----------------------------------------------------------------------------------
-// Builds upon GetDevConfigDir to return the path to our sampleconfig/msp that is
-// maintained with the source tree.  Only valid to call from a test/development
-// context.  Runtime environment should use configuration elements such as
-//
-//   GetPath("peer.mspConfigDir")
-//----------------------------------------------------------------------------------
-func GetDevMspDir() (string, error) {
-	devDir, err := GetDevConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("Error obtaining DevConfigDir: %s", devDir)
-	}
-
-	return filepath.Join(devDir, "msp"), nil
 }
 
 //----------------------------------------------------------------------------------
@@ -145,24 +97,19 @@ func InitViper(v *viper.Viper, configName string) error {
 			return fmt.Errorf("FABRIC_CFG_PATH %s does not exist", altPath)
 		}
 
-		addConfigPath(v, altPath)
+		AddConfigPath(v, altPath)
 	} else {
 		// If we get here, we should use the default paths in priority order:
 		//
 		// *) CWD
-		// *) The $GOPATH based development tree
 		// *) /etc/hyperledger/fabric
-		//
 
 		// CWD
-		addConfigPath(v, "./")
-
-		// DevConfigPath
-		AddDevConfigPath(v)
+		AddConfigPath(v, "./")
 
 		// And finally, the official path
 		if dirExists(OfficialPath) {
-			addConfigPath(v, OfficialPath)
+			AddConfigPath(v, OfficialPath)
 		}
 	}
 
@@ -172,22 +119,6 @@ func InitViper(v *viper.Viper, configName string) error {
 	} else {
 		viper.SetConfigName(configName)
 	}
-
-	return nil
-}
-
-//----------------------------------------------------------------------------------
-// AddDevConfigPath()
-//----------------------------------------------------------------------------------
-// Helper utility that automatically adds our DevConfigDir to the viper path
-//----------------------------------------------------------------------------------
-func AddDevConfigPath(v *viper.Viper) error {
-	devPath, err := GetDevConfigDir()
-	if err != nil {
-		return err
-	}
-
-	addConfigPath(v, devPath)
 
 	return nil
 }

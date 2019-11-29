@@ -10,13 +10,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/msp"
-	logging "github.com/op/go-logging"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/common/flogging"
+	mspi "github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -49,12 +50,47 @@ const (
 
 	// BlockValidation is the label for the policy which should validate the block signatures for the channel
 	BlockValidation = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "BlockValidation"
+
+	// ChannelOrdererAdmins is the label for the channel's orderer admin policy
+	ChannelOrdererAdmins = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "Admins"
+
+	// ChannelOrdererWriters is the label for the channel's orderer writers policy
+	ChannelOrdererWriters = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "Writers"
+
+	// ChannelOrdererReaders is the label for the channel's orderer readers policy
+	ChannelOrdererReaders = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "Readers"
 )
 
 var logger = flogging.MustGetLogger("policies")
 
 // PrincipalSet is a collection of MSPPrincipals
 type PrincipalSet []*msp.MSPPrincipal
+
+// PrincipalSets aggregates PrincipalSets
+type PrincipalSets []PrincipalSet
+
+// ContainingOnly returns PrincipalSets that contain only principals of the given predicate
+func (psSets PrincipalSets) ContainingOnly(f func(*msp.MSPPrincipal) bool) PrincipalSets {
+	var res PrincipalSets
+	for _, set := range psSets {
+		if !set.ContainingOnly(f) {
+			continue
+		}
+		res = append(res, set)
+	}
+	return res
+}
+
+// ContainingOnly returns whether the given PrincipalSet contains only Principals
+// that satisfy the given predicate
+func (ps PrincipalSet) ContainingOnly(f func(*msp.MSPPrincipal) bool) bool {
+	for _, principal := range ps {
+		if !f(principal) {
+			return false
+		}
+	}
+	return true
+}
 
 // UniqueSet returns a histogram that is induced by the PrincipalSet
 func (ps PrincipalSet) UniqueSet() map[*msp.MSPPrincipal]int {
@@ -85,10 +121,22 @@ func (ps PrincipalSet) UniqueSet() map[*msp.MSPPrincipal]int {
 	return res
 }
 
+// Converter represents a policy
+// which may be translated into a SignaturePolicyEnvelope
+type Converter interface {
+	Convert() (*cb.SignaturePolicyEnvelope, error)
+}
+
 // Policy is used to determine if a signature is valid
 type Policy interface {
-	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
-	Evaluate(signatureSet []*cb.SignedData) error
+	// EvaluateSignedData takes a set of SignedData and evaluates whether
+	// 1) the signatures are valid over the related message
+	// 2) the signing identities satisfy the policy
+	EvaluateSignedData(signatureSet []*protoutil.SignedData) error
+
+	// EvaluateIdentities takes an array of identities and evaluates whether
+	// they satisfy the policy
+	EvaluateIdentities(identities []mspi.Identity) error
 }
 
 // InquireablePolicy is a Policy that one can inquire
@@ -116,16 +164,20 @@ type Provider interface {
 // ChannelPolicyManagerGetter is a support interface
 // to get access to the policy manager of a given channel
 type ChannelPolicyManagerGetter interface {
-	// Returns the policy manager associated to the passed channel
-	// and true if it was the manager requested, or false if it is the default manager
-	Manager(channelID string) (Manager, bool)
+	// Returns the policy manager associated with the specified channel.
+	Manager(channelID string) Manager
 }
+
+// PolicyManagerGetterFunc is a function adapater for ChannelPolicyManagerGetter.
+type PolicyManagerGetterFunc func(channelID string) Manager
+
+func (p PolicyManagerGetterFunc) Manager(channelID string) Manager { return p(channelID) }
 
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.ConfigManager
 type ManagerImpl struct {
 	path     string // The group level path
-	policies map[string]Policy
+	Policies map[string]Policy
 	managers map[string]*ManagerImpl
 }
 
@@ -156,7 +208,7 @@ func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGr
 		var cPolicy Policy
 
 		if policy.Type == int32(cb.Policy_IMPLICIT_META) {
-			imp, err := newImplicitMetaPolicy(policy.Value, managers)
+			imp, err := NewImplicitMetaPolicy(policy.Value, managers)
 			if err != nil {
 				return nil, errors.Wrapf(err, "implicit policy %s at path %s did not compile", policyName, path)
 			}
@@ -180,22 +232,26 @@ func NewManagerImpl(path string, providers map[int32]Provider, root *cb.ConfigGr
 	}
 
 	for groupName, manager := range managers {
-		for policyName, policy := range manager.policies {
+		for policyName, policy := range manager.Policies {
 			policies[groupName+PathSeparator+policyName] = policy
 		}
 	}
 
 	return &ManagerImpl{
 		path:     path,
-		policies: policies,
+		Policies: policies,
 		managers: managers,
 	}, nil
 }
 
 type rejectPolicy string
 
-func (rp rejectPolicy) Evaluate(signedData []*cb.SignedData) error {
-	return fmt.Errorf("No such policy: '%s'", rp)
+func (rp rejectPolicy) EvaluateSignedData(signedData []*protoutil.SignedData) error {
+	return errors.Errorf("no such policy: '%s'", rp)
+}
+
+func (rp rejectPolicy) EvaluateIdentities(identities []mspi.Identity) error {
+	return errors.Errorf("no such policy: '%s'", rp)
 }
 
 // Manager returns the sub-policy manager for a given path and whether it exists
@@ -216,24 +272,58 @@ func (pm *ManagerImpl) Manager(path []string) (Manager, bool) {
 	return m.Manager(path[1:])
 }
 
-type policyLogger struct {
-	policy     Policy
+type PolicyLogger struct {
+	Policy     Policy
 	policyName string
 }
 
-func (pl *policyLogger) Evaluate(signatureSet []*cb.SignedData) error {
-	if logger.IsEnabledFor(logging.DEBUG) {
-		logger.Debugf("== Evaluating %T Policy %s ==", pl.policy, pl.policyName)
-		defer logger.Debugf("== Done Evaluating %T Policy %s", pl.policy, pl.policyName)
+func (pl *PolicyLogger) EvaluateSignedData(signatureSet []*protoutil.SignedData) error {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
+		logger.Debugf("== Evaluating %T Policy %s ==", pl.Policy, pl.policyName)
+		defer logger.Debugf("== Done Evaluating %T Policy %s", pl.Policy, pl.policyName)
 	}
 
-	err := pl.policy.Evaluate(signatureSet)
+	err := pl.Policy.EvaluateSignedData(signatureSet)
 	if err != nil {
 		logger.Debugf("Signature set did not satisfy policy %s", pl.policyName)
 	} else {
 		logger.Debugf("Signature set satisfies policy %s", pl.policyName)
 	}
 	return err
+}
+
+func (pl *PolicyLogger) EvaluateIdentities(identities []mspi.Identity) error {
+	if logger.IsEnabledFor(zapcore.DebugLevel) {
+		logger.Debugf("== Evaluating %T Policy %s ==", pl.Policy, pl.policyName)
+		defer logger.Debugf("== Done Evaluating %T Policy %s", pl.Policy, pl.policyName)
+	}
+
+	err := pl.Policy.EvaluateIdentities(identities)
+	if err != nil {
+		logger.Debugf("Signature set did not satisfy policy %s", pl.policyName)
+	} else {
+		logger.Debugf("Signature set satisfies policy %s", pl.policyName)
+	}
+	return err
+}
+
+func (pl *PolicyLogger) Convert() (*cb.SignaturePolicyEnvelope, error) {
+	logger.Debugf("== Converting %T Policy %s ==", pl.Policy, pl.policyName)
+
+	convertiblePolicy, ok := pl.Policy.(Converter)
+	if !ok {
+		logger.Errorf("policy (name='%s',type='%T') is not convertible to SignaturePolicyEnvelope", pl.policyName, pl.Policy)
+		return nil, errors.Errorf("policy (name='%s',type='%T') is not convertible to SignaturePolicyEnvelope", pl.policyName, pl.Policy)
+	}
+
+	cp, err := convertiblePolicy.Convert()
+	if err != nil {
+		logger.Errorf("== Error Converting %T Policy %s, err %s", pl.Policy, pl.policyName, err.Error())
+	} else {
+		logger.Debugf("== Done Converting %T Policy %s", pl.Policy, pl.policyName)
+	}
+
+	return cp, err
 }
 
 // GetPolicy returns a policy and true if it was the policy requested, or false if it is the default reject policy
@@ -246,9 +336,7 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 
 	if strings.HasPrefix(id, PathSeparator) {
 		if !strings.HasPrefix(id, PathSeparator+pm.path) {
-			if logger.IsEnabledFor(logging.DEBUG) {
-				logger.Debugf("Requested absolute policy %s from %s, returning rejectAll", id, pm.path)
-			}
+			logger.Debugf("Requested absolute policy %s from %s, returning rejectAll", id, pm.path)
 			return rejectPolicy(id), false
 		}
 		// strip off the leading slash, the path, and the trailing slash
@@ -257,16 +345,51 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 		relpath = id
 	}
 
-	policy, ok := pm.policies[relpath]
+	policy, ok := pm.Policies[relpath]
 	if !ok {
-		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Returning dummy reject all policy because %s could not be found in %s/%s", id, pm.path, relpath)
-		}
+		logger.Debugf("Returning dummy reject all policy because %s could not be found in %s/%s", id, pm.path, relpath)
 		return rejectPolicy(relpath), false
 	}
 
-	return &policyLogger{
-		policy:     policy,
+	return &PolicyLogger{
+		Policy:     policy,
 		policyName: PathSeparator + pm.path + PathSeparator + relpath,
 	}, true
+}
+
+// SignatureSetToValidIdentities takes a slice of pointers to signed data,
+// checks the validity of the signature and of the signer and returns a
+// slice of associated identities. The returned identities are deduplicated.
+func SignatureSetToValidIdentities(signedData []*protoutil.SignedData, identityDeserializer mspi.IdentityDeserializer) []mspi.Identity {
+	idMap := map[string]struct{}{}
+	identities := make([]mspi.Identity, 0, len(signedData))
+
+	for i, sd := range signedData {
+		identity, err := identityDeserializer.DeserializeIdentity(sd.Identity)
+		if err != nil {
+			logger.Warningf("principal deserialization failure (%s) for identity %x", err, sd.Identity)
+			continue
+		}
+
+		key := identity.GetIdentifier().Mspid + identity.GetIdentifier().Id
+
+		// We check if this identity has already appeared before doing a signature check, to ensure that
+		// someone cannot force us to waste time checking the same signature thousands of times
+		if _, ok := idMap[key]; ok {
+			logger.Warningf("De-duplicating identity [%s] at index %d in signature set", key, i)
+			continue
+		}
+
+		err = identity.Verify(sd.Data, sd.Signature)
+		if err != nil {
+			logger.Warningf("signature for identity %d is invalid: %s", i, err)
+			continue
+		}
+		logger.Debugf("signature for identity %d validated", i)
+
+		idMap[key] = struct{}{}
+		identities = append(identities, identity)
+	}
+
+	return identities
 }

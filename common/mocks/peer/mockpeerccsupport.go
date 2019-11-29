@@ -19,7 +19,7 @@ package peer
 import (
 	"fmt"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
 //MockPeerCCSupport provides CC support for peer interfaces.
@@ -58,7 +58,7 @@ func (mp *MockPeerCCSupport) GetCCMirror(name string) *MockCCComm {
 		return nil
 	}
 
-	return &MockCCComm{name: name, recvStream: s.sendStream, sendStream: s.recvStream}
+	return &MockCCComm{name: name, recvStream: s.sendStream, sendStream: s.recvStream, skipClose: true}
 }
 
 //RemoveCC removes a cc

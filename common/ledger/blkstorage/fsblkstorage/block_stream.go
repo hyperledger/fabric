@@ -1,29 +1,19 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package fsblkstorage
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
 // ErrUnexpectedEndOfBlockfile error used to indicate an unexpected end of a file segment
@@ -67,14 +57,14 @@ func newBlockfileStream(rootDir string, fileNum int, startOffset int64) (*blockf
 	var file *os.File
 	var err error
 	if file, err = os.OpenFile(filePath, os.O_RDONLY, 0600); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error opening block file %s", filePath)
 	}
 	var newPosition int64
 	if newPosition, err = file.Seek(startOffset, 0); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error seeking block file [%s] to startOffset [%d]", filePath, startOffset)
 	}
 	if newPosition != startOffset {
-		panic(fmt.Sprintf("Could not seek file [%s] to given startOffset [%d]. New position = [%d]",
+		panic(fmt.Sprintf("Could not seek block file [%s] to startOffset [%d]. New position = [%d]",
 			filePath, startOffset, newPosition))
 	}
 	s := &blockfileStream{fileNum, file, bufio.NewReader(file), startOffset}
@@ -97,7 +87,7 @@ func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacem
 	moreContentAvailable := true
 
 	if fileInfo, err = s.file.Stat(); err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "error getting block file stat")
 	}
 	if s.currentOffset == fileInfo.Size() {
 		logger.Debugf("Finished reading file number [%d]", s.fileNum)
@@ -113,7 +103,7 @@ func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacem
 	}
 	logger.Debugf("Remaining bytes=[%d], Going to peek [%d] bytes", remainingBytes, peekBytes)
 	if lenBytes, err = s.reader.Peek(peekBytes); err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "error peeking [%d] bytes from block file", peekBytes)
 	}
 	length, n := proto.DecodeVarint(lenBytes)
 	if n == 0 {
@@ -122,7 +112,7 @@ func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacem
 		if !moreContentAvailable {
 			return nil, nil, ErrUnexpectedEndOfBlockfile
 		}
-		panic(fmt.Errorf("Error in decoding varint bytes [%#v]", lenBytes))
+		panic(errors.Errorf("Error in decoding varint bytes [%#v]", lenBytes))
 	}
 	bytesExpected := int64(n) + int64(length)
 	if bytesExpected > remainingBytes {
@@ -132,12 +122,12 @@ func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacem
 	}
 	// skip the bytes representing the block size
 	if _, err = s.reader.Discard(n); err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "error discarding [%d] bytes", n)
 	}
 	blockBytes := make([]byte, length)
 	if _, err = io.ReadAtLeast(s.reader, blockBytes, int(length)); err != nil {
-		logger.Debugf("Error while trying to read [%d] bytes from fileNum [%d]: %s", length, s.fileNum, err)
-		return nil, nil, err
+		logger.Errorf("Error reading [%d] bytes from file number [%d], error: %s", length, s.fileNum, err)
+		return nil, nil, errors.Wrapf(err, "error reading [%d] bytes from file number [%d]", length, s.fileNum)
 	}
 	blockPlacementInfo := &blockPlacementInfo{
 		fileNum:          s.fileNum,
@@ -149,7 +139,7 @@ func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacem
 }
 
 func (s *blockfileStream) close() error {
-	return s.file.Close()
+	return errors.WithStack(s.file.Close())
 }
 
 ///////////////////////////////////
@@ -185,7 +175,7 @@ func (s *blockStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacementI
 	var blockPlacementInfo *blockPlacementInfo
 	var err error
 	if blockBytes, blockPlacementInfo, err = s.currentFileStream.nextBlockBytesAndPlacementInfo(); err != nil {
-		logger.Debugf("current file [%d] length of blockbytes [%d]. Err:%s", s.currentFileNum, len(blockBytes), err)
+		logger.Errorf("Error reading next block bytes from file number [%d]: %s", s.currentFileNum, err)
 		return nil, nil, err
 	}
 	logger.Debugf("blockbytes [%d] read from file [%d]", len(blockBytes), s.currentFileNum)

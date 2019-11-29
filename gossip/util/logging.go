@@ -10,51 +10,73 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/op/go-logging"
+	"go.uber.org/zap/zapcore"
 )
 
-// Module names for logger initialization.
+// Logger names for logger initialization.
 const (
-	LoggingChannelModule   = "gossip/channel"
-	LoggingCommModule      = "gossip/comm"
-	LoggingDiscoveryModule = "gossip/discovery"
-	LoggingElectionModule  = "gossip/election"
-	LoggingGossipModule    = "gossip/gossip"
-	LoggingMockModule      = "gossip/comm/mock"
-	LoggingPullModule      = "gossip/pull"
-	LoggingServiceModule   = "gossip/service"
-	LoggingStateModule     = "gossip/state"
-	LoggingPrivModule      = "gossip/privdata"
+	ChannelLogger     = "gossip.channel"
+	CommLogger        = "gossip.comm"
+	DiscoveryLogger   = "gossip.discovery"
+	ElectionLogger    = "gossip.election"
+	GossipLogger      = "gossip.gossip"
+	CommMockLogger    = "gossip.comm.mock"
+	PullLogger        = "gossip.pull"
+	ServiceLogger     = "gossip.service"
+	StateLogger       = "gossip.state"
+	PrivateDataLogger = "gossip.privdata"
 )
 
-var loggersByModules = make(map[string]*logging.Logger)
+var loggers = make(map[string]Logger)
 var lock = sync.Mutex{}
 var testMode bool
 
 // defaultTestSpec is the default logging level for gossip tests
 var defaultTestSpec = "WARNING"
 
-// GetLogger returns a logger for given gossip module and peerID
-func GetLogger(module string, peerID string) *logging.Logger {
+type Logger interface {
+	Debug(args ...interface{})
+	Debugf(format string, args ...interface{})
+	Error(args ...interface{})
+	Errorf(format string, args ...interface{})
+	Fatal(args ...interface{})
+	Fatalf(format string, args ...interface{})
+	Info(args ...interface{})
+	Infof(format string, args ...interface{})
+	Panic(args ...interface{})
+	Panicf(format string, args ...interface{})
+	Warning(args ...interface{})
+	Warningf(format string, args ...interface{})
+	IsEnabledFor(l zapcore.Level) bool
+	With(args ...interface{}) *flogging.FabricLogger
+}
+
+// GetLogger returns a logger for given gossip logger name and peerID
+func GetLogger(name string, peerID string) Logger {
 	if peerID != "" && testMode {
-		module = module + "#" + peerID
+		name = name + "#" + peerID
 	}
 
 	lock.Lock()
 	defer lock.Unlock()
 
-	if lgr, ok := loggersByModules[module]; ok {
+	if lgr, ok := loggers[name]; ok {
 		return lgr
 	}
 
 	// Logger doesn't exist, create a new one
-	lgr := flogging.MustGetLogger(module)
-	loggersByModules[module] = lgr
+	lgr := flogging.MustGetLogger(name)
+	loggers[name] = lgr
 	return lgr
 }
 
-// SetupTestLogging sets the default log levels for gossip unit tests
+// SetupTestLogging sets the default log levels for gossip unit tests to defaultTestSpec
 func SetupTestLogging() {
+	SetupTestLoggingWithLevel(defaultTestSpec)
+}
+
+// SetupTestLoggingWithLevel sets the default log levels for gossip unit tests to level
+func SetupTestLoggingWithLevel(level string) {
 	testMode = true
-	flogging.InitFromSpec(defaultTestSpec)
+	flogging.ActivateSpec(level)
 }

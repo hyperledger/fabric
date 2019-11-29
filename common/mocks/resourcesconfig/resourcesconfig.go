@@ -34,3 +34,7 @@ func (m *MockChaincodeDefinition) Validation() (string, []byte) {
 func (m *MockChaincodeDefinition) Endorsement() string {
 	return m.EndorsementStr
 }
+
+func (m *MockChaincodeDefinition) ChaincodeID() string {
+	return m.NameRv + ":" + m.VersionRv
+}

@@ -19,12 +19,12 @@ package statebasedval
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRangeQueryBoundaryConditions(t *testing.T) {
@@ -37,17 +37,17 @@ func TestRangeQueryBoundaryConditions(t *testing.T) {
 
 	testcase1 := "NoResults"
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key7", EndKey: "key10", ItrExhausted: true}
-	rqi1.SetRawReads([]*kvrwset.KVRead{})
+	rwsetutil.SetRawReads(rqi1, []*kvrwset.KVRead{})
 	testRangeQuery(t, testcase1, batch, version.NewHeight(1, 4), "ns1", rqi1, true)
 
 	testcase2 := "NoResultsDuringValidation"
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "key7", EndKey: "key10", ItrExhausted: true}
-	rqi2.SetRawReads([]*kvrwset.KVRead{rwsetutil.NewKVRead("key8", version.NewHeight(1, 8))})
+	rwsetutil.SetRawReads(rqi2, []*kvrwset.KVRead{rwsetutil.NewKVRead("key8", version.NewHeight(1, 8))})
 	testRangeQuery(t, testcase2, batch, version.NewHeight(1, 4), "ns1", rqi2, false)
 
 	testcase3 := "OneExtraTailingResultsDuringValidation"
 	rqi3 := &kvrwset.RangeQueryInfo{StartKey: "key1", EndKey: "key4", ItrExhausted: true}
-	rqi3.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi3, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key1", version.NewHeight(1, 0)),
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 	})
@@ -55,7 +55,7 @@ func TestRangeQueryBoundaryConditions(t *testing.T) {
 
 	testcase4 := "TwoExtraTailingResultsDuringValidation"
 	rqi4 := &kvrwset.RangeQueryInfo{StartKey: "key1", EndKey: "key5", ItrExhausted: true}
-	rqi4.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi4, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key1", version.NewHeight(1, 0)),
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 	})
@@ -68,17 +68,17 @@ func testRangeQuery(t *testing.T, testcase string, stateData *statedb.UpdateBatc
 		testDBEnv := stateleveldb.NewTestVDBEnv(t)
 		defer testDBEnv.Cleanup()
 		db, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
-		testutil.AssertNoError(t, err, "")
+		assert.NoError(t, err)
 		if stateData != nil {
 			db.ApplyUpdates(stateData, savepoint)
 		}
 
 		itr, err := db.GetStateRangeScanIterator(ns, rqi.StartKey, rqi.EndKey)
-		testutil.AssertNoError(t, err, "")
+		assert.NoError(t, err)
 		validator := &rangeQueryResultsValidator{}
 		validator.init(rqi, itr)
 		isValid, err := validator.validate()
-		testutil.AssertNoError(t, err, "")
-		testutil.AssertEquals(t, isValid, expectedResult)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedResult, isValid)
 	})
 }

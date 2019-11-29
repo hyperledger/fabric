@@ -7,17 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package filter
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 type mutator func([]byte) []byte
@@ -46,7 +46,7 @@ func createIdemixIdentity(t *testing.T) []byte {
 	idemixId := &msp.SerializedIdemixIdentity{
 		NymX: []byte{1, 2, 3},
 		NymY: []byte{1, 2, 3},
-		OU:   []byte("OU1"),
+		Ou:   []byte("OU1"),
 	}
 	idemixBytes, err := proto.Marshal(idemixId)
 	assert.NoError(t, err)
@@ -59,8 +59,8 @@ func createIdemixIdentity(t *testing.T) []byte {
 }
 
 func createSignedProposal(t *testing.T, serializedIdentity []byte, corruptSigHdr mutator, corruptHdr mutator) *peer.SignedProposal {
-	sHdr := utils.MakeSignatureHeader(serializedIdentity, nil)
-	hdr := utils.MakePayloadHeader(&common.ChannelHeader{}, sHdr)
+	sHdr := protoutil.MakeSignatureHeader(serializedIdentity, nil)
+	hdr := protoutil.MakePayloadHeader(&common.ChannelHeader{}, sHdr)
 	hdr.SignatureHeader = corruptSigHdr(hdr.SignatureHeader)
 	hdrBytes, err := proto.Marshal(hdr)
 	assert.NoError(t, err)

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/spf13/viper"
 )
 
 /* PullEngine is an object that performs pull-based gossip, and maintains an internal state of items
@@ -34,25 +33,10 @@ import (
 */
 
 const (
-	defDigestWaitTime   = time.Duration(1) * time.Second
-	defRequestWaitTime  = time.Duration(1) * time.Second
-	defResponseWaitTime = time.Duration(2) * time.Second
+	DefDigestWaitTime   = 1000 * time.Millisecond
+	DefRequestWaitTime  = 1500 * time.Millisecond
+	DefResponseWaitTime = 2000 * time.Millisecond
 )
-
-// SetDigestWaitTime sets the digest wait time
-func SetDigestWaitTime(time time.Duration) {
-	viper.Set("peer.gossip.digestWaitTime", time)
-}
-
-// SetRequestWaitTime sets the request wait time
-func SetRequestWaitTime(time time.Duration) {
-	viper.Set("peer.gossip.requestWaitTime", time)
-}
-
-// SetResponseWaitTime sets the response wait time
-func SetResponseWaitTime(time time.Duration) {
-	viper.Set("peer.gossip.responseWaitTime", time)
-}
 
 // DigestFilter filters digests to be sent to a remote peer that
 // sent a hello or a request, based on its messages's context
@@ -99,11 +83,23 @@ type PullEngine struct {
 	outgoingNONCES     *util.Set
 	incomingNONCES     *util.Set
 	digFilter          DigestFilter
+
+	digestWaitTime   time.Duration
+	requestWaitTime  time.Duration
+	responseWaitTime time.Duration
+}
+
+// PullEngineConfig is the configuration required to initialize a new pull engine
+type PullEngineConfig struct {
+	DigestWaitTime   time.Duration
+	RequestWaitTime  time.Duration
+	ResponseWaitTime time.Duration
 }
 
 // NewPullEngineWithFilter creates an instance of a PullEngine with a certain sleep time
 // between pull initiations, and uses the given filters when sending digests and responses
-func NewPullEngineWithFilter(participant PullAdapter, sleepTime time.Duration, df DigestFilter) *PullEngine {
+func NewPullEngineWithFilter(participant PullAdapter, sleepTime time.Duration, df DigestFilter,
+	config PullEngineConfig) *PullEngine {
 	engine := &PullEngine{
 		PullAdapter:        participant,
 		stopFlag:           int32(0),
@@ -116,6 +112,9 @@ func NewPullEngineWithFilter(participant PullAdapter, sleepTime time.Duration, d
 		incomingNONCES:     util.NewSet(),
 		outgoingNONCES:     util.NewSet(),
 		digFilter:          df,
+		digestWaitTime:     config.DigestWaitTime,
+		requestWaitTime:    config.RequestWaitTime,
+		responseWaitTime:   config.ResponseWaitTime,
 	}
 
 	go func() {
@@ -133,13 +132,13 @@ func NewPullEngineWithFilter(participant PullAdapter, sleepTime time.Duration, d
 
 // NewPullEngine creates an instance of a PullEngine with a certain sleep time
 // between pull initiations
-func NewPullEngine(participant PullAdapter, sleepTime time.Duration) *PullEngine {
+func NewPullEngine(participant PullAdapter, sleepTime time.Duration, config PullEngineConfig) *PullEngine {
 	acceptAllFilter := func(_ interface{}) func(string) bool {
 		return func(_ string) bool {
 			return true
 		}
 	}
-	return NewPullEngineWithFilter(participant, sleepTime, acceptAllFilter)
+	return NewPullEngineWithFilter(participant, sleepTime, acceptAllFilter, config)
 }
 
 func (engine *PullEngine) toDie() bool {
@@ -184,8 +183,7 @@ func (engine *PullEngine) initiatePull() {
 		engine.Hello(peer, nonce)
 	}
 
-	digestWaitTime := util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime)
-	time.AfterFunc(digestWaitTime, func() {
+	time.AfterFunc(engine.digestWaitTime, func() {
 		engine.processIncomingDigests()
 	})
 }
@@ -213,9 +211,7 @@ func (engine *PullEngine) processIncomingDigests() {
 		engine.SendReq(dest, seqsToReq, engine.peers2nonces[dest])
 	}
 
-	responseWaitTime := util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime)
-	time.AfterFunc(responseWaitTime, engine.endPull)
-
+	time.AfterFunc(engine.responseWaitTime, engine.endPull)
 }
 
 func (engine *PullEngine) endPull() {
@@ -270,8 +266,7 @@ func (engine *PullEngine) Remove(seqs ...string) {
 func (engine *PullEngine) OnHello(nonce uint64, context interface{}) {
 	engine.incomingNONCES.Add(nonce)
 
-	requestWaitTime := util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime)
-	time.AfterFunc(requestWaitTime, func() {
+	time.AfterFunc(engine.requestWaitTime, func() {
 		engine.incomingNONCES.Remove(nonce)
 	})
 

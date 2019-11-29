@@ -2,11 +2,11 @@ Adding an Org to a Channel
 ==========================
 
 .. note:: Ensure that you have downloaded the appropriate images and binaries
-          as outlined in :doc:`samples` and :doc:`prereqs` that conform to the
+          as outlined in :doc:`install` and :doc:`prereqs` that conform to the
           version of this documentation (which can be found at the bottom of the
           table of contents to the left). In particular, your version of the
-          ``fabric-samples`` folder must include the ``eyfn.sh`` ("Extending Your
-          First Network") script and its related scripts.
+          ``fabric-samples`` folder must include the ``eyfn.sh`` ("Extending
+          Your First Network") script and its related scripts.
 
 This tutorial serves as an extension to the :doc:`build_network` (BYFN) tutorial,
 and will demonstrate the addition of a new organization -- ``Org3`` -- to the
@@ -44,19 +44,19 @@ previous environments:
 
 .. code:: bash
 
-  ./byfn.sh -m down
+  ./byfn.sh down
 
 Now generate the default BYFN artifacts:
 
 .. code:: bash
 
-  ./byfn.sh -m generate
+  ./byfn.sh generate
 
 And launch the network making use of the scripted execution within the CLI container:
 
 .. code:: bash
 
-  ./byfn.sh -m up
+  ./byfn.sh up
 
 Now that you have a clean version of BYFN running on your machine, you have two
 different paths you can pursue. First, we offer a fully commented script that will
@@ -87,7 +87,7 @@ If everything goes well, you'll get this message:
   ========= All GOOD, EYFN test execution completed ===========
 
 ``eyfn.sh`` can be used with the same Node.js chaincode and database options
-as ``byfn.sh`` by issuing the following (instead of ``./byfn.sh -m -up``):
+as ``byfn.sh`` by issuing the following (instead of ``./byfn.sh up``):
 
 .. code:: bash
 
@@ -105,8 +105,8 @@ show you each command for making a channel update and what it does.
 Bring Org3 into the Channel Manually
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note:: The manual steps outlined below assume that the ``CORE_LOGGING_LEVEL``
-          in the ``cli`` and `Org3cli`` containers is set to ``DEBUG``.
+.. note:: The manual steps outlined below assume that the ``FABRIC_LOGGING_SPEC``
+          in the ``cli`` and ``Org3cli`` containers is set to ``DEBUG``.
 
           For the ``cli`` container, you can set this by modifying the
           ``docker-compose-cli.yaml`` file in the ``first-network`` directory.
@@ -122,8 +122,8 @@ Bring Org3 into the Channel Manually
               environment:
                 - GOPATH=/opt/gopath
                 - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
-                #- CORE_LOGGING_LEVEL=INFO
-                - CORE_LOGGING_LEVEL=DEBUG
+                #- FABRIC_LOGGING_SPEC=INFO
+                - FABRIC_LOGGING_SPEC=DEBUG
 
           For the ``Org3cli`` container, you can set this by modifying the
           ``docker-compose-org3.yaml`` file in the ``first-network`` directory.
@@ -139,8 +139,8 @@ Bring Org3 into the Channel Manually
               environment:
                 - GOPATH=/opt/gopath
                 - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
-                #- CORE_LOGGING_LEVEL=INFO
-                - CORE_LOGGING_LEVEL=DEBUG
+                #- FABRIC_LOGGING_SPEC=INFO
+                - FABRIC_LOGGING_SPEC=DEBUG
 
 If you've used the ``eyfn.sh`` script, you'll need to bring your network down.
 This can be done by issuing:
@@ -156,13 +156,13 @@ When the network is down, bring it back up again.
 
 .. code:: bash
 
-  ./byfn.sh -m generate
+  ./byfn.sh generate
 
 Then:
 
 .. code:: bash
 
-  ./byfn.sh -m up
+  ./byfn.sh up
 
 This will bring your network back to the same state it was in before you executed
 the ``eyfn.sh`` script.
@@ -240,13 +240,6 @@ Org2 will require the export of MSP-specific environment variables.
 
   docker exec -it cli bash
 
-Now install the ``jq`` tool into the container. This tool allows script interactions
-with JSON files returned by the ``configtxlator`` tool:
-
-.. code:: bash
-
-  apt update && apt install -y jq
-
 Export the ``ORDERER_CA`` and ``CHANNEL_NAME`` variables:
 
 .. code:: bash
@@ -261,7 +254,6 @@ Check to make sure the variables have been properly set:
 
 .. note:: If for any reason you need to restart the CLI container, you will also need to
           re-export the two environment variables -- ``ORDERER_CA`` and ``CHANNEL_NAME``.
-          The jq installation will persist. You need not install it a second time.
 
 Fetch the Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -271,7 +263,7 @@ and ``CHANNEL_NAME`` exported.  Let's go fetch the most recent config block for 
 channel -- ``mychannel``.
 
 The reason why we have to pull the latest version of the config is because channel
-config elements are versioned.. Versioning is important for several reasons. It prevents
+config elements are versioned. Versioning is important for several reasons. It prevents
 config changes from being repeated or replayed (for instance, reverting to a channel config
 with old CRLs would represent a security risk). Also it helps ensure concurrency (if you
 want to remove an Org from your channel, for example, after a new Org has been added,
@@ -388,7 +380,7 @@ earlier. We'll name this file ``org3_update_in_envelope.json``:
 
 .. code:: bash
 
-  echo '{"payload":{"header":{"channel_header":{"channel_id":"mychannel", "type":2}},"data":{"config_update":'$(cat org3_update.json)'}}}' | jq . > org3_update_in_envelope.json
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CHANNEL_NAME'", "type":2}},"data":{"config_update":'$(cat org3_update.json)'}}}' | jq . > org3_update_in_envelope.json
 
 Using our properly formed JSON -- ``org3_update_in_envelope.json`` -- we will
 leverage the ``configtxlator`` tool one last time and convert it into the
@@ -442,7 +434,7 @@ Export the Org2 environment variables:
 
   export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
 
-  export CORE_PEER_ADDRESS=peer0.org2.example.com:7051
+  export CORE_PEER_ADDRESS=peer0.org2.example.com:9051
 
 Lastly, we will issue the ``peer channel update`` command. The Org2 Admin signature
 will be attached to this call so there is no need to manually sign the protobuf a
@@ -603,88 +595,116 @@ and reissue the ``peer channel join command``:
 
 .. code:: bash
 
-  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org3.example.com/peers/peer1.org3.example.com/tls/ca.crt && export CORE_PEER_ADDRESS=peer1.org3.example.com:7051
+  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org3.example.com/peers/peer1.org3.example.com/tls/ca.crt && export CORE_PEER_ADDRESS=peer1.org3.example.com:12051
 
   peer channel join -b mychannel.block
 
 .. _upgrade-and-invoke:
 
-Upgrade and Invoke Chaincode
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install, define, and invoke chaincode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The final piece of the puzzle is to increment the chaincode version and update
-the endorsement policy to include Org3. Since we know that an upgrade is coming,
-we can forgo the futile exercise of installing version 1 of the chaincode. We
-are solely concerned with the new version where Org3 will be part of the
-endorsement policy, therefore we'll jump directly to version 2 of the chaincode.
+Once you have joined the channel, you can package and install a chaincode on a
+peer of Org3. You then need to approve the chaincode definition as org3.
+Because the chaincode definition has already been committed to the channel
+you have joined, you can start using the chaincode after you approve the
+definition.
 
-From the Org3 CLI:
+.. note:: These instructions use the Fabric chaincode lifecycle introduced in
+          the v2.0 Alpha release. If you would like to use the previous
+          lifecycle to install and instantiate a chaincode, visit the v1.4
+          version of the `Adding an org to a channel tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html>`__.
 
-.. code:: bash
-
-  peer chaincode install -n mycc -v 2.0 -p github.com/chaincode/chaincode_example02/go/
-
-Modify the environment variables accordingly and reissue the command if you want to
-install the chaincode on the second peer of Org3. Note that a second installation is
-not mandated, as you only need to install chaincode on peers that are going to serve as
-endorsers or otherwise interface with the ledger (i.e. query only). Peers will
-still run the validation logic and serve as committers without a running chaincode
-container.
-
-Now jump back to the **original** CLI container and install the new version on the
-Org1 and Org2 peers. We submitted the channel update call with the Org2 admin
-identity, so the container is still acting on behalf of ``peer0.org2``:
+The first step is to package the chaincode from the Org3 CLI:
 
 .. code:: bash
 
-  peer chaincode install -n mycc -v 2.0 -p github.com/chaincode/chaincode_example02/go/
+    peer lifecycle chaincode package mycc.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/abstore/go/ --lang golang --label mycc_1
 
-Flip to the ``peer0.org1`` identity:
-
-.. code:: bash
-
-  export CORE_PEER_LOCALMSPID="Org1MSP"
-
-  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-
-  export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-
-  export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-
-And install again:
+This command will create a chaincode package named ``mycc.tar.gz``, which we can
+use to install the chaincode on our peer. In this command, you need to provide a
+chaincode package label as a description of the chaincode. Modify the command
+accordingly if the channel is running a chaincode written in Java or Node.js.
+Issue the following command to install the package on peer0 of Org3:
 
 .. code:: bash
 
-  peer chaincode install -n mycc -v 2.0 -p github.com/chaincode/chaincode_example02/go/
+    # this command installs a chaincode package on your peer
+    peer lifecycle chaincode install mycc.tar.gz
 
-Now we're ready to upgrade the chaincode. There have been no modifications to
-the underlying source code, we are simply adding Org3 to the endorsement policy for
-a chaincode -- ``mycc`` -- on ``mychannel``.
+You can also modify the environment variables and reissue the command if you
+want to install the chaincode on the second peer of Org3. Note that a second
+installation is not mandated, as you only need to install chaincode on peers
+that are going to serve as endorsers or otherwise interface with the ledger
+(i.e. query only). Peers will still run the validation logic and serve as
+committers without a running chaincode container.
 
-.. note:: Any identity satisfying the chaincode's instantiation policy can issue
-          the upgrade call. By default, these identities are the channel Admins.
-
-Send the call:
+The next step is to approve the chaincode definition of ``mycc`` as Org3. Org3
+needs to approve the same definition that Org1 and Org2 approved and committed
+to the channel. The chaincode definition also needs to include the chaincode
+package identifier. You can find the package identifier by querying your peer:
 
 .. code:: bash
 
-  peer chaincode upgrade -o orderer.example.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -v 2.0 -c '{"Args":["init","a","90","b","210"]}' -P "OR ('Org1MSP.peer','Org2MSP.peer','Org3MSP.peer')"
+    # this returns the details of the packages installed on your peers
+    peer lifecycle chaincode queryinstalled
 
-You can see in the above command that we are specifying our new version by means
-of the ``v`` flag. You can also see that the endorsement policy has been modified to
-``-P "OR ('Org1MSP.peer','Org2MSP.peer','Org3MSP.peer')"``, reflecting the
-addition of Org3 to the policy. The final area of interest is our constructor
-request (specified with the ``c`` flag).
+You should see output similar to the following:
 
-As with an instantiate call, a chaincode upgrade requires usage of the ``init``
-method. **If** your chaincode requires arguments be passed to the ``init`` method,
-then you will need to do so here.
+.. code:: bash
 
-The upgrade call adds a new block -- block 6 -- to the channel's ledger and allows
-for the Org3 peers to execute transactions during the endorsement phase. Hop
-back to the Org3 CLI container and issue a query for the value of ``a``. This will
-take a bit of time because a chaincode image needs to be built for the targeted peer,
-and the container needs to start:
+      Get installed chaincodes on peer:
+      Package ID: mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173, Label: mycc_1
+
+We are going to need the package ID in a future command, so lets go ahead and
+save it as an environment variable. Paste the package ID returned by the
+`peer lifecycle chaincode queryinstalled` into the command below. The package ID
+may not be the same for all users, so you need to complete this step using the
+package ID returned from your console.
+
+.. code:: bash
+
+   # Save the package ID as an environment variable.
+
+   CC_PACKAGE_ID=mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173
+
+Use the following command to approve a definition of the  ``mycc`` chaincode
+for Org3:
+
+.. code:: bash
+
+    # this approves a chaincode definition for your org
+    # use the --package-id flag to provide the package identifier
+    # use the --init-required flag to request the ``Init`` function be invoked to initialize the chaincode
+    peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name mycc --version 1.0 --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
+
+You can use the ``peer lifecycle chaincode querycommitted`` command to check if
+the chaincode definition you have approved has already been committed to the
+channel.
+
+.. code:: bash
+
+    # use the --name flag to select the chaincode whose definition you want to query
+    peer lifecycle chaincode querycommitted --channelID $CHANNEL_NAME --name mycc --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+A successful command will return information about the committed definition:
+
+.. code:: bash
+
+    Committed chaincode definition for chaincode 'mycc' on channel 'mychannel':
+    Version: 1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc
+
+Since the chaincode definition has already been committed, you are ready to use
+the ``mycc`` chaincode after you approve the definition. The chaincode definition
+uses the default endorsement policy, which requires a majority of organizations
+on the channel endorse a transaction. This implies that if an organization is
+added to or removed from the channel, the endorsement policy is updated
+automatically. We previously needed endorsements from Org1 and Org2 (2 out of 2).
+Now we need endorsements from two organizations out of Org1, Org2, and Org3 (2
+out of 3).
+
+Query the chaincode to ensure that it has started. Note that you may need to
+wait for the chaincode container to start.
 
 .. code:: bash
 
@@ -692,11 +712,13 @@ and the container needs to start:
 
 We should see a response of ``Query Result: 90``.
 
-Now issue an invocation to move ``10`` from ``a`` to ``b``:
+Now issue an invocation to move ``10`` from ``a`` to ``b``. In the command
+below, we target a peer in Org1 and Org3 to collect a sufficient number of
+endorsements.
 
 .. code:: bash
 
-    peer chaincode invoke -o orderer.example.com:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}'
+    peer chaincode invoke -o orderer.example.com:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org3.example.com:11051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
 
 Query one final time:
 
@@ -718,6 +740,124 @@ modification policy.
 
 The ``configtxlator`` and ``jq`` tools, along with the ever-growing ``peer channel``
 commands, provide us with the functionality to accomplish this task.
+
+Updating the Channel Config to include an Org3 Anchor Peer (Optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Org3 peers were able to establish gossip connection to the Org1 and Org2
+peers since Org1 and Org2 had anchor peers defined in the channel configuration.
+Likewise newly added organizations like Org3 should also define their anchor peers
+in the channel configuration so that any new peers from other organizations can
+directly discover an Org3 peer.
+
+Continuing from the Org3 CLI, we will make a channel configuration update to
+define an Org3 anchor peer. The process will be similar to the previous
+configuration update, therefore we'll go faster this time.
+
+As before, we will fetch the latest channel configuration to get started.
+Inside the CLI container for Org3 fetch the most recent config block for the channel,
+using the ``peer channel fetch`` command.
+
+.. code:: bash
+
+  peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CHANNEL_NAME --tls --cafile $ORDERER_CA
+
+After fetching the config block we will want to convert it into JSON format. To do
+this we will use the configtxlator tool, as done previously when adding Org3 to the
+channel. When converting it we need to remove all the headers, metadata, and signatures
+that are not required to update Org3 to include an anchor peer by using the jq
+tool. This information will be reincorporated later before we proceed to update the
+channel configuration.
+
+.. code:: bash
+
+    configtxlator proto_decode --input config_block.pb --type common.Block | jq .data.data[0].payload.data.config > config.json
+
+The ``config.json`` is the now trimmed JSON representing the latest channel configuration
+that we will update.
+
+Using the jq tool again, we will update the configuration JSON with the Org3 anchor peer we
+want to add.
+
+.. code:: bash
+
+    jq '.channel_group.groups.Application.groups.Org3MSP.values += {"AnchorPeers":{"mod_policy": "Admins","value":{"anchor_peers": [{"host": "peer0.org3.example.com","port": 11051}]},"version": "0"}}' config.json > modified_anchor_config.json
+
+We now have two JSON files, one for the current channel configuration,
+``config.json``, and one for the desired channel configuration ``modified_anchor_config.json``.
+Next we convert each of these back into protobuf format and calculate the delta between the two.
+
+Translate ``config.json`` back into protobuf format as ``config.pb``
+
+.. code:: bash
+
+    configtxlator proto_encode --input config.json --type common.Config --output config.pb
+
+Translate the ``modified_anchor_config.json`` into protobuf format as ``modified_anchor_config.pb``
+
+.. code:: bash
+
+    configtxlator proto_encode --input modified_anchor_config.json --type common.Config --output modified_anchor_config.pb
+
+Calculate the delta between the two protobuf formatted configurations.
+
+.. code:: bash
+
+    configtxlator compute_update --channel_id $CHANNEL_NAME --original config.pb --updated modified_anchor_config.pb --output anchor_update.pb
+
+Now that we have the desired update to the channel we must wrap it in an envelope
+message so that it can be properly read. To do this we must first convert the protobuf
+back into a JSON that can be wrapped.
+
+We will use the configtxlator command again to convert ``anchor_update.pb`` into ``anchor_update.json``
+
+.. code:: bash
+
+    configtxlator proto_decode --input anchor_update.pb --type common.ConfigUpdate | jq . > anchor_update.json
+
+Next we will wrap the update in an envelope message, restoring the previously
+stripped away header, outputting it to ``anchor_update_in_envelope.json``
+
+.. code:: bash
+
+    echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CHANNEL_NAME'", "type":2}},"data":{"config_update":'$(cat anchor_update.json)'}}}' | jq . > anchor_update_in_envelope.json
+
+Now that we have reincorporated the envelope we need to convert it
+to a protobuf so it can be properly signed and submitted to the orderer for the update.
+
+.. code:: bash
+
+    configtxlator proto_encode --input anchor_update_in_envelope.json --type common.Envelope --output anchor_update_in_envelope.pb
+
+Now that the update has been properly formatted it is time to sign off and submit it. Since this
+is only an update to Org3 we only need to have Org3 sign off on the update. As we are
+in the Org3 CLI container there is no need to switch the CLI containers identity, as it is
+already using the Org3 identity. Therefore we can just use the ``peer channel update`` command
+as it will also sign off on the update as the Org3 admin before submitting it to the orderer.
+
+.. code:: bash
+
+    peer channel update -f anchor_update_in_envelope.pb -c $CHANNEL_NAME -o orderer.example.com:7050 --tls --cafile $ORDERER_CA
+
+The orderer receives the config update request and cuts a block with the updated configuration.
+As peers receive the block, they will process the configuration updates.
+
+Inspect the logs for one of the peers. While processing the configuration transaction from the new block,
+you will see gossip re-establish connections using the new anchor peer for Org3. This is proof
+that the configuration update has been successfully applied!
+
+.. code:: bash
+
+    docker logs -f peer0.org1.example.com
+
+.. code:: bash
+
+    2019-06-12 17:08:57.924 UTC [gossip.gossip] learnAnchorPeers -> INFO 89a Learning about the configured anchor peers of Org1MSP for channel mychannel : [{peer0.org1.example.com 7051}]
+    2019-06-12 17:08:57.926 UTC [gossip.gossip] learnAnchorPeers -> INFO 89b Learning about the configured anchor peers of Org2MSP for channel mychannel : [{peer0.org2.example.com 9051}]
+    2019-06-12 17:08:57.926 UTC [gossip.gossip] learnAnchorPeers -> INFO 89c Learning about the configured anchor peers of Org3MSP for channel mychannel : [{peer0.org3.example.com 11051}]
+
+Congratulations, you have now made two configuration updates --- one to add Org3 to the channel,
+and a second to define an anchor peer for Org3.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+set -euo pipefail
+
+if [ "$#" -ne 3 ]; then
+    >&2 echo "Expected 3 directories got $#"
+    exit 1
+fi
+
+SRC="$1"
+META="$2"
+BLD="$3"
+
+if [ -e "$SRC/metadata" ] ; then
+  cp -a "$SRC/metadata" "$BLD"
+fi
+
+cp "$(jq -r .path "$META/metadata.json")" "$BLD/chaincode"

@@ -197,7 +197,14 @@ epub_copyright = copyright
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
 
-
-
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}
+
+# Skip the links with anchor tags during the linkcheck
+linkcheck_anchors = False
+
+# Increase the linkcheck timeout to 5 seconds
+linkcheck_timeout = 5
+
+# Ignore redirects from fabric-shim.github.io
+linkcheck_ignore = [r'https://fabric-shim.github.io/*']

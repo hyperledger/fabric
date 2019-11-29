@@ -9,15 +9,10 @@ package configtx
 import (
 	"testing"
 
-	cb "github.com/hyperledger/fabric/protos/common"
-
-	logging "github.com/op/go-logging"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
 
 func TestBadKey(t *testing.T) {
 	assert.Error(t, addToMap(comparable{key: "[Label]", path: []string{}}, make(map[string]comparable)),
@@ -25,12 +20,12 @@ func TestBadKey(t *testing.T) {
 }
 
 func TestConfigMapMultiGroup(t *testing.T) {
-	config := cb.NewConfigGroup()
-	config.Groups["0"] = cb.NewConfigGroup()
-	config.Groups["0"].Groups["1"] = cb.NewConfigGroup()
-	config.Groups["0"].Groups["1"].Groups["2.1"] = cb.NewConfigGroup()
+	config := protoutil.NewConfigGroup()
+	config.Groups["0"] = protoutil.NewConfigGroup()
+	config.Groups["0"].Groups["1"] = protoutil.NewConfigGroup()
+	config.Groups["0"].Groups["1"].Groups["2.1"] = protoutil.NewConfigGroup()
 	config.Groups["0"].Groups["1"].Groups["2.1"].Values["Value"] = &cb.ConfigValue{}
-	config.Groups["0"].Groups["1"].Groups["2.2"] = cb.NewConfigGroup()
+	config.Groups["0"].Groups["1"].Groups["2.2"] = protoutil.NewConfigGroup()
 	config.Groups["0"].Groups["1"].Groups["2.2"].Values["Value"] = &cb.ConfigValue{}
 
 	confMap, err := mapConfig(config, "Channel")
@@ -40,12 +35,12 @@ func TestConfigMapMultiGroup(t *testing.T) {
 }
 
 func TestConfigMap(t *testing.T) {
-	config := cb.NewConfigGroup()
-	config.Groups["0DeepGroup"] = cb.NewConfigGroup()
+	config := protoutil.NewConfigGroup()
+	config.Groups["0DeepGroup"] = protoutil.NewConfigGroup()
 	config.Values["0DeepValue1"] = &cb.ConfigValue{}
 	config.Values["0DeepValue2"] = &cb.ConfigValue{}
 	config.Groups["0DeepGroup"].Policies["1DeepPolicy"] = &cb.ConfigPolicy{}
-	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = cb.NewConfigGroup()
+	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = protoutil.NewConfigGroup()
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"] = &cb.ConfigValue{}
 
 	confMap, err := mapConfig(config, "Channel")
@@ -70,12 +65,12 @@ func TestConfigMap(t *testing.T) {
 }
 
 func TestMapConfigBack(t *testing.T) {
-	config := cb.NewConfigGroup()
-	config.Groups["0DeepGroup"] = cb.NewConfigGroup()
+	config := protoutil.NewConfigGroup()
+	config.Groups["0DeepGroup"] = protoutil.NewConfigGroup()
 	config.Values["0DeepValue1"] = &cb.ConfigValue{}
 	config.Values["0DeepValue2"] = &cb.ConfigValue{}
 	config.Groups["0DeepGroup"].Policies["1DeepPolicy"] = &cb.ConfigPolicy{}
-	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = cb.NewConfigGroup()
+	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = protoutil.NewConfigGroup()
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"] = &cb.ConfigValue{}
 
 	confMap, err := mapConfig(config, "Channel")
@@ -91,15 +86,15 @@ func TestMapConfigBack(t *testing.T) {
 }
 
 func TestHackInmapConfigBack(t *testing.T) {
-	config := cb.NewConfigGroup()
+	config := protoutil.NewConfigGroup()
 	config.Values["ChannelValue1"] = &cb.ConfigValue{}
 	config.Values["ChannelValue2"] = &cb.ConfigValue{}
-	config.Groups["Orderer"] = cb.NewConfigGroup()
+	config.Groups["Orderer"] = protoutil.NewConfigGroup()
 	config.Groups["Orderer"].Values["Capabilities"] = &cb.ConfigValue{}
 	config.Groups["Orderer"].Policies["OrdererPolicy"] = &cb.ConfigPolicy{}
-	config.Groups["Orderer"].Groups["OrdererOrg"] = cb.NewConfigGroup()
+	config.Groups["Orderer"].Groups["OrdererOrg"] = protoutil.NewConfigGroup()
 	config.Groups["Orderer"].Groups["OrdererOrg"].Values["OrdererOrgValue"] = &cb.ConfigValue{}
-	config.Groups["Application"] = cb.NewConfigGroup()
+	config.Groups["Application"] = protoutil.NewConfigGroup()
 	config.Groups["Application"].Policies["ApplicationPolicy"] = &cb.ConfigPolicy{}
 	config.Groups["Application"].Policies["ApplicationValue"] = &cb.ConfigPolicy{}
 

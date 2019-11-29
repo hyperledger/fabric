@@ -10,9 +10,11 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/discovery/support/acl"
 	"github.com/hyperledger/fabric/discovery/support/mocks"
-	common2 "github.com/hyperledger/fabric/protos/common"
+	gmocks "github.com/hyperledger/fabric/internal/peer/gossip/mocks"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,6 +25,13 @@ func TestGetChannelConfigFunc(t *testing.T) {
 		return r
 	}
 	assert.Equal(t, r, acl.ChannelConfigGetterFunc(f).GetChannelConfig("mychannel"))
+}
+
+func TestConfigSequenceEmptyChannelName(t *testing.T) {
+	// If the channel name is empty, there is no config sequence,
+	// and we return 0
+	sup := acl.NewDiscoverySupport(nil, nil, nil)
+	assert.Equal(t, uint64(0), sup.ConfigSequence(""))
 }
 
 func TestConfigSequence(t *testing.T) {
@@ -43,7 +52,7 @@ func TestConfigSequence(t *testing.T) {
 			shouldPanic:    true,
 		},
 		{
-			name:           "both resoruces and validator are found",
+			name:           "both resources and validator are found",
 			resourcesFound: true,
 			validatorFound: true,
 			sequence:       100,
@@ -53,7 +62,7 @@ func TestConfigSequence(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			chConfig := &mocks.ChanConfig{}
+			chConfig := &mocks.ChannelConfigGetter{}
 			r := &mocks.Resources{}
 			v := &mocks.ConfigtxValidator{}
 			if test.resourcesFound {
@@ -64,7 +73,7 @@ func TestConfigSequence(t *testing.T) {
 			}
 			v.SequenceReturns(test.sequence)
 
-			sup := acl.NewDiscoverySupport(&mocks.Verifier{}, chConfig)
+			sup := acl.NewDiscoverySupport(&mocks.Verifier{}, &mocks.Evaluator{}, chConfig)
 			if test.shouldPanic {
 				assert.Panics(t, func() {
 					sup.ConfigSequence("mychannel")
@@ -78,19 +87,26 @@ func TestConfigSequence(t *testing.T) {
 
 func TestEligibleForService(t *testing.T) {
 	v := &mocks.Verifier{}
+	e := &mocks.Evaluator{}
 	v.VerifyByChannelReturnsOnCall(0, errors.New("verification failed"))
 	v.VerifyByChannelReturnsOnCall(1, nil)
-	chConfig := &mocks.ChanConfig{}
-	sup := acl.NewDiscoverySupport(v, chConfig)
-	err := sup.EligibleForService("", common2.SignedData{})
+	e.EvaluateSignedDataReturnsOnCall(0, errors.New("verification failed for local msp"))
+	e.EvaluateSignedDataReturnsOnCall(1, nil)
+	chConfig := &mocks.ChannelConfigGetter{}
+	sup := acl.NewDiscoverySupport(v, e, chConfig)
+	err := sup.EligibleForService("mychannel", protoutil.SignedData{})
 	assert.Equal(t, "verification failed", err.Error())
-	err = sup.EligibleForService("", common2.SignedData{})
+	err = sup.EligibleForService("mychannel", protoutil.SignedData{})
+	assert.NoError(t, err)
+	err = sup.EligibleForService("", protoutil.SignedData{})
+	assert.Equal(t, "verification failed for local msp", err.Error())
+	err = sup.EligibleForService("", protoutil.SignedData{})
 	assert.NoError(t, err)
 }
 
 func TestSatisfiesPrincipal(t *testing.T) {
 	var (
-		chConfig                      = &mocks.ChanConfig{}
+		chConfig                      = &mocks.ChannelConfigGetter{}
 		resources                     = &mocks.Resources{}
 		mgr                           = &mocks.MSPManager{}
 		idThatDoesNotSatisfyPrincipal = &mocks.Identity{}
@@ -143,7 +159,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 		},
 	}
 
-	sup := acl.NewDiscoverySupport(&mocks.Verifier{}, chConfig)
+	sup := acl.NewDiscoverySupport(&mocks.Verifier{}, &mocks.Evaluator{}, chConfig)
 	for _, test := range tests {
 		test := test
 		t.Run(test.testDescription, func(t *testing.T) {
@@ -157,4 +173,54 @@ func TestSatisfiesPrincipal(t *testing.T) {
 		})
 
 	}
+}
+
+func TestChannelVerifier(t *testing.T) {
+	polMgr := &gmocks.ChannelPolicyManagerGetterWithManager{
+		Managers: map[string]policies.Manager{
+			"mychannel": &gmocks.ChannelPolicyManager{
+				Policy: &gmocks.Policy{
+					Deserializer: &gmocks.IdentityDeserializer{
+						Identity: []byte("Bob"), Msg: []byte("msg"),
+					},
+				},
+			},
+		},
+	}
+
+	verifier := &acl.ChannelVerifier{
+		Policy:                     "some policy string",
+		ChannelPolicyManagerGetter: polMgr,
+	}
+
+	t.Run("Valid channel, identity, signature", func(t *testing.T) {
+		err := verifier.VerifyByChannel("mychannel", &protoutil.SignedData{
+			Data:      []byte("msg"),
+			Identity:  []byte("Bob"),
+			Signature: []byte("msg"),
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("Invalid channel", func(t *testing.T) {
+		err := verifier.VerifyByChannel("notmychannel", &protoutil.SignedData{
+			Data:      []byte("msg"),
+			Identity:  []byte("Bob"),
+			Signature: []byte("msg"),
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "policy manager for channel notmychannel doesn't exist")
+	})
+
+	t.Run("Writers policy cannot be retrieved", func(t *testing.T) {
+		polMgr.Managers["mychannel"].(*gmocks.ChannelPolicyManager).Policy = nil
+		err := verifier.VerifyByChannel("mychannel", &protoutil.SignedData{
+			Data:      []byte("msg"),
+			Identity:  []byte("Bob"),
+			Signature: []byte("msg"),
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed obtaining channel application writers policy")
+	})
+
 }

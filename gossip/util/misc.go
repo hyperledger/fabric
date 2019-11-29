@@ -7,10 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
-	cryptorand "crypto/rand"
 	"fmt"
-	"io"
-	"math/big"
 	"math/rand"
 	"reflect"
 	"runtime"
@@ -19,6 +16,10 @@ import (
 
 	"github.com/spf13/viper"
 )
+
+func init() { // do we really need this?
+	rand.Seed(time.Now().UnixNano())
+}
 
 // Equals returns whether a and b are the same
 type Equals func(a interface{}, b interface{}) bool
@@ -35,7 +36,7 @@ func Contains(s string, a []string) bool {
 	return false
 }
 
-// IndexInSlice returns the index of given object o in array
+// IndexInSlice returns the index of given object o in array, and -1 if it is not in array.
 func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	arr := reflect.ValueOf(array)
 	for i := 0; i < arr.Len(); i++ {
@@ -46,33 +47,15 @@ func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	return -1
 }
 
-func numbericEqual(a interface{}, b interface{}) bool {
-	return a.(int) == b.(int)
-}
-
-// GetRandomIndices returns a slice of random indices
-// from 0 to given highestIndex
+// GetRandomIndices returns indiceCount random indices
+// from 0 to highestIndex.
 func GetRandomIndices(indiceCount, highestIndex int) []int {
+	// More choices needed than possible to choose.
 	if highestIndex+1 < indiceCount {
 		return nil
 	}
 
-	indices := make([]int, 0)
-	if highestIndex+1 == indiceCount {
-		for i := 0; i < indiceCount; i++ {
-			indices = append(indices, i)
-		}
-		return indices
-	}
-
-	for len(indices) < indiceCount {
-		n := RandomInt(highestIndex + 1)
-		if IndexInSlice(indices, n, numbericEqual) != -1 {
-			continue
-		}
-		indices = append(indices, n)
-	}
-	return indices
+	return rand.Perm(highestIndex + 1)[:indiceCount]
 }
 
 // Set is a generic and thread-safe
@@ -141,8 +124,8 @@ func (s *Set) Remove(item interface{}) {
 // all goroutines
 func PrintStackTrace() {
 	buf := make([]byte, 1<<16)
-	runtime.Stack(buf, true)
-	fmt.Printf("%s", buf)
+	l := runtime.Stack(buf, true)
+	fmt.Printf("%s", buf[:l])
 }
 
 // GetIntOrDefault returns the int value from config if present otherwise default value
@@ -151,6 +134,18 @@ func GetIntOrDefault(key string, defVal int) int {
 	defer viperLock.RUnlock()
 
 	if val := viper.GetInt(key); val != 0 {
+		return val
+	}
+
+	return defVal
+}
+
+// GetFloat64OrDefault returns the float64 value from config if present otherwise default value
+func GetFloat64OrDefault(key string, defVal float64) float64 {
+	viperLock.RLock()
+	defer viperLock.RUnlock()
+
+	if val := viper.GetFloat64(key); val != 0 {
 		return val
 	}
 
@@ -169,8 +164,8 @@ func GetDurationOrDefault(key string, defVal time.Duration) time.Duration {
 	return defVal
 }
 
-// SetDuration stores duration key value to viper
-func SetDuration(key string, val time.Duration) {
+// SetVal stores key value to viper
+func SetVal(key string, val interface{}) {
 	viperLock.Lock()
 	defer viperLock.Unlock()
 	viper.Set(key, val)
@@ -179,24 +174,29 @@ func SetDuration(key string, val time.Duration) {
 // RandomInt returns, as an int, a non-negative pseudo-random integer in [0,n)
 // It panics if n <= 0
 func RandomInt(n int) int {
-	if n <= 0 {
-		panic(fmt.Sprintf("Got invalid (non positive) value: %d", n))
-	}
-	m := int(RandomUInt64()) % n
-	if m < 0 {
-		return n + m
-	}
-	return m
+	return rand.Intn(n)
 }
 
 // RandomUInt64 returns a random uint64
+//
+// If we want a rand that's non-global and specific to gossip, we can
+// establish one. Otherwise this uses the process-global locking RNG.
 func RandomUInt64() uint64 {
-	b := make([]byte, 8)
-	_, err := io.ReadFull(cryptorand.Reader, b)
-	if err == nil {
-		n := new(big.Int)
-		return n.SetBytes(b).Uint64()
+	return rand.Uint64()
+}
+
+func BytesToStrings(bytes [][]byte) []string {
+	strings := make([]string, len(bytes))
+	for i, b := range bytes {
+		strings[i] = string(b)
 	}
-	rand.Seed(rand.Int63())
-	return uint64(rand.Int63())
+	return strings
+}
+
+func StringsToBytes(strings []string) [][]byte {
+	bytes := make([][]byte, len(strings))
+	for i, str := range strings {
+		bytes[i] = []byte(str)
+	}
+	return bytes
 }

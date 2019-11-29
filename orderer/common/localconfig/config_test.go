@@ -1,20 +1,7 @@
-/*
-Copyright IBM Corp. 2016 All Rights Reserved.
+// Copyright IBM Corp. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package config
+package localconfig
 
 import (
 	"fmt"
@@ -24,19 +11,38 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
-	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	flogging.SetModuleLevel(pkgLogID, "DEBUG")
-}
-
 func TestLoadGoodConfig(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
 	cfg, err := Load()
 	assert.NotNil(t, cfg, "Could not load config")
 	assert.Nil(t, err, "Load good config returned unexpected error")
+}
+
+func TestMissingConfigValueOverridden(t *testing.T) {
+	t.Run("when the value is missing and not overridden", func(t *testing.T) {
+		cleanup := configtest.SetDevFabricConfigPath(t)
+		defer cleanup()
+		cfg, err := Load()
+		assert.NotNil(t, cfg, "Could not load config")
+		assert.NoError(t, err, "Load good config returned unexpected error")
+		assert.Nil(t, cfg.Kafka.TLS.ClientRootCAs)
+	})
+
+	t.Run("when the value is missing and is overridden", func(t *testing.T) {
+		os.Setenv("ORDERER_KAFKA_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
+		cleanup := configtest.SetDevFabricConfigPath(t)
+		defer cleanup()
+		cfg, err := Load()
+		assert.NotNil(t, cfg, "Could not load config")
+		assert.NoError(t, err, "Load good config returned unexpected error")
+		assert.NotNil(t, cfg.Kafka.TLS.ClientRootCAs)
+	})
 }
 
 func TestLoadMissingConfigFile(t *testing.T) {
@@ -89,6 +95,8 @@ func TestEnvInnerVar(t *testing.T) {
 	os.Setenv(envVar2, envVal2)
 	defer os.Unsetenv(envVar1)
 	defer os.Unsetenv(envVar2)
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
 	config, _ := Load()
 
 	assert.NotNil(t, config, "Could not load config")
@@ -121,8 +129,101 @@ func TestKafkaTLSConfig(t *testing.T) {
 	}
 }
 
-func TestSystemChannel(t *testing.T) {
-	conf, _ := Load()
-	assert.Equal(t, genesisconfig.TestChainID, conf.General.SystemChannel,
-		"Expected default system channel ID to be '%s', got '%s' instead", genesisconfig.TestChainID, conf.General.SystemChannel)
+func TestKafkaSASLPlain(t *testing.T) {
+	testCases := []struct {
+		name        string
+		sasl        SASLPlain
+		shouldPanic bool
+	}{
+		{"Disabled", SASLPlain{Enabled: false}, false},
+		{"EnabledUserPassword", SASLPlain{Enabled: true, User: "user", Password: "pwd"}, false},
+		{"EnabledNoUserPassword", SASLPlain{Enabled: true}, true},
+		{"EnabledNoUser", SASLPlain{Enabled: true, Password: "pwd"}, true},
+		{"EnabledNoPassword", SASLPlain{Enabled: true, User: "user"}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uconf := &TopLevel{Kafka: Kafka{SASLPlain: tc.sasl}}
+			if tc.shouldPanic {
+				assert.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
+			} else {
+				assert.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
+			}
+		})
+	}
+}
+
+func TestClusterDefaults(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+	cfg, err := Load()
+
+	assert.NoError(t, err)
+	assert.Equal(t, cfg.General.Cluster.ReplicationMaxRetries, Defaults.General.Cluster.ReplicationMaxRetries)
+}
+
+func TestConsensusConfig(t *testing.T) {
+	name, err := ioutil.TempDir("", "hyperledger_fabric")
+	assert.Nil(t, err, "Error creating temp dir: %s", err)
+	defer func() {
+		err = os.RemoveAll(name)
+		assert.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
+	}()
+
+	content := `---
+Consensus:
+  Foo: bar
+  Hello:
+    World: 42
+`
+
+	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	assert.Nil(t, err, "Error creating file: %s", err)
+	f.WriteString(content)
+	assert.NoError(t, f.Close(), "Error closing file")
+
+	envVar1 := "FABRIC_CFG_PATH"
+	envVal1 := name
+	os.Setenv(envVar1, envVal1)
+	defer os.Unsetenv(envVar1)
+
+	conf, err := Load()
+	assert.NoError(t, err, "Load good config returned unexpected error")
+	assert.NotNil(t, conf, "Could not load config")
+
+	consensus := conf.Consensus
+	assert.IsType(t, map[string]interface{}{}, consensus, "Expected Consensus to be of type map[string]interface{}")
+
+	foo := &struct {
+		Foo   string
+		Hello struct {
+			World int
+		}
+	}{}
+	err = mapstructure.Decode(consensus, foo)
+	assert.NoError(t, err, "Failed to decode Consensus to struct")
+	assert.Equal(t, foo.Foo, "bar")
+	assert.Equal(t, foo.Hello.World, 42)
+}
+
+func TestConnectionTimeout(t *testing.T) {
+	t.Run("without connection timeout overridden", func(t *testing.T) {
+		cleanup := configtest.SetDevFabricConfigPath(t)
+		defer cleanup()
+		cfg, err := Load()
+		assert.NotNil(t, cfg, "Could not load config")
+		assert.NoError(t, err, "Load good config returned unexpected error")
+		assert.Equal(t, cfg.General.ConnectionTimeout, 0*time.Second)
+	})
+
+	t.Run("with connection timeout overridden", func(t *testing.T) {
+		os.Setenv("ORDERER_GENERAL_CONNECTIONTIMEOUT", "10s")
+		defer os.Unsetenv("ORDERER_GENERAL_CONNECTIONTIMEOUT")
+		cleanup := configtest.SetDevFabricConfigPath(t)
+		defer cleanup()
+		cfg, err := Load()
+		assert.NotNil(t, cfg, "Could not load config")
+		assert.NoError(t, err, "Load good config returned unexpected error")
+		assert.Equal(t, cfg.General.ConnectionTimeout, 10*time.Second)
+	})
 }

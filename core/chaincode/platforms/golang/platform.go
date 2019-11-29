@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package golang
@@ -21,456 +11,159 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"net/url"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 
-	"github.com/hyperledger/fabric/common/metadata"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
-	ccprovmetadata "github.com/hyperledger/fabric/core/common/ccprovider/metadata"
-	cutil "github.com/hyperledger/fabric/core/container/util"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/internal/ccmetadata"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
 // Platform for chaincodes written in Go
-type Platform struct {
+type Platform struct{}
+
+// Name returns the name of this platform.
+func (p *Platform) Name() string {
+	return pb.ChaincodeSpec_GOLANG.String()
 }
 
-// Returns whether the given file or directory exists or not
-func pathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return true, err
-}
-
-func decodeUrl(spec *pb.ChaincodeSpec) (string, error) {
-	var urlLocation string
-	if strings.HasPrefix(spec.ChaincodeId.Path, "http://") {
-		urlLocation = spec.ChaincodeId.Path[7:]
-	} else if strings.HasPrefix(spec.ChaincodeId.Path, "https://") {
-		urlLocation = spec.ChaincodeId.Path[8:]
-	} else {
-		urlLocation = spec.ChaincodeId.Path
-	}
-
-	if len(urlLocation) < 2 {
-		return "", errors.New("ChaincodeSpec's path/URL invalid")
-	}
-
-	if strings.LastIndex(urlLocation, "/") == len(urlLocation)-1 {
-		urlLocation = urlLocation[:len(urlLocation)-1]
-	}
-
-	return urlLocation, nil
-}
-
-func getGopath() (string, error) {
-	env, err := getGoEnv()
+// ValidatePath is used to ensure that path provided points to something that
+// looks like go chainccode.
+//
+// NOTE: this is only used at the _client_ side by the peer CLI.
+func (p *Platform) ValidatePath(rawPath string) error {
+	_, err := DescribeCode(rawPath)
 	if err != nil {
-		return "", err
-	}
-	// Only take the first element of GOPATH
-	splitGoPath := filepath.SplitList(env["GOPATH"])
-	if len(splitGoPath) == 0 {
-		return "", fmt.Errorf("invalid GOPATH environment variable value:[%s]", env["GOPATH"])
-	}
-	return splitGoPath[0], nil
-}
-
-func filter(vs []string, f func(string) bool) []string {
-	vsf := make([]string, 0)
-	for _, v := range vs {
-		if f(v) {
-			vsf = append(vsf, v)
-		}
-	}
-	return vsf
-}
-
-// ValidateSpec validates Go chaincodes
-func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeId.Path)
-	if err != nil || path == nil {
-		return fmt.Errorf("invalid path: %s", err)
+		return err
 	}
 
-	//we have no real good way of checking existence of remote urls except by downloading and testing
-	//which we do later anyway. But we *can* - and *should* - test for existence of local paths.
-	//Treat empty scheme as a local filesystem path
-	if path.Scheme == "" {
-		gopath, err := getGopath()
-		if err != nil {
-			return err
-		}
-		pathToCheck := filepath.Join(gopath, "src", spec.ChaincodeId.Path)
-		exists, err := pathExists(pathToCheck)
-		if err != nil {
-			return fmt.Errorf("error validating chaincode path: %s", err)
-		}
-		if !exists {
-			return fmt.Errorf("path to chaincode does not exist: %s", pathToCheck)
-		}
-	}
 	return nil
 }
 
-func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
-
-	if cds.CodePackage == nil || len(cds.CodePackage) == 0 {
-		// Nothing to validate if no CodePackage was included
-		return nil
+// NormalizePath is used to extract a relative module path from a module root.
+// This should not impact legacy GOPATH chaincode.
+//
+// NOTE: this is only used at the _client_ side by the peer CLI.
+func (p *Platform) NormalizePath(rawPath string) (string, error) {
+	modInfo, err := moduleInfo(rawPath)
+	if err != nil {
+		return "", err
 	}
 
-	// FAB-2122: Scan the provided tarball to ensure it only contains source-code under
-	// /src/$packagename.  We do not want to allow something like ./pkg/shady.a to be installed under
-	// $GOPATH within the container.  Note, we do not look deeper than the path at this time
-	// with the knowledge that only the go/cgo compiler will execute for now.  We will remove the source
-	// from the system after the compilation as an extra layer of protection.
-	//
-	// It should be noted that we cannot catch every threat with these techniques.  Therefore,
-	// the container itself needs to be the last line of defense and be configured to be
-	// resilient in enforcing constraints. However, we should still do our best to keep as much
-	// garbage out of the system as possible.
-	re := regexp.MustCompile(`(/)?src/.*`)
-	is := bytes.NewReader(cds.CodePackage)
+	// not a module
+	if modInfo == nil {
+		return rawPath, nil
+	}
+
+	return modInfo.ImportPath, nil
+}
+
+// ValidateCodePackage examines the chaincode archive to ensure it is valid.
+//
+// NOTE: this code is used in some transaction validation paths but can be changed
+// post 2.0.
+func (p *Platform) ValidateCodePackage(code []byte) error {
+	is := bytes.NewReader(code)
 	gr, err := gzip.NewReader(is)
 	if err != nil {
 		return fmt.Errorf("failure opening codepackage gzip stream: %s", err)
 	}
-	tr := tar.NewReader(gr)
 
+	re := regexp.MustCompile(`^(src|META-INF)/`)
+	tr := tar.NewReader(gr)
 	for {
 		header, err := tr.Next()
-		if err != nil {
-			// We only get here if there are no more entries to scan
+		if err == io.EOF {
 			break
 		}
-
-		// --------------------------------------------------------------------------------------
-		// Check name for conforming path
-		// --------------------------------------------------------------------------------------
-		if !re.MatchString(header.Name) {
-			return fmt.Errorf("illegal file detected in payload: \"%s\"", header.Name)
+		if err != nil {
+			return err
 		}
 
-		// --------------------------------------------------------------------------------------
-		// Check that file mode makes sense
-		// --------------------------------------------------------------------------------------
-		// Acceptable flags:
-		//      ISREG      == 0100000
-		//      -rw-rw-rw- == 0666
-		//
-		// Anything else is suspect in this context and will be rejected
-		// --------------------------------------------------------------------------------------
-		if header.Mode&^0100666 != 0 {
-			return fmt.Errorf("illegal file mode detected for file %s: %o", header.Name, header.Mode)
+		// maintain check for conforming paths for validation
+		if !re.MatchString(header.Name) {
+			return fmt.Errorf("illegal file name in payload: %s", header.Name)
+		}
+
+		// only files and directories; no links or special files
+		mode := header.FileInfo().Mode()
+		if mode&^(os.ModeDir|0777) != 0 {
+			return fmt.Errorf("illegal file mode in payload: %s", header.Name)
 		}
 	}
 
 	return nil
 }
 
-// Vendor any packages that are not already within our chaincode's primary package
-// or vendored by it.  We take the name of the primary package and a list of files
-// that have been previously determined to comprise the package's dependencies.
-// For anything that needs to be vendored, we simply update its path specification.
-// Everything else, we pass through untouched.
-func vendorDependencies(pkg string, files Sources) {
+// Directory constant copied from tar package.
+const c_ISDIR = 040000
 
-	exclusions := make([]string, 0)
-	elements := strings.Split(pkg, "/")
-
-	// --------------------------------------------------------------------------------------
-	// First, add anything already vendored somewhere within our primary package to the
-	// "exclusions".  For a package "foo/bar/baz", we want to ensure we don't auto-vendor
-	// any of the following:
-	//
-	//     [ "foo/vendor", "foo/bar/vendor", "foo/bar/baz/vendor"]
-	//
-	// and we therefore employ a recursive path building process to form this list
-	// --------------------------------------------------------------------------------------
-	prev := filepath.Join("src")
-	for _, element := range elements {
-		curr := filepath.Join(prev, element)
-		vendor := filepath.Join(curr, "vendor")
-		exclusions = append(exclusions, vendor)
-		prev = curr
-	}
-
-	// --------------------------------------------------------------------------------------
-	// Next add our primary package to the list of "exclusions"
-	// --------------------------------------------------------------------------------------
-	exclusions = append(exclusions, filepath.Join("src", pkg))
-
-	count := len(files)
-	sem := make(chan bool, count)
-
-	// --------------------------------------------------------------------------------------
-	// Now start a parallel process which checks each file in files to see if it matches
-	// any of the excluded patterns.  Any that match are renamed such that they are vendored
-	// under src/$pkg/vendor.
-	// --------------------------------------------------------------------------------------
-	vendorPath := filepath.Join("src", pkg, "vendor")
-	for i, file := range files {
-		go func(i int, file SourceDescriptor) {
-			excluded := false
-
-			for _, exclusion := range exclusions {
-				if strings.HasPrefix(file.Name, exclusion) == true {
-					excluded = true
-					break
-				}
-			}
-
-			if excluded == false {
-				origName := file.Name
-				file.Name = strings.Replace(origName, "src", vendorPath, 1)
-				logger.Debugf("vendoring %s -> %s", origName, file.Name)
-			}
-
-			files[i] = file
-			sem <- true
-		}(i, file)
-	}
-
-	for i := 0; i < count; i++ {
-		<-sem
-	}
-}
-
-// Generates a deployment payload for GOLANG as a series of src/$pkg entries in .tar.gz format
-func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
-
-	var err error
-
-	// --------------------------------------------------------------------------------------
-	// retrieve a CodeDescriptor from either HTTP or the filesystem
-	// --------------------------------------------------------------------------------------
-	code, err := getCode(spec)
-	if err != nil {
-		return nil, err
-	}
-	if code.Cleanup != nil {
-		defer code.Cleanup()
-	}
-
-	// --------------------------------------------------------------------------------------
-	// Update our environment for the purposes of executing go-list directives
-	// --------------------------------------------------------------------------------------
-	env, err := getGoEnv()
-	if err != nil {
-		return nil, err
-	}
-	gopaths := splitEnvPaths(env["GOPATH"])
-	goroots := splitEnvPaths(env["GOROOT"])
-	gopaths[code.Gopath] = true
-	env["GOPATH"] = flattenEnvPaths(gopaths)
-
-	// --------------------------------------------------------------------------------------
-	// Retrieve the list of first-order imports referenced by the chaincode
-	// --------------------------------------------------------------------------------------
-	imports, err := listImports(env, code.Pkg)
-	if err != nil {
-		return nil, fmt.Errorf("Error obtaining imports: %s", err)
-	}
-
-	// --------------------------------------------------------------------------------------
-	// Remove any imports that are provided by the ccenv or system
-	// --------------------------------------------------------------------------------------
-	var provided = map[string]bool{
-		"github.com/hyperledger/fabric/core/chaincode/shim": true,
-		"github.com/hyperledger/fabric/protos/peer":         true,
-	}
-
-	// Golang "pseudo-packages" - packages which don't actually exist
-	var pseudo = map[string]bool{
-		"C": true,
-	}
-
-	imports = filter(imports, func(pkg string) bool {
-		// Drop if provided by CCENV
-		if _, ok := provided[pkg]; ok == true {
-			logger.Debugf("Discarding provided package %s", pkg)
-			return false
-		}
-
-		// Drop pseudo-packages
-		if _, ok := pseudo[pkg]; ok == true {
-			logger.Debugf("Discarding pseudo-package %s", pkg)
-			return false
-		}
-
-		// Drop if provided by GOROOT
-		for goroot := range goroots {
-			fqp := filepath.Join(goroot, "src", pkg)
-			exists, err := pathExists(fqp)
-			if err == nil && exists {
-				logger.Debugf("Discarding GOROOT package %s", pkg)
-				return false
-			}
-		}
-
-		// Else, we keep it
-		logger.Debugf("Accepting import: %s", pkg)
-		return true
-	})
-
-	// --------------------------------------------------------------------------------------
-	// Assemble the fully resolved list of direct and transitive dependencies based on the
-	// imports that remain after filtering
-	// --------------------------------------------------------------------------------------
-	deps := make(map[string]bool)
-
-	for _, pkg := range imports {
-		// ------------------------------------------------------------------------------
-		// Resolve direct import's transitives
-		// ------------------------------------------------------------------------------
-		transitives, err := listDeps(env, pkg)
-		if err != nil {
-			return nil, fmt.Errorf("Error obtaining dependencies for %s: %s", pkg, err)
-		}
-
-		// ------------------------------------------------------------------------------
-		// Merge all results with our top list
-		// ------------------------------------------------------------------------------
-
-		// Merge direct dependency...
-		deps[pkg] = true
-
-		// .. and then all transitives
-		for _, dep := range transitives {
-			deps[dep] = true
-		}
-	}
-
-	// cull "" if it exists
-	delete(deps, "")
-
-	// --------------------------------------------------------------------------------------
-	// Find the source from our first-order code package ...
-	// --------------------------------------------------------------------------------------
-	fileMap, err := findSource(code.Gopath, code.Pkg)
+// GetDeploymentPayload creates a gzip compressed tape archive that contains the
+// required assets to build and run go chaincode.
+//
+// NOTE: this is only used at the _client_ side by the peer CLI.
+func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
+	codeDescriptor, err := DescribeCode(codepath)
 	if err != nil {
 		return nil, err
 	}
 
-	// --------------------------------------------------------------------------------------
-	// ... followed by the source for any non-system dependencies that our code-package has
-	// from the filtered list
-	// --------------------------------------------------------------------------------------
-	for dep := range deps {
+	fileMap, err := findSource(codeDescriptor)
+	if err != nil {
+		return nil, err
+	}
 
-		logger.Debugf("processing dep: %s", dep)
-
-		// Each dependency should either be in our GOPATH or GOROOT.  We are not interested in packaging
-		// any of the system packages.  However, the official way (go-list) to make this determination
-		// is too expensive to run for every dep.  Therefore, we cheat.  We assume that any packages that
-		// cannot be found must be system packages and silently skip them
-		for gopath := range gopaths {
-			fqp := filepath.Join(gopath, "src", dep)
-			exists, err := pathExists(fqp)
-
-			logger.Debugf("checking: %s exists: %v", fqp, exists)
-
-			if err == nil && exists {
-
-				// We only get here when we found it, so go ahead and load its code
-				files, err := findSource(gopath, dep)
-				if err != nil {
-					return nil, err
-				}
-
-				// Merge the map manually
-				for _, file := range files {
-					fileMap[file.Name] = file
-				}
+	var dependencyPackageInfo []PackageInfo
+	if !codeDescriptor.Module {
+		for _, dist := range distributions() {
+			pi, err := gopathDependencyPackageInfo(dist.goos, dist.goarch, codeDescriptor.Path)
+			if err != nil {
+				return nil, err
 			}
+			dependencyPackageInfo = append(dependencyPackageInfo, pi...)
 		}
 	}
 
-	logger.Debugf("done")
-
-	// --------------------------------------------------------------------------------------
-	// Reprocess into a list for easier handling going forward
-	// --------------------------------------------------------------------------------------
-	files := make(Sources, 0)
-	for _, file := range fileMap {
-		files = append(files, file)
+	for _, pkg := range dependencyPackageInfo {
+		for _, filename := range pkg.Files() {
+			sd := SourceDescriptor{
+				Name: path.Join("src", pkg.ImportPath, filename),
+				Path: filepath.Join(pkg.Dir, filename),
+			}
+			fileMap[sd.Name] = sd
+		}
 	}
 
-	// --------------------------------------------------------------------------------------
-	// Remap non-package dependencies to package/vendor
-	// --------------------------------------------------------------------------------------
-	vendorDependencies(code.Pkg, files)
-
-	// --------------------------------------------------------------------------------------
-	// Sort on the filename so the tarball at least looks sane in terms of package grouping
-	// --------------------------------------------------------------------------------------
-	sort.Sort(files)
-
-	// --------------------------------------------------------------------------------------
-	// Write out our tar package
-	// --------------------------------------------------------------------------------------
 	payload := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(payload)
 	tw := tar.NewWriter(gw)
 
-	for _, file := range files {
-
-		// file.Path represents os localpath
-		// file.Name represents tar packagepath
-
-		// If the file is metadata rather than golang code, remove the leading go code path, for example:
-		// original file.Name:  src/github.com/hyperledger/fabric/examples/chaincode/go/marbles02/META-INF/statedb/couchdb/indexes/indexOwner.json
-		// updated file.Name:   META-INF/statedb/couchdb/indexes/indexOwner.json
-		if file.IsMetadata {
-
-			file.Name, err = filepath.Rel(filepath.Join("src", code.Pkg), file.Name)
-			if err != nil {
-				return nil, fmt.Errorf("This error was caused by bad packaging of the metadata.  The file [%s] is marked as MetaFile, however not located under META-INF   Error:[%s]", file.Name, err)
-			}
-
-			// Split the tar location (file.Name) into a tar package directory and filename
-			packageDir, filename := filepath.Split(file.Name)
-
-			// Hidden files are not supported as metadata, therefore ignore them.
-			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
-			if strings.HasPrefix(filename, ".") {
-				logger.Warningf("Ignoring hidden file in metadata directory: %s", file.Name)
-				continue
-			}
-
-			fileBytes, err := ioutil.ReadFile(file.Path)
-			if err != nil {
-				return nil, err
-			}
-
-			// Validate metadata file for inclusion in tar
-			// Validation is based on the passed metadata directory, e.g. META-INF/statedb/couchdb/indexes
-			// Clean metadata directory to remove trailing slash
-			//
-			// NOTE: given we now have a platform specific metadata, it would likely make sense to move
-			// core/common/ccprovider/metadata to this package (core/common/chaincode/platforms/metadata)
-			// in future.
-			err = ccprovmetadata.ValidateMetadataFile(filename, fileBytes, filepath.Clean(packageDir))
-			if err != nil {
-				return nil, err
-			}
+	// Create directories so they get sane ownership and permissions
+	for _, dirname := range fileMap.Directories() {
+		err := tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeDir,
+			Name:     dirname + "/",
+			Mode:     c_ISDIR | 0755,
+			Uid:      500,
+			Gid:      500,
+		})
+		if err != nil {
+			return nil, err
 		}
+	}
 
-		err = cutil.WriteFileToPackage(file.Path, file.Name, tw)
+	for _, file := range fileMap.Sources() {
+		err = util.WriteFileToPackage(file.Path, file.Name, tw)
 		if err != nil {
 			return nil, fmt.Errorf("Error writing %s to tar: %s", file.Name, err)
 		}
@@ -481,25 +174,18 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 		err = gw.Close()
 	}
 	if err != nil {
-		return nil, errors.Wrapf(
-			err,
-			"failed to create tar for chaincode: %s",
-			spec.GetChaincodeId().GetName())
+		return nil, errors.Wrapf(err, "failed to create tar for chaincode")
 	}
 
 	return payload.Bytes(), nil
 }
 
-func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
-
+func (p *Platform) GenerateDockerfile() (string, error) {
 	var buf []string
-
-	buf = append(buf, "FROM "+cutil.GetDockerfileFromConfig("chaincode.golang.runtime"))
+	buf = append(buf, "FROM "+util.GetDockerImageFromConfig("chaincode.golang.runtime"))
 	buf = append(buf, "ADD binpackage.tar /usr/local/bin")
 
-	dockerFileContents := strings.Join(buf, "\n")
-
-	return dockerFileContents, nil
+	return strings.Join(buf, "\n"), nil
 }
 
 const staticLDFlagsOpts = "-ldflags \"-linkmode external -extldflags '-static'\""
@@ -512,39 +198,297 @@ func getLDFlagsOpts() string {
 	return staticLDFlagsOpts
 }
 
-func (goPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
-	spec := cds.ChaincodeSpec
+var buildScript = `
+set -e
+if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
+    cd /chaincode/input/src
+    GO111MODULE=on go build -v -mod=vendor %[1]s -o /chaincode/output/chaincode %[2]s
+elif [ -f "/chaincode/input/src/go.mod" ]; then
+    cd /chaincode/input/src
+    GO111MODULE=on go build -v -mod=readonly %[1]s -o /chaincode/output/chaincode %[2]s
+elif [ -f "/chaincode/input/src/%[2]s/go.mod" ] && [ -d "/chaincode/input/src/%[2]s/vendor" ]; then
+    cd /chaincode/input/src/%[2]s
+    GO111MODULE=on go build -v -mod=vendor %[1]s -o /chaincode/output/chaincode .
+elif [ -f "/chaincode/input/src/%[2]s/go.mod" ]; then
+    cd /chaincode/input/src/%[2]s
+    GO111MODULE=on go build -v -mod=readonly %[1]s -o /chaincode/output/chaincode .
+else
+    GOPATH=/chaincode/input:$GOPATH go build -v %[1]s -o /chaincode/output/chaincode %[2]s
+fi
+echo Done!
+`
 
-	pkgname, err := decodeUrl(spec)
+func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+	env := []string{}
+	for _, key := range []string{"GOPROXY", "GOSUMDB"} {
+		if val, ok := os.LookupEnv(key); ok {
+			env = append(env, fmt.Sprintf("%s=%s", key, val))
+			continue
+		}
+		if key == "GOPROXY" {
+			env = append(env, "GOPROXY=https://proxy.golang.org")
+		}
+	}
+	ldFlagOpts := getLDFlagsOpts()
+	return util.DockerBuildOptions{
+		Cmd: fmt.Sprintf(buildScript, ldFlagOpts, path),
+		Env: env,
+	}, nil
+}
+
+// CodeDescriptor describes the code we're packaging.
+type CodeDescriptor struct {
+	Source       string // absolute path of the source to package
+	MetadataRoot string // absolute path META-INF
+	Path         string // import path of the package
+	Module       bool   // does this represent a go module
+}
+
+func (cd CodeDescriptor) isMetadata(path string) bool {
+	return strings.HasPrefix(
+		filepath.Clean(path),
+		filepath.Clean(cd.MetadataRoot),
+	)
+}
+
+// DescribeCode returns GOPATH and package information.
+func DescribeCode(path string) (*CodeDescriptor, error) {
+	if path == "" {
+		return nil, errors.New("cannot collect files from empty chaincode path")
+	}
+
+	// Use the module root as the source path for go modules
+	modInfo, err := moduleInfo(path)
 	if err != nil {
-		return fmt.Errorf("could not decode url: %s", err)
+		return nil, err
 	}
 
-	ldflagsOpt := getLDFlagsOpts()
-	logger.Infof("building chaincode with ldflagsOpt: '%s'", ldflagsOpt)
+	if modInfo != nil {
+		// calculate where the metadata should be relative to module root
+		relImport, err := filepath.Rel(modInfo.ModulePath, modInfo.ImportPath)
+		if err != nil {
+			return nil, err
+		}
 
-	var gotags string
-	// check if experimental features are enabled
-	if metadata.Experimental == "true" {
-		gotags = " experimental"
+		return &CodeDescriptor{
+			Module:       true,
+			MetadataRoot: filepath.Join(modInfo.Dir, relImport, "META-INF"),
+			Path:         modInfo.ImportPath,
+			Source:       modInfo.Dir,
+		}, nil
 	}
-	logger.Infof("building chaincode with tags: %s", gotags)
 
-	codepackage := bytes.NewReader(cds.CodePackage)
-	binpackage := bytes.NewBuffer(nil)
-	err = util.DockerBuild(util.DockerBuildOptions{
-		Cmd:          fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build -tags \"%s\" %s -o /chaincode/output/chaincode %s", gotags, ldflagsOpt, pkgname),
-		InputStream:  codepackage,
-		OutputStream: binpackage,
-	})
+	return describeGopath(path)
+}
+
+func describeGopath(importPath string) (*CodeDescriptor, error) {
+	output, err := exec.Command("go", "list", "-f", "{{.Dir}}", importPath).Output()
+	if err != nil {
+		return nil, err
+	}
+	sourcePath := filepath.Clean(strings.TrimSpace(string(output)))
+
+	return &CodeDescriptor{
+		Path:         importPath,
+		MetadataRoot: filepath.Join(sourcePath, "META-INF"),
+		Source:       sourcePath,
+	}, nil
+}
+
+func regularFileExists(path string) (bool, error) {
+	fi, err := os.Stat(path)
+	switch {
+	case os.IsNotExist(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return fi.Mode().IsRegular(), nil
+	}
+}
+
+func moduleInfo(path string) (*ModuleInfo, error) {
+	entryWD, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get working directory")
+	}
+
+	// directory doesn't exist so unlikely to be a module
+	if err := os.Chdir(path); err != nil {
+		return nil, nil
+	}
+	defer func() {
+		if err := os.Chdir(entryWD); err != nil {
+			panic(fmt.Sprintf("failed to restore working directory: %s", err))
+		}
+	}()
+
+	// Using `go list -m -f '{{ if .Main }}{{.GoMod}}{{ end }}' all` may try to
+	// generate a go.mod when a vendor tool is in use. To avoid that behavior
+	// we use `go env GOMOD` followed by an existence check.
+	cmd := exec.Command("go", "env", "GOMOD")
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to determine module root")
+	}
+
+	modExists, err := regularFileExists(strings.TrimSpace(string(output)))
+	if err != nil {
+		return nil, err
+	}
+	if !modExists {
+		return nil, nil
+	}
+
+	return listModuleInfo()
+}
+
+type SourceDescriptor struct {
+	Name string
+	Path string
+}
+
+type Sources []SourceDescriptor
+
+func (s Sources) Len() int           { return len(s) }
+func (s Sources) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s Sources) Less(i, j int) bool { return s[i].Name < s[j].Name }
+
+type SourceMap map[string]SourceDescriptor
+
+func (s SourceMap) Sources() Sources {
+	var sources Sources
+	for _, src := range s {
+		sources = append(sources, src)
+	}
+
+	sort.Sort(sources)
+	return sources
+}
+
+func (s SourceMap) Directories() []string {
+	dirMap := map[string]bool{}
+	for filename := range s {
+		dir := filepath.Dir(filename)
+		for dir != "." && !dirMap[dir] {
+			dirMap[dir] = true
+			dir = filepath.Dir(dir)
+		}
+	}
+
+	var dirs []string
+	for dir := range dirMap {
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+
+	return dirs
+}
+
+func findSource(cd *CodeDescriptor) (SourceMap, error) {
+	sources := SourceMap{}
+
+	walkFn := func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			// Allow import of the top level chaincode directory into chaincode code package
+			if path == cd.Source {
+				return nil
+			}
+
+			// Allow import of META-INF metadata directories into chaincode code package tar.
+			// META-INF directories contain chaincode metadata artifacts such as statedb index definitions
+			if cd.isMetadata(path) {
+				return nil
+			}
+
+			// include everything except hidden dirs when we're not vendoring
+			if cd.Module && !strings.HasPrefix(info.Name(), ".") {
+				return nil
+			}
+
+			// Do not import any other directories into chaincode code package
+			return filepath.SkipDir
+		}
+
+		relativeRoot := cd.Source
+		if cd.isMetadata(path) {
+			relativeRoot = cd.MetadataRoot
+		}
+
+		name, err := filepath.Rel(relativeRoot, path)
+		if err != nil {
+			return errors.Wrapf(err, "failed to calculate relative path for %s", path)
+		}
+
+		switch {
+		case cd.isMetadata(path):
+			// Skip hidden files in metadata
+			if strings.HasPrefix(info.Name(), ".") {
+				return nil
+			}
+			name = filepath.Join("META-INF", name)
+			err := validateMetadata(name, path)
+			if err != nil {
+				return err
+			}
+		case cd.Module:
+			name = filepath.Join("src", name)
+		default:
+			name = filepath.Join("src", cd.Path, name)
+		}
+
+		sources[name] = SourceDescriptor{Name: name, Path: path}
+		return nil
+	}
+
+	if err := filepath.Walk(cd.Source, walkFn); err != nil {
+		return nil, errors.Wrap(err, "walk failed")
+	}
+
+	return sources, nil
+}
+
+func validateMetadata(name, path string) error {
+	contents, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	return cutil.WriteBytesToPackage("binpackage.tar", binpackage.Bytes(), tw)
+	// Validate metadata file for inclusion in tar
+	// Validation is based on the passed filename with path
+	err = ccmetadata.ValidateMetadataFile(name, contents)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-//GetMetadataProvider fetches metadata provider given deployment spec
-func (goPlatform *Platform) GetMetadataProvider(cds *pb.ChaincodeDeploymentSpec) ccmetadata.MetadataProvider {
-	return &ccmetadata.TargzMetadataProvider{cds}
+// dist holds go "distribution" information. The full list of distributions can
+// be obtained with `go tool dist list.
+type dist struct{ goos, goarch string }
+
+// distributions returns the list of OS and ARCH combinations that we calcluate
+// deps for.
+func distributions() []dist {
+	// pre-populate linux architecutures
+	dists := map[dist]bool{
+		{goos: "linux", goarch: "amd64"}: true,
+		{goos: "linux", goarch: "s390x"}: true,
+	}
+
+	// add local OS and ARCH
+	dists[dist{goos: runtime.GOOS, goarch: runtime.GOARCH}] = true
+
+	var list []dist
+	for d := range dists {
+		list = append(list, d)
+	}
+
+	return list
 }

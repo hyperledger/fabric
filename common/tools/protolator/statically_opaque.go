@@ -31,7 +31,7 @@ func opaqueFrom(opaqueType func() (proto.Message, error), value interface{}, des
 	if err := recursivelyPopulateMessageFromTree(tree, nMsg); err != nil {
 		return reflect.Value{}, err
 	}
-	mMsg, err := proto.Marshal(nMsg)
+	mMsg, err := MostlyDeterministicMarshal(nMsg)
 	if err != nil {
 		return reflect.Value{}, err
 	}

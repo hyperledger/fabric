@@ -7,44 +7,72 @@ SPDX-License-Identifier: Apache-2.0
 package cceventmgmt
 
 import (
-	"fmt"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/privdata"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
-// KVLedgerLSCCStateListener listens for state changes on 'lscc' namespace
+// KVLedgerLSCCStateListener listens for state changes for chaincode lifecycle
 type KVLedgerLSCCStateListener struct {
+	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 }
 
-// HandleStateUpdates iterates over key-values being written in the 'lscc' namespace (which indicates deployment of a chaincode)
+func (listener *KVLedgerLSCCStateListener) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+	// Noop
+	return nil
+}
+
+// HandleStateUpdates uses 'DeployedChaincodeInfoProvider' to findout deployment of a chaincode
 // and invokes `HandleChaincodeDeploy` function on chaincode event manager (which in turn is responsible for creation of statedb
 // artifacts for the chaincode statedata)
-func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(channelName string, stateUpdates ledger.StateUpdates) error {
-	kvWrites := stateUpdates.([]*kvrwset.KVWrite)
+func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
+	channelName, kvWrites, postCommitQE, deployCCInfoProvider :=
+		trigger.LedgerID, extractPublicUpdates(trigger.StateUpdates), trigger.PostCommitQueryExecutor, listener.DeployedChaincodeInfoProvider
+
 	logger.Debugf("Channel [%s]: Handling state updates in LSCC namespace - stateUpdates=%#v", channelName, kvWrites)
+	updatedChaincodes, err := deployCCInfoProvider.UpdatedChaincodes(kvWrites)
+	if err != nil {
+		return err
+	}
 	chaincodeDefs := []*ChaincodeDefinition{}
-	for _, kvWrite := range kvWrites {
-		// There are LSCC entries for the chaincode and for the chaincode collections.
-		// We need to ignore changes to chaincode collections, and handle changes to chaincode
-		// We can detect collections based on the presence of a CollectionSeparator, which never exists in chaincode names
-		if privdata.IsCollectionConfigKey(kvWrite.Key) {
+	for _, updatedChaincode := range updatedChaincodes {
+		logger.Infof("Channel [%s]: Handling deploy or update of chaincode [%s]", channelName, updatedChaincode.Name)
+		if updatedChaincode.Deleted {
+			// TODO handle delete case when delete is implemented in lifecycle
 			continue
 		}
-		// Ignore delete events
-		if kvWrite.IsDelete {
+		deployedCCInfo, err := deployCCInfoProvider.ChaincodeInfo(channelName, updatedChaincode.Name, postCommitQE)
+		if err != nil {
+			return err
+		}
+		if !deployedCCInfo.IsLegacy {
+			// chaincode defined via new lifecycle, the legacy event mgr should not try to process that
+			// event by trying to match this with a legacy package installed. So, ignoring this event
 			continue
 		}
-		// Chaincode instantiate/upgrade is not logged on committing peer anywhere else.  This is a good place to log it.
-		logger.Infof("Channel [%s]: Handling LSCC state update for chaincode [%s]", channelName, kvWrite.Key)
-		chaincodeData := &ccprovider.ChaincodeData{}
-		if err := proto.Unmarshal(kvWrite.Value, chaincodeData); err != nil {
-			return fmt.Errorf("Unmarshalling ChaincodeQueryResponse failed, error %s", err)
-		}
-		chaincodeDefs = append(chaincodeDefs, &ChaincodeDefinition{Name: chaincodeData.CCName(), Version: chaincodeData.CCVersion(), Hash: chaincodeData.Hash()})
+		chaincodeDefs = append(chaincodeDefs, &ChaincodeDefinition{
+			Name:              deployedCCInfo.Name,
+			Hash:              deployedCCInfo.Hash,
+			Version:           deployedCCInfo.Version,
+			CollectionConfigs: deployedCCInfo.ExplicitCollectionConfigPkg,
+		})
 	}
 	return GetMgr().HandleChaincodeDeploy(channelName, chaincodeDefs)
+}
+
+// InterestedInNamespaces implements function from interface `ledger.StateListener`
+func (listener *KVLedgerLSCCStateListener) InterestedInNamespaces() []string {
+	return listener.DeployedChaincodeInfoProvider.Namespaces()
+}
+
+// StateCommitDone implements function from interface `ledger.StateListener`
+func (listener *KVLedgerLSCCStateListener) StateCommitDone(channelName string) {
+	GetMgr().ChaincodeDeployDone(channelName)
+}
+
+func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
+	m := map[string][]*kvrwset.KVWrite{}
+	for ns, updates := range stateUpdates {
+		m[ns] = updates.PublicUpdates
+	}
+	return m
 }

@@ -11,20 +11,21 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"google.golang.org/grpc"
 )
 
-var logger = flogging.MustGetLogger("accessControl")
+var logger = flogging.MustGetLogger("chaincode.accesscontrol")
 
 // CertAndPrivKeyPair contains a certificate
 // and its corresponding private key in base64 format
 type CertAndPrivKeyPair struct {
-	// Cert - an x509 certificate encoded in base64
-	Cert string
-	// Key  - a private key of the corresponding certificate
-	Key string
+	// Cert is an x509 certificate
+	Cert []byte
+	// Key is a private key of the corresponding certificate
+	Key []byte
 }
 
 type Authenticator struct {
@@ -36,9 +37,9 @@ func (auth *Authenticator) Wrap(srv pb.ChaincodeSupportServer) pb.ChaincodeSuppo
 }
 
 // NewAuthenticator returns a new authenticator that can wrap a chaincode service
-func NewAuthenticator(ca CA) *Authenticator {
+func NewAuthenticator(ca tlsgen.CA) *Authenticator {
 	return &Authenticator{
-		mapper: newCertMapper(ca.newClientCertKeyPair),
+		mapper: newCertMapper(ca.NewClientCertKeyPair),
 	}
 }
 
@@ -51,8 +52,8 @@ func (ac *Authenticator) Generate(ccName string) (*CertAndPrivKeyPair, error) {
 		return nil, err
 	}
 	return &CertAndPrivKeyPair{
-		Key:  cert.privKeyString(),
-		Cert: cert.pubKeyString(),
+		Key:  cert.Key,
+		Cert: cert.Cert,
 	}, nil
 }
 

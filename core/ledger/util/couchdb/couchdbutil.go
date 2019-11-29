@@ -1,34 +1,27 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package couchdb
 
 import (
+	"bytes"
 	"encoding/hex"
-	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/pkg/errors"
 )
 
-var expectedDatabaseNamePattern = `[a-z][a-z0-9.$_()-]*`
+var expectedDatabaseNamePattern = `[a-z][a-z0-9.$_()+-]*`
 var maxLength = 238
 
 // To restrict the length of couchDB database name to the
@@ -40,29 +33,44 @@ var chainNameAllowedLength = 50
 var namespaceNameAllowedLength = 50
 var collectionNameAllowedLength = 50
 
-//CreateCouchInstance creates a CouchDB instance
-func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
-	maxRetriesOnStartup int, connectionTimeout time.Duration) (*CouchInstance, error) {
+func CreateCouchInstance(config *Config, metricsProvider metrics.Provider) (*CouchInstance, error) {
 
-	couchConf, err := CreateConnectionDefinition(couchDBConnectURL,
-		id, pw, maxRetries, maxRetriesOnStartup, connectionTimeout)
+	// make sure the address is valid
+	connectURL := &url.URL{
+		Host:   config.Address,
+		Scheme: "http",
+	}
+	_, err := url.Parse(connectURL.String())
 	if err != nil {
-		logger.Errorf("Error during CouchDB CreateConnectionDefinition(): %s\n", err.Error())
-		return nil, err
+		return nil, errors.WithMessagef(
+			err,
+			"failed to parse CouchDB address '%s'",
+			config.Address,
+		)
 	}
 
 	// Create the http client once
 	// Clients and Transports are safe for concurrent use by multiple goroutines
 	// and for efficiency should only be created once and re-used.
-	client := &http.Client{Timeout: couchConf.RequestTimeout}
+	client := &http.Client{Timeout: config.RequestTimeout}
 
-	transport := &http.Transport{Proxy: http.ProxyFromEnvironment}
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+	}
 	transport.DisableCompression = false
 	client.Transport = transport
 
 	//Create the CouchDB instance
-	couchInstance := &CouchInstance{conf: *couchConf, client: client}
-
+	couchInstance := &CouchInstance{
+		conf:   config,
+		client: client,
+		stats:  newStats(metricsProvider),
+	}
 	connectInfo, retVal, verifyErr := couchInstance.VerifyCouchConfig()
 	if verifyErr != nil {
 		return nil, verifyErr
@@ -70,7 +78,7 @@ func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
 
 	//return an error if the http return value is not 200
 	if retVal.StatusCode != 200 {
-		return nil, fmt.Errorf("CouchDB connection error, expecting return code of 200, received %v", retVal.StatusCode)
+		return nil, errors.Errorf("CouchDB connection error, expecting return code of 200, received %v", retVal.StatusCode)
 	}
 
 	//check the CouchDB version number, return an error if the version is not at least 2.0.0
@@ -91,18 +99,18 @@ func checkCouchDBVersion(version string) error {
 	//check to see that the major version number is at least 2
 	majorVersionInt, _ := strconv.Atoi(majorVersion[0])
 	if majorVersionInt < 2 {
-		return fmt.Errorf("CouchDB must be at least version 2.0.0.  Detected version %s", version)
+		return errors.Errorf("CouchDB must be at least version 2.0.0. Detected version %s", version)
 	}
 
 	return nil
 }
 
 //CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
-func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchDatabase, error) {
+func CreateCouchDatabase(couchInstance *CouchInstance, dbName string) (*CouchDatabase, error) {
 
 	databaseName, err := mapAndValidateDatabaseName(dbName)
 	if err != nil {
-		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for dbName: %s  error: %s\n", dbName, err.Error())
+		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for dbName: %s, error: %s", dbName, err)
 		return nil, err
 	}
 
@@ -111,7 +119,7 @@ func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchData
 	// Create CouchDB database upon ledger startup, if it doesn't already exist
 	err = couchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
-		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for dbName: %s  error: %s\n", dbName, err.Error())
+		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for dbName: %s, error: %s", dbName, err)
 		return nil, err
 	}
 
@@ -119,13 +127,13 @@ func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchData
 }
 
 //CreateSystemDatabasesIfNotExist - creates the system databases if they do not exist
-func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
+func CreateSystemDatabasesIfNotExist(couchInstance *CouchInstance) error {
 
 	dbName := "_users"
 	systemCouchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
 	err := systemCouchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
-		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
+		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
 		return err
 	}
 
@@ -133,20 +141,36 @@ func CreateSystemDatabasesIfNotExist(couchInstance CouchInstance) error {
 	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
 	err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
-		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
+		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
 		return err
 	}
-
-	dbName = "_global_changes"
-	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
-	err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
-	if err != nil {
-		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for system dbName: %s  error: %s\n", dbName, err.Error())
-		return err
+	if couchInstance.conf.CreateGlobalChangesDB {
+		dbName = "_global_changes"
+		systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
+		err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
+		if err != nil {
+			logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
+			return err
+		}
 	}
-
 	return nil
 
+}
+
+// constructCouchDBUrl constructs a couchDB url with encoding for the database name
+// and all path elements
+func constructCouchDBUrl(connectURL *url.URL, dbName string, pathElements ...string) *url.URL {
+	var buffer bytes.Buffer
+	buffer.WriteString(connectURL.String())
+	if dbName != "" {
+		buffer.WriteString("/")
+		buffer.WriteString(encodePathElement(dbName))
+	}
+	for _, pathElement := range pathElements {
+		buffer.WriteString("/")
+		buffer.WriteString(encodePathElement(pathElement))
+	}
+	return &url.URL{Opaque: buffer.String()}
 }
 
 // ConstructMetadataDBName truncates the db name to couchdb allowed length to
@@ -165,8 +189,11 @@ func ConstructMetadataDBName(dbName string) string {
 	return dbName + "_"
 }
 
-// ConstructNamespaceDBName truncates db name to couchdb allowed length to
-// construct the namespaceDBName
+// ConstructNamespaceDBName truncates db name to couchdb allowed length to construct the final namespaceDBName
+// The passed namespace will be in one of the following formats:
+// <chaincode>                 - for namespaces containing regular public data
+// <chaincode>$$p<collection>  - for namespaces containing private data collections
+// <chaincode>$$h<collection>  - for namespaces containing hashes of private data collections
 func ConstructNamespaceDBName(chainName, namespace string) string {
 	// replace upper-case in namespace with a escape sequence '$' and the respective lower-case letter
 	escapedNamespace := escapeUpperCase(namespace)
@@ -177,10 +204,10 @@ func ConstructNamespaceDBName(chainName, namespace string) string {
 	// <first 50 chars (i.e., namespaceNameAllowedLength) chars of namespace> +
 	// (<SHA256 hash of [chainName_namespace]>)
 	//
-	// For namespaceDBName of form 'chainName_namespace$$collection', on length limit violation, the truncated
+	// For namespaceDBName of form 'chainName_namespace$$[hp]collection', on length limit violation, the truncated
 	// namespaceDBName would contain <first 50 chars (i.e., chainNameAllowedLength) of chainName> + "_" +
 	// <first 50 chars (i.e., namespaceNameAllowedLength) of namespace> + "$$" + <first 50 chars
-	// (i.e., collectionNameAllowedLength) of collection> + (<SHA256 hash of [chainName_namespace$$pcollection]>)
+	// (i.e., collectionNameAllowedLength) of [hp]collection> + (<SHA256 hash of [chainName_namespace$$[hp]collection]>)
 
 	if len(namespaceDBName) > maxLength {
 		// Compute the hash of untruncated namespaceDBName that needs to be appended to
@@ -228,27 +255,27 @@ func ConstructNamespaceDBName(chainName, namespace string) string {
 //CouchDB Rules: Only lowercase characters (a-z), digits (0-9), and any of the characters
 //_, $, (, ), +, -, and / are allowed. Must begin with a letter.
 //
-//Restictions have already been applied to the database name from Orderer based on
+//Restrictions have already been applied to the database name from Orderer based on
 //restrictions required by Kafka and couchDB (except a '.' char). The databaseName
 // passed in here is expected to follow `[a-z][a-z0-9.$_-]*` pattern.
 //
 //This validation will simply check whether the database name matches the above pattern and will replace
-// all occurence of '.' by '$'. This will not cause collisions in the transformed named
+// all occurrence of '.' by '$'. This will not cause collisions in the transformed named
 func mapAndValidateDatabaseName(databaseName string) (string, error) {
 	// test Length
 	if len(databaseName) <= 0 {
-		return "", fmt.Errorf("Database name is illegal, cannot be empty")
+		return "", errors.Errorf("database name is illegal, cannot be empty")
 	}
 	if len(databaseName) > maxLength {
-		return "", fmt.Errorf("Database name is illegal, cannot be longer than %d", maxLength)
+		return "", errors.Errorf("database name is illegal, cannot be longer than %d", maxLength)
 	}
 	re, err := regexp.Compile(expectedDatabaseNamePattern)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "error compiling regexp: %s", expectedDatabaseNamePattern)
 	}
 	matched := re.FindString(databaseName)
 	if len(matched) != len(databaseName) {
-		return "", fmt.Errorf("databaseName '%s' does not matches pattern '%s'", databaseName, expectedDatabaseNamePattern)
+		return "", errors.Errorf("databaseName '%s' does not match pattern '%s'", databaseName, expectedDatabaseNamePattern)
 	}
 	// replace all '.' to '$'. The databaseName passed in will never contain an '$'.
 	// So, this translation will not cause collisions

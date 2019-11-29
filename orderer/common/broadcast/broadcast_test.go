@@ -4,282 +4,398 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package broadcast
+package broadcast_test
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"testing"
-	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/golang/protobuf/proto"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/orderer/common/broadcast"
+	"github.com/hyperledger/fabric/orderer/common/broadcast/mock"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/peer"
 )
 
-func init() {
-	flogging.SetModuleLevel(pkgLogID, "DEBUG")
-}
+var _ = Describe("Broadcast", func() {
+	var (
+		fakeSupportRegistrar  *mock.ChannelSupportRegistrar
+		handler               *broadcast.Handler
+		fakeValidateHistogram *mock.MetricsHistogram
+		fakeEnqueueHistogram  *mock.MetricsHistogram
+		fakeProcessedCounter  *mock.MetricsCounter
+	)
 
-type mockStream struct {
-	grpc.ServerStream
-}
+	BeforeEach(func() {
+		fakeSupportRegistrar = &mock.ChannelSupportRegistrar{}
 
-func (mockStream) Context() context.Context {
-	return peer.NewContext(context.Background(), &peer.Peer{})
-}
+		fakeValidateHistogram = &mock.MetricsHistogram{}
+		fakeValidateHistogram.WithReturns(fakeValidateHistogram)
 
-type mockB struct {
-	mockStream
-	recvChan chan *cb.Envelope
-	sendChan chan *ab.BroadcastResponse
-}
+		fakeEnqueueHistogram = &mock.MetricsHistogram{}
+		fakeEnqueueHistogram.WithReturns(fakeEnqueueHistogram)
 
-func newMockB() *mockB {
-	return &mockB{
-		recvChan: make(chan *cb.Envelope),
-		sendChan: make(chan *ab.BroadcastResponse),
-	}
-}
+		fakeProcessedCounter = &mock.MetricsCounter{}
+		fakeProcessedCounter.WithReturns(fakeProcessedCounter)
 
-func (m *mockB) Send(br *ab.BroadcastResponse) error {
-	m.sendChan <- br
-	return nil
-}
-
-func (m *mockB) Recv() (*cb.Envelope, error) {
-	msg, ok := <-m.recvChan
-	if !ok {
-		return msg, io.EOF
-	}
-	return msg, nil
-}
-
-type erroneousRecvMockB struct {
-	grpc.ServerStream
-}
-
-func (m *erroneousRecvMockB) Context() context.Context {
-	return peer.NewContext(context.Background(), &peer.Peer{})
-}
-
-func (m *erroneousRecvMockB) Send(br *ab.BroadcastResponse) error {
-	return nil
-}
-
-func (m *erroneousRecvMockB) Recv() (*cb.Envelope, error) {
-	// The point here is to simulate an error other than EOF.
-	// We don't bother to create a new custom error type.
-	return nil, io.ErrUnexpectedEOF
-}
-
-type erroneousSendMockB struct {
-	mockStream
-	recvVal *cb.Envelope
-}
-
-func (m *erroneousSendMockB) Send(br *ab.BroadcastResponse) error {
-	// The point here is to simulate an error other than EOF.
-	// We don't bother to create a new custom error type.
-	return io.ErrUnexpectedEOF
-}
-
-func (m *erroneousSendMockB) Recv() (*cb.Envelope, error) {
-	return m.recvVal, nil
-}
-
-type mockSupportManager struct {
-	MsgProcessorIsConfig bool
-	MsgProcessorVal      *mockSupport
-	MsgProcessorErr      error
-}
-
-func (mm *mockSupportManager) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader, bool, ChannelSupport, error) {
-	return &cb.ChannelHeader{}, mm.MsgProcessorIsConfig, mm.MsgProcessorVal, mm.MsgProcessorErr
-}
-
-type mockSupport struct {
-	ProcessConfigEnv *cb.Envelope
-	ProcessConfigSeq uint64
-	ProcessErr       error
-	rejectEnqueue    bool
-}
-
-func (ms *mockSupport) WaitReady() error {
-	return nil
-}
-
-// Order sends a message for ordering
-func (ms *mockSupport) Order(env *cb.Envelope, configSeq uint64) error {
-	if ms.rejectEnqueue {
-		return fmt.Errorf("Reject")
-	}
-	return nil
-}
-
-// Configure sends a reconfiguration message for ordering
-func (ms *mockSupport) Configure(config *cb.Envelope, configSeq uint64) error {
-	return ms.Order(config, configSeq)
-}
-
-func (ms *mockSupport) ClassifyMsg(chdr *cb.ChannelHeader) msgprocessor.Classification {
-	panic("UNIMPLMENTED")
-}
-
-func (ms *mockSupport) ProcessNormalMsg(msg *cb.Envelope) (uint64, error) {
-	return ms.ProcessConfigSeq, ms.ProcessErr
-}
-
-func (ms *mockSupport) ProcessConfigUpdateMsg(msg *cb.Envelope) (*cb.Envelope, uint64, error) {
-	return ms.ProcessConfigEnv, ms.ProcessConfigSeq, ms.ProcessErr
-}
-
-func (ms *mockSupport) ProcessConfigMsg(msg *cb.Envelope) (*cb.Envelope, uint64, error) {
-	return ms.ProcessConfigEnv, ms.ProcessConfigSeq, ms.ProcessErr
-}
-
-func getMockSupportManager() *mockSupportManager {
-	return &mockSupportManager{
-		MsgProcessorVal: &mockSupport{},
-	}
-}
-
-func TestEnqueueFailure(t *testing.T) {
-	mm := getMockSupportManager()
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	done := make(chan struct{})
-	go func() {
-		bh.Handle(m)
-		close(done)
-	}()
-
-	for i := 0; i < 2; i++ {
-		m.recvChan <- nil
-		reply := <-m.sendChan
-		if reply.Status != cb.Status_SUCCESS {
-			t.Fatalf("Should have successfully queued the message")
+		handler = &broadcast.Handler{
+			SupportRegistrar: fakeSupportRegistrar,
+			Metrics: &broadcast.Metrics{
+				ValidateDuration: fakeValidateHistogram,
+				EnqueueDuration:  fakeEnqueueHistogram,
+				ProcessedCount:   fakeProcessedCounter,
+			},
 		}
-	}
-
-	mm.MsgProcessorVal.rejectEnqueue = true
-	m.recvChan <- nil
-	reply := <-m.sendChan
-	if reply.Status != cb.Status_SERVICE_UNAVAILABLE {
-		t.Fatalf("Should not have successfully queued the message")
-	}
-
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatalf("Should have terminated the stream")
-	}
-}
-
-func TestClassifyError(t *testing.T) {
-	t.Run("NotFound", func(t *testing.T) {
-		assert.Equal(t, cb.Status_NOT_FOUND, ClassifyError(msgprocessor.ErrChannelDoesNotExist))
 	})
-	t.Run("Forbidden", func(t *testing.T) {
-		assert.Equal(t, cb.Status_FORBIDDEN, ClassifyError(msgprocessor.ErrPermissionDenied))
+
+	Describe("Handle", func() {
+		var (
+			fakeABServer *mock.ABServer
+			fakeSupport  *mock.ChannelSupport
+			fakeMsg      *cb.Envelope
+		)
+
+		BeforeEach(func() {
+			fakeMsg = &cb.Envelope{}
+
+			fakeABServer = &mock.ABServer{}
+			fakeABServer.ContextReturns(context.TODO())
+			fakeABServer.RecvReturns(fakeMsg, nil)
+			fakeABServer.RecvReturnsOnCall(1, nil, io.EOF)
+
+			fakeSupport = &mock.ChannelSupport{}
+			fakeSupport.ProcessNormalMsgReturns(5, nil)
+
+			fakeSupportRegistrar.BroadcastChannelSupportReturns(&cb.ChannelHeader{
+				Type:      3,
+				ChannelId: "fake-channel",
+			}, false, fakeSupport, nil)
+		})
+
+		It("enqueues the message to the consenter", func() {
+			err := handler.Handle(fakeABServer)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeABServer.RecvCallCount()).To(Equal(2))
+			Expect(fakeSupportRegistrar.BroadcastChannelSupportCallCount()).To(Equal(1))
+			Expect(fakeSupportRegistrar.BroadcastChannelSupportArgsForCall(0)).To(Equal(fakeMsg))
+
+			Expect(fakeSupport.ProcessNormalMsgCallCount()).To(Equal(1))
+			Expect(fakeSupport.ProcessNormalMsgArgsForCall(0)).To(Equal(fakeMsg))
+
+			Expect(fakeSupport.WaitReadyCallCount()).To(Equal(1))
+
+			Expect(fakeSupport.OrderCallCount()).To(Equal(1))
+			orderedMsg, seq := fakeSupport.OrderArgsForCall(0)
+			Expect(orderedMsg).To(Equal(fakeMsg))
+			Expect(seq).To(Equal(uint64(5)))
+
+			Expect(fakeValidateHistogram.WithCallCount()).To(Equal(1))
+			Expect(fakeValidateHistogram.WithArgsForCall(0)).To(Equal([]string{
+				"status", "SUCCESS",
+				"channel", "fake-channel",
+				"type", "ENDORSER_TRANSACTION",
+			}))
+			Expect(fakeValidateHistogram.ObserveCallCount()).To(Equal(1))
+			Expect(fakeValidateHistogram.ObserveArgsForCall(0)).To(BeNumerically(">", 0))
+			Expect(fakeValidateHistogram.ObserveArgsForCall(0)).To(BeNumerically("<", 1))
+
+			Expect(fakeEnqueueHistogram.WithCallCount()).To(Equal(1))
+			Expect(fakeEnqueueHistogram.WithArgsForCall(0)).To(Equal([]string{
+				"status", "SUCCESS",
+				"channel", "fake-channel",
+				"type", "ENDORSER_TRANSACTION",
+			}))
+			Expect(fakeEnqueueHistogram.ObserveCallCount()).To(Equal(1))
+			Expect(fakeEnqueueHistogram.ObserveArgsForCall(0)).To(BeNumerically(">", 0))
+			Expect(fakeEnqueueHistogram.ObserveArgsForCall(0)).To(BeNumerically("<", 1))
+
+			Expect(fakeProcessedCounter.WithCallCount()).To(Equal(1))
+			Expect(fakeProcessedCounter.WithArgsForCall(0)).To(Equal([]string{
+				"status", "SUCCESS",
+				"channel", "fake-channel",
+				"type", "ENDORSER_TRANSACTION",
+			}))
+			Expect(fakeProcessedCounter.AddCallCount()).To(Equal(1))
+			Expect(fakeProcessedCounter.AddArgsForCall(0)).To(Equal(float64(1)))
+
+			Expect(fakeABServer.SendCallCount()).To(Equal(1))
+			Expect(proto.Equal(fakeABServer.SendArgsForCall(0), &ab.BroadcastResponse{Status: cb.Status_SUCCESS})).To(BeTrue())
+		})
+
+		Context("when the channel support cannot be retrieved", func() {
+			BeforeEach(func() {
+				fakeSupportRegistrar.BroadcastChannelSupportReturns(&cb.ChannelHeader{
+					Type:      2,
+					ChannelId: "fake-channel",
+				}, false, nil, fmt.Errorf("support-error"))
+			})
+
+			It("returns the error to the client with a bad status", func() {
+				err := handler.Handle(fakeABServer)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeABServer.SendCallCount()).To(Equal(1))
+				Expect(proto.Equal(
+					fakeABServer.SendArgsForCall(0),
+					&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "support-error"}),
+				).To(BeTrue())
+			})
+
+			Context("when the channel header is not validly decoded", func() {
+				BeforeEach(func() {
+					fakeSupportRegistrar.BroadcastChannelSupportReturns(nil, false, nil, fmt.Errorf("support-error"))
+				})
+
+				It("does not crash", func() {
+					err := handler.Handle(fakeABServer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeValidateHistogram.WithCallCount()).To(Equal(1))
+					Expect(fakeValidateHistogram.WithArgsForCall(0)).To(Equal([]string{
+						"status", "BAD_REQUEST",
+						"channel", "unknown",
+						"type", "unknown",
+					}))
+					Expect(fakeEnqueueHistogram.WithCallCount()).To(Equal(0))
+					Expect(fakeProcessedCounter.WithCallCount()).To(Equal(1))
+				})
+			})
+
+		})
+
+		Context("when the receive from the client fails", func() {
+			BeforeEach(func() {
+				fakeABServer.RecvReturns(nil, fmt.Errorf("recv-error"))
+			})
+
+			It("returns the error", func() {
+				err := handler.Handle(fakeABServer)
+				Expect(err).To(MatchError("recv-error"))
+			})
+		})
+
+		Context("when the consenter is not ready for the request", func() {
+			BeforeEach(func() {
+				fakeSupport.WaitReadyReturns(fmt.Errorf("not-ready"))
+			})
+
+			It("returns the error to the client with a service unavailable status", func() {
+				err := handler.Handle(fakeABServer)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeABServer.SendCallCount()).To(Equal(1))
+				Expect(proto.Equal(
+					fakeABServer.SendArgsForCall(0),
+					&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "not-ready"}),
+				).To(BeTrue())
+			})
+		})
+
+		Context("when the send to the client fails", func() {
+			BeforeEach(func() {
+				fakeABServer.SendReturns(fmt.Errorf("send-error"))
+			})
+
+			It("returns the error", func() {
+				err := handler.Handle(fakeABServer)
+				Expect(err).To(MatchError("send-error"))
+			})
+		})
+
+		Context("when the consenter cannot enqueue the message", func() {
+			BeforeEach(func() {
+				fakeSupport.OrderReturns(fmt.Errorf("consenter-error"))
+			})
+
+			It("returns the error", func() {
+				err := handler.Handle(fakeABServer)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeABServer.SendCallCount()).To(Equal(1))
+				Expect(proto.Equal(
+					fakeABServer.SendArgsForCall(0),
+					&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "consenter-error"}),
+				).To(BeTrue())
+			})
+		})
+
+		Context("when the message processor returns an error", func() {
+			BeforeEach(func() {
+				fakeSupport.ProcessNormalMsgReturns(0, fmt.Errorf("normal-messsage-processing-error"))
+			})
+
+			It("returns the error and an error status", func() {
+				err := handler.Handle(fakeABServer)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeABServer.SendCallCount()).To(Equal(1))
+				Expect(proto.Equal(
+					fakeABServer.SendArgsForCall(0),
+					&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "normal-messsage-processing-error"},
+				)).To(BeTrue())
+			})
+
+			Context("when the error cause is msgprocessor.ErrChannelDoesNotExist", func() {
+				BeforeEach(func() {
+					fakeSupport.ProcessNormalMsgReturns(0, msgprocessor.ErrChannelDoesNotExist)
+				})
+
+				It("returns the error and a not found status", func() {
+					err := handler.Handle(fakeABServer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeABServer.SendCallCount()).To(Equal(1))
+					Expect(proto.Equal(
+						fakeABServer.SendArgsForCall(0),
+						&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND, Info: msgprocessor.ErrChannelDoesNotExist.Error()},
+					)).To(BeTrue())
+				})
+			})
+
+			Context("when the error cause is msgprocessor.ErrPermissionDenied", func() {
+				BeforeEach(func() {
+					fakeSupport.ProcessNormalMsgReturns(0, msgprocessor.ErrPermissionDenied)
+				})
+
+				It("returns the error and a not found status", func() {
+					err := handler.Handle(fakeABServer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeABServer.SendCallCount()).To(Equal(1))
+					Expect(proto.Equal(
+						fakeABServer.SendArgsForCall(0),
+						&ab.BroadcastResponse{Status: cb.Status_FORBIDDEN, Info: msgprocessor.ErrPermissionDenied.Error()},
+					)).To(BeTrue())
+				})
+			})
+		})
+
+		Context("when the message is a config message", func() {
+			var (
+				fakeConfig *cb.Envelope
+			)
+
+			BeforeEach(func() {
+				fakeConfig = &cb.Envelope{}
+
+				fakeSupportRegistrar.BroadcastChannelSupportReturns(&cb.ChannelHeader{
+					Type:      1,
+					ChannelId: "fake-channel",
+				}, true, fakeSupport, nil)
+
+				fakeSupport.ProcessConfigUpdateMsgReturns(fakeConfig, 3, nil)
+			})
+
+			It("enqueues the message as a config message to the consenter", func() {
+				err := handler.Handle(fakeABServer)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeSupport.ProcessNormalMsgCallCount()).To(Equal(0))
+				Expect(fakeSupport.ProcessConfigUpdateMsgCallCount()).To(Equal(1))
+				Expect(fakeSupport.ProcessConfigUpdateMsgArgsForCall(0)).To(Equal(fakeMsg))
+
+				Expect(fakeSupport.WaitReadyCallCount()).To(Equal(1))
+
+				Expect(fakeSupport.OrderCallCount()).To(Equal(0))
+				Expect(fakeSupport.ConfigureCallCount()).To(Equal(1))
+				configMsg, seq := fakeSupport.ConfigureArgsForCall(0)
+				Expect(configMsg).To(Equal(fakeConfig))
+				Expect(seq).To(Equal(uint64(3)))
+
+				Expect(fakeABServer.SendCallCount()).To(Equal(1))
+				Expect(proto.Equal(fakeABServer.SendArgsForCall(0), &ab.BroadcastResponse{Status: cb.Status_SUCCESS})).To(BeTrue())
+			})
+
+			Context("when the consenter is not ready for the request", func() {
+				BeforeEach(func() {
+					fakeSupport.WaitReadyReturns(fmt.Errorf("not-ready"))
+				})
+
+				It("returns the error to the client with a service unavailable status", func() {
+					err := handler.Handle(fakeABServer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeABServer.SendCallCount()).To(Equal(1))
+					Expect(proto.Equal(
+						fakeABServer.SendArgsForCall(0),
+						&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "not-ready"}),
+					).To(BeTrue())
+				})
+			})
+
+			Context("when the consenter cannot enqueue the message", func() {
+				BeforeEach(func() {
+					fakeSupport.ConfigureReturns(fmt.Errorf("consenter-error"))
+				})
+
+				It("returns the error", func() {
+					err := handler.Handle(fakeABServer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeABServer.SendCallCount()).To(Equal(1))
+					Expect(proto.Equal(
+						fakeABServer.SendArgsForCall(0),
+						&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE, Info: "consenter-error"}),
+					).To(BeTrue())
+				})
+			})
+
+			Context("when the processing of the config update fails", func() {
+				BeforeEach(func() {
+					fakeSupport.ProcessConfigUpdateMsgReturns(nil, 0, fmt.Errorf("config-processing-error"))
+				})
+
+				It("returns the error with a bad_status", func() {
+					err := handler.Handle(fakeABServer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(fakeABServer.SendCallCount()).To(Equal(1))
+					Expect(proto.Equal(
+						fakeABServer.SendArgsForCall(0),
+						&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST, Info: "config-processing-error"},
+					)).To(BeTrue())
+				})
+
+				Context("when the error cause is msgprocessor.ErrChannelDoesNotExist", func() {
+					BeforeEach(func() {
+						fakeSupport.ProcessConfigUpdateMsgReturns(nil, 0, msgprocessor.ErrChannelDoesNotExist)
+					})
+
+					It("returns the error and a not found status", func() {
+						err := handler.Handle(fakeABServer)
+						Expect(err).NotTo(HaveOccurred())
+
+						Expect(fakeABServer.SendCallCount()).To(Equal(1))
+						Expect(proto.Equal(
+							fakeABServer.SendArgsForCall(0),
+							&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND, Info: msgprocessor.ErrChannelDoesNotExist.Error()},
+						)).To(BeTrue())
+					})
+				})
+
+				Context("when the error cause is msgprocessor.ErrPermissionDenied", func() {
+					BeforeEach(func() {
+						fakeSupport.ProcessConfigUpdateMsgReturns(nil, 0, msgprocessor.ErrPermissionDenied)
+					})
+
+					It("returns the error and a not found status", func() {
+						err := handler.Handle(fakeABServer)
+						Expect(err).NotTo(HaveOccurred())
+
+						Expect(fakeABServer.SendCallCount()).To(Equal(1))
+						Expect(proto.Equal(
+							fakeABServer.SendArgsForCall(0),
+							&ab.BroadcastResponse{Status: cb.Status_FORBIDDEN, Info: msgprocessor.ErrPermissionDenied.Error()},
+						)).To(BeTrue())
+					})
+				})
+			})
+		})
 	})
-	t.Run("WrappedErr", func(t *testing.T) {
-		assert.Equal(t, cb.Status_NOT_FOUND, ClassifyError(errors.Wrap(msgprocessor.ErrChannelDoesNotExist, "A wrapped error")))
-	})
-	t.Run("DefaultBadReq", func(t *testing.T) {
-		assert.Equal(t, cb.Status_BAD_REQUEST, ClassifyError(fmt.Errorf("Foo")))
-	})
-}
-
-func TestBadChannelId(t *testing.T) {
-	mm := getMockSupportManager()
-	mm.MsgProcessorVal = &mockSupport{ProcessErr: msgprocessor.ErrChannelDoesNotExist}
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	done := make(chan struct{})
-	go func() {
-		bh.Handle(m)
-		close(done)
-	}()
-
-	m.recvChan <- nil
-	reply := <-m.sendChan
-	if reply.Status != cb.Status_NOT_FOUND {
-		t.Fatalf("Should have rejected message to a chain which does not exist")
-	}
-
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatalf("Should have terminated the stream")
-	}
-}
-
-func TestGoodConfigUpdate(t *testing.T) {
-	mm := getMockSupportManager()
-	mm.MsgProcessorIsConfig = true
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- nil
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_SUCCESS, reply.Status, "Should have allowed a good CONFIG_UPDATE")
-}
-
-func TestBadConfigUpdate(t *testing.T) {
-	mm := getMockSupportManager()
-	mm.MsgProcessorIsConfig = true
-	mm.MsgProcessorVal.ProcessErr = fmt.Errorf("Error")
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- nil
-	reply := <-m.sendChan
-	assert.NotEqual(t, cb.Status_SUCCESS, reply.Status, "Should have rejected CONFIG_UPDATE")
-}
-
-func TestGracefulShutdown(t *testing.T) {
-	bh := NewHandlerImpl(nil)
-	m := newMockB()
-	close(m.recvChan)
-	assert.NoError(t, bh.Handle(m), "Should exit normally upon EOF")
-}
-
-func TestRejected(t *testing.T) {
-	mm := &mockSupportManager{
-		MsgProcessorVal: &mockSupport{ProcessErr: fmt.Errorf("Reject")},
-	}
-	bh := NewHandlerImpl(mm)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- nil
-	reply := <-m.sendChan
-	assert.Equal(t, cb.Status_BAD_REQUEST, reply.Status, "Should have rejected CONFIG_UPDATE")
-	assert.Equal(t, mm.MsgProcessorVal.ProcessErr.Error(), reply.Info, "Should have rejected CONFIG_UPDATE")
-}
-
-func TestBadStreamRecv(t *testing.T) {
-	bh := NewHandlerImpl(nil)
-	assert.Error(t, bh.Handle(&erroneousRecvMockB{}), "Should catch unexpected stream error")
-}
-
-func TestBadStreamSend(t *testing.T) {
-	mm := getMockSupportManager()
-	bh := NewHandlerImpl(mm)
-	m := &erroneousSendMockB{recvVal: nil}
-	assert.Error(t, bh.Handle(m), "Should catch unexpected stream error")
-}
+})

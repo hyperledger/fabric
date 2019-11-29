@@ -25,7 +25,11 @@ import (
 
 // NewIssuerKey creates a new issuer key pair taking an array of attribute names
 // that will be contained in credentials certified by this issuer (a credential specification)
+// See http://eprint.iacr.org/2016/663.pdf Sec. 4.3, for references.
 func NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (*IssuerKey, error) {
+	// validate inputs
+
+	// check for duplicated attributes
 	attributeNamesMap := map[string]bool{}
 	for _, name := range AttributeNames {
 		if attributeNamesMap[name] {
@@ -38,38 +42,46 @@ func NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (*IssuerKey, error) {
 
 	// generate issuer secret key
 	ISk := RandModOrder(rng)
-	key.ISk = BigToBytes(ISk)
+	key.Isk = BigToBytes(ISk)
 
 	// generate the corresponding public key
-	key.IPk = new(IssuerPublicKey)
-	key.IPk.AttributeNames = AttributeNames
+	key.Ipk = new(IssuerPublicKey)
+	key.Ipk.AttributeNames = AttributeNames
 
 	W := GenG2.Mul(ISk)
-	key.IPk.W = Ecp2ToProto(W)
+	key.Ipk.W = Ecp2ToProto(W)
 
 	// generate bases that correspond to the attributes
-	key.IPk.HAttrs = make([]*ECP, len(AttributeNames))
+	key.Ipk.HAttrs = make([]*ECP, len(AttributeNames))
 	for i := 0; i < len(AttributeNames); i++ {
-		key.IPk.HAttrs[i] = EcpToProto(GenG1.Mul(RandModOrder(rng)))
+		key.Ipk.HAttrs[i] = EcpToProto(GenG1.Mul(RandModOrder(rng)))
 	}
 
+	// generate base for the secret key
 	HSk := GenG1.Mul(RandModOrder(rng))
-	key.IPk.HSk = EcpToProto(HSk)
+	key.Ipk.HSk = EcpToProto(HSk)
 
+	// generate base for the randomness
 	HRand := GenG1.Mul(RandModOrder(rng))
-	key.IPk.HRand = EcpToProto(HRand)
+	key.Ipk.HRand = EcpToProto(HRand)
 
 	BarG1 := GenG1.Mul(RandModOrder(rng))
-	key.IPk.BarG1 = EcpToProto(BarG1)
+	key.Ipk.BarG1 = EcpToProto(BarG1)
 
 	BarG2 := BarG1.Mul(ISk)
-	key.IPk.BarG2 = EcpToProto(BarG2)
+	key.Ipk.BarG2 = EcpToProto(BarG2)
 
-	// generate a zero-knowledge proof of knowledge (ZK PoK) of the secret key
+	// generate a zero-knowledge proof of knowledge (ZK PoK) of the secret key which
+	// is in W and BarG2.
+
+	// Sample the randomness needed for the proof
 	r := RandModOrder(rng)
-	t1 := GenG2.Mul(r)
-	t2 := BarG1.Mul(r)
 
+	// Step 1: First message (t-values)
+	t1 := GenG2.Mul(r) // t1 = g_2^r, cover W
+	t2 := BarG1.Mul(r) // t2 = (\bar g_1)^r, cover BarG2
+
+	// Step 2: Compute the Fiat-Shamir hash, forming the challenge of the ZKP.
 	proofData := make([]byte, 18*FieldBytes+3)
 	index := 0
 	index = appendBytesG2(proofData, index, t1)
@@ -80,23 +92,27 @@ func NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (*IssuerKey, error) {
 	index = appendBytesG1(proofData, index, BarG2)
 
 	proofC := HashModOrder(proofData)
-	key.IPk.ProofC = BigToBytes(proofC)
+	key.Ipk.ProofC = BigToBytes(proofC)
 
-	proofS := Modadd(FP256BN.Modmul(proofC, ISk, GroupOrder), r, GroupOrder)
-	key.IPk.ProofS = BigToBytes(proofS)
+	// Step 3: reply to the challenge message (s-values)
+	proofS := Modadd(FP256BN.Modmul(proofC, ISk, GroupOrder), r, GroupOrder) // // s = r + C \cdot ISk
+	key.Ipk.ProofS = BigToBytes(proofS)
 
-	serializedIPk, err := proto.Marshal(key.IPk)
+	// Hash the public key
+	serializedIPk, err := proto.Marshal(key.Ipk)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal issuer public key")
 	}
-	key.IPk.Hash = BigToBytes(HashModOrder(serializedIPk))
+	key.Ipk.Hash = BigToBytes(HashModOrder(serializedIPk))
 
+	// We are done
 	return key, nil
 }
 
 // Check checks that this issuer public key is valid, i.e.
 // that all components are present and a ZK proofs verifies
 func (IPk *IssuerPublicKey) Check() error {
+	// Unmarshall the public key
 	NumAttrs := len(IPk.GetAttributeNames())
 	HSk := EcpFromProto(IPk.GetHSk())
 	HRand := EcpFromProto(IPk.GetHRand())
@@ -110,6 +126,7 @@ func (IPk *IssuerPublicKey) Check() error {
 	ProofC := FP256BN.FromBytes(IPk.GetProofC())
 	ProofS := FP256BN.FromBytes(IPk.GetProofS())
 
+	// Check that the public key is well-formed
 	if NumAttrs < 0 ||
 		HSk == nil ||
 		HRand == nil ||
@@ -126,14 +143,18 @@ func (IPk *IssuerPublicKey) Check() error {
 		}
 	}
 
-	// Check Proof
+	// Verify Proof
+
+	// Recompute challenge
 	proofData := make([]byte, 18*FieldBytes+3)
 	index := 0
 
+	// Recompute t-values using s-values
 	t1 := GenG2.Mul(ProofS)
-	t1.Add(W.Mul(FP256BN.Modneg(ProofC, GroupOrder)))
+	t1.Add(W.Mul(FP256BN.Modneg(ProofC, GroupOrder))) // t1 = g_2^s \cdot W^{-C}
+
 	t2 := BarG1.Mul(ProofS)
-	t2.Add(BarG2.Mul(FP256BN.Modneg(ProofC, GroupOrder)))
+	t2.Add(BarG2.Mul(FP256BN.Modneg(ProofC, GroupOrder))) // t2 = {\bar g_1}^s \cdot {\bar g_2}^C
 
 	index = appendBytesG2(proofData, index, t1)
 	index = appendBytesG1(proofData, index, t2)
@@ -142,6 +163,7 @@ func (IPk *IssuerPublicKey) Check() error {
 	index = appendBytesG2(proofData, index, W)
 	index = appendBytesG1(proofData, index, BarG2)
 
+	// Verify that the challenge is the same
 	if *ProofC != *HashModOrder(proofData) {
 		return errors.Errorf("zero knowledge proof in public key invalid")
 	}

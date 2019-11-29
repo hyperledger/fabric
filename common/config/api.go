@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	cb "github.com/hyperledger/fabric/protos/common"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 )
 
 // Config encapsulates config (channel or resource) tree
@@ -22,7 +22,4 @@ type Config interface {
 type Manager interface {
 	// GetChannelConfig defines methods that are related to channel configuration
 	GetChannelConfig(channel string) Config
-
-	// GetResourceConfig defines methods that are related to resource configuration
-	GetResourceConfig(channel string) Config
 }

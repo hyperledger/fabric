@@ -1,20 +1,26 @@
-/*
-Copyright IBM Corp. All Rights Reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
+// Copyright IBM Corp. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 package main
 
 import (
-	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
-	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 )
 
-func newChainRequest(consensusType, creationPolicy, newChannelId string) *cb.Envelope {
-	env, err := encoder.MakeChannelCreationTransaction(newChannelId, localmsp.NewSigner(), nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile))
+func newChainRequest(
+	consensusType,
+	creationPolicy,
+	newChannelID string,
+	signer identity.SignerSerializer,
+) *cb.Envelope {
+	env, err := encoder.MakeChannelCreationTransaction(
+		newChannelID,
+		signer,
+		genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile),
+	)
 	if err != nil {
 		panic(err)
 	}

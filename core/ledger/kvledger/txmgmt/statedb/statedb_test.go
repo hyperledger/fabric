@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package statedb
@@ -20,8 +10,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPanic(t *testing.T) {
@@ -43,29 +33,29 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 
 	//Get() should return above inserted <k,v> pair
 	actualVersionedValue := batch.Get("ns1", "key1")
-	testutil.AssertEquals(t, actualVersionedValue, &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)})
+	assert.Equal(t, &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, actualVersionedValue)
 	//Exists() should return false as key2 does not exist
 	actualResult := batch.Exists("ns1", "key2")
 	expectedResult := false
-	testutil.AssertEquals(t, actualResult, expectedResult)
+	assert.Equal(t, expectedResult, actualResult)
 
 	//Exists() should return false as ns3 does not exist
 	actualResult = batch.Exists("ns3", "key2")
 	expectedResult = false
-	testutil.AssertEquals(t, actualResult, expectedResult)
+	assert.Equal(t, expectedResult, actualResult)
 
-	//Get() should return nill as key2 does not exist
+	//Get() should return nil as key2 does not exist
 	actualVersionedValue = batch.Get("ns1", "key2")
-	testutil.AssertNil(t, actualVersionedValue)
-	//Get() should return nill as ns3 does not exist
+	assert.Nil(t, actualVersionedValue)
+	//Get() should return nil as ns3 does not exist
 	actualVersionedValue = batch.Get("ns3", "key2")
-	testutil.AssertNil(t, actualVersionedValue)
+	assert.Nil(t, actualVersionedValue)
 
 	batch.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
 	//Exists() should return true as key2 exists
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
-	testutil.AssertEquals(t, actualResult, expectedResult)
+	assert.Equal(t, expectedResult, actualResult)
 
 	//GetUpdatedNamespaces should return 3 namespaces
 	batch.Put("ns2", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -73,24 +63,25 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	actualNamespaces := batch.GetUpdatedNamespaces()
 	sort.Strings(actualNamespaces)
 	expectedNamespaces := []string{"ns1", "ns2", "ns3"}
-	testutil.AssertEquals(t, actualNamespaces, expectedNamespaces)
+	assert.Equal(t, expectedNamespaces, actualNamespaces)
 
 	//GetUpdates should return two VersionedValues for the namespace ns1
 	expectedUpdates := make(map[string]*VersionedValue)
 	expectedUpdates["key1"] = &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
 	expectedUpdates["key2"] = &VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
 	actualUpdates := batch.GetUpdates("ns1")
-	testutil.AssertEquals(t, actualUpdates, expectedUpdates)
+	assert.Equal(t, expectedUpdates, actualUpdates)
 
 	actualUpdates = batch.GetUpdates("ns4")
-	testutil.AssertNil(t, actualUpdates)
+	assert.Nil(t, actualUpdates)
 
 	//Delete the above inserted <k,v> pair
 	batch.Delete("ns1", "key2", version.NewHeight(1, 2))
-	//Exists() should return false as key2 is deleted
+	//Exists() should return true after deleting key2
+	//Exists() should return true iff the key has action(Put/Delete) in this batch
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
-	testutil.AssertEquals(t, actualResult, expectedResult)
+	assert.Equal(t, expectedResult, actualResult)
 
 }
 
@@ -105,31 +96,90 @@ func TestUpdateBatchIterator(t *testing.T) {
 	batch.Put("ns2", "key4", []byte("value4"), version.NewHeight(2, 1))
 
 	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key2", "key3"), []*VersionedKV{
-		{CompositeKey{"ns1", "key2"}, VersionedValue{[]byte("value2"), version.NewHeight(1, 2)}},
+		{CompositeKey{"ns1", "key2"}, VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)}},
 	})
 
 	checkItrResults(t, batch.GetRangeScanIterator("ns2", "key0", "key8"), []*VersionedKV{
-		{CompositeKey{"ns2", "key4"}, VersionedValue{[]byte("value4"), version.NewHeight(2, 1)}},
-		{CompositeKey{"ns2", "key5"}, VersionedValue{[]byte("value5"), version.NewHeight(2, 2)}},
-		{CompositeKey{"ns2", "key6"}, VersionedValue{[]byte("value6"), version.NewHeight(2, 3)}},
+		{CompositeKey{"ns2", "key4"}, VersionedValue{[]byte("value4"), nil, version.NewHeight(2, 1)}},
+		{CompositeKey{"ns2", "key5"}, VersionedValue{[]byte("value5"), nil, version.NewHeight(2, 2)}},
+		{CompositeKey{"ns2", "key6"}, VersionedValue{[]byte("value6"), nil, version.NewHeight(2, 3)}},
 	})
 
 	checkItrResults(t, batch.GetRangeScanIterator("ns2", "", ""), []*VersionedKV{
-		{CompositeKey{"ns2", "key4"}, VersionedValue{[]byte("value4"), version.NewHeight(2, 1)}},
-		{CompositeKey{"ns2", "key5"}, VersionedValue{[]byte("value5"), version.NewHeight(2, 2)}},
-		{CompositeKey{"ns2", "key6"}, VersionedValue{[]byte("value6"), version.NewHeight(2, 3)}},
+		{CompositeKey{"ns2", "key4"}, VersionedValue{[]byte("value4"), nil, version.NewHeight(2, 1)}},
+		{CompositeKey{"ns2", "key5"}, VersionedValue{[]byte("value5"), nil, version.NewHeight(2, 2)}},
+		{CompositeKey{"ns2", "key6"}, VersionedValue{[]byte("value6"), nil, version.NewHeight(2, 3)}},
 	})
 
 	checkItrResults(t, batch.GetRangeScanIterator("non-existing-ns", "", ""), nil)
 }
 
-func checkItrResults(t *testing.T, itr ResultsIterator, expectedResults []*VersionedKV) {
+func checkItrResults(t *testing.T, itr QueryResultsIterator, expectedResults []*VersionedKV) {
 	for i := 0; i < len(expectedResults); i++ {
 		res, _ := itr.Next()
-		testutil.AssertEquals(t, res, expectedResults[i])
+		assert.Equal(t, expectedResults[i], res)
 	}
 	lastRes, err := itr.Next()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertNil(t, lastRes)
+	assert.NoError(t, err)
+	assert.Nil(t, lastRes)
 	itr.Close()
+}
+
+// TestPaginatedRangeValidation tests queries with pagination
+func TestPaginatedRangeValidation(t *testing.T) {
+
+	queryOptions := make(map[string]interface{})
+	queryOptions["limit"] = int32(10)
+
+	err := ValidateRangeMetadata(queryOptions)
+	assert.NoError(t, err, "An error was thrown for a valid option")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["limit"] = float32(10.2)
+
+	err = ValidateRangeMetadata(queryOptions)
+	assert.Error(t, err, "An should have been thrown for an invalid option")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["limit"] = "10"
+
+	err = ValidateRangeMetadata(queryOptions)
+	assert.Error(t, err, "An should have been thrown for an invalid option")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["limit1"] = int32(10)
+
+	err = ValidateRangeMetadata(queryOptions)
+	assert.Error(t, err, "An should have been thrown for an invalid option")
+
+}
+
+func TestMergeUpdateBatch(t *testing.T) {
+	batch1 := NewUpdateBatch()
+	batch1.Put("ns1", "key1", []byte("batch1_value1"), version.NewHeight(1, 1))
+	batch1.Put("ns1", "key2", []byte("batch1_value2"), version.NewHeight(2, 2))
+	batch1.Put("ns1", "key3", []byte("batch1_value3"), version.NewHeight(3, 3))
+
+	batch2 := NewUpdateBatch()
+	batch2.ContainsPostOrderWrites = true
+	batch2.Put("ns1", "key1", []byte("batch2_value1"), version.NewHeight(4, 4)) // overwrite key1 with new value
+	batch2.Delete("ns1", "key2", version.NewHeight(5, 5))                       // overwrite key2 with deletion
+	batch2.Put("ns1", "key4", []byte("batch2_value4"), version.NewHeight(6, 6)) // new key only in batch2
+	batch2.Delete("ns1", "key5", version.NewHeight(7, 7))                       // delete key only in batch2
+	batch2.Put("ns2", "key6", []byte("batch2_value6"), version.NewHeight(8, 8)) // namespace only in batch2
+
+	batch1.Merge(batch2)
+
+	// prepare final expected batch by writing all updates in the above order
+	expectedBatch := NewUpdateBatch()
+	expectedBatch.ContainsPostOrderWrites = true
+	expectedBatch.Put("ns1", "key1", []byte("batch1_value1"), version.NewHeight(1, 1))
+	expectedBatch.Put("ns1", "key2", []byte("batch1_value2"), version.NewHeight(2, 2))
+	expectedBatch.Put("ns1", "key3", []byte("batch1_value3"), version.NewHeight(3, 3))
+	expectedBatch.Put("ns1", "key1", []byte("batch2_value1"), version.NewHeight(4, 4))
+	expectedBatch.Delete("ns1", "key2", version.NewHeight(5, 5))
+	expectedBatch.Put("ns1", "key4", []byte("batch2_value4"), version.NewHeight(6, 6))
+	expectedBatch.Delete("ns1", "key5", version.NewHeight(7, 7))
+	expectedBatch.Put("ns2", "key6", []byte("batch2_value6"), version.NewHeight(8, 8))
+	assert.Equal(t, expectedBatch, batch1)
 }

@@ -13,36 +13,38 @@ import (
 	"strings"
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/capabilities"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-
 	"github.com/pkg/errors"
 )
 
 const (
-	// OrdererGroupKey is the group name for the orderer config
+	// OrdererGroupKey is the group name for the orderer config.
 	OrdererGroupKey = "Orderer"
 )
 
 const (
-	// ConsensusTypeKey is the cb.ConfigItem type key name for the ConsensusType message
+	// ConsensusTypeKey is the cb.ConfigItem type key name for the ConsensusType message.
 	ConsensusTypeKey = "ConsensusType"
 
-	// BatchSizeKey is the cb.ConfigItem type key name for the BatchSize message
+	// BatchSizeKey is the cb.ConfigItem type key name for the BatchSize message.
 	BatchSizeKey = "BatchSize"
 
-	// BatchTimeoutKey is the cb.ConfigItem type key name for the BatchTimeout message
+	// BatchTimeoutKey is the cb.ConfigItem type key name for the BatchTimeout message.
 	BatchTimeoutKey = "BatchTimeout"
 
-	// ChannelRestrictions is the key name for the ChannelRestrictions message
+	// ChannelRestrictionsKey is the key name for the ChannelRestrictions message.
 	ChannelRestrictionsKey = "ChannelRestrictions"
 
-	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message
+	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message.
 	KafkaBrokersKey = "KafkaBrokers"
+
+	// EndpointsKey is the cb.COnfigValue key name for the Endpoints message in the OrdererOrgGroup.
+	EndpointsKey = "Endpoints"
 )
 
-// OrdererProtos is used as the source of the OrdererConfig
+// OrdererProtos is used as the source of the OrdererConfig.
 type OrdererProtos struct {
 	ConsensusType       *ab.ConsensusType
 	BatchSize           *ab.BatchSize
@@ -52,19 +54,76 @@ type OrdererProtos struct {
 	Capabilities        *cb.Capabilities
 }
 
-// OrdererConfig holds the orderer configuration information
+// OrdererConfig holds the orderer configuration information.
 type OrdererConfig struct {
 	protos *OrdererProtos
-	orgs   map[string]Org
+	orgs   map[string]OrdererOrg
 
 	batchTimeout time.Duration
 }
 
-// NewOrdererConfig creates a new instance of the orderer config
-func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*OrdererConfig, error) {
+// OrdererOrgProtos are deserialized from the Orderer org config values
+type OrdererOrgProtos struct {
+	Endpoints *cb.OrdererAddresses
+}
+
+// OrdererOrgConfig defines the configuration for an orderer org
+type OrdererOrgConfig struct {
+	*OrganizationConfig
+	protos *OrdererOrgProtos
+	name   string
+}
+
+// Endpoints returns the set of addresses this ordering org exposes as orderers
+func (oc *OrdererOrgConfig) Endpoints() []string {
+	return oc.protos.Endpoints.Addresses
+}
+
+// NewOrdererOrgConfig returns an orderer org config built from the given ConfigGroup.
+func NewOrdererOrgConfig(orgName string, orgGroup *cb.ConfigGroup, mspConfigHandler *MSPConfigHandler, channelCapabilities ChannelCapabilities) (*OrdererOrgConfig, error) {
+	if len(orgGroup.Groups) > 0 {
+		return nil, fmt.Errorf("OrdererOrg config does not allow sub-groups")
+	}
+
+	if !channelCapabilities.OrgSpecificOrdererEndpoints() {
+		if _, ok := orgGroup.Values[EndpointsKey]; ok {
+			return nil, errors.Errorf("Orderer Org %s cannot contain endpoints value until V1_4_2+ capabilities have been enabled", orgName)
+		}
+	}
+
+	protos := &OrdererOrgProtos{}
+	orgProtos := &OrganizationProtos{}
+
+	if err := DeserializeProtoValuesFromGroup(orgGroup, protos, orgProtos); err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize values")
+	}
+
+	ooc := &OrdererOrgConfig{
+		name:   orgName,
+		protos: protos,
+		OrganizationConfig: &OrganizationConfig{
+			name:             orgName,
+			protos:           orgProtos,
+			mspConfigHandler: mspConfigHandler,
+		},
+	}
+
+	if err := ooc.Validate(); err != nil {
+		return nil, err
+	}
+
+	return ooc, nil
+}
+
+func (ooc *OrdererOrgConfig) Validate() error {
+	return ooc.OrganizationConfig.Validate()
+}
+
+// NewOrdererConfig creates a new instance of the orderer config.
+func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler, channelCapabilities ChannelCapabilities) (*OrdererConfig, error) {
 	oc := &OrdererConfig{
 		protos: &OrdererProtos{},
-		orgs:   make(map[string]Org),
+		orgs:   make(map[string]OrdererOrg),
 	}
 
 	if err := DeserializeProtoValuesFromGroup(ordererGroup, oc.protos); err != nil {
@@ -77,46 +136,56 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler)
 
 	for orgName, orgGroup := range ordererGroup.Groups {
 		var err error
-		if oc.orgs[orgName], err = NewOrganizationConfig(orgName, orgGroup, mspConfig); err != nil {
+		if oc.orgs[orgName], err = NewOrdererOrgConfig(orgName, orgGroup, mspConfig, channelCapabilities); err != nil {
 			return nil, err
 		}
 	}
 	return oc, nil
 }
 
-// ConsensusType returns the configured consensus type
+// ConsensusType returns the configured consensus type.
 func (oc *OrdererConfig) ConsensusType() string {
 	return oc.protos.ConsensusType.Type
 }
 
-// BatchSize returns the maximum number of messages to include in a block
+// ConsensusMetadata returns the metadata associated with the consensus type.
+func (oc *OrdererConfig) ConsensusMetadata() []byte {
+	return oc.protos.ConsensusType.Metadata
+}
+
+// ConsensusState return the consensus type state.
+func (oc *OrdererConfig) ConsensusState() ab.ConsensusType_State {
+	return oc.protos.ConsensusType.State
+}
+
+// BatchSize returns the maximum number of messages to include in a block.
 func (oc *OrdererConfig) BatchSize() *ab.BatchSize {
 	return oc.protos.BatchSize
 }
 
-// BatchTimeout returns the amount of time to wait before creating a batch
+// BatchTimeout returns the amount of time to wait before creating a batch.
 func (oc *OrdererConfig) BatchTimeout() time.Duration {
 	return oc.batchTimeout
 }
 
 // KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
 // Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
-// used for ordering
+// used for ordering.
 func (oc *OrdererConfig) KafkaBrokers() []string {
 	return oc.protos.KafkaBrokers.Brokers
 }
 
-// MaxChannelsCount returns the maximum count of channels this orderer supports
+// MaxChannelsCount returns the maximum count of channels this orderer supports.
 func (oc *OrdererConfig) MaxChannelsCount() uint64 {
 	return oc.protos.ChannelRestrictions.MaxCount
 }
 
-// Organizations returns a map of the orgs in the channel
-func (oc *OrdererConfig) Organizations() map[string]Org {
+// Organizations returns a map of the orgs in the channel.
+func (oc *OrdererConfig) Organizations() map[string]OrdererOrg {
 	return oc.orgs
 }
 
-// Capabilities returns the capabilities the ordering network has for this channel
+// Capabilities returns the capabilities the ordering network has for this channel.
 func (oc *OrdererConfig) Capabilities() OrdererCapabilities {
 	return capabilities.NewOrdererProvider(oc.protos.Capabilities.Capabilities)
 }

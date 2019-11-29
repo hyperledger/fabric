@@ -24,9 +24,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/tools/protolator/testprotos"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/tools/protolator/testprotos"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -244,4 +243,44 @@ func TestJSONUnmarshalMaxUint32(t *testing.T) {
 	m, err := jsonToMap([]byte(jsonString))
 	assert.NoError(t, err)
 	assert.IsType(t, json.Number(""), m[fieldName])
+}
+
+func TestMostlyDeterministicMarshal(t *testing.T) {
+	multiKeyMap := &testprotos.SimpleMsg{
+		MapField: map[string]string{
+			"a": "b",
+			"c": "d",
+			"e": "f",
+			"g": "h",
+			"i": "j",
+			"k": "l",
+			"m": "n",
+			"o": "p",
+			"q": "r",
+			"s": "t",
+			"u": "v",
+			"w": "x",
+			"y": "z",
+		},
+	}
+
+	result, err := MostlyDeterministicMarshal(multiKeyMap)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	// Golang map marshaling is non-deterministic by default, by marshaling
+	// the same message with an embedded map multiple times, we should
+	// detect a mismatch if the default behavior persists.  Even with 3 map
+	// elements, there is usually a mismatch within 2-3 iterations, so 13
+	// entries and 10 iterations seems like a reasonable check.
+	for i := 0; i < 10; i++ {
+		newResult, err := MostlyDeterministicMarshal(multiKeyMap)
+		assert.NoError(t, err)
+		assert.Equal(t, result, newResult)
+	}
+
+	unmarshaled := &testprotos.SimpleMsg{}
+	err = proto.Unmarshal(result, unmarshaled)
+	assert.NoError(t, err)
+	assert.True(t, proto.Equal(unmarshaled, multiKeyMap))
 }

@@ -1,0 +1,17 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage/msgs";
+
+package msgs;
+
+message txIDIndexValProto {
+    bytes blk_location = 1;
+    bytes tx_location = 2;
+    int32 tx_validation_code = 3;
+}

@@ -280,7 +280,7 @@ Visual Studio).
                   "anchor_peers": [
                     {
                       "host": "peer0.org2.example.com",
-                      "port": 7051
+                      "port": 9051
                     }
                   ]
                 },
@@ -794,7 +794,7 @@ pre-production environments with weak consortium `ChannelCreation` policies.
 mod_policy for the Application group of new channels for the consortium it is defined in.
 The signature set attached to the channel creation request will be checked against
 the instantiation of this policy in the new channel to ensure that the channel
-creation is authorized. Note that this config vzlue is only set in the orderer
+creation is authorized. Note that this config value is only set in the orderer
 system channel.
 
   ```
@@ -830,7 +830,7 @@ each Org.
   ```
   {
     "host": "peer0.org2.example.com",
-      "port": 7051
+      "port": 9051
   }
   ```
 

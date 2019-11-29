@@ -16,9 +16,8 @@ limitations under the License.
 package sw
 
 import (
-	"errors"
-
 	"crypto/sha256"
+	"errors"
 
 	"github.com/hyperledger/fabric/bccsp"
 )

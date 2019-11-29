@@ -7,18 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
+	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
-	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 // Used for capturing metrics -- see processMessagesToBlocks
@@ -44,11 +47,8 @@ func newChain(
 	lastResubmittedConfigOffset int64,
 ) (*chainImpl, error) {
 	lastCutBlockNumber := getLastCutBlockNumber(support.Height())
-	logger.Infof("[channel: %s] Starting chain with last persisted offset %d and last recorded block %d",
-		support.ChainID(), lastOffsetPersisted, lastCutBlockNumber)
-
-	errorChan := make(chan struct{})
-	close(errorChan) // We need this closed when starting up
+	logger.Infof("[channel: %s] Starting chain with last persisted offset %d and last recorded block [%d]",
+		support.ChannelID(), lastOffsetPersisted, lastCutBlockNumber)
 
 	doneReprocessingMsgInFlight := make(chan struct{})
 	// In either one of following cases, we should unblock ingress messages:
@@ -63,20 +63,29 @@ func newChain(
 		close(doneReprocessingMsgInFlight)
 	}
 
+	consenter.Metrics().LastOffsetPersisted.With("channel", support.ChannelID()).Set(float64(lastOffsetPersisted))
+
 	return &chainImpl{
 		consenter:                   consenter,
 		ConsenterSupport:            support,
-		channel:                     newChannel(support.ChainID(), defaultPartition),
+		channel:                     newChannel(support.ChannelID(), defaultPartition),
 		lastOffsetPersisted:         lastOffsetPersisted,
 		lastOriginalOffsetProcessed: lastOriginalOffsetProcessed,
 		lastResubmittedConfigOffset: lastResubmittedConfigOffset,
 		lastCutBlockNumber:          lastCutBlockNumber,
 
-		errorChan:                   errorChan,
 		haltChan:                    make(chan struct{}),
 		startChan:                   make(chan struct{}),
 		doneReprocessingMsgInFlight: doneReprocessingMsgInFlight,
 	}, nil
+}
+
+//go:generate counterfeiter -o mock/sync_producer.go --fake-name SyncProducer . syncProducer
+
+type syncProducer interface {
+	SendMessage(msg *sarama.ProducerMessage) (partition int32, offset int64, err error)
+	SendMessages(msgs []*sarama.ProducerMessage) error
+	Close() error
 }
 
 type chainImpl struct {
@@ -89,10 +98,12 @@ type chainImpl struct {
 	lastResubmittedConfigOffset int64
 	lastCutBlockNumber          uint64
 
-	producer        sarama.SyncProducer
+	producer        syncProducer
 	parentConsumer  sarama.Consumer
 	channelConsumer sarama.PartitionConsumer
 
+	// mutex used when changing the doneReprocessingMsgInFlight
+	doneReprocessingMutex sync.Mutex
 	// notification that there are in-flight messages need to wait for
 	doneReprocessingMsgInFlight chan struct{}
 
@@ -109,12 +120,22 @@ type chainImpl struct {
 	startChan chan struct{}
 	// timer controls the batch timeout of cutting pending messages into block
 	timer <-chan time.Time
+
+	replicaIDs []int32
 }
 
 // Errored returns a channel which will close when a partition consumer error
 // has occurred. Checked by Deliver().
 func (chain *chainImpl) Errored() <-chan struct{} {
-	return chain.errorChan
+	select {
+	case <-chain.startChan:
+		return chain.errorChan
+	default:
+		// While the consenter is starting, always return an error
+		dummyError := make(chan struct{})
+		close(dummyError)
+		return dummyError
+	}
 }
 
 // Start allocates the necessary resources for staying up to date with this
@@ -135,21 +156,21 @@ func (chain *chainImpl) Halt() {
 		select {
 		case <-chain.haltChan:
 			// This construct is useful because it allows Halt() to be called
-			// multiple times (by a single thread) w/o panicking. Recal that a
+			// multiple times (by a single thread) w/o panicking. Recall that a
 			// receive from a closed channel returns (the zero value) immediately.
-			logger.Warningf("[channel: %s] Halting of chain requested again", chain.ChainID())
+			logger.Warningf("[channel: %s] Halting of chain requested again", chain.ChannelID())
 		default:
-			logger.Criticalf("[channel: %s] Halting of chain requested", chain.ChainID())
+			logger.Criticalf("[channel: %s] Halting of chain requested", chain.ChannelID())
 			// stat shutdown of chain
 			close(chain.haltChan)
 			// wait for processing of messages to blocks to finish shutting down
 			<-chain.doneProcessingMessagesToBlocks
 			// close the kafka producer and the consumer
 			chain.closeKafkaObjects()
-			logger.Debugf("[channel: %s] Closed the haltChan", chain.ChainID())
+			logger.Debugf("[channel: %s] Closed the haltChan", chain.ChannelID())
 		}
 	default:
-		logger.Warningf("[channel: %s] Waiting for chain to finish starting before halting", chain.ChainID())
+		logger.Warningf("[channel: %s] Waiting for chain to finish starting before halting", chain.ChannelID())
 		<-chain.startChan
 		chain.Halt()
 	}
@@ -161,13 +182,30 @@ func (chain *chainImpl) WaitReady() error {
 		select {
 		case <-chain.haltChan: // The chain has been halted, stop here
 			return fmt.Errorf("consenter for this channel has been halted")
-			// Block waiting for all re-submitted messages to be reprocessed
-		case <-chain.doneReprocessingMsgInFlight:
+		case <-chain.doneReprocessing(): // Block waiting for all re-submitted messages to be reprocessed
 			return nil
 		}
 	default: // Not ready yet
-		return fmt.Errorf("will not enqueue, consenter for this channel hasn't started yet")
+		return fmt.Errorf("backing Kafka cluster has not completed booting; try again later")
 	}
+}
+
+func (chain *chainImpl) doneReprocessing() <-chan struct{} {
+	chain.doneReprocessingMutex.Lock()
+	defer chain.doneReprocessingMutex.Unlock()
+	return chain.doneReprocessingMsgInFlight
+}
+
+func (chain *chainImpl) reprocessConfigComplete() {
+	chain.doneReprocessingMutex.Lock()
+	defer chain.doneReprocessingMutex.Unlock()
+	close(chain.doneReprocessingMsgInFlight)
+}
+
+func (chain *chainImpl) reprocessConfigPending() {
+	chain.doneReprocessingMutex.Lock()
+	defer chain.doneReprocessingMutex.Unlock()
+	chain.doneReprocessingMsgInFlight = make(chan struct{})
 }
 
 // Implements the consensus.Chain interface. Called by Broadcast().
@@ -176,12 +214,12 @@ func (chain *chainImpl) Order(env *cb.Envelope, configSeq uint64) error {
 }
 
 func (chain *chainImpl) order(env *cb.Envelope, configSeq uint64, originalOffset int64) error {
-	marshaledEnv, err := utils.Marshal(env)
+	marshaledEnv, err := protoutil.Marshal(env)
 	if err != nil {
-		return fmt.Errorf("cannot enqueue, unable to marshal envelope because = %s", err)
+		return errors.Errorf("cannot enqueue, unable to marshal envelope: %s", err)
 	}
 	if !chain.enqueue(newNormalMessage(marshaledEnv, configSeq, originalOffset)) {
-		return fmt.Errorf("cannot enqueue")
+		return errors.Errorf("cannot enqueue")
 	}
 	return nil
 }
@@ -192,7 +230,7 @@ func (chain *chainImpl) Configure(config *cb.Envelope, configSeq uint64) error {
 }
 
 func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, originalOffset int64) error {
-	marshaledConfig, err := utils.Marshal(config)
+	marshaledConfig, err := protoutil.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("cannot enqueue, unable to marshal config because %s", err)
 	}
@@ -202,45 +240,69 @@ func (chain *chainImpl) configure(config *cb.Envelope, configSeq uint64, origina
 	return nil
 }
 
-// enqueue accepts a message and returns true on acceptance, or false otheriwse.
+// enqueue accepts a message and returns true on acceptance, or false otherwise.
 func (chain *chainImpl) enqueue(kafkaMsg *ab.KafkaMessage) bool {
-	logger.Debugf("[channel: %s] Enqueueing envelope...", chain.ChainID())
+	logger.Debugf("[channel: %s] Enqueueing envelope...", chain.ChannelID())
 	select {
 	case <-chain.startChan: // The Start phase has completed
 		select {
 		case <-chain.haltChan: // The chain has been halted, stop here
-			logger.Warningf("[channel: %s] consenter for this channel has been halted", chain.ChainID())
+			logger.Warningf("[channel: %s] consenter for this channel has been halted", chain.ChannelID())
 			return false
 		default: // The post path
-			payload, err := utils.Marshal(kafkaMsg)
+			payload, err := protoutil.Marshal(kafkaMsg)
 			if err != nil {
-				logger.Errorf("[channel: %s] unable to marshal Kafka message because = %s", chain.ChainID(), err)
+				logger.Errorf("[channel: %s] unable to marshal Kafka message because = %s", chain.ChannelID(), err)
 				return false
 			}
 			message := newProducerMessage(chain.channel, payload)
 			if _, _, err = chain.producer.SendMessage(message); err != nil {
-				logger.Errorf("[channel: %s] cannot enqueue envelope because = %s", chain.ChainID(), err)
+				logger.Errorf("[channel: %s] cannot enqueue envelope because = %s", chain.ChannelID(), err)
 				return false
 			}
-			logger.Debugf("[channel: %s] Envelope enqueued successfully", chain.ChainID())
+			logger.Debugf("[channel: %s] Envelope enqueued successfully", chain.ChannelID())
 			return true
 		}
 	default: // Not ready yet
-		logger.Warningf("[channel: %s] Will not enqueue, consenter for this channel hasn't started yet", chain.ChainID())
+		logger.Warningf("[channel: %s] Will not enqueue, consenter for this channel hasn't started yet", chain.ChannelID())
 		return false
 	}
+}
+
+func (chain *chainImpl) HealthCheck(ctx context.Context) error {
+	var err error
+
+	payload := protoutil.MarshalOrPanic(newConnectMessage())
+	message := newProducerMessage(chain.channel, payload)
+
+	_, _, err = chain.producer.SendMessage(message)
+	if err != nil {
+		logger.Warnf("[channel %s] Cannot post CONNECT message = %s", chain.channel.topic(), err)
+		if err == sarama.ErrNotEnoughReplicas {
+			errMsg := fmt.Sprintf("[replica ids: %d]", chain.replicaIDs)
+			return errors.WithMessage(err, errMsg)
+		}
+	}
+	return nil
 }
 
 // Called by Start().
 func startThread(chain *chainImpl) {
 	var err error
 
+	// Create topic if it does not exist (requires Kafka v0.10.1.0)
+	err = setupTopicForChannel(chain.consenter.retryOptions(), chain.haltChan, chain.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.consenter.topicDetail(), chain.channel)
+	if err != nil {
+		// log for now and fallback to auto create topics setting for broker
+		logger.Infof("[channel: %s]: failed to create Kafka topic = %s", chain.channel.topic(), err)
+	}
+
 	// Set up the producer
 	chain.producer, err = setupProducerForChannel(chain.consenter.retryOptions(), chain.haltChan, chain.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.channel)
 	if err != nil {
 		logger.Panicf("[channel: %s] Cannot set up producer = %s", chain.channel.topic(), err)
 	}
-	logger.Infof("[channel: %s] Producer set up successfully", chain.ChainID())
+	logger.Infof("[channel: %s] Producer set up successfully", chain.ChannelID())
 
 	// Have the producer post the CONNECT message
 	if err = sendConnectMessage(chain.consenter.retryOptions(), chain.haltChan, chain.producer, chain.channel); err != nil {
@@ -262,10 +324,15 @@ func startThread(chain *chainImpl) {
 	}
 	logger.Infof("[channel: %s] Channel consumer set up successfully", chain.channel.topic())
 
+	chain.replicaIDs, err = getHealthyClusterReplicaInfo(chain.consenter.retryOptions(), chain.haltChan, chain.SharedConfig().KafkaBrokers(), chain.consenter.brokerConfig(), chain.channel)
+	if err != nil {
+		logger.Panicf("[channel: %s] failed to get replica IDs = %s", chain.channel.topic(), err)
+	}
+
 	chain.doneProcessingMessagesToBlocks = make(chan struct{})
 
-	close(chain.startChan)                // Broadcast requests will now go through
 	chain.errorChan = make(chan struct{}) // Deliver requests will also go through
+	close(chain.startChan)                // Broadcast requests will now go through
 
 	logger.Infof("[channel: %s] Start phase completed successfully", chain.channel.topic())
 
@@ -300,11 +367,11 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 	for {
 		select {
 		case <-chain.haltChan:
-			logger.Warningf("[channel: %s] Consenter for channel exiting", chain.ChainID())
+			logger.Warningf("[channel: %s] Consenter for channel exiting", chain.ChannelID())
 			counts[indexExitChanPass]++
 			return counts, nil
 		case kafkaErr := <-chain.channelConsumer.Errors():
-			logger.Errorf("[channel: %s] Error during consumption: %s", chain.ChainID(), kafkaErr)
+			logger.Errorf("[channel: %s] Error during consumption: %s", chain.ChannelID(), kafkaErr)
 			counts[indexRecvError]++
 			select {
 			case <-chain.errorChan: // If already closed, don't do anything
@@ -313,7 +380,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 				switch kafkaErr.Err {
 				case sarama.ErrOffsetOutOfRange:
 					// the kafka consumer will auto retry for all errors except for ErrOffsetOutOfRange
-					logger.Errorf("[channel: %s] Unrecoverable error during consumption: %s", chain.ChainID(), kafkaErr)
+					logger.Errorf("[channel: %s] Unrecoverable error during consumption: %s", chain.ChannelID(), kafkaErr)
 					close(chain.errorChan)
 				default:
 					if topicPartitionSubscriptionResumed == nil {
@@ -327,7 +394,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			}
 			select {
 			case <-chain.errorChan: // we are not ignoring the error
-				logger.Warningf("[channel: %s] Closed the errorChan", chain.ChainID())
+				logger.Warningf("[channel: %s] Closed the errorChan", chain.ChannelID())
 				// This covers the edge case where (1) a consumption error has
 				// closed the errorChan and thus rendered the chain unavailable to
 				// deliver clients, (2) we're already at the newest offset, and (3)
@@ -337,7 +404,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 				// the emission of a CONNECT message. TODO Consider rate limiting
 				go sendConnectMessage(chain.consenter.retryOptions(), chain.haltChan, chain.producer, chain.channel)
 			default: // we are ignoring the error
-				logger.Warningf("[channel: %s] Deliver sessions will be dropped if consumption errors continue.", chain.ChainID())
+				logger.Warningf("[channel: %s] Deliver sessions will be dropped if consumption errors continue.", chain.ChannelID())
 			}
 		case <-topicPartitionSubscriptionResumed:
 			// stop listening for subscription message
@@ -349,7 +416,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			if !deliverSessionTimer.Stop() {
 				<-deliverSessionTimer.C
 			}
-			logger.Warningf("[channel: %s] Consumption will resume.", chain.ChainID())
+			logger.Warningf("[channel: %s] Consumption will resume.", chain.ChannelID())
 
 		case <-deliverSessionTimedOut:
 			// stop listening for subscription message
@@ -358,14 +425,14 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			topicPartitionSubscriptionResumed = nil
 
 			close(chain.errorChan)
-			logger.Warningf("[channel: %s] Closed the errorChan", chain.ChainID())
+			logger.Warningf("[channel: %s] Closed the errorChan", chain.ChannelID())
 
 			// make chain available again via CONNECT message trigger
 			go sendConnectMessage(chain.consenter.retryOptions(), chain.haltChan, chain.producer, chain.channel)
 
 		case in, ok := <-chain.channelConsumer.Messages():
 			if !ok {
-				logger.Criticalf("[channel: %s] Kafka consumer closed.", chain.ChainID())
+				logger.Criticalf("[channel: %s] Kafka consumer closed.", chain.ChannelID())
 				return counts, nil
 			}
 
@@ -385,33 +452,33 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			select {
 			case <-chain.errorChan: // If this channel was closed...
 				chain.errorChan = make(chan struct{}) // ...make a new one.
-				logger.Infof("[channel: %s] Marked consenter as available again", chain.ChainID())
+				logger.Infof("[channel: %s] Marked consenter as available again", chain.ChannelID())
 			default:
 			}
 			if err := proto.Unmarshal(in.Value, msg); err != nil {
 				// This shouldn't happen, it should be filtered at ingress
-				logger.Criticalf("[channel: %s] Unable to unmarshal consumed message = %s", chain.ChainID(), err)
+				logger.Criticalf("[channel: %s] Unable to unmarshal consumed message = %s", chain.ChannelID(), err)
 				counts[indexUnmarshalError]++
 				continue
 			} else {
-				logger.Debugf("[channel: %s] Successfully unmarshalled consumed message, offset is %d. Inspecting type...", chain.ChainID(), in.Offset)
+				logger.Debugf("[channel: %s] Successfully unmarshalled consumed message, offset is %d. Inspecting type...", chain.ChannelID(), in.Offset)
 				counts[indexRecvPass]++
 			}
 			switch msg.Type.(type) {
 			case *ab.KafkaMessage_Connect:
-				_ = chain.processConnect(chain.ChainID())
+				_ = chain.processConnect(chain.ChannelID())
 				counts[indexProcessConnectPass]++
 			case *ab.KafkaMessage_TimeToCut:
 				if err := chain.processTimeToCut(msg.GetTimeToCut(), in.Offset); err != nil {
-					logger.Warningf("[channel: %s] %s", chain.ChainID(), err)
-					logger.Criticalf("[channel: %s] Consenter for channel exiting", chain.ChainID())
+					logger.Warningf("[channel: %s] %s", chain.ChannelID(), err)
+					logger.Criticalf("[channel: %s] Consenter for channel exiting", chain.ChannelID())
 					counts[indexProcessTimeToCutError]++
 					return counts, err // TODO Revisit whether we should indeed stop processing the chain at this point
 				}
 				counts[indexProcessTimeToCutPass]++
 			case *ab.KafkaMessage_Regular:
 				if err := chain.processRegular(msg.GetRegular(), in.Offset); err != nil {
-					logger.Warningf("[channel: %s] Error when processing incoming message of type REGULAR = %s", chain.ChainID(), err)
+					logger.Warningf("[channel: %s] Error when processing incoming message of type REGULAR = %s", chain.ChannelID(), err)
 					counts[indexProcessRegularError]++
 				} else {
 					counts[indexProcessRegularPass]++
@@ -419,7 +486,7 @@ func (chain *chainImpl) processMessagesToBlocks() ([]uint64, error) {
 			}
 		case <-chain.timer:
 			if err := sendTimeToCut(chain.producer, chain.channel, chain.lastCutBlockNumber+1, &chain.timer); err != nil {
-				logger.Errorf("[channel: %s] cannot post time-to-cut message = %s", chain.ChainID(), err)
+				logger.Errorf("[channel: %s] cannot post time-to-cut message = %s", chain.ChannelID(), err)
 				// Do not return though
 				counts[indexSendTimeToCutError]++
 			} else {
@@ -434,26 +501,26 @@ func (chain *chainImpl) closeKafkaObjects() []error {
 
 	err := chain.channelConsumer.Close()
 	if err != nil {
-		logger.Errorf("[channel: %s] could not close channelConsumer cleanly = %s", chain.ChainID(), err)
+		logger.Errorf("[channel: %s] could not close channelConsumer cleanly = %s", chain.ChannelID(), err)
 		errs = append(errs, err)
 	} else {
-		logger.Debugf("[channel: %s] Closed the channel consumer", chain.ChainID())
+		logger.Debugf("[channel: %s] Closed the channel consumer", chain.ChannelID())
 	}
 
 	err = chain.parentConsumer.Close()
 	if err != nil {
-		logger.Errorf("[channel: %s] could not close parentConsumer cleanly = %s", chain.ChainID(), err)
+		logger.Errorf("[channel: %s] could not close parentConsumer cleanly = %s", chain.ChannelID(), err)
 		errs = append(errs, err)
 	} else {
-		logger.Debugf("[channel: %s] Closed the parent consumer", chain.ChainID())
+		logger.Debugf("[channel: %s] Closed the parent consumer", chain.ChannelID())
 	}
 
 	err = chain.producer.Close()
 	if err != nil {
-		logger.Errorf("[channel: %s] could not close producer cleanly = %s", chain.ChainID(), err)
+		logger.Errorf("[channel: %s] could not close producer cleanly = %s", chain.ChannelID(), err)
 		errs = append(errs, err)
 	} else {
-		logger.Debugf("[channel: %s] Closed the producer", chain.ChainID())
+		logger.Debugf("[channel: %s] Closed the producer", chain.ChannelID())
 	}
 
 	return errs
@@ -549,18 +616,27 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	//   Kafka message, so that `lastOriginalOffsetProcessed` is advanced
 	commitNormalMsg := func(message *cb.Envelope, newOffset int64) {
 		batches, pending := chain.BlockCutter().Ordered(message)
-		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, pending = %v", chain.ChainID(), len(batches), pending)
+		logger.Debugf("[channel: %s] Ordering results: items in batch = %d, pending = %v", chain.ChannelID(), len(batches), pending)
+
+		switch {
+		case chain.timer != nil && !pending:
+			// Timer is already running but there are no messages pending, stop the timer
+			chain.timer = nil
+		case chain.timer == nil && pending:
+			// Timer is not already running and there are messages pending, so start it
+			chain.timer = time.After(chain.SharedConfig().BatchTimeout())
+			logger.Debugf("[channel: %s] Just began %s batch timer", chain.ChannelID(), chain.SharedConfig().BatchTimeout().String())
+		default:
+			// Do nothing when:
+			// 1. Timer is already running and there are messages pending
+			// 2. Timer is not set and there are no messages pending
+		}
+
 		if len(batches) == 0 {
 			// If no block is cut, we update the `lastOriginalOffsetProcessed`, start the timer if necessary and return
 			chain.lastOriginalOffsetProcessed = newOffset
-			if chain.timer == nil {
-				chain.timer = time.After(chain.SharedConfig().BatchTimeout())
-				logger.Debugf("[channel: %s] Just began %s batch timer", chain.ChainID(), chain.SharedConfig().BatchTimeout().String())
-			}
 			return
 		}
-
-		chain.timer = nil
 
 		offset := receivedOffset
 		if pending || len(batches) == 2 {
@@ -579,14 +655,14 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 		// Commit the first block
 		block := chain.CreateNextBlock(batches[0])
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := &ab.KafkaMetadata{
 			LastOffsetPersisted:         offset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 			LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
-		})
+		}
 		chain.WriteBlock(block, metadata)
 		chain.lastCutBlockNumber++
-		logger.Debugf("[channel: %s] Batch filled, just cut block %d - last persisted offset is now %d", chain.ChainID(), chain.lastCutBlockNumber, offset)
+		logger.Debugf("[channel: %s] Batch filled, just cut block [%d] - last persisted offset is now %d", chain.ChannelID(), chain.lastCutBlockNumber, offset)
 
 		// Commit the second block if exists
 		if len(batches) == 2 {
@@ -594,14 +670,14 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			offset++
 
 			block := chain.CreateNextBlock(batches[1])
-			metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+			metadata := &ab.KafkaMetadata{
 				LastOffsetPersisted:         offset,
 				LastOriginalOffsetProcessed: newOffset,
 				LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
-			})
+			}
 			chain.WriteBlock(block, metadata)
 			chain.lastCutBlockNumber++
-			logger.Debugf("[channel: %s] Batch filled, just cut block %d - last persisted offset is now %d", chain.ChainID(), chain.lastCutBlockNumber, offset)
+			logger.Debugf("[channel: %s] Batch filled, just cut block [%d] - last persisted offset is now %d", chain.ChannelID(), chain.lastCutBlockNumber, offset)
 		}
 	}
 
@@ -613,29 +689,29 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	// - if the message is re-validated and re-ordered, this value should be the `OriginalOffset` of that
 	//   Kafka message, so that `lastOriginalOffsetProcessed` is advanced
 	commitConfigMsg := func(message *cb.Envelope, newOffset int64) {
-		logger.Debugf("[channel: %s] Received config message", chain.ChainID())
+		logger.Debugf("[channel: %s] Received config message", chain.ChannelID())
 		batch := chain.BlockCutter().Cut()
 
 		if batch != nil {
-			logger.Debugf("[channel: %s] Cut pending messages into block", chain.ChainID())
+			logger.Debugf("[channel: %s] Cut pending messages into block", chain.ChannelID())
 			block := chain.CreateNextBlock(batch)
-			metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+			metadata := &ab.KafkaMetadata{
 				LastOffsetPersisted:         receivedOffset - 1,
 				LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 				LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
-			})
+			}
 			chain.WriteBlock(block, metadata)
 			chain.lastCutBlockNumber++
 		}
 
-		logger.Debugf("[channel: %s] Creating isolated block for config message", chain.ChainID())
+		logger.Debugf("[channel: %s] Creating isolated block for config message", chain.ChannelID())
 		chain.lastOriginalOffsetProcessed = newOffset
 		block := chain.CreateNextBlock([]*cb.Envelope{message})
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := &ab.KafkaMetadata{
 			LastOffsetPersisted:         receivedOffset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
 			LastResubmittedConfigOffset: chain.lastResubmittedConfigOffset,
-		})
+		}
 		chain.WriteConfigBlock(block, metadata)
 		chain.lastCutBlockNumber++
 		chain.timer = nil
@@ -649,7 +725,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		return fmt.Errorf("failed to unmarshal payload of regular message because = %s", err)
 	}
 
-	logger.Debugf("[channel: %s] Processing regular Kafka message of type %s", chain.ChainID(), regularMessage.Class.String())
+	logger.Debugf("[channel: %s] Processing regular Kafka message of type %s", chain.ChannelID(), regularMessage.Class.String())
 
 	// If we receive a message from a pre-v1.1 orderer, or resubmission is explicitly disabled, every orderer
 	// should operate as the pre-v1.1 ones: validate again and not attempt to reorder. That is because the
@@ -660,9 +736,9 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	// pre-v1.1 orderers on the network. Otherwise it is unset, and this is what we call a compatibility mode.
 	if regularMessage.Class == ab.KafkaMessageRegular_UNKNOWN || !chain.SharedConfig().Capabilities().Resubmission() {
 		// Received regular message of type UNKNOWN or resubmission if off, indicating an OSN network with v1.0.x orderer
-		logger.Warningf("[channel: %s] This orderer is running in compatibility mode", chain.ChainID())
+		logger.Warningf("[channel: %s] This orderer is running in compatibility mode", chain.ChannelID())
 
-		chdr, err := utils.ChannelHeader(env)
+		chdr, err := protoutil.ChannelHeader(env)
 		if err != nil {
 			return fmt.Errorf("discarding bad config message because of channel header unmarshalling error = %s", err)
 		}
@@ -687,7 +763,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 			return fmt.Errorf("not expecting message of type ConfigUpdate")
 
 		default:
-			logger.Panicf("[channel: %s] Unsupported message classification: %v", chain.ChainID(), class)
+			logger.Panicf("[channel: %s] Unsupported message classification: %v", chain.ChannelID(), class)
 		}
 
 		return nil
@@ -695,25 +771,25 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 	switch regularMessage.Class {
 	case ab.KafkaMessageRegular_UNKNOWN:
-		logger.Panicf("[channel: %s] Kafka message of type UNKNOWN should have been processed already", chain.ChainID())
+		logger.Panicf("[channel: %s] Kafka message of type UNKNOWN should have been processed already", chain.ChannelID())
 
 	case ab.KafkaMessageRegular_NORMAL:
 		// This is a message that is re-validated and re-ordered
 		if regularMessage.OriginalOffset != 0 {
-			logger.Debugf("[channel: %s] Received re-submitted normal message with original offset %d", chain.ChainID(), regularMessage.OriginalOffset)
+			logger.Debugf("[channel: %s] Received re-submitted normal message with original offset %d", chain.ChannelID(), regularMessage.OriginalOffset)
 
 			// But we've reprocessed it already
 			if regularMessage.OriginalOffset <= chain.lastOriginalOffsetProcessed {
 				logger.Debugf(
 					"[channel: %s] OriginalOffset(%d) <= LastOriginalOffsetProcessed(%d), message has been consumed already, discard",
-					chain.ChainID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+					chain.ChannelID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
 				return nil
 			}
 
 			logger.Debugf(
 				"[channel: %s] OriginalOffset(%d) > LastOriginalOffsetProcessed(%d), "+
 					"this is the first time we receive this re-submitted normal message",
-				chain.ChainID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+				chain.ChannelID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
 
 			// In case we haven't reprocessed the message, there's no need to differentiate it from those
 			// messages that will be processed for the first time.
@@ -721,13 +797,13 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 		// The config sequence has advanced
 		if regularMessage.ConfigSeq < seq {
-			logger.Debugf("[channel: %s] Config sequence has advanced since this normal message got validated, re-validating", chain.ChainID())
+			logger.Debugf("[channel: %s] Config sequence has advanced since this normal message got validated, re-validating", chain.ChannelID())
 			configSeq, err := chain.ProcessNormalMsg(env)
 			if err != nil {
 				return fmt.Errorf("discarding bad normal message because = %s", err)
 			}
 
-			logger.Debugf("[channel: %s] Normal message is still valid, re-submit", chain.ChainID())
+			logger.Debugf("[channel: %s] Normal message is still valid, re-submit", chain.ChannelID())
 
 			// For both messages that are ordered for the first time or re-ordered, we set original offset
 			// to current received offset and re-order it.
@@ -741,7 +817,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		// Any messages coming in here may or may not have been re-validated
 		// and re-ordered, BUT they are definitely valid here
 
-		// advance lastOriginalOffsetProcessed iff message is re-validated and re-ordered
+		// advance lastOriginalOffsetProcessed if message is re-validated and re-ordered
 		offset := regularMessage.OriginalOffset
 		if offset == 0 {
 			offset = chain.lastOriginalOffsetProcessed
@@ -752,30 +828,30 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 	case ab.KafkaMessageRegular_CONFIG:
 		// This is a message that is re-validated and re-ordered
 		if regularMessage.OriginalOffset != 0 {
-			logger.Debugf("[channel: %s] Received re-submitted config message with original offset %d", chain.ChainID(), regularMessage.OriginalOffset)
+			logger.Debugf("[channel: %s] Received re-submitted config message with original offset %d", chain.ChannelID(), regularMessage.OriginalOffset)
 
 			// But we've reprocessed it already
 			if regularMessage.OriginalOffset <= chain.lastOriginalOffsetProcessed {
 				logger.Debugf(
 					"[channel: %s] OriginalOffset(%d) <= LastOriginalOffsetProcessed(%d), message has been consumed already, discard",
-					chain.ChainID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+					chain.ChannelID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
 				return nil
 			}
 
 			logger.Debugf(
 				"[channel: %s] OriginalOffset(%d) > LastOriginalOffsetProcessed(%d), "+
 					"this is the first time we receive this re-submitted config message",
-				chain.ChainID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
+				chain.ChannelID(), regularMessage.OriginalOffset, chain.lastOriginalOffsetProcessed)
 
 			if regularMessage.OriginalOffset == chain.lastResubmittedConfigOffset && // This is very last resubmitted config message
 				regularMessage.ConfigSeq == seq { // AND we don't need to resubmit it again
 				logger.Debugf("[channel: %s] Config message with original offset %d is the last in-flight resubmitted message"+
-					"and it does not require revalidation, unblock ingress messages now", chain.ChainID(), regularMessage.OriginalOffset)
-				close(chain.doneReprocessingMsgInFlight) // Therefore, we could finally close the channel to unblock broadcast
+					"and it does not require revalidation, unblock ingress messages now", chain.ChannelID(), regularMessage.OriginalOffset)
+				chain.reprocessConfigComplete() // Therefore, we could finally unblock broadcast
 			}
 
 			// Somebody resubmitted message at offset X, whereas we didn't. This is due to non-determinism where
-			// that message was considered invalid by us during revalidation, however somebody else deemed it to
+			// that message was considered invalid by us during re-validation, however somebody else deemed it to
 			// be valid, and resubmitted it. We need to advance lastResubmittedConfigOffset in this case in order
 			// to enforce consistency across the network.
 			if chain.lastResubmittedConfigOffset < regularMessage.OriginalOffset {
@@ -785,7 +861,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 		// The config sequence has advanced
 		if regularMessage.ConfigSeq < seq {
-			logger.Debugf("[channel: %s] Config sequence has advanced since this config message got validated, re-validating", chain.ChainID())
+			logger.Debugf("[channel: %s] Config sequence has advanced since this config message got validated, re-validating", chain.ChannelID())
 			configEnv, configSeq, err := chain.ProcessConfigMsg(env)
 			if err != nil {
 				return fmt.Errorf("rejecting config message because = %s", err)
@@ -797,9 +873,9 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 				return fmt.Errorf("error re-submitting config message because = %s", err)
 			}
 
-			logger.Debugf("[channel: %s] Resubmitted config message with offset %d, block ingress messages", chain.ChainID(), receivedOffset)
-			chain.lastResubmittedConfigOffset = receivedOffset      // Keep track of last resubmitted message offset
-			chain.doneReprocessingMsgInFlight = make(chan struct{}) // Create the channel to block ingress messages
+			logger.Debugf("[channel: %s] Resubmitted config message with offset %d, block ingress messages", chain.ChannelID(), receivedOffset)
+			chain.lastResubmittedConfigOffset = receivedOffset // Keep track of last resubmitted message offset
+			chain.reprocessConfigPending()                     // Begin blocking ingress messages
 
 			return nil
 		}
@@ -807,7 +883,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		// Any messages coming in here may or may not have been re-validated
 		// and re-ordered, BUT they are definitely valid here
 
-		// advance lastOriginalOffsetProcessed iff message is re-validated and re-ordered
+		// advance lastOriginalOffsetProcessed if message is re-validated and re-ordered
 		offset := regularMessage.OriginalOffset
 		if offset == 0 {
 			offset = chain.lastOriginalOffsetProcessed
@@ -816,7 +892,7 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 		commitConfigMsg(env, offset)
 
 	default:
-		return fmt.Errorf("unsupported regular kafka message type: %v", regularMessage.Class.String())
+		return errors.Errorf("unsupported regular kafka message type: %v", regularMessage.Class.String())
 	}
 
 	return nil
@@ -824,30 +900,44 @@ func (chain *chainImpl) processRegular(regularMessage *ab.KafkaMessageRegular, r
 
 func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, receivedOffset int64) error {
 	ttcNumber := ttcMessage.GetBlockNumber()
-	logger.Debugf("[channel: %s] It's a time-to-cut message for block %d", chain.ChainID(), ttcNumber)
+	logger.Debugf("[channel: %s] It's a time-to-cut message for block [%d]", chain.ChannelID(), ttcNumber)
 	if ttcNumber == chain.lastCutBlockNumber+1 {
 		chain.timer = nil
-		logger.Debugf("[channel: %s] Nil'd the timer", chain.ChainID())
+		logger.Debugf("[channel: %s] Nil'd the timer", chain.ChannelID())
 		batch := chain.BlockCutter().Cut()
 		if len(batch) == 0 {
-			return fmt.Errorf("got right time-to-cut message (for block %d),"+
+			return fmt.Errorf("got right time-to-cut message (for block [%d]),"+
 				" no pending requests though; this might indicate a bug", chain.lastCutBlockNumber+1)
 		}
 		block := chain.CreateNextBlock(batch)
-		metadata := utils.MarshalOrPanic(&ab.KafkaMetadata{
+		metadata := &ab.KafkaMetadata{
 			LastOffsetPersisted:         receivedOffset,
 			LastOriginalOffsetProcessed: chain.lastOriginalOffsetProcessed,
-		})
+		}
 		chain.WriteBlock(block, metadata)
 		chain.lastCutBlockNumber++
-		logger.Debugf("[channel: %s] Proper time-to-cut received, just cut block %d", chain.ChainID(), chain.lastCutBlockNumber)
+		logger.Debugf("[channel: %s] Proper time-to-cut received, just cut block [%d]", chain.ChannelID(), chain.lastCutBlockNumber)
 		return nil
 	} else if ttcNumber > chain.lastCutBlockNumber+1 {
 		return fmt.Errorf("got larger time-to-cut message (%d) than allowed/expected (%d)"+
 			" - this might indicate a bug", ttcNumber, chain.lastCutBlockNumber+1)
 	}
-	logger.Debugf("[channel: %s] Ignoring stale time-to-cut-message for block %d", chain.ChainID(), ttcNumber)
+	logger.Debugf("[channel: %s] Ignoring stale time-to-cut-message for block [%d]", chain.ChannelID(), ttcNumber)
 	return nil
+}
+
+// WriteBlock acts as a wrapper around the consenter support WriteBlock, encoding the metadata,
+// and updating the metrics.
+func (chain *chainImpl) WriteBlock(block *cb.Block, metadata *ab.KafkaMetadata) {
+	chain.ConsenterSupport.WriteBlock(block, protoutil.MarshalOrPanic(metadata))
+	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChannelID()).Set(float64(metadata.LastOffsetPersisted))
+}
+
+// WriteConfigBlock acts as a wrapper around the consenter support WriteConfigBlock, encoding the metadata,
+// and updating the metrics.
+func (chain *chainImpl) WriteConfigBlock(block *cb.Block, metadata *ab.KafkaMetadata) {
+	chain.ConsenterSupport.WriteConfigBlock(block, protoutil.MarshalOrPanic(metadata))
+	chain.consenter.Metrics().LastOffsetPersisted.With("channel", chain.ChannelID()).Set(float64(metadata.LastOffsetPersisted))
 }
 
 // Post a CONNECT message to the channel using the given retry options. This
@@ -856,7 +946,7 @@ func (chain *chainImpl) processTimeToCut(ttcMessage *ab.KafkaMessageTimeToCut, r
 func sendConnectMessage(retryOptions localconfig.Retry, exitChan chan struct{}, producer sarama.SyncProducer, channel channel) error {
 	logger.Infof("[channel: %s] About to post the CONNECT message...", channel.topic())
 
-	payload := utils.MarshalOrPanic(newConnectMessage())
+	payload := protoutil.MarshalOrPanic(newConnectMessage())
 	message := newProducerMessage(channel, payload)
 
 	retryMsg := "Attempting to post the CONNECT message..."
@@ -875,9 +965,9 @@ func sendConnectMessage(retryOptions localconfig.Retry, exitChan chan struct{}, 
 }
 
 func sendTimeToCut(producer sarama.SyncProducer, channel channel, timeToCutBlockNumber uint64, timer *<-chan time.Time) error {
-	logger.Debugf("[channel: %s] Time-to-cut block %d timer expired", channel.topic(), timeToCutBlockNumber)
+	logger.Debugf("[channel: %s] Time-to-cut block [%d] timer expired", channel.topic(), timeToCutBlockNumber)
 	*timer = nil
-	payload := utils.MarshalOrPanic(newTimeToCutMessage(timeToCutBlockNumber))
+	payload := protoutil.MarshalOrPanic(newTimeToCutMessage(timeToCutBlockNumber))
 	message := newProducerMessage(channel, payload)
 	_, _, err := producer.SendMessage(message)
 	return err
@@ -929,4 +1019,163 @@ func setupProducerForChannel(retryOptions localconfig.Retry, haltChan chan struc
 	})
 
 	return producer, setupProducer.retry()
+}
+
+// Creates the Kafka topic for the channel if it does not already exist
+func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, brokerConfig *sarama.Config, topicDetail *sarama.TopicDetail, channel channel) error {
+
+	// requires Kafka v0.10.1.0 or higher
+	if !brokerConfig.Version.IsAtLeast(sarama.V0_10_1_0) {
+		return nil
+	}
+
+	logger.Infof("[channel: %s] Setting up the topic for this channel...",
+		channel.topic())
+
+	retryMsg := fmt.Sprintf("Creating Kafka topic [%s] for channel [%s]",
+		channel.topic(), channel.String())
+
+	setupTopic := newRetryProcess(
+		retryOptions,
+		haltChan,
+		channel,
+		retryMsg,
+		func() error {
+
+			var err error
+			clusterMembers := map[int32]*sarama.Broker{}
+			var controllerId int32
+
+			// loop through brokers to access metadata
+			for _, address := range brokers {
+				broker := sarama.NewBroker(address)
+				err = broker.Open(brokerConfig)
+
+				if err != nil {
+					continue
+				}
+
+				var ok bool
+				ok, err = broker.Connected()
+				if !ok {
+					continue
+				}
+				defer broker.Close()
+
+				// metadata request which includes the topic
+				var apiVersion int16
+				if brokerConfig.Version.IsAtLeast(sarama.V0_11_0_0) {
+					// use API version 4 to disable auto topic creation for
+					// metadata requests
+					apiVersion = 4
+				} else {
+					apiVersion = 1
+				}
+				metadata, err := broker.GetMetadata(&sarama.MetadataRequest{
+					Version:                apiVersion,
+					Topics:                 []string{channel.topic()},
+					AllowAutoTopicCreation: false})
+
+				if err != nil {
+					continue
+				}
+
+				controllerId = metadata.ControllerID
+				for _, broker := range metadata.Brokers {
+					clusterMembers[broker.ID()] = broker
+				}
+
+				for _, topic := range metadata.Topics {
+					if topic.Name == channel.topic() {
+						if topic.Err != sarama.ErrUnknownTopicOrPartition {
+							// auto create topics must be enabled so return
+							return nil
+						}
+					}
+				}
+				break
+			}
+
+			// check to see if we got any metadata from any of the brokers in the list
+			if len(clusterMembers) == 0 {
+				return fmt.Errorf(
+					"error creating topic [%s]; failed to retrieve metadata for the cluster",
+					channel.topic())
+			}
+
+			// get the controller
+			controller := clusterMembers[controllerId]
+			err = controller.Open(brokerConfig)
+
+			if err != nil {
+				return err
+			}
+
+			var ok bool
+			ok, err = controller.Connected()
+			if !ok {
+				return err
+			}
+			defer controller.Close()
+
+			// create the topic
+			req := &sarama.CreateTopicsRequest{
+				Version: 0,
+				TopicDetails: map[string]*sarama.TopicDetail{
+					channel.topic(): topicDetail},
+				Timeout: 3 * time.Second}
+			resp := &sarama.CreateTopicsResponse{}
+			resp, err = controller.CreateTopics(req)
+			if err != nil {
+				return err
+			}
+
+			// check the response
+			if topicErr, ok := resp.TopicErrors[channel.topic()]; ok {
+				// treat no error and topic exists error as success
+				if topicErr.Err == sarama.ErrNoError ||
+					topicErr.Err == sarama.ErrTopicAlreadyExists {
+					return nil
+				}
+				if topicErr.Err == sarama.ErrInvalidTopic {
+					// topic is invalid so abort
+					logger.Warningf("[channel: %s] Failed to set up topic = %s",
+						channel.topic(), topicErr.Err.Error())
+					go func() {
+						haltChan <- struct{}{}
+					}()
+				}
+				return fmt.Errorf("error creating topic: [%s]",
+					topicErr.Err.Error())
+			}
+
+			return nil
+		})
+
+	return setupTopic.retry()
+}
+
+// Replica ID information can accurately be retrieved only when the cluster
+// is healthy. Otherwise, the replica request does not return the full set
+// of initial replicas. This information is needed to provide context when
+// a health check returns an error.
+func getHealthyClusterReplicaInfo(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, brokerConfig *sarama.Config, channel channel) ([]int32, error) {
+	var replicaIDs []int32
+
+	retryMsg := "Getting list of Kafka brokers replicating the channel"
+	getReplicaInfo := newRetryProcess(retryOptions, haltChan, channel, retryMsg, func() error {
+		client, err := sarama.NewClient(brokers, brokerConfig)
+		if err != nil {
+			return err
+		}
+		defer client.Close()
+
+		replicaIDs, err = client.Replicas(channel.topic(), channel.partition())
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	return replicaIDs, getReplicaInfo.retry()
 }

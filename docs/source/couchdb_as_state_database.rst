@@ -37,18 +37,23 @@ default embedded LevelDB, and move to CouchDB if you require the additional comp
 It is a good practice to model chaincode asset data as JSON, so that you have the option to perform
 complex rich queries if needed in the future.
 
-.. note:: A JSON document cannot use the following field names at the top level.
-   These are reserved for internal use.
+.. note:: The key for a CouchDB JSON document can only contain valid UTF-8 strings and cannot begin
+   with an underscore ("_"). Whether you are using CouchDB or LevelDB, you should avoid using
+   U+0000 (nil byte) in keys.
 
-   - ``_deleted``
-   - ``_id``
-   - ``_rev``
+   JSON documents in CouchDB cannot use the following values as top level field names. These values
+   are reserved for internal use.
+
+   - ``Any field beginning with an underscore, "_"``
    - ``~version``
 
 Using CouchDB from Chaincode
 ----------------------------
 
-Most of the `chaincode shim APIs <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStubInterface>`__
+Chaincode queries
+~~~~~~~~~~~~~~~~~
+
+Most of the `chaincode shim APIs <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
 can be utilized with either LevelDB or CouchDB state database, e.g. ``GetState``, ``PutState``,
 ``GetStateByRange``, ``GetStateByPartialCompositeKey``. Additionally when you utilize CouchDB as
 the state database and model assets as JSON in chaincode, you can perform rich queries against
@@ -64,6 +69,45 @@ syntax:
 .. code:: bash
 
   {"selector":{"docType":"marble","owner":<OWNER_ID>}}
+
+.. couchdb-pagination:
+
+CouchDB pagination
+^^^^^^^^^^^^^^^^^^
+
+Fabric supports paging of query results for rich queries and range based queries.
+APIs supporting pagination allow the use of page size and bookmarks to be used for
+both range and rich queries. To support efficient pagination, the Fabric
+pagination APIs must be used. Specifically, the CouchDB ``limit`` keyword will
+not be honored in CouchDB queries since Fabric itself manages the pagination of
+query results and implicitly sets the pageSize limit that is passed to CouchDB.
+
+If a pageSize is specified using the paginated query APIs (``GetStateByRangeWithPagination()``,
+``GetStateByPartialCompositeKeyWithPagination()``, and ``GetQueryResultWithPagination()``),
+a set of results (bound by the pageSize) will be returned to the chaincode along with
+a bookmark. The bookmark can be returned from chaincode to invoking clients,
+which can use the bookmark in a follow on query to receive the next "page" of results.
+
+The pagination APIs are for use in read-only transactions only, the query results
+are intended to support client paging requirements. For transactions
+that need to read and write, use the non-paginated chaincode query APIs. Within
+chaincode you can iterate through result sets to your desired depth.
+
+Regardless of whether the pagination APIs are utilized, all chaincode queries are
+bound by ``totalQueryLimit`` (default 100000) from ``core.yaml``. This is the maximum
+number of results that chaincode will iterate through and return to the client,
+in order to avoid accidental or malicious long-running queries.
+
+.. note:: Regardless of whether chaincode uses paginated queries or not, the peer will
+          query CouchDB in batches based on ``internalQueryLimit`` (default 1000)
+          from ``core.yaml``. This behavior ensures reasonably sized result sets are
+          passed between the peer and CouchDB when executing chaincode, and is
+          transparent to chaincode and the calling client.
+
+An example using pagination is included in the :doc:`couchdb_tutorial` tutorial.
+
+CouchDB indexes
+~~~~~~~~~~~~~~~
 
 Indexes in CouchDB are required in order to make JSON queries efficient and are required for
 any JSON query with a sort. Indexes can be packaged alongside chaincode in a
@@ -106,7 +150,7 @@ index is getting initialized. During transaction processing, the indexes will au
 as blocks are committed to the ledger.
 
 CouchDB Configuration
-----------------------
+---------------------
 
 CouchDB is enabled as the state database by changing the ``stateDatabase`` configuration option from
 goleveldb to CouchDB. Additionally, the ``couchDBAddress`` needs to configured to point to the
@@ -127,6 +171,8 @@ Below is the ``stateDatabase`` section from *core.yaml*:
       # goleveldb - default state database stored in goleveldb.
       # CouchDB - store state database in CouchDB
       stateDatabase: goleveldb
+      # Limit on the number of records to return per query
+      totalQueryLimit: 10000
       couchDBConfig:
          # It is recommended to run CouchDB on the same server as the peer, and
          # not map the CouchDB container port to a server port in docker-compose.
@@ -146,8 +192,21 @@ Below is the ``stateDatabase`` section from *core.yaml*:
          maxRetriesOnStartup: 10
          # CouchDB request timeout (unit: duration, e.g. 20s)
          requestTimeout: 35s
-         # Limit on the number of records to return per query
-         queryLimit: 10000
+         # Limit on the number of records per each CouchDB query
+         # Note that chaincode queries are only bound by totalQueryLimit.
+         # Internally the chaincode may execute multiple CouchDB queries,
+         # each of size internalQueryLimit.
+         internalQueryLimit: 1000
+         # Limit on the number of records per CouchDB bulk update batch
+         maxBatchUpdateSize: 1000
+         # Warm indexes after every N blocks.
+         # This option warms any indexes that have been
+         # deployed to CouchDB after every N blocks.
+         # A value of 1 will warm indexes after every block commit,
+         # to ensure fast selector queries.
+         # Increasing the value may improve write efficiency of peer and CouchDB,
+         # but may degrade query response time.
+         warmIndexesAfterNBlocks: 1
 
 CouchDB hosted in docker containers supplied with Hyperledger Fabric have the
 capability of setting the CouchDB username and password with environment
@@ -165,6 +224,36 @@ the container. The *local.ini* file must be edited if the username or password
 is to be changed after creation of the container.
 
 .. note:: CouchDB peer options are read on each peer startup.
+
+Good practices for queries
+--------------------------
+
+Avoid using chaincode for queries that will result in a scan of the entire
+CouchDB database. Full length database scans will result in long response
+times and will degrade the performance of your network. You can take some of
+the following steps to avoid long queries:
+
+- When using JSON queries:
+
+    * Be sure to create indexes in the chaincode package.
+    * Avoid query operators such as ``$or``, ``$in`` and ``$regex``, which lead
+      to full database scans.
+
+- For range queries, composite key queries, and JSON queries:
+
+    * Utilize paging support (as of v1.3) instead of one large result set.
+
+- If you want to build a dashboard or collect aggregate data as part of your
+  application, you can query an off-chain database that replicates the data
+  from your blockchain network. This will allow you to query and analyze the
+  blockchain data in a data store optimized for your needs, without degrading
+  the performance of your network or disrupting transactions. To achieve this,
+  applications may use block or chaincode events to write transaction data
+  to an off-chain database or analytics engine. For each block received, the block
+  listener application would iterate through the block transactions and build a
+  data store using the key/value writes from each valid transaction's ``rwset``.
+  The :doc:`peer_event_services` provide replayable events to ensure the
+  integrity of downstream data stores.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

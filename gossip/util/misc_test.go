@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"testing"
-
 	"time"
 
 	"github.com/spf13/viper"
@@ -78,9 +77,12 @@ func TestGetRandomIntNoEntropy(t *testing.T) {
 }
 
 func TestRandomIndices(t *testing.T) {
+	// not enough choices as needed
 	assert.Nil(t, GetRandomIndices(10, 5))
-	GetRandomIndices(10, 9)
-	GetRandomIndices(10, 12)
+	// exact number of choices as available
+	assert.Len(t, GetRandomIndices(10, 9), 10)
+	// more choices available than needed
+	assert.Len(t, GetRandomIndices(10, 90), 10)
 }
 
 func TestGetIntOrDefault(t *testing.T) {
@@ -124,4 +126,9 @@ func TestSet(t *testing.T) {
 	assert.True(t, s.Exists(42))
 	s.Clear()
 	assert.False(t, s.Exists(42))
+}
+
+func TestStringsToBytesToStrings(t *testing.T) {
+	strings := []string{"foo", "bar"}
+	assert.Equal(t, strings, BytesToStrings(StringsToBytes(strings)))
 }

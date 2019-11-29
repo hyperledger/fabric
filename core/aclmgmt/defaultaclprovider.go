@@ -9,13 +9,13 @@ package aclmgmt
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 const (
@@ -23,9 +23,14 @@ const (
 	CHANNELWRITERS = policies.ChannelApplicationWriters
 )
 
+type defaultACLProvider interface {
+	ACLProvider
+	IsPtypePolicy(resName string) bool
+}
+
 //defaultACLProvider used if resource-based ACL Provider is not provided or
 //if it does not contain a policy for the named resource
-type defaultACLProvider struct {
+type defaultACLProviderImpl struct {
 	policyChecker policy.PolicyChecker
 
 	//peer wide policy (currently not used)
@@ -35,96 +40,99 @@ type defaultACLProvider struct {
 	cResourcePolicyMap map[string]string
 }
 
-func newDefaultACLProvider() ACLProvider {
-	d := &defaultACLProvider{}
-	d.initialize()
+func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvider {
+	d := &defaultACLProviderImpl{
+		policyChecker:      policyChecker,
+		pResourcePolicyMap: map[string]string{},
+		cResourcePolicyMap: map[string]string{},
+	}
 
-	return d
-}
+	//-------------- _lifecycle --------------
+	d.pResourcePolicyMap[resources.Lifecycle_InstallChaincode] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincode] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_GetInstalledChaincodePackage] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_QueryInstalledChaincodes] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lifecycle_ApproveChaincodeDefinitionForMyOrg] = mgmt.Admins
 
-func (d *defaultACLProvider) initialize() {
-	d.policyChecker = policy.NewPolicyChecker(
-		peer.NewChannelPolicyManagerGetter(),
-		mgmt.GetLocalMSP(),
-		mgmt.NewLocalMSPPrincipalGetter(),
-	)
-
-	d.pResourcePolicyMap = make(map[string]string)
-	d.cResourcePolicyMap = make(map[string]string)
+	d.cResourcePolicyMap[resources.Lifecycle_CommitChaincodeDefinition] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinition] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Lifecycle_QueryChaincodeDefinitions] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Lifecycle_CheckCommitReadiness] = CHANNELWRITERS
 
 	//-------------- LSCC --------------
 	//p resources (implemented by the chaincode currently)
-	d.pResourcePolicyMap[resources.LSCC_INSTALL] = ""
-	d.pResourcePolicyMap[resources.LSCC_GETCHAINCODES] = ""
-	d.pResourcePolicyMap[resources.LSCC_GETINSTALLEDCHAINCODES] = ""
+	d.pResourcePolicyMap[resources.Lscc_Install] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Lscc_GetInstalledChaincodes] = mgmt.Admins
 
 	//c resources
-	d.cResourcePolicyMap[resources.LSCC_DEPLOY] = ""  //ACL check covered by PROPOSAL
-	d.cResourcePolicyMap[resources.LSCC_UPGRADE] = "" //ACL check covered by PROPOSAL
-	d.cResourcePolicyMap[resources.LSCC_GETCCINFO] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.LSCC_GETDEPSPEC] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.LSCC_GETCCDATA] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_Deploy] = ""  //ACL check covered by PROPOSAL
+	d.cResourcePolicyMap[resources.Lscc_Upgrade] = "" //ACL check covered by PROPOSAL
+	d.cResourcePolicyMap[resources.Lscc_ChaincodeExists] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_GetDeploymentSpec] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_GetChaincodeData] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_GetInstantiatedChaincodes] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Lscc_GetCollectionsConfig] = CHANNELREADERS
 
 	//-------------- QSCC --------------
 	//p resources (none)
 
 	//c resources
-	d.cResourcePolicyMap[resources.QSCC_GetChainInfo] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.QSCC_GetBlockByNumber] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.QSCC_GetBlockByHash] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.QSCC_GetTransactionByID] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.QSCC_GetBlockByTxID] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetChainInfo] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetBlockByNumber] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetBlockByHash] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetTransactionByID] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Qscc_GetBlockByTxID] = CHANNELREADERS
 
 	//--------------- CSCC resources -----------
 	//p resources (implemented by the chaincode currently)
-	d.pResourcePolicyMap[resources.CSCC_JoinChain] = ""
-	d.pResourcePolicyMap[resources.CSCC_GetChannels] = ""
+	d.pResourcePolicyMap[resources.Cscc_JoinChain] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Cscc_GetChannels] = mgmt.Members
 
 	//c resources
-	d.cResourcePolicyMap[resources.CSCC_GetConfigBlock] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.CSCC_GetConfigTree] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.CSCC_SimulateConfigTreeUpdate] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Cscc_GetConfigBlock] = CHANNELREADERS
 
 	//---------------- non-scc resources ------------
-	//Propose
-	d.cResourcePolicyMap[resources.PROPOSE] = CHANNELWRITERS
+	//Peer resources
+	d.cResourcePolicyMap[resources.Peer_Propose] = CHANNELWRITERS
+	d.cResourcePolicyMap[resources.Peer_ChaincodeToChaincode] = CHANNELWRITERS
 
-	//Chaincode-to-Chaincode
-	d.cResourcePolicyMap[resources.CC2CC] = CHANNELWRITERS
+	//Event resources
+	d.cResourcePolicyMap[resources.Event_Block] = CHANNELREADERS
+	d.cResourcePolicyMap[resources.Event_FilteredBlock] = CHANNELREADERS
 
-	//Events (not used currently - for future)
-	d.cResourcePolicyMap[resources.BLOCKEVENT] = CHANNELREADERS
-	d.cResourcePolicyMap[resources.FILTEREDBLOCKEVENT] = CHANNELREADERS
+	return d
 }
 
-//this should cover an exhaustive list of everything called from the peer
-func (d *defaultACLProvider) defaultPolicy(resName string, cprovider bool) string {
-	var pol string
-	if cprovider {
-		pol = d.cResourcePolicyMap[resName]
+func (d *defaultACLProviderImpl) IsPtypePolicy(resName string) bool {
+	_, ok := d.pResourcePolicyMap[resName]
+	return ok
+}
+
+// CheckACL provides default (v 1.0) behavior by mapping resources to their ACL for a channel.
+func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idinfo interface{}) error {
+	//the default behavior is to use p type if defined and use channeless policy checks
+	policy := d.pResourcePolicyMap[resName]
+	if policy != "" {
+		channelID = ""
 	} else {
-		pol = d.pResourcePolicyMap[resName]
-	}
-	return pol
-}
-
-//CheckACL provides default (v 1.0) behavior by mapping resources to their ACL for a channel
-func (d *defaultACLProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
-	policy := d.defaultPolicy(resName, true)
-	if policy == "" {
-		aclLogger.Errorf("Unmapped policy for %s", resName)
-		return fmt.Errorf("Unmapped policy for %s", resName)
+		policy = d.cResourcePolicyMap[resName]
+		if policy == "" {
+			aclLogger.Errorf("Unmapped policy for %s", resName)
+			return fmt.Errorf("Unmapped policy for %s", resName)
+		}
 	}
 
-	switch idinfo.(type) {
+	switch typedData := idinfo.(type) {
 	case *pb.SignedProposal:
-		return d.policyChecker.CheckPolicy(channelID, policy, idinfo.(*pb.SignedProposal))
+		return d.policyChecker.CheckPolicy(channelID, policy, typedData)
 	case *common.Envelope:
-		sd, err := idinfo.(*common.Envelope).AsSignedData()
+		sd, err := protoutil.EnvelopeAsSignedData(typedData)
 		if err != nil {
 			return err
 		}
 		return d.policyChecker.CheckPolicyBySignedData(channelID, policy, sd)
+	case []*protoutil.SignedData:
+		return d.policyChecker.CheckPolicyBySignedData(channelID, policy, typedData)
 	default:
 		aclLogger.Errorf("Unmapped id on checkACL %s", resName)
 		return fmt.Errorf("Unknown id on checkACL %s", resName)

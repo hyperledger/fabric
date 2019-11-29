@@ -9,23 +9,23 @@ package multichannel
 import (
 	"sync"
 
+	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/util"
-	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 type blockWriterSupport interface {
-	crypto.LocalSigner
+	identity.SignerSerializer
 	blockledger.ReadWriter
 	configtx.Validator
 	Update(*newchannelconfig.Bundle)
 	CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error)
+	SharedConfig() newchannelconfig.Orderer
 }
 
 // BlockWriter efficiently writes the blockchain to disk.
@@ -53,19 +53,19 @@ func newBlockWriter(lastBlock *cb.Block, r *Registrar, support blockWriterSuppor
 	// so no need to initialize lastConfig
 	if lastBlock.Header.Number != 0 {
 		var err error
-		bw.lastConfigBlockNum, err = utils.GetLastConfigIndexFromBlock(lastBlock)
+		bw.lastConfigBlockNum, err = protoutil.GetLastConfigIndexFromBlock(lastBlock)
 		if err != nil {
-			logger.Panicf("[channel: %s] Error extracting last config block from block metadata: %s", support.ChainID(), err)
+			logger.Panicf("[channel: %s] Error extracting last config block from block metadata: %s", support.ChannelID(), err)
 		}
 	}
 
-	logger.Debugf("[channel: %s] Creating block writer for tip of chain (blockNumber=%d, lastConfigBlockNum=%d, lastConfigSeq=%d)", support.ChainID(), lastBlock.Header.Number, bw.lastConfigBlockNum, bw.lastConfigSeq)
+	logger.Debugf("[channel: %s] Creating block writer for tip of chain (blockNumber=%d, lastConfigBlockNum=%d, lastConfigSeq=%d)", support.ChannelID(), lastBlock.Header.Number, bw.lastConfigBlockNum, bw.lastConfigSeq)
 	return bw
 }
 
 // CreateNextBlock creates a new block with the next block number, and the given contents.
 func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
-	previousBlockHash := bw.lastBlock.Header.Hash()
+	previousBlockHash := protoutil.BlockHeaderHash(bw.lastBlock.Header)
 
 	data := &cb.BlockData{
 		Data: make([][]byte, len(messages)),
@@ -79,8 +79,8 @@ func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 		}
 	}
 
-	block := cb.NewBlock(bw.lastBlock.Header.Number+1, previousBlockHash)
-	block.Header.DataHash = data.Hash()
+	block := protoutil.NewBlock(bw.lastBlock.Header.Number+1, previousBlockHash)
+	block.Header.DataHash = protoutil.BlockDataHash(data)
 	block.Data = data
 
 	return block
@@ -90,12 +90,12 @@ func (bw *BlockWriter) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 // This call will block until the new config has taken effect, then will return
 // while the block is written asynchronously to disk.
 func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) {
-	ctx, err := utils.ExtractEnvelope(block, 0)
+	ctx, err := protoutil.ExtractEnvelope(block, 0)
 	if err != nil {
 		logger.Panicf("Told to write a config block, but could not get configtx: %s", err)
 	}
 
-	payload, err := utils.UnmarshalPayload(ctx.Payload)
+	payload, err := protoutil.UnmarshalPayload(ctx.Payload)
 	if err != nil {
 		logger.Panicf("Told to write a config block, but configtx payload is invalid: %s", err)
 	}
@@ -104,18 +104,19 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 		logger.Panicf("Told to write a config block, but configtx payload header is missing")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		logger.Panicf("Told to write a config block with an invalid channel header: %s", err)
 	}
 
 	switch chdr.Type {
 	case int32(cb.HeaderType_ORDERER_TRANSACTION):
-		newChannelConfig, err := utils.UnmarshalEnvelope(payload.Data)
+		newChannelConfig, err := protoutil.UnmarshalEnvelope(payload.Data)
 		if err != nil {
 			logger.Panicf("Told to write a config block with new channel, but did not have config update embedded: %s", err)
 		}
 		bw.registrar.newChain(newChannelConfig)
+
 	case int32(cb.HeaderType_CONFIG):
 		configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 		if err != nil {
@@ -132,6 +133,24 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 			logger.Panicf("Told to write a config block with a new config, but could not convert it to a bundle: %s", err)
 		}
 
+		oc, ok := bundle.OrdererConfig()
+		if !ok {
+			logger.Panicf("[channel: %s] OrdererConfig missing from bundle", bw.support.ChannelID())
+		}
+
+		currentType := bw.support.SharedConfig().ConsensusType()
+		nextType := oc.ConsensusType()
+		if currentType != nextType {
+			encodedMetadataValue = nil
+			logger.Debugf("[channel: %s] Consensus-type migration: maintenance mode, change from %s to %s, setting metadata to nil",
+				bw.support.ChannelID(), currentType, nextType)
+		}
+
+		// Avoid Bundle update before the go-routine in WriteBlock() finished writing the previous block.
+		// We do this (in particular) to prevent bw.support.Sequence() from advancing before the go-routine reads it.
+		// In general, this prevents the StableBundle from changing before the go-routine in WriteBlock() finishes.
+		bw.committingBlock.Lock()
+		bw.committingBlock.Unlock()
 		bw.support.Update(bundle)
 	default:
 		logger.Panicf("Told to write a config block with unknown header type: %v", chdr.Type)
@@ -159,32 +178,32 @@ func (bw *BlockWriter) WriteBlock(block *cb.Block, encodedMetadataValue []byte) 
 // commitBlock should only ever be invoked with the bw.committingBlock held
 // this ensures that the encoded config sequence numbers stay in sync
 func (bw *BlockWriter) commitBlock(encodedMetadataValue []byte) {
-	// Set the orderer-related metadata field
-	if encodedMetadataValue != nil {
-		bw.lastBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
-	}
-	bw.addBlockSignature(bw.lastBlock)
-	bw.addLastConfigSignature(bw.lastBlock)
+	bw.addLastConfig(bw.lastBlock)
+	bw.addBlockSignature(bw.lastBlock, encodedMetadataValue)
 
 	err := bw.support.Append(bw.lastBlock)
 	if err != nil {
-		logger.Panicf("[channel: %s] Could not append block: %s", bw.support.ChainID(), err)
+		logger.Panicf("[channel: %s] Could not append block: %s", bw.support.ChannelID(), err)
 	}
-	logger.Debugf("[channel: %s] Wrote block %d", bw.support.ChainID(), bw.lastBlock.GetHeader().Number)
+	logger.Debugf("[channel: %s] Wrote block [%d]", bw.support.ChannelID(), bw.lastBlock.GetHeader().Number)
 }
 
-func (bw *BlockWriter) addBlockSignature(block *cb.Block) {
+func (bw *BlockWriter) addBlockSignature(block *cb.Block, consenterMetadata []byte) {
 	blockSignature := &cb.MetadataSignature{
-		SignatureHeader: utils.MarshalOrPanic(utils.NewSignatureHeaderOrPanic(bw.support)),
+		SignatureHeader: protoutil.MarshalOrPanic(protoutil.NewSignatureHeaderOrPanic(bw.support)),
 	}
 
-	// Note, this value is intentionally nil, as this metadata is only about the signature, there is no additional metadata
-	// information required beyond the fact that the metadata item is signed.
-	blockSignatureValue := []byte(nil)
+	blockSignatureValue := protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+		LastConfig:        &cb.LastConfig{Index: bw.lastConfigBlockNum},
+		ConsenterMetadata: protoutil.MarshalOrPanic(&cb.Metadata{Value: consenterMetadata}),
+	})
 
-	blockSignature.Signature = utils.SignOrPanic(bw.support, util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
+	blockSignature.Signature = protoutil.SignOrPanic(
+		bw.support,
+		util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, protoutil.BlockHeaderBytes(block.Header)),
+	)
 
-	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = utils.MarshalOrPanic(&cb.Metadata{
+	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: blockSignatureValue,
 		Signatures: []*cb.MetadataSignature{
 			blockSignature,
@@ -192,27 +211,18 @@ func (bw *BlockWriter) addBlockSignature(block *cb.Block) {
 	})
 }
 
-func (bw *BlockWriter) addLastConfigSignature(block *cb.Block) {
+func (bw *BlockWriter) addLastConfig(block *cb.Block) {
 	configSeq := bw.support.Sequence()
 	if configSeq > bw.lastConfigSeq {
-		logger.Debugf("[channel: %s] Detected lastConfigSeq transitioning from %d to %d, setting lastConfigBlockNum from %d to %d", bw.support.ChainID(), bw.lastConfigSeq, configSeq, bw.lastConfigBlockNum, block.Header.Number)
+		logger.Debugf("[channel: %s] Detected lastConfigSeq transitioning from %d to %d, setting lastConfigBlockNum from %d to %d", bw.support.ChannelID(), bw.lastConfigSeq, configSeq, bw.lastConfigBlockNum, block.Header.Number)
 		bw.lastConfigBlockNum = block.Header.Number
 		bw.lastConfigSeq = configSeq
 	}
 
-	lastConfigSignature := &cb.MetadataSignature{
-		SignatureHeader: utils.MarshalOrPanic(utils.NewSignatureHeaderOrPanic(bw.support)),
-	}
+	lastConfigValue := protoutil.MarshalOrPanic(&cb.LastConfig{Index: bw.lastConfigBlockNum})
+	logger.Debugf("[channel: %s] About to write block, setting its LAST_CONFIG to %d", bw.support.ChannelID(), bw.lastConfigBlockNum)
 
-	lastConfigValue := utils.MarshalOrPanic(&cb.LastConfig{Index: bw.lastConfigBlockNum})
-	logger.Debugf("[channel: %s] About to write block, setting its LAST_CONFIG to %d", bw.support.ChainID(), bw.lastConfigBlockNum)
-
-	lastConfigSignature.Signature = utils.SignOrPanic(bw.support, util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
-
-	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: lastConfigValue,
-		Signatures: []*cb.MetadataSignature{
-			lastConfigSignature,
-		},
 	})
 }

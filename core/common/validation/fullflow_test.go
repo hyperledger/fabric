@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package validation
@@ -23,25 +13,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/common/mocks/config"
-	mmsp "github.com/hyperledger/fabric/common/mocks/msp"
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
-func getProposal(channel string) (*peer.Proposal, error) {
+func getProposal(channelID string) (*peer.Proposal, error) {
 	cis := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: getChaincodeID(),
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channel, cis, signerSerialized)
+	proposal, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channelID, cis, signerSerialized)
 	return proposal, err
 }
 
@@ -55,13 +43,13 @@ func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentit
 	}
 
 	// the original header
-	hdr, err := utils.GetHeader(proposal.Header)
+	hdr, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal the proposal header")
 	}
 
 	// the original payload
-	pPayl, err := utils.GetChaincodeProposalPayload(proposal.Payload)
+	pPayl, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal the proposal payload")
 	}
@@ -76,14 +64,14 @@ func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentit
 	cea := &peer.ChaincodeEndorsedAction{ProposalResponsePayload: resps[0].Payload, Endorsements: endorsements}
 
 	// obtain the bytes of the proposal payload that will go to the transaction
-	propPayloadBytes, err := utils.GetBytesProposalPayloadForTx(pPayl, nil)
+	propPayloadBytes, err := protoutil.GetBytesProposalPayloadForTx(pPayl)
 	if err != nil {
 		return nil, err
 	}
 
 	// serialize the chaincode action payload
 	cap := &peer.ChaincodeActionPayload{ChaincodeProposalPayload: propPayloadBytes, Action: cea}
-	capBytes, err := utils.GetBytesChaincodeActionPayload(cap)
+	capBytes, err := protoutil.GetBytesChaincodeActionPayload(cap)
 	if err != nil {
 		return nil, err
 	}
@@ -96,14 +84,14 @@ func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentit
 	tx := &peer.Transaction{Actions: taas}
 
 	// serialize the tx
-	txBytes, err := utils.GetBytesTransaction(tx)
+	txBytes, err := protoutil.GetBytesTransaction(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	// create the payload
 	payl := &common.Payload{Header: hdr, Data: txBytes}
-	paylBytes, err := utils.GetBytesPayload(payl)
+	paylBytes, err := protoutil.GetBytesPayload(payl)
 	if err != nil {
 		return nil, err
 	}
@@ -120,23 +108,9 @@ func createSignedTxTwoActions(proposal *peer.Proposal, signer msp.SigningIdentit
 
 func TestGoodPath(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
-		return
-	}
-
-	// sign it
-	sProp, err := utils.GetSignedProposal(prop, signer)
-	if err != nil {
-		t.Fatalf("GetSignedProposal failed, err %s", err)
-		return
-	}
-
-	// validate it
-	_, _, _, err = ValidateProposalMessage(sProp)
-	if err != nil {
-		t.Fatalf("ValidateProposalMessage failed, err %s", err)
 		return
 	}
 
@@ -144,27 +118,29 @@ func TestGoodPath(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
 	}
 
 	// assemble a transaction from that proposal and endorsement
-	tx, err := utils.CreateSignedTx(prop, signer, presp)
+	tx, err := protoutil.CreateSignedTx(prop, signer, presp)
 	if err != nil {
 		t.Fatalf("CreateSignedTx failed, err %s", err)
 		return
 	}
 
 	// validate the transaction
-	payl, txResult := ValidateTransaction(tx, &config.MockApplicationCapabilities{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	payl, txResult := ValidateTransaction(tx, cryptoProvider)
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
 	}
 
-	txx, err := utils.GetTransaction(payl.Data)
+	txx, err := protoutil.UnmarshalTransaction(payl.Data)
 	if err != nil {
 		t.Fatalf("GetTransaction failed, err %s", err)
 		return
@@ -179,7 +155,7 @@ func TestGoodPath(t *testing.T) {
 	}
 
 	// get the payload of the action
-	_, simResBack, err := utils.GetPayloads(act[0])
+	_, simResBack, err := protoutil.GetPayloads(act[0])
 	if err != nil {
 		t.Fatalf("GetPayloads failed, err %s", err)
 		return
@@ -194,7 +170,7 @@ func TestGoodPath(t *testing.T) {
 
 func TestTXWithTwoActionsRejected(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -204,7 +180,7 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, &peer.ChaincodeID{Name: "somename", Version: "someversion"}, nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, &peer.ChaincodeID{Name: "somename", Version: "someversion"}, signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -218,81 +194,11 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, txResult := ValidateTransaction(tx, &config.MockApplicationCapabilities{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	_, txResult := ValidateTransaction(tx, cryptoProvider)
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction should have failed")
-		return
-	}
-}
-
-func TestBadProp(t *testing.T) {
-	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
-	if err != nil {
-		t.Fatalf("getProposal failed, err %s", err)
-		return
-	}
-
-	// sign it
-	sProp, err := utils.GetSignedProposal(prop, signer)
-	if err != nil {
-		t.Fatalf("GetSignedProposal failed, err %s", err)
-		return
-	}
-
-	// mess with the signature
-	sigOrig := sProp.Signature
-	for i := 0; i < len(sigOrig); i++ {
-		sigCopy := make([]byte, len(sigOrig))
-		copy(sigCopy, sigOrig)
-		sigCopy[i] = byte(int(sigCopy[i]+1) % 255)
-		// validate it - it should fail
-		_, _, _, err = ValidateProposalMessage(&peer.SignedProposal{ProposalBytes: sProp.ProposalBytes, Signature: sigCopy})
-		if err == nil {
-			t.Fatal("ValidateProposalMessage should have failed")
-			return
-		}
-	}
-
-	// sign it again
-	sProp, err = utils.GetSignedProposal(prop, signer)
-	if err != nil {
-		t.Fatalf("GetSignedProposal failed, err %s", err)
-		return
-	}
-
-	// mess with the message
-	pbytesOrig := sProp.ProposalBytes
-	for i := 0; i < len(pbytesOrig); i++ {
-		pbytesCopy := make([]byte, len(pbytesOrig))
-		copy(pbytesCopy, pbytesOrig)
-		pbytesCopy[i] = byte(int(pbytesCopy[i]+1) % 255)
-		// validate it - it should fail
-		_, _, _, err = ValidateProposalMessage(&peer.SignedProposal{ProposalBytes: pbytesCopy, Signature: sProp.Signature})
-		if err == nil {
-			t.Fatal("ValidateProposalMessage should have failed")
-			return
-		}
-	}
-
-	// get a bad signing identity
-	badSigner, err := mmsp.NewNoopMsp().GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatal("Couldn't get noop signer")
-		return
-	}
-
-	// sign it again with the bad signer
-	sProp, err = utils.GetSignedProposal(prop, badSigner)
-	if err != nil {
-		t.Fatalf("GetSignedProposal failed, err %s", err)
-		return
-	}
-
-	// validate it - it should fail
-	_, _, _, err = ValidateProposalMessage(sProp)
-	if err == nil {
-		t.Fatal("ValidateProposalMessage should have failed")
 		return
 	}
 }
@@ -304,7 +210,7 @@ func corrupt(bytes []byte) {
 
 func TestBadTx(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -314,14 +220,14 @@ func TestBadTx(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), nil, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
 	}
 
 	// assemble a transaction from that proposal and endorsement
-	tx, err := utils.CreateSignedTx(prop, signer, presp)
+	tx, err := protoutil.CreateSignedTx(prop, signer, presp)
 	if err != nil {
 		t.Fatalf("CreateSignedTx failed, err %s", err)
 		return
@@ -329,12 +235,14 @@ func TestBadTx(t *testing.T) {
 
 	// mess with the transaction payload
 	paylOrig := tx.Payload
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 	for i := 0; i < len(paylOrig); i++ {
 		paylCopy := make([]byte, len(paylOrig))
 		copy(paylCopy, paylOrig)
 		paylCopy[i] = byte(int(paylCopy[i]+1) % 255)
 		// validate the transaction it should fail
-		_, txResult := ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy}, &config.MockApplicationCapabilities{})
+		_, txResult := ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy}, cryptoProvider)
 		if txResult == peer.TxValidationCode_VALID {
 			t.Fatal("ValidateTransaction should have failed")
 			return
@@ -342,7 +250,7 @@ func TestBadTx(t *testing.T) {
 	}
 
 	// assemble a transaction from that proposal and endorsement
-	tx, err = utils.CreateSignedTx(prop, signer, presp)
+	tx, err = protoutil.CreateSignedTx(prop, signer, presp)
 	if err != nil {
 		t.Fatalf("CreateSignedTx failed, err %s", err)
 		return
@@ -352,7 +260,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Signature)
 
 	// validate the transaction it should fail
-	_, txResult := ValidateTransaction(tx, &config.MockApplicationCapabilities{})
+	_, txResult := ValidateTransaction(tx, cryptoProvider)
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatal("ValidateTransaction should have failed")
 		return
@@ -361,7 +269,7 @@ func TestBadTx(t *testing.T) {
 
 func Test2EndorsersAgree(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -371,7 +279,7 @@ func Test2EndorsersAgree(t *testing.T) {
 	simRes1 := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp1, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, getChaincodeID(), nil, signer)
+	presp1, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, getChaincodeID(), signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -381,21 +289,23 @@ func Test2EndorsersAgree(t *testing.T) {
 	simRes2 := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp2, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, getChaincodeID(), nil, signer)
+	presp2, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, getChaincodeID(), signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
 	}
 
 	// assemble a transaction from that proposal and endorsement
-	tx, err := utils.CreateSignedTx(prop, signer, presp1, presp2)
+	tx, err := protoutil.CreateSignedTx(prop, signer, presp1, presp2)
 	if err != nil {
 		t.Fatalf("CreateSignedTx failed, err %s", err)
 		return
 	}
 
 	// validate the transaction
-	_, txResult := ValidateTransaction(tx, &config.MockApplicationCapabilities{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	_, txResult := ValidateTransaction(tx, cryptoProvider)
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -404,7 +314,7 @@ func Test2EndorsersAgree(t *testing.T) {
 
 func Test2EndorsersDisagree(t *testing.T) {
 	// get a toy proposal
-	prop, err := getProposal(util.GetTestChainID())
+	prop, err := getProposal("testchannelid")
 	if err != nil {
 		t.Fatalf("getProposal failed, err %s", err)
 		return
@@ -414,7 +324,7 @@ func Test2EndorsersDisagree(t *testing.T) {
 	simRes1 := []byte("simulation_result1")
 
 	// endorse it to get a proposal response
-	presp1, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, getChaincodeID(), nil, signer)
+	presp1, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, getChaincodeID(), signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -424,14 +334,14 @@ func Test2EndorsersDisagree(t *testing.T) {
 	simRes2 := []byte("simulation_result2")
 
 	// endorse it to get a proposal response
-	presp2, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, getChaincodeID(), nil, signer)
+	presp2, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, getChaincodeID(), signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
 	}
 
 	// assemble a transaction from that proposal and endorsement
-	_, err = utils.CreateSignedTx(prop, signer, presp1, presp2)
+	_, err = protoutil.CreateSignedTx(prop, signer, presp1, presp2)
 	if err == nil {
 		t.Fatal("CreateSignedTx should have failed")
 		return
@@ -439,9 +349,12 @@ func Test2EndorsersDisagree(t *testing.T) {
 }
 
 func TestInvocationsBadArgs(t *testing.T) {
-	_, code := ValidateTransaction(nil, &config.MockApplicationCapabilities{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	_, code := ValidateTransaction(nil, cryptoProvider)
 	assert.Equal(t, code, peer.TxValidationCode_NIL_ENVELOPE)
-	err := validateEndorserTransaction(nil, nil)
+	err = validateEndorserTransaction(nil, nil)
 	assert.Error(t, err)
 	err = validateConfigTransaction(nil, nil)
 	assert.Error(t, err)
@@ -457,13 +370,7 @@ func TestInvocationsBadArgs(t *testing.T) {
 	assert.Error(t, err)
 	err = validateSignatureHeader(&common.SignatureHeader{Nonce: []byte("a")})
 	assert.Error(t, err)
-	err = checkSignatureFromCreator(nil, nil, nil, "")
-	assert.Error(t, err)
-	_, _, _, err = ValidateProposalMessage(nil)
-	assert.Error(t, err)
-	_, err = validateChaincodeProposalMessage(nil, nil)
-	assert.Error(t, err)
-	_, err = validateChaincodeProposalMessage(&peer.Proposal{}, &common.Header{ChannelHeader: []byte("a"), SignatureHeader: []byte("a")})
+	err = checkSignatureFromCreator(nil, nil, nil, "", cryptoProvider)
 	assert.Error(t, err)
 }
 
@@ -481,7 +388,14 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		os.Exit(-1)
+		return
+	}
+
+	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Println("Could not get signer")
 		os.Exit(-1)

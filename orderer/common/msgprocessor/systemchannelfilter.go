@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package msgprocessor
 
 import (
-	"github.com/hyperledger/fabric/common/channelconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
-
 	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -34,15 +34,17 @@ type LimitedSupport interface {
 
 // SystemChainFilter implements the filter.Rule interface.
 type SystemChainFilter struct {
-	cc      ChainCreator
-	support LimitedSupport
+	cc        ChainCreator
+	support   LimitedSupport
+	validator MetadataValidator
 }
 
 // NewSystemChannelFilter returns a new instance of a *SystemChainFilter.
-func NewSystemChannelFilter(ls LimitedSupport, cc ChainCreator) *SystemChainFilter {
+func NewSystemChannelFilter(ls LimitedSupport, cc ChainCreator, validator MetadataValidator) *SystemChainFilter {
 	return &SystemChainFilter{
-		support: ls,
-		cc:      cc,
+		support:   ls,
+		cc:        cc,
+		validator: validator,
 	}
 }
 
@@ -59,7 +61,7 @@ func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 		return errors.Errorf("missing payload header")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
 	if err != nil {
 		return errors.Errorf("bad channel header: %s", err)
 	}
@@ -79,6 +81,10 @@ func (scf *SystemChainFilter) Apply(env *cb.Envelope) error {
 		if uint64(scf.cc.ChannelsCount()) > maxChannels {
 			return errors.Errorf("channel creation would exceed maximimum number of channels: %d", maxChannels)
 		}
+	}
+
+	if ordererConfig.ConsensusState() != orderer.ConsensusType_STATE_NORMAL {
+		return errors.WithMessage(ErrMaintenanceMode, "channel creation is not permitted")
 	}
 
 	configTx := &cb.Envelope{}
@@ -101,7 +107,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return errors.Errorf("wrapped configtx envelope missing header")
 	}
 
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return errors.Errorf("error unmarshaling wrapped configtx envelope channel header: %s", err)
 	}
@@ -136,7 +142,7 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return errors.Errorf("config proposed by the channel creation request did not match the config received with the channel creation request")
 	}
 
-	bundle, err := scf.cc.CreateBundle(res.ConfigtxValidator().ChainID(), newChannelConfigEnv.Config)
+	bundle, err := scf.cc.CreateBundle(res.ConfigtxValidator().ChannelID(), newChannelConfigEnv.Config)
 	if err != nil {
 		return errors.Wrap(err, "config does not validly parse")
 	}
@@ -148,6 +154,17 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	oc, ok := bundle.OrdererConfig()
 	if !ok {
 		return errors.New("config is missing orderer group")
+	}
+	newMetadata := oc.ConsensusMetadata()
+
+	oldOrdererConfig, ok := scf.support.OrdererConfig()
+	if !ok {
+		logger.Panic("old config is missing orderer group")
+	}
+	oldMetadata := oldOrdererConfig.ConsensusMetadata()
+
+	if err = scf.validator.ValidateConsensusMetadata(oldMetadata, newMetadata, true); err != nil {
+		return errors.Wrap(err, "consensus metadata update for channel creation is invalid")
 	}
 
 	if err = oc.Capabilities().Supported(); err != nil {

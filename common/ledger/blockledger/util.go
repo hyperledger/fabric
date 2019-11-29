@@ -1,22 +1,16 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-                 http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
 */
 
 package blockledger
 
 import (
 	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 var closedChan chan struct{}
@@ -57,13 +51,12 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 				Newest: &ab.SeekNewest{},
 			},
 		})
-		<-it.ReadyChan() // Should never block, but just in case
 		block, status := it.Next()
 		if status != cb.Status_SUCCESS {
 			panic("Error seeking to newest block for chain with non-zero height")
 		}
 		nextBlockNumber = block.Header.Number + 1
-		previousBlockHash = block.Header.Hash()
+		previousBlockHash = protoutil.BlockHeaderHash(block.Header)
 	}
 
 	data := &cb.BlockData{
@@ -78,8 +71,8 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 		}
 	}
 
-	block := cb.NewBlock(nextBlockNumber, previousBlockHash)
-	block.Header.DataHash = data.Hash()
+	block := protoutil.NewBlock(nextBlockNumber, previousBlockHash)
+	block.Header.DataHash = protoutil.BlockDataHash(data)
 	block.Data = data
 
 	return block
@@ -87,19 +80,18 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 
 // GetBlock is a utility method for retrieving a single block
 func GetBlock(rl Reader, index uint64) *cb.Block {
-	i, _ := rl.Iterator(&ab.SeekPosition{
+	iterator, _ := rl.Iterator(&ab.SeekPosition{
 		Type: &ab.SeekPosition_Specified{
 			Specified: &ab.SeekSpecified{Number: index},
 		},
 	})
-	select {
-	case <-i.ReadyChan():
-		block, status := i.Next()
-		if status != cb.Status_SUCCESS {
-			return nil
-		}
-		return block
-	default:
+	if iterator == nil {
 		return nil
 	}
+	defer iterator.Close()
+	block, status := iterator.Next()
+	if status != cb.Status_SUCCESS {
+		return nil
+	}
+	return block
 }

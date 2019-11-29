@@ -7,11 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package consensus
 
 import (
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // Consenter defines the backing ordering mechanism.
@@ -20,9 +21,20 @@ type Consenter interface {
 	// It will only be invoked for a given chain once per process.  In general, errors will be treated
 	// as irrecoverable and cause system shutdown.  See the description of Chain for more details
 	// The second argument to HandleChain is a pointer to the metadata stored on the `ORDERER` slot of
-	// the last block committed to the ledger of this Chain.  For a new chain, this metadata will be
-	// nil, as this field is not set on the genesis block
+	// the last block committed to the ledger of this Chain. For a new chain, or one which is migrated,
+	// this metadata will be nil (or contain a zero-length Value), as there is no prior metadata to report.
 	HandleChain(support ConsenterSupport, metadata *cb.Metadata) (Chain, error)
+}
+
+// MetadataValidator performs the validation of updates to ConsensusMetadata during config updates to the channel.
+// NOTE: We expect the MetadataValidator interface to be optionally implemented by the Consenter implementation.
+//       If a Consenter does not implement MetadataValidator, we default to using a no-op MetadataValidator.
+type MetadataValidator interface {
+	// ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config
+	// updates on the channel.
+	// Since the ConsensusMetadata is specific to the consensus implementation (independent of the particular
+	// chain) this validation also needs to be implemented by the specific consensus implementation.
+	ValidateConsensusMetadata(oldMetadata, newMetadata []byte, newChannel bool) error
 }
 
 // Chain defines a way to inject messages for ordering.
@@ -67,10 +79,16 @@ type Chain interface {
 	Halt()
 }
 
+//go:generate counterfeiter -o mocks/mock_consenter_support.go . ConsenterSupport
+
 // ConsenterSupport provides the resources available to a Consenter implementation.
 type ConsenterSupport interface {
-	crypto.LocalSigner
+	identity.SignerSerializer
 	msgprocessor.Processor
+
+	// VerifyBlockSignature verifies a signature of a block with a given optional
+	// configuration (can be nil).
+	VerifyBlockSignature([]*protoutil.SignedData, *cb.ConfigEnvelope) error
 
 	// BlockCutter returns the block cutting helper for this channel.
 	BlockCutter() blockcutter.Receiver
@@ -78,9 +96,16 @@ type ConsenterSupport interface {
 	// SharedConfig provides the shared config from the channel's current config block.
 	SharedConfig() channelconfig.Orderer
 
+	// ChannelConfig provides the channel config from the channel's current config block.
+	ChannelConfig() channelconfig.Channel
+
 	// CreateNextBlock takes a list of messages and creates the next block based on the block with highest block number committed to the ledger
 	// Note that either WriteBlock or WriteConfigBlock must be called before invoking this method a second time.
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
+
+	// Block returns a block with the given number,
+	// or nil if such a block doesn't exist.
+	Block(number uint64) *cb.Block
 
 	// WriteBlock commits a block to the ledger.
 	WriteBlock(block *cb.Block, encodedMetadataValue []byte)
@@ -88,12 +113,26 @@ type ConsenterSupport interface {
 	// WriteConfigBlock commits a block to the ledger, and applies the config update inside.
 	WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte)
 
-	// Sequence returns the current config squence.
+	// Sequence returns the current config sequence.
 	Sequence() uint64
 
-	// ChainID returns the channel ID this support is associated with.
-	ChainID() string
+	// ChannelID returns the channel ID this support is associated with.
+	ChannelID() string
 
 	// Height returns the number of blocks in the chain this channel is associated with.
 	Height() uint64
+
+	// Append appends a new block to the ledger in its raw form,
+	// unlike WriteBlock that also mutates its metadata.
+	Append(block *cb.Block) error
+}
+
+// NoOpMetadataValidator implements a MetadataValidator that always returns nil error irrespecttive of the inputs.
+type NoOpMetadataValidator struct {
+}
+
+// ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config updates
+// on the channel, and it always returns nil error for the NoOpMetadataValidator implementation.
+func (n NoOpMetadataValidator) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []byte, newChannel bool) error {
+	return nil
 }

@@ -10,9 +10,9 @@ import (
 	"sync"
 	"testing"
 
+	msp2 "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mocks"
-	msp2 "github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -38,9 +38,9 @@ func TestSetup(t *testing.T) {
 	err = i.Setup(nil)
 	assert.NoError(t, err)
 	mockMSP.AssertExpectations(t)
-	assert.Equal(t, 0, i.(*cachedMSP).deserializeIdentityCache.Len())
-	assert.Equal(t, 0, i.(*cachedMSP).satisfiesPrincipalCache.Len())
-	assert.Equal(t, 0, i.(*cachedMSP).validateIdentityCache.Len())
+	assert.Equal(t, 0, i.(*cachedMSP).deserializeIdentityCache.len())
+	assert.Equal(t, 0, i.(*cachedMSP).satisfiesPrincipalCache.len())
+	assert.Equal(t, 0, i.(*cachedMSP).validateIdentityCache.len())
 }
 
 func TestGetType(t *testing.T) {
@@ -133,8 +133,8 @@ func TestDeserializeIdentity(t *testing.T) {
 	// Stress the cache and ensure concurrent operations
 	// do not result in a failure
 	var wg sync.WaitGroup
-	wg.Add(10000)
-	for i := 0; i < 10000; i++ {
+	wg.Add(100)
+	for i := 0; i < 100; i++ {
 		go func(m msp.MSP, i int) {
 			sIdentity := serializedIdentity
 			expectedIdentity := mockIdentity
@@ -145,20 +145,20 @@ func TestDeserializeIdentity(t *testing.T) {
 			}
 			id, err := wrappedMSP.DeserializeIdentity(sIdentity)
 			assert.NoError(t, err)
-			assert.Equal(t, expectedIdentity, id)
+			assert.Equal(t, expectedIdentity, id.(*cachedIdentity).Identity)
 		}(wrappedMSP, i)
 	}
 	wg.Wait()
 
 	mockMSP.AssertExpectations(t)
 	// Check the cache
-	_, ok := wrappedMSP.(*cachedMSP).deserializeIdentityCache.Get(string(serializedIdentity))
+	_, ok := wrappedMSP.(*cachedMSP).deserializeIdentityCache.get(string(serializedIdentity))
 	assert.True(t, ok)
 
 	// Check the same object is returned
 	id, err := wrappedMSP.DeserializeIdentity(serializedIdentity)
 	assert.NoError(t, err)
-	assert.True(t, mockIdentity == id)
+	assert.True(t, mockIdentity == id.(*cachedIdentity).Identity)
 	mockMSP.AssertExpectations(t)
 
 	// Check id is not cached
@@ -170,7 +170,7 @@ func TestDeserializeIdentity(t *testing.T) {
 	assert.Contains(t, err.Error(), "Invalid identity")
 	mockMSP.AssertExpectations(t)
 
-	_, ok = wrappedMSP.(*cachedMSP).deserializeIdentityCache.Get(string(serializedIdentity))
+	_, ok = wrappedMSP.(*cachedMSP).deserializeIdentityCache.get(string(serializedIdentity))
 	assert.False(t, ok)
 }
 
@@ -190,7 +190,7 @@ func TestValidate(t *testing.T) {
 	// Check the cache
 	identifier := mockIdentity.GetIdentifier()
 	key := string(identifier.Mspid + ":" + identifier.Id)
-	v, ok := i.(*cachedMSP).validateIdentityCache.Get(string(key))
+	v, ok := i.(*cachedMSP).validateIdentityCache.get(string(key))
 	assert.True(t, ok)
 	assert.True(t, v.(bool))
 
@@ -209,8 +209,68 @@ func TestValidate(t *testing.T) {
 	// Check the cache
 	identifier = mockIdentity.GetIdentifier()
 	key = string(identifier.Mspid + ":" + identifier.Id)
-	_, ok = i.(*cachedMSP).validateIdentityCache.Get(string(key))
+	_, ok = i.(*cachedMSP).validateIdentityCache.get(string(key))
 	assert.False(t, ok)
+}
+
+func TestSatisfiesValidateIndirectCall(t *testing.T) {
+	mockMSP := &mocks.MockMSP{}
+
+	mockIdentity := &mocks.MockIdentity{ID: "Alice"}
+	mockIdentity.On("Validate").Run(func(_ mock.Arguments) {
+		panic("shouldn't have invoked the identity method")
+	})
+	mockMSP.On("DeserializeIdentity", mock.Anything).Return(mockIdentity, nil).Once()
+	mockIdentity.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "MSP", Id: "Alice"})
+
+	cache, err := New(mockMSP)
+	assert.NoError(t, err)
+
+	mockMSP.On("Validate", mockIdentity).Return(nil)
+
+	// Test that cache returns the correct value, and also use this to prime the cache
+	err = cache.Validate(mockIdentity)
+	mockMSP.AssertNumberOfCalls(t, "Validate", 1)
+	assert.NoError(t, err)
+	// Get the identity we test the caching on
+	identity, err := cache.DeserializeIdentity([]byte{1, 2, 3})
+	assert.NoError(t, err)
+	// Ensure the identity returned answers what the cached MSP answers.
+	err = identity.Validate()
+	assert.NoError(t, err)
+	// Ensure that although a call to Validate was called, the calls weren't passed on to the backing MSP
+	mockMSP.AssertNumberOfCalls(t, "Validate", 1)
+}
+
+func TestSatisfiesPrincipalIndirectCall(t *testing.T) {
+	mockMSP := &mocks.MockMSP{}
+	mockMSPPrincipal := &msp2.MSPPrincipal{PrincipalClassification: msp2.MSPPrincipal_IDENTITY, Principal: []byte{1, 2, 3}}
+
+	mockIdentity := &mocks.MockIdentity{ID: "Alice"}
+	mockIdentity.On("SatisfiesPrincipal", mockMSPPrincipal).Run(func(_ mock.Arguments) {
+		panic("shouldn't have invoked the identity method")
+	})
+	mockMSP.On("DeserializeIdentity", mock.Anything).Return(mockIdentity, nil).Once()
+	mockIdentity.On("GetIdentifier").Return(&msp.IdentityIdentifier{Mspid: "MSP", Id: "Alice"})
+
+	cache, err := New(mockMSP)
+	assert.NoError(t, err)
+
+	// First invocation of the SatisfiesPrincipal returns an error
+	mockMSP.On("SatisfiesPrincipal", mockIdentity, mockMSPPrincipal).Return(errors.New("error: foo")).Once()
+	// Second invocation returns nil
+	mockMSP.On("SatisfiesPrincipal", mockIdentity, mockMSPPrincipal).Return(nil).Once()
+
+	// Test that cache returns the correct value
+	err = cache.SatisfiesPrincipal(mockIdentity, mockMSPPrincipal)
+	assert.Equal(t, "error: foo", err.Error())
+	// Get the identity we test the caching on
+	identity, err := cache.DeserializeIdentity([]byte{1, 2, 3})
+	assert.NoError(t, err)
+	// Ensure the identity returned answers what the cached MSP answers.
+	// If the invocation doesn't hit the cache, it will return nil instead of an error.
+	err = identity.SatisfiesPrincipal(mockMSPPrincipal)
+	assert.Equal(t, "error: foo", err.Error())
 }
 
 func TestSatisfiesPrincipal(t *testing.T) {
@@ -233,7 +293,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	identityKey := string(identifier.Mspid + ":" + identifier.Id)
 	principalKey := string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
 	key := identityKey + principalKey
-	v, ok := i.(*cachedMSP).satisfiesPrincipalCache.Get(key)
+	v, ok := i.(*cachedMSP).satisfiesPrincipalCache.get(key)
 	assert.True(t, ok)
 	assert.Nil(t, v)
 
@@ -256,7 +316,7 @@ func TestSatisfiesPrincipal(t *testing.T) {
 	identityKey = string(identifier.Mspid + ":" + identifier.Id)
 	principalKey = string(mockMSPPrincipal.PrincipalClassification) + string(mockMSPPrincipal.Principal)
 	key = identityKey + principalKey
-	v, ok = i.(*cachedMSP).satisfiesPrincipalCache.Get(key)
+	v, ok = i.(*cachedMSP).satisfiesPrincipalCache.get(key)
 	assert.True(t, ok)
 	assert.NotNil(t, v)
 	assert.Contains(t, "Invalid", v.(error).Error())

@@ -7,34 +7,52 @@ SPDX-License-Identifier: Apache-2.0
 package endorser
 
 import (
+	"fmt"
+
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/resourcesconfig"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
+	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/handlers/library"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
-	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
+
+// PeerOperations contains the peer operatiosn required to support the
+// endorser.
+type PeerOperations interface {
+	GetApplicationConfig(cid string) (channelconfig.Application, bool)
+	GetLedger(cid string) ledger.PeerLedger
+}
 
 // SupportImpl provides an implementation of the endorser.Support interface
 // issuing calls to various static methods of the peer
 type SupportImpl struct {
-	Peer        peer.Operations
-	PeerSupport peer.Support
+	*PluginEndorser
+	identity.SignerSerializer
+	Peer             PeerOperations
+	ChaincodeSupport *chaincode.ChaincodeSupport
+	ACLProvider      aclmgmt.ACLProvider
+	BuiltinSCCs      scc.BuiltinSCCs
 }
 
-// IsSysCCAndNotInvokableExternal returns true if the supplied chaincode is
-// ia system chaincode and it NOT invokable
-func (s *SupportImpl) IsSysCCAndNotInvokableExternal(name string) bool {
-	return scc.IsSysCCAndNotInvokableExternal(name)
+func (s *SupportImpl) NewQueryCreator(channel string) (QueryCreator, error) {
+	lgr := s.Peer.GetLedger(channel)
+	if lgr == nil {
+		return nil, errors.Errorf("channel %s doesn't exist", channel)
+	}
+	return lgr, nil
+}
+
+func (s *SupportImpl) SigningIdentityForRequest(*pb.SignedProposal) (endorsement.SigningIdentity, error) {
+	return s.SignerSerializer, nil
 }
 
 // GetTxSimulator returns the transaction simulator for the specified ledger
@@ -43,7 +61,7 @@ func (s *SupportImpl) IsSysCCAndNotInvokableExternal(name string) bool {
 func (s *SupportImpl) GetTxSimulator(ledgername string, txid string) (ledger.TxSimulator, error) {
 	lgr := s.Peer.GetLedger(ledgername)
 	if lgr == nil {
-		return nil, errors.Errorf("channel does not exist: %s", ledgername)
+		return nil, errors.Errorf("Channel does not exist: %s", ledgername)
 	}
 	return lgr.NewTxSimulator(txid)
 }
@@ -53,7 +71,7 @@ func (s *SupportImpl) GetTxSimulator(ledgername string, txid string) (ledger.TxS
 func (s *SupportImpl) GetHistoryQueryExecutor(ledgername string) (ledger.HistoryQueryExecutor, error) {
 	lgr := s.Peer.GetLedger(ledgername)
 	if lgr == nil {
-		return nil, errors.Errorf("channel does not exist: %s", ledgername)
+		return nil, errors.Errorf("Channel does not exist: %s", ledgername)
 	}
 	return lgr.NewHistoryQueryExecutor()
 }
@@ -62,7 +80,7 @@ func (s *SupportImpl) GetHistoryQueryExecutor(ledgername string) (ledger.History
 func (s *SupportImpl) GetTransactionByID(chid, txID string) (*pb.ProcessedTransaction, error) {
 	lgr := s.Peer.GetLedger(chid)
 	if lgr == nil {
-		return nil, errors.Errorf("failed to look up the ledger for channel %s", chid)
+		return nil, errors.Errorf("failed to look up the ledger for Channel %s", chid)
 	}
 	tx, err := lgr.GetTransactionByID(txID)
 	if err != nil {
@@ -71,69 +89,61 @@ func (s *SupportImpl) GetTransactionByID(chid, txID string) (*pb.ProcessedTransa
 	return tx, nil
 }
 
+// GetLedgerHeight returns ledger height for given channelID
+func (s *SupportImpl) GetLedgerHeight(channelID string) (uint64, error) {
+	lgr := s.Peer.GetLedger(channelID)
+	if lgr == nil {
+		return 0, errors.Errorf("failed to look up the ledger for Channel %s", channelID)
+	}
+
+	info, err := lgr.GetBlockchainInfo()
+	if err != nil {
+		return 0, errors.Wrap(err, fmt.Sprintf("failed to obtain information for Channel %s", channelID))
+	}
+
+	return info.Height, nil
+}
+
 // IsSysCC returns true if the name matches a system chaincode's
 // system chaincode names are system, chain wide
 func (s *SupportImpl) IsSysCC(name string) bool {
-	return scc.IsSysCC(name)
+	return s.BuiltinSCCs.IsSysCC(name)
+}
+
+// ExecuteInit a deployment proposal and return the chaincode response
+func (s *SupportImpl) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, name, version string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	return s.ChaincodeSupport.ExecuteLegacyInit(txParams, name, version, input)
 }
 
 // Execute a proposal and return the chaincode response
-func (s *SupportImpl) Execute(ctxt context.Context, cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
-	cccid := ccprovider.NewCCContext(cid, name, version, txid, syscc, signedProp, prop)
+func (s *SupportImpl) Execute(txParams *ccprovider.TransactionParams, name string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	// decorate the chaincode input
+	decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
+	input.Decorations = make(map[string][]byte)
+	input = decoration.Apply(txParams.Proposal, input, decorators...)
+	txParams.ProposalDecorations = input.Decorations
 
-	switch spec.(type) {
-	case *pb.ChaincodeDeploymentSpec:
-		return chaincode.Execute(ctxt, cccid, spec)
-	case *pb.ChaincodeInvocationSpec:
-		cis := spec.(*pb.ChaincodeInvocationSpec)
-
-		// decorate the chaincode input
-		decorators := library.InitRegistry(library.Config{}).Lookup(library.Decoration).([]decoration.Decorator)
-		cis.ChaincodeSpec.Input.Decorations = make(map[string][]byte)
-		cis.ChaincodeSpec.Input = decoration.Apply(prop, cis.ChaincodeSpec.Input, decorators...)
-		cccid.ProposalDecorations = cis.ChaincodeSpec.Input.Decorations
-
-		return chaincode.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.Input.Args)
-	default:
-		panic("programming error, unkwnown spec type")
-	}
+	return s.ChaincodeSupport.Execute(txParams, name, input)
 }
 
-// GetChaincodeDefinition returns resourcesconfig.ChaincodeDefinition for the chaincode with the supplied name
-func (s *SupportImpl) GetChaincodeDefinition(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (resourcesconfig.ChaincodeDefinition, error) {
-	ctxt := ctx
-	if txsim != nil {
-		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
-	}
-	return chaincode.GetChaincodeDefinition(ctxt, txid, signedProp, prop, chainID, chaincodeID)
+// ChaincodeEndorsementInfo returns info needed to endorse a tx for the chaincode with the supplied name.
+func (s *SupportImpl) ChaincodeEndorsementInfo(channelID, chaincodeName string, txsim ledger.QueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
+	return s.ChaincodeSupport.Lifecycle.ChaincodeEndorsementInfo(channelID, chaincodeName, txsim)
 }
 
-// CheckACL checks the ACL for the resource for the channel using the
+// CheckACL checks the ACL for the resource for the Channel using the
 // SignedProposal from which an id can be extracted for testing against a policy
-func (s *SupportImpl) CheckACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
-	return aclmgmt.GetACLProvider().CheckACL(resources.PROPOSE, chdr.ChannelId, signedProp)
+func (s *SupportImpl) CheckACL(channelID string, signedProp *pb.SignedProposal) error {
+	return s.ACLProvider.CheckACL(resources.Peer_Propose, channelID, signedProp)
 }
 
-// IsJavaCC returns true if the CDS package bytes describe a chaincode
-// that requires the java runtime environment to execute
-func (s *SupportImpl) IsJavaCC(buf []byte) (bool, error) {
-	//the inner dep spec will contain the type
-	ccpack, err := ccprovider.GetCCPackage(buf)
-	if err != nil {
-		return false, err
-	}
-	cds := ccpack.GetDepSpec()
-	return (cds.ChaincodeSpec.Type == pb.ChaincodeSpec_JAVA), nil
-}
-
-// CheckInstantiationPolicy returns an error if the instantiation in the supplied
-// ChaincodeDefinition differs from the instantiation policy stored on the ledger
-func (s *SupportImpl) CheckInstantiationPolicy(name, version string, cd resourcesconfig.ChaincodeDefinition) error {
-	return ccprovider.CheckInstantiationPolicy(name, version, cd.(*ccprovider.ChaincodeData))
-}
-
-// GetApplicationConfig returns the configtxapplication.SharedConfig for the channel
+// GetApplicationConfig returns the configtxapplication.SharedConfig for the Channel
 // and whether the Application config exists
 func (s *SupportImpl) GetApplicationConfig(cid string) (channelconfig.Application, bool) {
-	return s.PeerSupport.GetApplicationConfig(cid)
+	return s.Peer.GetApplicationConfig(cid)
+}
+
+// GetDeployedCCInfoProvider returns ledger.DeployedChaincodeInfoProvider
+func (s *SupportImpl) GetDeployedCCInfoProvider() ledger.DeployedChaincodeInfoProvider {
+	return s.ChaincodeSupport.DeployedCCInfoProvider
 }

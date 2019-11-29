@@ -7,768 +7,305 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
-	"fmt"
-	"io"
-	"reflect"
-	"strconv"
-	"strings"
-	"sync"
+	"bytes"
 	"time"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	logging "github.com/op/go-logging"
+	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/scc"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
-	"golang.org/x/net/context"
 )
-
-type key string
 
 const (
-	// DevModeUserRunsChaincode property allows user to run chaincode in development environment
-	DevModeUserRunsChaincode       string = "dev"
-	chaincodeStartupTimeoutDefault int    = 5000
-	peerAddressDefault             string = "0.0.0.0:7052"
-
-	//TXSimulatorKey is used to attach ledger simulation context
-	TXSimulatorKey key = "txsimulatorkey"
-
-	//HistoryQueryExecutorKey is used to attach ledger history query executor context
-	HistoryQueryExecutorKey key = "historyqueryexecutorkey"
-
-	// Mutual TLS auth client key and cert paths in the chaincode container
-	TLSClientKeyPath      string = "/etc/hyperledger/fabric/client.key"
-	TLSClientCertPath     string = "/etc/hyperledger/fabric/client.crt"
-	TLSClientRootCertPath string = "/etc/hyperledger/fabric/peer.crt"
+	// InitializedKeyName is the reserved key in a chaincode's namespace which
+	// records the ID of the chaincode which initialized the namespace.
+	// In this way, we can enforce Init exactly once semantics, whenever
+	// the backing chaincode bytes change (but not be required to re-initialize
+	// the chaincode say, when endorsement policy changes).
+	InitializedKeyName = "\x00" + string(utf8.MaxRune) + "initialized"
 )
 
-//this is basically the singleton that supports the
-//entire chaincode framework. It does NOT know about
-//chains. Chains are per-proposal entities that are
-//setup as part of "join" and go through this object
-//via calls to Execute and Deploy chaincodes.
-var theChaincodeSupport *ChaincodeSupport
-
-//use this for ledger access and make sure TXSimulator is being used
-func getTxSimulator(context context.Context) ledger.TxSimulator {
-	if txsim, ok := context.Value(TXSimulatorKey).(ledger.TxSimulator); ok {
-		return txsim
-	}
-	//chaincode will not allow state operations
-	return nil
+// Runtime is used to manage chaincode runtime instances.
+type Runtime interface {
+	Build(ccid string) (*ccintf.ChaincodeServerInfo, error)
+	Start(ccid string, ccinfo *ccintf.PeerConnection) error
+	Stop(ccid string) error
+	Wait(ccid string) (int, error)
 }
 
-//use this for ledger access and make sure HistoryQueryExecutor is being used
-func getHistoryQueryExecutor(context context.Context) ledger.HistoryQueryExecutor {
-	if historyQueryExecutor, ok := context.Value(HistoryQueryExecutorKey).(ledger.HistoryQueryExecutor); ok {
-		return historyQueryExecutor
-	}
-	//chaincode will not allow state operations
-	return nil
+// Launcher is used to launch chaincode runtimes.
+type Launcher interface {
+	Launch(ccid string) error
 }
 
-//
-//chaincode runtime environment encapsulates handler and container environment
-//This is where the VM that's running the chaincode would hook in
-type chaincodeRTEnv struct {
-	handler *Handler
-}
-
-// runningChaincodes contains maps of chaincodeIDs to their chaincodeRTEs
-type runningChaincodes struct {
-	sync.RWMutex
-	// chaincode environment for each chaincode
-	chaincodeMap map[string]*chaincodeRTEnv
-
-	//mark the starting of launch of a chaincode so multiple requests
-	//do not attempt to start the chaincode at the same time
-	launchStarted map[string]bool
-}
-
-//GetChain returns the chaincode framework support object
-func GetChain() *ChaincodeSupport {
-	return theChaincodeSupport
-}
-
-func (chaincodeSupport *ChaincodeSupport) preLaunchSetup(chaincode string, notfy chan bool) {
-	chaincodeSupport.runningChaincodes.Lock()
-	defer chaincodeSupport.runningChaincodes.Unlock()
-	//register placeholder Handler. This will be transferred in registerHandler
-	//NOTE: from this point, existence of handler for this chaincode means the chaincode
-	//is in the process of getting started (or has been started)
-	chaincodeSupport.runningChaincodes.chaincodeMap[chaincode] = &chaincodeRTEnv{handler: &Handler{readyNotify: notfy}}
-}
-
-//call this under lock
-func (chaincodeSupport *ChaincodeSupport) chaincodeHasBeenLaunched(chaincode string) (*chaincodeRTEnv, bool) {
-	chrte, hasbeenlaunched := chaincodeSupport.runningChaincodes.chaincodeMap[chaincode]
-	return chrte, hasbeenlaunched
-}
-
-//call this under lock
-func (chaincodeSupport *ChaincodeSupport) launchStarted(chaincode string) bool {
-	if _, launchStarted := chaincodeSupport.runningChaincodes.launchStarted[chaincode]; launchStarted {
-		return true
-	}
-	return false
-}
-
-// NewChaincodeSupport creates a new ChaincodeSupport instance
-func NewChaincodeSupport(
-	ccEndpoint string,
-	userrunsCC bool,
-	ccstartuptimeout time.Duration,
-	caCert []byte,
-	certGenerator CertGenerator,
-) *ChaincodeSupport {
-	ccprovider.SetChaincodesPath(ccprovider.GetCCsPath())
-	pnid := viper.GetString("peer.networkId")
-	pid := viper.GetString("peer.id")
-
-	theChaincodeSupport = &ChaincodeSupport{
-		caCert:        caCert,
-		certGenerator: certGenerator,
-		runningChaincodes: &runningChaincodes{
-			chaincodeMap:  make(map[string]*chaincodeRTEnv),
-			launchStarted: make(map[string]bool),
-		}, peerNetworkID: pnid, peerID: pid,
-	}
-
-	theChaincodeSupport.peerAddress = ccEndpoint
-	chaincodeLogger.Infof("Chaincode support using peerAddress: %s\n", theChaincodeSupport.peerAddress)
-
-	theChaincodeSupport.userRunsCC = userrunsCC
-	theChaincodeSupport.ccStartupTimeout = ccstartuptimeout
-	theChaincodeSupport.peerTLS = viper.GetBool("peer.tls.enabled")
-
-	kadef := 0
-	if ka := viper.GetString("chaincode.keepalive"); ka == "" {
-		theChaincodeSupport.keepalive = time.Duration(kadef) * time.Second
-	} else {
-		t, terr := strconv.Atoi(ka)
-		if terr != nil {
-			chaincodeLogger.Errorf("Invalid keepalive value %s (%s) defaulting to %d", ka, terr, kadef)
-			t = kadef
-		} else if t <= 0 {
-			chaincodeLogger.Debugf("Turn off keepalive(value %s)", ka)
-			t = kadef
-		}
-		theChaincodeSupport.keepalive = time.Duration(t) * time.Second
-	}
-
-	//default chaincode execute timeout is 30 secs
-	execto := time.Duration(30) * time.Second
-	if eto := viper.GetDuration("chaincode.executetimeout"); eto <= time.Duration(1)*time.Second {
-		chaincodeLogger.Errorf("Invalid execute timeout value %s (should be at least 1s); defaulting to %s", eto, execto)
-	} else {
-		chaincodeLogger.Debugf("Setting execute timeout value to %s", eto)
-		execto = eto
-	}
-
-	theChaincodeSupport.executetimeout = execto
-
-	viper.SetEnvPrefix("CORE")
-	viper.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-
-	theChaincodeSupport.chaincodeLogLevel = getLogLevelFromViper("level")
-	theChaincodeSupport.shimLogLevel = getLogLevelFromViper("shim")
-	theChaincodeSupport.logFormat = viper.GetString("chaincode.logging.format")
-
-	return theChaincodeSupport
-}
-
-// getLogLevelFromViper gets the chaincode container log levels from viper
-func getLogLevelFromViper(module string) string {
-	levelString := viper.GetString("chaincode.logging." + module)
-	_, err := logging.LogLevel(levelString)
-
-	if err == nil {
-		chaincodeLogger.Debugf("CORE_CHAINCODE_%s set to level %s", strings.ToUpper(module), levelString)
-	} else {
-		chaincodeLogger.Warningf("CORE_CHAINCODE_%s has invalid log level %s. defaulting to %s", strings.ToUpper(module), levelString, flogging.DefaultLevel())
-		levelString = flogging.DefaultLevel()
-	}
-	return levelString
-}
-
-// CertGenerator generates client certificates for chaincode.
-type CertGenerator interface {
-	// Generate returns a certificate and private key and associates
-	// the hash of the certificate with the given chaincode name
-	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
+// Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
+type Lifecycle interface {
+	// ChaincodeEndorsementInfo looks up the chaincode info in the given channel.  It is the responsibility
+	// of the implementation to add appropriate read dependencies for the information returned.
+	ChaincodeEndorsementInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error)
 }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
-	caCert            []byte
-	certGenerator     CertGenerator
-	runningChaincodes *runningChaincodes
-	peerAddress       string
-	ccStartupTimeout  time.Duration
-	peerNetworkID     string
-	peerID            string
-	keepalive         time.Duration
-	chaincodeLogLevel string
-	shimLogLevel      string
-	logFormat         string
-	executetimeout    time.Duration
-	userRunsCC        bool
-	peerTLS           bool
+	ACLProvider            ACLProvider
+	AppConfig              ApplicationConfigRetriever
+	BuiltinSCCs            scc.BuiltinSCCs
+	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
+	ExecuteTimeout         time.Duration
+	InstallTimeout         time.Duration
+	HandlerMetrics         *HandlerMetrics
+	HandlerRegistry        *HandlerRegistry
+	Keepalive              time.Duration
+	Launcher               Launcher
+	Lifecycle              Lifecycle
+	Peer                   *peer.Peer
+	Runtime                Runtime
+	TotalQueryLimit        int
+	UserRunsCC             bool
 }
 
-// DuplicateChaincodeHandlerError returned if attempt to register same chaincodeID while a stream already exists.
-type DuplicateChaincodeHandlerError struct {
-	ChaincodeID *pb.ChaincodeID
+// Launch starts executing chaincode if it is not already running. This method
+// blocks until the peer side handler gets into ready state or encounters a fatal
+// error. If the chaincode is already running, it simply returns.
+func (cs *ChaincodeSupport) Launch(ccid string) (*Handler, error) {
+	if h := cs.HandlerRegistry.Handler(ccid); h != nil {
+		return h, nil
+	}
+
+	if err := cs.Launcher.Launch(ccid); err != nil {
+		return nil, errors.Wrapf(err, "could not launch chaincode %s", ccid)
+	}
+
+	h := cs.HandlerRegistry.Handler(ccid)
+	if h == nil {
+		return nil, errors.Errorf("claimed to start chaincode container for %s but could not find handler", ccid)
+	}
+
+	return h, nil
 }
 
-func (d *DuplicateChaincodeHandlerError) Error() string {
-	return fmt.Sprintf("duplicate chaincodeID error: %s", d.ChaincodeID)
-}
-
-func newDuplicateChaincodeHandlerError(chaincodeHandler *Handler) error {
-	return &DuplicateChaincodeHandlerError{ChaincodeID: chaincodeHandler.ChaincodeID}
-}
-
-func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Handler) error {
-	key := chaincodehandler.ChaincodeID.Name
-
-	chaincodeSupport.runningChaincodes.Lock()
-	defer chaincodeSupport.runningChaincodes.Unlock()
-
-	chrte2, ok := chaincodeSupport.chaincodeHasBeenLaunched(key)
-	if ok && chrte2.handler.registered == true {
-		chaincodeLogger.Debugf("duplicate registered handler(key:%s) return error", key)
-		// Duplicate, return error
-		return newDuplicateChaincodeHandlerError(chaincodehandler)
-	}
-	//a placeholder, unregistered handler will be setup by transaction processing that comes
-	//through via consensus. In this case we swap the handler and give it the notify channel
-	if chrte2 != nil {
-		chaincodehandler.readyNotify = chrte2.handler.readyNotify
-		chrte2.handler = chaincodehandler
-	} else {
-		if chaincodeSupport.userRunsCC == false {
-			//this chaincode was not launched by the peer and is attempting
-			//to register. Don't allow this.
-			return errors.Errorf("peer will not accept external chaincode connection %v (except in dev mode)", chaincodehandler.ChaincodeID)
-		}
-		chaincodeSupport.runningChaincodes.chaincodeMap[key] = &chaincodeRTEnv{handler: chaincodehandler}
+// LaunchInProc is a stopgap solution to be called by the inproccontroller to allow system chaincodes to register
+func (cs *ChaincodeSupport) LaunchInProc(ccid string) <-chan struct{} {
+	launchStatus, ok := cs.HandlerRegistry.Launching(ccid)
+	if ok {
+		chaincodeLogger.Panicf("attempted to launch a system chaincode which has already been launched")
 	}
 
-	chaincodehandler.registered = true
-
-	//now we are ready to receive messages and send back responses
-	chaincodehandler.txCtxs = make(map[string]*transactionContext)
-	chaincodehandler.txidMap = make(map[string]bool)
-
-	chaincodeLogger.Debugf("registered handler complete for chaincode %s", key)
-
-	return nil
-}
-
-func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Handler) error {
-
-	// clean up queryIteratorMap
-	for _, txcontext := range chaincodehandler.txCtxs {
-		for _, v := range txcontext.queryIteratorMap {
-			v.Close()
-		}
-	}
-
-	key := chaincodehandler.ChaincodeID.Name
-	chaincodeLogger.Debugf("Deregister handler: %s", key)
-	chaincodeSupport.runningChaincodes.Lock()
-	defer chaincodeSupport.runningChaincodes.Unlock()
-	if _, ok := chaincodeSupport.chaincodeHasBeenLaunched(key); !ok {
-		// Handler NOT found
-		return errors.Errorf("error deregistering handler, could not find handler with key: %s", key)
-	}
-	delete(chaincodeSupport.runningChaincodes.chaincodeMap, key)
-	chaincodeLogger.Debugf("Deregistered handler with key: %s", key)
-	return nil
-}
-
-// returns a map of file path <-> []byte for all files related to TLS
-func (chaincodeSupport *ChaincodeSupport) getTLSFiles(keyPair *accesscontrol.CertAndPrivKeyPair) map[string][]byte {
-	if keyPair == nil {
-		return nil
-	}
-
-	return map[string][]byte{
-		TLSClientKeyPath:      []byte(keyPair.Key),
-		TLSClientCertPath:     []byte(keyPair.Cert),
-		TLSClientRootCertPath: chaincodeSupport.caCert,
-	}
-}
-
-//get args and env given chaincodeID
-func (chaincodeSupport *ChaincodeSupport) getLaunchConfigs(canName string, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, filesToUpload map[string][]byte, err error) {
-	envs = []string{"CORE_CHAINCODE_ID_NAME=" + canName}
-
-	// ----------------------------------------------------------------------------
-	// Pass TLS options to chaincode
-	// ----------------------------------------------------------------------------
-	// Note: The peer certificate is only baked into the image during the build
-	// phase (see core/chaincode/platforms).  This logic below merely assumes the
-	// image is already configured appropriately and is simply toggling the feature
-	// on or off.  If the peer's x509 has changed since the chaincode was deployed,
-	// the image may be stale and the admin will need to remove the current containers
-	// before restarting the peer.
-	// ----------------------------------------------------------------------------
-	var certKeyPair *accesscontrol.CertAndPrivKeyPair
-	if chaincodeSupport.peerTLS {
-		certKeyPair, err = chaincodeSupport.certGenerator.Generate(canName)
-		if err != nil {
-			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed generating TLS cert for %s", canName))
-		}
-		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
-		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_KEY_PATH=%s", TLSClientKeyPath))
-		envs = append(envs, fmt.Sprintf("CORE_TLS_CLIENT_CERT_PATH=%s", TLSClientCertPath))
-		envs = append(envs, fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=%s", TLSClientRootCertPath))
-	} else {
-		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
-	}
-
-	if chaincodeSupport.chaincodeLogLevel != "" {
-		envs = append(envs, "CORE_CHAINCODE_LOGGING_LEVEL="+chaincodeSupport.chaincodeLogLevel)
-	}
-
-	if chaincodeSupport.shimLogLevel != "" {
-		envs = append(envs, "CORE_CHAINCODE_LOGGING_SHIM="+chaincodeSupport.shimLogLevel)
-	}
-
-	if chaincodeSupport.logFormat != "" {
-		envs = append(envs, "CORE_CHAINCODE_LOGGING_FORMAT="+chaincodeSupport.logFormat)
-	}
-	switch cLang {
-	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
-		args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", chaincodeSupport.peerAddress)}
-	case pb.ChaincodeSpec_JAVA:
-		args = []string{"java", "-jar", "chaincode.jar", "--peerAddress", chaincodeSupport.peerAddress}
-	case pb.ChaincodeSpec_NODE:
-		args = []string{"/bin/sh", "-c", fmt.Sprintf("cd /usr/local/src; npm start -- --peer.address %s", chaincodeSupport.peerAddress)}
-
-	default:
-		return nil, nil, nil, errors.Errorf("unknown chaincodeType: %s", cLang)
-	}
-
-	filesToUpload = theChaincodeSupport.getTLSFiles(certKeyPair)
-
-	chaincodeLogger.Debugf("Executable is %s", args[0])
-	chaincodeLogger.Debugf("Args %v", args)
-	chaincodeLogger.Debugf("Envs %v", envs)
-	chaincodeLogger.Debugf("FilesToUpload %v", reflect.ValueOf(filesToUpload).MapKeys())
-
-	return args, envs, filesToUpload, nil
-}
-
-//---------- Begin - launchAndWaitForRegister related functionality --------
-
-// launcherIntf encapsulate chaincode execution. This helps with UT of
-// launchAndWaitForRegister.
-type launcherIntf interface {
-	launch(ctxt context.Context, notfiy chan bool) (container.VMCResp, error)
-}
-
-//ccLaucherImpl will use the container launcher mechanism to launch the actual chaincode
-type ccLauncherImpl struct {
-	support       *ChaincodeSupport
-	canonicalName string
-	version       string
-	cds           *pb.ChaincodeDeploymentSpec
-	builder       api.BuildSpecFactory
-}
-
-//launches the chaincode using the supplied context and notifier
-func (ccl *ccLauncherImpl) launch(ctxt context.Context, notify chan bool) (container.VMCResp, error) {
-	// launch the chaincode
-	args, env, filesToUpload, err := ccl.support.getLaunchConfigs(ccl.canonicalName, ccl.cds.ChaincodeSpec.Type)
-	if err != nil {
-		return container.VMCResp{}, err
-	}
-
-	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", ccl.canonicalName, ccl.support.peerNetworkID, ccl.support.peerID)
-	chaincodeLogger.Debugf("start container with args: %s", strings.Join(args, " "))
-	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
-
-	// set up the shadow handler JIT before container launch to
-	// reduce window of when an external chaincode can sneak in
-	// and use the launching context and make it its own
-	preLaunchFunc := func() error {
-		ccl.support.preLaunchSetup(ccl.canonicalName, notify)
-		return nil
-	}
-
-	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), ccl.support)
-	sir := container.StartContainerReq{
-		CCID: ccintf.CCID{
-			ChaincodeSpec: ccl.cds.ChaincodeSpec,
-			NetworkID:     ccl.support.peerNetworkID,
-			PeerID:        ccl.support.peerID,
-			Version:       ccl.version,
-		},
-		Builder:       ccl.builder,
-		Args:          args,
-		Env:           env,
-		FilesToUpload: filesToUpload,
-		PrelaunchFunc: preLaunchFunc,
-	}
-	vmtype, err := ccl.support.getVMType(ccl.cds)
-	if err != nil {
-		return container.VMCResp{}, err
-	}
-
-	return container.VMCProcess(ipcCtxt, vmtype, sir)
-}
-
-//launchAndWaitForRegister will launch container if not already running. Use
-//the targz to create the image if not found. It uses the supplied launcher
-//for launching the chaincode. UTs use the launcher freely to test various
-//conditions such as timeouts, failed launches and other errors
-func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, launcher launcherIntf) error {
-	canName := cccid.GetCanonicalName()
-	if canName == "" {
-		return errors.New("chaincode name not set")
-	}
-
-	chaincodeSupport.runningChaincodes.Lock()
-	//if its in the map, its either up or being launched. Either case break the
-	//multiple launch by failing
-	if _, hasBeenLaunched := chaincodeSupport.chaincodeHasBeenLaunched(canName); hasBeenLaunched {
-		chaincodeSupport.runningChaincodes.Unlock()
-		return errors.Errorf("error chaincode has been launched: %s", canName)
-	}
-
-	//prohibit multiple simultaneous invokes (for example while flooding the
-	//system with invokes as in a stress test scenario) from attempting to launch
-	//the chaincode. The first one wins. Others receive an error.
-	//NOTE - this transient behavior as the chaincode is being launched is nothing
-	//new. All invokes (except the one launching the CC) will fail in any case
-	//until the container is up and registered.
-	if chaincodeSupport.launchStarted(canName) {
-		chaincodeSupport.runningChaincodes.Unlock()
-		return errors.Errorf("error chaincode is already launching: %s", canName)
-	}
-
-	//Chaincode is not up and is not in the process of being launched. Setup flag
-	//for launching so we can proceed to do that undisturbed by other requests on
-	//this chaincode
-	chaincodeLogger.Debugf("chaincode %s is being launched", canName)
-	chaincodeSupport.runningChaincodes.launchStarted[canName] = true
-
-	//now that chaincode launch sequence is done (whether successful or not),
-	//unset launch flag as we get out of this function. If launch was not
-	//successful (handler was not created), next invoke will try again.
-	defer func() {
-		chaincodeSupport.runningChaincodes.Lock()
-		defer chaincodeSupport.runningChaincodes.Unlock()
-
-		delete(chaincodeSupport.runningChaincodes.launchStarted, canName)
-		chaincodeLogger.Debugf("chaincode %s launch seq completed", canName)
-	}()
-
-	chaincodeSupport.runningChaincodes.Unlock()
-
-	//loopback notifier when everything goes ok and chaincode registers
-	//correctly
-	notfy := make(chan bool, 1)
-
-	errChan := make(chan error)
-	go func() {
-		var err error
-		defer func() {
-			//notify ONLY if we encountered an error
-			//else either timeout or ready notify should
-			//kick in
-			if err != nil {
-				errChan <- err
-			}
-		}()
-
-		resp, err := launcher.launch(ctxt, notfy)
-		if err != nil || resp.Err != nil {
-			if err == nil {
-				err = resp.Err
-			}
-
-			//if the launch was successful and leads to proper registration,
-			//this error could be ignored in the select below. On the other
-			//hand the error might be triggered for select in which case
-			//the launch will be cleaned up
-			err = errors.WithMessage(err, "error starting container")
-		}
-	}()
-
-	var err error
-
-	//wait for REGISTER state
-	select {
-	case ok := <-notfy:
-		if !ok {
-			err = errors.Errorf("registration failed for %s(networkid:%s,peerid:%s,tx:%s)", canName, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID, cccid.TxID)
-		}
-	case err = <-errChan:
-		// When the launch completed, errors from the launch if any will be handled below.
-		// Just test for invalid nil error notification (we expect only errors to be notified)
-		if err == nil {
-			panic("nil error notified. the launch contract is to notify errors only")
-		}
-	case <-time.After(chaincodeSupport.ccStartupTimeout):
-		err = errors.Errorf("timeout expired while starting chaincode %s(networkid:%s,peerid:%s,tx:%s)", canName, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID, cccid.TxID)
-	}
-	if err != nil {
-		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
-		errIgnore := chaincodeSupport.Stop(ctxt, cccid, cds)
-		if errIgnore != nil {
-			chaincodeLogger.Debugf("stop failed: %+v", errIgnore)
-		}
-	}
-	return err
-}
-
-//---------- End - launchAndWaitForRegister related functionality --------
-
-//Stop stops a chaincode if running
-func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
-	canName := cccid.GetCanonicalName()
-	if canName == "" {
-		return errors.New("chaincode name not set")
-	}
-
-	//stop the chaincode
-	sir := container.StopContainerReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, Version: cccid.Version}, Timeout: 0}
-	// The line below is left for debugging. It replaces the line above to keep
-	// the chaincode container around to give you a chance to get data
-	//sir := container.StopContainerReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID, Version: cccid.Version}, Timeout: 0, Dontremove: true}
-
-	vmtype, _ := chaincodeSupport.getVMType(cds)
-
-	_, err := container.VMCProcess(context, vmtype, sir)
-	if err != nil {
-		err = errors.WithMessage(err, "error stopping container")
-		//but proceed to cleanup
-	}
-
-	chaincodeSupport.runningChaincodes.Lock()
-	if _, ok := chaincodeSupport.chaincodeHasBeenLaunched(canName); !ok {
-		//nothing to do
-		chaincodeSupport.runningChaincodes.Unlock()
-		return nil
-	}
-
-	delete(chaincodeSupport.runningChaincodes.chaincodeMap, canName)
-
-	chaincodeSupport.runningChaincodes.Unlock()
-
-	return err
-}
-
-// Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into ready state.
-func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CCContext, spec interface{}) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
-	//build the chaincode
-	var cID *pb.ChaincodeID
-	var cMsg *pb.ChaincodeInput
-
-	var cds *pb.ChaincodeDeploymentSpec
-	var ci *pb.ChaincodeInvocationSpec
-	if cds, _ = spec.(*pb.ChaincodeDeploymentSpec); cds == nil {
-		if ci, _ = spec.(*pb.ChaincodeInvocationSpec); ci == nil {
-			panic("Launch should be called with deployment or invocation spec")
-		}
-	}
-	if cds != nil {
-		cID = cds.ChaincodeSpec.ChaincodeId
-		cMsg = cds.ChaincodeSpec.Input
-	} else {
-		cID = ci.ChaincodeSpec.ChaincodeId
-		cMsg = ci.ChaincodeSpec.Input
-	}
-
-	canName := cccid.GetCanonicalName()
-	chaincodeSupport.runningChaincodes.Lock()
-	var chrte *chaincodeRTEnv
-	var ok bool
-	var err error
-	//if its in the map, there must be a connected stream...nothing to do
-	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(canName); ok {
-		if !chrte.handler.registered {
-			chaincodeSupport.runningChaincodes.Unlock()
-			err = errors.Errorf("premature execution - chaincode (%s) launched and waiting for registration", canName)
-			chaincodeLogger.Debugf("%+v", err)
-			return cID, cMsg, err
-		}
-		chaincodeLogger.Debugf("chaincode is running(no need to launch) : %s", canName)
-		chaincodeSupport.runningChaincodes.Unlock()
-		return cID, cMsg, nil
-	} else {
-		//chaincode is not up... but is the launch process underway? this is
-		//strictly not necessary as the actual launch process will catch this
-		//(in launchAndWaitForRegister), just a bit of optimization for thundering
-		//herds
-		if chaincodeSupport.launchStarted(canName) {
-			chaincodeSupport.runningChaincodes.Unlock()
-			err = errors.Errorf("premature execution - chaincode (%s) is being launched", canName)
-			return cID, cMsg, err
-		}
-	}
-	chaincodeSupport.runningChaincodes.Unlock()
-
-	if cds == nil {
-		if cccid.Syscc {
-			return cID, cMsg, errors.Errorf("a syscc should be running (it cannot be launched) %s", canName)
-		}
-
-		if chaincodeSupport.userRunsCC {
-			chaincodeLogger.Error("You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?")
-		}
-
-		var depPayload []byte
-
-		//hopefully we are restarting from existing image and the deployed transaction exists
-		//(this will also validate the ID from the LSCC if we're not using the config-tree approach)
-		depPayload, err = GetCDS(context, cccid.TxID, cccid.SignedProposal, cccid.Proposal, cccid.ChainID, cID.Name)
-		if err != nil {
-			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("could not get ChaincodeDeploymentSpec for %s", canName))
-		}
-		if depPayload == nil {
-			return cID, cMsg, errors.WithMessage(err, fmt.Sprintf("nil ChaincodeDeploymentSpec for %s", canName))
-		}
-
-		cds = &pb.ChaincodeDeploymentSpec{}
-
-		//Get lang from original deployment
-		err = proto.Unmarshal(depPayload, cds)
-		if err != nil {
-			return cID, cMsg, errors.Wrap(err, fmt.Sprintf("failed to unmarshal deployment transactions for %s", canName))
-		}
-	}
-
-	//from here on : if we launch the container and get an error, we need to stop the container
-
-	//launch container if it is a System container or not in dev mode
-	if (!chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) && (chrte == nil || chrte.handler == nil) {
-		//NOTE-We need to streamline code a bit so the data from LSCC gets passed to this thus
-		//avoiding the need to go to the FS. In particular, we should use cdsfs completely. It is
-		//just a vestige of old protocol that we continue to use ChaincodeDeploymentSpec for
-		//anything other than Install. In particular, instantiate, invoke, upgrade should be using
-		//just some form of ChaincodeInvocationSpec.
-		//
-		//But for now, if we are invoking we have gone through the LSCC path above. If  instantiating
-		//or upgrading currently we send a CDS with nil CodePackage. In this case the codepath
-		//in the endorser has gone through LSCC validation. Just get the code from the FS.
-		if cds.CodePackage == nil {
-			//no code bytes for these situations
-			if !(chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) {
-				ccpack, err := ccprovider.GetChaincodeFromFS(cID.Name, cID.Version)
-				if err != nil {
-					return cID, cMsg, err
-				}
-
-				cds = ccpack.GetDepSpec()
-				chaincodeLogger.Debugf("launchAndWaitForRegister fetched %d bytes from file system", len(cds.CodePackage))
-			}
-		}
-
-		launcher := &ccLauncherImpl{
-			support:       chaincodeSupport,
-			canonicalName: cccid.GetCanonicalName(),
-			version:       cccid.Version,
-			cds:           cds,
-			builder: func() (io.Reader, error) {
-				return platforms.GenerateDockerBuild(cds)
-			},
-		}
-		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, launcher)
-		if err != nil {
-			chaincodeLogger.Errorf("launchAndWaitForRegister failed: %+v", err)
-			return cID, cMsg, err
-		}
-	}
-
-	chaincodeLogger.Debug("LaunchChaincode complete")
-
-	return cID, cMsg, err
-}
-
-//getVMType - just returns a string for now. Another possibility is to use a factory method to
-//return a VM executor
-func (chaincodeSupport *ChaincodeSupport) getVMType(cds *pb.ChaincodeDeploymentSpec) (string, error) {
-	if cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM {
-		return container.SYSTEM, nil
-	}
-	return container.DOCKER, nil
+	return launchStatus.Done()
 }
 
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream
-func (chaincodeSupport *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream ccintf.ChaincodeStream) error {
-	return HandleChaincodeStream(chaincodeSupport, ctxt, stream)
+func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
+	handler := &Handler{
+		Invoker:                cs,
+		Keepalive:              cs.Keepalive,
+		Registry:               cs.HandlerRegistry,
+		ACLProvider:            cs.ACLProvider,
+		TXContexts:             NewTransactionContexts(),
+		ActiveTransactions:     NewActiveTransactions(),
+		BuiltinSCCs:            cs.BuiltinSCCs,
+		QueryResponseBuilder:   &QueryResponseGenerator{MaxResultLimit: 100},
+		UUIDGenerator:          UUIDGeneratorFunc(util.GenerateUUID),
+		LedgerGetter:           cs.Peer,
+		DeployedCCInfoProvider: cs.DeployedCCInfoProvider,
+		AppConfig:              cs.AppConfig,
+		Metrics:                cs.HandlerMetrics,
+		TotalQueryLimit:        cs.TotalQueryLimit,
+	}
+
+	return handler.ProcessStream(stream)
 }
 
 // Register the bidi stream entry point called by chaincode to register with the Peer.
-func (chaincodeSupport *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) error {
-	return chaincodeSupport.HandleChaincodeStream(stream.Context(), stream)
+func (cs *ChaincodeSupport) Register(stream pb.ChaincodeSupport_RegisterServer) error {
+	return cs.HandleChaincodeStream(stream)
 }
 
-// createCCMessage creates a transaction message.
-func createCCMessage(typ pb.ChaincodeMessage_Type, cid string, txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
-	payload, err := proto.Marshal(cMsg)
+// ExecuteLegacyInit is a temporary method which should be removed once the old style lifecycle
+// is entirely deprecated.  Ideally one release after the introduction of the new lifecycle.
+// It does not attempt to start the chaincode based on the information from lifecycle, but instead
+// accepts the container information directly in the form of a ChaincodeDeploymentSpec.
+func (cs *ChaincodeSupport) ExecuteLegacyInit(txParams *ccprovider.TransactionParams, ccName, ccVersion string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	// FIXME: this is a hack, we shouldn't construct the
+	// ccid manually but rather let lifecycle construct it
+	// for us. However this is legacy code that will disappear
+	// so it is acceptable for now (FAB-14627)
+	ccid := ccName + ":" + ccVersion
+
+	h, err := cs.Launch(ccid)
 	if err != nil {
-		fmt.Printf(err.Error())
+		return nil, nil, err
+	}
+
+	resp, err := cs.execute(pb.ChaincodeMessage_INIT, txParams, ccName, input, h)
+	return processChaincodeExecutionResult(txParams.TxID, ccName, resp, err)
+}
+
+// Execute invokes chaincode and returns the original response.
+func (cs *ChaincodeSupport) Execute(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (*pb.Response, *pb.ChaincodeEvent, error) {
+	resp, err := cs.Invoke(txParams, chaincodeName, input)
+	return processChaincodeExecutionResult(txParams.TxID, chaincodeName, resp, err)
+}
+
+func processChaincodeExecutionResult(txid, ccName string, resp *pb.ChaincodeMessage, err error) (*pb.Response, *pb.ChaincodeEvent, error) {
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to execute transaction %s", txid)
+	}
+	if resp == nil {
+		return nil, nil, errors.Errorf("nil response from transaction %s", txid)
+	}
+
+	if resp.ChaincodeEvent != nil {
+		resp.ChaincodeEvent.ChaincodeId = ccName
+		resp.ChaincodeEvent.TxId = txid
+	}
+
+	switch resp.Type {
+	case pb.ChaincodeMessage_COMPLETED:
+		res := &pb.Response{}
+		err := proto.Unmarshal(resp.Payload, res)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "failed to unmarshal response for transaction %s", txid)
+		}
+		return res, resp.ChaincodeEvent, nil
+
+	case pb.ChaincodeMessage_ERROR:
+		return nil, resp.ChaincodeEvent, errors.Errorf("transaction returned with failure: %s", resp.Payload)
+
+	default:
+		return nil, nil, errors.Errorf("unexpected response type %d for transaction %s", resp.Type, txid)
+	}
+}
+
+// Invoke will invoke chaincode and return the message containing the response.
+// The chaincode will be launched if it is not already running.
+func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
+	ccid, cctype, err := cs.CheckInvocation(txParams, chaincodeName, input)
+	if err != nil {
+		return nil, errors.WithMessage(err, "invalid invocation")
+	}
+
+	h, err := cs.Launch(ccid)
+	if err != nil {
 		return nil, err
 	}
-	return &pb.ChaincodeMessage{Type: typ, Payload: payload, Txid: txid, ChannelId: cid}, nil
+
+	return cs.execute(cctype, txParams, chaincodeName, input, h)
 }
 
-// Execute executes a transaction and waits for it to complete until a timeout value.
-func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
-	chaincodeLogger.Debugf("Entry")
-	defer chaincodeLogger.Debugf("Exit")
-	canName := cccid.GetCanonicalName()
-	chaincodeLogger.Debugf("chaincode canonical name: %s", canName)
-	chaincodeSupport.runningChaincodes.Lock()
-	//we expect the chaincode to be running... sanity check
-	chrte, ok := chaincodeSupport.chaincodeHasBeenLaunched(canName)
-	if !ok {
-		chaincodeSupport.runningChaincodes.Unlock()
-		chaincodeLogger.Debugf("cannot execute-chaincode is not running: %s", canName)
-		return nil, errors.Errorf("cannot execute transaction for %s", canName)
-	}
-	chaincodeSupport.runningChaincodes.Unlock()
-
-	var notfy chan *pb.ChaincodeMessage
-	var err error
-	if notfy, err = chrte.handler.sendExecuteMessage(ctxt, cccid.ChainID, msg, cccid.SignedProposal, cccid.Proposal); err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error sending"))
-	}
-	var ccresp *pb.ChaincodeMessage
-	select {
-	case ccresp = <-notfy:
-		//response is sent to user or calling chaincode. ChaincodeMessage_ERROR
-		//are typically treated as error
-	case <-time.After(timeout):
-		err = errors.New("timeout expired while executing transaction")
+// CheckInvocation inspects the parameters of an invocation and determines if, how, and to where a that invocation should be routed.
+// First, we ensure that the target namespace is defined on the channel and invokable on this peer, according to the lifecycle implementation.
+// Then, if the chaincode definition requires it, this function enforces 'init exactly once' semantics.
+// Finally, it returns the chaincode ID to route to and the message type of the request (normal transation, or init).
+func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (ccid string, cctype pb.ChaincodeMessage_Type, err error) {
+	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(txParams.TxID), chaincodeName, txParams.ChannelID)
+	cii, err := cs.Lifecycle.ChaincodeEndorsementInfo(txParams.ChannelID, chaincodeName, txParams.TXSimulator)
+	if err != nil {
+		logDevModeError(cs.UserRunsCC)
+		return "", 0, errors.Wrapf(err, "[channel %s] failed to get chaincode container info for %s", txParams.ChannelID, chaincodeName)
 	}
 
-	//our responsibility to delete transaction context if sendExecuteMessage succeeded
-	chrte.handler.deleteTxContext(msg.ChannelId, msg.Txid)
+	needsInitialization := false
+	if cii.EnforceInit {
 
-	return ccresp, err
+		value, err := txParams.TXSimulator.GetState(chaincodeName, InitializedKeyName)
+		if err != nil {
+			return "", 0, errors.WithMessage(err, "could not get 'initialized' key")
+		}
+
+		needsInitialization = !bytes.Equal(value, []byte(cii.Version))
+	}
+
+	// Note, IsInit is a new field for v2.0 and should only be set for invocations of non-legacy chaincodes.
+	// Any invocation of a legacy chaincode with IsInit set will fail.  This is desirable, as the old
+	// InstantiationPolicy contract enforces which users may call init.
+	if input.IsInit {
+		if !cii.EnforceInit {
+			return "", 0, errors.Errorf("chaincode '%s' does not require initialization but called as init", chaincodeName)
+		}
+
+		if !needsInitialization {
+			return "", 0, errors.Errorf("chaincode '%s' is already initialized but called as init", chaincodeName)
+		}
+
+		err = txParams.TXSimulator.SetState(chaincodeName, InitializedKeyName, []byte(cii.Version))
+		if err != nil {
+			return "", 0, errors.WithMessage(err, "could not set 'initialized' key")
+		}
+
+		return cii.ChaincodeID, pb.ChaincodeMessage_INIT, nil
+	}
+
+	if needsInitialization {
+		return "", 0, errors.Errorf("chaincode '%s' has not been initialized for this version, must call as init first", chaincodeName)
+	}
+
+	return cii.ChaincodeID, pb.ChaincodeMessage_TRANSACTION, nil
 }
 
-// IsDevMode returns true if the peer was configured with development-mode enabled
-func IsDevMode() bool {
-	mode := viper.GetString("chaincode.mode")
+// execute executes a transaction and waits for it to complete until a timeout value.
+func (cs *ChaincodeSupport) execute(cctyp pb.ChaincodeMessage_Type, txParams *ccprovider.TransactionParams, namespace string, input *pb.ChaincodeInput, h *Handler) (*pb.ChaincodeMessage, error) {
+	input.Decorations = txParams.ProposalDecorations
 
-	return mode == DevModeUserRunsChaincode
+	payload, err := proto.Marshal(input)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to create chaincode message")
+	}
+
+	ccMsg := &pb.ChaincodeMessage{
+		Type:      cctyp,
+		Payload:   payload,
+		Txid:      txParams.TxID,
+		ChannelId: txParams.ChannelID,
+	}
+
+	timeout := cs.executeTimeout(namespace, input)
+	ccresp, err := h.Execute(txParams, namespace, ccMsg, timeout)
+	if err != nil {
+		return nil, errors.WithMessage(err, "error sending")
+	}
+
+	return ccresp, nil
+}
+
+func (cs *ChaincodeSupport) executeTimeout(namespace string, input *pb.ChaincodeInput) time.Duration {
+	operation := chaincodeOperation(input.Args)
+	switch {
+	case namespace == "lscc" && operation == "install":
+		return maxDuration(cs.InstallTimeout, cs.ExecuteTimeout)
+	case namespace == lifecycle.LifecycleNamespace && operation == lifecycle.InstallChaincodeFuncName:
+		return maxDuration(cs.InstallTimeout, cs.ExecuteTimeout)
+	default:
+		return cs.ExecuteTimeout
+	}
+}
+
+func maxDuration(durations ...time.Duration) time.Duration {
+	var result time.Duration
+	for _, d := range durations {
+		if d > result {
+			result = d
+		}
+	}
+	return result
+}
+
+func chaincodeOperation(args [][]byte) string {
+	if len(args) == 0 {
+		return ""
+	}
+	return string(args[0])
+}
+
+func logDevModeError(userRunsCC bool) {
+	if userRunsCC {
+		chaincodeLogger.Error("You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?")
+	}
 }

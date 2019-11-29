@@ -9,8 +9,8 @@ package mocks
 import (
 	"time"
 
+	pmsp "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/msp"
-	pmsp "github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -83,6 +83,10 @@ type MockIdentity struct {
 	ID string
 }
 
+func (m *MockIdentity) Anonymous() bool {
+	panic("implement me")
+}
+
 func (m *MockIdentity) ExpiresAt() time.Time {
 	panic("implement me")
 }
@@ -96,8 +100,8 @@ func (*MockIdentity) GetMSPIdentifier() string {
 	panic("implement me")
 }
 
-func (*MockIdentity) Validate() error {
-	panic("implement me")
+func (m *MockIdentity) Validate() error {
+	return m.Called().Error(0)
 }
 
 func (*MockIdentity) GetOrganizationalUnits() []*msp.OUIdentifier {
@@ -105,15 +109,15 @@ func (*MockIdentity) GetOrganizationalUnits() []*msp.OUIdentifier {
 }
 
 func (*MockIdentity) Verify(msg []byte, sig []byte) error {
-	panic("implement me")
+	return nil
 }
 
 func (*MockIdentity) Serialize() ([]byte, error) {
 	panic("implement me")
 }
 
-func (*MockIdentity) SatisfiesPrincipal(principal *pmsp.MSPPrincipal) error {
-	panic("implement me")
+func (m *MockIdentity) SatisfiesPrincipal(principal *pmsp.MSPPrincipal) error {
+	return m.Called(principal).Error(0)
 }
 
 type MockSigningIdentity struct {

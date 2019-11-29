@@ -8,23 +8,22 @@ package comm
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
 
+// Configuration defaults
 var (
-	// Is the configuration cached?
-	configurationCached = false
-	// Is TLS enabled
-	tlsEnabled bool
 	// Max send and receive bytes for grpc clients and servers
 	MaxRecvMsgSize = 100 * 1024 * 1024
 	MaxSendMsgSize = 100 * 1024 * 1024
 	// Default peer keepalive options
-	keepaliveOptions = &KeepaliveOptions{
+	DefaultKeepaliveOptions = KeepaliveOptions{
 		ClientInterval:    time.Duration(1) * time.Minute,  // 1 min
 		ClientTimeout:     time.Duration(20) * time.Second, // 20 sec - gRPC default
 		ServerInterval:    time.Duration(2) * time.Hour,    // 2 hours - gRPC default
@@ -32,7 +31,7 @@ var (
 		ServerMinInterval: time.Duration(1) * time.Minute,  // match ClientInterval
 	}
 	// strong TLS cipher suites
-	tlsCipherSuites = []uint16{
+	DefaultTLSCipherSuites = []uint16{
 		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
@@ -50,25 +49,49 @@ type ServerConfig struct {
 	// for all new connections
 	ConnectionTimeout time.Duration
 	// SecOpts defines the security parameters
-	SecOpts *SecureOptions
+	SecOpts SecureOptions
 	// KaOpts defines the keepalive parameters
-	KaOpts *KeepaliveOptions
+	KaOpts KeepaliveOptions
+	// StreamInterceptors specifies a list of interceptors to apply to
+	// streaming RPCs.  They are executed in order.
+	StreamInterceptors []grpc.StreamServerInterceptor
+	// UnaryInterceptors specifies a list of interceptors to apply to unary
+	// RPCs.  They are executed in order.
+	UnaryInterceptors []grpc.UnaryServerInterceptor
+	// Logger specifies the logger the server will use
+	Logger *flogging.FabricLogger
+	// HealthCheckEnabled enables the gRPC Health Checking Protocol for the server
+	HealthCheckEnabled bool
+	// ServerStatsHandler should be set if metrics on connections are to be reported.
+	ServerStatsHandler *ServerStatsHandler
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance
 type ClientConfig struct {
 	// SecOpts defines the security parameters
-	SecOpts *SecureOptions
+	SecOpts SecureOptions
 	// KaOpts defines the keepalive parameters
-	KaOpts *KeepaliveOptions
+	KaOpts KeepaliveOptions
 	// Timeout specifies how long the client will block when attempting to
 	// establish a connection
 	Timeout time.Duration
+	// AsyncConnect makes connection creation non blocking
+	AsyncConnect bool
+}
+
+// Clone clones this ClientConfig
+func (cc ClientConfig) Clone() ClientConfig {
+	shallowClone := cc
+	return shallowClone
 }
 
 // SecureOptions defines the security parameters (e.g. TLS) for a
-// GRPCServer instance
+// GRPCServer or GRPCClient instance
 type SecureOptions struct {
+	// VerifyCertificate, if not nil, is called after normal
+	// certificate verification by either a TLS client or server.
+	// If it returns a non-nil error, the handshake is aborted and that error results.
+	VerifyCertificate func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
 	// PEM-encoded X509 public key to be used for TLS communication
 	Certificate []byte
 	// PEM-encoded private key to be used for TLS communication
@@ -85,9 +108,11 @@ type SecureOptions struct {
 	RequireClientCert bool
 	// CipherSuites is a list of supported cipher suites for TLS
 	CipherSuites []uint16
+	// TimeShift makes TLS handshakes time sampling shift to the past by a given duration
+	TimeShift time.Duration
 }
 
-// KeepAliveOptions is used to set the gRPC keepalive settings for both
+// KeepaliveOptions is used to set the gRPC keepalive settings for both
 // clients and servers
 type KeepaliveOptions struct {
 	// ClientInterval is the duration after which if the client does not see
@@ -107,35 +132,15 @@ type KeepaliveOptions struct {
 	ServerMinInterval time.Duration
 }
 
-// cacheConfiguration caches common package scoped variables
-func cacheConfiguration() {
-	if !configurationCached {
-		tlsEnabled = viper.GetBool("peer.tls.enabled")
-		configurationCached = true
-	}
+type Metrics struct {
+	// OpenConnCounter keeps track of number of open connections
+	OpenConnCounter metrics.Counter
+	// ClosedConnCounter keeps track of number connections closed
+	ClosedConnCounter metrics.Counter
 }
 
-// TLSEnabled return cached value for "peer.tls.enabled" configuration value
-func TLSEnabled() bool {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return tlsEnabled
-}
-
-// DefaultKeepaliveOptions returns sane default keepalive settings for gRPC
-// servers and clients
-func DefaultKeepaliveOptions() *KeepaliveOptions {
-	return keepaliveOptions
-}
-
-// ServerKeepaliveOptions returns gRPC keepalive options for server.  If
-// opts is nil, the default keepalive options are returned
-func ServerKeepaliveOptions(ka *KeepaliveOptions) []grpc.ServerOption {
-	// use default keepalive options if nil
-	if ka == nil {
-		ka = keepaliveOptions
-	}
+// ServerKeepaliveOptions returns gRPC keepalive options for server.
+func ServerKeepaliveOptions(ka KeepaliveOptions) []grpc.ServerOption {
 	var serverOpts []grpc.ServerOption
 	kap := keepalive.ServerParameters{
 		Time:    ka.ServerInterval,
@@ -151,14 +156,8 @@ func ServerKeepaliveOptions(ka *KeepaliveOptions) []grpc.ServerOption {
 	return serverOpts
 }
 
-// ClientKeepaliveOptions returns gRPC keepalive options for clients.  If
-// opts is nil, the default keepalive options are returned
-func ClientKeepaliveOptions(ka *KeepaliveOptions) []grpc.DialOption {
-	// use default keepalive options if nil
-	if ka == nil {
-		ka = keepaliveOptions
-	}
-
+// ClientKeepaliveOptions returns gRPC keepalive options for clients.
+func ClientKeepaliveOptions(ka KeepaliveOptions) []grpc.DialOption {
 	var dialOpts []grpc.DialOption
 	kap := keepalive.ClientParameters{
 		Time:                ka.ClientInterval,

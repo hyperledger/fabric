@@ -182,7 +182,7 @@ func AESCBCPKCS7Decrypt(key, src []byte) ([]byte, error) {
 
 type aescbcpkcs7Encryptor struct{}
 
-func (e *aescbcpkcs7Encryptor) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) (ciphertext []byte, err error) {
+func (e *aescbcpkcs7Encryptor) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) ([]byte, error) {
 	switch o := opts.(type) {
 	case *bccsp.AESCBCPKCS7ModeOpts:
 		// AES in CBC mode with PKCS7 padding
@@ -209,7 +209,7 @@ func (e *aescbcpkcs7Encryptor) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp
 
 type aescbcpkcs7Decryptor struct{}
 
-func (*aescbcpkcs7Decryptor) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
+func (*aescbcpkcs7Decryptor) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) ([]byte, error) {
 	// check for mode
 	switch opts.(type) {
 	case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:

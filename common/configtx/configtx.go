@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
-	cb "github.com/hyperledger/fabric/protos/common"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 )
 
 // Validator provides a mechanism to propose config updates, see the config update results
@@ -19,8 +19,8 @@ type Validator interface {
 	// Validate attempts to validate a new configtx against the current config state
 	ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error)
 
-	// ChainID retrieves the chain ID associated with this manager
-	ChainID() string
+	// ChannelID retrieves the channel ID associated with this manager
+	ChannelID() string
 
 	// ConfigProto returns the current config as a proto
 	ConfigProto() *cb.Config

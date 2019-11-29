@@ -9,10 +9,10 @@ Transaction simulation and read-write set
 
 During simulation of a transaction at an ``endorser``, a read-write set
 is prepared for the transaction. The ``read set`` contains a list of
-unique keys and their committed versions that the transaction reads
-during simulation. The ``write set`` contains a list of unique keys
-(though there can be overlap with the keys present in the read set) and
-their new values that the transaction writes. A delete marker is set (in
+unique keys and their committed version numbers (but not values) that
+the transaction reads during simulation. The ``write set`` contains a list
+of unique keys (though there can be overlap with the keys present in the read set)
+and their new values that the transaction writes. A delete marker is set (in
 the place of new value) for the key if the update performed by the
 transaction is to delete the key.
 

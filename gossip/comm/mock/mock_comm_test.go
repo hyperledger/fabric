@@ -9,9 +9,10 @@ package mock
 import (
 	"testing"
 
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
-	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,19 +28,19 @@ func TestMockComm(t *testing.T) {
 	defer comm1.Stop()
 
 	msgCh := comm1.Accept(func(message interface{}) bool {
-		return message.(proto.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
-			message.(proto.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
+		return message.(protoext.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
+			message.(protoext.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
 	})
 
 	comm2 := NewCommMock(second.endpoint, members)
 	defer comm2.Stop()
 
-	sMsg, _ := (&proto.GossipMessage{
+	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Content: &proto.GossipMessage_StateRequest{StateRequest: &proto.RemoteStateRequest{
 			StartSeqNum: 1,
 			EndSeqNum:   3,
 		}},
-	}).NoopSign()
+	})
 	comm2.Send(sMsg, &comm.RemotePeer{Endpoint: "first", PKIID: common.PKIidType("first")})
 
 	msg := <-msgCh
@@ -64,7 +65,7 @@ func TestMockComm_PingPong(t *testing.T) {
 	rcvChA := peerA.Accept(all)
 	rcvChB := peerB.Accept(all)
 
-	sMsg, _ := (&proto.GossipMessage{
+	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{
 				Payload: &proto.Payload{
@@ -72,7 +73,7 @@ func TestMockComm_PingPong(t *testing.T) {
 					Data:   []byte("Ping"),
 				},
 			}},
-	}).NoopSign()
+	})
 	peerA.Send(sMsg, &comm.RemotePeer{Endpoint: "peerB", PKIID: common.PKIidType("peerB")})
 
 	msg := <-rcvChB

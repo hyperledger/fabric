@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package factory
 
 import (
@@ -25,7 +26,7 @@ import (
 
 var (
 	// Default BCCSP
-	defaultBCCSP bccsp.BCCSP
+	DefaultBCCSP bccsp.BCCSP
 
 	// when InitFactories has not been called yet (should only happen
 	// in test cases), use this BCCSP temporarily
@@ -57,28 +58,26 @@ type BCCSPFactory interface {
 
 // GetDefault returns a non-ephemeral (long-term) BCCSP
 func GetDefault() bccsp.BCCSP {
-	if defaultBCCSP == nil {
-		logger.Warning("Before using BCCSP, please call InitFactories(). Falling back to bootBCCSP.")
+	if DefaultBCCSP == nil {
+		logger.Debug("Before using BCCSP, please call InitFactories(). Falling back to bootBCCSP.")
 		bootBCCSPInitOnce.Do(func() {
 			var err error
 			f := &SWFactory{}
-			bootBCCSP, err = f.Get(GetDefaultOpts())
+			bootBCCSP, err = f.Get(&FactoryOpts{
+				ProviderName: "SW",
+				SwOpts: &SwOpts{
+					HashFamily: "SHA2",
+					SecLevel:   256,
+
+					Ephemeral: true,
+				}})
 			if err != nil {
 				panic("BCCSP Internal error, failed initialization with GetDefaultOpts!")
 			}
 		})
 		return bootBCCSP
 	}
-	return defaultBCCSP
-}
-
-// GetBCCSP returns a BCCSP created according to the options passed in input.
-func GetBCCSP(name string) (bccsp.BCCSP, error) {
-	csp, ok := bccspMap[name]
-	if !ok {
-		return nil, errors.Errorf("Could not find BCCSP, no '%s' provider", name)
-	}
-	return csp, nil
+	return DefaultBCCSP
 }
 
 func initBCCSP(f BCCSPFactory, config *FactoryOpts) error {

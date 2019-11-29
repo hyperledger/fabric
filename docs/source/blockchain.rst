@@ -2,21 +2,16 @@ Introduction
 ============
 Hyperledger Fabric is a platform for distributed ledger solutions underpinned
 by a modular architecture delivering high degrees of confidentiality,
-resiliency, flexibility and scalability. It is designed to support pluggable
+resiliency, flexibility, and scalability. It is designed to support pluggable
 implementations of different components and accommodate the complexity and
 intricacies that exist across the economic ecosystem.
-
-Hyperledger Fabric delivers a uniquely elastic and extensible architecture, distinguishing
-it from alternative blockchain solutions. Planning for the future of enterprise
-blockchain requires building on top of a fully vetted, open-source architecture;
-Hyperledger Fabric is your starting point.
 
 We recommend first-time users begin by going through the rest of the
 introduction below in order to gain familiarity with how blockchains work
 and with the specific features and components of Hyperledger Fabric.
 
-Once comfortable -- or if you're already familiar with blockchain and
-Hyperledger Fabric -- go to :doc:`getting_started` and from there explore the
+Once comfortable --- or if you're already familiar with blockchain and
+Hyperledger Fabric --- go to :doc:`getting_started` and from there explore the
 demos, technical specifications, APIs, etc.
 
 What is a Blockchain?
@@ -35,16 +30,15 @@ mirror the way businesses exchange goods and services in the real world.
 
 In addition to being decentralized and collaborative, the information recorded
 to a blockchain is append-only, using cryptographic techniques that guarantee
-that once a transaction has been added
-to the ledger it cannot be modified. This property of immutability makes it
-simple to determine the provenance of information because participants can be
-sure information has not been changed after the fact. It’s why blockchains
-are sometimes described as **systems of proof**.
+that once a transaction has been added to the ledger it cannot be modified.
+This property of "immutability" makes it simple to determine the provenance of
+information because participants can be sure information has not been changed
+after the fact. It’s why blockchains are sometimes described as **systems of proof**.
 
 **Smart Contracts**
 
-To support the consistent update of information – and to enable a whole host of
-ledger functions (transacting, querying, etc) – a blockchain network uses **smart
+To support the consistent update of information --- and to enable a whole host of
+ledger functions (transacting, querying, etc) --- a blockchain network uses **smart
 contracts** to provide controlled access to the ledger.
 
 .. image:: images/Smart_Contract.png
@@ -54,20 +48,20 @@ and keeping it simple across the network, they can also be written to allow
 participants to execute certain aspects of transactions automatically.
 
 A smart contract can, for example, be written to stipulate the cost of shipping
-an item that changes depending on when it arrives. With the terms agreed to
-by both parties and written to the ledger, the appropriate funds change hands
-automatically when the item is received.
+an item where the shipping charge changes depending on how quickly the item arrives.
+With the terms agreed to by both parties and written to the ledger,
+the appropriate funds change hands automatically when the item is received.
 
 **Consensus**
 
-The process of keeping the ledger transactions synchronized across the network –
+The process of keeping the ledger transactions synchronized across the network ---
 to ensure that ledgers update only when transactions are approved by the appropriate
 participants, and that when ledgers do update, they update with the
-same transactions in the same order – is called **consensus**.
+same transactions in the same order --- is called **consensus**.
 
 .. image:: images/consensus.png
 
-We’ll learn a lot more about ledgers, smart contracts and consensus later. For
+You'll learn a lot more about ledgers, smart contracts and consensus later. For
 now, it’s enough to think of a blockchain as a shared, replicated transaction
 system which is updated via smart contracts and kept consistently
 synchronized through a collaborative process called consensus.
@@ -80,9 +74,9 @@ Why is a Blockchain useful?
 The transactional networks of today are little more than slightly updated
 versions of networks that have existed since business records have been kept.
 The members of a **business network** transact with each other, but they maintain
-separate records of their transactions. And the things they’re transacting –
+separate records of their transactions. And the things they’re transacting ---
 whether it’s Flemish tapestries in the 16th century or the securities of today
-– must have their provenance established each time they’re sold to ensure that
+--- must have their provenance established each time they’re sold to ensure that
 the business selling an item possesses a chain of title verifying their
 ownership of it.
 
@@ -123,8 +117,8 @@ participant’s **private** programs are used to update their **private** ledger
 a blockchain system has **shared** programs to update **shared** ledgers.
 
 With the ability to coordinate their business network through a shared ledger,
-blockchain networks can reduce the time, cost, and risk associated with private information and
-processing while improving trust and visibility.
+blockchain networks can reduce the time, cost, and risk associated with private
+information and processing while improving trust and visibility.
 
 You now know what blockchain is and why it’s useful. There are a lot of other
 details that are important, but they all relate to these fundamental ideas of
@@ -133,7 +127,7 @@ the sharing of information and processes.
 What is Hyperledger Fabric?
 ---------------------------
 
-The Linux Foundation founded Hyperledger in 2015 to advance
+The Linux Foundation founded the Hyperledger project in 2015 to advance
 cross-industry blockchain technologies. Rather than declaring a single
 blockchain standard, it encourages a collaborative approach to developing
 blockchain technologies via a community process, with intellectual property
@@ -147,7 +141,7 @@ and is a system by which participants manage their transactions.
 Where Hyperledger Fabric breaks from some other blockchain systems is that
 it is **private** and **permissioned**. Rather than an open permissionless system
 that allows unknown identities to participate in the network (requiring protocols
-like Proof of Work to validate transactions and secure the network), the members
+like "proof of work" to validate transactions and secure the network), the members
 of a Hyperledger Fabric network enroll through a trusted **Membership Service Provider (MSP)**.
 
 Hyperledger Fabric also offers several pluggable options. Ledger data can be
@@ -157,10 +151,10 @@ and different MSPs are supported.
 Hyperledger Fabric also offers the ability to create **channels**, allowing a group of
 participants to create a separate ledger of transactions. This is an especially
 important option for networks where some participants might be competitors and not
-want every transaction they make - a special price they're offering to some participants
-and not others, for example - known to every participant. If two
-participants form a channel, then those participants – and no others – have copies
-of the ledger for that channel.
+want every transaction they make --- a special price they're offering to some participants
+and not others, for example --- known to every participant. If two participants
+form a channel, then those participants --- and no others --- have copies of the ledger
+for that channel.
 
 **Shared Ledger**
 
@@ -182,14 +176,13 @@ being used by the blockchain network.
 **Smart Contracts**
 
 Hyperledger Fabric smart contracts are written in **chaincode** and are invoked
-by an application external to the blockchain when that
-application needs to interact with the ledger. In most cases, chaincode interacts
-only with the database component of the ledger, the world state (querying
-it, for example), and not the transaction log.
+by an application external to the blockchain when that application needs to
+interact with the ledger. In most cases, chaincode interacts only with the
+database component of the ledger, the world state (querying it, for example), and
+not the transaction log.
 
-Chaincode can be implemented in several programming languages. The currently
-supported chaincode language is `Go <https://golang.org/>`__ with support
-for Java and other languages coming in future releases.
+Chaincode can be implemented in several programming languages. Currently, Go and
+Node are supported.
 
 **Privacy**
 
@@ -223,24 +216,44 @@ that are highly structured in their relationships to those that are more
 peer-to-peer.
 
 We’ll learn more about the Hyperledger Fabric consensus mechanisms, which
-currently include SOLO, Kafka, and will soon extend to SBFT (Simplified
-Byzantine Fault Tolerance), in another document.
+currently include Kafka, and Raft.
 
 Where can I learn more?
 -----------------------
 
-:doc:`getting_started`
+* `Identity <identity/identity.html>`_ (conceptual documentation)
 
-We provide a number of tutorials where you’ll be introduced to most of the
-key components within a blockchain network, learn more about how they
-interact with each other, and then you’ll actually get the code and run
-some simple transactions against a running blockchain network. We also provide
-tutorials for those of you thinking of operating a blockchain network using
-Hyperledger Fabric.
+A conceptual doc that will take you through the critical role identities play
+in a Fabric network (using an established PKI structure and x.509 certificates).
 
-:doc:`fabric_model`
+* `Membership <membership/membership.html>`_ (conceptual documentation)
 
-A deeper look at the components and concepts brought up in this introduction as
+Talks through the role of a Membership Service Provider (MSP), which converts
+identities into roles in a Fabric network.
+
+* `Peers <peers/peers.html>`_ (conceptual documentation)
+
+Peers --- owned by organizations --- host the ledger and smart contracts and make
+up the physical structure of a Fabric network.
+
+* :doc:`build_network` (tutorial)
+
+Learn how to download Fabric binaries and bootstrap your own sample network with
+a sample script. Then tear down the network and learn how it was constructed one
+step at a time.
+
+* :doc:`write_first_app` (tutorial)
+
+Deploys a very simple network --- even simpler than Build Your First Network ---
+to use with a simple smart contract and application.
+
+* :doc:`txflow`
+
+A high level look at a sample transaction flow.
+
+* :doc:`fabric_model`
+
+A high level look at some of components and concepts brought up in this introduction as
 well as a few others and describes how they work together in a sample
 transaction flow.
 

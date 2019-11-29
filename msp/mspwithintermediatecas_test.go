@@ -33,23 +33,33 @@ func TestMSPWithIntermediateCAs(t *testing.T) {
 
 	// This MSP will trust any cert signed by the CA directly OR by the intermediate
 
-	id, err := thisMSP.GetDefaultSigningIdentity()
+	sid, err := thisMSP.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+	sidBytes, err := sid.Serialize()
+	assert.NoError(t, err)
+	id, err := thisMSP.DeserializeIdentity(sidBytes)
 	assert.NoError(t, err)
 
 	// ensure that we validate correctly the identity
-	err = thisMSP.Validate(id.GetPublicVersion())
+	err = thisMSP.Validate(id)
+	assert.NoError(t, err)
+
+	id, err = thisMSP.DeserializeIdentity(sidBytes)
 	assert.NoError(t, err)
 
 	// ensure that validation of an identity of the MSP with intermediate CAs
 	// fails with the local MSP
-	err = localMsp.Validate(id.GetPublicVersion())
+	err = localMsp.Validate(id)
 	assert.Error(t, err)
+
+	id, err = thisMSP.DeserializeIdentity(sidBytes)
+	assert.NoError(t, err)
 
 	// ensure that validation of an identity of the local MSP
 	// fails with the MSP with intermediate CAs
 	localMSPID, err := localMsp.GetDefaultSigningIdentity()
 	assert.NoError(t, err)
-	err = thisMSP.Validate(localMSPID.GetPublicVersion())
+	err = thisMSP.Validate(localMSPID)
 	assert.Error(t, err)
 }
 

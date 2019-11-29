@@ -7,29 +7,34 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
-	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // ConsenterSupport is used to mock the multichannel.ConsenterSupport interface
 // Whenever a block is written, it writes to the Batches channel to allow for synchronization
 type ConsenterSupport struct {
 	// SharedConfigVal is the value returned by SharedConfig()
-	SharedConfigVal *mockconfig.Orderer
+	SharedConfigVal channelconfig.Orderer
+
+	// ChannelConfigVal is the value returned by ChannelConfig()
+	ChannelConfigVal channelconfig.Channel
 
 	// BlockCutterVal is the value returned by BlockCutter()
 	BlockCutterVal *mockblockcutter.Receiver
 
-	// Blocks is the channel where WriteBlock writes the most recently created block
+	// BlockByIndex maps block numbers to retrieved values of these blocks
+	BlockByIndex map[uint64]*cb.Block
+
+	// Blocks is the channel where WriteBlock writes the most recently created block,
 	Blocks chan *cb.Block
 
-	// ChainIDVal is the value returned by ChainID()
-	ChainIDVal string
+	// ChannelIDVal is the value returned by ChannelID()
+	ChannelIDVal string
 
 	// HeightVal is the value returned by Height()
 	HeightVal uint64
@@ -60,6 +65,14 @@ type ConsenterSupport struct {
 
 	// SequenceVal is returned by Sequence
 	SequenceVal uint64
+
+	// BlockVerificationErr is returned by VerifyBlockSignature
+	BlockVerificationErr error
+}
+
+// Block returns the block with the given number or nil if not found
+func (mcs *ConsenterSupport) Block(number uint64) *cb.Block {
+	return mcs.BlockByIndex[number]
 }
 
 // BlockCutter returns BlockCutterVal
@@ -72,12 +85,17 @@ func (mcs *ConsenterSupport) SharedConfig() channelconfig.Orderer {
 	return mcs.SharedConfigVal
 }
 
+// ChannelConfig returns ChannelConfigVal
+func (mcs *ConsenterSupport) ChannelConfig() channelconfig.Channel {
+	return mcs.ChannelConfigVal
+}
+
 // CreateNextBlock creates a simple block structure with the given data
 func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
-	block := cb.NewBlock(0, nil)
+	block := protoutil.NewBlock(0, nil)
 	mtxs := make([][]byte, len(data))
 	for i := range data {
-		mtxs[i] = utils.MarshalOrPanic(data[i])
+		mtxs[i] = protoutil.MarshalOrPanic(data[i])
 	}
 	block.Data = &cb.BlockData{Data: mtxs}
 	mcs.NextBlockVal = block
@@ -87,10 +105,9 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 // WriteBlock writes data to the Blocks channel
 func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) {
 	if encodedMetadataValue != nil {
-		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
+		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = protoutil.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
-	mcs.HeightVal++
-	mcs.Blocks <- block
+	mcs.Append(block)
 }
 
 // WriteConfigBlock calls WriteBlock
@@ -98,9 +115,9 @@ func (mcs *ConsenterSupport) WriteConfigBlock(block *cb.Block, encodedMetadataVa
 	mcs.WriteBlock(block, encodedMetadataValue)
 }
 
-// ChainID returns the chain ID this specific consenter instance is associated with
-func (mcs *ConsenterSupport) ChainID() string {
-	return mcs.ChainIDVal
+// ChannelID returns the channel ID this specific consenter instance is associated with
+func (mcs *ConsenterSupport) ChannelID() string {
+	return mcs.ChannelIDVal
 }
 
 // Height returns the number of blocks of the chain this specific consenter instance is associated with
@@ -111,6 +128,11 @@ func (mcs *ConsenterSupport) Height() uint64 {
 // Sign returns the bytes passed in
 func (mcs *ConsenterSupport) Sign(message []byte) ([]byte, error) {
 	return message, nil
+}
+
+// Serialize returns bytes
+func (mcs *ConsenterSupport) Serialize() ([]byte, error) {
+	return []byte("creator"), nil
 }
 
 // NewSignatureHeader returns an empty signature header
@@ -141,4 +163,17 @@ func (mcs *ConsenterSupport) ProcessConfigMsg(env *cb.Envelope) (*cb.Envelope, u
 // Sequence returns SequenceVal
 func (mcs *ConsenterSupport) Sequence() uint64 {
 	return mcs.SequenceVal
+}
+
+// VerifyBlockSignature verifies a signature of a block
+func (mcs *ConsenterSupport) VerifyBlockSignature(_ []*protoutil.SignedData, _ *cb.ConfigEnvelope) error {
+	return mcs.BlockVerificationErr
+}
+
+// Append appends a new block to the ledger in its raw form,
+// unlike WriteBlock that also mutates its metadata.
+func (mcs *ConsenterSupport) Append(block *cb.Block) error {
+	mcs.HeightVal++
+	mcs.Blocks <- block
+	return nil
 }

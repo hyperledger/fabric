@@ -7,18 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package discovery
 
 import (
+	discprotos "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	common2 "github.com/hyperledger/fabric/protos/common"
-	discovery2 "github.com/hyperledger/fabric/protos/discovery"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // AccessControlSupport checks if clients are eligible of being serviced
 type AccessControlSupport interface {
 	// Eligible returns whether the given peer is eligible for receiving
 	// service from the discovery service for a given channel
-	EligibleForService(channel string, data common2.SignedData) error
+	EligibleForService(channel string, data protoutil.SignedData) error
 }
 
 // ConfigSequenceSupport returns the config sequence of the given channel
@@ -35,7 +35,7 @@ type GossipSupport interface {
 
 	// PeersOfChannel returns the NetworkMembers considered alive
 	// and also subscribed to the channel given
-	PeersOfChannel(common.ChainID) discovery.Members
+	PeersOfChannel(common.ChannelID) discovery.Members
 
 	// Peers returns the NetworkMembers considered alive
 	Peers() discovery.Members
@@ -48,13 +48,19 @@ type GossipSupport interface {
 // for chaincodes
 type EndorsementSupport interface {
 	// PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
-	PeersForEndorsement(chaincode string, channel common.ChainID) (*discovery2.EndorsementDescriptor, error)
+	PeersForEndorsement(channel common.ChannelID, interest *discprotos.ChaincodeInterest) (*discprotos.EndorsementDescriptor, error)
+
+	// PeersAuthorizedByCriteria returns the peers of the channel that are authorized by the given chaincode interest
+	// That is - taking in account if the chaincode(s) in the interest are installed on the peers, and also
+	// taking in account whether the peers are part of the collections of the chaincodes.
+	// If a nil interest, or an empty interest is passed - no filtering is done.
+	PeersAuthorizedByCriteria(chainID common.ChannelID, interest *discprotos.ChaincodeInterest) (discovery.Members, error)
 }
 
 // ConfigSupport provides access to channel configuration
 type ConfigSupport interface {
 	// Config returns the channel's configuration
-	Config(channel string) (*discovery2.ConfigResult, error)
+	Config(channel string) (*discprotos.ConfigResult, error)
 }
 
 // Support defines an interface that allows the discovery service

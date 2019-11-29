@@ -1,37 +1,28 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package fsblkstorage
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"sync"
 	"sync/atomic"
 
 	"github.com/davecgh/go-spew/spew"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
-	putil "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("fsblkstorage")
@@ -102,7 +93,7 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 	rootDir := conf.getLedgerBlockDir(id)
 	_, err := util.CreateDirIfMissing(rootDir)
 	if err != nil {
-		panic(fmt.Sprintf("Error: %s", err))
+		panic(fmt.Sprintf("Error creating block storage root dir [%s]: %s", rootDir, err))
 	}
 	// Instantiate the manager, i.e. blockFileMgr structure
 	mgr := &blockfileMgr{rootDir: rootDir, conf: conf, db: indexStore}
@@ -142,7 +133,9 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 	}
 
 	// Create a new KeyValue store database handler for the blocks index in the keyvalue database
-	mgr.index = newBlockIndex(indexConfig, indexStore)
+	if mgr.index, err = newBlockIndex(indexConfig, indexStore); err != nil {
+		panic(fmt.Sprintf("error in block index: %s", err))
+	}
 
 	// Update the manager with the checkpoint info and the file writer
 	mgr.cpInfo = cpInfo
@@ -164,7 +157,7 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 		if err != nil {
 			panic(fmt.Sprintf("Could not retrieve header of the last block form file: %s", err))
 		}
-		lastBlockHash := lastBlockHeader.Hash()
+		lastBlockHash := protoutil.BlockHeaderHash(lastBlockHeader)
 		previousBlockHash := lastBlockHeader.PreviousHash
 		bcInfo = &common.BlockchainInfo{
 			Height:            cpInfo.lastBlockNumber + 1,
@@ -245,20 +238,33 @@ func (mgr *blockfileMgr) moveToNextFile() {
 }
 
 func (mgr *blockfileMgr) addBlock(block *common.Block) error {
-	if block.Header.Number != mgr.getBlockchainInfo().Height {
-		return fmt.Errorf("Block number should have been %d but was %d", mgr.getBlockchainInfo().Height, block.Header.Number)
+	bcInfo := mgr.getBlockchainInfo()
+	if block.Header.Number != bcInfo.Height {
+		return errors.Errorf(
+			"block number should have been %d but was %d",
+			mgr.getBlockchainInfo().Height, block.Header.Number,
+		)
+	}
+
+	// Add the previous hash check - Though, not essential but may not be a bad idea to
+	// verify the field `block.Header.PreviousHash` present in the block.
+	// This check is a simple bytes comparison and hence does not cause any observable performance penalty
+	// and may help in detecting a rare scenario if there is any bug in the ordering service.
+	if !bytes.Equal(block.Header.PreviousHash, bcInfo.CurrentBlockHash) {
+		return errors.Errorf(
+			"unexpected Previous block hash. Expected PreviousHash = [%x], PreviousHash referred in the latest block= [%x]",
+			bcInfo.CurrentBlockHash, block.Header.PreviousHash,
+		)
 	}
 	blockBytes, info, err := serializeBlock(block)
 	if err != nil {
-		return fmt.Errorf("Error while serializing block: %s", err)
+		return errors.WithMessage(err, "error serializing block")
 	}
-	blockHash := block.Header.Hash()
+	blockHash := protoutil.BlockHeaderHash(block.Header)
 	//Get the location / offset where each transaction starts in the block and where the block ends
 	txOffsets := info.txOffsets
 	currentOffset := mgr.cpInfo.latestFileChunksize
-	if err != nil {
-		return fmt.Errorf("Error while serializing block: %s", err)
-	}
+
 	blockBytesLen := len(blockBytes)
 	blockBytesEncodedLen := proto.EncodeVarint(uint64(blockBytesLen))
 	totalBytesToAppend := blockBytesLen + len(blockBytesEncodedLen)
@@ -280,7 +286,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		if truncateErr != nil {
 			panic(fmt.Sprintf("Could not truncate current file to known size after an error during block append: %s", err))
 		}
-		return fmt.Errorf("Error while appending block to file: %s", err)
+		return errors.WithMessage(err, "error appending block to file")
 	}
 
 	//Update the checkpoint info with the results of adding the new block
@@ -296,7 +302,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		if truncateErr != nil {
 			panic(fmt.Sprintf("Error in truncating current file to known size after an error in saving checkpoint info: %s", err))
 		}
-		return fmt.Errorf("Error while saving current file info to db: %s", err)
+		return errors.WithMessage(err, "error saving current file info to db")
 	}
 
 	//Index block file location pointer updated with file suffex and offset for the new block
@@ -307,9 +313,11 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		txOffset.loc.offset += len(blockBytesEncodedLen)
 	}
 	//save the index in the database
-	mgr.index.indexBlock(&blockIdxInfo{
+	if err = mgr.index.indexBlock(&blockIdxInfo{
 		blockNum: block.Header.Number, blockHash: blockHash,
-		flp: blockFLP, txOffsets: txOffsets, metadata: block.Metadata})
+		flp: blockFLP, txOffsets: txOffsets, metadata: block.Metadata}); err != nil {
+		return err
+	}
 
 	//update the checkpoint info (for storage) and the blockchain info (for APIs) in the manager
 	mgr.updateCheckpoint(newCPInfo)
@@ -371,7 +379,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 			return err
 		}
 		if blockBytes == nil {
-			return fmt.Errorf("block bytes for block num = [%d] should not be nil here. The indexes for the block are already present",
+			return errors.Errorf("block bytes for block num = [%d] should not be nil here. The indexes for the block are already present",
 				lastBlockIndexed)
 		}
 	}
@@ -400,7 +408,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 		}
 
 		//Update the blockIndexInfo with what was actually stored in file system
-		blockIdxInfo.blockHash = info.blockHeader.Hash()
+		blockIdxInfo.blockHash = protoutil.BlockHeaderHash(info.blockHeader)
 		blockIdxInfo.blockNum = info.blockHeader.Number
 		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
 			locPointer: locPointer{offset: int(blockPlacementInfo.blockStartOffset)}}
@@ -540,7 +548,7 @@ func (mgr *blockfileMgr) fetchTransactionEnvelope(lp *fileLocPointer) (*common.E
 		return nil, err
 	}
 	_, n := proto.DecodeVarint(txEnvelopeBytes)
-	return putil.GetEnvelopeFromBlock(txEnvelopeBytes[n:])
+	return protoutil.GetEnvelopeFromBlock(txEnvelopeBytes[n:])
 }
 
 func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {
@@ -639,20 +647,20 @@ func (i *checkpointInfo) marshal() ([]byte, error) {
 	buffer := proto.NewBuffer([]byte{})
 	var err error
 	if err = buffer.EncodeVarint(uint64(i.latestFileChunkSuffixNum)); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error encoding the latestFileChunkSuffixNum [%d]", i.latestFileChunkSuffixNum)
 	}
 	if err = buffer.EncodeVarint(uint64(i.latestFileChunksize)); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error encoding the latestFileChunksize [%d]", i.latestFileChunksize)
 	}
 	if err = buffer.EncodeVarint(i.lastBlockNumber); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error encoding the lastBlockNumber [%d]", i.lastBlockNumber)
 	}
 	var chainEmptyMarker uint64
 	if i.isChainEmpty {
 		chainEmptyMarker = 1
 	}
 	if err = buffer.EncodeVarint(chainEmptyMarker); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error encoding chainEmptyMarker [%d]", chainEmptyMarker)
 	}
 	return buffer.Bytes(), nil
 }

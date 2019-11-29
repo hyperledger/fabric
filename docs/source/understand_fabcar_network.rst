@@ -23,8 +23,8 @@ role an application plays.
 Components of the Fabcar Network
 --------------------------------
 
-Fabcar uses the "basic-network" sample as its limited development network. It
-consists of a single peer node configured to use CouchDB as the state database,
+Fabcar uses the "first-network" sample as its limited development network. It
+consists of four peer nodes configured to use CouchDB as the state database,
 a single "solo" ordering node, a certificate authority (CA) and a CLI container
 for executing commands.
 
@@ -72,7 +72,7 @@ Query
 
 Queries are the simplest kind of invocation: a call and response.  The most common query
 will interrogate the state database for the current value associated
-with a key (``GetState``).  However, the `chaincode shim interface <https://github.com/hyperledger/fabric/blob/master/core/chaincode/shim/interfaces_stable.go>`__
+with a key (``GetState``).  However, the `chaincode shim interface <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
 also allows for different types of ``Get`` calls (e.g. ``GetHistoryForKey`` or ``GetCreator``).
 
 In our example, the peer holds a hash chain of all transactions and maintains
@@ -101,11 +101,9 @@ to the ordering service by calling the ``channel.sendTransaction`` API. The
 ordering service bundles the transaction into a block and delivers it to all
 peers on a channel for validation (the Fabcar network has only one peer and one channel).
 
-Finally the application uses two event handler APIs: ``eh.setPeerAddr`` to
-connect to the peer's event listener port and ``eh.registerTxEvent`` to
-register for events associated with a specific transaction ID. The
-``eh.registerTxEvent`` API allows the application to be notified about the fate
-of a transaction (i.e. valid or invalid).
+Finally the application uses the :doc:`peer_event_services` to register for events
+associated with a specific transaction ID so that the application can be notified
+about the fate of a transaction (i.e. valid or invalid).
 
 For More Information
 --------------------
@@ -119,7 +117,7 @@ For more information on how endorsement policies work, check out
 :doc:`endorsement-policies`.
 
 For a deeper dive into the architecture of Hyperledger Fabric, check out
-:doc:`arch-deep-dive`.
+:doc:`architecture`.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

@@ -9,79 +9,82 @@ package privdata
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	lm "github.com/hyperledger/fabric/common/mocks/ledger"
+	"github.com/hyperledger/fabric/core/common/privdata/mock"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
-type mockStoreSupport struct {
-	Qe   *lm.MockQueryExecutor
-	QErr error
-}
+// local interfaces to avoid import cycles
+//go:generate counterfeiter -o mock/query_executor_factory.go -fake-name QueryExecutorFactory . queryExecutorFactory
+//go:generate counterfeiter -o mock/chaincode_info_provider.go -fake-name ChaincodeInfoProvider . chaincodeInfoProvider
+//go:generate counterfeiter -o mock/identity_deserializer_factory.go -fake-name IdentityDeserializerFactory . identityDeserializerFactory
 
-func (c *mockStoreSupport) GetQueryExecutorForLedger(cid string) (ledger.QueryExecutor, error) {
-	return c.Qe, c.QErr
-}
+type queryExecutorFactory interface{ QueryExecutorFactory }
+type chaincodeInfoProvider interface{ ChaincodeInfoProvider }
+type identityDeserializerFactory interface{ IdentityDeserializerFactory }
 
-func (c *mockStoreSupport) GetCollectionKVSKey(cc common.CollectionCriteria) string {
-	return cc.Channel + cc.Namespace
-}
+func TestNewSimpleCollectionStore(t *testing.T) {
+	mockQueryExecutorFactory := &mock.QueryExecutorFactory{}
+	mockCCInfoProvider := &mock.ChaincodeInfoProvider{}
 
-func (c *mockStoreSupport) GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
-	return &mockDeserializer{}
+	cs := NewSimpleCollectionStore(mockQueryExecutorFactory, mockCCInfoProvider)
+	assert.NotNil(t, cs)
+	assert.Exactly(t, mockQueryExecutorFactory, cs.qeFactory)
+	assert.Exactly(t, mockCCInfoProvider, cs.ccInfoProvider)
+	assert.NotNil(t, cs.idDeserializerFactory)
 }
 
 func TestCollectionStore(t *testing.T) {
-	wState := make(map[string]map[string][]byte)
-	support := &mockStoreSupport{Qe: &lm.MockQueryExecutor{wState}}
-	cs := NewSimpleCollectionStore(support)
-	assert.NotNil(t, cs)
+	mockQueryExecutorFactory := &mock.QueryExecutorFactory{}
+	mockCCInfoProvider := &mock.ChaincodeInfoProvider{}
+	mockCCInfoProvider.AllCollectionsConfigPkgReturns(nil, errors.New("Chaincode [non-existing-chaincode] does not exist"))
+	mockIDDeserializerFactory := &mock.IdentityDeserializerFactory{}
+	mockIDDeserializerFactory.GetIdentityDeserializerReturns(&mockDeserializer{})
 
-	support.QErr = errors.New("")
-	_, err := cs.RetrieveCollection(common.CollectionCriteria{})
-	assert.Error(t, err)
+	cs := &SimpleCollectionStore{
+		qeFactory:             mockQueryExecutorFactory,
+		ccInfoProvider:        mockCCInfoProvider,
+		idDeserializerFactory: mockIDDeserializerFactory,
+	}
 
-	support.QErr = nil
-	wState["lscc"] = make(map[string][]byte)
+	mockQueryExecutorFactory.NewQueryExecutorReturns(nil, errors.New("new-query-executor-failed"))
+	_, err := cs.RetrieveCollection(CollectionCriteria{})
+	assert.Contains(t, err.Error(), "could not retrieve query executor for collection criteria")
 
-	_, err = cs.RetrieveCollection(common.CollectionCriteria{})
-	assert.Error(t, err)
+	mockQueryExecutorFactory.NewQueryExecutorReturns(&lm.MockQueryExecutor{}, nil)
+	_, err = cs.retrieveCollectionConfigPackage(CollectionCriteria{Namespace: "non-existing-chaincode"}, nil)
+	assert.EqualError(t, err, "Chaincode [non-existing-chaincode] does not exist")
 
-	ccr := common.CollectionCriteria{Channel: "ch", Namespace: "cc", Collection: "mycollection"}
+	_, err = cs.RetrieveCollection(CollectionCriteria{})
+	assert.Contains(t, err.Error(), "could not be found")
 
-	wState["lscc"][support.GetCollectionKVSKey(ccr)] = []byte("barf")
-
+	ccr := CollectionCriteria{Channel: "ch", Namespace: "cc", Collection: "mycollection"}
+	mockCCInfoProvider.CollectionInfoReturns(nil, errors.New("collection-info-error"))
 	_, err = cs.RetrieveCollection(ccr)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "collection-info-error")
 
-	cc := &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection"}}}
-	ccp := &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
-	ccpBytes, err := proto.Marshal(ccp)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
-
-	wState["lscc"][support.GetCollectionKVSKey(ccr)] = ccpBytes
-
+	scc := &peer.StaticCollectionConfig{Name: "mycollection"}
+	mockCCInfoProvider.CollectionInfoReturns(scc, nil)
 	_, err = cs.RetrieveCollection(ccr)
-	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error setting up collection for collection criteria")
 
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 
-	cc = &common.CollectionConfig{Payload: &common.CollectionConfig_StaticCollectionConfig{&common.StaticCollectionConfig{Name: "mycollection", MemberOrgsPolicy: accessPolicy}}}
-	ccp = &common.CollectionConfigPackage{[]*common.CollectionConfig{cc}}
-	ccpBytes, err = proto.Marshal(ccp)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
+	scc = &peer.StaticCollectionConfig{
+		Name:             "mycollection",
+		MemberOrgsPolicy: accessPolicy,
+		MemberOnlyRead:   false,
+		MemberOnlyWrite:  false,
+	}
 
-	wState["lscc"][support.GetCollectionKVSKey(ccr)] = ccpBytes
-
+	mockCCInfoProvider.CollectionInfoReturns(scc, nil)
 	c, err := cs.RetrieveCollection(ccr)
 	assert.NoError(t, err)
 	assert.NotNil(t, c)
@@ -90,11 +93,53 @@ func TestCollectionStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ca)
 
-	c, err = cs.RetrieveCollection(common.CollectionCriteria{Channel: "ch", Namespace: "cc", Collection: "asd"})
-	assert.Error(t, err)
-	assert.Nil(t, c)
+	scc = &peer.StaticCollectionConfig{
+		Name:             "mycollection",
+		MemberOrgsPolicy: accessPolicy,
+		MemberOnlyRead:   true,
+		MemberOnlyWrite:  true,
+	}
+	cc := &peer.CollectionConfig{
+		Payload: &peer.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: scc},
+	}
+	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{cc}}
+
+	mockCCInfoProvider.CollectionInfoReturns(scc, nil)
+	mockCCInfoProvider.ChaincodeInfoReturns(
+		&ledger.DeployedChaincodeInfo{ExplicitCollectionConfigPkg: ccp},
+		nil,
+	)
+	mockCCInfoProvider.AllCollectionsConfigPkgReturns(ccp, nil)
 
 	ccc, err := cs.RetrieveCollectionConfigPackage(ccr)
 	assert.NoError(t, err)
 	assert.NotNil(t, ccc)
+
+	signedProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer0"), []byte("msg1"))
+	readP, writeP, err := cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
+	assert.NoError(t, err)
+	assert.True(t, readP)
+	assert.True(t, writeP)
+
+	// only signer0 and signer1 are the members
+	signedProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer2"), []byte("msg1"))
+	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
+	assert.NoError(t, err)
+	assert.False(t, readP)
+	assert.False(t, writeP)
+
+	scc = &peer.StaticCollectionConfig{
+		Name:             "mycollection",
+		MemberOrgsPolicy: accessPolicy,
+		MemberOnlyRead:   false,
+		MemberOnlyWrite:  false,
+	}
+	mockCCInfoProvider.CollectionInfoReturns(scc, nil)
+
+	// only signer0 and signer1 are the members
+	signedProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer2"), []byte("msg1"))
+	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
+	assert.NoError(t, err)
+	assert.True(t, readP)
+	assert.True(t, writeP)
 }

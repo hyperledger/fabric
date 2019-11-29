@@ -108,48 +108,6 @@ rest:
 
 ###############################################################################
 #
-#    LOGGING section
-#
-###############################################################################
-logging:
-
-    # Valid logging levels are case-insensitive strings chosen from
-
-    #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
-
-    # Logging 'module' names are also strings, however valid module names are
-    # defined at runtime and are not checked for validity during option
-    # processing.
-
-    # Default logging levels are specified here for each of the peer
-    # commands. For commands that have subcommands, the defaults also apply to
-    # all subcommands of the command. These logging levels can be overridden
-    # on the command line using the --logging-level command-line option, or by
-    # setting the CORE_LOGGING_LEVEL environment variable.
-
-    # The logging level specification is of the form
-
-    #     [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
-
-    # A logging level by itself is taken as the overall default. Otherwise,
-    # overrides for individual or groups of modules can be specified using the
-    # <module>[,<module>...]=<level> syntax.
-
-    # Examples:
-    #   info                                       - Set default to INFO
-    #   warning:main,db=debug:chaincode=info       - Override default WARNING in main,db,chaincode
-    #   chaincode=info:main=debug:db=debug:warning - Same as above
-    peer:      warning
-    crypto:    warning
-    status:    warning
-    stop:      warning
-    login:     warning
-    vm:        warning
-    chaincode: warning
-
-
-###############################################################################
-#
 #    Peer section
 #
 ###############################################################################
@@ -180,8 +138,6 @@ peer:
 
     # Peer port to accept connections on
     port:    21212
-    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
-    gomaxprocs: -1
     workers: 2
 
     # Sync related configuration
@@ -219,20 +175,6 @@ peer:
 
             # total number of consensus messages which will be buffered per connection before delivery is rejected
             buffersize: 1000
-
-        events:
-            # The address that the Event service will be enabled on the validator
-            address: 0.0.0.0:7053
-
-            # total number of events that could be buffered without blocking the
-            # validator sends
-            buffersize: 100
-
-            # milliseconds timeout for producer to send an event.
-            # if < 0, if buffer full, unblocks immediately and not send
-            # if 0, if buffer full, will block and guarantee the event will be sent out
-            # if > 0, if buffer full, blocks till timeout
-            timeout: 10
 
     # TLS Settings for p2p communications
     tls:
@@ -355,24 +297,28 @@ chaincode:
         name:
 
     # Generic builder environment, suitable for most chaincode types
-    builder: $(DOCKER_NS)/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+    builder: $(DOCKER_NS)/fabric-ccenv:$(PROJECT_VERSION)
 
     golang:
         # golang will never need more than baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
+        dynamicLink: true
 
     car:
         # car may need more facilities (JVM, etc) in the future as the catalog
         # of platforms are expanded.  For now, we can just use baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
 
     java:
         # This is an image based on java:openjdk-8 with addition compiler
         # tools added for java shim layer packaging.
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
-        Dockerfile:  |
-            from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+        runtime:  $(DOCKER_NS)/fabric-javaenv:latest
+
+    node:
+        # This is an image based on node:${NODE_VER}-alpine
+        runtime: $(DOCKER_NS)/fabric-nodeenv:latest
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
@@ -394,7 +340,7 @@ chaincode:
 
     mode: net
     # typically installpath should not be modified. Otherwise, user must ensure
-    # the chaincode executable is placed in the path specifed by installpath in
+    # the chaincode executable is placed in the path specified by installpath in
     # the image
     installpath: /opt/gopath/bin/
 
@@ -416,7 +362,7 @@ chaincode:
     logging:
       # Default level for all loggers within the chaincode container
       level:  info
-      # Override default level for the 'shim' module
+      # Override default level for the 'shim' logger
       shim:   warning
       # Format for the chaincode container logs
       format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'

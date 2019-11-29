@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package protolator
@@ -21,8 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/tools/protolator/testprotos"
-	"github.com/hyperledger/fabric/protos/utils"
-
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,7 +29,7 @@ func TestPlainDynamicMsg(t *testing.T) {
 	startMsg := &testprotos.DynamicMsg{
 		DynamicType: "SimpleMsg",
 		PlainDynamicField: &testprotos.ContextlessMsg{
-			OpaqueField: utils.MarshalOrPanic(&testprotos.SimpleMsg{
+			OpaqueField: protoutil.MarshalOrPanic(&testprotos.SimpleMsg{
 				PlainField: pfValue,
 			}),
 		},
@@ -76,7 +65,7 @@ func TestMapDynamicMsg(t *testing.T) {
 		DynamicType: "SimpleMsg",
 		MapDynamicField: map[string]*testprotos.ContextlessMsg{
 			mapKey: {
-				OpaqueField: utils.MarshalOrPanic(&testprotos.SimpleMsg{
+				OpaqueField: protoutil.MarshalOrPanic(&testprotos.SimpleMsg{
 					PlainField: pfValue,
 				}),
 			},
@@ -112,7 +101,7 @@ func TestSliceDynamicMsg(t *testing.T) {
 		DynamicType: "SimpleMsg",
 		SliceDynamicField: []*testprotos.ContextlessMsg{
 			{
-				OpaqueField: utils.MarshalOrPanic(&testprotos.SimpleMsg{
+				OpaqueField: protoutil.MarshalOrPanic(&testprotos.SimpleMsg{
 					PlainField: pfValue,
 				}),
 			},

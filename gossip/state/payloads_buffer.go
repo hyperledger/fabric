@@ -10,9 +10,9 @@ import (
 	"sync"
 	"sync/atomic"
 
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 )
 
 // PayloadsBuffer is used to store payloads into which used to
@@ -50,16 +50,16 @@ type PayloadsBufferImpl struct {
 
 	mutex sync.RWMutex
 
-	logger *logging.Logger
+	logger util.Logger
 }
 
 // NewPayloadsBuffer is factory function to create new payloads buffer
 func NewPayloadsBuffer(next uint64) PayloadsBuffer {
 	return &PayloadsBufferImpl{
 		buf:       make(map[uint64]*proto.Payload),
-		readyChan: make(chan struct{}, 0),
+		readyChan: make(chan struct{}, 1),
 		next:      next,
-		logger:    util.GetLogger(util.LoggingStateModule, ""),
+		logger:    util.GetLogger(util.StateLogger, ""),
 	}
 }
 
@@ -72,7 +72,8 @@ func (b *PayloadsBufferImpl) Ready() chan struct{} {
 
 // Push new payload into the buffer structure in case new arrived payload
 // sequence number is below the expected next block number payload will be
-// thrown away and error will be returned.
+// thrown away.
+// TODO return bool to indicate if payload was added or not, so that caller can log result.
 func (b *PayloadsBufferImpl) Push(payload *proto.Payload) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
@@ -87,11 +88,8 @@ func (b *PayloadsBufferImpl) Push(payload *proto.Payload) {
 	b.buf[seqNum] = payload
 
 	// Send notification that next sequence has arrived
-	if seqNum == b.next {
-		// Do not block execution of current routine
-		go func() {
-			b.readyChan <- struct{}{}
-		}()
+	if seqNum == b.next && len(b.readyChan) == 0 {
+		b.readyChan <- struct{}{}
 	}
 }
 
@@ -114,8 +112,27 @@ func (b *PayloadsBufferImpl) Pop() *proto.Payload {
 		delete(b.buf, b.Next())
 		// Increment next expect block index
 		atomic.AddUint64(&b.next, 1)
+
+		b.drainReadChannel()
+
 	}
+
 	return result
+}
+
+// drainReadChannel empties ready channel in case last
+// payload has been poped up and there are still awaiting
+// notifications in the channel
+func (b *PayloadsBufferImpl) drainReadChannel() {
+	if len(b.buf) == 0 {
+		for {
+			if len(b.readyChan) > 0 {
+				<-b.readyChan
+			} else {
+				break
+			}
+		}
+	}
 }
 
 // Size returns current number of payloads stored within buffer
@@ -128,4 +145,25 @@ func (b *PayloadsBufferImpl) Size() int {
 // Close cleanups resources and channels in maintained
 func (b *PayloadsBufferImpl) Close() {
 	close(b.readyChan)
+}
+
+type metricsBuffer struct {
+	PayloadsBuffer
+	sizeMetrics metrics.Gauge
+	chainID     string
+}
+
+func (mb *metricsBuffer) Push(payload *proto.Payload) {
+	mb.PayloadsBuffer.Push(payload)
+	mb.reportSize()
+}
+
+func (mb *metricsBuffer) Pop() *proto.Payload {
+	pl := mb.PayloadsBuffer.Pop()
+	mb.reportSize()
+	return pl
+}
+
+func (mb *metricsBuffer) reportSize() {
+	mb.sizeMetrics.With("channel", mb.chainID).Set(float64(mb.Size()))
 }

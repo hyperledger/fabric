@@ -17,19 +17,17 @@ limitations under the License.
 package ccprovider
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 
 	"github.com/golang/protobuf/proto"
-
-	"bytes"
-
+	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
-	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //----- SignedCDSData ------
@@ -66,18 +64,14 @@ func (data *SignedCDSData) Equals(other *SignedCDSData) bool {
 
 //SignedCDSPackage encapsulates SignedChaincodeDeploymentSpec.
 type SignedCDSPackage struct {
-	buf      []byte
-	depSpec  *pb.ChaincodeDeploymentSpec
-	sDepSpec *pb.SignedChaincodeDeploymentSpec
-	env      *common.Envelope
-	data     *SignedCDSData
-	datab    []byte
-	id       []byte
-}
-
-// resets data
-func (ccpack *SignedCDSPackage) reset() {
-	*ccpack = SignedCDSPackage{}
+	buf       []byte
+	depSpec   *pb.ChaincodeDeploymentSpec
+	sDepSpec  *pb.SignedChaincodeDeploymentSpec
+	env       *common.Envelope
+	data      *SignedCDSData
+	datab     []byte
+	id        []byte
+	GetHasher GetHasher
 }
 
 // GetId gets the fingerprint of the chaincode based on package computation
@@ -164,7 +158,7 @@ func (ccpack *SignedCDSPackage) getCDSData(scds *pb.SignedChaincodeDeploymentSpe
 	}
 
 	//get the hash object
-	hash, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
+	hash, err := ccpack.GetHasher.GetHash(&bccsp.SHAOpts{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -229,6 +223,16 @@ func (ccpack *SignedCDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 		return fmt.Errorf("chaincode deployment spec cannot be nil in a package")
 	}
 
+	// This is a hack. LSCC expects a specific LSCC error when names are invalid so it
+	// has its own validation code. We can't use that error because of import cycles.
+	// Unfortunately, we also need to check if what have makes some sort of sense as
+	// protobuf will gladly deserialize garbage and there are paths where we assume that
+	// a successful unmarshal means everything works but, if it fails, we try to unmarshal
+	// into something different.
+	if !isPrintable(ccdata.Name) {
+		return fmt.Errorf("invalid chaincode name: %q", ccdata.Name)
+	}
+
 	if ccdata.Name != ccpack.depSpec.ChaincodeSpec.ChaincodeId.Name || ccdata.Version != ccpack.depSpec.ChaincodeSpec.ChaincodeId.Version {
 		return fmt.Errorf("invalid chaincode data %v (%v)", ccdata, ccpack.depSpec.ChaincodeSpec.ChaincodeId)
 	}
@@ -248,8 +252,6 @@ func (ccpack *SignedCDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 
 //InitFromBuffer sets the buffer if valid and returns ChaincodeData
 func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
-	//incase ccpack is reused
-	ccpack.reset()
 
 	env := &common.Envelope{}
 	err := proto.Unmarshal(buf, env)
@@ -260,6 +262,7 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 	if err != nil {
 		return nil, err
 	}
+
 	if cHdr.Type != int32(common.HeaderType_CHAINCODE_PACKAGE) {
 		return nil, fmt.Errorf("invalid type of envelope for chaincode package")
 	}
@@ -287,16 +290,14 @@ func (ccpack *SignedCDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, erro
 }
 
 //InitFromFS returns the chaincode and its package from the file system
-func (ccpack *SignedCDSPackage) InitFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
-	return ccpack.InitFromPath(ccname, ccversion, chaincodeInstallPath)
+func (ccpack *SignedCDSPackage) InitFromFS(ccNameVersion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+	return ccpack.InitFromPath(ccNameVersion, chaincodeInstallPath)
 }
 
 //InitFromPath returns the chaincode and its package from the file system
-func (ccpack *SignedCDSPackage) InitFromPath(ccname string, ccversion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
-	//incase ccpack is reused
-	ccpack.reset()
+func (ccpack *SignedCDSPackage) InitFromPath(ccNameVersion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
 
-	buf, err := GetChaincodePackageFromPath(ccname, ccversion, path)
+	buf, err := GetChaincodePackageFromPath(ccNameVersion, path)
 	if err != nil {
 		return nil, nil, err
 	}

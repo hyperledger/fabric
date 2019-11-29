@@ -26,17 +26,17 @@ Here are a few examples::
 
 The default MPS implementation accepts as valid identities X.509 certificates
 signed by the appropriate authorities. In the diagram above,
-only certificates signed by iCA11, iCA12, iCA2, iCA3 an rCA3
+only certificates signed by iCA11, iCA12, iCA2, iCA3, and rCA3
 will be considered valid. Certificates signed by internal nodes will be rejected.
 
 Notice that the validity of a certificate is also affected, in a similar
 way, if one or more organizational units are specified in the MSP configuration.
 Recall that an organizational unit is specified in an MSP configuration
 as a pair of two values, say (parent-cert, ou-string) representing the
-certificate authority that certifies that organisational unit, and the
-actual organisational unit identifier, respectively.
+certificate authority that certifies that organizational unit, and the
+actual organizational unit identifier, respectively.
 If a certificate C is signed by an iCA or rCA
-for which an organisational unit has been specified in the MSP configuration,
+for which an organizational unit has been specified in the MSP configuration,
 then C is considered valid if, among other requirements, it includes
 ou-string as part of its OU field.
 

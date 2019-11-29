@@ -25,6 +25,9 @@ var GenG2 = FP256BN.NewECP2fp2s(
 	FP256BN.NewFP2bigs(FP256BN.NewBIGints(FP256BN.CURVE_Pxa), FP256BN.NewBIGints(FP256BN.CURVE_Pxb)),
 	FP256BN.NewFP2bigs(FP256BN.NewBIGints(FP256BN.CURVE_Pya), FP256BN.NewBIGints(FP256BN.CURVE_Pyb)))
 
+// GenGT is a generator of Group GT
+var GenGT = FP256BN.Fexp(FP256BN.Ate(GenG2, GenG1))
+
 // GroupOrder is the order of the groups
 var GroupOrder = FP256BN.NewBIGints(FP256BN.CURVE_Order)
 
@@ -48,10 +51,20 @@ func HashModOrder(data []byte) *FP256BN.BIG {
 	return digestBig
 }
 
+func appendBytes(data []byte, index int, bytesToAdd []byte) int {
+	copy(data[index:], bytesToAdd)
+	return index + len(bytesToAdd)
+}
 func appendBytesG1(data []byte, index int, E *FP256BN.ECP) int {
 	length := 2*FieldBytes + 1
-	E.ToBytes(data[index : index+length])
+	E.ToBytes(data[index:index+length], false)
 	return index + length
+}
+func EcpToBytes(E *FP256BN.ECP) []byte {
+	length := 2*FieldBytes + 1
+	res := make([]byte, length)
+	E.ToBytes(res, false)
+	return res
 }
 func appendBytesG2(data []byte, index int, E *FP256BN.ECP2) int {
 	length := 4 * FieldBytes
@@ -71,6 +84,8 @@ func appendBytesString(data []byte, index int, s string) int {
 
 // MakeNym creates a new unlinkable pseudonym
 func MakeNym(sk *FP256BN.BIG, IPk *IssuerPublicKey, rng *amcl.RAND) (*FP256BN.ECP, *FP256BN.BIG) {
+	// Construct a commitment to the sk
+	// Nym = h_{sk}^sk \cdot h_r^r
 	RandNym := RandModOrder(rng)
 	Nym := EcpFromProto(IPk.HSk).Mul2(sk, EcpFromProto(IPk.HRand), RandNym)
 	return Nym, RandNym
@@ -86,8 +101,8 @@ func BigToBytes(big *FP256BN.BIG) []byte {
 // EcpToProto converts a *amcl.ECP into the proto struct *ECP
 func EcpToProto(p *FP256BN.ECP) *ECP {
 	return &ECP{
-		BigToBytes(p.GetX()),
-		BigToBytes(p.GetY())}
+		X: BigToBytes(p.GetX()),
+		Y: BigToBytes(p.GetY())}
 }
 
 // EcpFromProto converts a proto struct *ECP into an *amcl.ECP
@@ -98,17 +113,17 @@ func EcpFromProto(p *ECP) *FP256BN.ECP {
 // Ecp2ToProto converts a *amcl.ECP2 into the proto struct *ECP2
 func Ecp2ToProto(p *FP256BN.ECP2) *ECP2 {
 	return &ECP2{
-		BigToBytes(p.GetX().GetA()),
-		BigToBytes(p.GetX().GetB()),
-		BigToBytes(p.GetY().GetA()),
-		BigToBytes(p.GetY().GetB())}
+		Xa: BigToBytes(p.GetX().GetA()),
+		Xb: BigToBytes(p.GetX().GetB()),
+		Ya: BigToBytes(p.GetY().GetA()),
+		Yb: BigToBytes(p.GetY().GetB())}
 }
 
 // Ecp2FromProto converts a proto struct *ECP2 into an *amcl.ECP2
 func Ecp2FromProto(p *ECP2) *FP256BN.ECP2 {
 	return FP256BN.NewECP2fp2s(
-		FP256BN.NewFP2bigs(FP256BN.FromBytes(p.GetXA()), FP256BN.FromBytes(p.GetXB())),
-		FP256BN.NewFP2bigs(FP256BN.FromBytes(p.GetYA()), FP256BN.FromBytes(p.GetYB())))
+		FP256BN.NewFP2bigs(FP256BN.FromBytes(p.GetXa()), FP256BN.FromBytes(p.GetXb())),
+		FP256BN.NewFP2bigs(FP256BN.FromBytes(p.GetYa()), FP256BN.FromBytes(p.GetYb())))
 }
 
 // GetRand returns a new *amcl.RAND with a fresh seed

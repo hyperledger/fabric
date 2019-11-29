@@ -18,7 +18,8 @@ package mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
 )
 
@@ -35,14 +36,18 @@ type MSPPrincipalGetter interface {
 	Get(role string) (*msp.MSPPrincipal, error)
 }
 
-func NewLocalMSPPrincipalGetter() MSPPrincipalGetter {
-	return &localMSPPrincipalGetter{}
+func NewLocalMSPPrincipalGetter(cryptoProvider bccsp.BCCSP) MSPPrincipalGetter {
+	return &localMSPPrincipalGetter{
+		cryptoProvider: cryptoProvider,
+	}
 }
 
-type localMSPPrincipalGetter struct{}
+type localMSPPrincipalGetter struct {
+	cryptoProvider bccsp.BCCSP
+}
 
 func (m *localMSPPrincipalGetter) Get(role string) (*msp.MSPPrincipal, error) {
-	mspid, err := GetLocalMSP().GetIdentifier()
+	mspid, err := GetLocalMSP(m.cryptoProvider).GetIdentifier()
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not extract local msp identifier")
 	}

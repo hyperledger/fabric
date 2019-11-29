@@ -16,7 +16,11 @@ limitations under the License.
 
 package crypto
 
-import "crypto/rand"
+import (
+	"crypto/rand"
+
+	"github.com/pkg/errors"
+)
 
 const (
 	// NonceSize is the default NonceSize
@@ -30,7 +34,7 @@ func GetRandomBytes(len int) ([]byte, error) {
 	// TODO: rand could fill less bytes then len
 	_, err := rand.Read(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error getting random bytes")
 	}
 
 	return key, nil

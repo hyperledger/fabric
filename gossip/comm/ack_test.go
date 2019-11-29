@@ -11,21 +11,22 @@ import (
 	"testing"
 	"time"
 
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestInterceptAcks(t *testing.T) {
 	pubsub := util.NewPubSub()
 	pkiID := common.PKIidType("pkiID")
-	msgs := make(chan *proto.SignedGossipMessage, 1)
-	handlerFunc := func(message *proto.SignedGossipMessage) {
+	msgs := make(chan *protoext.SignedGossipMessage, 1)
+	handlerFunc := func(message *protoext.SignedGossipMessage) {
 		msgs <- message
 	}
 	wrappedHandler := interceptAcks(handlerFunc, pkiID, pubsub)
-	ack := &proto.SignedGossipMessage{
+	ack := &protoext.SignedGossipMessage{
 		GossipMessage: &proto.GossipMessage{
 			Nonce: 1,
 			Content: &proto.GossipMessage_Ack{
@@ -42,7 +43,7 @@ func TestInterceptAcks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test none acks are just forwarded
-	notAck := &proto.SignedGossipMessage{
+	notAck := &protoext.SignedGossipMessage{
 		GossipMessage: &proto.GossipMessage{
 			Nonce: 2,
 			Content: &proto.GossipMessage_DataMsg{
@@ -62,24 +63,25 @@ func TestInterceptAcks(t *testing.T) {
 func TestAck(t *testing.T) {
 	t.Parallel()
 
-	comm1, _ := newCommInstance(14000, naiveSec)
-	comm2, _ := newCommInstance(14001, naiveSec)
+	comm1, _ := newCommInstance(t, naiveSec)
+	comm2, port2 := newCommInstance(t, naiveSec)
 	defer comm2.Stop()
-	comm3, _ := newCommInstance(14002, naiveSec)
+	comm3, port3 := newCommInstance(t, naiveSec)
 	defer comm3.Stop()
-	comm4, _ := newCommInstance(14003, naiveSec)
+	comm4, port4 := newCommInstance(t, naiveSec)
 	defer comm4.Stop()
 
 	acceptData := func(o interface{}) bool {
-		return o.(proto.ReceivedMessage).GetGossipMessage().IsDataMsg()
+		m := o.(protoext.ReceivedMessage).GetGossipMessage()
+		return protoext.IsDataMsg(m.GossipMessage)
 	}
 
-	ack := func(c <-chan proto.ReceivedMessage) {
+	ack := func(c <-chan protoext.ReceivedMessage) {
 		msg := <-c
 		msg.Ack(nil)
 	}
 
-	nack := func(c <-chan proto.ReceivedMessage) {
+	nack := func(c <-chan protoext.ReceivedMessage) {
 		msg := <-c
 		msg.Ack(errors.New("Failed processing message because reasons"))
 	}
@@ -91,7 +93,7 @@ func TestAck(t *testing.T) {
 	// Collect 2 out of 2 acks - should succeed
 	go ack(inc2)
 	go ack(inc3)
-	res := comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(14001), remotePeer(14002))
+	res := comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(port2), remotePeer(port3))
 	assert.Len(t, res, 2)
 	assert.Empty(t, res[0].Error())
 	assert.Empty(t, res[1].Error())
@@ -100,7 +102,7 @@ func TestAck(t *testing.T) {
 	t1 := time.Now()
 	go ack(inc2)
 	go ack(inc3)
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*10, 2, remotePeer(14001), remotePeer(14002), remotePeer(14003))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*10, 2, remotePeer(port2), remotePeer(port3), remotePeer(port4))
 	elapsed := time.Since(t1)
 	assert.Len(t, res, 2)
 	assert.Empty(t, res[0].Error())
@@ -111,13 +113,13 @@ func TestAck(t *testing.T) {
 	// Collect 2 out of 3 acks - should fail, because peer3 now have sent an error along with the ack
 	go ack(inc2)
 	go nack(inc3)
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*10, 2, remotePeer(14001), remotePeer(14002), remotePeer(14003))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*10, 2, remotePeer(port2), remotePeer(port3), remotePeer(port4))
 	assert.Len(t, res, 3)
 	assert.Contains(t, []string{res[0].Error(), res[1].Error(), res[2].Error()}, "Failed processing message because reasons")
 	assert.Contains(t, []string{res[0].Error(), res[1].Error(), res[2].Error()}, "timed out")
 
 	// Collect 2 out of 2 acks - should fail because comm2 and comm3 now don't acknowledge messages
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(14001), remotePeer(14002))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(port2), remotePeer(port3))
 	assert.Len(t, res, 2)
 	assert.Contains(t, res[0].Error(), "timed out")
 	assert.Contains(t, res[1].Error(), "timed out")
@@ -128,7 +130,7 @@ func TestAck(t *testing.T) {
 	// Collect 2 out of 3 acks - should fail
 	go ack(inc2)
 	go nack(inc3)
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(14001), remotePeer(14002), remotePeer(14003))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 2, remotePeer(port2), remotePeer(port3), remotePeer(port4))
 	assert.Len(t, res, 3)
 	assert.Contains(t, []string{res[0].Error(), res[1].Error(), res[2].Error()}, "") // This is the "successful ack"
 	assert.Contains(t, []string{res[0].Error(), res[1].Error(), res[2].Error()}, "Failed processing message because reasons")
@@ -145,7 +147,7 @@ func TestAck(t *testing.T) {
 
 	// Send a message while stopping
 	comm1.Stop()
-	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 1, remotePeer(14001), remotePeer(14002), remotePeer(14003))
+	res = comm1.SendWithAck(createGossipMsg(), time.Second*3, 1, remotePeer(port2), remotePeer(port3), remotePeer(port4))
 	assert.Len(t, res, 3)
 	assert.Contains(t, res[0].Error(), "comm is stopping")
 	assert.Contains(t, res[1].Error(), "comm is stopping")

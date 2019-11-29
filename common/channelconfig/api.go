@@ -9,12 +9,12 @@ package channelconfig
 import (
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Org stores the common organizational config
@@ -24,6 +24,9 @@ type Org interface {
 
 	// MSPID returns the MSP ID associated with this org
 	MSPID() string
+
+	// MSP returns the MSP implementation for this org.
+	MSP() msp.MSP
 }
 
 // ApplicationOrg stores the per org application config
@@ -34,10 +37,21 @@ type ApplicationOrg interface {
 	AnchorPeers() []*pb.AnchorPeer
 }
 
+// OrdererOrg stores the per org orderer config.
+type OrdererOrg interface {
+	Org
+
+	// Endpoints returns the endpoints of orderer nodes.
+	Endpoints() []string
+}
+
 // Application stores the common shared application config
 type Application interface {
 	// Organizations returns a map of org ID to ApplicationOrg
 	Organizations() map[string]ApplicationOrg
+
+	// APIPolicyMapper returns a PolicyMapper that maps API names to policies
+	APIPolicyMapper() PolicyMapper
 
 	// Capabilities defines the capabilities for the application portion of a channel
 	Capabilities() ApplicationCapabilities
@@ -80,6 +94,12 @@ type Orderer interface {
 	// ConsensusType returns the configured consensus type
 	ConsensusType() string
 
+	// ConsensusMetadata returns the metadata associated with the consensus type.
+	ConsensusMetadata() []byte
+
+	// ConsensusState returns the consensus-type state.
+	ConsensusState() ab.ConsensusType_State
+
 	// BatchSize returns the maximum number of messages to include in a block
 	BatchSize() *ab.BatchSize
 
@@ -95,7 +115,7 @@ type Orderer interface {
 	KafkaBrokers() []string
 
 	// Organizations returns the organizations for the ordering service
-	Organizations() map[string]Org
+	Organizations() map[string]OrdererOrg
 
 	// Capabilities defines the capabilities for the orderer portion of a channel
 	Capabilities() OrdererCapabilities
@@ -109,6 +129,12 @@ type ChannelCapabilities interface {
 	// MSPVersion specifies the version of the MSP this channel must understand, including the MSP types
 	// and MSP principal types.
 	MSPVersion() msp.MSPVersion
+
+	// ConsensusTypeMigration return true if consensus-type migration is permitted in both orderer and peer.
+	ConsensusTypeMigration() bool
+
+	// OrgSpecificOrdererEndpoints return true if the channel config processing allows orderer orgs to specify their own endpoints
+	OrgSpecificOrdererEndpoints() bool
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel
@@ -120,20 +146,54 @@ type ApplicationCapabilities interface {
 	// in the same block or whether we mark the second one as TxValidationCode_DUPLICATE_TXID
 	ForbidDuplicateTXIdInBlock() bool
 
-	// ResourcesTree returns true if the peer should process the experimental resources transactions
-	ResourcesTree() bool
+	// ACLs returns true is ACLs may be specified in the Application portion of the config tree
+	ACLs() bool
 
 	// PrivateChannelData returns true if support for private channel data (a.k.a. collections) is enabled.
+	// In v1.1, the private channel data is experimental and has to be enabled explicitly.
+	// In v1.2, the private channel data is enabled by default.
 	PrivateChannelData() bool
+
+	// CollectionUpgrade returns true if this channel is configured to allow updates to
+	// existing collection or add new collections through chaincode upgrade (as introduced in v1.2)
+	CollectionUpgrade() bool
 
 	// V1_1Validation returns true is this channel is configured to perform stricter validation
 	// of transactions (as introduced in v1.1).
 	V1_1Validation() bool
 
-	// MetadataLifecycle indicates whether the peer should use the deprecated and problematic
-	// v1.0/v1.1 lifecycle, or whether it should use the newer per channel peer local chaincode
-	// metadata package approach planned for release with Fabric v1.2
+	// V1_2Validation returns true is this channel is configured to perform stricter validation
+	// of transactions (as introduced in v1.2).
+	V1_2Validation() bool
+
+	// V1_3Validation returns true if this channel supports transaction validation
+	// as introduced in v1.3. This includes:
+	//  - policies expressible at a ledger key granularity, as described in FAB-8812
+	//  - new chaincode lifecycle, as described in FAB-11237
+	V1_3Validation() bool
+
+	// StorePvtDataOfInvalidTx() returns true if the peer needs to store the pvtData of
+	// invalid transactions (as introduced in v142).
+	StorePvtDataOfInvalidTx() bool
+
+	// V2_0Validation returns true if this channel supports transaction validation
+	// as introduced in v2.0. This includes:
+	//  - new chaincode lifecycle
+	//  - implicit per-org collections
+	V2_0Validation() bool
+
+	// LifecycleV20 indicates whether the peer should use the deprecated and problematic
+	// v1.x lifecycle, or whether it should use the newer per channel approve/commit definitions
+	// process introduced in v2.0.  Note, this should only be used on the endorsing side
+	// of peer processing, so that we may safely remove all checks against it in v2.1.
+	LifecycleV20() bool
+
+	// MetadataLifecycle always returns false
 	MetadataLifecycle() bool
+
+	// KeyLevelEndorsement returns true if this channel supports endorsement
+	// policies expressible at a ledger key granularity, as described in FAB-8812
+	KeyLevelEndorsement() bool
 }
 
 // OrdererCapabilities defines the capabilities for the orderer portion of a channel
@@ -152,6 +212,21 @@ type OrdererCapabilities interface {
 	// ExpirationCheck specifies whether the orderer checks for identity expiration checks
 	// when validating messages
 	ExpirationCheck() bool
+
+	// ConsensusTypeMigration checks whether the orderer permits a consensus-type migration.
+	ConsensusTypeMigration() bool
+
+	// UseChannelCreationPolicyAsAdmins checks whether the orderer should use more sophisticated
+	// channel creation logic using channel creation policy as the Admins policy if
+	// the creation transaction appears to support it.
+	UseChannelCreationPolicyAsAdmins() bool
+}
+
+// PolicyMapper is an interface for
+type PolicyMapper interface {
+	// PolicyRefForAPI takes the name of an API, and returns the policy name
+	// or the empty string if the API is not found
+	PolicyRefForAPI(apiName string) string
 }
 
 // Resources is the common set of config resources for all channels

@@ -17,12 +17,12 @@ limitations under the License.
 package rwsetutil
 
 import (
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
 var logger = flogging.MustGetLogger("rwsetutil")
@@ -37,16 +37,18 @@ type nsPubRwBuilder struct {
 	namespace         string
 	readMap           map[string]*kvrwset.KVRead //for mvcc validation
 	writeMap          map[string]*kvrwset.KVWrite
+	metadataWriteMap  map[string]*kvrwset.KVMetadataWrite
 	rangeQueriesMap   map[rangeQueryKey]*kvrwset.RangeQueryInfo //for phantom read validation
 	rangeQueriesKeys  []rangeQueryKey
 	collHashRwBuilder map[string]*collHashRwBuilder
 }
 
 type collHashRwBuilder struct {
-	collName    string
-	readMap     map[string]*kvrwset.KVReadHash
-	writeMap    map[string]*kvrwset.KVWriteHash
-	pvtDataHash []byte
+	collName         string
+	readMap          map[string]*kvrwset.KVReadHash
+	writeMap         map[string]*kvrwset.KVWriteHash
+	metadataWriteMap map[string]*kvrwset.KVMetadataWriteHash
+	pvtDataHash      []byte
 }
 
 type nsPvtRwBuilder struct {
@@ -55,8 +57,9 @@ type nsPvtRwBuilder struct {
 }
 
 type collPvtRwBuilder struct {
-	collectionName string
-	writeMap       map[string]*kvrwset.KVWrite
+	collectionName   string
+	writeMap         map[string]*kvrwset.KVWrite
+	metadataWriteMap map[string]*kvrwset.KVMetadataWrite
 }
 
 type rangeQueryKey struct {
@@ -82,6 +85,13 @@ func (b *RWSetBuilder) AddToWriteSet(ns string, key string, value []byte) {
 	nsPubRwBuilder.writeMap[key] = newKVWrite(key, value)
 }
 
+// AddToMetadataWriteSet adds a metadata to a key in the write-set
+// A nil/empty-map for 'metadata' parameter indicates the delete of the metadata
+func (b *RWSetBuilder) AddToMetadataWriteSet(ns, key string, metadata map[string][]byte) {
+	b.getOrCreateNsPubRwBuilder(ns).
+		metadataWriteMap[key] = mapToMetadataWrite(key, metadata)
+}
+
 // AddToRangeQuerySet adds a range query info for performing phantom read validation
 func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo) {
 	nsPubRwBuilder := b.getOrCreateNsPubRwBuilder(ns)
@@ -94,24 +104,27 @@ func (b *RWSetBuilder) AddToRangeQuerySet(ns string, rqi *kvrwset.RangeQueryInfo
 }
 
 // AddToHashedReadSet adds a key and corresponding version to the hashed read-set
-func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, version *version.Height) error {
-	kvReadHash, err := newPvtKVReadHash(key, version)
-	if err != nil {
-		return err
-	}
+func (b *RWSetBuilder) AddToHashedReadSet(ns string, coll string, key string, version *version.Height) {
+	kvReadHash := newPvtKVReadHash(key, version)
 	b.getOrCreateCollHashedRwBuilder(ns, coll).readMap[key] = kvReadHash
-	return nil
 }
 
 // AddToPvtAndHashedWriteSet adds a key and value to the private and hashed write-set
-func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) error {
-	kvWrite, kvWriteHash, err := newPvtKVWriteAndHash(key, value)
-	if err != nil {
-		return err
-	}
+func (b *RWSetBuilder) AddToPvtAndHashedWriteSet(ns string, coll string, key string, value []byte) {
+	kvWrite, kvWriteHash := newPvtKVWriteAndHash(key, value)
 	b.getOrCreateCollPvtRwBuilder(ns, coll).writeMap[key] = kvWrite
 	b.getOrCreateCollHashedRwBuilder(ns, coll).writeMap[key] = kvWriteHash
-	return nil
+}
+
+// AddToHashedMetadataWriteSet adds a metadata to a key in the hashed write-set
+func (b *RWSetBuilder) AddToHashedMetadataWriteSet(ns, coll, key string, metadata map[string][]byte) {
+	// pvt write set just need the key; not the entire metadata. The metadata is stored only
+	// by the hashed key. Pvt write-set need to know the key for handling a special case where only
+	// metadata is updated so, the version of the key present in the pvt data should be incremented
+	b.getOrCreateCollPvtRwBuilder(ns, coll).
+		metadataWriteMap[key] = &kvrwset.KVMetadataWrite{Key: key, Entries: nil}
+	b.getOrCreateCollHashedRwBuilder(ns, coll).
+		metadataWriteMap[key] = mapToMetadataWriteHash(key, metadata)
 }
 
 // GetTxSimulationResults returns the proto bytes of public rwset
@@ -137,7 +150,7 @@ func (b *RWSetBuilder) GetTxSimulationResults() (*ledger.TxSimulationResults, er
 	// Compute the proto bytes for pub rwset
 	pubSet := b.GetTxReadWriteSet()
 	if pubSet != nil {
-		if pubDataProto, err = b.GetTxReadWriteSet().toProtoMsg(); err != nil {
+		if pubDataProto, err = pubSet.toProtoMsg(); err != nil {
 			return nil, err
 		}
 	}
@@ -183,12 +196,14 @@ func (b *RWSetBuilder) getTxPvtReadWriteSet() *TxPvtRwSet {
 func (b *nsPubRwBuilder) build() *NsRwSet {
 	var readSet []*kvrwset.KVRead
 	var writeSet []*kvrwset.KVWrite
+	var metadataWriteSet []*kvrwset.KVMetadataWrite
 	var rangeQueriesInfo []*kvrwset.RangeQueryInfo
 	var collHashedRwSet []*CollHashedRwSet
 	//add read set
 	util.GetValuesBySortedKeys(&(b.readMap), &readSet)
 	//add write set
 	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
+	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
 	//add range query info
 	for _, key := range b.rangeQueriesKeys {
 		rangeQueriesInfo = append(rangeQueriesInfo, b.rangeQueriesMap[key])
@@ -200,8 +215,13 @@ func (b *nsPubRwBuilder) build() *NsRwSet {
 		collHashedRwSet = append(collHashedRwSet, collBuilder.build())
 	}
 	return &NsRwSet{
-		NameSpace:        b.namespace,
-		KvRwSet:          &kvrwset.KVRWSet{Reads: readSet, Writes: writeSet, RangeQueriesInfo: rangeQueriesInfo},
+		NameSpace: b.namespace,
+		KvRwSet: &kvrwset.KVRWSet{
+			Reads:            readSet,
+			Writes:           writeSet,
+			MetadataWrites:   metadataWriteSet,
+			RangeQueriesInfo: rangeQueriesInfo,
+		},
 		CollHashedRwSets: collHashedRwSet,
 	}
 }
@@ -220,13 +240,17 @@ func (b *nsPvtRwBuilder) build() *NsPvtRwSet {
 func (b *collHashRwBuilder) build() *CollHashedRwSet {
 	var readSet []*kvrwset.KVReadHash
 	var writeSet []*kvrwset.KVWriteHash
+	var metadataWriteSet []*kvrwset.KVMetadataWriteHash
+
 	util.GetValuesBySortedKeys(&(b.readMap), &readSet)
 	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
+	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
 	return &CollHashedRwSet{
 		CollectionName: b.collName,
 		HashedRwSet: &kvrwset.HashedRWSet{
-			HashedReads:  readSet,
-			HashedWrites: writeSet,
+			HashedReads:    readSet,
+			HashedWrites:   writeSet,
+			MetadataWrites: metadataWriteSet,
 		},
 		PvtRwSetHash: b.pvtDataHash,
 	}
@@ -234,11 +258,14 @@ func (b *collHashRwBuilder) build() *CollHashedRwSet {
 
 func (b *collPvtRwBuilder) build() *CollPvtRwSet {
 	var writeSet []*kvrwset.KVWrite
+	var metadataWriteSet []*kvrwset.KVMetadataWrite
 	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
+	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
 	return &CollPvtRwSet{
 		CollectionName: b.collectionName,
 		KvRwSet: &kvrwset.KVRWSet{
-			Writes: writeSet,
+			Writes:         writeSet,
+			MetadataWrites: metadataWriteSet,
 		},
 	}
 }
@@ -286,6 +313,7 @@ func newNsPubRwBuilder(namespace string) *nsPubRwBuilder {
 		namespace,
 		make(map[string]*kvrwset.KVRead),
 		make(map[string]*kvrwset.KVWrite),
+		make(map[string]*kvrwset.KVMetadataWrite),
 		make(map[rangeQueryKey]*kvrwset.RangeQueryInfo),
 		nil,
 		make(map[string]*collHashRwBuilder),
@@ -301,10 +329,37 @@ func newCollHashRwBuilder(collName string) *collHashRwBuilder {
 		collName,
 		make(map[string]*kvrwset.KVReadHash),
 		make(map[string]*kvrwset.KVWriteHash),
+		make(map[string]*kvrwset.KVMetadataWriteHash),
 		nil,
 	}
 }
 
 func newCollPvtRwBuilder(collName string) *collPvtRwBuilder {
-	return &collPvtRwBuilder{collName, make(map[string]*kvrwset.KVWrite)}
+	return &collPvtRwBuilder{
+		collName,
+		make(map[string]*kvrwset.KVWrite),
+		make(map[string]*kvrwset.KVMetadataWrite),
+	}
+}
+
+func mapToMetadataWrite(key string, m map[string][]byte) *kvrwset.KVMetadataWrite {
+	proto := &kvrwset.KVMetadataWrite{Key: key}
+	names := util.GetSortedKeys(m)
+	for _, name := range names {
+		proto.Entries = append(proto.Entries,
+			&kvrwset.KVMetadataEntry{Name: name, Value: m[name]},
+		)
+	}
+	return proto
+}
+
+func mapToMetadataWriteHash(key string, m map[string][]byte) *kvrwset.KVMetadataWriteHash {
+	proto := &kvrwset.KVMetadataWriteHash{KeyHash: util.ComputeStringHash(key)}
+	names := util.GetSortedKeys(m)
+	for _, name := range names {
+		proto.Entries = append(proto.Entries,
+			&kvrwset.KVMetadataEntry{Name: name, Value: m[name]},
+		)
+	}
+	return proto
 }

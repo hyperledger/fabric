@@ -8,14 +8,15 @@ package gossip
 
 import (
 	"bytes"
+	"encoding/hex"
 
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
@@ -24,13 +25,13 @@ type certStore struct {
 	selfIdentity api.PeerIdentityType
 	idMapper     identity.Mapper
 	pull         pull.Mediator
-	logger       *logging.Logger
+	logger       util.Logger
 	mcs          api.MessageCryptoService
 }
 
 func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity api.PeerIdentityType, mcs api.MessageCryptoService) *certStore {
 	selfPKIID := idMapper.GetPKIidOfCert(selfIdentity)
-	logger := util.GetLogger(util.LoggingGossipModule, string(selfPKIID))
+	logger := util.GetLogger(util.GossipLogger, hex.EncodeToString(selfPKIID))
 
 	certStore := &certStore{
 		mcs:          mcs,
@@ -49,7 +50,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 		certStore.logger.Panicf("Failed creating self identity message: %+v", errors.WithStack(err))
 	}
 	puller.Add(selfIDMsg)
-	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	puller.RegisterMsgHook(pull.RequestMsgType, func(_ []string, msgs []*protoext.SignedGossipMessage, _ protoext.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiId)
 			cert := api.PeerIdentityType(msg.GetPeerIdentity().Cert)
@@ -61,15 +62,15 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 	return certStore
 }
 
-func (cs *certStore) handleMessage(msg proto.ReceivedMessage) {
+func (cs *certStore) handleMessage(msg protoext.ReceivedMessage) {
 	if update := msg.GetGossipMessage().GetDataUpdate(); update != nil {
 		for _, env := range update.Data {
-			m, err := env.ToGossipMessage()
+			m, err := protoext.EnvelopeToGossipMessage(env)
 			if err != nil {
 				cs.logger.Warningf("Data update contains an invalid message: %+v", errors.WithStack(err))
 				return
 			}
-			if !m.IsIdentityMsg() {
+			if !protoext.IsIdentityMsg(m.GossipMessage) {
 				cs.logger.Warning("Got a non-identity message:", m, "aborting")
 				return
 			}
@@ -82,7 +83,7 @@ func (cs *certStore) handleMessage(msg proto.ReceivedMessage) {
 	cs.pull.HandleMessage(msg)
 }
 
-func (cs *certStore) validateIdentityMsg(msg *proto.SignedGossipMessage) error {
+func (cs *certStore) validateIdentityMsg(msg *protoext.SignedGossipMessage) error {
 	idMsg := msg.GetPeerIdentity()
 	if idMsg == nil {
 		return errors.Errorf("Identity empty: %+v", msg)
@@ -107,7 +108,7 @@ func (cs *certStore) validateIdentityMsg(msg *proto.SignedGossipMessage) error {
 	return cs.mcs.ValidateIdentity(api.PeerIdentityType(idMsg.Cert))
 }
 
-func (cs *certStore) createIdentityMessage() (*proto.SignedGossipMessage, error) {
+func (cs *certStore) createIdentityMessage() (*protoext.SignedGossipMessage, error) {
 	pi := &proto.PeerIdentity{
 		Cert:     cs.selfIdentity,
 		Metadata: nil,
@@ -124,7 +125,7 @@ func (cs *certStore) createIdentityMessage() (*proto.SignedGossipMessage, error)
 	signer := func(msg []byte) ([]byte, error) {
 		return cs.idMapper.Sign(msg)
 	}
-	sMsg := &proto.SignedGossipMessage{
+	sMsg := &protoext.SignedGossipMessage{
 		GossipMessage: m,
 	}
 	_, err := sMsg.Sign(signer)

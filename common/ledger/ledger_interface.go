@@ -17,7 +17,7 @@ limitations under the License.
 package ledger
 
 import (
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric-protos-go/common"
 )
 
 // Ledger captures the methods that are common across the 'PeerLedger', 'OrdererLedger', and 'ValidatedLedger'
@@ -42,6 +42,12 @@ type ResultsIterator interface {
 	Next() (QueryResult, error)
 	// Close releases resources occupied by the iterator
 	Close()
+}
+
+// QueryResultsIterator - an iterator for query result set
+type QueryResultsIterator interface {
+	ResultsIterator
+	GetBookmarkAndClose() string
 }
 
 // QueryResult - a general interface for supporting different types of query results. Actual types differ for different queries

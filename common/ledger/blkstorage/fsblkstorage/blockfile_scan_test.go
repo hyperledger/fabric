@@ -20,10 +20,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/ledger/util"
-
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBlockFileScanSmallTxOnly(t *testing.T) {
@@ -41,15 +41,16 @@ func TestBlockFileScanSmallTxOnly(t *testing.T) {
 
 	filePath := deriveBlockfilePath(env.provider.conf.getLedgerBlockDir(ledgerid), 0)
 	_, fileSize, err := util.FileExists(filePath)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	lastBlockBytes, endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(env.provider.conf.getLedgerBlockDir(ledgerid), 0, 0)
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, numBlocks, len(blocks))
-	testutil.AssertEquals(t, endOffsetLastBlock, fileSize)
+	assert.NoError(t, err)
+	assert.Equal(t, len(blocks), numBlocks)
+	assert.Equal(t, fileSize, endOffsetLastBlock)
 
 	expectedLastBlockBytes, _, err := serializeBlock(blocks[len(blocks)-1])
-	testutil.AssertEquals(t, lastBlockBytes, expectedLastBlockBytes)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedLastBlockBytes, lastBlockBytes)
 }
 
 func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
@@ -67,18 +68,19 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 
 	filePath := deriveBlockfilePath(env.provider.conf.getLedgerBlockDir(ledgerid), 0)
 	_, fileSize, err := util.FileExists(filePath)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+	assert.NoError(t, err)
 	defer file.Close()
-	testutil.AssertNoError(t, err, "")
 	err = file.Truncate(fileSize - 1)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	lastBlockBytes, _, numBlocks, err := scanForLastCompleteBlock(env.provider.conf.getLedgerBlockDir(ledgerid), 0, 0)
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, numBlocks, len(blocks)-1)
+	assert.NoError(t, err)
+	assert.Equal(t, len(blocks)-1, numBlocks)
 
 	expectedLastBlockBytes, _, err := serializeBlock(blocks[len(blocks)-2])
-	testutil.AssertEquals(t, lastBlockBytes, expectedLastBlockBytes)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedLastBlockBytes, lastBlockBytes)
 }

@@ -40,7 +40,12 @@ func TestBrokerConfig(t *testing.T) {
 	})
 
 	t.Run("Partitioner", func(t *testing.T) {
-		mockBrokerConfig2 := newBrokerConfig(mockLocalConfig.General.TLS, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, differentPartition)
+		mockBrokerConfig2 := newBrokerConfig(
+			mockLocalConfig.General.TLS,
+			mockLocalConfig.Kafka.SASLPlain,
+			mockLocalConfig.Kafka.Retry,
+			mockLocalConfig.Kafka.Version,
+			differentPartition)
 		producer, _ := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig2)
 		defer func() { producer.Close() }()
 
@@ -84,7 +89,11 @@ func TestBrokerConfigTLSConfigEnabled(t *testing.T) {
 			PrivateKey:  privateKey,
 			Certificate: publicKey,
 			RootCAs:     []string{caPublicKey},
-		}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+		},
+			mockLocalConfig.Kafka.SASLPlain,
+			mockLocalConfig.Kafka.Retry,
+			mockLocalConfig.Kafka.Version,
+			defaultPartition)
 
 		assert.True(t, testBrokerConfig.Net.TLS.Enable)
 		assert.NotNil(t, testBrokerConfig.Net.TLS.Config)
@@ -100,7 +109,11 @@ func TestBrokerConfigTLSConfigEnabled(t *testing.T) {
 			PrivateKey:  privateKey,
 			Certificate: publicKey,
 			RootCAs:     []string{caPublicKey},
-		}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+		},
+			mockLocalConfig.Kafka.SASLPlain,
+			mockLocalConfig.Kafka.Retry,
+			mockLocalConfig.Kafka.Version,
+			defaultPartition)
 
 		assert.False(t, testBrokerConfig.Net.TLS.Enable)
 		assert.Zero(t, testBrokerConfig.Net.TLS.Config)
@@ -118,7 +131,11 @@ func TestBrokerConfigTLSConfigBadCert(t *testing.T) {
 				PrivateKey:  privateKey,
 				Certificate: "TRASH",
 				RootCAs:     []string{caPublicKey},
-			}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+			},
+				mockLocalConfig.Kafka.SASLPlain,
+				mockLocalConfig.Kafka.Retry,
+				mockLocalConfig.Kafka.Version,
+				defaultPartition)
 		})
 	})
 	t.Run("BadPublicKey", func(t *testing.T) {
@@ -128,7 +145,11 @@ func TestBrokerConfigTLSConfigBadCert(t *testing.T) {
 				PrivateKey:  "TRASH",
 				Certificate: publicKey,
 				RootCAs:     []string{caPublicKey},
-			}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+			},
+				mockLocalConfig.Kafka.SASLPlain,
+				mockLocalConfig.Kafka.Retry,
+				mockLocalConfig.Kafka.Version,
+				defaultPartition)
 		})
 	})
 	t.Run("BadRootCAs", func(t *testing.T) {
@@ -138,7 +159,11 @@ func TestBrokerConfigTLSConfigBadCert(t *testing.T) {
 				PrivateKey:  privateKey,
 				Certificate: publicKey,
 				RootCAs:     []string{"TRASH"},
-			}, mockLocalConfig.Kafka.Retry, mockLocalConfig.Kafka.Version, defaultPartition)
+			},
+				mockLocalConfig.Kafka.SASLPlain,
+				mockLocalConfig.Kafka.Retry,
+				mockLocalConfig.Kafka.Version,
+				defaultPartition)
 		})
 	})
 }

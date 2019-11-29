@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package mgmt
@@ -20,9 +10,9 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	"github.com/pkg/errors"
@@ -40,7 +30,7 @@ func LoadLocalMspWithType(dir string, bccspConfig *factory.FactoryOpts, mspID, m
 		return err
 	}
 
-	return GetLocalMSP().Setup(conf)
+	return GetLocalMSP(factory.GetDefault()).Setup(conf)
 }
 
 // LoadLocalMsp loads the local MSP from the specified directory
@@ -54,21 +44,11 @@ func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) er
 		return err
 	}
 
-	return GetLocalMSP().Setup(conf)
-}
-
-// Loads the development local MSP for use in testing.  Not valid for production/runtime context
-func LoadDevMsp() error {
-	mspDir, err := config.GetDevMspDir()
-	if err != nil {
-		return err
-	}
-
-	return LoadLocalMsp(mspDir, nil, "SampleOrg")
+	return GetLocalMSP(factory.GetDefault()).Setup(conf)
 }
 
 // FIXME: AS SOON AS THE CHAIN MANAGEMENT CODE IS COMPLETE,
-// THESE MAPS AND HELPSER FUNCTIONS SHOULD DISAPPEAR BECAUSE
+// THESE MAPS AND HELPER FUNCTIONS SHOULD DISAPPEAR BECAUSE
 // OWNERSHIP OF PER-CHAIN MSP MANAGERS WILL BE HANDLED BY IT;
 // HOWEVER IN THE INTERIM, THESE HELPER FUNCTIONS ARE REQUIRED
 
@@ -151,7 +131,7 @@ func XXXSetMSPManager(chainID string, manager msp.MSPManager) {
 }
 
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)
-func GetLocalMSP() msp.MSP {
+func GetLocalMSP(cryptoProvider bccsp.BCCSP) msp.MSP {
 	m.Lock()
 	defer m.Unlock()
 
@@ -159,28 +139,24 @@ func GetLocalMSP() msp.MSP {
 		return localMsp
 	}
 
-	localMsp = loadLocaMSP()
+	localMsp = loadLocaMSP(cryptoProvider)
 
 	return localMsp
 }
 
-func loadLocaMSP() msp.MSP {
+func loadLocaMSP(bccsp bccsp.BCCSP) msp.MSP {
 	// determine the type of MSP (by default, we'll use bccspMSP)
 	mspType := viper.GetString("peer.localMspType")
 	if mspType == "" {
 		mspType = msp.ProviderTypeToString(msp.FABRIC)
 	}
 
-	var mspOpts = map[string]msp.NewOpts{
-		msp.ProviderTypeToString(msp.FABRIC): &msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_0}},
-		msp.ProviderTypeToString(msp.IDEMIX): &msp.IdemixNewOpts{msp.NewBaseOpts{Version: msp.MSPv1_1}},
-	}
-	newOpts, found := mspOpts[mspType]
+	newOpts, found := msp.Options[mspType]
 	if !found {
 		mspLogger.Panicf("msp type " + mspType + " unknown")
 	}
 
-	mspInst, err := msp.New(newOpts)
+	mspInst, err := msp.New(newOpts, bccsp)
 	if err != nil {
 		mspLogger.Fatalf("Failed to initialize local MSP, received err %+v", err)
 	}
@@ -202,9 +178,9 @@ func loadLocaMSP() msp.MSP {
 }
 
 // GetIdentityDeserializer returns the IdentityDeserializer for the given chain
-func GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
+func GetIdentityDeserializer(chainID string, cryptoProvider bccsp.BCCSP) msp.IdentityDeserializer {
 	if chainID == "" {
-		return GetLocalMSP()
+		return GetLocalMSP(cryptoProvider)
 	}
 
 	return GetManagerForChain(chainID)
@@ -212,8 +188,8 @@ func GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 
 // GetLocalSigningIdentityOrPanic returns the local signing identity or panic in case
 // or error
-func GetLocalSigningIdentityOrPanic() msp.SigningIdentity {
-	id, err := GetLocalMSP().GetDefaultSigningIdentity()
+func GetLocalSigningIdentityOrPanic(cryptoProvider bccsp.BCCSP) msp.SigningIdentity {
+	id, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		mspLogger.Panicf("Failed getting local signing identity [%+v]", err)
 	}

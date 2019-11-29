@@ -47,6 +47,13 @@ func (e *Encryptor) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterO
 	return e.EncValue, e.EncErr
 }
 
+type Decryptor struct {
+}
+
+func (*Decryptor) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) (plaintext []byte, err error) {
+	panic("implement me")
+}
+
 type Signer struct {
 	KeyArg    bccsp.Key
 	DigestArg []byte

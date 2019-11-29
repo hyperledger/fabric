@@ -7,14 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package kafka
 
 import (
-	"bytes"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/Shopify/sarama"
-	logging "github.com/op/go-logging"
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -79,9 +78,6 @@ func TestEventLogger(t *testing.T) {
 }
 
 func TestEventListener(t *testing.T) {
-
-	logging.SetLevel(logging.DEBUG, saramaLogID)
-
 	topic := channelNameForTest(t)
 	partition := int32(0)
 
@@ -139,23 +135,12 @@ func TestEventListener(t *testing.T) {
 }
 
 func TestLogPossibleKafkaVersionMismatch(t *testing.T) {
-
-	logging.SetLevel(logging.DEBUG, saramaLogID)
-
 	topic := channelNameForTest(t)
 	partition := int32(0)
 
-	var buffer bytes.Buffer
-	logger.SetBackend(logging.AddModuleLevel(
-		logging.MultiLogger(
-			logging.NewBackendFormatter(
-				logging.NewLogBackend(os.Stderr, "", 0),
-				logging.MustStringFormatter("%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"),
-			),
-			logging.NewLogBackend(&buffer, "", 0),
-		),
-	))
-	defer logging.Reset()
+	buf := gbytes.NewBuffer()
+	old := flogging.SetWriter(buf)
+	defer flogging.SetWriter(old)
 
 	broker := sarama.NewMockBroker(t, 500)
 	defer broker.Close()
@@ -194,6 +179,7 @@ func TestLogPossibleKafkaVersionMismatch(t *testing.T) {
 	case <-partitionConsumer.Messages():
 		t.Fatalf("did not expect to receive message")
 	case <-time.After(shortTimeout):
-		assert.Regexp(t, "Kafka.Version specified in the orderer configuration is incorrectly set", buffer.String())
+		t.Logf("buffer:\n%s", buf.Contents())
+		assert.Contains(t, string(buf.Contents()), "Kafka.Version specified in the orderer configuration is incorrectly set")
 	}
 }

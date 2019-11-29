@@ -7,20 +7,20 @@ SPDX-License-Identifier: Apache-2.0
 package accesscontrol
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/flogging"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/op/go-logging"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -29,7 +29,6 @@ type ccSrv struct {
 	l              net.Listener
 	grpcSrv        *grpc.Server
 	t              *testing.T
-	cert           []byte
 	expectedCCname string
 }
 
@@ -66,7 +65,21 @@ func (cs *ccSrv) stop() {
 	cs.l.Close()
 }
 
-func newCCServer(t *testing.T, port int, expectedCCname string, withTLS bool, ca CA) *ccSrv {
+func createTLSService(t *testing.T, ca tlsgen.CA, host string) *grpc.Server {
+	keyPair, err := ca.NewServerCertKeyPair(host)
+	assert.NoError(t, err)
+	cert, err := tls.X509KeyPair(keyPair.Cert, keyPair.Key)
+	assert.NoError(t, err)
+	tlsConf := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    x509.NewCertPool(),
+	}
+	tlsConf.ClientCAs.AppendCertsFromPEM(ca.CertBytes())
+	return grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConf)))
+}
+
+func newCCServer(t *testing.T, port int, expectedCCname string, withTLS bool, ca tlsgen.CA) *ccSrv {
 	var s *grpc.Server
 	if withTLS {
 		s = createTLSService(t, ca, "localhost")
@@ -77,6 +90,7 @@ func newCCServer(t *testing.T, port int, expectedCCname string, withTLS bool, ca
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", port))
 	assert.NoError(t, err, "%v", err)
 	return &ccSrv{
+		t:              t,
 		expectedCCname: expectedCCname,
 		l:              l,
 		grpcSrv:        s,
@@ -98,8 +112,8 @@ func newClient(t *testing.T, port int, cert *tls.Certificate, peerCACert []byte)
 		tlsCfg.Certificates = []tls.Certificate{*cert}
 	}
 	tlsOpts := grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
-	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 	conn, err := grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", port), tlsOpts, grpc.WithBlock())
 	if err != nil {
 		return nil, err
@@ -144,16 +158,14 @@ func TestAccessControl(t *testing.T) {
 	}()
 	ttl = time.Second * 3
 
-	logAsserter := &logBackend{
-		logEntries: make(chan string, 1),
-	}
-	logger.SetBackend(logAsserter)
-	defer func() {
-		logger = flogging.MustGetLogger("accessControl")
-	}()
+	oldLogger := logger
+	l, recorder := floggingtest.NewTestLogger(t, floggingtest.AtLevel(zapcore.InfoLevel))
+	logger = l
+	defer func() { logger = oldLogger }()
 
 	chaincodeID := &pb.ChaincodeID{Name: "example02"}
 	payload, err := proto.Marshal(chaincodeID)
+	assert.NoError(t, err)
 	registerMsg := &pb.ChaincodeMessage{
 		Type:    pb.ChaincodeMessage_REGISTER,
 		Payload: payload,
@@ -162,7 +174,7 @@ func TestAccessControl(t *testing.T) {
 		Type: pb.ChaincodeMessage_PUT_STATE,
 	}
 
-	ca, _ := NewCA()
+	ca, _ := tlsgen.NewCA()
 	srv := newCCServer(t, 7052, "example02", true, ca)
 	auth := NewAuthenticator(ca)
 	pb.RegisterChaincodeSupportServer(srv.grpcSrv, auth.Wrap(srv))
@@ -175,8 +187,9 @@ func TestAccessControl(t *testing.T) {
 	assert.Contains(t, err.Error(), "context deadline exceeded")
 
 	// Create an attacker with its own TLS certificate
-	maliciousCA, _ := NewCA()
-	keyPair, err := maliciousCA.newClientCertKeyPair()
+	maliciousCA, _ := tlsgen.NewCA()
+	keyPair, err := maliciousCA.NewClientCertKeyPair()
+	assert.NoError(t, err)
 	cert, err := tls.X509KeyPair(keyPair.Cert, keyPair.Key)
 	assert.NoError(t, err)
 	_, err = newClient(t, 7052, &cert, ca.CertBytes())
@@ -186,11 +199,7 @@ func TestAccessControl(t *testing.T) {
 	// Create a chaincode for example01 that tries to impersonate example02
 	kp, err := auth.Generate("example01")
 	assert.NoError(t, err)
-	keyBytes, err := base64.StdEncoding.DecodeString(kp.Key)
-	assert.NoError(t, err)
-	certBytes, err := base64.StdEncoding.DecodeString(kp.Cert)
-	assert.NoError(t, err)
-	cert, err = tls.X509KeyPair(certBytes, keyBytes)
+	cert, err = tls.X509KeyPair(kp.Cert, kp.Key)
 	assert.NoError(t, err)
 	mismatchedShim, err := newClient(t, 7052, &cert, ca.CertBytes())
 	assert.NoError(t, err)
@@ -199,16 +208,12 @@ func TestAccessControl(t *testing.T) {
 	mismatchedShim.sendMsg(putStateMsg)
 	// Mismatched chaincode didn't get back anything
 	assert.Nil(t, mismatchedShim.recv())
-	logAsserter.assertLastLogContains(t, "with given certificate hash", "belongs to a different chaincode")
+	assertLogContains(t, recorder, "with given certificate hash", "belongs to a different chaincode")
 
 	// Create the real chaincode that its cert is generated by us that should pass the security checks
 	kp, err = auth.Generate("example02")
 	assert.NoError(t, err)
-	keyBytes, err = base64.StdEncoding.DecodeString(kp.Key)
-	assert.NoError(t, err)
-	certBytes, err = base64.StdEncoding.DecodeString(kp.Cert)
-	assert.NoError(t, err)
-	cert, err = tls.X509KeyPair(certBytes, keyBytes)
+	cert, err = tls.X509KeyPair(kp.Cert, kp.Key)
 	assert.NoError(t, err)
 	realCC, err := newClient(t, 7052, &cert, ca.CertBytes())
 	assert.NoError(t, err)
@@ -220,7 +225,7 @@ func TestAccessControl(t *testing.T) {
 	assert.NotNil(t, echoMsg)
 	assert.Equal(t, pb.ChaincodeMessage_PUT_STATE, echoMsg.Type)
 	// Log should not complain about anything
-	assert.Empty(t, logAsserter.logEntries)
+	assert.Empty(t, recorder.Messages())
 
 	// Create the real chaincode that its cert is generated by us
 	// but one that the first message sent by it isn't a register message.
@@ -228,11 +233,7 @@ func TestAccessControl(t *testing.T) {
 	// and the stream is already denied.
 	kp, err = auth.Generate("example02")
 	assert.NoError(t, err)
-	keyBytes, err = base64.StdEncoding.DecodeString(kp.Key)
-	assert.NoError(t, err)
-	certBytes, err = base64.StdEncoding.DecodeString(kp.Cert)
-	assert.NoError(t, err)
-	cert, err = tls.X509KeyPair(certBytes, keyBytes)
+	cert, err = tls.X509KeyPair(kp.Cert, kp.Key)
 	assert.NoError(t, err)
 	confusedCC, err := newClient(t, 7052, &cert, ca.CertBytes())
 	assert.NoError(t, err)
@@ -241,17 +242,13 @@ func TestAccessControl(t *testing.T) {
 	confusedCC.sendMsg(registerMsg)
 	confusedCC.sendMsg(putStateMsg)
 	assert.Nil(t, confusedCC.recv())
-	logAsserter.assertLastLogContains(t, "expected a ChaincodeMessage_REGISTER message")
+	assertLogContains(t, recorder, "expected a ChaincodeMessage_REGISTER message")
 
 	// Create a real chaincode, that its cert was generated by us
 	// but it sends a malformed first message
 	kp, err = auth.Generate("example02")
 	assert.NoError(t, err)
-	keyBytes, err = base64.StdEncoding.DecodeString(kp.Key)
-	assert.NoError(t, err)
-	certBytes, err = base64.StdEncoding.DecodeString(kp.Cert)
-	assert.NoError(t, err)
-	cert, err = tls.X509KeyPair(certBytes, keyBytes)
+	cert, err = tls.X509KeyPair(kp.Cert, kp.Key)
 	assert.NoError(t, err)
 	malformedMessageCC, err := newClient(t, 7052, &cert, ca.CertBytes())
 	assert.NoError(t, err)
@@ -262,61 +259,33 @@ func TestAccessControl(t *testing.T) {
 	malformedMessageCC.sendMsg(registerMsg)
 	malformedMessageCC.sendMsg(putStateMsg)
 	assert.Nil(t, malformedMessageCC.recv())
-	logAsserter.assertLastLogContains(t, "Failed unmarshaling message")
+	assertLogContains(t, recorder, "Failed unmarshaling message")
 	// Recover old payload
 	registerMsg.Payload = originalPayload
 
 	// Create a real chaincode, that its cert was generated by us
 	// but have it reconnect only after too much time.
 	// This tests a use case where the CC's cert has been expired
-	// and the CC has been compromized. We don't want it to be able
+	// and the CC has been compromised. We don't want it to be able
 	// to reconnect to us.
 	kp, err = auth.Generate("example02")
 	assert.NoError(t, err)
-	keyBytes, err = base64.StdEncoding.DecodeString(kp.Key)
-	assert.NoError(t, err)
-	certBytes, err = base64.StdEncoding.DecodeString(kp.Cert)
-	assert.NoError(t, err)
-	cert, err = tls.X509KeyPair(certBytes, keyBytes)
+	cert, err = tls.X509KeyPair(kp.Cert, kp.Key)
 	assert.NoError(t, err)
 	lateCC, err := newClient(t, 7052, &cert, ca.CertBytes())
 	assert.NoError(t, err)
-	defer realCC.close()
+	defer lateCC.close()
 	time.Sleep(ttl + time.Second*2)
 	lateCC.sendMsg(registerMsg)
 	lateCC.sendMsg(putStateMsg)
 	echoMsg = lateCC.recv()
 	assert.Nil(t, echoMsg)
-	logAsserter.assertLastLogContains(t, "with given certificate hash", "not found in registry")
+	assertLogContains(t, recorder, "with given certificate hash", "not found in registry")
 }
 
-type logBackend struct {
-	logEntries chan string
-}
-
-func (l *logBackend) assertLastLogContains(t *testing.T, ss ...string) {
-	lastLogMsg := <-l.logEntries
+func assertLogContains(t *testing.T, r *floggingtest.Recorder, ss ...string) {
+	defer r.Reset()
 	for _, s := range ss {
-		assert.Contains(t, lastLogMsg, s)
+		assert.NotEmpty(t, r.MessagesContaining(s))
 	}
-}
-
-func (l *logBackend) Log(lvl logging.Level, n int, r *logging.Record) error {
-	if lvl.String() != logging.WARNING.String() {
-		return nil
-	}
-	l.logEntries <- fmt.Sprint(r.Args)
-	return nil
-}
-
-func (*logBackend) GetLevel(string) logging.Level {
-	return logging.DEBUG
-}
-
-func (*logBackend) SetLevel(logging.Level, string) {
-	panic("implement me")
-}
-
-func (*logBackend) IsEnabledFor(logging.Level, string) bool {
-	return true
 }

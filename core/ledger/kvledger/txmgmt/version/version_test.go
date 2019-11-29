@@ -19,26 +19,27 @@ package version
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestVersionSerialization(t *testing.T) {
 	h1 := NewHeight(10, 100)
 	b := h1.ToBytes()
-	h2, n := NewHeightFromBytes(b)
-	testutil.AssertEquals(t, h2, h1)
-	testutil.AssertEquals(t, n, len(b))
+	h2, n, err := NewHeightFromBytes(b)
+	assert.NoError(t, err)
+	assert.Equal(t, h1, h2)
+	assert.Len(t, b, n)
 }
 
 func TestVersionComparison(t *testing.T) {
-	testutil.AssertEquals(t, NewHeight(10, 100).Compare(NewHeight(9, 1000)), 1)
-	testutil.AssertEquals(t, NewHeight(10, 100).Compare(NewHeight(10, 90)), 1)
-	testutil.AssertEquals(t, NewHeight(10, 100).Compare(NewHeight(11, 1)), -1)
-	testutil.AssertEquals(t, NewHeight(10, 100).Compare(NewHeight(10, 100)), 0)
+	assert.Equal(t, 1, NewHeight(10, 100).Compare(NewHeight(9, 1000)))
+	assert.Equal(t, 1, NewHeight(10, 100).Compare(NewHeight(10, 90)))
+	assert.Equal(t, -1, NewHeight(10, 100).Compare(NewHeight(11, 1)))
+	assert.Equal(t, 0, NewHeight(10, 100).Compare(NewHeight(10, 100)))
 
-	testutil.AssertEquals(t, AreSame(NewHeight(10, 100), NewHeight(10, 100)), true)
-	testutil.AssertEquals(t, AreSame(nil, nil), true)
-	testutil.AssertEquals(t, AreSame(NewHeight(10, 100), nil), false)
+	assert.True(t, AreSame(NewHeight(10, 100), NewHeight(10, 100)))
+	assert.True(t, AreSame(nil, nil))
+	assert.False(t, AreSame(NewHeight(10, 100), nil))
 }
 
 func TestVersionExtraBytes(t *testing.T) {
@@ -46,8 +47,9 @@ func TestVersionExtraBytes(t *testing.T) {
 	h1 := NewHeight(10, 100)
 	b := h1.ToBytes()
 	b1 := append(b, extraBytes...)
-	h2, n := NewHeightFromBytes(b1)
-	testutil.AssertEquals(t, h2, h1)
-	testutil.AssertEquals(t, n, len(b))
-	testutil.AssertEquals(t, b1[n:], extraBytes)
+	h2, n, err := NewHeightFromBytes(b1)
+	assert.NoError(t, err)
+	assert.Equal(t, h1, h2)
+	assert.Len(t, b, n)
+	assert.Equal(t, extraBytes, b1[n:])
 }

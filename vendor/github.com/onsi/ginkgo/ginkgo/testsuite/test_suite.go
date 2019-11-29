@@ -53,7 +53,7 @@ func SuitesInDir(dir string, recurse bool) []TestSuite {
 	}
 
 	files, _ := ioutil.ReadDir(dir)
-	re := regexp.MustCompile(`_test\.go$`)
+	re := regexp.MustCompile(`^[^._].*_test\.go$`)
 	for _, file := range files {
 		if !file.IsDir() && re.Match([]byte(file.Name())) {
 			suites = append(suites, New(dir, files))

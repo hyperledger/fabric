@@ -9,9 +9,8 @@ package channelconfig
 import (
 	"testing"
 
-	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
-
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,11 +43,11 @@ func TestSingle(t *testing.T) {
 	assert.NotNil(t, fooVal.Msg1, "Should have initialized Msg1")
 	assert.NotNil(t, fooVal.Msg2, "Should have initialized Msg2")
 
-	msg1, err := sv.Deserialize("Msg1", utils.MarshalOrPanic(&cb.Envelope{}))
+	msg1, err := sv.Deserialize("Msg1", protoutil.MarshalOrPanic(&cb.Envelope{}))
 	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg1, fooVal.Msg1, "Should be same entry")
 
-	msg2, err := sv.Deserialize("Msg2", utils.MarshalOrPanic(&cb.Payload{}))
+	msg2, err := sv.Deserialize("Msg2", protoutil.MarshalOrPanic(&cb.Payload{}))
 	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg2, fooVal.Msg2, "Should be same entry")
 }
@@ -62,15 +61,15 @@ func TestPair(t *testing.T) {
 	assert.NotNil(t, fooVal.Msg2, "Should have initialized Msg2")
 	assert.NotNil(t, barVal.Msg3, "Should have initialized Msg3")
 
-	msg1, err := sv.Deserialize("Msg1", utils.MarshalOrPanic(&cb.Envelope{}))
+	msg1, err := sv.Deserialize("Msg1", protoutil.MarshalOrPanic(&cb.Envelope{}))
 	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg1, fooVal.Msg1, "Should be same entry")
 
-	msg2, err := sv.Deserialize("Msg2", utils.MarshalOrPanic(&cb.Payload{}))
+	msg2, err := sv.Deserialize("Msg2", protoutil.MarshalOrPanic(&cb.Payload{}))
 	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg2, fooVal.Msg2, "Should be same entry")
 
-	msg3, err := sv.Deserialize("Msg3", utils.MarshalOrPanic(&cb.Header{}))
+	msg3, err := sv.Deserialize("Msg3", protoutil.MarshalOrPanic(&cb.Header{}))
 	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg3, barVal.Msg3, "Should be same entry")
 }
@@ -86,7 +85,7 @@ func TestNonProtosStruct(t *testing.T) {
 }
 
 func TestUnexportedField(t *testing.T) {
-	_, err := NewStandardValues(&unexported{})
+	_, err := NewStandardValues(&unexported{msg: nil})
 	assert.Error(t, err, "Structure with unexported fields")
 }
 

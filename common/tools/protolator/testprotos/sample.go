@@ -177,3 +177,27 @@ func (vom *DynamicMsg) DynamicSliceFieldProto(name string, index int, underlying
 
 	return wrapContextless(underlying, vom.DynamicType)
 }
+
+func (udf *UnmarshalableDeepFields) StaticallyOpaqueFields() []string {
+	return []string{"plain_opaque_field"}
+}
+
+func (udf *UnmarshalableDeepFields) StaticallyOpaqueFieldProto(name string) (proto.Message, error) {
+	return nil, fmt.Errorf("intentional error")
+}
+
+func (udf *UnmarshalableDeepFields) StaticallyOpaqueMapFields() []string {
+	return []string{"map_opaque_field"}
+}
+
+func (udf *UnmarshalableDeepFields) StaticallyOpaqueMapFieldProto(name, key string) (proto.Message, error) {
+	return nil, fmt.Errorf("intentional error")
+}
+
+func (udf *UnmarshalableDeepFields) StaticallyOpaqueSliceFields() []string {
+	return []string{"slice_opaque_field"}
+}
+
+func (udf *UnmarshalableDeepFields) StaticallyOpaqueSliceFieldProto(name string, index int) (proto.Message, error) {
+	return nil, fmt.Errorf("intentional error")
+}

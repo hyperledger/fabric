@@ -1,0 +1,30 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt";
+
+package pvtstatepurgemgmt;
+
+message PvtdataKeys {
+    map<string, Collections>  map = 1;
+}
+
+message Collections {
+    map<string, KeysAndHashes> map = 1;
+}
+
+message KeysAndHashes {
+    repeated KeyAndHash list = 1;
+}
+
+message KeyAndHash {
+   string key = 1;
+   bytes hash = 2;
+}
+
+

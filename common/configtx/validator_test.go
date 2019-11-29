@@ -8,22 +8,35 @@ package configtx
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	mockpolicies "github.com/hyperledger/fabric/common/configtx/mock"
 	"github.com/hyperledger/fabric/common/policies"
-	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
-
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
-var defaultChain = "default.chain.id"
+//go:generate counterfeiter -o mock/policy_manager.go --fake-name PolicyManager . policyManager
+type policyManager interface {
+	policies.Manager
+}
 
-func defaultPolicyManager() *mockpolicies.Manager {
-	return &mockpolicies.Manager{
-		Policy: &mockpolicies.Policy{},
-	}
+//go:generate counterfeiter -o mock/policy.go --fake-name Policy . policy
+type policy interface {
+	policies.Policy
+}
+
+var defaultChannel = "default.channel.id"
+
+func defaultPolicyManager() *mockpolicies.PolicyManager {
+	fakePolicy := &mockpolicies.Policy{}
+	fakePolicy.EvaluateSignedDataReturns(nil)
+	fakePolicyManager := &mockpolicies.PolicyManager{}
+	fakePolicyManager.GetPolicyReturns(fakePolicy, true)
+	fakePolicyManager.ManagerReturns(fakePolicyManager, true)
+	return fakePolicyManager
 }
 
 type configPair struct {
@@ -43,7 +56,7 @@ func makeConfigPair(id, modificationPolicy string, lastModified uint64, data []b
 }
 
 func makeConfig(configPairs ...*configPair) *cb.Config {
-	channelGroup := cb.NewConfigGroup()
+	channelGroup := protoutil.NewConfigGroup()
 	for _, pair := range configPairs {
 		channelGroup.Values[pair.key] = pair.value
 	}
@@ -54,24 +67,24 @@ func makeConfig(configPairs ...*configPair) *cb.Config {
 }
 
 func makeConfigSet(configPairs ...*configPair) *cb.ConfigGroup {
-	result := cb.NewConfigGroup()
+	result := protoutil.NewConfigGroup()
 	for _, pair := range configPairs {
 		result.Values[pair.key] = pair.value
 	}
 	return result
 }
 
-func makeConfigUpdateEnvelope(chainID string, readSet, writeSet *cb.ConfigGroup) *cb.Envelope {
+func makeConfigUpdateEnvelope(channelID string, readSet, writeSet *cb.ConfigGroup) *cb.Envelope {
 	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 					Type: int32(cb.HeaderType_CONFIG_UPDATE),
 				}),
 			},
-			Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-				ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
-					ChannelId: chainID,
+			Data: protoutil.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+				ConfigUpdate: protoutil.MarshalOrPanic(&cb.ConfigUpdate{
+					ChannelId: channelID,
 					ReadSet:   readSet,
 					WriteSet:  writeSet,
 				}),
@@ -85,10 +98,10 @@ func TestEmptyChannel(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestDifferentChainID tests that a config update for a different chain ID fails
-func TestDifferentChainID(t *testing.T) {
+// TestDifferentChannelID tests that a config update for a different channel ID fails
+func TestDifferentChannelID(t *testing.T) {
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
@@ -97,18 +110,18 @@ func TestDifferentChainID(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := makeConfigUpdateEnvelope("wrongChain", makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
+	newConfig := makeConfigUpdateEnvelope("wrongChannel", makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
 	_, err = vi.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should have errored when proposing a new config set the wrong chain ID")
+		t.Error("Should have errored when proposing a new config set the wrong channel ID")
 	}
 }
 
 // TestOldConfigReplay tests that resubmitting a config for a sequence number which is not newer is ignored
 func TestOldConfigReplay(t *testing.T) {
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
@@ -117,18 +130,17 @@ func TestOldConfigReplay(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 0, []byte("foo"))))
+	newConfig := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 0, []byte("foo"))))
 
 	_, err = vi.ProposeConfigUpdate(newConfig)
-	if err == nil {
-		t.Error("Should have errored when proposing a config that is not a newer sequence number")
-	}
+
+	assert.EqualError(t, err, "error authorizing update: error validating DeltaSet: attempt to set key [Value]  /foonamespace/foo to version 0, but key is at version 0")
 }
 
 // TestValidConfigChange tests the happy path of updating a config value with no defaultModificationPolicy
 func TestValidConfigChange(t *testing.T) {
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
@@ -137,7 +149,7 @@ func TestValidConfigChange(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
+	newConfig := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
 	configEnv, err := vi.ProposeConfigUpdate(newConfig)
 	if err != nil {
@@ -154,7 +166,7 @@ func TestValidConfigChange(t *testing.T) {
 // config values while advancing another
 func TestConfigChangeRegressedSequence(t *testing.T) {
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
@@ -164,22 +176,20 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 	}
 
 	newConfig := makeConfigUpdateEnvelope(
-		defaultChain,
+		defaultChannel,
 		makeConfigSet(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		makeConfigSet(makeConfigPair("bar", "bar", 2, []byte("bar"))),
 	)
 
 	_, err = vi.ProposeConfigUpdate(newConfig)
-	if err == nil {
-		t.Error("Should have errored proposing config because foo's sequence number regressed")
-	}
+	assert.EqualError(t, err, "error authorizing update: error validating ReadSet: proposed update requires that key [Value]  /foonamespace/foo be at version 0, but it is currently at version 1")
 }
 
 // TestConfigChangeOldSequence tests to make sure that a new config cannot roll back one of the
 // config values while advancing another
 func TestConfigChangeOldSequence(t *testing.T) {
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
@@ -189,7 +199,7 @@ func TestConfigChangeOldSequence(t *testing.T) {
 	}
 
 	newConfig := makeConfigUpdateEnvelope(
-		defaultChain,
+		defaultChannel,
 		makeConfigSet(),
 		makeConfigSet(
 			makeConfigPair("foo", "foo", 2, []byte("foo")),
@@ -198,16 +208,15 @@ func TestConfigChangeOldSequence(t *testing.T) {
 	)
 
 	_, err = vi.ProposeConfigUpdate(newConfig)
-	if err == nil {
-		t.Error("Should have errored proposing config because bar was new but its sequence number was old")
-	}
+
+	assert.EqualError(t, err, "error authorizing update: error validating DeltaSet: attempted to set key [Value]  /foonamespace/bar to version 1, but key does not exist")
 }
 
 // TestConfigPartialUpdate tests to make sure that a new config can set only part
 // of the config and still be accepted
 func TestConfigPartialUpdate(t *testing.T) {
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(
 			makeConfigPair("foo", "foo", 0, []byte("foo")),
 			makeConfigPair("bar", "bar", 0, []byte("bar")),
@@ -220,7 +229,7 @@ func TestConfigPartialUpdate(t *testing.T) {
 	}
 
 	newConfig := makeConfigUpdateEnvelope(
-		defaultChain,
+		defaultChannel,
 		makeConfigSet(),
 		makeConfigSet(makeConfigPair("bar", "bar", 1, []byte("bar"))),
 	)
@@ -232,7 +241,7 @@ func TestConfigPartialUpdate(t *testing.T) {
 // TestEmptyConfigUpdate tests to make sure that an empty config is rejected as an update
 func TestEmptyConfigUpdate(t *testing.T) {
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
@@ -244,9 +253,7 @@ func TestEmptyConfigUpdate(t *testing.T) {
 	newConfig := &cb.Envelope{}
 
 	_, err = vi.ProposeConfigUpdate(newConfig)
-	if err == nil {
-		t.Error("Should not errored proposing config because new config is empty")
-	}
+	assert.EqualError(t, err, "error converting envelope to config update: envelope must have a Header")
 }
 
 // TestSilentConfigModification tests to make sure that even if a validly signed new config for an existing sequence number
@@ -254,7 +261,7 @@ func TestEmptyConfigUpdate(t *testing.T) {
 // increasing the config item's LastModified
 func TestSilentConfigModification(t *testing.T) {
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(
 			makeConfigPair("foo", "foo", 0, []byte("foo")),
 			makeConfigPair("bar", "bar", 0, []byte("bar")),
@@ -267,7 +274,7 @@ func TestSilentConfigModification(t *testing.T) {
 	}
 
 	newConfig := makeConfigUpdateEnvelope(
-		defaultChain,
+		defaultChannel,
 		makeConfigSet(),
 		makeConfigSet(
 			makeConfigPair("foo", "foo", 0, []byte("different")),
@@ -276,9 +283,7 @@ func TestSilentConfigModification(t *testing.T) {
 	)
 
 	_, err = vi.ProposeConfigUpdate(newConfig)
-	if err == nil {
-		t.Error("Should have errored proposing config because foo was silently modified (despite modification allowed by policy)")
-	}
+	assert.EqualError(t, err, "error authorizing update: error validating DeltaSet: attempt to set key [Value]  /foonamespace/foo to version 0, but key is at version 0")
 }
 
 // TestConfigChangeViolatesPolicy checks to make sure that if policy rejects the validation of a config item that
@@ -286,7 +291,7 @@ func TestSilentConfigModification(t *testing.T) {
 func TestConfigChangeViolatesPolicy(t *testing.T) {
 	pm := defaultPolicyManager()
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		pm)
@@ -295,14 +300,14 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 	// Set the mock policy to error
-	pm.Policy.Err = fmt.Errorf("err")
+	fakePolicy := &mockpolicies.Policy{}
+	fakePolicy.EvaluateSignedDataReturns(fmt.Errorf("err"))
+	pm.GetPolicyReturns(fakePolicy, true)
 
-	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
+	newConfig := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
 	_, err = vi.ProposeConfigUpdate(newConfig)
-	if err == nil {
-		t.Error("Should have errored proposing config because policy rejected modification")
-	}
+	assert.EqualError(t, err, "error authorizing update: error validating DeltaSet: policy for [Value]  /foonamespace/foo not satisfied: err")
 }
 
 // TestUnchangedConfigViolatesPolicy checks to make sure that existing config items are not revalidated against their modification policies
@@ -310,7 +315,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	pm := defaultPolicyManager()
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		pm)
@@ -319,12 +324,8 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	// Set the mock policy to error
-	pm.PolicyMap = make(map[string]policies.Policy)
-	pm.PolicyMap["foo"] = &mockpolicies.Policy{Err: fmt.Errorf("err")}
-
 	newConfig := makeConfigUpdateEnvelope(
-		defaultChain,
+		defaultChannel,
 		makeConfigSet(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		makeConfigSet(makeConfigPair("bar", "bar", 0, []byte("foo"))),
 	)
@@ -345,7 +346,7 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 func TestInvalidProposal(t *testing.T) {
 	pm := defaultPolicyManager()
 	vi, err := NewValidatorImpl(
-		defaultChain,
+		defaultChannel,
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		pm)
@@ -354,14 +355,14 @@ func TestInvalidProposal(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	pm.Policy.Err = fmt.Errorf("err")
+	fakePolicy := &mockpolicies.Policy{}
+	fakePolicy.EvaluateSignedDataReturns(fmt.Errorf("err"))
+	pm.GetPolicyReturns(fakePolicy, true)
 
-	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
+	newConfig := makeConfigUpdateEnvelope(defaultChannel, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
 	_, err = vi.ProposeConfigUpdate(newConfig)
-	if err == nil {
-		t.Error("Should have errored proposing config because the handler rejected it")
-	}
+	assert.EqualError(t, err, "error authorizing update: error validating DeltaSet: policy for [Value]  /foonamespace/foo not satisfied: err")
 }
 
 func TestValidateErrors(t *testing.T) {
@@ -390,23 +391,40 @@ func TestValidateErrors(t *testing.T) {
 
 func TestConstructionErrors(t *testing.T) {
 	t.Run("NilConfig", func(t *testing.T) {
-		v, err := NewValidatorImpl("test", nil, "foonamespace", &mockpolicies.Manager{})
+		v, err := NewValidatorImpl("test", nil, "foonamespace", &mockpolicies.PolicyManager{})
 		assert.Nil(t, v)
 		assert.Error(t, err)
 		assert.Regexp(t, "nil config parameter", err.Error())
 	})
 
 	t.Run("NilChannelGroup", func(t *testing.T) {
-		v, err := NewValidatorImpl("test", &cb.Config{}, "foonamespace", &mockpolicies.Manager{})
+		v, err := NewValidatorImpl("test", &cb.Config{}, "foonamespace", &mockpolicies.PolicyManager{})
 		assert.Nil(t, v)
 		assert.Error(t, err)
 		assert.Regexp(t, "nil channel group", err.Error())
 	})
 
 	t.Run("BadChannelID", func(t *testing.T) {
-		v, err := NewValidatorImpl("*&$#@*&@$#*&", &cb.Config{ChannelGroup: &cb.ConfigGroup{}}, "foonamespace", &mockpolicies.Manager{})
+		v, err := NewValidatorImpl("*&$#@*&@$#*&", &cb.Config{ChannelGroup: &cb.ConfigGroup{}}, "foonamespace", &mockpolicies.PolicyManager{})
 		assert.Nil(t, v)
 		assert.Error(t, err)
 		assert.Regexp(t, "bad channel ID", err.Error())
+		assert.EqualError(t, err, "bad channel ID: '*&$#@*&@$#*&' contains illegal characters")
+	})
+
+	t.Run("EmptyChannelID", func(t *testing.T) {
+		v, err := NewValidatorImpl("", &cb.Config{ChannelGroup: &cb.ConfigGroup{}}, "foonamespace", &mockpolicies.PolicyManager{})
+		assert.Nil(t, v)
+		assert.Error(t, err)
+		assert.Regexp(t, "bad channel ID", err.Error())
+		assert.EqualError(t, err, "bad channel ID: channel ID illegal, cannot be empty")
+	})
+
+	t.Run("MaxLengthChannelID", func(t *testing.T) {
+		maxChannelID := strings.Repeat("a", 250)
+		v, err := NewValidatorImpl(maxChannelID, &cb.Config{ChannelGroup: &cb.ConfigGroup{}}, "foonamespace", &mockpolicies.PolicyManager{})
+		assert.Nil(t, v)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "bad channel ID: channel ID illegal, cannot be longer than 249")
 	})
 }

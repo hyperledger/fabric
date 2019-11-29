@@ -20,23 +20,24 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/kr/pretty"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	txRwSet := &TxRwSet{}
 
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "k0", EndKey: "k9", ItrExhausted: true}
-	rqi1.SetRawReads([]*kvrwset.KVRead{
+	SetRawReads(rqi1, []*kvrwset.KVRead{
 		{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
 		{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
 	})
 
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "k00", EndKey: "k90", ItrExhausted: true}
-	rqi2.SetMerkelSummary(&kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
+	SetMerkelSummary(rqi2, &kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
 
 	txRwSet.NsRwSets = []*NsRwSet{
 		{NameSpace: "ns1", KvRwSet: &kvrwset.KVRWSet{
@@ -59,47 +60,76 @@ func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	}
 
 	protoBytes, err := txRwSet.ToProtoBytes()
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	txRwSet1 := &TxRwSet{}
-	testutil.AssertNoError(t, txRwSet1.FromProtoBytes(protoBytes), "")
+	assert.NoError(t, txRwSet1.FromProtoBytes(protoBytes))
 	t.Logf("txRwSet=%s, txRwSet1=%s", spew.Sdump(txRwSet), spew.Sdump(txRwSet1))
-	testutil.AssertEquals(t, txRwSet, txRwSet1)
+	assert.Equal(t, len(txRwSet1.NsRwSets), len(txRwSet.NsRwSets))
+	for i, rwset := range txRwSet.NsRwSets {
+		assert.Equal(t, txRwSet1.NsRwSets[i].NameSpace, rwset.NameSpace)
+		assert.True(t, proto.Equal(txRwSet1.NsRwSets[i].KvRwSet, rwset.KvRwSet), "proto messages are not equal")
+		assert.Equal(t, txRwSet1.NsRwSets[i].CollHashedRwSets, rwset.CollHashedRwSets)
+	}
 }
 
 func TestTxRwSetConversion(t *testing.T) {
 	txRwSet := sampleTxRwSet()
 	protoMsg, err := txRwSet.toProtoMsg()
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	txRwSet1, err := TxRwSetFromProtoMsg(protoMsg)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	t.Logf("txRwSet=%s, txRwSet1=%s", spew.Sdump(txRwSet), spew.Sdump(txRwSet1))
-	testutil.AssertEquals(t, txRwSet1, txRwSet)
+	assert.Equal(t, len(txRwSet1.NsRwSets), len(txRwSet.NsRwSets))
+	for i, rwset := range txRwSet.NsRwSets {
+		assert.Equal(t, txRwSet1.NsRwSets[i].NameSpace, rwset.NameSpace)
+		assert.True(t, proto.Equal(txRwSet1.NsRwSets[i].KvRwSet, rwset.KvRwSet), "proto messages are not equal")
+		for j, hashedRwSet := range rwset.CollHashedRwSets {
+			assert.Equal(t, txRwSet1.NsRwSets[i].CollHashedRwSets[j].CollectionName, hashedRwSet.CollectionName)
+			assert.True(t, proto.Equal(txRwSet1.NsRwSets[i].CollHashedRwSets[j].HashedRwSet, hashedRwSet.HashedRwSet), "proto messages are not equal")
+			assert.Equal(t, txRwSet1.NsRwSets[i].CollHashedRwSets[j].PvtRwSetHash, hashedRwSet.PvtRwSetHash)
+		}
+	}
 }
 
 func TestNsRwSetConversion(t *testing.T) {
 	nsRwSet := sampleNsRwSet("ns-1")
 	protoMsg, err := nsRwSet.toProtoMsg()
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	nsRwSet1, err := nsRwSetFromProtoMsg(protoMsg)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	t.Logf("nsRwSet=%s, nsRwSet1=%s", spew.Sdump(nsRwSet), spew.Sdump(nsRwSet1))
-	testutil.AssertEquals(t, nsRwSet1, nsRwSet)
+	assert.Equal(t, nsRwSet1.NameSpace, nsRwSet.NameSpace)
+	assert.True(t, proto.Equal(nsRwSet1.KvRwSet, nsRwSet.KvRwSet), "proto messages are not equal")
+	for j, hashedRwSet := range nsRwSet.CollHashedRwSets {
+		assert.Equal(t, nsRwSet1.CollHashedRwSets[j].CollectionName, hashedRwSet.CollectionName)
+		assert.True(t, proto.Equal(nsRwSet1.CollHashedRwSets[j].HashedRwSet, hashedRwSet.HashedRwSet), "proto messages are not equal")
+		assert.Equal(t, nsRwSet1.CollHashedRwSets[j].PvtRwSetHash, hashedRwSet.PvtRwSetHash)
+	}
 }
 
 func TestNsRWSetConversionNoCollHashedRWs(t *testing.T) {
 	nsRwSet := sampleNsRwSetWithNoCollHashedRWs("ns-1")
 	protoMsg, err := nsRwSet.toProtoMsg()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertNil(t, protoMsg.CollectionHashedRwset)
+	assert.NoError(t, err)
+	assert.Nil(t, protoMsg.CollectionHashedRwset)
 }
 
 func TestCollHashedRwSetConversion(t *testing.T) {
 	collHashedRwSet := sampleCollHashedRwSet("coll-1")
 	protoMsg, err := collHashedRwSet.toProtoMsg()
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	collHashedRwSet1, err := collHashedRwSetFromProtoMsg(protoMsg)
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, collHashedRwSet1, collHashedRwSet)
+	assert.NoError(t, err)
+	assert.Equal(t, collHashedRwSet.CollectionName, collHashedRwSet1.CollectionName)
+	assert.True(t, proto.Equal(collHashedRwSet.HashedRwSet, collHashedRwSet1.HashedRwSet), "proto messages are not equal")
+	assert.Equal(t, collHashedRwSet.PvtRwSetHash, collHashedRwSet1.PvtRwSetHash)
+}
+
+func TestNumCollections(t *testing.T) {
+	var txRwSet *TxRwSet
+	assert.Equal(t, 0, txRwSet.NumCollections())         // nil TxRwSet
+	assert.Equal(t, 0, (&TxRwSet{}).NumCollections())    // empty TxRwSet
+	assert.Equal(t, 4, sampleTxRwSet().NumCollections()) // sample TxRwSet
 }
 
 func sampleTxRwSet() *TxRwSet {
@@ -110,8 +140,10 @@ func sampleTxRwSet() *TxRwSet {
 }
 
 func sampleNsRwSet(ns string) *NsRwSet {
-	nsRwSet := &NsRwSet{NameSpace: ns,
-		KvRwSet: sampleKvRwSet()}
+	nsRwSet := &NsRwSet{
+		NameSpace: ns,
+		KvRwSet:   sampleKvRwSet(),
+	}
 	nsRwSet.CollHashedRwSets = append(nsRwSet.CollHashedRwSets, sampleCollHashedRwSet("coll-1"))
 	nsRwSet.CollHashedRwSets = append(nsRwSet.CollHashedRwSets, sampleCollHashedRwSet("coll-2"))
 	return nsRwSet
@@ -123,13 +155,13 @@ func sampleNsRwSetWithNoCollHashedRWs(ns string) *NsRwSet {
 
 func sampleKvRwSet() *kvrwset.KVRWSet {
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "k0", EndKey: "k9", ItrExhausted: true}
-	rqi1.SetRawReads([]*kvrwset.KVRead{
+	SetRawReads(rqi1, []*kvrwset.KVRead{
 		{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
 		{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
 	})
 
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "k00", EndKey: "k90", ItrExhausted: true}
-	rqi2.SetMerkelSummary(&kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
+	SetMerkelSummary(rqi2, &kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
 	return &kvrwset.KVRWSet{
 		Reads:            []*kvrwset.KVRead{{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
 		RangeQueriesInfo: []*kvrwset.RangeQueryInfo{rqi1},
@@ -162,11 +194,18 @@ func sampleCollHashedRwSet(collectionName string) *CollHashedRwSet {
 func TestTxPvtRwSetConversion(t *testing.T) {
 	txPvtRwSet := sampleTxPvtRwSet()
 	protoMsg, err := txPvtRwSet.toProtoMsg()
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	txPvtRwSet1, err := TxPvtRwSetFromProtoMsg(protoMsg)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	t.Logf("txPvtRwSet=%s, txPvtRwSet1=%s, Diff:%s", spew.Sdump(txPvtRwSet), spew.Sdump(txPvtRwSet1), pretty.Diff(txPvtRwSet, txPvtRwSet1))
-	testutil.AssertEquals(t, txPvtRwSet1, txPvtRwSet)
+	assert.Equal(t, len(txPvtRwSet1.NsPvtRwSet), len(txPvtRwSet.NsPvtRwSet))
+	for i, rwset := range txPvtRwSet.NsPvtRwSet {
+		assert.Equal(t, txPvtRwSet1.NsPvtRwSet[i].NameSpace, rwset.NameSpace)
+		for j, hashedRwSet := range rwset.CollPvtRwSets {
+			assert.Equal(t, txPvtRwSet1.NsPvtRwSet[i].CollPvtRwSets[j].CollectionName, hashedRwSet.CollectionName)
+			assert.True(t, proto.Equal(txPvtRwSet1.NsPvtRwSet[i].CollPvtRwSets[j].KvRwSet, hashedRwSet.KvRwSet), "proto messages are not equal")
+		}
+	}
 }
 
 func sampleTxPvtRwSet() *TxPvtRwSet {
@@ -195,10 +234,10 @@ func TestVersionConversion(t *testing.T) {
 	protoVer := &kvrwset.Version{BlockNum: 5, TxNum: 2}
 	internalVer := version.NewHeight(5, 2)
 	// convert proto to internal
-	testutil.AssertNil(t, NewVersion(nil))
-	testutil.AssertEquals(t, NewVersion(protoVer), internalVer)
+	assert.Nil(t, NewVersion(nil))
+	assert.Equal(t, internalVer, NewVersion(protoVer))
 
 	// convert internal to proto
-	testutil.AssertNil(t, newProtoVersion(nil))
-	testutil.AssertEquals(t, newProtoVersion(internalVer), protoVer)
+	assert.Nil(t, newProtoVersion(nil))
+	assert.Equal(t, protoVer, newProtoVersion(internalVer))
 }

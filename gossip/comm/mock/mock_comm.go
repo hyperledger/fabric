@@ -9,11 +9,12 @@ package mock
 import (
 	"time"
 
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
 // Mock which aims to simulate socket
@@ -39,7 +40,7 @@ type packetMock struct {
 type channelMock struct {
 	accept common.MessageAcceptor
 
-	channel chan proto.ReceivedMessage
+	channel chan protoext.ReceivedMessage
 }
 
 type commMock struct {
@@ -54,7 +55,7 @@ type commMock struct {
 	done chan struct{}
 }
 
-var logger = util.GetLogger(util.LoggingMockModule, "")
+var logger = util.GetLogger(util.CommMockLogger, "")
 
 // NewCommMock creates mocked communication object
 func NewCommMock(id string, members map[string]*socketMock) comm.Comm {
@@ -77,7 +78,7 @@ func NewCommMock(id string, members map[string]*socketMock) comm.Comm {
 
 // Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
 func (packet *packetMock) Respond(msg *proto.GossipMessage) {
-	sMsg, _ := msg.NoopSign()
+	sMsg, _ := protoext.NoopSign(msg)
 	packet.src.socket <- &packetMock{
 		src: packet.dst,
 		dst: packet.src,
@@ -97,13 +98,13 @@ func (packet *packetMock) GetSourceEnvelope() *proto.Envelope {
 }
 
 // GetGossipMessage returns the underlying GossipMessage
-func (packet *packetMock) GetGossipMessage() *proto.SignedGossipMessage {
-	return packet.msg.(*proto.SignedGossipMessage)
+func (packet *packetMock) GetGossipMessage() *protoext.SignedGossipMessage {
+	return packet.msg.(*protoext.SignedGossipMessage)
 }
 
 // GetConnectionInfo returns information about the remote peer
 // that sent the message
-func (packet *packetMock) GetConnectionInfo() *proto.ConnectionInfo {
+func (packet *packetMock) GetConnectionInfo() *protoext.ConnectionInfo {
 	return nil
 }
 
@@ -134,13 +135,17 @@ func (mock *commMock) start() {
 	}
 }
 
+func (mock *commMock) IdentitySwitch() <-chan common.PKIidType {
+	panic("implement me")
+}
+
 // GetPKIid returns this instance's PKI id
 func (mock *commMock) GetPKIid() common.PKIidType {
 	return common.PKIidType(mock.id)
 }
 
-// Send sends a message to remote peers
-func (mock *commMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
+// Send sends a message to remote peers asynchronously
+func (mock *commMock) Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	for _, peer := range peers {
 		logger.Debug("Sending message to peer ", peer.Endpoint, "from ", mock.id)
 		mock.members[peer.Endpoint].socket <- &packetMock{
@@ -151,7 +156,7 @@ func (mock *commMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.Remote
 	}
 }
 
-func (mock *commMock) SendWithAck(_ *proto.SignedGossipMessage, _ time.Duration, _ int, _ ...*comm.RemotePeer) comm.AggregatedSendResult {
+func (mock *commMock) SendWithAck(_ *protoext.SignedGossipMessage, _ time.Duration, _ int, _ ...*comm.RemotePeer) comm.AggregatedSendResult {
 	panic("not implemented")
 }
 
@@ -169,8 +174,8 @@ func (mock *commMock) Handshake(peer *comm.RemotePeer) (api.PeerIdentityType, er
 
 // Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 // Each message from the channel can be used to send a reply back to the sender
-func (mock *commMock) Accept(accept common.MessageAcceptor) <-chan proto.ReceivedMessage {
-	ch := make(chan proto.ReceivedMessage)
+func (mock *commMock) Accept(accept common.MessageAcceptor) <-chan protoext.ReceivedMessage {
+	ch := make(chan protoext.ReceivedMessage)
 	mock.acceptors = append(mock.acceptors, &channelMock{accept, ch})
 	return ch
 }

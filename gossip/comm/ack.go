@@ -8,11 +8,11 @@ package comm
 
 import (
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
-type sendFunc func(peer *RemotePeer, msg *proto.SignedGossipMessage)
+type sendFunc func(peer *RemotePeer, msg *protoext.SignedGossipMessage)
 type waitFunc func(*RemotePeer) error
 
 type ackSendOperation struct {
@@ -27,7 +27,7 @@ func newAckSendOperation(snd sendFunc, waitForAck waitFunc) *ackSendOperation {
 	}
 }
 
-func (aso *ackSendOperation) send(msg *proto.SignedGossipMessage, minAckNum int, peers ...*RemotePeer) []SendResult {
+func (aso *ackSendOperation) send(msg *protoext.SignedGossipMessage, minAckNum int, peers ...*RemotePeer) []SendResult {
 	successAcks := 0
 	results := []SendResult{}
 
@@ -61,9 +61,9 @@ func (aso *ackSendOperation) send(msg *proto.SignedGossipMessage, minAckNum int,
 	return results
 }
 
-func interceptAcks(nextHandler handler, remotePeerID common.PKIidType, pubSub *util.PubSub) func(*proto.SignedGossipMessage) {
-	return func(m *proto.SignedGossipMessage) {
-		if m.IsAck() {
+func interceptAcks(nextHandler handler, remotePeerID common.PKIidType, pubSub *util.PubSub) func(*protoext.SignedGossipMessage) {
+	return func(m *protoext.SignedGossipMessage) {
+		if protoext.IsAck(m.GossipMessage) {
 			topic := topicForAck(m.Nonce, remotePeerID)
 			pubSub.Publish(topic, m.GetAck())
 			return

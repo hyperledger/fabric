@@ -1,14 +1,8 @@
 package sarama
 
 import (
-	"bytes"
-	"compress/gzip"
 	"fmt"
-	"io/ioutil"
 	"time"
-
-	"github.com/eapache/go-xerial-snappy"
-	"github.com/pierrec/lz4"
 )
 
 const recordBatchOverhead = 49
@@ -40,6 +34,7 @@ type RecordBatch struct {
 	PartitionLeaderEpoch  int32
 	Version               int8
 	Codec                 CompressionCodec
+	CompressionLevel      int
 	Control               bool
 	LastOffsetDelta       int32
 	FirstTimestamp        time.Time
@@ -173,27 +168,9 @@ func (b *RecordBatch) decode(pd packetDecoder) (err error) {
 		return err
 	}
 
-	switch b.Codec {
-	case CompressionNone:
-	case CompressionGZIP:
-		reader, err := gzip.NewReader(bytes.NewReader(recBuffer))
-		if err != nil {
-			return err
-		}
-		if recBuffer, err = ioutil.ReadAll(reader); err != nil {
-			return err
-		}
-	case CompressionSnappy:
-		if recBuffer, err = snappy.Decode(recBuffer); err != nil {
-			return err
-		}
-	case CompressionLZ4:
-		reader := lz4.NewReader(bytes.NewReader(recBuffer))
-		if recBuffer, err = ioutil.ReadAll(reader); err != nil {
-			return err
-		}
-	default:
-		return PacketDecodingError{fmt.Sprintf("invalid compression specified (%d)", b.Codec)}
+	recBuffer, err = decompress(b.Codec, recBuffer)
+	if err != nil {
+		return err
 	}
 
 	b.recordsLen = len(recBuffer)
@@ -214,36 +191,8 @@ func (b *RecordBatch) encodeRecords(pe packetEncoder) error {
 	}
 	b.recordsLen = len(raw)
 
-	switch b.Codec {
-	case CompressionNone:
-		b.compressedRecords = raw
-	case CompressionGZIP:
-		var buf bytes.Buffer
-		writer := gzip.NewWriter(&buf)
-		if _, err := writer.Write(raw); err != nil {
-			return err
-		}
-		if err := writer.Close(); err != nil {
-			return err
-		}
-		b.compressedRecords = buf.Bytes()
-	case CompressionSnappy:
-		b.compressedRecords = snappy.Encode(raw)
-	case CompressionLZ4:
-		var buf bytes.Buffer
-		writer := lz4.NewWriter(&buf)
-		if _, err := writer.Write(raw); err != nil {
-			return err
-		}
-		if err := writer.Close(); err != nil {
-			return err
-		}
-		b.compressedRecords = buf.Bytes()
-	default:
-		return PacketEncodingError{fmt.Sprintf("unsupported compression codec (%d)", b.Codec)}
-	}
-
-	return nil
+	b.compressedRecords, err = compress(b.Codec, b.CompressionLevel, raw)
+	return err
 }
 
 func (b *RecordBatch) computeAttributes() int16 {

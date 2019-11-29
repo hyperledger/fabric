@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/stretchr/testify/assert"
 )
@@ -46,7 +47,7 @@ func TestBadConfigOUCert(t *testing.T) {
 	conf, err := GetLocalMspConfig("testdata/badconfigoucert", nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(MSPv1_0)
+	thisMSP, err := newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)
@@ -70,11 +71,13 @@ func TestValidateIntermediateConfigOU(t *testing.T) {
 	conf, err := GetLocalMspConfig("testdata/external", nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err = newBccspMsp(MSPv1_0)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	thisMSP, err = newBccspMsp(MSPv1_0, cryptoProvider)
 	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join("testdata/external", "keystore"), true)
 	assert.NoError(t, err)
-	csp, err := sw.New(256, "SHA2", ks)
+	csp, err := sw.NewWithParams(256, "SHA2", ks)
 	assert.NoError(t, err)
 	thisMSP.(*bccspmsp).bccsp = csp
 

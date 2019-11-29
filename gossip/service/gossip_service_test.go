@@ -9,33 +9,45 @@ package service
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
-
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
+	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice"
-	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
-	gossipCommon "github.com/hyperledger/fabric/gossip/common"
+	gcomm "github.com/hyperledger/fabric/gossip/comm"
+	gossipcommon "github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/gossip/channel"
+	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
+	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
+	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
+	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
-	peergossip "github.com/hyperledger/fabric/peer/gossip"
-	"github.com/hyperledger/fabric/peer/gossip/mocks"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/spf13/viper"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -43,61 +55,94 @@ func init() {
 	util.SetupTestLogging()
 }
 
-type mockTransientStore struct {
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
 }
 
-func (*mockTransientStore) PurgeByHeight(maxBlockNumToRetain uint64) error {
-	return nil
+type testTransientStore struct {
+	storeProvider transientstore.StoreProvider
+	Store         *transientstore.Store
+	tempdir       string
 }
 
-func (*mockTransientStore) Persist(txid string, blockHeight uint64, privateSimulationResults *rwset.TxPvtReadWriteSet) error {
-	panic("implement me")
+func newTransientStore(t *testing.T) *testTransientStore {
+	s := &testTransientStore{}
+	var err error
+	s.tempdir, err = ioutil.TempDir("", "ts")
+	if err != nil {
+		t.Fatalf("Failed to create test directory, got err %s", err)
+		return s
+	}
+	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir)
+	if err != nil {
+		t.Fatalf("Failed to open store, got err %s", err)
+		return s
+	}
+	s.Store, err = s.storeProvider.OpenStore("test")
+	if err != nil {
+		t.Fatalf("Failed to open store, got err %s", err)
+		return s
+	}
+	return s
 }
 
-func (*mockTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error) {
-	panic("implement me")
+func (s *testTransientStore) tearDown() {
+	s.storeProvider.Close()
+	os.RemoveAll(s.tempdir)
 }
 
-func (*mockTransientStore) PurgeByTxids(txids []string) error {
-	panic("implement me")
+func (s *testTransientStore) Persist(txid string, blockHeight uint64,
+	privateSimulationResultsWithConfig *transientstore2.TxPvtReadWriteSetWithConfigInfo) error {
+	return s.Store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
+}
+
+func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (privdata.RWSetScanner, error) {
+	return s.Store.GetTxPvtRWSetByTxid(txid, filter)
 }
 
 func TestInitGossipService(t *testing.T) {
-	// Test whenever gossip service is indeed singleton
 	grpcServer := grpc.NewServer()
-	socket, error := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 35611))
-	assert.NoError(t, error)
+	endpoint, socket := getAvailablePort(t)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
 	msptesttools.LoadMSPSetupForTesting()
-	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
+	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 
-	wg := sync.WaitGroup{}
-	wg.Add(10)
-	for i := 0; i < 10; i++ {
-		go func() {
-			defer wg.Done()
-			messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
-			secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-			err := InitGossipService(identity, "localhost:35611", grpcServer, nil, messageCryptoService,
-				secAdv, nil)
-			assert.NoError(t, err)
-		}()
-	}
-	wg.Wait()
+	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
+	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
+	assert.NoError(t, err)
+
+	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
+	require.NoError(t, err)
+
+	gossipService, err := New(
+		signer,
+		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
+		endpoint,
+		grpcServer,
+		messageCryptoService,
+		secAdv,
+		nil,
+		comm.NewCredentialSupport(),
+		grpcClient,
+		gossipConfig,
+		&ServiceConfig{},
+		&deliverservice.DeliverServiceConfig{
+			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		},
+	)
+	assert.NoError(t, err)
 
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	defer GetGossipService().Stop()
-	gossip := GetGossipService()
-
-	for i := 0; i < 10; i++ {
-		go func(gossipInstance GossipService) {
-			assert.Equal(t, gossip, GetGossipService())
-		}(gossip)
-	}
-
-	time.Sleep(time.Second * 2)
+	defer gossipService.Stop()
 }
 
 // Make sure *joinChannelMessage implements the api.JoinChannelMessage
@@ -113,21 +158,30 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	//10 peers started, added to channel and at the end we check if only for one peer
 	//mockDeliverService.StartDeliverForChannel was invoked
 
-	viper.Set("peer.gossip.useLeaderElection", true)
-	viper.Set("peer.gossip.orgLeader", false)
 	n := 10
-	gossips := startPeers(t, n, 34611)
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                true,
+		OrgLeader:                        false,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
+	gossips := startPeers(t, serviceConfig, n, 0, 1, 2, 3, 4)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
-	addPeersToChannel(t, n, 34611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembership(t, gossips, n, time.Second*20, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*20, time.Second*2)
 
 	services := make([]*electionService, n)
+
+	store := newTransientStore(t)
+	defer store.tearDown()
 
 	for i := 0; i < n; i++ {
 		deliverServiceFactory := &mockDeliverServiceFactory{
@@ -135,14 +189,13 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 				running: make(map[string]bool),
 			},
 		}
-		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
+		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
 
-		gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
-			Store:     &mockTransientStore{},
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
 		})
-		service, exist := gossips[i].(*gossipServiceImpl).leaderElection[channelName]
+		service, exist := gossips[i].leaderElection[channelName]
 		assert.True(t, exist, "Leader election service should be created for peer %d and channel %s", i, channelName)
 		services[i] = &electionService{nil, false, 0}
 		services[i].LeaderElectionService = service
@@ -154,7 +207,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	startsNum := 0
 	for i := 0; i < n; i++ {
 		// Is mockDeliverService.StartDeliverForChannel in current peer for the specific channel was invoked
-		if gossips[i].(*gossipServiceImpl).deliveryService[channelName].(*mockDeliverService).running[channelName] {
+		if gossips[i].deliveryService[channelName].(*mockDeliverService).running[channelName] {
 			startsNum++
 		}
 	}
@@ -165,27 +218,34 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 }
 
 func TestWithStaticDeliverClientLeader(t *testing.T) {
-	//Tests check if static leader flag works ok.
-	//Leader election flag set to false, and static leader flag set to true
-	//Two gossip service instances (peers) created.
-	//Each peer is added to channel and should run mock delivery client
-	//After that each peer added to another client and it should run deliver client for this channel as well.
+	// Tests check if static leader flag works ok.
+	// Leader election flag set to false, and static leader flag set to true
+	// Two gossip service instances (peers) created.
+	// Each peer is added to channel and should run mock delivery client
+	// After that each peer added to another client and it should run deliver client for this channel as well.
 
-	viper.Set("peer.gossip.useLeaderElection", false)
-	viper.Set("peer.gossip.orgLeader", true)
-
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                false,
+		OrgLeader:                        true,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
 	n := 2
-	gossips := startPeers(t, n, 33611)
-
+	gossips := startPeers(t, serviceConfig, n, 0, 1)
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
 
-	addPeersToChannel(t, n, 33611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
+
+	store := newTransientStore(t)
+	defer store.tearDown()
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
@@ -194,42 +254,46 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 	}
 
 	for i := 0; i < n; i++ {
-		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
+		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
-			Store:     &mockTransientStore{},
 		})
 	}
 
 	for i := 0; i < n; i++ {
-		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
-		assert.True(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
+		assert.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
+		assert.True(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
 	}
 
 	channelName = "chanB"
 	for i := 0; i < n; i++ {
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
-			Store:     &mockTransientStore{},
 		})
 	}
 
 	for i := 0; i < n; i++ {
-		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
-		assert.True(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
+		assert.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
+		assert.True(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
 	}
 
 	stopPeers(gossips)
 }
 
 func TestWithStaticDeliverClientNotLeader(t *testing.T) {
-	viper.Set("peer.gossip.useLeaderElection", false)
-	viper.Set("peer.gossip.orgLeader", false)
 
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                false,
+		OrgLeader:                        false,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
 	n := 2
-	gossips := startPeers(t, n, 32611)
+	gossips := startPeers(t, serviceConfig, n, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -237,9 +301,12 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 		peerIndexes[i] = i
 	}
 
-	addPeersToChannel(t, n, 32611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
+
+	store := newTransientStore(t)
+	defer store.tearDown()
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
@@ -248,28 +315,33 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	}
 
 	for i := 0; i < n; i++ {
-		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
+		gossips[i].deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
-		gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+		gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},
-			Store:     &mockTransientStore{},
 		})
 	}
 
 	for i := 0; i < n; i++ {
-		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
-		assert.False(t, gossips[i].(*gossipServiceImpl).deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer should not be started for peer %d", i)
+		assert.NotNil(t, gossips[i].deliveryService[channelName], "Delivery service for channel %s not initiated in peer %d", channelName, i)
+		assert.False(t, gossips[i].deliveryService[channelName].(*mockDeliverService).running[channelName], "Block deliverer should not be started for peer %d", i)
 	}
 
 	stopPeers(gossips)
 }
 
 func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
-	viper.Set("peer.gossip.useLeaderElection", true)
-	viper.Set("peer.gossip.orgLeader", true)
 
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                true,
+		OrgLeader:                        true,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
 	n := 2
-	gossips := startPeers(t, n, 31611)
+	gossips := startPeers(t, serviceConfig, n, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -277,9 +349,12 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 		peerIndexes[i] = i
 	}
 
-	addPeersToChannel(t, n, 31611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
+
+	store := newTransientStore(t)
+	defer store.tearDown()
 
 	deliverServiceFactory := &mockDeliverServiceFactory{
 		service: &mockDeliverService{
@@ -288,13 +363,12 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 	}
 
 	for i := 0; i < n; i++ {
-		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
+		gossips[i].deliveryFactory = deliverServiceFactory
 		assert.Panics(t, func() {
-			gossips[i].InitializeChannel(channelName, []string{"localhost:5005"}, Support{
+			gossips[i].InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 				Committer: &mockLedgerInfo{1},
-				Store:     &mockTransientStore{},
 			})
-		}, "Dynamic leader lection based and static connection to ordering service can't exist simultaniosly")
+		}, "Dynamic leader election based and static connection to ordering service can't exist simultaneously")
 	}
 
 	stopPeers(gossips)
@@ -304,16 +378,12 @@ type mockDeliverServiceFactory struct {
 	service *mockDeliverService
 }
 
-func (mf *mockDeliverServiceFactory) Service(g GossipService, endpoints []string, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
-	return mf.service, nil
+func (mf *mockDeliverServiceFactory) Service(GossipServiceAdapter, *orderers.ConnectionSource, api.MessageCryptoService) deliverservice.DeliverService {
+	return mf.service
 }
 
 type mockDeliverService struct {
 	running map[string]bool
-}
-
-func (ds *mockDeliverService) UpdateEndpoints(chainID string, endpoints []string) error {
-	panic("implement me")
 }
 
 func (ds *mockDeliverService) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo, finalizer func()) error {
@@ -333,11 +403,23 @@ type mockLedgerInfo struct {
 	Height uint64
 }
 
+func (li *mockLedgerInfo) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {
+	panic("implement me")
+}
+
+func (li *mockLedgerInfo) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
+	panic("implement me")
+}
+
 func (li *mockLedgerInfo) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	panic("implement me")
 }
 
-func (li *mockLedgerInfo) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
+func (li *mockLedgerInfo) CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+	panic("implement me")
+}
+
+func (li *mockLedgerInfo) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
 	panic("implement me")
 }
 
@@ -348,6 +430,10 @@ func (li *mockLedgerInfo) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockA
 // LedgerHeight returns mocked value to the ledger height
 func (li *mockLedgerInfo) LedgerHeight() (uint64, error) {
 	return li.Height, nil
+}
+
+func (li *mockLedgerInfo) DoesPvtDataInfoExistInLedger(blkNum uint64) (bool, error) {
+	return false, nil
 }
 
 // Commit block to the ledger
@@ -374,27 +460,37 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	// Stop gossip instances of leader peers for both channels and see that new leader chosen for both
 
 	// Creating gossip service instances for peers
-	n := 10
-	gossips := startPeers(t, n, 30611)
+	serviceConfig := &ServiceConfig{
+		UseLeaderElection:                false,
+		OrgLeader:                        false,
+		ElectionStartupGracePeriod:       election.DefStartupGracePeriod,
+		ElectionMembershipSampleInterval: election.DefMembershipSampleInterval,
+		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
+		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
+	}
 
+	n := 10
+	gossips := startPeers(t, serviceConfig, n, 0, 1, 2, 3, 4)
 	// Joining all peers to first channel
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
-	addPeersToChannel(t, n, 30611, channelName, gossips, peerIndexes)
+	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
 
-	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
 
 	logger.Warning("Starting leader election services")
 
 	//Starting leader election services
 	services := make([]*electionService, n)
 
+	electionMetrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics
+
 	for i := 0; i < n; i++ {
 		services[i] = &electionService{nil, false, 0}
-		services[i].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(channelName, services[i].callback)
+		services[i].LeaderElectionService = gossips[i].newLeaderElectionComponent(channelName, services[i].callback, electionMetrics)
 	}
 
 	logger.Warning("Waiting for leader election")
@@ -416,11 +512,18 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	secondChannelPeerIndexes := []int{1, 3, 5, 7}
 	secondChannelName := "chanB"
 	secondChannelServices := make([]*electionService, len(secondChannelPeerIndexes))
-	addPeersToChannel(t, n, 30611, secondChannelName, gossips, secondChannelPeerIndexes)
+	addPeersToChannel(t, n, secondChannelName, gossips, secondChannelPeerIndexes)
+
+	secondChannelGossips := make([]*gossipGRPC, 0)
+	for _, i := range secondChannelPeerIndexes {
+		secondChannelGossips = append(secondChannelGossips, gossips[i])
+	}
+	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips, len(secondChannelGossips), time.Second*30, time.Millisecond*100)
 
 	for idx, i := range secondChannelPeerIndexes {
 		secondChannelServices[idx] = &electionService{nil, false, 0}
-		secondChannelServices[idx].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(secondChannelName, secondChannelServices[idx].callback)
+		secondChannelServices[idx].LeaderElectionService =
+			gossips[i].newLeaderElectionComponent(secondChannelName, secondChannelServices[idx].callback, electionMetrics)
 	}
 
 	assert.True(t, waitForLeaderElection(t, secondChannelServices, time.Second*30, time.Second*2), "One leader should be selected for chanB")
@@ -449,7 +552,8 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	stopPeers(gossips[:2])
 
-	waitForFullMembership(t, gossips[2:], n-2, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips[2:], n-2, time.Second*30, time.Millisecond*100)
+	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips[1:], len(secondChannelGossips)-1, time.Second*30, time.Millisecond*100)
 
 	assert.True(t, waitForLeaderElection(t, services[2:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanA")
 	assert.True(t, waitForLeaderElection(t, secondChannelServices[1:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanB")
@@ -505,23 +609,22 @@ func (jmc *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer 
 	return []api.AnchorPeer{}
 }
 
-func waitForFullMembership(t *testing.T, gossips []GossipService, peersNum int, timeout time.Duration, testPollInterval time.Duration) bool {
+func waitForFullMembershipOrFailNow(t *testing.T, channel string, gossips []*gossipGRPC, peersNum int, timeout time.Duration, testPollInterval time.Duration) {
 	end := time.Now().Add(timeout)
 	var correctPeers int
 	for time.Now().Before(end) {
 		correctPeers = 0
 		for _, g := range gossips {
-			if len(g.Peers()) == (peersNum - 1) {
+			if len(g.PeersOfChannel(gossipcommon.ChannelID(channel))) == (peersNum - 1) {
 				correctPeers++
 			}
 		}
 		if correctPeers == peersNum {
-			return true
+			return
 		}
 		time.Sleep(testPollInterval)
 	}
-	logger.Warningf("Only %d peers have full membership", correctPeers)
-	return false
+	t.Fatalf("Failed to establish full channel membership. Only %d out of %d peers have full membership", correctPeers, peersNum)
 }
 
 func waitForMultipleLeadersElection(t *testing.T, services []*electionService, leadersNum int, timeout time.Duration, testPollInterval time.Duration) bool {
@@ -586,43 +689,59 @@ func stopServices(services []*electionService) {
 	time.Sleep(time.Second * time.Duration(2))
 }
 
-func stopPeers(peers []GossipService) {
+func stopPeers(peers []*gossipGRPC) {
 	stoppingWg := sync.WaitGroup{}
 	stoppingWg.Add(len(peers))
 	for i, pI := range peers {
-		go func(i int, p_i GossipService) {
+		go func(i int, p_i *GossipService) {
 			defer stoppingWg.Done()
 			p_i.Stop()
-		}(i, pI)
+		}(i, pI.GossipService)
 	}
 	stoppingWg.Wait()
 	time.Sleep(time.Second * time.Duration(2))
 }
 
-func addPeersToChannel(t *testing.T, n int, portPrefix int, channel string, peers []GossipService, peerIndexes []int) {
+func addPeersToChannel(t *testing.T, n int, channel string, peers []*gossipGRPC, peerIndexes []int) {
 	jcm := &joinChanMsg{}
 
 	wg := sync.WaitGroup{}
 	for _, i := range peerIndexes {
 		wg.Add(1)
 		go func(i int) {
-			peers[i].JoinChan(jcm, gossipCommon.ChainID(channel))
-			peers[i].UpdateLedgerHeight(0, gossipCommon.ChainID(channel))
+			peers[i].JoinChan(jcm, gossipcommon.ChannelID(channel))
+			peers[i].UpdateLedgerHeight(0, gossipcommon.ChannelID(channel))
 			wg.Done()
 		}(i)
 	}
 	waitUntilOrFailBlocking(t, wg.Wait, time.Second*10)
 }
 
-func startPeers(t *testing.T, n int, portPrefix int) []GossipService {
+func startPeers(t *testing.T, serviceConfig *ServiceConfig, n int, boot ...int) []*gossipGRPC {
+	var ports []int
+	var grpcs []*comm.GRPCServer
+	var certs []*gossipcommon.TLSCertificates
+	var secDialOpts []api.PeerSecureDialOpts
 
-	peers := make([]GossipService, n)
+	for i := 0; i < n; i++ {
+		port, grpc, cert, secDialOpt, _ := util.CreateGRPCLayer()
+		ports = append(ports, port)
+		grpcs = append(grpcs, grpc)
+		certs = append(certs, cert)
+		secDialOpts = append(secDialOpts, secDialOpt)
+	}
+
+	var bootPorts []int
+	for _, index := range boot {
+		bootPorts = append(bootPorts, ports[index])
+	}
+
+	peers := make([]*gossipGRPC, n)
 	wg := sync.WaitGroup{}
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
-
-			peers[i] = newGossipInstance(portPrefix, i, 100, 0, 1, 2, 3, 4, 5)
+			peers[i] = newGossipInstance(serviceConfig, ports[i], i, grpcs[i], certs[i], secDialOpts[i], 100, bootPorts...)
 			wg.Done()
 		}(i)
 	}
@@ -631,51 +750,94 @@ func startPeers(t *testing.T, n int, portPrefix int) []GossipService {
 	return peers
 }
 
-func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) GossipService {
-	port := id + portPrefix
+func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServer *comm.GRPCServer, certs *gossipcommon.TLSCertificates,
+	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) *gossipGRPC {
 	conf := &gossip.Config{
-		BindPort:                   port,
-		BootstrapPeers:             bootPeers(portPrefix, boot...),
-		ID:                         fmt.Sprintf("p%d", id),
-		MaxBlockCountToStore:       maxMsgCount,
-		MaxPropagationBurstLatency: time.Duration(500) * time.Millisecond,
-		MaxPropagationBurstSize:    20,
-		PropagateIterations:        1,
-		PropagatePeerNum:           3,
-		PullInterval:               time.Duration(2) * time.Second,
-		PullPeerNum:                5,
-		InternalEndpoint:           fmt.Sprintf("localhost:%d", port),
-		ExternalEndpoint:           fmt.Sprintf("1.2.3.4:%d", port),
-		PublishCertPeriod:          time.Duration(4) * time.Second,
-		PublishStateInfoInterval:   time.Duration(1) * time.Second,
-		RequestStateInfoInterval:   time.Duration(1) * time.Second,
+		BindPort:                     port,
+		BootstrapPeers:               bootPeers(bootPorts...),
+		ID:                           fmt.Sprintf("p%d", id),
+		MaxBlockCountToStore:         maxMsgCount,
+		MaxPropagationBurstLatency:   time.Duration(500) * time.Millisecond,
+		MaxPropagationBurstSize:      20,
+		PropagateIterations:          1,
+		PropagatePeerNum:             3,
+		PullInterval:                 time.Duration(2) * time.Second,
+		PullPeerNum:                  5,
+		InternalEndpoint:             fmt.Sprintf("127.0.0.1:%d", port),
+		ExternalEndpoint:             fmt.Sprintf("1.2.3.4:%d", port),
+		PublishCertPeriod:            time.Duration(4) * time.Second,
+		PublishStateInfoInterval:     time.Duration(1) * time.Second,
+		RequestStateInfoInterval:     time.Duration(1) * time.Second,
+		TimeForMembershipTracker:     time.Second * 5,
+		TLSCerts:                     certs,
+		DigestWaitTime:               algo.DefDigestWaitTime,
+		RequestWaitTime:              algo.DefRequestWaitTime,
+		ResponseWaitTime:             algo.DefResponseWaitTime,
+		DialTimeout:                  gcomm.DefDialTimeout,
+		ConnTimeout:                  gcomm.DefConnTimeout,
+		RecvBuffSize:                 gcomm.DefRecvBuffSize,
+		SendBuffSize:                 gcomm.DefSendBuffSize,
+		MsgExpirationTimeout:         channel.DefMsgExpirationTimeout,
+		AliveTimeInterval:            discovery.DefAliveTimeInterval,
+		AliveExpirationTimeout:       discovery.DefAliveExpirationTimeout,
+		AliveExpirationCheckInterval: discovery.DefAliveExpirationCheckInterval,
+		ReconnectInterval:            time.Duration(1) * time.Second,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}
+	metrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{})
+	gossip := gossip.New(
+		conf,
+		gRPCServer.Server(),
+		&orgCryptoService{},
+		cryptoService,
+		selfID,
+		secureDialOpts,
+		metrics,
+	)
+	go gRPCServer.Start()
 
-	gossip := gossip.NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService,
-		selfID, nil)
-
-	gossipService := &gossipServiceImpl{
+	gossipService := &GossipService{
 		mcs:             cryptoService,
 		gossipSvc:       gossip,
 		chains:          make(map[string]state.GossipStateProvider),
 		leaderElection:  make(map[string]election.LeaderElectionService),
 		privateHandlers: make(map[string]privateHandler),
-		deliveryService: make(map[string]deliverclient.DeliverService),
-		deliveryFactory: &deliveryFactoryImpl{},
-		peerIdentity:    api.PeerIdentityType(conf.InternalEndpoint),
+		deliveryService: make(map[string]deliverservice.DeliverService),
+		deliveryFactory: &deliveryFactoryImpl{
+			credentialSupport: comm.NewCredentialSupport(),
+		},
+		peerIdentity:  api.PeerIdentityType(conf.InternalEndpoint),
+		metrics:       metrics,
+		serviceConfig: serviceConfig,
 	}
 
-	return gossipService
+	return &gossipGRPC{GossipService: gossipService, grpc: gRPCServer}
 }
 
-func bootPeers(portPrefix int, ids ...int) []string {
-	peers := []string{}
-	for _, id := range ids {
-		peers = append(peers, fmt.Sprintf("localhost:%d", id+portPrefix))
+type gossipGRPC struct {
+	*GossipService
+	grpc *comm.GRPCServer
+}
+
+func (g *gossipGRPC) Stop() {
+	g.GossipService.Stop()
+	g.grpc.Stop()
+}
+
+func bootPeers(ports ...int) []string {
+	var peers []string
+	for _, port := range ports {
+		peers = append(peers, fmt.Sprintf("127.0.0.1:%d", port))
 	}
 	return peers
+}
+
+func getAvailablePort(t *testing.T) (endpoint string, ll net.Listener) {
+	ll, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	endpoint = ll.Addr().String()
+	return endpoint, ll
 }
 
 type naiveCryptoService struct {
@@ -702,7 +864,7 @@ func (naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (time.Ti
 
 // VerifyByChannel verifies a peer's signature on a message in the context
 // of a specific channel
-func (*naiveCryptoService) VerifyByChannel(_ gossipCommon.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+func (*naiveCryptoService) VerifyByChannel(_ gossipcommon.ChannelID, _ api.PeerIdentityType, _, _ []byte) error {
 	return nil
 }
 
@@ -711,13 +873,13 @@ func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) e
 }
 
 // GetPKIidOfCert returns the PKI-ID of a peer's identity
-func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) gossipCommon.PKIidType {
-	return gossipCommon.PKIidType(peerIdentity)
+func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) gossipcommon.PKIidType {
+	return gossipcommon.PKIidType(peerIdentity)
 }
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveCryptoService) VerifyBlock(chainID gossipCommon.ChainID, seqNum uint64, signedBlock []byte) error {
+func (*naiveCryptoService) VerifyBlock(chainID gossipcommon.ChannelID, seqNum uint64, signedBlock *common.Block) error {
 	return nil
 }
 
@@ -741,45 +903,89 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 var orgInChannelA = api.OrgIdentityType("ORG1")
 
 func TestInvalidInitialization(t *testing.T) {
-	// Test whenever gossip service is indeed singleton
 	grpcServer := grpc.NewServer()
-	socket, error := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 7611))
-	assert.NoError(t, error)
+	endpoint, socket := getAvailablePort(t)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	mockSignerSerializer := &mocks.SignerSerializer{}
+	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
+	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
+	assert.NoError(t, err)
+
+	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
+	require.NoError(t, err)
+
+	gossipService, err := New(
+		mockSignerSerializer,
+		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
+		endpoint,
+		grpcServer,
+		&naiveCryptoService{},
+		secAdv,
+		nil,
+		comm.NewCredentialSupport(),
+		grpcClient,
+		gossipConfig,
+		&ServiceConfig{},
+		&deliverservice.DeliverServiceConfig{
+			PeerTLSEnabled:              false,
+			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		},
+	)
+	assert.NoError(t, err)
+	gService := gossipService
+	defer gService.Stop()
 
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	err := InitGossipService(api.PeerIdentityType("IDENTITY"), "localhost:7611", grpcServer, nil,
-		&naiveCryptoService{}, secAdv, nil)
-	assert.NoError(t, err)
-	gService := GetGossipService().(*gossipServiceImpl)
-	defer gService.Stop()
-
-	dc, err := gService.deliveryFactory.Service(gService, []string{}, &naiveCryptoService{})
-	assert.Nil(t, dc)
-	assert.Error(t, err)
-
-	dc, err = gService.deliveryFactory.Service(gService, []string{"localhost:1984"}, &naiveCryptoService{})
+	dc := gService.deliveryFactory.Service(gService, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), &naiveCryptoService{})
 	assert.NotNil(t, dc)
-	assert.NoError(t, err)
 }
 
 func TestChannelConfig(t *testing.T) {
 	// Test whenever gossip service is indeed singleton
 	grpcServer := grpc.NewServer()
-	socket, error := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 6611))
-	assert.NoError(t, error)
+	endpoint, socket := getAvailablePort(t)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	mockSignerSerializer := &mocks.SignerSerializer{}
+	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
+	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
+	assert.NoError(t, err)
+
+	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
+
+	gossipService, err := New(
+		mockSignerSerializer,
+		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
+		endpoint,
+		grpcServer,
+		&naiveCryptoService{},
+		secAdv,
+		nil,
+		nil,
+		grpcClient,
+		gossipConfig,
+		&ServiceConfig{},
+		&deliverservice.DeliverServiceConfig{
+			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
+			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
+		},
+	)
+	assert.NoError(t, err)
+	gService := gossipService
+	defer gService.Stop()
 
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
-
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	error = InitGossipService(api.PeerIdentityType("IDENTITY"), "localhost:6611", grpcServer, nil,
-		&naiveCryptoService{}, secAdv, nil)
-	assert.NoError(t, error)
-	gService := GetGossipService().(*gossipServiceImpl)
-	defer gService.Stop()
 
 	jcm := &joinChannelMessage{seqNum: 1, members2AnchorPeers: map[string][]api.AnchorPeer{
 		"A": {{Host: "host", Port: 5000}},
@@ -796,7 +1002,20 @@ func TestChannelConfig(t *testing.T) {
 			},
 		},
 	}
-	gService.JoinChan(jcm, gossipCommon.ChainID("A"))
+	gService.JoinChan(jcm, gossipcommon.ChannelID("A"))
 	gService.updateAnchors(mc)
 	assert.True(t, gService.amIinChannel(string(orgInChannelA), mc))
+}
+
+func defaultDeliverClientDialOpts() []grpc.DialOption {
+	dialOpts := []grpc.DialOption{grpc.WithBlock()}
+	dialOpts = append(
+		dialOpts,
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+	kaOpts := comm.DefaultKeepaliveOptions
+	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
+
+	return dialOpts
 }

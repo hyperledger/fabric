@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package qscc
@@ -20,15 +10,30 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hyperledger/fabric-chaincode-go/shim"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
-
 	"github.com/hyperledger/fabric/core/aclmgmt"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/peer"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
+
+// LedgerGetter gets the PeerLedger associated with a channel.
+type LedgerGetter interface {
+	GetLedger(cid string) ledger.PeerLedger
+}
+
+// New returns an instance of QSCC.
+// Typically this is called once per peer.
+func New(aclProvider aclmgmt.ACLProvider, ledgers LedgerGetter) *LedgerQuerier {
+	return &LedgerQuerier{
+		aclProvider: aclProvider,
+		ledgers:     ledgers,
+	}
+}
+
+func (e *LedgerQuerier) Name() string              { return "qscc" }
+func (e *LedgerQuerier) Chaincode() shim.Chaincode { return e }
 
 // LedgerQuerier implements the ledger query functions, including:
 // - GetChainInfo returns BlockchainInfo
@@ -36,6 +41,8 @@ import (
 // - GetBlockByHash returns a block
 // - GetTransactionByID returns a transaction
 type LedgerQuerier struct {
+	aclProvider aclmgmt.ACLProvider
+	ledgers     LedgerGetter
 }
 
 var qscclogger = flogging.MustGetLogger("qscc")
@@ -71,14 +78,29 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	if len(args) < 2 {
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments, %d", len(args)))
 	}
+
 	fname := string(args[0])
 	cid := string(args[1])
+
+	sp, err := stub.GetSignedProposal()
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub, %s: %s", cid, err))
+	}
+
+	name, err := protoutil.InvokedChaincodeName(sp.ProposalBytes)
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to identify the called chaincode: %s", err))
+	}
+
+	if name != e.Name() {
+		return shim.Error(fmt.Sprintf("Rejecting invoke of QSCC from another chaincode because of potential for deadlocks, original invocation for '%s'", name))
+	}
 
 	if fname != GetChainInfo && len(args) < 3 {
 		return shim.Error(fmt.Sprintf("missing 3rd argument for %s", fname))
 	}
 
-	targetLedger := peer.GetLedger(cid)
+	targetLedger := e.ledgers.GetLedger(cid)
 	if targetLedger == nil {
 		return shim.Error(fmt.Sprintf("Invalid chain ID, %s", cid))
 	}
@@ -86,16 +108,9 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	qscclogger.Debugf("Invoke function: %s on chain: %s", fname, cid)
 
 	// Handle ACL:
-	// 1. get the signed proposal
-	sp, err := stub.GetSignedProposal()
-	if err != nil {
-		return shim.Error(fmt.Sprintf("Failed getting signed proposal from stub, %s: %s", cid, err))
-	}
-
-	// 2. check the channel reader policy
 	res := getACLResource(fname)
-	if err = aclmgmt.GetACLProvider().CheckACL(res, cid, sp); err != nil {
-		return shim.Error(fmt.Sprintf("Authorization request for [%s][%s] failed: [%s]", fname, cid, err))
+	if err = e.aclProvider.CheckACL(res, cid, sp); err != nil {
+		return shim.Error(fmt.Sprintf("access denied for [%s][%s]: [%s]", fname, cid, err))
 	}
 
 	switch fname {
@@ -124,7 +139,7 @@ func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed to get transaction with id %s, error %s", string(tid), err))
 	}
 
-	bytes, err := utils.Marshal(processedTran)
+	bytes, err := protoutil.Marshal(processedTran)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -149,7 +164,7 @@ func getBlockByNumber(vledger ledger.PeerLedger, number []byte) pb.Response {
 	//  This will preserve the transaction Payload header,
 	//  and client can do GetTransactionByID() if they want the full transaction details
 
-	bytes, err := utils.Marshal(block)
+	bytes, err := protoutil.Marshal(block)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -170,7 +185,7 @@ func getBlockByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 	//  This will preserve the transaction Payload header,
 	//  and client can do GetTransactionByID() if they want the full transaction details
 
-	bytes, err := utils.Marshal(block)
+	bytes, err := protoutil.Marshal(block)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -183,7 +198,7 @@ func getChainInfo(vledger ledger.PeerLedger) pb.Response {
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get block info with error %s", err))
 	}
-	bytes, err := utils.Marshal(binfo)
+	bytes, err := protoutil.Marshal(binfo)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -199,7 +214,7 @@ func getBlockByTxID(vledger ledger.PeerLedger, rawTxID []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed to get block for txID %s, error %s", txID, err))
 	}
 
-	bytes, err := utils.Marshal(block)
+	bytes, err := protoutil.Marshal(block)
 
 	if err != nil {
 		return shim.Error(err.Error())
@@ -209,5 +224,5 @@ func getBlockByTxID(vledger ledger.PeerLedger, rawTxID []byte) pb.Response {
 }
 
 func getACLResource(fname string) string {
-	return "QSCC." + fname
+	return "qscc/" + fname
 }

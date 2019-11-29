@@ -1,125 +1,34 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package scc
+package scc_test
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/common/sysccprovider"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	ccprovider2 "github.com/hyperledger/fabric/core/mocks/ccprovider"
-	"github.com/hyperledger/fabric/core/peer"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/core/scc/mock"
+	"github.com/onsi/gomega"
 )
 
-func init() {
-	viper.Set("chaincode.system", map[string]string{"lscc": "enable", "a": "enable"})
-	viper.Set("peer.fileSystemPath", os.TempDir())
-	ccprovider.RegisterChaincodeProviderFactory(&ccprovider2.MockCcProviderFactory{})
-}
-
-func newTestProvider() sysccprovider.SystemChaincodeProvider {
-	return (&ProviderFactory{Peer: peer.Default, PeerSupport: peer.DefaultSupport}).NewSystemChaincodeProvider()
+//go:generate counterfeiter -o mock/chaincode_stream_handler.go --fake-name ChaincodeStreamHandler . chaincodeStreamHandler
+type chaincodeStreamHandler interface {
+	scc.ChaincodeStreamHandler
 }
 
 func TestDeploy(t *testing.T) {
-	DeploySysCCs("")
-	f := func() {
-		DeploySysCCs("a")
-	}
-	assert.Panics(t, f)
-	ledgermgmt.InitializeTestEnv()
-	defer ledgermgmt.CleanupTestEnv()
-	err := peer.MockCreateChain("a")
-	fmt.Println(err)
-	deploySysCC("a", &SystemChaincode{
-		Enabled: true,
-		Name:    "lscc",
-	})
-}
+	gt := gomega.NewGomegaWithT(t)
 
-func TestDeDeploySysCC(t *testing.T) {
-	DeDeploySysCCs("")
-	f := func() {
-		DeDeploySysCCs("a")
-	}
-	assert.NotPanics(t, f)
-}
-
-func TestSCCProvider(t *testing.T) {
-	assert.NotNil(t, (&ProviderFactory{}).NewSystemChaincodeProvider())
-}
-
-func TestIsSysCC(t *testing.T) {
-	assert.True(t, IsSysCC("lscc"))
-	assert.False(t, IsSysCC("noSCC"))
-	assert.True(t, (newTestProvider()).IsSysCC("lscc"))
-	assert.False(t, (newTestProvider()).IsSysCC("noSCC"))
-}
-
-func TestIsSysCCAndNotInvokableCC2CC(t *testing.T) {
-	assert.False(t, IsSysCCAndNotInvokableCC2CC("lscc"))
-	assert.True(t, IsSysCC("cscc"))
-	assert.True(t, IsSysCCAndNotInvokableCC2CC("cscc"))
-	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
-	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("lscc"))
-	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableCC2CC("cscc"))
-}
-
-func TestIsSysCCAndNotInvokableExternal(t *testing.T) {
-	assert.False(t, IsSysCCAndNotInvokableExternal("cscc"))
-	assert.True(t, IsSysCC("cscc"))
-	assert.True(t, IsSysCCAndNotInvokableExternal("vscc"))
-	assert.False(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("cscc"))
-	assert.True(t, (newTestProvider()).IsSysCC("cscc"))
-	assert.True(t, (newTestProvider()).IsSysCCAndNotInvokableExternal("vscc"))
-}
-
-func TestSccProviderImpl_GetQueryExecutorForLedger(t *testing.T) {
-	qe, err := (newTestProvider()).GetQueryExecutorForLedger("")
-	assert.Nil(t, qe)
-	assert.Error(t, err)
-}
-
-func TestMockRegisterAndResetSysCCs(t *testing.T) {
-	orig := MockRegisterSysCCs([]*SystemChaincode{})
-	assert.NotEmpty(t, orig)
-	MockResetSysCCs(orig)
-	assert.Equal(t, len(orig), len(systemChaincodes))
-}
-
-func TestRegisterSysCC(t *testing.T) {
-	assert.NotPanics(t, func() { RegisterSysCCs() }, "expected successful init")
-
-	_, err := registerSysCC(&SystemChaincode{
-		Name:    "lscc",
-		Path:    "path",
-		Enabled: true,
-	})
-	assert.NoError(t, err)
-	_, err = registerSysCC(&SystemChaincode{
-		Name:    "lscc",
-		Path:    "path",
-		Enabled: true,
-	})
-	assert.Error(t, err)
-	assert.Contains(t, "path already registered", err)
+	csh := &mock.ChaincodeStreamHandler{}
+	doneC := make(chan struct{})
+	close(doneC)
+	csh.LaunchInProcReturns(doneC)
+	scc.DeploySysCC(&lifecycle.SCC{}, csh)
+	gt.Expect(csh.LaunchInProcCallCount()).To(gomega.Equal(1))
+	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal("_lifecycle.syscc"))
+	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(gomega.Equal(1))
 }

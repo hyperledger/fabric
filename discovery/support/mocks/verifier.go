@@ -4,19 +4,15 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/discovery/support/acl"
-	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 type Verifier struct {
-	VerifyByChannelStub        func(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error
+	VerifyByChannelStub        func(string, *protoutil.SignedData) error
 	verifyByChannelMutex       sync.RWMutex
 	verifyByChannelArgsForCall []struct {
-		chainID      common.ChainID
-		peerIdentity api.PeerIdentityType
-		signature    []byte
-		message      []byte
+		arg1 string
+		arg2 *protoutil.SignedData
 	}
 	verifyByChannelReturns struct {
 		result1 error
@@ -28,34 +24,23 @@ type Verifier struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Verifier) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature []byte, message []byte) error {
-	var signatureCopy []byte
-	if signature != nil {
-		signatureCopy = make([]byte, len(signature))
-		copy(signatureCopy, signature)
-	}
-	var messageCopy []byte
-	if message != nil {
-		messageCopy = make([]byte, len(message))
-		copy(messageCopy, message)
-	}
+func (fake *Verifier) VerifyByChannel(arg1 string, arg2 *protoutil.SignedData) error {
 	fake.verifyByChannelMutex.Lock()
 	ret, specificReturn := fake.verifyByChannelReturnsOnCall[len(fake.verifyByChannelArgsForCall)]
 	fake.verifyByChannelArgsForCall = append(fake.verifyByChannelArgsForCall, struct {
-		chainID      common.ChainID
-		peerIdentity api.PeerIdentityType
-		signature    []byte
-		message      []byte
-	}{chainID, peerIdentity, signatureCopy, messageCopy})
-	fake.recordInvocation("VerifyByChannel", []interface{}{chainID, peerIdentity, signatureCopy, messageCopy})
+		arg1 string
+		arg2 *protoutil.SignedData
+	}{arg1, arg2})
+	fake.recordInvocation("VerifyByChannel", []interface{}{arg1, arg2})
 	fake.verifyByChannelMutex.Unlock()
 	if fake.VerifyByChannelStub != nil {
-		return fake.VerifyByChannelStub(chainID, peerIdentity, signature, message)
+		return fake.VerifyByChannelStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.verifyByChannelReturns.result1
+	fakeReturns := fake.verifyByChannelReturns
+	return fakeReturns.result1
 }
 
 func (fake *Verifier) VerifyByChannelCallCount() int {
@@ -64,13 +49,22 @@ func (fake *Verifier) VerifyByChannelCallCount() int {
 	return len(fake.verifyByChannelArgsForCall)
 }
 
-func (fake *Verifier) VerifyByChannelArgsForCall(i int) (common.ChainID, api.PeerIdentityType, []byte, []byte) {
+func (fake *Verifier) VerifyByChannelCalls(stub func(string, *protoutil.SignedData) error) {
+	fake.verifyByChannelMutex.Lock()
+	defer fake.verifyByChannelMutex.Unlock()
+	fake.VerifyByChannelStub = stub
+}
+
+func (fake *Verifier) VerifyByChannelArgsForCall(i int) (string, *protoutil.SignedData) {
 	fake.verifyByChannelMutex.RLock()
 	defer fake.verifyByChannelMutex.RUnlock()
-	return fake.verifyByChannelArgsForCall[i].chainID, fake.verifyByChannelArgsForCall[i].peerIdentity, fake.verifyByChannelArgsForCall[i].signature, fake.verifyByChannelArgsForCall[i].message
+	argsForCall := fake.verifyByChannelArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Verifier) VerifyByChannelReturns(result1 error) {
+	fake.verifyByChannelMutex.Lock()
+	defer fake.verifyByChannelMutex.Unlock()
 	fake.VerifyByChannelStub = nil
 	fake.verifyByChannelReturns = struct {
 		result1 error
@@ -78,6 +72,8 @@ func (fake *Verifier) VerifyByChannelReturns(result1 error) {
 }
 
 func (fake *Verifier) VerifyByChannelReturnsOnCall(i int, result1 error) {
+	fake.verifyByChannelMutex.Lock()
+	defer fake.verifyByChannelMutex.Unlock()
 	fake.VerifyByChannelStub = nil
 	if fake.verifyByChannelReturnsOnCall == nil {
 		fake.verifyByChannelReturnsOnCall = make(map[int]struct {
@@ -112,5 +108,3 @@ func (fake *Verifier) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ acl.Verifier = new(Verifier)

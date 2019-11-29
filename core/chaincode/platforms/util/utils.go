@@ -1,118 +1,30 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package util
 
 import (
-	"archive/tar"
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+	"runtime"
+	"strings"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/util"
-	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/hyperledger/fabric/common/metadata"
+	"github.com/spf13/viper"
 )
 
-var logger = flogging.MustGetLogger("util")
-
-//ComputeHash computes contents hash based on previous hash
-func ComputeHash(contents []byte, hash []byte) []byte {
-	newSlice := make([]byte, len(hash)+len(contents))
-
-	//copy the contents
-	copy(newSlice[0:len(contents)], contents[:])
-
-	//add the previous hash
-	copy(newSlice[len(contents):], hash[:])
-
-	//compute new hash
-	hash = util.ComputeSHA256(newSlice)
-
-	return hash
-}
-
-//HashFilesInDir computes h=hash(h,file bytes) for each file in a directory
-//Directory entries are traversed recursively. In the end a single
-//hash value is returned for the entire directory structure
-func HashFilesInDir(rootDir string, dir string, hash []byte, tw *tar.Writer) ([]byte, error) {
-	currentDir := filepath.Join(rootDir, dir)
-	logger.Debugf("hashFiles %s", currentDir)
-	//ReadDir returns sorted list of files in dir
-	fis, err := ioutil.ReadDir(currentDir)
-	if err != nil {
-		return hash, fmt.Errorf("ReadDir failed %s\n", err)
-	}
-	for _, fi := range fis {
-		name := filepath.Join(dir, fi.Name())
-		if fi.IsDir() {
-			var err error
-			hash, err = HashFilesInDir(rootDir, name, hash, tw)
-			if err != nil {
-				return hash, err
-			}
-			continue
-		}
-		fqp := filepath.Join(rootDir, name)
-		buf, err := ioutil.ReadFile(fqp)
-		if err != nil {
-			logger.Errorf("Error reading %s\n", err)
-			return hash, err
-		}
-
-		//get the new hash from file contents
-		hash = ComputeHash(buf, hash)
-
-		if tw != nil {
-			is := bytes.NewReader(buf)
-			if err = cutil.WriteStreamToPackage(is, fqp, filepath.Join("src", name), tw); err != nil {
-				return hash, fmt.Errorf("Error adding file to tar %s", err)
-			}
-		}
-	}
-	return hash, nil
-}
-
-//IsCodeExist checks the chaincode if exists
-func IsCodeExist(tmppath string) error {
-	file, err := os.Open(tmppath)
-	if err != nil {
-		return fmt.Errorf("Could not open file %s", err)
-	}
-
-	fi, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("Could not stat file %s", err)
-	}
-
-	if !fi.IsDir() {
-		return fmt.Errorf("File %s is not dir\n", file.Name())
-	}
-
-	return nil
-}
+var logger = flogging.MustGetLogger("chaincode.platform.util")
 
 type DockerBuildOptions struct {
 	Image        string
-	Env          []string
 	Cmd          string
+	Env          []string
 	InputStream  io.Reader
 	OutputStream io.Writer
 }
@@ -135,19 +47,14 @@ type DockerBuildOptions struct {
 //
 // The input parameters are fairly simple:
 //      - Image:        (optional) The builder image to use or "chaincode.builder"
-//      - Env:          (optional) environment variables for the build environment.
 //      - Cmd:          The command to execute inside the container.
 //      - InputStream:  A tarball of files that will be expanded into /chaincode/input.
 //      - OutputStream: A tarball of files that will be gathered from /chaincode/output
 //                      after successful execution of Cmd.
 //-------------------------------------------------------------------------------------------
-func DockerBuild(opts DockerBuildOptions) error {
-	client, err := cutil.NewDockerClient()
-	if err != nil {
-		return fmt.Errorf("Error creating docker client: %s", err)
-	}
+func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 	if opts.Image == "" {
-		opts.Image = cutil.GetDockerfileFromConfig("chaincode.builder")
+		opts.Image = GetDockerImageFromConfig("chaincode.builder")
 		if opts.Image == "" {
 			return fmt.Errorf("No image provided and \"chaincode.builder\" default does not exist")
 		}
@@ -158,7 +65,7 @@ func DockerBuild(opts DockerBuildOptions) error {
 	//-----------------------------------------------------------------------------------
 	// Ensure the image exists locally, or pull it from a registry if it doesn't
 	//-----------------------------------------------------------------------------------
-	_, err = client.InspectImage(opts.Image)
+	_, err := client.InspectImage(opts.Image)
 	if err != nil {
 		logger.Debugf("Image %s does not exist locally, attempt pull", opts.Image)
 
@@ -169,13 +76,13 @@ func DockerBuild(opts DockerBuildOptions) error {
 	}
 
 	//-----------------------------------------------------------------------------------
-	// Create an ephemeral container, armed with our Env/Cmd
+	// Create an ephemeral container, armed with our Image/Cmd
 	//-----------------------------------------------------------------------------------
 	container, err := client.CreateContainer(docker.CreateContainerOptions{
 		Config: &docker.Config{
 			Image:        opts.Image,
-			Env:          opts.Env,
 			Cmd:          []string{"/bin/sh", "-c", opts.Cmd},
+			Env:          opts.Env,
 			AttachStdout: true,
 			AttachStderr: true,
 		},
@@ -200,7 +107,7 @@ func DockerBuild(opts DockerBuildOptions) error {
 	// Attach stdout buffer to capture possible compilation errors
 	//-----------------------------------------------------------------------------------
 	stdout := bytes.NewBuffer(nil)
-	_, err = client.AttachToContainerNonBlocking(docker.AttachToContainerOptions{
+	cw, err := client.AttachToContainerNonBlocking(docker.AttachToContainerOptions{
 		Container:    container.ID,
 		OutputStream: stdout,
 		ErrorStream:  stdout,
@@ -218,6 +125,7 @@ func DockerBuild(opts DockerBuildOptions) error {
 	//-----------------------------------------------------------------------------------
 	err = client.StartContainer(container.ID, nil)
 	if err != nil {
+		cw.Close()
 		return fmt.Errorf("Error executing build: %s \"%s\"", err, stdout.String())
 	}
 
@@ -226,11 +134,21 @@ func DockerBuild(opts DockerBuildOptions) error {
 	//-----------------------------------------------------------------------------------
 	retval, err := client.WaitContainer(container.ID)
 	if err != nil {
+		cw.Close()
 		return fmt.Errorf("Error waiting for container to complete: %s", err)
 	}
+
+	// Wait for stream copying to complete before accessing stdout.
+	cw.Close()
+	if err := cw.Wait(); err != nil {
+		logger.Errorf("attach wait failed: %s", err)
+	}
+
 	if retval > 0 {
 		return fmt.Errorf("Error returned from build: %d \"%s\"", retval, stdout.String())
 	}
+
+	logger.Debugf("Build output is %s", stdout.String())
 
 	//-----------------------------------------------------------------------------------
 	// Finally, download the result
@@ -244,4 +162,14 @@ func DockerBuild(opts DockerBuildOptions) error {
 	}
 
 	return nil
+}
+
+func GetDockerImageFromConfig(path string) string {
+	r := strings.NewReplacer(
+		"$(ARCH)", runtime.GOARCH,
+		"$(PROJECT_VERSION)", metadata.Version,
+		"$(DOCKER_NS)", metadata.DockerNamespace,
+		"$(BASE_DOCKER_NS)", metadata.BaseDockerNamespace)
+
+	return r.Replace(viper.GetString(path))
 }

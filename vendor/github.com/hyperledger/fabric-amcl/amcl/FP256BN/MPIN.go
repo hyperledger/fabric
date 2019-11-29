@@ -28,7 +28,7 @@ import "github.com/hyperledger/fabric-amcl/amcl"
 
 const MFS int=int(MODBYTES)
 const MGS int=int(MODBYTES)
-const PAS int=16
+//const PAS int=16
 const BAD_PARAMS int=-11
 const INVALID_POINT int=-14
 const WRONG_ORDER int=-18
@@ -42,7 +42,7 @@ const PBLEN int32=14      /* Number of bits in PIN */
 const TS int=10         /* 10 for 4 digit PIN, 14 for 6-digit PIN - 2^TS/TS approx = sqrt(MAXPIN) */
 const TRAP int=200      /* 200 for 4 digit PIN, 2000 for 6-digit PIN  - approx 2*sqrt(MAXPIN) */
 
-const MPIN_HASH_TYPE int=amcl.SHA256
+//const MPIN_HASH_TYPE int=amcl.SHA256
 
 func mpin_hash(sha int,c *FP4,U *ECP) []byte {
 	var w [MFS]byte
@@ -73,8 +73,8 @@ func mpin_hash(sha int,c *FP4,U *ECP) []byte {
 		h=H.Hash()
 	}
 	if h==nil {return nil}
-	R:=make([]byte,PAS)
-	for i:=0;i<PAS;i++ {R[i]=h[i]}
+	R:=make([]byte,AESKEY)
+	for i:=0;i<AESKEY;i++ {R[i]=h[i]}
 	return R
 }
 
@@ -227,7 +227,7 @@ func MPIN_RECOMBINE_G1(R1 []byte,R2 []byte,R []byte) int {
 
 	P.Add(Q)
 
-	P.ToBytes(R[:])
+	P.ToBytes(R[:],false)
 	return 0
 }
 
@@ -270,7 +270,7 @@ func MPIN_EXTRACT_FACTOR(sha int,CID []byte,factor int32,facbits int32,TOKEN []b
 	R=R.pinmul(factor,facbits)
 	P.Sub(R)
 
-	P.ToBytes(TOKEN)
+	P.ToBytes(TOKEN,false)
 
 	return 0
 }
@@ -285,7 +285,7 @@ func MPIN_RESTORE_FACTOR(sha int,CID []byte,factor int32,facbits int32,TOKEN []b
 	R=R.pinmul(factor,facbits)
 	P.Add(R)
 
-	P.ToBytes(TOKEN)
+	P.ToBytes(TOKEN,false)
 
 	return 0
 }
@@ -301,7 +301,7 @@ func MPIN_EXTRACT_PIN(sha int,CID []byte,pin int,TOKEN []byte) int {
 	R=R.pinmul(int32(pin)%MAXPIN,PBLEN)
 	P.Sub(R)
 
-	P.ToBytes(TOKEN)
+	P.ToBytes(TOKEN,false)
 
 	return 0
 }*/
@@ -320,8 +320,8 @@ func MPIN_CLIENT_2(X []byte,Y []byte,SEC []byte) int {
 
 	P=G1mul(P,px)
 	P.neg()
-	P.ToBytes(SEC)
-	//G1mul(P,px).ToBytes(SEC)
+	P.ToBytes(SEC,false)
+	//G1mul(P,px).ToBytes(SEC,false)
 	return 0
 }
 
@@ -356,29 +356,29 @@ func MPIN_CLIENT_1(sha int,date int,CLIENT_ID []byte,rng *amcl.RAND,X []byte,pin
 		W=ECP_mapit(h)
 		if xID!=nil {
 			P=G1mul(P,x)
-			P.ToBytes(xID)
+			P.ToBytes(xID,false)
 			W=G1mul(W,x)
 			P.Add(W)
 		} else {
 			P.Add(W)
 			P=G1mul(P,x)
 		}
-		if xCID!=nil {P.ToBytes(xCID)}
+		if xCID!=nil {P.ToBytes(xCID,false)}
 	} else {
 		if xID!=nil {
 			P=G1mul(P,x)
-			P.ToBytes(xID)
+			P.ToBytes(xID,false)
 		}
 	}
 
 
-	T.ToBytes(SEC)
+	T.ToBytes(SEC,false)
 	return 0
 }
 
 /* Extract Server Secret SST=S*Q where Q is fixed generator in G2 and S is master secret */
 func MPIN_GET_SERVER_SECRET(S []byte,SST []byte) int {
-	Q:=NewECP2fp2s(NewFP2bigs(NewBIGints(CURVE_Pxa),NewBIGints(CURVE_Pxb)),NewFP2bigs(NewBIGints(CURVE_Pya),NewBIGints(CURVE_Pyb)))
+	Q:=ECP2_generator(); 
 
 	s:=FromBytes(S)
 	Q=G2mul(Q,s)
@@ -410,7 +410,7 @@ func MPIN_GET_G1_MULTIPLE(rng *amcl.RAND,typ int,X []byte,G []byte,W []byte) int
 		if P.Is_infinity() {return INVALID_POINT}
 	} else {P=ECP_mapit(G)}
 
-	G1mul(P,x).ToBytes(W)
+	G1mul(P,x).ToBytes(W,false)
 	return 0
 }
 
@@ -426,7 +426,7 @@ func MPIN_GET_CLIENT_PERMIT(sha,date int,S []byte,CID []byte,CTT []byte) int {
 	P:=ECP_mapit(h)
 
 	s:=FromBytes(S)
-	G1mul(P,s).ToBytes(CTT)
+	G1mul(P,s).ToBytes(CTT,false)
 	return 0
 }
 
@@ -435,20 +435,20 @@ func MPIN_SERVER_1(sha int,date int,CID []byte,HID []byte,HTID []byte) {
 	h:=mhashit(sha,0,CID)
 	P:=ECP_mapit(h)
 	
-	P.ToBytes(HID);
+	P.ToBytes(HID,false);
 	if date!=0 {
-	//	if HID!=nil {P.ToBytes(HID)}
+	//	if HID!=nil {P.ToBytes(HID,false)}
 		h=mhashit(sha,int32(date),h)
 		R:=ECP_mapit(h)
 		P.Add(R)
-		P.ToBytes(HTID)
-	} //else {P.ToBytes(HID)}
+		P.ToBytes(HTID,false)
+	} //else {P.ToBytes(HID,false)}
 }
 
 /* Implement step 2 of MPin protocol on server side */
 func MPIN_SERVER_2(date int,HID []byte,HTID []byte,Y []byte,SST []byte,xID []byte,xCID []byte,mSEC []byte,E []byte,F []byte) int {
 //	q:=NewBIGints(Modulus)
-	Q:=NewECP2fp2s(NewFP2bigs(NewBIGints(CURVE_Pxa),NewBIGints(CURVE_Pxb)),NewFP2bigs(NewBIGints(CURVE_Pya),NewBIGints(CURVE_Pyb)))
+	Q:=ECP2_generator(); 
 
 	sQ:=ECP2_fromBytes(SST)
 	if sQ.Is_infinity() {return INVALID_POINT}	
@@ -475,7 +475,7 @@ func MPIN_SERVER_2(date int,HID []byte,HTID []byte,Y []byte,SST []byte,xID []byt
 
 	P=G1mul(P,y)
 	P.Add(R)
-	P.Affine()
+	//P.Affine()
 	R=ECP_fromBytes(mSEC)
 	if R.Is_infinity() {return INVALID_POINT}
 
@@ -496,7 +496,7 @@ func MPIN_SERVER_2(date int,HID []byte,HTID []byte,Y []byte,SST []byte,xID []byt
 
 				P=G1mul(P,y)
 				P.Add(R)
-				P.Affine()
+				//P.Affine()
 			}
 			g=Ate(Q,P)
 			g=Fexp(g)
@@ -565,7 +565,7 @@ func MPIN_PRECOMPUTE(TOKEN []byte,CID []byte,G1 []byte,G2 []byte) int {
 
 	P=ECP_mapit(CID)
 
-	Q:=NewECP2fp2s(NewFP2bigs(NewBIGints(CURVE_Pxa),NewBIGints(CURVE_Pxb)),NewFP2bigs(NewBIGints(CURVE_Pya),NewBIGints(CURVE_Pyb)))
+	Q:=ECP2_generator(); 
 
 	g=Ate(Q,T)
 	g=Fexp(g)
@@ -656,7 +656,7 @@ func MPIN_CLIENT_KEY(sha int,G1 []byte,G2 []byte,pin int,R []byte,X []byte,H []b
 */
 	t:=mpin_hash(sha,c,W);
 
-	for i:=0;i<PAS;i++ {CK[i]=t[i]}
+	for i:=0;i<AESKEY;i++ {CK[i]=t[i]}
 
 	return 0
 }
@@ -682,7 +682,7 @@ func MPIN_SERVER_KEY(sha int,Z []byte,SST []byte,W []byte,H []byte,HID []byte,xI
 	h:=FromBytes(H)
 	A=G1mul(A,h)	// new
 	R.Add(A)
-	R.Affine()
+	//R.Affine()
 
 	U=G1mul(U,w)
 	g:=Ate(sQ,R)
@@ -692,7 +692,7 @@ func MPIN_SERVER_KEY(sha int,Z []byte,SST []byte,W []byte,H []byte,HID []byte,xI
 
 	t:=mpin_hash(sha,c,U)
 
-	for i:=0;i<PAS;i++ {SK[i]=t[i]}
+	for i:=0;i<AESKEY;i++ {SK[i]=t[i]}
 
 	return 0
 }

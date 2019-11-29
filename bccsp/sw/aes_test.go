@@ -19,11 +19,10 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/rand"
+	"io"
 	"math/big"
 	mrand "math/rand"
 	"testing"
-
-	"io"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/mocks"
@@ -504,7 +503,7 @@ func TestAESRelatedUtilFunctions(t *testing.T) {
 			t.Fatalf("Failed decrypting [%s]", err)
 		}
 
-		if 0 != bytes.Compare(msg, msg2) {
+		if !bytes.Equal(msg, msg2) {
 			t.Fatalf("Wrong decryption output [%x][%x]", msg, msg2)
 		}
 	}
@@ -525,7 +524,7 @@ func TestVariousAESKeyEncoding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed converting PEM to AES key [%s]", err)
 	}
-	if 0 != bytes.Compare(key, keyFromPEM) {
+	if !bytes.Equal(key, keyFromPEM) {
 		t.Fatalf("Failed converting PEM to AES key. Keys are different [%x][%x]", key, keyFromPEM)
 	}
 
@@ -538,7 +537,7 @@ func TestVariousAESKeyEncoding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed converting encrypted PEM to AES key [%s]", err)
 	}
-	if 0 != bytes.Compare(key, keyFromPEM) {
+	if !bytes.Equal(key, keyFromPEM) {
 		t.Fatalf("Failed converting encrypted PEM to AES key. Keys are different [%x][%x]", key, keyFromPEM)
 	}
 }
@@ -603,10 +602,10 @@ func TestAESCBCPKCS7EncryptorDecrypt(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid options. Either IV or PRNG should be different from nil, or both nil.")
 
-	ct, err := encryptor.Encrypt(k, msg, bccsp.AESCBCPKCS7ModeOpts{})
+	_, err = encryptor.Encrypt(k, msg, bccsp.AESCBCPKCS7ModeOpts{})
 	assert.NoError(t, err)
 
-	ct, err = encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
+	ct, err := encryptor.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
 	assert.NoError(t, err)
 
 	decryptor := &aescbcpkcs7Decryptor{}

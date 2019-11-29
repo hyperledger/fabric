@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package fsblkstorage
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/pkg/errors"
 )
 
 // constructCheckpointInfoFromBlockFiles scans the last blockfile (if any) and construct the checkpoint info
@@ -45,7 +45,7 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 	fileInfo := getFileInfoOrPanic(rootDir, lastFileNum)
 	logger.Debugf("Last Block file info: FileName=[%s], FileSize=[%d]", fileInfo.Name(), fileInfo.Size())
 	if lastBlockBytes, endOffsetLastBlock, numBlocksInFile, err = scanForLastCompleteBlock(rootDir, lastFileNum, 0); err != nil {
-		logger.Errorf("Error while scanning last file [file num=%d]: %s", lastFileNum, err)
+		logger.Errorf("Error scanning last file [num=%d]: %s", lastFileNum, err)
 		return nil, err
 	}
 
@@ -54,14 +54,14 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 		fileInfo := getFileInfoOrPanic(rootDir, secondLastFileNum)
 		logger.Debugf("Second last Block file info: FileName=[%s], FileSize=[%d]", fileInfo.Name(), fileInfo.Size())
 		if lastBlockBytes, _, _, err = scanForLastCompleteBlock(rootDir, secondLastFileNum, 0); err != nil {
-			logger.Errorf("Error while scanning second last file [file num=%d]: %s", secondLastFileNum, err)
+			logger.Errorf("Error scanning second last file [num=%d]: %s", secondLastFileNum, err)
 			return nil, err
 		}
 	}
 
 	if lastBlockBytes != nil {
 		if lastBlock, err = deserializeBlock(lastBlockBytes); err != nil {
-			logger.Errorf("Error deserializing last block: %s. Block bytes length = %d", err, len(lastBlockBytes))
+			logger.Errorf("Error deserializing last block: %s. Block bytes length: %d", err, len(lastBlockBytes))
 			return nil, err
 		}
 		lastBlockNumber = lastBlock.Header.Number
@@ -77,12 +77,59 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 	return cpInfo, nil
 }
 
+// binarySearchFileNumForBlock locates the file number that contains the given block number.
+// This function assumes that the caller invokes this function with a block number that has been commited
+// For any uncommitted block, this function returns the last file present
+func binarySearchFileNumForBlock(rootDir string, blockNum uint64) (int, error) {
+	cpInfo, err := constructCheckpointInfoFromBlockFiles(rootDir)
+	if err != nil {
+		return -1, err
+	}
+
+	beginFile := 0
+	endFile := cpInfo.latestFileChunkSuffixNum
+
+	for endFile != beginFile {
+		searchFile := beginFile + (endFile-beginFile)/2 + 1
+		n, err := retriveFirstBlockNumFromFile(rootDir, searchFile)
+		if err != nil {
+			return -1, err
+		}
+		switch {
+		case n == blockNum:
+			return searchFile, nil
+		case n > blockNum:
+			endFile = searchFile - 1
+		case n < blockNum:
+			beginFile = searchFile
+		}
+	}
+	return beginFile, nil
+}
+
+func retriveFirstBlockNumFromFile(rootDir string, fileNum int) (uint64, error) {
+	s, err := newBlockfileStream(rootDir, fileNum, 0)
+	if err != nil {
+		return 0, err
+	}
+	defer s.close()
+	bb, err := s.nextBlockBytes()
+	if err != nil {
+		return 0, err
+	}
+	blockInfo, err := extractSerializedBlockInfo(bb)
+	if err != nil {
+		return 0, err
+	}
+	return blockInfo.blockHeader.Number, nil
+}
+
 func retrieveLastFileSuffix(rootDir string) (int, error) {
 	logger.Debugf("retrieveLastFileSuffix()")
 	biggestFileNum := -1
 	filesInfo, err := ioutil.ReadDir(rootDir)
 	if err != nil {
-		return -1, err
+		return -1, errors.Wrapf(err, "error reading dir %s", rootDir)
 	}
 	for _, fileInfo := range filesInfo {
 		name := fileInfo.Name()
@@ -111,7 +158,7 @@ func getFileInfoOrPanic(rootDir string, fileNum int) os.FileInfo {
 	filePath := deriveBlockfilePath(rootDir, fileNum)
 	fileInfo, err := os.Lstat(filePath)
 	if err != nil {
-		panic(fmt.Errorf("Error in retrieving file info for file num = %d", fileNum))
+		panic(errors.Wrapf(err, "error retrieving file info for file number %d", fileNum))
 	}
 	return fileInfo
 }

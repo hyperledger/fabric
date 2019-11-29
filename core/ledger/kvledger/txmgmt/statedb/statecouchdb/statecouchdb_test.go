@@ -1,227 +1,467 @@
 /*
-Copyright IBM Corp. 2016, 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package statecouchdb
 
 import (
-	"archive/tar"
-	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
-	"github.com/spf13/viper"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
+	"github.com/hyperledger/fabric/integration/runner"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
+	flogging.ActivateSpec("statecouchdb=debug")
 
-	// Read the core.yaml file for default config.
-	ledgertestutil.SetupCoreYAMLConfig()
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/statecouchdb")
+	address, cleanup := couchDBSetup()
+	couchAddress = address
 
-	// Switch to CouchDB
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
+	rc := m.Run()
+	cleanup()
+	os.Exit(rc)
+}
 
-	// both vagrant and CI have couchdb configured at host "couchdb"
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
-	// Replace with correct username/password such as
-	// admin/admin if user security is enabled on couchdb.
-	viper.Set("ledger.state.couchDBConfig.username", "")
-	viper.Set("ledger.state.couchDBConfig.password", "")
-	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
-	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 10)
-	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
+func couchDBSetup() (addr string, cleanup func()) {
+	externalCouch, set := os.LookupEnv("COUCHDB_ADDR")
+	if set {
+		return externalCouch, func() {}
+	}
 
-	//run the actual test
-	result := m.Run()
-
-	//revert to default goleveldb
-	viper.Set("ledger.state.stateDatabase", "goleveldb")
-	os.Exit(result)
+	couchDB := &runner.CouchDB{}
+	if err := couchDB.Start(); err != nil {
+		err := fmt.Errorf("failed to start couchDB: %s", err)
+		panic(err)
+	}
+	return couchDB.Address(), func() { couchDB.Stop() }
 }
 
 func TestBasicRW(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testbasicrw_")
-	env.Cleanup("testbasicrw_ns")
-	env.Cleanup("testbasicrw_ns1")
-	env.Cleanup("testbasicrw_ns2")
-	defer env.Cleanup("testbasicrw_")
-	defer env.Cleanup("testbasicrw_ns")
-	defer env.Cleanup("testbasicrw_ns1")
-	defer env.Cleanup("testbasicrw_ns2")
+	defer env.Cleanup()
 	commontests.TestBasicRW(t, env.DBProvider)
 
 }
 
+// TestGetStateFromCache checks cache hits, cache misses, and cache
+// updates during GetState call.
+func TestGetStateFromCache(t *testing.T) {
+	cache := statedb.NewCache(32, []string{"lscc"})
+
+	env := newTestVDBEnvWithCache(t, cache)
+	defer env.Cleanup()
+	chainID := "testgetstatefromcache"
+	db, err := env.DBProvider.GetDBHandle(chainID)
+	require.NoError(t, err)
+
+	// scenario 1: get state would receives a
+	// cache miss as the given key does not exist.
+	// As the key does not exist in the
+	// db also, get state call would not update
+	// the cache.
+	vv, err := db.GetState("ns", "key1")
+	require.NoError(t, err)
+	require.Nil(t, vv)
+	testDoesNotExistInCache(t, cache, chainID, "ns", "key1")
+
+	// scenario 2: get state would receive a cache hit.
+	// directly store an entry in the cache
+	cacheValue := &statedb.CacheValue{
+		Value:          []byte("value1"),
+		Metadata:       []byte("meta1"),
+		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		AdditionalInfo: []byte("rev1"),
+	}
+	require.NoError(t, cache.PutState(chainID, "ns", "key1", cacheValue))
+
+	vv, err = db.GetState("ns", "key1")
+	expectedVV, err := constructVersionedValue(cacheValue)
+	require.NoError(t, err)
+	require.Equal(t, expectedVV, vv)
+
+	// scenario 3: get state would receives a
+	// cache miss as the given key does not present.
+	// The value associated with the key would be
+	// fetched from the database and the cache would
+	// be updated accordingly.
+
+	// store an entry in the db
+	batch := statedb.NewUpdateBatch()
+	vv2 := &statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
+	batch.PutValAndMetadata("lscc", "key1", vv2.Value, vv2.Metadata, vv2.Version)
+	savePoint := version.NewHeight(1, 2)
+	db.ApplyUpdates(batch, savePoint)
+	// Note that the ApplyUpdates() updates only the existing entry in the cache. Currently, the
+	// cache has only ns, key1 but we are storing lscc, key1. Hence, no changes would happen in the cache.
+	testDoesNotExistInCache(t, cache, chainID, "lscc", "key1")
+
+	// calling GetState() would update the cache
+	vv, err = db.GetState("lscc", "key1")
+	require.NoError(t, err)
+	require.Equal(t, vv2, vv)
+
+	// cache should have been updated with lscc, key1
+	nsdb, err := db.(*VersionedDB).getNamespaceDBHandle("lscc")
+	require.NoError(t, err)
+	testExistInCache(t, nsdb, cache, chainID, "lscc", "key1", vv2)
+}
+
+// TestGetVersionFromCache checks cache hits, cache misses, and
+// updates during GetVersion call.
+func TestGetVersionFromCache(t *testing.T) {
+	cache := statedb.NewCache(32, []string{"lscc"})
+
+	env := newTestVDBEnvWithCache(t, cache)
+	defer env.Cleanup()
+	chainID := "testgetstatefromcache"
+	db, err := env.DBProvider.GetDBHandle(chainID)
+	require.NoError(t, err)
+
+	// scenario 1: get version would receives a
+	// cache miss as the given key does not exist.
+	// As the key does not exist in the
+	// db also, get version call would not update
+	// the cache.
+	ver, err := db.GetVersion("ns", "key1")
+	require.Nil(t, err)
+	require.Nil(t, ver)
+	testDoesNotExistInCache(t, cache, chainID, "ns", "key1")
+
+	// scenario 2: get version would receive a cache hit.
+	// directly store an entry in the cache
+	cacheValue := &statedb.CacheValue{
+		Value:          []byte("value1"),
+		Metadata:       []byte("meta1"),
+		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		AdditionalInfo: []byte("rev1"),
+	}
+	require.NoError(t, cache.PutState(chainID, "ns", "key1", cacheValue))
+
+	ver, err = db.GetVersion("ns", "key1")
+	expectedVer, _, err := version.NewHeightFromBytes(cacheValue.VersionBytes)
+	require.NoError(t, err)
+	require.Equal(t, expectedVer, ver)
+
+	// scenario 3: get version would receives a
+	// cache miss as the given key does not present.
+	// The value associated with the key would be
+	// fetched from the database and the cache would
+	// be updated accordingly.
+
+	// store an entry in the db
+	batch := statedb.NewUpdateBatch()
+	vv2 := &statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
+	batch.PutValAndMetadata("lscc", "key1", vv2.Value, vv2.Metadata, vv2.Version)
+	savePoint := version.NewHeight(1, 2)
+	db.ApplyUpdates(batch, savePoint)
+	// Note that the ApplyUpdates() updates only the existing entry in the cache. Currently, the
+	// cache has only ns, key1 but we are storing lscc, key1. Hence, no changes would happen in the cache.
+	testDoesNotExistInCache(t, cache, chainID, "lscc", "key1")
+
+	// calling GetVersion() would update the cache
+	ver, err = db.GetVersion("lscc", "key1")
+	require.NoError(t, err)
+	require.Equal(t, vv2.Version, ver)
+
+	// cache should have been updated with lscc, key1
+	nsdb, err := db.(*VersionedDB).getNamespaceDBHandle("lscc")
+	require.NoError(t, err)
+	testExistInCache(t, nsdb, cache, chainID, "lscc", "key1", vv2)
+}
+
+// TestGetMultipleStatesFromCache checks cache hits, cache misses,
+// and updates during GetStateMultipleKeys call.
+func TestGetMultipleStatesFromCache(t *testing.T) {
+	cache := statedb.NewCache(32, []string{"lscc"})
+
+	env := newTestVDBEnvWithCache(t, cache)
+	defer env.Cleanup()
+	chainID := "testgetmultiplestatesfromcache"
+	db, err := env.DBProvider.GetDBHandle(chainID)
+	require.NoError(t, err)
+
+	// scenario: given 5 keys, get multiple states find
+	// 2 keys in the cache. The remaining 2 keys would be fetched
+	// from the database and the cache would be updated. The last
+	// key is not present in the db and hence it won't be sent to
+	// the cache.
+
+	// key1 and key2 exist only in the cache
+	cacheValue1 := &statedb.CacheValue{
+		Value:          []byte("value1"),
+		Metadata:       []byte("meta1"),
+		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		AdditionalInfo: []byte("rev1"),
+	}
+	require.NoError(t, cache.PutState(chainID, "ns", "key1", cacheValue1))
+	cacheValue2 := &statedb.CacheValue{
+		Value:          []byte("value2"),
+		Metadata:       []byte("meta2"),
+		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		AdditionalInfo: []byte("rev2"),
+	}
+	require.NoError(t, cache.PutState(chainID, "ns", "key2", cacheValue2))
+
+	// key3 and key4 exist only in the db
+	batch := statedb.NewUpdateBatch()
+	vv3 := &statedb.VersionedValue{Value: []byte("value3"), Metadata: []byte("meta3"), Version: version.NewHeight(1, 1)}
+	batch.PutValAndMetadata("ns", "key3", vv3.Value, vv3.Metadata, vv3.Version)
+	vv4 := &statedb.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 1)}
+	batch.PutValAndMetadata("ns", "key4", vv4.Value, vv4.Metadata, vv4.Version)
+	savePoint := version.NewHeight(1, 2)
+	db.ApplyUpdates(batch, savePoint)
+
+	testDoesNotExistInCache(t, cache, chainID, "ns", "key3")
+	testDoesNotExistInCache(t, cache, chainID, "ns", "key4")
+
+	// key5 does not exist at all while key3 and key4 does not exist in the cache
+	vvalues, err := db.GetStateMultipleKeys("ns", []string{"key1", "key2", "key3", "key4", "key5"})
+	require.Nil(t, err)
+	vv1, err := constructVersionedValue(cacheValue1)
+	require.NoError(t, err)
+	vv2, err := constructVersionedValue(cacheValue2)
+	require.NoError(t, err)
+	require.Equal(t, []*statedb.VersionedValue{vv1, vv2, vv3, vv4, nil}, vvalues)
+
+	// cache should have been updated with key3 and key4
+	nsdb, err := db.(*VersionedDB).getNamespaceDBHandle("ns")
+	require.NoError(t, err)
+	testExistInCache(t, nsdb, cache, chainID, "ns", "key3", vv3)
+	testExistInCache(t, nsdb, cache, chainID, "ns", "key4", vv4)
+}
+
+// TestCacheUpdatesAfterCommit checks whether the cache is updated
+// after a commit of a update batch.
+func TestCacheUpdatesAfterCommit(t *testing.T) {
+	cache := statedb.NewCache(32, []string{"lscc"})
+
+	env := newTestVDBEnvWithCache(t, cache)
+	defer env.Cleanup()
+	chainID := "testcacheupdatesaftercommit"
+	db, err := env.DBProvider.GetDBHandle(chainID)
+	require.NoError(t, err)
+
+	// scenario: cache has 4 keys while the commit operation
+	// updates 2 of those keys, delete the remaining 2 keys, and
+	// adds a new key. At the end of the commit operation, only
+	// those 2 keys should be present with the recent value
+	// in the cache and the new key should not be present in the cache.
+
+	// store 4 keys in the db
+	batch := statedb.NewUpdateBatch()
+	vv1 := &statedb.VersionedValue{Value: []byte("value1"), Metadata: []byte("meta1"), Version: version.NewHeight(1, 2)}
+	vv2 := &statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
+	vv3 := &statedb.VersionedValue{Value: []byte("value3"), Metadata: []byte("meta3"), Version: version.NewHeight(1, 2)}
+	vv4 := &statedb.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 2)}
+
+	batch.PutValAndMetadata("ns1", "key1", vv1.Value, vv1.Metadata, vv1.Version)
+	batch.PutValAndMetadata("ns1", "key2", vv2.Value, vv2.Metadata, vv2.Version)
+	batch.PutValAndMetadata("ns2", "key1", vv3.Value, vv3.Metadata, vv3.Version)
+	batch.PutValAndMetadata("ns2", "key2", vv4.Value, vv4.Metadata, vv4.Version)
+	savePoint := version.NewHeight(1, 5)
+	db.ApplyUpdates(batch, savePoint)
+
+	// key1, key2 in ns1 and ns2 would not be in cache
+	testDoesNotExistInCache(t, cache, chainID, "ns1", "key1")
+	testDoesNotExistInCache(t, cache, chainID, "ns1", "key2")
+	testDoesNotExistInCache(t, cache, chainID, "ns2", "key1")
+	testDoesNotExistInCache(t, cache, chainID, "ns2", "key2")
+
+	// add key1 and key2 from ns1 to the cache
+	_, err = db.GetState("ns1", "key1")
+	require.NoError(t, err)
+	_, err = db.GetState("ns1", "key2")
+	require.NoError(t, err)
+	// add key1 and key2 from ns2 to the cache
+	_, err = db.GetState("ns2", "key1")
+	require.NoError(t, err)
+	_, err = db.GetState("ns2", "key2")
+	require.NoError(t, err)
+
+	v, err := cache.GetState(chainID, "ns1", "key1")
+	require.NoError(t, err)
+	ns1key1rev := string(v.AdditionalInfo)
+
+	v, err = cache.GetState(chainID, "ns1", "key2")
+	require.NoError(t, err)
+	ns1key2rev := string(v.AdditionalInfo)
+
+	// update key1 and key2 in ns1. delete key1 and key2 in ns2. add a new key3 in ns2.
+	batch = statedb.NewUpdateBatch()
+	vv1Update := &statedb.VersionedValue{Value: []byte("new-value1"), Metadata: []byte("meta1"), Version: version.NewHeight(2, 2)}
+	vv2Update := &statedb.VersionedValue{Value: []byte("new-value2"), Metadata: []byte("meta2"), Version: version.NewHeight(2, 2)}
+	vv3Update := &statedb.VersionedValue{Version: version.NewHeight(2, 4)}
+	vv4Update := &statedb.VersionedValue{Version: version.NewHeight(2, 5)}
+	vv5 := &statedb.VersionedValue{Value: []byte("value5"), Metadata: []byte("meta5"), Version: version.NewHeight(1, 2)}
+
+	batch.PutValAndMetadata("ns1", "key1", vv1Update.Value, vv1Update.Metadata, vv1Update.Version)
+	batch.PutValAndMetadata("ns1", "key2", vv2Update.Value, vv2Update.Metadata, vv2Update.Version)
+	batch.Delete("ns2", "key1", vv3Update.Version)
+	batch.Delete("ns2", "key2", vv4Update.Version)
+	batch.PutValAndMetadata("ns2", "key3", vv5.Value, vv5.Metadata, vv5.Version)
+	savePoint = version.NewHeight(2, 5)
+	db.ApplyUpdates(batch, savePoint)
+
+	// cache should have only the update key1 and key2 in ns1
+	cacheValue, err := cache.GetState(chainID, "ns1", "key1")
+	require.NoError(t, err)
+	vv, err := constructVersionedValue(cacheValue)
+	require.NoError(t, err)
+	require.Equal(t, vv1Update, vv)
+	require.NotEqual(t, ns1key1rev, string(cacheValue.AdditionalInfo))
+
+	cacheValue, err = cache.GetState(chainID, "ns1", "key2")
+	require.NoError(t, err)
+	vv, err = constructVersionedValue(cacheValue)
+	require.NoError(t, err)
+	require.Equal(t, vv2Update, vv)
+	require.NotEqual(t, ns1key2rev, string(cacheValue.AdditionalInfo))
+
+	testDoesNotExistInCache(t, cache, chainID, "ns2", "key1")
+	testDoesNotExistInCache(t, cache, chainID, "ns2", "key2")
+	testDoesNotExistInCache(t, cache, chainID, "ns2", "key3")
+}
+
 func TestMultiDBBasicRW(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testmultidbbasicrw_")
-	env.Cleanup("testmultidbbasicrw_ns1")
-	env.Cleanup("testmultidbbasicrw2_")
-	env.Cleanup("testmultidbbasicrw2_ns1")
-	defer env.Cleanup("testmultidbbasicrw_")
-	defer env.Cleanup("testmultidbbasicrw_ns1")
-	defer env.Cleanup("testmultidbbasicrw2_")
-	defer env.Cleanup("testmultidbbasicrw2_ns1")
+	defer env.Cleanup()
 	commontests.TestMultiDBBasicRW(t, env.DBProvider)
 
 }
 
 func TestDeletes(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testdeletes_")
-	env.Cleanup("testdeletes_ns")
-	defer env.Cleanup("testdeletes_")
-	defer env.Cleanup("testdeletes_ns")
+	defer env.Cleanup()
 	commontests.TestDeletes(t, env.DBProvider)
 }
 
 func TestIterator(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testiterator_")
-	env.Cleanup("testiterator_ns1")
-	env.Cleanup("testiterator_ns2")
-	env.Cleanup("testiterator_ns3")
-	defer env.Cleanup("testiterator_")
-	defer env.Cleanup("testiterator_ns1")
-	defer env.Cleanup("testiterator_ns2")
-	defer env.Cleanup("testiterator_ns3")
+	defer env.Cleanup()
 	commontests.TestIterator(t, env.DBProvider)
-}
-
-func TestEncodeDecodeValueAndVersion(t *testing.T) {
-	testValueAndVersionEncoding(t, []byte("value1"), version.NewHeight(1, 2))
-	testValueAndVersionEncoding(t, []byte{}, version.NewHeight(50, 50))
-}
-
-func testValueAndVersionEncoding(t *testing.T, value []byte, version *version.Height) {
-	encodedValue := statedb.EncodeValue(value, version)
-	val, ver := statedb.DecodeValue(encodedValue)
-	testutil.AssertEquals(t, val, value)
-	testutil.AssertEquals(t, ver, version)
 }
 
 // The following tests are unique to couchdb, they are not used in leveldb
 //  query test
 func TestQuery(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testquery_")
-	env.Cleanup("testquery_ns1")
-	env.Cleanup("testquery_ns2")
-	env.Cleanup("testquery_ns3")
-	defer env.Cleanup("testquery_")
-	defer env.Cleanup("testquery_ns1")
-	defer env.Cleanup("testquery_ns2")
-	defer env.Cleanup("testquery_ns3")
+	defer env.Cleanup()
 	commontests.TestQuery(t, env.DBProvider)
 }
 
 func TestGetStateMultipleKeys(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testgetmultiplekeys_")
-	env.Cleanup("testgetmultiplekeys_ns1")
-	env.Cleanup("testgetmultiplekeys_ns2")
-	defer env.Cleanup("testgetmultiplekeys_")
-	defer env.Cleanup("testgetmultiplekeys_ns1")
-	defer env.Cleanup("testgetmultiplekeys_ns2")
+	defer env.Cleanup()
 	commontests.TestGetStateMultipleKeys(t, env.DBProvider)
 }
 
 func TestGetVersion(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testgetversion_")
-	env.Cleanup("testgetversion_ns")
-	env.Cleanup("testgetversion_ns2")
-	defer env.Cleanup("testgetversion_")
-	defer env.Cleanup("testgetversion_ns")
-	defer env.Cleanup("testgetversion_ns2")
+	defer env.Cleanup()
 	commontests.TestGetVersion(t, env.DBProvider)
 }
 
 func TestSmallBatchSize(t *testing.T) {
-	viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 2)
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testsmallbatchsize_")
-	env.Cleanup("testsmallbatchsize_ns1")
-	defer env.Cleanup("testsmallbatchsize_")
-	defer env.Cleanup("testsmallbatchsize_ns1")
-	defer viper.Set("ledger.state.couchDBConfig.maxBatchUpdateSize", 1000)
+	defer env.Cleanup()
 	commontests.TestSmallBatchSize(t, env.DBProvider)
 }
 
 func TestBatchRetry(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testbatchretry_")
-	env.Cleanup("testbatchretry_ns")
-	env.Cleanup("testbatchretry_ns1")
-	defer env.Cleanup("testbatchretry_")
-	defer env.Cleanup("testbatchretry_ns")
-	defer env.Cleanup("testbatchretry_ns1")
+	defer env.Cleanup()
 	commontests.TestBatchWithIndividualRetry(t, env.DBProvider)
+}
+
+func TestValueAndMetadataWrites(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestValueAndMetadataWrites(t, env.DBProvider)
+}
+
+func TestPaginatedRangeQuery(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestPaginatedRangeQuery(t, env.DBProvider)
 }
 
 // TestUtilityFunctions tests utility functions
 func TestUtilityFunctions(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testutilityfunctions_")
-	defer env.Cleanup("testutilityfunctions_")
+	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
-	// BytesKeySuppoted should be false for CouchDB
-	byteKeySupported := db.BytesKeySuppoted()
-	testutil.AssertEquals(t, byteKeySupported, false)
+	// BytesKeySupported should be false for CouchDB
+	byteKeySupported := db.BytesKeySupported()
+	assert.False(t, byteKeySupported)
 
 	// ValidateKeyValue should return nil for a valid key and value
 	err = db.ValidateKeyValue("testKey", []byte("Some random bytes"))
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
-	// ValidateKey should return an error for an invalid key
+	// ValidateKeyValue should return an error for a key that is not a utf-8 valid string
 	err = db.ValidateKeyValue(string([]byte{0xff, 0xfe, 0xfd}), []byte("Some random bytes"))
-	testutil.AssertError(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
+	assert.Error(t, err, "ValidateKey should have thrown an error for an invalid utf-8 string")
 
-	// ValidateKey should return an error for a json value that already contains one of the reserved fields
+	// ValidateKeyValue should return an error for a key that is an empty string
+	assert.EqualError(t, db.ValidateKeyValue("", []byte("validValue")),
+		"invalid key. Empty string is not supported as a key by couchdb")
+
+	reservedFields := []string{"~version", "_id", "_test"}
+
+	// ValidateKeyValue should return an error for a json value that contains one of the reserved fields
+	// at the top level
 	for _, reservedField := range reservedFields {
 		testVal := fmt.Sprintf(`{"%s":"dummyVal"}`, reservedField)
 		err = db.ValidateKeyValue("testKey", []byte(testVal))
-		testutil.AssertError(t, err, fmt.Sprintf(
-			"ValidateKey should have thrown an error for a json value %s, as contains one of the rserved fields", testVal))
+		assert.Error(t, err, fmt.Sprintf(
+			"ValidateKey should have thrown an error for a json value %s, as contains one of the reserved fields", testVal))
 	}
+
+	// ValidateKeyValue should not return an error for a json value that contains one of the reserved fields
+	// if not at the top level
+	for _, reservedField := range reservedFields {
+		testVal := fmt.Sprintf(`{"data.%s":"dummyVal"}`, reservedField)
+		err = db.ValidateKeyValue("testKey", []byte(testVal))
+		assert.NoError(t, err, fmt.Sprintf(
+			"ValidateKey should not have thrown an error the json value %s since the reserved field was not at the top level", testVal))
+	}
+
+	// ValidateKeyValue should return an error for a key that begins with an underscore
+	err = db.ValidateKeyValue("_testKey", []byte("testValue"))
+	assert.Error(t, err, "ValidateKey should have thrown an error for a key that begins with an underscore")
+
 }
 
 // TestInvalidJSONFields tests for invalid JSON fields
 func TestInvalidJSONFields(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testinvalidfields_")
-	defer env.Cleanup("testinvalidfields_")
+	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testinvalidfields")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	db.Open()
 	defer db.Close()
@@ -232,7 +472,7 @@ func TestInvalidJSONFields(t *testing.T) {
 
 	savePoint := version.NewHeight(1, 2)
 	err = db.ApplyUpdates(batch, savePoint)
-	testutil.AssertError(t, err, "Invalid field _id should have thrown an error")
+	assert.Error(t, err, "Invalid field _id should have thrown an error")
 
 	batch = statedb.NewUpdateBatch()
 	jsonValue1 = `{"_rev":"rev1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
@@ -240,7 +480,7 @@ func TestInvalidJSONFields(t *testing.T) {
 
 	savePoint = version.NewHeight(1, 2)
 	err = db.ApplyUpdates(batch, savePoint)
-	testutil.AssertError(t, err, "Invalid field _rev should have thrown an error")
+	assert.Error(t, err, "Invalid field _rev should have thrown an error")
 
 	batch = statedb.NewUpdateBatch()
 	jsonValue1 = `{"_deleted":"true","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
@@ -248,7 +488,7 @@ func TestInvalidJSONFields(t *testing.T) {
 
 	savePoint = version.NewHeight(1, 2)
 	err = db.ApplyUpdates(batch, savePoint)
-	testutil.AssertError(t, err, "Invalid field _deleted should have thrown an error")
+	assert.Error(t, err, "Invalid field _deleted should have thrown an error")
 
 	batch = statedb.NewUpdateBatch()
 	jsonValue1 = `{"~version":"v1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
@@ -256,7 +496,7 @@ func TestInvalidJSONFields(t *testing.T) {
 
 	savePoint = version.NewHeight(1, 2)
 	err = db.ApplyUpdates(batch, savePoint)
-	testutil.AssertError(t, err, "Invalid field ~version should have thrown an error")
+	assert.Error(t, err, "Invalid field ~version should have thrown an error")
 }
 
 func TestDebugFunctions(t *testing.T) {
@@ -265,51 +505,46 @@ func TestDebugFunctions(t *testing.T) {
 	// initialize a key list
 	loadKeys := []*statedb.CompositeKey{}
 	//create a composite key and add to the key list
-	compositeKey := statedb.CompositeKey{Namespace: "ns", Key: "key3"}
-	loadKeys = append(loadKeys, &compositeKey)
-	compositeKey = statedb.CompositeKey{Namespace: "ns", Key: "key4"}
-	loadKeys = append(loadKeys, &compositeKey)
-	testutil.AssertEquals(t, printCompositeKeys(loadKeys), "[ns,key4],[ns,key4]")
+	compositeKey3 := statedb.CompositeKey{Namespace: "ns", Key: "key3"}
+	loadKeys = append(loadKeys, &compositeKey3)
+	compositeKey4 := statedb.CompositeKey{Namespace: "ns", Key: "key4"}
+	loadKeys = append(loadKeys, &compositeKey4)
+	assert.Equal(t, "[ns,key3],[ns,key4]", printCompositeKeys(loadKeys))
 
 }
 
 func TestHandleChaincodeDeploy(t *testing.T) {
 
 	env := NewTestVDBEnv(t)
-	env.Cleanup("testinit_")
-	env.Cleanup("testinit_ns1")
-	env.Cleanup("testinit_ns2")
-	defer env.Cleanup("testinit_")
-	defer env.Cleanup("testinit_ns1")
-	defer env.Cleanup("testinit_ns2")
+	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testinit")
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
 	batch := statedb.NewUpdateBatch()
 
-	jsonValue1 := "{\"asset_name\": \"marble1\",\"color\": \"blue\",\"size\": 1,\"owner\": \"tom\"}"
+	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
-	jsonValue2 := "{\"asset_name\": \"marble2\",\"color\": \"blue\",\"size\": 2,\"owner\": \"jerry\"}"
+	jsonValue2 := `{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`
 	batch.Put("ns1", "key2", []byte(jsonValue2), version.NewHeight(1, 2))
-	jsonValue3 := "{\"asset_name\": \"marble3\",\"color\": \"blue\",\"size\": 3,\"owner\": \"fred\"}"
+	jsonValue3 := `{"asset_name": "marble3","color": "blue","size": 3,"owner": "fred"}`
 	batch.Put("ns1", "key3", []byte(jsonValue3), version.NewHeight(1, 3))
-	jsonValue4 := "{\"asset_name\": \"marble4\",\"color\": \"blue\",\"size\": 4,\"owner\": \"martha\"}"
+	jsonValue4 := `{"asset_name": "marble4","color": "blue","size": 4,"owner": "martha"}`
 	batch.Put("ns1", "key4", []byte(jsonValue4), version.NewHeight(1, 4))
-	jsonValue5 := "{\"asset_name\": \"marble5\",\"color\": \"blue\",\"size\": 5,\"owner\": \"fred\"}"
+	jsonValue5 := `{"asset_name": "marble5","color": "blue","size": 5,"owner": "fred"}`
 	batch.Put("ns1", "key5", []byte(jsonValue5), version.NewHeight(1, 5))
-	jsonValue6 := "{\"asset_name\": \"marble6\",\"color\": \"blue\",\"size\": 6,\"owner\": \"elaine\"}"
+	jsonValue6 := `{"asset_name": "marble6","color": "blue","size": 6,"owner": "elaine"}`
 	batch.Put("ns1", "key6", []byte(jsonValue6), version.NewHeight(1, 6))
-	jsonValue7 := "{\"asset_name\": \"marble7\",\"color\": \"blue\",\"size\": 7,\"owner\": \"fred\"}"
+	jsonValue7 := `{"asset_name": "marble7","color": "blue","size": 7,"owner": "fred"}`
 	batch.Put("ns1", "key7", []byte(jsonValue7), version.NewHeight(1, 7))
-	jsonValue8 := "{\"asset_name\": \"marble8\",\"color\": \"blue\",\"size\": 8,\"owner\": \"elaine\"}"
+	jsonValue8 := `{"asset_name": "marble8","color": "blue","size": 8,"owner": "elaine"}`
 	batch.Put("ns1", "key8", []byte(jsonValue8), version.NewHeight(1, 8))
-	jsonValue9 := "{\"asset_name\": \"marble9\",\"color\": \"green\",\"size\": 9,\"owner\": \"fred\"}"
+	jsonValue9 := `{"asset_name": "marble9","color": "green","size": 9,"owner": "fred"}`
 	batch.Put("ns1", "key9", []byte(jsonValue9), version.NewHeight(1, 9))
-	jsonValue10 := "{\"asset_name\": \"marble10\",\"color\": \"green\",\"size\": 10,\"owner\": \"mary\"}"
+	jsonValue10 := `{"asset_name": "marble10","color": "green","size": 10,"owner": "mary"}`
 	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 10))
-	jsonValue11 := "{\"asset_name\": \"marble11\",\"color\": \"cyan\",\"size\": 1000007,\"owner\": \"joe\"}"
+	jsonValue11 := `{"asset_name": "marble11","color": "cyan","size": 1000007,"owner": "joe"}`
 	batch.Put("ns1", "key11", []byte(jsonValue11), version.NewHeight(1, 11))
 
 	//add keys for a separate namespace
@@ -327,11 +562,13 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	savePoint := version.NewHeight(2, 22)
 	db.ApplyUpdates(batch, savePoint)
 
-	//Create a tar file for test with 2 index definitions
-	dbArtifactsTarBytes := createTarBytesForTest(t,
-		[]*testFile{
-			{"META-INF/statedb/couchdb/indexes/indexColorSortName.json", `{"index":{"fields":[{"color":"desc"}]},"ddoc":"indexColorSortName","name":"indexColorSortName","type":"json"}`},
-			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+	//Create a tar file for test with 4 index definitions and 2 side dbs
+	dbArtifactsTarBytes := testutil.CreateTarBytesForTest(
+		[]*testutil.TarFileEntry{
+			{Name: "META-INF/statedb/couchdb/indexes/indexColorSortName.json", Body: `{"index":{"fields":[{"color":"desc"}]},"ddoc":"indexColorSortName","name":"indexColorSortName","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json", Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json", Body: `{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/collections/collectionMarblesPrivateDetails/indexes/indexCollPrivDetails.json", Body: `{"index":{"fields":["docType","price"]},"ddoc":"indexPrivateDetails", "name":"indexPrivateDetails","type":"json"}`},
 		},
 	)
 
@@ -339,22 +576,24 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	queryString := `{"selector":{"owner":"fred"}}`
 
 	_, err = db.ExecuteQuery("ns1", queryString)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	//Create a query with a sort
 	queryString = `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
 
 	_, err = db.ExecuteQuery("ns1", queryString)
-	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
+	assert.Error(t, err, "Error should have been thrown for a missing index")
 
-	handleDefinition, _ := db.(cceventmgmt.ChaincodeLifecycleEventListener)
+	indexCapable, ok := db.(statedb.IndexCapable)
 
-	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: ""}
+	if !ok {
+		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
+	}
 
-	//Test HandleChaincodeDefinition with a valid tar file
-	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
-	testutil.AssertNoError(t, err, "")
+	fileEntries, errExtract := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
+	assert.NoError(t, errExtract)
 
+	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", fileEntries["META-INF/statedb/couchdb/indexes"])
 	//Sleep to allow time for index creation
 	time.Sleep(100 * time.Millisecond)
 	//Create a query with a sort
@@ -362,83 +601,637 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 
 	//Query should complete without error
 	_, err = db.ExecuteQuery("ns1", queryString)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 
 	//Query namespace "ns2", index is only created in "ns1".  This should return an error.
 	_, err = db.ExecuteQuery("ns2", queryString)
-	testutil.AssertError(t, err, "Error should have been thrown for a missing index")
+	assert.Error(t, err, "Error should have been thrown for a missing index")
 
-	//Test HandleChaincodeDefinition with a nil tar file
-	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, nil)
-	testutil.AssertNoError(t, err, "")
+}
 
-	//Test HandleChaincodeDefinition with a bad tar file
-	err = handleDefinition.HandleChaincodeDeploy(chaincodeDef, []byte(`This is a really bad tar file`))
-	testutil.AssertNoError(t, err, "Error should not have been thrown for a bad tar file")
+func TestTryCastingToJSON(t *testing.T) {
+	sampleJSON := []byte(`{"a":"A", "b":"B"}`)
+	isJSON, jsonVal := tryCastingToJSON(sampleJSON)
+	assert.True(t, isJSON)
+	assert.Equal(t, "A", jsonVal["a"])
+	assert.Equal(t, "B", jsonVal["b"])
 
-	//Test HandleChaincodeDefinition with a nil chaincodeDef
-	err = handleDefinition.HandleChaincodeDeploy(nil, dbArtifactsTarBytes)
-	testutil.AssertError(t, err, "Error should have been thrown for a nil chaincodeDefinition")
+	sampleNonJSON := []byte(`This is not a json`)
+	isJSON, jsonVal = tryCastingToJSON(sampleNonJSON)
+	assert.False(t, isJSON)
 }
 
 func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	channelName := "ch1"
 	env := NewTestVDBEnv(t)
-	env.Cleanup(channelName)
-	defer env.Cleanup(channelName)
+	defer env.Cleanup()
 	db, err := env.DBProvider.GetDBHandle(channelName)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
 
 	batch := statedb.NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte(`{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`), version.NewHeight(1, 1))
 	batch.Put("ns1", "key2", []byte(`{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`), version.NewHeight(1, 2))
-	ccEventListener, _ := db.(cceventmgmt.ChaincodeLifecycleEventListener)
 
 	// Create a tar file for test with 2 index definitions - one of them being errorneous
 	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
-	dbArtifactsTarBytes := createTarBytesForTest(t,
-		[]*testFile{
-			{"META-INF/statedb/couchdb/indexes/indexSizeSortName.json", `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
-			{"META-INF/statedb/couchdb/indexes/badSyntax.json", badSyntaxFileContent},
+	dbArtifactsTarBytes := testutil.CreateTarBytesForTest(
+		[]*testutil.TarFileEntry{
+			{Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json", Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+			{Name: "META-INF/statedb/couchdb/indexes/badSyntax.json", Body: badSyntaxFileContent},
 		},
 	)
-	// Test HandleChaincodeDefinition with a bad tar file
-	chaincodeName := "ns1"
-	chaincodeVer := "1.0"
-	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: chaincodeName, Hash: []byte("Hash for test chaincode"), Version: chaincodeVer}
-	err = ccEventListener.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
-	testutil.AssertNoError(t, err, "A tar with a bad syntax file should not cause an error")
+
+	indexCapable, ok := db.(statedb.IndexCapable)
+	if !ok {
+		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
+	}
+
+	fileEntries, errExtract := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
+	assert.NoError(t, errExtract)
+
+	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", fileEntries["META-INF/statedb/couchdb/indexes"])
+
 	//Sleep to allow time for index creation
 	time.Sleep(100 * time.Millisecond)
 	//Query should complete without error
 	_, err = db.ExecuteQuery("ns1", `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`)
-	testutil.AssertNoError(t, err, "")
+	assert.NoError(t, err)
 }
 
-type testFile struct {
-	name, body string
-}
-
-func createTarBytesForTest(t *testing.T, testFiles []*testFile) []byte {
-	//Create a buffer for the tar file
-	buffer := new(bytes.Buffer)
-	tarWriter := tar.NewWriter(buffer)
-
-	for _, file := range testFiles {
-		tarHeader := &tar.Header{
-			Name: file.name,
-			Mode: 0600,
-			Size: int64(len(file.body)),
-		}
-		err := tarWriter.WriteHeader(tarHeader)
-		testutil.AssertNoError(t, err, "")
-
-		_, err = tarWriter.Write([]byte(file.body))
-		testutil.AssertNoError(t, err, "")
+func TestIsBulkOptimizable(t *testing.T) {
+	var db statedb.VersionedDB = &VersionedDB{}
+	_, ok := db.(statedb.BulkOptimizable)
+	if !ok {
+		t.Fatal("state couch db is expected to implement interface statedb.BulkOptimizable")
 	}
-	// Make sure to check the error on Close.
-	testutil.AssertNoError(t, tarWriter.Close(), "")
-	return buffer.Bytes()
+}
+
+func printCompositeKeys(keys []*statedb.CompositeKey) string {
+
+	compositeKeyString := []string{}
+	for _, key := range keys {
+		compositeKeyString = append(compositeKeyString, "["+key.Namespace+","+key.Key+"]")
+	}
+	return strings.Join(compositeKeyString, ",")
+}
+
+// TestPaginatedQuery tests queries with pagination
+func TestPaginatedQuery(t *testing.T) {
+
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+
+	db, err := env.DBProvider.GetDBHandle("testpaginatedquery")
+	assert.NoError(t, err)
+	db.Open()
+	defer db.Close()
+
+	batch := statedb.NewUpdateBatch()
+	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
+	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
+	jsonValue2 := `{"asset_name": "marble2","color": "red","size": 2,"owner": "jerry"}`
+	batch.Put("ns1", "key2", []byte(jsonValue2), version.NewHeight(1, 2))
+	jsonValue3 := `{"asset_name": "marble3","color": "red","size": 3,"owner": "fred"}`
+	batch.Put("ns1", "key3", []byte(jsonValue3), version.NewHeight(1, 3))
+	jsonValue4 := `{"asset_name": "marble4","color": "red","size": 4,"owner": "martha"}`
+	batch.Put("ns1", "key4", []byte(jsonValue4), version.NewHeight(1, 4))
+	jsonValue5 := `{"asset_name": "marble5","color": "blue","size": 5,"owner": "fred"}`
+	batch.Put("ns1", "key5", []byte(jsonValue5), version.NewHeight(1, 5))
+	jsonValue6 := `{"asset_name": "marble6","color": "red","size": 6,"owner": "elaine"}`
+	batch.Put("ns1", "key6", []byte(jsonValue6), version.NewHeight(1, 6))
+	jsonValue7 := `{"asset_name": "marble7","color": "blue","size": 7,"owner": "fred"}`
+	batch.Put("ns1", "key7", []byte(jsonValue7), version.NewHeight(1, 7))
+	jsonValue8 := `{"asset_name": "marble8","color": "red","size": 8,"owner": "elaine"}`
+	batch.Put("ns1", "key8", []byte(jsonValue8), version.NewHeight(1, 8))
+	jsonValue9 := `{"asset_name": "marble9","color": "green","size": 9,"owner": "fred"}`
+	batch.Put("ns1", "key9", []byte(jsonValue9), version.NewHeight(1, 9))
+	jsonValue10 := `{"asset_name": "marble10","color": "green","size": 10,"owner": "mary"}`
+	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 10))
+
+	jsonValue11 := `{"asset_name": "marble11","color": "cyan","size": 11,"owner": "joe"}`
+	batch.Put("ns1", "key11", []byte(jsonValue11), version.NewHeight(1, 11))
+	jsonValue12 := `{"asset_name": "marble12","color": "red","size": 12,"owner": "martha"}`
+	batch.Put("ns1", "key12", []byte(jsonValue12), version.NewHeight(1, 4))
+	jsonValue13 := `{"asset_name": "marble13","color": "red","size": 13,"owner": "james"}`
+	batch.Put("ns1", "key13", []byte(jsonValue13), version.NewHeight(1, 4))
+	jsonValue14 := `{"asset_name": "marble14","color": "red","size": 14,"owner": "fred"}`
+	batch.Put("ns1", "key14", []byte(jsonValue14), version.NewHeight(1, 4))
+	jsonValue15 := `{"asset_name": "marble15","color": "red","size": 15,"owner": "mary"}`
+	batch.Put("ns1", "key15", []byte(jsonValue15), version.NewHeight(1, 4))
+	jsonValue16 := `{"asset_name": "marble16","color": "red","size": 16,"owner": "robert"}`
+	batch.Put("ns1", "key16", []byte(jsonValue16), version.NewHeight(1, 4))
+	jsonValue17 := `{"asset_name": "marble17","color": "red","size": 17,"owner": "alan"}`
+	batch.Put("ns1", "key17", []byte(jsonValue17), version.NewHeight(1, 4))
+	jsonValue18 := `{"asset_name": "marble18","color": "red","size": 18,"owner": "elaine"}`
+	batch.Put("ns1", "key18", []byte(jsonValue18), version.NewHeight(1, 4))
+	jsonValue19 := `{"asset_name": "marble19","color": "red","size": 19,"owner": "alan"}`
+	batch.Put("ns1", "key19", []byte(jsonValue19), version.NewHeight(1, 4))
+	jsonValue20 := `{"asset_name": "marble20","color": "red","size": 20,"owner": "elaine"}`
+	batch.Put("ns1", "key20", []byte(jsonValue20), version.NewHeight(1, 4))
+
+	jsonValue21 := `{"asset_name": "marble21","color": "cyan","size": 21,"owner": "joe"}`
+	batch.Put("ns1", "key21", []byte(jsonValue21), version.NewHeight(1, 11))
+	jsonValue22 := `{"asset_name": "marble22","color": "red","size": 22,"owner": "martha"}`
+	batch.Put("ns1", "key22", []byte(jsonValue22), version.NewHeight(1, 4))
+	jsonValue23 := `{"asset_name": "marble23","color": "blue","size": 23,"owner": "james"}`
+	batch.Put("ns1", "key23", []byte(jsonValue23), version.NewHeight(1, 4))
+	jsonValue24 := `{"asset_name": "marble24","color": "red","size": 24,"owner": "fred"}`
+	batch.Put("ns1", "key24", []byte(jsonValue24), version.NewHeight(1, 4))
+	jsonValue25 := `{"asset_name": "marble25","color": "red","size": 25,"owner": "mary"}`
+	batch.Put("ns1", "key25", []byte(jsonValue25), version.NewHeight(1, 4))
+	jsonValue26 := `{"asset_name": "marble26","color": "red","size": 26,"owner": "robert"}`
+	batch.Put("ns1", "key26", []byte(jsonValue26), version.NewHeight(1, 4))
+	jsonValue27 := `{"asset_name": "marble27","color": "green","size": 27,"owner": "alan"}`
+	batch.Put("ns1", "key27", []byte(jsonValue27), version.NewHeight(1, 4))
+	jsonValue28 := `{"asset_name": "marble28","color": "red","size": 28,"owner": "elaine"}`
+	batch.Put("ns1", "key28", []byte(jsonValue28), version.NewHeight(1, 4))
+	jsonValue29 := `{"asset_name": "marble29","color": "red","size": 29,"owner": "alan"}`
+	batch.Put("ns1", "key29", []byte(jsonValue29), version.NewHeight(1, 4))
+	jsonValue30 := `{"asset_name": "marble30","color": "red","size": 30,"owner": "elaine"}`
+	batch.Put("ns1", "key30", []byte(jsonValue30), version.NewHeight(1, 4))
+
+	jsonValue31 := `{"asset_name": "marble31","color": "cyan","size": 31,"owner": "joe"}`
+	batch.Put("ns1", "key31", []byte(jsonValue31), version.NewHeight(1, 11))
+	jsonValue32 := `{"asset_name": "marble32","color": "red","size": 32,"owner": "martha"}`
+	batch.Put("ns1", "key32", []byte(jsonValue32), version.NewHeight(1, 4))
+	jsonValue33 := `{"asset_name": "marble33","color": "red","size": 33,"owner": "james"}`
+	batch.Put("ns1", "key33", []byte(jsonValue33), version.NewHeight(1, 4))
+	jsonValue34 := `{"asset_name": "marble34","color": "red","size": 34,"owner": "fred"}`
+	batch.Put("ns1", "key34", []byte(jsonValue34), version.NewHeight(1, 4))
+	jsonValue35 := `{"asset_name": "marble35","color": "red","size": 35,"owner": "mary"}`
+	batch.Put("ns1", "key35", []byte(jsonValue35), version.NewHeight(1, 4))
+	jsonValue36 := `{"asset_name": "marble36","color": "orange","size": 36,"owner": "robert"}`
+	batch.Put("ns1", "key36", []byte(jsonValue36), version.NewHeight(1, 4))
+	jsonValue37 := `{"asset_name": "marble37","color": "red","size": 37,"owner": "alan"}`
+	batch.Put("ns1", "key37", []byte(jsonValue37), version.NewHeight(1, 4))
+	jsonValue38 := `{"asset_name": "marble38","color": "yellow","size": 38,"owner": "elaine"}`
+	batch.Put("ns1", "key38", []byte(jsonValue38), version.NewHeight(1, 4))
+	jsonValue39 := `{"asset_name": "marble39","color": "red","size": 39,"owner": "alan"}`
+	batch.Put("ns1", "key39", []byte(jsonValue39), version.NewHeight(1, 4))
+	jsonValue40 := `{"asset_name": "marble40","color": "red","size": 40,"owner": "elaine"}`
+	batch.Put("ns1", "key40", []byte(jsonValue40), version.NewHeight(1, 4))
+
+	savePoint := version.NewHeight(2, 22)
+	db.ApplyUpdates(batch, savePoint)
+
+	// Create a tar file for test with an index for size
+	dbArtifactsTarBytes := testutil.CreateTarBytesForTest(
+		[]*testutil.TarFileEntry{
+			{Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json", Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`},
+		},
+	)
+
+	// Create a query
+	queryString := `{"selector":{"color":"red"}}`
+
+	_, err = db.ExecuteQuery("ns1", queryString)
+	assert.NoError(t, err)
+
+	// Create a query with a sort
+	queryString = `{"selector":{"color":"red"}, "sort": [{"size": "asc"}]}`
+
+	indexCapable, ok := db.(statedb.IndexCapable)
+
+	if !ok {
+		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
+	}
+
+	fileEntries, errExtract := ccprovider.ExtractFileEntries(dbArtifactsTarBytes, "couchdb")
+	assert.NoError(t, errExtract)
+
+	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", fileEntries["META-INF/statedb/couchdb/indexes"])
+	// Sleep to allow time for index creation
+	time.Sleep(100 * time.Millisecond)
+	// Create a query with a sort
+	queryString = `{"selector":{"color":"red"}, "sort": [{"size": "asc"}]}`
+
+	// Query should complete without error
+	_, err = db.ExecuteQuery("ns1", queryString)
+	assert.NoError(t, err)
+
+	// Test explicit paging
+	// Execute 3 page queries, there are 28 records with color red, use page size 10
+	returnKeys := []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15", "key16"}
+	bookmark, err := executeQuery(t, db, "ns1", queryString, "", int32(10), returnKeys)
+	assert.NoError(t, err)
+	returnKeys = []string{"key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29"}
+	bookmark, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
+	assert.NoError(t, err)
+
+	returnKeys = []string{"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
+	_, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
+	assert.NoError(t, err)
+
+	// Test explicit paging
+	// Increase pagesize to 50,  should return all values
+	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15",
+		"key16", "key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29",
+		"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
+	_, err = executeQuery(t, db, "ns1", queryString, "", int32(50), returnKeys)
+	assert.NoError(t, err)
+
+	// Test explicit paging
+	// Pagesize is 10, so all 28 records should be return in 3 "pages"
+	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15", "key16"}
+	bookmark, err = executeQuery(t, db, "ns1", queryString, "", int32(10), returnKeys)
+	assert.NoError(t, err)
+	returnKeys = []string{"key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29"}
+	bookmark, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
+	assert.NoError(t, err)
+	returnKeys = []string{"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
+	_, err = executeQuery(t, db, "ns1", queryString, bookmark, int32(10), returnKeys)
+	assert.NoError(t, err)
+
+	// Test implicit paging
+	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15",
+		"key16", "key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29",
+		"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
+	_, err = executeQuery(t, db, "ns1", queryString, "", int32(0), returnKeys)
+	assert.NoError(t, err)
+
+	// pagesize greater than querysize will execute with implicit paging
+	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15", "key16"}
+	_, err = executeQuery(t, db, "ns1", queryString, "", int32(10), returnKeys)
+	assert.NoError(t, err)
+}
+
+func executeQuery(t *testing.T, db statedb.VersionedDB, namespace, query, bookmark string, limit int32, returnKeys []string) (string, error) {
+
+	var itr statedb.ResultsIterator
+	var err error
+
+	if limit == int32(0) && bookmark == "" {
+		itr, err = db.ExecuteQuery(namespace, query)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		queryOptions := make(map[string]interface{})
+		if bookmark != "" {
+			queryOptions["bookmark"] = bookmark
+		}
+		if limit != 0 {
+			queryOptions["limit"] = limit
+		}
+
+		itr, err = db.ExecuteQueryWithMetadata(namespace, query, queryOptions)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// Verify the keys returned
+	commontests.TestItrWithoutClose(t, itr, returnKeys)
+
+	returnBookmark := ""
+	if queryResultItr, ok := itr.(statedb.QueryResultsIterator); ok {
+		returnBookmark = queryResultItr.GetBookmarkAndClose()
+	}
+
+	return returnBookmark, nil
+}
+
+// TestPaginatedQueryValidation tests queries with pagination
+func TestPaginatedQueryValidation(t *testing.T) {
+
+	queryOptions := make(map[string]interface{})
+	queryOptions["bookmark"] = "Test1"
+	queryOptions["limit"] = int32(10)
+
+	err := validateQueryMetadata(queryOptions)
+	assert.NoError(t, err, "An error was thrown for a valid options")
+	queryOptions = make(map[string]interface{})
+	queryOptions["bookmark"] = "Test1"
+	queryOptions["limit"] = float64(10.2)
+
+	err = validateQueryMetadata(queryOptions)
+	assert.Error(t, err, "An should have been thrown for an invalid options")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["bookmark"] = "Test1"
+	queryOptions["limit"] = "10"
+
+	err = validateQueryMetadata(queryOptions)
+	assert.Error(t, err, "An should have been thrown for an invalid options")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["bookmark"] = int32(10)
+	queryOptions["limit"] = "10"
+
+	err = validateQueryMetadata(queryOptions)
+	assert.Error(t, err, "An should have been thrown for an invalid options")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["bookmark"] = "Test1"
+	queryOptions["limit1"] = int32(10)
+
+	err = validateQueryMetadata(queryOptions)
+	assert.Error(t, err, "An should have been thrown for an invalid options")
+
+	queryOptions = make(map[string]interface{})
+	queryOptions["bookmark1"] = "Test1"
+	queryOptions["limit1"] = int32(10)
+
+	err = validateQueryMetadata(queryOptions)
+	assert.Error(t, err, "An should have been thrown for an invalid options")
+}
+
+func TestApplyUpdatesWithNilHeight(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestApplyUpdatesWithNilHeight(t, env.DBProvider)
+}
+
+func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	db, err := env.DBProvider.GetDBHandle("testrangescanfiltercouchinternaldocs")
+	assert.NoError(t, err)
+	couchDatabse, err := db.(*VersionedDB).getNamespaceDBHandle("ns")
+	assert.NoError(t, err)
+	db.Open()
+	defer db.Close()
+	_, err = couchDatabse.CreateIndex(`{
+		"index" : {"fields" : ["asset_name"]},
+			"ddoc" : "indexAssetName",
+			"name" : "indexAssetName",
+			"type" : "json"
+		}`)
+	assert.NoError(t, err)
+
+	_, err = couchDatabse.CreateIndex(`{
+		"index" : {"fields" : ["assetValue"]},
+			"ddoc" : "indexAssetValue",
+			"name" : "indexAssetValue",
+			"type" : "json"
+		}`)
+	assert.NoError(t, err)
+
+	batch := statedb.NewUpdateBatch()
+	for i := 1; i <= 3; i++ {
+		keySmallerThanDesignDoc := fmt.Sprintf("Key-%d", i)
+		keyGreaterThanDesignDoc := fmt.Sprintf("key-%d", i)
+		jsonValue := fmt.Sprintf(`{"asset_name": "marble-%d"}`, i)
+		batch.Put("ns", keySmallerThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i)))
+		batch.Put("ns", keyGreaterThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i)))
+	}
+	db.ApplyUpdates(batch, version.NewHeight(2, 2))
+	assert.NoError(t, err)
+
+	// The Keys in db are in this order
+	// Key-1, Key-2, Key-3,_design/indexAssetNam, _design/indexAssetValue, key-1, key-2, key-3
+	// query different ranges and verify results
+	s, err := newQueryScanner("ns", couchDatabse, "", 3, 3, "", "", "")
+	assert.NoError(t, err)
+	assertQueryResults(t, s.resultsInfo.results, []string{"Key-1", "Key-2", "Key-3"})
+	assert.Equal(t, "key-1", s.queryDefinition.startKey)
+
+	s, err = newQueryScanner("ns", couchDatabse, "", 4, 4, "", "", "")
+	assert.NoError(t, err)
+	assertQueryResults(t, s.resultsInfo.results, []string{"Key-1", "Key-2", "Key-3", "key-1"})
+	assert.Equal(t, "key-2", s.queryDefinition.startKey)
+
+	s, err = newQueryScanner("ns", couchDatabse, "", 2, 2, "", "", "")
+	assert.NoError(t, err)
+	assertQueryResults(t, s.resultsInfo.results, []string{"Key-1", "Key-2"})
+	assert.Equal(t, "Key-3", s.queryDefinition.startKey)
+	s.getNextStateRangeScanResults()
+	assertQueryResults(t, s.resultsInfo.results, []string{"Key-3", "key-1"})
+	assert.Equal(t, "key-2", s.queryDefinition.startKey)
+
+	s, err = newQueryScanner("ns", couchDatabse, "", 2, 2, "", "_", "")
+	assert.NoError(t, err)
+	assertQueryResults(t, s.resultsInfo.results, []string{"key-1", "key-2"})
+	assert.Equal(t, "key-3", s.queryDefinition.startKey)
+}
+
+func assertQueryResults(t *testing.T, results []*couchdb.QueryResult, expectedIds []string) {
+	var actualIds []string
+	for _, res := range results {
+		actualIds = append(actualIds, res.ID)
+	}
+	assert.Equal(t, expectedIds, actualIds)
+}
+
+func TestFormatCheck(t *testing.T) {
+	testCases := []struct {
+		dataFormat     string                         // precondition
+		dataExists     bool                           // precondition
+		expectedFormat string                         // postcondition
+		expectedErr    *dataformat.ErrVersionMismatch // postcondition
+	}{
+		{
+			dataFormat: "",
+			dataExists: true,
+			expectedErr: &dataformat.ErrVersionMismatch{
+				DBInfo:          "CouchDB for state database",
+				Version:         "",
+				ExpectedVersion: "2.0",
+			},
+			expectedFormat: "does not matter as the test should not reach to check this",
+		},
+
+		{
+			dataFormat:     "",
+			dataExists:     false,
+			expectedErr:    nil,
+			expectedFormat: dataformat.Version20,
+		},
+
+		{
+			dataFormat:     dataformat.Version20,
+			dataExists:     false,
+			expectedFormat: dataformat.Version20,
+			expectedErr:    nil,
+		},
+
+		{
+			dataFormat:     dataformat.Version20,
+			dataExists:     true,
+			expectedFormat: dataformat.Version20,
+			expectedErr:    nil,
+		},
+
+		{
+			dataFormat: "3.0",
+			dataExists: true,
+			expectedErr: &dataformat.ErrVersionMismatch{
+				DBInfo:          "CouchDB for state database",
+				Version:         "3.0",
+				ExpectedVersion: dataformat.Version20,
+			},
+			expectedFormat: "does not matter as the test should not reach to check this",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(
+			fmt.Sprintf("testCase %d", i),
+			func(t *testing.T) {
+				testFormatCheck(t, testCase.dataFormat, testCase.dataExists, testCase.expectedErr, testCase.expectedFormat)
+			})
+	}
+}
+
+func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedErr *dataformat.ErrVersionMismatch, expectedFormat string) {
+	redoPath, err := ioutil.TempDir("", "redoPath")
+	require.NoError(t, err)
+	defer os.RemoveAll(redoPath)
+	config := &couchdb.Config{
+		Address:             couchAddress,
+		MaxRetries:          3,
+		MaxRetriesOnStartup: 20,
+		RequestTimeout:      35 * time.Second,
+		RedoLogPath:         redoPath,
+	}
+	dbProvider, err := NewVersionedDBProvider(config, &disabled.Provider{}, &statedb.Cache{})
+	require.NoError(t, err)
+
+	// create preconditions for test
+	if dataExists {
+		db, err := dbProvider.GetDBHandle("testns")
+		require.NoError(t, err)
+		batch := statedb.NewUpdateBatch()
+		batch.Put("testns", "testkey", []byte("testVal"), version.NewHeight(1, 1))
+		require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
+	}
+	if dataFormat == "" {
+		testutilDropDB(t, dbProvider.couchInstance, fabricInternalDBName)
+	} else {
+		require.NoError(t, writeDataFormatVersion(dbProvider.couchInstance, dataFormat))
+	}
+	dbProvider.Close()
+	defer cleanupDB(t, dbProvider.couchInstance)
+
+	// close and reopen with preconditions set and check the expected behavior
+	dbProvider, err = NewVersionedDBProvider(config, &disabled.Provider{}, &statedb.Cache{})
+	if expectedErr != nil {
+		require.Equal(t, expectedErr, err)
+		return
+	}
+	require.NoError(t, err)
+	defer func() {
+		if dbProvider != nil {
+			dbProvider.Close()
+		}
+	}()
+	format, err := readDataformatVersion(dbProvider.couchInstance)
+	require.NoError(t, err)
+	require.Equal(t, expectedFormat, format)
+}
+
+func testDoesNotExistInCache(t *testing.T, cache *statedb.Cache, chainID, ns, key string) {
+	cacheValue, err := cache.GetState(chainID, ns, key)
+	require.NoError(t, err)
+	require.Nil(t, cacheValue)
+}
+
+func testExistInCache(t *testing.T, db *couchdb.CouchDatabase, cache *statedb.Cache, chainID, ns, key string, expectedVV *statedb.VersionedValue) {
+	cacheValue, err := cache.GetState(chainID, ns, key)
+	require.NoError(t, err)
+	vv, err := constructVersionedValue(cacheValue)
+	require.NoError(t, err)
+	require.Equal(t, expectedVV, vv)
+	metadata, err := retrieveNsMetadata(db, []string{key})
+	require.NoError(t, err)
+	require.Equal(t, metadata[0].Rev, string(cacheValue.AdditionalInfo))
+}
+
+func TestLoadCommittedVersion(t *testing.T) {
+	cache := statedb.NewCache(32, []string{"lscc"})
+
+	env := newTestVDBEnvWithCache(t, cache)
+	defer env.Cleanup()
+	chainID := "testloadcommittedversion"
+	db, err := env.DBProvider.GetDBHandle(chainID)
+	require.NoError(t, err)
+
+	// scenario: state cache has (ns1, key1), (ns1, key2),
+	// and (ns2, key1) but misses (ns2, key2). The
+	// LoadCommittedVersions will fetch the first
+	// three keys from the state cache and the remaining one from
+	// the db. To ensure that, the db contains only
+	// the missing key (ns2, key2).
+
+	// store (ns1, key1), (ns1, key2), (ns2, key1) in the state cache
+	cacheValue := &statedb.CacheValue{
+		Value:          []byte("value1"),
+		Metadata:       []byte("meta1"),
+		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		AdditionalInfo: []byte("rev1"),
+	}
+	require.NoError(t, cache.PutState(chainID, "ns1", "key1", cacheValue))
+
+	cacheValue = &statedb.CacheValue{
+		Value:          []byte("value2"),
+		Metadata:       []byte("meta2"),
+		VersionBytes:   version.NewHeight(1, 2).ToBytes(),
+		AdditionalInfo: []byte("rev2"),
+	}
+	require.NoError(t, cache.PutState(chainID, "ns1", "key2", cacheValue))
+
+	cacheValue = &statedb.CacheValue{
+		Value:          []byte("value3"),
+		Metadata:       []byte("meta3"),
+		VersionBytes:   version.NewHeight(1, 3).ToBytes(),
+		AdditionalInfo: []byte("rev3"),
+	}
+	require.NoError(t, cache.PutState(chainID, "ns2", "key1", cacheValue))
+
+	// store (ns2, key2) in the db
+	batch := statedb.NewUpdateBatch()
+	vv := &statedb.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 4)}
+	batch.PutValAndMetadata("ns2", "key2", vv.Value, vv.Metadata, vv.Version)
+	savePoint := version.NewHeight(2, 2)
+	db.ApplyUpdates(batch, savePoint)
+
+	// version cache should be empty
+	ver, ok := db.(*VersionedDB).GetCachedVersion("ns1", "key1")
+	require.Nil(t, ver)
+	require.False(t, ok)
+	ver, ok = db.(*VersionedDB).GetCachedVersion("ns1", "key2")
+	require.Nil(t, ver)
+	require.False(t, ok)
+	ver, ok = db.(*VersionedDB).GetCachedVersion("ns2", "key1")
+	require.Nil(t, ver)
+	require.False(t, ok)
+	ver, ok = db.(*VersionedDB).GetCachedVersion("ns2", "key2")
+	require.Nil(t, ver)
+	require.False(t, ok)
+
+	keys := []*statedb.CompositeKey{
+		{
+			Namespace: "ns1",
+			Key:       "key1",
+		},
+		{
+			Namespace: "ns1",
+			Key:       "key2",
+		},
+		{
+			Namespace: "ns2",
+			Key:       "key1",
+		},
+		{
+			Namespace: "ns2",
+			Key:       "key2",
+		},
+	}
+
+	require.NoError(t, db.(*VersionedDB).LoadCommittedVersions(keys))
+
+	ver, ok = db.(*VersionedDB).GetCachedVersion("ns1", "key1")
+	require.Equal(t, version.NewHeight(1, 1), ver)
+	require.True(t, ok)
+	ver, ok = db.(*VersionedDB).GetCachedVersion("ns1", "key2")
+	require.Equal(t, version.NewHeight(1, 2), ver)
+	require.True(t, ok)
+	ver, ok = db.(*VersionedDB).GetCachedVersion("ns2", "key1")
+	require.Equal(t, version.NewHeight(1, 3), ver)
+	require.True(t, ok)
+	ver, ok = db.(*VersionedDB).GetCachedVersion("ns2", "key2")
+	require.Equal(t, version.NewHeight(1, 4), ver)
+	require.True(t, ok)
 }

@@ -1,2 +1,0 @@
-sdk=node userInputs/samplecc-chan1-concurrency-i.json
-#sdk=node userInputs/samplecc-chan2-concurrency-i.json

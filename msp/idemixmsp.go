@@ -9,15 +9,30 @@ package msp
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-amcl/amcl"
-	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
-	"github.com/hyperledger/fabric/idemix"
-	m "github.com/hyperledger/fabric/protos/msp"
-	logging "github.com/op/go-logging"
+	m "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/bccsp"
+	idemixbccsp "github.com/hyperledger/fabric/bccsp/idemix"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zapcore"
+)
+
+const (
+	// AttributeIndexOU contains the index of the OU attribute in the idemix credential attributes
+	AttributeIndexOU = iota
+
+	// AttributeIndexRole contains the index of the Role attribute in the idemix credential attributes
+	AttributeIndexRole
+
+	// AttributeIndexEnrollmentId contains the index of the Enrollment ID attribute in the idemix credential attributes
+	AttributeIndexEnrollmentId
+
+	// AttributeIndexRevocationHandle contains the index of the Revocation Handle attribute in the idemix credential attributes
+	AttributeIndexRevocationHandle
 )
 
 const (
@@ -26,24 +41,38 @@ const (
 
 	// AttributeNameRole is the attribute name of the Role attribute
 	AttributeNameRole = "Role"
+
+	// AttributeNameEnrollmentId is the attribute name of the Enrollment ID attribute
+	AttributeNameEnrollmentId = "EnrollmentID"
+
+	// AttributeNameRevocationHandle is the attribute name of the revocation handle attribute
+	AttributeNameRevocationHandle = "RevocationHandle"
 )
 
-// discloseFlags will be passed to the idemix signing and verification routines.
-// It informs idemix to disclose both attributes (OU and Role) when signing.
-var discloseFlags = []byte{1, 1}
+// index of the revocation handle attribute in the credential
+const rhIndex = 3
 
 type idemixmsp struct {
-	ipk    *idemix.IssuerPublicKey
-	rng    *amcl.RAND
-	signer *idemixSigningIdentity
-	name   string
+	csp          bccsp.BCCSP
+	version      MSPVersion
+	ipk          bccsp.Key
+	signer       *idemixSigningIdentity
+	name         string
+	revocationPK bccsp.Key
+	epoch        int
 }
 
 // newIdemixMsp creates a new instance of idemixmsp
-func newIdemixMsp() (MSP, error) {
+func newIdemixMsp(version MSPVersion) (MSP, error) {
 	mspLogger.Debugf("Creating Idemix-based MSP instance")
 
-	msp := idemixmsp{}
+	csp, err := idemixbccsp.New(sw.NewDummyKeyStore())
+	if err != nil {
+		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
+	}
+
+	msp := idemixmsp{csp: csp}
+	msp.version = version
 	return &msp, nil
 }
 
@@ -67,32 +96,49 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	msp.name = conf.Name
 	mspLogger.Debugf("Setting up Idemix MSP instance %s", msp.name)
 
-	ipk := new(idemix.IssuerPublicKey)
-	err = proto.Unmarshal(conf.IPk, ipk)
+	// Import Issuer Public Key
+	IssuerPublicKey, err := msp.csp.KeyImport(
+		conf.Ipk,
+		&bccsp.IdemixIssuerPublicKeyImportOpts{
+			Temporary: true,
+			AttributeNames: []string{
+				AttributeNameOU,
+				AttributeNameRole,
+				AttributeNameEnrollmentId,
+				AttributeNameRevocationHandle,
+			},
+		})
 	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal ipk from idemix msp config")
+		importErr, ok := errors.Cause(err).(*bccsp.IdemixIssuerPublicKeyImporterError)
+		if !ok {
+			panic("unexpected condition, BCCSP did not return the expected *bccsp.IdemixIssuerPublicKeyImporterError")
+		}
+		switch importErr.Type {
+		case bccsp.IdemixIssuerPublicKeyImporterUnmarshallingError:
+			return errors.WithMessage(err, "failed to unmarshal ipk from idemix msp config")
+		case bccsp.IdemixIssuerPublicKeyImporterHashError:
+			return errors.WithMessage(err, "setting the hash of the issuer public key failed")
+		case bccsp.IdemixIssuerPublicKeyImporterValidationError:
+			return errors.WithMessage(err, "cannot setup idemix msp with invalid public key")
+		case bccsp.IdemixIssuerPublicKeyImporterNumAttributesError:
+			fallthrough
+		case bccsp.IdemixIssuerPublicKeyImporterAttributeNameError:
+			return errors.Errorf("issuer public key must have have attributes OU, Role, EnrollmentId, and RevocationHandle")
+		default:
+			panic(fmt.Sprintf("unexpected condtion, issuer public key import error not valid, got [%d]", importErr.Type))
+		}
 	}
-	err = ipk.SetHash()
+	msp.ipk = IssuerPublicKey
+
+	// Import revocation public key
+	RevocationPublicKey, err := msp.csp.KeyImport(
+		conf.RevocationPk,
+		&bccsp.IdemixRevocationPublicKeyImportOpts{Temporary: true},
+	)
 	if err != nil {
-		return errors.WithMessage(err, "setting the hash of the issuer public key failed")
+		return errors.WithMessage(err, "failed to import revocation public key")
 	}
-
-	if len(ipk.AttributeNames) < 2 || ipk.AttributeNames[0] != AttributeNameOU || ipk.AttributeNames[1] != AttributeNameRole {
-		return errors.Errorf("ipk must have have attributes OU and Role")
-	}
-
-	err = ipk.Check()
-	if err != nil {
-		return errors.WithMessage(err, "cannot setup idemix msp with invalid public key")
-	}
-	msp.ipk = ipk
-
-	rng, err := idemix.GetRand()
-	if err != nil {
-		return errors.Wrap(err, "error initializing PRNG for idemix msp")
-	}
-
-	msp.rng = rng
+	msp.revocationPK = RevocationPublicKey
 
 	if conf.Signer == nil {
 		// No credential in config, so we don't setup a default signer
@@ -101,66 +147,94 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 
 	// A credential is present in the config, so we setup a default signer
-	cred := new(idemix.Credential)
-	err = proto.Unmarshal(conf.Signer.Cred, cred)
+
+	// Import User secret key
+	UserKey, err := msp.csp.KeyImport(conf.Signer.Sk, &bccsp.IdemixUserSecretKeyImportOpts{Temporary: true})
 	if err != nil {
-		return errors.Wrap(err, "Failed to unmarshal credential from config")
+		return errors.WithMessage(err, "failed importing signer secret key")
 	}
 
-	sk := FP256BN.FromBytes(conf.Signer.Sk)
+	// Derive NymPublicKey
+	NymKey, err := msp.csp.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
+	if err != nil {
+		return errors.WithMessage(err, "failed deriving nym")
+	}
+	NymPublicKey, err := NymKey.PublicKey()
+	if err != nil {
+		return errors.Wrapf(err, "failed getting public nym key")
+	}
 
-	Nym, RandNym := idemix.MakeNym(sk, msp.ipk, rng)
 	role := &m.MSPRole{
 		MspIdentifier: msp.name,
 		Role:          m.MSPRole_MEMBER,
 	}
-	if conf.Signer.IsAdmin {
+	if checkRole(int(conf.Signer.Role), ADMIN) {
 		role.Role = m.MSPRole_ADMIN
 	}
 
 	ou := &m.OrganizationUnit{
 		MspIdentifier:                msp.name,
 		OrganizationalUnitIdentifier: conf.Signer.OrganizationalUnitIdentifier,
-		CertifiersIdentifier:         ipk.Hash,
+		CertifiersIdentifier:         IssuerPublicKey.SKI(),
 	}
 
-	// Check if credential contains the right amount of attribute values (Role and OU)
-	if len(cred.Attrs) != 2 {
-		return errors.Errorf("Credential contains %d attribute values, but expected 2", len(cred.Attrs))
-	}
+	enrollmentId := conf.Signer.EnrollmentId
 
-	// Check if credential contains the correct OU attribute value
-	ouBytes := []byte(conf.Signer.OrganizationalUnitIdentifier)
-	if !bytes.Equal(idemix.BigToBytes(idemix.HashModOrder(ouBytes)), cred.Attrs[0]) {
-		return errors.New("Credential does not contain the correct OU attribute value")
-	}
-
-	// Check if credential contains the correct OU attribute value
-	if !bytes.Equal(idemix.BigToBytes(FP256BN.NewBIGint(int(role.Role))), cred.Attrs[1]) {
-		return errors.New("Credential does not contain the correct Role attribute value")
-	}
-
-	// Verify that the credential is cryptographically valid
-	err = cred.Ver(sk, msp.ipk)
-	if err != nil {
-		return errors.Wrap(err, "Credential is not cryptographically valid")
+	// Verify credential
+	valid, err := msp.csp.Verify(
+		UserKey,
+		conf.Signer.Cred,
+		nil,
+		&bccsp.IdemixCredentialSignerOpts{
+			IssuerPK: IssuerPublicKey,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte(conf.Signer.OrganizationalUnitIdentifier)},
+				{Type: bccsp.IdemixIntAttribute, Value: getIdemixRoleFromMSPRole(role)},
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte(enrollmentId)},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+		},
+	)
+	if err != nil || !valid {
+		return errors.WithMessage(err, "Credential is not cryptographically valid")
 	}
 
 	// Create the cryptographic evidence that this identity is valid
-	proof, err := idemix.NewSignature(cred, sk, Nym, RandNym, ipk, discloseFlags, nil, rng)
+	proof, err := msp.csp.Sign(
+		UserKey,
+		nil,
+		&bccsp.IdemixSignerOpts{
+			Credential: conf.Signer.Cred,
+			Nym:        NymKey,
+			IssuerPK:   IssuerPublicKey,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixBytesAttribute},
+				{Type: bccsp.IdemixIntAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex: rhIndex,
+			CRI:     conf.Signer.CredentialRevocationInformation,
+		},
+	)
 	if err != nil {
-		return errors.Wrap(err, "Failed to setup cryptographic proof of identity")
+		return errors.WithMessage(err, "Failed to setup cryptographic proof of identity")
 	}
 
 	// Set up default signer
-	msp.signer = &idemixSigningIdentity{newIdemixIdentity(msp, Nym, role, ou, proof), rng, cred, sk, RandNym}
+	msp.signer = &idemixSigningIdentity{
+		idemixidentity: newIdemixIdentity(msp, NymPublicKey, role, ou, proof),
+		Cred:           conf.Signer.Cred,
+		UserKey:        UserKey,
+		NymKey:         NymKey,
+		enrollmentId:   enrollmentId}
 
 	return nil
 }
 
 // GetVersion returns the version of this MSP
 func (msp *idemixmsp) GetVersion() MSPVersion {
-	return MSPv1_1
+	return msp.version
 }
 
 func (msp *idemixmsp) GetType() ProviderType {
@@ -208,32 +282,37 @@ func (msp *idemixmsp) deserializeIdentityInternal(serializedID []byte) (Identity
 	if serialized.NymX == nil || serialized.NymY == nil {
 		return nil, errors.Errorf("unable to deserialize idemix identity: pseudonym is invalid")
 	}
-	Nym := FP256BN.NewECPbigs(FP256BN.FromBytes(serialized.NymX), FP256BN.FromBytes(serialized.NymY))
 
+	// Import NymPublicKey
+	var rawNymPublicKey []byte
+	rawNymPublicKey = append(rawNymPublicKey, serialized.NymX...)
+	rawNymPublicKey = append(rawNymPublicKey, serialized.NymY...)
+	NymPublicKey, err := msp.csp.KeyImport(
+		rawNymPublicKey,
+		&bccsp.IdemixNymPublicKeyImportOpts{Temporary: true},
+	)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to import nym public key")
+	}
+
+	// OU
 	ou := &m.OrganizationUnit{}
-	err = proto.Unmarshal(serialized.OU, ou)
+	err = proto.Unmarshal(serialized.Ou, ou)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot deserialize the OU of the identity")
 	}
+
+	// Role
 	role := &m.MSPRole{}
 	err = proto.Unmarshal(serialized.Role, role)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot deserialize the role of the identity")
 	}
 
-	proof := &idemix.Signature{}
-	err = proto.Unmarshal(serialized.Proof, proof)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot deserialize the proof of the identity")
-	}
-
-	return newIdemixIdentity(msp, Nym, role, ou, proof), nil
-
+	return newIdemixIdentity(msp, NymPublicKey, role, ou, serialized.Proof), nil
 }
 
 func (msp *idemixmsp) Validate(id Identity) error {
-	mspLogger.Infof("Validating identity %s", id)
-
 	var identity *idemixidentity
 	switch t := id.(type) {
 	case *idemixidentity:
@@ -243,6 +322,8 @@ func (msp *idemixmsp) Validate(id Identity) error {
 	default:
 		return errors.Errorf("identity type %T is not recognized", t)
 	}
+
+	mspLogger.Debugf("Validating identity %+v", identity)
 	if identity.GetMSPIdentifier() != msp.name {
 		return errors.Errorf("the supplied identity does not belong to this msp")
 	}
@@ -250,13 +331,42 @@ func (msp *idemixmsp) Validate(id Identity) error {
 }
 
 func (id *idemixidentity) verifyProof() error {
-	ouBytes := []byte(id.OU.OrganizationalUnitIdentifier)
-	attributeValues := []*FP256BN.BIG{idemix.HashModOrder(ouBytes), FP256BN.NewBIGint(int(id.Role.Role))}
+	// Verify signature
+	valid, err := id.msp.csp.Verify(
+		id.msp.ipk,
+		id.associationProof,
+		nil,
+		&bccsp.IdemixSignerOpts{
+			RevocationPublicKey: id.msp.revocationPK,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte(id.OU.OrganizationalUnitIdentifier)},
+				{Type: bccsp.IdemixIntAttribute, Value: getIdemixRoleFromMSPRole(id.Role)},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex: rhIndex,
+			Epoch:   id.msp.epoch,
+		},
+	)
+	if err == nil && !valid {
+		panic("unexpected condition, an error should be returned for an invalid signature")
+	}
 
-	return id.associationProof.Ver(discloseFlags, id.msp.ipk, nil, attributeValues)
+	return err
 }
 
 func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
+	err := msp.Validate(id)
+	if err != nil {
+		return errors.Wrap(err, "identity is not valid with respect to this MSP")
+	}
+
+	return msp.satisfiesPrincipalValidated(id, principal)
+}
+
+// satisfiesPrincipalValidated performs all the tasks of satisfiesPrincipal except the identity validation,
+// such that combined principals will not cause multiple expensive identity validations.
+func (msp *idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPPrincipal) error {
 	switch principal.PrincipalClassification {
 	// in this case, we have to check whether the
 	// identity has a role in the msp - member or admin
@@ -274,11 +384,6 @@ func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal)
 			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
 		}
 
-		// check whether this identity is valid
-		err = msp.Validate(id)
-		if err != nil {
-			return errors.Wrap(err, "identity is not valid with respect to this MSP")
-		}
 		// now we validate the different msp roles
 		switch mspRole.Role {
 		case m.MSPRole_MEMBER:
@@ -292,11 +397,21 @@ func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal)
 				return errors.Errorf("user is not an admin")
 			}
 			return nil
+		case m.MSPRole_PEER:
+			if msp.version >= MSPv1_3 {
+				return errors.Errorf("idemixmsp only supports client use, so it cannot satisfy an MSPRole PEER principal")
+			}
+			fallthrough
+		case m.MSPRole_CLIENT:
+			if msp.version >= MSPv1_3 {
+				return nil // any valid idemixmsp member must be a client
+			}
+			fallthrough
 		default:
 			return errors.Errorf("invalid MSP role type %d", int32(mspRole.Role))
 		}
-	// in this case we have to serialize this instance
-	// and compare it byte-by-byte with Principal
+		// in this case we have to serialize this instance
+		// and compare it byte-by-byte with Principal
 	case m.MSPPrincipal_IDENTITY:
 		mspLogger.Debugf("Checking if identity satisfies IDENTITY principal")
 		idBytes, err := id.Serialize()
@@ -325,18 +440,54 @@ func (msp *idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal)
 			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", ou.MspIdentifier, id.GetMSPIdentifier())
 		}
 
-		// we then check if the identity is valid with this MSP
-		// and fail if it is not
-		err = msp.Validate(id)
-		if err != nil {
-			return err
-		}
-
 		if ou.OrganizationalUnitIdentifier != id.(*idemixidentity).OU.OrganizationalUnitIdentifier {
 			return errors.Errorf("user is not part of the desired organizational unit")
 		}
 
 		return nil
+	case m.MSPPrincipal_COMBINED:
+		if msp.version <= MSPv1_1 {
+			return errors.Errorf("Combined MSP Principals are unsupported in MSPv1_1")
+		}
+
+		// Principal is a combination of multiple principals.
+		principals := &m.CombinedPrincipal{}
+		err := proto.Unmarshal(principal.Principal, principals)
+		if err != nil {
+			return errors.Wrap(err, "could not unmarshal CombinedPrincipal from principal")
+		}
+		// Return an error if there are no principals in the combined principal.
+		if len(principals.Principals) == 0 {
+			return errors.New("no principals in CombinedPrincipal")
+		}
+		// Recursively call msp.SatisfiesPrincipal for all combined principals.
+		// There is no limit for the levels of nesting for the combined principals.
+		for _, cp := range principals.Principals {
+			err = msp.satisfiesPrincipalValidated(id, cp)
+			if err != nil {
+				return err
+			}
+		}
+		// The identity satisfies all the principals
+		return nil
+	case m.MSPPrincipal_ANONYMITY:
+		if msp.version <= MSPv1_1 {
+			return errors.Errorf("Anonymity MSP Principals are unsupported in MSPv1_1")
+		}
+
+		anon := &m.MSPIdentityAnonymity{}
+		err := proto.Unmarshal(principal.Principal, anon)
+		if err != nil {
+			return errors.Wrap(err, "could not unmarshal MSPIdentityAnonymity from principal")
+		}
+		switch anon.AnonymityType {
+		case m.MSPIdentityAnonymity_ANONYMOUS:
+			return nil
+		case m.MSPIdentityAnonymity_NOMINAL:
+			return errors.New("principal is nominal, but idemix MSP is anonymous")
+		default:
+			return errors.Errorf("unknown principal anonymity type: %d", anon.AnonymityType)
+		}
 	default:
 		return errors.Errorf("invalid principal type %d", int32(principal.PrincipalClassification))
 	}
@@ -365,25 +516,38 @@ func (msp *idemixmsp) GetTLSIntermediateCerts() [][]byte {
 }
 
 type idemixidentity struct {
-	Nym  *FP256BN.ECP
-	msp  *idemixmsp
-	id   *IdentityIdentifier
-	Role *m.MSPRole
-	OU   *m.OrganizationUnit
+	NymPublicKey bccsp.Key
+	msp          *idemixmsp
+	id           *IdentityIdentifier
+	Role         *m.MSPRole
+	OU           *m.OrganizationUnit
 	// associationProof contains cryptographic proof that this identity
 	// belongs to the MSP id.msp, i.e., it proves that the pseudonym
 	// is constructed from a secret key on which the CA issued a credential.
-	associationProof *idemix.Signature
+	associationProof []byte
 }
 
-func newIdemixIdentity(msp *idemixmsp, nym *FP256BN.ECP, role *m.MSPRole, ou *m.OrganizationUnit, proof *idemix.Signature) *idemixidentity {
+func (id *idemixidentity) Anonymous() bool {
+	return true
+}
+
+func newIdemixIdentity(msp *idemixmsp, NymPublicKey bccsp.Key, role *m.MSPRole, ou *m.OrganizationUnit, proof []byte) *idemixidentity {
 	id := &idemixidentity{}
-	id.Nym = nym
+	id.NymPublicKey = NymPublicKey
 	id.msp = msp
-	id.id = &IdentityIdentifier{Mspid: msp.name, Id: proto.MarshalTextString(idemix.EcpToProto(nym))}
 	id.Role = role
 	id.OU = ou
 	id.associationProof = proof
+
+	raw, err := NymPublicKey.Bytes()
+	if err != nil {
+		panic(fmt.Sprintf("unexpected condition, failed marshalling nym public key [%s]", err))
+	}
+	id.id = &IdentityIdentifier{
+		Mspid: msp.name,
+		Id:    bytes.NewBuffer(raw).String(),
+	}
+
 	return id
 }
 
@@ -404,11 +568,12 @@ func (id *idemixidentity) GetMSPIdentifier() string {
 
 func (id *idemixidentity) GetOrganizationalUnits() []*OUIdentifier {
 	// we use the (serialized) public key of this MSP as the CertifiersIdentifier
-	certifiersIdentifier, err := proto.Marshal(id.msp.ipk)
+	certifiersIdentifier, err := id.msp.ipk.Bytes()
 	if err != nil {
 		mspIdentityLogger.Errorf("Failed to marshal ipk in GetOrganizationalUnits: %s", err)
 		return nil
 	}
+
 	return []*OUIdentifier{{certifiersIdentifier, id.OU.OrganizationalUnitIdentifier}}
 }
 
@@ -417,18 +582,20 @@ func (id *idemixidentity) Validate() error {
 }
 
 func (id *idemixidentity) Verify(msg []byte, sig []byte) error {
-	if mspLogger.IsEnabledFor(logging.DEBUG) {
+	if mspIdentityLogger.IsEnabledFor(zapcore.DebugLevel) {
 		mspIdentityLogger.Debugf("Verify Idemix sig: msg = %s", hex.Dump(msg))
 		mspIdentityLogger.Debugf("Verify Idemix sig: sig = %s", hex.Dump(sig))
 	}
 
-	signature := new(idemix.NymSignature)
-	err := proto.Unmarshal(sig, signature)
-	if err != nil {
-		return errors.Wrap(err, "error unmarshalling signature")
-	}
-
-	return signature.Ver(id.Nym, id.msp.ipk, msg)
+	_, err := id.msp.csp.Verify(
+		id.NymPublicKey,
+		sig,
+		msg,
+		&bccsp.IdemixNymSignerOpts{
+			IssuerPK: id.msp.ipk,
+		},
+	)
+	return err
 }
 
 func (id *idemixidentity) SatisfiesPrincipal(principal *m.MSPPrincipal) error {
@@ -437,8 +604,15 @@ func (id *idemixidentity) SatisfiesPrincipal(principal *m.MSPPrincipal) error {
 
 func (id *idemixidentity) Serialize() ([]byte, error) {
 	serialized := &m.SerializedIdemixIdentity{}
-	serialized.NymX = idemix.BigToBytes(id.Nym.GetX())
-	serialized.NymY = idemix.BigToBytes(id.Nym.GetY())
+
+	raw, err := id.NymPublicKey.Bytes()
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not serialize nym of identity %s", id.id)
+	}
+	// This is an assumption on how the underlying idemix implementation work.
+	// TODO: change this in future version
+	serialized.NymX = raw[:len(raw)/2]
+	serialized.NymY = raw[len(raw)/2:]
 	ouBytes, err := proto.Marshal(id.OU)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not marshal OU of identity %s", id.id)
@@ -449,13 +623,9 @@ func (id *idemixidentity) Serialize() ([]byte, error) {
 		return nil, errors.Wrapf(err, "could not marshal role of identity %s", id.id)
 	}
 
-	serialized.OU = ouBytes
+	serialized.Ou = ouBytes
 	serialized.Role = roleBytes
-
-	serialized.Proof, err = proto.Marshal(id.associationProof)
-	if err != nil {
-		return nil, err
-	}
+	serialized.Proof = id.associationProof
 
 	idemixIDBytes, err := proto.Marshal(serialized)
 	if err != nil {
@@ -473,19 +643,27 @@ func (id *idemixidentity) Serialize() ([]byte, error) {
 
 type idemixSigningIdentity struct {
 	*idemixidentity
-	rng     *amcl.RAND
-	Cred    *idemix.Credential
-	Sk      *FP256BN.BIG
-	RandNym *FP256BN.BIG
+	Cred         []byte
+	UserKey      bccsp.Key
+	NymKey       bccsp.Key
+	enrollmentId string
 }
 
 func (id *idemixSigningIdentity) Sign(msg []byte) ([]byte, error) {
 	mspLogger.Debugf("Idemix identity %s is signing", id.GetIdentifier())
-	sig, err := idemix.NewNymSignature(id.Sk, id.Nym, id.RandNym, id.msp.ipk, msg, id.rng)
+
+	sig, err := id.msp.csp.Sign(
+		id.UserKey,
+		msg,
+		&bccsp.IdemixNymSignerOpts{
+			Nym:      id.NymKey,
+			IssuerPK: id.msp.ipk,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
-	return proto.Marshal(sig)
+	return sig, nil
 }
 
 func (id *idemixSigningIdentity) GetPublicVersion() Identity {

@@ -77,9 +77,39 @@ func (F *FP12) norm() {
 }
 /* test x==0 ? */
 func (F *FP12) iszilch() bool {
-	F.reduce()
+	//F.reduce()
 	return (F.a.iszilch() && F.b.iszilch() && F.c.iszilch())
 }
+
+/* Conditional move */
+func (F *FP12) cmove(g *FP12,d int) {
+	F.a.cmove(g.a,d)
+	F.b.cmove(g.b,d)
+	F.c.cmove(g.c,d)
+}
+
+/* Constant time select from pre-computed table */
+func (F *FP12) selector(g []*FP12,b int32) {
+
+	m:=b>>31
+	babs:=(b^m)-m
+
+	babs=(babs-1)/2
+
+	F.cmove(g[0],teq(babs,0))  // conditional move
+	F.cmove(g[1],teq(babs,1))
+	F.cmove(g[2],teq(babs,2))
+	F.cmove(g[3],teq(babs,3))
+	F.cmove(g[4],teq(babs,4))
+	F.cmove(g[5],teq(babs,5))
+	F.cmove(g[6],teq(babs,6))
+	F.cmove(g[7],teq(babs,7))
+ 
+ 	invF:=NewFP12copy(F) 
+	invF.conj()
+	F.cmove(invF,int(m&1))
+}
+
 /* test x==1 ? */
 func (F *FP12) Isunity() bool {
 	one:=NewFP4int(1)
@@ -577,9 +607,86 @@ func (F *FP12) Compow(e *BIG,r *BIG) *FP4 {
 }
 
 /* p=q0^u0.q1^u1.q2^u2.q3^u3 */
-/* Timing attack secure, but not cache attack secure */
+// Bos & Costello https://eprint.iacr.org/2013/458.pdf
+// Faz-Hernandez & Longa & Sanchez  https://eprint.iacr.org/2013/158.pdf
+// Side channel attack secure 
 
- func pow4(q []*FP12,u []*BIG) *FP12 {
+func pow4(q []*FP12,u []*BIG) *FP12 {
+	var g []*FP12
+	var w [NLEN*int(BASEBITS)+1]int8
+	var s [NLEN*int(BASEBITS)+1]int8
+	var t []*BIG
+	r:=NewFP12int(0)
+	p:=NewFP12int(0)
+	mt:=NewBIGint(0)
+
+	for i:=0;i<4;i++ {
+		t=append(t,NewBIGcopy(u[i]))
+	}
+
+	g=append(g,NewFP12copy(q[0]))	// q[0]
+	g=append(g,NewFP12copy(g[0])); g[1].Mul(q[1])	// q[0].q[1]
+	g=append(g,NewFP12copy(g[0])); g[2].Mul(q[2])	// q[0].q[2]
+	g=append(g,NewFP12copy(g[1])); g[3].Mul(q[2])	// q[0].q[1].q[2]
+	g=append(g,NewFP12copy(g[0])); g[4].Mul(q[3])	// q[0].q[3]
+	g=append(g,NewFP12copy(g[1])); g[5].Mul(q[3])	// q[0].q[1].q[3]
+	g=append(g,NewFP12copy(g[2])); g[6].Mul(q[3])	// q[0].q[2].q[3]
+	g=append(g,NewFP12copy(g[3])); g[7].Mul(q[3])	// q[0].q[1].q[2].q[3]
+
+// Make it odd
+	pb:=1-t[0].parity()
+	t[0].inc(pb)
+//	t[0].norm();
+
+// Number of bits
+	mt.zero()
+	for i:=0;i<4;i++ {
+		t[i].norm()
+		mt.or(t[i])
+	}
+
+	nb:=1+mt.nbits();
+
+// Sign pivot 
+	s[nb-1]=1
+	for i:=0;i<nb-1;i++ {
+		t[0].fshr(1)
+		s[i]=2*int8(t[0].parity())-1
+	}
+
+// Recoded exponent
+	for i:=0; i<nb; i++ {
+		w[i]=0
+		k:=1
+		for j:=1; j<4; j++ {
+			bt:=s[i]*int8(t[j].parity())
+			t[j].fshr(1)
+			t[j].dec(int(bt)>>1)
+			t[j].norm()
+			w[i]+=bt*int8(k)
+			k*=2
+		}
+	}
+
+// Main loop
+	p.selector(g,int32(2*w[nb-1]+1))  
+	for i:=nb-2;i>=0;i-- {
+		p.usqr()
+		r.selector(g,int32(2*w[i]+s[i]))
+		p.Mul(r)
+	}
+
+// apply correction
+	r.Copy(q[0]); r.conj()   
+	r.Mul(p)
+	p.cmove(r,pb)
+
+	p.reduce()
+	return p;
+}
+
+/*
+func pow4(q []*FP12,u []*BIG) *FP12 {
 	var a [4]int8
 	var g []*FP12
 	var s []*FP12
@@ -616,7 +723,7 @@ func (F *FP12) Compow(e *BIG,r *BIG) *FP4 {
 	g[4].Mul(s[0])
 	g[7].Mul(s[1])
 
-/* if power is even add 1 to power, and add q to correction */
+// if power is even add 1 to power, and add q to correction 
 
 	for i:=0;i<4;i++ {
 		if t[i].parity()==0 {
@@ -628,7 +735,7 @@ func (F *FP12) Compow(e *BIG,r *BIG) *FP4 {
 	c.conj()
 	nb:=1+mt.nbits()
 
-/* convert exponent to signed 1-bit window */
+// convert exponent to signed 1-bit window 
 	for j:=0;j<nb;j++ {
 		for i:=0;i<4;i++ {
 			a[i]=int8(t[i].lastbits(2)-2)
@@ -642,14 +749,15 @@ func (F *FP12) Compow(e *BIG,r *BIG) *FP4 {
 
 	for i:=nb-1;i>=0;i-- {
 		m:=w[i]>>7
-		j:=(w[i]^m)-m  /* j=abs(w[i]) */
+		j:=(w[i]^m)-m  // j=abs(w[i]) 
 		j=(j-1)/2
 		s[0].Copy(g[j]); s[1].Copy(g[j]); s[1].conj()
 		p.usqr()
 		p.Mul(s[m&1]);
 	}
-	p.Mul(c)  /* apply correction */
+	p.Mul(c)  // apply correction 
 	p.reduce()
 	return p;
 }
+*/
 

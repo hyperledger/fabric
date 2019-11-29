@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package filter
 
 import (
+	"context"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/core/handlers/auth"
-	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // NewExpirationCheckFilter creates a new Filter that checks identity expiration
@@ -32,17 +32,17 @@ func (f *expirationCheckFilter) Init(next peer.EndorserServer) {
 }
 
 func validateProposal(signedProp *peer.SignedProposal) error {
-	prop, err := utils.GetProposal(signedProp.ProposalBytes)
+	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed parsing proposal")
 	}
 
-	hdr, err := utils.GetHeader(prop.Header)
+	hdr, err := protoutil.UnmarshalHeader(prop.Header)
 	if err != nil {
 		return errors.Wrap(err, "failed parsing header")
 	}
 
-	sh, err := utils.GetSignatureHeader(hdr.SignatureHeader)
+	sh, err := protoutil.UnmarshalSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		return errors.Wrap(err, "failed parsing signature header")
 	}

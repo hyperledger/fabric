@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/peer"
 )
 

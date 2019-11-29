@@ -9,15 +9,9 @@ package channelconfig
 import (
 	"testing"
 
-	ab "github.com/hyperledger/fabric/protos/orderer"
-
-	logging "github.com/op/go-logging"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
 
 func TestBatchSize(t *testing.T) {
 	validMaxMessageCount := uint32(10)

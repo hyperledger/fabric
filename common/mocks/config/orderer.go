@@ -9,14 +9,19 @@ package config
 import (
 	"time"
 
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 // Orderer is a mock implementation of channelconfig.Orderer
 type Orderer struct {
 	// ConsensusTypeVal is returned as the result of ConsensusType()
 	ConsensusTypeVal string
+	// ConsensusMetadataVal is returned as the result of ConsensusMetadata()
+	ConsensusMetadataVal []byte
+	// ConsensusTypeStateVal is returned as the result of ConsensusState()
+	ConsensusTypeStateVal ab.ConsensusType_State
+
 	// BatchSizeVal is returned as the result of BatchSize()
 	BatchSizeVal *ab.BatchSize
 	// BatchTimeoutVal is returned as the result of BatchTimeout()
@@ -26,44 +31,54 @@ type Orderer struct {
 	// MaxChannelsCountVal is returns as the result of MaxChannelsCount()
 	MaxChannelsCountVal uint64
 	// OrganizationsVal is returned as the result of Organizations()
-	OrganizationsVal map[string]channelconfig.Org
+	OrganizationsVal map[string]channelconfig.OrdererOrg
 	// CapabilitiesVal is returned as the result of Capabilities()
 	CapabilitiesVal channelconfig.OrdererCapabilities
 }
 
 // ConsensusType returns the ConsensusTypeVal
-func (scm *Orderer) ConsensusType() string {
-	return scm.ConsensusTypeVal
+func (o *Orderer) ConsensusType() string {
+	return o.ConsensusTypeVal
+}
+
+// ConsensusMetadata returns the ConsensusMetadataVal
+func (o *Orderer) ConsensusMetadata() []byte {
+	return o.ConsensusMetadataVal
+}
+
+// ConsensusState returns the ConsensusTypeStateVal
+func (o *Orderer) ConsensusState() ab.ConsensusType_State {
+	return o.ConsensusTypeStateVal
 }
 
 // BatchSize returns the BatchSizeVal
-func (scm *Orderer) BatchSize() *ab.BatchSize {
-	return scm.BatchSizeVal
+func (o *Orderer) BatchSize() *ab.BatchSize {
+	return o.BatchSizeVal
 }
 
 // BatchTimeout returns the BatchTimeoutVal
-func (scm *Orderer) BatchTimeout() time.Duration {
-	return scm.BatchTimeoutVal
+func (o *Orderer) BatchTimeout() time.Duration {
+	return o.BatchTimeoutVal
 }
 
 // KafkaBrokers returns the KafkaBrokersVal
-func (scm *Orderer) KafkaBrokers() []string {
-	return scm.KafkaBrokersVal
+func (o *Orderer) KafkaBrokers() []string {
+	return o.KafkaBrokersVal
 }
 
 // MaxChannelsCount returns the MaxChannelsCountVal
-func (scm *Orderer) MaxChannelsCount() uint64 {
-	return scm.MaxChannelsCountVal
+func (o *Orderer) MaxChannelsCount() uint64 {
+	return o.MaxChannelsCountVal
 }
 
 // Organizations returns OrganizationsVal
-func (scm *Orderer) Organizations() map[string]channelconfig.Org {
-	return scm.OrganizationsVal
+func (o *Orderer) Organizations() map[string]channelconfig.OrdererOrg {
+	return o.OrganizationsVal
 }
 
 // Capabilities returns CapabilitiesVal
-func (scm *Orderer) Capabilities() channelconfig.OrdererCapabilities {
-	return scm.CapabilitiesVal
+func (o *Orderer) Capabilities() channelconfig.OrdererCapabilities {
+	return o.CapabilitiesVal
 }
 
 // OrdererCapabilities mocks the channelconfig.OrdererCapabilities interface
@@ -79,6 +94,10 @@ type OrdererCapabilities struct {
 
 	// ExpirationVal is returned by ExpirationCheck()
 	ExpirationVal bool
+
+	ConsensusTypeMigrationVal bool
+
+	UseChannelCreationPolicyAsAdminsVal bool
 }
 
 // Supported returns SupportedErr
@@ -100,4 +119,13 @@ func (oc *OrdererCapabilities) Resubmission() bool {
 // when validating messages
 func (oc *OrdererCapabilities) ExpirationCheck() bool {
 	return oc.ExpirationVal
+}
+
+// ConsensusTypeMigration checks whether the orderer permits a consensus-type migration.
+func (oc *OrdererCapabilities) ConsensusTypeMigration() bool {
+	return oc.ConsensusTypeMigrationVal
+}
+
+func (oc *OrdererCapabilities) UseChannelCreationPolicyAsAdmins() bool {
+	return oc.UseChannelCreationPolicyAsAdminsVal
 }

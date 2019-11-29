@@ -1,2 +1,0 @@
-sdk=node userInputs/samplecc-chan1-constant-q.json
-sdk=node userInputs/samplecc-chan2-constant-q.json

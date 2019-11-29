@@ -27,7 +27,7 @@ type ECP2 struct {
 	x *FP2
 	y *FP2
 	z *FP2
-	INF bool
+//	INF bool
 }
 
 func NewECP2() *ECP2 {
@@ -35,27 +35,26 @@ func NewECP2() *ECP2 {
 	E.x=NewFP2int(0)
 	E.y=NewFP2int(1)
 	E.z=NewFP2int(0)
-	E.INF=true
+//	E.INF=true
 	return E
 }
 
 /* Test this=O? */
 func (E *ECP2) Is_infinity() bool {
-	if E.INF {return true}
+//	if E.INF {return true}
 	E.x.reduce(); E.y.reduce(); E.z.reduce()
-	E.INF=E.x.iszilch() && E.z.iszilch()
-	return E.INF
+	return E.x.iszilch() && E.z.iszilch()
 }
 /* copy this=P */
 func (E *ECP2) Copy(P *ECP2) {
 	E.x.copy(P.x)
 	E.y.copy(P.y)
 	E.z.copy(P.z)
-	E.INF=P.INF
+//	E.INF=P.INF
 }
 /* set this=O */
 func (E *ECP2) inf() {
-	E.INF=true
+//	E.INF=true
 	E.x.zero()
 	E.y.one()
 	E.z.zero()
@@ -72,12 +71,13 @@ func (E *ECP2) cmove(Q *ECP2,d int) {
 	E.x.cmove(Q.x,d)
 	E.y.cmove(Q.y,d)
 	E.z.cmove(Q.z,d)
-
+/*
 	var bd bool
 	if (d==0) {
 		bd=false
 	} else {bd=true}
 	E.INF=(E.INF!=(E.INF!=Q.INF)&&bd)
+*/
 }
 
 /* Constant time select from pre-computed table */
@@ -104,8 +104,8 @@ func (E *ECP2) selector(W []*ECP2,b int32) {
 
 /* Test if P == Q */
 func (E *ECP2) Equals(Q *ECP2) bool {
-	if E.Is_infinity() && Q.Is_infinity() {return true}
-	if E.Is_infinity() || Q.Is_infinity() {return false}
+//	if E.Is_infinity() && Q.Is_infinity() {return true}
+//	if E.Is_infinity() || Q.Is_infinity() {return false}
 
 	a:=NewFP2copy(E.x)
 	b:=NewFP2copy(Q.x)
@@ -133,13 +133,15 @@ func (E *ECP2) Affine() {
 
 /* extract affine x as FP2 */
 func (E *ECP2) GetX() *FP2 {
-	E.Affine()
-	return E.x
+	W:=NewECP2(); W.Copy(E)
+	W.Affine()
+	return W.x
 }
 /* extract affine y as FP2 */
 func (E *ECP2) GetY() *FP2 {
-	E.Affine();
-	return E.y;
+	W:=NewECP2(); W.Copy(E)
+	W.Affine()
+	return W.y;
 }
 /* extract projective x */
 func (E *ECP2) getx() *FP2 {
@@ -159,15 +161,17 @@ func (E *ECP2) ToBytes(b []byte) {
 	var t [int(MODBYTES)]byte
 	MB:=int(MODBYTES)
 
-	E.Affine()
-	E.x.GetA().ToBytes(t[:])
+	W:=NewECP2(); W.Copy(E);
+	W.Affine()
+
+	W.x.GetA().ToBytes(t[:])
 	for i:=0;i<MB;i++ { b[i]=t[i]}
-	E.x.GetB().ToBytes(t[:])
+	W.x.GetB().ToBytes(t[:])
 	for i:=0;i<MB;i++ { b[i+MB]=t[i]}
 
-	E.y.GetA().ToBytes(t[:])
+	W.y.GetA().ToBytes(t[:])
 	for i:=0;i<MB;i++ {b[i+2*MB]=t[i]}
-	E.y.GetB().ToBytes(t[:])
+	W.y.GetB().ToBytes(t[:])
 	for i:=0;i<MB;i++ {b[i+3*MB]=t[i]}
 }
 
@@ -193,9 +197,10 @@ func ECP2_fromBytes(b []byte) *ECP2 {
 
 /* convert this to hex string */
 func (E *ECP2) toString() string {
-	if E.Is_infinity() {return "infinity"}
-	E.Affine()
-	return "("+E.x.toString()+","+E.y.toString()+")"
+	W:=NewECP2(); W.Copy(E);
+	W.Affine()
+	if W.Is_infinity() {return "infinity"}
+	return "("+W.x.toString()+","+W.y.toString()+")"
 }
 
 /* Calculate RHS of twisted curve equation x^3+B/i */
@@ -229,9 +234,9 @@ func NewECP2fp2s(ix *FP2,iy *FP2) *ECP2 {
 	rhs:=RHS2(E.x)
 	y2:=NewFP2copy(E.y)
 	y2.sqr()
-	if y2.Equals(rhs) {
-		E.INF=false
-	} else {E.x.zero();E.INF=true}
+	if !y2.Equals(rhs) {
+		E.inf()
+	} 
 	return E
 }
 
@@ -244,14 +249,14 @@ func NewECP2fp2(ix *FP2) *ECP2 {
 	rhs:=RHS2(E.x)
 	if rhs.sqrt() {
 			E.y.copy(rhs)
-			E.INF=false;
-	} else {E.x.zero();E.INF=true}
+			//E.INF=false;
+	} else {E.inf()}
 	return E
 }
 
 /* this+=this */
 func (E *ECP2) dbl() int {
-	if E.INF {return -1}
+//	if E.INF {return -1}
 
 	iy:=NewFP2copy(E.y)
 	if SEXTIC_TWIST == D_TYPE {
@@ -266,15 +271,15 @@ func (E *ECP2) dbl() int {
 	t1:=NewFP2copy(iy)  
 	t1.mul(E.z)
 	t2:=NewFP2copy(E.z)
-	t2.sqr()
+	t2.sqr()			// z^2
 
-	E.z.copy(t0)
-	E.z.add(t0); E.z.norm() 
+	E.z.copy(t0)			// y^2
+	E.z.add(t0); E.z.norm()		// 2y^2	
 	E.z.add(E.z)
-	E.z.add(E.z) 
+	E.z.add(E.z)			// 8y^2
 	E.z.norm()  
 
-	t2.imul(3*CURVE_B_I) 
+	t2.imul(3*CURVE_B_I)		// 3bz^2
 	if SEXTIC_TWIST == M_TYPE {
 		t2.mul_ip()
 		t2.norm()
@@ -300,12 +305,12 @@ func (E *ECP2) dbl() int {
 
 /* this+=Q - return 0 for add, 1 for double, -1 for O */
 func (E *ECP2) Add(Q *ECP2) int {
-	if E.INF {
+/*	if E.INF {
 		E.Copy(Q)
 		return -1
 	}
 	if Q.INF {return -1}
-
+*/
 	b:=3*CURVE_B_I
 	t0:=NewFP2copy(E.x)
 	t0.mul(Q.x)         // x.Q.x
@@ -354,7 +359,7 @@ func (E *ECP2) Add(Q *ECP2) int {
 	t0.add(x3); t0.norm()
 	t2.imul(b) 	
 	if SEXTIC_TWIST == M_TYPE {
-		t2.mul_ip()
+		t2.mul_ip(); t2.norm()
 	}
 	z3:=NewFP2copy(t1); z3.add(t2); z3.norm()
 	t1.sub(t2); t1.norm()
@@ -376,14 +381,15 @@ func (E *ECP2) Add(Q *ECP2) int {
 
 /* set this-=Q */
 func (E *ECP2) Sub(Q *ECP2) int {
-	Q.neg()
-	D:=E.Add(Q)
-	Q.neg()
+	NQ:=NewECP2(); NQ.Copy(Q)
+	NQ.neg()
+	D:=E.Add(NQ)
+	//Q.neg()
 	return D
 }
 /* set this*=q, where q is Modulus, using Frobenius */
 func (E *ECP2) frob(X *FP2) {
-	if E.INF {return}
+//	if E.INF {return}
 	X2:=NewFP2copy(X)
 	X2.sqr()
 	E.x.conj()
@@ -409,7 +415,7 @@ func (E *ECP2) mul(e *BIG) *ECP2 {
 	var W []*ECP2
 	var w [1+(NLEN*int(BASEBITS)+3)/4]int8
 
-	E.Affine()
+	//E.Affine()
 
 /* precompute table */
 	Q.Copy(E)
@@ -461,6 +467,86 @@ func (E *ECP2) Mul(e *BIG) *ECP2 {
 }
 
 /* P=u0.Q0+u1*Q1+u2*Q2+u3*Q3 */
+// Bos & Costello https://eprint.iacr.org/2013/458.pdf
+// Faz-Hernandez & Longa & Sanchez  https://eprint.iacr.org/2013/158.pdf
+// Side channel attack secure 
+func mul4(Q []*ECP2,u []*BIG) *ECP2 {
+	W:=NewECP2()
+	P:=NewECP2()
+	var T [] *ECP2
+	mt:=NewBIG()
+	var t [] *BIG
+
+	var w [NLEN*int(BASEBITS)+1]int8	
+	var s [NLEN*int(BASEBITS)+1]int8	
+
+	for i:=0;i<4;i++ {
+		t=append(t,NewBIGcopy(u[i]));
+		//Q[i].Affine();
+	}
+
+	T=append(T,NewECP2()); T[0].Copy(Q[0])	// Q[0]
+	T=append(T,NewECP2()); T[1].Copy(T[0]); T[1].Add(Q[1])	// Q[0]+Q[1]
+	T=append(T,NewECP2()); T[2].Copy(T[0]); T[2].Add(Q[2])	// Q[0]+Q[2]
+	T=append(T,NewECP2()); T[3].Copy(T[1]); T[3].Add(Q[2])	// Q[0]+Q[1]+Q[2]
+	T=append(T,NewECP2()); T[4].Copy(T[0]); T[4].Add(Q[3])	// Q[0]+Q[3]
+	T=append(T,NewECP2()); T[5].Copy(T[1]); T[5].Add(Q[3])	// Q[0]+Q[1]+Q[3]
+	T=append(T,NewECP2()); T[6].Copy(T[2]); T[6].Add(Q[3])	// Q[0]+Q[2]+Q[3]
+	T=append(T,NewECP2()); T[7].Copy(T[3]); T[7].Add(Q[3])	// Q[0]+Q[1]+Q[2]+Q[3]
+	
+// Make it odd
+	pb:=1-t[0].parity()
+	t[0].inc(pb)
+//	t[0].norm();
+
+// Number of bits
+	mt.zero()
+	for i:=0;i<4;i++ {
+		t[i].norm()
+		mt.or(t[i])
+	}
+
+	nb:=1+mt.nbits();
+
+// Sign pivot 
+	s[nb-1]=1
+	for i:=0;i<nb-1;i++ {
+		t[0].fshr(1)
+		s[i]=2*int8(t[0].parity())-1
+	}
+
+// Recoded exponent
+	for i:=0; i<nb; i++ {
+		w[i]=0
+		k:=1
+		for j:=1; j<4; j++ {
+			bt:=s[i]*int8(t[j].parity())
+			t[j].fshr(1)
+			t[j].dec(int(bt)>>1)
+			t[j].norm()
+			w[i]+=bt*int8(k)
+			k*=2
+		}
+	}	
+	
+// Main loop
+	P.selector(T,int32(2*w[nb-1]+1))  
+	for i:=nb-2;i>=0;i-- {
+		P.dbl()
+		W.selector(T,int32(2*w[i]+s[i]))
+		P.Add(W)
+	}
+
+// apply correction
+	W.Copy(P)   
+	W.Sub(Q[0])
+	P.cmove(W,pb)
+
+	P.Affine()
+	return P
+}
+
+/*
 func mul4(Q []*ECP2,u []*BIG) *ECP2 {
 	var a [4]int8
 	T:=NewECP2()
@@ -479,7 +565,7 @@ func mul4(Q []*ECP2,u []*BIG) *ECP2 {
 		Q[i].Affine();
 	}
 
-/* precompute table */
+// precompute table 
 
 	W=append(W,NewECP2()); W[0].Copy(Q[0]); W[0].Sub(Q[1])
 	W=append(W,NewECP2()); W[1].Copy(W[0])
@@ -501,7 +587,7 @@ func mul4(Q []*ECP2,u []*BIG) *ECP2 {
 	W[4].Sub(T)
 	W[7].Add(T)
 
-/* if multiplier is even add 1 to multiplier, and add P to correction */
+// if multiplier is even add 1 to multiplier, and add P to correction 
 	mt.zero(); C.inf()
 	for i:=0;i<4;i++ {
 		if t[i].parity()==0 {
@@ -513,7 +599,7 @@ func mul4(Q []*ECP2,u []*BIG) *ECP2 {
 
 	nb:=1+mt.nbits();
 
-/* convert exponent to signed 1-bit window */
+// convert exponent to signed 1-bit window 
 	for j:=0;j<nb;j++ {
 		for i:=0;i<4;i++ {
 			a[i]=int8(t[i].lastbits(2)-2)
@@ -530,11 +616,12 @@ func mul4(Q []*ECP2,u []*BIG) *ECP2 {
 		P.dbl()
 		P.Add(T)
 	}
-	P.Sub(C) /* apply correction */
+	P.Sub(C) // apply correction 
 
 	P.Affine()
 	return P
 }
+*/
 
 /* needed for SOK */
 func ECP2_mapit(h []byte) *ECP2 {
@@ -578,8 +665,8 @@ func ECP2_mapit(h []byte) *ECP2 {
 		Q.Add(T)
 	}
 	if CURVE_PAIRING_TYPE==BLS {
-		xQ=NewECP2()
-		x2Q=NewECP2()
+//		xQ=NewECP2()
+//		x2Q=NewECP2()
 
 		xQ=Q.mul(x)
 		x2Q=xQ.mul(x)
@@ -603,4 +690,10 @@ func ECP2_mapit(h []byte) *ECP2 {
 	}
 	Q.Affine()
 	return Q
+}
+
+func ECP2_generator() *ECP2 {
+	var G *ECP2
+	G=NewECP2fp2s(NewFP2bigs(NewBIGints(CURVE_Pxa),NewBIGints(CURVE_Pxb)),NewFP2bigs(NewBIGints(CURVE_Pya),NewBIGints(CURVE_Pyb)))
+	return G
 }

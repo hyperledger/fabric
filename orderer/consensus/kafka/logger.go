@@ -13,29 +13,17 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/common/flogging"
-	logging "github.com/op/go-logging"
+	"go.uber.org/zap"
 )
 
-const (
-	pkgLogID    = "orderer/consensus/kafka"
-	saramaLogID = pkgLogID + "/sarama"
-)
-
-var logger *logging.Logger
-
+var logger = flogging.MustGetLogger("orderer.consensus.kafka")
 var saramaLogger eventLogger
-
-// init initializes the package logger
-func init() {
-	logger = flogging.MustGetLogger(pkgLogID)
-}
 
 // init initializes the samara logger
 func init() {
-	loggingProvider := flogging.MustGetLogger(saramaLogID)
-	loggingProvider.ExtraCalldepth = 3
+	loggingProvider := flogging.MustGetLogger("orderer.consensus.kafka.sarama")
 	saramaEventLogger := &saramaLoggerImpl{
-		logger: loggingProvider,
+		logger: loggingProvider.WithOptions(zap.AddCallerSkip(3)),
 		eventListenerSupport: &eventListenerSupport{
 			listeners: make(map[string][]chan string),
 		},
@@ -60,7 +48,7 @@ func init() {
 	}()
 }
 
-// eventLogger adapts a go-logging Logger to the sarama.Logger interface.
+// eventLogger adapts a Logger to the sarama.Logger interface.
 // Additionally, listeners can be registered to be notified when a substring has
 // been logged.
 type eventLogger interface {
@@ -69,8 +57,12 @@ type eventLogger interface {
 	RemoveListener(substr string, listener <-chan string)
 }
 
+type debugger interface {
+	Debug(...interface{})
+}
+
 type saramaLoggerImpl struct {
-	logger               *logging.Logger
+	logger               debugger
 	eventListenerSupport *eventListenerSupport
 }
 

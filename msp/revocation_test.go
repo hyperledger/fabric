@@ -20,15 +20,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "msp/identity")
-}
 
 func TestRevocation(t *testing.T) {
 	// testdata/revocation
@@ -87,11 +82,13 @@ func TestRevokedIntermediateCA(t *testing.T) {
 	conf, err := GetLocalMspConfig(dir, nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(MSPv1_0)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	thisMSP, err := newBccspMsp(MSPv1_0, cryptoProvider)
 	assert.NoError(t, err)
 	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
 	assert.NoError(t, err)
-	csp, err := sw.New(256, "SHA2", ks)
+	csp, err := sw.NewWithParams(256, "SHA2", ks)
 	assert.NoError(t, err)
 	thisMSP.(*bccspmsp).bccsp = csp
 

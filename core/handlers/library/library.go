@@ -11,6 +11,10 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/auth/filter"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	"github.com/hyperledger/fabric/core/handlers/decoration/decorator"
+	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	"github.com/hyperledger/fabric/core/handlers/endorsement/builtin"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
+	. "github.com/hyperledger/fabric/core/handlers/validation/builtin"
 )
 
 // HandlerLibrary is used to assert
@@ -38,4 +42,12 @@ func (r *HandlerLibrary) ExpirationCheck() auth.Filter {
 // returns the input as output.
 func (r *HandlerLibrary) DefaultDecorator() decoration.Decorator {
 	return decorator.NewDecorator()
+}
+
+func (r *HandlerLibrary) DefaultEndorsement() endorsement.PluginFactory {
+	return &builtin.DefaultEndorsementFactory{}
+}
+
+func (r *HandlerLibrary) DefaultValidation() validation.PluginFactory {
+	return &DefaultValidationFactory{}
 }

@@ -53,13 +53,17 @@ func TestBFS(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	v := NewTreeVertex("1", nil)
-	v.AddDescendant(NewTreeVertex("2", nil)).AddDescendant(NewTreeVertex("4", nil))
-	v.AddDescendant(NewTreeVertex("3", nil)).AddDescendant(NewTreeVertex("5", nil))
+	v := NewTreeVertex("1", 1)
+	v.AddDescendant(NewTreeVertex("2", 2)).AddDescendant(NewTreeVertex("4", 3))
+	v.AddDescendant(NewTreeVertex("3", 4)).AddDescendant(NewTreeVertex("5", 5))
 
 	copy := v.Clone()
+	// They are different references
+	assert.False(t, copy == v)
+	// They are equal
 	assert.Equal(t, v, copy)
-	v.AddDescendant(NewTreeVertex("6", nil))
+
+	v.AddDescendant(NewTreeVertex("6", 6))
 	assert.NotEqual(t, v, copy)
 }
 

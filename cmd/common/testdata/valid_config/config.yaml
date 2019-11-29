@@ -1,0 +1,10 @@
+version: 0
+tlsconfig:
+  certpath: ""
+  keypath: ""
+  peercacertpath: ""
+  timeout: 0s
+signerconfig:
+  mspid: SampleOrg
+  identitypath: cert.pem
+  keypath: key.pem

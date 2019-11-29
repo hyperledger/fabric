@@ -9,13 +9,17 @@ package inquire
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/graph"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/protos/common"
 )
 
-var logger = flogging.MustGetLogger("policies/inquire")
+var logger = flogging.MustGetLogger("policies.inquire")
+
+const (
+	combinationsUpperBound = 10000
+)
 
 type inquireableSignaturePolicy struct {
 	sigPol *common.SignaturePolicyEnvelope
@@ -36,7 +40,7 @@ func (isp *inquireableSignaturePolicy) SatisfiedBy() []policies.PrincipalSet {
 	root := graph.NewTreeVertex(rootId, isp.sigPol.Rule)
 	computePolicyTree(root)
 	var res []policies.PrincipalSet
-	for _, perm := range root.ToTree().Permute() {
+	for _, perm := range root.ToTree().Permute(combinationsUpperBound) {
 		principalSet := principalsOfTree(perm, isp.sigPol.Identities)
 		if len(principalSet) == 0 {
 			return nil

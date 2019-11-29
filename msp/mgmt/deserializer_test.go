@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package mgmt
@@ -21,19 +11,26 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewDeserializersManager(t *testing.T) {
-	assert.NotNil(t, NewDeserializersManager())
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	assert.NotNil(t, NewDeserializersManager(cryptoProvider))
 }
 
 func TestMspDeserializersManager_Deserialize(t *testing.T) {
-	m := NewDeserializersManager()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
-	i, err := GetLocalMSP().GetDefaultSigningIdentity()
+	m := NewDeserializersManager(cryptoProvider)
+
+	i, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 	raw, err := i.Serialize()
 	assert.NoError(t, err)
@@ -46,16 +43,22 @@ func TestMspDeserializersManager_Deserialize(t *testing.T) {
 }
 
 func TestMspDeserializersManager_GetChannelDeserializers(t *testing.T) {
-	m := NewDeserializersManager()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	m := NewDeserializersManager(cryptoProvider)
 
 	deserializers := m.GetChannelDeserializers()
 	assert.NotNil(t, deserializers)
 }
 
 func TestMspDeserializersManager_GetLocalDeserializer(t *testing.T) {
-	m := NewDeserializersManager()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
-	i, err := GetLocalMSP().GetDefaultSigningIdentity()
+	m := NewDeserializersManager(cryptoProvider)
+
+	i, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 	raw, err := i.Serialize()
 	assert.NoError(t, err)
@@ -68,11 +71,7 @@ func TestMspDeserializersManager_GetLocalDeserializer(t *testing.T) {
 
 func TestMain(m *testing.M) {
 
-	mspDir, err := config.GetDevMspDir()
-	if err != nil {
-		fmt.Printf("Error getting DevMspDir: %s", err)
-		os.Exit(-1)
-	}
+	mspDir := configtest.GetDevMspDir()
 
 	testConf, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")
 	if err != nil {
@@ -80,7 +79,9 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	err = GetLocalMSP().Setup(testConf)
+	cryptoProvider := factory.GetDefault()
+
+	err = GetLocalMSP(cryptoProvider).Setup(testConf)
 	if err != nil {
 		fmt.Printf("Setup for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)

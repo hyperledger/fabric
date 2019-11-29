@@ -7,21 +7,29 @@ SPDX-License-Identifier: Apache-2.0
 package policies
 
 import (
-	"testing"
-
-	cb "github.com/hyperledger/fabric/protos/common"
-
 	"fmt"
 	"reflect"
+	"strconv"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/msp"
-	logging "github.com/op/go-logging"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/common/policies/mocks"
+	mspi "github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
+//go:generate counterfeiter -o mocks/identity_deserializer.go --fake-name IdentityDeserializer . identityDeserializer
+type identityDeserializer interface {
+	mspi.IdentityDeserializer
+}
+
+//go:generate counterfeiter -o mocks/identity.go --fake-name Identity . identity
+type identity interface {
+	mspi.Identity
 }
 
 type mockProvider struct{}
@@ -58,7 +66,7 @@ func TestUnnestedManager(t *testing.T) {
 	assert.True(t, ok, "Should have found the root manager")
 	assert.Equal(t, m, r)
 
-	assert.Len(t, m.policies, len(config.Policies))
+	assert.Len(t, m.Policies, len(config.Policies))
 
 	for policyName := range config.Policies {
 		_, ok := m.GetPolicy(policyName)
@@ -210,5 +218,113 @@ func TestPrincipalUniqueSet(t *testing.T) {
 	v := reflect.Indirect(reflect.ValueOf(msp.MSPPrincipal{}))
 	// Ensure msp.MSPPrincipal has only 2 fields.
 	// This is essential for 'UniqueSet' to work properly
-	assert.Equal(t, 2, v.NumField())
+	// XXX This is a rather brittle check and brittle way to fix the test
+	// There seems to be an assumption that the number of fields in the proto
+	// struct matches the number of fields in the proto message
+	assert.Equal(t, 5, v.NumField())
+}
+
+func TestPrincipalSetContainingOnly(t *testing.T) {
+	var principalSets PrincipalSets
+	var principalSet PrincipalSet
+	for j := 0; j < 3; j++ {
+		for i := 0; i < 10; i++ {
+			principalSet = append(principalSet, &msp.MSPPrincipal{
+				PrincipalClassification: msp.MSPPrincipal_IDENTITY,
+				Principal:               []byte(fmt.Sprintf("%d", j*10+i)),
+			})
+		}
+		principalSets = append(principalSets, principalSet)
+		principalSet = nil
+	}
+
+	between20And30 := func(principal *msp.MSPPrincipal) bool {
+		n, _ := strconv.ParseInt(string(principal.Principal), 10, 32)
+		return n >= 20 && n <= 29
+	}
+
+	principalSets = principalSets.ContainingOnly(between20And30)
+
+	assert.Len(t, principalSets, 1)
+	assert.True(t, principalSets[0].ContainingOnly(between20And30))
+}
+
+func TestSignatureSetToValidIdentities(t *testing.T) {
+	sd := []*protoutil.SignedData{
+		{
+			Data:      []byte("data1"),
+			Identity:  []byte("identity1"),
+			Signature: []byte("signature1"),
+		},
+		{
+			Data:      []byte("data1"),
+			Identity:  []byte("identity1"),
+			Signature: []byte("signature1"),
+		},
+	}
+
+	fIDDs := &mocks.IdentityDeserializer{}
+	fID := &mocks.Identity{}
+	fID.VerifyReturns(nil)
+	fID.GetIdentifierReturns(&mspi.IdentityIdentifier{
+		Id:    "id",
+		Mspid: "mspid",
+	})
+	fIDDs.DeserializeIdentityReturns(fID, nil)
+
+	ids := SignatureSetToValidIdentities(sd, fIDDs)
+	assert.Len(t, ids, 1)
+	assert.NotNil(t, ids[0].GetIdentifier())
+	assert.Equal(t, "id", ids[0].GetIdentifier().Id)
+	assert.Equal(t, "mspid", ids[0].GetIdentifier().Mspid)
+	data, sig := fID.VerifyArgsForCall(0)
+	assert.Equal(t, []byte("data1"), data)
+	assert.Equal(t, []byte("signature1"), sig)
+	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
+	assert.Equal(t, []byte("identity1"), sidBytes)
+}
+
+func TestSignatureSetToValidIdentitiesDeserialiseErr(t *testing.T) {
+	sd := []*protoutil.SignedData{
+		{
+			Data:      []byte("data1"),
+			Identity:  []byte("identity1"),
+			Signature: []byte("signature1"),
+		},
+	}
+
+	fIDDs := &mocks.IdentityDeserializer{}
+	fIDDs.DeserializeIdentityReturns(nil, errors.New("bad identity"))
+
+	ids := SignatureSetToValidIdentities(sd, fIDDs)
+	assert.Len(t, ids, 0)
+	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
+	assert.Equal(t, []byte("identity1"), sidBytes)
+}
+
+func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
+	sd := []*protoutil.SignedData{
+		{
+			Data:      []byte("data1"),
+			Identity:  []byte("identity1"),
+			Signature: []byte("signature1"),
+		},
+	}
+
+	fIDDs := &mocks.IdentityDeserializer{}
+	fID := &mocks.Identity{}
+	fID.VerifyReturns(errors.New("bad signature"))
+	fID.GetIdentifierReturns(&mspi.IdentityIdentifier{
+		Id:    "id",
+		Mspid: "mspid",
+	})
+	fIDDs.DeserializeIdentityReturns(fID, nil)
+
+	ids := SignatureSetToValidIdentities(sd, fIDDs)
+	assert.Len(t, ids, 0)
+	data, sig := fID.VerifyArgsForCall(0)
+	assert.Equal(t, []byte("data1"), data)
+	assert.Equal(t, []byte("signature1"), sig)
+	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
+	assert.Equal(t, []byte("identity1"), sidBytes)
 }

@@ -8,17 +8,17 @@ package chaincode
 
 import (
 	"github.com/golang/protobuf/proto"
+	common2 "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policies/inquire"
-	common2 "github.com/hyperledger/fabric/protos/common"
 )
 
-var logger = flogging.MustGetLogger("discovery/DiscoverySupport")
+var logger = flogging.MustGetLogger("discovery.DiscoverySupport")
 
 type MetadataRetriever interface {
-	Metadata(channel string, cc string) *chaincode.Metadata
+	Metadata(channel string, cc string, loadCollections bool) *chaincode.Metadata
 }
 
 // DiscoverySupport implements support that is used for service discovery
@@ -36,7 +36,7 @@ func NewDiscoverySupport(ci MetadataRetriever) *DiscoverySupport {
 }
 
 func (s *DiscoverySupport) PolicyByChaincode(channel string, cc string) policies.InquireablePolicy {
-	chaincodeData := s.ci.Metadata(channel, cc)
+	chaincodeData := s.ci.Metadata(channel, cc, false)
 	if chaincodeData == nil {
 		logger.Info("Chaincode", cc, "wasn't found")
 		return nil

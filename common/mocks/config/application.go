@@ -6,10 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 
 package config
 
-import "github.com/hyperledger/fabric/common/channelconfig"
+import (
+	"github.com/hyperledger/fabric/common/channelconfig"
+)
 
 type MockApplication struct {
 	CapabilitiesRv channelconfig.ApplicationCapabilities
+	Acls           map[string]string
 }
 
 func (m *MockApplication) Organizations() map[string]channelconfig.ApplicationOrg {
@@ -20,13 +23,31 @@ func (m *MockApplication) Capabilities() channelconfig.ApplicationCapabilities {
 	return m.CapabilitiesRv
 }
 
+func (m *MockApplication) PolicyRefForAPI(apiName string) string {
+	if m.Acls == nil {
+		return ""
+	}
+	return m.Acls[apiName]
+}
+
+// Returns the mock which itself is a provider
+func (m *MockApplication) APIPolicyMapper() channelconfig.PolicyMapper {
+	return m
+}
+
 type MockApplicationCapabilities struct {
 	SupportedRv                  error
 	ForbidDuplicateTXIdInBlockRv bool
-	ResourcesTreeRv              bool
+	ACLsRv                       bool
 	PrivateChannelDataRv         bool
+	CollectionUpgradeRv          bool
 	V1_1ValidationRv             bool
-	MetadataLifecycleRv          bool
+	V1_2ValidationRv             bool
+	LifecycleV20Rv               bool
+	KeyLevelEndorsementRv        bool
+	V1_3ValidationRv             bool
+	V2_0ValidationRv             bool
+	StorePvtDataOfInvalidTxRv    bool
 }
 
 func (mac *MockApplicationCapabilities) Supported() error {
@@ -37,18 +58,46 @@ func (mac *MockApplicationCapabilities) ForbidDuplicateTXIdInBlock() bool {
 	return mac.ForbidDuplicateTXIdInBlockRv
 }
 
-func (mac *MockApplicationCapabilities) ResourcesTree() bool {
-	return mac.ResourcesTreeRv
+func (mac *MockApplicationCapabilities) ACLs() bool {
+	return mac.ACLsRv
 }
 
 func (mac *MockApplicationCapabilities) PrivateChannelData() bool {
 	return mac.PrivateChannelDataRv
 }
 
+func (mac *MockApplicationCapabilities) CollectionUpgrade() bool {
+	return mac.CollectionUpgradeRv
+}
+
 func (mac *MockApplicationCapabilities) V1_1Validation() bool {
 	return mac.V1_1ValidationRv
 }
 
+func (mac *MockApplicationCapabilities) V1_2Validation() bool {
+	return mac.V1_2ValidationRv
+}
+
+func (mac *MockApplicationCapabilities) LifecycleV20() bool {
+	return mac.LifecycleV20Rv
+}
+
 func (mac *MockApplicationCapabilities) MetadataLifecycle() bool {
-	return mac.MetadataLifecycleRv
+	return false
+}
+
+func (mac *MockApplicationCapabilities) KeyLevelEndorsement() bool {
+	return mac.KeyLevelEndorsementRv
+}
+
+func (mac *MockApplicationCapabilities) V1_3Validation() bool {
+	return mac.V1_3ValidationRv
+}
+
+func (mac *MockApplicationCapabilities) V2_0Validation() bool {
+	return mac.V2_0ValidationRv
+}
+
+func (mac *MockApplicationCapabilities) StorePvtDataOfInvalidTx() bool {
+	return mac.StorePvtDataOfInvalidTxRv
 }

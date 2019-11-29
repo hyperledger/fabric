@@ -9,15 +9,9 @@ package capabilities
 import (
 	"testing"
 
-	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/op/go-logging"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	logging.SetLevel(logging.DEBUG, pkgLogID)
-}
 
 func TestSatisfied(t *testing.T) {
 	var capsMap map[string]*cb.Capability
