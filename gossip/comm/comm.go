@@ -72,6 +72,7 @@ func (sr SendResult) Error() string {
 	if sr.error != nil {
 		return sr.error.Error()
 	}
+
 	return ""
 }
 
