@@ -44,7 +44,7 @@ the binaries and images.
 
 .. code:: bash
 
-  curl -sSL http://bit.ly/2ysbOFE | bash -s
+  curl -sSL https://bit.ly/2ysbOFE | bash -s
 
 .. note:: If you want a specific release, pass a version identifier for Fabric,
           Fabric-ca and thirdparty Docker images.
@@ -52,8 +52,8 @@ the binaries and images.
 
 .. code:: bash
 
-  curl -sSL http://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version> <thirdparty_version>
-  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 2.0.0-alpha 2.0.0-alpha 0.4.15
+  curl -sSL https://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version> <thirdparty_version>
+  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.0.0-alpha 2.0.0-alpha 0.4.15
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
