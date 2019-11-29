@@ -77,13 +77,12 @@ func TestMain(m *testing.M) {
 
 	for _, config := range tests {
 		currentTestConfig = config
-		ret := m.Run()
-		if ret != 0 {
+		code = m.Run()
+		if code != 0 {
 			fmt.Printf("Failed testing at [%d, %s]", config.securityLevel, config.hashFamily)
 			return
 		}
 	}
-	code = 0
 }
 
 func TestInvalidNewParameter(t *testing.T) {
