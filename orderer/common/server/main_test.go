@@ -204,6 +204,8 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	defer os.Remove(genesisFile)
 
 	fileLedgerLocation, _ := ioutil.TempDir("", "main_test-")
+	defer os.RemoveAll(fileLedgerLocation)
+
 	ledgerFactory, _, err := createLedgerFactory(
 		&localconfig.TopLevel{
 			FileLedger: localconfig.FileLedger{
