@@ -35,7 +35,7 @@ jobs:
 
           runs=$(az pipelines build list --project ${project} | jq -c ".[] | select(.sourceVersion | contains(\"${sha}\"))" | jq -r .status | grep -v completed | wc -l)
           if [[ $runs -eq 0 ]]; then
-            az pipelines build queue --commit-id ${sha} --project ${project} --definition-name Pull-Request
+            az pipelines build queue --branch refs/pull/${pr_number}/merge --commit-id ${sha} --project ${project} --definition-name Pull-Request
             curl -s -H "Authorization: token ${GITHUB_TOKEN}" -X POST -d '{"body": "AZP build triggered!"}' "${comment_url}"
           else
             curl -s -H "Authorization: token ${GITHUB_TOKEN}" -X POST -d '{"body": "AZP build already running!"}' "${comment_url}"
