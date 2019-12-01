@@ -10,8 +10,7 @@ Building Your First Network
 
 The build your first network (BYFN) scenario provisions a sample Hyperledger
 Fabric network consisting of two organizations, each maintaining two peer
-nodes. It also will deploy a "Solo" ordering service by default, though other
-ordering service implementations are available.
+nodes. 
 
 Install prerequisites
 ---------------------
@@ -30,7 +29,7 @@ samples included in the ``fabric-samples`` repository. We will be using the
 
 .. note:: The supplied commands in this documentation **MUST** be run from your
           ``first-network`` sub-directory of the ``fabric-samples`` repository
-          clone.  If you elect to run the commands from a different location,
+          clone.  If you select to run the commands from a different location,
           the various provided scripts will be unable to find the binaries.
 
 Want to run it now?
@@ -193,13 +192,8 @@ To bring up the network with a Raft ordering service, issue:
 
   ./byfn.sh up -o etcdraft
 
-To bring up the network with a Kafka ordering service, issue:
 
-.. code:: bash
-
-  ./byfn.sh up -o kafka
-
-Once again, you will be prompted as to whether you wish to continue or abort.
+You will be prompted as to whether you wish to continue or abort.
 Respond with a ``y`` or hit the return key:
 
 .. code:: bash
@@ -357,17 +351,11 @@ for the sample network. There are three members - one Orderer Org (``OrdererOrg`
 and two Peer Orgs (``Org1`` & ``Org2``) each managing and maintaining two peer nodes.
 This file also specifies a consortium - ``SampleConsortium`` - consisting of our
 two Peer Orgs.  Pay specific attention to the "Profiles" section at the bottom of
-this file. You will notice that we have several unique profiles. A few are worth
+this file. You will notice that we have a unique profile, worth
 noting:
-
-* ``TwoOrgsOrdererGenesis``: generates the genesis block for a Solo ordering
-  service.
 
 * ``SampleMultiNodeEtcdRaft``: generates the genesis block for a Raft ordering
   service. Only used if you issue the ``-o`` flag and specify ``etcdraft``.
-
-* ``SampleDevModeKafka``: generates the genesis block for a Kafka ordering
-  service. Only used if you issue the ``-o`` flag and specify ``kafka``.
 
 * ``TwoOrgsChannel``: generates the genesis block for our channel, ``mychannel``.
 
@@ -433,12 +421,6 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
 
 .. code:: bash
 
-    ../bin/configtxgen -profile TwoOrgsOrdererGenesis -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
-
-To output a genesis block for a Raft ordering service, this command should be:
-
-.. code:: bash
-
   ../bin/configtxgen -profile SampleMultiNodeEtcdRaft -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
 
 Note the ``SampleMultiNodeEtcdRaft`` profile being used here.
@@ -448,15 +430,6 @@ To output a genesis block for a Kafka ordering service, issue:
 .. code:: bash
 
   ../bin/configtxgen -profile SampleDevModeKafka -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
-
-If you are not using Raft or Kafka, you should see an output similar to the
-following:
-
-.. code:: bash
-
-  2017-10-26 19:21:56.301 EDT [common/tools/configtxgen] main -> INFO 001 Loading configuration
-  2017-10-26 19:21:56.309 EDT [common/tools/configtxgen] doOutputBlock -> INFO 002 Generating genesis block
-  2017-10-26 19:21:56.309 EDT [common/tools/configtxgen] doOutputBlock -> INFO 003 Writing genesis block
 
 .. note:: The orderer genesis block and the subsequent artifacts we are about to create
           will be output into the ``channel-artifacts`` directory at the root of this
@@ -477,7 +450,7 @@ set ``CHANNEL_NAME`` as an environment variable that can be used throughout thes
     export CHANNEL_NAME=mychannel  && ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
 
 Note that you don't have to issue a special command for the channel if you are
-using a Raft or Kafka ordering service. The ``TwoOrgsChannel`` profile will use
+using a Raft oordering service. The ``TwoOrgsChannel`` profile will use
 the ordering service configuration you specified when creating the genesis block
 for the network.
 
