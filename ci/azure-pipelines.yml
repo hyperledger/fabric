@@ -51,6 +51,18 @@ jobs:
         displayName: Install SoftHSM
       - script: make unit-test
         displayName: Run Unit Tests
+      - script: |
+          go get github.com/t-yuki/gocover-cobertura
+          gocover-cobertura < cover.out > coverage.xml
+      - task: PublishCodeCoverageResults@1
+        inputs:
+          codeCoverageTool: 'Cobertura'
+          summaryFileLocation: $(System.DefaultWorkingDirectory)/coverage.xml
+          pathToSources: $(System.DefaultWorkingDirectory)
+      - task: PublishTestResults@2
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: $(System.DefaultWorkingDirectory)/unit-tests.xml
 
   - job: IntegrationTests
     pool:

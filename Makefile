@@ -138,7 +138,7 @@ integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
 	./scripts/run-integration-tests.sh
 
 .PHONY: unit-test
-unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker
+unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker gotool.gotestsum
 	./scripts/run-unit-tests.sh
 
 .PHONY: unit-tests
