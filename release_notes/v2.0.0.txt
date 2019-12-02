@@ -118,6 +118,10 @@ Raft, and existing users should migrate to the newer Raft consensus type.  For
 compatibility with existing deployments, Kafka is still supported, but may be
 removed entirely in a future release.
 
+FAB-16477 and FAB-17116 The orderer config `general.genesismethod` and
+`general.genesisfile` will be replaced by the new `general.bootstrapmethod` and
+`general.bootstrapfile`.
+
 Known Vulnerabilities
 ---------------------
 FAB-8664 - Peer should detect and react when its org has been removed
