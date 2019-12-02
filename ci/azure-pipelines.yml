@@ -76,6 +76,7 @@ jobs:
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
-      - script: make integration-test
+      - script: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty gotool.gotestsum
+      - script: gotestsum ./integration/...
         displayName: Run Integration Tests
 
