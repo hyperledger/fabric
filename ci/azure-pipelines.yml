@@ -68,15 +68,13 @@ jobs:
   - job: IntegrationTests
     pool:
       vmImage: ubuntu-18.04
-    strategy:
-      parallel: 5
     timeoutInMinutes: 90
     steps:
       - template: install_deps.yml
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
-      - script: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty gotool.gotestsum
+      - script: make gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty gotool.gotestsum
       - script: gotestsum ./integration/...
         displayName: Run Integration Tests
 
