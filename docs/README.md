@@ -10,7 +10,7 @@ The crux of the documentation is written in
 [reStructuredText](http://docutils.sourceforge.net/rst.html) which is
 converted to HTML using [Sphinx](http://www.sphinx-doc.org/en/stable/).
 The HTML is then published on http://hyperledger-fabric.readthedocs.io
-which has a hook so that any new content that goes into `docs/source`
+which has a hook so that any new content th at goes into `docs/source`
 on the main repository will trigger a new build and publication of the
 doc.
 
