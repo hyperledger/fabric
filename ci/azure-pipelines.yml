@@ -49,7 +49,7 @@ jobs:
         displayName: Checkout Fabric Code
       - script: ./ci/scripts/setup_hsm.sh
         displayName: Install SoftHSM
-      - script: make unit-test
+      - script: gotestsum --junitfile unit-tests.xml -- -tags=pkcs11 -coverprofile=cover.out $(go list ./... | grep -v /vendor/ | grep -v /integration/)
         displayName: Run Unit Tests
       - script: |
           go get github.com/t-yuki/gocover-cobertura
