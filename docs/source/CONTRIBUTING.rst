@@ -229,7 +229,8 @@ Submitting your fix
 
 If you just submitted a JIRA for a bug you've discovered, and would like to
 provide a fix, we would welcome that gladly! Please assign the JIRA issue to
-yourself, then you can submit a pull request (PR).
+yourself, then submit a pull request (PR). Please refer to :doc:`github/github`
+for a detailed workflow.
 
 Fixing issues and working stories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
