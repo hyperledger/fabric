@@ -34,6 +34,7 @@ type TestEnv struct {
 // NewTestEnv construct a TestEnv for testing
 func NewTestEnv(t testing.TB) *TestEnv {
 	dbPath, err := ioutil.TempDir("", "bookkeep")
+	os.RemoveAll(dbPath)
 	require.NoError(t, err)
 	provider, err := NewProvider(dbPath)
 	require.NoError(t, err)
