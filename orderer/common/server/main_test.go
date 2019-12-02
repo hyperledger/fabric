@@ -198,6 +198,7 @@ func TestInitializeServerConfig(t *testing.T) {
 
 func TestInitializeBootstrapChannel(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
+
 	defer cleanup()
 
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
