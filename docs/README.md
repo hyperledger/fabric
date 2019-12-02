@@ -7,7 +7,7 @@ built and published as well as a few conventions one should be aware of
 before making changes to the doc.
 
 The crux of the documentation is written in
-[reStructuredText](http://docutils.sourceforge.net/rst.html) which is
+[reStructuredText](http://docuti ls.sourceforge.net/rst.html) which is
 converted to HTML using [Sphinx](http://www.sphinx-doc.org/en/stable/).
 The HTML is then published on http://hyperledger-fabric.readthedocs.io
 which has a hook so that any new content that goes into `docs/source`
