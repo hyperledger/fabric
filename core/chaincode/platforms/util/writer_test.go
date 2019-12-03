@@ -219,6 +219,9 @@ func Test_WriteFolderToTarPackageFailure4(t *testing.T) {
 	err = WriteFolderToTarPackage(tw, tempDir, []string{}, nil, nil)
 	assert.Error(t, err, "Should have received error writing folder to package")
 	assert.Contains(t, err.Error(), "permission denied")
+
+	err = os.Chmod(tempDir, 0700)
+	require.NoError(t, err)
 }
 
 func createTestTar(t *testing.T, srcPath string, excludeDir []string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) []byte {

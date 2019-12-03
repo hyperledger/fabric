@@ -56,6 +56,10 @@ func (tc testConfig) Provider(t *testing.T) (bccsp.BCCSP, bccsp.KeyStore, func()
 }
 
 func TestMain(m *testing.M) {
+	code := -1
+	defer func() {
+		os.Exit(code)
+	}()
 	tests := []testConfig{
 		{256, "SHA2"},
 		{256, "SHA3"},
@@ -67,19 +71,18 @@ func TestMain(m *testing.M) {
 	tempDir, err = ioutil.TempDir("", "bccsp-sw")
 	if err != nil {
 		fmt.Printf("Failed to create temporary directory: %s\n\n", err)
-		os.Exit(-1)
+		return
 	}
 	defer os.RemoveAll(tempDir)
 
 	for _, config := range tests {
 		currentTestConfig = config
-		ret := m.Run()
-		if ret != 0 {
+		code = m.Run()
+		if code != 0 {
 			fmt.Printf("Failed testing at [%d, %s]", config.securityLevel, config.hashFamily)
-			os.Exit(-1)
+			return
 		}
 	}
-	os.Exit(0)
 }
 
 func TestInvalidNewParameter(t *testing.T) {

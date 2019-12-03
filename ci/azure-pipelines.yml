@@ -16,18 +16,22 @@ variables:
 jobs:
   - job: VerifyBuild
     pool:
-      vmImage: ubuntu-16.04
+      vmImage: ubuntu-18.04
     steps:
       - template: install_deps.yml
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
       - script: make basic-checks native
-        displayName: Verify Build
+        displayName: Run Basic Checks
+      - script: ./ci/scripts/evaluate_commits.sh
+        name: SetJobTriggers
 
   - job: DocBuild
+    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.buildDoc'], 'true')
+    dependsOn: VerifyBuild
     pool:
-      vmImage: ubuntu-16.04
+      vmImage: ubuntu-18.04
     container:
       image: n42org/tox:3.4.0
     steps:
@@ -40,8 +44,10 @@ jobs:
         displayName: Publish Documentation Artifacts
 
   - job: UnitTests
+    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
+    dependsOn: VerifyBuild
     pool:
-      vmImage: ubuntu-16.04
+      vmImage: ubuntu-18.04
     steps:
       - template: install_deps.yml
       - checkout: self
@@ -53,9 +59,13 @@ jobs:
         displayName: Run Unit Tests
 
   - job: IntegrationTests
+    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
+    dependsOn: VerifyBuild
     pool:
-      vmImage: ubuntu-16.04
-    timeoutInMinutes: 120
+      vmImage: ubuntu-18.04
+    strategy:
+      parallel: 5
+    timeoutInMinutes: 90
     steps:
       - template: install_deps.yml
       - checkout: self
@@ -63,3 +73,4 @@ jobs:
         displayName: Checkout Fabric Code
       - script: make integration-test
         displayName: Run Integration Tests
+
