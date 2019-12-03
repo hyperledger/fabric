@@ -49,9 +49,7 @@ type LevelDBCommonStorageTestEnv struct {
 // Init implements corresponding function from interface TestEnv
 func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
 	dbPath, err := ioutil.TempDir("", fmt.Sprintf("test-env-%s-", t.Name()))
-	env.provider = dbProvider
 	env.dbPath = dbPath
-
 	if err != nil {
 		t.Fatalf("Failed to create level db storage directory: %s", err)
 	}
@@ -68,6 +66,7 @@ func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
 	)
 	assert.NoError(t, err)
 	env.t = t
+	env.provider = dbProvider
 
 }
 
@@ -124,7 +123,6 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	if err != nil {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}
-	env.provider = dbProvider
 	env.redoPath = redoPath
 	if env.couchAddress == "" {
 		env.couchAddress = env.setupCouch()
@@ -158,6 +156,7 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	)
 	assert.NoError(t, err)
 	env.t = t
+	env.provider = dbProvider
 }
 
 // GetDBHandle implements corresponding function from interface TestEnv
