@@ -7,7 +7,7 @@ database with Hyperledger Fabric. By now, you should be familiar with Fabric
 concepts and have explored some of the samples and tutorials.
 
 .. note:: These instructions use the new Fabric chaincode lifecycle introduced
-          in the Fabric v2.0 Alpha release. If you would like to use the previous
+          in the Fabric v2.0 release. If you would like to use the previous
           lifecycle model to use indexes with chaincode, visit the v1.4
           version of the `Using CouchDB <https://hyperledger-fabric.readthedocs.io/en/release-1.4/couchdb_tutorial.html>`__.
 

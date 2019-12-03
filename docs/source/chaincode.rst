@@ -33,11 +33,10 @@ Fabric Chaincode Lifecycle
 
 The Fabric Chaincode Lifecycle is responsible for managing the installation
 of chaincodes and the definition of their parameters before a chaincode is
-used on a channel. Starting from the Fabric 2.0 Alpha, governance for
-chaincodes is fully decentralized: multiple organizations can use the Fabric
-Chaincode Lifecycle to come to agreement on the parameters of a chaincode,
-such as the chaincode endorsement policy, before the chaincode is used to
-interact with the ledger.
+used on a channel. Starting with Fabric 2.0, governance for chaincodes is fully
+decentralized: multiple organizations can use the Fabric Chaincode Lifecycle to
+come to agreement on the parameters of a chaincode, such as the chaincode
+endorsement policy, before the chaincode is used to interact with the ledger.
 
 The new model offers several improvements over the previous lifecycle:
 
@@ -73,24 +72,11 @@ The new model offers several improvements over the previous lifecycle:
 
 To learn how more about the new Fabric Lifecycle, visit :doc:`chaincode4noah`.
 
-.. note:: The new Fabric chaincode lifecycle in the v2.0 Alpha release is not
-          yet feature complete. Specifically, be aware of the following
-          limitations in the Alpha release:
-
-          - CouchDB indexes are not yet supported
-          - Chaincodes defined with the new lifecycle are not yet discoverable
-            via service discovery
-
-          These limitations will be resolved after the Alpha release. To use the
-          old lifecycle model to install and instantiate a chaincode, visit the
-          v1.4 version of the `Chaincode for Operators tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_
-
 You can use the Fabric chaincode lifecycle by creating a new channel and setting
 the channel capabilities to V2_0. You will not be able to use the old lifecycle
 to install, instantiate, or update a chaincode on a channels with V2_0 capabilities
 enabled. However, you can still invoke chaincode installed using the previous
-lifecycle model after you enable V2_0 capabilities. Migration from the previous
-lifecycle to the new lifecycle is not supported for the Fabric v2.0 Alpha.
+lifecycle model after you enable V2_0 capabilities.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

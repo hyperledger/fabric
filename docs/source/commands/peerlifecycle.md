@@ -8,7 +8,7 @@ has been successfully committed to the channel. For more information, visit
 [Chaincode for Operators](../chaincode4noah.html).
 
 *Note: These instructions use the Fabric chaincode lifecycle introduced in the
-v2.0 Alpha release. If you would like to use the old lifecycle to install and
+v2.0 release. If you would like to use the old lifecycle to install and
 instantiate a chaincode, visit the [peer chaincode](peerchaincode.html) command
 reference.*
 
@@ -362,7 +362,7 @@ You need to use the chaincode package identifier to approve a chaincode
 definition for your organization. You can find the package ID for the
 chaincodes you have installed by using the
 `peer lifecycle chaincode queryinstalled` command:
-    
+
 ```
 peer lifecycle chaincode queryinstalled --peerAddresses peer0.org1.example.com:7051
 ```
@@ -433,7 +433,7 @@ channel `mychannel`.
 
 You can check whether a chaincode definition is ready to be committed using the
 ``peer lifecycle chaincode checkcommitreadiness command, which will return
-successfully if a subsequent commit of the definition is expected to succeed. It 
+successfully if a subsequent commit of the definition is expected to succeed. It
 also outputs which organizations have approved the chaincode definition. If an
 organization has approved the chaincode definition specified in the command, the
 command will return a value of true. You can use this command to learn whether enough
@@ -503,7 +503,7 @@ using the ``peer lifecycle chaincode querycommitted`` command. You can use this
 command to query the current definition sequence number before upgrading a
 chaincode.
 
-  * You need to supply the chaincode name and channel name in order to query a 
+  * You need to supply the chaincode name and channel name in order to query a
     specific chaincode definition and the organizations that have approved it.
 
     ```

@@ -348,7 +348,7 @@ BlockValidation:
 
 ## Fabric chaincode lifecycle
 
-In the Fabric Alpha 2.0 release, a new chaincode lifecycle process was introduced,
+In the Fabric 2.0 release, a new chaincode lifecycle process was introduced,
 whereby a more democratic process is used to govern chaincode on the network.
 The new process allows multiple organizations to vote on how a chaincode will
 be operated before it can be used on a channel. This is significant because it is
@@ -454,13 +454,13 @@ For a deeper dive on how to write an endorsement policy refer to the topic on
 
 **Note:**  Policies work differently depending on which version of Fabric you are
   using:
-- In Fabric releases prior to the 2.0 Alpha release, chaincode endorsement
-  policies can be updated during chaincode instantiation or
-  by using the chaincode lifecycle commands. If not specified at instantiation
-  time, the endorsement policy defaults to “any member of the organizations in the
-  channel”. For example, a channel with “Org1” and “Org2” would have a default
-  endorsement policy of “OR(‘Org1.member’, ‘Org2.member’)”.
-- Starting with the Alpha 2.0 release, Fabric introduced a new chaincode
+- In Fabric releases prior to 2.0, chaincode endorsement policies can be
+  updated during chaincode instantiation or by using the chaincode lifecycle
+  commands. If not specified at instantiation time, the endorsement policy
+  defaults to “any member of the organizations in the channel”. For example,
+  a channel with “Org1” and “Org2” would have a default endorsement policy of
+  “OR(‘Org1.member’, ‘Org2.member’)”.
+- Starting with Fabric 2.0, Fabric introduced a new chaincode
   lifecycle process that allows multiple organizations to agree on how a
   chaincode will be operated before it can be used on a channel.  The new process
   requires that organizations agree to the parameters that define a chaincode,

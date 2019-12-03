@@ -74,31 +74,6 @@ Use the following tutorials to get started with the new chaincode lifecycle:
   Learn how the new lifecycle allows you to use policies in the channel
   configuration as chaincode endorsement policies.
 
-Restrictions and limitations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The new Fabric chaincode lifecycle in the v2.0 Alpha release is not yet feature
-complete. Specifically, be aware of the following limitations in the Alpha release:
-
-- CouchDB indexes are not yet supported
-- Chaincodes defined with the new lifecycle are not yet discoverable via service
-  discovery
-
-These limitations will be resolved after the Alpha release.
-
-FabToken
---------
-
-The Fabric 2.0 Alpha also provides users the ability to easily represent
-assets as tokens on Fabric channels. FabToken is a token management system that
-uses an Unspent Transaction Output (UTXO) model to issue, transfer, and redeem
-tokens using the identity and membership infrastructure provided by Hyperledger
-Fabric.
-
-* :doc:`token/FabToken`:
-  This operations guide provides a detailed overview of how to use tokens on a
-  Fabric network. The guide also includes an example on how to create and
-  transfer tokens using the :doc:`commands/token` CLI.
 
 Alpine images
 -------------

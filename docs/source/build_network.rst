@@ -666,9 +666,9 @@ Install and define a chaincode
           your own chaincode, see the :doc:`chaincode4ade` tutorial.
 
 .. note:: These instructions use the Fabric chaincode lifecycle introduced in
-          the v2.0 Alpha release. If you would like to use the previous
-          lifecycle to install and instantiate a chaincode, visit the v1.4
-          version of the `Building your first network tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/build_network.html>`__.
+          the v2.0 release. If you would like to use the previous lifecycle to
+          install and instantiate a chaincode, visit the v1.4 version of the
+          `Building your first network tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/build_network.html>`__.
 
 Applications interact with the blockchain ledger through ``chaincode``.
 Therefore we need to install a chaincode on every peer that will execute and
