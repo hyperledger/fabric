@@ -344,10 +344,11 @@ func TestVerifyBlocks(t *testing.T) {
 	}
 
 	for _, testCase := range []struct {
-		name                string
-		configureVerifier   func(*mocks.BlockVerifier)
-		mutateBlockSequence func([]*common.Block) []*common.Block
-		expectedError       string
+		name                  string
+		configureVerifier     func(*mocks.BlockVerifier)
+		mutateBlockSequence   func([]*common.Block) []*common.Block
+		expectedError         string
+		verifierExpectedCalls int
 	}{
 		{
 			name: "empty sequence",
@@ -375,7 +376,8 @@ func TestVerifyBlocks(t *testing.T) {
 				var nilEnvelope *common.ConfigEnvelope
 				verifier.On("VerifyBlockSignature", mock.Anything, nilEnvelope).Return(errors.New("bad signature"))
 			},
-			expectedError: "bad signature",
+			expectedError:         "bad signature",
+			verifierExpectedCalls: 1,
 		},
 		{
 			name: "block that its type cannot be classified",
@@ -423,10 +425,11 @@ func TestVerifyBlocks(t *testing.T) {
 				proto.Unmarshal(utils.MarshalOrPanic(configEnvelope1), confEnv1)
 				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(errors.New("bad signature")).Once()
 			},
-			expectedError: "bad signature",
+			expectedError:         "bad signature",
+			verifierExpectedCalls: 2,
 		},
 		{
-			name: "config block in the sequence needs to be verified, and it isproperly signed",
+			name: "config block in the sequence needs to be verified, and it is properly signed",
 			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
 				var err error
 				// Put a config transaction in block n / 4
@@ -452,6 +455,48 @@ func TestVerifyBlocks(t *testing.T) {
 				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
 				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(nil).Once()
 			},
+			// We have a single config block in the 'middle' of the chain, so we have 2 verifications total:
+			// The last block, and the config block.
+			verifierExpectedCalls: 2,
+		},
+		{
+			name: "last two blocks are config blocks, last block only verified once",
+			mutateBlockSequence: func(blockSequence []*common.Block) []*common.Block {
+				var err error
+				// Put a config transaction in block n-2 and in n-1
+				blockSequence[len(blockSequence)-2].Data = &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(configTransaction(configEnvelope1))},
+				}
+				blockSequence[len(blockSequence)-2].Header.DataHash = blockSequence[len(blockSequence)-2].Data.Hash()
+
+				blockSequence[len(blockSequence)-1].Data = &common.BlockData{
+					Data: [][]byte{utils.MarshalOrPanic(configTransaction(configEnvelope2))},
+				}
+				blockSequence[len(blockSequence)-1].Header.DataHash = blockSequence[len(blockSequence)-1].Data.Hash()
+
+				assignHashes(blockSequence)
+
+				sigSet1, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)-2])
+				assert.NoError(t, err)
+
+				sigSet2, err = cluster.SignatureSetFromBlock(blockSequence[len(blockSequence)-1])
+				assert.NoError(t, err)
+
+				return blockSequence
+			},
+			configureVerifier: func(verifier *mocks.BlockVerifier) {
+				var nilEnvelope *common.ConfigEnvelope
+				confEnv1 := &common.ConfigEnvelope{}
+				proto.Unmarshal(utils.MarshalOrPanic(configEnvelope1), confEnv1)
+				verifier.On("VerifyBlockSignature", sigSet1, nilEnvelope).Return(nil).Once()
+				// We ensure that the signature set of the last block is verified using the config envelope of the block
+				// before it.
+				verifier.On("VerifyBlockSignature", sigSet2, confEnv1).Return(nil).Once()
+				// Note that we do not record a call to verify the last block, with the config envelope extracted from the block itself.
+			},
+			// We have 2 config blocks, yet we only verify twice- the first config block, and the next config block, but no more,
+			// since the last block is a config block.
+			verifierExpectedCalls: 2,
 		},
 	} {
 		testCase := testCase
@@ -465,6 +510,8 @@ func TestVerifyBlocks(t *testing.T) {
 			err := cluster.VerifyBlocks(blockchain, verifier)
 			if testCase.expectedError != "" {
 				assert.EqualError(t, err, testCase.expectedError)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
