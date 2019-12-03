@@ -600,7 +600,7 @@ func TestReplicate(t *testing.T) {
 		},
 		{
 			name:               "Explicit replication is requested, but the channel shouldn't be pulled",
-			verificationCount:  20,
+			verificationCount:  10,
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
 			bootBlock:          &bootBlock,
