@@ -96,6 +96,16 @@ should instead set BootstrapMethod to 'file', and generate a genesis block file
 using configtxgen. Orderer nodes will then use the generated file for the
 orderer system channel.
 
+FAB-15343 - System Chaincode Plugins have been removed.  As part of a general
+move away from go plugins as an extension mechanism for Fabric, the ability to
+add system chaincodes via go plugins has been removed.  Users wishing to extend
+Fabric with custom system chaincodes may rebuild the peer binary with the
+system chaincode built into the binary.  This system chaincode should then be
+defined and initialized like any other user chaincode would be.  This new model
+is very similar to the plugin model (which required that the plugin to be built
+at the same exact commit of Fabric), and addresses the significant shortcomings
+around the lifecycle and validation of system chaincode transactions.
+
 FAB-15754 - The 'Solo' consensus type is officially deprecated.  The 'Solo'
 consensus type has always been marked non-production and should be in use only
 in test environments, however for compatibility it is still available, but may
