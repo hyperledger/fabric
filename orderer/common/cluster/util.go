@@ -201,12 +201,14 @@ func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) er
 	}
 
 	var config *common.ConfigEnvelope
+	var isLastBlockConfigBlock bool
 	// Verify all configuration blocks that are found inside the block batch,
 	// with the configuration that was committed (nil) or with one that is picked up
 	// during iteration over the block batch.
 	for _, block := range blockBuff {
 		configFromBlock, err := ConfigFromBlock(block)
 		if err == errNotAConfig {
+			isLastBlockConfigBlock = false
 			continue
 		}
 		if err != nil {
@@ -217,10 +219,17 @@ func VerifyBlocks(blockBuff []*common.Block, signatureVerifier BlockVerifier) er
 			return err
 		}
 		config = configFromBlock
+		isLastBlockConfigBlock = true
 	}
 
 	// Verify the last block's signature
 	lastBlock := blockBuff[len(blockBuff)-1]
+
+	// If last block is a config block, we verified it using the policy of the previous block, so it's valid.
+	if isLastBlockConfigBlock {
+		return nil
+	}
+
 	return VerifyBlockSignature(lastBlock, signatureVerifier, config)
 }
 
