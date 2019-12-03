@@ -60,7 +60,8 @@ Here's the help text for the ``byfn.sh`` script:
     -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)"
     -s <dbtype> - the database backend to use: goleveldb (default) or couchdb"
     -l <language> - the chaincode language: golang (default), node, or java"
-    -o <consensus-type> - the consensus-type of the ordering service: solo (default), kafka, or etcdraft"
+    -a - launch certificate authorities (no certificate authorities are launched by default)
+    -n - do not deploy chaincode (abstore chaincode is deployed by default)
     -i <imagetag> - the tag to be used to launch the network (defaults to \"latest\")"
     -v - verbose mode"
   byfn.sh -h (print this message)"
@@ -180,18 +181,6 @@ the following command instead:
 
 .. note:: Do not run both of these commands. Only one language can be tried unless
           you bring down and recreate the network between.
-
-In addition to support for multiple chaincode languages, you can also issue a
-flag that will bring up a five node Raft ordering service or a Kafka ordering
-service instead of the one node Solo orderer. For more information about the
-currently supported ordering service implementations, check out :doc:`orderer/ordering_service`.
-
-To bring up the network with a Raft ordering service, issue:
-
-.. code:: bash
-
-  ./byfn.sh up -o etcdraft
-
 
 You will be prompted as to whether you wish to continue or abort.
 Respond with a ``y`` or hit the return key:
@@ -321,10 +310,9 @@ right now. If you're interested, you can peruse these topics on your own time.
 
 After we run the ``cryptogen`` tool, the generated certificates and keys will be
 saved to a folder titled ``crypto-config``. Note that the ``crypto-config.yaml``
-file lists five orderers as being tied to the orderer organization. While the
-``cryptogen`` tool will create certificates for all five of these orderers, unless
-the Raft or Kafka ordering services are being used, only one of these orderers
-will be used in a Solo ordering service implementation and be used to create the
+file lists five orderers as being tied to the orderer organization. The
+``cryptogen`` tool will create certificates for all five of these orderers, These orderers
+will be used in a etcdraft ordering service implementation and be used to create the
 system channel and ``mychannel``.
 
 Configuration Transaction Generator
@@ -344,10 +332,9 @@ time.  The anchor peer transactions, as the name might suggest, specify each
 Org's :ref:`Anchor-Peer` on this channel.
 
 How does it work?
-^^^^^^^^^^^^^^^^^
 
 Configtxgen consumes a file - ``configtx.yaml`` - that contains the definitions
-for the sample network. There are three members - one Orderer Org (``OrdererOrg``)
+for the sample network. There are three members - Orderer Org (``OrdererOrg``)
 and two Peer Orgs (``Org1`` & ``Org2``) each managing and maintaining two peer nodes.
 This file also specifies a consortium - ``SampleConsortium`` - consisting of our
 two Peer Orgs.  Pay specific attention to the "Profiles" section at the bottom of
@@ -355,7 +342,7 @@ this file. You will notice that we have a unique profile, worth
 noting:
 
 * ``SampleMultiNodeEtcdRaft``: generates the genesis block for a Raft ordering
-  service. Only used if you issue the ``-o`` flag and specify ``etcdraft``.
+  service. 
 
 * ``TwoOrgsChannel``: generates the genesis block for our channel, ``mychannel``.
 
@@ -423,14 +410,6 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
 
   ../bin/configtxgen -profile SampleMultiNodeEtcdRaft -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
 
-Note the ``SampleMultiNodeEtcdRaft`` profile being used here.
-
-To output a genesis block for a Kafka ordering service, issue:
-
-.. code:: bash
-
-  ../bin/configtxgen -profile SampleDevModeKafka -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
-
 .. note:: The orderer genesis block and the subsequent artifacts we are about to create
           will be output into the ``channel-artifacts`` directory at the root of this
           project. The `channelID` in the above command is the name of the system channel.
@@ -449,12 +428,11 @@ set ``CHANNEL_NAME`` as an environment variable that can be used throughout thes
 
     export CHANNEL_NAME=mychannel  && ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
 
-Note that you don't have to issue a special command for the channel if you are
-using a Raft oordering service. The ``TwoOrgsChannel`` profile will use
+ The ``TwoOrgsChannel`` profile will use
 the ordering service configuration you specified when creating the genesis block
 for the network.
 
-If you are not using a Raft or Kafka ordering service, you should see an output
+You should see an output
 similar to the following in your terminal:
 
 .. code:: bash
