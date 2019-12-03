@@ -17,6 +17,7 @@ import (
 func TestCollectionValidation(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "testLedger", nil)
+	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
 	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
 		[]collConfigkey{
@@ -54,6 +55,7 @@ func TestCollectionValidation(t *testing.T) {
 func TestPvtGetNoCollection(t *testing.T) {
 	testEnv := testEnvs[0]
 	testEnv.init(t, "test-pvtdata-get-no-collection", nil)
+	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
@@ -67,6 +69,7 @@ func TestPvtGetNoCollection(t *testing.T) {
 func TestPvtPutNoCollection(t *testing.T) {
 	testEnv := testEnvs[0]
 	testEnv.init(t, "test-pvtdata-put-no-collection", nil)
+	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 	txsim, err := txMgr.NewTxSimulator("txid")
 	assert.NoError(t, err)
@@ -78,6 +81,7 @@ func TestPvtPutNoCollection(t *testing.T) {
 func TestNoCollectionValidationCheck(t *testing.T) {
 	testEnv := testEnvs[0]
 	testEnv.init(t, "test-no-collection-validation-check", nil)
+	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 	qe, err := txMgr.NewQueryExecutorNoCollChecks()
 	assert.NoError(t, err)

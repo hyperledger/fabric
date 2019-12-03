@@ -31,7 +31,7 @@ func TestPvtdataResultsItr(t *testing.T) {
 		},
 	)
 	testEnv.init(t, "test-pvtdata-range-queries", btlPolicy)
-
+	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 	populateCollConfigForTest(t, txMgr, []collConfigkey{
 		{"ns1", "coll1"}, {"ns2", "coll1"}, {"ns3", "coll1"}, {"ns4", "coll1"}},
