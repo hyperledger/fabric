@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,8 +35,7 @@ type TestEnv struct {
 
 // NewTestEnv construct a TestEnv for testing
 func NewTestEnv(t testing.TB) *TestEnv {
-	dbPath, err := ioutil.TempDir("", fmt.Sprintf("test-env-%s-", t.Name()))
-
+	dbPath, err := ioutil.TempDir("", strings.ReplaceAll(fmt.Sprintf("bookkeeping-env-%s-", t.Name()), "/", "-"))
 	require.NoError(t, err)
 	provider, err := NewProvider(dbPath)
 	require.NoError(t, err)

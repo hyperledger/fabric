@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,7 +49,7 @@ type LevelDBCommonStorageTestEnv struct {
 
 // Init implements corresponding function from interface TestEnv
 func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
-	dbPath, err := ioutil.TempDir("", fmt.Sprintf("test-env-%s-", t.Name()))
+	dbPath, err := ioutil.TempDir("", strings.ReplaceAll(fmt.Sprintf("test-env-%s-", t.Name()), "/", "-"))
 	env.dbPath = dbPath
 	if err != nil {
 		t.Fatalf("Failed to create level db storage directory: %s", err)
@@ -119,7 +120,7 @@ func (env *CouchDBCommonStorageTestEnv) setupCouch() string {
 
 // Init implements corresponding function from interface TestEnv
 func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
-	redoPath, err := ioutil.TempDir("", fmt.Sprintf("test-env-%s-", t.Name()))
+	redoPath, err := ioutil.TempDir("", strings.ReplaceAll(fmt.Sprintf("test-env-%s-", t.Name()), "/", "-"))
 	if err != nil {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}

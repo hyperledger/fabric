@@ -84,6 +84,7 @@ func TestDB(t *testing.T) {
 
 func testDB(t *testing.T, env TestEnv) {
 	env.Init(t)
+	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
