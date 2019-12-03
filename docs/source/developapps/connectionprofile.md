@@ -63,7 +63,7 @@ A static connection profile is normally created by an administrator who
 understands the network topology in detail. That's because a static profile can
 contain quite a lot of information, and an administrator needs to capture this
 in the corresponding connection profile. In contrast, dynamic profiles minimize
-the amount of definition required, and therefore can be a better choice for
+the amount of definition required and therefore can be a better choice for
 developers who want to get going quickly, or administrators who want to create a
 more responsive gateway. Connection profiles are created in either the YAML or
 JSON format using an editor of choice.
