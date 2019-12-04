@@ -8,14 +8,12 @@ package peer
 
 import (
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
-	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
-func CreateMockChannel(p *Peer, cid string, policyMgr policies.Manager) error {
+func CreateMockChannel(p *Peer, cid string, resources channelconfig.Resources) error {
 	var ledger ledger.PeerLedger
 	var err error
 
@@ -39,12 +37,8 @@ func CreateMockChannel(p *Peer, cid string, policyMgr policies.Manager) error {
 	}
 
 	p.channels[cid] = &Channel{
-		ledger: ledger,
-		resources: &mockchannelconfig.Resources{
-			PolicyManagerVal:     policyMgr,
-			ConfigtxValidatorVal: &mockconfigtx.Validator{},
-			ApplicationConfigVal: &mockchannelconfig.MockApplication{CapabilitiesRv: &mockchannelconfig.MockApplicationCapabilities{}},
-		},
+		ledger:         ledger,
+		resources:      resources,
 		cryptoProvider: cryptoProvider,
 	}
 
