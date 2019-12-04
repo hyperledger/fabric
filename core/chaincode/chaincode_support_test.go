@@ -30,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	mockpeer "github.com/hyperledger/fabric/common/mocks/peer"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
@@ -298,9 +297,9 @@ func finitMockPeer(peerInstance *peer.Peer, channelIDs ...string) {
 }
 
 //store the stream CC mappings here
-var mockPeerCCSupport = mockpeer.NewMockPeerSupport()
+var mockPeerCCSupport = mock.NewMockPeerSupport()
 
-func setupcc(name string) (*mockpeer.MockCCComm, *mockpeer.MockCCComm) {
+func setupcc(name string) (*mock.MockCCComm, *mock.MockCCComm) {
 	send := make(chan *pb.ChaincodeMessage)
 	recv := make(chan *pb.ChaincodeMessage)
 	peerSide, _ := mockPeerCCSupport.AddCC(name, recv, send)
@@ -356,7 +355,7 @@ func endTx(t *testing.T, peerInstance *peer.Peer, txParams *ccprovider.Transacti
 	globalBlockNum[txParams.ChannelID] = globalBlockNum[txParams.ChannelID] + 1
 }
 
-func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mockpeer.MockCCComm, chaincodeName string, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mockpeer.MockResponseSet, chaincodeSupport *ChaincodeSupport) error {
+func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mock.MockCCComm, chaincodeName string, waitForERROR bool, expectExecErr bool, done chan error, cis *pb.ChaincodeInvocationSpec, respSet *mock.MockResponseSet, chaincodeSupport *ChaincodeSupport) error {
 	ccSide.SetResponses(respSet)
 
 	resp, _, err := chaincodeSupport.Execute(txParams, chaincodeName, cis.ChaincodeSpec.Input)
@@ -377,7 +376,7 @@ func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mockpe
 }
 
 //initialize cc support env and startup the chaincode
-func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *ChaincodeSupport) (*mockpeer.MockCCComm, *mockpeer.MockCCComm) {
+func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *ChaincodeSupport) (*mock.MockCCComm, *mock.MockCCComm) {
 	peerSide, ccSide := setupcc(ccname)
 	defer mockPeerCCSupport.RemoveCC(ccname)
 
@@ -397,10 +396,10 @@ func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *Ch
 
 	//start the mock peer
 	go func() {
-		respSet := &mockpeer.MockResponseSet{
+		respSet := &mock.MockResponseSet{
 			DoneFunc:  errorFunc,
 			ErrorFunc: nil,
-			Responses: []*mockpeer.MockResponse{
+			Responses: []*mock.MockResponse{
 				{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}, RespMsg: nil},
 				{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY}, RespMsg: nil},
 			},
@@ -455,7 +454,7 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, ccContext *C
 	}
 }
 
-func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
+func initializeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
 	done := setuperror()
 
 	errorFunc := func(ind int, err error) {
@@ -470,7 +469,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
 	//bad txid in response (should be "1"), should fail
-	resp := &mockpeer.MockResponse{
+	resp := &mock.MockResponse{
 		RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION},
 		RespMsg: &pb.ChaincodeMessage{
 			Type:      pb.ChaincodeMessage_COMPLETED,
@@ -479,16 +478,16 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 			ChannelId: chainID,
 		},
 	}
-	respSet := &mockpeer.MockResponseSet{
+	respSet := &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{resp},
+		Responses: []*mock.MockResponse{resp},
 	}
 
 	execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 
 	//set the right TxID in response now
-	resp = &mockpeer.MockResponse{
+	resp = &mock.MockResponse{
 		RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION},
 		RespMsg: &pb.ChaincodeMessage{
 			Type:      pb.ChaincodeMessage_COMPLETED,
@@ -497,10 +496,10 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 			ChannelId: chainID,
 		},
 	}
-	respSet = &mockpeer.MockResponseSet{
+	respSet = &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{resp},
+		Responses: []*mock.MockResponse{resp},
 	}
 
 	//we are not going to reach the chaincode and so won't get a response from it. processDone will not
@@ -515,10 +514,10 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	//    full response
 	//    correct block number for ending sim
 
-	respSet = &mockpeer.MockResponseSet{
+	respSet = &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: protoutil.MarshalOrPanic(&pb.PutState{Collection: "", Key: "A", Value: []byte("100")}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: protoutil.MarshalOrPanic(&pb.PutState{Collection: "", Key: "B", Value: []byte("200")}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), ChaincodeEvent: &pb.ChaincodeEvent{ChaincodeId: ccname}, Txid: txid, ChannelId: chainID}},
@@ -532,7 +531,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCC
 	return nil
 }
 
-func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
+func invokeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
 	done := setuperror()
 
 	errorFunc := func(ind int, err error) {
@@ -545,10 +544,10 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 	txid := util.GenerateUUID()
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	respSet := &mockpeer.MockResponseSet{
+	respSet := &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: protoutil.MarshalOrPanic(&pb.GetState{Collection: "", Key: "A"}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: protoutil.MarshalOrPanic(&pb.GetState{Collection: "", Key: "B"}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_PUT_STATE, Payload: protoutil.MarshalOrPanic(&pb.PutState{Collection: "", Key: "A", Value: []byte("90")}), Txid: txid, ChannelId: chainID}},
@@ -561,10 +560,10 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 	execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 
 	//delete the extra var
-	respSet = &mockpeer.MockResponseSet{
+	respSet = &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: protoutil.MarshalOrPanic(&pb.GetState{Collection: "", Key: "TODEL"}), Txid: "3", ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_DEL_STATE, Payload: protoutil.MarshalOrPanic(&pb.DelState{Collection: "", Key: "TODEL"}), Txid: "3", ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: "3", ChannelId: chainID}},
@@ -575,10 +574,10 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 	execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 
 	//get the extra var and delete it
-	respSet = &mockpeer.MockResponseSet{
+	respSet = &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: protoutil.MarshalOrPanic(&pb.GetState{Collection: "", Key: "TODEL"}), Txid: "4", ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "variable not found"}), Txid: "4", ChannelId: chainID}},
 		},
@@ -592,7 +591,7 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm,
 	return nil
 }
 
-func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSide *mockpeer.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
+func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
 	done := setuperror()
 	errorFunc := func(ind int, err error) {
 		done <- err
@@ -616,35 +615,35 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.Id}), Txid: txid, ChannelId: chainID}
 	}
 
-	var mkpeer []*mockpeer.MockResponse
+	var mkpeer []*mock.MockResponse
 
-	mkpeer = append(mkpeer, &mockpeer.MockResponse{
+	mkpeer = append(mkpeer, &mock.MockResponse{
 		RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION},
 		RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Payload: protoutil.MarshalOrPanic(&pb.GetStateByRange{Collection: collection, StartKey: "A", EndKey: "B"}), Txid: txid, ChannelId: chainID},
 	})
 
 	if collection == "" {
-		mkpeer = append(mkpeer, &mockpeer.MockResponse{
+		mkpeer = append(mkpeer, &mock.MockResponse{
 			RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE},
 			RespMsg: queryStateNextFunc,
 		})
-		mkpeer = append(mkpeer, &mockpeer.MockResponse{
+		mkpeer = append(mkpeer, &mock.MockResponse{
 			RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR},
 			RespMsg: queryStateCloseFunc,
 		})
-		mkpeer = append(mkpeer, &mockpeer.MockResponse{
+		mkpeer = append(mkpeer, &mock.MockResponse{
 			RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE},
 			RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID},
 		})
 	} else {
 		// Range queries on private data is not yet implemented.
-		mkpeer = append(mkpeer, &mockpeer.MockResponse{
+		mkpeer = append(mkpeer, &mock.MockResponse{
 			RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR},
 			RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "Not Yet Supported"}), Txid: txid, ChannelId: chainID},
 		})
 	}
 
-	respSet := &mockpeer.MockResponseSet{
+	respSet := &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
 		Responses: mkpeer,
@@ -661,7 +660,7 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 	return nil
 }
 
-func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
+func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
 	calledCC := "calledCC"
 	//starts and registers the CC
 	_, calledCCSide := startCC(t, chainID2, calledCC, chaincodeSupport)
@@ -701,10 +700,10 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	txParams, txsim = startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
 	//call a callable system CC, a regular cc, a regular but different cc on a different chain, a regular but same cc on a different chain,  and an uncallable system cc and expect an error inthe last one
-	respSet := &mockpeer.MockResponseSet{
+	respSet := &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "lscc.syscc"}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID2}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
@@ -712,10 +711,10 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 		},
 	}
 
-	respSet2 := &mockpeer.MockResponseSet{
+	respSet2 := &mock.MockResponseSet{
 		DoneFunc:  nil,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}},
 		},
 	}
@@ -741,18 +740,18 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	}
 
 	//call regular cc but without ACL on called CC
-	respSet = &mockpeer.MockResponseSet{
+	respSet = &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: "calledCC:0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
 		},
 	}
 
-	respSet2 = &mockpeer.MockResponseSet{
+	respSet2 = &mock.MockResponseSet{
 		DoneFunc:  nil,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID}},
 		},
 	}
@@ -766,7 +765,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.Mock
 	return nil
 }
 
-func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mockpeer.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
+func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
 	done := setuperror()
 
 	errorFunc := func(ind int, err error) {
@@ -801,35 +800,35 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.Id}), Txid: txid, ChannelId: chainID}
 	}
 
-	var mkpeer []*mockpeer.MockResponse
+	var mkpeer []*mock.MockResponse
 
-	mkpeer = append(mkpeer, &mockpeer.MockResponse{
+	mkpeer = append(mkpeer, &mock.MockResponse{
 		RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION},
 		RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Payload: protoutil.MarshalOrPanic(&pb.GetQueryResult{Collection: "", Query: "goodquery"}), Txid: txid, ChannelId: chainID},
 	})
 
 	if collection == "" {
-		mkpeer = append(mkpeer, &mockpeer.MockResponse{
+		mkpeer = append(mkpeer, &mock.MockResponse{
 			RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE},
 			RespMsg: queryStateNextFunc,
 		})
-		mkpeer = append(mkpeer, &mockpeer.MockResponse{
+		mkpeer = append(mkpeer, &mock.MockResponse{
 			RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR},
 			RespMsg: queryStateCloseFunc,
 		})
-		mkpeer = append(mkpeer, &mockpeer.MockResponse{
+		mkpeer = append(mkpeer, &mock.MockResponse{
 			RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE},
 			RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.OK, Payload: []byte("OK")}), Txid: txid, ChannelId: chainID},
 		})
 	} else {
 		// Get query results on private data is not yet implemented.
-		mkpeer = append(mkpeer, &mockpeer.MockResponse{
+		mkpeer = append(mkpeer, &mock.MockResponse{
 			RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR},
 			RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: protoutil.MarshalOrPanic(&pb.Response{Status: shim.ERROR, Message: "Not Yet Supported"}), Txid: txid, ChannelId: chainID},
 		})
 	}
 
-	respSet := &mockpeer.MockResponseSet{
+	respSet := &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
 		Responses: mkpeer,
@@ -846,7 +845,7 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 	return nil
 }
 
-func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
+func getHistory(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
 	done := setuperror()
 
 	errorFunc := func(ind int, err error) {
@@ -881,10 +880,10 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mockpeer.MockCCCom
 		return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: protoutil.MarshalOrPanic(&pb.QueryStateClose{Id: qr.Id}), Txid: txid}
 	}
 
-	respSet := &mockpeer.MockResponseSet{
+	respSet := &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Payload: protoutil.MarshalOrPanic(&pb.GetQueryResult{Query: "goodquery"}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: queryStateNextFunc},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: queryStateNextFunc},
@@ -1093,7 +1092,7 @@ func genNewPld(t *testing.T, ccName string) []byte {
 	return payload
 }
 
-func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.MockCCComm, chaincodeSupport *ChaincodeSupport) {
+func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) {
 	//first deploy the CC on chainID2
 	chaincodeID := &pb.ChaincodeID{Name: ccname, Version: "0"}
 	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("deploycc")}, Decorations: nil}
@@ -1126,10 +1125,10 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mockpeer.
 	txParams, txsim = startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
 	txid = "cctosamecctx"
-	respSet := &mockpeer.MockResponseSet{
+	respSet := &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
-		Responses: []*mockpeer.MockResponse{
+		Responses: []*mock.MockResponse{
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: ccname + ":0/" + chainID2}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
 			{RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE}, RespMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INVOKE_CHAINCODE, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: ccname + ":0/" + chainID}, Input: &pb.ChaincodeInput{Args: [][]byte{{}}}}), Txid: txid, ChannelId: chainID}},
 		},
