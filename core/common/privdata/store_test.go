@@ -11,7 +11,6 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	lm "github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/core/common/privdata/mock"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
@@ -23,10 +22,12 @@ import (
 //go:generate counterfeiter -o mock/query_executor_factory.go -fake-name QueryExecutorFactory . queryExecutorFactory
 //go:generate counterfeiter -o mock/chaincode_info_provider.go -fake-name ChaincodeInfoProvider . chaincodeInfoProvider
 //go:generate counterfeiter -o mock/identity_deserializer_factory.go -fake-name IdentityDeserializerFactory . identityDeserializerFactory
+//go:generate counterfeiter -o mock/query_executor.go -fake-name QueryExecutor . queryExecutor
 
 type queryExecutorFactory interface{ QueryExecutorFactory }
 type chaincodeInfoProvider interface{ ChaincodeInfoProvider }
 type identityDeserializerFactory interface{ IdentityDeserializerFactory }
+type queryExecutor interface{ ledger.QueryExecutor }
 
 func TestNewSimpleCollectionStore(t *testing.T) {
 	mockQueryExecutorFactory := &mock.QueryExecutorFactory{}
@@ -56,7 +57,7 @@ func TestCollectionStore(t *testing.T) {
 	_, err := cs.RetrieveCollection(CollectionCriteria{})
 	assert.Contains(t, err.Error(), "could not retrieve query executor for collection criteria")
 
-	mockQueryExecutorFactory.NewQueryExecutorReturns(&lm.MockQueryExecutor{}, nil)
+	mockQueryExecutorFactory.NewQueryExecutorReturns(&mock.QueryExecutor{}, nil)
 	_, err = cs.retrieveCollectionConfigPackage(CollectionCriteria{Namespace: "non-existing-chaincode"}, nil)
 	assert.EqualError(t, err, "Chaincode [non-existing-chaincode] does not exist")
 
@@ -116,14 +117,14 @@ func TestCollectionStore(t *testing.T) {
 	assert.NotNil(t, ccc)
 
 	signedProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer0"), []byte("msg1"))
-	readP, writeP, err := cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
+	readP, writeP, err := cs.RetrieveReadWritePermission(ccr, signedProp, &mock.QueryExecutor{})
 	assert.NoError(t, err)
 	assert.True(t, readP)
 	assert.True(t, writeP)
 
 	// only signer0 and signer1 are the members
 	signedProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer2"), []byte("msg1"))
-	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
+	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &mock.QueryExecutor{})
 	assert.NoError(t, err)
 	assert.False(t, readP)
 	assert.False(t, writeP)
@@ -138,7 +139,7 @@ func TestCollectionStore(t *testing.T) {
 
 	// only signer0 and signer1 are the members
 	signedProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer2"), []byte("msg1"))
-	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &lm.MockQueryExecutor{})
+	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &mock.QueryExecutor{})
 	assert.NoError(t, err)
 	assert.True(t, readP)
 	assert.True(t, writeP)
