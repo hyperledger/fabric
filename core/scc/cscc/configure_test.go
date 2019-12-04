@@ -254,7 +254,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 
 	testDir, err := ioutil.TempDir("", "cscc_test")
 	require.NoError(t, err, "error in creating test dir")
-	defer os.Remove(testDir)
+	defer os.RemoveAll(testDir)
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
 	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
