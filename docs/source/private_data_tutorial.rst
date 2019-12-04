@@ -10,7 +10,7 @@ The information in this tutorial assumes knowledge of private data
 stores and their use cases. For more information, check out :doc:`private-data/private-data`.
 
 .. note:: These instructions use the new Fabric chaincode lifecycle introduced
-          in the Fabric v2.0 Alpha release. If you would like to use the previous
+          in the Fabric v2.0 release. If you would like to use the previous
           lifecycle model to use private data with chaincode, visit the v1.4
           version of the `Using Private Data in Fabric tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/private_data_tutorial.html>`__.
 
