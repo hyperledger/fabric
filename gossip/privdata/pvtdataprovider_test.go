@@ -984,6 +984,104 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	assert.Equal(t, fakeSleeper.SleepArgsForCall(0), pullRetrySleepInterval)
 }
 
+func TestSkipPullingAllInvalidTransactions(t *testing.T) {
+	err := msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
+
+	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	serializedID, err := identity.Serialize()
+	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
+	data := []byte{1, 2, 3}
+	signature, err := identity.Sign(data)
+	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	peerSelfSignedData := protoutil.SignedData{
+		Identity:  serializedID,
+		Signature: signature,
+		Data:      data,
+	}
+	endorser := protoutil.MarshalOrPanic(&mspproto.SerializedIdentity{
+		Mspid:   identity.GetMSPIdentifier(),
+		IdBytes: []byte(fmt.Sprintf("p0%s", identity.GetMSPIdentifier())),
+	})
+
+	ts := testSupport{
+		preHash:            []byte("rws-pre-image"),
+		hash:               util2.ComputeSHA256([]byte("rws-pre-image")),
+		channelID:          "testchannelid",
+		blockNum:           uint64(1),
+		endorsers:          []string{identity.GetMSPIdentifier()},
+		peerSelfSignedData: peerSelfSignedData,
+	}
+
+	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
+	ns1c2 := collectionPvtdataInfoFromTemplate("ns1", "c2", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
+
+	tempdir, err := ioutil.TempDir("", "ts")
+	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
+	storeProvider, err := transientstore.NewStoreProvider(tempdir)
+	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
+	store, err := storeProvider.OpenStore(ts.channelID)
+	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
+
+	defer storeProvider.Close()
+	defer os.RemoveAll(tempdir)
+
+	storePvtdataOfInvalidTx := true
+	skipPullingInvalidTransactions := true
+	rwSetsInCache := []rwSet{}
+	rwSetsInTransientStore := []rwSet{}
+	rwSetsInPeer := []rwSet{}
+	expectedDigKeys := []privdatacommon.DigKey{}
+	expectedBlockPvtdata := &ledger.BlockPvtdata{
+		PvtData: ledger.TxPvtDataMap{},
+		MissingPvtData: ledger.TxMissingPvtDataMap{
+			1: []*ledger.MissingPvtData{
+				{
+					Namespace:  "ns1",
+					Collection: "c1",
+					IsEligible: true,
+				},
+				{
+					Namespace:  "ns1",
+					Collection: "c2",
+					IsEligible: true,
+				},
+			},
+		},
+	}
+	pvtdataToRetrieve := []*ledger.TxPvtdataInfo{
+		{
+			TxID:       "tx1",
+			Invalid:    true,
+			SeqInBlock: 1,
+			CollectionPvtdataInfo: []*ledger.CollectionPvtdataInfo{
+				ns1c1,
+				ns1c2,
+			},
+		},
+	}
+	pdp := setupPrivateDataProvider(t, ts, testConfig,
+		storePvtdataOfInvalidTx, skipPullingInvalidTransactions, store,
+		rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer,
+		expectedDigKeys)
+	require.NotNil(t, pdp)
+
+	fakeSleeper := &mocks.Sleeper{}
+	SetSleeper(pdp, fakeSleeper)
+	newFetcher := &fetcherMock{t: t}
+	pdp.fetcher = newFetcher
+
+	retrievedPvtdata, err := pdp.RetrievePvtdata(pvtdataToRetrieve)
+	assert.NoError(t, err)
+
+	blockPvtdata := sortBlockPvtdata(retrievedPvtdata.GetBlockPvtdata())
+	assert.Equal(t, expectedBlockPvtdata, blockPvtdata)
+
+	// Check sleep and fetch were never called
+	assert.Equal(t, fakeSleeper.SleepCallCount(), 0)
+	assert.Len(t, newFetcher.Calls, 0)
+}
+
 func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	conf := testConfig
 	conf.TransientBlockRetention = 5
