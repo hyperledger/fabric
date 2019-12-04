@@ -295,6 +295,11 @@ func TestExtractSysChanLastConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	nextBlock := blockledger.CreateNextBlock(rl, []*common.Envelope{configTx})
+	nextBlock.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
+		Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
+			LastConfig: &common.LastConfig{Index: rl.Height()},
+		}),
+	})
 	nextBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: rl.Height()}),
 	})

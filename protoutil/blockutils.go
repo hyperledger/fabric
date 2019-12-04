@@ -81,7 +81,7 @@ func GetChainIDFromBlockBytes(bytes []byte) (string, error) {
 // GetChainIDFromBlock returns chain ID in the block
 func GetChainIDFromBlock(block *cb.Block) (string, error) {
 	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
-		return "", errors.Errorf("failed to retrieve channel id - block is empty")
+		return "", errors.New("failed to retrieve channel id - block is empty")
 	}
 	var err error
 	envelope, err := GetEnvelopeFromBlock(block.Data.Data[0])
@@ -94,7 +94,7 @@ func GetChainIDFromBlock(block *cb.Block) (string, error) {
 	}
 
 	if payload.Header == nil {
-		return "", errors.Errorf("failed to retrieve channel id - payload header is empty")
+		return "", errors.New("failed to retrieve channel id - payload header is empty")
 	}
 	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
@@ -106,10 +106,18 @@ func GetChainIDFromBlock(block *cb.Block) (string, error) {
 
 // GetMetadataFromBlock retrieves metadata at the specified index.
 func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Metadata, error) {
+	if block.Metadata == nil {
+		return nil, errors.New("no metadata in block")
+	}
+
+	if len(block.Metadata.Metadata) <= int(index) {
+		return nil, errors.Errorf("no metadata at index [%s]", index)
+	}
+
 	md := &cb.Metadata{}
 	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error unmarshaling metadata from block at index [%s]", index)
+		return nil, errors.Wrapf(err, "error unmarshaling metadata at index [%s]", index)
 	}
 	return md, nil
 }
@@ -130,7 +138,7 @@ func GetMetadataFromBlockOrPanic(block *cb.Block, index cb.BlockMetadataIndex) *
 func GetConsenterMetadataFromBlock(block *cb.Block) (*cb.Metadata, error) {
 	m, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_SIGNATURES)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve metadata at index: %d", cb.BlockMetadataIndex_SIGNATURES)
+		return nil, errors.WithMessage(err, "failed to retrieve metadata")
 	}
 
 	// TODO FAB-15864 Remove this fallback when we can stop supporting upgrade from pre-1.4.1 orderer
@@ -141,13 +149,13 @@ func GetConsenterMetadataFromBlock(block *cb.Block) (*cb.Metadata, error) {
 	obm := &cb.OrdererBlockMetadata{}
 	err = proto.Unmarshal(m.Value, obm)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal orderer block metadata")
+		return nil, errors.Wrap(err, "failed to unmarshal orderer block metadata")
 	}
 
 	res := &cb.Metadata{}
 	err = proto.Unmarshal(obm.ConsenterMetadata, res)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal consenter metadata")
+		return nil, errors.Wrap(err, "failed to unmarshal consenter metadata")
 	}
 
 	return res, nil
@@ -156,16 +164,30 @@ func GetConsenterMetadataFromBlock(block *cb.Block) (*cb.Metadata, error) {
 // GetLastConfigIndexFromBlock retrieves the index of the last config block as
 // encoded in the block metadata
 func GetLastConfigIndexFromBlock(block *cb.Block) (uint64, error) {
-	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
+	m, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_SIGNATURES)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithMessage(err, "failed to retrieve metadata")
 	}
-	lc := &cb.LastConfig{}
-	err = proto.Unmarshal(md.Value, lc)
+	// TODO FAB-15864 Remove this fallback when we can stop supporting upgrade from pre-1.4.1 orderer
+	if len(m.Value) == 0 {
+		m, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
+		if err != nil {
+			return 0, errors.WithMessage(err, "failed to retrieve metadata")
+		}
+		lc := &cb.LastConfig{}
+		err = proto.Unmarshal(m.Value, lc)
+		if err != nil {
+			return 0, errors.Wrap(err, "error unmarshaling LastConfig")
+		}
+		return lc.Index, nil
+	}
+
+	obm := &cb.OrdererBlockMetadata{}
+	err = proto.Unmarshal(m.Value, obm)
 	if err != nil {
-		return 0, errors.Wrap(err, "error unmarshaling LastConfig")
+		return 0, errors.Wrap(err, "failed to unmarshal orderer block metadata")
 	}
-	return lc.Index, nil
+	return obm.LastConfig.Index, nil
 }
 
 // GetLastConfigIndexFromBlockOrPanic retrieves the index of the last config

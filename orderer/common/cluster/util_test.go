@@ -891,30 +891,9 @@ func TestLastConfigBlock(t *testing.T) {
 		},
 		{
 			name:           "nil metadata",
-			expectedError:  "no metadata in block",
+			expectedError:  "failed to retrieve metadata: no metadata in block",
 			blockRetriever: blockRetriever,
 			block:          &common.Block{},
-		},
-		{
-			name:           "no last config block metadata",
-			expectedError:  "no metadata in block",
-			blockRetriever: blockRetriever,
-			block: &common.Block{
-				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}},
-				},
-			},
-		},
-		{
-			name:           "bad metadata in block",
-			blockRetriever: blockRetriever,
-			expectedError: "error unmarshaling metadata from block at index " +
-				"[LAST_CONFIG]: proto: common.Metadata: illegal tag 0 (wire type 1)",
-			block: &common.Block{
-				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{}, {1, 2, 3}},
-				},
-			},
 		},
 		{
 			name: "no block with index",

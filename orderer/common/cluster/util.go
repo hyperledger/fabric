@@ -652,9 +652,6 @@ func LastConfigBlock(block *common.Block, blockRetriever BlockRetriever) (*commo
 	if blockRetriever == nil {
 		return nil, errors.New("nil blockRetriever")
 	}
-	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_LAST_CONFIG) {
-		return nil, errors.New("no metadata in block")
-	}
 	lastConfigBlockNum, err := protoutil.GetLastConfigIndexFromBlock(block)
 	if err != nil {
 		return nil, err
