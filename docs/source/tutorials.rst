@@ -13,7 +13,8 @@ establishing a blockchain network using Hyperledger Fabric and provides
 a basic sample application to test it out.
 
 There are also tutorials for updating your channel, :doc:`channel_update_tutorial`, and
-upgrading your network to a later version of Hyperledger Fabric, :doc:`upgrading_your_network_tutorial`.
+upgrading your network to a later version of Hyperledger Fabric,
+:doc:`upgrading_your_network_tutorial`.
 
 Finally, we offer two chaincode tutorials. One oriented to developers,
 :doc:`chaincode4ade`, and the other oriented to operators,

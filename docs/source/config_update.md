@@ -39,8 +39,8 @@ To see the scope of what's possible to change it's important to look at a config
 in JSON format. The [Adding an Org to a Channel](./channel_update_tutorial.html)
 tutorial generates one, so if you've gone through that doc you can simply refer to it.
 For those who have not, we'll provide one here (for ease of readability, it might be
-helpful to put this config into a viewer that supports JSON folding, like atom or
-Visual Studio).
+helpful to put this config into a viewer that supports JSON folding, like atom
+or Visual Studio).
 
 <details>
   <summary>

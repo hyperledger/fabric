@@ -44,6 +44,10 @@ Alpha release:*
 lifecycle model to install and instantiate a chaincode, visit the v1.4 version
 of the [Chaincode for Operators tutorial](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html).*
 
+If you are upgrading from a v1.4.x network and need to edit your channel
+configurations to enable the new organization endorsement policies, check out
+[Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
+
 ## Install and define a chaincode
 
 Fabric chaincode lifecycle requires that organizations agree to the parameters

@@ -1,5 +1,5 @@
-Operations Guides
-=================
+Operations Guide
+================
 
 .. toctree::
    :maxdepth: 1
