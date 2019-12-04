@@ -151,7 +151,7 @@ func TestGetStateMultipleKeys(t *testing.T) {
 func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 	env.Init(t)
 	db := env.GetDBHandle(generateLedgerID(t))
-
+	defer env.Cleanup()
 	updates := NewUpdateBatch()
 
 	updates.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))

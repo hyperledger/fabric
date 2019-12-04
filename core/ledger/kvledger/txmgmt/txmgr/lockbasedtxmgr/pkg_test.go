@@ -124,6 +124,7 @@ func (env *lockBasedEnv) cleanup() {
 		env.txmgr.Shutdown()
 		env.testDBEnv.Cleanup()
 		env.testBookkeepingEnv.Cleanup()
+		env.dbInitialized = false
 	}
 }
 

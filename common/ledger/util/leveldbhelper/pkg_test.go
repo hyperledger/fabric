@@ -49,6 +49,8 @@ func (dbEnv *testDBEnv) cleanup() {
 	if dbEnv.db != nil {
 		dbEnv.db.Close()
 	}
+
+	os.RemoveAll(dbEnv.path)
 	assert.NoError(dbEnv.t, os.RemoveAll(dbEnv.path))
 }
 

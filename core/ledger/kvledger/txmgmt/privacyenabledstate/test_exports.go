@@ -125,6 +125,7 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}
 	env.redoPath = redoPath
+	logger.Infof(env.couchAddress)
 	if env.couchAddress == "" {
 		env.couchAddress = env.setupCouch()
 	}
@@ -155,9 +156,15 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 		stateDBConfig,
 		[]string{"lscc", "_lifecycle"},
 	)
+	logger.Infof("processing")
+	if err != nil {
+		logger.Infof(err.Error())
+	}
 	assert.NoError(t, err)
 	env.t = t
 	env.provider = dbProvider
+	logger.Infof(redoPath)
+
 }
 
 // GetDBHandle implements corresponding function from interface TestEnv
@@ -179,5 +186,6 @@ func (env *CouchDBCommonStorageTestEnv) Cleanup() {
 	os.RemoveAll(env.redoPath)
 	env.bookkeeperTestEnv.Cleanup()
 	env.provider.Close()
+	env.couchAddress = ""
 	env.couchCleanup()
 }
