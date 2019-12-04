@@ -137,6 +137,11 @@ type applicationConfig interface {
 	channelconfig.Application
 }
 
+//go:generate counterfeiter -o mock/resources.go --fake-name Resources . resources
+type resources interface {
+	channelconfig.Resources
+}
+
 //go:generate counterfeiter -o mock/policy_manager.go -fake-name PolicyManager . policyManager
 type policyManager interface {
 	policies.Manager

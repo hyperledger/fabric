@@ -623,17 +623,26 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 	mockPolicy := &mock.Policy{}
 	mockPolicy.EvaluateSignedDataReturns(nil)
+	capabilities := &mock.ApplicationCapabilities{}
+	config := &mock.ApplicationConfig{}
+	config.CapabilitiesReturns(capabilities)
 
 	polMgrChannel1 := &mock.PolicyManager{}
 	polMgrChannel1.GetPolicyReturns(mockPolicy, true)
-	err = peer.CreateMockChannel(chaincodeSupport.Peer, channel1, polMgrChannel1)
+	resources1 := &mock.Resources{}
+	resources1.PolicyManagerReturns(polMgrChannel1)
+	resources1.ApplicationConfigReturns(config, true)
+	err = peer.CreateMockChannel(chaincodeSupport.Peer, channel1, resources1)
 	if err != nil {
 		t.Fatalf("Failed to create mock channel: %s", err)
 	}
 
 	polMgrChannel2 := &mock.PolicyManager{}
 	polMgrChannel2.GetPolicyReturns(mockPolicy, true)
-	err = peer.CreateMockChannel(chaincodeSupport.Peer, channel2, polMgrChannel2)
+	resources2 := &mock.Resources{}
+	resources2.PolicyManagerReturns(polMgrChannel2)
+	resources2.ApplicationConfigReturns(config, true)
+	err = peer.CreateMockChannel(chaincodeSupport.Peer, channel2, resources2)
 	if err != nil {
 		t.Fatalf("Failed to create mock channel: %s", err)
 	}
@@ -784,8 +793,14 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	mockPolicy.EvaluateIdentitiesReturns(nil)
 	mockPolicy.EvaluateSignedDataReturns(nil)
 	polMgr.GetPolicyReturns(mockPolicy, true)
+	capabilities := &mock.ApplicationCapabilities{}
+	config := &mock.ApplicationConfig{}
+	config.CapabilitiesReturns(capabilities)
+	resources := &mock.Resources{}
+	resources.PolicyManagerReturns(polMgr)
+	resources.ApplicationConfigReturns(config, true)
 
-	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, polMgr)
+	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, resources)
 
 	ml.ChaincodeEndorsementInfoStub = func(_, name string, _ ledger.SimpleQueryExecutor) (*lifecycle.ChaincodeEndorsementInfo, error) {
 		switch name {
@@ -882,7 +897,11 @@ func TestChaincodeInit(t *testing.T) {
 
 	defer cleanup()
 
-	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, nil)
+	config := &mock.ApplicationConfig{}
+	config.CapabilitiesReturns(&mock.ApplicationCapabilities{})
+	resources := &mock.Resources{}
+	resources.ApplicationConfigReturns(config, true)
+	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, resources)
 
 	url := "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/init_private_data"
 	cID := &pb.ChaincodeID{Name: "init_pvtdata", Path: url, Version: "0"}
@@ -938,7 +957,11 @@ func TestQueries(t *testing.T) {
 
 	defer cleanup()
 
-	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, nil)
+	config := &mock.ApplicationConfig{}
+	config.CapabilitiesReturns(&mock.ApplicationCapabilities{})
+	resources := &mock.Resources{}
+	resources.ApplicationConfigReturns(config, true)
+	peer.CreateMockChannel(chaincodeSupport.Peer, channelID, resources)
 
 	url := "github.com/hyperledger/fabric/core/chaincode/testdata/src/chaincodes/map"
 	cID := &pb.ChaincodeID{Name: "tmap", Path: url, Version: "0"}

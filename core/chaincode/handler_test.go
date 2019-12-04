@@ -14,7 +14,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	ar "github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/fake"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
@@ -2176,7 +2176,7 @@ var _ = Describe("Handler", func() {
 
 			Expect(fakeACLProvider.CheckACLCallCount()).To(Equal(1))
 			resource, chainID, proposal := fakeACLProvider.CheckACLArgsForCall(0)
-			Expect(resource).To(Equal(resources.Peer_ChaincodeToChaincode))
+			Expect(resource).To(Equal(ar.Peer_ChaincodeToChaincode))
 			Expect(chainID).To(Equal("channel-id"))
 			Expect(proposal).To(Equal(expectedSignedProp))
 		})
@@ -2199,7 +2199,7 @@ var _ = Describe("Handler", func() {
 
 				Expect(fakeACLProvider.CheckACLCallCount()).To(Equal(1))
 				resource, chainID, proposal := fakeACLProvider.CheckACLArgsForCall(0)
-				Expect(resource).To(Equal(resources.Peer_ChaincodeToChaincode))
+				Expect(resource).To(Equal(ar.Peer_ChaincodeToChaincode))
 				Expect(chainID).To(Equal("target-channel-id"))
 				Expect(proposal).To(Equal(expectedSignedProp))
 			})

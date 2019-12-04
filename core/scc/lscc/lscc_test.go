@@ -26,7 +26,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/mocks/config"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	mscc "github.com/hyperledger/fabric/common/mocks/scc"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -50,6 +50,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+//go:generate counterfeiter -o mock/application.go -fake-name Application . application
+
+type application interface {
+	channelconfig.Application
+}
+
+//go:generate counterfeiter -o mock/application_capabilities.go -fake-name ApplicationCapabilities . applicationCapabilities
+
+type applicationCapabilities interface {
+	channelconfig.ApplicationCapabilities
+}
 
 // create a valid SignaturePolicyEnvelope to be used in tests
 var testPolicyEnvelope = &common.SignaturePolicyEnvelope{
@@ -262,13 +274,13 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 
 func TestNewLifecycleEnabled(t *testing.T) {
 	// Enable PrivateChannelData
+	capabilities := &mock.ApplicationCapabilities{}
+	capabilities.LifecycleV20Returns(true)
+	application := &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
 	mocksccProvider := (&mscc.MocksccProviderFactory{
 		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{
-				LifecycleV20Rv: true,
-			},
-		},
+		ApplicationConfigRv:   application,
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
@@ -387,13 +399,13 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1.0", path, false, false, true, PrivateChannelDataNotAvailable("").Error(), scc, stub, []byte("collections"))
 
 	// Enable PrivateChannelData
+	capabilities := &mock.ApplicationCapabilities{}
+	capabilities.PrivateChannelDataReturns(true)
+	application := &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
 	mocksccProvider := (&mscc.MocksccProviderFactory{
 		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{
-				PrivateChannelDataRv: true,
-			},
-		},
+		ApplicationConfigRv:   application,
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
 	scc = &SCC{
@@ -702,13 +714,13 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
 	// Enable PrivateChannelData
+	capabilities := &mock.ApplicationCapabilities{}
+	capabilities.PrivateChannelDataReturns(true)
+	application := &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
 	mocksccProvider := (&mscc.MocksccProviderFactory{
 		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{
-				PrivateChannelDataRv: true,
-			},
-		},
+		ApplicationConfigRv:   application,
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
 	scc = &SCC{
@@ -742,14 +754,14 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example02", "1", path, expectedErrorMsg, scc, stub, ccpBytes)
 
 	// Enable PrivateChannelData and V1_2Validation
+	capabilities = &mock.ApplicationCapabilities{}
+	capabilities.CollectionUpgradeReturns(true)
+	capabilities.PrivateChannelDataReturns(true)
+	application = &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
 	mocksccProvider = (&mscc.MocksccProviderFactory{
 		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{
-				PrivateChannelDataRv: true,
-				CollectionUpgradeRv:  true,
-			},
-		},
+		ApplicationConfigRv:   application,
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 
 	scc = &SCC{
@@ -1503,11 +1515,12 @@ var channelID = "testchannelid"
 var mockAclProvider *mocks.MockACLProvider
 
 func NewMockProvider() *mscc.MocksccProviderImpl {
+	capabilities := &mock.ApplicationCapabilities{}
+	application := &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
 	return (&mscc.MocksccProviderFactory{
 		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{},
-		},
+		ApplicationConfigRv:   application,
 	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
 }
 
