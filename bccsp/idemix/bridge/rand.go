@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
-	"github.com/hyperledger/fabric-amcl/amcl"
+	amcl "github.com/hyperledger/fabric-amcl/core"
 	cryptolib "github.com/hyperledger/fabric/idemix"
 )
 
