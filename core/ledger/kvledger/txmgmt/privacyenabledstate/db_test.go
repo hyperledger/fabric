@@ -192,6 +192,7 @@ func TestGetStateRangeScanIterator(t *testing.T) {
 
 func testGetStateRangeScanIterator(t *testing.T, env TestEnv) {
 	env.Init(t)
+	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
@@ -252,6 +253,7 @@ func TestQueryOnCouchDB(t *testing.T) {
 
 func testQueryOnCouchDB(t *testing.T, env TestEnv) {
 	env.Init(t)
+	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 	updates := NewUpdateBatch()
 
@@ -332,7 +334,7 @@ func TestLongDBNameOnCouchDB(t *testing.T) {
 
 func testLongDBNameOnCouchDB(t *testing.T, env TestEnv) {
 	env.Init(t)
-
+	defer env.Cleanup()
 	// Creates metadataDB (i.e., chainDB)
 	// Allowed pattern for chainName: [a-z][a-z0-9.-]
 	db := env.GetDBHandle("w1coaii9ck3l8red6a5cf3rwbe1b4wvbzcrrfl7samu7px8b9gf-4hft7wrgdmzzjj9ure4cbffucaj78nbj9ej.kvl3bus1iq1qir9xlhb8a1wipuksgs3g621elzy1prr658087exwrhp-y4j55o9cld242v--oeh3br1g7m8d6l8jobn.y42cgjt1.u1ik8qxnv4ohh9kr2w2zc8hqir5u4ev23s7jygrg....s7.ohp-5bcxari8nji")
@@ -442,6 +444,7 @@ func createCollectionConfig(collectionName string) *peer.CollectionConfig {
 
 func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	env.Init(t)
+	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 
 	coll1 := createCollectionConfig("collectionMarbles")
