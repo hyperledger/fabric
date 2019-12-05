@@ -327,22 +327,27 @@ func TestIterator(t *testing.T) {
 		testLedgerID := "testiterator.1"
 		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 2, 7)
+		testEnv.cleanup()
 
 		testLedgerID = "testiterator.2"
 		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 1, 11)
+		testEnv.cleanup()
 
 		testLedgerID = "testiterator.3"
 		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 0, 0)
+		testEnv.cleanup()
 
 		testLedgerID = "testiterator.4"
 		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 5, 0)
+		testEnv.cleanup()
 
 		testLedgerID = "testiterator.5"
 		testEnv.init(t, testLedgerID, nil)
 		testIterator(t, testEnv, 10, 0, 5)
+		testEnv.cleanup()
 	}
 }
 
