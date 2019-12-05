@@ -1822,12 +1822,6 @@ func (couchInstance *CouchInstance) handleRequest(ctx context.Context, method, d
 			req.SetBasicAuth(couchInstance.conf.Username, couchInstance.conf.Password)
 		}
 
-		if logger.IsEnabledFor(zapcore.DebugLevel) {
-			dump, _ := httputil.DumpRequestOut(req, false)
-			// compact debug log by replacing carriage return / line feed with dashes to separate http headers
-			logger.Debugf("HTTP Request: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
-		}
-
 		//Execute http request
 		resp, errResp = couchInstance.client.Do(req)
 
