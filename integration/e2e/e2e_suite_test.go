@@ -10,19 +10,30 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"testing"
 
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
+	"github.com/onsi/ginkgo/reporters"
+	"github.com/onsi/ginkgo/reporters/stenographer"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
 
 func TestEndToEnd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "EndToEnd Suite")
+
+	if os.Getenv("ENABLE_JUNIT") == "true" {
+		defaultReporter := reporters.NewDefaultReporter(config.DefaultReporterConfig, stenographer.New(!config.DefaultReporterConfig.NoColor, false, os.Stdout))
+		junitReporter := reporters.NewJUnitReporter("integration_report.xml")
+		RunSpecsWithCustomReporters(t, "EndToEnd Suite", []Reporter{defaultReporter, junitReporter})
+	} else {
+		RunSpecs(t, "EndToEnd Suite")
+	}
 }
 
 var (

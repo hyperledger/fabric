@@ -133,12 +133,19 @@ gotools: gotools-install
 check-go-version:
 	@scripts/check_go_version.sh
 
+# This will be removed in a future release in favor of the target
+# with the correct plural grammar "integration-tests"
 .PHONY: integration-test
 integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
 	./scripts/run-integration-tests.sh
 
+.PHONY: integration-tests
+integration-tests: integration-test
+
+# This will be removed in a future release in favor of the target
+# with the correct plural grammar "unit-tests"
 .PHONY: unit-test
-unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker
+unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker gotool.gotestsum
 	./scripts/run-unit-tests.sh
 
 .PHONY: unit-tests

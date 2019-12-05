@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -29,6 +30,9 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
+	"github.com/onsi/ginkgo/reporters"
+	"github.com/onsi/ginkgo/reporters/stenographer"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -38,7 +42,14 @@ import (
 
 func TestLifecycle(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Lifecycle Suite")
+
+	if os.Getenv("ENABLE_JUNIT") == "true" {
+		defaultReporter := reporters.NewDefaultReporter(config.DefaultReporterConfig, stenographer.New(!config.DefaultReporterConfig.NoColor, false, os.Stdout))
+		junitReporter := reporters.NewJUnitReporter("integration_report.xml")
+		RunSpecsWithCustomReporters(t, "Lifecycle Suite", []Reporter{defaultReporter, junitReporter})
+	} else {
+		RunSpecs(t, "Lifecycle Suite")
+	}
 }
 
 var (

@@ -8,17 +8,28 @@ package msp
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
+	"github.com/onsi/ginkgo/reporters"
+	"github.com/onsi/ginkgo/reporters/stenographer"
 	. "github.com/onsi/gomega"
 )
 
 func TestMSP(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "MSP Suite")
+
+	if os.Getenv("ENABLE_JUNIT") == "true" {
+		defaultReporter := reporters.NewDefaultReporter(config.DefaultReporterConfig, stenographer.New(!config.DefaultReporterConfig.NoColor, false, os.Stdout))
+		junitReporter := reporters.NewJUnitReporter("integration_report.xml")
+		RunSpecsWithCustomReporters(t, "MSP Suite", []Reporter{defaultReporter, junitReporter})
+	} else {
+		RunSpecs(t, "MSP Suite")
+	}
 }
 
 var (

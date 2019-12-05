@@ -11,7 +11,6 @@
 set -e -u
 
 fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
-
 cd "$fabric_dir"
 
 dirs=()

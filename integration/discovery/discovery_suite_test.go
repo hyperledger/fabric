@@ -8,17 +8,28 @@ package discovery
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
+	"github.com/onsi/ginkgo/reporters"
+	"github.com/onsi/ginkgo/reporters/stenographer"
 	. "github.com/onsi/gomega"
 )
 
 func TestEndToEnd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Discovery Service Suite")
+
+	if os.Getenv("ENABLE_JUNIT") == "true" {
+		defaultReporter := reporters.NewDefaultReporter(config.DefaultReporterConfig, stenographer.New(!config.DefaultReporterConfig.NoColor, false, os.Stdout))
+		junitReporter := reporters.NewJUnitReporter("integration_report.xml")
+		RunSpecsWithCustomReporters(t, "Discovery Service Suite", []Reporter{defaultReporter, junitReporter})
+	} else {
+		RunSpecs(t, "Discovery Service Suite")
+	}
 }
 
 var (

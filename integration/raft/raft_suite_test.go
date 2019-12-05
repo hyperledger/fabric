@@ -9,12 +9,16 @@ package raft
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
+	"github.com/onsi/ginkgo/reporters"
+	"github.com/onsi/ginkgo/reporters/stenographer"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -22,7 +26,14 @@ import (
 
 func TestRaft(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Raft-based Ordering Service Suite")
+
+	if os.Getenv("ENABLE_JUNIT") == "true" {
+		defaultReporter := reporters.NewDefaultReporter(config.DefaultReporterConfig, stenographer.New(!config.DefaultReporterConfig.NoColor, false, os.Stdout))
+		junitReporter := reporters.NewJUnitReporter("integration_report.xml")
+		RunSpecsWithCustomReporters(t, "Raft-based Ordering Service Suite", []Reporter{defaultReporter, junitReporter})
+	} else {
+		RunSpecs(t, "Raft-based Ordering Service Suite")
+	}
 }
 
 var (
