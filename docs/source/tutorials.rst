@@ -38,6 +38,7 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    chaincode4noah
    couchdb_tutorial
    videos
+   tutorial/javacontract_quickstart
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

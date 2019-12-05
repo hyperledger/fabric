@@ -69,7 +69,7 @@ directory. Note: you may need to adjust depending on your OS.
 
 Prereqs:
  - [Python 3.7](https://wiki.python.org/moin/BeginnersGuide/Download)
- - [Pipenv](https://docs.pipenv.org/en/latest/#install-pipenv-today)
+ - [Pipenv](https://pipenv.kennethreitz.org/en/latest/#install-pipenv-today)
 
 ```
 cd fabric/docs
@@ -92,6 +92,14 @@ sudo cp -r * /var/www/html/
 ```
 
 You can then access the html files at `http://localhost/index.html`.
+
+
+An alternative is to run a simple webserver with python.
+```
+python -m http.server --directory ./build/html
+```
+
+Then the pages can be accessed at `http://localhost:8000/`
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 s
