@@ -7,6 +7,7 @@ Getting Started
 
    prereqs
    install
+   test_network
 
 Before we begin, if you haven't already done so, you may wish to check that
 you have all the :doc:`prereqs` installed on the platform(s)
@@ -18,6 +19,9 @@ install HyperLedger Fabric. While we work on developing real installers for the
 Fabric binaries, we provide a script that will :doc:`install` to your system.
 The script also will download the Docker images to your local registry.
 
+After you have downloaded the Fabric Samples and Docker images to your local
+machine, you can get started working with Fabric by deploying the
+[Fabric test network](test_network.html).
 
 Hyperledger Fabric smart contract (chaincode) SDKs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
