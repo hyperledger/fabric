@@ -8,7 +8,7 @@ has been successfully committed to the channel. For more information, visit
 [Chaincode for Operators](../chaincode4noah.html).
 
 *Note: These instructions use the Fabric chaincode lifecycle introduced in the
-v2.0 Alpha release. If you would like to use the old lifecycle to install and
+v2.0 release. If you would like to use the old lifecycle to install and
 instantiate a chaincode, visit the [peer chaincode](peerchaincode.html) command
 reference.*
 
