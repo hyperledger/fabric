@@ -13,12 +13,14 @@ import (
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 )
 
 func TestEndToEnd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Discovery Service Suite")
+	junitReporter := reporters.NewJUnitReporter("fabric_integration_report.xml")
+	RunSpecsWithDefaultAndCustomReporters(t, "Discovery Service Suite", []Reporter{junitReporter})
 }
 
 var (

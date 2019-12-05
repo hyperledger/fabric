@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -22,7 +23,8 @@ import (
 
 func TestRaft(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Raft-based Ordering Service Suite")
+	junitReporter := reporters.NewJUnitReporter("fabric_integration_report.xml")
+	RunSpecsWithDefaultAndCustomReporters(t, "Raft-based Ordering Service Suite", []Reporter{junitReporter})
 }
 
 var (

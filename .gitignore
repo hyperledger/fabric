@@ -9,6 +9,7 @@
 /docs/build/*
 .DS_Store
 .*-dummy
+fabric_*_report.xml
 .gradle
 .idea
 *.iml

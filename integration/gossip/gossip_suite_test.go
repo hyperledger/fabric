@@ -13,12 +13,14 @@ import (
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 )
 
 func TestGossip(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gossip Communication Suite")
+	junitReporter := reporters.NewJUnitReporter("fabric_integration_report.xml")
+	RunSpecsWithDefaultAndCustomReporters(t, "Gossip Communication Suite", []Reporter{junitReporter})
 }
 
 var (

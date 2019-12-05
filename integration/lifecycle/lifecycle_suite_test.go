@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -38,7 +39,8 @@ import (
 
 func TestLifecycle(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Lifecycle Suite")
+	junitReporter := reporters.NewJUnitReporter("fabric_integration_report.xml")
+	RunSpecsWithDefaultAndCustomReporters(t, "Lifecycle Suite", []Reporter{junitReporter})
 }
 
 var (

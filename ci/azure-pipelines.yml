@@ -55,8 +55,14 @@ jobs:
         displayName: Checkout Fabric Code
       - script: ./ci/scripts/setup_hsm.sh
         displayName: Install SoftHSM
-      - script: make unit-test
+      - script: make unit-tests
         displayName: Run Unit Tests
+      - task: PublishTestResults@2
+        inputs:
+          mergeTestResults: true
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/fabric_unit_report.xml'
+        condition: always()
 
   - job: IntegrationTests
     condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
@@ -71,6 +77,11 @@ jobs:
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
-      - script: make integration-test
+      - script: make integration-tests
         displayName: Run Integration Tests
-
+      - task: PublishTestResults@2
+        inputs:
+          mergeTestResults: true
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/fabric_integration_report.xml'
+        condition: always()

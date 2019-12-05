@@ -1083,6 +1083,7 @@
     "github.com/mitchellh/mapstructure",
     "github.com/onsi/ginkgo",
     "github.com/onsi/ginkgo/extensions/table",
+    "github.com/onsi/ginkgo/reporters",
     "github.com/onsi/gomega",
     "github.com/onsi/gomega/gbytes",
     "github.com/onsi/gomega/gexec",

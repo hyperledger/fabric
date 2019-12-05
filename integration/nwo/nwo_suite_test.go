@@ -13,12 +13,14 @@ import (
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 )
 
 func TestNewWorldOrder(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "New World Order Suite")
+	junitReporter := reporters.NewJUnitReporter("fabric_integration_report.xml")
+	RunSpecsWithDefaultAndCustomReporters(t, "New World Order Suite", []Reporter{junitReporter})
 }
 
 var (

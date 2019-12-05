@@ -11,11 +11,10 @@
 set -e -u
 
 fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
-
 cd "$fabric_dir"
 
 dirs=()
-if [ "${#}" -eq 0 ]; then
+if [[ "${#}" -eq 0 ]]; then
   specs=()
   specs=("$(grep -Ril --exclude-dir=vendor --exclude-dir=scripts "RunSpecs" . | grep integration)")
   for spec in ${specs[*]}; do
@@ -30,8 +29,8 @@ agentNumber=${SYSTEM_JOBPOSITIONINPHASE:-0} # current job position
 testCount=${#dirs[@]}
 
 # below conditions are used if parallel pipeline is not used. i.e. pipeline is running with single agent (no parallel configuration)
-if [ "$totalAgents" -eq 0 ]; then totalAgents=1; fi
-if [ "$agentNumber" -eq 0 ]; then agentNumber=1; fi
+if [[ "$totalAgents" -eq 0 ]]; then totalAgents=1; fi
+if [[ "$agentNumber" -eq 0 ]]; then agentNumber=1; fi
 
 declare -a files
 for ((i = "$agentNumber"; i <= "$testCount"; )); do
