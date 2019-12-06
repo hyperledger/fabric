@@ -10,8 +10,8 @@ import (
 	"crypto/ecdsa"
 	"sort"
 
-	"github.com/hyperledger/fabric-amcl/amcl"
-	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
+	amcl "github.com/hyperledger/fabric-amcl/core"
+	"github.com/hyperledger/fabric-amcl/core/FP256BN"
 	"github.com/pkg/errors"
 )
 
