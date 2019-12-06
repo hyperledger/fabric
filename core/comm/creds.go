@@ -22,6 +22,8 @@ var (
 	OverrrideHostnameNotSupportedError = errors.New(
 		"core/comm: OverrideServerName is " +
 			"not supported")
+	ServerHandshakeNotImplementedError = errors.New("core/comm: server handshakes are not implemented with clientCreds")
+
 	MissingServerConfigError = errors.New(
 		"core/comm: `serverConfig` cannot be nil")
 	// alpnProtoStr are the specified application level protocols for gRPC.
@@ -88,4 +90,38 @@ func (sc *serverCreds) Clone() credentials.TransportCredentials {
 // on the returned certificates from the server.
 func (sc *serverCreds) OverrideServerName(string) error {
 	return OverrrideHostnameNotSupportedError
+}
+
+type DynamicClientCredentials struct {
+	TLSConfig  *tls.Config
+	TLSOptions []TLSOption
+}
+
+func (dtc *DynamicClientCredentials) latestConfig() *tls.Config {
+	tlsConfigCopy := dtc.TLSConfig.Clone()
+	for _, tlsOption := range dtc.TLSOptions {
+		tlsOption(tlsConfigCopy)
+	}
+	return tlsConfigCopy
+}
+
+func (dtc *DynamicClientCredentials) ClientHandshake(ctx context.Context, authority string, rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	return credentials.NewTLS(dtc.latestConfig()).ClientHandshake(ctx, authority, rawConn)
+}
+
+func (dtc *DynamicClientCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	return nil, nil, ServerHandshakeNotImplementedError
+}
+
+func (dtc *DynamicClientCredentials) Info() credentials.ProtocolInfo {
+	return credentials.NewTLS(dtc.latestConfig()).Info()
+}
+
+func (dtc *DynamicClientCredentials) Clone() credentials.TransportCredentials {
+	return credentials.NewTLS(dtc.latestConfig())
+}
+
+func (dtc *DynamicClientCredentials) OverrideServerName(name string) error {
+	dtc.TLSConfig.ServerName = name
+	return nil
 }

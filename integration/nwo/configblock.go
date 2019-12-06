@@ -7,18 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package nwo
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"bytes"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/tools/configtxlator/update"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	protosorderer "github.com/hyperledger/fabric/protos/orderer"
 	ectdraft_protos "github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -313,6 +313,9 @@ func RemoveConsenter(n *Network, peer *Peer, orderer *Orderer, channel string, c
 // ConsensusMetadataMutator receives ConsensusType.Metadata and mutates it
 type ConsensusMetadataMutator func([]byte) []byte
 
+// MSPMutator receives FabricMSPConfig and mutates it.
+type MSPMutator func(config msp.FabricMSPConfig) msp.FabricMSPConfig
+
 // UpdateConsensusMetadata executes a config update that updates the consensus metadata according to the given ConsensusMetadataMutator
 func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, channel string, mutateMetadata ConsensusMetadataMutator) {
 	config := GetConfig(network, peer, orderer, channel)
@@ -346,4 +349,28 @@ func UpdateEtcdRaftMetadata(network *Network, peer *Peer, orderer *Orderer, chan
 		Expect(err).NotTo(HaveOccurred())
 		return newMetadata
 	})
+}
+
+func UpdateOrdererMSP(network *Network, peer *Peer, orderer *Orderer, channel, orgID string, mutateMSP MSPMutator) {
+	config := GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	// Unpack the MSP config
+	rawMSPConfig := updatedConfig.ChannelGroup.Groups["Orderer"].Groups[orgID].Values["MSP"]
+	mspConfig := &msp.MSPConfig{}
+	err := proto.Unmarshal(rawMSPConfig.Value, mspConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	fabricConfig := &msp.FabricMSPConfig{}
+	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Mutate it as we are asked
+	*fabricConfig = mutateMSP(*fabricConfig)
+
+	// Wrap it back into the config
+	mspConfig.Config = utils.MarshalOrPanic(fabricConfig)
+	rawMSPConfig.Value = utils.MarshalOrPanic(mspConfig)
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 }

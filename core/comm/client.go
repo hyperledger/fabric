@@ -14,7 +14,6 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -166,10 +165,13 @@ func (client *GRPCClient) SetServerRootCAs(serverRoots [][]byte) error {
 	return nil
 }
 
+// TLSOption changes the given TLS config
+type TLSOption func(tlsConfig *tls.Config)
+
 // NewConnection returns a grpc.ClientConn for the target address and
 // overrides the server name used to verify the hostname on the
 // certificate returned by a server when using TLS
-func (client *GRPCClient) NewConnection(address string, serverNameOverride string) (
+func (client *GRPCClient) NewConnection(address string, serverNameOverride string, tlsOptions ...TLSOption) (
 	*grpc.ClientConn, error) {
 
 	var dialOpts []grpc.DialOption
@@ -183,7 +185,7 @@ func (client *GRPCClient) NewConnection(address string, serverNameOverride strin
 		client.tlsConfig.ServerName = serverNameOverride
 		dialOpts = append(dialOpts,
 			grpc.WithTransportCredentials(
-				credentials.NewTLS(client.tlsConfig)))
+				&DynamicClientCredentials{TLSConfig: client.tlsConfig, TLSOptions: tlsOptions}))
 	} else {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 	}

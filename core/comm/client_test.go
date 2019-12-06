@@ -15,15 +15,20 @@ import (
 	"io/ioutil"
 	"net"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -559,4 +564,87 @@ func loadCerts(t *testing.T) testCerts {
 	)
 
 	return certs
+}
+
+func TestDynamicClientTLSLoading(t *testing.T) {
+	t.Parallel()
+	ca1, err := tlsgen.NewCA()
+	assert.NoError(t, err)
+
+	ca2, err := tlsgen.NewCA()
+	assert.NoError(t, err)
+
+	clientKP, err := ca1.NewClientCertKeyPair()
+	assert.NoError(t, err)
+
+	serverKP, err := ca2.NewServerCertKeyPair("127.0.0.1")
+	assert.NoError(t, err)
+
+	client, err := comm.NewGRPCClient(comm.ClientConfig{
+		AsyncConnect: true,
+		Timeout:      time.Second * 1,
+		SecOpts: &comm.SecureOptions{
+			UseTLS:        true,
+			ServerRootCAs: [][]byte{ca1.CertBytes()},
+			Certificate:   clientKP.Cert,
+			Key:           clientKP.Key,
+		},
+	})
+	assert.NoError(t, err)
+
+	server, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{
+		Logger: flogging.MustGetLogger("test"),
+		SecOpts: &comm.SecureOptions{
+			UseTLS:      true,
+			Key:         serverKP.Key,
+			Certificate: serverKP.Cert,
+		},
+	})
+	assert.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		server.Start()
+	}()
+
+	var dynamicRootCerts atomic.Value
+	dynamicRootCerts.Store(ca1.CertBytes())
+
+	conn, err := client.NewConnection(server.Address(), "", func(tlsConfig *tls.Config) {
+		tlsConfig.RootCAs = x509.NewCertPool()
+		tlsConfig.RootCAs.AppendCertsFromPEM(dynamicRootCerts.Load().([]byte))
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+
+	waitForConnState := func(state connectivity.State, succeedOrFail string) {
+		deadline := time.Now().Add(time.Second * 30)
+		for conn.GetState() != state {
+			time.Sleep(time.Millisecond * 10)
+			if time.Now().After(deadline) {
+				t.Fatalf("Test timed out, waited for connection to %s", succeedOrFail)
+			}
+		}
+	}
+
+	// Poll the connection state to wait for it to fail
+	waitForConnState(connectivity.TransientFailure, "fail")
+
+	// Update the TLS root CAs with the good one
+	dynamicRootCerts.Store(ca2.CertBytes())
+
+	// Reset exponential back-off to make the test faster
+	conn.ResetConnectBackoff()
+
+	// Poll the connection state to wait for it to succeed
+	waitForConnState(connectivity.Ready, "succeed")
+
+	err = conn.Close()
+	assert.NoError(t, err)
+
+	server.Stop()
+	wg.Wait()
 }
