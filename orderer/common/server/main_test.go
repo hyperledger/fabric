@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -41,6 +42,8 @@ import (
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -455,12 +458,34 @@ func TestInitializeGrpcServer(t *testing.T) {
 	})
 }
 
+// generateCryptoMaterials uses cryptogen to generate the necessary
+// MSP files and TLS certificates
+func generateCryptoMaterials(t *testing.T, cryptogen string) string {
+	gt := NewGomegaWithT(t)
+	cryptoPath := filepath.Join(tempDir, "crypto")
+
+	cmd := exec.Command(
+		cryptogen,
+		"generate",
+		"--config", filepath.Join(tempDir, "examplecom-config.yaml"),
+		"--output", cryptoPath,
+	)
+	cryptogenProcess, err := gexec.Start(cmd, nil, nil)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Eventually(cryptogenProcess, time.Minute).Should(gexec.Exit(0))
+
+	return cryptoPath
+}
+
 func TestUpdateTrustedRoots(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, "testchannelid")
 	defer os.Remove(genesisFile)
+
+	cryptoPath := generateCryptoMaterials(t, cryptogen)
+	defer os.RemoveAll(cryptoPath)
 
 	// get a free random port
 	listenAddr := func() string {
@@ -529,8 +554,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 			TLS: localconfig.TLS{
 				Enabled:            true,
 				ClientAuthRequired: true,
-				PrivateKey:         filepath.Join(".", "testdata", "example.com", "tls", "server.key"),
-				Certificate:        filepath.Join(".", "testdata", "example.com", "tls", "server.crt"),
+				PrivateKey:         filepath.Join(cryptoPath, "ordererOrganizations", "example.com", "orderers", "127.0.0.1.example.com", "tls", "server.key"),
+				Certificate:        filepath.Join(cryptoPath, "ordererOrganizations", "example.com", "orderers", "127.0.0.1.example.com", "tls", "server.crt"),
 			},
 		},
 	}
