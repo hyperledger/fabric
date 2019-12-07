@@ -234,11 +234,13 @@ sections
 
 * **Block Metadata**
 
-  This section contains the time when the block was written, as well as the
-  certificate, public key and signature of the block writer. Subsequently, the
-  block committer also adds a valid/invalid indicator for every transaction,
-  though this information is not included in the hash, as that is created when
-  the block is created.
+  This section contains the certificate and signature of the block creator which is used to verify
+  the block by network nodes.
+  Subsequently, the block committer adds a valid/invalid indicator for every transaction into
+  a bitmap that also resides in the block metadata, as well as a hash of the cumulative state updates
+  up until and including that block, in order to detect a state fork.
+  Unlike the block data  and header fields, this section is not an input to the block hash computation.
+
 
 ## Transactions
 
