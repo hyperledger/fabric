@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
@@ -290,6 +291,9 @@ func UnmarshalBlockFromFile(blockFile string) *common.Block {
 // ConsensusMetadataMutator receives ConsensusType.Metadata and mutates it.
 type ConsensusMetadataMutator func([]byte) []byte
 
+// MSPMutator receives FabricMSPConfig and mutates it.
+type MSPMutator func(config msp.FabricMSPConfig) msp.FabricMSPConfig
+
 // UpdateConsensusMetadata executes a config update that updates the consensus
 // metadata according to the given ConsensusMetadataMutator.
 func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, channel string, mutateMetadata ConsensusMetadataMutator) {
@@ -307,6 +311,30 @@ func UpdateConsensusMetadata(network *Network, peer *Peer, orderer *Orderer, cha
 		ModPolicy: "Admins",
 		Value:     protoutil.MarshalOrPanic(consensusTypeValue),
 	}
+
+	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
+}
+
+func UpdateOrdererMSP(network *Network, peer *Peer, orderer *Orderer, channel, orgID string, mutateMSP MSPMutator) {
+	config := GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	// Unpack the MSP config
+	rawMSPConfig := updatedConfig.ChannelGroup.Groups["Orderer"].Groups[orgID].Values["MSP"]
+	mspConfig := &msp.MSPConfig{}
+	err := proto.Unmarshal(rawMSPConfig.Value, mspConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	fabricConfig := &msp.FabricMSPConfig{}
+	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Mutate it as we are asked
+	*fabricConfig = mutateMSP(*fabricConfig)
+
+	// Wrap it back into the config
+	mspConfig.Config = protoutil.MarshalOrPanic(fabricConfig)
+	rawMSPConfig.Value = protoutil.MarshalOrPanic(mspConfig)
 
 	UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 }
