@@ -135,10 +135,10 @@ type externalVMAdapter struct {
 
 func (e externalVMAdapter) Build(
 	ccid string,
-	metadata *persistence.ChaincodePackageMetadata,
+	mdBytes []byte,
 	codePackage io.Reader,
 ) (container.Instance, error) {
-	i, err := e.detector.Build(ccid, metadata, codePackage)
+	i, err := e.detector.Build(ccid, mdBytes, codePackage)
 	if err != nil {
 		return nil, err
 	}
@@ -541,8 +541,8 @@ func serve(args []string) error {
 	buildRegistry := &container.BuildRegistry{}
 
 	containerRouter := &container.Router{
-		DockerVM:   dockerVM,
-		ExternalVM: externalVMAdapter{externalVM},
+		DockerBuilder:   dockerVM,
+		ExternalBuilder: externalVMAdapter{externalVM},
 		PackageProvider: &persistence.FallbackPackageLocator{
 			ChaincodePackageLocator: &persistence.ChaincodePackageLocator{
 				ChaincodeDir: chaincodeInstallPath,
