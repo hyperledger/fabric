@@ -651,13 +651,15 @@ func (n *Network) GenerateConfigTree() {
 // the Network using the channel's Profile attribute. The transactions are
 // written to ${rootDir}/${Channel.Name}_tx.pb.
 func (n *Network) Bootstrap() {
-	_, err := n.DockerClient.CreateNetwork(
-		docker.CreateNetworkOptions{
-			Name:   n.NetworkID,
-			Driver: "bridge",
-		},
-	)
-	Expect(err).NotTo(HaveOccurred())
+	if n.DockerClient != nil {
+		_, err := n.DockerClient.CreateNetwork(
+			docker.CreateNetworkOptions{
+				Name:   n.NetworkID,
+				Driver: "bridge",
+			},
+		)
+		Expect(err).NotTo(HaveOccurred())
+	}
 
 	sess, err := n.Cryptogen(commands.Generate{
 		Config: n.CryptoConfigPath(),
@@ -754,6 +756,10 @@ func (n *Network) listTLSCACertificates() []string {
 // Cleanup attempts to cleanup docker related artifacts that may
 // have been created by the network.
 func (n *Network) Cleanup() {
+	if n.DockerClient == nil {
+		return
+	}
+
 	nw, err := n.DockerClient.NetworkInfo(n.NetworkID)
 	Expect(err).NotTo(HaveOccurred())
 

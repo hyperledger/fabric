@@ -112,6 +112,9 @@ func (r *Router) Build(ccid string) error {
 	}
 
 	if instance == nil {
+		if r.DockerBuilder == nil {
+			return errors.New("no DockerBuilder, cannot build")
+		}
 		metadata, _, codeStream, err := r.PackageProvider.GetChaincodePackage(ccid)
 		if err != nil {
 			return errors.WithMessage(err, "failed to get chaincode package for docker build")
