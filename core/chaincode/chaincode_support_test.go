@@ -188,7 +188,7 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 	}
 
 	containerRouter := &container.Router{
-		DockerVM: &dockercontroller.DockerVM{
+		DockerBuilder: &dockercontroller.DockerVM{
 			PlatformBuilder: &platforms.Builder{
 				Registry: platforms.NewRegistry(&golang.Platform{}),
 				Client:   client,

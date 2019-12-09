@@ -17,7 +17,7 @@ OUTPUT=$3
 
 >&2 jq . "$2/metadata.json"
 
-if [[ "$(jq -r .package_id "$METADATA/metadata.json")" == *fail* ]]; then
+if [[ "$(jq -r .label "$METADATA/metadata.json")" == *fail* ]]; then
     >&2 echo "Exiting with failure..."
     exit 1
 fi
