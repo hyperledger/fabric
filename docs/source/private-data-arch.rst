@@ -72,10 +72,28 @@ Collection definitions are composed of the following properties:
 * ``memberOnlyRead``: a value of ``true`` indicates that peers automatically
   enforce that only clients belonging to one of the collection member organizations
   are allowed read access to private data. If a client from a non-member org
-  attempts to execute a chaincode function that performs a read of a private data,
+  attempts to execute a chaincode function that performs a read of a private data key,
   the chaincode invocation is terminated with an error. Utilize a value of
   ``false`` if you would like to encode more granular access control within
   individual chaincode functions.
+
+* ``memberOnlyWrite``: a value of ``true`` indicates that peers automatically
+  enforce that only clients belonging to one of the collection member organizations
+  are allowed to write private data from chaincode. If a client from a non-member org
+  attempts to execute a chaincode function that performs a write on a private data key,
+  the chaincode invocation is terminated with an error. Utilize a value of
+  ``false`` if you would like to encode more granular access control within
+  individual chaincode functions, for example you may want certain clients
+  from non-member organization to be able to create private data in a certain
+  collection.
+
+* ``endorsementPolicy``: An optional endorsement policy to utilize for the
+  collection that overrides the chaincode level endorsement policy. A
+  collection level endorsement policy may be specified in the form of a
+  ``signaturePolicy`` or may be a ``channelConfigPolicy`` reference to
+  an existing policy from the channel configuration. The ``endorsementPolicy``
+  may be the same as the collection distribution ``policy``, or may require
+  fewer or additional organization peers.
 
 Here is a sample collection definition JSON file, containing an array of two
 collection definitions:
@@ -89,7 +107,8 @@ collection definitions:
      "requiredPeerCount": 0,
      "maxPeerCount": 3,
      "blockToLive":1000000,
-     "memberOnlyRead": true
+     "memberOnlyRead": true,
+     "memberOnlyWrite": true
   },
   {
      "name": "collectionMarblePrivateDetails",
@@ -97,7 +116,11 @@ collection definitions:
      "requiredPeerCount": 0,
      "maxPeerCount": 3,
      "blockToLive":3,
-     "memberOnlyRead": true
+     "memberOnlyRead": true,
+     "memberOnlyWrite":true,
+     "endorsementPolicy": {
+       "signaturePolicy": "OR('Org1MSP.member')"
+     }
   }
  ]
 
@@ -106,9 +129,13 @@ This example uses the organizations from the BYFN sample network, ``Org1`` and
 organizations to the private data. This is a typical configuration when the
 chaincode data needs to remain private from the ordering service nodes. However,
 the policy in the ``collectionMarblePrivateDetails`` definition restricts access
-to a subset of organizations in the channel (in this case ``Org1`` ). In a real
-scenario, there would be many organizations in the channel, with two or more
-organizations in each collection sharing private data between them.
+to a subset of organizations in the channel (in this case ``Org1`` ). Additionally,
+writing to this collection requires endorsement from a ``Org1`` peer, even
+though the chaincode level endorsement policy may require endorsement from
+``Org1`` or ``Org2``. And since "memberOnlyWrite" is true, only clients from
+``Org1`` may invoke chaincode that writes to the private data collection.
+In this way you can control which organizations are entrusted to write to certain
+private data collections.
 
 Private data dissemination
 --------------------------
@@ -183,6 +210,28 @@ along with the data in the chaincode APIs, for example
 
 A single chaincode can reference multiple collections.
 
+Referencing implicit collections from chaincode
+-----------------------------------------------
+
+Starting in v2.0, an implicit private data collection can be used for each
+organization in a channel, so that you don't have to define collections if you'd
+like to utilize per-organization collections. Each org-specific implicit collection
+has a distribution policy and endorsement policy of the matching organization.
+You can therefore utilize implicit collections for use cases where you'd like
+to ensure that a specific organization has written to a collection key namespace.
+The v2.0 chaincode lifecycle uses implicit collections to track which organizations
+have approved a chaincode definition. Similarly, you can use implicit collections
+in application chaincode to track which organizations have approved or voted
+for some change in state.
+
+To write and read an implicit private data collection key, in the ``PutPrivateData``
+and ``GetPrivateData`` chaincode APIs, specify the collection parameter as
+``"_implicit_org_<MSPID>"``, for example ``"_implicit_org_Org1MSP"``.
+
+.. note:: Application defined collection names are not allowed to start with an underscore,
+          therefore there is no chance for an implicit collection name to collide
+          with an application defined collection name.
+
 How to pass private data in a chaincode proposal
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -213,15 +262,16 @@ Access control for private data
 Until version 1.3, access control to private data based on collection membership
 was enforced for peers only. Access control based on the organization of the
 chaincode proposal submitter was required to be encoded in chaincode logic.
-Starting in v1.4 a collection configuration option ``memberOnlyRead`` can
-automatically enforce access control based on the organization of the chaincode
-proposal submitter. For more information about collection
+Collection configuration options ``memberOnlyRead`` (since version v1.4) and
+``memberOnlyWrite`` (since version v2.0) can automatically enforce that the chaincode
+proposal submitter must be from a collection member in order to read or write
+private data keys. For more information about collection
 configuration definitions and how to set them, refer back to the
 `Private data collection definition`_  section of this topic.
 
 .. note:: If you would like more granular access control, you can set
-          ``memberOnlyRead`` to false. You can then apply your own access
-          control logic in chaincode, for example by calling the GetCreator()
+          ``memberOnlyRead`` and ``memberOnlyWrite`` to false. You can then apply your
+          own access control logic in chaincode, for example by calling the GetCreator()
           chaincode API or using the client identity
           `chaincode library <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub.GetCreator>`__ .
 
@@ -288,22 +338,22 @@ configurable number blocks by using the peer’s
 Updating a collection definition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To update a collection definition or add a new collection, you can upgrade
-the chaincode to a new version and pass the new collection configuration
-in the chaincode upgrade transaction, for example using the ``--collections-config``
-flag if using the CLI. If a collection configuration is specified during the
-chaincode upgrade, a definition for each of the existing collections must be
+To update a collection definition or add a new collection, you can update
+the chaincode definition and pass the new collection configuration
+in the chaincode approve and commit transactions, for example using the ``--collections-config``
+flag if using the CLI. If a collection configuration is specified when updating
+the chaincode definition, a definition for each of the existing collections must be
 included.
 
-When upgrading a chaincode, you can add new private data collections,
+When updating a chaincode definition, you can add new private data collections,
 and update existing private data collections, for example to add new
 members to an existing collection or change one of the collection definition
 properties. Note that you cannot update the collection name or the
 blockToLive property, since a consistent blockToLive is required
 regardless of a peer's block height.
 
-Collection updates becomes effective when a peer commits the block that
-contains the chaincode upgrade transaction. Note that collections cannot be
+Collection updates becomes effective when a peer commits the block with the updated
+chaincode definition. Note that collections cannot be
 deleted, as there may be prior private data hashes on the channel’s blockchain
 that cannot be removed.
 
