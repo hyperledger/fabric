@@ -11,14 +11,17 @@ This approach limited chaincode implementations to a handful of languages,
 required Docker to be part of the deployment environment, and prevented
 running chaincode as a long running server process.
 
-External Builders and Launchers address these limitations by enabling
-operators to extend the peer with programs that can build, launch, and
-discover chaincode.
+Starting with Fabric 2.0, External Builders and Launchers address
+these limitations by enabling operators to extend the peer with
+programs that can build, launch, and discover chaincode. To leverage
+this capability you will need to create your own buildpack and then
+modify the peer core.yaml to include a new `externalBuilder`
+configuration element which lets the peer know an external builder is available.
 
 ## External Builder Model
 
 Hyperledger Fabric External Builders and Launchers are loosely based on Heroku
-[Buildpacks][buildpacks]. A buildpack implementation is simply a collection of
+[Buildpacks](https://devcenter.heroku.com/articles/buildpack-api). A buildpack implementation is simply a collection of
 programs or scripts that transform application artifacts into something that
 can run. The buildpack model has been adapted for chaincode packages and
 extended to support chaincode execution and discovery.
@@ -125,17 +128,17 @@ When `release` completes, the peer will consume two types of metadata from
 - state database index definitions for CouchDB
 - external chaincode server connection information (`chaincode/server/connection.json`)
 
-If CouchDB index definitions required for the chaincode, `release` is
+If CouchDB index definitions are required for the chaincode, `release` is
 responsible for placing the indexes into the `statedb/couchdb/indexes`
 directory under `RELEASE_OUTPUT_DIR`. The indexes must have a `.json`
-extension.  See the [CouchDB indexes][couchdb-indexes] documentation for
+extension.  See the [CouchDB indexes](couchdb_as_state_database.html) documentation for
 details.
 
 In cases where a chaincode server implementation is used, `release` is
 responsible for populating `chaincode/server/connection.json` with the address
 of the chaincode server and any TLS assets required to communicate with the
 chaincode. When server connection information is provided to the peer, `run`
-will not be called. See the [Chaincode Server][chaincode-server]
+will not be called. See the [Chaincode Server](https://jira.hyperledger.org/browse/FAB-14086)
 documentation for details.
 
 The following is an example of a simple `release` script for go chaincode:
@@ -208,9 +211,7 @@ exec "$BUILD_OUTPUT_DIR/chaincode" -peer.address="$(jq -r .peer_address "$ARTIFA
 
 ## Configuring External Builders and Launchers
 
-Configuring the peer to use external builders involves adding a configuration
-block to `core.yaml` that defines external builders. Each external builder
-definition must include a name (used for logging) and the path to parent of
+Configuring the peer to use external builders involves adding an externalBuilder element under the chaincode configuration block in the  `core.yaml` that defines external builders. Each external builderdefinition must include a name (used for logging) and the path to parent of
 the `bin` directory containing the builder scripts.
 
 An optional list of environment variable names to propagate from the peer when
@@ -299,3 +300,7 @@ in files being written outside of the logical root of the chaincode package.
 
 If no configured external builder claims a chaincode package, the peer will
 attempt to process the package as if it were created with the peer CLI.
+
+<!---
+Licensed under Creative Commons Attribution 4.0 International License https://creativecommons.org/licenses/by/4.0/
+-->
