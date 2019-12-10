@@ -11,14 +11,17 @@ This approach limited chaincode implementations to a handful of languages,
 required Docker to be part of the deployment environment, and prevented
 running chaincode as a long running server process.
 
-External Builders and Launchers address these limitations by enabling
-operators to extend the peer with programs that can build, launch, and
-discover chaincode.
+Starting with Fabric 2.0, External Builders and Launchers address
+these limitations by enabling operators to extend the peer with
+programs that can build, launch, and discover chaincode. To leverage
+this capability you will need to create your own buildpack and then
+modify the peer core.yaml to include a new `externalBuilder`
+configuration element which lets the peer know an external builder is available. The following sections describe the details of this process.
 
 ## External Builder Model
 
 Hyperledger Fabric External Builders and Launchers are loosely based on Heroku
-[Buildpacks][buildpacks]. A buildpack implementation is simply a collection of
+[Buildpacks](https://devcenter.heroku.com/articles/buildpack-api). A buildpack implementation is simply a collection of
 programs or scripts that transform application artifacts into something that
 can run. The buildpack model has been adapted for chaincode packages and
 extended to support chaincode execution and discovery.
@@ -45,7 +48,8 @@ bin/detect CHAINCODE_SOURCE_DIR CHAINCODE_METADATA_DIR
 
 When `detect` is invoked, `CHAINCODE_SOURCE_DIR` contains the chaincode source
 and `CHAINCODE_METADATA_DIR` contains the `metadata.json` file from the
-chaincode package installed to the peer. If the buildpack should be applied to
+chaincode package installed to the peer. The `CHAINCODE_SOURCE_DIR`
+and `CHAINCODE_METADATA_DIR` should be treated as read only inputs. If the buildpack should be applied to
 the chaincode source package, `detect` must return an exit code of `0`; any
 other exit code will indicate that the buildpack should not be applied.
 
@@ -77,7 +81,10 @@ bin/build CHAINCODE_SOURCE_DIR CHAINCODE_METADATA_DIR BUILD_OUTPUT_DIR
 When `build` is invoked, `CHAINCODE_SOURCE_DIR` contains the chaincode source
 and `CHAINCODE_METADATA_DIR` contains the `metadata.json` file from the
 chaincode package installed to the peer. `BUILD_OUTPUT_DIR` is the directory
-where `build` must place artifacts needed by `release` and `run`.
+where `build` must place artifacts needed by `release` and `run`. The
+build script should treat the input directories `CHAINCODE_SOURCE_DIR`
+and `CHAINCODE_METADATA_DIR` as read only, but the `BUILD_OUTPUT_DIR` is
+writeable.
 
 When `build` completes with an exit code of `0`, the contents of
 `BUILD_OUTPUT_DIR` will be copied to the persistent storage maintained by the
@@ -108,15 +115,14 @@ fi
 
 #### `bin/release`
 
-The `bin/release` script is responsible for providing metadata chaincode to
-the peer. The peer invokes `release` with two arguments:
+The `bin/release` script is responsible for providing chaincode metadata to the peer. `bin/release` is optional. If it is not provided, this step is skipped. The peer invokes `release` with two arguments:
 
 ```sh
 bin/release BUILD_OUTPUT_DIR RELEASE_OUTPUT_DIR
 ```
 
 When `release` is invoked, `BUILD_OUTPUT_DIR` contains the artifacts populated
-by the `build` program. `RELEASE_OUTPUT_DIR` is the directory where `release`
+by the `build` program and should be treated as read only input. `RELEASE_OUTPUT_DIR` is the directory where `release`
 must place artifacts to be consumed by the peer.
 
 When `release` completes, the peer will consume two types of metadata from
@@ -125,17 +131,17 @@ When `release` completes, the peer will consume two types of metadata from
 - state database index definitions for CouchDB
 - external chaincode server connection information (`chaincode/server/connection.json`)
 
-If CouchDB index definitions required for the chaincode, `release` is
+If CouchDB index definitions are required for the chaincode, `release` is
 responsible for placing the indexes into the `statedb/couchdb/indexes`
 directory under `RELEASE_OUTPUT_DIR`. The indexes must have a `.json`
-extension.  See the [CouchDB indexes][couchdb-indexes] documentation for
+extension.  See the [CouchDB indexes](couchdb_as_state_database.html#couchdb-indexes) documentation for
 details.
 
 In cases where a chaincode server implementation is used, `release` is
 responsible for populating `chaincode/server/connection.json` with the address
 of the chaincode server and any TLS assets required to communicate with the
 chaincode. When server connection information is provided to the peer, `run`
-will not be called. See the [Chaincode Server][chaincode-server]
+will not be called. See the [Chaincode Server](https://jira.hyperledger.org/browse/FAB-14086)
 documentation for details.
 
 The following is an example of a simple `release` script for go chaincode:
@@ -160,10 +166,12 @@ The `bin/run` script is responsible for running chaincode. The peer invokes
 bin/run BUILD_OUTPUT_DIR RUN_METADATA_DIR
 ```
 
+
 When `run` is called, `BUILD_OUTPUT_DIR` contains the artifacts populated by
 the `build` program and `RUN_METADATA_DIR` is populated with a file called
 `chaincode.json` that contains the information necessary for chaincode to
-connect and register with the peer. The keys included in `chaincode.json` are:
+connect and register with the peer. Note that the `bin/run` script should treat these
+`BUILD_OUTPUT_DIR` and `RUN_METADATA_DIR` directories as read only input.  The keys included in `chaincode.json` are:
 
 - `chaincode_id`: The unique ID associated with the chaincode package.
 - `peer_address`: The address in `host:port` format of the `ChaincodeSupport`
@@ -208,9 +216,7 @@ exec "$BUILD_OUTPUT_DIR/chaincode" -peer.address="$(jq -r .peer_address "$ARTIFA
 
 ## Configuring External Builders and Launchers
 
-Configuring the peer to use external builders involves adding a configuration
-block to `core.yaml` that defines external builders. Each external builder
-definition must include a name (used for logging) and the path to parent of
+Configuring the peer to use external builders involves adding an externalBuilder element under the chaincode configuration block in the  `core.yaml` that defines external builders. Each external builderdefinition must include a name (used for logging) and the path to parent of
 the `bin` directory containing the builder scripts.
 
 An optional list of environment variable names to propagate from the peer when
@@ -235,15 +241,18 @@ chaincode:
 In this example, the implementation of "my-golang-builder" is contained within
 the `/builders/golang` directory and its build scripts are located in
 `/builders/golang/bin`. When the peer invokes any of the build scripts
-associated with "my-golang-builder", it will not propagate the values of any
+associated with "my-golang-builder", it will propagate only the values of the
 environment variables in the whitelist.
 
-> Note: The following environment variables are always propagated to external
-> builders:
-> - LD_LIBRARY_PATH
-> - LIBPATH
-> - PATH
-> - TMPDIR
+Note: The following environment variables are always propagated to external
+builders:
+
+- LD_LIBRARY_PATH
+- LIBPATH
+- PATH
+- TMPDIR
+
+
 
 When an `externalBuilder` configuration is present, the peer will iterate over
 the list of builders in the order provided, invoking `bin/detect` until one
@@ -265,7 +274,7 @@ package` use this new format.
 
 A lifecycle chaincode package contains two files. The first file,
 `code.tar.gz` is a gzip compressed POSIX tape archive. This file includes the
-source artifacts for chaincode. Packages created by the peer CLI will place
+source artifacts for the chaincode. Packages created by the peer CLI will place
 the chaincode implementation source under the `src` directory and chaincode
 metadata (like CouchDB indexes) under the `META-INF` directory.
 
@@ -273,14 +282,13 @@ The second file, `metadata.json` is a JSON document with three keys:
 - `type`: the chaincode type (e.g. GOLANG, JAVA, NODE)
 - `path`: for go chaincode, the GOPATH or GOMOD relative path to the main
   chaincode package; undefined for other types
-- `label`: the chaincode label
+- `label`: the chaincode label that is used to generate the package-id by which the package is identified within the new chaincode lifecycle process.
+
+Note that the `type` and `path` fields are only utilized by docker platform builds.
 
 ## Chaincode Packages and External Builders
 
-When a chaincode package is installed to a peer, the contents of `code.tar.gz`
-and `metadata.json` are not processed prior to calling external builders. This
-affords users a great deal of flexibility in how they package source and
-metadata that will be processed by external builders and launchers.
+When a chaincode package is installed to a peer, the contents of `code.tar.gz` and `metadata.json` are not processed prior to calling external builders, except for the `label` field that is used by the new lifecycle process to compute the package id. This affords users a great deal of flexibility in how they package source and metadata that will be processed by external builders and launchers.
 
 For example, a custom chaincode package could be constructed that contains a
 pre-compiled, implementation of chaincode in `code.tar.gz` with a
@@ -297,5 +305,8 @@ The only requirements are that `code.tar.gz` can only contain regular file and
 directory entries, and that the entries cannot contain paths that would result
 in files being written outside of the logical root of the chaincode package.
 
-If no configured external builder claims a chaincode package, the peer will
-attempt to process the package as if it were created with the peer CLI.
+If no configured external builder claims a chaincode package, the peer will attempt to process the package as if it were created with the standard Fabric packaging tools such as the peer CLI or node SDK.
+
+<!---
+Licensed under Creative Commons Attribution 4.0 International License https://creativecommons.org/licenses/by/4.0/
+-->
