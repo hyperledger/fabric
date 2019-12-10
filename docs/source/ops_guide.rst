@@ -18,6 +18,7 @@ Operations Guides
    idemixgen
    operations_service
    metrics_reference
+   cc_launcher
    error-handling
    logging-control
    enable_tls
