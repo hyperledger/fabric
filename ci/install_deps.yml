@@ -6,7 +6,7 @@ steps:
   - script: |
       sudo apt-get clean
       sudo apt-get update
-      sudo apt-get install -y libtool gcc make
+      sudo apt-get install -y libtool gcc make haveged
     displayName: Install Dependencies
   - task: GoTool@0
     inputs:
