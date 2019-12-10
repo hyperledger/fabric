@@ -59,12 +59,12 @@ jobs:
         displayName: Run Unit Tests
 
   - job: IntegrationTests
-    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
-    dependsOn: VerifyBuild
+#     condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
+#     dependsOn: VerifyBuild
     pool:
       vmImage: ubuntu-18.04
     strategy:
-      parallel: 5
+      parallel: 13
     timeoutInMinutes: 90
     steps:
       - template: install_deps.yml
