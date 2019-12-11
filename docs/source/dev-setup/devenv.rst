@@ -4,13 +4,10 @@ Setting up the development environment
 Prerequisites
 ~~~~~~~~~~~~~
 
--  `Git client <https://git-scm.com/downloads>`__
--  `Go <https://golang.org/dl/>`__ - version 1.12.x
+-  Git client, Go, and Docker as described at :doc:`../prereqs`
 -  (macOS)
    `Xcode <https://itunes.apple.com/us/app/xcode/id497799835?mt=12>`__
    must be installed
--  `Docker <https://www.docker.com/get-docker>`__ - 17.06.2-ce or later
--  `Docker Compose <https://docs.docker.com/compose/>`__ - 1.14.0 or later
 -  (macOS) you may need to install gnutar, as macOS comes with bsdtar
    as the default, but the build uses some gnutar flags. You can use
    Homebrew to install it as follows:
