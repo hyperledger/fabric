@@ -6,7 +6,7 @@ features of Fabric v2.0. While the v2.0 release is not yet production ready,
 the Beta is feature complete, meaning it includes all the features that are
 expected to be delivered in the final v2.0 release.
 
-Let’s take a peek at some of the highlights of Fabric v2.0...
+Let’s take a peek at some of the highlights of Fabric v2.0....
 
 Decentralized chaincode lifecycle
 ---------------------------------
@@ -68,7 +68,7 @@ Using the new chaincode lifecycle
 For existing Fabric deployments, you can continue to use the prior chaincode
 lifecycle with Fabric v2.0. The new chaincode lifecycle will become effective
 only when the channel application capability is updated to v2.0.
-See the Chaincode for Operators tutorial for complete details of the new
+See the :doc:`chaincode4noah` tutorial for complete details of the new
 chaincode lifecycle.
 
 External chaincode launcher
@@ -93,10 +93,10 @@ chaincode with the technology of their choice.
 * **Chaincode as an external service** Traditionally, chaincodes are launched
   by and then connect to the peer. It is now possible to run chaincode as
   an external service, for example in a Kubernetes pod, which a peer can
-  connect to and utilize for chaincode execution.
+  connect to and utilize for chaincode execution. See :doc:`cc_service` for more
+  information.
 
-See the external chaincode documentation to learn more about the
-external chaincode launcher feature.
+See :doc:`cc_launcher` to learn more about the external chaincode launcher feature.
 
 Private data enhancements
 -------------------------
@@ -134,8 +134,9 @@ Several enhancements in Fabric v2.0 make these new private data patterns possibl
   collections when deploying chaincode in Fabric v2.0.  Implicit
   organization-specific collections can be used without any upfront definition.
 
-To learn more about the new private data patterns, see the documentation for
-private data sharing, private data collection configuration, and implicit collections.
+To learn more about the new private data patterns, see :doc:`private-data/private-data` (conceptual information)
+for information about private data sharing and :doc:`private-data-arch` (reference information)
+for documentation about private data collection configuration and implicit collections.
 
 State database cache for improved performance on CouchDB
 --------------------------------------------------------
@@ -166,16 +167,19 @@ makes it easy to test your applications and smart contracts. The network also
 supports the ability to deploy your network using Certificate Authorities,
 in addition to cryptogen.
 
-New tutorials are also being written, which may eventually replace the Build
-Your First Network sample and tutorial.
+For more information about this network, check out :doc:`test_network`.
 
 Upgrading to Fabric v2.0
 ------------------------
 
 While a Beta release is not an intended upgrade target for existing Fabric
 deployments, there is nothing preventing you from testing an upgrade scenario
-to get familiar with the process. Read all about the upgrade process in the
-v2.0 upgrade documentation.
+to get familiar with the process.
+
+The upgrade docs have been significantly expanded and reworked, and now have a
+standalone home in the documentation: :doc:`upgrade`. Here you'll find documentation on
+:doc:`upgrading_your_components` and :doc:`updating_capabilities`, as well as a
+specific look  at the considerations for upgrading to v2.0, :doc:`upgrade_to_newest_version`.
 
 Release notes
 =============
