@@ -16,6 +16,7 @@ Operations Guides
    operations_service
    metrics_reference
    cc_launcher
+   cc_service
    error-handling
    logging-control
    enable_tls
