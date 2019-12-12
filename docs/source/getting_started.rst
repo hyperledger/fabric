@@ -20,8 +20,8 @@ Fabric binaries, we provide a script that will :doc:`install` to your system.
 The script also will download the Docker images to your local registry.
 
 After you have downloaded the Fabric Samples and Docker images to your local
-machine, you can get started working with Fabric by deploying the
-[Fabric test network](test_network.html).
+machine, you can get started working with Fabric with the
+:doc:`test_network` tutorial.
 
 Hyperledger Fabric smart contract (chaincode) SDKs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
