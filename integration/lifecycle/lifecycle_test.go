@@ -98,7 +98,7 @@ var _ = Describe("Lifecycle", func() {
 	It("deploys and executes chaincode using _lifecycle and upgrades it", func() {
 		orderer := network.Orderer("orderer")
 		testPeers := network.PeersWithChannel("testchannel")
-		org1peer1 := network.Peer("Org1", "peer1")
+		org1peer0 := network.Peer("Org1", "peer0")
 
 		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
 		chaincode := nwo.Chaincode{
@@ -158,10 +158,10 @@ var _ = Describe("Lifecycle", func() {
 		// empty string, but the ApproveChaincodeForMyOrg
 		// function fills the packageID field if empty
 		chaincode.PackageID = "bad"
-		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer1)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer0)
 
 		By("querying the chaincode and expecting the invocation to fail")
-		sess, err = network.PeerUserSession(org1peer1, "User1", commands.ChaincodeQuery{
+		sess, err = network.PeerUserSession(org1peer0, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "My_1st-Chaincode",
 			Ctor:      `{"Args":["query","a"]}`,
@@ -174,10 +174,10 @@ var _ = Describe("Lifecycle", func() {
 
 		By("setting the correct package ID to restore the chaincode")
 		chaincode.PackageID = savedPackageID
-		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer1)
+		nwo.ApproveChaincodeForMyOrg(network, "testchannel", orderer, chaincode, org1peer0)
 
 		By("querying the chaincode and expecting the invocation to succeed")
-		sess, err = network.PeerUserSession(org1peer1, "User1", commands.ChaincodeQuery{
+		sess, err = network.PeerUserSession(org1peer0, "User1", commands.ChaincodeQuery{
 			ChannelID: "testchannel",
 			Name:      "My_1st-Chaincode",
 			Ctor:      `{"Args":["query","a"]}`,
@@ -293,7 +293,7 @@ var _ = Describe("Lifecycle", func() {
 		By("ensuring org3 peers do not execute the chaincode before approving the definition")
 		org3AndOrg1PeerAddresses := []string{
 			network.PeerAddress(org3peer0, nwo.ListenPort),
-			network.PeerAddress(org1peer1, nwo.ListenPort),
+			network.PeerAddress(org1peer0, nwo.ListenPort),
 		}
 
 		sess, err = network.PeerUserSession(org3peer0, "User1", commands.ChaincodeInvoke{
