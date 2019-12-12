@@ -36,7 +36,7 @@ The databases of all peers (which include not just the state database but the hi
 
 For information about how to upgrade peers, check out our documentation on [upgrading components](./upgrading_your_components.html). During the process for [upgrading your peers](./upgrading_your_components.html#upgrade-the-peers), you will need to pass a `peer node upgrade-dbs` command to drop the databases of the peer.
 
-Follow the commands to upgrade a command up until the `docker run` command you see to launch the new peer container (you can skip the step where you set an `IMAGE_TAG`, since the `upgrade dbs` command is for the v2.0 release of Fabric only). Instead of that command, run this one instead:
+Follow the commands to upgrade a peer until the `docker run` command you see to launch the new peer container (you can skip the step where you set an `IMAGE_TAG`, since the `upgrade dbs` command is for the v2.0 release of Fabric only). Instead of that command, run this one instead:
 
 ```
 docker run -d --rm -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ --name $PEER_CONTAINER hyperledger/fabric-peer:2.0 peer node upgrade-dbs
