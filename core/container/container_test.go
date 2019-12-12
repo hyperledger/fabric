@@ -107,7 +107,7 @@ var _ = Describe("Router", func() {
 			})
 		})
 
-		Context("when the exxternal builder returns a nil instance", func() {
+		Context("when the external builder returns a nil instance", func() {
 			BeforeEach(func() {
 				fakeExternalBuilder.BuildReturns(nil, nil)
 				fakeDockerBuilder.BuildReturns(fakeInstance, nil)
@@ -127,6 +127,17 @@ var _ = Describe("Router", func() {
 				codePackage, err := ioutil.ReadAll(codeStream)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(codePackage).To(Equal([]byte("code-bytes")))
+			})
+
+			Context("when the docker vm builder is nil", func() {
+				BeforeEach(func() {
+					router.DockerBuilder = nil
+				})
+
+				It("returns the error", func() {
+					err := router.Build("package-id")
+					Expect(err).To(MatchError("no DockerBuilder, cannot build"))
+				})
 			})
 
 			Context("when the package provider returns an error before calling the docker builder", func() {
