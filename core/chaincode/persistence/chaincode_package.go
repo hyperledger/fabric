@@ -23,12 +23,12 @@ import (
 )
 
 // The chaincode package is simply a .tar.gz file.  For the time being, we
-// assume that the package contains a Chaincode-Package-Metadata.json file
-// which contains a 'Type', and optionally a 'Path'.  In the future, it would
-// be nice if we moved to a more buildpack type system, rather than the below
-// presented JAR+manifest type system, but for expediency and incremental changes,
-// moving to a tar format over the proto format for a user-inspectable artifact
-// seems like a good step.
+// assume that the package contains a metadata.json file which contains a
+// 'type', a 'path', and a 'label'.  In the future, it would be nice if we
+// move to a more buildpack type system, rather than the below presented
+// JAR+manifest type system, but for expediency and incremental changes,
+// moving to a tar format over the proto format for a user-inspectable
+// artifact seems like a good step.
 
 const (
 	// MetadataFile is the expected location of the metadata json document
