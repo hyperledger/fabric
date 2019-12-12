@@ -59,7 +59,7 @@ Here's the help text for the ``byfn.sh`` script:
     -d <delay> - delay duration in seconds (defaults to 3)"
     -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)"
     -s <dbtype> - the database backend to use: goleveldb (default) or couchdb"
-    -l <language> - the chaincode language: golang (default), node, or java"
+    -l <language> - the chaincode language: golang (default), javascript, or java"
     -a - launch certificate authorities (no certificate authorities are launched by default)
     -n - do not deploy chaincode (abstore chaincode is deployed by default)
     -i <imagetag> - the tag to be used to launch the network (defaults to \"latest\")"
@@ -72,7 +72,7 @@ Here's the help text for the ``byfn.sh`` script:
     byfn.sh generate -c mychannel"
     byfn.sh up -c mychannel -s couchdb"
     byfn.sh up -c mychannel -s couchdb -i 1.4.0"
-    byfn.sh up -l node"
+    byfn.sh up -l javascript"
     byfn.sh down -c mychannel"
     byfn.sh upgrade -c mychannel"
 
@@ -165,7 +165,7 @@ the following command instead:
   # we use the -l flag to specify the chaincode language
   # forgoing the -l flag will default to Golang
 
-  ./byfn.sh up -l node
+  ./byfn.sh up -l javascript
 
 .. note:: For more information on the Node.js shim, please refer to its
           `documentation <https://fabric-shim.github.io/ChaincodeInterface.html>`_.
