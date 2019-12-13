@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
+	"github.com/spf13/viper"
 )
 
 var logger = flogging.MustGetLogger("chaincode.platform.util")
@@ -117,6 +118,51 @@ type DockerBuildOptions struct {
 	OutputStream io.Writer
 }
 
+func getHostConfig() *docker.HostConfig {
+	dockerKey := func(key string) string { return "vm.docker.hostConfig." + key }
+	getInt64 := func(key string) int64 { return int64(viper.GetInt(dockerKey(key))) }
+
+	var logConfig docker.LogConfig
+	err := viper.UnmarshalKey(dockerKey("LogConfig"), &logConfig)
+	if err != nil {
+		logger.Warningf("load docker HostConfig.LogConfig failed, error: %s", err.Error())
+	}
+	networkMode := viper.GetString(dockerKey("NetworkMode"))
+	if networkMode == "" {
+		networkMode = "host"
+	}
+	logger.Debugf("docker container hostconfig NetworkMode: %s", networkMode)
+
+	return &docker.HostConfig{
+		CapAdd:  viper.GetStringSlice(dockerKey("CapAdd")),
+		CapDrop: viper.GetStringSlice(dockerKey("CapDrop")),
+
+		DNS:         viper.GetStringSlice(dockerKey("Dns")),
+		DNSSearch:   viper.GetStringSlice(dockerKey("DnsSearch")),
+		ExtraHosts:  viper.GetStringSlice(dockerKey("ExtraHosts")),
+		NetworkMode: networkMode,
+		IpcMode:     viper.GetString(dockerKey("IpcMode")),
+		PidMode:     viper.GetString(dockerKey("PidMode")),
+		UTSMode:     viper.GetString(dockerKey("UTSMode")),
+		LogConfig:   logConfig,
+
+		ReadonlyRootfs:   viper.GetBool(dockerKey("ReadonlyRootfs")),
+		SecurityOpt:      viper.GetStringSlice(dockerKey("SecurityOpt")),
+		CgroupParent:     viper.GetString(dockerKey("CgroupParent")),
+		Memory:           getInt64("Memory"),
+		MemorySwap:       getInt64("MemorySwap"),
+		MemorySwappiness: getInt64("MemorySwappiness"),
+		OOMKillDisable:   viper.GetBool(dockerKey("OomKillDisable")),
+		CPUShares:        getInt64("CpuShares"),
+		CPUSet:           viper.GetString(dockerKey("Cpuset")),
+		CPUSetCPUs:       viper.GetString(dockerKey("CpusetCPUs")),
+		CPUSetMEMs:       viper.GetString(dockerKey("CpusetMEMs")),
+		CPUQuota:         getInt64("CpuQuota"),
+		CPUPeriod:        getInt64("CpuPeriod"),
+		BlkioWeight:      getInt64("BlkioWeight"),
+	}
+}
+
 //-------------------------------------------------------------------------------------------
 // DockerBuild
 //-------------------------------------------------------------------------------------------
@@ -179,6 +225,7 @@ func DockerBuild(opts DockerBuildOptions) error {
 			AttachStdout: true,
 			AttachStderr: true,
 		},
+		HostConfig: getHostConfig(),
 	})
 	if err != nil {
 		return fmt.Errorf("Error creating container: %s", err)
