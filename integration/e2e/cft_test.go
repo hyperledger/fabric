@@ -367,7 +367,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 	})
 
 	When("orderer TLS certificates expire", func() {
-		It("is still possible to recover", func() {
+		FIt("is still possible to recover", func() {
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, 33000, components)
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
