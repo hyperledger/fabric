@@ -39,13 +39,21 @@ For information about how to upgrade peers, check out our documentation on [upgr
 Follow the commands to upgrade a peer until the `docker run` command you see to launch the new peer container (you can skip the step where you set an `IMAGE_TAG`, since the `upgrade dbs` command is for the v2.0 release of Fabric only). Instead of that command, run this one instead:
 
 ```
-docker run -d --rm -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ --name $PEER_CONTAINER hyperledger/fabric-peer:2.0 peer node upgrade-dbs
+docker run --rm -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ \
+            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
+            --env-file ./env<name of node>.list \
+            --name $PEER_CONTAINER \
+            hyperledger/fabric-peer:2.0 peer node upgrade-dbs
 ```
 
 This will drop the databases of the peer. Then issue this command to start the peer using the `2.0` tag:
 
 ```
-docker run -d -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ --name $PEER_CONTAINER hyperledger/fabric-peer:2.0 peer node start
+docker run -d -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ \
+            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
+            --env-file ./env<name of node>.list \
+            --name $PEER_CONTAINER \
+            hyperledger/fabric-peer:2.0 peer node start
 ```
 
 Because rebuilding the databases can be a lengthy process (several hours, depending on the size of your databases), monitor the peer logs to check the status of the rebuild. Every 1000th block you will see a message like `[lockbasedtxmgr] CommitLostBlock -> INFO 041 Recommitting block [1000] to state database` indicating the rebuild is ongoing.

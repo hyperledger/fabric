@@ -29,8 +29,13 @@ This tutorial assumes a Docker deployment where the YAML files will be baked int
 
 When you deploy a peer or an ordering node, you had to set a number of environment variables relevant to its configuration. A best practice is to create a file for these environment variables, give it a name relevant to the node being deployed, and save it somewhere on your local file system. That way you can be sure that when upgrading the peer or ordering node you are using the same variables you set when creating it by issuing:
 
+For peer:
 ```
-docker run --env-file ./env<name of node>.list ubuntu bash
+docker run -d -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ \
+            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
+            --env-file ./env<name of node>.list \
+            --name $PEER_CONTAINER \
+            hyperledger/fabric-peer peer node start
 ```
 
 Here's a list of some of the **peer** environment variables (with sample values --- as you can see from the addresses, these environment variables are for a network deployed locally) that can be set that be listed in the `./env<name of node>.list` file. Note that you may or may not need to set all of these environment variables:
@@ -51,6 +56,15 @@ CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
 CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
 CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
 CORE_PEER_LOCALMSPID=Org1MSP
+```
+
+For ordering node:
+```
+docker run -d -v /opt/backup/$ORDERER_CONTAINER/:/var/hyperledger/production/orderer/ \
+            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
+            --env-file ./env<name of node>.list \
+            --name $ORDERER_CONTAINER \
+            hyperledger/fabric-orderer orderer
 ```
 
 Here are some **ordering node** variables (again, these are sample values) that might be listed in the environment variable file for a node. Again, you may or may not need to set all of these environment variables:
@@ -128,7 +142,11 @@ docker rm -f $ORDERER_CONTAINER
 Then you can launch the new ordering node container by issuing:
 
 ```
-docker run -d -v /opt/backup/$ORDERER_CONTAINER/:/var/hyperledger/production/orderer --name $ORDERER_CONTAINER hyperledger/fabric-orderer:$IMAGE_TAG
+docker run -d -v /opt/backup/$ORDERER_CONTAINER/:/var/hyperledger/production/orderer/ \
+            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
+            --env-file ./env<name of node>.list \
+            --name $ORDERER_CONTAINER \
+            hyperledger/fabric-orderer:$IMAGE_TAG orderer
 ```
 
 Once all of the ordering nodes have come up, you can move on to upgrading your peers.
@@ -192,7 +210,11 @@ docker rm -f $PEER_CONTAINER
 Then you can launch the new peer container by issuing:
 
 ```
-docker run -d -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ --name $PEER_CONTAINER hyperledger/fabric-peer:$IMAGE_TAG
+docker run -d -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ \
+            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
+            --env-file ./env<name of node>.list \
+            --name $PEER_CONTAINER \
+            hyperledger/fabric-peer:$IMAGE_TAG peer node start
 ```
 
 You do not need to relaunch the chaincode container. When the peer gets a request for a chaincode, (invoke or query), it first checks if it has a copy of that chaincode running. If so, it uses it. Otherwise, as in this case, the peer launches the chaincode (rebuilding the image if required).
