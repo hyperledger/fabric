@@ -194,11 +194,11 @@ When an `externalBuilder` configuration is present, the peer will iterate over t
 
 In the example above, the peer will attempt to use "my-golang-builder", followed by "noop-builder", and finally the peer internal build process.
 
-# Chaincode packages
+## Chaincode packages
 
 As part of the new lifecycle introduced with Fabric 2.0, the chaincode package format changed from serialized protocol buffer messages to a gzip compressed POSIX tape archive. Chaincode packages created with `peer lifecycle chaincode package` use this new format.
 
-## Lifecycle chaincode package contents
+### Lifecycle chaincode package contents
 
 A lifecycle chaincode package contains two files. The first file, `code.tar.gz` is a gzip compressed POSIX tape archive. This file includes the source artifacts for the chaincode. Packages created by the peer CLI will place the chaincode implementation source under the `src` directory and chaincode metadata (like CouchDB indexes) under the `META-INF` directory.
 
@@ -209,7 +209,7 @@ The second file, `metadata.json` is a JSON document with three keys:
 
 Note that the `type` and `path` fields are only utilized by docker platform builds.
 
-## Chaincode packages and external builders
+### Chaincode packages and external builders
 
 When a chaincode package is installed to a peer, the contents of `code.tar.gz` and `metadata.json` are not processed prior to calling external builders, except for the `label` field that is used by the new lifecycle process to compute the package id. This affords users a great deal of flexibility in how they package source and metadata that will be processed by external builders and launchers.
 
