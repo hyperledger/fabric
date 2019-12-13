@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
-	"github.com/hyperledger/fabric/integration/runner"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,26 +31,12 @@ import (
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("statecouchdb=debug")
 
-	address, cleanup := couchDBSetup()
+	address, cleanup := couchdbtest.CouchDBSetup("", "")
 	couchAddress = address
 
 	rc := m.Run()
 	cleanup()
 	os.Exit(rc)
-}
-
-func couchDBSetup() (addr string, cleanup func()) {
-	externalCouch, set := os.LookupEnv("COUCHDB_ADDR")
-	if set {
-		return externalCouch, func() {}
-	}
-
-	couchDB := &runner.CouchDB{}
-	if err := couchDB.Start(); err != nil {
-		err := fmt.Errorf("failed to start couchDB: %s", err)
-		panic(err)
-	}
-	return couchDB.Address(), func() { couchDB.Stop() }
 }
 
 func TestBasicRW(t *testing.T) {

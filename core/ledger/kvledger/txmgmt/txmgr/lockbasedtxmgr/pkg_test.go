@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	)
 	exitCode := m.Run()
 	for _, testEnv := range testEnvs {
-		testEnv.cleanup()
+		testEnv.stopExternalResource()
 	}
 	os.Exit(exitCode)
 }
@@ -47,6 +47,7 @@ type testEnv interface {
 	getTxMgr() txmgr.TxMgr
 	getVDB() privacyenabledstate.DB
 	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
+	stopExternalResource()
 }
 
 const (
@@ -124,7 +125,12 @@ func (env *lockBasedEnv) cleanup() {
 		env.txmgr.Shutdown()
 		env.testDBEnv.Cleanup()
 		env.testBookkeepingEnv.Cleanup()
+		env.dbInitialized = false
 	}
+}
+
+func (env *lockBasedEnv) stopExternalResource() {
+	env.testDBEnv.StopExternalResource()
 }
 
 //////////// txMgrTestHelper /////////////

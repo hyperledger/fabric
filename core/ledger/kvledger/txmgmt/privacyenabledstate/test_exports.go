@@ -125,6 +125,7 @@ func (env *CouchDBCommonStorageTestEnv) StopExternalResource() {
 	if csdbProvider != nil {
 		statecouchdb.CleanupDB(env.t, csdbProvider.VersionedDBProvider)
 		env.couchCleanup()
+		os.Unsetenv("COUCHDB_ADDR")
 	}
 }
 
@@ -141,6 +142,7 @@ func (env *CouchDBCommonStorageTestEnv) setupCouch() string {
 		panic(err)
 	}
 	env.couchCleanup = func() { couchDB.Stop() }
+	os.Setenv("COUCHDB_ADDR", couchDB.Address())
 	return couchDB.Address()
 }
 
