@@ -21,17 +21,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Tests will be run against each environment in this array
+// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
+var testEnvs = []privacyenabledstate.TestEnv{
+	&privacyenabledstate.LevelDBCommonStorageTestEnv{},
+	&privacyenabledstate.CouchDBCommonStorageTestEnv{},
+}
+
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("pvtstatepurgemgmt,privacyenabledstate=debug")
-	os.Exit(m.Run())
+	exitCode := m.Run()
+	for _, testEnv := range testEnvs {
+		testEnv.StopExternalResource()
+	}
+	os.Exit(exitCode)
 }
 
 func TestPurgeMgr(t *testing.T) {
-	dbEnvs := []privacyenabledstate.TestEnv{
-		&privacyenabledstate.LevelDBCommonStorageTestEnv{},
-		&privacyenabledstate.CouchDBCommonStorageTestEnv{},
-	}
-	for _, dbEnv := range dbEnvs {
+	for _, dbEnv := range testEnvs {
 		t.Run(dbEnv.GetName(), func(t *testing.T) { testPurgeMgr(t, dbEnv) })
 	}
 }
