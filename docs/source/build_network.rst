@@ -1160,7 +1160,7 @@ the network pass ``docker-compose-couch.yaml`` as well:
 
 .. code:: bash
 
-    docker-compose -f docker-compose-cli.yaml -f docker-compose-couch.yaml up -d
+    docker-compose -f docker-compose-cli.yaml -f docker-compose-couch.yaml -f docker-compose-etcdraft2.yaml up -d
 
 **abstore** should now work using CouchDB underneath.
 
