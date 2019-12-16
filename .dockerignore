@@ -3,5 +3,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-.build
-unit-test
+
+**/*test.go
+.git/objects/pack
+.github
+
+# These are directories created by the make process
+bin
+build
+release
+
+ci
+docs
+images
+release_notes
+vagrant
