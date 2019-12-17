@@ -43,8 +43,8 @@ jobs:
         displayName: Publish Documentation Artifacts
 
   - job: UnitTests
-    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
-    dependsOn: VerifyBuild
+#    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
+#    dependsOn: VerifyBuild
     pool:
       vmImage: ubuntu-18.04
     steps:
@@ -52,9 +52,9 @@ jobs:
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
-      - script: ./ci/scripts/setup_hsm.sh
-        displayName: Install SoftHSM
-      - script: make unit-test
+#      - script: ./ci/scripts/setup_hsm.sh
+#        displayName: Install SoftHSM
+      - script: cd orderer && go test -race -timeout 99999s ./...
         displayName: Run Unit Tests
 
   - job: IntegrationTests
