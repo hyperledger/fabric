@@ -1,0 +1,16 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb/msgs";
+
+package msgs;
+
+message VersionFieldProto {
+    bytes version_bytes = 1;
+    bytes metadata = 2;
+}

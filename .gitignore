@@ -1,0 +1,27 @@
+#SPDX-License-Identifier: Apache-2.0
+.#*
+*~
+*#
+/bin
+/build
+/.build
+*.cov
+/docs/build/*
+.DS_Store
+.*-dummy
+.gradle
+.idea
+*.iml
+*.log
+.project
+/release
+report.xml
+results.xml
+.settings
+.*.sw*
+tags
+.tags
+TESTS*.xml
+.tox/
+.vagrant/
+.vscode

@@ -1,0 +1,28 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/core/comm/testpb";
+
+message Empty {}
+
+message Echo {
+	bytes payload = 1;
+}
+
+service TestService {
+  rpc EmptyCall(Empty) returns (Empty);
+}
+
+service EmptyService {
+  rpc EmptyCall(Empty) returns (Empty);
+  rpc EmptyStream(stream Empty) returns (stream Empty);
+}
+
+service EchoService {
+  rpc EchoCall(Echo) returns (Echo);
+}

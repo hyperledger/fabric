@@ -1,0 +1,20 @@
+#
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+**/*test.go
+.git/objects/pack
+.github
+
+# These are directories created by the make process
+bin
+build
+release
+
+ci
+docs
+images
+release_notes
+vagrant

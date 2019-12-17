@@ -1,0 +1,15 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+steps:
+  - script: |
+      sudo apt-get clean
+      sudo apt-get update
+      sudo apt-get install -y libtool gcc make
+    displayName: Install Dependencies
+  - task: GoTool@0
+    inputs:
+      version: $(GOVER)
+      goPath:  $(GOPATH)
+    displayName: Install GoLang

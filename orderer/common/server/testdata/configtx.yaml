@@ -1,0 +1,192 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+Organizations:
+    - &SampleOrg
+        Name: SampleOrg
+        ID: SampleOrg
+        MSPDir: crypto/ordererOrganizations/example.com/msp
+        Policies: &SampleOrgPolicies
+            Readers:
+                Type: Signature
+                Rule: "OR('SampleOrg.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('SampleOrg.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('SampleOrg.admin')"
+        AnchorPeers:
+            - Host: 127.0.0.1
+              Port: 7051
+
+Capabilities:
+    Channel: &ChannelCapabilities
+        V1_3: true
+    Orderer: &OrdererCapabilities
+        V1_1: true
+    Application: &ApplicationCapabilities
+        V1_3: true
+        V1_2: false
+        V1_1: false
+
+Application: &ApplicationDefaults
+    ACLs: &ACLsDefault
+        lscc/ChaincodeExists: /Channel/Application/Readers
+        lscc/GetDeploymentSpec: /Channel/Application/Readers
+        lscc/GetChaincodeData: /Channel/Application/Readers
+        lscc/GetInstantiatedChaincodes: /Channel/Application/Readers
+        qscc/GetChainInfo: /Channel/Application/Readers
+        qscc/GetBlockByNumber: /Channel/Application/Readers
+        qscc/GetBlockByHash: /Channel/Application/Readers
+        qscc/GetTransactionByID: /Channel/Application/Readers
+        qscc/GetBlockByTxID: /Channel/Application/Readers
+        cscc/GetConfigBlock: /Channel/Application/Readers
+        cscc/GetConfigTree: /Channel/Application/Readers
+        cscc/SimulateConfigTreeUpdate: /Channel/Application/Readers
+        peer/Propose: /Channel/Application/Writers
+        peer/ChaincodeToChaincode: /Channel/Application/Readers
+        event/Block: /Channel/Application/Readers
+        event/FilteredBlock: /Channel/Application/Readers
+    Organizations:
+    Policies: &ApplicationDefaultPolicies
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+    OrdererType: solo
+    Addresses:
+        - 127.0.0.1:7050
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 10 MB
+        PreferredMaxBytes: 512 KB
+    MaxChannels: 0
+    EtcdRaft:
+        Consenters:
+            - Host: raft0.example.com
+              Port: 7050
+              ClientTLSCert: crypto/ordererOrganizations/example.com/orderers/127.0.0.1.example.com/tls/server.crt
+              ServerTLSCert: crypto/ordererOrganizations/example.com/orderers/127.0.0.1.example.com/tls/server.crt
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+    Capabilities:
+        <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+
+Profiles:
+    SampleEtcdRaftSystemChannel:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: etcdraft
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      Policies:
+                          <<: *SampleOrgPolicies
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"
+    SampleSoloSystemChannel:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - <<: *SampleOrg
+                      Policies:
+                          <<: *SampleOrgPolicies
+                          Admins:
+                              Type: Signature
+                              Rule: "OR('SampleOrg.member')"
+    SampleOrgChannel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *SampleOrg
+            Capabilities:
+                <<: *ApplicationCapabilities
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"

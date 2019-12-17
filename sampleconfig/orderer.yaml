@@ -1,0 +1,358 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+################################################################################
+#
+#   Orderer Configuration
+#
+#   - This controls the type and configuration of the orderer.
+#
+################################################################################
+General:
+    # Listen address: The IP on which to bind to listen.
+    ListenAddress: 127.0.0.1
+
+    # Listen port: The port on which to bind to listen.
+    ListenPort: 7050
+
+    # TLS: TLS settings for the GRPC server.
+    TLS:
+        Enabled: false
+        # PrivateKey governs the file location of the private key of the TLS certificate.
+        PrivateKey: tls/server.key
+        # Certificate governs the file location of the server TLS certificate.
+        Certificate: tls/server.crt
+        RootCAs:
+          - tls/ca.crt
+        ClientAuthRequired: false
+        ClientRootCAs:
+    # Keepalive settings for the GRPC server.
+    Keepalive:
+        # ServerMinInterval is the minimum permitted time between client pings.
+        # If clients send pings more frequently, the server will
+        # disconnect them.
+        ServerMinInterval: 60s
+        # ServerInterval is the time between pings to clients.
+        ServerInterval: 7200s
+        # ServerTimeout is the duration the server waits for a response from
+        # a client before closing the connection.
+        ServerTimeout: 20s
+    # Cluster settings for ordering service nodes that communicate with other ordering service nodes
+    # such as Raft based ordering service.
+    Cluster:
+        # SendBufferSize is the maximum number of messages in the egress buffer.
+        # Consensus messages are dropped if the buffer is full, and transaction
+        # messages are waiting for space to be freed.
+        SendBufferSize: 10
+        # ClientCertificate governs the file location of the client TLS certificate
+        # used to establish mutual TLS connections with other ordering service nodes.
+        ClientCertificate:
+        # ClientPrivateKey governs the file location of the private key of the client TLS certificate.
+        ClientPrivateKey:
+        # The below 4 properties should be either set together, or be unset together.
+        # If they are set, then the orderer node uses a separate listener for intra-cluster
+        # communication. If they are unset, then the general orderer listener is used.
+        # This is useful if you want to use a different TLS server certificates on the
+        # client-facing and the intra-cluster listeners.
+
+        # ListenPort defines the port on which the cluster listens to connections.
+        ListenPort:
+        # ListenAddress defines the IP on which to listen to intra-cluster communication.
+        ListenAddress:
+        # ServerCertificate defines the file location of the server TLS certificate used for intra-cluster
+        # communication.
+        ServerCertificate:
+        # ServerPrivateKey defines the file location of the private key of the TLS certificate.
+        ServerPrivateKey:
+
+    # Bootstrap method: The method by which to obtain the bootstrap block
+    # system channel is specified. The option can be one of:
+    #   "file" - path to a faile containing the genesis block or config block of system channel
+    #   "none" - allows an orderer to start without a system channel configuration
+    BootstrapMethod: file
+
+    # Bootstrap file: The file containing the bootstrap block to use when
+    # initializing the orderer system channel and BootstrapMethod is set to
+    # "file".  The bootstrap file can be the genesis block, and it can also be 
+    # a config block for late bootstrap of some consensus methods like Raft.
+    BootstrapFile:
+
+    # LocalMSPDir is where to find the private crypto material needed by the
+    # orderer. It is set relative here as a default for dev environments but
+    # should be changed to the real location in production.
+    LocalMSPDir: msp
+
+    # LocalMSPID is the identity to register the local MSP material with the MSP
+    # manager. IMPORTANT: The local MSP ID of an orderer needs to match the MSP
+    # ID of one of the organizations defined in the orderer system channel's
+    # /Channel/Orderer configuration. The sample organization defined in the
+    # sample configuration provided has an MSP ID of "SampleOrg".
+    LocalMSPID: SampleOrg
+
+    # Enable an HTTP service for Go "pprof" profiling as documented at:
+    # https://golang.org/pkg/net/http/pprof
+    Profile:
+        Enabled: false
+        Address: 0.0.0.0:6060
+
+    # BCCSP configures the blockchain crypto service providers.
+    BCCSP:
+        # Default specifies the preferred blockchain crypto service provider
+        # to use. If the preferred provider is not available, the software
+        # based provider ("SW") will be used.
+        # Valid providers are:
+        #  - SW: a software based crypto provider
+        #  - PKCS11: a CA hardware security module crypto provider.
+        Default: SW
+
+        # SW configures the software based blockchain crypto provider.
+        SW:
+            # TODO: The default Hash and Security level needs refactoring to be
+            # fully configurable. Changing these defaults requires coordination
+            # SHA2 is hardcoded in several places, not only BCCSP
+            Hash: SHA2
+            Security: 256
+            # Location of key store. If this is unset, a location will be
+            # chosen using: 'LocalMSPDir'/keystore
+            FileKeyStore:
+                KeyStore:
+
+        # Settings for the PKCS#11 crypto provider (i.e. when DEFAULT: PKCS11)
+        PKCS11:
+            # Location of the PKCS11 module library
+            Library:
+            # Token Label
+            Label:
+            # User PIN
+            Pin:
+            Hash:
+            Security:
+            FileKeyStore:
+                KeyStore:
+
+    # Authentication contains configuration parameters related to authenticating
+    # client messages
+    Authentication:
+        # the acceptable difference between the current server time and the
+        # client's time as specified in a client request message
+        TimeWindow: 15m
+
+
+################################################################################
+#
+#   SECTION: File Ledger
+#
+#   - This section applies to the configuration of the file or json ledgers.
+#
+################################################################################
+FileLedger:
+
+    # Location: The directory to store the blocks in.
+    # NOTE: If this is unset, a new temporary location will be chosen every time
+    # the orderer is restarted, using the prefix specified by Prefix.
+    Location: /var/hyperledger/production/orderer
+
+    # The prefix to use when generating a ledger directory in temporary space.
+    # Otherwise, this value is ignored.
+    Prefix: hyperledger-fabric-ordererledger
+
+################################################################################
+#
+#   SECTION: Kafka
+#
+#   - This section applies to the configuration of the Kafka-based orderer, and
+#     its interaction with the Kafka cluster.
+#
+################################################################################
+Kafka:
+
+    # Retry: What do if a connection to the Kafka cluster cannot be established,
+    # or if a metadata request to the Kafka cluster needs to be repeated.
+    Retry:
+        # When a new channel is created, or when an existing channel is reloaded
+        # (in case of a just-restarted orderer), the orderer interacts with the
+        # Kafka cluster in the following ways:
+        # 1. It creates a Kafka producer (writer) for the Kafka partition that
+        # corresponds to the channel.
+        # 2. It uses that producer to post a no-op CONNECT message to that
+        # partition
+        # 3. It creates a Kafka consumer (reader) for that partition.
+        # If any of these steps fail, they will be re-attempted every
+        # <ShortInterval> for a total of <ShortTotal>, and then every
+        # <LongInterval> for a total of <LongTotal> until they succeed.
+        # Note that the orderer will be unable to write to or read from a
+        # channel until all of the steps above have been completed successfully.
+        ShortInterval: 5s
+        ShortTotal: 10m
+        LongInterval: 5m
+        LongTotal: 12h
+        # Affects the socket timeouts when waiting for an initial connection, a
+        # response, or a transmission. See Config.Net for more info:
+        # https://godoc.org/github.com/Shopify/sarama#Config
+        NetworkTimeouts:
+            DialTimeout: 10s
+            ReadTimeout: 10s
+            WriteTimeout: 10s
+        # Affects the metadata requests when the Kafka cluster is in the middle
+        # of a leader election.See Config.Metadata for more info:
+        # https://godoc.org/github.com/Shopify/sarama#Config
+        Metadata:
+            RetryBackoff: 250ms
+            RetryMax: 3
+        # What to do if posting a message to the Kafka cluster fails. See
+        # Config.Producer for more info:
+        # https://godoc.org/github.com/Shopify/sarama#Config
+        Producer:
+            RetryBackoff: 100ms
+            RetryMax: 3
+        # What to do if reading from the Kafka cluster fails. See
+        # Config.Consumer for more info:
+        # https://godoc.org/github.com/Shopify/sarama#Config
+        Consumer:
+            RetryBackoff: 2s
+    # Settings to use when creating Kafka topics.  Only applies when
+    # Kafka.Version is v0.10.1.0 or higher
+    Topic:
+        # The number of Kafka brokers across which to replicate the topic
+        ReplicationFactor: 3
+    # Verbose: Enable logging for interactions with the Kafka cluster.
+    Verbose: false
+
+    # TLS: TLS settings for the orderer's connection to the Kafka cluster.
+    TLS:
+
+      # Enabled: Use TLS when connecting to the Kafka cluster.
+      Enabled: false
+
+      # PrivateKey: PEM-encoded private key the orderer will use for
+      # authentication.
+      PrivateKey:
+        # As an alternative to specifying the PrivateKey here, uncomment the
+        # following "File" key and specify the file name from which to load the
+        # value of PrivateKey.
+        #File: path/to/PrivateKey
+
+      # Certificate: PEM-encoded signed public key certificate the orderer will
+      # use for authentication.
+      Certificate:
+        # As an alternative to specifying the Certificate here, uncomment the
+        # following "File" key and specify the file name from which to load the
+        # value of Certificate.
+        #File: path/to/Certificate
+
+      # RootCAs: PEM-encoded trusted root certificates used to validate
+      # certificates from the Kafka cluster.
+      RootCAs:
+        # As an alternative to specifying the RootCAs here, uncomment the
+        # following "File" key and specify the file name from which to load the
+        # value of RootCAs.
+        #File: path/to/RootCAs
+
+    # SASLPlain: Settings for using SASL/PLAIN authentication with Kafka brokers
+    SASLPlain:
+      # Enabled: Use SASL/PLAIN to authenticate with Kafka brokers
+      Enabled: false
+      # User: Required when Enabled is set to true
+      User:
+      # Password: Required when Enabled is set to true
+      Password:
+
+    # Kafka protocol version used to communicate with the Kafka cluster brokers
+    # (defaults to 0.10.2.0 if not specified)
+    Version:
+
+################################################################################
+#
+#   Debug Configuration
+#
+#   - This controls the debugging options for the orderer
+#
+################################################################################
+Debug:
+
+    # BroadcastTraceDir when set will cause each request to the Broadcast service
+    # for this orderer to be written to a file in this directory
+    BroadcastTraceDir:
+
+    # DeliverTraceDir when set will cause each request to the Deliver service
+    # for this orderer to be written to a file in this directory
+    DeliverTraceDir:
+
+################################################################################
+#
+#   Operations Configuration
+#
+#   - This configures the operations server endpoint for the orderer
+#
+################################################################################
+Operations:
+    # host and port for the operations server
+    ListenAddress: 127.0.0.1:8443
+
+    # TLS configuration for the operations endpoint
+    TLS:
+        # TLS enabled
+        Enabled: false
+
+        # Certificate is the location of the PEM encoded TLS certificate
+        Certificate:
+
+        # PrivateKey points to the location of the PEM-encoded key
+        PrivateKey:
+
+        # Most operations service endpoints require client authentication when TLS
+        # is enabled. ClientAuthRequired requires client certificate authentication
+        # at the TLS layer to access all resources.
+        ClientAuthRequired: false
+
+        # Paths to PEM encoded ca certificates to trust for client authentication
+        ClientRootCAs: []
+
+################################################################################
+#
+#   Metrics  Configuration
+#
+#   - This configures metrics collection for the orderer
+#
+################################################################################
+Metrics:
+    # The metrics provider is one of statsd, prometheus, or disabled
+    Provider: disabled
+
+    # The statsd configuration
+    Statsd:
+      # network type: tcp or udp
+      Network: udp
+
+      # the statsd server address
+      Address: 127.0.0.1:8125
+
+      # The interval at which locally cached counters and gauges are pushed
+      # to statsd; timings are pushed immediately
+      WriteInterval: 30s
+
+      # The prefix is prepended to all emitted statsd metrics
+      Prefix:
+
+################################################################################
+#
+#   Consensus Configuration
+#
+#   - This section contains config options for a consensus plugin. It is opaque
+#     to orderer, and completely up to consensus implementation to make use of.
+#
+################################################################################
+Consensus:
+    # The allowed key-value pairs here depend on consensus plugin. For etcd/raft,
+    # we use following options:
+
+    # WALDir specifies the location at which Write Ahead Logs for etcd/raft are
+    # stored. Each channel will have its own subdir named after channel ID.
+    WALDir: /var/hyperledger/production/orderer/etcdraft/wal
+
+    # SnapDir specifies the location at which snapshots for etcd/raft are
+    # stored. Each channel will have its own subdir named after channel ID.
+    SnapDir: /var/hyperledger/production/orderer/etcdraft/snapshot

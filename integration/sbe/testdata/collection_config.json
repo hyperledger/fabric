@@ -1,0 +1,9 @@
+[
+  {
+    "name": "col",
+    "policy": "OR('Org1MSP.peer', 'Org2MSP.peer')",
+    "requiredPeerCount": 2,
+    "maxPeerCount": 2,
+    "blockToLive":1000000
+  }
+]

@@ -1,0 +1,21 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/common/grpclogging/testpb";
+
+package testpb;
+
+message Message {
+    string message = 1;
+    int32 sequence = 2;
+}
+
+service EchoService {
+  rpc Echo(Message) returns (Message);
+  rpc EchoStream(stream Message) returns (stream Message);
+}

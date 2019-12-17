@@ -1,0 +1,125 @@
+v1.4.0 Release Notes - January 9, 2019
+--------------------------------------
+
+What's New in Hyperledger Fabric v1.4
+-------------------------------------
+
+The following features are included in this release:
+
+Fabric operations service
+A new HTTP based "operations" endpoint has been implemented on the orderer and
+the peer. The endpoint exposes APIs to check the server's health, to query
+and modify the logging level of the process, and, when configured, to expose
+Fabric metrics.
+
+FAB-3388 - Operational metrics for Fabric components
+The peer and orderer have been instrumented to provide basic operational
+metrics. The metrics can be surfaced for consumption by Prometheus or StatsD.
+
+FAB-10851 - Health check endpoint
+The orderer and the peer now provide a mechanism to check the health of the
+process via an HTTP request. Requests to GET /healthz on the operations
+endpoint will complete with a status 200 OK when the server believes it is
+healthy. When a health check fails, the server will respond with a 503 Service
+Unavailable and a JSON payload indicating which component detected an issue.
+The types of health checks that are performed will be extended over time.
+
+FAB-12265 - Dynamic log levels
+The orderer and the peer now provide a mechanism to get and update the active
+logging specification of the server. Requests to GET /logspec on the
+operations endpoint will return with a JSON payload that contains the active
+spec. When a JSON payload of `{"spec":"the-log-spec"}` is sent as the body of
+a PUT /logspec request, the active logging spec will be updated.
+
+FAB-12357 - Updates to logging
+In earlier versions of Fabric, loggers were associated with named components
+and configuration would control the active level of each logger. While this
+model works in theory, because of the configuration management libraries used
+by Fabric and the structure of the Fabric code base, in practice it had a
+number of issues.
+With 1.4, we're changing the model slightly. Instead of associating loggers
+with components, we are naming loggers and to help avoid side effects during
+initialization, the logging configuration is no longer obtained from the
+fabric configuration system but from environment variables that define
+the logging specification and log format.
+The log specification is a single string that consists of colon separated
+tokens. Each token declares one or more logger name prefixes (separated by
+commas) and an optional log level. When the logger name prefix ends with a
+period, it indicates that the log level should only apply to the logger with
+that exact name without the trailing period. When the logger name pattern is
+omitted, it specifies the default log level. In cases where multiple entries
+reference the same name pattern or multiple instances of a default are
+provided, the last specification takes precedence.
+
+FAB-12363 - Logging for gRPC interactions
+The orderer and the peer now provide logging (INFO level) for each gRPC
+interaction completed.
+
+FAB-12372 - Obtain Go routine stacks without termination
+When SIGUSR1 is received by the peer or the orderer, the state of all go
+routines will be captured and logged at the INFO level. This collection
+activity will not terminate the process.
+
+FAB-5093 - Private data reconciliation
+Allows peers for organizations that are added to private data collections
+to retrieve the private data for prior transactions to which they now are
+entitled. This feature is only supported on peers that have joined
+a channel since v1.4.
+
+FAB-11409 - Private data client access control
+Ability to automatically enforce access control within chaincode based
+on the client organization collection membership without having to
+write specific chaincode logic. This feature is configured by using
+the collection configuration property memberOnlyRead:true. If you have
+a mixed network of v1.4 peers and prior release peers, the prior
+release peers will not honor this configuration until they are upgraded
+to v1.4.
+
+
+Changes, Known Issues, and Workarounds
+--------------------------------------
+
+FAB-12357 - Updates to logging
+Instead of using logging.level and CORE_LOGGING_LEVEL to control the logging
+level for the peer, and General.LogLevel or ORDERER_GENERAL_LOGLEVEL to
+control logging at the orderer, both processes now use the FABRIC_LOGGING_SPEC
+environment variable to acquire the initial logging specification for the
+server. Existing logging configuration should be converted to the new model.
+
+FAB-12489 - peer logging command updates
+The `getlevel`, `setlevel`, and `revertlevels` subcommands of the `peer
+logging` command are deprecated and users should migrate to the operations
+server.
+The behavior of `setlevel` has also changed slightly. The previous
+implementation would treat the `logger` argument as a regular expression and
+apply the new log level to all loggers that matched the expression. The
+updated implementation treats the `logger` argument as a logger name and
+appends it to the active logging spec at the indicated level.
+
+FAB-12088 - Java chaincode support on s390 architecture
+Java chaincode support is not yet available on s390 architecture.
+
+FAB-12134 Same chaincode source receiving fingerprint mismatch error
+Chaincode installed in different ways may result in "chaincode fingerprint
+mismatch data mismatch" error upon instantiation.  This may happen when
+installing chaincode by using different SDKs. To workaround the problem,
+package the chaincode prior to installation and instantiation, by using
+the "peer chaincode package" command.
+
+Known Vulnerabilities
+---------------------
+FAB-8664 - Peer should detect and react when its org has been removed
+This is a relatively low severity problem, because it requires a significant
+conspiracy of network admins, but it will be addressed in a future release.
+
+Resolved Vulnerabilities
+------------------------
+None.
+
+Other improvements and fixes
+----------------------------
+Updated to Go version 1.11.1
+Updated baseimage version to 0.4.14
+
+For the full list of improvements and fixes, refer to the release change log:
+https://github.com/hyperledger/fabric/blob/release-1.4/CHANGELOG.md#v140

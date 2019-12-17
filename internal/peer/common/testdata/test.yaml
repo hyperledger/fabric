@@ -1,0 +1,25 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+peer:
+  tls:
+    rootcert:
+      file: "certs/ca.crt"
+    clientKey:
+      file: "certs/client.key"
+    clientCert:
+      file: "certs/client.crt"
+  client:
+    connTimeout: 1s
+
+orderer:
+  tls:
+    rootcert:
+      file: "certs/ca.crt"
+    clientKey:
+      file: "certs/client.key"
+    clientCert:
+      file: "certs/client.crt"
+  client:
+    connTimeout: 1s

@@ -1,0 +1,36 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/core/ledger/pvtdatastorage";
+
+package pvtdatastorage;
+
+message ExpiryData {
+	map<string, Collections>  map = 1;
+}
+
+message Collections {
+	// for pvt data, there would be an
+	// entry in TxNums
+	map<string, TxNums> map = 1;
+	// for any number of missing pvt data of a collection,
+	// there would be an entry in the map
+	map<string, bool> missingDataMap = 2;
+}
+
+message TxNums {
+	repeated uint64 list = 1;
+}
+
+message CollElgInfo {
+	map<string, CollNames> nsCollMap = 1;
+}
+
+message CollNames {
+    repeated string entries = 1;
+}

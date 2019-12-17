@@ -1,0 +1,53 @@
+v1.1.0-alpha January 25, 2018
+-------------------------------
+
+Release Notes
+-------------
+This is a feature-complete *alpha* release of the up-coming 1.1 release. The 1.1 release
+includes the following new major features:
+
+  - https://jira.hyperledger.org/browse/FAB-6911 - Event service for blocks
+  - https://jira.hyperledger.org/browse/FAB-5481 - Event service for block transaction events
+  - https://jira.hyperledger.org/browse/FAB-5300 - Certificate Revocation List from CA
+  - https://jira.hyperledger.org/browse/FAB-3067 - Peer management of CouchDB indexes
+  - https://jira.hyperledger.org/browse/FAB-6715 - Mutual TLS between all components
+  - https://jira.hyperledger.org/browse/FAB-5556 - Rolling Upgrade via configured capabilities
+  - https://jira.hyperledger.org/browse/FAB-2331 - Node.js Chaincode support
+  - https://jira.hyperledger.org/browse/FAB-5363 - Node.js SDK Connection Profile
+  - https://jira.hyperledger.org/browse/FAB-830 - Encryption library for chaincode
+  - https://jira.hyperledger.org/browse/FAB-5346 - Attribute-based Access Control
+  - https://jira.hyperledger.org/browse/FAB-6089 - Chaincode APIs for creator identity
+  - https://jira.hyperledger.org/browse/FAB-6421 - Performance improvements
+
+Additionally, there are feature improvements, bug fixes, documentation and test
+coverage improvements, UX improvements based on user feedback and changes to address a
+variety of static scan findings (unused code, static security scanning, spelling,
+linting and more).
+
+Known Vulnerabilities
+---------------------
+none
+
+Resolved Vulnerabilities
+------------------------
+none
+
+Known Issues & Workarounds
+--------------------------
+The fabric-ccenv image which is used to build chaincode, currently includes
+the github.com/hyperledger/fabric/core/chaincode/shim ("shim") package.
+This is convenient, as it provides the ability to package chaincode
+without the need to include the "shim". However, this may cause issues in future
+releases (and/or when trying to use packages which are included by the "shim").
+
+In order to avoid any issues, users are advised to manually vendor the "shim"
+package with their chaincode prior to using the peer CLI for packaging and/or
+for installing chaincode.
+
+Please refer to https://jira.hyperledger.org/browse/FAB-5177 for more details,
+and kindly be aware that given the above, we may end up changing the
+fabric-ccenv in the future.
+
+Change Log
+----------
+https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v110-alpha

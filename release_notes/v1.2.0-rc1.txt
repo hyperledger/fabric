@@ -1,0 +1,99 @@
+v1.2.0-rc1 Release Notes - June 22, 2018
+----------------------------------------
+
+What's New in v1.2
+------------------
+
+The following features/epics are included in this release:
+
+FAB-8718 - Channel Private Data
+Keep chaincode data confidential among a subset of channel members.
+
+FAB-8727 - Access control for peer functions
+Configure which client identities can interact with peer functions, per channel.
+
+FAB-8729 - Pluggable endorsement and validation
+Utilize pluggable endorsement and validation logic per chaincode.
+
+FAB-8779 - Service Discovery
+Discover network services dynamically, including orderers, peers, chaincode,
+and endorsement policies, to simplify client applications.
+
+Hygiene and Technical debt
+Ginkgo-based integration tests have been added, and component code has been
+refactored for improved readability and maintainability.
+
+
+Changes, Known Issues, and Workarounds
+--------------------------------------
+
+FAB-10151 - configtx.yaml samples fixed
+
+Previous releases included example input files for configtxgen (configtx.yaml)
+that contained invalid YAML which referenced YAML anchors before they were
+defined. It was not a problem in prior releases since the golang YAML parser
+tolerated references before definitions.
+The configtx.yaml samples are corrected in version v1.2. Users are advised
+to evaluate their configtxgen input documents for places where YAML anchors
+are referenced before they are defined. Either reorder nodes to ensure
+anchors are defined before they are referenced, or re-create YAML documents
+using the updated configtx.yaml sample documents as a starting point.
+Refer to https://jira.hyperledger.org/browse/FAB-10151 for more details.
+
+
+FAB-8557 - Transaction index and query behavior changed
+
+There is a change to how some of the indexes maintained by ledger are updated.
+Specifically, this includes indexes that maintain information by txid. In the rare
+scenario when two transactions were submitted with the same transaction ids,
+in the previous releases, the last transaction would be indexed. Only the first
+instance of a transaction can be valid, therefore it was possible for an invalid
+transaction to overwrite the status of a valid transaction, and therefore APIs
+such as 'GetTransactionByID' and 'GetBlockByTxID' may return the latter invalid
+transaction. In these cases the ledger remained correct, however transaction
+queries may have returned unexpected results.
+In this release, the behavior is changed so that the first transaction (the only
+instance that can be valid) will not be overwritten in the index.
+In the rare scenario where this problem has occurred on a channel, the peer's
+transaction index can be rebuilt after upgrading to version v1.2, by stopping the
+peer, deleting the <CORE_PEER_FILESYSTEMPATH>/ledgersData/chains/index directory,
+and restarting the peer. The peer will automatically rebuild its indexes
+using the new behavior.
+Refer to https://jira.hyperledger.org/browse/FAB-8557 for more details.
+
+
+FAB-8877 - Reserved field validation for CouchDB state database
+
+Prior releases did not validate chaincode data against all state database
+content restrictions.  Specifically, version v1.2 adds validation during
+chaincode execution to ensure that keys that will be written to CouchDB
+state database are UTF8 complaint, do not start with an underscore, and
+that there are no top-level JSON fields named '~version' or that start with
+underscores, as these fields are reserved for use by CouchDB (and Fabric).
+If these conditions are found during chaincode execution, an error will
+be returned to the client in the proposal response.
+For the same reason, all peers on a channel must utilize the same state
+database type, and it is not possible to convert a channel's peers from
+using LevelDB state database to CouchDB state database, unless the
+chaincode performs the same validations.
+Refer to https://jira.hyperledger.org/browse/FAB-8877 for more details.
+
+
+Known Vulnerabilities
+---------------------
+FAB-8664 - Peer does not detect his own org ejection
+This is a relatively low severity problem, because it requires a significant
+conspiracy of network admins, but it will be addressed in an upcoming release.
+
+
+Resolved Vulnerabilities
+------------------------
+FAB-10537 - Reject CONFIG/ORDERER_TRANSACTION messages
+Ensures that clients cannot submit transactions intended to be generated
+from orderer nodes.
+
+
+Other improvements and fixes
+----------------------------
+For the full list of improvements and fixes, refer to the release change log:
+https://github.com/hyperledger/fabric/blob/master/CHANGELOG.md#v120-rc1

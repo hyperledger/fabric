@@ -1,0 +1,7 @@
+# Copyright London Stock Exchange Group All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+OrganizationalUnitIdentifiers:
+  - Certificate: "intermediatecerts/intermediatecert.pem"
+    OrganizationalUnitIdentifier: "Hyperledger Testing"
