@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -1347,21 +1347,13 @@ func assertNoErrorsAreLogged(ordererRunners []*ginkgomon.Runner) {
 }
 
 func deployChaincodes(n *nwo.Network, p *nwo.Peer, o *nwo.Orderer, mycc nwo.Chaincode, mycc2 nwo.Chaincode, mycc3 nwo.Chaincode) {
-	var wg sync.WaitGroup
-	wg.Add(3)
 	for channel, chaincode := range map[string]nwo.Chaincode{
 		"testchannel":  mycc,
 		"testchannel2": mycc2,
 		"testchannel3": mycc3,
 	} {
-		go func(channel string, cc nwo.Chaincode) {
-			defer GinkgoRecover()
-			defer wg.Done()
-			nwo.DeployChaincode(n, channel, o, cc, p)
-		}(channel, chaincode)
+		nwo.DeployChaincode(n, channel, o, chaincode, p)
 	}
-
-	wg.Wait()
 }
 
 func assertInvoke(network *nwo.Network, peer *nwo.Peer, o *nwo.Orderer, cc string, channel string, expectedOutput string, expectedStatus int) {
