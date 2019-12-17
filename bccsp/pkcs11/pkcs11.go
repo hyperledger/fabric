@@ -214,7 +214,6 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ephemeral),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
-		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
 
 		pkcs11.NewAttribute(pkcs11.CKA_ID, publabel),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, publabel),
