@@ -97,7 +97,7 @@ Then, export the following environment variables:
 * `CORE_PEER_LOCALMSPID`: the MSP ID of the organization proposing the channel update. This will be the MSP of one of the orderer organizations.
 * `CORE_PEER_MSPCONFIGPATH`: the absolute path to the MSP representing your organization.
 * `TLS_ROOT_CA`: the absolute path to the root CA certificate of the organization proposing the system channel update.
-* `ORDERING_NODE_ADDRESS`: the url of an ordering node. For example, `orderer.example.com:7050`. When targeting the ordering service, you can target any particular node in the ordering service. Your requests will be forwarded to the leader automatically.
+* `ORDERER_CONTAINER`: the name of an ordering node container. When targeting the ordering service, you can target any particular node in the ordering service. Your requests will be forwarded to the leader automatically.
 * `ORGNAME`: The name of the organization you are currently updating. For example, `OrdererOrg`.
 
 Once you have set the environment variables, navigate to [Step 1: Pull and translate the config](./config_update.html#step-1-pull-and-translate-the-config).

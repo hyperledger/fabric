@@ -867,7 +867,7 @@ Before you attempt to use the sample commands, make sure to export the following
 * `TLS_ROOT_CA`: the path to the root CA cert of the TLS CA of the organization proposing the update.
 * `CORE_PEER_LOCALMSPID`: the name of your MSP.
 * `CORE_PEER_MSPCONFIGPATH`: the absolute path to the MSP of your organization.
-* `ORDERING_NODE_ADDRESS`: the url of an ordering node the channel is hosted on. For example, `orderer.example.com:7050`. Note that when targeting the ordering service, you can target any active node in the ordering service. Your requests will be forwarded to the leader automatically.
+* `ORDERER_CONTAINER`: the name of an ordering node container. Note that when targeting the ordering service, you can target any active node in the ordering service. Your requests will be forwarded to the leader automatically.
 
 Note: this topic will provide default names for the various JSON and protobuf files being pulled and modified (`config_block.pb`, `config_block.json`, etc). You are free to use whatever names you want. However, be aware that unless you go back and erase these files at the end of each config update, you will have to select different when making an additional update.
 
@@ -880,7 +880,7 @@ Make sure you are in the peer container.
 Now issue:
 
 ```
-peer channel fetch config config_block.pb -o $ORDERING_NODE_ADDRESS -c $CH_NAME --tls --cafile $TLS_ROOT_CA
+peer channel fetch config config_block.pb -o $ORDERER_CONTAINER -c $CH_NAME --tls --cafile $TLS_ROOT_CA
 ```
 
 Next, we'll covert the protobuf version of the channel config into a JSON version called `config_block.json` (JSON files are easier for humans to read and understand):
@@ -939,7 +939,7 @@ configtxlator proto_encode --input config_update_in_envelope.json --type common.
 Submit the config update transaction:
 
 ```
-peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o $ORDERING_NODE_ADDRESS --tls true --cafile $TLS_ROOT_CA
+peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o $ORDERER_CONTAINER --tls true --cafile $TLS_ROOT_CA
 ```
 
 Our config update transaction represents the difference between the original config and the modified one, but the ordering service will translate this into a full channel config.
