@@ -7,12 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package golang
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -68,16 +70,15 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 	cmd := exec.CommandContext(ctx, "go", "list", "-deps", "-f", packageListFormat, pkg)
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch)
 
-	stdout, err := cmd.StdoutPipe()
+	output, err := cmd.Output()
 	if err != nil {
-		return nil, wrapExitErr(err, "'go list -deps' failed")
+		return nil, errors.Wrapf(err, "listing deps for package %s failed", pkg)
 	}
-	decoder := json.NewDecoder(stdout)
-
-	err = cmd.Start()
-	if err != nil {
-		return nil, err
+	// on Windows make sure we use forward slashes
+	if os.PathSeparator == '\\' {
+		output = []byte(filepath.ToSlash(string(output)))
 	}
+	decoder := json.NewDecoder(bytes.NewReader(output))
 
 	var list []PackageInfo
 	for {
@@ -94,11 +95,6 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 		}
 
 		list = append(list, packageInfo)
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		return nil, errors.Wrapf(err, "listing deps for pacakge %s failed", pkg)
 	}
 
 	return list, nil
@@ -138,7 +134,10 @@ func listModuleInfo(extraEnv ...string) (*ModuleInfo, error) {
 	if err != nil {
 		return nil, wrapExitErr(err, "'go list' failed")
 	}
-
+	// on Windows make sure we use forward slashes
+	if os.PathSeparator == '\\' {
+		output = []byte(filepath.ToSlash(string(output)))
+	}
 	var moduleInfo ModuleInfo
 	if err := json.Unmarshal(output, &moduleInfo); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal output from 'go list'")

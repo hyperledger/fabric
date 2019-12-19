@@ -38,7 +38,7 @@ func (p *Platform) Name() string {
 }
 
 // ValidatePath is used to ensure that path provided points to something that
-// looks like go chainccode.
+// looks like go chaincode.
 //
 // NOTE: this is only used at the _client_ side by the peer CLI.
 func (p *Platform) ValidatePath(rawPath string) error {
@@ -137,8 +137,8 @@ func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 	for _, pkg := range dependencyPackageInfo {
 		for _, filename := range pkg.Files() {
 			sd := SourceDescriptor{
-				Name: path.Join("src", pkg.ImportPath, filename),
-				Path: filepath.Join(pkg.Dir, filename),
+				Name: filepath.ToSlash(filepath.Join("src", pkg.ImportPath, filename)),
+				Path: path.Join(pkg.Dir, filename),
 			}
 			fileMap[sd.Name] = sd
 		}
@@ -272,7 +272,7 @@ func DescribeCode(path string) (*CodeDescriptor, error) {
 
 		return &CodeDescriptor{
 			Module:       true,
-			MetadataRoot: filepath.Join(modInfo.Dir, relImport, "META-INF"),
+			MetadataRoot: filepath.ToSlash(filepath.Join(modInfo.Dir, relImport, "META-INF")),
 			Path:         modInfo.ImportPath,
 			Source:       modInfo.Dir,
 		}, nil
@@ -290,7 +290,7 @@ func describeGopath(importPath string) (*CodeDescriptor, error) {
 
 	return &CodeDescriptor{
 		Path:         importPath,
-		MetadataRoot: filepath.Join(sourcePath, "META-INF"),
+		MetadataRoot: path.Join(sourcePath, "META-INF"),
 		Source:       sourcePath,
 	}, nil
 }
@@ -370,10 +370,10 @@ func (s SourceMap) Sources() Sources {
 func (s SourceMap) Directories() []string {
 	dirMap := map[string]bool{}
 	for filename := range s {
-		dir := filepath.Dir(filename)
+		dir := filepath.ToSlash(filepath.Dir(filename))
 		for dir != "." && !dirMap[dir] {
 			dirMap[dir] = true
-			dir = filepath.Dir(dir)
+			dir = filepath.ToSlash(filepath.Dir(dir))
 		}
 	}
 
@@ -431,7 +431,7 @@ func findSource(cd *CodeDescriptor) (SourceMap, error) {
 			if strings.HasPrefix(info.Name(), ".") {
 				return nil
 			}
-			name = filepath.Join("META-INF", name)
+			name = filepath.ToSlash(filepath.Join("META-INF", name))
 			err := validateMetadata(name, path)
 			if err != nil {
 				return err
@@ -441,7 +441,8 @@ func findSource(cd *CodeDescriptor) (SourceMap, error) {
 		default:
 			name = filepath.Join("src", cd.Path, name)
 		}
-
+		name = filepath.ToSlash(name)
+		path = filepath.ToSlash(path)
 		sources[name] = SourceDescriptor{Name: name, Path: path}
 		return nil
 	}

@@ -9,6 +9,7 @@ package golang
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -45,7 +46,7 @@ func Test_gopathDependencyPackageInfo(t *testing.T) {
 
 	t.Run("TestFailure", func(t *testing.T) {
 		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "./doesnotexist")
-		assert.EqualError(t, err, "listing deps for pacakge ./doesnotexist failed: exit status 1")
+		assert.EqualError(t, err, "listing deps for package ./doesnotexist failed: exit status 1")
 	})
 }
 
@@ -82,7 +83,7 @@ func Test_listModuleInfo(t *testing.T) {
 
 	moduleDir, err := os.Getwd()
 	require.NoError(t, err, "failed to get module working directory")
-
+	moduleDir = filepath.ToSlash(moduleDir)
 	mi, err := listModuleInfo("GOPROXY=https://proxy.golang.org")
 	assert.NoError(t, err, "failed to get module info")
 
@@ -90,7 +91,7 @@ func Test_listModuleInfo(t *testing.T) {
 		ModulePath: "ccmodule",
 		ImportPath: "ccmodule",
 		Dir:        moduleDir,
-		GoMod:      filepath.Join(moduleDir, "go.mod"),
+		GoMod:      path.Join(moduleDir, "go.mod"),
 	}
 	assert.Equal(t, expected, mi)
 
@@ -104,7 +105,7 @@ func Test_listModuleInfo(t *testing.T) {
 		ModulePath: "ccmodule",
 		ImportPath: "ccmodule/nested",
 		Dir:        moduleDir,
-		GoMod:      filepath.Join(moduleDir, "go.mod"),
+		GoMod:      path.Join(moduleDir, "go.mod"),
 	}
 	assert.Equal(t, expected, mi)
 }

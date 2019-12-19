@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -49,6 +50,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 
 	rootDirLen := len(rootDirectory)
 	walkFn := func(localpath string, info os.FileInfo, err error) error {
+		localpath = filepath.ToSlash(localpath)
 		if err != nil {
 			vmLogger.Errorf("Visit %s failed: %s", localpath, err)
 			return err
@@ -93,11 +95,11 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 
 		// if file is metadata, keep the /META-INF directory, e.g: META-INF/statedb/couchdb/indexes/indexOwner.json
 		// otherwise file is source code, put it in /src dir, e.g: src/marbles_chaincode.js
-		if strings.HasPrefix(localpath, filepath.Join(rootDirectory, "META-INF")) {
+		if strings.HasPrefix(localpath, path.Join(rootDirectory, "META-INF")) {
 			packagepath = localpath[rootDirLen+1:]
 
 			// Split the tar packagepath into a tar package directory and filename
-			_, filename := filepath.Split(packagepath)
+			_, filename := path.Split(packagepath)
 
 			// Hidden files are not supported as metadata, therefore ignore them.
 			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
@@ -166,7 +168,7 @@ func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 	header.AccessTime = zeroTime
 	header.ModTime = zeroTime
 	header.ChangeTime = zeroTime
-	header.Name = packagepath
+	header.Name = filepath.ToSlash(packagepath)
 	header.Mode = 0100644
 	header.Uid = 500
 	header.Gid = 500

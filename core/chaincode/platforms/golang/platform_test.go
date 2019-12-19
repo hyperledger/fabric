@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -171,8 +172,8 @@ func getGopath() (string, error) {
 func Test_findSource(t *testing.T) {
 	t.Run("Gopath", func(t *testing.T) {
 		source, err := findSource(&CodeDescriptor{
-			Source:       filepath.Join("testdata/src/chaincodes/noop"),
-			MetadataRoot: filepath.Join("testdata/src/chaincodes/noop/META-INF"),
+			Source:       "testdata/src/chaincodes/noop",
+			MetadataRoot: "testdata/src/chaincodes/noop/META-INF",
 			Path:         "chaincodes/noop",
 		})
 		require.NoError(t, err, "failed to find source")
@@ -184,8 +185,8 @@ func Test_findSource(t *testing.T) {
 	t.Run("Module", func(t *testing.T) {
 		source, err := findSource(&CodeDescriptor{
 			Module:       true,
-			Source:       filepath.Join("testdata/ccmodule"),
-			MetadataRoot: filepath.Join("testdata/ccmodule/META-INF"),
+			Source:       "testdata/ccmodule",
+			MetadataRoot: "testdata/ccmodule/META-INF",
 			Path:         "ccmodule",
 		})
 		require.NoError(t, err, "failed to find source")
@@ -202,7 +203,11 @@ func Test_findSource(t *testing.T) {
 	t.Run("NonExistent", func(t *testing.T) {
 		_, err := findSource(&CodeDescriptor{Path: "acme.com/this/should/not/exist"})
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "no such file or directory")
+		if os.PathSeparator == '\\' { // on Windows
+			assert.Contains(t, err.Error(), "cannot find the path specified")
+		} else {
+			assert.Contains(t, err.Error(), "no such file or directory")
+		}
 	})
 }
 
@@ -429,13 +434,14 @@ echo Done!
 func TestDescribeCode(t *testing.T) {
 	abs, err := filepath.Abs("testdata/ccmodule")
 	assert.NoError(t, err)
+	abs = filepath.ToSlash(abs)
 
 	t.Run("TopLevelModulePackage", func(t *testing.T) {
 		cd, err := DescribeCode("testdata/ccmodule")
 		assert.NoError(t, err)
 		expected := &CodeDescriptor{
 			Source:       abs,
-			MetadataRoot: filepath.Join(abs, "META-INF"),
+			MetadataRoot: path.Join(abs, "META-INF"),
 			Path:         "ccmodule",
 			Module:       true,
 		}
@@ -447,7 +453,7 @@ func TestDescribeCode(t *testing.T) {
 		assert.NoError(t, err)
 		expected := &CodeDescriptor{
 			Source:       abs,
-			MetadataRoot: filepath.Join(abs, "nested", "META-INF"),
+			MetadataRoot: path.Join(abs, "nested", "META-INF"),
 			Path:         "ccmodule/nested",
 			Module:       true,
 		}
