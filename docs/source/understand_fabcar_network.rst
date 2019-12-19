@@ -53,7 +53,7 @@ where the name is ``fabcar``, the version is ``1.0``, and the peer it is running
 against is ``dev-peer0.org1.example.com``.
 
 APIs are accessible with an SDK. For purposes of this exercise, we're using the
-`Hyperledger Fabric Node SDK <https://fabric-sdk-node.github.io/>`__ though
+`Hyperledger Fabric Node SDK <https://hyperledger.github.io/fabric-sdk-node/>`__ though
 there is also a Java SDK and CLI that can be used to drive transactions.
 SDKs encapsulate all access to the ledger by allowing an application to
 communicate with smart contracts, run queries, or receive ledger updates. These APIs use

@@ -68,7 +68,7 @@ Any invoke of the chaincode that writes data to the ledger will need to be
 validated by enough channel members to meet the endorsement policy.
 
 You can specify an endorsement policy for a chainocode using the Fabric SDKs.
-For an example, visit the `How to install and start your chaincode <https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html>`_
+For an example, visit the `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/master/tutorial-chaincode-lifecycle.html>`_
 in the Node.js SDK documentation. You can also create an endorsement policy from
 your CLI when you approve and commit a chaincode definition with the Fabric peer
 binaries by using the ``—-signature-policy`` flag.
