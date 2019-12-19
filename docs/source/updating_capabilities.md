@@ -109,7 +109,7 @@ You will need to export the following variables:
 * `CORE_PEER_LOCALMSPID`: the MSP ID of the organization proposing the channel update. This will be the MSP of one of the orderer organizations.
 * `TLS_ROOT_CA`: the absolute path to the TLS cert of your ordering node(s).
 * `CORE_PEER_MSPCONFIGPATH`: the absolute path to the MSP representing your organization.
-* `ORDERING_NODE_ADDRESS`: the url of an ordering node. For example, `orderer.example.com:7050`. When targeting the ordering service, you can target any particular node in the ordering service. Your requests will be forwarded to the leader automatically.
+* `ORDERER_CONTAINER`: the name of an ordering node container. When targeting the ordering service, you can target any particular node in the ordering service. Your requests will be forwarded to the leader automatically.
 
 ### `Orderer` group
 
@@ -151,7 +151,7 @@ You will need to export the following variables:
 * `CORE_PEER_LOCALMSPID`: the MSP ID of the organization proposing the channel update. This will be the MSP of your peer organization.
 * `TLS_ROOT_CA`: the absolute path to the TLS cert of your peer organization.
 * `CORE_PEER_MSPCONFIGPATH`: the absolute path to the MSP representing your organization.
-* `ORDERING_NODE_ADDRESS`: the url of an ordering node. For example, `orderer.example.com:7050`. When targeting the ordering service, you can target any particular node in the ordering service. Your requests will be forwarded to the leader automatically.
+* `ORDERER_CONTAINER`: the name of an ordering node container. When targeting the ordering service, you can target any particular node in the ordering service. Your requests will be forwarded to the leader automatically.
 
 ### `Orderer` group
 
