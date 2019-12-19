@@ -482,13 +482,14 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig
 	}
 
 	cc.SecOpts = comm.SecureOptions{
-		TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
-		RequireClientCert: true,
-		CipherSuites:      comm.DefaultTLSCipherSuites,
-		ServerRootCAs:     serverRootCAs,
-		Certificate:       certBytes,
-		Key:               keyBytes,
-		UseTLS:            true,
+		TimeShift:          conf.General.Cluster.TLSHandshakeTimeShift,
+		RequireClientCert:  true,
+		CipherSuites:       comm.DefaultTLSCipherSuites,
+		ServerRootCAs:      serverRootCAs,
+		Certificate:        certBytes,
+		Key:                keyBytes,
+		UseTLS:             true,
+		InsecureSkipVerify: conf.General.Cluster.InsecureSkipVerify,
 	}
 
 	return cc

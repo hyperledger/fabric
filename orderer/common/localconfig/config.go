@@ -74,6 +74,7 @@ type Cluster struct {
 	SendBufferSize                       int
 	CertExpirationWarningThreshold       time.Duration
 	TLSHandshakeTimeShift                time.Duration
+	InsecureSkipVerify                   bool
 }
 
 // Keepalive contains configuration for gRPC servers.
@@ -224,6 +225,7 @@ var Defaults = TopLevel{
 			ReplicationRetryTimeout:              time.Second * 5,
 			ReplicationPullTimeout:               time.Second * 5,
 			CertExpirationWarningThreshold:       time.Hour * 24 * 7,
+			InsecureSkipVerify:                   false,
 		},
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",

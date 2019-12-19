@@ -70,6 +70,7 @@ func (client *GRPCClient) parseSecureOptions(opts SecureOptions) error {
 	}
 
 	client.tlsConfig = &tls.Config{
+		InsecureSkipVerify:    opts.InsecureSkipVerify,
 		VerifyPeerCertificate: opts.VerifyCertificate,
 		MinVersion:            tls.VersionTLS12} // TLS 1.2 only
 	if len(opts.ServerRootCAs) > 0 {

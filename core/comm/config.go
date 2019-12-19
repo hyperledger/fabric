@@ -110,6 +110,8 @@ type SecureOptions struct {
 	CipherSuites []uint16
 	// TimeShift makes TLS handshakes time sampling shift to the past by a given duration
 	TimeShift time.Duration
+	// InsecureSkipVerify disable the checking of the certificate chain and the hostname
+	InsecureSkipVerify bool
 }
 
 // KeepaliveOptions is used to set the gRPC keepalive settings for both
