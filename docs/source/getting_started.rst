@@ -41,7 +41,7 @@ Hyperledger Fabric application SDKs
 Hyperledger Fabric offers a number of SDKs to support developing applications
 in various programming languages. SDKs are available for Node.js and Java:
 
-  * `Node.js SDK <https://github.com/hyperledger/fabric-sdk-node>`__ and `Node.js SDK documentation <https://fabric-sdk-node.github.io/>`__.
+  * `Node.js SDK <https://github.com/hyperledger/fabric-sdk-node>`__ and `Node.js SDK documentation <https://hyperledger.github.io/fabric-sdk-node/>`__.
   * `Java SDK <https://github.com/hyperledger/fabric-gateway-java>`__ and `Java SDK documentation <https://hyperledger.github.io/fabric-gateway-java/>`__.
 
 In addition, there are two more application SDKs that have not yet been officially released

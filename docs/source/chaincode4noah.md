@@ -64,7 +64,7 @@ chaincode lifecycle rather than the specific commands. To learn more about how
 to use the Fabric lifecycle using the Peer CLI, see [Install and define a chaincode](build_network.html#install-define-chaincode)
 in the Building your First Network Tutorial or the [peer lifecycle command reference](commands/peerlifecycle.html).
 To learn more about how to use the Fabric lifecycle using the Fabric SDK for
-Node.js, visit [How to install and start your chaincode](https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html).
+Node.js, visit [How to install and start your chaincode](https://hyperledger.github.io/fabric-sdk-node/master/tutorial-chaincode-lifecycle.html).
 
 ### Step One: Packaging the smart contract
 
