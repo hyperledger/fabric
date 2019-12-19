@@ -380,7 +380,7 @@ earlier. We'll name this file ``org3_update_in_envelope.json``:
 
 .. code:: bash
 
-  echo '{"payload":{"header":{"channel_header":{"channel_id":"$CHANNEL_NAME", "type":2}},"data":{"config_update":'$(cat org3_update.json)'}}}' | jq . > org3_update_in_envelope.json
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CHANNEL_NAME'", "type":2}},"data":{"config_update":'$(cat org3_update.json)'}}}' | jq . > org3_update_in_envelope.json
 
 Using our properly formed JSON -- ``org3_update_in_envelope.json`` -- we will
 leverage the ``configtxlator`` tool one last time and convert it into the
@@ -790,7 +790,7 @@ stripped away header, outputting it to ``anchor_update_in_envelope.json``
 
 .. code:: bash
 
-    echo '{"payload":{"header":{"channel_header":{"channel_id":"$CHANNEL_NAME", "type":2}},"data":{"config_update":'$(cat anchor_update.json)'}}}' | jq . > anchor_update_in_envelope.json
+    echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CHANNEL_NAME'", "type":2}},"data":{"config_update":'$(cat anchor_update.json)'}}}' | jq . > anchor_update_in_envelope.json
 
 Now that we have reincorporated the envelope we need to convert it
 to a protobuf so it can be properly signed and submitted to the orderer for the update.
