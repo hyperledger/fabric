@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
@@ -26,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
+	kvlmock "github.com/hyperledger/fabric/core/ledger/kvledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
@@ -319,6 +321,8 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 	provider1 := testutilNewProvider(conf, t)
 	defer provider1.Close()
 
+	fmt.Printf(">>> provider1.appConfig=%+v\n", provider1.initializer.AppConfig)
+
 	numLedgers := 10
 	ledgers := make([]lgr.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
@@ -525,6 +529,16 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 	return conf, cleanup
 }
 
+func testutilApplicationConfigRetriever(couchdbValidation bool) ledger.ApplicationConfigRetriever {
+	fakeAppCapabilities := &kvlmock.ApplicationCapabilities{}
+	fakeAppCapabilities.V20CouchdbValidationReturns(couchdbValidation)
+	fakeApp := &kvlmock.Application{}
+	fakeApp.CapabilitiesReturns(fakeAppCapabilities)
+	fakeAppConfig := &mock.ApplicationConfigRetriever{}
+	fakeAppConfig.GetApplicationConfigReturns(fakeApp, true)
+	return fakeAppConfig
+}
+
 func testutilNewProvider(conf *lgr.Config, t *testing.T) *Provider {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
@@ -535,6 +549,7 @@ func testutilNewProvider(conf *lgr.Config, t *testing.T) *Provider {
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
 			Hasher:                        cryptoProvider,
+			AppConfig:                     testutilApplicationConfigRetriever(false),
 		},
 	)
 	require.NoError(t, err, "Failed to create new Provider")
@@ -582,4 +597,16 @@ func testutilNewProviderWithCollectionConfig(
 		return nil, nil
 	}
 	return provider
+}
+
+//go:generate counterfeiter -o mock/application.go -fake-name Application . application
+
+type application interface {
+	channelconfig.Application
+}
+
+//go:generate counterfeiter -o mock/application_capabilitities.go -fake-name ApplicationCapabilities . applicationCapabilities
+
+type applicationCapabilities interface {
+	channelconfig.ApplicationCapabilities
 }

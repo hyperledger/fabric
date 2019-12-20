@@ -96,6 +96,13 @@ func TestApplicationPvtDataExperimental(t *testing.T) {
 	assert.True(t, ap.PrivateChannelData())
 }
 
+func TestV20CouchdbValidation(t *testing.T) {
+	ap := NewApplicationProvider(map[string]*cb.Capability{
+		ApplicationV20CouchdbValidation: {},
+	})
+	assert.True(t, ap.V20CouchdbValidation())
+}
+
 func TestHasCapability(t *testing.T) {
 	ap := NewApplicationProvider(map[string]*cb.Capability{})
 	assert.True(t, ap.HasCapability(ApplicationV1_1))
@@ -104,5 +111,6 @@ func TestHasCapability(t *testing.T) {
 	assert.True(t, ap.HasCapability(ApplicationV2_0))
 	assert.True(t, ap.HasCapability(ApplicationPvtDataExperimental))
 	assert.True(t, ap.HasCapability(ApplicationResourcesTreeExperimental))
+	assert.True(t, ap.HasCapability(ApplicationV20CouchdbValidation))
 	assert.False(t, ap.HasCapability("default"))
 }

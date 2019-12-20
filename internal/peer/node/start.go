@@ -433,6 +433,7 @@ func serve(args []string) error {
 			Config:                          ledgerConfig(),
 			Hasher:                          factory.GetDefault(),
 			EbMetadataProvider:              ebMetadataProvider,
+			AppConfig:                       peerInstance,
 		},
 	)
 

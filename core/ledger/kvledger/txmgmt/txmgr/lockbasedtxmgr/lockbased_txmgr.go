@@ -43,6 +43,7 @@ type LockBasedTxMgr struct {
 	oldBlockCommit  sync.Mutex
 	current         *current
 	hasher          ledger.Hasher
+	appConfig       ledger.ApplicationConfigRetriever
 }
 
 type current struct {
@@ -69,6 +70,7 @@ func NewLockBasedTxMgr(
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 	hasher ledger.Hasher,
+	appConfig ledger.ApplicationConfigRetriever,
 ) (*LockBasedTxMgr, error) {
 
 	if hasher == nil {
@@ -82,6 +84,7 @@ func NewLockBasedTxMgr(
 		stateListeners: stateListeners,
 		ccInfoProvider: ccInfoProvider,
 		hasher:         hasher,
+		appConfig:      appConfig,
 	}
 	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(ledgerid, db, btlPolicy, bookkeepingProvider)
 	if err != nil {

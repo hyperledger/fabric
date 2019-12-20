@@ -116,6 +116,16 @@ type Capabilities struct {
 	v1_3ValidationReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	V20CouchdbValidationStub        func() bool
+	v20CouchdbValidationMutex       sync.RWMutex
+	v20CouchdbValidationArgsForCall []struct {
+	}
+	v20CouchdbValidationReturns struct {
+		result1 bool
+	}
+	v20CouchdbValidationReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	V2_0ValidationStub        func() bool
 	v2_0ValidationMutex       sync.RWMutex
 	v2_0ValidationArgsForCall []struct {
@@ -702,6 +712,58 @@ func (fake *Capabilities) V1_3ValidationReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
+func (fake *Capabilities) V20CouchdbValidation() bool {
+	fake.v20CouchdbValidationMutex.Lock()
+	ret, specificReturn := fake.v20CouchdbValidationReturnsOnCall[len(fake.v20CouchdbValidationArgsForCall)]
+	fake.v20CouchdbValidationArgsForCall = append(fake.v20CouchdbValidationArgsForCall, struct {
+	}{})
+	fake.recordInvocation("V20CouchdbValidation", []interface{}{})
+	fake.v20CouchdbValidationMutex.Unlock()
+	if fake.V20CouchdbValidationStub != nil {
+		return fake.V20CouchdbValidationStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.v20CouchdbValidationReturns
+	return fakeReturns.result1
+}
+
+func (fake *Capabilities) V20CouchdbValidationCallCount() int {
+	fake.v20CouchdbValidationMutex.RLock()
+	defer fake.v20CouchdbValidationMutex.RUnlock()
+	return len(fake.v20CouchdbValidationArgsForCall)
+}
+
+func (fake *Capabilities) V20CouchdbValidationCalls(stub func() bool) {
+	fake.v20CouchdbValidationMutex.Lock()
+	defer fake.v20CouchdbValidationMutex.Unlock()
+	fake.V20CouchdbValidationStub = stub
+}
+
+func (fake *Capabilities) V20CouchdbValidationReturns(result1 bool) {
+	fake.v20CouchdbValidationMutex.Lock()
+	defer fake.v20CouchdbValidationMutex.Unlock()
+	fake.V20CouchdbValidationStub = nil
+	fake.v20CouchdbValidationReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *Capabilities) V20CouchdbValidationReturnsOnCall(i int, result1 bool) {
+	fake.v20CouchdbValidationMutex.Lock()
+	defer fake.v20CouchdbValidationMutex.Unlock()
+	fake.V20CouchdbValidationStub = nil
+	if fake.v20CouchdbValidationReturnsOnCall == nil {
+		fake.v20CouchdbValidationReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.v20CouchdbValidationReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *Capabilities) V2_0Validation() bool {
 	fake.v2_0ValidationMutex.Lock()
 	ret, specificReturn := fake.v2_0ValidationReturnsOnCall[len(fake.v2_0ValidationArgsForCall)]
@@ -779,6 +841,8 @@ func (fake *Capabilities) Invocations() map[string][][]interface{} {
 	defer fake.v1_2ValidationMutex.RUnlock()
 	fake.v1_3ValidationMutex.RLock()
 	defer fake.v1_3ValidationMutex.RUnlock()
+	fake.v20CouchdbValidationMutex.RLock()
+	defer fake.v20CouchdbValidationMutex.RUnlock()
 	fake.v2_0ValidationMutex.RLock()
 	defer fake.v2_0ValidationMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

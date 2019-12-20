@@ -56,6 +56,7 @@ func newEnv(t *testing.T) *env {
 		EbMetadataProvider: &externalbuilder.MetadataProvider{
 			DurablePath: "testdata",
 		},
+		AppConfig: testutilApplicationConfigRetriever(true),
 	})
 }
 

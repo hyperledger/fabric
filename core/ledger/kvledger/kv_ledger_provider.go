@@ -317,6 +317,7 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		p.stats.ledgerStats(ledgerID),
 		p.initializer.CustomTxProcessors,
 		p.hasher,
+		p.initializer.AppConfig,
 	)
 	if err != nil {
 		return nil, err

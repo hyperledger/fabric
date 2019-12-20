@@ -53,6 +53,7 @@ type Initializer struct {
 	Config                          *ledger.Config
 	Hasher                          ledger.Hasher
 	EbMetadataProvider              MetadataProvider
+	AppConfig                       ledger.ApplicationConfigRetriever
 }
 
 // NewLedgerMgr creates a new LedgerMgr
@@ -73,6 +74,7 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 			Config:                          initializer.Config,
 			CustomTxProcessors:              initializer.CustomTxProcessors,
 			Hasher:                          initializer.Hasher,
+			AppConfig:                       initializer.AppConfig,
 		},
 	)
 	if err != nil {

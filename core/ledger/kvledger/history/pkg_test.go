@@ -14,7 +14,9 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
+	kvlmock "github.com/hyperledger/fabric/core/ledger/kvledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
@@ -61,6 +63,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		&mock.DeployedChaincodeInfoProvider{},
 		nil,
 		cryptoProvider,
+		testutilApplicationConfigRetriever(false),
 	)
 
 	assert.NoError(t, err)
@@ -79,6 +82,16 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		testHistoryDB,
 		testHistoryDBPath,
 	}
+}
+
+func testutilApplicationConfigRetriever(couchdbValidation bool) ledger.ApplicationConfigRetriever {
+	fakeAppCapabilities := &kvlmock.ApplicationCapabilities{}
+	fakeAppCapabilities.V20CouchdbValidationReturns(couchdbValidation)
+	fakeApp := &kvlmock.Application{}
+	fakeApp.CapabilitiesReturns(fakeAppCapabilities)
+	fakeAppConfig := &mock.ApplicationConfigRetriever{}
+	fakeAppConfig.GetApplicationConfigReturns(fakeApp, true)
+	return fakeAppConfig
 }
 
 func (env *levelDBLockBasedHistoryEnv) cleanup() {

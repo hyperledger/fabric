@@ -177,6 +177,20 @@ func (_m *ApplicationCapabilities) V1_3Validation() bool {
 	return r0
 }
 
+// V20CouchdbValidation provides a mock function with given fields:
+func (_m *ApplicationCapabilities) V20CouchdbValidation() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // V2_0Validation provides a mock function with given fields:
 func (_m *ApplicationCapabilities) V2_0Validation() bool {
 	ret := _m.Called()

@@ -61,6 +61,7 @@ func newKVLedger(
 	stats *ledgerStats,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 	hasher ledger.Hasher,
+	appConfig ledger.ApplicationConfigRetriever,
 ) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	// Create a kvLedger for this chain/ledger, which encapsulates the underlying
@@ -77,6 +78,7 @@ func newKVLedger(
 		ccInfoProvider,
 		customTxProcessors,
 		hasher,
+		appConfig,
 	); err != nil {
 		return nil, err
 	}
@@ -118,6 +120,7 @@ func (l *kvLedger) initTxMgr(
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
 	customtxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 	hasher ledger.Hasher,
+	appConfig ledger.ApplicationConfigRetriever,
 ) error {
 	var err error
 	txmgr, err := lockbasedtxmgr.NewLockBasedTxMgr(
@@ -129,6 +132,7 @@ func (l *kvLedger) initTxMgr(
 		ccInfoProvider,
 		customtxProcessors,
 		hasher,
+		appConfig,
 	)
 	if err != nil {
 		return err

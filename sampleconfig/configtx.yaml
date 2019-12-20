@@ -124,6 +124,10 @@ Capabilities:
         # Prior to enabling V2.0 orderer capabilities, ensure that all
         # orderers on a channel are at v2.0.0 or later.
         V2_0: true
+        # V2_0_COUCHDB_VALIDATION application capability enforces the CouchDB requirements
+        # on JSON document keys regardless of the state database type.
+        # Refer to CouchDB as the State Database document for the requirement details.
+        V2_0_COUCHDB_VALIDATION: false
 
 ################################################################################
 #

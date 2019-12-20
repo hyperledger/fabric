@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
+	kvlmock "github.com/hyperledger/fabric/core/ledger/kvledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -46,7 +47,7 @@ type testEnv interface {
 	getName() string
 	getTxMgr() txmgr.TxMgr
 	getVDB() privacyenabledstate.DB
-	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
+	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy, couchdbValidation bool)
 	stopExternalResource()
 }
 
@@ -83,7 +84,7 @@ func (env *lockBasedEnv) getName() string {
 	return env.name
 }
 
-func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy) {
+func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy, couchdbValidation bool) {
 	var err error
 	env.t = t
 	if env.dbInitialized == false {
@@ -107,6 +108,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 		&mock.DeployedChaincodeInfoProvider{},
 		nil,
 		cryptoProvider,
+		testutilApplicationConfigRetriever(couchdbValidation),
 	)
 	assert.NoError(t, err)
 
@@ -215,6 +217,16 @@ func testutilPopulateDB(
 		updates.HashUpdates.Put(ns, p.coll, util.ComputeStringHash(p.key), util.ComputeHash(p.value), version)
 	}
 	txMgr.db.ApplyPrivacyAwareUpdates(updates, version)
+}
+
+func testutilApplicationConfigRetriever(couchdbValidation bool) ledger.ApplicationConfigRetriever {
+	fakeAppCapabilities := &kvlmock.ApplicationCapabilities{}
+	fakeAppCapabilities.V20CouchdbValidationReturns(couchdbValidation)
+	fakeApp := &kvlmock.Application{}
+	fakeApp.CapabilitiesReturns(fakeAppCapabilities)
+	fakeAppConfig := &mock.ApplicationConfigRetriever{}
+	fakeAppConfig.GetApplicationConfigReturns(fakeApp, true)
+	return fakeAppConfig
 }
 
 type testutilPvtdata struct {

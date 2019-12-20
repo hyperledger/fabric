@@ -670,3 +670,7 @@ func (ds *dynamicCapabilities) V1_3Validation() bool {
 func (ds *dynamicCapabilities) V2_0Validation() bool {
 	return ds.cr.Capabilities().V2_0Validation()
 }
+
+func (ds *dynamicCapabilities) V20CouchdbValidation() bool {
+	return ds.cr.Capabilities().V20CouchdbValidation()
+}

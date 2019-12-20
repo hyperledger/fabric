@@ -33,6 +33,9 @@ const (
 
 	// ApplicationResourcesTreeExperimental is the capabilties string for private data using the experimental feature of collections/sideDB.
 	ApplicationResourcesTreeExperimental = "V1_1_RESOURCETREE_EXPERIMENTAL"
+
+	// ApplicationV20CouchdbValidation is the capability string to enforce CouchDB requirements on statedb keys and values
+	ApplicationV20CouchdbValidation = "V2_0_COUCHDB_VALIDATION"
 )
 
 // ApplicationProvider provides capabilities information for application level config.
@@ -44,6 +47,7 @@ type ApplicationProvider struct {
 	v142                   bool
 	v20                    bool
 	v11PvtDataExperimental bool
+	v20CouchdbValidation   bool
 }
 
 // NewApplicationProvider creates a application capabilities provider.
@@ -56,6 +60,7 @@ func NewApplicationProvider(capabilities map[string]*cb.Capability) *Application
 	_, ap.v142 = capabilities[ApplicationV1_4_2]
 	_, ap.v20 = capabilities[ApplicationV2_0]
 	_, ap.v11PvtDataExperimental = capabilities[ApplicationPvtDataExperimental]
+	_, ap.v20CouchdbValidation = capabilities[ApplicationV20CouchdbValidation]
 	return ap
 }
 
@@ -139,6 +144,11 @@ func (ap *ApplicationProvider) StorePvtDataOfInvalidTx() bool {
 	return ap.v142 || ap.v20
 }
 
+// V20CouchdbValidation returns true if couchdb key/value validation is required.
+func (ap *ApplicationProvider) V20CouchdbValidation() bool {
+	return ap.v20CouchdbValidation
+}
+
 // HasCapability returns true if the capability is supported by this binary.
 func (ap *ApplicationProvider) HasCapability(capability string) bool {
 	switch capability {
@@ -156,6 +166,8 @@ func (ap *ApplicationProvider) HasCapability(capability string) bool {
 	case ApplicationPvtDataExperimental:
 		return true
 	case ApplicationResourcesTreeExperimental:
+		return true
+	case ApplicationV20CouchdbValidation:
 		return true
 	default:
 		return false

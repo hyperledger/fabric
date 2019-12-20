@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
+	kvlmock "github.com/hyperledger/fabric/core/ledger/kvledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 )
@@ -42,5 +43,16 @@ func NewInitializer(testLedgerDir string) *ledgermgmt.Initializer {
 		MetricsProvider:               &disabled.Provider{},
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 		Hasher:                        cryptoProvider,
+		AppConfig:                     testutilApplicationConfigRetriever(false),
 	}
+}
+
+func testutilApplicationConfigRetriever(couchdbValidation bool) ledger.ApplicationConfigRetriever {
+	fakeAppCapabilities := &kvlmock.ApplicationCapabilities{}
+	fakeAppCapabilities.V20CouchdbValidationReturns(couchdbValidation)
+	fakeApp := &kvlmock.Application{}
+	fakeApp.CapabilitiesReturns(fakeAppCapabilities)
+	fakeAppConfig := &mock.ApplicationConfigRetriever{}
+	fakeAppConfig.GetApplicationConfigReturns(fakeApp, true)
+	return fakeAppConfig
 }

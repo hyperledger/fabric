@@ -19,7 +19,10 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/ledger"
+	kvlmock "github.com/hyperledger/fabric/core/ledger/kvledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/tests/fakes"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/protoutil"
@@ -245,4 +248,14 @@ func dropCouchDBs(t *testing.T, couchdbConfig *couchdb.Config) {
 		require.NoError(t, err)
 		require.True(t, response.Ok)
 	}
+}
+
+func testutilApplicationConfigRetriever(couchdbValidation bool) ledger.ApplicationConfigRetriever {
+	fakeAppCapabilities := &kvlmock.ApplicationCapabilities{}
+	fakeAppCapabilities.V20CouchdbValidationReturns(couchdbValidation)
+	fakeApp := &kvlmock.Application{}
+	fakeApp.CapabilitiesReturns(fakeAppCapabilities)
+	fakeAppConfig := &mock.ApplicationConfigRetriever{}
+	fakeAppConfig.GetApplicationConfigReturns(fakeApp, true)
+	return fakeAppConfig
 }

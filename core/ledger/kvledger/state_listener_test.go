@@ -37,6 +37,7 @@ func TestStateListener(t *testing.T) {
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
 			Hasher:                        cryptoProvider,
+			AppConfig:                     testutilApplicationConfigRetriever(true),
 		},
 	)
 	if err != nil {

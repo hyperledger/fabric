@@ -352,11 +352,7 @@ func (vdb *VersionedDB) GetCachedVersion(namespace string, key string) (*version
 
 // ValidateKeyValue implements method in VersionedDB interface
 func (vdb *VersionedDB) ValidateKeyValue(key string, value []byte) error {
-	err := validateKey(key)
-	if err != nil {
-		return err
-	}
-	return validateValue(value)
+	return ValidateKeyValue(key, value)
 }
 
 // BytesKeySupported implements method in VersionvdbedDB interface
@@ -441,6 +437,15 @@ func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // endKey is exclusive
 func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
 	return vdb.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, nil)
+}
+
+// ValidateKeyValue validates the key/value pair meet couchdb requirements
+func ValidateKeyValue(key string, value []byte) error {
+	err := validateKey(key)
+	if err != nil {
+		return err
+	}
+	return validateValue(value)
 }
 
 const optionBookmark = "bookmark"

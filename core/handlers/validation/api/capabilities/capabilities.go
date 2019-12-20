@@ -59,4 +59,7 @@ type Capabilities interface {
 	// KeyLevelEndorsement returns true if this channel supports endorsement
 	// policies expressible at a ledger key granularity, as described in FAB-8812
 	KeyLevelEndorsement() bool
+
+	// V20CouchdbValidation returns true if couchdb key/value validation is required.
+	V20CouchdbValidation() bool
 }

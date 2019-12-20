@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
@@ -32,6 +33,7 @@ type Initializer struct {
 	Config                          *Config
 	CustomTxProcessors              map[common.HeaderType]CustomTxProcessor
 	Hasher                          Hasher
+	AppConfig                       ApplicationConfigRetriever
 }
 
 // Config is a structure used to configure a ledger provider.
@@ -629,6 +631,13 @@ type ChaincodeLifecycleEventProvider interface {
 	RegisterListener(channelID string, listener ChaincodeLifecycleEventListener)
 }
 
+// ApplicationConfigRetriever retrieves the application configuration for a channel
+type ApplicationConfigRetriever interface {
+	// GetApplicationConfig returns the channelconfig.Application for the channel
+	// and whether the Application config exists
+	GetApplicationConfig(cid string) (channelconfig.Application, bool)
+}
+
 // CustomTxProcessor allows to generate simulation results during commit time for custom transactions.
 // A custom processor may represent the information in a propriety fashion and can use this process to translate
 // the information into the form of `TxSimulationResults`. Because, the original information is signed in a
@@ -667,3 +676,4 @@ type Hasher interface {
 //go:generate counterfeiter -o mock/cc_event_listener.go -fake-name ChaincodeLifecycleEventListener . ChaincodeLifecycleEventListener
 //go:generate counterfeiter -o mock/custom_tx_processor.go -fake-name CustomTxProcessor . CustomTxProcessor
 //go:generate counterfeiter -o mock/cc_event_provider.go -fake-name ChaincodeLifecycleEventProvider . ChaincodeLifecycleEventProvider
+//go:generate counterfeiter -o mock/app_config_retriever.go -fake-name ApplicationConfigRetriever . ApplicationConfigRetriever

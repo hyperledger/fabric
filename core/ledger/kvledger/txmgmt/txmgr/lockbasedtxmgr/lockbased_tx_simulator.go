@@ -11,6 +11,7 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/pkg/errors"
 )
@@ -23,13 +24,25 @@ type lockBasedTxSimulator struct {
 	pvtdataQueriesPerformed   bool
 	simulationResultsComputed bool
 	paginatedQueriesPerformed bool
+	couchdbValidation         bool
 }
 
 func newLockBasedTxSimulator(txmgr *LockBasedTxMgr, txid string, hasher ledger.Hasher) (*lockBasedTxSimulator, error) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	helper := newQueryHelper(txmgr, rwsetBuilder, true, hasher)
+
+	couchdbValidation := false
+	ac, exists := txmgr.appConfig.GetApplicationConfig(txmgr.ledgerid)
+	if !exists {
+		// Note: It may not be an error because when joining a channel, application config does not exist as expected.
+		// Alternatively, we can get capability in checkWritePrecondition when namespace is known.
+		// but it is less efficient because it may be called multiple times within a tx.
+		logger.Warnf("application config does not exist for channel %s", txmgr.ledgerid)
+	} else {
+		couchdbValidation = ac.Capabilities().V20CouchdbValidation()
+	}
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
-	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false, false, false}, nil
+	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false, false, false, couchdbValidation}, nil
 }
 
 // SetState implements method in interface `ledger.TxSimulator`
@@ -177,6 +190,15 @@ func (s *lockBasedTxSimulator) checkWritePrecondition(key string, value []byte) 
 		return err
 	}
 	s.writePerformed = true
+
+	// always perform couchdb validation when couchdbValidation is true
+	if s.couchdbValidation {
+		if err := statecouchdb.ValidateKeyValue(key, value); err != nil {
+			return err
+		}
+		return nil
+	}
+	// delegate to statedb for validation when couchdbValidation is false
 	if err := s.helper.txmgr.db.ValidateKeyValue(key, value); err != nil {
 		return err
 	}
