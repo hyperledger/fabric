@@ -162,7 +162,7 @@ func (msp *bccspmsp) validateIdentityOUsV1(id *identity) error {
 			if len(id.GetOrganizationalUnits()) == 0 {
 				return errors.New("the identity certificate does not contain an Organizational Unit (OU)")
 			}
-			return errors.Errorf("none of the identity's organizational units [%v] are in MSP %s", id.GetOrganizationalUnits(), msp.name)
+			return errors.Errorf("none of the identity's organizational units %s are in MSP %s", OUIDs(id.GetOrganizationalUnits()), msp.name)
 		}
 	}
 
@@ -202,7 +202,7 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 		// Yes. Then, enforce the certifiers identifier is this is specified.
 		// It is not specified, it means that any certification path is fine.
 		if len(nodeOU.CertifiersIdentifier) != 0 && !bytes.Equal(nodeOU.CertifiersIdentifier, OU.CertifiersIdentifier) {
-			return errors.Errorf("certifiersIdentifier does not match: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+			return errors.Errorf("certifiersIdentifier does not match: %v, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
 		}
 		counter++
 		if counter > 1 {
@@ -210,7 +210,7 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 		}
 	}
 	if counter != 1 {
-		return errors.Errorf("the identity must be a client or a peer identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+		return errors.Errorf("the identity must be a client or a peer identity to be valid, not a combination of them. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
 	}
 
 	return nil
@@ -256,7 +256,7 @@ func (msp *bccspmsp) validateIdentityOUsV142(id *identity) error {
 		// Yes. Then, enforce the certifiers identifier in this is specified.
 		// If is not specified, it means that any certification path is fine.
 		if len(nodeOU.CertifiersIdentifier) != 0 && !bytes.Equal(nodeOU.CertifiersIdentifier, OU.CertifiersIdentifier) {
-			return errors.Errorf("certifiersIdentifier does not match: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+			return errors.Errorf("certifiersIdentifier does not match: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
 		}
 		counter++
 		if counter > 1 {
@@ -264,7 +264,7 @@ func (msp *bccspmsp) validateIdentityOUsV142(id *identity) error {
 		}
 	}
 	if counter != 1 {
-		return errors.Errorf("the identity must be a client, a peer, an orderer or an admin identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+		return errors.Errorf("the identity must be a client, a peer, an orderer or an admin identity to be valid, not a combination of them. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
 	}
 
 	return nil

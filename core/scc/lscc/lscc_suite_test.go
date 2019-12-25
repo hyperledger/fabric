@@ -23,7 +23,7 @@ type chaincodeBuilder interface {
 	lscc.ChaincodeBuilder
 }
 
-//go:generate counterfeiter -o mock/sysccprovider.go --fake-name SystemChaincodeProvider . systemChaincodeProvider
+//go:generate counterfeiter -o mock/system_chaincode_provider.go --fake-name SystemChaincodeProvider . systemChaincodeProvider
 type systemChaincodeProvider interface {
 	sysccprovider.SystemChaincodeProvider
 }

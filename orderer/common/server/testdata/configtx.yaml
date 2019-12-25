@@ -8,7 +8,7 @@ Organizations:
     - &SampleOrg
         Name: SampleOrg
         ID: SampleOrg
-        MSPDir: example.com/msp
+        MSPDir: crypto/ordererOrganizations/example.com/msp
         Policies: &SampleOrgPolicies
             Readers:
                 Type: Signature
@@ -79,8 +79,8 @@ Orderer: &OrdererDefaults
         Consenters:
             - Host: raft0.example.com
               Port: 7050
-              ClientTLSCert: example.com/tls/server.crt
-              ServerTLSCert: example.com/tls/server.crt
+              ClientTLSCert: crypto/ordererOrganizations/example.com/orderers/127.0.0.1.example.com/tls/server.crt
+              ServerTLSCert: crypto/ordererOrganizations/example.com/orderers/127.0.0.1.example.com/tls/server.crt
     Organizations:
     Policies:
         Readers:

@@ -10,8 +10,8 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 
-	"github.com/hyperledger/fabric-amcl/amcl"
-	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
+	amcl "github.com/hyperledger/fabric-amcl/core"
+	"github.com/hyperledger/fabric-amcl/core/FP256BN"
 	"github.com/pkg/errors"
 )
 
@@ -68,7 +68,10 @@ func EcpToBytes(E *FP256BN.ECP) []byte {
 }
 func appendBytesG2(data []byte, index int, E *FP256BN.ECP2) int {
 	length := 4 * FieldBytes
-	E.ToBytes(data[index : index+length])
+	bytes := make([]byte, length+1)
+	E.ToBytes(bytes, false)
+	// need to strip first byte as ToBytes now adds an extra byte for type
+	copy(data[index:index+length], bytes[1:])
 	return index + length
 }
 func appendBytesBig(data []byte, index int, B *FP256BN.BIG) int {

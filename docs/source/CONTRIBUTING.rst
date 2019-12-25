@@ -229,7 +229,8 @@ Submitting your fix
 
 If you just submitted a JIRA for a bug you've discovered, and would like to
 provide a fix, we would welcome that gladly! Please assign the JIRA issue to
-yourself, then you can submit a pull request (PR).
+yourself, then submit a pull request (PR). Please refer to :doc:`github/github`
+for a detailed workflow.
 
 Fixing issues and working stories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -290,7 +291,7 @@ hours (3 days), it will be flagged to the #fabric-pr-review channel daily until
 it receives a review comment(s).
 
 This policy applies to all official Fabric projects (fabric, fabric-ca,
-fabric-samples, fabric-test, fabric-sdk-node, fabric-sdk-java,
+fabric-samples, fabric-test, fabric-sdk-node, fabric-sdk-java, fabric-gateway-java,
 fabric-chaincode-node, fabric-chaincode-java, fabric-chaincode-evm,
 fabric-baseimage, and fabric-amcl).
 

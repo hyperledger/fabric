@@ -26,14 +26,14 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/mocks/config"
-	mscc "github.com/hyperledger/fabric/common/mocks/scc"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -50,6 +50,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+//go:generate counterfeiter -o mock/application.go -fake-name Application . application
+
+type application interface {
+	channelconfig.Application
+}
+
+//go:generate counterfeiter -o mock/application_capabilities.go -fake-name ApplicationCapabilities . applicationCapabilities
+
+type applicationCapabilities interface {
+	channelconfig.ApplicationCapabilities
+}
 
 // create a valid SignaturePolicyEnvelope to be used in tests
 var testPolicyEnvelope = &common.SignaturePolicyEnvelope{
@@ -262,21 +274,19 @@ func testInstall(t *testing.T, ccname string, version string, path string, creat
 
 func TestNewLifecycleEnabled(t *testing.T) {
 	// Enable PrivateChannelData
-	mocksccProvider := (&mscc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{
-				LifecycleV20Rv: true,
-			},
-		},
-	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
-
+	capabilities := &mock.ApplicationCapabilities{}
+	capabilities.LifecycleV20Returns(true)
+	application := &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
+	sccProvider := &mock.SystemChaincodeProvider{}
+	sccProvider.GetApplicationConfigReturns(application, true)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
+
 	scc := &SCC{
 		BuiltinSCCs:      map[string]struct{}{"lscc": {}},
 		Support:          &SupportImpl{GetMSPIDs: getMSPIDs},
-		SCCProvider:      mocksccProvider,
+		SCCProvider:      sccProvider,
 		ACLProvider:      mockAclProvider,
 		GetMSPIDs:        getMSPIDs,
 		BCCSP:            cryptoProvider,
@@ -387,19 +397,17 @@ func TestDeploy(t *testing.T) {
 	testDeploy(t, "example02", "1.0", path, false, false, true, PrivateChannelDataNotAvailable("").Error(), scc, stub, []byte("collections"))
 
 	// Enable PrivateChannelData
-	mocksccProvider := (&mscc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{
-				PrivateChannelDataRv: true,
-			},
-		},
-	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+	capabilities := &mock.ApplicationCapabilities{}
+	capabilities.PrivateChannelDataReturns(true)
+	application := &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
+	sccProvider := &mock.SystemChaincodeProvider{}
+	sccProvider.GetApplicationConfigReturns(application, true)
 
 	scc = &SCC{
 		BuiltinSCCs:      map[string]struct{}{"lscc": {}},
 		Support:          &MockSupport{},
-		SCCProvider:      mocksccProvider,
+		SCCProvider:      sccProvider,
 		ACLProvider:      mockAclProvider,
 		GetMSPIDs:        getMSPIDs,
 		BCCSP:            cryptoProvider,
@@ -434,7 +442,7 @@ func TestDeploy(t *testing.T) {
 	scc = &SCC{
 		BuiltinSCCs:      map[string]struct{}{"lscc": {}},
 		Support:          &MockSupport{},
-		SCCProvider:      mocksccProvider,
+		SCCProvider:      sccProvider,
 		ACLProvider:      mockAclProvider,
 		GetMSPIDs:        getMSPIDs,
 		BCCSP:            cryptoProvider,
@@ -458,7 +466,7 @@ func TestDeploy(t *testing.T) {
 	scc = &SCC{
 		BuiltinSCCs:      map[string]struct{}{"lscc": {}},
 		Support:          &MockSupport{},
-		SCCProvider:      mocksccProvider,
+		SCCProvider:      sccProvider,
 		ACLProvider:      mockAclProvider,
 		GetMSPIDs:        getMSPIDs,
 		BCCSP:            cryptoProvider,
@@ -702,19 +710,17 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example02", "1", path, "barf", scc, stub, nil)
 
 	// Enable PrivateChannelData
-	mocksccProvider := (&mscc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{
-				PrivateChannelDataRv: true,
-			},
-		},
-	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+	capabilities := &mock.ApplicationCapabilities{}
+	capabilities.PrivateChannelDataReturns(true)
+	application := &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
+	sccProvider := &mock.SystemChaincodeProvider{}
+	sccProvider.GetApplicationConfigReturns(application, true)
 
 	scc = &SCC{
 		BuiltinSCCs:      map[string]struct{}{"lscc": {}},
 		Support:          &MockSupport{},
-		SCCProvider:      mocksccProvider,
+		SCCProvider:      sccProvider,
 		ACLProvider:      mockAclProvider,
 		GetMSPIDs:        getMSPIDs,
 		BCCSP:            cryptoProvider,
@@ -742,20 +748,18 @@ func TestUpgrade(t *testing.T) {
 	testUpgrade(t, "example02", "0", "example02", "1", path, expectedErrorMsg, scc, stub, ccpBytes)
 
 	// Enable PrivateChannelData and V1_2Validation
-	mocksccProvider = (&mscc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{
-				PrivateChannelDataRv: true,
-				CollectionUpgradeRv:  true,
-			},
-		},
-	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+	capabilities = &mock.ApplicationCapabilities{}
+	capabilities.CollectionUpgradeReturns(true)
+	capabilities.PrivateChannelDataReturns(true)
+	application = &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
+	sccProvider = &mock.SystemChaincodeProvider{}
+	sccProvider.GetApplicationConfigReturns(application, true)
 
 	scc = &SCC{
 		BuiltinSCCs:      map[string]struct{}{"lscc": {}},
 		Support:          &MockSupport{},
-		SCCProvider:      mocksccProvider,
+		SCCProvider:      sccProvider,
 		ACLProvider:      mockAclProvider,
 		GetMSPIDs:        getMSPIDs,
 		BCCSP:            cryptoProvider,
@@ -777,7 +781,7 @@ func TestUpgrade(t *testing.T) {
 	scc = &SCC{
 		BuiltinSCCs:      map[string]struct{}{"lscc": {}},
 		Support:          &MockSupport{},
-		SCCProvider:      mocksccProvider,
+		SCCProvider:      sccProvider,
 		ACLProvider:      mockAclProvider,
 		GetMSPIDs:        getMSPIDs,
 		BCCSP:            cryptoProvider,
@@ -1502,13 +1506,13 @@ var id msp.SigningIdentity
 var channelID = "testchannelid"
 var mockAclProvider *mocks.MockACLProvider
 
-func NewMockProvider() *mscc.MocksccProviderImpl {
-	return (&mscc.MocksccProviderFactory{
-		ApplicationConfigBool: true,
-		ApplicationConfigRv: &config.MockApplication{
-			CapabilitiesRv: &config.MockApplicationCapabilities{},
-		},
-	}).NewSystemChaincodeProvider().(*mscc.MocksccProviderImpl)
+func NewMockProvider() sysccprovider.SystemChaincodeProvider {
+	capabilities := &mock.ApplicationCapabilities{}
+	application := &mock.Application{}
+	application.CapabilitiesReturns(capabilities)
+	sccProvider := &mock.SystemChaincodeProvider{}
+	sccProvider.GetApplicationConfigReturns(application, true)
+	return sccProvider
 }
 
 func TestMain(m *testing.M) {

@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -23,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/tests/fakes"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
-	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
@@ -231,21 +229,6 @@ func setBlockFlagsToValid(block *common.Block) {
 	protoutil.InitBlockMetadata(block)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		lutils.NewTxValidationFlagsSetValue(len(block.Data.Data), protopeer.TxValidationCode_VALID)
-}
-
-func couchDBSetup(t *testing.T, couchdbMountDir string, localdHostDir string) (addr string, cleanup func()) {
-	couchDB := &runner.CouchDB{
-		Name: "ledger13_upgrade_test",
-		Binds: []string{
-			fmt.Sprintf("%s:%s", couchdbMountDir, "/opt/couchdb/data"),
-			fmt.Sprintf("%s:%s", localdHostDir, "/opt/couchdb/etc/local.d"),
-		},
-	}
-	err := couchDB.Start()
-	require.NoError(t, err)
-	return couchDB.Address(), func() {
-		couchDB.Stop()
-	}
 }
 
 func dropCouchDBs(t *testing.T, couchdbConfig *couchdb.Config) {

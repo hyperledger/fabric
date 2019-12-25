@@ -15,5 +15,5 @@ for image in baseos peer orderer ccenv tools; do
   docker push "hyperledger/fabric-${image}:amd64-${RELEASE}"
 
   ./manifest-tool push from-args --platforms linux/amd64 --template "hyperledger/fabric-${image}:amd64-${RELEASE}" --target "hyperledger/fabric-${image}:${RELEASE}"
-  ./manifest-tool push from-args --platforms linux/amd64 --template "hyperledger/fabric-${image}:amd64-${RELEASE}" --target "hyperledger/fabric-${image}:$(sed 's/..$//' <<< ${RELEASE})"
+  ./manifest-tool push from-args --platforms linux/amd64 --template "hyperledger/fabric-${image}:amd64-${RELEASE}" --target "hyperledger/fabric-${image}:${TWO_DIGIT_RELEASE}"
 done

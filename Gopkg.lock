@@ -370,14 +370,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b1c26a7393cb28a859e794f8eb364f5bae72ad9762e301325c50c7fa43544667"
+  digest = "1:0606c84c601a8974f4a830bfd9b7777bff894e0ce8adb27771df627301fac210"
   name = "github.com/hyperledger/fabric-amcl"
   packages = [
-    "amcl",
-    "amcl/FP256BN",
+    "core",
+    "core/FP256BN",
   ]
   pruneopts = "NUT"
-  revision = "5ccba6eab8d6b39aa2cdd88db202bba0e25da5d7"
+  revision = "4cd1fa8b40d1e8f6a747f2d19fdb49d2376d1693"
 
 [[projects]]
   branch = "master"
@@ -1060,8 +1060,8 @@
     "github.com/gorilla/mux",
     "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/hashicorp/go-version",
-    "github.com/hyperledger/fabric-amcl/amcl",
-    "github.com/hyperledger/fabric-amcl/amcl/FP256BN",
+    "github.com/hyperledger/fabric-amcl/core",
+    "github.com/hyperledger/fabric-amcl/core/FP256BN",
     "github.com/hyperledger/fabric-chaincode-go/pkg/statebased",
     "github.com/hyperledger/fabric-chaincode-go/shim",
     "github.com/hyperledger/fabric-chaincode-go/shimtest",

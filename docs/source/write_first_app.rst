@@ -93,9 +93,9 @@ Launch the network
 
           This tutorial demonstrates the JavaScript versions of the ``FabCar``
           smart contract and application, but the ``fabric-samples`` repo also
-          contains Java and TypeScript versions of this sample. To try the
-          Java or TypeScript versions, change the ``javascript`` argument
-          for ``./startFabric.sh`` below to either ``java`` or ``typescript``
+          contains Go, Java and TypeScript versions of this sample. To try the
+          Go, Java or TypeScript versions, change the ``javascript`` argument
+          for ``./startFabric.sh`` below to either ``go``, ``java`` or ``typescript``
           and follow the instructions written to the terminal.
 
 Launch your network using the ``startFabric.sh`` shell script. This command will

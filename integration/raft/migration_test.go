@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	protosraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -34,13 +35,12 @@ import (
 
 var _ = Describe("Kafka2RaftMigration", func() {
 	var (
-		testDir   string
-		client    *docker.Client
-		network   *nwo.Network
-		chaincode nwo.Chaincode
+		testDir string
+		client  *docker.Client
+		network *nwo.Network
 
 		process                ifrit.Process
-		peerProc, brokerProc   ifrit.Process
+		brokerProc             ifrit.Process
 		o1Proc, o2Proc, o3Proc ifrit.Process
 
 		o1Runner, o2Runner, o3Runner *ginkgomon.Runner
@@ -53,30 +53,12 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
-
-		chaincode = nwo.Chaincode{
-			Name:            "mycc",
-			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
-			Lang:            "binary",
-			PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
-			Ctor:            `{"Args":["init","a","100","b","200"]}`,
-			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
-			Sequence:        "1",
-			InitRequired:    true,
-			Label:           "my_prebuilt_chaincode",
-		}
 	})
 
 	AfterEach(func() {
 		if process != nil {
 			process.Signal(syscall.SIGTERM)
 			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-		}
-
-		if peerProc != nil {
-			peerProc.Signal(syscall.SIGTERM)
-			Eventually(peerProc.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 
 		for _, oProc := range []ifrit.Process{o1Proc, o2Proc, o3Proc} {
@@ -129,11 +111,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			raftMetadata = prepareRaftMetadata(network)
 
 			By("Create & join first channel, deploy and invoke chaincode")
-			network.CreateAndJoinChannel(orderer, channel1)
-			nwo.EnableCapabilities(network, channel1, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincode(network, channel1, orderer, chaincode)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 100)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 90)
+			network.CreateChannel(channel1, orderer, peer)
 		})
 
 		// This test executes the "green path" migration config updates on Kafka based system with a system channel
@@ -181,7 +159,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			By("2) Verify: Normal TX's on standard channel are blocked")
-			RunExpectQueryInvokeFail(network, orderer, peer, channel1, 80)
+			assertTxFailed(network, orderer, channel1)
 
 			//In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
 			By("2) Verify: delivery request from peer is blocked")
@@ -200,12 +178,9 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
 
 			By("3) Verify: create new channel, executing transaction")
-			network.CreateAndJoinChannel(orderer, channel2)
-			nwo.EnableCapabilities(network, channel2, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincode(network, channel2, orderer, chaincode, network.PeersWithChannel(channel2)...)
-			RunExpectQueryRetry(network, peer, channel2, 100)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 100)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 90)
+			network.CreateChannel(channel2, orderer, peer)
+
+			assertBlockCreation(network, orderer, peer, channel2, 1)
 
 			By("3) Verify: delivery request from peer is not blocked on new channel")
 			err = checkPeerDeliverRequest(orderer, peer, network, channel2)
@@ -227,7 +202,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("4) Verify: Normal TX's on standard channel are permitted again")
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 80)
+			assertBlockCreation(network, orderer, nil, channel1, 3)
 
 			//=== The green path ======================================================================================
 			//=== Step 5: Config update on system channel, MAINTENANCE, again ===
@@ -266,11 +241,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			By("6) Verify: Normal TX's on standard channel are blocked")
-			RunExpectQueryInvokeFail(network, orderer, peer, channel1, 70)
-
-			By("6) Verify: peers should not receive the config update on entry to maintenance, because deliver is blocked")
-			std1BlockNumFromPeer1 := nwo.CurrentConfigBlockNumber(network, peer, nil, channel1)
-			Expect(std1BlockNumFromPeer1).To(BeNumerically("<", std1EntryBlockNum))
+			assertTxFailed(network, orderer, channel1)
 
 			//=== Step 7: Config update on standard channel2, MAINTENANCE ===
 			By("7) Config update on standard channel2, State=MAINTENANCE, enter maintenance-mode again")
@@ -293,11 +264,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			By("7) Verify: Normal TX's on standard channel are blocked")
-			RunExpectQueryInvokeFail(network, orderer, peer, channel2, 80)
-
-			By("7) Verify: peers should not receive the config update on entry to maintenance, because deliver is blocked")
-			std2BlockNumFromPeer1 := nwo.CurrentConfigBlockNumber(network, peer, nil, channel2)
-			Expect(std2BlockNumFromPeer1).To(BeNumerically("<", std2EntryBlockNum))
+			assertTxFailed(network, orderer, channel2)
 
 			//=== Step 8: config update on system channel, State=MAINTENANCE, type=etcdraft ===
 			By("8) Config update on system channel, State=MAINTENANCE, type=etcdraft")
@@ -330,12 +297,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			By("9) Verify: Normal TX's on standard channel are blocked")
-			RunExpectQueryInvokeFail(network, orderer, peer, channel1, 70)
-
-			By("9) Verify: peers should not receive the config update on maintenance, because deliver is blocked")
-			std1BlockNumFromPeer2 := nwo.CurrentConfigBlockNumber(network, peer, nil, channel1)
-			Expect(std1BlockNumFromPeer2).To(BeNumerically("<", std1EntryBlockNum))
-			Expect(std1BlockNumFromPeer2).To(BeNumerically(">=", std1BlockNumFromPeer1))
+			assertTxFailed(network, orderer, channel1)
 
 			//=== Step 10: config update on standard channel2, State=MAINTENANCE, type=etcdraft ===
 			By("10) Config update on standard channel2, State=MAINTENANCE, type=etcdraft")
@@ -353,12 +315,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			By("10) Verify: Normal TX's on standard channel are blocked")
-			RunExpectQueryInvokeFail(network, orderer, peer, channel2, 80)
-
-			By("10) Verify: peers should not receive the config update on maintenance, because deliver is blocked")
-			std2BlockNumFromPeer2 := nwo.CurrentConfigBlockNumber(network, peer, nil, channel2)
-			Expect(std2BlockNumFromPeer2).To(BeNumerically("<", std2EntryBlockNum))
-			Expect(std2BlockNumFromPeer2).To(BeNumerically(">=", std2BlockNumFromPeer1))
+			assertTxFailed(network, orderer, channel2)
 		})
 
 		// This test executes the migration flow and checks that forbidden transitions are rejected.
@@ -551,8 +508,6 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			o2Runner = network.OrdererRunner(o2)
 			o3Runner = network.OrdererRunner(o3)
 
-			peerGroup := network.PeerGroupRunner()
-
 			o1Proc = ifrit.Invoke(o1Runner)
 			o2Proc = ifrit.Invoke(o2Runner)
 			o3Proc = ifrit.Invoke(o3Runner)
@@ -561,9 +516,6 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			peerProc = ifrit.Invoke(peerGroup)
-			Eventually(peerProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
 			raftMetadata = prepareRaftMetadata(network)
 
 			syschannel = network.SystemChannel.Name
@@ -571,11 +523,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			channel2 = "testchannel2"
 
 			By("Create & join first channel, deploy and invoke chaincode")
-			network.CreateAndJoinChannel(o1, channel1)
-			nwo.EnableCapabilities(network, channel1, "Application", "V2_0", o1, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincode(network, channel1, o1, chaincode)
-			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 100)
-			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 90)
+			network.CreateChannel(channel1, o1, peer)
 		})
 
 		// This test executes the "green path" migration config updates on Kafka based system
@@ -680,7 +628,8 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(exitCode).ToNot(Equal(0))
 
 			By("8) Standard channel still in maintenance, State=MAINTENANCE, normal TX's blocked, delivery to peers blocked")
-			RunExpectQueryInvokeFail(network, o1, peer, channel1, 80)
+			assertTxFailed(network, o1, channel1)
+
 			err = checkPeerDeliverRequest(o1, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
@@ -703,19 +652,19 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("10) Verify: standard channel config changed")
 			chan1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, o1, channel1)
 			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 2))
-			waitForBlockReceptionByPeer(peer, network, channel1, chan1BlockNum)
 
 			By("11) Executing transaction on standard channel with restarted orderer")
-			RunExpectQueryRetry(network, peer, channel1, 80)
-			RunExpectQueryInvokeQuery(network, o1, peer, channel1, 80)
+			assertBlockCreation(network, o1, peer, channel1, chan1StartBlockNum+3)
+			assertBlockCreation(network, o1, nil, channel1, chan1StartBlockNum+4)
 
 			By("12) Create new channel, executing transaction with restarted orderer")
-			network.CreateAndJoinChannel(o1, channel2)
-			nwo.EnableCapabilities(network, channel2, "Application", "V2_0", o1, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincode(network, channel2, o1, chaincode)
-			RunExpectQueryRetry(network, peer, channel2, 100)
-			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 100)
-			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 90)
+			network.CreateChannel(channel2, o1, peer)
+
+			chan2StartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, o1, channel2)
+			Expect(chan2StartBlockNum).ToNot(Equal(0))
+
+			assertBlockCreation(network, o1, peer, channel2, chan2StartBlockNum+1)
+			assertBlockCreation(network, o1, nil, channel2, chan2StartBlockNum+2)
 		})
 	})
 
@@ -742,11 +691,9 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Eventually(brokerProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			o1Runner = network.OrdererRunner(orderer)
-			peerGroup := network.PeerGroupRunner()
+
 			o1Proc = ifrit.Invoke(o1Runner)
 			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			peerProc = ifrit.Invoke(peerGroup)
-			Eventually(peerProc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			raftMetadata = prepareRaftMetadata(network)
 
@@ -755,11 +702,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			channel2 = "testchannel2"
 
 			By("Create & join first channel, deploy and invoke chaincode")
-			network.CreateAndJoinChannel(orderer, channel1)
-			nwo.EnableCapabilities(network, channel1, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincode(network, channel1, orderer, chaincode)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 100)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 90)
+			network.CreateChannel(channel1, orderer, peer)
 		})
 
 		It("executes bootstrap to raft - single node", func() {
@@ -825,6 +768,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			//=== Step 6: restart ===
 			By("6) restarting orderer1")
 			network.Consensus.Type = "etcdraft"
+
 			o1Runner = network.OrdererRunner(orderer)
 			o1Proc = ifrit.Invoke(o1Runner)
 
@@ -841,13 +785,15 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			)
 
 			Eventually(o1Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("7) System channel still in maintenance, State=MAINTENANCE, cannot create new channels")
 			exitCode := network.CreateChannelExitCode(channel2, orderer, peer)
 			Expect(exitCode).ToNot(Equal(0))
 
 			By("8) Standard channel still in maintenance, State=MAINTENANCE, normal TX's blocked, delivery to peers blocked")
-			RunExpectQueryInvokeFail(network, orderer, peer, channel1, 80)
+			assertTxFailed(network, orderer, channel1)
+
 			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
@@ -870,64 +816,77 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("10) Verify: standard channel config changed")
 			chan1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(chan1BlockNum).To(Equal(chan1StartBlockNum + 2))
-			waitForBlockReceptionByPeer(peer, network, channel1, chan1BlockNum)
 
 			By("11) Executing transaction on standard channel with restarted orderer")
-			RunExpectQueryRetry(network, peer, channel1, 80)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel1, 80)
+			assertBlockCreation(network, orderer, peer, channel1, chan1StartBlockNum+3)
+			assertBlockCreation(network, orderer, nil, channel1, chan1StartBlockNum+4)
 
 			By("12) Create new channel, executing transaction with restarted orderer")
-			network.CreateAndJoinChannel(orderer, channel2)
-			nwo.EnableCapabilities(network, channel2, "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
-			nwo.DeployChaincode(network, channel2, orderer, chaincode)
-			RunExpectQueryRetry(network, peer, channel2, 100)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 100)
-			RunExpectQueryInvokeQuery(network, orderer, peer, channel2, 90)
+			network.CreateChannel(channel2, orderer, peer)
+
+			assertBlockCreation(network, orderer, peer, channel2, 1)
+			assertBlockCreation(network, orderer, nil, channel2, 2)
+
+			By("13) Extending the network configuration to add a new orderer")
+			// Add another orderer
+			orderer2 := &nwo.Orderer{
+				Name:         "orderer2",
+				Organization: "OrdererOrg",
+			}
+			ports := nwo.Ports{}
+			for _, portName := range nwo.OrdererPortNames() {
+				ports[portName] = network.ReservePort()
+			}
+			network.PortsByOrdererID[orderer2.ID()] = ports
+			network.Orderers = append(network.Orderers, orderer2)
+			network.GenerateOrdererConfig(orderer2)
+			extendNetwork(network)
+
+			secondOrdererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderer2), "server.crt")
+			secondOrdererCertificate, err := ioutil.ReadFile(secondOrdererCertificatePath)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("14) Adding the second orderer to system channel")
+			addConsenter(network, peer, orderer, syschannel, etcdraft.Consenter{
+				ServerTlsCert: secondOrdererCertificate,
+				ClientTlsCert: secondOrdererCertificate,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderer2, nwo.ClusterPort)),
+			})
+
+			By("15) Obtaining the last config block from the orderer")
+			configBlock := nwo.GetConfigBlock(network, peer, orderer, syschannel)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("16) Waiting for the existing orderer to relinquish its leadership")
+			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("1 stepped down to follower since quorum is not active"))
+			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("No leader is present, cluster size is 2"))
+
+			By("17) Launching the second orderer")
+			o2Runner = network.OrdererRunner(orderer2)
+			o2Proc = ifrit.Invoke(o2Runner)
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
+
+			By("18) Adding orderer2 to channel2")
+			addConsenter(network, peer, orderer, channel2, etcdraft.Consenter{
+				ServerTlsCert: secondOrdererCertificate,
+				ClientTlsCert: secondOrdererCertificate,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderer2, nwo.ClusterPort)),
+			})
+
+			assertBlockReception(map[string]int{
+				syschannel: int(sysBlockNum + 2),
+				channel2:   int(nwo.CurrentConfigBlockNumber(network, peer, orderer, channel2)),
+			}, []*nwo.Orderer{orderer2}, peer, network)
+
+			By("19) Executing transaction against second orderer on channel2")
+			assertBlockCreation(network, orderer2, nil, channel2, 3)
 		})
 	})
 })
-
-func RunExpectQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, expect int) {
-	res := RunQuery(n, orderer, peer, channel)
-	Expect(res).To(Equal(expect))
-
-	RunInvoke(n, orderer, peer, channel)
-
-	res = RunQuery(n, orderer, peer, channel)
-	Expect(res).To(Equal(expect - 10))
-}
-
-func RunExpectQueryRetry(n *nwo.Network, peer *nwo.Peer, channel string, expect int) {
-	By("Querying the chaincode with retry")
-
-	Eventually(func() bool {
-		res := RunQuery(n, nil, peer, channel)
-		return res == expect
-	}, n.EventuallyTimeout, time.Second).Should(BeTrue())
-}
-
-func RunInvokeFail(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
-	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
-		ChannelID: channel,
-		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
-		Name:      "mycc",
-		Ctor:      `{"Args":["invoke","a","b","10"]}`,
-		PeerAddresses: []string{
-			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
-		},
-		WaitForEvent: true,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).ShouldNot(gexec.Exit(0))
-	Expect(sess.Err).NotTo(gbytes.Say("Chaincode invoke successful. result: status:200"))
-}
-
-func RunExpectQueryInvokeFail(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string, expect int) {
-	res := RunQuery(n, orderer, peer, channel)
-	Expect(res).To(Equal(expect))
-	RunInvokeFail(n, orderer, peer, channel)
-}
 
 func validateConsensusTypeValue(value *protosorderer.ConsensusType, cType string, state protosorderer.ConsensusType_State) {
 	Expect(value.Type).To(Equal(cType))
@@ -1074,13 +1033,6 @@ func prepareRaftMetadata(network *nwo.Network) []byte {
 	return raftMetadataBytes
 }
 
-func waitForBlockReceptionByPeer(peer *nwo.Peer, network *nwo.Network, channelName string, blockSeq uint64) {
-	Eventually(func() bool {
-		blockNumFromPeer := nwo.CurrentConfigBlockNumber(network, peer, nil, channelName)
-		return blockNumFromPeer == blockSeq
-	}, network.EventuallyTimeout, time.Second).Should(BeTrue())
-}
-
 func checkPeerDeliverRequest(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string) error {
 	c := commands.ChannelFetch{
 		ChannelID:  channelName,
@@ -1133,4 +1085,30 @@ func assertTransitionFailed(
 		fromConsensusType, fromMigState,
 		toConsensusType, toConsensusMetadata, toMigState)
 	updateOrdererConfigFailed(network, orderer, channel, current, updated, peer, orderer)
+}
+
+func assertBlockCreation(network *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer,
+	channelID string, blkNum uint64) {
+	var signer interface{}
+	signer = orderer
+	if peer != nil {
+		signer = peer
+	}
+	env := CreateBroadcastEnvelope(network, signer, channelID, []byte("hola"))
+	resp, err := nwo.Broadcast(network, orderer, env)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+	denv := CreateDeliverEnvelope(network, orderer, blkNum, channelID)
+	blk, err := nwo.Deliver(network, orderer, denv)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(blk).ToNot(BeNil())
+}
+
+func assertTxFailed(network *nwo.Network, orderer *nwo.Orderer, channelID string) {
+	env := CreateBroadcastEnvelope(network, orderer, channelID, []byte("hola"))
+	resp, err := nwo.Broadcast(network, orderer, env)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
+	Expect(resp.Info).To(Equal("normal transactions are rejected: maintenance mode"))
 }

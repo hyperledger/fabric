@@ -61,7 +61,7 @@ const { FileSystemWallet, Gateway } = require('fabric-network');
 ```
 
 You can read about the `fabric-network` classes in the
-[node SDK documentation](https://fabric-sdk-node.github.io/master/module-fabric-network.html), but for
+[node SDK documentation](https://hyperledger.github.io/fabric-sdk-node/master/module-fabric-network.html), but for
 now, let's see how they are used to connect MagnetoCorp's application to
 PaperNet. The application uses the Fabric **Wallet** class as follows:
 

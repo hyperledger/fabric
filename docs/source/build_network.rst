@@ -10,8 +10,7 @@ Building Your First Network
 
 The build your first network (BYFN) scenario provisions a sample Hyperledger
 Fabric network consisting of two organizations, each maintaining two peer
-nodes. It also will deploy a "Solo" ordering service by default, though other
-ordering service implementations are available.
+nodes. It also will deploy a Raft ordering service by default.
 
 Install prerequisites
 ---------------------
@@ -38,8 +37,8 @@ Want to run it now?
 
 We provide a fully annotated script --- ``byfn.sh`` --- that leverages these Docker
 images to quickly bootstrap a Hyperledger Fabric network that by default is
-comprised of four peers representing two different organizations, and an orderer
-node. It will also launch a container to run a scripted execution that will join
+comprised of four peers representing two different organizations, and a Raft ordering
+service. It will also launch a container to run a scripted execution that will join
 peers to a channel, deploy a chaincode and drive execution of transactions
 against the deployed chaincode.
 
@@ -60,8 +59,9 @@ Here's the help text for the ``byfn.sh`` script:
     -d <delay> - delay duration in seconds (defaults to 3)"
     -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)"
     -s <dbtype> - the database backend to use: goleveldb (default) or couchdb"
-    -l <language> - the chaincode language: golang (default), node, or java"
-    -o <consensus-type> - the consensus-type of the ordering service: solo (default), kafka, or etcdraft"
+    -l <language> - the chaincode language: golang (default), javascript, or java"
+    -a - launch certificate authorities (no certificate authorities are launched by default)
+    -n - do not deploy chaincode (abstore chaincode is deployed by default)
     -i <imagetag> - the tag to be used to launch the network (defaults to \"latest\")"
     -v - verbose mode"
   byfn.sh -h (print this message)"
@@ -72,7 +72,7 @@ Here's the help text for the ``byfn.sh`` script:
     byfn.sh generate -c mychannel"
     byfn.sh up -c mychannel -s couchdb"
     byfn.sh up -c mychannel -s couchdb -i 1.4.0"
-    byfn.sh up -l node"
+    byfn.sh up -l javascript"
     byfn.sh down -c mychannel"
     byfn.sh upgrade -c mychannel"
 
@@ -165,7 +165,7 @@ the following command instead:
   # we use the -l flag to specify the chaincode language
   # forgoing the -l flag will default to Golang
 
-  ./byfn.sh up -l node
+  ./byfn.sh up -l javascript
 
 .. note:: For more information on the Node.js shim, please refer to its
           `documentation <https://fabric-shim.github.io/ChaincodeInterface.html>`_.
@@ -182,24 +182,7 @@ the following command instead:
 .. note:: Do not run both of these commands. Only one language can be tried unless
           you bring down and recreate the network between.
 
-In addition to support for multiple chaincode languages, you can also issue a
-flag that will bring up a five node Raft ordering service or a Kafka ordering
-service instead of the one node Solo orderer. For more information about the
-currently supported ordering service implementations, check out :doc:`orderer/ordering_service`.
-
-To bring up the network with a Raft ordering service, issue:
-
-.. code:: bash
-
-  ./byfn.sh up -o etcdraft
-
-To bring up the network with a Kafka ordering service, issue:
-
-.. code:: bash
-
-  ./byfn.sh up -o kafka
-
-Once again, you will be prompted as to whether you wish to continue or abort.
+You will be prompted as to whether you wish to continue or abort.
 Respond with a ``y`` or hit the return key:
 
 .. code:: bash
@@ -328,9 +311,8 @@ right now. If you're interested, you can peruse these topics on your own time.
 After we run the ``cryptogen`` tool, the generated certificates and keys will be
 saved to a folder titled ``crypto-config``. Note that the ``crypto-config.yaml``
 file lists five orderers as being tied to the orderer organization. While the
-``cryptogen`` tool will create certificates for all five of these orderers, unless
-the Raft or Kafka ordering services are being used, only one of these orderers
-will be used in a Solo ordering service implementation and be used to create the
+``cryptogen`` tool will create certificates for all five of these orderers. These orderers
+will be used in a etcdraft ordering service implementation and be used to create the
 system channel and ``mychannel``.
 
 Configuration Transaction Generator
@@ -360,14 +342,8 @@ two Peer Orgs.  Pay specific attention to the "Profiles" section at the bottom o
 this file. You will notice that we have several unique profiles. A few are worth
 noting:
 
-* ``TwoOrgsOrdererGenesis``: generates the genesis block for a Solo ordering
-  service.
-
 * ``SampleMultiNodeEtcdRaft``: generates the genesis block for a Raft ordering
   service. Only used if you issue the ``-o`` flag and specify ``etcdraft``.
-
-* ``SampleDevModeKafka``: generates the genesis block for a Kafka ordering
-  service. Only used if you issue the ``-o`` flag and specify ``kafka``.
 
 * ``TwoOrgsChannel``: generates the genesis block for our channel, ``mychannel``.
 
@@ -433,30 +409,7 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
 
 .. code:: bash
 
-    ../bin/configtxgen -profile TwoOrgsOrdererGenesis -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
-
-To output a genesis block for a Raft ordering service, this command should be:
-
-.. code:: bash
-
   ../bin/configtxgen -profile SampleMultiNodeEtcdRaft -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
-
-Note the ``SampleMultiNodeEtcdRaft`` profile being used here.
-
-To output a genesis block for a Kafka ordering service, issue:
-
-.. code:: bash
-
-  ../bin/configtxgen -profile SampleDevModeKafka -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
-
-If you are not using Raft or Kafka, you should see an output similar to the
-following:
-
-.. code:: bash
-
-  2017-10-26 19:21:56.301 EDT [common/tools/configtxgen] main -> INFO 001 Loading configuration
-  2017-10-26 19:21:56.309 EDT [common/tools/configtxgen] doOutputBlock -> INFO 002 Generating genesis block
-  2017-10-26 19:21:56.309 EDT [common/tools/configtxgen] doOutputBlock -> INFO 003 Writing genesis block
 
 .. note:: The orderer genesis block and the subsequent artifacts we are about to create
           will be output into the ``channel-artifacts`` directory at the root of this
@@ -476,13 +429,10 @@ set ``CHANNEL_NAME`` as an environment variable that can be used throughout thes
 
     export CHANNEL_NAME=mychannel  && ../bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
 
-Note that you don't have to issue a special command for the channel if you are
-using a Raft or Kafka ordering service. The ``TwoOrgsChannel`` profile will use
-the ordering service configuration you specified when creating the genesis block
-for the network.
+Note that the ``TwoOrgsChannel`` profile will use the ordering service
+configuration you specified when creating the genesis block for the network.
 
-If you are not using a Raft or Kafka ordering service, you should see an output
-similar to the following in your terminal:
+You should see an output similar to the following in your terminal:
 
 .. code:: bash
 
@@ -666,9 +616,9 @@ Install and define a chaincode
           your own chaincode, see the :doc:`chaincode4ade` tutorial.
 
 .. note:: These instructions use the Fabric chaincode lifecycle introduced in
-          the v2.0 Alpha release. If you would like to use the previous
-          lifecycle to install and instantiate a chaincode, visit the v1.4
-          version of the `Building your first network tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/build_network.html>`__.
+          the v2.0 release. If you would like to use the previous lifecycle to
+          install and instantiate a chaincode, visit the v1.4 version of the
+          `Building your first network tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/build_network.html>`__.
 
 Applications interact with the blockchain ledger through ``chaincode``.
 Therefore we need to install a chaincode on every peer that will execute and

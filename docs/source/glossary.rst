@@ -307,11 +307,11 @@ Instantiate
 
 The process of starting and initializing a chaincode application on a specific
 channel. After instantiation, peers that have the chaincode installed can accept
-chaincode invocations. 
+chaincode invocations.
 
-**NOTE**: *This method i.e. Instantiate was used in the 1.4.x and older versions of the chaincode 
+**NOTE**: *This method i.e. Instantiate was used in the 1.4.x and older versions of the chaincode
 lifecycle. For the current procedure used to start a chaincode on a channel with
-the new Fabric chaincode lifecycle introduced as part of the Fabric v2.0 Alpha,
+the new Fabric chaincode lifecycle introduced as part of Fabric v2.0,
 see Chaincode-definition_.*
 
 .. _Invoke:

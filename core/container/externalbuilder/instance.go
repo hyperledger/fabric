@@ -8,7 +8,6 @@ package externalbuilder
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -69,63 +68,51 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 type ChaincodeServerUserData struct {
 	Address            string   `json:"address"`
 	DialTimeout        Duration `json:"dial_timeout"`
-	TlsRequired        bool     `json:"tls_required"`
+	TLSRequired        bool     `json:"tls_required"`
 	ClientAuthRequired bool     `json:"client_auth_required"`
-	KeyPath            string   `json:"key_path"`
-	CertPath           string   `json:"cert_path"`
-	RootCertPath       string   `json:"root_cert_path"`
+	ClientKey          string   `json:"client_key"`  // PEM encoded client key
+	ClientCert         string   `json:"client_cert"` // PEM encoded client certificate
+	RootCert           string   `json:"root_cert"`   // PEM encoded peer chaincode certificate
+
 }
 
-func (ccdata *ChaincodeServerUserData) ChaincodeServerInfo(cryptoDir string) (*ccintf.ChaincodeServerInfo, error) {
-	if ccdata.Address == "" {
+func (c *ChaincodeServerUserData) ChaincodeServerInfo(cryptoDir string) (*ccintf.ChaincodeServerInfo, error) {
+	if c.Address == "" {
 		return nil, errors.New("chaincode address not provided")
 	}
-	connInfo := &ccintf.ChaincodeServerInfo{Address: ccdata.Address}
+	connInfo := &ccintf.ChaincodeServerInfo{Address: c.Address}
 
-	if ccdata.DialTimeout == (Duration{}) {
+	if c.DialTimeout == (Duration{}) {
 		connInfo.ClientConfig.Timeout = DialTimeout
 	} else {
-		connInfo.ClientConfig.Timeout = ccdata.DialTimeout.Duration
+		connInfo.ClientConfig.Timeout = c.DialTimeout.Duration
 	}
 
 	// we can expose this if necessary
 	connInfo.ClientConfig.KaOpts = comm.DefaultKeepaliveOptions
 
-	if !ccdata.TlsRequired {
+	if !c.TLSRequired {
 		return connInfo, nil
 	}
-	if ccdata.ClientAuthRequired && ccdata.KeyPath == "" {
+	if c.ClientAuthRequired && c.ClientKey == "" {
 		return nil, errors.New("chaincode tls key not provided")
 	}
-	if ccdata.ClientAuthRequired && ccdata.CertPath == "" {
+	if c.ClientAuthRequired && c.ClientCert == "" {
 		return nil, errors.New("chaincode tls cert not provided")
 	}
-	if ccdata.RootCertPath == "" {
+	if c.RootCert == "" {
 		return nil, errors.New("chaincode tls root cert not provided")
 	}
 
 	connInfo.ClientConfig.SecOpts.UseTLS = true
 
-	if ccdata.ClientAuthRequired {
+	if c.ClientAuthRequired {
 		connInfo.ClientConfig.SecOpts.RequireClientCert = true
-		b, err := ioutil.ReadFile(filepath.Join(cryptoDir, ccdata.CertPath))
-		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("error reading cert file %s", ccdata.CertPath))
-		}
-		connInfo.ClientConfig.SecOpts.Certificate = b
-
-		b, err = ioutil.ReadFile(filepath.Join(cryptoDir, ccdata.KeyPath))
-		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("error reading key file %s", ccdata.KeyPath))
-		}
-		connInfo.ClientConfig.SecOpts.Key = b
+		connInfo.ClientConfig.SecOpts.Certificate = []byte(c.ClientCert)
+		connInfo.ClientConfig.SecOpts.Key = []byte(c.ClientKey)
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(cryptoDir, ccdata.RootCertPath))
-	if err != nil {
-		return nil, errors.WithMessage(err, fmt.Sprintf("error reading root cert file %s", ccdata.RootCertPath))
-	}
-	connInfo.ClientConfig.SecOpts.ServerRootCAs = [][]byte{b}
+	connInfo.ClientConfig.SecOpts.ServerRootCAs = [][]byte{[]byte(c.RootCert)}
 
 	return connInfo, nil
 }

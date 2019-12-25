@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
+	"github.com/hyperledger/fabric-amcl/core/FP256BN"
 	"github.com/stretchr/testify/assert"
 )
 

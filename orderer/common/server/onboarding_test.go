@@ -46,9 +46,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// the path to configtxgen, which can be used to by tests to create
-// genesis blocks
-var configtxgen string
+// the paths to configtxgen and cryptogen, which can be used by tests to create
+// genesis blocks and certificates
+var configtxgen, cryptogen, tempDir string
 
 func TestMain(m *testing.M) {
 	var err error
@@ -56,9 +56,31 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		os.Exit(-1)
 	}
+	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
+	if err != nil {
+		os.Exit(-1)
+	}
 	defer gexec.CleanupBuildArtifacts()
 
+	tempDir, err = ioutil.TempDir("", "onboarding-test")
+	defer os.RemoveAll(tempDir)
+
+	copyYamlFiles("testdata", tempDir)
+
 	os.Exit(m.Run())
+}
+
+func copyYamlFiles(src, dst string) {
+	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
+		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
+		if err != nil {
+			os.Exit(-1)
+		}
+		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0644)
+		if err != nil {
+			os.Exit(-1)
+		}
+	}
 }
 
 func newServerNode(t *testing.T, key, cert []byte) *deliverServer {
@@ -141,8 +163,9 @@ func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverSer
 	}
 }
 
-func loadPEM(suffix string, t *testing.T) []byte {
-	b, err := ioutil.ReadFile(filepath.Join("testdata", "example.com", "tls", suffix))
+func loadPEM(cryptoPath, suffix string, t *testing.T) []byte {
+	ordererTLSPath := filepath.Join(cryptoPath, "ordererOrganizations", "example.com", "orderers", "127.0.0.1.example.com", "tls")
+	b, err := ioutil.ReadFile(filepath.Join(ordererTLSPath, suffix))
 	assert.NoError(t, err)
 	return b
 }
@@ -192,23 +215,21 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	// The onboarding code is expected to skip the replication after
 	// the maximum attempt number is exhausted, and not to try to replicate
 	// the channel indefinitely.
+	cryptoPath := generateCryptoMaterials(t, cryptogen)
+	defer os.RemoveAll(cryptoPath)
 
-	caCert := loadPEM("ca.crt", t)
-	key := loadPEM("server.key", t)
-	cert := loadPEM("server.crt", t)
+	caCert := loadPEM(cryptoPath, "ca.crt", t)
+	key := loadPEM(cryptoPath, "server.key", t)
+	cert := loadPEM(cryptoPath, "server.crt", t)
 
 	deliverServer := newServerNode(t, key, cert)
 	defer deliverServer.srv.Stop()
 
-	tempDir, err := ioutil.TempDir("", "TestOnboarding")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
-	systemChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
+	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
 	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
 	assert.NoError(t, err)
 
-	applicationChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
+	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
 	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
 	assert.NoError(t, err)
 
@@ -464,17 +485,16 @@ func TestReplicate(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	tempDir, err := ioutil.TempDir("", "TestReplicate")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	cryptoPath := generateCryptoMaterials(t, cryptogen)
+	defer os.RemoveAll(cryptoPath)
 
-	applicationChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
+	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
 	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
 	assert.NoError(t, err)
 
-	caCert := loadPEM("ca.crt", t)
-	key := loadPEM("server.key", t)
-	cert := loadPEM("server.crt", t)
+	caCert := loadPEM(cryptoPath, "ca.crt", t)
+	key := loadPEM(cryptoPath, "server.key", t)
+	cert := loadPEM(cryptoPath, "server.crt", t)
 
 	prepareTestCase := func() *deliverServer {
 		deliverServer := newServerNode(t, key, cert)
@@ -635,7 +655,7 @@ func TestReplicate(t *testing.T) {
 		},
 		{
 			name:               "Explicit replication is requested, but the channel shouldn't be pulled",
-			verificationCount:  20,
+			verificationCount:  10,
 			shouldConnect:      true,
 			systemLedgerHeight: 10,
 			bootBlock:          &bootBlock,
@@ -924,11 +944,10 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 }
 
 func TestVerifierLoader(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "TestVerifierLoader")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	cryptoPath := generateCryptoMaterials(t, cryptogen)
+	defer os.RemoveAll(cryptoPath)
 
-	systemChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
+	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
 	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
 	assert.NoError(t, err)
 
@@ -1071,15 +1090,14 @@ func TestVerifierLoader(t *testing.T) {
 }
 
 func TestValidateBootstrapBlock(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "TestValidateBootstrapBlock")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	cryptoPath := generateCryptoMaterials(t, cryptogen)
+	defer os.RemoveAll(cryptoPath)
 
-	systemChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
+	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
 	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
 	assert.NoError(t, err)
 
-	applicationChannelBlockPath := createBootstrapBlock(t, tempDir, configtxgen, "mychannel", "SampleOrgChannel")
+	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "mychannel", "SampleOrgChannel")
 	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
 	assert.NoError(t, err)
 
@@ -1138,13 +1156,17 @@ func TestValidateBootstrapBlock(t *testing.T) {
 	}
 }
 
-func createBootstrapBlock(t *testing.T, tempDir, configtxgen, channel, profile string) string {
+func generateBootstrapBlock(t *testing.T, tempDir, configtxgen, channel, profile string) string {
 	gt := NewGomegaWithT(t)
 	// create a genesis block for the specified channel and profile
 	genesisBlockPath := filepath.Join(tempDir, channel+".block")
-	cmd := exec.Command(configtxgen, "-channelID", channel, "-profile", profile,
-		"-outputBlock", genesisBlockPath)
-	cmd.Env = append(cmd.Env, "FABRIC_CFG_PATH=testdata")
+	cmd := exec.Command(
+		configtxgen,
+		"-channelID", channel,
+		"-profile", profile,
+		"-outputBlock", genesisBlockPath,
+		"--configPath", tempDir,
+	)
 	configtxgenProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Eventually(configtxgenProcess, time.Minute).Should(gexec.Exit(0))

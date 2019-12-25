@@ -33,6 +33,7 @@ func TestTxSimulatorWithNoExistingData(t *testing.T) {
 		testEnv.init(t, testLedgerID, nil)
 		defer testEnv.cleanup()
 		testTxSimulatorWithNoExistingData(t, testEnv)
+		testEnv.cleanup()
 	}
 }
 
@@ -118,6 +119,7 @@ func TestTxSimulatorWithExistingData(t *testing.T) {
 			testEnv.init(t, testLedgerID, nil)
 			defer testEnv.cleanup()
 			testTxSimulatorWithExistingData(t, testEnv)
+			testEnv.cleanup()
 		})
 	}
 }
@@ -171,6 +173,7 @@ func TestTxValidation(t *testing.T) {
 		testEnv.init(t, testLedgerID, nil)
 		defer testEnv.cleanup()
 		testTxValidation(t, testEnv)
+		testEnv.cleanup()
 	}
 }
 
@@ -258,6 +261,7 @@ func TestTxPhantomValidation(t *testing.T) {
 		testEnv.init(t, testLedgerID, nil)
 		defer testEnv.cleanup()
 		testTxPhantomValidation(t, testEnv)
+		testEnv.cleanup()
 	}
 }
 
@@ -424,6 +428,7 @@ func TestIteratorPaging(t *testing.T) {
 		nextStartKey = testIteratorPaging(t, testEnv, 10, nextStartKey, "key_007", int32(2), returnKeys)
 		returnKeys = []string{"key_006"}
 		testIteratorPaging(t, testEnv, 10, nextStartKey, "key_007", int32(2), returnKeys)
+		testEnv.cleanup()
 	}
 }
 
@@ -489,6 +494,7 @@ func TestIteratorWithDeletes(t *testing.T) {
 		testEnv.init(t, testLedgerID, nil)
 		defer testEnv.cleanup()
 		testIteratorWithDeletes(t, testEnv)
+		testEnv.cleanup()
 	}
 }
 
@@ -531,6 +537,7 @@ func TestTxValidationWithItr(t *testing.T) {
 		testEnv.init(t, testLedgerID, nil)
 		defer testEnv.cleanup()
 		testTxValidationWithItr(t, testEnv)
+		testEnv.cleanup()
 	}
 }
 
@@ -596,6 +603,7 @@ func TestGetSetMultipeKeys(t *testing.T) {
 		testEnv.init(t, testLedgerID, nil)
 		defer testEnv.cleanup()
 		testGetSetMultipeKeys(t, testEnv)
+		testEnv.cleanup()
 	}
 }
 
@@ -650,7 +658,6 @@ func createTestValue(i int) []byte {
 
 //TestExecuteQueryQuery is only tested on the CouchDB testEnv
 func TestExecuteQuery(t *testing.T) {
-
 	for _, testEnv := range testEnvs {
 		// Query is only supported and tested on the CouchDB testEnv
 		if testEnv.getName() == couchDBtestEnvName {
@@ -659,6 +666,7 @@ func TestExecuteQuery(t *testing.T) {
 			testEnv.init(t, testLedgerID, nil)
 			defer testEnv.cleanup()
 			testExecuteQuery(t, testEnv)
+			testEnv.cleanup()
 		}
 	}
 }
@@ -725,7 +733,6 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 
 // TestExecutePaginatedQuery is only tested on the CouchDB testEnv
 func TestExecutePaginatedQuery(t *testing.T) {
-
 	for _, testEnv := range testEnvs {
 		// Query is only supported and tested on the CouchDB testEnv
 		if testEnv.getName() == couchDBtestEnvName {
@@ -734,6 +741,7 @@ func TestExecutePaginatedQuery(t *testing.T) {
 			testEnv.init(t, testLedgerID, nil)
 			defer testEnv.cleanup()
 			testExecutePaginatedQuery(t, testEnv)
+			testEnv.cleanup()
 		}
 	}
 }
@@ -835,6 +843,7 @@ func TestValidateKey(t *testing.T) {
 		if testEnv.getName() == couchDBtestEnvName {
 			assert.Error(t, err)
 		}
+		testEnv.cleanup()
 	}
 }
 
@@ -890,7 +899,6 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 
 // TestTxSimulatorQueryUnsupportedTx is only tested on the CouchDB testEnv
 func TestTxSimulatorQueryUnsupportedTx(t *testing.T) {
-
 	for _, testEnv := range testEnvs {
 		// Query is only supported and tested on the CouchDB testEnv
 		if testEnv.getName() == couchDBtestEnvName {
@@ -899,12 +907,12 @@ func TestTxSimulatorQueryUnsupportedTx(t *testing.T) {
 			testEnv.init(t, testLedgerID, nil)
 			defer testEnv.cleanup()
 			testTxSimulatorQueryUnsupportedTx(t, testEnv)
+			testEnv.cleanup()
 		}
 	}
 }
 
 func testTxSimulatorQueryUnsupportedTx(t *testing.T, env testEnv) {
-
 	txMgr := env.getTxMgr()
 	txMgrHelper := newTxMgrTestHelper(t, txMgr)
 
@@ -1429,6 +1437,7 @@ func TestTxWithPubMetadata(t *testing.T) {
 		testEnv.init(t, testLedgerID, nil)
 		defer testEnv.cleanup()
 		testTxWithPubMetadata(t, testEnv)
+		testEnv.cleanup()
 	}
 }
 
@@ -1487,6 +1496,7 @@ func TestTxWithPvtdataMetadata(t *testing.T) {
 		testEnv.init(t, ledgerid, btlPolicy)
 		defer testEnv.cleanup()
 		testTxWithPvtdataMetadata(t, testEnv, ns, coll)
+		testEnv.cleanup()
 	}
 }
 

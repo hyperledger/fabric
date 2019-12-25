@@ -15,12 +15,12 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/common/mocks/ledger"
 	"github.com/hyperledger/fabric/core/endorser"
+	"github.com/hyperledger/fabric/core/endorser/fake"
 	"github.com/hyperledger/fabric/core/endorser/mocks"
 	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	. "github.com/hyperledger/fabric/core/handlers/endorsement/api/state"
-	ledger2 "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/pkg/errors"
@@ -31,6 +31,11 @@ import (
 var (
 	mockTransientStoreRetriever = transientStoreRetriever()
 )
+
+//go:generate counterfeiter -o fake/query_executor.go -fake-name QueryExecutor . queryExecutor
+type queryExecutor interface {
+	ledger.QueryExecutor
+}
 
 type testTransientStore struct {
 	storeProvider transientstore.StoreProvider
@@ -69,7 +74,7 @@ func (s *testTransientStore) Persist(txid string, blockHeight uint64,
 	return s.store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
 }
 
-func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger2.PvtNsCollFilter) (privdata.RWSetScanner, error) {
+func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (privdata.RWSetScanner, error) {
 	return s.store.GetTxPvtRWSetByTxid(txid, filter)
 }
 
@@ -223,7 +228,7 @@ func TestTransientStore(t *testing.T) {
 	sif := &mocks.SigningIdentityFetcher{}
 	cs := &mocks.ChannelStateRetriever{}
 	queryCreator := &mocks.QueryCreator{}
-	queryCreator.On("NewQueryExecutor").Return(&ledger.MockQueryExecutor{}, nil)
+	queryCreator.On("NewQueryExecutor").Return(&fake.QueryExecutor{}, nil)
 	cs.On("NewQueryCreator", "mychannel").Return(queryCreator, nil)
 
 	transientStore := newTransientStore(t)

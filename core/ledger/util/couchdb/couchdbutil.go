@@ -61,8 +61,14 @@ func CreateCouchInstance(config *Config, metricsProvider metrics.Provider) (*Cou
 			KeepAlive: 30 * time.Second,
 			DualStack: true,
 		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          2000,
+		MaxIdleConnsPerHost:   2000,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
-	transport.DisableCompression = false
+
 	client.Transport = transport
 
 	//Create the CouchDB instance

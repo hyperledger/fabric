@@ -1,50 +1,43 @@
-# Updating a Channel Configuration
+# Updating a channel configuration
 
-## What is a Channel Configuration?
+*Audience: network administrators, node administrators*
 
-Channel configurations contain all of the information relevant to the
-administration of a channel. Most importantly, the channel configuration
-specifies which organizations are members of channel, but it also includes other
-channel-wide configuration information such as channel access policies and block
-batch sizes.
+## What is a channel configuration?
 
-This configuration is stored on the ledger in a **block**, and is therefore
-known as a configuration (config) block. Configuration blocks contain a single
-configuration. The first of these blocks is known as the “genesis block” and
-contains the initial configuration required to bootstrap a channel. Each time
-the configuration of a channel changes it is done through a new configuration
-block, with the latest configuration block representing the current channel
-configuration. Orderers and peers keep the current channel configuration in
-memory to facilitate all channel operations such as cutting a new block and
-validating block transactions.
+Like many complex systems, Hyperledger Fabric networks are comprised of both **structure** and a number related of **processes**.
 
-Because configurations are stored in blocks, updating a config happens through a
-process called a “configuration transaction” (even though the process is a
-little different from a normal transaction). Updating a config is a process of
-pulling the config, translating into a format that humans can read, modifying it
-and then submitting it for approval.
+* **Structure**: encompassing users (like admins), organizations, peers, ordering nodes, CAs, smart contracts, and applications.
+* **Process**: the way these structures interact. Most important of these are [Policies](./policies/policies.html), the rules that govern which users can do what, and under what conditions.
 
-For a more in-depth look at the process for pulling a config and translating it
-into JSON, check out [Adding an Org to a Channel](./channel_update_tutorial.html).
-In this doc, we'll be focusing on the different ways you can edit a config and
-the process for getting it signed.
+Information identifying the structure of blockchain networks and the processes governing how structures interact are contained in **channel configurations**. These configurations are collectively decided upon by the members of application channels, where transactions between peer organizations happen, and the "orderer system channel" managed by ordering organizations, and are contained in blocks that are committed to the ledger of a channel.
 
-## Editing a Config
+Because configurations are contained in blocks (the first of these is known as the genesis block with the latest representing the current configuration of the channel), the process for updating a channel configuration (changing the structure by adding members, for example, or processes by modifying channel policies) is known as a **configuration update transaction**.
 
-Channels are highly configurable, but not infinitely so. Different configuration
-elements have different modification policies (which specify the group of
-identities required to sign the config update).
+In production networks, these configuration update transactions will normally be proposed by a single channel admin after an out of band discussion, just as the initial configuration of the channel will be decided on out of band by the initial members of the channel.
 
-To see the scope of what's possible to change it's important to look at a config
-in JSON format. The [Adding an Org to a Channel](./channel_update_tutorial.html)
-tutorial generates one, so if you've gone through that doc you can simply refer to it.
-For those who have not, we'll provide one here (for ease of readability, it might be
-helpful to put this config into a viewer that supports JSON folding, like atom or
-Visual Studio).
+In this topic, we'll:
+
+* Show a full sample configuration of an application channel.
+* Discuss many of the channel parameters that can be edited.
+* Show the process for updating a channel configuration, including the commands necessary to pull, translate, and scope a configuration into something that humans can read.
+* Discuss the methods that can be used to edit a channel configuration.
+* Show the process used to reformat a configuration and get the signatures necessary for it to be approved.
+
+## Channel parameters that can be updated
+
+Channels are highly configurable, but not infinitely so. Once certain things about a channel (for example, the name of the channel) have been specified, they cannot be changed. And changing one of the parameters we'll talk about in this topic requires satisfying the relevant policy as specified in the channel configuration.
+
+In this section, we'll look a sample channel configuration and show the configuration parameters that can be updated.
+
+### Sample channel configuration
+
+To see what the configuration file of an application channel looks like after it has been pulled and scoped, click **Click here to see the config** below. For ease of readability, it might be helpful to put this config into a viewer that supports JSON folding, like atom or Visual Studio.
+
+Note: for simplicity, we are only showing an application channel configuration here. The configuration of the orderer system channel is very similar, but not identical, to the configuration of an application channel. However, the same basic rules and structure apply, as do the commands to pull and edit a configuration, as you can see in our topic on [Updating the capability level of a channel](./updating_capabilities.html).
 
 <details>
   <summary>
-    **Click here to see the config**
+    **Click here to see the config**. Note that this is the configuration of an application channel, not the orderer system channel.
   </summary>
   ```
   {
@@ -53,6 +46,7 @@ Visual Studio).
       "Application": {
         "groups": {
           "Org1MSP": {
+            "groups": {},
             "mod_policy": "Admins",
             "policies": {
               "Admins": {
@@ -93,7 +87,21 @@ Visual Studio).
                       {
                         "principal": {
                           "msp_identifier": "Org1MSP",
-                          "role": "MEMBER"
+                          "role": "ADMIN"
+                        },
+                        "principal_classification": "ROLE"
+                      },
+                      {
+                        "principal": {
+                          "msp_identifier": "Org1MSP",
+                          "role": "PEER"
+                        },
+                        "principal_classification": "ROLE"
+                      },
+                      {
+                        "principal": {
+                          "msp_identifier": "Org1MSP",
+                          "role": "CLIENT"
                         },
                         "principal_classification": "ROLE"
                       }
@@ -104,6 +112,12 @@ Visual Studio).
                         "rules": [
                           {
                             "signed_by": 0
+                          },
+                          {
+                            "signed_by": 1
+                          },
+                          {
+                            "signed_by": 2
                           }
                         ]
                       }
@@ -122,7 +136,14 @@ Visual Studio).
                       {
                         "principal": {
                           "msp_identifier": "Org1MSP",
-                          "role": "MEMBER"
+                          "role": "ADMIN"
+                        },
+                        "principal_classification": "ROLE"
+                      },
+                      {
+                        "principal": {
+                          "msp_identifier": "Org1MSP",
+                          "role": "CLIENT"
                         },
                         "principal_classification": "ROLE"
                       }
@@ -133,6 +154,9 @@ Visual Studio).
                         "rules": [
                           {
                             "signed_by": 0
+                          },
+                          {
+                            "signed_by": 1
                           }
                         ]
                       }
@@ -160,19 +184,41 @@ Visual Studio).
                 "mod_policy": "Admins",
                 "value": {
                   "config": {
-                    "admins": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNHRENDQWIrZ0F3SUJBZ0lRSWlyVmg3NVcwWmh0UjEzdmltdmliakFLQmdncWhrak9QUVFEQWpCek1Rc3cKQ1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRUJ4TU5VMkZ1SUVaeQpZVzVqYVhOamJ6RVpNQmNHQTFVRUNoTVFiM0puTVM1bGVHRnRjR3hsTG1OdmJURWNNQm9HQTFVRUF4TVRZMkV1CmIzSm5NUzVsZUdGdGNHeGxMbU52YlRBZUZ3MHhOekV4TWpreE9USTBNRFphRncweU56RXhNamN4T1RJME1EWmEKTUZzeEN6QUpCZ05WQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxVApZVzRnUm5KaGJtTnBjMk52TVI4d0hRWURWUVFEREJaQlpHMXBia0J2Y21jeExtVjRZVzF3YkdVdVkyOXRNRmt3CkV3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFNkdVeDlpczZ0aG1ZRE9tMmVHSlA5eW1yaXJYWE1Cd0oKQmVWb1Vpak5haUdsWE03N2NsSE5aZjArMGFjK2djRU5lMzQweGExZVFnb2Q0YjVFcmQrNmtxTk5NRXN3RGdZRApWUjBQQVFIL0JBUURBZ2VBTUF3R0ExVWRFd0VCL3dRQ01BQXdLd1lEVlIwakJDUXdJb0FnWWdoR2xCMjBGWmZCCllQemdYT280czdkU1k1V3NKSkRZbGszTDJvOXZzQ013Q2dZSUtvWkl6ajBFQXdJRFJ3QXdSQUlnYmlEWDVTMlIKRTBNWGRobDZFbmpVNm1lTEJ0eXNMR2ZpZXZWTlNmWW1UQVVDSUdVbnROangrVXZEYkZPRHZFcFRVTm5MUHp0Qwp5ZlBnOEhMdWpMaXVpaWFaCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
-                    ],
+                    "admins": [],
                     "crypto_config": {
                       "identity_identifier_hash_function": "SHA256",
                       "signature_hash_family": "SHA2"
                     },
+                    "fabric_node_ous": {
+                      "admin_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQVBYKzVxL21nckhNR280NFB5bjhYRnd3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpFdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekV1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NUzVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1TNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQkV5TWtxZndLUkJCWDNKY2xGM3c0UkJZdGFGZytPeFgzSW9RanRrZzJodGxsV3dMV3YrWExXdVl2dkpUMTdxZAp1ei9uWGlWRWhhYnQ2VmVkRnBzanJuR2piVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKVytUN0RIb2puYXh0TkpJTHAvREd4UmVONkpPZENSUlBIdVhPNzZXY3k5OHdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQUtUaHZNaFlBR3p6aVpNR1B1TjFpTTBEcHVpaFNydHJXRHJ6NkQ4QTBXOXBBaUI0MTFrTnJzVjN4ZU05ClNnaHFNc2lzK2QxWThEWE9DOXVrZGhBcU5GZ25FUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "organizational_unit_identifier": "admin"
+                      },
+                      "client_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQVBYKzVxL21nckhNR280NFB5bjhYRnd3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpFdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekV1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NUzVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1TNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQkV5TWtxZndLUkJCWDNKY2xGM3c0UkJZdGFGZytPeFgzSW9RanRrZzJodGxsV3dMV3YrWExXdVl2dkpUMTdxZAp1ei9uWGlWRWhhYnQ2VmVkRnBzanJuR2piVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKVytUN0RIb2puYXh0TkpJTHAvREd4UmVONkpPZENSUlBIdVhPNzZXY3k5OHdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQUtUaHZNaFlBR3p6aVpNR1B1TjFpTTBEcHVpaFNydHJXRHJ6NkQ4QTBXOXBBaUI0MTFrTnJzVjN4ZU05ClNnaHFNc2lzK2QxWThEWE9DOXVrZGhBcU5GZ25FUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "organizational_unit_identifier": "client"
+                      },
+                      "enable": true,
+                      "orderer_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQVBYKzVxL21nckhNR280NFB5bjhYRnd3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpFdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekV1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NUzVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1TNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQkV5TWtxZndLUkJCWDNKY2xGM3c0UkJZdGFGZytPeFgzSW9RanRrZzJodGxsV3dMV3YrWExXdVl2dkpUMTdxZAp1ei9uWGlWRWhhYnQ2VmVkRnBzanJuR2piVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKVytUN0RIb2puYXh0TkpJTHAvREd4UmVONkpPZENSUlBIdVhPNzZXY3k5OHdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQUtUaHZNaFlBR3p6aVpNR1B1TjFpTTBEcHVpaFNydHJXRHJ6NkQ4QTBXOXBBaUI0MTFrTnJzVjN4ZU05ClNnaHFNc2lzK2QxWThEWE9DOXVrZGhBcU5GZ25FUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "organizational_unit_identifier": "orderer"
+                      },
+                      "peer_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQVBYKzVxL21nckhNR280NFB5bjhYRnd3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpFdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekV1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NUzVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1TNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQkV5TWtxZndLUkJCWDNKY2xGM3c0UkJZdGFGZytPeFgzSW9RanRrZzJodGxsV3dMV3YrWExXdVl2dkpUMTdxZAp1ei9uWGlWRWhhYnQ2VmVkRnBzanJuR2piVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKVytUN0RIb2puYXh0TkpJTHAvREd4UmVONkpPZENSUlBIdVhPNzZXY3k5OHdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQUtUaHZNaFlBR3p6aVpNR1B1TjFpTTBEcHVpaFNydHJXRHJ6NkQ4QTBXOXBBaUI0MTFrTnJzVjN4ZU05ClNnaHFNc2lzK2QxWThEWE9DOXVrZGhBcU5GZ25FUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "organizational_unit_identifier": "peer"
+                      }
+                    },
+                    "intermediate_certs": [],
                     "name": "Org1MSP",
+                    "organizational_unit_identifiers": [],
+                    "revocation_list": [],
                     "root_certs": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNRekNDQWVxZ0F3SUJBZ0lSQU03ZVdTaVM4V3VVM2haMU9tR255eXd3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpFdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekV1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGN4TVRJNU1Ua3lOREEyV2hjTk1qY3hNVEkzTVRreU5EQTIKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NUzVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1TNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQkJiTTVZS3B6UmlEbDdLWWFpSDVsVnBIeEl1TDEyaUcyWGhkMHRpbEg3MEljMGFpRUh1dG9rTkZsUXAzTWI0Zgpvb0M2bFVXWnRnRDJwMzZFNThMYkdqK2pYekJkTUE0R0ExVWREd0VCL3dRRUF3SUJwakFQQmdOVkhTVUVDREFHCkJnUlZIU1VBTUE4R0ExVWRFd0VCL3dRRk1BTUJBZjh3S1FZRFZSME9CQ0lFSUdJSVJwUWR0QldYd1dEODRGenEKT0xPM1VtT1ZyQ1NRMkpaTnk5cVBiN0FqTUFvR0NDcUdTTTQ5QkFNQ0EwY0FNRVFDSUdlS2VZL1BsdGlWQTRPSgpRTWdwcDRvaGRMcGxKUFpzNERYS0NuOE9BZG9YQWlCK2g5TFdsR3ZsSDdtNkVpMXVRcDFld2ZESmxsZi9MZXczClgxaDNRY0VMZ3c9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQVBYKzVxL21nckhNR280NFB5bjhYRnd3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpFdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekV1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NUzVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1TNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQkV5TWtxZndLUkJCWDNKY2xGM3c0UkJZdGFGZytPeFgzSW9RanRrZzJodGxsV3dMV3YrWExXdVl2dkpUMTdxZAp1ei9uWGlWRWhhYnQ2VmVkRnBzanJuR2piVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKVytUN0RIb2puYXh0TkpJTHAvREd4UmVONkpPZENSUlBIdVhPNzZXY3k5OHdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQUtUaHZNaFlBR3p6aVpNR1B1TjFpTTBEcHVpaFNydHJXRHJ6NkQ4QTBXOXBBaUI0MTFrTnJzVjN4ZU05ClNnaHFNc2lzK2QxWThEWE9DOXVrZGhBcU5GZ25FUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
                     ],
+                    "signing_identity": null,
+                    "tls_intermediate_certs": [],
                     "tls_root_certs": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNTVENDQWZDZ0F3SUJBZ0lSQUtsNEFQWmV6dWt0Nk8wYjRyYjY5Y0F3Q2dZSUtvWkl6ajBFQXdJd2RqRUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpFdVpYaGhiWEJzWlM1amIyMHhIekFkQmdOVkJBTVRGblJzCmMyTmhMbTl5WnpFdVpYaGhiWEJzWlM1amIyMHdIaGNOTVRjeE1USTVNVGt5TkRBMldoY05NamN4TVRJM01Ua3kKTkRBMldqQjJNUXN3Q1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRQpCeE1OVTJGdUlFWnlZVzVqYVhOamJ6RVpNQmNHQTFVRUNoTVFiM0puTVM1bGVHRnRjR3hsTG1OdmJURWZNQjBHCkExVUVBeE1XZEd4elkyRXViM0puTVM1bGVHRnRjR3hsTG1OdmJUQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDkKQXdFSEEwSUFCSnNpQXVjYlcrM0lqQ2VaaXZPakRiUmFyVlRjTW9TRS9mSnQyU0thR1d5bWQ0am5xM25MWC9vVApCVmpZb21wUG1QbGZ4R0VSWHl0UTNvOVZBL2hwNHBlalh6QmRNQTRHQTFVZER3RUIvd1FFQXdJQnBqQVBCZ05WCkhTVUVDREFHQmdSVkhTVUFNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdLUVlEVlIwT0JDSUVJSnlqZnFoa0FvY3oKdkRpNnNGSGFZL1Bvd2tPWkxPMHZ0VGdFRnVDbUpFalZNQW9HQ0NxR1NNNDlCQU1DQTBjQU1FUUNJRjVOVVdCVgpmSjgrM0lxU3J1NlFFbjlIa0lsQ0xDMnlvWTlaNHBWMnpBeFNBaUE5NWQzeDhBRXZIcUFNZnIxcXBOWHZ1TW5BCmQzUXBFa1gyWkh3ODZlQlVQZz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNWekNDQWY2Z0F3SUJBZ0lSQUtvOGhJS0JjeldFOFQrSUZSVWVmZm93Q2dZSUtvWkl6ajBFQXdJd2RqRUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpFdVpYaGhiWEJzWlM1amIyMHhIekFkQmdOVkJBTVRGblJzCmMyTmhMbTl5WnpFdVpYaGhiWEJzWlM1amIyMHdIaGNOTVRreE1URTBNVE0wT0RBd1doY05Namt4TVRFeE1UTTAKT0RBd1dqQjJNUXN3Q1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRQpCeE1OVTJGdUlFWnlZVzVqYVhOamJ6RVpNQmNHQTFVRUNoTVFiM0puTVM1bGVHRnRjR3hsTG1OdmJURWZNQjBHCkExVUVBeE1XZEd4elkyRXViM0puTVM1bGVHRnRjR3hsTG1OdmJUQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDkKQXdFSEEwSUFCRUdGY3N6UmNJWXJnUVltK1JwL0owR3NrRXk4OFlDS2xqY2lSY1BoS3FKVWI3L29aSExRSWRtNQpSV0pLcVNZeSs3R2FqWHlROFQxNG1mY2IrM0ZodkpTamJUQnJNQTRHQTFVZER3RUIvd1FFQXdJQnBqQWRCZ05WCkhTVUVGakFVQmdnckJnRUZCUWNEQWdZSUt3WUJCUVVIQXdFd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBcEJnTlYKSFE0RUlnUWdOZzd3RHhRSkMwREYvQWo5YUwvbXJQVlJNMkozb2VRelEwdnV2cWgzdm5Fd0NnWUlLb1pJemowRQpBd0lEUndBd1JBSWdkYWZXMjJ0WXZuZVd6bEp2Mlg5WC9qM2VCbTdxSG9xejZ2QmV2cENZd3Q4Q0lHYXJJTm5oCnArRnFyaUVoaDI5SDgrcEVTV1NvZXQ1UzFKQVRrd0srNTJMawotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
                     ]
                   },
                   "type": 0
@@ -183,6 +229,7 @@ Visual Studio).
             "version": "1"
           },
           "Org2MSP": {
+            "groups": {},
             "mod_policy": "Admins",
             "policies": {
               "Admins": {
@@ -223,7 +270,21 @@ Visual Studio).
                       {
                         "principal": {
                           "msp_identifier": "Org2MSP",
-                          "role": "MEMBER"
+                          "role": "ADMIN"
+                        },
+                        "principal_classification": "ROLE"
+                      },
+                      {
+                        "principal": {
+                          "msp_identifier": "Org2MSP",
+                          "role": "PEER"
+                        },
+                        "principal_classification": "ROLE"
+                      },
+                      {
+                        "principal": {
+                          "msp_identifier": "Org2MSP",
+                          "role": "CLIENT"
                         },
                         "principal_classification": "ROLE"
                       }
@@ -234,6 +295,12 @@ Visual Studio).
                         "rules": [
                           {
                             "signed_by": 0
+                          },
+                          {
+                            "signed_by": 1
+                          },
+                          {
+                            "signed_by": 2
                           }
                         ]
                       }
@@ -252,7 +319,14 @@ Visual Studio).
                       {
                         "principal": {
                           "msp_identifier": "Org2MSP",
-                          "role": "MEMBER"
+                          "role": "ADMIN"
+                        },
+                        "principal_classification": "ROLE"
+                      },
+                      {
+                        "principal": {
+                          "msp_identifier": "Org2MSP",
+                          "role": "CLIENT"
                         },
                         "principal_classification": "ROLE"
                       }
@@ -263,6 +337,9 @@ Visual Studio).
                         "rules": [
                           {
                             "signed_by": 0
+                          },
+                          {
+                            "signed_by": 1
                           }
                         ]
                       }
@@ -290,19 +367,41 @@ Visual Studio).
                 "mod_policy": "Admins",
                 "value": {
                   "config": {
-                    "admins": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNHVENDQWNDZ0F3SUJBZ0lSQU5Pb1lIbk9seU94dTJxZFBteStyV293Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekl1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGN4TVRJNU1Ua3lOREEyV2hjTk1qY3hNVEkzTVRreU5EQTIKV2pCYk1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFZk1CMEdBMVVFQXd3V1FXUnRhVzVBYjNKbk1pNWxlR0Z0Y0d4bExtTnZiVEJaCk1CTUdCeXFHU000OUFnRUdDQ3FHU000OUF3RUhBMElBQkh1M0ZWMGlqdFFzckpsbnBCblgyRy9ickFjTHFJSzgKVDFiSWFyZlpvSkhtQm5IVW11RTBhc1dyKzM4VUs0N3hyczNZMGMycGhFVjIvRnhHbHhXMUZubWpUVEJMTUE0RwpBMVVkRHdFQi93UUVBd0lIZ0RBTUJnTlZIUk1CQWY4RUFqQUFNQ3NHQTFVZEl3UWtNQ0tBSU1pSzdteFpnQVVmCmdrN0RPTklXd2F4YktHVGdLSnVSNjZqVmordHZEV3RUTUFvR0NDcUdTTTQ5QkFNQ0EwY0FNRVFDSUQxaEtRdk8KVWxyWmVZMmZZY1N2YWExQmJPM3BVb3NxL2tZVElyaVdVM1J3QWlBR29mWmVPUFByWXVlTlk0Z2JCV2tjc3lpZgpNMkJmeXQwWG9NUThyT2VidUE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
-                    ],
+                    "admins": [],
                     "crypto_config": {
                       "identity_identifier_hash_function": "SHA256",
                       "signature_hash_family": "SHA2"
                     },
+                    "fabric_node_ous": {
+                      "admin_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQU1JaCt2V1lHTGs5bUFTT1JNb05iVkl3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekl1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NaTVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1pNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQlBBc2FrbklPUmx2M0pPdnBsQld5VCt0SUlFZWo2U2ZQaTlKTS8yQmYzOWkxdFVpRCt2aVV1Tk43MGlKcXRwRQpUbm50V2htWjA5elAzaVUwcklXWGJLcWpiVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKQzl3Y0RKb3FKL2dyUGF3S1d4RnVjNVB3MitTdTBsQVpFcFRGaEdDQlJSTXdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQU1JaFJOVDVJMHpwTlRaa1dCSkdyblJqSUhkWXYwS2lWL1JKbkd5Yi9XVFFBaUJ6eUJqYnR3L1JyWEV3Clpzb0N1MmtoOUUwOUZIdXl5dGgydUtWc3Y0ZTlnUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "organizational_unit_identifier": "admin"
+                      },
+                      "client_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQU1JaCt2V1lHTGs5bUFTT1JNb05iVkl3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekl1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NaTVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1pNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQlBBc2FrbklPUmx2M0pPdnBsQld5VCt0SUlFZWo2U2ZQaTlKTS8yQmYzOWkxdFVpRCt2aVV1Tk43MGlKcXRwRQpUbm50V2htWjA5elAzaVUwcklXWGJLcWpiVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKQzl3Y0RKb3FKL2dyUGF3S1d4RnVjNVB3MitTdTBsQVpFcFRGaEdDQlJSTXdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQU1JaFJOVDVJMHpwTlRaa1dCSkdyblJqSUhkWXYwS2lWL1JKbkd5Yi9XVFFBaUJ6eUJqYnR3L1JyWEV3Clpzb0N1MmtoOUUwOUZIdXl5dGgydUtWc3Y0ZTlnUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "organizational_unit_identifier": "client"
+                      },
+                      "enable": true,
+                      "orderer_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQU1JaCt2V1lHTGs5bUFTT1JNb05iVkl3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekl1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NaTVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1pNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQlBBc2FrbklPUmx2M0pPdnBsQld5VCt0SUlFZWo2U2ZQaTlKTS8yQmYzOWkxdFVpRCt2aVV1Tk43MGlKcXRwRQpUbm50V2htWjA5elAzaVUwcklXWGJLcWpiVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKQzl3Y0RKb3FKL2dyUGF3S1d4RnVjNVB3MitTdTBsQVpFcFRGaEdDQlJSTXdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQU1JaFJOVDVJMHpwTlRaa1dCSkdyblJqSUhkWXYwS2lWL1JKbkd5Yi9XVFFBaUJ6eUJqYnR3L1JyWEV3Clpzb0N1MmtoOUUwOUZIdXl5dGgydUtWc3Y0ZTlnUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "organizational_unit_identifier": "orderer"
+                      },
+                      "peer_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQU1JaCt2V1lHTGs5bUFTT1JNb05iVkl3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekl1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NaTVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1pNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQlBBc2FrbklPUmx2M0pPdnBsQld5VCt0SUlFZWo2U2ZQaTlKTS8yQmYzOWkxdFVpRCt2aVV1Tk43MGlKcXRwRQpUbm50V2htWjA5elAzaVUwcklXWGJLcWpiVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKQzl3Y0RKb3FKL2dyUGF3S1d4RnVjNVB3MitTdTBsQVpFcFRGaEdDQlJSTXdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQU1JaFJOVDVJMHpwTlRaa1dCSkdyblJqSUhkWXYwS2lWL1JKbkd5Yi9XVFFBaUJ6eUJqYnR3L1JyWEV3Clpzb0N1MmtoOUUwOUZIdXl5dGgydUtWc3Y0ZTlnUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "organizational_unit_identifier": "peer"
+                      }
+                    },
+                    "intermediate_certs": [],
                     "name": "Org2MSP",
+                    "organizational_unit_identifiers": [],
+                    "revocation_list": [],
                     "root_certs": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNSRENDQWVxZ0F3SUJBZ0lSQU1pVXk5SGRSbXB5MDdsSjhRMlZNWXN3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekl1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGN4TVRJNU1Ua3lOREEyV2hjTk1qY3hNVEkzTVRreU5EQTIKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NaTVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1pNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQk50YW1PY1hyaGwrQ2hzYXNSeklNWjV3OHpPWVhGcXhQbGV0a3d5UHJrbHpKWE01Qjl4QkRRVWlWNldJS2tGSwo0Vmd5RlNVWGZqaGdtd25kMUNBVkJXaWpYekJkTUE0R0ExVWREd0VCL3dRRUF3SUJwakFQQmdOVkhTVUVDREFHCkJnUlZIU1VBTUE4R0ExVWRFd0VCL3dRRk1BTUJBZjh3S1FZRFZSME9CQ0lFSU1pSzdteFpnQVVmZ2s3RE9OSVcKd2F4YktHVGdLSnVSNjZqVmordHZEV3RUTUFvR0NDcUdTTTQ5QkFNQ0EwZ0FNRVVDSVFEQ3FFRmFqeU5IQmVaRworOUdWVkNFNWI1YTF5ZlhvS3lkemdLMVgyOTl4ZmdJZ05BSUUvM3JINHFsUE9HbjdSS3Yram9WaUNHS2t6L0F1Cm9FNzI4RWR6WmdRPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNVakNDQWZpZ0F3SUJBZ0lSQU1JaCt2V1lHTGs5bUFTT1JNb05iVkl3Q2dZSUtvWkl6ajBFQXdJd2N6RUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIREFhQmdOVkJBTVRFMk5oCkxtOXlaekl1WlhoaGJYQnNaUzVqYjIwd0hoY05NVGt4TVRFME1UTTBPREF3V2hjTk1qa3hNVEV4TVRNME9EQXcKV2pCek1Rc3dDUVlEVlFRR0V3SlZVekVUTUJFR0ExVUVDQk1LUTJGc2FXWnZjbTVwWVRFV01CUUdBMVVFQnhNTgpVMkZ1SUVaeVlXNWphWE5qYnpFWk1CY0dBMVVFQ2hNUWIzSm5NaTVsZUdGdGNHeGxMbU52YlRFY01Cb0dBMVVFCkF4TVRZMkV1YjNKbk1pNWxlR0Z0Y0d4bExtTnZiVEJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUEKQlBBc2FrbklPUmx2M0pPdnBsQld5VCt0SUlFZWo2U2ZQaTlKTS8yQmYzOWkxdFVpRCt2aVV1Tk43MGlKcXRwRQpUbm50V2htWjA5elAzaVUwcklXWGJLcWpiVEJyTUE0R0ExVWREd0VCL3dRRUF3SUJwakFkQmdOVkhTVUVGakFVCkJnZ3JCZ0VGQlFjREFnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QXBCZ05WSFE0RUlnUWcKQzl3Y0RKb3FKL2dyUGF3S1d4RnVjNVB3MitTdTBsQVpFcFRGaEdDQlJSTXdDZ1lJS29aSXpqMEVBd0lEU0FBdwpSUUloQU1JaFJOVDVJMHpwTlRaa1dCSkdyblJqSUhkWXYwS2lWL1JKbkd5Yi9XVFFBaUJ6eUJqYnR3L1JyWEV3Clpzb0N1MmtoOUUwOUZIdXl5dGgydUtWc3Y0ZTlnUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
                     ],
+                    "signing_identity": null,
+                    "tls_intermediate_certs": [],
                     "tls_root_certs": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNTakNDQWZDZ0F3SUJBZ0lSQU9JNmRWUWMraHBZdkdMSlFQM1YwQU13Q2dZSUtvWkl6ajBFQXdJd2RqRUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIekFkQmdOVkJBTVRGblJzCmMyTmhMbTl5WnpJdVpYaGhiWEJzWlM1amIyMHdIaGNOTVRjeE1USTVNVGt5TkRBMldoY05NamN4TVRJM01Ua3kKTkRBMldqQjJNUXN3Q1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRQpCeE1OVTJGdUlFWnlZVzVqYVhOamJ6RVpNQmNHQTFVRUNoTVFiM0puTWk1bGVHRnRjR3hsTG1OdmJURWZNQjBHCkExVUVBeE1XZEd4elkyRXViM0puTWk1bGVHRnRjR3hsTG1OdmJUQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDkKQXdFSEEwSUFCTWZ1QTMwQVVBT1ZKRG1qVlBZd1lNbTlweW92MFN6OHY4SUQ5N0twSHhXOHVOOUdSOU84aVdFMgo5bllWWVpiZFB2V1h1RCszblpweUFNcGZja3YvYUV5alh6QmRNQTRHQTFVZER3RUIvd1FFQXdJQnBqQVBCZ05WCkhTVUVDREFHQmdSVkhTVUFNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdLUVlEVlIwT0JDSUVJRnk5VHBHcStQL08KUGRXbkZXdWRPTnFqVDRxOEVKcDJmbERnVCtFV2RnRnFNQW9HQ0NxR1NNNDlCQU1DQTBnQU1FVUNJUUNZYlhSeApXWDZoUitPU0xBNSs4bFRwcXRMWnNhOHVuS3J3ek1UYXlQUXNVd0lnVSs5YXdaaE0xRzg3bGE0V0h4cmt5eVZ2CkU4S1ZsR09IVHVPWm9TMU5PT0U9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNXRENDQWY2Z0F3SUJBZ0lSQVBoOGJPUzV1aVZLK2xwdjBKZDN5ZUl3Q2dZSUtvWkl6ajBFQXdJd2RqRUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpJdVpYaGhiWEJzWlM1amIyMHhIekFkQmdOVkJBTVRGblJzCmMyTmhMbTl5WnpJdVpYaGhiWEJzWlM1amIyMHdIaGNOTVRreE1URTBNVE0wT0RBd1doY05Namt4TVRFeE1UTTAKT0RBd1dqQjJNUXN3Q1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRQpCeE1OVTJGdUlFWnlZVzVqYVhOamJ6RVpNQmNHQTFVRUNoTVFiM0puTWk1bGVHRnRjR3hsTG1OdmJURWZNQjBHCkExVUVBeE1XZEd4elkyRXViM0puTWk1bGVHRnRjR3hsTG1OdmJUQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDkKQXdFSEEwSUFCRHlhdEd3R2ZLSmFLazZ5ZmVJMGpObHVyWU5rbjdOaG5uNGVYbnVTd0hCazBRMDY4bnZ1Ujg4awprQTBRWm5vR2ZRWkEwU3RRM3JqVCt4b3BnMHFMcVBhamJUQnJNQTRHQTFVZER3RUIvd1FFQXdJQnBqQWRCZ05WCkhTVUVGakFVQmdnckJnRUZCUWNEQWdZSUt3WUJCUVVIQXdFd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBcEJnTlYKSFE0RUlnUWdGVDh3UThUcWlIVUxqMU1sY21JRWoreUFPSDF1R1NDNGxFRUVadUlTVkZBd0NnWUlLb1pJemowRQpBd0lEU0FBd1JRSWhBTExXb3Z2Z2JWTnJwcC9mbzZwTStoVXNMTTFkT3NncGRKNlRNd2FFdzQrTkFpQnJ0WFArCno5MFd6ZEQvRWpFWlcyM0xmeVhNMWRscXcyVHJEL3FWUVlGYXJRPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
                     ]
                   },
                   "type": 0
@@ -311,125 +410,6 @@ Visual Studio).
               }
             },
             "version": "1"
-          },
-          "Org3MSP": {
-            "groups": {},
-            "mod_policy": "Admins",
-            "policies": {
-              "Admins": {
-                "mod_policy": "Admins",
-                "policy": {
-                  "type": 1,
-                  "value": {
-                    "identities": [
-                      {
-                        "principal": {
-                          "msp_identifier": "Org3MSP",
-                          "role": "ADMIN"
-                        },
-                        "principal_classification": "ROLE"
-                      }
-                    ],
-                    "rule": {
-                      "n_out_of": {
-                        "n": 1,
-                        "rules": [
-                          {
-                            "signed_by": 0
-                          }
-                        ]
-                      }
-                    },
-                    "version": 0
-                  }
-                },
-                "version": "0"
-              },
-              "Readers": {
-                "mod_policy": "Admins",
-                "policy": {
-                  "type": 1,
-                  "value": {
-                    "identities": [
-                      {
-                        "principal": {
-                          "msp_identifier": "Org3MSP",
-                          "role": "MEMBER"
-                        },
-                        "principal_classification": "ROLE"
-                      }
-                    ],
-                    "rule": {
-                      "n_out_of": {
-                        "n": 1,
-                        "rules": [
-                          {
-                            "signed_by": 0
-                          }
-                        ]
-                      }
-                    },
-                    "version": 0
-                  }
-                },
-                "version": "0"
-              },
-              "Writers": {
-                "mod_policy": "Admins",
-                "policy": {
-                  "type": 1,
-                  "value": {
-                    "identities": [
-                      {
-                        "principal": {
-                          "msp_identifier": "Org3MSP",
-                          "role": "MEMBER"
-                        },
-                        "principal_classification": "ROLE"
-                      }
-                    ],
-                    "rule": {
-                      "n_out_of": {
-                        "n": 1,
-                        "rules": [
-                          {
-                            "signed_by": 0
-                          }
-                        ]
-                      }
-                    },
-                    "version": 0
-                  }
-                },
-                "version": "0"
-              }
-            },
-            "values": {
-              "MSP": {
-                "mod_policy": "Admins",
-                "value": {
-                  "config": {
-                    "admins": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNHRENDQWIrZ0F3SUJBZ0lRQUlSNWN4U0hpVm1kSm9uY3FJVUxXekFLQmdncWhrak9QUVFEQWpCek1Rc3cKQ1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRUJ4TU5VMkZ1SUVaeQpZVzVqYVhOamJ6RVpNQmNHQTFVRUNoTVFiM0puTXk1bGVHRnRjR3hsTG1OdmJURWNNQm9HQTFVRUF4TVRZMkV1CmIzSm5NeTVsZUdGdGNHeGxMbU52YlRBZUZ3MHhOekV4TWpreE9UTTRNekJhRncweU56RXhNamN4T1RNNE16QmEKTUZzeEN6QUpCZ05WQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxVApZVzRnUm5KaGJtTnBjMk52TVI4d0hRWURWUVFEREJaQlpHMXBia0J2Y21jekxtVjRZVzF3YkdVdVkyOXRNRmt3CkV3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFSFlkVFY2ZC80cmR4WFd2cm1qZ0hIQlhXc2lxUWxrcnQKZ0p1NzMxcG0yZDRrWU82aEd2b2tFRFBwbkZFdFBwdkw3K1F1UjhYdkFQM0tqTkt0NHdMRG5hTk5NRXN3RGdZRApWUjBQQVFIL0JBUURBZ2VBTUF3R0ExVWRFd0VCL3dRQ01BQXdLd1lEVlIwakJDUXdJb0FnSWNxUFVhM1VQNmN0Ck9LZmYvKzVpMWJZVUZFeVFlMVAyU0hBRldWSWUxYzB3Q2dZSUtvWkl6ajBFQXdJRFJ3QXdSQUlnUm5LRnhsTlYKSmppVGpkZmVoczRwNy9qMkt3bFVuUWVuNFkyUnV6QjFrbm9DSUd3dEZ1TEdpRFY2THZSL2pHVXR3UkNyeGw5ZApVNENCeDhGbjBMdXNMTkJYCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
-                    ],
-                    "crypto_config": {
-                      "identity_identifier_hash_function": "SHA256",
-                      "signature_hash_family": "SHA2"
-                    },
-                    "name": "Org3MSP",
-                    "root_certs": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNRakNDQWVtZ0F3SUJBZ0lRUkN1U2Y0RVJNaDdHQW1ydTFIQ2FZREFLQmdncWhrak9QUVFEQWpCek1Rc3cKQ1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRUJ4TU5VMkZ1SUVaeQpZVzVqYVhOamJ6RVpNQmNHQTFVRUNoTVFiM0puTXk1bGVHRnRjR3hsTG1OdmJURWNNQm9HQTFVRUF4TVRZMkV1CmIzSm5NeTVsZUdGdGNHeGxMbU52YlRBZUZ3MHhOekV4TWpreE9UTTRNekJhRncweU56RXhNamN4T1RNNE16QmEKTUhNeEN6QUpCZ05WQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxVApZVzRnUm5KaGJtTnBjMk52TVJrd0Z3WURWUVFLRXhCdmNtY3pMbVY0WVcxd2JHVXVZMjl0TVJ3d0dnWURWUVFECkV4TmpZUzV2Y21jekxtVjRZVzF3YkdVdVkyOXRNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUUKZXFxOFFQMnllM08vM1J3UzI0SWdtRVdST3RnK3Zyc2pRY1BvTU42NEZiUGJKbmExMklNaVdDUTF6ZEZiTU9hSAorMUlrb21yY0RDL1ZpejkvY0M0NW9xTmZNRjB3RGdZRFZSMFBBUUgvQkFRREFnR21NQThHQTFVZEpRUUlNQVlHCkJGVWRKUUF3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFwQmdOVkhRNEVJZ1FnSWNxUFVhM1VQNmN0T0tmZi8rNWkKMWJZVUZFeVFlMVAyU0hBRldWSWUxYzB3Q2dZSUtvWkl6ajBFQXdJRFJ3QXdSQUlnTEgxL2xSZElWTVA4Z2FWeQpKRW01QWQ0SjhwZ256N1BVV2JIMzZvdVg4K1lDSUNPK20vUG9DbDRIbTlFbXhFN3ZnUHlOY2trVWd0SlRiTFhqCk5SWjBxNTdWCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
-                    ],
-                    "tls_root_certs": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNTVENDQWZDZ0F3SUJBZ0lSQU9xc2JQQzFOVHJzclEvUUNpalh6K0F3Q2dZSUtvWkl6ajBFQXdJd2RqRUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhHVEFYQmdOVkJBb1RFRzl5WnpNdVpYaGhiWEJzWlM1amIyMHhIekFkQmdOVkJBTVRGblJzCmMyTmhMbTl5WnpNdVpYaGhiWEJzWlM1amIyMHdIaGNOTVRjeE1USTVNVGt6T0RNd1doY05NamN4TVRJM01Ua3oKT0RNd1dqQjJNUXN3Q1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRQpCeE1OVTJGdUlFWnlZVzVqYVhOamJ6RVpNQmNHQTFVRUNoTVFiM0puTXk1bGVHRnRjR3hsTG1OdmJURWZNQjBHCkExVUVBeE1XZEd4elkyRXViM0puTXk1bGVHRnRjR3hsTG1OdmJUQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDkKQXdFSEEwSUFCSVJTTHdDejdyWENiY0VLMmhxSnhBVm9DaDhkejNqcnA5RHMyYW9TQjBVNTZkSUZhVmZoR2FsKwovdGp6YXlndXpFalFhNlJ1MmhQVnRGM2NvQnJ2Ulpxalh6QmRNQTRHQTFVZER3RUIvd1FFQXdJQnBqQVBCZ05WCkhTVUVDREFHQmdSVkhTVUFNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdLUVlEVlIwT0JDSUVJQ2FkVERGa0JPTGkKblcrN2xCbDExL3pPbXk4a1BlYXc0MVNZWEF6cVhnZEVNQW9HQ0NxR1NNNDlCQU1DQTBjQU1FUUNJQlgyMWR3UwpGaG5NdDhHWXUweEgrUGd5aXQreFdQUjBuTE1Jc1p2dVlRaktBaUFLUlE5N2VrLzRDTzZPWUtSakR0VFM4UFRmCm9nTmJ6dTBxcThjbVhseW5jZz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
-                    ]
-                  },
-                  "type": 0
-                },
-                "version": "0"
-              }
-            },
-            "version": "0"
           }
         },
         "mod_policy": "Admins",
@@ -468,11 +448,23 @@ Visual Studio).
             "version": "0"
           }
         },
+        "values": {
+          "Capabilities": {
+            "mod_policy": "Admins",
+            "value": {
+              "capabilities": {
+                "V1_4_2": {}
+              }
+            },
+            "version": "0"
+          }
+        },
         "version": "1"
       },
       "Orderer": {
         "groups": {
           "OrdererOrg": {
+            "groups": {},
             "mod_policy": "Admins",
             "policies": {
               "Admins": {
@@ -568,19 +560,41 @@ Visual Studio).
                 "mod_policy": "Admins",
                 "value": {
                   "config": {
-                    "admins": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNDakNDQWJDZ0F3SUJBZ0lRSFNTTnIyMWRLTTB6THZ0dEdoQnpMVEFLQmdncWhrak9QUVFEQWpCcE1Rc3cKQ1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRUJ4TU5VMkZ1SUVaeQpZVzVqYVhOamJ6RVVNQklHQTFVRUNoTUxaWGhoYlhCc1pTNWpiMjB4RnpBVkJnTlZCQU1URG1OaExtVjRZVzF3CmJHVXVZMjl0TUI0WERURTNNVEV5T1RFNU1qUXdObG9YRFRJM01URXlOekU1TWpRd05sb3dWakVMTUFrR0ExVUUKQmhNQ1ZWTXhFekFSQmdOVkJBZ1RDa05oYkdsbWIzSnVhV0V4RmpBVUJnTlZCQWNURFZOaGJpQkdjbUZ1WTJsegpZMjh4R2pBWUJnTlZCQU1NRVVGa2JXbHVRR1Y0WVcxd2JHVXVZMjl0TUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJCnpqMERBUWNEUWdBRTZCTVcvY0RGUkUvakFSenV5N1BjeFQ5a3pnZitudXdwKzhzK2xia0hZd0ZpaForMWRhR3gKKzhpS1hDY0YrZ0tpcVBEQXBpZ2REOXNSeTBoTEMwQnRacU5OTUVzd0RnWURWUjBQQVFIL0JBUURBZ2VBTUF3RwpBMVVkRXdFQi93UUNNQUF3S3dZRFZSMGpCQ1F3SW9BZ3o3bDQ2ZXRrODU0NFJEanZENVB6YjV3TzI5N0lIMnNUCngwTjAzOHZibkpzd0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFNRTJPWXljSnVyYzhVY2hkeTA5RU50RTNFUDIKcVoxSnFTOWVCK0gxSG5FSkFpQUtXa2h5TmI0akRPS2MramJIVmgwV0YrZ3J4UlJYT1hGaEl4ei85elI3UUE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
-                    ],
+                    "admins": [],
                     "crypto_config": {
                       "identity_identifier_hash_function": "SHA256",
                       "signature_hash_family": "SHA2"
                     },
+                    "fabric_node_ous": {
+                      "admin_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNQVENDQWVTZ0F3SUJBZ0lSQUxCOWVtTVhObkxaWW56TitkMHNJQ2N3Q2dZSUtvWkl6ajBFQXdJd2FURUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMlY0WVcxd2JHVXVZMjl0TVJjd0ZRWURWUVFERXc1allTNWxlR0Z0CmNHeGxMbU52YlRBZUZ3MHhPVEV4TVRReE16UTRNREJhRncweU9URXhNVEV4TXpRNE1EQmFNR2t4Q3pBSkJnTlYKQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxVFlXNGdSbkpoYm1OcApjMk52TVJRd0VnWURWUVFLRXd0bGVHRnRjR3hsTG1OdmJURVhNQlVHQTFVRUF4TU9ZMkV1WlhoaGJYQnNaUzVqCmIyMHdXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVGVXYjlZWUdMNmgwMVlFckdzVS9xZmFzUmEKbUpHcFlWZGxsVTNwNldNUTMwZjcyazBFQitPRVQ3WWM3K0w2TWxxTTdNUDJBYnQ2RWUwV2w2OGpjZGxXbzIwdwphekFPQmdOVkhROEJBZjhFQkFNQ0FhWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0lHQ0NzR0FRVUZCd01CCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0tRWURWUjBPQkNJRUlMQ0ZrREpzNkJNNzQ1YlVMUUhPY3RscFRtbFIKTTR6ZGpDaHlicW11QVNqb01Bb0dDQ3FHU000OUJBTUNBMGNBTUVRQ0lIQllZTVplZ2V3Wk5BUU1iU3hoQUhZMApqZnNCdDJOOHVTZ3prNHRIUWMvQ0FpQklCSjVXK3AyVTRzYi9zWjhPeS9mZjBIdFBBekZCSWV4VERkUGNnNUxBCk1RPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=",
+                        "organizational_unit_identifier": "admin"
+                      },
+                      "client_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNQVENDQWVTZ0F3SUJBZ0lSQUxCOWVtTVhObkxaWW56TitkMHNJQ2N3Q2dZSUtvWkl6ajBFQXdJd2FURUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMlY0WVcxd2JHVXVZMjl0TVJjd0ZRWURWUVFERXc1allTNWxlR0Z0CmNHeGxMbU52YlRBZUZ3MHhPVEV4TVRReE16UTRNREJhRncweU9URXhNVEV4TXpRNE1EQmFNR2t4Q3pBSkJnTlYKQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxVFlXNGdSbkpoYm1OcApjMk52TVJRd0VnWURWUVFLRXd0bGVHRnRjR3hsTG1OdmJURVhNQlVHQTFVRUF4TU9ZMkV1WlhoaGJYQnNaUzVqCmIyMHdXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVGVXYjlZWUdMNmgwMVlFckdzVS9xZmFzUmEKbUpHcFlWZGxsVTNwNldNUTMwZjcyazBFQitPRVQ3WWM3K0w2TWxxTTdNUDJBYnQ2RWUwV2w2OGpjZGxXbzIwdwphekFPQmdOVkhROEJBZjhFQkFNQ0FhWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0lHQ0NzR0FRVUZCd01CCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0tRWURWUjBPQkNJRUlMQ0ZrREpzNkJNNzQ1YlVMUUhPY3RscFRtbFIKTTR6ZGpDaHlicW11QVNqb01Bb0dDQ3FHU000OUJBTUNBMGNBTUVRQ0lIQllZTVplZ2V3Wk5BUU1iU3hoQUhZMApqZnNCdDJOOHVTZ3prNHRIUWMvQ0FpQklCSjVXK3AyVTRzYi9zWjhPeS9mZjBIdFBBekZCSWV4VERkUGNnNUxBCk1RPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=",
+                        "organizational_unit_identifier": "client"
+                      },
+                      "enable": true,
+                      "orderer_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNQVENDQWVTZ0F3SUJBZ0lSQUxCOWVtTVhObkxaWW56TitkMHNJQ2N3Q2dZSUtvWkl6ajBFQXdJd2FURUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMlY0WVcxd2JHVXVZMjl0TVJjd0ZRWURWUVFERXc1allTNWxlR0Z0CmNHeGxMbU52YlRBZUZ3MHhPVEV4TVRReE16UTRNREJhRncweU9URXhNVEV4TXpRNE1EQmFNR2t4Q3pBSkJnTlYKQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxVFlXNGdSbkpoYm1OcApjMk52TVJRd0VnWURWUVFLRXd0bGVHRnRjR3hsTG1OdmJURVhNQlVHQTFVRUF4TU9ZMkV1WlhoaGJYQnNaUzVqCmIyMHdXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVGVXYjlZWUdMNmgwMVlFckdzVS9xZmFzUmEKbUpHcFlWZGxsVTNwNldNUTMwZjcyazBFQitPRVQ3WWM3K0w2TWxxTTdNUDJBYnQ2RWUwV2w2OGpjZGxXbzIwdwphekFPQmdOVkhROEJBZjhFQkFNQ0FhWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0lHQ0NzR0FRVUZCd01CCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0tRWURWUjBPQkNJRUlMQ0ZrREpzNkJNNzQ1YlVMUUhPY3RscFRtbFIKTTR6ZGpDaHlicW11QVNqb01Bb0dDQ3FHU000OUJBTUNBMGNBTUVRQ0lIQllZTVplZ2V3Wk5BUU1iU3hoQUhZMApqZnNCdDJOOHVTZ3prNHRIUWMvQ0FpQklCSjVXK3AyVTRzYi9zWjhPeS9mZjBIdFBBekZCSWV4VERkUGNnNUxBCk1RPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=",
+                        "organizational_unit_identifier": "orderer"
+                      },
+                      "peer_ou_identifier": {
+                        "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNQVENDQWVTZ0F3SUJBZ0lSQUxCOWVtTVhObkxaWW56TitkMHNJQ2N3Q2dZSUtvWkl6ajBFQXdJd2FURUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMlY0WVcxd2JHVXVZMjl0TVJjd0ZRWURWUVFERXc1allTNWxlR0Z0CmNHeGxMbU52YlRBZUZ3MHhPVEV4TVRReE16UTRNREJhRncweU9URXhNVEV4TXpRNE1EQmFNR2t4Q3pBSkJnTlYKQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxVFlXNGdSbkpoYm1OcApjMk52TVJRd0VnWURWUVFLRXd0bGVHRnRjR3hsTG1OdmJURVhNQlVHQTFVRUF4TU9ZMkV1WlhoaGJYQnNaUzVqCmIyMHdXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVGVXYjlZWUdMNmgwMVlFckdzVS9xZmFzUmEKbUpHcFlWZGxsVTNwNldNUTMwZjcyazBFQitPRVQ3WWM3K0w2TWxxTTdNUDJBYnQ2RWUwV2w2OGpjZGxXbzIwdwphekFPQmdOVkhROEJBZjhFQkFNQ0FhWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0lHQ0NzR0FRVUZCd01CCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0tRWURWUjBPQkNJRUlMQ0ZrREpzNkJNNzQ1YlVMUUhPY3RscFRtbFIKTTR6ZGpDaHlicW11QVNqb01Bb0dDQ3FHU000OUJBTUNBMGNBTUVRQ0lIQllZTVplZ2V3Wk5BUU1iU3hoQUhZMApqZnNCdDJOOHVTZ3prNHRIUWMvQ0FpQklCSjVXK3AyVTRzYi9zWjhPeS9mZjBIdFBBekZCSWV4VERkUGNnNUxBCk1RPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=",
+                        "organizational_unit_identifier": "peer"
+                      }
+                    },
+                    "intermediate_certs": [],
                     "name": "OrdererMSP",
+                    "organizational_unit_identifiers": [],
+                    "revocation_list": [],
                     "root_certs": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNMakNDQWRXZ0F3SUJBZ0lRY2cxUVZkVmU2Skd6YVU1cmxjcW4vakFLQmdncWhrak9QUVFEQWpCcE1Rc3cKQ1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRUJ4TU5VMkZ1SUVaeQpZVzVqYVhOamJ6RVVNQklHQTFVRUNoTUxaWGhoYlhCc1pTNWpiMjB4RnpBVkJnTlZCQU1URG1OaExtVjRZVzF3CmJHVXVZMjl0TUI0WERURTNNVEV5T1RFNU1qUXdObG9YRFRJM01URXlOekU1TWpRd05sb3dhVEVMTUFrR0ExVUUKQmhNQ1ZWTXhFekFSQmdOVkJBZ1RDa05oYkdsbWIzSnVhV0V4RmpBVUJnTlZCQWNURFZOaGJpQkdjbUZ1WTJsegpZMjh4RkRBU0JnTlZCQW9UQzJWNFlXMXdiR1V1WTI5dE1SY3dGUVlEVlFRREV3NWpZUzVsZUdGdGNHeGxMbU52CmJUQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJQTVI2MGdCcVJham9hS0U1TExRYjRIb28wN3QKYTRuM21Ncy9NRGloQVQ5YUN4UGZBcDM5SS8wMmwvZ2xiMTdCcEtxZGpGd0JKZHNuMVN6ZnQ3NlZkTitqWHpCZApNQTRHQTFVZER3RUIvd1FFQXdJQnBqQVBCZ05WSFNVRUNEQUdCZ1JWSFNVQU1BOEdBMVVkRXdFQi93UUZNQU1CCkFmOHdLUVlEVlIwT0JDSUVJTSs1ZU9uclpQT2VPRVE0N3crVDgyK2NEdHZleUI5ckU4ZERkTi9MMjV5Yk1Bb0cKQ0NxR1NNNDlCQU1DQTBjQU1FUUNJQVB6SGNOUmQ2a3QxSEdpWEFDclFTM0grL3R5NmcvVFpJa1pTeXIybmdLNQpBaUJnb1BVTTEwTHNsMVFtb2dlbFBjblZGZjJoODBXR2I3NGRIS2tzVFJKUkx3PT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNQVENDQWVTZ0F3SUJBZ0lSQUxCOWVtTVhObkxaWW56TitkMHNJQ2N3Q2dZSUtvWkl6ajBFQXdJd2FURUwKTUFrR0ExVUVCaE1DVlZNeEV6QVJCZ05WQkFnVENrTmhiR2xtYjNKdWFXRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMlY0WVcxd2JHVXVZMjl0TVJjd0ZRWURWUVFERXc1allTNWxlR0Z0CmNHeGxMbU52YlRBZUZ3MHhPVEV4TVRReE16UTRNREJhRncweU9URXhNVEV4TXpRNE1EQmFNR2t4Q3pBSkJnTlYKQkFZVEFsVlRNUk13RVFZRFZRUUlFd3BEWVd4cFptOXlibWxoTVJZd0ZBWURWUVFIRXcxVFlXNGdSbkpoYm1OcApjMk52TVJRd0VnWURWUVFLRXd0bGVHRnRjR3hsTG1OdmJURVhNQlVHQTFVRUF4TU9ZMkV1WlhoaGJYQnNaUzVqCmIyMHdXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVGVXYjlZWUdMNmgwMVlFckdzVS9xZmFzUmEKbUpHcFlWZGxsVTNwNldNUTMwZjcyazBFQitPRVQ3WWM3K0w2TWxxTTdNUDJBYnQ2RWUwV2w2OGpjZGxXbzIwdwphekFPQmdOVkhROEJBZjhFQkFNQ0FhWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0lHQ0NzR0FRVUZCd01CCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0tRWURWUjBPQkNJRUlMQ0ZrREpzNkJNNzQ1YlVMUUhPY3RscFRtbFIKTTR6ZGpDaHlicW11QVNqb01Bb0dDQ3FHU000OUJBTUNBMGNBTUVRQ0lIQllZTVplZ2V3Wk5BUU1iU3hoQUhZMApqZnNCdDJOOHVTZ3prNHRIUWMvQ0FpQklCSjVXK3AyVTRzYi9zWjhPeS9mZjBIdFBBekZCSWV4VERkUGNnNUxBCk1RPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
                     ],
+                    "signing_identity": null,
+                    "tls_intermediate_certs": [],
                     "tls_root_certs": [
-                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNORENDQWR1Z0F3SUJBZ0lRYWJ5SUl6cldtUFNzSjJacisvRVpXVEFLQmdncWhrak9QUVFEQWpCc01Rc3cKQ1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRUJ4TU5VMkZ1SUVaeQpZVzVqYVhOamJ6RVVNQklHQTFVRUNoTUxaWGhoYlhCc1pTNWpiMjB4R2pBWUJnTlZCQU1URVhSc2MyTmhMbVY0CllXMXdiR1V1WTI5dE1CNFhEVEUzTVRFeU9URTVNalF3TmxvWERUSTNNVEV5TnpFNU1qUXdObG93YkRFTE1Ba0cKQTFVRUJoTUNWVk14RXpBUkJnTlZCQWdUQ2tOaGJHbG1iM0p1YVdFeEZqQVVCZ05WQkFjVERWTmhiaUJHY21GdQpZMmx6WTI4eEZEQVNCZ05WQkFvVEMyVjRZVzF3YkdVdVkyOXRNUm93R0FZRFZRUURFeEYwYkhOallTNWxlR0Z0CmNHeGxMbU52YlRCWk1CTUdCeXFHU000OUFnRUdDQ3FHU000OUF3RUhBMElBQkVZVE9mdG1rTHdiSlRNeG1aVzMKZVdqRUQ2eW1UeEhYeWFQdTM2Y1NQWDlldDZyU3Y5UFpCTGxyK3hZN1dtYlhyOHM5K3E1RDMwWHl6OEh1OWthMQpSc1dqWHpCZE1BNEdBMVVkRHdFQi93UUVBd0lCcGpBUEJnTlZIU1VFQ0RBR0JnUlZIU1VBTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0tRWURWUjBPQkNJRUlJcjduNTVjTWlUdENEYmM5UGU0RFpnZ0ZYdHV2RktTdnBNYUhzbzAKSnpFd01Bb0dDQ3FHU000OUJBTUNBMGNBTUVRQ0lGM1gvMGtQRkFVQzV2N25JVVh6SmI5Z3JscWxET05UeVg2QQpvcmtFVTdWb0FpQkpMbS9IUFZ0aVRHY2NldUZPZTE4SnNwd0JTZ1hxNnY1K1BobEdsbU9pWHc9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+                      "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNRekNDQWVtZ0F3SUJBZ0lRYmVteDhRa200VTNMT1EwWWJibzNmVEFLQmdncWhrak9QUVFEQWpCc01Rc3cKQ1FZRFZRUUdFd0pWVXpFVE1CRUdBMVVFQ0JNS1EyRnNhV1p2Y201cFlURVdNQlFHQTFVRUJ4TU5VMkZ1SUVaeQpZVzVqYVhOamJ6RVVNQklHQTFVRUNoTUxaWGhoYlhCc1pTNWpiMjB4R2pBWUJnTlZCQU1URVhSc2MyTmhMbVY0CllXMXdiR1V1WTI5dE1CNFhEVEU1TVRFeE5ERXpORGd3TUZvWERUSTVNVEV4TVRFek5EZ3dNRm93YkRFTE1Ba0cKQTFVRUJoTUNWVk14RXpBUkJnTlZCQWdUQ2tOaGJHbG1iM0p1YVdFeEZqQVVCZ05WQkFjVERWTmhiaUJHY21GdQpZMmx6WTI4eEZEQVNCZ05WQkFvVEMyVjRZVzF3YkdVdVkyOXRNUm93R0FZRFZRUURFeEYwYkhOallTNWxlR0Z0CmNHeGxMbU52YlRCWk1CTUdCeXFHU000OUFnRUdDQ3FHU000OUF3RUhBMElBQkR4aWpEY3FDMjlja0JOb21lam4KKzliaHVhc05yNlRMZjlIOStibTFPNTZJcko4ZmZ6WnEwaUJ4MWlpdmJSVGRDb2gwQ1d6ZUxRRHQyR3VBTkMrTgpBMDJqYlRCck1BNEdBMVVkRHdFQi93UUVBd0lCcGpBZEJnTlZIU1VFRmpBVUJnZ3JCZ0VGQlFjREFnWUlLd1lCCkJRVUhBd0V3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFwQmdOVkhRNEVJZ1Fnbm56SFBNRlFsSk50d1NqRXNBUUkKdnBFb3BvK2R4RElxbVB3bW0xczErT1V3Q2dZSUtvWkl6ajBFQXdJRFNBQXdSUUloQUtCTGhsSTlTcVkwTTZzTQozdC9DVG9sSXVEcXNmUVF0eWxhTkZpOTFYZjVZQWlCb1JCVWNCdy95SExTU01BSEwwcXBqVStUWHdDVzBzZ29FCmZ3NUNnU2s4MWc9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
                     ]
                   },
                   "type": 0
@@ -655,13 +669,25 @@ Visual Studio).
             },
             "version": "0"
           },
+          "Capabilities": {
+            "mod_policy": "Admins",
+            "value": {
+              "capabilities": {
+                "V1_4_2": {}
+              }
+            },
+            "version": "0"
+          },
           "ChannelRestrictions": {
             "mod_policy": "Admins",
+            "value": null,
             "version": "0"
           },
           "ConsensusType": {
             "mod_policy": "Admins",
             "value": {
+              "metadata": null,
+              "state": "STATE_NORMAL",
               "type": "solo"
             },
             "version": "0"
@@ -670,7 +696,7 @@ Visual Studio).
         "version": "0"
       }
     },
-    "mod_policy": "",
+    "mod_policy": "Admins",
     "policies": {
       "Admins": {
         "mod_policy": "Admins",
@@ -714,6 +740,15 @@ Visual Studio).
         },
         "version": "0"
       },
+      "Capabilities": {
+        "mod_policy": "Admins",
+        "value": {
+          "capabilities": {
+            "V1_4_3": {}
+          }
+        },
+        "version": "0"
+      },
       "Consortium": {
         "mod_policy": "Admins",
         "value": {
@@ -740,240 +775,188 @@ Visual Studio).
     },
     "version": "0"
   },
-  "sequence": "3",
-  "type": 0
+  "sequence": "3"
 }
 ```
 </details>
 
-A config might look intimidating in this form, but once you study it you’ll see
-that it has a logical structure.
+A config might look intimidating in this form, but once you study it you’ll see that it has a logical structure.
 
-Beyond the definitions of the policies -- defining who can do certain things
-at the channel level, and who has the permission to change who can change the
-config -- channels also have other kinds of features that can be modified using
-a config update. [Adding an Org to a Channel](./channel_update_tutorial.html)
-takes you through one of the most important -- adding an org to a channel. Some
-other things that are possible to change with a config update include:
+For example, let's take a look at the config with a few of the tabs closed.
 
-* **Batch Size.** These parameters dictate the number and size of transactions
-in a block. No block will appear larger than `absolute_max_bytes` large or
-with more than `max_message_count` transactions inside the block. If it is
-possible to construct a block under `preferred_max_bytes`, then a block will
-be cut prematurely, and transactions larger than this size will appear in
-their own block.
+Note that this is the configuration of an application channel, not the orderer system channel.
 
-   ```
-   {
-     "absolute_max_bytes": 102760448,
-     "max_message_count": 10,
-     "preferred_max_bytes": 524288
-   }
-  ```
+![Sample config simplified](./images/sample_config.png)
 
-* **Batch Timeout.** The amount of time to wait after the first transaction
-arrives for additional transactions before cutting a block. Decreasing this
-value will improve latency, but decreasing it too much may decrease throughput
-by not allowing the block to fill to its maximum capacity.
+The structure of the config should now be more obvious. You can see the config groupings: `Channel`, `Application`, and `Orderer`, and the configuration parameters related to each config grouping (we'll talk more about these in the next section), but also where the MSPs representing organizations are. Note that the `Channel` config grouping is below the `Orderer` group config values.
 
-  ```
-  { "timeout": "2s" }
-  ```
+### More about these parameters
 
-* **Channel Restrictions.** The total number of channels the orderer is willing
-to allocate may be specified as max_count. This is primarily useful in
-pre-production environments with weak consortium `ChannelCreation` policies.
+In this section, we'll take a deeper look at the configurable values in the context of where they sit in the configuration.
 
-  ```
-  {
-   "max_count":1000
-  }
-  ```
+First, there are config parameters that occur in multiple parts of the configuration:
 
-* **Channel Creation Policy.** Defines the policy value which will be set as the
-mod_policy for the Application group of new channels for the consortium it is defined in.
-The signature set attached to the channel creation request will be checked against
-the instantiation of this policy in the new channel to ensure that the channel
-creation is authorized. Note that this config value is only set in the orderer
-system channel.
+* **Policies**. Policies are not just a configuration value (which can be updated as defined in a `mod_policy`), they define the circumstances under which all parameters can be changed. For more information, check out [Policies](./policies/policies.html).
 
-  ```
-  {
-  "type": 3,
-  "value": {
-    "rule": "ANY",
-    "sub_policy": "Admins"
-    }
-  }
-  ```
+* **Capabilities**. Ensures that networks and channels process things in the same way, creating deterministic results for things like channel configuration updates and chaincode invocations. Without deterministic results, one peer on a channel might invalidate a transaction while another peer may validate it. For more information, check out [Capabilities](./capabilities_concept.html).
 
-* **Kafka brokers.** When `ConsensusType` is set to `kafka`, the `brokers` list
-enumerates some subset (or preferably all) of the Kafka brokers for the
-orderer to initially connect to at startup. *Note that it is not possible to
-change your consensus type after it has been established (during the
-bootstrapping of the genesis block)*.
+#### `Channel/Application`
 
-  ```
-  {
-    "brokers": [
-      "kafka0:9092",
-      "kafka1:9092",
-      "kafka2:9092",
-      "kafka3:9092"
-    ]
-  }
-  ```
+Governs the configuration parameters unique to application channels (for example, adding or removing channel members). By default, changing these parameters requires the signature of a majority of the application organization admins.
 
-* **Anchor Peers Definition.** Defines the location of the anchor peers for
-each Org.
+* **Add orgs to a channel**. To add an organization to a channel, their MSP and other organization parameters must be generated and added here (under `Channel/Application/groups`).
 
-  ```
-  {
-    "host": "peer0.org2.example.com",
-      "port": 9051
-  }
-  ```
+* **Organization-related parameters**. Any parameters specific to an organization, (identifying an anchor peer, for example, or the certificates of org admins), can be changed. Note that changing these values will by default not require the majority of application organization admins but only an admin of the organization itself.
 
-* **Hashing Structure.** The block data is an array of byte arrays. The hash of
-the block data is computed as a Merkle tree. This value specifies the width of
-that Merkle tree. For the time being, this value is fixed to `4294967295`
-which corresponds to a simple flat hash of the concatenation of the block data
-bytes.
+#### `Channel/Orderer`
 
-  ```
-  { "width": 4294967295 }
-  ```
+Governs configuration parameters unique to the ordering service or the orderer system channel, requires a majority of the ordering organizations’ admins (by default there is only one ordering organization, though more can be added, for example when multiple organizations contribute nodes to the ordering service).
 
-* **Hashing Algorithm.** The algorithm used for computing the hash values
-encoded into the blocks of the blockchain. In particular, this affects the
-data hash, and the previous block hash fields of the block. Note, this field
-currently only has one valid value (`SHA256`) and should not be changed.
+* **Batch size**. These parameters dictate the number and size of transactions in a block. No block will appear larger than `absolute_max_bytes` large or with more than `max_message_count` transactions inside the block. If it is possible to construct a block under `preferred_max_bytes`, then a block will be cut prematurely, and transactions larger than this size will appear in their own block.
 
-  ```
-  { "name": "SHA256" }
-  ```
+* **Batch timeout**. The amount of time to wait after the first transaction arrives for additional transactions before cutting a block. Decreasing this value will improve latency, but decreasing it too much may decrease throughput by not allowing the block to fill to its maximum capacity.
 
-* **Block Validation.** This policy specifies the signature requirements for a
-block to be considered valid. By default, it requires a signature from some
-member of the ordering org.
+* **Block validation**. This policy specifies the signature requirements for a block to be considered valid. By default, it requires a signature from some member of the ordering org.
 
-  ```
-  {
-    "type": 3,
-    "value": {
-      "rule": "ANY",
-      "sub_policy": "Writers"
-    }
-  }
-  ```
+* **Consensus type**. To enable the migration of Kafka based ordering services to Raft based ordering services, it is possible to change the consensus type of a channel. For more information, check out [Migrating from Kafka to Raft](./kafka_raft_migration.html).
 
-* **Orderer Address.** A list of addresses where clients may invoke the orderer
-`Broadcast` and `Deliver` functions. The peer randomly chooses among these
-addresses and fails over between them for retrieving blocks.
+* **Raft ordering service parameters**. For a look at the parameters unique to a Raft ordering service, check out [Raft configuration](./raft_configuration.html).
 
-  ```
-  {
-    "addresses": [
-      "orderer.example.com:7050"
-    ]
-  }
-  ```
+* **Kafka brokers** (where applicable). When `ConsensusType` is set to `kafka`, the `brokers` list enumerates some subset (or preferably all) of the Kafka brokers for the orderer to initially connect to at startup.
 
-Just as we add an Org by adding their artifacts and MSP information, you can remove
-them by reversing the process.
+#### `Channel`
 
-**Note** that once the consensus type has been defined and the network has been
-bootstrapped, it is not possible to change it through a configuration update.
+Governs configuration parameters that both the peer orgs and the ordering service orgs need to consent to, requires both the agreement of a majority of application organization admins and orderer organization admins.
 
-There is another important channel configuration (especially for v1.1) known as
-**Capability Requirements**. It has its own doc that can be found
-[here](./capability_requirements.html).
+* **Orderer addresses**. A list of addresses where clients may invoke the orderer `Broadcast` and `Deliver` functions. The peer randomly chooses among these addresses and fails over between them for retrieving blocks.
 
-Let’s say you want to edit the block batch size for the channel (because this is
-a single numeric field, it’s one of the easiest changes to make). First to make
-referencing the JSON path easy, we define it as an environment variable.
+* **Hashing structure**. The block data is an array of byte arrays. The hash of the block data is computed as a Merkle tree. This value specifies the width of that Merkle tree. For the time being, this value is fixed to `4294967295` which corresponds to a simple flat hash of the concatenation of the block data bytes.
 
-To establish this, take a look at your config, find what you’re looking for, and
-back track the path.
+* **Hashing algorithm**. The algorithm used for computing the hash values encoded into the blocks of the blockchain. In particular, this affects the data hash, and the previous block hash fields of the block. Note, this field currently only has one valid value (`SHA256`) and should not be changed.
 
-If you find batch size, for example, you’ll see that it’s a `value` of the
-`Orderer`. `Orderer` can be found under `groups`, which is under
-`channel_group`. The batch size value has a parameter under `value` of
-`max_message_count`.
+#### System channel configuration parameters
 
-Which would make the path this:
+Certain configuration values are unique to the orderer system channel.
+
+* **Channel creation policy.** Defines the policy value which will be set as the mod_policy for the Application group of new channels for the consortium it is defined in. The signature set attached to the channel creation request will be checked against the instantiation of this policy in the new channel to ensure that the channel creation is authorized. Note that this config value is only set in the orderer system channel.
+
+* **Channel restrictions.** Only editable in the orderer system channel. The total number of channels the orderer is willing to allocate may be specified as `max_count`. This is primarily useful in pre-production environments with weak consortium `ChannelCreation` policies.
+
+## Editing a config
+
+Updating a channel configuration is a three step operation that's conceptually simple:
+
+1. Get the latest channel config
+2. Create a modified channel config
+3. Create a config update transaction
+
+However, as you'll see, this conceptual simplicity is wrapped in a somewhat convoluted process. As a result, some users might choose to script the process of pulling, translating, and scoping a config update. Users also have the option of how to modify the channel configuration itself, either manually or by using a tool like `jq`.
+
+We have two tutorials that deal specifically with editing a channel configuration to achieve a specific end:
+
+* [Adding an Org to a Channel](./channel_update_tutorial.html): shows the process for adding an additional organization to an existing channel.
+* [Updating channel capabilities](./updating_a_channel.html): shows how to update channel capabilities.
+
+In this topic, we'll show the process of editing a channel configuration independent of the end goal of the configuration update.
+
+### Set environment variables for your config update
+
+Before you attempt to use the sample commands, make sure to export the following environment variables, which will depend on the way you have structured your deployment. Note that the channel name, `CH_NAME` will have to be set for every channel being updated, as channel configuration updates only apply to the configuration of the channel being updated (with the exception of the ordering system channel, whose configuration is copied into the configuration of application channels by default).
+
+* `CH_NAME`: the name of the channel being updated.
+* `TLS_ROOT_CA`: the path to the root CA cert of the TLS CA of the organization proposing the update.
+* `CORE_PEER_LOCALMSPID`: the name of your MSP.
+* `CORE_PEER_MSPCONFIGPATH`: the absolute path to the MSP of your organization.
+* `ORDERER_CONTAINER`: the name of an ordering node container. Note that when targeting the ordering service, you can target any active node in the ordering service. Your requests will be forwarded to the leader automatically.
+
+Note: this topic will provide default names for the various JSON and protobuf files being pulled and modified (`config_block.pb`, `config_block.json`, etc). You are free to use whatever names you want. However, be aware that unless you go back and erase these files at the end of each config update, you will have to select different when making an additional update.
+
+### Step 1: Pull and translate the config
+
+The first step in updating a channel configuration is getting the latest config block. This is a three step process. First, we'll pull the channel configuration in protobuf format, creating a file called `config_block.pb`.
+
+Make sure you are in the peer container.
+
+Now issue:
 
 ```
- export MAXBATCHSIZEPATH=".channel_group.groups.Orderer.values.BatchSize.value.max_message_count"
+peer channel fetch config config_block.pb -o $ORDERER_CONTAINER -c $CH_NAME --tls --cafile $TLS_ROOT_CA
 ```
 
-Next, display the value of that property:
+Next, we'll covert the protobuf version of the channel config into a JSON version called `config_block.json` (JSON files are easier for humans to read and understand):
 
 ```
-jq "$MAXBATCHSIZEPATH" config.json
+configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
 ```
 
-Which should return a value of `10` (in our sample network at least).
-
-Now, let’s set the new batch size and display the new value:
+Finally, we'll scope out all of the unnecessary metadata from the config, which makes it easier to read. You are free to call this file whatever you want, but in this example we'll call it `config.json`.
 
 ```
- jq “$MAXBATCHSIZEPATH = 20” config.json > modified_config.json
- jq “$MAXBATCHSIZEPATH” modified_config.json
+jq .data.data[0].payload.data.config config_block.json > config.json
 ```
 
-Once you’ve modified the JSON, it’s ready to be converted and submitted. The
-scripts and steps in [Adding an Org to a Channel](./channel_update_tutorial.html)
-will take you through the process for converting the JSON, so let's look at the
-process of submitting it.
+Now let's make a copy of `config.json` called `modified_config.json`. **Do not edit ``config.json`` directly**, as we will be using it to compute the difference between ``config.json`` and ``modified_config.json`` in a later step.
+
+```
+cp config.json modified_config.json
+```
+
+### Step 2: Modify the config
+
+At this point, you have two options of how you want to modify the config.
+
+1. Open ``modified_config.json`` using the text editor of your choice and make edits. Online tutorials exist that describe how to copy a file from a container that does not have an editor, edit it, and add it back to the container.
+2. Use ``jq`` to apply edits to the config.
+
+Whether you choose to edit the config manually or using `jq` depends on your use case. Because `jq` is concise and scriptable (an advantage when the same configuration update will be made to multiple channels), it's the recommend method for performing a channel update. For an example on how `jq` can be used, check out [Updating channel capabilities](./updating_a_channel.html#Create-a-capabilities-config-file), which shows multiple `jq` commands leveraging a capabilities config file called `capabilities.json`. If you are updating something other than the capabilities in your channel, you will have to modify your `jq` command and JSON file accordingly.
+
+For more information about the content and structure of a channel configuration, check out our [sample channel config](#Sample-channel-configuration) above.
+
+### Step 3: Re-encode and submit the config
+
+Whether you make your config updates manually or using a tool like `jq`, you now have to run the process you ran to pull and scope the config in reverse, along with a step to calculate the difference between the old config and the new one, before submitting the config update to the other administrators on the channel to be approved.
+
+First, we'll turn our `config.json` file back to protobuf format, creating a file called `config.pb`. Then we'll do the same with our `modified_config.json` file. Afterwards, we'll compute the difference between the two files, creating a file called `config_update.pb`.
+
+```
+configtxlator proto_encode --input config.json --type common.Config --output config.pb
+
+configtxlator proto_encode --input modified_config.json --type common.Config --output modified_config.pb
+
+configtxlator compute_update --channel_id $CH_NAME --original config.pb --updated modified_config.pb --output config_update.pb
+```
+
+Now that we have calculated the difference between the old config and the new one, we can apply the changes to the config.
+
+```
+configtxlator proto_decode --input config_update.pb --type common.ConfigUpdate --output config_update.json
+
+echo '{"payload":{"header":{"channel_header":{"channel_id":"'$CH_NAME'", "type":2}},"data":{"config_update":'$(cat config_update.json)'}}}' | jq . > config_update_in_envelope.json
+
+configtxlator proto_encode --input config_update_in_envelope.json --type common.Envelope --output config_update_in_envelope.pb
+```
+
+Submit the config update transaction:
+
+```
+peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o $ORDERER_CONTAINER --tls true --cafile $TLS_ROOT_CA
+```
+
+Our config update transaction represents the difference between the original config and the modified one, but the ordering service will translate this into a full channel config.
 
 ## Get the Necessary Signatures
 
-Once you’ve successfully generated the protobuf file, it’s time to get it
-signed. To do this, you need to know the relevant policy for whatever it is you’re
-trying to change.
+Once you’ve successfully generated the new configuration protobuf file, it will need to satisfy the relevant policy for whatever it is you’re trying to change, typically (though not always) by requiring signatures from other organizations.
 
-By default, editing the configuration of:
-* **A particular org** (for example, changing anchor peers) requires only the admin
-signature of that org.
-* **The application** (like who the member orgs are) requires a majority of the
-application organizations’ admins to sign.
-* **The orderer** requires a majority of the ordering organizations’ admins (of
-which there are by default only 1).
-* **The top level `channel` group** requires both the agreement of a majority of
-application organization admins and orderer organization admins.
+*Note: you may be able to script the signature collection, dependent on your application. In general, you may always collect more signatures than are required.*
 
-If you have made changes to the default policies in the channel, you’ll need to
-compute your signature requirements accordingly.
+The actual process of getting these signatures will depend on how you’ve set up your system, but there are two main implementations. Currently, the Fabric command line defaults to a “pass it along” system. That is, the Admin of the Org proposing a config update sends the update to someone else (another Admin, typically) who needs to sign it. This Admin signs it (or doesn’t) and passes it along to the next Admin, and so on, until there are enough signatures for the config to be submitted.
 
-*Note: you may be able to script the signature collection, dependent on your
-application. In general, you may always collect more signatures than are
-required.*
+This has the virtue of simplicity --- when there are enough signatures, the last admin can simply submit the config transaction (in Fabric, the `peer channel update` command includes a signature by default). However, this process will only be practical in smaller channels, since the “pass it along” method can be time consuming.
 
-The actual process of getting these signatures will depend on how you’ve set up
-your system, but there are two main implementations. Currently, the Fabric
-command line defaults to a “pass it along” system. That is, the Admin of the Org
-proposing a config update sends the update to someone else (another Admin,
-typically) who needs to sign it. This Admin signs it (or doesn’t) and passes it
-along to the next Admin, and so on, until there are enough signatures for the
-config to be submitted.
+The other option is to submit the update to every Admin on a channel and wait for enough signatures to come back. These signatures can then be stitched together and submitted. This makes life a bit more difficult for the Admin who created the config update (forcing them to deal with a file per signer) but is the recommended workflow for users which are developing Fabric management applications.
 
-This has the virtue of simplicity -- when there are enough signatures, the last
-Admin can simply submit the config transaction (in Fabric, the `peer channel update`
-command includes a signature by default). However, this process will only be
-practical in smaller channels, since the “pass it along” method can be time
-consuming.
-
-The other option is to submit the update to every Admin on a channel and wait
-for enough signatures to come back. These signatures can then be stitched
-together and submitted. This makes life a bit more difficult for the Admin who
-created the config update (forcing them to deal with a file per signer) but is
-the recommended workflow for users which are developing Fabric management
-applications.
-
-Once the config has been added to the ledger, it will be a best practice to
-pull it and convert it to JSON to check to make sure everything was added
-correctly. This will also serve as a useful copy of the latest config.
+Once the config has been added to the ledger, it will be a best practice to pull it and convert it to JSON to check to make sure everything was added correctly. This will also serve as a useful copy of the latest config.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->

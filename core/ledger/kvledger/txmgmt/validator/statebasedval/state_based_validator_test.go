@@ -43,13 +43,24 @@ type keyValue struct {
 	version    *version.Height
 }
 
+// Tests will be run against each environment in this array
+// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
+var testEnvs = []privacyenabledstate.TestEnv{
+	&privacyenabledstate.LevelDBCommonStorageTestEnv{},
+	&privacyenabledstate.CouchDBCommonStorageTestEnv{},
+}
+
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("statevalidator,statebasedval,statecouchdb=debug")
-	os.Exit(m.Run())
+	exitCode := m.Run()
+	for _, testEnv := range testEnvs {
+		testEnv.StopExternalResource()
+	}
+	os.Exit(exitCode)
 }
 
 func TestValidatorBulkLoadingOfCache(t *testing.T) {
-	testDBEnv := privacyenabledstate.CouchDBCommonStorageTestEnv{}
+	testDBEnv := testEnvs[1] // couchDB common storage test environment
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("testdb")
@@ -179,7 +190,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 }
 
 func TestValidator(t *testing.T) {
-	testDBEnv := privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := testEnvs[0] // LevelDB common storage test environment
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
@@ -224,7 +235,7 @@ func TestValidator(t *testing.T) {
 }
 
 func TestPhantomValidation(t *testing.T) {
-	testDBEnv := privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := testEnvs[0] // LevelDB common storage test environment
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
@@ -297,7 +308,7 @@ func TestPhantomValidation(t *testing.T) {
 }
 
 func TestPhantomHashBasedValidation(t *testing.T) {
-	testDBEnv := privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := testEnvs[0] // LevelDB common storage test environment
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")

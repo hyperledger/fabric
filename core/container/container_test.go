@@ -22,16 +22,16 @@ import (
 
 var _ = Describe("Router", func() {
 	var (
-		fakeDockerVM        *mock.VM
-		fakeExternalVM      *mock.VM
+		fakeDockerBuilder   *mock.DockerBuilder
+		fakeExternalBuilder *mock.ExternalBuilder
 		fakePackageProvider *mock.PackageProvider
 		fakeInstance        *mock.Instance
 		router              *container.Router
 	)
 
 	BeforeEach(func() {
-		fakeDockerVM = &mock.VM{}
-		fakeExternalVM = &mock.VM{}
+		fakeDockerBuilder = &mock.DockerBuilder{}
+		fakeExternalBuilder = &mock.ExternalBuilder{}
 		fakeInstance = &mock.Instance{}
 		fakePackageProvider = &mock.PackageProvider{}
 		fakePackageProvider.GetChaincodePackageReturns(
@@ -39,33 +39,31 @@ var _ = Describe("Router", func() {
 				Type: "package-type",
 				Path: "package-path",
 			},
+			[]byte(`{"some":"json"}`),
 			ioutil.NopCloser(bytes.NewBuffer([]byte("code-bytes"))),
 			nil,
 		)
 
 		router = &container.Router{
-			DockerVM:        fakeDockerVM,
-			ExternalVM:      fakeExternalVM,
+			DockerBuilder:   fakeDockerBuilder,
+			ExternalBuilder: fakeExternalBuilder,
 			PackageProvider: fakePackageProvider,
 		}
 	})
 
 	Describe("Build", func() {
 		BeforeEach(func() {
-			fakeExternalVM.BuildReturns(fakeInstance, nil)
+			fakeExternalBuilder.BuildReturns(fakeInstance, nil)
 		})
 
 		It("calls the external builder with the correct args", func() {
 			err := router.Build("package-id")
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
-			ccid, md, codeStream := fakeExternalVM.BuildArgsForCall(0)
+			Expect(fakeExternalBuilder.BuildCallCount()).To(Equal(1))
+			ccid, md, codeStream := fakeExternalBuilder.BuildArgsForCall(0)
 			Expect(ccid).To(Equal("package-id"))
-			Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
-				Type: "package-type",
-				Path: "package-path",
-			}))
+			Expect(md).To(Equal([]byte(`{"some":"json"}`)))
 			codePackage, err := ioutil.ReadAll(codeStream)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(codePackage).To(Equal([]byte("code-bytes")))
@@ -73,7 +71,7 @@ var _ = Describe("Router", func() {
 
 		Context("when the package provider returns an error before calling the external builder", func() {
 			BeforeEach(func() {
-				fakePackageProvider.GetChaincodePackageReturns(nil, nil, errors.New("fake-package-error"))
+				fakePackageProvider.GetChaincodePackageReturns(nil, nil, nil, errors.New("fake-package-error"))
 			})
 
 			It("wraps and returns the error", func() {
@@ -83,14 +81,14 @@ var _ = Describe("Router", func() {
 
 			It("does not call the external builder", func() {
 				router.Build("package-id")
-				Expect(fakeExternalVM.BuildCallCount()).To(Equal(0))
+				Expect(fakeExternalBuilder.BuildCallCount()).To(Equal(0))
 			})
 		})
 
 		Context("when the external builder returns an error", func() {
 			BeforeEach(func() {
-				fakeExternalVM.BuildReturns(nil, errors.New("fake-external-error"))
-				fakeDockerVM.BuildReturns(fakeInstance, nil)
+				fakeExternalBuilder.BuildReturns(nil, errors.New("fake-external-error"))
+				fakeDockerBuilder.BuildReturns(fakeInstance, nil)
 			})
 
 			It("wraps and returns the error", func() {
@@ -104,23 +102,23 @@ var _ = Describe("Router", func() {
 				err := router.Build("package-id")
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakeExternalVM.BuildCallCount()).To(Equal(1))
-				Expect(fakeDockerVM.BuildCallCount()).To(Equal(0))
+				Expect(fakeExternalBuilder.BuildCallCount()).To(Equal(1))
+				Expect(fakeDockerBuilder.BuildCallCount()).To(Equal(0))
 			})
 		})
 
-		Context("when the exxternal builder returns a nil instance", func() {
+		Context("when the external builder returns a nil instance", func() {
 			BeforeEach(func() {
-				fakeExternalVM.BuildReturns(nil, nil)
-				fakeDockerVM.BuildReturns(fakeInstance, nil)
+				fakeExternalBuilder.BuildReturns(nil, nil)
+				fakeDockerBuilder.BuildReturns(fakeInstance, nil)
 			})
 
 			It("falls back to the docker impl", func() {
 				err := router.Build("package-id")
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(fakeDockerVM.BuildCallCount()).To(Equal(1))
-				ccid, md, codeStream := fakeDockerVM.BuildArgsForCall(0)
+				Expect(fakeDockerBuilder.BuildCallCount()).To(Equal(1))
+				ccid, md, codeStream := fakeDockerBuilder.BuildArgsForCall(0)
 				Expect(ccid).To(Equal("package-id"))
 				Expect(md).To(Equal(&persistence.ChaincodePackageMetadata{
 					Type: "package-type",
@@ -131,9 +129,20 @@ var _ = Describe("Router", func() {
 				Expect(codePackage).To(Equal([]byte("code-bytes")))
 			})
 
+			Context("when the docker vm builder is nil", func() {
+				BeforeEach(func() {
+					router.DockerBuilder = nil
+				})
+
+				It("returns the error", func() {
+					err := router.Build("package-id")
+					Expect(err).To(MatchError("no DockerBuilder, cannot build"))
+				})
+			})
+
 			Context("when the package provider returns an error before calling the docker builder", func() {
 				BeforeEach(func() {
-					fakePackageProvider.GetChaincodePackageReturnsOnCall(1, nil, nil, errors.New("fake-package-error"))
+					fakePackageProvider.GetChaincodePackageReturnsOnCall(1, nil, nil, nil, errors.New("fake-package-error"))
 				})
 
 				It("wraps and returns the error", func() {
@@ -145,21 +154,21 @@ var _ = Describe("Router", func() {
 
 		Context("when an external builder is not provided", func() {
 			BeforeEach(func() {
-				router.ExternalVM = nil
-				fakeDockerVM.BuildReturns(fakeInstance, nil)
+				router.ExternalBuilder = nil
+				fakeDockerBuilder.BuildReturns(fakeInstance, nil)
 			})
 
 			It("uses the docker vm builder", func() {
 				err := router.Build("package-id")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeDockerVM.BuildCallCount()).To(Equal(1))
+				Expect(fakeDockerBuilder.BuildCallCount()).To(Equal(1))
 			})
 		})
 	})
 
 	Describe("Post-build operations", func() {
 		BeforeEach(func() {
-			fakeExternalVM.BuildReturns(fakeInstance, nil)
+			fakeExternalBuilder.BuildReturns(fakeInstance, nil)
 			err := router.Build("fake-id")
 			Expect(err).NotTo(HaveOccurred())
 		})

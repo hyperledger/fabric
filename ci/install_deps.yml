@@ -7,6 +7,8 @@ steps:
       sudo apt-get clean
       sudo apt-get update
       sudo apt-get install -y libtool gcc make
+      echo "vsts  hard  nofile  65535" | sudo tee -a /etc/security/limits.conf
+      echo "vsts  soft  nofile  65535" | sudo tee -a /etc/security/limits.conf
     displayName: Install Dependencies
   - task: GoTool@0
     inputs:

@@ -10,7 +10,7 @@ ledger, regardless of the channel to which that block pertained, and it was only
 accessible to members of the organization running the eventing peer (i.e., the
 one being connected to for events).
 
-Starting with v1.1, there are two new services which provide events. These services use an
+Starting with v1.1, there are new services which provide events. These services use an
 entirely different design to provide events on a per-channel basis. This means
 that registration for events occurs at the level of the channel instead of the peer,
 allowing for fine-grained control over access to the peer's data. Requests to
@@ -28,6 +28,12 @@ This service sends entire blocks that have been committed to the ledger. If
 any events were set by a chaincode, these can be found within the
 ``ChaincodeActionPayload`` of the block.
 
+* ``DeliverWithPrivateData``
+
+This service sends the same data as the ``Deliver`` service, and additionally
+includes any private data from collections that the client's organization is
+authorized to access.
+
 * ``DeliverFiltered``
 
 This service sends "filtered" blocks, minimal sets of information about blocks
@@ -42,7 +48,7 @@ any events were set by a chaincode, these can be found within the
 How to register for events
 --------------------------
 
-Registration for events from either service is done by sending an envelope
+Registration for events is done by sending an envelope
 containing a deliver seek info message to the peer that contains the desired start
 and stop positions, the seek behavior (block until ready or fail if not ready).
 There are helper variables ``SeekOldest`` and ``SeekNewest`` that can be used to
@@ -53,7 +59,7 @@ include a stop position of ``MAXINT64``.
 .. note:: If mutual TLS is enabled on the peer, the TLS certificate hash must be
           set in the envelope's channel header.
 
-By default, both services use the Channel Readers policy to determine whether
+By default, the event services use the Channel Readers policy to determine whether
 to authorize requesting clients for events.
 
 Overview of deliver response messages
@@ -63,11 +69,12 @@ The event services send back ``DeliverResponse`` messages.
 
 Each message contains one of the following:
 
- * status -- HTTP status code. Both services will return the appropriate failure
+ * status -- HTTP status code. Each of the services will return the appropriate failure
    code if any failure occurs; otherwise, it will return ``200 - SUCCESS`` once
    the service has completed sending all information requested by the ``SeekInfo``
    message.
  * block -- returned only by the ``Deliver`` service.
+ * block and private data -- returned only by the ``DeliverWithPrivateData`` service.
  * filtered block -- returned only by the ``DeliverFiltered`` service.
 
 A filtered block contains:
@@ -87,7 +94,7 @@ A filtered block contains:
 SDK event documentation
 -----------------------
 
-For further details on using the event services, refer to the `SDK documentation. <https://fabric-sdk-node.github.io/tutorial-channel-events.html>`_
+For further details on using the event services, refer to the `SDK documentation. <https://hyperledger.github.io/fabric-sdk-node/master/tutorial-channel-events.html>`_
 
 .. Licensed under Creative Commons Attribution 4.0 International License
     https://creativecommons.org/licenses/by/4.0/

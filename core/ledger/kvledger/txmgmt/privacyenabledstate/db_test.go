@@ -27,7 +27,7 @@ import (
 func TestMain(m *testing.M) {
 	exitCode := m.Run()
 	for _, testEnv := range testEnvs {
-		testEnv.Cleanup()
+		testEnv.StopExternalResource()
 	}
 	os.Exit(exitCode)
 }
@@ -549,6 +549,7 @@ func TestMetadataRetrieval(t *testing.T) {
 
 func testMetadataRetrieval(t *testing.T, env TestEnv) {
 	env.Init(t)
+	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()

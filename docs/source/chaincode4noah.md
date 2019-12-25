@@ -32,17 +32,9 @@ lifecycle to perform the following tasks:
 - [Deployment Scenarios](#deployment-scenarios)
 - [Migrate to the new Fabric lifecycle](#migrate-to-the-new-fabric-lifecycle)
 
-*Note: The new Fabric chaincode lifecycle in the v2.0 Alpha release is not yet
-feature complete. Specifically, be aware of the following limitations in the
-Alpha release:*
-
-- *Service Discovery is not yet supported*
-- *Chaincodes defined with the new lifecycle are not yet discoverable
-  via service discovery*
-
-*These limitations will be resolved after the Alpha release. To use the old
-lifecycle model to install and instantiate a chaincode, visit the v1.4 version
-of the [Chaincode for Operators tutorial](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html).*
+If you are upgrading from a v1.4.x network and need to edit your channel
+configurations to enable the new lifecycle, check out
+[Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
 
 ## Install and define a chaincode
 
@@ -72,7 +64,7 @@ chaincode lifecycle rather than the specific commands. To learn more about how
 to use the Fabric lifecycle using the Peer CLI, see [Install and define a chaincode](build_network.html#install-define-chaincode)
 in the Building your First Network Tutorial or the [peer lifecycle command reference](commands/peerlifecycle.html).
 To learn more about how to use the Fabric lifecycle using the Fabric SDK for
-Node.js, visit [How to install and start your chaincode](https://fabric-sdk-node.github.io/master/tutorial-chaincode-lifecycle.html).
+Node.js, visit [How to install and start your chaincode](https://hyperledger.github.io/fabric-sdk-node/master/tutorial-chaincode-lifecycle.html).
 
 ### Step One: Packaging the smart contract
 
@@ -465,12 +457,9 @@ while MYCC2 has an endorsement policy of 2 out of 2.*
 
 ## Migrate to the new Fabric lifecycle
 
-You can use the Fabric chaincode lifecycle by creating a new channel and setting
-the channel capabilities to `V2_0`. You will not be able to use the previous
-lifecycle to install, instantiate, or update a chaincode on a channels with
-`V2_0` capabilities enabled. There is no upgrade support to the v2.0 Alpha
-release, and no intended upgrade support from the the Alpha release to future
-versions of v2.x.
+For information about migrating to the new lifecycle, check out [Considerations for getting to v2.0](./upgrade_to_newest_version.html#chaincode-lifecycle).
+
+If you need to update your channel configurations to enable the new lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->

@@ -14,7 +14,6 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -188,12 +187,11 @@ func (client *GRPCClient) NewConnection(address string, tlsOptions ...TLSOption)
 	// SetServerRootCAs / SetMaxRecvMsgSize / SetMaxSendMsgSize
 	//  to take effect on a per connection basis
 	if client.tlsConfig != nil {
-		tlsConfigCopy := client.tlsConfig.Clone()
-		for _, tlsOption := range tlsOptions {
-			tlsOption(tlsConfigCopy)
-		}
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(
-			credentials.NewTLS(tlsConfigCopy),
+			&DynamicClientCredentials{
+				TLSConfig:  client.tlsConfig,
+				TLSOptions: tlsOptions,
+			},
 		))
 	} else {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
