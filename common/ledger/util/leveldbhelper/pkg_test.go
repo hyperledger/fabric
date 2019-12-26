@@ -49,7 +49,6 @@ func (dbEnv *testDBEnv) cleanup() {
 	if dbEnv.db != nil {
 		dbEnv.db.Close()
 	}
-	os.RemoveAll(dbEnv.path)
 	assert.NoError(dbEnv.t, os.RemoveAll(dbEnv.path))
 }
 
@@ -57,6 +56,5 @@ func (providerEnv *testDBProviderEnv) cleanup() {
 	if providerEnv.provider != nil {
 		providerEnv.provider.Close()
 	}
-	os.RemoveAll(providerEnv.path)
 	assert.NoError(providerEnv.t, os.RemoveAll(providerEnv.path))
 }

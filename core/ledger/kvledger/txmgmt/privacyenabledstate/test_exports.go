@@ -151,9 +151,6 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	redoPath, err := ioutil.TempDir("", strings.ReplaceAll(fmt.Sprintf("test-env-%s-", t.Name()), "/", "-"))
 	assert.NoError(t, err)
 	env.redoPath = redoPath
-	if env.couchAddress == "" {
-		env.couchAddress = env.setupCouch()
-	}
 	env.StartExternalResource()
 
 	stateDBConfig := &StateDBConfig{
@@ -204,6 +201,4 @@ func (env *CouchDBCommonStorageTestEnv) Cleanup() {
 	os.RemoveAll(env.redoPath)
 	env.bookkeeperTestEnv.Cleanup()
 	env.provider.Close()
-	env.couchAddress = ""
-	env.couchCleanup()
 }

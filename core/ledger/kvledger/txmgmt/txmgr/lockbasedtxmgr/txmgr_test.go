@@ -31,7 +31,6 @@ func TestTxSimulatorWithNoExistingData(t *testing.T) {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())
 		testLedgerID := "testtxsimulatorwithnoexistingdata"
 		testEnv.init(t, testLedgerID, nil)
-		defer testEnv.cleanup()
 		testTxSimulatorWithNoExistingData(t, testEnv)
 		testEnv.cleanup()
 	}
@@ -117,7 +116,6 @@ func TestTxSimulatorWithExistingData(t *testing.T) {
 		t.Run(testEnv.getName(), func(t *testing.T) {
 			testLedgerID := "testtxsimulatorwithexistingdata"
 			testEnv.init(t, testLedgerID, nil)
-			defer testEnv.cleanup()
 			testTxSimulatorWithExistingData(t, testEnv)
 			testEnv.cleanup()
 		})
