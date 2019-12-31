@@ -67,7 +67,9 @@ download() {
     local BINARY_FILE=$1
     local URL=$2
     echo "===> Downloading: " "${URL}"
-    curl -s -L "${URL}" | tar xz || rc=$?
+    wget "${URL}" || rc=$?
+    tar xvzf "${BINARY_FILE}" || rc=$?
+    rm "${BINARY_FILE}"
     if [ -n "$rc" ]; then
         echo "==> There was an error downloading the binary file."
         return 22
