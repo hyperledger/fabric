@@ -326,7 +326,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 		Id:      []byte{1, 2, 3},
 	})
 
-	pf.On("PolicyByChaincode", "mycc").Return(&inquireablePolicy{
+	pf.On("PoliciesByChaincode", "mycc").Return(&inquireablePolicy{
 		orgCombinations: orgCombinationsThatSatisfyPolicy,
 	})
 
@@ -342,7 +342,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 		}),
 	})
 
-	pf.On("PolicyByChaincode", "mycc2").Return(&inquireablePolicy{
+	pf.On("PoliciesByChaincode", "mycc2").Return(&inquireablePolicy{
 		orgCombinations: orgCombinationsThatSatisfyPolicy2,
 	})
 
@@ -355,7 +355,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 		Id:      []byte{1, 2, 3},
 	})
 
-	pf.On("PolicyByChaincode", "mycc3").Return(&inquireablePolicy{
+	pf.On("PoliciesByChaincode", "mycc3").Return(&inquireablePolicy{
 		orgCombinations: [][]string{{"A", "B", "C", "D"}},
 	})
 
@@ -820,8 +820,8 @@ type policyFetcher struct {
 	mock.Mock
 }
 
-func (pf *policyFetcher) PolicyByChaincode(channel string, cc string) policies.InquireablePolicy {
-	return pf.Called(cc).Get(0).(policies.InquireablePolicy)
+func (pf *policyFetcher) PoliciesByChaincode(channel string, cc string, collections ...string) []policies.InquireablePolicy {
+	return []policies.InquireablePolicy{pf.Called(cc).Get(0).(policies.InquireablePolicy)}
 }
 
 type endorsementAnalyzer interface {
