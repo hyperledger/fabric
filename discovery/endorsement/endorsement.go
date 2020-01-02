@@ -41,7 +41,7 @@ type chaincodeMetadataFetcher interface {
 type policyFetcher interface {
 	// PolicyByChaincode returns a policy that can be inquired which identities
 	// satisfy it
-	PolicyByChaincode(channel string, cc string) policies.InquireablePolicy
+	PoliciesByChaincode(channel string, cc string, collections ...string) []policies.InquireablePolicy
 }
 
 type gossipSupport interface {
@@ -170,12 +170,15 @@ func (ea *endorsementAnalyzer) computeEndorsementResponse(ctx *context) (*discov
 func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (policies.PrincipalSets, error) {
 	var inquireablePolicies []policies.InquireablePolicy
 	for _, chaincode := range interest.Chaincodes {
-		pol := ea.PolicyByChaincode(string(channelID), chaincode.Name)
-		if pol == nil {
+		policies := ea.PoliciesByChaincode(string(channelID), chaincode.Name, chaincode.CollectionNames...)
+		if len(policies) == 0 {
 			logger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
-		inquireablePolicies = append(inquireablePolicies, pol)
+
+		for _, pol := range policies {
+			inquireablePolicies = append(inquireablePolicies, pol)
+		}
 	}
 
 	var cpss []inquire.ComparablePrincipalSets

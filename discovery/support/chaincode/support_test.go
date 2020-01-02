@@ -64,7 +64,7 @@ func TestSupport(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			sup := NewDiscoverySupport(&mockMetadataRetriever{res: test.input})
-			res := sup.PolicyByChaincode("", "")
+			res := sup.PoliciesByChaincode("", "")
 			if test.shouldBeNil {
 				assert.Nil(t, res)
 			} else {
