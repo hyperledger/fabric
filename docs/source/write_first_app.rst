@@ -53,16 +53,16 @@ the ledger hosted and replicated on the peers in a Fabric network.
 Set up the blockchain network
 -----------------------------
 
-.. note:: This next section requires you to be in the ``first-network``
+.. note:: This next section requires you to be in the ``test-network``
           subdirectory within your local clone of the ``fabric-samples`` repo.
 
-If you've already run through :doc:`build_network`, you will have downloaded
+If you've already run through :doc:`test_network`, you will have downloaded
 ``fabric-samples`` and have a network up and running. Before you run this
 tutorial, you must stop this network:
 
 .. code:: bash
 
-  ./byfn.sh down
+  ./network.sh down
 
 If you have run through this tutorial before, use the following commands to
 kill any stale or active containers. Note, this will take down **all** of your

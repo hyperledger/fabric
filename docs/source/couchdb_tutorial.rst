@@ -30,10 +30,8 @@ blockchain network.
 
 Throughout this tutorial we will use the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__
 as our use case to demonstrate how to use CouchDB with Fabric and will deploy
-Marbles to the :doc:`build_network` (BYFN) tutorial network. You should have
-completed the task :doc:`install`. However, running the BYFN tutorial is not
-a prerequisite for this tutorial, instead the necessary commands are provided
-throughout this tutorial to use the network.
+Marbles to the Fabric test network. You should have completed the task
+:doc:`install`.
 
 Why CouchDB?
 ~~~~~~~~~~~~
@@ -283,7 +281,7 @@ Start the network
 :guilabel:`Try it yourself`
 
  Before installing and instantiating the marbles chaincode, we need to start
- up the BYFN network. For the sake of this tutorial, we want to operate
+ up the Fabric test network. For the sake of this tutorial, we want to operate
  from a known initial state. The following command will kill any active
  or stale docker containers and remove previously generated artifacts.
  Therefore let's run the following command to clean up any
@@ -291,18 +289,17 @@ Start the network
 
  .. code:: bash
 
-  cd fabric-samples/first-network
-  ./byfn.sh down
+  cd fabric-samples/test-network
+  ./network.sh down
 
-
- Now start up the BYFN network with CouchDB by running the following command:
+ Now start up the test network with CouchDB by running the following command:
 
  .. code:: bash
 
-   ./byfn.sh up -c mychannel -s couchdb
+   ./network.sh up createChannel -c mychannel -s couchdb
 
- This will create a simple Fabric network consisting of a single channel named
- `mychannel` with two organizations (each maintaining two peer nodes) and an
+ This will deploy a simple Fabric network and create a single channel named
+ `mychannel` with two organizations (each maintaining one peer nodes) and an
  ordering service while using CouchDB as the state database.
 
 .. _cdb-install-instantiate:
@@ -323,17 +320,19 @@ to package the marbles chaincode.
 
 :guilabel:`Try it yourself`
 
-Assuming you have started the BYFN network, enter the CLI container:
+Assuming you have started the test network, copy and paste the following
+environment variables in your CLI to interact with the network and operate as
+the Org1 admin. Make sure that you are in the `test-network` directory.
 
 .. code:: bash
 
-    docker exec -it cli bash
-
-Your command prompt will change to something similar to:
-
-.. code:: bash
-
-   bash-4.4#
+    export PATH=${PWD}/../bin:${PWD}:$PATH
+    export FABRIC_CFG_PATH=$PWD/../config/
+    export CORE_PEER_TLS_ENABLED=true
+    export CORE_PEER_LOCALMSPID="Org1MSP"
+    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    export CORE_PEER_ADDRESS=localhost:7051
 
 1. Use the following command to package the marbles chaincode from the git
 repository inside your local container.
@@ -345,9 +344,7 @@ repository inside your local container.
 This command will create a chaincode package named marbles.tar.gz.
 
 2. Use the following command to install the chaincode package onto the peer
-``peer0.org1.example.com`` in your BYFN network. By default, after starting
-the BYFN network, the active peer is set to:
-``CORE_PEER_ADDRESS=peer0.org1.example.com:7051``:
+``peer0.org1.example.com`` in your BYFN network.
 
 .. code:: bash
 
@@ -363,8 +360,8 @@ the response below:
 
 After installing the chaincode on our peer, we need to approve a chaincode
 definition for our organization, and commit the chaincode definition to the
-channel. The chaincode definition includes the package identifier that was
-returned by the install command. We can also use the `peer lifecycle chaincode queryinstalled <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-queryinstalled>`__
+channel. Because the chaincode definition includes the package identifier, we
+will first use the `peer lifecycle chaincode queryinstalled <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-queryinstalled>`__
 command to find the package ID of ``marbles.tar.gz``.
 
 3. Use the following command to query your peer for the package ID of the

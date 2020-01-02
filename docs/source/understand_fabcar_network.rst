@@ -23,10 +23,9 @@ role an application plays.
 Components of the Fabcar Network
 --------------------------------
 
-Fabcar uses the "first-network" sample as its limited development network. It
-consists of four peer nodes configured to use CouchDB as the state database,
-a single "solo" ordering node, a certificate authority (CA) and a CLI container
-for executing commands.
+Fabcar uses the "test-network" sample as its limited development network. It
+consists of two peer nodes configured to use CouchDB as the state database,
+a single  ordering node, and two certificate authorities (CA).
 
 For detailed information on these components and what they do, refer to
 :doc:`build_network`.
@@ -34,8 +33,8 @@ For detailed information on these components and what they do, refer to
 These components are bootstrapped by the ``./startFabric.sh`` script, which
 also:
 
-* creates a channel and joins the peer to the channel
-* installs the ``fabcar`` smart contract onto the peer's file system and instantiates it on the channel (instantiate starts a container)
+* creates a channel and joins the peers to the channel
+* installs the ``fabcar`` smart contract onto the peer's file system and deploys it to the channel
 * calls the ``initLedger`` function to populate the channel ledger with 10 unique cars
 
 These operations would typically be done by an organizational or peer admin.
