@@ -67,10 +67,18 @@ download() {
     local BINARY_FILE=$1
     local URL=$2
     echo "===> Downloading: " "${URL}"
-    wget "${URL}" || rc=$?
-    tar xvzf "${BINARY_FILE}" || rc=$?
-    rm "${BINARY_FILE}"
-    if [ -n "$rc" ]; then
+    # We first attempt to use wget which gracefully handles reconnection attempts
+    # as opposed to curl, which doesn't recover from a broken connection on its own
+    if [[ $(command -v wget) ]]; then
+        wget "${URL}" || rc=$?
+        tar xvzf "${BINARY_FILE}" || rc=$?
+        rm "${BINARY_FILE}"
+    else
+        echo "wget not available, falling back to curl"
+        curl -s -L "${URL}" | tar xz || rc=$?
+    fi
+
+    if [[ -n "$rc" ]]; then
         echo "==> There was an error downloading the binary file."
         return 22
     else
