@@ -513,7 +513,7 @@ to make updates to the key/value in the future. The client identity
 library extension APIs can be used within chaincode to retrieve this
 submitter information to make such access control decisions.
 
-See the `client identity (CID) library documentation <https://github.com/hyperledger/fabric/blob/master/core/chaincode/shim/ext/cid/README.md>`_
+See the `client identity (CID) library documentation <https://github.com/hyperledger/fabric/blob/release-1.4/core/chaincode/shim/ext/cid/README.md>`_
 for more details.
 
 To add the client identity shim extension to your chaincode as a dependency, see :ref:`vendoring`.
@@ -525,7 +525,7 @@ In certain scenarios, it may be useful to encrypt values associated with a key
 in their entirety or simply in part.  For example, if a person's social security
 number or address was being written to the ledger, then you likely would not want
 this data to appear in plaintext.  Chaincode encryption is achieved by leveraging
-the `entities extension <https://github.com/hyperledger/fabric/tree/master/core/chaincode/shim/ext/entities>`__
+the `entities extension <https://github.com/hyperledger/fabric/tree/release-1.4/core/chaincode/shim/ext/entities>`__
 which is a BCCSP wrapper with commodity factories and functions to perform cryptographic
 operations such as encryption and elliptic curve digital signatures.  For example,
 to encrypt, the invoker of a chaincode passes in a cryptographic key via the
@@ -533,7 +533,7 @@ transient field.  The same key may then be used for subsequent query operations,
 for proper decryption of the encrypted state values.
 
 For more information and samples, see the
-`Encc Example <https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go/enccc_example>`__
+`Encc Example <https://github.com/hyperledger/fabric/tree/release-1.4/examples/chaincode/go/enccc_example>`__
 within the ``fabric/examples`` directory.  Pay specific attention to the ``utils.go``
 helper program.  This utility loads the chaincode shim APIs and Entities extension
 and builds a new class of functions (e.g. ``encryptAndPutState`` & ``getStateAndDecrypt``)
