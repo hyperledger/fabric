@@ -12,18 +12,16 @@ Writing Your First Application
           :doc:`developapps/developing_applications` section or the
           :doc:`tutorial/commercial_paper`.
 
-In this tutorial we'll be looking at a handful of sample programs to see how
-Fabric apps work. These applications and the smart contracts they use are
-collectively known as ``FabCar``. They provide a great starting point to
-understand a Hyperledger Fabric blockchain. You'll learn how to write an
-application and smart contract to query and update a ledger, and how to use a
-Certificate Authority to generate the X.509 certificates used by applications
-which interact with a permissioned blockchain.
-
-We will use the application SDK --- described in detail in the
-:doc:`/developapps/application` topic -- to invoke a smart contract which
-queries and updates the ledger using the smart contract SDK --- described in
-detail in section :doc:`/developapps/smartcontract`.
+This tutorial provides an introduction to building Fabric applications. After you
+build a fabric network and deploy your smart contracts, you can use the Fabric
+SDKs to interact with the network. In this tutorial, We will use the application
+SDK --- described in detail in the :doc:`/developapps/application` topic -- to
+invoke a smart contract which queries and updates the ledger using the smart
+contract SDK --- described in detail in section :doc:`/developapps/smartcontract`.
+We will also a Certificate Authority to generate the X.509 certificates that an
+application needs to interact with a permissioned blockchain. The sample
+applications and the smart contract they invoke are collectively known as
+``FabCar``.
 
 We’ll go through three principle steps:
 
@@ -53,34 +51,14 @@ the ledger hosted and replicated on the peers in a Fabric network.
 Set up the blockchain network
 -----------------------------
 
-.. note:: This next section requires you to be in the ``test-network``
-          subdirectory within your local clone of the ``fabric-samples`` repo.
+If you haven't done so already, visit the :doc:`prereqs` page and ensure you have
+the necessary dependencies installed on your machine. You can then visit the
+:doc:`install` page and follow the instructions to clone the ``fabric-samples``
+repository and download the latest stable Fabric images and available utilities.
 
-If you've already run through :doc:`test_network`, you will have downloaded
-``fabric-samples`` and have a network up and running. Before you run this
-tutorial, you must stop this network:
-
-.. code:: bash
-
-  ./network.sh down
-
-If you have run through this tutorial before, use the following commands to
-kill any stale or active containers. Note, this will take down **all** of your
-containers whether they're Fabric related or not.
-
-.. code:: bash
-
-  docker rm -f $(docker ps -aq)
-  docker rmi -f $(docker images | grep fabcar | awk '{print $3}')
-
-If you don't have a development environment and the accompanying artifacts for
-the network and applications, visit the :doc:`prereqs` page and ensure you have
-the necessary dependencies installed on your machine.
-
-Next, if you haven't done so already, visit the :doc:`install` page and follow
-the provided instructions. Return to this tutorial once you have cloned the
-``fabric-samples`` repository, and downloaded the latest stable Fabric images
-and available utilities.
+If you've already run through :doc:`test_network` tutorial and are running the
+Fabric test network, this tutorial will bring down your running network network
+before bringing up a new one.
 
 If you are using Mac OS and running Mojave, you will need to `install Xcode
 <./tutorial/installxcode.html>`_.
@@ -88,15 +66,19 @@ If you are using Mac OS and running Mojave, you will need to `install Xcode
 Launch the network
 ^^^^^^^^^^^^^^^^^^
 
-.. note:: This next section requires you to be in the ``fabcar``
-          subdirectory within your local clone of the ``fabric-samples`` repo.
-
-          This tutorial demonstrates the JavaScript versions of the ``FabCar``
+.. note:: This tutorial demonstrates the JavaScript versions of the ``FabCar``
           smart contract and application, but the ``fabric-samples`` repo also
           contains Go, Java and TypeScript versions of this sample. To try the
           Go, Java or TypeScript versions, change the ``javascript`` argument
           for ``./startFabric.sh`` below to either ``go``, ``java`` or ``typescript``
           and follow the instructions written to the terminal.
+
+Navigate to the ``fabcar`` subdirectory within your local clone of the
+``fabric-samples`` repo.
+
+.. code:: bash
+
+  cd fabric-samples/fabcar
 
 Launch your network using the ``startFabric.sh`` shell script. This command will
 spin up a blockchain network comprising peers, orderers, certificate

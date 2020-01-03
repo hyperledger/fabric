@@ -110,7 +110,7 @@ The data to be secured by these policies is mapped in chaincode and will be
 shown later in the tutorial.
 
 This collection definition file is deployed when the chaincode definition is
-committed to the channel using the `peer lifecycle chaincode commit command <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html#peer-chaincode-instantiate>`__.
+committed to the channel using the `peer lifecycle chaincode commit command <file:///Users/nikhilgupta/fabric/docs/build/html/commands/peerlifecycle.html#peer-lifecycle-chaincode-commit>`__.
 More details on this process are provided in Section 3 below.
 
 .. _pd-read-write-private-data:
@@ -260,6 +260,17 @@ environments:
    cd fabric-samples/test-network
    ./network.sh down
 
+If you have not run through the tutorial before, you will need to vendor the
+chaincode dependencies before we can deploy it to the network. Run the
+following commands:
+
+.. code:: bash
+
+    cd ../chaincode/marbles02_private/go
+    GO111MODULE=on go mod vendor
+    cd ../../../test-network
+
+
 If you've already run through this tutorial, you'll also want to delete the
 underlying docker containers for the marbles private data chaincode. Let's run
 the following commands to clean up previous environments:
@@ -268,16 +279,6 @@ the following commands to clean up previous environments:
 
    docker rm -f $(docker ps -a | awk '($2 ~ /dev-peer.*.marblesp.*/) {print $1}')
    docker rmi -f $(docker images | awk '($1 ~ /dev-peer.*.marblesp.*/) {print $3}')
-
-If you have not run through the tutorial before, you will need to vendor the
-chaincode dependencies before we can deploy it to the network. Run the
-following commands:
-
-.. code:: bash
-
-   cd ../chaincode/marbles02_private/go
-   GO111MODULE=on go mod vendor
-   cd ../../../test-network
 
 From the ``test-network`` directory, you can use the following command to start
 up the Fabric test network with CouchDB:
@@ -341,8 +342,7 @@ the Org1 admin. Make sure that you are in the `test-network` directory.
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
 
-1. Use the following command to package the marbles private data chaincode from
-the git repository inside your local container.
+1. Use the following command to package the marbles private data chaincode.
 
 .. code:: bash
 
@@ -365,8 +365,8 @@ the response below:
     2019-04-22 19:09:04.336 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nKmarblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd\022\nmarblespv1" >
     2019-04-22 19:09:04.336 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd
 
-3. Use the CLI to switch to Org2. Copy and paste the following block of commands
-as a group and run them all at once:
+3. Use the CLI operate as the Org2 admin. Copy and paste the following block of
+commands as a group and run them all at once:
 
 .. code:: bash
 
@@ -391,12 +391,12 @@ definition for their organization. Since both organizations are going to use the
 chaincode in this tutorial, we need to approve the chaincode definition for both
 Org1 and Org2 using the `peer lifecycle chaincode approveformyorg <http://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html#peer-lifecycle-chaincode-approveformyorg>`__
 command. The chaincode definition also includes the private data collection
-definition that accompanies the ``marbles02_private``, sample, we will provide
+definition that accompanies the ``marbles02_private`` sample. We will provide
 the path to the collections JSON file using the ``--collections-config`` flag.
 
 :guilabel:`Try it yourself`
 
-Run the following commands from the `test-network` directory to approve a
+Run the following commands from the ``test-network`` directory to approve a
 definition for Org1 and Org2.
 
 1. Use the following command to query your peer for the package ID of the
@@ -437,13 +437,12 @@ of commands as a group into the peer container and run them all at once:
 
 4. Use the following command to approve a definition of the marbles private data
 chaincode for Org1. This command includes a path to the collection definition
-file. The approval is distributed within each organization using gossip, so
-the command does not need to target every peer within an organization.
+file.
 
 .. code:: bash
 
     export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    peer lifecycle chaincode approveformyorg --channelID mychannel --name marblesp --version 1.0 --collections-config ${PWD}/../chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA
+    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marblesp --version 1.0 --collections-config ${PWD}/../chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA
 
 When the command completes successfully you should see something similar to:
 
@@ -467,7 +466,7 @@ as a group into the peer container and run them all at once.
 
 .. code:: bash
 
-    peer lifecycle chaincode approveformyorg --channelID mychannel --name marblesp --version 1.0 --collections-config ${PWD}/../chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA
+    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marblesp --version 1.0 --collections-config ${PWD}/../chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile $ORDERER_CA
 
 Commit the chaincode definition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -497,13 +496,14 @@ data chaincode to the channel ``mychannel``.
     export ORG2_CA=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
     peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marblesp --version 1.0 --sequence 1 --collections-config ${PWD}/../chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --tls true --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses localhost:9051 --tlsRootCertFiles $ORG2_CA
 
-  .. note:: When specifying the value of the ``--collections-config`` flag, you will
-            need to specify the fully qualified path to the collections_config.json file.
-            For example:
 
-            .. code:: bash
+.. note:: When specifying the value of the ``--collections-config`` flag, you will
+          need to specify the fully qualified path to the collections_config.json file.
+          For example:
 
-                 --collections-config  ${PWD}/../chaincode/marbles02_private/collections_config.json
+          .. code:: bash
+
+              --collections-config  ${PWD}/../chaincode/marbles02_private/collections_config.json
 
   When the commit transaction completes successfully you should see something
   similar to:
