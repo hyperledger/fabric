@@ -100,12 +100,13 @@ label.*
 
 You need to install the chaincode package on every peer that will execute and
 endorse transactions. Whether using the CLI or an SDK, you need to complete this
-step using your **Peer Administrator**, whose signing certificate is in the
-_admincerts_ folder of your peer MSP. It is recommended that organizations only
-package a chaincode once, and then install the same package on every peer
-that belongs to their org. If a channel wants to ensure that each organization
-is running the same chaincode, one organization can package a chaincode and send
-it to other channel members out of band.
+step using your **Peer Administrator**. Your peer will build the chaincode image
+after the chaincode is installed, and return a build error if there is a problem
+with your chaincode. It is recommended that organizations only package a chaincode
+once, and then install the same package on every peer that belongs to their org.
+If a channel wants to ensure that each organization is running the same chaincode,
+one organization can package a chaincode and send it to other channel members
+out of band.
 
 A successful install command will return a chaincode package identifier, which
 is the package label combined with a hash of the package. This package
@@ -117,8 +118,8 @@ installed on your peer using the Peer CLI.
   ![Installing the chaincode](lifecycle/Lifecycle-install.png)
 
 *A peer administrator from Org1 and Org2 installs the chaincode package MYCC_1
-on the peers joined to the channel. Installing the chaincode package creates a
-package identifier of MYCC_1:hash.*
+on the peers joined to the channel. Installing the chaincode package builds the
+chaincode image and creates a package identifier of MYCC_1:hash.*
 
 ### Step Three: Approve a chaincode definition for your organization
 
@@ -164,12 +165,11 @@ including the identifier in the definition.
 Each channel member that wants to use the chaincode needs to approve a chaincode
 definition for their organization. This approval needs to be submitted to the
 ordering service, after which it is distributed to all peers. This approval
-needs to be submitted by your **Organization Administrator**, whose signing
-certificate is listed as an admin cert in the MSP of your organization
-definition. After the approval transaction has been successfully submitted,
-the approved definition is stored in a collection that is available to all
-the peers of your organization. As a result you only need to approve a
-chaincode for your organization once, even if you have multiple peers.
+needs to be submitted by your **Organization Administrator**. After the approval
+transaction has been successfully submitted, the approved definition is stored
+in a collection that is available to all the peers of your organization. As a
+result you only need to approve a chaincode for your organization once, even if
+you have multiple peers.
 
   ![Approving the chaincode definition](lifecycle/Lifecycle-approve.png)
 
@@ -191,8 +191,7 @@ chaincode definition approved for their organizations and endorse the definition
 if their organization has approved it. The transaction is then submitted to the
 ordering service, which then commits the chaincode definition to the channel.
 The commit definition transaction needs to be submitted as the **Organization**
-**Administrator**, whose signing certificate is listed as an admin cert in the
-MSP of your organization definition.
+**Administrator**.
 
 The number of organizations that need to approve a definition before it can be
 successfully committed to the channel is governed by the
@@ -214,7 +213,7 @@ channel has a large number Idemix organizations, which cannot approve
 chaincode definitions or endorse chaincode and may prevent the channel from
 reaching a majority as a result.
 
-![Committing the chaincode definition to the channel](lifecycle/Lifecycle-commit.png)
+  ![Committing the chaincode definition to the channel](lifecycle/Lifecycle-commit.png)
 
 *One organization administrator from Org1 or Org2 commits the chaincode definition
 to the channel. The definition on the channel does not include the packageID.*
@@ -224,15 +223,14 @@ chaincode package. If an organization does not need to use the chaincode, they
 can approve a chaincode definition without a package identifier to ensure that
 the Lifecycle Endorsement policy is satisfied.
 
-After the chaincode definition has been committed to the channel, channel
-members can start using the chaincode. The first invoke of the chaincode will
-start the chaincode containers on all of the peers targeted by the transaction
-proposal, as long as those peers have installed the chaincode package. You can use
-the chaincode definition to require the invocation of the ``Init`` function to start
-the chaincode. Otherwise, a channel member can start the chaincode container by
-invoking any transaction in the chaincode. The first invoke, whether of an
-``Init`` function or other transaction, is subject to the chaincode endorsement
-policy. It may take a few minutes for the chaincode container to start.
+After the chaincode definition has been committed to the channel, the chaincode
+container will launch on all of the peers where the chaincode has been installed,
+allowing channel members to start using the chaincode. It may take a few minutes for
+the chaincode container to start. You can use the chaincode definition to require
+the invocation of the ``Init`` function to initialize the chaincode. If the
+invocation of the ``Init`` function is requested, the first invoke of the
+chaincode must be a call to the ``Init`` function. The invoke of the ``Init``
+function is subject to the chaincode endorsement policy.
 
   ![Starting the chaincode on the channel](lifecycle/Lifecycle-start.png)
 
@@ -246,62 +244,62 @@ You can upgrade a chaincode using the same Fabric lifecycle process as you used
 to install and start the chainocode. You can upgrade the chaincode binaries, or
 only update the chaincode policies. Follow these steps to upgrade a chaincode:
 
-1. **Repackage the chaincode:** You only need to complete this step if you are
-  upgrading the chaincode binaries.
+**Step one: Repackage the chaincode:** You only need to complete this step if you
+are upgrading the chaincode binaries.
 
-    ![Re-package the chaincode package](lifecycle/Lifecycle-upgrade-package.png)
+  ![Re-package the chaincode package](lifecycle/Lifecycle-upgrade-package.png)
 
-  *Org1 and Org2 upgrade the chaincode binaries and repackage the chaincode.
-  Both organizations use a different package label.*
+*Org1 and Org2 upgrade the chaincode binaries and repackage the chaincode.
+Both organizations use a different package label.*
 
-2. **Install the new chaincode package on your peers:** Once again, you only
-  need to complete this step if you are upgrading the chaincode binaries.
-  Installing the new chaincode package will generate a package ID, which you will
-  need to pass to the new chaincode definition. You also need to change the
-  chaincode version.
+**Step two: Install the new chaincode package on your peers:** Once again, you
+only need to complete this step if you are upgrading the chaincode binaries.
+Installing the new chaincode package will generate a package ID, which you will
+need to pass to the new chaincode definition. You also need to change the
+chaincode version, which is used by the lifecycle process to track if the
+chaincode binaries have been upgraded.
 
-    ![Re-install the chaincode package](lifecycle/Lifecycle-upgrade-install.png)
+  ![Re-install the chaincode package](lifecycle/Lifecycle-upgrade-install.png)
 
-  *Org1 and Org2 install the new package on their peers. The installation
-  creates a new packageID.*
+*Org1 and Org2 install the new package on their peers. The installation creates
+a new packageID.*
 
-3. **Approve a new chaincode definition:** If you are upgrading the chaincode
-  binaries, you need to update the chaincode version and the package ID in the
-  chaincode definition. You can also update your chaincode endorsement policy
-  without having to repackage your chaincode binaries. Channel members simply
-  need to approve a definition with the new policy. The new definition needs to
-  increment the **sequence** variable in the definition by one.
+**Step three: Approve a new chaincode definition:** If you are upgrading the chaincode
+binaries, you need to update the chaincode version and the package ID in the
+chaincode definition. You can also update your chaincode endorsement policy
+without having to repackage your chaincode binaries. Channel members simply
+need to approve a definition with the new policy. The new definition needs to
+increment the **sequence** variable in the definition by one.
 
-    ![Approve a new chaincode definition](lifecycle/Lifecycle-upgrade-approve.png)
+  ![Approve a new chaincode definition](lifecycle/Lifecycle-upgrade-approve.png)
 
-  *Organization administrators from Org1 and Org2 approve the new chaincode
-  definition for their respective organizations. The new definition references
-  the new packageID and changes the chaincode version. Since this is the first
-  update of the chaincode, the sequence is incremented from one to two.*
+*Organization administrators from Org1 and Org2 approve the new chaincode
+definition for their respective organizations. The new definition references
+the new packageID and changes the chaincode version. Since this is the first
+update of the chaincode, the sequence is incremented from one to two.*
 
-4. **Commit the definition to the channel:** When a sufficient number of channel
-  members have approved the new chaincode definition, one organization can
-  commit the new definition to upgrade the chaincode definition to the channel.
-  There is no separate upgrade command as part of the lifecycle process.
+**Step four: Commit the definition to the channel:** When a sufficient number of
+channel members have approved the new chaincode definition, one organization can
+commit the new definition to upgrade the chaincode definition to the channel.
+There is no separate upgrade command as part of the lifecycle process.
 
-    ![Commit the new definition to the channel](lifecycle/Lifecycle-upgrade-commit.png)
+  ![Commit the new definition to the channel](lifecycle/Lifecycle-upgrade-commit.png)
 
-  *An organization administrator from Org1 or Org2 commits the new chaincode
-   definition to the channel. The chaincode containers are still running the old
-   chaincode.*
+*An organization administrator from Org1 or Org2 commits the new chaincode
+definition to the channel.*
 
-5. **Upgrade the chaincode container:** If you updated the chaincode definition
-  without upgrading the chaincode package, you do not need to upgrade the
-  chaincode container. If you did upgrade the chaincode binaries, a new invoke
-  will upgrade the chaincode container. If you requested the execution of the
-  ``Init`` function in the chaincode definition, you need to upgrade the
-  chaincode container by invoking the ``Init`` function again after the new
-  definition is successfully committed.
+After you commit the chaincode definition, a new chaincode container will
+launch with the code from the upgraded chaincode binaries. If you requested the
+execution of the ``Init`` function in the chaincode definition, you need to
+initialize the upgraded chaincode by invoking the ``Init`` function again after
+the new definition is successfully committed. If you updated the chaincode
+definition without changing the chaincode version, the chaincode container will
+remain the same and you do not need to invoke ``Init`` function.
 
-    ![Upgrade the chaincode](lifecycle/Lifecycle-upgrade-start.png)
+  ![Upgrade the chaincode](lifecycle/Lifecycle-upgrade-start.png)
 
-  *Once the new definition has been committed to the channel, the next invoke on
-  each peer will automatically start the new chaincode container.*
+*Once the new definition has been committed to the channel, each peer will
+automatically start the new chaincode container.*
 
 The Fabric chaincode lifecycle uses the **sequence** in the chaincode definition
 to keep track of upgrades. All channel members need to increment the sequence
