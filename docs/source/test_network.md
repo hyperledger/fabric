@@ -496,7 +496,7 @@ below provide a guided tour of what happens when you issue the command of
   channel, the peer cli initializes the chainocde using the `Init` and invokes
   the chaincode to put initial data on the ledger.
 
-# Troubleshooting
+## Troubleshooting
 
 If you have any problems with the tutorial, review the following:
 
@@ -581,6 +581,16 @@ If you have any problems with the tutorial, review the following:
    ```
    :set ff=unix
    ```
+
+- If your orderer exits upon creation or if you see that the create channel
+  command fails due to an inability to connect to your ordering service, use
+  the `docker logs` command to read the logs from the ordering node. You may see
+  the following message:
+  ```
+  PANI 007 [channel system-channel] config requires unsupported orderer capabilities: Orderer capability V2_0 is required but not supported: Orderer capability V2_0 is required but not supported
+  ```
+  This occurs when you are trying to run the network using Fabric version 1.4.x
+  docker images. The test network needs to run using Fabric version 2.x.
 
 If you continue to see errors, share your logs on the **fabric-questions**
 channel on [Hyperledger Rocket Chat](https://chat.hyperledger.org/home) or on
