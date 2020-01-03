@@ -6,17 +6,17 @@ Adding an Org to a Channel
           version of this documentation (which can be found at the bottom of the
           table of contents to the left).
 
-This tutorial serves as an extension to the Fabric test network and will
-demonstrate the addition of a new organization -- ``Org3`` -- to an application
-channel. It assumes a strong understanding of the test network, including the
-usage and functionality of the aforementioned utilities.
+This tutorial extends the Fabric test network by adding a new organization
+ -- ``Org3`` -- to an application channel. It assumes a strong understanding of
+ the test network, including the usage and functionality of the aforementioned
+ utilities.
 
-While we will focus solely on the integration of a new organization here, the same
-approach can be adopted when performing other channel configuration updates (updating
-modification policies or altering batch size, for example). To learn more about the
-process and possibilities of channel config updates in general, check out
-:doc:`config_update`). It's also worth noting that channel configuration updates like
-the one demonstrated here will usually be the responsibility of an organization admin
+While we will focus on adding a new organization to the channel, you can use a
+similar process to make other channel configuration updates (updating modification
+policies or altering batch size, for example). To learn more about the process
+and possibilities of channel config updates in general, check out :doc:`config_update`).
+It's also worth noting that channel configuration updates like the one
+demonstrated here will usually be the responsibility of an organization admin
 (rather than a chaincode or application developer).
 
 Setup the Environment
