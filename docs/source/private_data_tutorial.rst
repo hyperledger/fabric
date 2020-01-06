@@ -287,7 +287,7 @@ up the Fabric test network with CouchDB:
 
    ./network.sh up createChannel -s couchdb
 
-This will create a simple Fabric network consisting of a single channel named
+This command will deploy a Fabric network consisting of a single channel named
 ``mychannel`` with two organizations (each maintaining two peer nodes) and an
 ordering service while using CouchDB as the state database. Either LevelDB or
 CouchDB may be used with collections. CouchDB was chosen to demonstrate how to
@@ -351,7 +351,7 @@ the Org1 admin. Make sure that you are in the `test-network` directory.
 This command will create a chaincode package named marblesp.tar.gz.
 
 2. Use the following command to install the chaincode package onto the peer
-``peer0.org1.example.com`` on the test network.
+``peer0.org1.example.com``.
 
 .. code:: bash
 
@@ -365,7 +365,7 @@ the response below:
     2019-04-22 19:09:04.336 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nKmarblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd\022\nmarblespv1" >
     2019-04-22 19:09:04.336 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd
 
-3. Use the CLI operate as the Org2 admin. Copy and paste the following block of
+3. Now use the CLI operate as the Org2 admin. Copy and paste the following block of
 commands as a group and run them all at once:
 
 .. code:: bash
@@ -412,8 +412,7 @@ You should see output similar to the following:
 .. code:: bash
 
     Installed chaincodes on peer:
-    Package ID: marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd, Label: marblespv1
-    Package ID: mycc_1:27ef99cb3cbd1b545063f018f3670eddc0d54f40b2660b8f853ad2854c49a0d8, Label: mycc_1
+    Package ID: marblespv1:f8c8e06bfc27771028c4bbc3564341887881e29b92a844c66c30bac0ff83966e, Label: marblespv1
 
 2. Declare the package ID as an environment variable. Paste the package ID of
 marblespv1 returned by the ``peer lifecycle chaincode queryinstalled`` into
@@ -422,7 +421,7 @@ need to complete this step using the package ID returned from your console.
 
 .. code:: bash
 
-    export CC_PACKAGE_ID=marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd
+    export CC_PACKAGE_ID=marblespv1:f8c8e06bfc27771028c4bbc3564341887881e29b92a844c66c30bac0ff83966e
 
 3. Make sure we are running the CLI as Org1. Copy and paste the following block
 of commands as a group into the peer container and run them all at once:
@@ -450,7 +449,7 @@ When the command completes successfully you should see something similar to:
 
     2020-01-03 17:26:55.022 EST [chaincodeCmd] ClientWait -> INFO 001 txid [06c9e86ca68422661e09c15b8e6c23004710ea280efda4bf54d501e655bafa9b] committed with status (VALID) at
 
-5. Use the CLI to switch to Org2. Copy and paste the following block of commands
+5. Now use the CLI to switch to Org2. Copy and paste the following block of commands
 as a group into the peer container and run them all at once.
 
 .. code:: bash
@@ -501,8 +500,8 @@ similar to:
 
 .. code:: bash
 
-    [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
-    [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
+    2020-01-06 16:24:46.104 EST [chaincodeCmd] ClientWait -> INFO 001 txid [4a0d0f5da43eb64f7cbfd72ea8a8df18c328fb250cb346077d91166d86d62d46] committed with status (VALID) at localhost:9051
+    2020-01-06 16:24:46.184 EST [chaincodeCmd] ClientWait -> INFO 002 txid [4a0d0f5da43eb64f7cbfd72ea8a8df18c328fb250cb346077d91166d86d62d46] committed with status (VALID) at localhost:7051
 
 2. Use the following command to invoke the ``Init`` function to initialize the
 chaincode:
@@ -548,12 +547,14 @@ problematic newline characters that linux base64 command adds.
 
 .. code:: bash
 
-   export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
-   peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+    export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 
 You should see results similar to:
 
- ``[chaincodeCmd] chaincodeInvokeOrQuery->INFO 001 Chaincode invoke successful. result: status:200``
+.. code:: bash
+
+    [chaincodeCmd] chaincodeInvokeOrQuery->INFO 001 Chaincode invoke successful. result: status:200
 
 .. _pd-query-authorized:
 
@@ -658,16 +659,14 @@ You should see the following result:
 Query the private data as an unauthorized peer
 ----------------------------------------------
 
-Now we will switch to a member of Org2 which has the marbles private data
-``name, color, size, owner`` in its side database, but does not have the
-marbles ``price`` private data in its side database. We will query for both
-sets of private data.
+Now we will switch to a member of Org2. Org2 has the marbles private data
+``name, color, size, owner`` in its side database, but does not store the
+marbles ``price`` data. We will query for both sets of private data.
 
 Switch to a peer in Org2
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-From inside the docker container, run the following commands to switch to
-the peer which is unauthorized to access the marbles ``price`` private data.
+Run the following commands to operate as the Org2 admin and query the Org2 peer.
 
 :guilabel:`Try it yourself`
 
@@ -716,11 +715,10 @@ You should see a result similar to:
 
 .. code:: json
 
-    {"Error":"Failed to get private details for marble1: GET_STATE failed:
-    transaction ID: b04adebbf165ddc90b4ab897171e1daa7d360079ac18e65fa15d84ddfebfae90:
-    Private data matching public hash version is not available. Public hash
-    version = &version.Height{BlockNum:0x6, TxNum:0x0}, Private data version =
-    (*version.Height)(nil)"}
+    Error: endorsement failure during query. response: status:500
+    message:"{\"Error\":\"Failed to get private details for marble1:
+    GET_STATE failed: transaction ID: d9c437d862de66755076aeebe79e7727791981606ae1cb685642c93f102b03e5:
+    tx creator does not have read access permission on privatedata in chaincodeName:marblesp collectionName: collectionMarblePrivateDetails\"}"
 
 Members of Org2 will only be able to see the public hash of the private data.
 
@@ -757,8 +755,8 @@ price private data is purged.
 
 :guilabel:`Try it yourself`
 
-Switch back to peer0 in Org1 using the following commands. Copy and paste the
-following code block and run it inside your peer container:
+Switch back Org1 using the following commands. Copy and paste the following code
+block and run it inside your peer container:
 
 .. code :: bash
 
@@ -769,24 +767,12 @@ following code block and run it inside your peer container:
     export CORE_PEER_ADDRESS=localhost:7051
 
 Open a new terminal window and view the private data logs for this peer by
-running the following command:
+running the following command. Note the highest block number.
 
 .. code:: bash
 
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
-You should see results similar to the following. Note the highest block number
-in the list. In the example below, the highest block height is ``4``.
-
-.. code:: bash
-
-    [pvtdatastorage] func1 -> INFO 023 Purger started: Purging expired private data till block number [0]
-    [pvtdatastorage] func1 -> INFO 024 Purger finished
-    [kvledger] CommitLegacy -> INFO 022 Channel [mychannel]: Committed block [0] with 1 transaction(s)
-    [kvledger] CommitLegacy -> INFO 02e Channel [mychannel]: Committed block [1] with 1 transaction(s)
-    [kvledger] CommitLegacy -> INFO 030 Channel [mychannel]: Committed block [2] with 1 transaction(s)
-    [kvledger] CommitLegacy -> INFO 036 Channel [mychannel]: Committed block [3] with 1 transaction(s)
-    [kvledger] CommitLegacy -> INFO 03e Channel [mychannel]: Committed block [4] with 1 transaction(s)
 
 Back in the peer container, query for the **marble1** price data by running the
 following command. (A Query does not create a new transaction on the ledger
