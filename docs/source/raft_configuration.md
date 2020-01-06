@@ -320,7 +320,7 @@ monitor:
 
 ## Troubleshooting
 
-* The more stress you put on your nodes, the more you might have to change certain
+1. The more stress you put on your nodes, the more you might have to change certain
 parameters. As with any system, computer or mechanical, stress can lead to a drag
 in performance. As we noted in the conceptual documentation, leader elections in
 Raft are triggered when follower nodes do not receive either a "heartbeat"
@@ -329,6 +329,35 @@ amount of time. Because Raft nodes share the same communication layer across
 channels (this does not mean they share data --- they do not!), if a Raft node is
 part of the consenter set in many channels, you might want to lengthen the amount
 of time it takes to trigger an election to avoid inadvertent leader elections.
+
+2. As aforementioned, write-ahead logs (WAL) and snapshots should be persisted in
+order to attain safety property of Raft protocol. However, it may happen if a node
+loses its data by accident, and the node would panic with following message:
+```
+tocommit(X) is out of range [lastIndex(Y)]. Was the raft log corrupted, truncated, or lost?
+```
+Manual operation would be required to resurrect problematic node in this case.
+* Safe recovery:  
+The only way to handle the corruption or loss of a WAL is to remove the corrupted
+consenter from the quorum, and add a new one in its place, which can be done following
+the instructions in the reconfiguration section in this doc. This is the most appropriate
+option, as it does not violate safety property of Raft protocol. However, this is
+an expensive operation and affects all channels this node participates in.
+* Unsafe recovery:  
+It is possible to recover from a WAL corruption without removing the consenter from the
+consenter set and re-adding it. However, these procedures violate the Raft protocol safety
+guarantees and, in certain unlikely cases, could result in a blockchain fork. To minimize
+these possibilities, ensure that your cluster has quorum on all channels for a few minutes
+before proceeding.
+  * Option 1: delete WAL and snapshot directories of problematic channel from the corrupted
+node, restart current leader node, then start corrupted orderer. This essentially treats
+corrupted orderer as a fresh node without any data. This is the simplest option that requires
+restarting leader node, which often leads to system downtime.
+  * Option 2: to avoid downtime caused by restarting leader node, you could also delete the
+WAL and snapshot directories of problematic channel from the corrupted node, and then copy
+a snapshot from an alive node with an index greater than `X` in above panic message. The index
+can be inferred from snapshot file names, for example `0000000000000002-0000000000000006.snap`
+stores a snapshot with index 6. Then, start corrupted node and wait for it to catch up.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/) -->
