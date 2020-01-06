@@ -16,6 +16,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -203,6 +204,10 @@ func TestWriteFolderToTarPackageFailure3(t *testing.T) {
 
 // Failure case 4: with lstat failed
 func Test_WriteFolderToTarPackageFailure4(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unable to chmod execute permission on windows directory")
+	}
+
 	tempDir, err := ioutil.TempDir("", "WriteFolderToTarPackageFailure4BadFileMode")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)

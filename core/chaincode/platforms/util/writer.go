@@ -13,102 +13,66 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/ccmetadata"
 	"github.com/pkg/errors"
 )
-
-var vmLogger = flogging.MustGetLogger("container")
 
 // WriteFolderToTarPackage writes source files to a tarball.
 // This utility is used for node js chaincode packaging, but not golang chaincode.
 // Golang chaincode has more sophisticated file packaging, as implemented in golang/platform.go.
 func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) error {
-	fileCount := 0
-	rootDirectory := srcPath
+	rootDirectory := filepath.Clean(srcPath)
 
-	// trim trailing slash if it was passed
-	if rootDirectory[len(rootDirectory)-1] == '/' {
-		rootDirectory = rootDirectory[:len(rootDirectory)-1]
-	}
+	logger.Debugw("writing folder to package", "rootDirectory", rootDirectory)
 
-	vmLogger.Debugf("rootDirectory = %s", rootDirectory)
-
-	//append "/" if necessary
-	updatedExcludeDirs := make([]string, 0)
-	for _, excludeDir := range excludeDirs {
-		if excludeDir != "" && strings.LastIndex(excludeDir, "/") < len(excludeDir)-1 {
-			excludeDir = excludeDir + "/"
-			updatedExcludeDirs = append(updatedExcludeDirs, excludeDir)
-		}
-	}
-
-	rootDirLen := len(rootDirectory)
+	var success bool
 	walkFn := func(localpath string, info os.FileInfo, err error) error {
 		if err != nil {
-			vmLogger.Errorf("Visit %s failed: %s", localpath, err)
+			logger.Errorf("Visit %s failed: %s", localpath, err)
 			return err
 		}
 
-		// If localpath includes .git, ignore
-		if strings.Contains(localpath, ".git") {
-			return nil
-		}
-
 		if info.Mode().IsDir() {
+			for _, excluded := range append(excludeDirs, ".git") {
+				if info.Name() == excluded {
+					return filepath.SkipDir
+				}
+			}
 			return nil
 		}
 
-		//exclude any files with excludeDir prefix. They should already be in the tar
-		for _, excludeDir := range updatedExcludeDirs {
-			if strings.Index(localpath, excludeDir) == rootDirLen+1 {
-				return nil
-			}
-		}
-		// Because of scoping we can reference the external rootDirectory variable
-		if len(localpath[rootDirLen:]) == 0 {
-			return nil
-		}
 		ext := filepath.Ext(localpath)
-
-		if includeFileTypeMap != nil {
-			// we only want 'fileTypes' source files at this point
-			if _, ok := includeFileTypeMap[ext]; ok != true {
-				return nil
-			}
+		if _, ok := includeFileTypeMap[ext]; includeFileTypeMap != nil && !ok {
+			return nil
+		}
+		if excludeFileTypeMap[ext] {
+			return nil
 		}
 
-		//exclude the given file types
-		if excludeFileTypeMap != nil {
-			if exclude, ok := excludeFileTypeMap[ext]; ok && exclude {
-				return nil
-			}
+		relpath, err := filepath.Rel(rootDirectory, localpath)
+		if err != nil {
+			return err
 		}
-
-		var packagepath string
+		packagepath := filepath.ToSlash(relpath)
 
 		// if file is metadata, keep the /META-INF directory, e.g: META-INF/statedb/couchdb/indexes/indexOwner.json
 		// otherwise file is source code, put it in /src dir, e.g: src/marbles_chaincode.js
 		if strings.HasPrefix(localpath, filepath.Join(rootDirectory, "META-INF")) {
-			packagepath = localpath[rootDirLen+1:]
-
-			// Split the tar packagepath into a tar package directory and filename
-			_, filename := filepath.Split(packagepath)
-
 			// Hidden files are not supported as metadata, therefore ignore them.
 			// User often doesn't know that hidden files are there, and may not be able to delete them, therefore warn user rather than error out.
-			if strings.HasPrefix(filename, ".") {
-				vmLogger.Warningf("Ignoring hidden file in metadata directory: %s", packagepath)
+			if strings.HasPrefix(info.Name(), ".") {
+				logger.Warningf("Ignoring hidden file in metadata directory: %s", packagepath)
 				return nil
 			}
 
-			fileBytes, errRead := ioutil.ReadFile(localpath)
-			if errRead != nil {
-				return errRead
+			fileBytes, err := ioutil.ReadFile(localpath)
+			if err != nil {
+				return err
 			}
 
 			// Validate metadata file for inclusion in tar
@@ -117,26 +81,25 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 			if err != nil {
 				return err
 			}
-
 		} else { // file is not metadata, include in src
-			packagepath = fmt.Sprintf("src%s", localpath[rootDirLen:])
+			packagepath = path.Join("src", packagepath)
 		}
 
 		err = WriteFileToPackage(localpath, packagepath, tw)
 		if err != nil {
 			return fmt.Errorf("Error writing file to package: %s", err)
 		}
-		fileCount++
 
+		success = true
 		return nil
 	}
 
 	if err := filepath.Walk(rootDirectory, walkFn); err != nil {
-		vmLogger.Infof("Error walking rootDirectory: %s", err)
+		logger.Infof("Error walking rootDirectory: %s", err)
 		return err
 	}
-	// return error if no files were found
-	if fileCount == 0 {
+
+	if !success {
 		return errors.Errorf("no source files found in '%s'", srcPath)
 	}
 	return nil
@@ -144,7 +107,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDirs []strin
 
 // WriteFileToPackage writes a file to a tar stream.
 func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) error {
-	vmLogger.Debug("Writing file to tarball:", packagepath)
+	logger.Debug("Writing file to tarball:", packagepath)
 	fd, err := os.Open(localpath)
 	if err != nil {
 		return fmt.Errorf("%s: %s", localpath, err)
