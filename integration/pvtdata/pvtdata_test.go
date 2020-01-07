@@ -266,7 +266,7 @@ var _ bool = Describe("PrivateData", func() {
 				By("verifying that marble1 still not purged in collection Marbles")
 				assertPresentInCollectionM(network, ccName, "marble1", eligiblePeer)
 
-				By("adding new peer that is eligible to recieve data")
+				By("adding new peer that is eligible to receive data")
 				newPeerProcess = addPeer(network, orderer, org2Peer1)
 				installChaincode(network, testChaincode, org2Peer1)
 				network.VerifyMembership(network.Peers, channelID, ccName)
@@ -500,6 +500,22 @@ var _ bool = Describe("PrivateData", func() {
 					testChaincode.CollectionsConfig = collectionConfig("collections_config3.json")
 					deployChaincode(network, orderer, testChaincode)
 
+					By("attempting to invoke chaincode from a user (org1) not in any collection member orgs (org2 and org3)")
+					peer2 := network.Peer("Org2", "peer0")
+					marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"memberonly-marble", "color":"blue", "size":35, "owner":"tom", "price":99}`))
+					command := commands.ChaincodeInvoke{
+						ChannelID:     channelID,
+						Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
+						Name:          "marblesp",
+						Ctor:          fmt.Sprintf(`{"Args":["initMarble"]}`),
+						Transient:     fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
+						PeerAddresses: []string{network.PeerAddress(peer2, nwo.ListenPort)},
+						WaitForEvent:  true,
+					}
+					peer1 := network.Peer("Org1", "peer0")
+					expectedErrMsg := "tx creator does not have write access permission"
+					invokeChaincodeWithError(network, peer1, command, expectedErrMsg)
+
 					assertMarbleAPIs()
 					assertDeliverWithPrivateDataACLBehavior()
 				})
@@ -515,6 +531,22 @@ var _ bool = Describe("PrivateData", func() {
 					nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
 					testChaincode.CollectionsConfig = collectionConfig("collections_config3.json")
 					deployChaincode(network, orderer, testChaincode)
+
+					By("attempting to invoke chaincode from a user (org1) not in any collection member orgs (org2 and org3)")
+					peer2 := network.Peer("Org2", "peer0")
+					marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"memberonly-marble", "color":"blue", "size":35, "owner":"tom", "price":99}`))
+					command := commands.ChaincodeInvoke{
+						ChannelID:     channelID,
+						Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
+						Name:          "marblesp",
+						Ctor:          fmt.Sprintf(`{"Args":["initMarble"]}`),
+						Transient:     fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
+						PeerAddresses: []string{network.PeerAddress(peer2, nwo.ListenPort)},
+						WaitForEvent:  true,
+					}
+					peer1 := network.Peer("Org1", "peer0")
+					expectedErrMsg := "tx creator does not have write access permission"
+					invokeChaincodeWithError(network, peer1, command, expectedErrMsg)
 
 					assertMarbleAPIs()
 					assertDeliverWithPrivateDataACLBehavior()
@@ -809,6 +841,13 @@ func invokeChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeI
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
+}
+
+func invokeChaincodeWithError(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedErrMsg string) {
+	sess, err := n.PeerUserSession(peer, "User1", command)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say(expectedErrMsg))
 }
 
 func approveChaincodeForMyOrgExpectErr(n *nwo.Network, orderer *nwo.Orderer, chaincode nwo.Chaincode, expectedErrMsg string, peers ...*nwo.Peer) {
@@ -1144,7 +1183,7 @@ func loadLocalMSPAt(dir, id, mspType string) (msp.MSP, error) {
 	return thisMSP, nil
 }
 
-// receiveDeliverResponse expectes to receive the BlockAndPrivateData response for the requested block.
+// receiveDeliverResponse expects to receive the BlockAndPrivateData response for the requested block.
 func receiveDeliverResponse(dp pb.Deliver_DeliverWithPrivateDataClient, address string, eventCh chan<- deliverEvent) error {
 	event := deliverEvent{}
 
