@@ -389,6 +389,12 @@ func TestPaginatedRangeQuery(t *testing.T) {
 	commontests.TestPaginatedRangeQuery(t, env.DBProvider)
 }
 
+func TestRangeQuerySpecialCharacters(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestRangeQuerySpecialCharacters(t, env.DBProvider)
+}
+
 // TestUtilityFunctions tests utility functions
 func TestUtilityFunctions(t *testing.T) {
 
