@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package lifecycle_test
 
 import (
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -51,10 +53,11 @@ var _ = Describe("MetadataProvider", func() {
 		fakeChaincodeInfoProvider.ChaincodeInfoReturns(ccInfo, nil)
 
 		legacyCCMetadata := &chaincode.Metadata{
-			Name:              "legacy-cc",
-			Version:           "legacy-version",
-			Policy:            []byte("legacy-policy"),
-			CollectionsConfig: &pb.CollectionConfigPackage{},
+			Name:               "legacy-cc",
+			Version:            "legacy-version",
+			Policy:             []byte("legacy-policy"),
+			CollectionPolicies: nil,
+			CollectionsConfig:  &pb.CollectionConfigPackage{},
 		}
 		fakeLegacyMetadataProvider = &mock.LegacyMetadataProvider{}
 		fakeLegacyMetadataProvider.MetadataReturns(legacyCCMetadata)
@@ -63,13 +66,14 @@ var _ = Describe("MetadataProvider", func() {
 	})
 
 	It("returns metadata using the ChaincodeInfoProvider (SignaturePolicyEnvelope case)", func() {
-		metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+		metadata := metadataProvider.Metadata("testchannel", "cc-name", "col1")
 		Expect(metadata).To(Equal(
 			&chaincode.Metadata{
-				Name:              "cc-name",
-				Version:           "1",
-				Policy:            cauthdsl.MarshaledAcceptAllPolicy,
-				CollectionsConfig: &pb.CollectionConfigPackage{},
+				Name:               "cc-name",
+				Version:            "1",
+				Policy:             cauthdsl.MarshaledAcceptAllPolicy,
+				CollectionPolicies: map[string][]byte{},
+				CollectionsConfig:  &pb.CollectionConfigPackage{},
 			},
 		))
 	})
@@ -80,13 +84,14 @@ var _ = Describe("MetadataProvider", func() {
 		})
 
 		It("returns metadata using the LegacyMetadataProvider", func() {
-			metadata := metadataProvider.Metadata("testchannel", "legacy-cc", true)
+			metadata := metadataProvider.Metadata("testchannel", "legacy-cc", "col1")
 			Expect(metadata).To(Equal(
 				&chaincode.Metadata{
-					Name:              "legacy-cc",
-					Version:           "legacy-version",
-					Policy:            []byte("legacy-policy"),
-					CollectionsConfig: &pb.CollectionConfigPackage{},
+					Name:               "legacy-cc",
+					Version:            "legacy-version",
+					Policy:             []byte("legacy-policy"),
+					CollectionPolicies: nil,
+					CollectionsConfig:  &pb.CollectionConfigPackage{},
 				},
 			))
 		})
@@ -99,13 +104,14 @@ var _ = Describe("MetadataProvider", func() {
 		})
 
 		It("returns metadata after providing a reject-all policy", func() {
-			metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+			metadata := metadataProvider.Metadata("testchannel", "cc-name", "col1")
 			Expect(metadata).To(Equal(
 				&chaincode.Metadata{
-					Name:              "cc-name",
-					Version:           "1",
-					Policy:            cauthdsl.MarshaledRejectAllPolicy,
-					CollectionsConfig: &pb.CollectionConfigPackage{},
+					Name:               "cc-name",
+					Version:            "1",
+					Policy:             cauthdsl.MarshaledRejectAllPolicy,
+					CollectionPolicies: map[string][]byte{},
+					CollectionsConfig:  &pb.CollectionConfigPackage{},
 				},
 			))
 		})
@@ -130,13 +136,14 @@ var _ = Describe("MetadataProvider", func() {
 		})
 
 		It("returns metadata after translating the policy", func() {
-			metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+			metadata := metadataProvider.Metadata("testchannel", "cc-name", "col1")
 			Expect(metadata).To(Equal(
 				&chaincode.Metadata{
-					Name:              "cc-name",
-					Version:           "1",
-					Policy:            cauthdsl.MarshaledAcceptAllPolicy,
-					CollectionsConfig: &pb.CollectionConfigPackage{},
+					Name:               "cc-name",
+					Version:            "1",
+					Policy:             cauthdsl.MarshaledAcceptAllPolicy,
+					CollectionPolicies: map[string][]byte{},
+					CollectionsConfig:  &pb.CollectionConfigPackage{},
 				},
 			))
 		})
@@ -149,13 +156,14 @@ var _ = Describe("MetadataProvider", func() {
 			})
 
 			It("returns metadata after providing a reject-all policy", func() {
-				metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+				metadata := metadataProvider.Metadata("testchannel", "cc-name", "col1")
 				Expect(metadata).To(Equal(
 					&chaincode.Metadata{
-						Name:              "cc-name",
-						Version:           "1",
-						Policy:            cauthdsl.MarshaledRejectAllPolicy,
-						CollectionsConfig: &pb.CollectionConfigPackage{},
+						Name:               "cc-name",
+						Version:            "1",
+						Policy:             cauthdsl.MarshaledRejectAllPolicy,
+						CollectionPolicies: map[string][]byte{},
+						CollectionsConfig:  &pb.CollectionConfigPackage{},
 					},
 				))
 			})
@@ -169,13 +177,14 @@ var _ = Describe("MetadataProvider", func() {
 			})
 
 			It("returns metadata after providing a reject-all policy", func() {
-				metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+				metadata := metadataProvider.Metadata("testchannel", "cc-name", "col1")
 				Expect(metadata).To(Equal(
 					&chaincode.Metadata{
-						Name:              "cc-name",
-						Version:           "1",
-						Policy:            cauthdsl.MarshaledRejectAllPolicy,
-						CollectionsConfig: &pb.CollectionConfigPackage{},
+						Name:               "cc-name",
+						Version:            "1",
+						Policy:             cauthdsl.MarshaledRejectAllPolicy,
+						CollectionPolicies: map[string][]byte{},
+						CollectionsConfig:  &pb.CollectionConfigPackage{},
 					},
 				))
 			})
@@ -192,16 +201,106 @@ var _ = Describe("MetadataProvider", func() {
 			})
 
 			It("returns metadata after providing a reject-all policy", func() {
-				metadata := metadataProvider.Metadata("testchannel", "cc-name", true)
+				metadata := metadataProvider.Metadata("testchannel", "cc-name", "col1")
 				Expect(metadata).To(Equal(
 					&chaincode.Metadata{
-						Name:              "cc-name",
-						Version:           "1",
-						Policy:            cauthdsl.MarshaledRejectAllPolicy,
-						CollectionsConfig: &pb.CollectionConfigPackage{},
+						Name:               "cc-name",
+						Version:            "1",
+						Policy:             cauthdsl.MarshaledRejectAllPolicy,
+						CollectionPolicies: map[string][]byte{},
+						CollectionsConfig:  &pb.CollectionConfigPackage{},
 					},
 				))
 			})
+		})
+	})
+
+	Context("when collection endorsement policies exist", func() {
+		var (
+			expectedSignaturePolicy         *common.SignaturePolicyEnvelope
+			expectedCollectionConfigPackage *pb.CollectionConfigPackage
+		)
+
+		BeforeEach(func() {
+			expectedSignaturePolicy = &common.SignaturePolicyEnvelope{
+				Identities: []*msp.MSPPrincipal{
+					{
+						Principal: []byte("test"),
+					},
+				},
+			}
+
+			expectedCollectionConfigPackage = &pb.CollectionConfigPackage{
+				Config: []*pb.CollectionConfig{
+					{
+						Payload: &pb.CollectionConfig_StaticCollectionConfig{
+							StaticCollectionConfig: &pb.StaticCollectionConfig{
+								Name: "col1",
+								EndorsementPolicy: &pb.ApplicationPolicy{
+									Type: &pb.ApplicationPolicy_SignaturePolicy{
+										SignaturePolicy: expectedSignaturePolicy,
+									},
+								},
+							},
+						},
+					},
+					{
+						Payload: &pb.CollectionConfig_StaticCollectionConfig{
+							StaticCollectionConfig: &pb.StaticCollectionConfig{
+								Name: "col2",
+								EndorsementPolicy: &pb.ApplicationPolicy{
+									Type: &pb.ApplicationPolicy_SignaturePolicy{
+										SignaturePolicy: expectedSignaturePolicy,
+									},
+								},
+							},
+						},
+					},
+					{
+						Payload: &pb.CollectionConfig_StaticCollectionConfig{
+							StaticCollectionConfig: &pb.StaticCollectionConfig{
+								Name: "col3",
+								// col3 has no endorsement policy
+								EndorsementPolicy: nil,
+							},
+						},
+					},
+				},
+			}
+			ccInfo = &lifecycle.LocalChaincodeInfo{
+				Definition: &lifecycle.ChaincodeDefinition{
+					Sequence: 1,
+					EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+						Version: "cc-version",
+					},
+					ValidationInfo: &lb.ChaincodeValidationInfo{
+						ValidationParameter: protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
+							Type: &pb.ApplicationPolicy_SignaturePolicy{
+								SignaturePolicy: cauthdsl.AcceptAllPolicy,
+							},
+						}),
+					},
+					Collections: expectedCollectionConfigPackage,
+				},
+			}
+			fakeChaincodeInfoProvider.ChaincodeInfoReturns(ccInfo, nil)
+		})
+
+		It("returns metadata that includes the collection policies", func() {
+			metadata := metadataProvider.Metadata("testchannel", "cc-name", "col1", "col2", "col3")
+			Expect(metadata).To(Equal(
+				&chaincode.Metadata{
+					Name:    "cc-name",
+					Version: "1",
+					Policy:  cauthdsl.MarshaledAcceptAllPolicy,
+					CollectionPolicies: map[string][]byte{
+						"col1": protoutil.MarshalOrPanic(expectedSignaturePolicy),
+						"col2": protoutil.MarshalOrPanic(expectedSignaturePolicy),
+						// col3 has no endorsement policy
+					},
+					CollectionsConfig: expectedCollectionConfigPackage,
+				},
+			))
 		})
 	})
 })

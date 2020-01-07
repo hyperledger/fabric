@@ -886,7 +886,7 @@ type metadataFetcher struct {
 	mock.Mock
 }
 
-func (mf *metadataFetcher) Metadata(channel string, cc string, _ bool) *chaincode.Metadata {
+func (mf *metadataFetcher) Metadata(channel string, cc string, _ ...string) *chaincode.Metadata {
 	arg := mf.Called().Get(0)
 	if arg == nil {
 		return nil

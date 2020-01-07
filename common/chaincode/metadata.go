@@ -32,11 +32,15 @@ type InstalledChaincode struct {
 
 // Metadata defines channel-scoped metadata of a chaincode
 type Metadata struct {
-	Name              string
-	Version           string
-	Policy            []byte
-	Id                []byte
-	CollectionsConfig *peer.CollectionConfigPackage
+	Name    string
+	Version string
+	Policy  []byte
+	// CollectionPolicies will only be set for _lifecycle
+	// chaincodes and stores a map from collection name to
+	// that collection's endorsement policy if one exists.
+	CollectionPolicies map[string][]byte
+	Id                 []byte
+	CollectionsConfig  *peer.CollectionConfigPackage
 	// These two fields (Approved, Installed) are only set for
 	// _lifecycle chaincodes. They are used to ensure service
 	// discovery doesn't publish a stale chaincode definition

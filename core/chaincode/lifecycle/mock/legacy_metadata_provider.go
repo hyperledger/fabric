@@ -8,12 +8,12 @@ import (
 )
 
 type LegacyMetadataProvider struct {
-	MetadataStub        func(string, string, bool) *chaincode.Metadata
+	MetadataStub        func(string, string, ...string) *chaincode.Metadata
 	metadataMutex       sync.RWMutex
 	metadataArgsForCall []struct {
 		arg1 string
 		arg2 string
-		arg3 bool
+		arg3 []string
 	}
 	metadataReturns struct {
 		result1 *chaincode.Metadata
@@ -25,18 +25,18 @@ type LegacyMetadataProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LegacyMetadataProvider) Metadata(arg1 string, arg2 string, arg3 bool) *chaincode.Metadata {
+func (fake *LegacyMetadataProvider) Metadata(arg1 string, arg2 string, arg3 ...string) *chaincode.Metadata {
 	fake.metadataMutex.Lock()
 	ret, specificReturn := fake.metadataReturnsOnCall[len(fake.metadataArgsForCall)]
 	fake.metadataArgsForCall = append(fake.metadataArgsForCall, struct {
 		arg1 string
 		arg2 string
-		arg3 bool
+		arg3 []string
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("Metadata", []interface{}{arg1, arg2, arg3})
 	fake.metadataMutex.Unlock()
 	if fake.MetadataStub != nil {
-		return fake.MetadataStub(arg1, arg2, arg3)
+		return fake.MetadataStub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1
@@ -51,13 +51,13 @@ func (fake *LegacyMetadataProvider) MetadataCallCount() int {
 	return len(fake.metadataArgsForCall)
 }
 
-func (fake *LegacyMetadataProvider) MetadataCalls(stub func(string, string, bool) *chaincode.Metadata) {
+func (fake *LegacyMetadataProvider) MetadataCalls(stub func(string, string, ...string) *chaincode.Metadata) {
 	fake.metadataMutex.Lock()
 	defer fake.metadataMutex.Unlock()
 	fake.MetadataStub = stub
 }
 
-func (fake *LegacyMetadataProvider) MetadataArgsForCall(i int) (string, string, bool) {
+func (fake *LegacyMetadataProvider) MetadataArgsForCall(i int) (string, string, []string) {
 	fake.metadataMutex.RLock()
 	defer fake.metadataMutex.RUnlock()
 	argsForCall := fake.metadataArgsForCall[i]

@@ -35,12 +35,12 @@ type principalEvaluator interface {
 type chaincodeMetadataFetcher interface {
 	// ChaincodeMetadata returns the metadata of the chaincode as appears in the ledger,
 	// or nil if the channel doesn't exist, or the chaincode isn't found in the ledger
-	Metadata(channel string, cc string, loadCollections bool) *chaincode.Metadata
+	Metadata(channel string, cc string, collections ...string) *chaincode.Metadata
 }
 
 type policyFetcher interface {
-	// PolicyByChaincode returns a policy that can be inquired which identities
-	// satisfy it
+	// PoliciesByChaincode returns the chaincode policy or existing collection level policies that can be
+	// inquired for which identities satisfy them
 	PoliciesByChaincode(channel string, cc string, collections ...string) []policies.InquireablePolicy
 }
 
@@ -225,7 +225,7 @@ func loadMetadataAndFilters(ctx metadataAndFilterContext) (*metadataAndColFilter
 	var filters []identityFilter
 
 	for _, chaincode := range ctx.interest.Chaincodes {
-		ccMD := ctx.fetch.Metadata(string(ctx.chainID), chaincode.Name, len(chaincode.CollectionNames) > 0)
+		ccMD := ctx.fetch.Metadata(string(ctx.chainID), chaincode.Name, chaincode.CollectionNames...)
 		if ccMD == nil {
 			return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(ctx.chainID))
 		}
