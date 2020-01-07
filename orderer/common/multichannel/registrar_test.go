@@ -112,12 +112,12 @@ func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainS
 }
 
 func TestConfigTx(t *testing.T) {
-	//system channel
+	// system channel
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
-	// Tests for a normal chain which contains 3 config transactions and other normal transactions to make
-	// sure the right one returned
+	// Tests for a normal channel which contains 3 config transactions and other
+	// normal transactions to make sure the right one returned
 	t.Run("GetConfigTx - ok", func(t *testing.T) {
 		tmpdir, err := ioutil.TempDir("", "registrar_test-")
 		require.NoError(t, err)
@@ -131,8 +131,12 @@ func TestConfigTx(t *testing.T) {
 		ctx := makeConfigTx("testchannelid", 6)
 		rl.Append(blockledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
 
+		// block with LAST_CONFIG metadata in SIGNATURES field
 		block := blockledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx("testchannelid", 7)})
-		block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{Value: protoutil.MarshalOrPanic(&cb.LastConfig{Index: 7})})
+		blockSignatureValue := protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+			LastConfig: &cb.LastConfig{Index: 7},
+		})
+		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{Value: blockSignatureValue})
 		rl.Append(block)
 
 		pctx := configTx(rl)
@@ -262,7 +266,6 @@ func TestCreateChain(t *testing.T) {
 
 	// This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
 	t.Run("New chain", func(t *testing.T) {
-		expectedLastConfigBlockNumber := uint64(0)
 		expectedLastConfigSeq := uint64(1)
 		newChainID := "test-new-chain"
 
@@ -332,7 +335,6 @@ func TestCreateChain(t *testing.T) {
 		if status != cb.Status_SUCCESS {
 			t.Fatalf("Could not retrieve new chain genesis block")
 		}
-		testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
 		if len(block.Data.Data) != 1 {
 			t.Fatalf("Should have had only one message in the new genesis block")
 		}
@@ -343,7 +345,6 @@ func TestCreateChain(t *testing.T) {
 		if status != cb.Status_SUCCESS {
 			t.Fatalf("Could not retrieve block on new chain")
 		}
-		testLastConfigBlockNumber(t, block, expectedLastConfigBlockNumber)
 		for i := 0; i < int(confSys.Orderer.BatchSize.MaxMessageCount); i++ {
 			if !proto.Equal(protoutil.ExtractEnvelopeOrPanic(block, i), messages[i]) {
 				t.Errorf("Block contents wrong at index %d in new chain", i)
@@ -355,16 +356,6 @@ func TestCreateChain(t *testing.T) {
 		rcs := newChainSupport(manager, chainSupport.ledgerResources, consenters, mockCrypto(), blockcutter.NewMetrics(&disabled.Provider{}), cryptoProvider)
 		assert.Equal(t, expectedLastConfigSeq, rcs.lastConfigSeq, "On restart, incorrect lastConfigSeq")
 	})
-}
-
-func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumber uint64) {
-	metadataItem := &cb.Metadata{}
-	err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG], metadataItem)
-	assert.NoError(t, err, "Block should carry LAST_CONFIG metadata item")
-	lastConfig := &cb.LastConfig{}
-	err = proto.Unmarshal(metadataItem.Value, lastConfig)
-	assert.NoError(t, err, "LAST_CONFIG metadata item should carry last config value")
-	assert.Equal(t, expectedBlockNumber, lastConfig.Index, "LAST_CONFIG value should point to last config block")
 }
 
 func TestResourcesCheck(t *testing.T) {
