@@ -798,7 +798,7 @@ type ccMetadataFetcher struct {
 	mock.Mock
 }
 
-func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ bool) *chaincode.Metadata {
+func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ ...string) *chaincode.Metadata {
 	return mdf.Called(cc).Get(0).(*chaincode.Metadata)
 }
 
