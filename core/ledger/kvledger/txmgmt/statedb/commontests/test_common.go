@@ -877,6 +877,47 @@ func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvide
 	assert.NoError(t, err)
 }
 
+// TestRangeQuerySpecialCharacters tests range queries for keys with special characters and/or non-English characters
+func TestRangeQuerySpecialCharacters(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db, err := dbProvider.GetDBHandle("testrangequeryspecialcharacters")
+	assert.NoError(t, err)
+	db.Open()
+	defer db.Close()
+
+	batch := statedb.NewUpdateBatch()
+	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
+	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
+	jsonValue2 := `{"asset_name": "marble2","color": "red","size": 2,"owner": "jerry"}`
+	batch.Put("ns1", "key2", []byte(jsonValue2), version.NewHeight(1, 1))
+	jsonValue3 := `{"asset_name": "marble3","color": "red","size": 2,"owner": "jerry"}`
+	batch.Put("ns1", "key1&%-", []byte(jsonValue3), version.NewHeight(1, 1))
+	jsonValue4 := `{"asset_name": "marble4","color": "red","size": 4,"owner": "martha"}`
+	batch.Put("ns1", "key1-a", []byte(jsonValue4), version.NewHeight(1, 4))
+	jsonValue5 := `{"asset_name": "marble5","color": "red","size": 2,"owner": "jerry"}`
+	batch.Put("ns1", "key1%=", []byte(jsonValue5), version.NewHeight(1, 2))
+	jsonValue6 := `{"asset_name": "marble6","color": "red","size": 3,"owner": "fred"}`
+	batch.Put("ns1", "key1español", []byte(jsonValue6), version.NewHeight(1, 3))
+	jsonValue7 := `{"asset_name": "marble7","color": "blue","size": 5,"owner": "fred"}`
+	batch.Put("ns1", "key1中文", []byte(jsonValue7), version.NewHeight(1, 5))
+	jsonValue8 := `{"asset_name": "marble8","color": "blue","size": 7,"owner": "fred"}`
+	batch.Put("ns1", "key1한국어", []byte(jsonValue8), version.NewHeight(1, 7))
+	jsonValue9 := `{"asset_name": "marble9","color": "blue","size": 5,"owner": "fred"}`
+	batch.Put("ns1", "中文key1", []byte(jsonValue9), version.NewHeight(1, 5))
+	jsonValue10 := `{"asset_name": "marble10","color": "green","size": 10,"owner": "mary"}`
+	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 10))
+	jsonValue11 := `{"asset_name": "marble11","color": "cyan","size": 8,"owner": "joe"}`
+	batch.Put("ns1", "key1z", []byte(jsonValue11), version.NewHeight(1, 11))
+
+	savePoint := version.NewHeight(2, 22)
+	db.ApplyUpdates(batch, savePoint)
+
+	//Test range query for the keys with special or non-English characters
+	returnKeys := []string{"key1", "key1%=", "key1&%-", "key1-a", "key10", "key1español", "key1z", "key1中文", "key1한국어"}
+	// returnKeys := []string{"key1", "key1%=", "key1&%-", "key1-a", "key10", "key1español", "key1z"}
+	_, err = executeRangeQuery(t, db, "ns1", "key1", "key2", int32(10), returnKeys)
+	assert.NoError(t, err)
+}
+
 func executeRangeQuery(t *testing.T, db statedb.VersionedDB, namespace, startKey, endKey string, limit int32, returnKeys []string) (string, error) {
 
 	var itr statedb.ResultsIterator
