@@ -51,7 +51,7 @@ func (c *Chaincode) SetPackageIDFromPackageFile() {
 	fileBytes, err := ioutil.ReadFile(c.PackageFile)
 	Expect(err).NotTo(HaveOccurred())
 	hashStr := fmt.Sprintf("%x", util.ComputeSHA256(fileBytes))
-	c.PackageID = c.Label + ":" + hashStr
+	c.PackageID = c.Label + "~" + hashStr
 }
 
 // DeployChaincode is a helper that will install chaincode to all peers that
