@@ -37,7 +37,7 @@ In this section we go over the configuration needed
 
 ### Modify the peer core.yaml to include the externalBuilder
 
-Assume the scripts are on the peer in the `bin` directory as follows 
+Assume the scripts are on the peer in the `bin` directory as follows
 ```
     <fully qualified path on the peer's env>
     └── bin
@@ -245,7 +245,7 @@ When the GO chaincode is ready for deployment, you can package the chaincode as 
 
 ## Running the chaincode as an external service
 
-Create the chaincode as specified in the [Writing chaincode to run as an external service](writing-chaincode-to-run-as-an-external-service) section. Run the built executable in your environment of choice, such as Kubernetes or directly as a process on the peer machine.
+Create the chaincode as specified in the [Writing chaincode to run as an external service](#writing-chaincode-to-run-as-an-external-service) section. Run the built executable in your environment of choice, such as Kubernetes or directly as a process on the peer machine.
 
 Using this chaincode as an external service model, installing chaincode on each peer is no longer required. With the chaincode endpoint deployed to the peer instead and the chaincode running, you can continue to instantiate and invoke chaincode normally.
 
