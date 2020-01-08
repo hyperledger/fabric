@@ -77,14 +77,14 @@ var _ = Describe("EndToEnd", func() {
 		os.RemoveAll(testDir)
 	})
 
-	Describe("basic solo network with 2 orgs", func() {
+	Describe("basic solo network with 2 orgs and no docker", func() {
 		var datagramReader *DatagramReader
 
 		BeforeEach(func() {
 			datagramReader = NewDatagramReader()
 			go datagramReader.Start()
 
-			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicSolo(), testDir, nil, StartPort(), components)
 			network.MetricsProvider = "statsd"
 			network.StatsdEndpoint = datagramReader.Address()
 			network.Profiles = append(network.Profiles, &nwo.Profile{
@@ -100,6 +100,11 @@ var _ = Describe("EndToEnd", func() {
 			})
 
 			network.GenerateConfigTree()
+			for _, peer := range network.PeersWithChannel("testchannel") {
+				core := network.ReadPeerConfig(peer)
+				core.VM = nil
+				network.WritePeerConfig(peer, core)
+			}
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
@@ -113,7 +118,7 @@ var _ = Describe("EndToEnd", func() {
 			}
 		})
 
-		It("executes a basic solo network with 2 orgs", func() {
+		It("executes a basic solo network with 2 orgs and no docker", func() {
 			By("getting the orderer by name")
 			orderer := network.Orderer("orderer")
 
@@ -354,7 +359,7 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	Describe("basic solo network with containers being interroped", func() {
+	Describe("basic solo network with containers being interrupted", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
 

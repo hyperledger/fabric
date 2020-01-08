@@ -522,6 +522,11 @@ chaincode:
     # chaincode. The external builder detection processing will iterate over the
     # builders in the order specified below.
     externalBuilders: []
+        # - path: /path/to/directory
+        #   name: descriptive-builder-name
+        #   environmentWhitelist:
+        #      - ENVVAR_NAME_TO_PROPAGATE_FROM_PEER
+        #      - GOPROXY
 
     # The maximum duration to wait for the chaincode build and install process
     # to complete.

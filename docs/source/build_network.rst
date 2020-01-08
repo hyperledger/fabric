@@ -59,7 +59,7 @@ Here's the help text for the ``byfn.sh`` script:
     -d <delay> - delay duration in seconds (defaults to 3)"
     -f <docker-compose-file> - specify which docker-compose file use (defaults to docker-compose-cli.yaml)"
     -s <dbtype> - the database backend to use: goleveldb (default) or couchdb"
-    -l <language> - the chaincode language: golang (default), node, or java"
+    -l <language> - the chaincode language: golang (default), javascript, or java"
     -a - launch certificate authorities (no certificate authorities are launched by default)
     -n - do not deploy chaincode (abstore chaincode is deployed by default)
     -i <imagetag> - the tag to be used to launch the network (defaults to \"latest\")"
@@ -72,7 +72,7 @@ Here's the help text for the ``byfn.sh`` script:
     byfn.sh generate -c mychannel"
     byfn.sh up -c mychannel -s couchdb"
     byfn.sh up -c mychannel -s couchdb -i 1.4.0"
-    byfn.sh up -l node"
+    byfn.sh up -l javascript"
     byfn.sh down -c mychannel"
     byfn.sh upgrade -c mychannel"
 
@@ -165,7 +165,7 @@ the following command instead:
   # we use the -l flag to specify the chaincode language
   # forgoing the -l flag will default to Golang
 
-  ./byfn.sh up -l node
+  ./byfn.sh up -l javascript
 
 .. note:: For more information on the Node.js shim, please refer to its
           `documentation <https://fabric-shim.github.io/ChaincodeInterface.html>`_.
@@ -473,7 +473,7 @@ First let's start our network:
 
 .. code:: bash
 
-    docker-compose -f docker-compose-cli.yaml up -d
+    docker-compose -f docker-compose-cli.yaml -f docker-compose-etcdraft2.yaml up -d
 
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
 If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.
@@ -500,7 +500,7 @@ If successful you should see the following:
 
 .. code:: bash
 
-        root@0d78bb69300d:/opt/gopath/src/github.com/hyperledger/fabric/peer#
+        bash-5.0#
 
 For the following CLI commands against ``peer0.org1.example.com`` to work, we need
 to preface our commands with the four environment variables given below.  These
@@ -635,6 +635,11 @@ Go, Node.js or Java chaincode.
 
 .. code:: bash
 
+    # before packaging Golang chaincode, vendoring Go dependencies is required like the following commands.
+    cd /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/go
+    GO111MODULE=on go mod vendor
+    cd -
+
     # this packages a Golang chaincode.
     # make note of the --lang flag to indicate "golang" chaincode
     # for go chaincode --path takes the relative path from $GOPATH/src
@@ -649,7 +654,7 @@ Go, Node.js or Java chaincode.
     # make note of the --lang flag to indicate "node" chaincode
     # for node chaincode --path takes the absolute path to the node.js chaincode
     # The --label flag is used to create the package label
-    peer lifecycle chaincode package mycc.tar.gz --path /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/node/ --lang node --label mycc_1
+    peer lifecycle chaincode package mycc.tar.gz --path /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/javascript/ --lang node --label mycc_1
 
 **Java**
 
@@ -1160,7 +1165,7 @@ the network pass ``docker-compose-couch.yaml`` as well:
 
 .. code:: bash
 
-    docker-compose -f docker-compose-cli.yaml -f docker-compose-couch.yaml up -d
+    docker-compose -f docker-compose-cli.yaml -f docker-compose-couch.yaml -f docker-compose-etcdraft2.yaml up -d
 
 **abstore** should now work using CouchDB underneath.
 
@@ -1189,11 +1194,17 @@ channel, use the following steps to interact with the **marbles02** chaincode:
 
 .. code:: bash
 
-      peer lifecycle chaincode package marbles.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/marbles02/go/ --lang golang --label marbles_1
-      peer lifecycle chaincode install marbles.tar.gz
+       # before packaging Golang chaincode, vendoring Go dependencies is required like the following commands.
+       cd /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/marbles02/go
+       GO111MODULE=on go mod vendor
+       cd -
 
- The install command will return a chaincode packageID that you will use to
- approve a chaincode definition.
+       # packages and installs the Golang chaincode
+       peer lifecycle chaincode package marbles.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/marbles02/go/ --lang golang --label marbles_1
+       peer lifecycle chaincode install marbles.tar.gz
+
+The install command will return a chaincode packageID that you will use to
+approve a chaincode definition.
 
 .. code:: bash
 
@@ -1312,15 +1323,6 @@ In addition to keyed/composite-key/key-range queries which are supported by Leve
 since its data content is stored in JSON format and fully queryable. Therefore, CouchDB can meet chaincode, auditing, reporting requirements for many use cases that not supported by LevelDB.
 
 CouchDB can also enhance the security for compliance and data protection in the blockchain. As it is able to implement field-level security through the filtering and masking of individual attributes within a transaction, and only authorizing the read-only permission if needed.
-
-In addition, CouchDB falls into the AP-type (Availability and Partition Tolerance) of the CAP theorem. It uses a master-master replication model with ``Eventual Consistency``.
-More information can be found on the
-`Eventual Consistency page of the CouchDB documentation <http://docs.couchdb.org/en/latest/intro/consistency.html>`__.
-However, under each fabric peer, there is no database replicas, writes to database are guaranteed consistent and durable (not ``Eventual Consistency``).
-
-CouchDB is the first external pluggable state database for Fabric, and there could and should be other external database options. For example, IBM enables the relational database for its blockchain.
-And the CP-type (Consistency and Partition Tolerance) databases may also in need, so as to enable data consistency without application level guarantee.
-
 
 A Note on Data Persistence
 --------------------------

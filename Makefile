@@ -44,8 +44,10 @@
 
 ALPINE_VER ?= 3.10
 BASE_VERSION = 2.0.0
-PREV_VERSION = 2.0.0-alpha
-BASEIMAGE_RELEASE = 0.4.16
+PREV_VERSION = 2.0.0-beta
+
+# BASEIMAGE_RELEASE should be removed now
+BASEIMAGE_RELEASE = 0.4.18
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
@@ -210,7 +212,9 @@ docker: $(RELEASE_IMAGES:%=%-docker)
 .PHONY: $(RELEASE_IMAGES:%=%-docker)
 $(RELEASE_IMAGES:%=%-docker): %-docker: $(BUILD_DIR)/images/%/$(DUMMY)
 
-$(BUILD_DIR)/images/peer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
+$(BUILD_DIR)/images/ccenv/$(DUMMY):   BUILD_CONTEXT=images/ccenv
+$(BUILD_DIR)/images/baseos/$(DUMMY):  BUILD_CONTEXT=images/baseos
+$(BUILD_DIR)/images/peer/$(DUMMY):    BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 $(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
@@ -220,7 +224,7 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		--build-arg GO_VER=$(GO_VER) \
 		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		$(BUILD_ARGS) \
-		-t $(DOCKER_NS)/fabric-$* .
+		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
 	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(BASE_VERSION)
 	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)
 	@touch $@

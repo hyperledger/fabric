@@ -251,9 +251,9 @@ deployment by being placed alongside it in the appropriate metadata folder.
 
 If your chaincode installation and instantiation uses the Hyperledger
 Fabric Node SDK, the JSON index files can be located in any folder as long
-as it conforms to this `directory structure <https://fabric-sdk-node.github.io/tutorial-metadata-chaincode.html>`__.
+as it conforms to this `directory structure <https://hyperledger.github.io/fabric-sdk-node/master/tutorial-metadata-chaincode.html>`__.
 During the chaincode installation using the ``client.installChaincode()`` API,
-include the attribute (``metadataPath``) in the `installation request <https://fabric-sdk-node.github.io/global.html#ChaincodeInstallRequest>`__.
+include the attribute (``metadataPath``) in the `installation request <https://hyperledger.github.io/fabric-sdk-node/master/global.html#ChaincodeInstallRequest>`__.
 The value of the metadataPath is a string representing the absolute path to the
 directory structure containing the JSON index file(s).
 

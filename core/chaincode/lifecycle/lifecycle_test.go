@@ -59,6 +59,16 @@ var _ = Describe("ChaincodeParameters", func() {
 			})
 		})
 
+		Context("when the InitRequired differs from the current definition", func() {
+			BeforeEach(func() {
+				rhs.EndorsementInfo.InitRequired = true
+			})
+
+			It("returns an error", func() {
+				Expect(lhs.Equal(rhs)).To(MatchError("InitRequired 'false' != 'true'"))
+			})
+		})
+
 		Context("when the ValidationPlugin differs from the current definition", func() {
 			BeforeEach(func() {
 				rhs.ValidationInfo.ValidationPlugin = "different"

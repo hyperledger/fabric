@@ -23,6 +23,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -171,8 +172,8 @@ func getGopath() (string, error) {
 func Test_findSource(t *testing.T) {
 	t.Run("Gopath", func(t *testing.T) {
 		source, err := findSource(&CodeDescriptor{
-			Source:       filepath.Join("testdata/src/chaincodes/noop"),
-			MetadataRoot: filepath.Join("testdata/src/chaincodes/noop/META-INF"),
+			Source:       filepath.FromSlash("testdata/src/chaincodes/noop"),
+			MetadataRoot: filepath.FromSlash("testdata/src/chaincodes/noop/META-INF"),
 			Path:         "chaincodes/noop",
 		})
 		require.NoError(t, err, "failed to find source")
@@ -184,8 +185,8 @@ func Test_findSource(t *testing.T) {
 	t.Run("Module", func(t *testing.T) {
 		source, err := findSource(&CodeDescriptor{
 			Module:       true,
-			Source:       filepath.Join("testdata/ccmodule"),
-			MetadataRoot: filepath.Join("testdata/ccmodule/META-INF"),
+			Source:       filepath.FromSlash("testdata/ccmodule"),
+			MetadataRoot: filepath.FromSlash("testdata/ccmodule/META-INF"),
 			Path:         "ccmodule",
 		})
 		require.NoError(t, err, "failed to find source")
@@ -202,7 +203,7 @@ func Test_findSource(t *testing.T) {
 	t.Run("NonExistent", func(t *testing.T) {
 		_, err := findSource(&CodeDescriptor{Path: "acme.com/this/should/not/exist"})
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "no such file or directory")
+		assert.True(t, os.IsNotExist(errors.Cause(err)))
 	})
 }
 
@@ -427,7 +428,7 @@ echo Done!
 }
 
 func TestDescribeCode(t *testing.T) {
-	abs, err := filepath.Abs("testdata/ccmodule")
+	abs, err := filepath.Abs(filepath.FromSlash("testdata/ccmodule"))
 	assert.NoError(t, err)
 
 	t.Run("TopLevelModulePackage", func(t *testing.T) {

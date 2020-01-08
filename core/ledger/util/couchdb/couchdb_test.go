@@ -20,7 +20,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/integration/runner"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,7 +74,7 @@ func TestMain(m *testing.M) {
 
 func testMain(m *testing.M) int {
 	// Switch to CouchDB
-	address, cleanup := couchDBSetup()
+	address, cleanup := couchdbtest.CouchDBSetup("", "")
 	testAddress = address
 	defer cleanup()
 
@@ -83,20 +83,6 @@ func testMain(m *testing.M) int {
 
 	//run the tests
 	return m.Run()
-}
-
-func couchDBSetup() (addr string, cleanup func()) {
-	externalCouch, set := os.LookupEnv("COUCHDB_ADDR")
-	if set {
-		return externalCouch, func() {}
-	}
-
-	couchDB := &runner.CouchDB{}
-	if err := couchDB.Start(); err != nil {
-		err := fmt.Errorf("failed to start couchDB: %s", err)
-		panic(err)
-	}
-	return couchDB.Address(), func() { couchDB.Stop() }
 }
 
 func TestDBBadConnectionDef(t *testing.T) {

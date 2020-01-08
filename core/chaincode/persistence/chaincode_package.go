@@ -23,12 +23,12 @@ import (
 )
 
 // The chaincode package is simply a .tar.gz file.  For the time being, we
-// assume that the package contains a Chaincode-Package-Metadata.json file
-// which contains a 'Type', and optionally a 'Path'.  In the future, it would
-// be nice if we moved to a more buildpack type system, rather than the below
-// presented JAR+manifest type system, but for expediency and incremental changes,
-// moving to a tar format over the proto format for a user-inspectable artifact
-// seems like a good step.
+// assume that the package contains a metadata.json file which contains a
+// 'type', a 'path', and a 'label'.  In the future, it would be nice if we
+// move to a more buildpack type system, rather than the below presented
+// JAR+manifest type system, but for expediency and incremental changes,
+// moving to a tar format over the proto format for a user-inspectable
+// artifact seems like a good step.
 
 const (
 	// MetadataFile is the expected location of the metadata json document
@@ -51,31 +51,45 @@ type FallbackPackageLocator struct {
 	LegacyCCPackageLocator  LegacyCCPackageLocator
 }
 
-func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*ChaincodePackageMetadata, io.ReadCloser, error) {
+func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*ChaincodePackageMetadata, []byte, io.ReadCloser, error) {
+	// XXX, this path has too many return parameters.  We could split it into two calls,
+	// or, we could deserialize the metadata where it's needed.  But, as written was the
+	// fastest path to fixing a bug around the mutation of metadata.
 	streamer := fpl.ChaincodePackageLocator.ChaincodePackageStreamer(packageID)
 	if streamer.Exists() {
 		metadata, err := streamer.Metadata()
 		if err != nil {
-			return nil, nil, errors.WithMessagef(err, "error retrieving chaincode package metadata '%s'", packageID)
+			return nil, nil, nil, errors.WithMessagef(err, "error retrieving chaincode package metadata '%s'", packageID)
+		}
+
+		mdBytes, err := streamer.MetadataBytes()
+		if err != nil {
+			return nil, nil, nil, errors.WithMessagef(err, "error retrieving chaincode package metadata bytes '%s'", packageID)
 		}
 
 		tarStream, err := streamer.Code()
 		if err != nil {
-			return nil, nil, errors.WithMessagef(err, "error retrieving chaincode package code '%s'", packageID)
+			return nil, nil, nil, errors.WithMessagef(err, "error retrieving chaincode package code '%s'", packageID)
 		}
 
-		return metadata, tarStream, nil
+		return metadata, mdBytes, tarStream, nil
 	}
 
 	cds, err := fpl.LegacyCCPackageLocator.GetChaincodeDepSpec(string(packageID))
 	if err != nil {
-		return nil, nil, errors.WithMessagef(err, "could not get legacy chaincode package '%s'", packageID)
+		return nil, nil, nil, errors.WithMessagef(err, "could not get legacy chaincode package '%s'", packageID)
 	}
 
-	return &ChaincodePackageMetadata{
-			Path: cds.ChaincodeSpec.ChaincodeId.Path,
-			Type: cds.ChaincodeSpec.Type.String(),
-		},
+	md := &ChaincodePackageMetadata{
+		Path:  cds.ChaincodeSpec.ChaincodeId.Path,
+		Type:  cds.ChaincodeSpec.Type.String(),
+		Label: cds.ChaincodeSpec.ChaincodeId.Name,
+	}
+
+	mdBytes, err := json.Marshal(md)
+
+	return md,
+		mdBytes,
 		ioutil.NopCloser(bytes.NewBuffer(cds.CodePackage)),
 		nil
 }
@@ -114,6 +128,22 @@ func (cps *ChaincodePackageStreamer) Metadata() (*ChaincodePackageMetadata, erro
 	}
 
 	return metadata, nil
+}
+
+func (cps *ChaincodePackageStreamer) MetadataBytes() ([]byte, error) {
+	tarFileStream, err := cps.File(MetadataFile)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not get metadata file")
+	}
+
+	defer tarFileStream.Close()
+
+	md, err := ioutil.ReadAll(tarFileStream)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could read metadata file")
+	}
+
+	return md, nil
 }
 
 func (cps *ChaincodePackageStreamer) Code() (*TarFileStream, error) {

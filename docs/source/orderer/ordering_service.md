@@ -5,7 +5,7 @@
 This topic serves as a conceptual introduction to the concept of ordering, how
 orderers interact with peers, the role they play in a transaction flow, and an
 overview of the currently available implementations of the ordering service,
-with a particular focus on the **Raft** ordering service implementation.
+with a particular focus on the recommended **Raft** ordering service implementation.
 
 ## What is ordering?
 
@@ -203,7 +203,7 @@ between ordering service nodes.
 For information about how to stand up an ordering node (regardless of the
 implementation the node will be used in), check out [our documentation on standing up an ordering node](../orderer_deploy.html).
 
-* **Raft**
+* **Raft** (recommended)
 
   New as of v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
   based on an implementation of [Raft protocol](https://raft.github.io/raft.pdf)
@@ -214,7 +214,7 @@ implementation the node will be used in), check out [our documentation on standi
   different organizations to contribute nodes to a distributed ordering service.
 
 
-* **Kafka**
+* **Kafka** (deprecated in v2.0)
 
   Similar to Raft-based ordering, Apache Kafka is a CFT implementation that uses
   a "leader and follower" node configuration. Kafka utilizes a ZooKeeper
@@ -222,7 +222,7 @@ implementation the node will be used in), check out [our documentation on standi
   available since Fabric v1.0, but many users may find the additional
   administrative overhead of managing a Kafka cluster intimidating or undesirable.
 
-* **Solo**
+* **Solo** (deprecated in v2.0)
 
   The Solo implementation of the ordering service is intended for test only and
   consists only of a single ordering node.  It has been deprecated and may be
@@ -254,7 +254,7 @@ administrator, you will not notice a functional difference between an ordering
 service based on Raft versus Kafka. However, there are a few major differences worth
 considering, especially if you intend to manage an ordering service:
 
-* Raft is easier to set up. Although Kafka has scores of admirers, even those
+* Raft is easier to set up. Although Kafka has many admirers, even those
 admirers will (usually) admit that deploying a Kafka cluster and its ZooKeeper
 ensemble can be tricky, requiring a high level of expertise in Kafka
 infrastructure and settings. Additionally, there are many more components to
@@ -262,8 +262,8 @@ manage with Kafka than with Raft, which means that there are more places where
 things can go wrong. And Kafka has its own versions, which must be coordinated
 with your orderers. **With Raft, everything is embedded into your ordering node**.
 
-* Kafka and Zookeeper are not designed to be run across large networks. They are
-designed to be CFT but should be run in a tight group of hosts. This means that
+* Kafka and Zookeeper are not designed to be run across large networks. While
+Kafka is CFT, it should be run in a tight group of hosts. This means that
 practically speaking you need to have one organization run the Kafka cluster.
 Given that, having ordering nodes run by different organizations when using Kafka
 (which Fabric supports) doesn't give you much in terms of decentralization because
@@ -272,8 +272,7 @@ single organization. With Raft, each organization can have its own ordering
 nodes, participating in the ordering service, which leads to a more decentralized
 system.
 
-* Raft is supported natively. While Kafka-based ordering services are currently
-compatible with Fabric, users are required to get the requisite images and
+* Raft is supported natively, which means that users are required to get the requisite images and
 learn how to use Kafka and ZooKeeper on their own. Likewise, support for
 Kafka-related issues is handled through [Apache](https://kafka.apache.org/), the
 open-source developer of Kafka, not Hyperledger Fabric. The Fabric Raft implementation,
@@ -293,7 +292,10 @@ to manage the Kafka nodes.
 Raft were driven by this. If you are interested in BFT, learning how to use
 Raft should ease the transition.
 
-**Note: Similar to Solo and Kafka, a Raft ordering service can lose transactions
+For all of these reasons, support for Kafka-based ordering service is being
+deprecated in Fabric v2.0.
+
+Note: Similar to Solo and Kafka, a Raft ordering service can lose transactions
 after acknowledgement of receipt has been sent to a client. For example, if the
 leader crashes at approximately the same time as a follower provides
 acknowledgement of receipt. Therefore, application clients should listen on peers
@@ -301,7 +303,7 @@ for transaction commit events regardless (to check for transaction validity), bu
 extra care should be taken to ensure that the client also gracefully tolerates a
 timeout in which the transaction does not get committed in a configured timeframe.
 Depending on the application, it may be desirable to resubmit the transaction or
-collect a new set of endorsements upon such a timeout.**
+collect a new set of endorsements upon such a timeout.
 
 ### Raft concepts
 
@@ -410,7 +412,7 @@ therefore receive block `180` from `L` and then make a `Deliver` request for
 blocks `101` to `180`. Blocks `180` to `196` would then be replicated to `R1`
 through the normal Raft protocol.
 
-### Kafka
+### Kafka (deprecated in v2.0)
 
 The other crash fault tolerant ordering service supported by Fabric is an
 adaptation of a Kafka distributed streaming platform for use as a cluster of

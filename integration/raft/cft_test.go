@@ -411,6 +411,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			o1Proc.Signal(syscall.SIGTERM)
 			o2Proc.Signal(syscall.SIGTERM)
 			o3Proc.Signal(syscall.SIGTERM)
+			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(o2Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(o3Proc.Wait(), network.EventuallyTimeout).Should(Receive())
 
 			By("Launching orderers again")
 			o1Runner = network.OrdererRunner(o1)
@@ -538,6 +541,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Killing orderer")
 			ordererProc.Signal(syscall.SIGTERM)
+			Eventually(ordererProc.Wait(), network.EventuallyTimeout).Should(Receive())
 
 			By("Launching orderers again")
 			runner = network.OrdererRunner(orderer)
