@@ -83,7 +83,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -151,7 +151,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			// - assert that o1 can catch up with o2 using snapshot
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -281,7 +281,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			orderers := []*nwo.Orderer{o1, o2, o3}
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -345,7 +345,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -450,7 +450,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 			orderer := network.Orderer("orderer")
 
 			ordererDomain := network.Organization(orderer.Organization).Domain

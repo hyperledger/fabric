@@ -59,7 +59,7 @@ var _ = Describe("Lifecycle", func() {
 		Eventually(couchProcess.Ready(), runner.DefaultStartTimeout).Should(BeClosed())
 		Consistently(couchProcess.Wait()).ShouldNot(Receive())
 		couchAddr := couchDB.Address()
-		peer := network.Peer("Org1", "peer1")
+		peer := network.Peer("Org1", "peer0")
 		core := network.ReadPeerConfig(peer)
 		core.Ledger.State.StateDatabase = "CouchDB"
 		core.Ledger.State.CouchDBConfig.CouchDBAddress = couchAddr
@@ -118,7 +118,7 @@ var _ = Describe("Lifecycle", func() {
 		network.CreateAndJoinChannels(orderer)
 		network.UpdateChannelAnchors(orderer, "testchannel")
 		network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
-		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer1"), network.Peer("Org2", "peer1"))
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 		By("deploying the chaincode")
 		nwo.PackageChaincodeBinary(chaincode)
@@ -148,7 +148,7 @@ var _ = Describe("Lifecycle", func() {
 		By("ensuring the chaincode can be invoked and queried")
 		endorsers := []*nwo.Peer{
 			network.Peer("Org1", "peer0"),
-			network.Peer("Org2", "peer1"),
+			network.Peer("Org2", "peer0"),
 		}
 		RunQueryInvokeQuery(network, orderer, "My_1st-Chaincode", 100, endorsers...)
 
@@ -212,7 +212,7 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		By("listing the installed chaincodes and verifying the channel/chaincode definitions that are using the chaincode package")
-		nwo.QueryInstalledReferences(network, "testchannel", chaincode.Label, chaincode.PackageID, network.Peer("Org2", "peer1"), []string{"My_1st-Chaincode", "Version-0.0"}, []string{"Your_Chaincode", "Version+0_0"})
+		nwo.QueryInstalledReferences(network, "testchannel", chaincode.Label, chaincode.PackageID, network.Peer("Org2", "peer0"), []string{"My_1st-Chaincode", "Version-0.0"}, []string{"Your_Chaincode", "Version+0_0"})
 
 		By("adding a new org")
 		org3 := &nwo.Organization{
@@ -231,23 +231,15 @@ var _ = Describe("Lifecycle", func() {
 			Organization: "Org3",
 			Channels:     testPeers[0].Channels,
 		}
-		org3peer1 := &nwo.Peer{
-			Name:         "peer1",
-			Organization: "Org3",
-			Channels:     testPeers[0].Channels,
-		}
-		org3Peers := []*nwo.Peer{org3peer0, org3peer1}
 
-		network.AddOrg(org3, org3peer0, org3peer1)
-		GenerateOrgUpdateMaterials(network, org3peer0, org3peer1)
+		network.AddOrg(org3, org3peer0)
+		GenerateOrgUpdateMaterials(network, org3peer0)
 
-		By("starting the org3 peers")
-		for _, peer := range org3Peers {
-			pr := network.PeerRunner(peer)
-			p := ifrit.Invoke(pr)
-			processes[peer.ID()] = p
-			Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
-		}
+		By("starting the org3 peer")
+		pr := network.PeerRunner(org3peer0)
+		org3Process := ifrit.Invoke(pr)
+		processes[org3peer0.ID()] = org3Process
+		Eventually(org3Process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		By("updating the channel config to include org3")
 		// get the current channel config
@@ -270,7 +262,7 @@ var _ = Describe("Lifecycle", func() {
 		nwo.UpdateConfig(network, orderer, "testchannel", currentConfig, updatedConfig, true, testPeers[0], testPeers...)
 
 		By("joining the org3 peers to the channel")
-		network.JoinChannel("testchannel", orderer, org3peer0, org3peer1)
+		network.JoinChannel("testchannel", orderer, org3peer0)
 
 		// update testPeers now that org3 has joined
 		testPeers = network.PeersWithChannel("testchannel")
@@ -281,14 +273,14 @@ var _ = Describe("Lifecycle", func() {
 		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", maxLedgerHeight, testPeers...)
 
 		By("querying definitions by org3 before performing any chaincode actions")
-		sess, err = network.PeerAdminSession(network.Peer("Org2", "peer1"), commands.ChaincodeListCommitted{
+		sess, err = network.PeerAdminSession(network.Peer("Org2", "peer0"), commands.ChaincodeListCommitted{
 			ChannelID: "testchannel",
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 
 		By("installing the chaincode to the org3 peers")
-		nwo.InstallChaincode(network, chaincode, org3peer0, org3peer1)
+		nwo.InstallChaincode(network, chaincode, org3peer0)
 
 		By("ensuring org3 peers do not execute the chaincode before approving the definition")
 		org3AndOrg1PeerAddresses := []string{
@@ -315,7 +307,7 @@ var _ = Describe("Lifecycle", func() {
 		By("ensuring chaincode can be invoked and queried by org3")
 		org3andOrg1Endorsers := []*nwo.Peer{
 			network.Peer("Org3", "peer0"),
-			network.Peer("Org1", "peer1"),
+			network.Peer("Org1", "peer0"),
 		}
 		RunQueryInvokeQuery(network, orderer, "My_1st-Chaincode", 80, org3andOrg1Endorsers...)
 

@@ -87,7 +87,7 @@ var _ = Describe("EndToEnd", func() {
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			By("getting the client peer by name")
-			peer := network.Peer("Org1", "peer1")
+			peer := network.Peer("Org1", "peer0")
 
 			Query(network, peer, "testchannel", "100")
 			Invoke(network, orderer, peer, "testchannel")
@@ -136,7 +136,7 @@ func Invoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string
 		Ctor:      `{"Args":["invoke","a","b","10"]}`,
 		PeerAddresses: []string{
 			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
 	})
@@ -153,7 +153,7 @@ func InvokeWithIdemix(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, idem
 		Ctor:      `{"Args":["invoke","a","b","10"]}`,
 		PeerAddresses: []string{
 			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
 	})

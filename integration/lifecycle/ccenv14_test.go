@@ -63,7 +63,7 @@ var _ = Describe("solo network using ccenv-1.4", func() {
 		orderer := network.Orderer("orderer")
 		endorsers := []*nwo.Peer{
 			network.Peer("Org1", "peer0"),
-			network.Peer("Org2", "peer1"),
+			network.Peer("Org2", "peer0"),
 		}
 
 		cwd, err := os.Getwd()

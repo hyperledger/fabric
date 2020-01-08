@@ -100,8 +100,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
-			peer := network.Peer("Org1", "peer1")
-			org1Peer0 := network.Peer("Org1", "peer0")
+			peer := network.Peer("Org1", "peer0")
 			blockFile1 := filepath.Join(testDir, "newest_orderer1_block.pb")
 			blockFile2 := filepath.Join(testDir, "newest_orderer2_block.pb")
 			blockFile3 := filepath.Join(testDir, "newest_orderer3_block.pb")
@@ -120,7 +119,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				if targetOrderer != nil {
 					c.Orderer = network.OrdererAddress(targetOrderer, nwo.ListenPort)
 				}
-				sess, err := network.PeerAdminSession(org1Peer0, c)
+				sess, err := network.PeerAdminSession(peer, c)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 			}
@@ -201,17 +200,17 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ioutil.WriteFile(network.CreateChannelTxPath(channel), data, 0644)
 
 			By("Submitting malformed channel creation config tx to orderer")
-			peer1org1 := network.Peer("Org1", "peer1")
-			peer1org2 := network.Peer("Org2", "peer1")
+			org1Peer0 := network.Peer("Org1", "peer0")
+			org2Peer0 := network.Peer("Org2", "peer0")
 
-			exitCode := network.CreateChannelExitCode(channel, orderer, peer1org1, peer1org1, peer1org2, orderer)
+			exitCode := network.CreateChannelExitCode(channel, orderer, org1Peer0, org1Peer0, org2Peer0, orderer)
 			Expect(exitCode).NotTo(Equal(0))
 			Consistently(process.Wait).ShouldNot(Receive()) // malformed tx should not crash orderer
 			Expect(runner.Err()).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 
 			By("Submitting channel config update with illegal value")
 			channel = network.SystemChannel.Name
-			config := nwo.GetConfig(network, peer1org1, orderer, channel)
+			config := nwo.GetConfig(network, org1Peer0, orderer, channel)
 			updatedConfig := proto.Clone(config).(*common.Config)
 
 			consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
@@ -233,7 +232,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Value:     protoutil.MarshalOrPanic(consensusTypeValue),
 			}
 
-			sess := nwo.UpdateOrdererConfigSession(network, orderer, channel, config, updatedConfig, peer1org1, orderer)
+			sess := nwo.UpdateOrdererConfigSession(network, orderer, channel, config, updatedConfig, org1Peer0, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
 			Expect(sess.Err).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 		})
@@ -250,15 +249,12 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				ordererProcesses = append(ordererProcesses, process)
 			}
 
-			layout := nwo.BasicEtcdRaft()
-
-			network = nwo.New(layout, testDir, client, StartPort(), components)
-			orderer := network.Orderer("orderer")
-
-			peer = network.Peer("Org1", "peer1")
-
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
+
+			orderer := network.Orderer("orderer")
+			peer = network.Peer("Org1", "peer0")
 
 			By("Launching the orderer")
 			launch(orderer)
@@ -416,13 +412,12 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		It("is possible to rotate certificate by adding & removing cert in single config", func() {
 			layout := nwo.MultiNodeEtcdRaft()
 			network = nwo.New(layout, testDir, client, StartPort(), components)
-			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
-			orderers := []*nwo.Orderer{o1, o2, o3}
-
-			peer = network.Peer("Org1", "peer1")
-
 			network.GenerateConfigTree()
 			network.Bootstrap()
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+			peer = network.Peer("Org1", "peer0")
 
 			By("Launching the orderers")
 			for _, o := range orderers {
@@ -584,13 +579,12 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			})
 
 			network = nwo.New(layout, testDir, client, StartPort(), components)
-			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
-			orderers := []*nwo.Orderer{o1, o2, o3}
-
-			peer = network.Peer("Org1", "peer1")
-
 			network.GenerateConfigTree()
 			network.Bootstrap()
+
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+			peer = network.Peer("Org1", "peer0")
 
 			By("Launching the orderers")
 			for _, o := range orderers {
@@ -809,13 +803,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				BaseProfile: "SampleDevModeEtcdRaft",
 			})
 
-			peer = network.Peer("Org1", "peer1")
-
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			orderers := []*nwo.Orderer{o1, o2, o3}
+			peer = network.Peer("Org1", "peer0")
+
 			By("Launching the orderers")
 			for _, o := range orderers {
 				runner := network.OrdererRunner(o)
@@ -920,7 +914,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			certificatesOfOrderers := refreshOrdererPEMs(network)
 
 			By("Removing alive node from 2/3 cluster")
-			peer := network.Peer("Org1", "peer1")
+			peer := network.Peer("Org1", "peer0")
 			current, updated := consenterRemover(network, peer, o2, network.SystemChannel.Name, certificatesOfOrderers[1].oldCert)
 			Eventually(func() []byte {
 				sess := nwo.UpdateOrdererConfigSession(network, o2, network.SystemChannel.Name, current, updated, peer, o2)
@@ -953,14 +947,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererProcesses = nil
 
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
-
-			peer = network.Peer("Org1", "peer1")
-
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
 			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 			orderers := []*nwo.Orderer{o1, o2, o3}
+			peer = network.Peer("Org1", "peer0")
+
 			By("Launching the orderers")
 			for _, o := range orderers {
 				runner := network.OrdererRunner(o)
@@ -1178,7 +1171,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 
 			launch := func(i int) {
 				runner := network.OrdererRunner(orderers[i])
@@ -1333,7 +1326,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		network = nwo.New(config, testDir, client, StartPort(), components)
 		o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
 		orderers := []*nwo.Orderer{o1, o2, o3}
-		peer = network.Peer("Org1", "peer1")
+		peer = network.Peer("Org1", "peer0")
 
 		network.GenerateConfigTree()
 		network.Bootstrap()
@@ -1351,7 +1344,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		}
 
 		By("Creating an application channel with a subset of orderers in system channel")
-		additionalPeer := network.Peer("Org2", "peer1")
+		additionalPeer := network.Peer("Org2", "peer0")
 		network.CreateChannel("single-orderer-channel", network.Orderers[0], peer, additionalPeer, network.Orderers[0])
 
 		By("Creating another channel via the orderer that is in system channel but not app channel")
@@ -1381,7 +1374,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		By("Waiting for system channel to be ready")
 		findLeader(ordererRunners)
 
-		peer := network.Peer("Org1", "peer1")
+		peer := network.Peer("Org1", "peer0")
 		channel := "systemchannel"
 
 		config := nwo.GetConfig(network, peer, o1, channel)
