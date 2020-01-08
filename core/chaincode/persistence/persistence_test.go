@@ -227,11 +227,11 @@ var _ = Describe("Persistence", func() {
 		It("saves a new code package successfully", func() {
 			packageID, err := store.Save("testcc", pkgBytes)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(packageID).To(Equal("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d"))
+			Expect(packageID).To(Equal("testcc~3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d"))
 			Expect(mockReadWriter.WriteFileCallCount()).To(Equal(1))
 			pkgDataFilePath, pkgDataFileName, pkgData := mockReadWriter.WriteFileArgsForCall(0)
 			Expect(pkgDataFilePath).To(Equal(""))
-			Expect(pkgDataFileName).To(Equal("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.tar.gz"))
+			Expect(pkgDataFileName).To(Equal("testcc~3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.tar.gz"))
 			Expect(pkgData).To(Equal([]byte("testpkg")))
 		})
 
@@ -243,7 +243,7 @@ var _ = Describe("Persistence", func() {
 			It("does nothing and returns the packageID", func() {
 				packageID, err := store.Save("testcc", pkgBytes)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(packageID).To(Equal("testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d"))
+				Expect(packageID).To(Equal("testcc~3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d"))
 				Expect(mockReadWriter.WriteFileCallCount()).To(Equal(0))
 			})
 		})
@@ -256,7 +256,7 @@ var _ = Describe("Persistence", func() {
 			It("returns an error", func() {
 				packageID, err := store.Save("testcc", pkgBytes)
 				Expect(packageID).To(Equal(""))
-				Expect(err).To(MatchError(ContainSubstring("error writing chaincode install package to testcc:3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.tar.gz: soccer")))
+				Expect(err).To(MatchError(ContainSubstring("error writing chaincode install package to testcc~3fec0187440286d404241e871b44725310b11aaf43d100b053eae712fcabc66d.tar.gz: soccer")))
 			})
 		})
 	})
@@ -363,9 +363,9 @@ var _ = Describe("Persistence", func() {
 		BeforeEach(func() {
 			mockReadWriter = &mock.IOReadWriter{}
 			mockFileInfo := &mock.OSFileInfo{}
-			mockFileInfo.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "label1", []byte("hash1")))
+			mockFileInfo.NameReturns(fmt.Sprintf("%s~%x.tar.gz", "label1", []byte("hash1")))
 			mockFileInfo2 := &mock.OSFileInfo{}
-			mockFileInfo2.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "label2", []byte("hash2")))
+			mockFileInfo2.NameReturns(fmt.Sprintf("%s~%x.tar.gz", "label2", []byte("hash2")))
 			mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2}, nil)
 			store = &persistence.Store{
 				ReadWriter: mockReadWriter,
@@ -379,25 +379,25 @@ var _ = Describe("Persistence", func() {
 			Expect(installedChaincodes[0]).To(Equal(chaincode.InstalledChaincode{
 				Hash:      []byte("hash1"),
 				Label:     "label1",
-				PackageID: "label1:6861736831",
+				PackageID: "label1~6861736831",
 			}))
 			Expect(installedChaincodes[1]).To(Equal(chaincode.InstalledChaincode{
 				Hash:      []byte("hash2"),
 				Label:     "label2",
-				PackageID: "label2:6861736832",
+				PackageID: "label2~6861736832",
 			}))
 		})
 
 		Context("when extraneous files are present", func() {
 			BeforeEach(func() {
 				mockFileInfo := &mock.OSFileInfo{}
-				mockFileInfo.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "label1", []byte("hash1")))
+				mockFileInfo.NameReturns(fmt.Sprintf("%s~%x.tar.gz", "label1", []byte("hash1")))
 				mockFileInfo2 := &mock.OSFileInfo{}
-				mockFileInfo2.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "label2", []byte("hash2")))
+				mockFileInfo2.NameReturns(fmt.Sprintf("%s~%x.tar.gz", "label2", []byte("hash2")))
 				mockFileInfo3 := &mock.OSFileInfo{}
-				mockFileInfo3.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "", "Musha rain dum a doo, dum a da"))
+				mockFileInfo3.NameReturns(fmt.Sprintf("%s~%x.tar.gz", "", "Musha rain dum a doo, dum a da"))
 				mockFileInfo4 := &mock.OSFileInfo{}
-				mockFileInfo4.NameReturns(fmt.Sprintf("%s:%x.tar.gz", "", "barfity:barf.tar.gz"))
+				mockFileInfo4.NameReturns(fmt.Sprintf("%s~%x.tar.gz", "", "barfity~barf.tar.gz"))
 				mockReadWriter.ReadDirReturns([]os.FileInfo{mockFileInfo, mockFileInfo2, mockFileInfo3}, nil)
 			})
 
@@ -408,12 +408,12 @@ var _ = Describe("Persistence", func() {
 				Expect(installedChaincodes[0]).To(Equal(chaincode.InstalledChaincode{
 					Hash:      []byte("hash1"),
 					Label:     "label1",
-					PackageID: "label1:6861736831",
+					PackageID: "label1~6861736831",
 				}))
 				Expect(installedChaincodes[1]).To(Equal(chaincode.InstalledChaincode{
 					Hash:      []byte("hash2"),
 					Label:     "label2",
-					PackageID: "label2:6861736832",
+					PackageID: "label2~6861736832",
 				}))
 			})
 		})

@@ -230,14 +230,14 @@ func (s *Store) GetChaincodeInstallPath() string {
 }
 
 func packageID(label string, hash []byte) string {
-	return fmt.Sprintf("%s:%x", label, hash)
+	return fmt.Sprintf("%s~%x", label, hash)
 }
 
 func CCFileName(packageID string) string {
 	return packageID + ".tar.gz"
 }
 
-var packageFileMatcher = regexp.MustCompile("^(.+):([0-9abcdef]+)[.]tar[.]gz$")
+var packageFileMatcher = regexp.MustCompile("^(.+)~([0-9abcdef]+)[.]tar[.]gz$")
 
 func installedChaincodeFromFilename(fileName string) (chaincode.InstalledChaincode, bool) {
 	matches := packageFileMatcher.FindStringSubmatch(fileName)
