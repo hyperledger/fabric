@@ -7,9 +7,9 @@ Adding an Org to a Channel
           table of contents to the left).
 
 This tutorial extends the Fabric test network by adding a new organization
- -- ``Org3`` -- to an application channel. It assumes a strong understanding of
- the test network, including the usage and functionality of the aforementioned
- utilities.
+-- ``Org3`` -- to an application channel. It assumes a strong understanding of
+the test network, including the usage and functionality of the aforementioned
+utilities.
 
 While we will focus on adding a new organization to the channel, you can use a
 similar process to make other channel configuration updates (updating modification
@@ -26,6 +26,10 @@ We will be operating from the root of the ``test-network`` subdirectory within
 your local clone of ``fabric-samples``. Change into that directory now. You will
 also want to open a few extra terminals for ease of use.
 
+.. code:: bash
+
+   cd fabric-samples/test-network
+
 First, use the ``network.sh`` script to tidy up. This command will kill any active
 or stale docker containers and remove previously generated artifacts. It is by no
 means **necessary** to bring down a Fabric network in order to perform channel
@@ -37,21 +41,17 @@ previous environments:
 
   ./network.sh down
 
-Now use the script to bring up the test network with one channel:
+You can now use the script to bring up the test network with one channel:
 
 .. code:: bash
 
   ./network.sh up createChannel
 
 Now that you have a clean version of the test network running on your machine,
-you have two different paths you can pursue. First, we offer a fully commented
-script that will carry out a config transaction update to bring Org3 into the
-network.
-
-Also, we will show a "manual" version of the same process, showing each step
-and explaining what it accomplishes (since we show you how to bring down your
-network before this manual process, you could also run the script and then look at
-each step).
+you can bring add Org3 to the test network channel using a script or by following
+a step by step process. We will use the script first to check if the process
+works. We will then go through the process of updating the channel configuration
+to add a new organization in detail.
 
 Bring Org3 into the Channel with the Script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,21 +74,22 @@ If everything goes well, you'll get this message:
   ========= Finished adding Org3 to your test network! =========
 
 ``addOrg3.sh`` can be used with the same database and channel options as the
-test network:
+test network. For example, if you deployed the test network with CouchDB and a
+channel called ``testchannel``:
 
 .. code:: bash
 
   ./network.sh up createChannel -c testchannel -s couchdb
 
-And then:
+You would use the following command to add Org3 to the channel:
 
 .. code:: bash
 
   cd addOrg3
   ./addOrg3.sh up -c testchannel -s couchdb
 
-For those who want to take a closer look at this process, the rest of the doc
-will show you each command for making a channel update and what it does.
+Now that we have used the script to check that the process works, we can go into
+detail about how to complete the channel update transaction.
 
 Bring Org3 into the Channel Manually
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -115,14 +116,12 @@ Bring Org3 into the Channel Manually
                 - FABRIC_LOGGING_SPEC=DEBUG
 
 If you've used the ``addOrg3.sh`` script, you'll need to bring your network down.
-This can be done by issuing:
+The following command will bring all running components and remove the crypto
+material for all organizations:
 
 .. code:: bash
 
   ./addOrg3.sh down
-
-This will bring down the test network, delete all the containers and remove the
-crypto material for all organizations.
 
 When the network is down, bring it back up again.
 
@@ -134,8 +133,8 @@ When the network is down, bring it back up again.
 This will bring your network back to the same state it was in before you executed
 the ``addOrg3.sh`` script.
 
-Now we're ready to add Org3 manually. As a first step, we'll need to generate
-Org3's crypto material.
+Now we're ready to add Org3 to the channel manually. As a first step, we'll need
+to generate Org3's crypto material.
 
 Generate the Org3 Crypto Material
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -177,6 +176,23 @@ format: the admin user certificate (which will be needed to act as the admin of
 Org3 later on), a CA root cert, and a TLS root cert. In an upcoming step we
 will append this JSON file to the channel configuration.
 
+Bring up Org3 components
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+After we have created the Org3 certificate material, we can now bring up the
+Org3 peer and Org3CLI container. From the `Org3` directory, issue the following
+command:
+
+.. code:: bash
+
+  docker-compose -f docker/docker-compose-org3.yaml up -d
+
+This new compose file has been configured to bridge across our initial network,
+so the Org3 peer and CLI container resolve with the existing peers and ordering
+node. We will use the Org3CLI container to communicate with the network and
+issue the commands to add Org3 to the channel.
+
+
 Prepare the CLI Environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -188,10 +204,10 @@ for the easy conversion between different equivalent data representations/format
 configuration update transaction based on the differences between two channel
 configurations.
 
-First, exec into the Org3CLI container. Recall that this container has been
-mounted with the ``organizations`` folder, giving us access to the MSP material
-for all of the organizations and the Orderer Org. The bootstrapped identity is
-the Org1 admin user, meaning that any steps where we want to act as Org3 will
+First, exec into the Org3CLI container. This container has been mounted with the
+``organizations`` folder, giving us access to the MSP material for all of the
+organizations and the Orderer Org. The bootstrapped identity is the Org3 admin
+user, meaning that any steps where we want to act as a different organization will
 require the export of MSP-specific environment variables.
 
 .. code:: bash
@@ -229,6 +245,21 @@ want to remove an Org from your channel, for example, after a new Org has been a
 versioning will help prevent you from removing both Orgs, instead of just the Org you want
 to remove).
 
+Because Org3 is not yet a member of the channel, we need to operate as the Org1
+admin to fetch the channel config. Because Org1 is a member of the channel, the
+Org1 admin has permission to fetch the channel config from the ordering service.
+
+.. code:: bash
+
+  # you can issue all of these commands at once
+
+  export CORE_PEER_LOCALMSPID="Org1MSP"
+  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+  export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+  export CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+
+Now, issue the command to fetch the latest config block
+
 .. code:: bash
 
   peer channel fetch config config_block.pb -o orderer.example.com:7050 -c $CHANNEL_NAME --tls --cafile $ORDERER_CA
@@ -250,9 +281,7 @@ actually block 2, **NOT** the genesis block. By default, the ``peer channel fetc
 command returns the most **recent** configuration block for the targeted channel, which
 in this case is the third block. This is because the BYFN script defined anchor
 peers for our two organizations -- ``Org1`` and ``Org2`` -- in two separate channel update
-transactions.
-
-As a result, we have the following configuration sequence:
+transactions. As a result, we have the following configuration sequence:
 
   * block 0: genesis block
   * block 1: Org1 anchor peer update
@@ -271,8 +300,7 @@ means of the ``jq`` tool:
 
   configtxlator proto_decode --input config_block.pb --type common.Block | jq .data.data[0].payload.data.config > config.json
 
-This leaves us with a trimmed down JSON object -- ``config.json``, located in
-the ``fabric-samples`` folder inside ``first-network`` -- which
+This leaves us with a trimmed down JSON object -- ``config.json`` -- which
 will serve as the baseline for our config update.
 
 Take a moment to open this file inside your text editor of choice (or in your
@@ -294,11 +322,11 @@ We'll use the ``jq`` tool once more to append the Org3 configuration definition
 
 .. code:: bash
 
-  jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"Org3MSP":.[1]}}}}}' config.json ./channel-artifacts/org3.json > modified_config.json
+  jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"Org3MSP":.[1]}}}}}' config.json ./organizations/peerOrganizations/org3.example.com/org3.json > modified_config.json
 
 Now, within the CLI container we have two JSON files of interest -- ``config.json``
 and ``modified_config.json``. The initial file contains only Org1 and Org2 material,
-whereas "modified" file contains all three Orgs. At this point it's simply
+whereas the "modified" file contains all three Orgs. At this point it's simply
 a matter of re-encoding these two JSON files and calculating the delta.
 
 First, translate ``config.json`` back into a protobuf called ``config.pb``:
@@ -364,9 +392,9 @@ Org1 and Org2 -- and the majority of two is two, we need both of them to sign. W
 both signatures, the ordering service will reject the transaction for failing to
 fulfill the policy.
 
-First, let's sign this update proto as the Org1 Admin. Remember that the CLI container
-is bootstrapped with the Org1 MSP material, so we simply need to issue the
-``peer channel signconfigtx`` command:
+First, let's sign this update proto as the Org1 Admin. Remember that we exported
+the necessary environment variables to operate the CLI container as the Org1  so
+we simply need to issue the ``peer channel signconfigtx`` command:
 
 .. code:: bash
 
@@ -420,13 +448,13 @@ You will also see the submission of our configuration transaction:
 
   2018-02-24 18:56:33.499 UTC [channelCmd] update -> INFO 010 Successfully submitted channel update
 
-The successful channel update call returns a new block -- block 5 -- to all of the
+The successful channel update call returns a new block -- block 3 -- to all of the
 peers on the channel. If you remember, blocks 0-2 are the initial channel
-configurations while blocks 3 and 4 are the instantiation and invocation of
-the ``fabcar`` chaincode. As such, block 5 serves as the most recent channel
-configuration with Org3 now defined on the channel.
+configurations. Block 3 serves as the most recent channel configuration with
+Org3 now defined on the channel.
 
-Inspect the logs for ``peer0.org1.example.com``:
+You inspect the logs for ``peer0.org1.example.com`` by navigating to a terminal
+outside the Org3CLI container and issuing the following command:
 
 .. code:: bash
 
@@ -491,7 +519,7 @@ organization -- ``Org3`` -- meaning that peers attached to it can now join ``myc
 
 First, let's launch the containers for the Org3 peers and an Org3-specific CLI.
 
-Open a new terminal aind issue the following command from ``addOrg3`` kick off
+Open a new terminal and issue the following command from ``addOrg3`` kick off
 the Org3 docker compose:
 
 .. code:: bash
