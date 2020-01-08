@@ -4,12 +4,12 @@ CouchDB as the State Database
 State Database options
 ----------------------
 
-State database options include LevelDB and CouchDB. LevelDB is the default key-value state
-database embedded in the peer process. CouchDB is an optional alternative external state database.
+The current options for the peer state database are LevelDB and CouchDB. LevelDB is the default
+key-value state database embedded in the peer process. CouchDB is an alternative external state database.
 Like the LevelDB key-value store, CouchDB can store any binary data that is modeled in chaincode
-(CouchDB attachment functionality is used internally for non-JSON binary data). But as a JSON
-document store, CouchDB additionally enables rich query against the chaincode data, when chaincode
-values (e.g. assets) are modeled as JSON data.
+(CouchDB attachment functionality is used internally for non-JSON binary data). But as a document
+object store, CouchDB allows you to store data in JSON format, issue rich queries against your data,
+and use indexes to support your queries.
 
 Both LevelDB and CouchDB support core chaincode operations such as getting and setting a key
 (asset), and querying based on keys. Keys can be queried by range, and composite keys can be
@@ -18,23 +18,18 @@ key of ``owner,asset_id`` can be used to query all assets owned by a certain ent
 queries can be used for read-only queries against the ledger, as well as in transactions that
 update the ledger.
 
-If you model assets as JSON and use CouchDB, you can also perform complex rich queries against the
-chaincode data values, using the CouchDB JSON query language within chaincode. These types of
-queries are excellent for understanding what is on the ledger. Proposal responses for these types
-of queries are typically useful to the client application, but are not typically submitted as
-transactions to the ordering service. In fact, there is no guarantee the result set is stable
-between chaincode execution and commit time for rich queries, and therefore rich queries
-are not appropriate for use in update transactions, unless your application can guarantee the
-result set is stable between chaincode execution time and commit time, or can handle potential
-changes in subsequent transactions. For example, if you perform a rich query for all assets
-owned by Alice and transfer them to Bob, a new asset may be assigned to Alice by another
-transaction between chaincode execution time and commit time, and you would miss this "phantom"
-item.
+Modeling your data in JSON allows you to issue rich queries against the values of your data,
+instead of only being able to query the keys. This makes it easier for your applications and
+chaincode to read the data stored on the blockchain ledger. Using CouchDB can help you meet
+auditing and reporting requirements for many use cases that are not supported by LevelDB. If you use
+CouchDB and model your data in JSON, you can also deploy indexes with your chaincode.
+Using indexes makes queries more flexible and efficient and enables you to query large
+datasets from chaincode.
 
 CouchDB runs as a separate database process alongside the peer, therefore there are additional
 considerations in terms of setup, management, and operations. You may consider starting with the
 default embedded LevelDB, and move to CouchDB if you require the additional complex rich queries.
-It is a good practice to model chaincode asset data as JSON, so that you have the option to perform
+It is a good practice to model asset data as JSON, so that you have the option to perform
 complex rich queries if needed in the future.
 
 .. note:: The key for a CouchDB JSON document can only contain valid UTF-8 strings and cannot begin
@@ -69,6 +64,15 @@ syntax:
 .. code:: bash
 
   {"selector":{"docType":"marble","owner":<OWNER_ID>}}
+
+The responses to rich queries are useful for understanding the data on the ledger. However,
+there is no guarantee that the result set for a rich query will be stable between
+the chaincode execution and commit time. As a result, you should not use a rich query and
+update the channel ledger in a single transaction. For example, if you perform a
+rich query for all assets owned by Alice and transfer them to Bob, a new asset may
+be assigned to Alice by another transaction between chaincode execution time
+and commit time.
+
 
 .. couchdb-pagination:
 
@@ -110,10 +114,11 @@ CouchDB indexes
 ~~~~~~~~~~~~~~~
 
 Indexes in CouchDB are required in order to make JSON queries efficient and are required for
-any JSON query with a sort. Indexes can be packaged alongside chaincode in a
-``/META-INF/statedb/couchdb/indexes`` directory. Each index must be defined in its own
-text file with extension ``*.json`` with the index definition formatted in JSON following the
-`CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>`__.
+any JSON query with a sort. Indexes enable you to query data from chaincode when you have
+a large amount of data on your ledger. Indexes can be packaged alongside chaincode
+in a ``/META-INF/statedb/couchdb/indexes`` directory. Each index must be defined in
+its own text file with extension ``*.json`` with the index definition formatted in JSON
+following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>`__.
 For example, to support the above marble query, a sample index on the ``docType`` and ``owner``
 fields is provided:
 
@@ -124,15 +129,14 @@ fields is provided:
 The sample index can be found `here <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/META-INF/statedb/couchdb/indexes/indexOwner.json>`__.
 
 Any index in the chaincode’s ``META-INF/statedb/couchdb/indexes`` directory
-will be packaged up with the chaincode for deployment. When the chaincode is
-both installed on a peer and instantiated on one of the peer’s channels, the
-index will automatically be deployed to the peer’s channel and chaincode
-specific state database (if it has been configured to use CouchDB). If you
-install the chaincode first and then instantiate the chaincode on the channel,
-the index will be deployed at chaincode **instantiation** time. If the
-chaincode is already instantiated on a channel and you later install the
-chaincode on a peer, the index will be deployed at chaincode **installation**
-time.
+will be packaged up with the chaincode for deployment. The index will be deployed
+to a peers channel and chaincode specific database when the chaincode package is
+installed on the peer and the chaincode definition is committed to the channel. If you
+install the chaincode first and then commit the the chaincode definition to the
+channel, the index will be deployed at commit time. If the chaincode has already
+been defined on the channel and the chaincode package subsequently installed on
+a peer joined to the channel, the index will be deployed at chaincode
+**installation** time.
 
 Upon deployment, the index will automatically be utilized by chaincode queries. CouchDB can automatically
 determine which index to use based on the fields being used in a query. Alternatively, in the
@@ -143,11 +147,12 @@ index, use the same index name but alter the index definition. Upon installation
 definition will get re-deployed to the peer’s state database.
 
 If you have a large volume of data already, and later install the chaincode, the index creation upon
-installation may take some time. Similarly, if you have a large volume of data already and instantiate
-a subsequent version of the chaincode, the index creation may take some time. Avoid calling chaincode
+installation may take some time. Similarly, if you have a large volume of data already and commit the
+definition of a subsequent chaincode version, the index creation may take some time. Avoid calling chaincode
 functions that query the state database at these times as the chaincode query may time out while the
 index is getting initialized. During transaction processing, the indexes will automatically get refreshed
-as blocks are committed to the ledger.
+as blocks are committed to the ledger. If the peer crashes during chaincode installation, the couchdb
+indexes may not get created. If this occurs, you need to reinstall the chaincode to create the indexes.
 
 CouchDB Configuration
 ---------------------
@@ -222,6 +227,13 @@ must be edited to set the admin username and password.
 Docker compose scripts only set the username and password at the creation of
 the container. The *local.ini* file must be edited if the username or password
 is to be changed after creation of the container.
+
+If you choose to map the fabric-couchdb container port to a host port, make sure you
+are aware of the security implications. Mapping the CouchDB container port in a
+development environment exposes the CouchDB REST API and allows you to visualize
+the database via the CouchDB web interface (Fauxton). In a production environment
+you should refrain from mapping the host port to restrict access to the CouchDB
+container. Only the peer will be able to access the CouchDB container.
 
 .. note:: CouchDB peer options are read on each peer startup.
 
