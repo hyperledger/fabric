@@ -58,7 +58,7 @@ var _ = Describe("Release interoperability", func() {
 		orderer = network.Orderer("orderer")
 		endorsers = []*nwo.Peer{
 			network.Peer("Org1", "peer0"),
-			network.Peer("Org2", "peer1"),
+			network.Peer("Org2", "peer0"),
 		}
 	})
 

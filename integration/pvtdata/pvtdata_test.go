@@ -701,7 +701,7 @@ func initThreeOrgsSetup() *nwo.Network {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	config := nwo.BasicSolo()
+	config := nwo.FullSolo()
 
 	// add org3 with one peer
 	config.Organizations = append(config.Organizations, &nwo.Organization{

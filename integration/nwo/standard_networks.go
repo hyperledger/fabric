@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
+// BasicSolo is a configuration wtih two organizations and one peer per org.
 func BasicSolo() *Config {
 	return &Config{
 		Organizations: []*Organization{{
@@ -57,22 +58,10 @@ func BasicSolo() *Config {
 				{Name: "testchannel", Anchor: true},
 			},
 		}, {
-			Name:         "peer1",
-			Organization: "Org1",
-			Channels: []*PeerChannel{
-				{Name: "testchannel", Anchor: false},
-			},
-		}, {
 			Name:         "peer0",
 			Organization: "Org2",
 			Channels: []*PeerChannel{
 				{Name: "testchannel", Anchor: true},
-			},
-		}, {
-			Name:         "peer1",
-			Organization: "Org2",
-			Channels: []*PeerChannel{
-				{Name: "testchannel", Anchor: false},
 			},
 		}},
 		Profiles: []*Profile{{
@@ -84,6 +73,31 @@ func BasicSolo() *Config {
 			Organizations: []string{"Org1", "Org2"},
 		}},
 	}
+}
+
+// FullSolo is a configuration wtih two organizations and two peers per org.
+func FullSolo() *Config {
+	config := BasicSolo()
+
+	config.Peers = append(
+		config.Peers,
+		&Peer{
+			Name:         "peer1",
+			Organization: "Org1",
+			Channels: []*PeerChannel{
+				{Name: "testchannel", Anchor: false},
+			},
+		},
+		&Peer{
+			Name:         "peer1",
+			Organization: "Org2",
+			Channels: []*PeerChannel{
+				{Name: "testchannel", Anchor: false},
+			},
+		},
+	)
+
+	return config
 }
 
 func BasicSoloWithIdemix() *Config {
@@ -111,7 +125,8 @@ func MultiChannelBasicSolo() *Config {
 
 	config.Channels = []*Channel{
 		{Name: "testchannel", Profile: "TwoOrgsChannel"},
-		{Name: "testchannel2", Profile: "TwoOrgsChannel"}}
+		{Name: "testchannel2", Profile: "TwoOrgsChannel"},
+	}
 
 	for _, peer := range config.Peers {
 		peer.Channels = []*PeerChannel{
@@ -125,14 +140,17 @@ func MultiChannelBasicSolo() *Config {
 
 func BasicKafka() *Config {
 	config := BasicSolo()
+
 	config.Consensus.Type = "kafka"
 	config.Consensus.ZooKeepers = 1
 	config.Consensus.Brokers = 1
+
 	return config
 }
 
 func BasicEtcdRaft() *Config {
 	config := BasicSolo()
+
 	config.Consensus.Type = "etcdraft"
 	config.Profiles = []*Profile{{
 		Name:     "SampleDevModeEtcdRaft",
@@ -143,15 +161,26 @@ func BasicEtcdRaft() *Config {
 		Organizations: []string{"Org1", "Org2"},
 	}}
 	config.SystemChannel.Profile = "SampleDevModeEtcdRaft"
+
 	return config
 }
 
 func MinimalRaft() *Config {
 	config := BasicEtcdRaft()
+
 	config.Peers[1].Channels = nil
-	config.Peers[2].Channels = nil
-	config.Peers[3].Channels = nil
-	config.Profiles[1].Organizations = []string{"Org1"}
+	config.Channels = []*Channel{
+		{Name: "testchannel", Profile: "OneOrgChannel"},
+	}
+	config.Profiles = []*Profile{{
+		Name:     "SampleDevModeEtcdRaft",
+		Orderers: []string{"orderer"},
+	}, {
+		Name:          "OneOrgChannel",
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1"},
+	}}
+
 	return config
 }
 

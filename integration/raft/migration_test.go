@@ -101,7 +101,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			orderer = network.Orderer("orderer")
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 
 			syschannel = network.SystemChannel.Name
 			channel1 = "testchannel1"
@@ -498,7 +498,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			network.Bootstrap()
 
 			o1, o2, o3 = network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 
 			brokerGroup := network.BrokerGroupRunner()
 			brokerProc = ifrit.Invoke(brokerGroup)
@@ -684,7 +684,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			network.Bootstrap()
 
 			orderer = network.Orderer("orderer")
-			peer = network.Peer("Org1", "peer1")
+			peer = network.Peer("Org1", "peer0")
 
 			brokerGroup := network.BrokerGroupRunner()
 			brokerProc = ifrit.Invoke(brokerGroup)
