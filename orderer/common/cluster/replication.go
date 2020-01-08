@@ -384,7 +384,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 	}
 
 	return &BlockPuller{
-		Logger:  flogging.MustGetLogger("orderer.common.cluster.replication"),
+		Logger:  flogging.MustGetLogger("orderer.common.cluster.replication").With("channel", conf.Channel),
 		Dialer:  dialer,
 		TLSCert: tlsCertAsDER.Bytes,
 		VerifyBlockSequence: func(blocks []*common.Block, channel string) error {
