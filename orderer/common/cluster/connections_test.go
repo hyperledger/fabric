@@ -19,7 +19,6 @@ import (
 )
 
 func TestConcurrentConnections(t *testing.T) {
-	t.Parallel()
 	// Scenario: Have 100 goroutines try to create a connection together at the same time,
 	// wait until one of them succeeds, and then wait until they all return,
 	// and also ensure they all return the same connection reference
@@ -60,7 +59,6 @@ func (cms *connectionMapperSpy) Lookup(cert []byte) (*grpc.ClientConn, bool) {
 }
 
 func TestConcurrentLookupMiss(t *testing.T) {
-	t.Parallel()
 	// Scenario: 2 concurrent connection attempts are made,
 	// and the first 2 Lookup operations are delayed,
 	// which makes the connection store attempt to connect
