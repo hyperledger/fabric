@@ -236,9 +236,8 @@ policy. It may take a few minutes for the chaincode container to start.
 
   ![Starting the chaincode on the channel](lifecycle/Lifecycle-start.png)
 
-*Once MYCC is defined on the channel, Org1 and Org2 can start using the
-chaincode. The first invoke of the chaincode on each peer starts the chaincode
-container on that peer.*
+*Once MYCC is defined on the channel, Org1 and Org2 can start using the chaincode. The first invoke of the chaincode on each peer starts the chaincode
+container on that peer.*  
 
 ## Upgrade a chaincode
 
@@ -251,8 +250,7 @@ only update the chaincode policies. Follow these steps to upgrade a chaincode:
 
     ![Re-package the chaincode package](lifecycle/Lifecycle-upgrade-package.png)
 
-  *Org1 and Org2 upgrade the chaincode binaries and repackage the chaincode.
-  Both organizations use a different package label.*
+   *Org1 and Org2 upgrade the chaincode binaries and repackage the chaincode. Both organizations use a different package label.*  
 
 2. **Install the new chaincode package on your peers:** Once again, you only
   need to complete this step if you are upgrading the chaincode binaries.
@@ -262,8 +260,7 @@ only update the chaincode policies. Follow these steps to upgrade a chaincode:
 
     ![Re-install the chaincode package](lifecycle/Lifecycle-upgrade-install.png)
 
-  *Org1 and Org2 install the new package on their peers. The installation
-  creates a new packageID.*
+   *Org1 and Org2 install the new package on their peers. The installation creates a new packageID.*  
 
 3. **Approve a new chaincode definition:** If you are upgrading the chaincode
   binaries, you need to update the chaincode version and the package ID in the
@@ -274,10 +271,7 @@ only update the chaincode policies. Follow these steps to upgrade a chaincode:
 
     ![Approve a new chaincode definition](lifecycle/Lifecycle-upgrade-approve.png)
 
-  *Organization administrators from Org1 and Org2 approve the new chaincode
-  definition for their respective organizations. The new definition references
-  the new packageID and changes the chaincode version. Since this is the first
-  update of the chaincode, the sequence is incremented from one to two.*
+   *Organization administrators from Org1 and Org2 approve the new chaincode definition for their respective organizations. The new definition references the new packageID and changes the chaincode version. Since this is the first update of the chaincode, the sequence is incremented from one to two.*
 
 4. **Commit the definition to the channel:** When a sufficient number of channel
   members have approved the new chaincode definition, one organization can
@@ -286,8 +280,7 @@ only update the chaincode policies. Follow these steps to upgrade a chaincode:
 
     ![Commit the new definition to the channel](lifecycle/Lifecycle-upgrade-commit.png)
 
-  *An organization administrator from Org1 or Org2 commits the new chaincode
-   definition to the channel. The chaincode containers are still running the old
+   *An organization administrator from Org1 or Org2 commits the new chaincode definition to the channel. The chaincode containers are still running the old
    chaincode.*
 
 5. **Upgrade the chaincode container:** If you updated the chaincode definition
@@ -300,8 +293,7 @@ only update the chaincode policies. Follow these steps to upgrade a chaincode:
 
     ![Upgrade the chaincode](lifecycle/Lifecycle-upgrade-start.png)
 
-  *Once the new definition has been committed to the channel, the next invoke on
-  each peer will automatically start the new chaincode container.*
+   *Once the new definition has been committed to the channel, the next invoke on each peer will automatically start the new chaincode container.*
 
 The Fabric chaincode lifecycle uses the **sequence** in the chaincode definition
 to keep track of upgrades. All channel members need to increment the sequence
