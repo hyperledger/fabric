@@ -25,7 +25,7 @@ Hyperledger Fabric smart contract (chaincode) SDKs
 Hyperledger Fabric offers a number of SDKs to support developing smart contracts (chaincode)
 in various programming languages. There are three smart contract SDKs available for Go, Node.js, and Java:
 
-  * `Go SDK documentation <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim>`__.
+  * `Go SDK <https://github.com/hyperledger/fabric-chaincode-go>`__ and `Go SDK documentation <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__.
   * `Node.js SDK <https://github.com/hyperledger/fabric-chaincode-node>`__ and `Node.js SDK documentation <https://fabric-shim.github.io/>`__.
   * `Java SDK <https://github.com/hyperledger/fabric-chaincode-java>`__ and `Java SDK documentation <https://hyperledger.github.io/fabric-chaincode-java/>`__.
 
