@@ -59,7 +59,6 @@ var (
 )
 
 func TestStep(t *testing.T) {
-	t.Parallel()
 	dispatcher := &mocks.Dispatcher{}
 
 	svc := &cluster.Service{
@@ -93,7 +92,6 @@ func TestStep(t *testing.T) {
 }
 
 func TestSubmitSuccess(t *testing.T) {
-	t.Parallel()
 	dispatcher := &mocks.Dispatcher{}
 
 	stream := &mocks.StepStream{}
@@ -142,7 +140,6 @@ func (t tuple) asArray() []interface{} {
 }
 
 func TestSubmitFailure(t *testing.T) {
-	t.Parallel()
 	oops := errors.New("oops")
 	testCases := []struct {
 		name               string
@@ -196,8 +193,6 @@ func TestSubmitFailure(t *testing.T) {
 }
 
 func TestIngresStreamsMetrics(t *testing.T) {
-	t.Parallel()
-
 	dispatcher := &mocks.Dispatcher{}
 	dispatcher.On("DispatchConsensus", mock.Anything, mock.Anything).Return(nil)
 
@@ -233,7 +228,6 @@ func TestIngresStreamsMetrics(t *testing.T) {
 }
 
 func TestServiceGRPC(t *testing.T) {
-	t.Parallel()
 	// Check that Service correctly implements the gRPC interface
 	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
 	assert.NoError(t, err)
@@ -244,8 +238,6 @@ func TestServiceGRPC(t *testing.T) {
 }
 
 func TestExpirationWarningIngress(t *testing.T) {
-	t.Parallel()
-
 	ca, err := tlsgen.NewCA()
 	assert.NoError(t, err)
 

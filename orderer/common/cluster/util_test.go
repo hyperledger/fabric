@@ -54,7 +54,6 @@ type policyManager interface {
 }
 
 func TestParallelStubActivation(t *testing.T) {
-	t.Parallel()
 	// Scenario: Activate the stub from different goroutines in parallel.
 	stub := &cluster.Stub{}
 	var wg sync.WaitGroup
@@ -84,7 +83,6 @@ func TestParallelStubActivation(t *testing.T) {
 }
 
 func TestDialerCustomKeepAliveOptions(t *testing.T) {
-	t.Parallel()
 	ca, err := tlsgen.NewCA()
 	assert.NoError(t, err)
 
@@ -110,8 +108,6 @@ func TestDialerCustomKeepAliveOptions(t *testing.T) {
 }
 
 func TestPredicateDialerUpdateRootCAs(t *testing.T) {
-	t.Parallel()
-
 	node1 := newTestNode(t)
 	defer node1.stop()
 
@@ -146,7 +142,6 @@ func TestPredicateDialerUpdateRootCAs(t *testing.T) {
 }
 
 func TestDialerBadConfig(t *testing.T) {
-	t.Parallel()
 	emptyCertificate := []byte("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----")
 	dialer := &cluster.PredicateDialer{
 		Config: comm.ClientConfig{
@@ -163,7 +158,6 @@ func TestDialerBadConfig(t *testing.T) {
 }
 
 func TestDERtoPEM(t *testing.T) {
-	t.Parallel()
 	ca, err := tlsgen.NewCA()
 	assert.NoError(t, err)
 	keyPair, err := ca.NewServerCertKeyPair("localhost")
@@ -172,7 +166,6 @@ func TestDERtoPEM(t *testing.T) {
 }
 
 func TestStandardDialer(t *testing.T) {
-	t.Parallel()
 	emptyCertificate := []byte("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----")
 	certPool := [][]byte{emptyCertificate}
 	config := comm.ClientConfig{SecOpts: comm.SecureOptions{UseTLS: true, ServerRootCAs: certPool}}
@@ -763,7 +756,6 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 }
 
 func TestBlockValidationPolicyVerifier(t *testing.T) {
-	t.Parallel()
 	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(config)
 	assert.NoError(t, err)
@@ -841,7 +833,6 @@ func TestBlockValidationPolicyVerifier(t *testing.T) {
 }
 
 func TestBlockVerifierAssembler(t *testing.T) {
-	t.Parallel()
 	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(config)
 	assert.NoError(t, err)
@@ -934,8 +925,6 @@ func TestLastConfigBlock(t *testing.T) {
 }
 
 func TestVerificationRegistryRegisterVerifier(t *testing.T) {
-	t.Parallel()
-
 	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
 	assert.NoError(t, err)
 
@@ -975,7 +964,6 @@ func TestVerificationRegistryRegisterVerifier(t *testing.T) {
 }
 
 func TestVerificationRegistry(t *testing.T) {
-	t.Parallel()
 	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
 	assert.NoError(t, err)
 
