@@ -243,7 +243,7 @@ type ChaincodePackageParser struct {
 var (
 	// LabelRegexp is the regular expression controlling
 	// the allowed characters for the package label
-	LabelRegexp = regexp.MustCompile("^[a-zA-Z0-9]+([.+-_][a-zA-Z0-9]+)*$")
+	LabelRegexp = regexp.MustCompile(`^[[:alnum:]][[:alnum:]_.+-]*$`)
 )
 
 func validateLabel(label string) error {
