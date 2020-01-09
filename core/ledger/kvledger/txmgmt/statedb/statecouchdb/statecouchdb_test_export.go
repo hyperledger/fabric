@@ -11,35 +11,33 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdbtest"
+	"github.com/stretchr/testify/require"
 )
 
-var couchAddress string
-
-// TestVDBEnv provides a couch db backed versioned db for testing
-type TestVDBEnv struct {
-	t          testing.TB
-	DBProvider statedb.VersionedDBProvider
-	config     *couchdb.Config
+// testVDBEnv provides a couch db backed versioned db for testing
+type testVDBEnv struct {
+	t              testing.TB
+	couchAddress   string
+	DBProvider     statedb.VersionedDBProvider
+	config         *couchdb.Config
+	cleanupCouchDB func()
 }
 
-// NewTestVDBEnv instantiates and new couch db backed TestVDB
-func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
-	return newTestVDBEnvWithCache(t, &statedb.Cache{})
-}
-
-func newTestVDBEnvWithCache(t testing.TB, cache *statedb.Cache) *TestVDBEnv {
-	t.Logf("Creating new TestVDBEnv")
+func (env *testVDBEnv) init(t testing.TB, cache *statedb.Cache) {
+	t.Logf("Initializing TestVDBEnv")
 	redoPath, err := ioutil.TempDir("", "cvdbenv")
 	if err != nil {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}
+
+	env.startExternalResource()
+
 	config := &couchdb.Config{
-		Address:             couchAddress,
+		Address:             env.couchAddress,
 		Username:            "",
 		Password:            "",
 		InternalQueryLimit:  1000,
@@ -53,23 +51,34 @@ func newTestVDBEnvWithCache(t testing.TB, cache *statedb.Cache) *TestVDBEnv {
 	if err != nil {
 		t.Fatalf("Error creating CouchDB Provider: %s", err)
 	}
-	testVDBEnv := &TestVDBEnv{
-		t:          t,
-		DBProvider: dbProvider,
-		config:     config,
-	}
-	// No cleanup for new test environment.  Need to cleanup per test for each DB used in the test.
-	return testVDBEnv
+
+	env.t = t
+	env.DBProvider = dbProvider
+	env.config = config
 }
 
-func (env *TestVDBEnv) CloseAndReopen() {
+// startExternalResource sstarts external couchDB resources for testVDBEnv.
+func (env *testVDBEnv) startExternalResource() {
+	if env.couchAddress == "" {
+		env.couchAddress, env.cleanupCouchDB = couchdbtest.CouchDBSetup(nil)
+	}
+}
+
+// stopExternalResource stops external couchDB resources.
+func (env *testVDBEnv) stopExternalResource() {
+	if env.couchAddress != "" {
+		env.cleanupCouchDB()
+	}
+}
+
+func (env *testVDBEnv) closeAndReopen() {
 	env.DBProvider.Close()
 	dbProvider, _ := NewVersionedDBProvider(env.config, &disabled.Provider{}, &statedb.Cache{})
 	env.DBProvider = dbProvider
 }
 
 // Cleanup drops the test couch databases and closes the db provider
-func (env *TestVDBEnv) Cleanup() {
+func (env *testVDBEnv) cleanup() {
 	env.t.Logf("Cleaningup TestVDBEnv")
 	cleanupDB(env.t, env.DBProvider.(*VersionedDBProvider).couchInstance)
 	env.DBProvider.Close()

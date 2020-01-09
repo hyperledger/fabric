@@ -55,6 +55,7 @@ type Asset struct {
 var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
 
 var testAddress string
+var cleanupCouchDB = func() {}
 
 func testConfig() *Config {
 	return &Config{
@@ -69,23 +70,23 @@ func testConfig() *Config {
 }
 
 func TestMain(m *testing.M) {
-	os.Exit(testMain(m))
-}
-
-func testMain(m *testing.M) int {
-	// Switch to CouchDB
-	address, cleanup := couchdbtest.CouchDBSetup("", "")
-	testAddress = address
-	defer cleanup()
-
 	//set the logging level to DEBUG to test debug only code
 	flogging.ActivateSpec("couchdb=debug")
 
-	//run the tests
-	return m.Run()
+	rc := m.Run()
+	cleanupCouchDB()
+
+	os.Exit(rc)
+}
+
+func startCouchDB() {
+	if testAddress == "" {
+		testAddress, cleanupCouchDB = couchdbtest.CouchDBSetup((nil))
+	}
 }
 
 func TestDBBadConnectionDef(t *testing.T) {
+	startCouchDB()
 	config := testConfig()
 	config.Address = badParseConnectURL
 	_, err := CreateCouchInstance(config, &disabled.Provider{})
@@ -112,6 +113,7 @@ func TestEncodePathElement(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
+	startCouchDB()
 	client := &http.Client{}
 
 	config := testConfig()
