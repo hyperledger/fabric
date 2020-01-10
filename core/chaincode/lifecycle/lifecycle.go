@@ -407,6 +407,30 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 	}
 
 	privateName := fmt.Sprintf("%s#%d", ccname, requestedSequence)
+
+	// if requested sequence is not committed, and attempt is made to update its content,
+	// we need to check whether new definition actually contains updated content, to avoid
+	// empty write set.
+	if requestedSequence == currentSequence+1 {
+		uncommittedMetadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, privateName, orgState)
+		if err != nil {
+			return errors.WithMessage(err, "could not fetch uncommitted definition")
+		}
+
+		if ok {
+			logger.Debugf("Attempting to redefine uncommitted definition at sequence %d", requestedSequence)
+
+			uncommittedParameters := &ChaincodeParameters{}
+			if err := ef.Resources.Serializer.Deserialize(NamespacesName, privateName, uncommittedMetadata, uncommittedParameters, orgState); err != nil {
+				return errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", privateName)
+			}
+
+			if err := uncommittedParameters.Equal(cd.Parameters()); err == nil {
+				return errors.Errorf("attempted to redefine uncommitted sequence (%d) for namespace %s with unchanged content", requestedSequence, ccname)
+			}
+		}
+	}
+
 	if err := ef.Resources.Serializer.Serialize(NamespacesName, privateName, cd.Parameters(), orgState); err != nil {
 		return errors.WithMessage(err, "could not serialize chaincode parameters to state")
 	}
@@ -423,7 +447,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		return errors.WithMessage(err, "could not serialize chaincode package info to state")
 	}
 
-	logger.Infof("successfully approved definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+	logger.Infof("Successfully approved definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
 	return nil
 }
