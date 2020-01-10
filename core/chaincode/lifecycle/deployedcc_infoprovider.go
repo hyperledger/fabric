@@ -151,7 +151,7 @@ func (vc *ValidatorCommitter) CollectionInfo(channelName, chaincodeName, collect
 
 	matches := ImplicitCollectionMatcher.FindStringSubmatch(collectionName)
 	if len(matches) == 2 {
-		return GenerateImplicitCollectionForOrg(matches[1]), nil
+		return GenerateImplicitCollectionForOrg(matches[1], &pb.PrivateDataImplicitCollection{}), nil
 	}
 
 	if definedChaincode.Collections != nil {
@@ -198,13 +198,13 @@ func (vc *ValidatorCommitter) ChaincodeImplicitCollections(channelName string) (
 	orgs := ac.Organizations()
 	implicitCollections := make([]*pb.StaticCollectionConfig, 0, len(orgs))
 	for _, org := range orgs {
-		implicitCollections = append(implicitCollections, GenerateImplicitCollectionForOrg(org.MSPID()))
+		implicitCollections = append(implicitCollections, GenerateImplicitCollectionForOrg(org.MSPID(), org.PrivateDataImplicitCollection()))
 	}
 
 	return implicitCollections, nil
 }
 
-func GenerateImplicitCollectionForOrg(mspid string) *pb.StaticCollectionConfig {
+func GenerateImplicitCollectionForOrg(mspid string, config *pb.PrivateDataImplicitCollection) *pb.StaticCollectionConfig {
 	return &pb.StaticCollectionConfig{
 		Name: ImplicitCollectionNameForOrg(mspid),
 		MemberOrgsPolicy: &pb.CollectionPolicyConfig{
@@ -212,6 +212,11 @@ func GenerateImplicitCollectionForOrg(mspid string) *pb.StaticCollectionConfig {
 				SignaturePolicy: cauthdsl.SignedByMspMember(mspid),
 			},
 		},
+		RequiredPeerCount: config.RequiredPeerCount,
+		MaximumPeerCount:  config.MaxPeerCount,
+		BlockToLive:       config.BlockToLive,
+		MemberOnlyRead:    config.MemberOnlyRead,
+		MemberOnlyWrite:   config.MemberOnlyWrite,
 	}
 }
 

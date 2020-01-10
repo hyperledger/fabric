@@ -103,6 +103,64 @@ var _ bool = Describe("PrivateData", func() {
 			assertPvtdataPresencePerCollectionConfig1(network, testChaincode.Name, "marble1")
 		})
 	})
+	Describe("Implicit Collection Config", func() {
+		It("Disseminates private data via the implicit collection without erroring", func() {
+			By("setting up the network")
+			network = initThreeOrgsSetup()
+			newLifecycleChaincode := nwo.Chaincode{
+				Name:              "marblesp",
+				Version:           "1.0",
+				Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd"),
+				Lang:              "binary",
+				PackageFile:       filepath.Join(network.RootDir, "marbles-pvtdata.tar.gz"),
+				Label:             "marbles-private-20",
+				SignaturePolicy:   `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: collectionConfig("collections_config1.json"),
+				Sequence:          "1",
+			}
+
+			By("starting the network")
+			process, orderer = startNetwork(network)
+
+			By("enabling V2_0 capabilities")
+			nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
+
+			By("setting the PrivateDataImplicitCollection")
+			Expect(network.Peers).NotTo(BeEmpty())
+			config := nwo.GetConfig(network, network.Peers[0], orderer, channelID)
+			updatedConfig := proto.Clone(config).(*cb.Config)
+
+			for _, o := range network.Organizations {
+				if o.Name != "OrdererOrg" {
+					updatedConfig.ChannelGroup.Groups["Application"].Groups[o.Name].Values["PrivateDataImplicitCollection"] = &cb.ConfigValue{
+						ModPolicy: "Admins",
+						Value: protoutil.MarshalOrPanic(
+							&pb.PrivateDataImplicitCollection{
+								RequiredPeerCount: 0,
+								MaxPeerCount:      1,
+								BlockToLive:       10,
+								MemberOnlyRead:    true,
+								MemberOnlyWrite:   true,
+							},
+						),
+					}
+				}
+			}
+
+			nwo.UpdateConfig(network, orderer, channelID, config, updatedConfig, false, network.Peers[0], network.Peers...)
+
+			By("deploying new lifecycle chaincode and adding marble1")
+			testChaincode := chaincode{
+				Chaincode: newLifecycleChaincode,
+				isLegacy:  false,
+			}
+			deployChaincode(network, orderer, testChaincode)
+			addMarble(network, orderer, testChaincode.Name,
+				`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`,
+				network.Peer("Org1", "peer0"),
+			)
+		})
+	})
 
 	Describe("Pvtdata behavior with untouched peer configs", func() {
 		var (

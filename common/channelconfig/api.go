@@ -35,6 +35,10 @@ type ApplicationOrg interface {
 
 	// AnchorPeers returns the list of gossip anchor peers
 	AnchorPeers() []*pb.AnchorPeer
+
+	// PrivateDataImplicitCollection returns the configuration for org-specific
+	// implicit collections
+	PrivateDataImplicitCollection() *pb.PrivateDataImplicitCollection
 }
 
 // OrdererOrg stores the per org orderer config.
@@ -135,6 +139,15 @@ type ChannelCapabilities interface {
 
 	// OrgSpecificOrdererEndpoints return true if the channel config processing allows orderer orgs to specify their own endpoints
 	OrgSpecificOrdererEndpoints() bool
+
+	// PrivateDataImplicitCollectionConfig returns true if this channel supports org-specific
+	// implicit collection configuration. Current configurable properties include:
+	//	- RequiredPeerCount
+	//	- MaxPeerCount
+	//	- BlockToLive
+	//	- MemberOnlyRead
+	//	- MemberOnlyWrite
+	PrivateDataImplicitCollectionConfig() bool
 }
 
 // ApplicationCapabilities defines the capabilities for the application portion of a channel

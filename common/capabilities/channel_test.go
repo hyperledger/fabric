@@ -98,6 +98,7 @@ func TestChannelV20(t *testing.T) {
 	assert.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
 	assert.True(t, cp.ConsensusTypeMigration())
 	assert.True(t, cp.OrgSpecificOrdererEndpoints())
+	assert.True(t, cp.PrivateDataImplicitCollectionConfig())
 }
 
 func TestChannelNotSuported(t *testing.T) {

@@ -99,3 +99,9 @@ func (cp *ChannelProvider) ConsensusTypeMigration() bool {
 func (cp *ChannelProvider) OrgSpecificOrdererEndpoints() bool {
 	return cp.v142 || cp.v143 || cp.v20
 }
+
+// PrivateDataImplicitCollectionConfig returns whether org-specific implicit collection configuration
+// may be specified in the channel application org config.
+func (cp *ChannelProvider) PrivateDataImplicitCollectionConfig() bool {
+	return cp.v20
+}

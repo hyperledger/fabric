@@ -20,13 +20,14 @@ type ConfigTx struct {
 }
 
 type Organization struct {
-	Name             string             `yaml:"Name,omitempty"`
-	SkipAsForeign    bool               `yaml:"SkipAsForeign,omitempty"`
-	ID               string             `yaml:"ID,omitempty"`
-	MSPDir           string             `yaml:"MSPDir,omitempty"`
-	Policies         map[string]*Policy `yaml:"Policies,omitempty"`
-	OrdererEndpoints []string           `yaml:"OrdererEndpoints,omitempty"`
-	AnchorPeers      []*AnchorPeer      `yaml:"AnchorPeers,omitempty"`
+	Name                          string                         `yaml:"Name,omitempty"`
+	SkipAsForeign                 bool                           `yaml:"SkipAsForeign,omitempty"`
+	ID                            string                         `yaml:"ID,omitempty"`
+	MSPDir                        string                         `yaml:"MSPDir,omitempty"`
+	Policies                      map[string]*Policy             `yaml:"Policies,omitempty"`
+	OrdererEndpoints              []string                       `yaml:"OrdererEndpoints,omitempty"`
+	AnchorPeers                   []*AnchorPeer                  `yaml:"AnchorPeers,omitempty"`
+	PrivateDataImplicitCollection *PrivateDataImplicitCollection `yaml:"PrivateDataImplicitCollection,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
@@ -49,6 +50,16 @@ type Capabilities struct {
 type AnchorPeer struct {
 	Host string `yaml:"Host,omitempty"`
 	Port int    `yaml:"Port,omitempty"`
+
+	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
+}
+
+type PrivateDataImplicitCollection struct {
+	RequiredPeerCount int32  `yaml:"RequiredPeerCount,omitempty"`
+	MaxPeerCount      int32  `yaml:"MaxPeerCount,omitempty"`
+	BlockToLive       uint64 `yaml:"BlockToLive,omitempty"`
+	MemberOnlyRead    bool   `yaml:"MemberOnlyRead,omitempty"`
+	MemberOnlyWrite   bool   `yaml:"MemberOnlyWrite,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }

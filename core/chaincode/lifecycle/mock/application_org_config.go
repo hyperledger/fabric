@@ -49,6 +49,16 @@ type ApplicationOrgConfig struct {
 	nameReturnsOnCall map[int]struct {
 		result1 string
 	}
+	PrivateDataImplicitCollectionStub        func() *peer.PrivateDataImplicitCollection
+	privateDataImplicitCollectionMutex       sync.RWMutex
+	privateDataImplicitCollectionArgsForCall []struct {
+	}
+	privateDataImplicitCollectionReturns struct {
+		result1 *peer.PrivateDataImplicitCollection
+	}
+	privateDataImplicitCollectionReturnsOnCall map[int]struct {
+		result1 *peer.PrivateDataImplicitCollection
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -261,6 +271,58 @@ func (fake *ApplicationOrgConfig) NameReturnsOnCall(i int, result1 string) {
 	}{result1}
 }
 
+func (fake *ApplicationOrgConfig) PrivateDataImplicitCollection() *peer.PrivateDataImplicitCollection {
+	fake.privateDataImplicitCollectionMutex.Lock()
+	ret, specificReturn := fake.privateDataImplicitCollectionReturnsOnCall[len(fake.privateDataImplicitCollectionArgsForCall)]
+	fake.privateDataImplicitCollectionArgsForCall = append(fake.privateDataImplicitCollectionArgsForCall, struct {
+	}{})
+	fake.recordInvocation("PrivateDataImplicitCollection", []interface{}{})
+	fake.privateDataImplicitCollectionMutex.Unlock()
+	if fake.PrivateDataImplicitCollectionStub != nil {
+		return fake.PrivateDataImplicitCollectionStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.privateDataImplicitCollectionReturns
+	return fakeReturns.result1
+}
+
+func (fake *ApplicationOrgConfig) PrivateDataImplicitCollectionCallCount() int {
+	fake.privateDataImplicitCollectionMutex.RLock()
+	defer fake.privateDataImplicitCollectionMutex.RUnlock()
+	return len(fake.privateDataImplicitCollectionArgsForCall)
+}
+
+func (fake *ApplicationOrgConfig) PrivateDataImplicitCollectionCalls(stub func() *peer.PrivateDataImplicitCollection) {
+	fake.privateDataImplicitCollectionMutex.Lock()
+	defer fake.privateDataImplicitCollectionMutex.Unlock()
+	fake.PrivateDataImplicitCollectionStub = stub
+}
+
+func (fake *ApplicationOrgConfig) PrivateDataImplicitCollectionReturns(result1 *peer.PrivateDataImplicitCollection) {
+	fake.privateDataImplicitCollectionMutex.Lock()
+	defer fake.privateDataImplicitCollectionMutex.Unlock()
+	fake.PrivateDataImplicitCollectionStub = nil
+	fake.privateDataImplicitCollectionReturns = struct {
+		result1 *peer.PrivateDataImplicitCollection
+	}{result1}
+}
+
+func (fake *ApplicationOrgConfig) PrivateDataImplicitCollectionReturnsOnCall(i int, result1 *peer.PrivateDataImplicitCollection) {
+	fake.privateDataImplicitCollectionMutex.Lock()
+	defer fake.privateDataImplicitCollectionMutex.Unlock()
+	fake.PrivateDataImplicitCollectionStub = nil
+	if fake.privateDataImplicitCollectionReturnsOnCall == nil {
+		fake.privateDataImplicitCollectionReturnsOnCall = make(map[int]struct {
+			result1 *peer.PrivateDataImplicitCollection
+		})
+	}
+	fake.privateDataImplicitCollectionReturnsOnCall[i] = struct {
+		result1 *peer.PrivateDataImplicitCollection
+	}{result1}
+}
+
 func (fake *ApplicationOrgConfig) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -272,6 +334,8 @@ func (fake *ApplicationOrgConfig) Invocations() map[string][][]interface{} {
 	defer fake.mSPIDMutex.RUnlock()
 	fake.nameMutex.RLock()
 	defer fake.nameMutex.RUnlock()
+	fake.privateDataImplicitCollectionMutex.RLock()
+	defer fake.privateDataImplicitCollectionMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

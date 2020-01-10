@@ -49,6 +49,13 @@ func TestUtilsBasic(t *testing.T) {
 	basicTest(t, MSPValue(&mspprotos.MSPConfig{}))
 	basicTest(t, CapabilitiesValue(map[string]bool{"foo": true, "bar": false}))
 	basicTest(t, AnchorPeersValue([]*pb.AnchorPeer{{}, {}}))
+	basicTest(t, PrivateDataImplicitCollectionValue(&pb.PrivateDataImplicitCollection{
+		RequiredPeerCount: 0,
+		MaxPeerCount:      1,
+		BlockToLive:       10,
+		MemberOnlyRead:    true,
+		MemberOnlyWrite:   true,
+	}))
 	basicTest(t, ChannelCreationPolicyValue(&cb.Policy{}))
 	basicTest(t, ACLValues(map[string]string{"foo": "fooval", "bar": "barval"}))
 }

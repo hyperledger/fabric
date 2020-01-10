@@ -132,6 +132,8 @@ func (daocv *DynamicApplicationOrgConfigValue) StaticallyOpaqueFieldProto(name s
 		return &msp.MSPConfig{}, nil
 	case "AnchorPeers":
 		return &peer.AnchorPeers{}, nil
+	case "PrivateDataImplicitCollection":
+		return &peer.PrivateDataImplicitCollection{}, nil
 	default:
 		return nil, fmt.Errorf("Unknown Application Org ConfigValue name: %s", daocv.name)
 	}

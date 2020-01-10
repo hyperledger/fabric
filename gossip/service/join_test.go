@@ -138,6 +138,10 @@ func (ao *appOrgMock) AnchorPeers() []*peer.AnchorPeer {
 	return []*peer.AnchorPeer{}
 }
 
+func (ao *appOrgMock) PrivateDataImplicitCollection() *peer.PrivateDataImplicitCollection {
+	return &peer.PrivateDataImplicitCollection{}
+}
+
 type configMock struct {
 	orgs2AppOrgs map[string]channelconfig.ApplicationOrg
 }

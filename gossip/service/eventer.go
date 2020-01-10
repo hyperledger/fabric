@@ -86,18 +86,20 @@ func cloneOrgConfig(src map[string]channelconfig.ApplicationOrg) map[string]chan
 	clone := make(map[string]channelconfig.ApplicationOrg)
 	for k, v := range src {
 		clone[k] = &appGrp{
-			name:        v.Name(),
-			mspID:       v.MSPID(),
-			anchorPeers: v.AnchorPeers(),
+			name:                          v.Name(),
+			mspID:                         v.MSPID(),
+			anchorPeers:                   v.AnchorPeers(),
+			privateDataImplicitCollection: v.PrivateDataImplicitCollection(),
 		}
 	}
 	return clone
 }
 
 type appGrp struct {
-	name        string
-	mspID       string
-	anchorPeers []*peer.AnchorPeer
+	name                          string
+	mspID                         string
+	anchorPeers                   []*peer.AnchorPeer
+	privateDataImplicitCollection *peer.PrivateDataImplicitCollection
 }
 
 func (ag *appGrp) Name() string {
@@ -110,6 +112,10 @@ func (ag *appGrp) MSPID() string {
 
 func (ag *appGrp) AnchorPeers() []*peer.AnchorPeer {
 	return ag.anchorPeers
+}
+
+func (ag *appGrp) PrivateDataImplicitCollection() *peer.PrivateDataImplicitCollection {
+	return ag.privateDataImplicitCollection
 }
 
 func (ag *appGrp) MSP() msp.MSP {

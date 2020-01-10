@@ -98,7 +98,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 	for groupName, group := range channelGroup.Groups {
 		switch groupName {
 		case ApplicationGroupKey:
-			cc.appConfig, err = NewApplicationConfig(group, mspConfigHandler)
+			cc.appConfig, err = NewApplicationConfig(group, mspConfigHandler, capabilities)
 		case OrdererGroupKey:
 			cc.ordererConfig, err = NewOrdererConfig(group, mspConfigHandler, capabilities)
 		case ConsortiumsGroupKey:

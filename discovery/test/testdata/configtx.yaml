@@ -75,6 +75,15 @@ Organizations:
             - Host: peer0.org1.example.com
               Port: 7051
 
+        # PrivateDataImplicitCollection stores the configuration for this org's implicit
+        # collection.
+        PrivateDataImplicitCollection:
+            RequiredPeerCount: 0
+            MaxPeerCount: 1
+            BlockToLive: 0
+            MemberOnlyRead: true
+            MemberOnlyWrite: true
+
     - &Org2
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
@@ -108,6 +117,15 @@ Organizations:
             # encoded in the genesis block in the Application section context
             - Host: peer0.org2.example.com
               Port: 9051
+
+        # PrivateDataImplicitCollection stores the configuration for this org's implicit
+        # collection.
+        PrivateDataImplicitCollection:
+            RequiredPeerCount: 0
+            MaxPeerCount: 1
+            BlockToLive: 0
+            MemberOnlyRead: true
+            MemberOnlyWrite: true
 
 ################################################################################
 #

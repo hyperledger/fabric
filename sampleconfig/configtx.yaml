@@ -72,6 +72,51 @@ Organizations:
             - Host: 127.0.0.1
               Port: 7051
 
+        # PrivateDataImplicitCollection stores the configuration for this org's implicit
+        # collection.
+        PrivateDataImplicitCollection:
+            # RequiredPeerCount is the minimum number of peers (within the organization)
+            # that each endorsing peer must successfully disseminate private data to before the peer
+            # signs the endorsement and returns the proposal response back to the client. Requiring
+            # dissemination as a condition of endorsement will ensure that private data is available
+            # in the network even if the endorsing peer(s) become unavailable. When requiredPeerCount
+            # is 0, it means that no distribution is required, but there may be some distribution if
+            # maxPeerCount is greater than zero. A requiredPeerCount of 0 would typically not be
+            # recommended, as it could lead to loss of private data in the network if the endorsing
+            # peer(s) becomes unavailable. Typically you would want to require at least some
+            # distribution of the private data at endorsement time to ensure redundancy of the private
+            # data on multiple peers in the network.
+            RequiredPeerCount: 0
+            # MaxPeerCount is the maximum number of other peers (within the organization)
+            # that each endorsing peer will attempt to distribute the private data to. If an
+            # endorsing peer becomes unavailable between endorsement time and commit time, other
+            # peers that are collection members but who did not yet receive the private data at
+            # endorsement time, will be able to pull the private data from peers the private data
+            # was disseminated to. If this value is set to 0, the private data is not disseminated
+            # at endorsement time, forcing private data pulls against endorsing peers on all authorized
+            # peers at commit time.
+            MaxPeerCount: 1
+            # BlockToLive represents how long the data should live on the private database in terms of blocks.
+            # The data will live for this specified number of blocks on the private database and after that
+            # it will get purged, making this data obsolete from the network so that it cannot be queried
+            # from chaincode, and cannot be made available to requesting peers. To keep private data
+            # indefinitely, that is, to never purge private data, set this value to 0.
+            BlockToLive: 0
+            # MemberOnlyRead indicates if peers automatically enforce that only clients belonging to one of
+            # the collection member organizations are allowed read access to private data. If a client from
+            # a non-member org attempts to execute a chaincode function that performs a read of a private data,
+            # the chaincode invocation is terminated with an error. Utilize a value of false if you would like
+            # to encode more granular access control within individual chaincode functions.
+            MemberOnlyRead: true
+            # MemberOnlyWrite indicates if peers automatically enforce that only clients belonging to one of
+            # the collection member organizations are allowed to write private data from chaincode. If a client
+            # from a non-member org attempts to execute a chaincode function that performs a write on a private
+            # data key, the chaincode invocation is terminated with an error. Utilize a value of false if you
+            # would like to encode more granular access control within individual chaincode functions, for
+            # example you may want certain clients from non-member organization to be able to create private data
+            # in a certain collection.
+            MemberOnlyWrite: true
+
 ################################################################################
 #
 #   CAPABILITIES

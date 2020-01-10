@@ -154,9 +154,13 @@ func newTestHelper(t *testing.T) *testHelper {
 func (h *testHelper) sampleChannelConfig(sequence uint64, enableV11Capability bool) *common.Config {
 	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	if enableV11Capability {
-		profile.Orderer.Capabilities = make(map[string]bool)
+		if profile.Orderer.Capabilities == nil {
+			profile.Orderer.Capabilities = make(map[string]bool)
+		}
 		profile.Orderer.Capabilities[capabilities.ApplicationV1_1] = true
-		profile.Application.Capabilities = make(map[string]bool)
+		if profile.Application.Capabilities == nil {
+			profile.Application.Capabilities = make(map[string]bool)
+		}
 		profile.Application.Capabilities[capabilities.ApplicationV1_2] = true
 	}
 	channelGroup, _ := encoder.NewChannelGroup(profile)

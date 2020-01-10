@@ -101,7 +101,11 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 		return errors.Errorf("org '%s' does not have any anchor peers defined", asOrg)
 	}
 
+	// Workaround for existing configs that don't contain these keys
+	// TODO: FAB-17427
 	delete(originalOrg.Values, channelconfig.AnchorPeersKey)
+	delete(originalOrg.Values, channelconfig.PrivateDataImplicitCollectionKey)
+	delete(updated.Values, channelconfig.PrivateDataImplicitCollectionKey)
 
 	updt, err := update.Compute(&cb.Config{ChannelGroup: original}, &cb.Config{ChannelGroup: updated})
 	if err != nil {

@@ -332,6 +332,18 @@ func NewApplicationOrgGroup(conf *genesisconfig.Organization) (*cb.ConfigGroup, 
 		addValue(applicationOrgGroup, channelconfig.AnchorPeersValue(anchorProtos), channelconfig.AdminsPolicyKey)
 	}
 
+	// Only add the PrivateDataImplicitCollection if specified
+	if conf.PrivateDataImplicitCollection != nil {
+		config := &pb.PrivateDataImplicitCollection{
+			RequiredPeerCount: conf.PrivateDataImplicitCollection.RequiredPeerCount,
+			MaxPeerCount:      conf.PrivateDataImplicitCollection.MaxPeerCount,
+			BlockToLive:       conf.PrivateDataImplicitCollection.BlockToLive,
+			MemberOnlyRead:    conf.PrivateDataImplicitCollection.MemberOnlyRead,
+			MemberOnlyWrite:   conf.PrivateDataImplicitCollection.MemberOnlyWrite,
+		}
+		addValue(applicationOrgGroup, channelconfig.PrivateDataImplicitCollectionValue(config), channelconfig.AdminsPolicyKey)
+	}
+
 	return applicationOrgGroup, nil
 }
 

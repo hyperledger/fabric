@@ -213,6 +213,15 @@ func AnchorPeersValue(anchorPeers []*pb.AnchorPeer) *StandardConfigValue {
 	}
 }
 
+// PrivateDataImplicitCollectionValue returns the config definition for an implicit collection's config
+// It is a value for the /Channel/Application/*.
+func PrivateDataImplicitCollectionValue(config *pb.PrivateDataImplicitCollection) *StandardConfigValue {
+	return &StandardConfigValue{
+		key:   PrivateDataImplicitCollectionKey,
+		value: config,
+	}
+}
+
 // ChannelCreationPolicyValue returns the config definition for a consortium's channel creation policy
 // It is a value for the /Channel/Consortiums/*/*.
 func ChannelCreationPolicyValue(policy *cb.Policy) *StandardConfigValue {

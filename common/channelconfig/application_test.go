@@ -41,14 +41,14 @@ func TestACL(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		cg := proto.Clone(cgt).(*cb.ConfigGroup)
-		_, err := NewApplicationConfig(proto.Clone(cg).(*cb.ConfigGroup), nil)
+		_, err := NewApplicationConfig(proto.Clone(cg).(*cb.ConfigGroup), nil, nil)
 		g.Expect(err).NotTo(HaveOccurred())
 	})
 
 	t.Run("MissingCapability", func(t *testing.T) {
 		cg := proto.Clone(cgt).(*cb.ConfigGroup)
 		delete(cg.Values, CapabilitiesKey)
-		_, err := NewApplicationConfig(cg, nil)
+		_, err := NewApplicationConfig(cg, nil, nil)
 		g.Expect(err).To(MatchError("ACLs may not be specified without the required capability"))
 	})
 }

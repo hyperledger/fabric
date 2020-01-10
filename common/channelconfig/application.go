@@ -34,7 +34,7 @@ type ApplicationConfig struct {
 }
 
 // NewApplicationConfig creates config from an Application config group
-func NewApplicationConfig(appGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*ApplicationConfig, error) {
+func NewApplicationConfig(appGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler, channelCapabilities ChannelCapabilities) (*ApplicationConfig, error) {
 	ac := &ApplicationConfig{
 		applicationOrgs: make(map[string]ApplicationOrg),
 		protos:          &ApplicationProtos{},
@@ -52,7 +52,7 @@ func NewApplicationConfig(appGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler)
 
 	var err error
 	for orgName, orgGroup := range appGroup.Groups {
-		ac.applicationOrgs[orgName], err = NewApplicationOrgConfig(orgName, orgGroup, mspConfig)
+		ac.applicationOrgs[orgName], err = NewApplicationOrgConfig(orgName, orgGroup, mspConfig, channelCapabilities)
 		if err != nil {
 			return nil, err
 		}

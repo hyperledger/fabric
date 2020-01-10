@@ -12,6 +12,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -52,6 +53,20 @@ var _ = Describe("ValidatorCommitter", func() {
 		fakeOrgConfigs = []*mock.ApplicationOrgConfig{{}, {}}
 		fakeOrgConfigs[0].MSPIDReturns("first-mspid")
 		fakeOrgConfigs[1].MSPIDReturns("second-mspid")
+		fakeOrgConfigs[0].PrivateDataImplicitCollectionReturns(&peer.PrivateDataImplicitCollection{
+			RequiredPeerCount: 1,
+			MaxPeerCount:      100,
+			BlockToLive:       10,
+			MemberOnlyRead:    true,
+			MemberOnlyWrite:   true,
+		})
+		fakeOrgConfigs[1].PrivateDataImplicitCollectionReturns(&peer.PrivateDataImplicitCollection{
+			RequiredPeerCount: 1,
+			MaxPeerCount:      50,
+			BlockToLive:       10,
+			MemberOnlyRead:    false,
+			MemberOnlyWrite:   true,
+		})
 		fakePolicyManager = &mock.PolicyManager{}
 		fakePolicyManager.GetPolicyReturns(nil, true)
 		fakeChannelConfig.PolicyManagerReturns(fakePolicyManager)
@@ -311,7 +326,17 @@ var _ = Describe("ValidatorCommitter", func() {
 				}
 			}
 			Expect(firstOrg).NotTo(BeNil())
+			Expect(firstOrg.RequiredPeerCount).To(Equal(int32(1)))
+			Expect(firstOrg.MaximumPeerCount).To(Equal(int32(100)))
+			Expect(firstOrg.BlockToLive).To(Equal(uint64(10)))
+			Expect(firstOrg.MemberOnlyRead).To(BeTrue())
+			Expect(firstOrg.MemberOnlyWrite).To(BeTrue())
 			Expect(secondOrg).NotTo(BeNil())
+			Expect(secondOrg.RequiredPeerCount).To(Equal(int32(1)))
+			Expect(secondOrg.MaximumPeerCount).To(Equal(int32(50)))
+			Expect(secondOrg.BlockToLive).To(Equal(uint64(10)))
+			Expect(secondOrg.MemberOnlyRead).To(BeFalse())
+			Expect(secondOrg.MemberOnlyWrite).To(BeTrue())
 		})
 
 		Context("when the chaincode does not exist", func() {

@@ -38,6 +38,16 @@ type ChannelCapabilities struct {
 	orgSpecificOrdererEndpointsReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	PrivateDataImplicitCollectionConfigStub        func() bool
+	privateDataImplicitCollectionConfigMutex       sync.RWMutex
+	privateDataImplicitCollectionConfigArgsForCall []struct {
+	}
+	privateDataImplicitCollectionConfigReturns struct {
+		result1 bool
+	}
+	privateDataImplicitCollectionConfigReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	SupportedStub        func() error
 	supportedMutex       sync.RWMutex
 	supportedArgsForCall []struct {
@@ -208,6 +218,58 @@ func (fake *ChannelCapabilities) OrgSpecificOrdererEndpointsReturnsOnCall(i int,
 	}{result1}
 }
 
+func (fake *ChannelCapabilities) PrivateDataImplicitCollectionConfig() bool {
+	fake.privateDataImplicitCollectionConfigMutex.Lock()
+	ret, specificReturn := fake.privateDataImplicitCollectionConfigReturnsOnCall[len(fake.privateDataImplicitCollectionConfigArgsForCall)]
+	fake.privateDataImplicitCollectionConfigArgsForCall = append(fake.privateDataImplicitCollectionConfigArgsForCall, struct {
+	}{})
+	fake.recordInvocation("PrivateDataImplicitCollectionConfig", []interface{}{})
+	fake.privateDataImplicitCollectionConfigMutex.Unlock()
+	if fake.PrivateDataImplicitCollectionConfigStub != nil {
+		return fake.PrivateDataImplicitCollectionConfigStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.privateDataImplicitCollectionConfigReturns
+	return fakeReturns.result1
+}
+
+func (fake *ChannelCapabilities) PrivateDataImplicitCollectionConfigCallCount() int {
+	fake.privateDataImplicitCollectionConfigMutex.RLock()
+	defer fake.privateDataImplicitCollectionConfigMutex.RUnlock()
+	return len(fake.privateDataImplicitCollectionConfigArgsForCall)
+}
+
+func (fake *ChannelCapabilities) PrivateDataImplicitCollectionConfigCalls(stub func() bool) {
+	fake.privateDataImplicitCollectionConfigMutex.Lock()
+	defer fake.privateDataImplicitCollectionConfigMutex.Unlock()
+	fake.PrivateDataImplicitCollectionConfigStub = stub
+}
+
+func (fake *ChannelCapabilities) PrivateDataImplicitCollectionConfigReturns(result1 bool) {
+	fake.privateDataImplicitCollectionConfigMutex.Lock()
+	defer fake.privateDataImplicitCollectionConfigMutex.Unlock()
+	fake.PrivateDataImplicitCollectionConfigStub = nil
+	fake.privateDataImplicitCollectionConfigReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *ChannelCapabilities) PrivateDataImplicitCollectionConfigReturnsOnCall(i int, result1 bool) {
+	fake.privateDataImplicitCollectionConfigMutex.Lock()
+	defer fake.privateDataImplicitCollectionConfigMutex.Unlock()
+	fake.PrivateDataImplicitCollectionConfigStub = nil
+	if fake.privateDataImplicitCollectionConfigReturnsOnCall == nil {
+		fake.privateDataImplicitCollectionConfigReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.privateDataImplicitCollectionConfigReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *ChannelCapabilities) Supported() error {
 	fake.supportedMutex.Lock()
 	ret, specificReturn := fake.supportedReturnsOnCall[len(fake.supportedArgsForCall)]
@@ -269,6 +331,8 @@ func (fake *ChannelCapabilities) Invocations() map[string][][]interface{} {
 	defer fake.mSPVersionMutex.RUnlock()
 	fake.orgSpecificOrdererEndpointsMutex.RLock()
 	defer fake.orgSpecificOrdererEndpointsMutex.RUnlock()
+	fake.privateDataImplicitCollectionConfigMutex.RLock()
+	defer fake.privateDataImplicitCollectionConfigMutex.RUnlock()
 	fake.supportedMutex.RLock()
 	defer fake.supportedMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

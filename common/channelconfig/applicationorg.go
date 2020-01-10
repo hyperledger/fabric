@@ -17,11 +17,15 @@ import (
 const (
 	// AnchorPeersKey is the key name for the AnchorPeers ConfigValue
 	AnchorPeersKey = "AnchorPeers"
+
+	// PrivateDataImplicitCollectionKey is the key name for the PrivateDataImplicitCollection ConfigValue
+	PrivateDataImplicitCollectionKey = "PrivateDataImplicitCollection"
 )
 
 // ApplicationOrgProtos are deserialized from the config
 type ApplicationOrgProtos struct {
-	AnchorPeers *pb.AnchorPeers
+	AnchorPeers                   *pb.AnchorPeers
+	PrivateDataImplicitCollection *pb.PrivateDataImplicitCollection
 }
 
 // ApplicationOrgConfig defines the configuration for an application org
@@ -32,9 +36,15 @@ type ApplicationOrgConfig struct {
 }
 
 // NewApplicationOrgConfig creates a new config for an application org
-func NewApplicationOrgConfig(id string, orgGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler) (*ApplicationOrgConfig, error) {
+func NewApplicationOrgConfig(id string, orgGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler, channelCapabilities ChannelCapabilities) (*ApplicationOrgConfig, error) {
 	if len(orgGroup.Groups) > 0 {
 		return nil, fmt.Errorf("ApplicationOrg config does not allow sub-groups")
+	}
+
+	if !channelCapabilities.PrivateDataImplicitCollectionConfig() {
+		if _, ok := orgGroup.Values[PrivateDataImplicitCollectionKey]; ok {
+			return nil, errors.New("Private data implicit collection configuration can not be specified without the required capability")
+		}
 	}
 
 	protos := &ApplicationOrgProtos{}
@@ -64,6 +74,12 @@ func NewApplicationOrgConfig(id string, orgGroup *cb.ConfigGroup, mspConfig *MSP
 // AnchorPeers returns the list of anchor peers of this Organization
 func (aog *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
 	return aog.protos.AnchorPeers.AnchorPeers
+}
+
+// PrivateDataImplicitCollection returns the configuration for org-specific
+// implicit collections
+func (aog *ApplicationOrgConfig) PrivateDataImplicitCollection() *pb.PrivateDataImplicitCollection {
+	return aog.protos.PrivateDataImplicitCollection
 }
 
 func (aoc *ApplicationOrgConfig) Validate() error {

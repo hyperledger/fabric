@@ -287,6 +287,7 @@ with different names.
                         Values:map<string, *ConfigValue>{
                             "MSP":msp.MSPConfig,
                             "AnchorPeers":peer.AnchorPeers,
+                            "PrivateDataImplicitCollection":peer.PrivateDataImplicitCollection,
                         },
                     },
                 },
@@ -429,6 +430,7 @@ application type transactions. It is defined as follows:
                         Values:map<string, *ConfigValue>{
                             "MSP":msp.MSPConfig,
                             "AnchorPeers":peer.AnchorPeers,
+                            "PrivateDataImplicitCollection":peer.PrivateDataImplicitCollection,
                         },
                     },
                 },
@@ -438,9 +440,15 @@ application type transactions. It is defined as follows:
 
 Just like with the ``Orderer`` section, each organization is encoded as
 a group. However, instead of only encoding the ``MSP`` identity
-information, each org additionally encodes a list of ``AnchorPeers``.
-This list allows the peers of different organizations to contact each
-other for peer gossip networking.
+information, each org additionally encodes a list of ``AnchorPeers`` that
+allows the peers of different organizations to contact each other for peer
+gossip networking, as well an org-specific ``PrivateDataImplicitCollection``
+that holds configuration properties for the implicit collection. Currently
+this config supports the following properties that mirror the same private data
+dissemination properties in
+[explicit collection definitions](../private-data-arch.html#private-data-dissemination):
+``RequiredPeerCount``, ``MaxPeerCount``, ``BlockToLive``, ``MemberOnlyRead``,
+and ``MemberOnlyWrite``.
 
 The application channel encodes a copy of the orderer orgs and consensus
 options to allow for deterministic updating of these parameters, so the
