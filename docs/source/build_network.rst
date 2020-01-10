@@ -473,7 +473,7 @@ First let's start our network:
 
 .. code:: bash
 
-    docker-compose -f docker-compose-cli.yaml up -f docker-compose-etcdraft2.yaml up -d
+    docker-compose -f docker-compose-cli.yaml -f docker-compose-etcdraft2.yaml up -d
 
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
 If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.

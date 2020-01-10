@@ -27,18 +27,9 @@ This tutorial assumes a Docker deployment where the YAML files will be baked int
 
 ## Environment variables for the binaries
 
-When you deploy a peer or an ordering node, you had to set a number of environment variables relevant to its configuration. A best practice is to create a file for these environment variables, give it a name relevant to the node being deployed, and save it somewhere on your local file system. That way you can be sure that when upgrading the peer or ordering node you are using the same variables you set when creating it by issuing:
+When you deploy a peer or an ordering node, you had to set a number of environment variables relevant to its configuration. A best practice is to create a file for these environment variables, give it a name relevant to the node being deployed, and save it somewhere on your local file system. That way you can be sure that when upgrading the peer or ordering node you are using the same variables you set when creating it.
 
-For peer:
-```
-docker run -d -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ \
-            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
-            --env-file ./env<name of node>.list \
-            --name $PEER_CONTAINER \
-            hyperledger/fabric-peer peer node start
-```
-
-Here's a list of some of the **peer** environment variables (with sample values --- as you can see from the addresses, these environment variables are for a network deployed locally) that can be set that be listed in the `./env<name of node>.list` file. Note that you may or may not need to set all of these environment variables:
+Here's a list of some of the **peer** environment variables (with sample values --- as you can see from the addresses, these environment variables are for a network deployed locally) that can be set that be listed in the file. Note that you may or may not need to set all of these environment variables:
 
 ```
 CORE_PEER_TLS_ENABLED=true
@@ -58,15 +49,6 @@ CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
 CORE_PEER_LOCALMSPID=Org1MSP
 ```
 
-For ordering node:
-```
-docker run -d -v /opt/backup/$ORDERER_CONTAINER/:/var/hyperledger/production/orderer/ \
-            -v /opt/msp/:/etc/hyperledger/fabric/msp/ \
-            --env-file ./env<name of node>.list \
-            --name $ORDERER_CONTAINER \
-            hyperledger/fabric-orderer orderer
-```
-
 Here are some **ordering node** variables (again, these are sample values) that might be listed in the environment variable file for a node. Again, you may or may not need to set all of these environment variables:
 
 ```
@@ -84,7 +66,7 @@ ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
 ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
 ```
 
-However you choose to set your environment variables (the `-e` flag will allow you to set them when running the `docker run` command to launch the container), note that they will have to be set for each node you want to upgrade.
+However you choose to set your environment variables, note that they will have to be set for each node you want to upgrade.
 
 ## Ledger backup and restore
 
