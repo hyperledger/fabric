@@ -384,7 +384,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 	}
 
 	return &BlockPuller{
-		Logger:  flogging.MustGetLogger("orderer.common.cluster.replication"),
+		Logger:  flogging.MustGetLogger("orderer.common.cluster.replication").With("channel", conf.Channel),
 		Dialer:  dialer,
 		TLSCert: tlsCertAsDER.Bytes,
 		VerifyBlockSequence: func(blocks []*common.Block, channel string) error {
@@ -479,7 +479,7 @@ func PullLastConfigBlock(puller ChainPuller) (*common.Block, error) {
 	if lastBlock == nil {
 		return nil, ErrRetryCountExhausted
 	}
-	lastConfNumber, err := lastConfigFromBlock(lastBlock)
+	lastConfNumber, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -508,13 +508,6 @@ func latestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
 		}
 	}
 	return mostUpToDateEndpoint, maxHeight, nil
-}
-
-func lastConfigFromBlock(block *common.Block) (uint64, error) {
-	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_LAST_CONFIG) {
-		return 0, errors.New("no metadata in block")
-	}
-	return protoutil.GetLastConfigIndexFromBlock(block)
 }
 
 // Close closes the ChainInspector
@@ -663,11 +656,17 @@ func ExtractGenesisBlock(logger *flogging.FabricLogger, block *common.Block) (st
 	metadata := &common.BlockMetadata{
 		Metadata: make([][]byte, 4),
 	}
+	metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
+		LastConfig: &common.LastConfig{Index: 0},
+		// This is a genesis block, peer never verify this signature because we can't bootstrap
+		// trust from an earlier block, hence there are no signatures here.
+	})
 	metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: 0}),
 		// This is a genesis block, peer never verify this signature because we can't bootstrap
 		// trust from an earlier block, hence there are no signatures here.
 	})
+
 	blockdata := &common.BlockData{Data: [][]byte{payload.Data}}
 	b := &common.Block{
 		Header:   &common.BlockHeader{DataHash: protoutil.BlockDataHash(blockdata)},

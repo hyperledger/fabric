@@ -724,7 +724,7 @@ func TestParticipant(t *testing.T) {
 			},
 			latestBlockSeq: uint64(99),
 			latestBlock:    &common.Block{},
-			expectedError:  "no metadata in block",
+			expectedError:  "failed to retrieve metadata: no metadata in block",
 		},
 		{
 			name: "Pulled block has no last config sequence in metadata",
@@ -734,24 +734,38 @@ func TestParticipant(t *testing.T) {
 			latestBlockSeq: uint64(99),
 			latestBlock: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{1, 2, 3}},
+					Metadata: nil,
 				},
 			},
-			expectedError: "no metadata in block",
+			expectedError: "failed to retrieve metadata: no metadata at index [SIGNATURES]",
 		},
 		{
-			name: "Pulled block's metadata is malformed",
+			name: "Pulled block's SIGNATURES metadata is malformed",
 			heightsByEndpoints: map[string]uint64{
 				"orderer.example.com:7050": 100,
 			},
 			latestBlockSeq: uint64(99),
 			latestBlock: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{1, 2, 3}, {1, 2, 3}},
+					Metadata: [][]byte{{1, 2, 3}},
 				},
 			},
-			expectedError: "error unmarshaling metadata from" +
-				" block at index [LAST_CONFIG]: proto: common.Metadata: illegal tag 0 (wire type 1)",
+			expectedError: "failed to retrieve metadata: error unmarshaling metadata" +
+				" at index [SIGNATURES]: proto: common.Metadata: illegal tag 0 (wire type 1)",
+		},
+		{
+			name: "Pulled block's LAST_CONFIG metadata is malformed",
+			heightsByEndpoints: map[string]uint64{
+				"orderer.example.com:7050": 100,
+			},
+			latestBlockSeq: uint64(99),
+			latestBlock: &common.Block{
+				Metadata: &common.BlockMetadata{
+					Metadata: [][]byte{{}, {1, 2, 3}},
+				},
+			},
+			expectedError: "failed to retrieve metadata: error unmarshaling metadata" +
+				" at index [LAST_CONFIG]: proto: common.Metadata: illegal tag 0 (wire type 1)",
 		},
 		{
 			name: "Pulled block's metadata is valid and has a last config",
@@ -761,9 +775,9 @@ func TestParticipant(t *testing.T) {
 			latestBlockSeq: uint64(99),
 			latestBlock: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{1, 2, 3}, protoutil.MarshalOrPanic(&common.Metadata{
-						Value: protoutil.MarshalOrPanic(&common.LastConfig{
-							Index: 42,
+					Metadata: [][]byte{protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
+							LastConfig: &common.LastConfig{Index: 42},
 						}),
 					})},
 				},
@@ -790,9 +804,9 @@ func TestParticipant(t *testing.T) {
 			latestBlockSeq: uint64(99),
 			latestBlock: &common.Block{
 				Metadata: &common.BlockMetadata{
-					Metadata: [][]byte{{1, 2, 3}, protoutil.MarshalOrPanic(&common.Metadata{
-						Value: protoutil.MarshalOrPanic(&common.LastConfig{
-							Index: 42,
+					Metadata: [][]byte{protoutil.MarshalOrPanic(&common.Metadata{
+						Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
+							LastConfig: &common.LastConfig{Index: 42},
 						}),
 					})},
 				},
@@ -819,7 +833,7 @@ func TestParticipant(t *testing.T) {
 				assert.Len(t, configBlocks, 0)
 			} else {
 				assert.Len(t, configBlocks, 1)
-				assert.Equal(t, err, testCase.predicateReturns)
+				assert.Equal(t, testCase.predicateReturns, err)
 			}
 		})
 	}

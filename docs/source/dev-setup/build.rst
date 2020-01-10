@@ -11,6 +11,34 @@ To build Hyperledger Fabric:
     cd $GOPATH/src/github.com/hyperledger/fabric
     make dist-clean all
 
+Building the documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are contributing to the documentation, you can build the Fabric
+documentation on your local machine. This allows you to check the formatting
+of your changes using your web browser before you open a pull request.
+
+You need to download the following prerequisites before you can build the
+documentation:
+
+- `Python 3.7 <https://wiki.python.org/moin/BeginnersGuide/Download>`__
+- `Pipenv <https://pipenv.readthedocs.io/en/latest/#install-pipenv-today>`__
+
+After you make your updates to the documentation source files, you can generate
+a build that includes your changes by running the following commands:
+
+::
+
+    cd fabric/docs
+    pipenv install
+    pipenv shell
+    make html
+
+This will generate all the html files in the ``docs/build/html`` folder. You can
+open any file to start browsing the updated documentation using your browser. If you
+want to make additional edits to the documentation, you can rerun ``make html``
+to incorporate the changes.
+
 Running the unit tests
 ~~~~~~~~~~~~~~~~~~~~~~
 

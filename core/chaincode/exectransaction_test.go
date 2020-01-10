@@ -935,6 +935,8 @@ func TestChaincodeInit(t *testing.T) {
 		Version: "0",
 	}
 
+	defer chaincodeSupport.Runtime.Stop(cID.Name + ":" + cID.Version)
+
 	resp, err := deploy(channelID, ccContext, spec, nextBlockNumber, chaincodeSupport)
 	assert.NoError(t, err)
 	// why response status is defined as int32 when the status codes are

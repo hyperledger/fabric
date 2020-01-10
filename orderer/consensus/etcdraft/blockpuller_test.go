@@ -50,7 +50,7 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 		{
 			name:          "Last config block number cannot be retrieved from last block",
 			blockAtHeight: &common.Block{},
-			expectedError: "no metadata in block",
+			expectedError: "failed to retrieve metadata: no metadata in block",
 			height:        100,
 		},
 		{

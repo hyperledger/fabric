@@ -234,9 +234,8 @@ function is subject to the chaincode endorsement policy.
 
   ![Starting the chaincode on the channel](lifecycle/Lifecycle-start.png)
 
-*Once MYCC is defined on the channel, Org1 and Org2 can start using the
-chaincode. The first invoke of the chaincode on each peer starts the chaincode
-container on that peer.*
+*Once MYCC is defined on the channel, Org1 and Org2 can start using the chaincode. The first invoke of the chaincode on each peer starts the chaincode
+container on that peer.*  
 
 ## Upgrade a chaincode
 
@@ -244,49 +243,44 @@ You can upgrade a chaincode using the same Fabric lifecycle process as you used
 to install and start the chainocode. You can upgrade the chaincode binaries, or
 only update the chaincode policies. Follow these steps to upgrade a chaincode:
 
-**Step one: Repackage the chaincode:** You only need to complete this step if you
-are upgrading the chaincode binaries.
 
-  ![Re-package the chaincode package](lifecycle/Lifecycle-upgrade-package.png)
+1. **Repackage the chaincode:** You only need to complete this step if you are
+  upgrading the chaincode binaries.
 
-*Org1 and Org2 upgrade the chaincode binaries and repackage the chaincode.
-Both organizations use a different package label.*
+    ![Re-package the chaincode package](lifecycle/Lifecycle-upgrade-package.png)
 
-**Step two: Install the new chaincode package on your peers:** Once again, you
-only need to complete this step if you are upgrading the chaincode binaries.
-Installing the new chaincode package will generate a package ID, which you will
-need to pass to the new chaincode definition. You also need to change the
-chaincode version, which is used by the lifecycle process to track if the
-chaincode binaries have been upgraded.
+   *Org1 and Org2 upgrade the chaincode binaries and repackage the chaincode. Both organizations use a different package label.*  
 
-  ![Re-install the chaincode package](lifecycle/Lifecycle-upgrade-install.png)
+2. **Install the new chaincode package on your peers:** Once again, you only
+  need to complete this step if you are upgrading the chaincode binaries.
+  Installing the new chaincode package will generate a package ID, which you will
+  need to pass to the new chaincode definition. You also need to change the
+  chaincode version, which is used by the lifecycle process to track if the
+  chaincode binaries have been upgraded.
 
-*Org1 and Org2 install the new package on their peers. The installation creates
-a new packageID.*
+    ![Re-install the chaincode package](lifecycle/Lifecycle-upgrade-install.png)
 
-**Step three: Approve a new chaincode definition:** If you are upgrading the chaincode
-binaries, you need to update the chaincode version and the package ID in the
-chaincode definition. You can also update your chaincode endorsement policy
-without having to repackage your chaincode binaries. Channel members simply
-need to approve a definition with the new policy. The new definition needs to
-increment the **sequence** variable in the definition by one.
+   *Org1 and Org2 install the new package on their peers. The installation creates a new packageID.*   
 
-  ![Approve a new chaincode definition](lifecycle/Lifecycle-upgrade-approve.png)
+3. **Approve a new chaincode definition:** If you are upgrading the chaincode
+  binaries, you need to update the chaincode version and the package ID in the
+  chaincode definition. You can also update your chaincode endorsement policy
+  without having to repackage your chaincode binaries. Channel members simply
+  need to approve a definition with the new policy. The new definition needs to
+  increment the **sequence** variable in the definition by one.
 
-*Organization administrators from Org1 and Org2 approve the new chaincode
-definition for their respective organizations. The new definition references
-the new packageID and changes the chaincode version. Since this is the first
-update of the chaincode, the sequence is incremented from one to two.*
+    ![Approve a new chaincode definition](lifecycle/Lifecycle-upgrade-approve.png)
 
-**Step four: Commit the definition to the channel:** When a sufficient number of
-channel members have approved the new chaincode definition, one organization can
-commit the new definition to upgrade the chaincode definition to the channel.
-There is no separate upgrade command as part of the lifecycle process.
+   *Organization administrators from Org1 and Org2 approve the new chaincode definition for their respective organizations. The new definition references the new packageID and changes the chaincode version. Since this is the first update of the chaincode, the sequence is incremented from one to two.*  
 
-  ![Commit the new definition to the channel](lifecycle/Lifecycle-upgrade-commit.png)
+4. **Commit the definition to the channel:** When a sufficient number of channel
+  members have approved the new chaincode definition, one organization can
+  commit the new definition to upgrade the chaincode definition to the channel.
+  There is no separate upgrade command as part of the lifecycle process.
 
-*An organization administrator from Org1 or Org2 commits the new chaincode
-definition to the channel.*
+    ![Commit the new definition to the channel](lifecycle/Lifecycle-upgrade-commit.png)
+
+   *An organization administrator from Org1 or Org2 commits the new chaincode definition to the channel.*  
 
 After you commit the chaincode definition, a new chaincode container will
 launch with the code from the upgraded chaincode binaries. If you requested the
@@ -298,8 +292,7 @@ remain the same and you do not need to invoke ``Init`` function.
 
   ![Upgrade the chaincode](lifecycle/Lifecycle-upgrade-start.png)
 
-*Once the new definition has been committed to the channel, each peer will
-automatically start the new chaincode container.*
+ *Once the new definition has been committed to the channel, each peer will automatically start the new chaincode container.*  
 
 The Fabric chaincode lifecycle uses the **sequence** in the chaincode definition
 to keep track of upgrades. All channel members need to increment the sequence

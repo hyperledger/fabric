@@ -419,9 +419,11 @@ func streamOutput(logger *flogging.FabricLogger, client dockerClient, containerN
 			// Loop forever dumping lines of text into the containerLogger
 			// until the pipe is closed
 			line, err := is.ReadString('\n')
+			if len(line) > 0 {
+				containerLogger.Info(line)
+			}
 			switch err {
 			case nil:
-				containerLogger.Info(line)
 			case io.EOF:
 				logger.Infof("Container %s has closed its IO channel", containerName)
 				return

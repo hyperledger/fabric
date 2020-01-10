@@ -114,6 +114,8 @@ func (cp *ChaincodeParameters) Equal(ocp *ChaincodeParameters) error {
 		return errors.Errorf("Version '%s' != '%s'", cp.EndorsementInfo.Version, ocp.EndorsementInfo.Version)
 	case cp.EndorsementInfo.EndorsementPlugin != ocp.EndorsementInfo.EndorsementPlugin:
 		return errors.Errorf("EndorsementPlugin '%s' != '%s'", cp.EndorsementInfo.EndorsementPlugin, ocp.EndorsementInfo.EndorsementPlugin)
+	case cp.EndorsementInfo.InitRequired != ocp.EndorsementInfo.InitRequired:
+		return errors.Errorf("InitRequired '%t' != '%t'", cp.EndorsementInfo.InitRequired, ocp.EndorsementInfo.InitRequired)
 	case cp.ValidationInfo.ValidationPlugin != ocp.ValidationInfo.ValidationPlugin:
 		return errors.Errorf("ValidationPlugin '%s' != '%s'", cp.ValidationInfo.ValidationPlugin, ocp.ValidationInfo.ValidationPlugin)
 	case !bytes.Equal(cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter):

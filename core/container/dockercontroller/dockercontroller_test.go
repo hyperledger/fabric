@@ -223,14 +223,16 @@ func Test_streamOutput(t *testing.T) {
 	gt.Eventually(opts.Success).Should(BeClosed())
 
 	fmt.Fprintf(opts.OutputStream, "message-one\n")
-	fmt.Fprintf(opts.OutputStream, "message-two") // does not get written
+	fmt.Fprintf(opts.OutputStream, "message-two") // does not get written until after stream closed
 	gt.Eventually(containerRecorder).Should(gbytes.Say("message-one"))
 	gt.Consistently(containerRecorder.Entries).Should(HaveLen(1))
 
 	close(errCh)
+
 	gt.Eventually(recorder).Should(gbytes.Say("Container container-name has closed its IO channel"))
 	gt.Consistently(recorder.Entries).Should(HaveLen(1))
-	gt.Consistently(containerRecorder.Entries).Should(HaveLen(1))
+	gt.Eventually(containerRecorder).Should(gbytes.Say("message-two"))
+	gt.Consistently(containerRecorder.Entries).Should(HaveLen(2))
 }
 
 func Test_BuildMetric(t *testing.T) {
