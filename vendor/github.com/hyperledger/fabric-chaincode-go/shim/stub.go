@@ -345,7 +345,7 @@ type resultType uint8
 // TODO: Document constants
 /*
 	Constants ...
- */
+*/
 const (
 	StateQueryResult resultType = iota + 1
 	HistoryQueryResult

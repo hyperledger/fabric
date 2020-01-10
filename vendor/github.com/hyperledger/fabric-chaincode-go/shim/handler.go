@@ -20,10 +20,16 @@ const (
 	ready       state = "ready"       // ready for requests
 )
 
-// PeerChaincodeStream interface for stream between Peer and chaincode instance.
+// PeerChaincodeStream is the common stream interface for Peer - chaincode communication.
+// Both chaincode-as-server and chaincode-as-client patterns need to support this
 type PeerChaincodeStream interface {
 	Send(*pb.ChaincodeMessage) error
 	Recv() (*pb.ChaincodeMessage, error)
+}
+
+// ClientStream supports the (original) chaincode-as-client interaction pattern
+type ClientStream interface {
+	PeerChaincodeStream
 	CloseSend() error
 }
 
