@@ -1,9 +1,50 @@
-# Deploying a chaincode on a Channel
+# Deploying a smart contract on a channel
+
+Applications interact with the blockchain ledger through smart contracts. In Hyperledger Fabric, smart contracts are deployed in packages referred to as chaincode. Chaincode needs to be installed on all of the peers will use a smart contract to endorse a transaction or query the data on the ledger. Once a chaincode has been deployed to a channel, channel members can use the smart contract to create and update assets on the channel ledger.
+
+Chaincode is deployed to a channels using the Fabric chaincode lifecycle. The Fabric chaincode lifecycle is a process that allows multiple organizations to agree on how a chaincode will be operated before it can be used to submit transactions. For example, while an endorsement policy is used to decide which organizations need to endorse a valid transaction, channel members need to use the Fabric chaincode lifecycle to decide what the endorsment polcy of the chaincode before it is deployed.
+
+This tutorial describes how to deploy a chaincode to a channel using the [peer lifecycle chaincode commands](./commands/peerlifecycle.html) provided by the peer CLI. We will first bring up the Fabric test network and then use peer CLI to deploy a chaincode to a channel on the network. For a more in depth overview about how to deploy and manage a chaincode on a channel, see [Chaincode for Operators](./chaincode4noah.html).
+
+## Start the network
+
+We will use the Fabric test network to create a channel that we will use to deploy the chaincode. Use the following command to navigate to the test network within your local clone of the `fabric-samples` repository:
+```
+cd fabric-samples/test-network
+```
+For the sake of this tutorial, we want to operate from a known initial state. The following command will kill any active or stale docker containers and remove previously generated artifacts.
+```
+./network.sh down
+```
+You can then use the following command to start the Fabric test network:
+```
+./network.sh up createChannel
+```
+
+The test network has two organizations, Org1 and Org1, with one peer each. The `createChannel` command creates a channel named ``mychannel`` that has Org1 and Org2 as members, and joins both peers to the channel. If the network and the channel were created successfully, you can see the following message printed in the logs:
+```
+========= Channel successfully joined ===========
+```
+
+We can now use the Peer CLI to deploy the `fabcar` chaincode to the channel using the following steps:
 
 
-Applications interact with the blockchain ledger through ``chaincode``. Therefore we need to install a chaincode on every peer that will execute and endorse our transactions. However, before we can interact with our chaincode, the members of the channel need to agree on a chaincode definition that establishes chaincode governance.
+- [Step one: Package the smart contract](#packaging-the-smart-contract)
+- [Step two: Install the chaincode package](#install-the-chaincode-package)
+- [Step three: Approve a chaincode definition](#approve-a-chaincode-definition)
+- [Step four: Committing the chaincode definition to the channel](#committing-the-chaincode-definition-to-the-channel)
 
-## Packaging the chaincode
+## Package the smart contract
+
+If you have not run through the tutorial before, you will need to vendor the
+chaincode dependencies before we can deploy it to the network. Run the
+following commands:
+
+.. code:: bash
+
+    cd ../chaincode/marbles02_private/go
+    GO111MODULE=on go mod vendor
+    cd ../../../test-network
 
 Assuming you have started the test network, copy and paste the following environment variables in your CLI to interact with the network and operate as the Org1 admin. Make sure that you are in the `test-network` directory.
 
@@ -47,10 +88,29 @@ peer lifecycle chaincode package mycc.tar.gz --path /opt/gopath/src/github.com/h
 peer lifecycle chaincode package mycc.tar.gz --path /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/java/ --lang java --label mycc_1
 ```
 
-Each of the above commands will create a chaincode package named ``mycc.tar.gz``, which we can use to install the chaincode on our peers. Issue the following command to install the package on peer0 of Org1.
+Each of the above commands will create a chaincode package named ``mycc.tar.gz``, which we can use to install the chaincode on our peers.
+
+## Install the chaincode package
+
+The chaincode needs to be installed on every peer that will endorse a transaction. Because we are going to set the endorsement policy of ``mycc`` to require endorsements from both Org1 and Org2, we need to install the chaincode on both peers in the test network:
+
+- peer0.org1.example.com
+- peer0.org2.example.com
+
+Set the following environment variables to operate as the Org1 admin, and set the address of `peer0.org1.example.com`:
+```
+export PATH=${PWD}/../bin:${PWD}:$PATH
+export FABRIC_CFG_PATH=$PWD/../config/
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+export CORE_PEER_ADDRESS=localhost:7051
+```
+
+Issue the following command to install the package on Org1's peer:
 
 ```
-# this command installs a chaincode package on your peer
 peer lifecycle chaincode install mycc.tar.gz
 ```
 
@@ -81,7 +141,7 @@ We are going to need the package ID for future commands, so let's go ahead and s
 CC_PACKAGE_ID=mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173
 ```
 
-The endorsement policy of ``mycc`` will be set to require endorsements from a peer in both Org1 and Org2. Therefore, we also need to install the chaincode on a peer in Org2.
+
 
 Modify the following four environment variables to issue the install command as Org2:
 
@@ -100,7 +160,7 @@ Now install the chaincode package onto peer0 of Org2. The following command will
 peer lifecycle chaincode install mycc.tar.gz
 ```
 
-## Approving the chaincode
+## Approve a chaincode definition
 
 After you install the package, you need to approve a chaincode definition for your organization. The chaincode definition includes the important parameters of chaincode governance, including the chaincode name and version. The definition also includes the package identifier used to associate the chaincode package installed on your peers with a chaincode definition approved by your organization.
 
@@ -136,7 +196,7 @@ You can now approve a definition for the ``mycc`` chaincode as Org1. Chaincode i
 peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name mycc --version 1.0 --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 ```
 
-## Committing the chainocde to the channel
+## Committing the chaincode definition to the channel
 
 Once a sufficient number of channel members have approved a chaincode definition, one member can commit the definition to the channel. By default a majority of channel members need to approve a definition before it can be committed. It is possible to check whether the chaincode definition is ready to be committed and view the current approvals by organization by issuing the following query:
 
@@ -163,6 +223,23 @@ Since both channel members have approved the definition, we can now commit it to
 # this commits the chaincode definition to the channel
 
 peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID $CHANNEL_NAME --name mycc --version 1.0 --sequence 1 --init-required --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+```
+
+You can use the ``peer lifecycle chaincode querycommitted`` command to check if
+the chaincode definition you have approved has already been committed to the
+channel.
+
+```
+# use the --name flag to select the chaincode whose definition you want to query
+peer lifecycle chaincode querycommitted --channelID mychannel --name fabcar --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+```
+
+A successful command will return information about the committed definition:
+
+
+```
+Committed chaincode definition for chaincode 'fabcar' on channel 'mychannel':
+Version: 1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc
 ```
 
 ## Invoking the chaincode

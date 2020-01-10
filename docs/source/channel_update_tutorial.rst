@@ -517,36 +517,20 @@ Join Org3 to the Channel
 At this point, the channel configuration has been updated to include our new
 organization -- ``Org3`` -- meaning that peers attached to it can now join ``mychannel``.
 
-First, let's launch the containers for the Org3 peers and an Org3-specific CLI.
 
-Open a new terminal and issue the following command from ``addOrg3`` kick off
-the Org3 docker compose:
-
-.. code:: bash
-
-  docker-compose -f docker-compose-org3.yaml up -d
-
-This new compose file has been configured to bridge across our initial network,
-so the Org3 peer and the CLI container will be able to resolve with the existing
-peers and ordering node. With the three new containers now running, exec into
+exec into
 the Org3-specific CLI container:
 
-.. code:: bash
-
-  docker exec -it Org3cli bash
-
-Just as we did with the initial CLI container, export the two key environment
-variables: ``ORDERER_CA`` and ``CHANNEL_NAME``:
+Export the Org2 environment variables:
 
 .. code:: bash
 
-  export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem && export CHANNEL_NAME=mychannel
+  # you can issue all of these commands at once
 
-Check to make sure the variables have been properly set:
-
-.. code:: bash
-
-  echo $ORDERER_CA && echo $CHANNEL_NAME
+  export CORE_PEER_LOCALMSPID="Org3MSP"
+  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
+  export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
+  export CORE_PEER_ADDRESS=peer0.org3.example.com:9051
 
 Now let's send a call to the ordering service asking for the genesis block of
 ``mychannel``. The ordering service is able to verify the Org3 signature
@@ -591,11 +575,11 @@ using the chaincode.
           install and instantiate a chaincode, visit the v1.4 version of the
           `Adding an org to a channel tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html>`__.
 
-We can use the ``./network.sh`` script to deploy the fabcar chaincode on the
-channel that was created by the script and joined by Org3. Open a new tab and
-make sure that you are operating from the ``addOrg3`` directory, outside the
-Org3CLI container. When , Use the following command to navigate to the
-``test-network`` directory and deploy the fabcar chaincode:
+Before we install a chaincode as Org3, we can use the ``./network.sh`` script to
+deploy the fabcar chaincode on the channel. Open a terminal outside the Org3CLI
+container and make sure that you are operating from the ``addOrg3`` directory.
+Use the following command to navigate to the ``test-network`` directory and
+deploy the fabcar chaincode:
 
 .. code:: bash
 
@@ -609,10 +593,10 @@ the channel, the fabcar chaincode is initialized and invoked to put initial data
 on the ledger.
 
 After the chaincode has been to deployed we can use the following steps to use
-invoke fabcar chaincode on the Org3 peer. The following steps can be completed
-from the ``test-network`` directory, without having to exec into Org3 CLI
-container. Copy and paste the following environment variables in your CLI in
-order to interact with the network as the Org3 admin:
+the fabcar chaincode as Org3. The following steps can be completed from the
+``test-network`` directory, without having to exec into Org3CLI container. Copy
+and paste the following environment variables in your CLI in order to interact
+with the network as the Org3 admin:
 
 .. code:: bash
 
@@ -631,10 +615,9 @@ The first step is to package the fabcar chaincode:
     peer lifecycle chaincode package fabcar.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/fabcar/go/ --lang golang --label fabcar_1
 
 This command will create a chaincode package named ``fabcar.tar.gz``, which we can
-use to install the chaincode on our peer. In this command, you need to provide a
-chaincode package label as a description of the chaincode. Modify the command
-accordingly if the channel is running a chaincode written in Java or Node.js.
-Issue the following command to install the package on peer0 of Org3:
+use to install the chaincode on our peer. Modify the command accordingly if the
+channel is running a chaincode written in Java or Node.js. Issue the following
+command to install the chaincode package ``peer0.org3.example.com``:
 
 .. code:: bash
 
@@ -661,7 +644,7 @@ You should see output similar to the following:
 
 We are going to need the package ID in a future command, so lets go ahead and
 save it as an environment variable. Paste the package ID returned by the
-`peer lifecycle chaincode queryinstalled` into the command below. The package ID
+`peer lifecycle chaincode queryinstalled` command into the command below. The package ID
 may not be the same for all users, so you need to complete this step using the
 package ID returned from your console.
 
@@ -671,7 +654,7 @@ package ID returned from your console.
 
    CC_PACKAGE_ID=fabcar_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173
 
-Use the following command to approve a definition of the  ``fabcar`` chaincode
+Use the following command to approve a definition of the ``fabcar`` chaincode
 for Org3:
 
 .. code:: bash
@@ -679,7 +662,7 @@ for Org3:
     # this approves a chaincode definition for your org
     # use the --package-id flag to provide the package identifier
     # use the --init-required flag to request the ``Init`` function be invoked to initialize the chaincode
-    peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name fabcar --version 1.0 --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    peer lifecycle chaincode approveformyorg --channelID mychannel --name fabcar --version 1.0 --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
 You can use the ``peer lifecycle chaincode querycommitted`` command to check if
 the chaincode definition you have approved has already been committed to the
@@ -688,7 +671,7 @@ channel.
 .. code:: bash
 
     # use the --name flag to select the chaincode whose definition you want to query
-    peer lifecycle chaincode querycommitted --channelID $CHANNEL_NAME --name fabcar --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    peer lifecycle chaincode querycommitted --channelID mychannel --name fabcar --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
 A successful command will return information about the committed definition:
 
@@ -706,12 +689,12 @@ automatically. We previously needed endorsements from Org1 and Org2 (2 out of 2)
 Now we need endorsements from two organizations out of Org1, Org2, and Org3 (2
 out of 3).
 
-Query the chaincode to ensure that it has started. Note that you may need to
-wait for the chaincode container to start.
+You can query the chaincode to ensure that it has started on the Org3 peer. Note
+that you may need to wait for the chaincode container to start.
 
 .. code:: bash
 
-    peer chaincode query -C $CHANNEL_NAME -n fabcar -c '{"Args":["queryAllCars"]}'
+    peer chaincode query -C mychannel -n fabcar -c '{"Args":["queryAllCars"]}'
 
 You should see the initial list of cars that were added to the ledger as a
 response.

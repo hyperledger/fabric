@@ -29,6 +29,7 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    :caption: Tutorials
 
    write_first_app
+   deploy_chaincode.md
    tutorial/commercial_paper
    build_network
    config_update.md
