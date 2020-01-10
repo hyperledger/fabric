@@ -26,7 +26,7 @@ At this point, you have two options:
 
 ## Chaincode logger (Go chaincode only)
 
-Support for user chaincodes to utilize the chaincode shim's logger via `NewLogger()` has been deprecated. Chaincodes that used the shim's `NewLogger()` must now shift to their own preferred logging mechanism.
+Support for user chaincodes to utilize the chaincode shim's logger via `NewLogger()` has been removed. Chaincodes that used the shim's `NewLogger()` must now shift to their own preferred logging mechanism.
 
 For more information, check out [Logging control](./logging-control.html#chaincode).
 
