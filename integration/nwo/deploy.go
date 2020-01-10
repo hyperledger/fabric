@@ -393,7 +393,7 @@ func UpgradeChaincodeLegacy(n *Network, channel string, orderer *Orderer, chainc
 
 func EnsureInstalled(n *Network, label, packageID string, peers ...*Peer) {
 	for _, p := range peers {
-		Eventually(queryInstalled(n, p), n.EventuallyTimeout).Should(
+		Eventually(QueryInstalled(n, p), n.EventuallyTimeout).Should(
 			ContainElement(MatchFields(IgnoreExtras,
 				Fields{
 					"Label":     Equal(label),
@@ -413,7 +413,7 @@ func QueryInstalledReferences(n *Network, channel, label, packageID string, chec
 		}
 	}
 
-	Expect(queryInstalled(n, checkPeer)()).To(
+	Expect(QueryInstalled(n, checkPeer)()).To(
 		ContainElement(MatchFields(IgnoreExtras,
 			Fields{
 				"Label":     Equal(label),
@@ -428,11 +428,14 @@ func QueryInstalledReferences(n *Network, channel, label, packageID string, chec
 	)
 }
 
+func QueryInstalledNoReferences(n *Network, channel, label, packageID string, checkPeer *Peer) {
+}
+
 type queryInstalledOutput struct {
 	InstalledChaincodes []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode `json:"installed_chaincodes"`
 }
 
-func queryInstalled(n *Network, peer *Peer) func() []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
+func QueryInstalled(n *Network, peer *Peer) func() []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
 	return func() []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode {
 		sess, err := n.PeerAdminSession(peer, commands.ChaincodeQueryInstalled{
 			ClientAuth: n.ClientAuthRequired,
