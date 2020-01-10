@@ -662,7 +662,7 @@ var _ = Describe("ExternalFunctions", func() {
 			})
 		})
 
-		Context("when the sequence number already has a definition", func() {
+		Context("when the sequence number already has a committed definition", func() {
 			BeforeEach(func() {
 				err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{
 					Sequence: 5,
@@ -739,6 +739,28 @@ var _ = Describe("ExternalFunctions", func() {
 				It("returns an error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
 					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but: Version 'other-version' != 'version'"))
+				})
+			})
+		})
+
+		Context("when the sequence number already has an uncommitted definition", func() {
+			BeforeEach(func() {
+				err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			Context("when uncommitted definition differs from update", func() {
+				It("succeeds", func() {
+					testDefinition.ValidationInfo.ValidationParameter = []byte("more awesome policy")
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when uncommitted definition is identical to update", func() {
+				It("returns error", func() {
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					Expect(err).To(MatchError("attempted to redefine uncommitted sequence (5) for namespace cc-name with unchanged content"))
 				})
 			})
 		})
