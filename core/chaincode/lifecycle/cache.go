@@ -434,10 +434,50 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 			continue
 		}
 
+		privateName := fmt.Sprintf("%s#%d", name, chaincodeDefinition.Sequence)
+		hashKey := FieldKey(ChaincodeSourcesName, privateName, "PackageID")
+		hashOfCCHash, err := orgState.GetStateHash(hashKey)
+		if err != nil {
+			return errors.WithMessagef(err, "could not check opaque org state for chaincode source hash for '%s' on channel '%s'", name, channelID)
+		}
+
+		localChaincode, ok := c.localChaincodes[string(hashOfCCHash)]
+		if !ok {
+			localChaincode = &LocalChaincode{
+				References: map[string]map[string]*CachedChaincodeDefinition{},
+			}
+			c.localChaincodes[string(hashOfCCHash)] = localChaincode
+		}
+
+		if !initializing {
+			// check for existing local chaincodes that reference this chaincode name on this channel
+			for _, lc := range c.localChaincodes {
+				// track which channel, if any, we removed a local chaincode reference from
+				if ref, ok := lc.References[channelID][name]; ok {
+					if ref.InstallInfo == nil || localChaincode.Info == nil {
+						continue
+					}
+					if ref.InstallInfo.PackageID == localChaincode.Info.PackageID {
+						continue
+					}
+
+					// remove existing local chaincode reference, which referred to an old chaincode definition
+					delete(lc.References[channelID], name)
+					if len(lc.References[channelID]) == 0 {
+						delete(lc.References, channelID)
+
+						// TODO FAB-17046: finally, check to see if this chaincode is
+						// referenced in any channel. if not, stop the chaincode here
+						// if len(lc.References) == 0 {
+						// 	logger.Debug("chaincode package with label %s is no longer referenced and will be stopped", localChaincode.Info.Label)
+						// }
+					}
+				}
+			}
+		}
+
 		cachedChaincode.Definition = chaincodeDefinition
 		cachedChaincode.Approved = false
-
-		privateName := fmt.Sprintf("%s#%d", name, chaincodeDefinition.Sequence)
 
 		cachedChaincode.Hashes = []string{
 			string(util.ComputeSHA256([]byte(MetadataKey(NamespacesName, privateName)))),
@@ -473,20 +513,6 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 			continue
 		}
 
-		hashKey := FieldKey(ChaincodeSourcesName, privateName, "PackageID")
-		hashOfCCHash, err := orgState.GetStateHash(hashKey)
-		if err != nil {
-			return errors.WithMessagef(err, "could not check opaque org state for chaincode source hash for '%s' on channel '%s'", name, channelID)
-		}
-
-		localChaincode, ok := c.localChaincodes[string(hashOfCCHash)]
-		if !ok {
-			localChaincode = &LocalChaincode{
-				References: map[string]map[string]*CachedChaincodeDefinition{},
-			}
-			c.localChaincodes[string(hashOfCCHash)] = localChaincode
-		}
-
 		cachedChaincode.InstallInfo = localChaincode.Info
 		if localChaincode.Info != nil {
 			logger.Infof("Chaincode with package ID '%s' now available on channel %s for chaincode definition %s:%s", localChaincode.Info.PackageID, channelID, name, cachedChaincode.Definition.EndorsementInfo.Version)
@@ -502,6 +528,7 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 		}
 
 		channelReferences[name] = cachedChaincode
+
 		if !initializing {
 			c.eventBroker.ProcessApproveOrDefineEvent(channelID, name, cachedChaincode)
 		}
@@ -514,7 +541,7 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 	return nil
 }
 
-// RegisterListener registers an event listener for recieving an event when a chaincode becomes invokable
+// RegisterListener registers an event listener for receiving an event when a chaincode becomes invokable
 func (c *Cache) RegisterListener(channelID string, listener ledger.ChaincodeLifecycleEventListener) {
 	c.eventBroker.RegisterListener(channelID, listener)
 }
