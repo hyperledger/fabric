@@ -635,7 +635,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError(ContainSubstring("could not set defaults for chaincode definition in channel my-channel: Policy '/Channel/Application/Endorsement' must be defined for channel 'my-channel' before chaincode operations can be attempted")))
+					Expect(err).To(MatchError(ContainSubstring("could not set defaults for chaincode definition in channel my-channel: policy '/Channel/Application/Endorsement' must be defined for channel 'my-channel' before chaincode operations can be attempted")))
 				})
 			})
 
@@ -939,7 +939,7 @@ var _ = Describe("ExternalFunctions", func() {
 				It("returns an error", func() {
 					_, err := ef.CheckCommitReadiness("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(MatchError(ContainSubstring("could not set defaults for chaincode definition in " +
-						"channel my-channel: Policy '/Channel/Application/Endorsement' must be defined " +
+						"channel my-channel: policy '/Channel/Application/Endorsement' must be defined " +
 						"for channel 'my-channel' before chaincode operations can be attempted")))
 				})
 			})
@@ -1108,7 +1108,7 @@ var _ = Describe("ExternalFunctions", func() {
 				It("returns an error", func() {
 					_, err := ef.CommitChaincodeDefinition("my-channel", "cc-name", testDefinition, fakePublicState, []lifecycle.OpaqueState{fakeOrgStates[0], fakeOrgStates[1]})
 					Expect(err).To(MatchError(ContainSubstring("could not set defaults for chaincode definition in " +
-						"channel my-channel: Policy '/Channel/Application/Endorsement' must be defined " +
+						"channel my-channel: policy '/Channel/Application/Endorsement' must be defined " +
 						"for channel 'my-channel' before chaincode operations can be attempted")))
 				})
 			})
