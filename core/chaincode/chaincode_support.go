@@ -44,6 +44,7 @@ type Runtime interface {
 // Launcher is used to launch chaincode runtimes.
 type Launcher interface {
 	Launch(ccid string, streamHandler extcc.StreamHandler) error
+	Stop(ccid string) error
 }
 
 // Lifecycle provides a way to retrieve chaincode definitions and the packages necessary to run them
