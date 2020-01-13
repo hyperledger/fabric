@@ -124,7 +124,7 @@ collection definitions:
   }
  ]
 
-This example uses the organizations from the BYFN sample network, ``Org1`` and
+This example uses the organizations from the Fabric test network, ``Org1`` and
 ``Org2`` . The policy in the  ``collectionMarbles`` definition authorizes both
 organizations to the private data. This is a typical configuration when the
 chaincode data needs to remain private from the ordering service nodes. However,
