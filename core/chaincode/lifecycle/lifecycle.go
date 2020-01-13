@@ -284,7 +284,7 @@ func (ef *ExternalFunctions) CheckCommitReadiness(chname, ccname string, cd *Cha
 		return nil, err
 	}
 
-	logger.Infof("successfully checked commit readiness of chaincode definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+	logger.Infof("Successfully checked commit readiness of chaincode definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
 	return approvals, nil
 }
@@ -305,7 +305,7 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd
 		return nil, errors.WithMessage(err, "could not serialize chaincode definition")
 	}
 
-	logger.Infof("successfully committed definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+	logger.Infof("Successfully committed definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
 	return approvals, nil
 }
@@ -324,7 +324,7 @@ func (ef *ExternalFunctions) DefaultEndorsementPolicyAsBytes(channelID string) (
 	}
 
 	return nil, errors.Errorf(
-		"Policy '%s' must be defined for channel '%s' before chaincode operations can be attempted",
+		"policy '%s' must be defined for channel '%s' before chaincode operations can be attempted",
 		DefaultEndorsementPolicyRef,
 		channelID,
 	)
@@ -479,7 +479,7 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 		return nil, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", name)
 	}
 
-	logger.Infof("successfully queried definition %s, name '%s'", definedChaincode, name)
+	logger.Infof("Successfully queried definition %s, name '%s'", definedChaincode, name)
 
 	return definedChaincode, nil
 }
@@ -536,7 +536,7 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 		ef.InstallListener.HandleChaincodeInstalled(pkg.Metadata, packageID)
 	}
 
-	logger.Infof("successfully installed chaincode with package ID '%s'", packageID)
+	logger.Infof("Successfully installed chaincode with package ID '%s'", packageID)
 
 	return &chaincode.InstalledChaincode{
 		PackageID: packageID,
