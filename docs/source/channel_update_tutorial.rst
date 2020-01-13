@@ -38,23 +38,24 @@ previous environments:
 
   ./network.sh down
 
-You can now use the script to bring up the test network with one channel:
+You can now use the script to bring up the test network with one channel named
+``mychannel``:
 
 .. code:: bash
 
   ./network.sh up createChannel
 
 Now that you have a clean version of the test network running on your machine, we
-can start the process of adding a new org to the channel we created. We are first
+can start the process of adding a new org to the channel we created. First, we are
 going to add Org3 to the channel using a script to confirm that the process works.
-We will then go through the step by step process of adding Org3 by updating the
+Then, we will go through the step by step process of adding Org3 by updating the
 channel configuration.
 
 Bring Org3 into the Channel with the Script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You should be in the ``test-network`` directory. To use the script, simply issue
-the following:
+the following commands:
 
 .. code:: bash
 
@@ -86,13 +87,13 @@ You would use the following command to add Org3 to the channel:
   cd addOrg3
   ./addOrg3.sh up -c testchannel -s couchdb
 
-Now that we have confirmed we can add Org3 to our channel, we can go into detail
-about the channel update process that happened behind the scenes.
+Now that we have confirmed we can add Org3 to our channel, we can go through the
+steps to update the channel configuration that happened behind the scenes
 
 Bring Org3 into the Channel Manually
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you've used the ``addOrg3.sh`` script, you'll need to bring your network down.
+If you just used the ``addOrg3.sh`` script, you'll need to bring your network down.
 The following command will bring down all running components and remove the crypto
 material for all organizations:
 
@@ -157,7 +158,7 @@ Bring up Org3 components
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 After we have created the Org3 certificate material, we can now bring up the
-Org3 peer and Org3CLI container. From the `addOrg3` directory, issue the following
+Org3 peer and Org3CLI container. From the ``addOrg3`` directory, issue the following
 command:
 
 .. code:: bash
@@ -166,8 +167,8 @@ command:
 
 This new compose file has been configured to bridge across our initial network,
 so that the Org3 peer and CLI container resolve with the existing peers and ordering
-node. We will use the Org3CLI container to communicate with the network and
-issue the commands to add Org3 to the channel.
+node of the test network. We will use the Org3CLI container to communicate with the network and
+issue the commands that will add Org3 to the channel.
 
 
 Prepare the CLI Environment
@@ -181,8 +182,7 @@ data representations/formats (in this case, between protobufs and JSON).
 Additionally, the tool can compute a configuration update transaction based on
 the differences between two channel configurations.
 
-First, open a new terminal. Use the command below to exec into the Org3CLI
-container.
+Use the command below to exec into the Org3CLI container:
 
 .. code:: bash
 
@@ -191,7 +191,7 @@ container.
 This container has been mounted with the ``organizations`` folder, giving us
 access to the crypto material and TLS certificates for all organizations and the
 Orderer Org. We can use environment variables to operate the CLI container
-as the admin of Org1, Org2, or Org2. First, we need to set the environment
+as the admin of Org1, Org2, or Org3. First, we need to set the environment
 variables for the orderer TLS certificate and the channel name:
 
 .. code:: bash
@@ -226,6 +226,7 @@ to remove).
 Because Org3 is not yet a member of the channel, we need to operate as the Org1
 admin to fetch the channel config. Because Org1 is a member of the channel, the
 Org1 admin has permission to fetch the channel config from the ordering service.
+Issue the following commands to operate as the org1 admin.
 
 .. code:: bash
 
@@ -247,8 +248,8 @@ This command saves the binary protobuf channel configuration block to
 However, following a convention which identifies both the type of object being
 represented and its encoding (protobuf or JSON) is recommended.
 
-When you issued the ``peer channel fetch`` command, there was a decent amount of
-output in the terminal. The last line in the logs is of interest:
+When you issued the ``peer channel fetch`` command, the following message was
+printed to your logs:
 
 .. code:: bash
 
@@ -257,7 +258,7 @@ output in the terminal. The last line in the logs is of interest:
 This is telling us that the most recent configuration block for ``mychannel`` is
 actually block 2, **NOT** the genesis block. By default, the ``peer channel fetch config``
 command returns the most **recent** configuration block for the targeted channel, which
-in this case is the third block. This is because the BYFN script defined anchor
+in this case is the third block. This is because the test network script, ``network.sh``, defined anchor
 peers for our two organizations -- ``Org1`` and ``Org2`` -- in two separate channel update
 transactions. As a result, we have the following configuration sequence:
 
@@ -302,7 +303,7 @@ We'll use the ``jq`` tool once more to append the Org3 configuration definition
 
   jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"Org3MSP":.[1]}}}}}' config.json ./organizations/peerOrganizations/org3.example.com/org3.json > modified_config.json
 
-Now, within the CLI container we have two JSON files of interest -- ``config.json``
+Now, within the Org3CLI container we have two JSON files of interest -- ``config.json``
 and ``modified_config.json``. The initial file contains only Org1 and Org2 material,
 whereas the "modified" file contains all three Orgs. At this point it's simply
 a matter of re-encoding these two JSON files and calculating the delta.
@@ -372,7 +373,7 @@ fulfill the policy.
 
 First, let's sign this update proto as the Org1 Admin. Remember that we exported
 the necessary environment variables to operate the CLI container as the Org1 admin.
-The following `peer channel signconfigtx`` command will sign the update as Org1.
+The following ``peer channel signconfigtx`` command will sign the update as Org1.
 
 .. code:: bash
 
@@ -404,8 +405,9 @@ second time:
 
 .. note:: The upcoming update call to the ordering service will undergo a series
           of systematic signature and policy checks. As such you may find it
-          useful to stream and inspect the ordering node's logs. From another shell,
-          issue a ``docker logs -f orderer.example.com`` command to display them.
+          useful to stream and inspect the ordering node's logs. You can issue a
+          ``docker logs -f orderer.example.com`` command from a terminal outside
+          the Org3CLI container to display them.
 
 Send the update call:
 
@@ -431,7 +433,7 @@ outside the Org3CLI container and issuing the following command:
 
       docker logs -f peer0.org1.example.com
 
-You can follow the same steps as we completed above if you want to fetch and
+You can follow the same steps that we started with if you want to fetch and
 decode the new config block if you wish to inspect its contents.
 
 
@@ -455,7 +457,7 @@ as the Org3 Admin:
 
 Now let's send a call to the ordering service asking for the genesis block of
 ``mychannel``. As a result of the successful channel update, the ordering service
-will verify that Org3 can pull the block to join the channel. If Org3 had not
+will verify that Org3 can pull the genesis block and join the channel. If Org3 had not
 been successfully appended to the channel config, the ordering service would
 reject this request.
 
@@ -535,10 +537,10 @@ election:
 Install, define, and invoke chaincode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Once Org3 has joined the channel, you can install and invoke a chaincode on the
-Org3 peer. If channel members have already committed a chaincode definition to
-the channel, a new organization can approve the chainocde definition and start
-using the chaincode.
+We can confirm that Org3 is a member of ``mychannel`` by installing and invoking
+a chaincode. If the existing channel members have already committed a chaincode
+definition to the channel, a new organization can start using the chaincode on
+the channel by approving the chaincode definition.
 
 .. note:: These instructions use the Fabric chaincode lifecycle introduced in
           the v2.0 release. If you would like to use the previous lifecycle to
@@ -546,14 +548,13 @@ using the chaincode.
           `Adding an org to a channel tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html>`__.
 
 Before we install a chaincode as Org3, we can use the ``./network.sh`` script to
-deploy the fabcar chaincode on the channel. Use an open a terminal outside the
-Org3CLI container and make sure that you are operating from the ``addOrg3``
-directory. Use the following command to navigate to the ``test-network``
-directory and deploy the fabcar chaincode:
+deploy the fabcar chaincode on the channel. Open a new terminal outside the
+Org3CLI container and navigate to the ``test-network`` directory. You can then use
+use the ``test-network`` script to deploy the fabcar chaincode:
 
 .. code:: bash
 
-  cd ..
+  cd fabric-samples/test-network
   ./network.sh deployCC
 
 The script will install the fabcar chaincode on the Org1 and Org2 peers, approve
@@ -597,8 +598,9 @@ command to install the chaincode package ``peer0.org3.example.com``:
 
 The next step is to approve the chaincode definition of ``fabcar`` as Org3. Org3
 needs to approve the same definition that Org1 and Org2 approved and committed
-to the channel. The chaincode definition also needs to include the chaincode
-package identifier. You can find the package identifier by querying your peer:
+to the channel. In order to invoke the chaincode, Org3 needs to include the
+package identifier in the chaincode definition. You can find the package
+identifier by querying your peer:
 
 .. code:: bash
 
@@ -613,9 +615,9 @@ You should see output similar to the following:
 
 We are going to need the package ID in a future command, so lets go ahead and
 save it as an environment variable. Paste the package ID returned by the
-`peer lifecycle chaincode queryinstalled` command into the command below. The package ID
-may not be the same for all users, so you need to complete this step using the
-package ID returned from your console.
+``peer lifecycle chaincode queryinstalled`` command into the command below. The
+package ID may not be the same for all users, so you need to complete this step
+using the package ID returned from your console.
 
 .. code:: bash
 
@@ -647,14 +649,13 @@ A successful command will return information about the committed definition:
     Committed chaincode definition for chaincode 'fabcar' on channel 'mychannel':
     Version: 1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc, Approvals: [Org1MSP: true, Org2MSP: true, Org3MSP: true]
 
-Since the chaincode definition has already been committed, Org3 can use the
-``fabcar`` chaincode after you approve the definition. The chaincode definition
-uses the default endorsement policy, which requires a majority of organizations
-on the channel endorse a transaction. This implies that if an organization is
-added to or removed from the channel, the endorsement policy is updated
-automatically. We previously needed endorsements from Org1 and Org2 (2 out of 2).
-Now we need endorsements from two organizations out of Org1, Org2, and Org3 (2
-out of 3).
+Org3 can use the ``fabcar`` chaincode after it approves the chaincode definition
+that was committed to the channel. The chaincode definition uses the default endorsement
+policy, which requires a majority of organizations on the channel endorse a transaction.
+This implies that if an organization is added to or removed from the channel, the
+endorsement policy is updated automatically. We previously needed endorsements
+from Org1 and Org2 (2 out of 2). Now we need endorsements from two organizations
+out of Org1, Org2, and Org3 (2 out of 3).
 
 You can query the chaincode to ensure that it has started on the Org3 peer. Note
 that you may need to wait for the chaincode container to start.
@@ -675,7 +676,7 @@ represented in protobuf binary format and then acquire the requisite number of a
 signatures such that the channel configuration update transaction fulfills the channel's
 modification policy.
 
-The ``configtxlator`` and ``jq`` tools, along with the ever-growing ``peer channel``
+The ``configtxlator`` and ``jq`` tools, along with the ``peer channel``
 commands, provide us with the functionality to accomplish this task.
 
 Updating the Channel Config to include an Org3 Anchor Peer (Optional)
@@ -689,28 +690,18 @@ directly discover an Org3 peer. In this section, we will make a channel
 configuration update to define an Org3 anchor peer. The process will be similar
 to the previous configuration update, therefore we'll go faster this time.
 
-Exec back into the Org3 CLI:
+If you don't have it open, exec back into the Org3 CLI:
 
 .. code:: bash
 
   docker exec -it Org3cli bash
 
-This container has been mounted with the ``organizations`` folder, giving us
-access to the crypto material and TLS certificates for all organizations and the
-Orderer Org. We can use environment variables to operate the CLI container
-as the admin of Org1, Org2, or Org2. First, we need to set the environment
-variables for the orderer TLS certificate and the channel name:
+Export the $ORDERER_CA and $CHANNEL_NAME variables if they are not already set:
 
 .. code:: bash
 
   export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
   export CHANNEL_NAME=mychannel
-
-Check to make sure the $ORDERER_CA and $CHANNEL_NAME variables are still set:
-
-.. code:: bash
-
-  echo $ORDERER_CA && echo $CHANNEL_NAME
 
 As before, we will fetch the latest channel configuration to get started.
 Inside the Org3CLI container, fetch the most recent config block for the channel,
@@ -788,10 +779,20 @@ to a protobuf so it can be properly signed and submitted to the orderer for the 
     configtxlator proto_encode --input anchor_update_in_envelope.json --type common.Envelope --output anchor_update_in_envelope.pb
 
 Now that the update has been properly formatted it is time to sign off and submit it. Since this
-is only an update to Org3 we only need to have Org3 sign off on the update. As we are
-in the Org3 CLI container there is no need to switch the CLI containers identity, as it is
-already using the Org3 identity. Therefore we can just use the ``peer channel update`` command
-as it will also sign off on the update as the Org3 admin before submitting it to the orderer.
+is only an update to Org3 we only need to have Org3 sign off on the update. Run the following
+commands to make sure that we are operating as the Org3 admin:
+
+.. code:: bash
+
+  # you can issue all of these commands at once
+
+  export CORE_PEER_LOCALMSPID="Org3MSP"
+  export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
+  export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
+  export CORE_PEER_ADDRESS=peer0.org3.example.com:11051
+
+We can now just use the ``peer channel update`` command to sign the update as the
+Org3 admin before submitting it to the orderer.
 
 .. code:: bash
 
