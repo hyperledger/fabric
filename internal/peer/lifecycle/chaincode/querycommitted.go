@@ -175,6 +175,7 @@ func (c *CommittedQuerier) printResponse(proposalResponse *pb.ProposalResponse) 
 	for _, cd := range result.ChaincodeDefinitions {
 		fmt.Fprintf(c.Writer, "Name: %s, ", cd.Name)
 		c.printSingleChaincodeDefinition(cd)
+		fmt.Fprintf(c.Writer, "\n")
 	}
 	return nil
 }
