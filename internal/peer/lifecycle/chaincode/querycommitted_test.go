@@ -85,9 +85,9 @@ var _ = Describe("QueryCommitted", func() {
 		It("queries committed chaincodes and writes the output as human readable plain-text", func() {
 			err := committedQuerier.Query()
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(committedQuerier.Writer).Should(gbytes.Say("Committed chaincode definitions on channel 'test-channel'"))
-			Eventually(committedQuerier.Writer).Should(gbytes.Say("Name: woohoo, Version: a-version, Sequence: 93, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin"))
-			Eventually(committedQuerier.Writer).Should(gbytes.Say("Name: yahoo, Version: another-version, Sequence: 20, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin"))
+			Eventually(committedQuerier.Writer).Should(gbytes.Say("Committed chaincode definitions on channel 'test-channel':\n"))
+			Eventually(committedQuerier.Writer).Should(gbytes.Say("Name: woohoo, Version: a-version, Sequence: 93, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin\n"))
+			Eventually(committedQuerier.Writer).Should(gbytes.Say("Name: yahoo, Version: another-version, Sequence: 20, Endorsement Plugin: e-plugin, Validation Plugin: v-plugin\n"))
 		})
 
 		Context("when JSON-formatted output is requested", func() {
