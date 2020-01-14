@@ -71,8 +71,8 @@ type embeddingDeliveryServiceFactory struct {
 	DeliveryServiceFactory
 }
 
-func (edsf *embeddingDeliveryServiceFactory) Service(g GossipServiceAdapter, endpoints *orderers.ConnectionSource, mcs api.MessageCryptoService) deliverservice.DeliverService {
-	ds := edsf.DeliveryServiceFactory.Service(g, endpoints, mcs)
+func (edsf *embeddingDeliveryServiceFactory) Service(g GossipServiceAdapter, endpoints *orderers.ConnectionSource, mcs api.MessageCryptoService, isStaticLeader bool) deliverservice.DeliverService {
+	ds := edsf.DeliveryServiceFactory.Service(g, endpoints, mcs, false)
 	return newEmbeddingDeliveryService(ds)
 }
 
