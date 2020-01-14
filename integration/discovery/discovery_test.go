@@ -262,6 +262,16 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(discovered[0].Layouts).To(HaveLen(1))
 		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
 
+		endorsers.Collection = "mycc:collectionMarbles"
+		endorsers.NoPrivateReads = []string{"mycc"}
+		de = discoverEndorsers(network, endorsers)
+		By("discovering endorsers for a blind write with a collection consists of all possible peers")
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org1Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org2Peer0)},
+			[]nwo.DiscoveredPeer{network.DiscoveredPeer(org3Peer0)},
+		))
+
 		By("changing the channel policy")
 		currentConfig := nwo.GetConfig(network, org3Peer0, orderer, "testchannel")
 		updatedConfig := proto.Clone(currentConfig).(*common.Config)

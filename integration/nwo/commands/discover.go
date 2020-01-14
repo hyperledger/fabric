@@ -71,17 +71,18 @@ func (c Config) Args() []string {
 }
 
 type Endorsers struct {
-	UserCert    string
-	UserKey     string
-	MSPID       string
-	Server      string
-	Channel     string
-	Chaincode   string
-	Chaincodes  []string
-	Collection  string
-	Collections []string
-	ClientCert  string
-	ClientKey   string
+	UserCert       string
+	UserKey        string
+	MSPID          string
+	Server         string
+	Channel        string
+	Chaincode      string
+	Chaincodes     []string
+	Collection     string
+	Collections    []string
+	ClientCert     string
+	ClientKey      string
+	NoPrivateReads []string
 }
 
 func (e Endorsers) SessionName() string {
@@ -114,6 +115,9 @@ func (e Endorsers) Args() []string {
 	}
 	for _, c := range e.Collections {
 		args = append(args, "--collection", c)
+	}
+	for _, cc := range e.NoPrivateReads {
+		args = append(args, "--noPrivateReads", cc)
 	}
 	return args
 }
