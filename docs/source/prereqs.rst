@@ -161,15 +161,39 @@ Windows extras
 --------------
 
 If you are developing on Windows 7, you will want to work within the
-Docker Quickstart Terminal which uses `Git Bash
-<https://git-scm.com/downloads>`__ and provides a better alternative
-to the built-in Windows shell.
+Docker Quickstart Terminal. However, by default it uses an old `Git
+Bash <https://git-scm.com/downloads>`__ and experience has shown this
+to be a poor development environment with limited functionality. It is
+suitable to run Docker based scenarios, such as
+:doc:`getting_started`, but you will have difficulties with operations
+involving the ``make`` and ``docker`` commands.
 
-However experience has shown this to be a poor development environment
-with limited functionality. It is suitable to run Docker based
-scenarios, such as :doc:`getting_started`, but you may have
-difficulties with operations involving the ``make`` and ``docker``
-commands.
+Instead, it is recommended to use the MSYS2 environment and run make
+and docker from the MSYS2 command shell. To do so, `install
+MSYS2 <https://github.com/msys2/msys2/wiki/MSYS2-installation>`__
+(along with the base developer toolchain and gcc packages using
+pacman) and launch Docker Toolbox from the MSYS2 shell with the
+following command:
+
+::
+
+   /c/Program\ Files/Docker\ Toolbox/start.sh
+
+Alternatively, you can change the Docker Quickstart Terminal command
+to use MSYS2 bash by changing the target of the Windows shortcut from:
+
+::
+   
+   "C:\Program Files\Git\bin\bash.exe" --login -i "C:\Program Files\Docker Toolbox\start.sh"
+
+to:
+
+::
+
+   "C:\msys64\usr\bin\bash.exe" --login -i "C:\Program Files\Docker Toolbox\start.sh"
+
+With the above change, you can now simply launch the Docker Quickstart
+Terminal and get a suitable environment.
 
 On Windows 10 you should use the native Docker distribution and you
 may use the Windows PowerShell. However, for the ``binaries``
@@ -195,8 +219,9 @@ These need to be ``false`` and ``true`` respectively.
 
 The ``curl`` command that comes with Git and Docker Toolbox is old and
 does not handle properly the redirect used in
-:doc:`getting_started`. Make sure you install and use a newer version
-from the `cURL downloads page <https://curl.haxx.se/download.html>`__
+:doc:`getting_started`. Make sure you have and use a newer version
+which can be downloaded from the `cURL downloads page
+<https://curl.haxx.se/download.html>`__
 
 For Node.js you also need the necessary Visual Studio C++ Build Tools
 which are freely available and can be installed with the following
