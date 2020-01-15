@@ -62,8 +62,8 @@ func TestRedoLogger(t *testing.T) {
 }
 
 func TestCouchdbRedoLogger(t *testing.T) {
-	testEnv := NewTestVDBEnv(t)
-	defer testEnv.Cleanup()
+	testEnv.init(t, &statedb.Cache{})
+	defer testEnv.cleanup()
 
 	// commitToRedologAndRestart - a helper function that commits directly to redologs and restart the statedb
 	commitToRedologAndRestart := func(newVal string, version *version.Height) {
@@ -80,7 +80,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 				},
 			),
 		)
-		testEnv.CloseAndReopen()
+		testEnv.closeAndReopen()
 	}
 	// verifyExpectedVal - a helper function that verifies the statedb contents
 	verifyExpectedVal := func(expectedVal string, expectedSavepoint *version.Height) {

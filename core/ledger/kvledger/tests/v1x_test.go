@@ -72,7 +72,11 @@ func TestV13WithStateCouchdb(t *testing.T) {
 	testutil.CopyDir("testdata/v13_statecouchdb/couchdb_etc/local.d", localdHostDir, true)
 
 	// start couchdb using couchdbDataUnzipDir and localdHostDir as mount dirs
-	couchAddress, cleanup := couchdbtest.CouchDBSetup(couchdbDataUnzipDir, localdHostDir)
+	couchdbBinds := []string{
+		fmt.Sprintf("%s:%s", couchdbDataUnzipDir, "/opt/couchdb/data"),
+		fmt.Sprintf("%s:%s", localdHostDir, "/opt/couchdb/etc/local.d"),
+	}
+	couchAddress, cleanup := couchdbtest.CouchDBSetup(couchdbBinds)
 	defer cleanup()
 
 	// set required config data to use state couchdb
