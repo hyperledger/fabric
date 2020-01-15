@@ -463,10 +463,6 @@ var _ = Describe("RuntimeLauncher", func() {
 		Expect(fakeRuntime.StopCallCount()).To(Equal(1))
 		ccidArg := fakeRuntime.StopArgsForCall(0)
 		Expect(ccidArg).To(Equal("chaincode-name:chaincode-version"))
-
-		Expect(fakeRegistry.DeregisterCallCount()).To(Equal(1))
-		ccidArg = fakeRegistry.DeregisterArgsForCall(0)
-		Expect(ccidArg).To(Equal("chaincode-name:chaincode-version"))
 	})
 
 	Context("when stopping the runtime fails while stopping", func() {
@@ -477,18 +473,6 @@ var _ = Describe("RuntimeLauncher", func() {
 		It("preserves the initial error", func() {
 			err := runtimeLauncher.Stop("chaincode-name:chaincode-version")
 			Expect(err).To(MatchError("failed to stop chaincode chaincode-name:chaincode-version: liver-mush"))
-			Expect(fakeRegistry.DeregisterCallCount()).To(Equal(0))
-		})
-	})
-
-	Context("when deregistering fails while stopping", func() {
-		BeforeEach(func() {
-			fakeRegistry.DeregisterReturns(errors.New("pickled-okra"))
-		})
-
-		It("preserves the initial error", func() {
-			err := runtimeLauncher.Stop("chaincode-name:chaincode-version")
-			Expect(err).To(MatchError("failed to deregister chaincode chaincode-name:chaincode-version: pickled-okra"))
 		})
 	})
 })
