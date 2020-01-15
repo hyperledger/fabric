@@ -72,7 +72,7 @@ Usage:
  Examples:
   network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0-beta
   network.sh createChannel -c channelName
-  network.sh deployCC -l node
+  network.sh deployCC -l javascript
 ```
 
 From inside the `test-network` directory, run the following command to remove
@@ -319,7 +319,8 @@ If the command is successful, you should see the following response:
 Because the endorsement policy for the fabcar chaincode requires the transaction
 to be signed by Org1 and Org2, the chaincode invoke command needs to target both
 `peer0.org1.example.com` and `peer0.org1.example.com` using the `--peerAddresses`
-and `--tlsRootCertFiles` flags.
+flag. Because TLS is enabled for the network, the command also needs to reference
+the TLS certificate for each peer using `--tlsRootCertFiles` flag.
 
 After we invoke the chaincode, we can use another query to see how the invoke
 changed the assets on the blockchain ledger. Since we already queried the Org1
@@ -448,8 +449,8 @@ each organization and generate the certificates and keys for each identity. You
 can find the commands that are used to set up the network in the `registerEnroll.sh`
 script in the `organizations/fabric-ca` directory. To learn more about how you
 would use the Fabric CA to deploy a Fabric network, visit the
-[Fabric CA operations guide](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html). You can learn more about how
-Fabric uses PKI by visiting the [identity](identity/identity.html) and [membership](membership/membership.html) concept topics.
+[Fabric CA operations guide](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html).
+You can learn more about how Fabric uses PKI by visiting the [identity](identity/identity.html) and [membership](membership/membership.html) concept topics.
 
 ## What's happening behind the scenes?
 
