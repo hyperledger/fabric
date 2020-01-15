@@ -70,14 +70,19 @@ Usage:
 	network.sh up
 
  Examples:
-  network.sh up createChannel -ca -c mychannel -s couchdb -i 1.4.0
+  network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0-beta
   network.sh createChannel -c channelName
-  network.sh deployCC -l node
+  network.sh deployCC -l javascript
 ```
 
-From inside the `test-network` directory, you can bring up the network by issuing
-the following command. You will experience problems if you try to run the script
-from another directory:
+From inside the `test-network` directory, run the following command to remove
+any containers or artifacts from any previous runs:
+```
+./network.sh down
+```
+
+You can then bring up the network by issuing the following command. You will
+experience problems if you try to run the script from another directory:
 ```
 ./network.sh up
 ```
@@ -237,9 +242,10 @@ chaincode on the channel using the following command:
 The `deployCC` subcommand will install the **fabcar** chaincode on
 ``peer0.org1.example.com`` and ``peer0.org2.example.com`` and then deploy
 the chaincode on the channel specified using the channel flag (or `mychannel`
-if no channel is specified). By default, The script installs the Golang version
-of the fabcar chaincode. However, you can use the language flag, `-l`, to install
-the Java or javascript versions of the chaincode.
+if no channel is specified). If are deploying a chaincode for the first time, the
+script will install the chaincode dependencies. By default, The script installs
+the Golang version of the fabcar chaincode. However, you can use the language
+flag, `-l`, to install the Java or javascript versions of the chaincode.
 
 After the **fabcar** chaincode definition has been committed to the channel, the
 script initializes the chaincode by invoking the `init` function and then invokes
@@ -311,16 +317,10 @@ If the command is successful, you should see the following response:
 ```
 
 Because the endorsement policy for the fabcar chaincode requires the transaction
-to be signed by Org1 and Org2, any chaincode invoke using the peer binaries
-needs to target both `peer0.org1.example.com` and `peer0.org1.example.com`. You
-can pass the following values to your invoke commands to target both peers:
-```
- --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-```
-
-The section above passes the endpoints of both peers to the `--peerAddresses`
-flag, and provides the path to each peer's TLS certificate in the organizations
-folder to the `--tlsRootCertFiles` flags.
+to be signed by Org1 and Org2, the chaincode invoke command needs to target both
+`peer0.org1.example.com` and `peer0.org1.example.com` using the `--peerAddresses`
+flag. Because TLS is enabled for the network, the command also needs to reference
+the TLS certificate for each peer using the `--tlsRootCertFiles` flag.
 
 After we invoke the chaincode, we can use another query to see how the invoke
 changed the assets on the blockchain ledger. Since we already queried the Org1
@@ -449,8 +449,8 @@ each organization and generate the certificates and keys for each identity. You
 can find the commands that are used to set up the network in the `registerEnroll.sh`
 script in the `organizations/fabric-ca` directory. To learn more about how you
 would use the Fabric CA to deploy a Fabric network, visit the
-[Fabric CA operations guide](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html). You can learn more about how
-Fabric uses PKI by visiting the [identity](identity/identity.html) and [membership](membership/membership.html) concept topics.
+[Fabric CA operations guide](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html).
+You can learn more about how Fabric uses PKI by visiting the [identity](identity/identity.html) and [membership](membership/membership.html) concept topics.
 
 ## What's happening behind the scenes?
 
@@ -571,7 +571,7 @@ If you have any problems with the tutorial, review the following:
    Ensure that the file in question (**createChannel.sh** in this example) is
    encoded in the Unix format. This was most likely caused by not setting
    ``core.autocrlf`` to ``false`` in your Git configuration (see
-   :ref:`windows-extras`). There are several ways of fixing this. If you have
+    [Windows extras](prereqs.html#windows-extras)). There are several ways of fixing this. If you have
    access to the vim editor for instance, open the file:
    ```
    vim ./fabric-samples/test-network/scripts/createChannel.sh
