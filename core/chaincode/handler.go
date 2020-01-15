@@ -392,8 +392,8 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 				chaincodeLogger.Debugf("received EOF, ending chaincode support stream: %s", rmsg.err)
 				return rmsg.err
 			case rmsg.err != nil:
-				err := errors.Wrap(rmsg.err, "receive failed")
-				chaincodeLogger.Errorf("handling chaincode support stream: %+v", err)
+				err := errors.Wrap(rmsg.err, "receive from chaincode support stream failed")
+				chaincodeLogger.Debugf("%+v", err)
 				return err
 			case rmsg.msg == nil:
 				err := errors.New("received nil message, ending chaincode support stream")

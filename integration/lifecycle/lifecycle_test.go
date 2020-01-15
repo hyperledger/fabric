@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -36,6 +37,7 @@ var _ = Describe("Lifecycle", func() {
 		testDir   string
 		network   *nwo.Network
 		processes = map[string]ifrit.Process{}
+		termFiles []string
 	)
 
 	BeforeEach(func() {
@@ -66,7 +68,25 @@ var _ = Describe("Lifecycle", func() {
 		core.Ledger.State.StateDatabase = "CouchDB"
 		core.Ledger.State.CouchDBConfig.CouchDBAddress = couchAddr
 		processes[couchDB.Name] = couchProcess
+		setTermFileEnvForBinaryExternalBuilder := func(envKey, termFile string, externalBuilders []*fabricconfig.ExternalBuilder) {
+			os.Setenv(envKey, termFile)
+			for _, e := range externalBuilders {
+				if e.Name == "binary" {
+					e.EnvironmentWhitelist = append(e.EnvironmentWhitelist, envKey)
+				}
+			}
+		}
+		org1TermFile := filepath.Join(testDir, "org1-term-file")
+		setTermFileEnvForBinaryExternalBuilder("ORG1_TERM_FILE", org1TermFile, core.Chaincode.ExternalBuilders)
 		network.WritePeerConfig(peer, core)
+
+		peer = network.Peer("Org2", "peer0")
+		core = network.ReadPeerConfig(peer)
+		org2TermFile := filepath.Join(testDir, "org2-term-file")
+		setTermFileEnvForBinaryExternalBuilder("ORG2_TERM_FILE", org2TermFile, core.Chaincode.ExternalBuilders)
+		network.WritePeerConfig(peer, core)
+
+		termFiles = []string{org1TermFile, org2TermFile}
 
 		// bootstrap the network
 		network.Bootstrap()
@@ -205,6 +225,11 @@ var _ = Describe("Lifecycle", func() {
 
 		By("listing the installed chaincodes and verifying the channel/chaincode definitions that are using the chaincode package")
 		nwo.QueryInstalledReferences(network, "testchannel", chaincode.Label, chaincode.PackageID, network.Peer("Org2", "peer0"), []string{"My_1st-Chaincode", "Version-0.0"})
+
+		By("checking for term files that are written when the chaincode is stopped via SIGTERM")
+		for _, termFile := range termFiles {
+			Expect(termFile).To(BeARegularFile())
+		}
 
 		By("ensuring the previous chaincode package is no longer referenced by a chaincode definition on the channel")
 		Expect(nwo.QueryInstalled(network, network.Peer("Org2", "peer0"))()).To(

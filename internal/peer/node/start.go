@@ -169,8 +169,12 @@ type custodianLauncherAdapter struct {
 	streamHandler extcc.StreamHandler
 }
 
-func (e custodianLauncherAdapter) Launch(ccid string) error {
-	return e.launcher.Launch(ccid, e.streamHandler)
+func (c custodianLauncherAdapter) Launch(ccid string) error {
+	return c.launcher.Launch(ccid, c.streamHandler)
+}
+
+func (c custodianLauncherAdapter) Stop(ccid string) error {
+	return c.launcher.Stop(ccid)
 }
 
 func serve(args []string) error {
