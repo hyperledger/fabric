@@ -211,7 +211,7 @@ func (c *committer) commitUpdates() error {
 			// the document has already been deleted and the DeleteDoc will not return an error
 			err = c.db.DeleteDoc(resp.ID, "")
 		} else {
-			logger.Warningf("CouchDB batch document update encountered an problem. Retrying update for document ID:%s", resp.ID)
+			logger.Warningf("CouchDB batch document update encountered an problem. Reason:%s, Retrying update for document ID:%s", resp.Reason, resp.ID)
 			// Save the individual document to couchdb
 			// Note that this will do retries as needed
 			var revision string
