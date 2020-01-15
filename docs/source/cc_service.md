@@ -29,6 +29,14 @@ The chaincode package should be used to provide two pieces of information to the
 
 There is plenty of flexibility to gathering the above information. The sample scripts in the [External builder and launcher sample scripts](#external-builder-and-launcher-sample-scripts) illustrate a simple approach to providing the information.
 
+For use index files in external chaincode put `metadata` (`/metadata/statedb/couchdb/indexes/`) to `code.tar.gz`. See more about index metadata: https://hyperledger-fabric.readthedocs.io/en/release-1.4/couchdb_tutorial.html#add-the-index-to-your-chaincode-folder
+
+How to make pkg:
+```
+tar cfz code.tar.gz connection.json metadata
+tar cfz $1-pkg.tgz metadata.json code.tar.gz
+```
+
 ## Configuring a peer to process external chaincode
 
 In this section we go over the configuration needed
@@ -120,6 +128,11 @@ fi
 #simply copy the endpoint information to specified output location
 cp $SOURCE/connection.json $OUTPUT/connection.json
 
+if [ -d "$SOURCE/metadata" ]  ; then
+    cp -a $SOURCE/metadata $OUTPUT/metadata
+    echo "$SOURCE/metadata copied to $OUTPUT/metadata" >> /tmp/buildsucc.txt
+fi
+
 exit 0
 
 ```
@@ -169,6 +182,10 @@ set -euo pipefail
 
 BLD="$1"
 RELEASE="$2"
+
+if [ -d "$BLD/metadata" ]; then
+   cp -a "$BLD/metadata/"* "$RELEASE/"
+fi
 
 #external chaincodes expect artifacts to be placed under "$RELEASE"/chaincode/server
 if [ -f $BLD/connection.json ]; then
