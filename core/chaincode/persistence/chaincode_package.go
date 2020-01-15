@@ -240,11 +240,9 @@ type ChaincodePackageParser struct {
 	MetadataProvider MetadataProvider
 }
 
-var (
-	// LabelRegexp is the regular expression controlling
-	// the allowed characters for the package label
-	LabelRegexp = regexp.MustCompile(`^[[:alnum:]][[:alnum:]_.+-]*$`)
-)
+// LabelRegexp is the regular expression controlling  the allowed characters
+// for the package label.
+var LabelRegexp = regexp.MustCompile(`^[[:alnum:]][[:alnum:]_.+-]*$`)
 
 func validateLabel(label string) error {
 	if !LabelRegexp.MatchString(label) {
