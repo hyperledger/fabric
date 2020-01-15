@@ -217,19 +217,19 @@ type Docker struct {
 }
 
 type Chaincode struct {
-	Builder          string            `yaml:"builder,omitempty"`
-	Pull             bool              `yaml:"pull"`
-	Golang           *Golang           `yaml:"golang,omitempty"`
-	Java             *Java             `yaml:"java,omitempty"`
-	Node             *Node             `yaml:"node,omitempty"`
-	InstallTimeout   time.Duration     `yaml:"installTimeout,omitempty"`
-	StartupTimeout   time.Duration     `yaml:"startupTimeout,omitempty"`
-	ExecuteTimeout   time.Duration     `yaml:"executeTimeout,omitempty"`
-	Mode             string            `yaml:"mode,omitempty"`
-	Keepalive        int               `yaml:"keepalive,omitempty"`
-	System           SystemFlags       `yaml:"system,omitempty"`
-	Logging          *Logging          `yaml:"logging,omitempty"`
-	ExternalBuilders []ExternalBuilder `yaml:"externalBuilders"`
+	Builder          string             `yaml:"builder,omitempty"`
+	Pull             bool               `yaml:"pull"`
+	Golang           *Golang            `yaml:"golang,omitempty"`
+	Java             *Java              `yaml:"java,omitempty"`
+	Node             *Node              `yaml:"node,omitempty"`
+	InstallTimeout   time.Duration      `yaml:"installTimeout,omitempty"`
+	StartupTimeout   time.Duration      `yaml:"startupTimeout,omitempty"`
+	ExecuteTimeout   time.Duration      `yaml:"executeTimeout,omitempty"`
+	Mode             string             `yaml:"mode,omitempty"`
+	Keepalive        int                `yaml:"keepalive,omitempty"`
+	System           SystemFlags        `yaml:"system,omitempty"`
+	Logging          *Logging           `yaml:"logging,omitempty"`
+	ExternalBuilders []*ExternalBuilder `yaml:"externalBuilders"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
