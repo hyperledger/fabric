@@ -32,6 +32,7 @@ const (
 	LifecyclePort
 	MSPPort
 	NWOBasePort
+	PKCS11Port
 	PluggableBasePort
 	PrivateDataBasePort
 	RaftBasePort
