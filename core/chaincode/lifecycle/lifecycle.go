@@ -447,7 +447,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		return errors.WithMessage(err, "could not serialize chaincode package info to state")
 	}
 
-	logger.Infof("Successfully approved definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+	logger.Infof("Successfully approved definition %s, name '%s', package ID '%s', on channel '%s'", cd, ccname, packageID, chname)
 
 	return nil
 }
