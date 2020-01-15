@@ -400,6 +400,17 @@ func (n *Network) userCryptoDir(org *Organization, nodeOrganizationType, user, c
 	)
 }
 
+// PeerOrgCADir returns the path to the folder containing the CA certificate(s) and/or
+// keys for the specified organization
+func (n *Network) PeerOrgCADir(o *Organization) string {
+	return filepath.Join(
+		n.CryptoPath(),
+		"peerOrganizations",
+		o.Domain,
+		"ca",
+	)
+}
+
 // PeerUserMSPDir returns the path to the MSP directory containing the
 // certificates and keys for the specified user of the peer.
 func (n *Network) PeerUserMSPDir(p *Peer, user string) string {

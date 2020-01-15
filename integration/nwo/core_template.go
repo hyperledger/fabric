@@ -101,8 +101,16 @@ peer:
     timewindow: 15m
   fileSystemPath: filesystem
   BCCSP:
-    Default: SW
+    Default: SW 
     SW:
+      Hash: SHA2
+      Security: 256
+      FileKeyStore:
+        KeyStore:
+    PKCS11:
+      Library: /usr/local/Cellar/softhsm/2.5.0_1/lib/softhsm/libsofthsm2.so
+      Label: ForFabric
+      Pin: "98765432"
       Hash: SHA2
       Security: 256
       FileKeyStore:

@@ -10,6 +10,12 @@
 
 set -e -u
 
+excluded="--exclude-dir=vendor --exclude-dir=scripts"
+# set variables to empty string if unset
+if [ -z ${PKCS11_LIB-} ] || [ -z ${PKCS11_LABEL-} ] || [ -z ${PKCS11_PIN-} ]; then
+    excluded="${excluded} --exclude-dir=pkcs11"
+fi
+
 fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$fabric_dir"
@@ -17,7 +23,7 @@ cd "$fabric_dir"
 dirs=()
 if [ "${#}" -eq 0 ]; then
   specs=()
-  specs=("$(grep -Ril --exclude-dir=vendor --exclude-dir=scripts "RunSpecs" . | grep integration)")
+  specs=("$(grep -Ril $excluded "RunSpecs" . | grep integration)")
   for spec in ${specs[*]}; do
     dirs+=("$(dirname "${spec}")")
   done
@@ -39,5 +45,5 @@ for ((i = "$agentNumber"; i <= "$testCount"; )); do
   i=$((${i} + ${totalAgents}))
 done
 
-echo "Running the following test suites: ${files[*]}"
+echo "Running the following test suites: ${files[*]}" 
 ginkgo -keepGoing --slowSpecThreshold 60 ${files[*]}
