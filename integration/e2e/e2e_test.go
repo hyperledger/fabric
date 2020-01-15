@@ -25,6 +25,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -211,10 +212,61 @@ var _ = Describe("EndToEnd", func() {
 			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
+			By("listing the containers after committing the chaincode definition")
+			getPackageID := func(c nwo.Chaincode) string {
+				fileBytes, err := ioutil.ReadFile(c.PackageFile)
+				Expect(err).NotTo(HaveOccurred())
+				hashStr := fmt.Sprintf("%x", util.ComputeSHA256(fileBytes))
+				return hashStr
+			}
+
+			modulePkgID := getPackageID(chaincode)
+			gopathPkgID := getPackageID(gopathChaincode)
+			initialContainerFilter := map[string][]string{
+				"name": {modulePkgID, gopathPkgID},
+			}
+			containers, err := client.ListContainers(docker.ListContainersOptions{Filters: initialContainerFilter})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).To(HaveLen(2))
+
 			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
 
 			CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer0"))
 			CheckOrdererOperationEndpoints(network, orderer)
+
+			// upgrade chaincode to v2.0 with different label
+			chaincode.Version = "1.0"
+			chaincode.Sequence = "2"
+			chaincode.Label = "my_module_chaincode_updated"
+			gopathChaincode.Version = "1.0"
+			gopathChaincode.Sequence = "2"
+			gopathChaincode.Label = "my_simple_chaincode_updated"
+
+			// package, install, and approve by org1 - module chaincode
+			packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"))
+
+			// package, install, and approve by org2 - gopath chaincode, same logic
+			packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"))
+
+			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
+			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
+
+			By("listing the containers after updating the chaincode definition")
+			// expect the containers for the previous package id to be stopped
+			containers, err = client.ListContainers(docker.ListContainersOptions{Filters: initialContainerFilter})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).To(HaveLen(0))
+			updatedModulePkgID := getPackageID(chaincode)
+			updatedGopathPkgID := getPackageID(gopathChaincode)
+			updatedContainerFilter := map[string][]string{
+				"name": {updatedModulePkgID, updatedGopathPkgID},
+			}
+			containers, err = client.ListContainers(docker.ListContainersOptions{Filters: updatedContainerFilter})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).To(HaveLen(2))
+
+			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
 		})
 	})
 
