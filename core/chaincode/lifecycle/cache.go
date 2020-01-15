@@ -450,9 +450,9 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 		}
 
 		if !initializing {
-			// check for existing local chaincodes that reference this chaincode name on this channel
+			// check for existing local chaincodes that reference this chaincode
+			// name on this channel
 			for _, lc := range c.localChaincodes {
-				// track which channel, if any, we removed a local chaincode reference from
 				if ref, ok := lc.References[channelID][name]; ok {
 					if ref.InstallInfo == nil || localChaincode.Info == nil {
 						continue
@@ -461,16 +461,26 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 						continue
 					}
 
-					// remove existing local chaincode reference, which referred to an old chaincode definition
+					// remove existing local chaincode reference, which referred to a
+					// previous chaincode definition
 					delete(lc.References[channelID], name)
 					if len(lc.References[channelID]) == 0 {
 						delete(lc.References, channelID)
 
-						// TODO FAB-17046: finally, check to see if this chaincode is
-						// referenced in any channel. if not, stop the chaincode here
-						// if len(lc.References) == 0 {
-						// 	logger.Debug("chaincode package with label %s is no longer referenced and will be stopped", localChaincode.Info.Label)
-						// }
+						// check to see if this "local" chaincode is installed (an entry
+						// is added into local chaincodes for active chaincode definition
+						// references regardless of whether the peer has a chaincode
+						// package installed)
+						if lc.Info == nil {
+							continue
+						}
+
+						// finally, check to see if this chaincode is referenced in any
+						// channel. if not, stop the chaincode here
+						if len(lc.References) == 0 {
+							logger.Debugf("chaincode package with label %s is no longer referenced and will be stopped", lc.Info.Label)
+							c.chaincodeCustodian.NotifyStoppable(lc.Info.PackageID)
+						}
 					}
 				}
 			}
