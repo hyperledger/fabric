@@ -9,6 +9,7 @@ package scc
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
@@ -22,12 +23,13 @@ func (e SendPanicFailure) Error() string {
 
 // PeerChaincodeStream interface for stream between Peer and chaincode instance.
 type inProcStream struct {
-	recv <-chan *pb.ChaincodeMessage
-	send chan<- *pb.ChaincodeMessage
+	recv      <-chan *pb.ChaincodeMessage
+	send      chan<- *pb.ChaincodeMessage
+	closeOnce sync.Once
 }
 
 func newInProcStream(recv <-chan *pb.ChaincodeMessage, send chan<- *pb.ChaincodeMessage) *inProcStream {
-	return &inProcStream{recv, send}
+	return &inProcStream{recv: recv, send: send}
 }
 
 func (s *inProcStream) Send(msg *pb.ChaincodeMessage) (err error) {
@@ -52,5 +54,6 @@ func (s *inProcStream) Recv() (*pb.ChaincodeMessage, error) {
 }
 
 func (s *inProcStream) CloseSend() error {
+	s.closeOnce.Do(func() { close(s.send) })
 	return nil
 }

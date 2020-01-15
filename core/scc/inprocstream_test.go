@@ -46,3 +46,15 @@ func TestRecvChannelClosedError(t *testing.T) {
 		assert.Contains(t, err.Error(), "channel is closed")
 	}
 }
+
+func TestCloseSend(t *testing.T) {
+	send := make(chan *pb.ChaincodeMessage)
+	recv := make(chan *pb.ChaincodeMessage)
+
+	stream := newInProcStream(recv, send)
+	stream.CloseSend()
+
+	_, ok := <-send
+	assert.False(t, ok, "send channel should be closed")
+	assert.NotPanics(t, func() { stream.CloseSend() }, "CloseSend should be idempotent")
+}
