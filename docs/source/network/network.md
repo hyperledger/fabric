@@ -6,9 +6,6 @@ you're an architect, administrator or developer, you can use this topic to get a
 solid understanding of the major structure and process components in a
 Hyperledger Fabric blockchain network. This topic will use a manageable worked
 example that introduces all of the major components in a blockchain network.
-After understanding this example you can read more detailed information about
-these components elsewhere in the documentation, or try
-[building a sample network](../build_network.html).
 
 After reading this topic and understanding the concept of policies, you will
 have a solid understanding of the decisions that organizations need to make to

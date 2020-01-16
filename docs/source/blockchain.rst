@@ -221,31 +221,33 @@ currently include Kafka, and Raft.
 Where can I learn more?
 -----------------------
 
-* `Identity <identity/identity.html>`_ (conceptual documentation)
+* `Identity <identity/identity.html>`_
 
 A conceptual doc that will take you through the critical role identities play
 in a Fabric network (using an established PKI structure and x.509 certificates).
 
-* `Membership <membership/membership.html>`_ (conceptual documentation)
+* `Membership <membership/membership.html>`_
 
 Talks through the role of a Membership Service Provider (MSP), which converts
 identities into roles in a Fabric network.
 
-* `Peers <peers/peers.html>`_ (conceptual documentation)
+* `Blockchain network <network/network.html>`_
 
-Peers --- owned by organizations --- host the ledger and smart contracts and make
-up the physical structure of a Fabric network.
+After a group of organizations agree to form a blockchain network, this concept
+doc talks about how the network is formed and the components of a Fabric network.
 
-* :doc:`build_network` (tutorial)
+* :doc:`getting_started`
 
-Learn how to download Fabric binaries and bootstrap your own sample network with
-a sample script. Then tear down the network and learn how it was constructed one
-step at a time.
+When are ready to experiment with Fabric, use the getting started guide to download the
+Fabric Docker images and clone the Fabric Samples repository. You can then use
+the `Fabric test network <test_network.html>`_ to deploy a simple network on
+your local machine.
 
-* :doc:`write_first_app` (tutorial)
+* doc:`developapps/developing_applications`
 
-Deploys a very simple network --- even simpler than Build Your First Network ---
-to use with a simple smart contract and application.
+Explore how applications and smart contracts work together to manage assets
+and solve business problems using an example blockchain use case in which
+organizations trade commercial paper.
 
 * :doc:`txflow`
 
