@@ -57,6 +57,7 @@ type deliverServiceImpl struct {
 // how it verifies messages received from it,
 // and how it disseminates the messages to other peers
 type Config struct {
+	IsStaticLeader bool
 	// CryptoSvc performs cryptographic actions like message verification and signing
 	// and identity validation.
 	CryptoSvc blocksprovider.BlockVerifier
@@ -118,6 +119,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		return errors.New(errMsg)
 	}
 	logger.Info("This peer will retrieve blocks from ordering service and disseminate to other peers in the organization for channel", chainID)
+
 	dc := &blocksprovider.Deliverer{
 		ChannelID:     chainID,
 		Gossip:        d.conf.Gossip,
@@ -134,6 +136,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		MaxRetryDelay:     time.Duration(d.conf.DeliverServiceConfig.ReConnectBackoffThreshold),
 		MaxRetryDuration:  d.conf.DeliverServiceConfig.ReconnectTotalTimeThreshold,
 		InitialRetryDelay: 100 * time.Millisecond,
+		YieldLeadership:   !d.conf.IsStaticLeader,
 	}
 
 	if d.conf.DeliverGRPCClient.MutualTLSRequired() {

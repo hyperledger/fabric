@@ -123,7 +123,7 @@ type GossipServiceAdapter interface {
 // DeliveryServiceFactory factory to create and initialize delivery service instance
 type DeliveryServiceFactory interface {
 	// Returns an instance of delivery client
-	Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, msc api.MessageCryptoService) deliverservice.DeliverService
+	Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, msc api.MessageCryptoService, isStaticLead bool) deliverservice.DeliverService
 }
 
 type deliveryFactoryImpl struct {
@@ -134,8 +134,9 @@ type deliveryFactoryImpl struct {
 }
 
 // Returns an instance of delivery client
-func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, mcs api.MessageCryptoService) deliverservice.DeliverService {
+func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, mcs api.MessageCryptoService, isStaticLeader bool) deliverservice.DeliverService {
 	return deliverservice.NewDeliverService(&deliverservice.Config{
+		IsStaticLeader:       isStaticLeader,
 		CryptoSvc:            mcs,
 		Gossip:               g,
 		Signer:               df.signer,
@@ -345,7 +346,7 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		blockingMode,
 		stateConfig)
 	if g.deliveryService[channelID] == nil {
-		g.deliveryService[channelID] = g.deliveryFactory.Service(g, ordererSource, g.mcs)
+		g.deliveryService[channelID] = g.deliveryFactory.Service(g, ordererSource, g.mcs, g.serviceConfig.OrgLeader)
 	}
 
 	// Delivery service might be nil only if it was not able to get connected
