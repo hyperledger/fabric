@@ -143,7 +143,6 @@ func (s *Store) CommitWithPvtData(blockAndPvtdata *ledger.BlockAndPvtData) error
 	}
 
 	if err := s.AddBlock(blockAndPvtdata.Block); err != nil {
-		s.pvtdataStore.Rollback()
 		return err
 	}
 

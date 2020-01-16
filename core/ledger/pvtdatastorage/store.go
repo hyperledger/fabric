@@ -19,15 +19,10 @@ type Provider interface {
 }
 
 // Store manages the permanent storage of private write sets for a ledger
-// Beacsue the pvt data is supposed to be in sync with the blocks in the
-// ledger, both should logically happen in an atomic operation. In order
-// to accomplish this, an implementation of this store should provide
-// support for a two-phase like commit/rollback capability.
 // The expected use is such that - first the private data will be given to
 // this store (via `Prepare` funtion) and then the block is appended to the block storage.
-// Finally, one of the functions `Commit` or `Rollback` is invoked on this store based
-// on whether the block was written successfully or not. The store implementation
-// is expected to survive a server crash between the call to `Prepare` and `Commit`/`Rollback`
+// Finally, the functions `Commit` invoked on this store. The store implementation
+// is expected to survive a server crash between the call to `Prepare` and `Commit`.
 type Store interface {
 	// Init initializes the store. This function is expected to be invoked before using the store
 	Init(btlPolicy pvtdatapolicy.BTLPolicy)
@@ -51,15 +46,13 @@ type Store interface {
 	// for which this peer is a member; `ineligible` denotes that the missing private data belong to a
 	// collection for which this peer is not a member.
 	// This call does not commit the pvt data and store missing private data. Subsequently, the caller
-	// is expected to call either `Commit` or `Rollback` function. Return from this should ensure
+	// is expected to call `Commit` function. Return from this should ensure
 	// that enough preparation is done such that `Commit` function invoked afterwards can commit the
 	// data and the store is capable of surviving a crash between this function call and the next
 	// invoke to the `Commit`
 	Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error
 	// Commit commits the pvt data passed in the previous invoke to the `Prepare` function
 	Commit() error
-	// Rollback rolls back the pvt data passed in the previous invoke to the `Prepare` function
-	Rollback() error
 	// ProcessCollsEligibilityEnabled notifies the store when the peer becomes eligible to recieve data for an
 	// existing collection. Parameter 'committingBlk' refers to the block number that contains the corresponding
 	// collection upgrade transaction and the parameter 'nsCollMap' contains the collections for which the peer
@@ -86,7 +79,7 @@ type Store interface {
 	Shutdown()
 }
 
-// ErrIllegalCall is to be thrown by a store impl if the store does not expect a call to Prepare/Commit/Rollback/InitLastCommittedBlock
+// ErrIllegalCall is to be thrown by a store impl if the store does not expect a call to Prepare/Commit/InitLastCommittedBlock
 type ErrIllegalCall struct {
 	msg string
 }
