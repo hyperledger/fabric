@@ -416,9 +416,10 @@ func TestAddAfterBlkStoreError(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(9), pvtStoreCommitHt)
 
+	// pvt store should have a pending batch
 	pvtStorePndingBatch, err := store.pvtdataStore.HasPendingBatch()
 	assert.NoError(t, err)
-	assert.False(t, pvtStorePndingBatch)
+	assert.True(t, pvtStorePndingBatch)
 }
 
 func TestPvtStoreAheadOfBlockStore(t *testing.T) {

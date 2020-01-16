@@ -90,10 +90,6 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	assert.NoError(store.Prepare(1, testData, blk1MissingData))
 	assert.NoError(store.Commit())
 
-	// pvt data with block 2 - rollback
-	assert.NoError(store.Prepare(2, testData, nil))
-	assert.NoError(store.Rollback())
-
 	// pvt data retrieval for block 0 should return nil
 	var nilFilter ledger.PvtNsCollFilter
 	retrievedData, err := store.GetPvtDataByBlockNum(0, nilFilter)
@@ -773,83 +769,7 @@ func testCollElgEnabled(t *testing.T) {
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 }
 
-func TestRollBack(t *testing.T) {
-	btlPolicy := btltestutil.SampleBTLPolicy(
-		map[[2]string]uint64{
-			{"ns-1", "coll-1"}: 0,
-			{"ns-1", "coll-2"}: 0,
-		},
-	)
-	env := NewTestStoreEnv(t, "TestRollBack", btlPolicy)
-	defer env.Cleanup()
-	assert := assert.New(t)
-	store := env.TestStore
-	assert.NoError(store.Prepare(0, nil, nil))
-	assert.NoError(store.Commit())
-
-	pvtdata := []*ledger.TxPvtData{
-		produceSamplePvtdata(t, 0, []string{"ns-1:coll-1", "ns-1:coll-2"}),
-		produceSamplePvtdata(t, 5, []string{"ns-1:coll-1", "ns-1:coll-2"}),
-	}
-	missingData := make(ledger.TxMissingPvtDataMap)
-	missingData.Add(1, "ns-1", "coll-1", true)
-	missingData.Add(5, "ns-1", "coll-1", true)
-	missingData.Add(5, "ns-2", "coll-2", false)
-
-	for i := 1; i <= 9; i++ {
-		assert.NoError(store.Prepare(uint64(i), pvtdata, missingData))
-		assert.NoError(store.Commit())
-	}
-
-	datakeyTx0 := &dataKey{
-		nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1"},
-		txNum:     0,
-	}
-	datakeyTx5 := &dataKey{
-		nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1"},
-		txNum:     5,
-	}
-	eligibleMissingdatakey := &missingDataKey{
-		nsCollBlk:  nsCollBlk{ns: "ns-1", coll: "coll-1"},
-		isEligible: true,
-	}
-
-	// test store state before preparing for block 10
-	testPendingBatch(false, assert, store)
-	testLastCommittedBlockHeight(10, assert, store)
-
-	// prepare for block 10 and test store for presence of datakeys and eligibile missingdatakeys
-	assert.NoError(store.Prepare(10, pvtdata, missingData))
-	testPendingBatch(true, assert, store)
-	testLastCommittedBlockHeight(10, assert, store)
-
-	datakeyTx0.blkNum = 10
-	datakeyTx5.blkNum = 10
-	eligibleMissingdatakey.blkNum = 10
-	assert.True(testDataKeyExists(t, store, datakeyTx0))
-	assert.True(testDataKeyExists(t, store, datakeyTx5))
-	assert.True(testMissingDataKeyExists(t, store, eligibleMissingdatakey))
-
-	// rollback last prepared block and test store for absence of datakeys and eligibile missingdatakeys
-	store.Rollback()
-	testPendingBatch(false, assert, store)
-	testLastCommittedBlockHeight(10, assert, store)
-	assert.False(testDataKeyExists(t, store, datakeyTx0))
-	assert.False(testDataKeyExists(t, store, datakeyTx5))
-	assert.False(testMissingDataKeyExists(t, store, eligibleMissingdatakey))
-
-	// For previously committed blocks the datakeys and eligibile missingdatakeys should still be present
-	for i := 1; i <= 9; i++ {
-		datakeyTx0.blkNum = uint64(i)
-		datakeyTx5.blkNum = uint64(i)
-		eligibleMissingdatakey.blkNum = uint64(i)
-		assert.True(testDataKeyExists(t, store, datakeyTx0))
-		assert.True(testDataKeyExists(t, store, datakeyTx5))
-		assert.True(testMissingDataKeyExists(t, store, eligibleMissingdatakey))
-	}
-}
-
-// TODO Add tests for simulating a crash between calls `Prepare` and `Commit`/`Rollback` - [FAB-13099]
+// TODO Add tests for simulating a crash between calls `Prepare` and `Commit` - [FAB-13099]
 
 func testEmpty(expectedEmpty bool, assert *assert.Assertions, store Store) {
 	isEmpty, err := store.IsEmpty()

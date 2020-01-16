@@ -165,7 +165,7 @@ func (s *store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error {
 	if s.batchPending {
 		return &ErrIllegalCall{`A pending batch exists as as result of last invoke to "Prepare" call.
-			 Invoke "Commit" or "Rollback" on the pending batch before invoking "Prepare" function`}
+			 Invoke "Commit" on the pending batch before invoking "Prepare" function`}
 	}
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
@@ -232,38 +232,6 @@ func (s *store) Commit() error {
 	atomic.StoreUint64(&s.lastCommittedBlock, committingBlockNum)
 	logger.Debugf("Committed private data for block [%d]", committingBlockNum)
 	s.performPurgeIfScheduled(committingBlockNum)
-	return nil
-}
-
-// Rollback implements the function in the interface `Store`
-// This deletes the existing data entries and eligible missing data entries.
-// However, this does not delete ineligible missing data entires as the next try
-// would have exact same entries and will overwrite those. This also leaves the
-// existing expiry entires as is because, most likely they will also get overwritten
-// per new data entries. Even if some of the expiry entries does not get overwritten,
-// (because of some data may be missing next time), the additional expiry entries are just
-// a Noop
-func (s *store) Rollback() error {
-	if !s.batchPending {
-		return &ErrIllegalCall{"No pending batch to rollback"}
-	}
-	blkNum := s.nextBlockNum()
-	batch := leveldbhelper.NewUpdateBatch()
-	itr := s.db.GetIterator(datakeyRange(blkNum))
-	for itr.Next() {
-		batch.Delete(itr.Key())
-	}
-	itr.Release()
-	itr = s.db.GetIterator(eligibleMissingdatakeyRange(blkNum))
-	for itr.Next() {
-		batch.Delete(itr.Key())
-	}
-	itr.Release()
-	batch.Delete(pendingCommitKey)
-	if err := s.db.WriteBatch(batch, true); err != nil {
-		return err
-	}
-	s.batchPending = false
 	return nil
 }
 
