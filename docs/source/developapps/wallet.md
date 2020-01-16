@@ -72,17 +72,12 @@ See how:
 There are different types of wallets according to where they store their
 identities:
 
-![wallet.types](./develop.diagram.12.png) *The four different types of wallet:
-File  system, In-memory, Hardware Security Module (HSM) and CouchDB.*
+![wallet.types](./develop.diagram.12.png) *The three different types of wallet storage:
+File system, In-memory and CouchDB.*
 
-* **FileSystem**: This is the most common place to store wallets; file systems
+* **File system**: This is the most common place to store wallets; file systems
   are pervasive, easy to understand, and can be network mounted. They are a good
   default choice for wallets.
-
-  Use the `FileSystemWallet`
-  [class](https://fabric-sdk-node.github.io/master/module-fabric-network.FileSystemWallet.html)
-  to manage file system wallets.
-
 
 * **In-memory**: A wallet in application storage. Use this type of wallet when
   your application is running in a constrained environment without access to a
@@ -90,33 +85,30 @@ File  system, In-memory, Hardware Security Module (HSM) and CouchDB.*
   wallet is volatile; identities will be lost after the application ends
   normally or crashes.
 
-  Use the `InMemoryWallet`
-  [class](https://fabric-sdk-node.github.io/master/module-fabric-network.InMemoryWallet.html)
-  to manage in-memory wallets.
-
-
-* **Hardware Security Module**: A wallet stored in an
-  [HSM](https://en.wikipedia.org/wiki/Hardware_security_module). This
-  ultra-secure, tamper-proof device stores digital identity information,
-  particularly private keys. HSMs can be locally attached to your computer or
-  network accessible. Most HSMs provide the ability to perform on-board
-  encryption with private keys, such that the private key never leave the HSM.
-
-  Currently you should use the `FileSystemWallet`
-  [class](https://fabric-sdk-node.github.io/master/module-fabric-network.FileSystemWallet.html)
-  in combination with the
-  [HSMWalletMixin](https://fabric-sdk-node.github.io/master/module-fabric-network.HSMWalletMixin.html)
-  class to manage HSM wallets.
-
-
-* **CouchDB**: A wallet stored in Couch DB. This is the rarest form of wallet
+* **CouchDB**: A wallet stored in CouchDB. This is the rarest form of wallet
   storage, but for those users who want to use the database back-up and restore
   mechanisms, CouchDB wallets can provide a useful option to simplify disaster
   recovery.
 
-  Use the `CouchDBWallet`
-  [class](https://fabric-sdk-node.github.io/master/module-fabric-network.CouchDBWallet.html)
-  to manage CouchDB wallets.
+Use factory functions provided by the `Wallets`
+[class](https://hyperledger.github.io/fabric-sdk-node/master/module-fabric-network.Wallets.html)
+to create wallets.
+
+### Hardware Security Module
+
+A Hardware Security Module (HSM) is an ultra-secure, tamper-proof device that
+stores digital identity information, particularly private keys. HSMs can be
+locally attached to your computer or network accessible. Most HSMs provide the
+ability to perform on-board encryption with private keys, such that the private
+keys never leave the HSM.
+
+An HSM can be used with any of the wallet types. In this case the certificate
+for an identity will be stored in the wallet and the private key will be stored
+in the HSM.
+
+To enable the use of HSM-managed identities, an `IdentityProvider` must be
+configured with the HSM connection information and registered with the wallet.
+For further details, refer to the [Using wallets to manage identities](https://hyperledger.github.io/fabric-sdk-node/master/tutorial-wallet.html) tutorial.
 
 ## Structure
 
@@ -134,21 +126,25 @@ There's a couple of key class methods that make it easy to manage wallets and
 identities:
 
 ```JavaScript
-const identity = X509WalletMixin.createIdentity('Org1MSP', certificate, key);
-
-await wallet.import(identityLabel, identity);
+const identity: X509Identity = {
+    credentials: {
+        certificate: certificatePEM,
+        privateKey: privateKeyPEM,
+    },
+    mspId: 'Org1MSP',
+    type: 'X.509',
+};
+await wallet.put(identityLabel, identity);
 ```
 
- See how the `X509WalletMixin.createIdentity()`
-[method](https://fabric-sdk-node.github.io/master/module-fabric-network.X509WalletMixin.html)
-creates an `identity` that has metadata `Org1MSP`, a `certificate` and a private
-`key`. See how `wallet.import()` adds this identity to the wallet with a
+See how an `identity` is created that has metadata `Org1MSP`, a `certificate` and
+a `privateKey`. See how `wallet.put()` adds this identity to the wallet with a
 particular `identityLabel`.
 
-The `Gateway` class only requires the `mspid` metadata to be set for an identity
--- `Org1MSP` in the above example. It *currently* uses this value to identify
-particular peers from a [connection profile](./connectionprofile.html), for
-example when a specific notification [strategy](./connectoptions.html) is
+The `Gateway` class only requires the `mspId` and `type` metadata to be set for
+an identity -- `Org1MSP` and `X.509` in the above example. It *currently* uses the
+MSP ID value to identify particular peers from a [connection profile](./connectionprofile.html),
+for example when a specific notification [strategy](./connectoptions.html) is
 requested. In the DigiBank gateway file `networkConnection.yaml`, see how
 `Org1MSP` notifications will be associated with `peer0.org1.example.com`:
 
@@ -168,10 +164,7 @@ the commercial paper sample:
 ```
 magnetocorp/identity/user/isabella/
                                   wallet/
-                                        User1@org1.example.com/
-                                                              User1@org.example.com
-                                                              c75bd6911aca8089...-priv
-                                                              c75bd6911aca8089...-pub
+                                        User1@org1.example.com.id
 ```
 
 You can examine these files, but as discussed, it's easier to use the SDK to
@@ -179,35 +172,41 @@ manipulate these data.
 
 ## Operations
 
-The different wallet classes are derived from a common
-[Wallet](https://fabric-sdk-node.github.io/master/module-fabric-network.Wallet.html)
-base class which provides a standard set of APIs to manage identities. It means
+The different wallet types all implement a common
+[Wallet](https://hyperledger.github.io/fabric-sdk-node/master/module-fabric-network.Wallet.html)
+interface which provides a standard set of APIs to manage identities. It means
 that applications can be made independent of the underlying wallet storage
 mechanism; for example, File system and HSM wallets are handled in a very
 similar way.
 
 ![wallet.operations](./develop.diagram.13.png) *Wallets follow a
-lifecycle: they can be created or opened, and identities can be read, added,
-deleted and exported.*
+lifecycle: they can be created or opened, and identities can be read, added and
+deleted.*
 
 An application can use a wallet according to a simple lifecycle. Wallets can be
-opened or created, and subsequently identities can be added, read, updated,
-deleted and exported. Spend a little time on the different `Wallet` methods in
-the
-[JSDOC](https://fabric-sdk-node.github.io/master/module-fabric-network.Wallet.html)
+opened or created, and subsequently identities can be added, updated, read and
+deleted. Spend a little time on the different `Wallet` methods in the
+[JSDoc](https://hyperledger.github.io/fabric-sdk-node/master/module-fabric-network.Wallet.html)
 to see how they work; the commercial paper tutorial provides a nice example in
 `addToWallet.js`:
 
 ```JavaScript
-const wallet = new FileSystemWallet('../identity/user/isabella/wallet');
+const wallet = await Wallets.newFileSystemWallet('../identity/user/isabella/wallet');
 
 const cert = fs.readFileSync(path.join(credPath, '.../User1@org1.example.com-cert.pem')).toString();
 const key = fs.readFileSync(path.join(credPath, '.../_sk')).toString();
 
 const identityLabel = 'User1@org1.example.com';
-const identity = X509WalletMixin.createIdentity('Org1MSP', cert, key);
+const identity = {
+    credentials: {
+        certificate: cert,
+        privateKey: key,
+    },
+    mspId: 'Org1MSP',
+    type: 'X.509',
+};
 
-await wallet.import(identityLabel, identity);
+await wallet.put(identityLabel, identity);
 ```
 
 Notice how:
@@ -217,10 +216,9 @@ Notice how:
 
 * a certificate `cert` and private `key` are loaded from the file system.
 
-* a new identity is created with `cert`, `key` and `Org1MSP` using
-  `X509WalletMixin.createIdentity()`.
+* a new X.509 identity is created with `cert`, `key` and `Org1MSP`.
 
-* the new identity is imported to the wallet with `wallet.import()` with a label
+* the new identity is added to the wallet with `wallet.put()` with a label
   `User1@org1.example.com`.
 
 That's everything you need to know about wallets. You've seen how they hold
