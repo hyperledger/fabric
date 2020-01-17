@@ -241,7 +241,7 @@ var _ = Describe("EndToEnd", func() {
 			ordererProcess = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			peerRunners := make([]*ginkgomon.Runner, len(network.Peers))
+			peerRunners = make([]*ginkgomon.Runner, len(network.Peers))
 			processes = map[string]ifrit.Process{}
 			for i, peer := range network.Peers {
 				pr := network.PeerRunner(peer)
