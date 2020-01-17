@@ -173,14 +173,48 @@ var _ = Describe("EndToEnd", func() {
 	})
 
 	Describe("basic single node etcdraft network", func() {
+		var (
+			peerRunners    []*ginkgomon.Runner
+			processes      map[string]ifrit.Process
+			ordererProcess ifrit.Process
+		)
+
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, BasePort(), components)
 			network.GenerateConfigTree()
+			for _, peer := range network.Peers {
+				core := network.ReadPeerConfig(peer)
+				core.Peer.Gossip.UseLeaderElection = false
+				core.Peer.Gossip.OrgLeader = true
+				core.Peer.Deliveryclient.ReconnectTotalTimeThreshold = time.Duration(time.Second)
+				network.WritePeerConfig(peer, core)
+			}
 			network.Bootstrap()
 
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererRunner := network.OrdererGroupRunner()
+			ordererProcess = ifrit.Invoke(ordererRunner)
+			Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			peerRunners = make([]*ginkgomon.Runner, len(network.Peers))
+			processes = map[string]ifrit.Process{}
+			for i, peer := range network.Peers {
+				pr := network.PeerRunner(peer)
+				peerRunners[i] = pr
+				p := ifrit.Invoke(pr)
+				processes[peer.ID()] = p
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+		})
+
+		AfterEach(func() {
+			if ordererProcess != nil {
+				ordererProcess.Signal(syscall.SIGTERM)
+				Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+			for _, p := range processes {
+				p.Signal(syscall.SIGTERM)
+				Eventually(p.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
 		})
 
 		It("creates two channels with two orgs trying to reconfigure and update metadata", func() {
@@ -222,6 +256,13 @@ var _ = Describe("EndToEnd", func() {
 			files, err = ioutil.ReadDir(snapDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(files)).To(Equal(numOfSnaps))
+
+			By("ensuring that static leaders do not give up on retrieving blocks after the orderer goes down")
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			for _, peerRunner := range peerRunners {
+				Eventually(peerRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("peer is a static leader, ignoring peer.deliveryclient.reconnectTotalTimeThreshold"))
+			}
 
 		})
 	})

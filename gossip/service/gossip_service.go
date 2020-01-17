@@ -62,15 +62,17 @@ type DeliveryServiceFactory interface {
 }
 
 type deliveryFactoryImpl struct {
+	isStaticLeader bool
 }
 
 // Returns an instance of delivery client
-func (*deliveryFactoryImpl) Service(g GossipService, ec OrdererAddressConfig, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
+func (d *deliveryFactoryImpl) Service(g GossipService, ec OrdererAddressConfig, mcs api.MessageCryptoService) (deliverclient.DeliverService, error) {
 	return deliverclient.NewDeliverService(&deliverclient.Config{
-		CryptoSvc:   mcs,
-		Gossip:      g,
-		ConnFactory: deliverclient.DefaultConnectionFactory,
-		ABCFactory:  deliverclient.DefaultABCFactory,
+		IsStaticLeader: d.isStaticLeader,
+		CryptoSvc:      mcs,
+		Gossip:         g,
+		ConnFactory:    deliverclient.DefaultConnectionFactory,
+		ABCFactory:     deliverclient.DefaultABCFactory,
 	}, deliverclient.ConnectionCriteria{
 		OrdererEndpointsByOrg:    ec.AddressesByOrg,
 		Organizations:            ec.Organizations,
@@ -150,6 +152,7 @@ func InitGossipService(
 	mcs api.MessageCryptoService,
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
+	orgLeader bool,
 	bootPeers ...string,
 ) error {
 	// TODO: Remove this.
@@ -162,7 +165,7 @@ func InitGossipService(
 		endpoint,
 		s,
 		certs,
-		&deliveryFactoryImpl{},
+		&deliveryFactoryImpl{isStaticLeader: orgLeader},
 		mcs,
 		secAdv,
 		secureDialOpts,
