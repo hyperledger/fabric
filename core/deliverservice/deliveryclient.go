@@ -88,6 +88,7 @@ type deliverClient struct {
 // how it verifies messages received from it,
 // and how it disseminates the messages to other peers
 type Config struct {
+	IsStaticLeader bool
 	// ConnFactory returns a function that creates a connection to an endpoint
 	ConnFactory func(channelID string, endpointOverrides map[string]*comm.OrdererEndpoint) func(endpointCriteria comm.EndpointCriteria) (*grpc.ClientConn, error)
 	// ABCFactory creates an AtomicBroadcastClient out of a connection
@@ -292,7 +293,10 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 	}
 	backoffPolicy := func(attemptNum int, elapsedTime time.Duration) (time.Duration, bool) {
 		if elapsedTime >= reconnectTotalTimeThreshold {
-			return 0, false
+			if !d.conf.IsStaticLeader {
+				return 0, false
+			}
+			logger.Warning("peer is a static leader, ignoring peer.deliveryclient.reconnectTotalTimeThreshold")
 		}
 		sleepIncrement := float64(time.Millisecond * 500)
 		attempt := float64(attemptNum)
