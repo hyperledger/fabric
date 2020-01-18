@@ -76,8 +76,11 @@ General:
 
     # Bootstrap file: The file containing the bootstrap block to use when
     # initializing the orderer system channel and BootstrapMethod is set to
-    # "file".  The bootstrap file can be the genesis block, and it can also be 
+    # "file".  The bootstrap file can be the genesis block, and it can also be
     # a config block for late bootstrap of some consensus methods like Raft.
+    # Generate a genesis block by updating $FABRIC_CFG_PATH/configtx.yaml and
+    # using configtxgen command with "-outputBlock" option.
+    # Defaults to file "genesisblock" (in $FABRIC_CFG_PATH directory) if not specified.
     BootstrapFile:
 
     # LocalMSPDir is where to find the private crypto material needed by the
