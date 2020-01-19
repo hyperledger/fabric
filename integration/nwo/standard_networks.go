@@ -6,6 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
+import (
+	. "github.com/onsi/gomega"
+)
+
 // BasicSolo is a configuration wtih two organizations and one peer per org.
 func BasicSolo() *Config {
 	return &Config{
@@ -96,6 +100,18 @@ func FullSolo() *Config {
 			},
 		},
 	)
+
+	return config
+}
+
+func BasicSoloWithChaincodeServers(ccServs ...*Chaincode) *Config {
+	for _, cc := range ccServs {
+		Expect(cc.Server).To(Equal(true))
+	}
+
+	config := BasicSolo()
+
+	config.ChaincodeServers = ccServs
 
 	return config
 }

@@ -46,6 +46,11 @@ type Chaincode struct {
 	Label               string
 	SignaturePolicy     string
 	ChannelConfigPolicy string
+	Server              bool
+}
+
+func (c *Chaincode) ID() string {
+	return c.Name
 }
 
 func (c *Chaincode) SetPackageIDFromPackageFile() {
@@ -77,6 +82,11 @@ func DeployChaincode(n *Network, channel string, orderer *Orderer, chaincode Cha
 	// commit definition
 	CheckCommitReadinessUntilReady(n, channel, chaincode, n.PeerOrgs(), peers...)
 	CommitChaincode(n, channel, orderer, chaincode, peers[0], peers...)
+
+	// caller needs to manage starting chaincode service
+	if chaincode.Server {
+		return
+	}
 
 	// init the chaincode, if required
 	if chaincode.InitRequired {
@@ -135,6 +145,8 @@ func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer)
 	if _, err := os.Stat(chaincode.PackageFile); os.IsNotExist(err) {
 		switch chaincode.Lang {
 		case "binary":
+			fallthrough
+		case "extcc":
 			PackageChaincodeBinary(chaincode)
 		default:
 			PackageChaincode(n, chaincode, peers[0])

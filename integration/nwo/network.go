@@ -144,9 +144,11 @@ type Network struct {
 	StatsdEndpoint     string
 	ClientAuthRequired bool
 
-	PortsByBrokerID  map[string]Ports
-	PortsByOrdererID map[string]Ports
-	PortsByPeerID    map[string]Ports
+	PortsByBrokerID          map[string]Ports
+	PortsByOrdererID         map[string]Ports
+	PortsByPeerID            map[string]Ports
+	PortsByChaincodeServerID map[string]Ports
+
 	Organizations    []*Organization
 	SystemChannel    *SystemChannel
 	Channels         []*Channel
@@ -156,6 +158,7 @@ type Network struct {
 	Profiles         []*Profile
 	Consortiums      []*Consortium
 	Templates        *Templates
+	ChaincodeServers []*Chaincode
 
 	colorIndex uint
 }
@@ -173,19 +176,22 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 		NetworkID:         helpers.UniqueName(),
 		EventuallyTimeout: time.Minute,
 		MetricsProvider:   "prometheus",
-		PortsByBrokerID:   map[string]Ports{},
-		PortsByOrdererID:  map[string]Ports{},
-		PortsByPeerID:     map[string]Ports{},
 
-		Organizations: c.Organizations,
-		Consensus:     c.Consensus,
-		Orderers:      c.Orderers,
-		Peers:         c.Peers,
-		SystemChannel: c.SystemChannel,
-		Channels:      c.Channels,
-		Profiles:      c.Profiles,
-		Consortiums:   c.Consortiums,
-		Templates:     c.Templates,
+		PortsByBrokerID:          map[string]Ports{},
+		PortsByOrdererID:         map[string]Ports{},
+		PortsByPeerID:            map[string]Ports{},
+		PortsByChaincodeServerID: map[string]Ports{},
+
+		Organizations:    c.Organizations,
+		Consensus:        c.Consensus,
+		Orderers:         c.Orderers,
+		Peers:            c.Peers,
+		SystemChannel:    c.SystemChannel,
+		Channels:         c.Channels,
+		Profiles:         c.Profiles,
+		Consortiums:      c.Consortiums,
+		Templates:        c.Templates,
+		ChaincodeServers: c.ChaincodeServers,
 	}
 
 	cwd, err := os.Getwd()
@@ -222,6 +228,14 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 			ports[portName] = network.ReservePort()
 		}
 		network.PortsByPeerID[p.ID()] = ports
+	}
+
+	for _, cc := range c.ChaincodeServers {
+		ports := Ports{}
+		for _, portName := range ChaincodeServerPortNames() {
+			ports[portName] = network.ReservePort()
+		}
+		network.PortsByChaincodeServerID[cc.ID()] = ports
 	}
 	return network
 }
@@ -632,6 +646,9 @@ func (n *Network) GenerateConfigTree() {
 	}
 	for _, p := range n.Peers {
 		n.GenerateCoreConfig(p)
+	}
+	for _, cc := range n.ChaincodeServers {
+		n.GenerateChaincodeConnectionConfig(cc)
 	}
 }
 
@@ -1438,13 +1455,14 @@ type PortName string
 type Ports map[PortName]uint16
 
 const (
-	ChaincodePort  PortName = "Chaincode"
-	EventsPort     PortName = "Events"
-	HostPort       PortName = "HostPort"
-	ListenPort     PortName = "Listen"
-	ProfilePort    PortName = "Profile"
-	OperationsPort PortName = "Operations"
-	ClusterPort    PortName = "Cluster"
+	ChaincodePort       PortName = "Chaincode"
+	EventsPort          PortName = "Events"
+	HostPort            PortName = "HostPort"
+	ListenPort          PortName = "Listen"
+	ProfilePort         PortName = "Profile"
+	OperationsPort      PortName = "Operations"
+	ClusterPort         PortName = "Cluster"
+	ChaincodeServerPort PortName = "Cluster"
 )
 
 // PeerPortNames returns the list of ports that need to be reserved for a Peer.
@@ -1464,6 +1482,11 @@ func BrokerPortNames() []PortName {
 	return []PortName{HostPort}
 }
 
+// PeerPortNames returns the list of ports that need to be reserved for a Peer.
+func ChaincodeServerPortNames() []PortName {
+	return []PortName{ChaincodeServerPort}
+}
+
 // BrokerAddresses returns the list of broker addresses for the network.
 func (n *Network) BrokerAddresses(portName PortName) []string {
 	addresses := []string{}
@@ -1471,6 +1494,18 @@ func (n *Network) BrokerAddresses(portName PortName) []string {
 		addresses = append(addresses, fmt.Sprintf("127.0.0.1:%d", ports[portName]))
 	}
 	return addresses
+}
+
+// ChaincodeServerAddress returns the address of the chaincode service
+func (n *Network) ChaincodeServerAddress(ccsrv *Chaincode) string {
+	return fmt.Sprintf("127.0.0.1:%d", n.ChaincodeServerPort(ccsrv))
+}
+
+// ChaincodeServerPort returns the named port reserved for the chaincode service.
+func (n *Network) ChaincodeServerPort(ccSrv *Chaincode) uint16 {
+	ccSrvPorts := n.PortsByChaincodeServerID[ccSrv.ID()]
+	Expect(ccSrvPorts).NotTo(BeNil())
+	return ccSrvPorts[ChaincodeServerPort]
 }
 
 // OrdererAddress returns the address (host and port) exposed by the Orderer
@@ -1515,6 +1550,21 @@ func (n *Network) nextColor() string {
 
 	n.colorIndex++
 	return fmt.Sprintf("%dm", color)
+}
+
+// ChaincodeServerRunner returns an ifrit.Runner for the specified chaincode service.
+func (n *Network) ChaincodeServerRunner(c Chaincode, args []string) *ginkgomon.Runner {
+	srvStartCmd := commands.ChaincodeServerStart{PackageID: c.PackageID, ServerArgs: args}
+
+	cmd := NewCommand(c.Path, srvStartCmd)
+
+	return ginkgomon.New(ginkgomon.Config{
+		AnsiColorCode:     n.nextColor(),
+		Name:              c.PackageID,
+		Command:           cmd,
+		StartCheck:        `Starting chaincode .* at .*`,
+		StartCheckTimeout: 15 * time.Second,
+	})
 }
 
 // StartSession executes a command session. This should be used to launch
@@ -1604,6 +1654,37 @@ func (n *Network) GenerateCoreConfig(p *Peer) {
 	Expect(err).NotTo(HaveOccurred())
 
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[%s#core.yaml] ", p.ID()), ginkgo.GinkgoWriter)
+	err = t.Execute(io.MultiWriter(core, pw), n)
+	Expect(err).NotTo(HaveOccurred())
+}
+
+// ChaincodeConnectionDir returns the path to the configuration directory for the specified
+// chaincode service.
+func (n *Network) ChaincodeConnectionDir(chaincode *Chaincode) string {
+	return filepath.Join(n.RootDir, "chaincode-connections", chaincode.ID())
+}
+
+// ChaincodeConnectionPath returns the path to the chaincode connction.json document
+// for the specified chaincode service
+func (n *Network) ChaincodeConnectionPath(chaincode *Chaincode) string {
+	return filepath.Join(n.ChaincodeConnectionDir(chaincode), "connection.json")
+}
+
+func (n *Network) GenerateChaincodeConnectionConfig(chaincode *Chaincode) {
+	err := os.MkdirAll(n.ChaincodeConnectionDir(chaincode), 0755)
+	Expect(err).NotTo(HaveOccurred())
+
+	core, err := os.Create(n.ChaincodeConnectionPath(chaincode))
+	Expect(err).NotTo(HaveOccurred())
+	defer core.Close()
+
+	t, err := template.New("peer").Funcs(template.FuncMap{
+		"Chaincode": func() *Chaincode { return chaincode },
+	}).Parse(n.Templates.ChaincodeConnectionTemplate())
+	Expect(err).NotTo(HaveOccurred())
+
+	time.Sleep(15 * time.Second)
+	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[%s#core.yaml] ", chaincode.ID()), ginkgo.GinkgoWriter)
 	err = t.Execute(io.MultiWriter(core, pw), n)
 	Expect(err).NotTo(HaveOccurred())
 }

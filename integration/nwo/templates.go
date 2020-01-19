@@ -8,10 +8,11 @@ package nwo
 
 // Templates can be used to provide custom templates to GenerateConfigTree.
 type Templates struct {
-	ConfigTx string `yaml:"configtx,omitempty"`
-	Core     string `yaml:"core,omitempty"`
-	Crypto   string `yaml:"crypto,omitempty"`
-	Orderer  string `yaml:"orderer,omitempty"`
+	ConfigTx            string `yaml:"configtx,omitempty"`
+	Core                string `yaml:"core,omitempty"`
+	Crypto              string `yaml:"crypto,omitempty"`
+	Orderer             string `yaml:"orderer,omitempty"`
+	ChaincodeConnection string `yaml:"chaincode_connection,omitempty"`
 }
 
 func (t *Templates) ConfigTxTemplate() string {
@@ -40,4 +41,11 @@ func (t *Templates) OrdererTemplate() string {
 		return t.Orderer
 	}
 	return DefaultOrdererTemplate
+}
+
+func (t *Templates) ChaincodeConnectionTemplate() string {
+	if t.ChaincodeConnection != "" {
+		return t.ChaincodeConnection
+	}
+	return DefaultChaincodeConnectionTemplate
 }
