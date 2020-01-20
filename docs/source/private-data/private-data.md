@@ -10,7 +10,7 @@ separate channels in each of these cases creates additional administrative overh
 cases in which you want all channel participants to see a transaction while keeping
 a portion of the data private.
 
-That's why, starting in v1.2, Fabric offers the ability to create
+That's why Fabric offers the ability to create
 **private data collections**, which allow a defined subset of organizations on a
 channel the ability to endorse, commit, or query private data without having to
 create a separate channel.
