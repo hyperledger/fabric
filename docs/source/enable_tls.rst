@@ -108,7 +108,7 @@ must to be set in addition to those above:
 * ``CORE_PEER_TLS_CLIENTKEY_FILE`` = fully qualified path of the client private key
 
 When running a command that connects to orderer service, like `peer channel <create|update|fetch>`
-or `peer chaincode <invoke|instantiate>`, following command line arguments must also be specified
+or `peer chaincode <invoke>`, following command line arguments must also be specified
 if TLS is enabled on the orderer:
 
 * --tls

@@ -74,7 +74,7 @@ To learn how more about the new Fabric Lifecycle, visit :doc:`chaincode4noah`.
 
 You can use the Fabric chaincode lifecycle by creating a new channel and setting
 the channel capabilities to V2_0. You will not be able to use the old lifecycle
-to install, instantiate, or update a chaincode on a channels with V2_0 capabilities
+to install, instantiate, or update a chaincode on channels with V2_0 capabilities
 enabled. However, you can still invoke chaincode installed using the previous
 lifecycle model after you enable V2_0 capabilities.
 
