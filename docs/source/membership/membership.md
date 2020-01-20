@@ -301,7 +301,7 @@ Let's describe these folders in a little more detail and see why they are import
 
 
 * **`KeyStore` for Private Key:** This folder is defined for the local MSP of a peer or
-  orderer node (or in an client's local MSP), and contains the node's **signing key**.
+  orderer node (or in a client's local MSP), and contains the node's **signing key**.
   This key matches cryptographically the node's identity included in **Node Identity**
   folder and is used to sign data --- for example to sign a transaction proposal response,
   as part of the endorsement phase.
