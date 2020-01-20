@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
@@ -32,6 +33,7 @@ type Initializer struct {
 	Config                          *Config
 	CustomTxProcessors              map[common.HeaderType]CustomTxProcessor
 	Hasher                          Hasher
+	ThrottleSemaphore               semaphore.Semaphore
 }
 
 // Config is a structure used to configure a ledger provider.

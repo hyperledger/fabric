@@ -39,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -267,8 +268,16 @@ func serve(args []string) error {
 		logger.Fatalf("Failed to create peer server (%s)", err)
 	}
 
+	// Create a semaphore for ledger concurrency control
+	var throttleSemaphore semaphore.Semaphore
+	if viper.IsSet("peer.limits.concurrency.ledgeraccess") {
+		ledgerConcurrencyLimit := viper.GetInt("peer.limits.concurrency.ledgeraccess")
+		throttleSemaphore = semaphore.New(ledgerConcurrencyLimit)
+	}
+
 	transientStoreProvider, err := transientstore.NewStoreProvider(
 		filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
+		throttleSemaphore,
 	)
 	if err != nil {
 		return errors.WithMessage(err, "failed to open transient store")
@@ -433,6 +442,7 @@ func serve(args []string) error {
 			Config:                          ledgerConfig(),
 			Hasher:                          factory.GetDefault(),
 			EbMetadataProvider:              ebMetadataProvider,
+			ThrottleSemaphore:               throttleSemaphore,
 		},
 	)
 

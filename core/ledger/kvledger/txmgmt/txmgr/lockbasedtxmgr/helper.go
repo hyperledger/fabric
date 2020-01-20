@@ -11,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/semaphore"
 	ledger "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -304,16 +305,19 @@ func (h *queryHelper) getPrivateDataMetadataByHash(ns, coll string, keyhash []by
 	return storageutil.DeserializeMetadata(metadataBytes)
 }
 
-func (h *queryHelper) done() {
+func (h *queryHelper) done(semaphore semaphore.Semaphore) {
 	if h.doneInvoked {
 		return
 	}
 
 	defer func() {
-		h.txmgr.commitRWLock.RUnlock()
 		h.doneInvoked = true
+		h.txmgr.commitRWLock.RUnlock()
 		for _, itr := range h.itrs {
 			itr.Close()
+		}
+		if semaphore != nil {
+			semaphore.Release()
 		}
 	}()
 }

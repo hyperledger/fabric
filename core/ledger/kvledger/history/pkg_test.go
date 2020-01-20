@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
@@ -34,6 +35,8 @@ type levelDBLockBasedHistoryEnv struct {
 	testHistoryDB         *DB
 	testHistoryDBPath     string
 }
+
+var throttleSemaphore = semaphore.New(100)
 
 func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	testLedgerID := "TestLedger"
@@ -61,10 +64,11 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		&mock.DeployedChaincodeInfoProvider{},
 		nil,
 		cryptoProvider,
+		throttleSemaphore,
 	)
 
 	assert.NoError(t, err)
-	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath)
+	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath, throttleSemaphore)
 	assert.NoError(t, err)
 	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
 	assert.NoError(t, err)

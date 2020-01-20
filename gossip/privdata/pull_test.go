@@ -1086,7 +1086,7 @@ func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
 		t.Fatalf("Failed to create test directory, got err %s", err)
 		return
 	}
-	storeProvider, err := transientstore.NewStoreProvider(tempdir)
+	storeProvider, err := transientstore.NewStoreProvider(tempdir, nil)
 	if err != nil {
 		t.Fatalf("Failed to open store, got err %s", err)
 		return

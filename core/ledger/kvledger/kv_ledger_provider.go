@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/confighistory"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
@@ -65,14 +66,20 @@ type Provider struct {
 	stats               *stats
 	fileLock            *leveldbhelper.FileLock
 	hasher              ledger.Hasher
+	throttleSemaphore   semaphore.Semaphore
 }
 
 // NewProvider instantiates a new Provider.
 // This is not thread-safe and assumed to be synchronized by the caller
 func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
+	throttleSemaphore := initializer.ThrottleSemaphore
+	if throttleSemaphore == nil {
+		throttleSemaphore = semaphore.Disabled
+	}
 	p := &Provider{
-		initializer: initializer,
-		hasher:      initializer.Hasher,
+		initializer:       initializer,
+		hasher:            initializer.Hasher,
+		throttleSemaphore: throttleSemaphore,
 	}
 
 	defer func() {
@@ -163,6 +170,7 @@ func (p *Provider) initHistoryDBProvider() error {
 	// Initialize the history database (index for history of values by key)
 	historydbProvider, err := history.NewDBProvider(
 		HistoryDBPath(p.initializer.Config.RootFSPath),
+		p.throttleSemaphore,
 	)
 	if err != nil {
 		return err
@@ -176,6 +184,7 @@ func (p *Provider) initConfigHistoryManager() error {
 	configHistoryMgr, err := confighistory.NewMgr(
 		ConfigHistoryDBPath(p.initializer.Config.RootFSPath),
 		p.initializer.DeployedChaincodeInfoProvider,
+		p.throttleSemaphore,
 	)
 	if err != nil {
 		return err
@@ -317,6 +326,7 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		p.stats.ledgerStats(ledgerID),
 		p.initializer.CustomTxProcessors,
 		p.hasher,
+		p.throttleSemaphore,
 	)
 	if err != nil {
 		return nil, err

@@ -923,7 +923,7 @@ func TestRetryFetchFromPeer(t *testing.T) {
 
 	tempdir, err := ioutil.TempDir("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
-	storeProvider, err := transientstore.NewStoreProvider(tempdir)
+	storeProvider, err := transientstore.NewStoreProvider(tempdir, nil)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
@@ -1018,7 +1018,7 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 
 	tempdir, err := ioutil.TempDir("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
-	storeProvider, err := transientstore.NewStoreProvider(tempdir)
+	storeProvider, err := transientstore.NewStoreProvider(tempdir, nil)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
@@ -1118,7 +1118,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 
 	tempdir, err := ioutil.TempDir("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
-	storeProvider, err := transientstore.NewStoreProvider(tempdir)
+	storeProvider, err := transientstore.NewStoreProvider(tempdir, nil)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
@@ -1251,7 +1251,7 @@ func testRetrievePvtdataSuccess(t *testing.T,
 
 	tempdir, err := ioutil.TempDir("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
-	storeProvider, err := transientstore.NewStoreProvider(tempdir)
+	storeProvider, err := transientstore.NewStoreProvider(tempdir, nil)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))
@@ -1290,7 +1290,7 @@ func testRetrievePvtdataFailure(t *testing.T,
 
 	tempdir, err := ioutil.TempDir("", "ts")
 	require.NoError(t, err, fmt.Sprintf("Failed to create test directory, got err %s", err))
-	storeProvider, err := transientstore.NewStoreProvider(tempdir)
+	storeProvider, err := transientstore.NewStoreProvider(tempdir, nil)
 	require.NoError(t, err, fmt.Sprintf("Failed to create store provider, got err %s", err))
 	store, err := storeProvider.OpenStore(ts.channelID)
 	require.NoError(t, err, fmt.Sprintf("Failed to open store, got err %s", err))

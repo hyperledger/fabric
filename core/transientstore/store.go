@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package transientstore
 
 import (
+	"context"
 	"errors"
 
 	"github.com/golang/protobuf/proto"
@@ -14,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -62,35 +64,42 @@ type EndorserPvtSimulationResults struct {
 // private write sets of simulated transactions, and implements TransientStoreProvider
 // interface.
 type storeProvider struct {
-	dbProvider *leveldbhelper.Provider
+	dbProvider        *leveldbhelper.Provider
+	throttleSemaphore semaphore.Semaphore
 }
 
-// store holds an instance of a levelDB.
+// Store holds an instance of a levelDB.
 type Store struct {
-	db       *leveldbhelper.DBHandle
-	ledgerID string
+	db                *leveldbhelper.DBHandle
+	ledgerID          string
+	throttleSemaphore semaphore.Semaphore
 }
 
 // RwsetScanner helps iterating over results
 type RwsetScanner struct {
-	txid   string
-	dbItr  iterator.Iterator
-	filter ledger.PvtNsCollFilter
+	txid              string
+	dbItr             iterator.Iterator
+	filter            ledger.PvtNsCollFilter
+	throttleSemaphore semaphore.Semaphore
+	closeInvoked      bool
 }
 
 // NewStoreProvider instantiates TransientStoreProvider
-func NewStoreProvider(path string) (StoreProvider, error) {
+func NewStoreProvider(path string, throttleSemaphore semaphore.Semaphore) (StoreProvider, error) {
 	dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: path})
 	if err != nil {
 		return nil, err
 	}
-	return &storeProvider{dbProvider: dbProvider}, nil
+	if throttleSemaphore == nil {
+		throttleSemaphore = semaphore.Disabled
+	}
+	return &storeProvider{dbProvider: dbProvider, throttleSemaphore: throttleSemaphore}, nil
 }
 
 // OpenStore returns a handle to a ledgerId in Store
 func (provider *storeProvider) OpenStore(ledgerID string) (*Store, error) {
 	dbHandle := provider.dbProvider.GetDBHandle(ledgerID)
-	return &Store{db: dbHandle, ledgerID: ledgerID}, nil
+	return &Store{db: dbHandle, ledgerID: ledgerID, throttleSemaphore: provider.throttleSemaphore}, nil
 }
 
 // Close closes the TransientStoreProvider
@@ -148,6 +157,10 @@ func (s *Store) Persist(txid string, blockHeight uint64,
 	compositeKeyPurgeIndexByTxid := createCompositeKeyForPurgeIndexByTxid(txid, uuid, blockHeight)
 	dbBatch.Put(compositeKeyPurgeIndexByTxid, emptyValue)
 
+	if err = s.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return err
+	}
+	defer s.throttleSemaphore.Release()
 	return s.db.WriteBatch(dbBatch, true)
 }
 
@@ -161,8 +174,12 @@ func (s *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) 
 	startKey := createTxidRangeStartKey(txid)
 	endKey := createTxidRangeEndKey(txid)
 
+	// the semaphore will be released in RwsetScanner.Close()
+	if err := s.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
 	iter := s.db.GetIterator(startKey, endKey)
-	return &RwsetScanner{txid, iter, filter}, nil
+	return &RwsetScanner{txid, iter, filter, s.throttleSemaphore, false}, nil
 }
 
 // PurgeByTxids removes private write sets of a given set of transactions from the
@@ -173,6 +190,11 @@ func (s *Store) PurgeByTxids(txids []string) error {
 	logger.Debug("Purging private data from transient store for committed txids")
 
 	dbBatch := leveldbhelper.NewUpdateBatch()
+
+	if err := s.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return err
+	}
+	defer s.throttleSemaphore.Release()
 
 	for _, txid := range txids {
 		// Construct startKey and endKey to do an range query
@@ -224,6 +246,12 @@ func (s *Store) PurgeBelowHeight(maxBlockNumToRetain uint64) error {
 	// Do a range query with 0 as startKey and maxBlockNumToRetain-1 as endKey
 	startKey := createPurgeIndexByHeightRangeStartKey(0)
 	endKey := createPurgeIndexByHeightRangeEndKey(maxBlockNumToRetain - 1)
+
+	if err := s.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return err
+	}
+	defer s.throttleSemaphore.Release()
+
 	iter := s.db.GetIterator(startKey, endKey)
 
 	dbBatch := leveldbhelper.NewUpdateBatch()
@@ -263,6 +291,11 @@ func (s *Store) GetMinTransientBlkHt() (uint64, error) {
 	// the lowest block height remaining in transient store. An alternative approach
 	// is to explicitly store the minBlockHeight in the transientStore.
 	startKey := createPurgeIndexByHeightRangeStartKey(0)
+
+	if err := s.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return 0, err
+	}
+	defer s.throttleSemaphore.Release()
 	iter := s.db.GetIterator(startKey, nil)
 	defer iter.Release()
 	// Fetch the minimum transient block height
@@ -328,5 +361,11 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 
 // Close releases resource held by the iterator
 func (scanner *RwsetScanner) Close() {
+	if scanner.closeInvoked {
+		return
+	}
+
 	scanner.dbItr.Release()
+	scanner.throttleSemaphore.Release()
+	scanner.closeInvoked = true
 }

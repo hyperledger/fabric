@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package confighistory
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -14,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
@@ -32,17 +34,18 @@ type Mgr interface {
 }
 
 type mgr struct {
-	ccInfoProvider ledger.DeployedChaincodeInfoProvider
-	dbProvider     *dbProvider
+	ccInfoProvider    ledger.DeployedChaincodeInfoProvider
+	dbProvider        *dbProvider
+	throttleSemaphore semaphore.Semaphore
 }
 
 // NewMgr constructs an instance that implements interface `Mgr`
-func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (Mgr, error) {
+func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider, semaphore semaphore.Semaphore) (Mgr, error) {
 	p, err := newDBProvider(dbPath)
 	if err != nil {
 		return nil, err
 	}
-	return &mgr{ccInfoProvider, p}, nil
+	return &mgr{ccInfoProvider, p, semaphore}, nil
 }
 
 func (m *mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
@@ -106,6 +109,7 @@ func (m *mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetrie
 		ledgerID:               ledgerID,
 		deployedCCInfoProvider: m.ccInfoProvider,
 		dbHandle:               m.dbProvider.getDB(ledgerID),
+		throttleSemaphore:      m.throttleSemaphore,
 	}
 }
 
@@ -119,10 +123,15 @@ type retriever struct {
 	ledgerID               string
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	dbHandle               *db
+	throttleSemaphore      semaphore.Semaphore
 }
 
 // MostRecentCollectionConfigBelow implements function from the interface ledger.ConfigHistoryRetriever
 func (r *retriever) MostRecentCollectionConfigBelow(blockNum uint64, chaincodeName string) (*ledger.CollectionConfigInfo, error) {
+	if err := r.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer r.throttleSemaphore.Release()
 	compositeKV, err := r.dbHandle.mostRecentEntryBelow(blockNum, collectionConfigNamespace, constructCollectionConfigKey(chaincodeName))
 	if err != nil {
 		return nil, err
@@ -137,6 +146,10 @@ func (r *retriever) MostRecentCollectionConfigBelow(blockNum uint64, chaincodeNa
 
 // CollectionConfigAt implements function from the interface ledger.ConfigHistoryRetriever
 func (r *retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*ledger.CollectionConfigInfo, error) {
+	if err := r.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer r.throttleSemaphore.Release()
 	info, err := r.ledgerInfoRetriever.GetBlockchainInfo()
 	if err != nil {
 		return nil, err

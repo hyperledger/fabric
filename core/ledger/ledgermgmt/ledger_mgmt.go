@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -53,6 +54,7 @@ type Initializer struct {
 	Config                          *ledger.Config
 	Hasher                          ledger.Hasher
 	EbMetadataProvider              MetadataProvider
+	ThrottleSemaphore               semaphore.Semaphore
 }
 
 // NewLedgerMgr creates a new LedgerMgr
@@ -73,6 +75,7 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 			Config:                          initializer.Config,
 			CustomTxProcessors:              initializer.CustomTxProcessors,
 			Hasher:                          initializer.Hasher,
+			ThrottleSemaphore:               initializer.ThrottleSemaphore,
 		},
 	)
 	if err != nil {

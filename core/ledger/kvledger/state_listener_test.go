@@ -37,6 +37,7 @@ func TestStateListener(t *testing.T) {
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
 			Hasher:                        cryptoProvider,
+			ThrottleSemaphore:             throttleSemaphore,
 		},
 	)
 	if err != nil {
@@ -108,6 +109,7 @@ func TestStateListener(t *testing.T) {
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
 			Hasher:                        cryptoProvider,
+			ThrottleSemaphore:             throttleSemaphore,
 		},
 	)
 	if err != nil {

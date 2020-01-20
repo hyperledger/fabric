@@ -11,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
@@ -22,11 +23,12 @@ var logger = flogging.MustGetLogger("history")
 
 // DBProvider provides handle to HistoryDB for a given channel
 type DBProvider struct {
-	leveldbProvider *leveldbhelper.Provider
+	leveldbProvider   *leveldbhelper.Provider
+	throttleSemaphore semaphore.Semaphore
 }
 
 // NewDBProvider instantiates DBProvider
-func NewDBProvider(path string) (*DBProvider, error) {
+func NewDBProvider(path string, throttleSemaphore semaphore.Semaphore) (*DBProvider, error) {
 	logger.Debugf("constructing HistoryDBProvider dbPath=%s", path)
 	levelDBProvider, err := leveldbhelper.NewProvider(
 		&leveldbhelper.Conf{
@@ -38,15 +40,17 @@ func NewDBProvider(path string) (*DBProvider, error) {
 		return nil, err
 	}
 	return &DBProvider{
-		leveldbProvider: levelDBProvider,
+		leveldbProvider:   levelDBProvider,
+		throttleSemaphore: throttleSemaphore,
 	}, nil
 }
 
 // GetDBHandle gets the handle to a named database
 func (p *DBProvider) GetDBHandle(name string) (*DB, error) {
 	return &DB{
-			levelDB: p.leveldbProvider.GetDBHandle(name),
-			name:    name,
+			levelDB:           p.leveldbProvider.GetDBHandle(name),
+			name:              name,
+			throttleSemaphore: p.throttleSemaphore,
 		},
 		nil
 }
@@ -58,8 +62,9 @@ func (p *DBProvider) Close() {
 
 // DB maintains and provides access to history data for a particular channel
 type DB struct {
-	levelDB *leveldbhelper.DBHandle
-	name    string
+	levelDB           *leveldbhelper.DBHandle
+	name              string
+	throttleSemaphore semaphore.Semaphore
 }
 
 // Commit implements method in HistoryDB interface
@@ -146,7 +151,7 @@ func (d *DB) Commit(block *common.Block) error {
 
 // NewQueryExecutor implements method in HistoryDB interface
 func (d *DB) NewQueryExecutor(blockStore blkstorage.BlockStore) (ledger.HistoryQueryExecutor, error) {
-	return &QueryExecutor{d.levelDB, blockStore}, nil
+	return &QueryExecutor{d.levelDB, blockStore, d.throttleSemaphore}, nil
 }
 
 // GetLastSavepoint implements returns the height till which the history is present in the db

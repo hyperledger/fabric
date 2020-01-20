@@ -75,7 +75,7 @@ func newTransientStore(t *testing.T) *testTransientStore {
 		t.Fatalf("Failed to create test directory, got err %s", err)
 		return s
 	}
-	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir)
+	s.storeProvider, err = transientstore.NewStoreProvider(s.tempdir, nil)
 	if err != nil {
 		t.Fatalf("Failed to open store, got err %s", err)
 		return s

@@ -49,7 +49,7 @@ func testStore(t *testing.T) (s *Store, cleanup func()) {
 		os.RemoveAll(tempdir)
 	}
 
-	sp, err := NewStoreProvider(tempdir)
+	sp, err := NewStoreProvider(tempdir, nil)
 	if err != nil {
 		t.Fatalf("Failed to open test store: %s", err)
 	}

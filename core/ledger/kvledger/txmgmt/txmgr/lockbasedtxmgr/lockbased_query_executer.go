@@ -103,5 +103,5 @@ func (q *lockBasedQueryExecutor) ExecuteQueryOnPrivateData(namespace, collection
 // Done implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) Done() {
 	logger.Debugf("Done with transaction simulation / query execution [%s]", q.txid)
-	q.helper.done()
+	q.helper.done(nil)
 }

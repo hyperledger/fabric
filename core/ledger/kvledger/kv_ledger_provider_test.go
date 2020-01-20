@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
@@ -32,6 +33,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var throttleSemaphore = semaphore.New(100)
 
 func TestLedgerProvider(t *testing.T) {
 	conf, cleanup := testConfig(t)
@@ -152,6 +155,7 @@ func TestNewProviderIdStoreFormatError(t *testing.T) {
 			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
+			ThrottleSemaphore:             throttleSemaphore,
 		},
 	)
 	require.EqualError(t, err, fmt.Sprintf("unexpected format. db info = [leveldb for channel-IDs at [%s]], data format = [], expected format = [2.0]", LedgerProviderPath(conf.RootFSPath)))
@@ -535,6 +539,7 @@ func testutilNewProvider(conf *lgr.Config, t *testing.T) *Provider {
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
 			Hasher:                        cryptoProvider,
+			ThrottleSemaphore:             throttleSemaphore,
 		},
 	)
 	require.NoError(t, err, "Failed to create new Provider")

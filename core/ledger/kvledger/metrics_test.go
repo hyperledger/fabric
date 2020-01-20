@@ -34,6 +34,7 @@ func TestStatsBlockCommit(t *testing.T) {
 			MetricsProvider:               testMetricProvider.fakeProvider,
 			Config:                        conf,
 			Hasher:                        cryptoProvider,
+			ThrottleSemaphore:             throttleSemaphore,
 		},
 	)
 	if err != nil {

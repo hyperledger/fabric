@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -33,16 +34,17 @@ var logger = flogging.MustGetLogger("lockbasedtxmgr")
 // LockBasedTxMgr a simple implementation of interface `txmgmt.TxMgr`.
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type LockBasedTxMgr struct {
-	ledgerid        string
-	db              privacyenabledstate.DB
-	pvtdataPurgeMgr *pvtdataPurgeMgr
-	validator       validator.Validator
-	stateListeners  []ledger.StateListener
-	ccInfoProvider  ledger.DeployedChaincodeInfoProvider
-	commitRWLock    sync.RWMutex
-	oldBlockCommit  sync.Mutex
-	current         *current
-	hasher          ledger.Hasher
+	ledgerid          string
+	db                privacyenabledstate.DB
+	pvtdataPurgeMgr   *pvtdataPurgeMgr
+	validator         validator.Validator
+	stateListeners    []ledger.StateListener
+	ccInfoProvider    ledger.DeployedChaincodeInfoProvider
+	commitRWLock      sync.RWMutex
+	oldBlockCommit    sync.Mutex
+	current           *current
+	hasher            ledger.Hasher
+	throttleSemaphore semaphore.Semaphore
 }
 
 type current struct {
@@ -69,6 +71,7 @@ func NewLockBasedTxMgr(
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 	hasher ledger.Hasher,
+	semaphore semaphore.Semaphore,
 ) (*LockBasedTxMgr, error) {
 
 	if hasher == nil {
@@ -77,11 +80,12 @@ func NewLockBasedTxMgr(
 
 	db.Open()
 	txmgr := &LockBasedTxMgr{
-		ledgerid:       ledgerid,
-		db:             db,
-		stateListeners: stateListeners,
-		ccInfoProvider: ccInfoProvider,
-		hasher:         hasher,
+		ledgerid:          ledgerid,
+		db:                db,
+		stateListeners:    stateListeners,
+		ccInfoProvider:    ccInfoProvider,
+		hasher:            hasher,
+		throttleSemaphore: semaphore,
 	}
 	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(ledgerid, db, btlPolicy, bookkeepingProvider)
 	if err != nil {
@@ -132,6 +136,34 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, er
 	return s, nil
 }
 
+// NewThrottledQueryExecutor implements method in interface `txmgmt.TxMgr`
+func (txmgr *LockBasedTxMgr) NewThrottledQueryExecutor(txid string) (ledger.QueryExecutor, error) {
+	if txmgr.throttleSemaphore == nil {
+		return nil, errors.New("failed to create a ThrottledQueryExecutor because the txmgr has no semaphore")
+	}
+	logger.Debugf("constructing new throttled tx query executor")
+	qe, err := newThrottledQueryExecutor(txmgr, txid, true, txmgr.hasher, txmgr.throttleSemaphore)
+	if err != nil {
+		return nil, err
+	}
+	txmgr.commitRWLock.RLock()
+	return qe, nil
+}
+
+// NewThrottledTxSimulator implements method in interface `txmgmt.TxMgr`
+func (txmgr *LockBasedTxMgr) NewThrottledTxSimulator(txid string) (ledger.TxSimulator, error) {
+	if txmgr.throttleSemaphore == nil {
+		return nil, errors.New("failed to create a ThrottledTxSimulator because the txmgr has no semaphore")
+	}
+	logger.Debugf("constructing new throttled tx simulator")
+	s, err := newThrottledTxSimulator(txmgr, txid, txmgr.hasher, txmgr.throttleSemaphore)
+	if err != nil {
+		return nil, err
+	}
+	txmgr.commitRWLock.RLock()
+	return s, nil
+}
+
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) (
 	[]*txmgr.TxStatInfo, []byte, error,
@@ -145,7 +177,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 	// interleave and nullify the optimization provided by the bulk read API.
 	// Once the ledger cache (FAB-103) is introduced and existing
 	// LoadCommittedVersions() is refactored to return a map, we can allow
-	// these three functions to execute parallely.
+	// these three functions to execute parallelly.
 	logger.Debugf("Waiting for purge mgr to finish the background job of computing expirying keys for the block")
 	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
 	txmgr.oldBlockCommit.Lock()
@@ -191,7 +223,7 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(reconciledPv
 	// interleave and nullify the optimization provided by the bulk read API.
 	// Once the ledger cache (FAB-103) is introduced and existing
 	// LoadCommittedVersions() is refactored to return a map, we can allow
-	// these three functions to execute parallely. However, we cannot remove
+	// these three functions to execute parallelly. However, we cannot remove
 	// the lock on oldBlockCommit as it is also used to avoid interleaving
 	// between Commit() and execution of this function for the correctness.
 	logger.Debug("Waiting for purge mgr to finish the background job of computing expirying keys for the block")

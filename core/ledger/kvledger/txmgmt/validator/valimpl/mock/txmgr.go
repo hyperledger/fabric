@@ -66,6 +66,32 @@ type TxMgr struct {
 		result1 ledger.QueryExecutor
 		result2 error
 	}
+	NewThrottledQueryExecutorStub        func(string) (ledger.QueryExecutor, error)
+	newThrottledQueryExecutorMutex       sync.RWMutex
+	newThrottledQueryExecutorArgsForCall []struct {
+		arg1 string
+	}
+	newThrottledQueryExecutorReturns struct {
+		result1 ledger.QueryExecutor
+		result2 error
+	}
+	newThrottledQueryExecutorReturnsOnCall map[int]struct {
+		result1 ledger.QueryExecutor
+		result2 error
+	}
+	NewThrottledTxSimulatorStub        func(string) (ledger.TxSimulator, error)
+	newThrottledTxSimulatorMutex       sync.RWMutex
+	newThrottledTxSimulatorArgsForCall []struct {
+		arg1 string
+	}
+	newThrottledTxSimulatorReturns struct {
+		result1 ledger.TxSimulator
+		result2 error
+	}
+	newThrottledTxSimulatorReturnsOnCall map[int]struct {
+		result1 ledger.TxSimulator
+		result2 error
+	}
 	NewTxSimulatorStub        func(string) (ledger.TxSimulator, error)
 	newTxSimulatorMutex       sync.RWMutex
 	newTxSimulatorArgsForCall []struct {
@@ -415,6 +441,132 @@ func (fake *TxMgr) NewQueryExecutorReturnsOnCall(i int, result1 ledger.QueryExec
 	}{result1, result2}
 }
 
+func (fake *TxMgr) NewThrottledQueryExecutor(arg1 string) (ledger.QueryExecutor, error) {
+	fake.newThrottledQueryExecutorMutex.Lock()
+	ret, specificReturn := fake.newThrottledQueryExecutorReturnsOnCall[len(fake.newThrottledQueryExecutorArgsForCall)]
+	fake.newThrottledQueryExecutorArgsForCall = append(fake.newThrottledQueryExecutorArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("NewThrottledQueryExecutor", []interface{}{arg1})
+	fake.newThrottledQueryExecutorMutex.Unlock()
+	if fake.NewThrottledQueryExecutorStub != nil {
+		return fake.NewThrottledQueryExecutorStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.newThrottledQueryExecutorReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *TxMgr) NewThrottledQueryExecutorCallCount() int {
+	fake.newThrottledQueryExecutorMutex.RLock()
+	defer fake.newThrottledQueryExecutorMutex.RUnlock()
+	return len(fake.newThrottledQueryExecutorArgsForCall)
+}
+
+func (fake *TxMgr) NewThrottledQueryExecutorCalls(stub func(string) (ledger.QueryExecutor, error)) {
+	fake.newThrottledQueryExecutorMutex.Lock()
+	defer fake.newThrottledQueryExecutorMutex.Unlock()
+	fake.NewThrottledQueryExecutorStub = stub
+}
+
+func (fake *TxMgr) NewThrottledQueryExecutorArgsForCall(i int) string {
+	fake.newThrottledQueryExecutorMutex.RLock()
+	defer fake.newThrottledQueryExecutorMutex.RUnlock()
+	argsForCall := fake.newThrottledQueryExecutorArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *TxMgr) NewThrottledQueryExecutorReturns(result1 ledger.QueryExecutor, result2 error) {
+	fake.newThrottledQueryExecutorMutex.Lock()
+	defer fake.newThrottledQueryExecutorMutex.Unlock()
+	fake.NewThrottledQueryExecutorStub = nil
+	fake.newThrottledQueryExecutorReturns = struct {
+		result1 ledger.QueryExecutor
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *TxMgr) NewThrottledQueryExecutorReturnsOnCall(i int, result1 ledger.QueryExecutor, result2 error) {
+	fake.newThrottledQueryExecutorMutex.Lock()
+	defer fake.newThrottledQueryExecutorMutex.Unlock()
+	fake.NewThrottledQueryExecutorStub = nil
+	if fake.newThrottledQueryExecutorReturnsOnCall == nil {
+		fake.newThrottledQueryExecutorReturnsOnCall = make(map[int]struct {
+			result1 ledger.QueryExecutor
+			result2 error
+		})
+	}
+	fake.newThrottledQueryExecutorReturnsOnCall[i] = struct {
+		result1 ledger.QueryExecutor
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *TxMgr) NewThrottledTxSimulator(arg1 string) (ledger.TxSimulator, error) {
+	fake.newThrottledTxSimulatorMutex.Lock()
+	ret, specificReturn := fake.newThrottledTxSimulatorReturnsOnCall[len(fake.newThrottledTxSimulatorArgsForCall)]
+	fake.newThrottledTxSimulatorArgsForCall = append(fake.newThrottledTxSimulatorArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("NewThrottledTxSimulator", []interface{}{arg1})
+	fake.newThrottledTxSimulatorMutex.Unlock()
+	if fake.NewThrottledTxSimulatorStub != nil {
+		return fake.NewThrottledTxSimulatorStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.newThrottledTxSimulatorReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *TxMgr) NewThrottledTxSimulatorCallCount() int {
+	fake.newThrottledTxSimulatorMutex.RLock()
+	defer fake.newThrottledTxSimulatorMutex.RUnlock()
+	return len(fake.newThrottledTxSimulatorArgsForCall)
+}
+
+func (fake *TxMgr) NewThrottledTxSimulatorCalls(stub func(string) (ledger.TxSimulator, error)) {
+	fake.newThrottledTxSimulatorMutex.Lock()
+	defer fake.newThrottledTxSimulatorMutex.Unlock()
+	fake.NewThrottledTxSimulatorStub = stub
+}
+
+func (fake *TxMgr) NewThrottledTxSimulatorArgsForCall(i int) string {
+	fake.newThrottledTxSimulatorMutex.RLock()
+	defer fake.newThrottledTxSimulatorMutex.RUnlock()
+	argsForCall := fake.newThrottledTxSimulatorArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *TxMgr) NewThrottledTxSimulatorReturns(result1 ledger.TxSimulator, result2 error) {
+	fake.newThrottledTxSimulatorMutex.Lock()
+	defer fake.newThrottledTxSimulatorMutex.Unlock()
+	fake.NewThrottledTxSimulatorStub = nil
+	fake.newThrottledTxSimulatorReturns = struct {
+		result1 ledger.TxSimulator
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *TxMgr) NewThrottledTxSimulatorReturnsOnCall(i int, result1 ledger.TxSimulator, result2 error) {
+	fake.newThrottledTxSimulatorMutex.Lock()
+	defer fake.newThrottledTxSimulatorMutex.Unlock()
+	fake.NewThrottledTxSimulatorStub = nil
+	if fake.newThrottledTxSimulatorReturnsOnCall == nil {
+		fake.newThrottledTxSimulatorReturnsOnCall = make(map[int]struct {
+			result1 ledger.TxSimulator
+			result2 error
+		})
+	}
+	fake.newThrottledTxSimulatorReturnsOnCall[i] = struct {
+		result1 ledger.TxSimulator
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *TxMgr) NewTxSimulator(arg1 string) (ledger.TxSimulator, error) {
 	fake.newTxSimulatorMutex.Lock()
 	ret, specificReturn := fake.newTxSimulatorReturnsOnCall[len(fake.newTxSimulatorArgsForCall)]
@@ -730,6 +882,10 @@ func (fake *TxMgr) Invocations() map[string][][]interface{} {
 	defer fake.nameMutex.RUnlock()
 	fake.newQueryExecutorMutex.RLock()
 	defer fake.newQueryExecutorMutex.RUnlock()
+	fake.newThrottledQueryExecutorMutex.RLock()
+	defer fake.newThrottledQueryExecutorMutex.RUnlock()
+	fake.newThrottledTxSimulatorMutex.RLock()
+	defer fake.newThrottledTxSimulatorMutex.RUnlock()
 	fake.newTxSimulatorMutex.RLock()
 	defer fake.newTxSimulatorMutex.RUnlock()
 	fake.removeStaleAndCommitPvtDataOfOldBlocksMutex.RLock()

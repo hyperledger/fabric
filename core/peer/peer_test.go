@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -96,6 +97,7 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	assert.NoError(t, err)
 	transientStoreProvider, err := transientstore.NewStoreProvider(
 		filepath.Join(tempdir, "transientstore"),
+		semaphore.New(10000),
 	)
 	assert.NoError(t, err)
 	peerInstance := &Peer{

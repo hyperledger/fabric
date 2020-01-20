@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -45,6 +47,7 @@ type kvLedger struct {
 	blockAPIsRWLock        *sync.RWMutex
 	stats                  *ledgerStats
 	commitHash             []byte
+	throttleSemaphore      semaphore.Semaphore
 }
 
 // newKVLedger constructs new `KVLedger`
@@ -61,11 +64,12 @@ func newKVLedger(
 	stats *ledgerStats,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 	hasher ledger.Hasher,
+	semaphore semaphore.Semaphore,
 ) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	// Create a kvLedger for this chain/ledger, which encapsulates the underlying
 	// id store, blockstore, txmgr (state database), history database
-	l := &kvLedger{ledgerID: ledgerID, blockStore: blockStore, historyDB: historyDB, blockAPIsRWLock: &sync.RWMutex{}}
+	l := &kvLedger{ledgerID: ledgerID, blockStore: blockStore, historyDB: historyDB, blockAPIsRWLock: &sync.RWMutex{}, throttleSemaphore: semaphore}
 
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, ccInfoProvider})
 
@@ -129,13 +133,14 @@ func (l *kvLedger) initTxMgr(
 		ccInfoProvider,
 		customtxProcessors,
 		hasher,
+		l.throttleSemaphore,
 	)
 	if err != nil {
 		return err
 	}
 	l.txtmgmt = txmgr
 	// This is a workaround for populating lifecycle cache.
-	// See comments on this function for deatils
+	// See comments on this function for details
 	qe, err := txmgr.NewQueryExecutorNoCollChecks()
 	if err != nil {
 		return err
@@ -323,6 +328,10 @@ func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64,
 
 // GetTransactionByID retrieves a transaction by id
 func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	tranEnv, err := l.blockStore.RetrieveTxByID(txID)
 	if err != nil {
 		return nil, err
@@ -339,6 +348,10 @@ func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, 
 
 // GetBlockchainInfo returns basic info about blockchain
 func (l *kvLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	bcInfo, err := l.blockStore.GetBlockchainInfo()
 	l.blockAPIsRWLock.RLock()
 	defer l.blockAPIsRWLock.RUnlock()
@@ -348,6 +361,10 @@ func (l *kvLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 // GetBlockByNumber returns block at a given height
 // blockNumber of  math.MaxUint64 will return last block
 func (l *kvLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	block, err := l.blockStore.RetrieveBlockByNumber(blockNumber)
 	l.blockAPIsRWLock.RLock()
 	l.blockAPIsRWLock.RUnlock()
@@ -358,6 +375,10 @@ func (l *kvLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 // The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 // ResultsIterator contains type BlockHolder
 func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (commonledger.ResultsIterator, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	blkItr, err := l.blockStore.RetrieveBlocks(startBlockNumber)
 	if err != nil {
 		return nil, err
@@ -367,6 +388,10 @@ func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (commonledger.Resu
 
 // GetBlockByHash returns a block given it's hash
 func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	block, err := l.blockStore.RetrieveBlockByHash(blockHash)
 	l.blockAPIsRWLock.RLock()
 	l.blockAPIsRWLock.RUnlock()
@@ -375,6 +400,10 @@ func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
 
 // GetBlockByTxID returns a block which contains a transaction
 func (l *kvLedger) GetBlockByTxID(txID string) (*common.Block, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	block, err := l.blockStore.RetrieveBlockByTxID(txID)
 	l.blockAPIsRWLock.RLock()
 	l.blockAPIsRWLock.RUnlock()
@@ -382,6 +411,10 @@ func (l *kvLedger) GetBlockByTxID(txID string) (*common.Block, error) {
 }
 
 func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return 0, err
+	}
+	defer l.throttleSemaphore.Release()
 	txValidationCode, err := l.blockStore.RetrieveTxValidationCodeByTxID(txID)
 	l.blockAPIsRWLock.RLock()
 	l.blockAPIsRWLock.RUnlock()
@@ -390,14 +423,14 @@ func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode
 
 // NewTxSimulator returns new `ledger.TxSimulator`
 func (l *kvLedger) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
-	return l.txtmgmt.NewTxSimulator(txid)
+	return l.txtmgmt.NewThrottledTxSimulator(txid)
 }
 
 // NewQueryExecutor gives handle to a query executor.
 // A client can obtain more than one 'QueryExecutor's for parallel execution.
 // Any synchronization should be performed at the implementation level if required
 func (l *kvLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
-	return l.txtmgmt.NewQueryExecutor(util.GenerateUUID())
+	return l.txtmgmt.NewThrottledQueryExecutor(util.GenerateUUID())
 }
 
 // NewHistoryQueryExecutor gives handle to a history query executor.
@@ -519,6 +552,10 @@ func (l *kvLedger) updateBlockStats(
 // GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
 // most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
 func (l *kvLedger) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	// the missing pvtData info in the pvtdataStore could belong to a block which is yet
 	// to be processed and committed to the blockStore and stateDB.
 	// In such cases, we cannot return missing pvtData info. Otherwise, we would end up in
@@ -545,6 +582,10 @@ func (l *kvLedger) addBlockCommitHash(block *common.Block, updateBatchBytes []by
 // GetPvtDataAndBlockByNum returns the block and the corresponding pvt data.
 // The pvt data is filtered by the list of 'collections' supplied
 func (l *kvLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsCollFilter) (*ledger.BlockAndPvtData, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	blockAndPvtdata, err := l.blockStore.GetPvtDataAndBlockByNum(blockNum, filter)
 	l.blockAPIsRWLock.RLock()
 	l.blockAPIsRWLock.RUnlock()
@@ -554,6 +595,10 @@ func (l *kvLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsC
 // GetPvtDataByNum returns only the pvt data  corresponding to the given block number
 // The pvt data is filtered by the list of 'collections' supplied
 func (l *kvLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
+	defer l.throttleSemaphore.Release()
 	pvtdata, err := l.blockStore.GetPvtDataByNum(blockNum, filter)
 	l.blockAPIsRWLock.RLock()
 	l.blockAPIsRWLock.RUnlock()
@@ -566,6 +611,10 @@ func (l *kvLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilte
 //     missing info is recorded in the ledger (or)
 // (3) the block is committed does not contain any pvtData.
 func (l *kvLedger) DoesPvtDataInfoExist(blockNum uint64) (bool, error) {
+	if err := l.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return false, err
+	}
+	defer l.throttleSemaphore.Release()
 	return l.blockStore.DoesPvtDataInfoExist(blockNum)
 }
 

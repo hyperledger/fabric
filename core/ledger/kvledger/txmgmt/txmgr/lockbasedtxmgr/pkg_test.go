@@ -107,6 +107,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 		&mock.DeployedChaincodeInfoProvider{},
 		nil,
 		cryptoProvider,
+		nil,
 	)
 	assert.NoError(t, err)
 

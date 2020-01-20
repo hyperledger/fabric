@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
@@ -48,6 +49,8 @@ type env struct {
 	ledgerMgr   *ledgermgmt.LedgerMgr
 }
 
+var throttleSemaphore = semaphore.New(100)
+
 func newEnv(t *testing.T) *env {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
@@ -56,6 +59,7 @@ func newEnv(t *testing.T) *env {
 		EbMetadataProvider: &externalbuilder.MetadataProvider{
 			DurablePath: "testdata",
 		},
+		ThrottleSemaphore: throttleSemaphore,
 	})
 }
 

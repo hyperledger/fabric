@@ -6,11 +6,14 @@ SPDX-License-Identifier: Apache-2.0
 package history
 
 import (
+	"context"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	protoutil "github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -19,13 +22,19 @@ import (
 
 // QueryExecutor is a query executor against the LevelDB history DB
 type QueryExecutor struct {
-	levelDB    *leveldbhelper.DBHandle
-	blockStore blkstorage.BlockStore
+	levelDB           *leveldbhelper.DBHandle
+	blockStore        blkstorage.BlockStore
+	throttleSemaphore semaphore.Semaphore
 }
 
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
 func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
 	rangeScan := constructRangeScan(namespace, key)
+
+	// The semaphore will be released in ResultsIterator.Close that should be called by the consumer
+	if err := q.throttleSemaphore.Acquire(context.Background()); err != nil {
+		return nil, err
+	}
 	dbItr := q.levelDB.GetIterator(rangeScan.startKey, rangeScan.endKey)
 
 	// By default, dbItr is in the orderer of oldest to newest and its cursor is at the beginning of the entries.
@@ -34,16 +43,18 @@ func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonle
 	if dbItr.Last() {
 		dbItr.Next()
 	}
-	return &historyScanner{rangeScan, namespace, key, dbItr, q.blockStore}, nil
+	return &historyScanner{rangeScan, namespace, key, dbItr, q.blockStore, q.throttleSemaphore, false}, nil
 }
 
 //historyScanner implements ResultsIterator for iterating through history results
 type historyScanner struct {
-	rangeScan  *rangeScan
-	namespace  string
-	key        string
-	dbItr      iterator.Iterator
-	blockStore blkstorage.BlockStore
+	rangeScan         *rangeScan
+	namespace         string
+	key               string
+	dbItr             iterator.Iterator
+	blockStore        blkstorage.BlockStore
+	throttleSemaphore semaphore.Semaphore
+	closeInvoked      bool
 }
 
 // Next iterates to the next key, in the order of newest to oldest, from history scanner.
@@ -85,7 +96,15 @@ func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 }
 
 func (scanner *historyScanner) Close() {
-	scanner.dbItr.Release()
+	if scanner.closeInvoked {
+		return
+	}
+
+	defer func() {
+		scanner.dbItr.Release()
+		scanner.throttleSemaphore.Release()
+		scanner.closeInvoked = true
+	}()
 }
 
 // getTxIDandKeyWriteValueFromTran inspects a transaction for writes to a given key
