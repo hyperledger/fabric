@@ -119,7 +119,7 @@ both ORG1 and ORG2. Similar principles apply for the network, orderers, and user
 but these are not shown here for simplicity.*
 
 You may find it helpful to see how local and channel MSPs are used by seeing
-what happens when a blockchain administrator installs and instantiates a smart
+what happens when a blockchain administrator installs and deploys a smart
 contract, as shown in the [diagram above](#msp2img).
 
 An administrator `B` connects to the peer with an identity issued by `RCA1`
@@ -127,7 +127,7 @@ and stored in their local MSP. When `B` tries to install a smart contract on
 the peer, the peer checks its local MSP, `ORG1-MSP`, to verify that the identity
 of `B` is indeed a member of `ORG1`. A successful verification will allow the
 install command to complete successfully. Subsequently, `B` wishes
-to instantiate the smart contract on the channel. Because this is a channel
+to deploy the smart contract on the channel. Because this is a channel
 operation, all organizations on the channel must agree to it. Therefore, the
 peer must check the MSPs of the channel before it can successfully commit this
 command. (Other things must happen too, but concentrate on the above for now.)

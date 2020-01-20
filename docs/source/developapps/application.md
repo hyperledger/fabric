@@ -250,9 +250,9 @@ Note how the application provides a name -- `papercontract` -- and an explicit
 contract name: `org.papernet.commercialpaper`! We see how a [contract
 name](./contractname.html) picks out one contract from the `papercontract.js`
 chaincode file that contains many contracts. In PaperNet, `papercontract.js` was
-installed and instantiated with the name `papercontract`, and if you're
-interested, read [how](../chaincode4noah.html) to install and instantiate a
-chaincode containing multiple smart contracts.
+installed and deployed to the channel with the name `papercontract`, and if you're
+interested, read [how](../chaincode4noah.html) to deploy a chaincode containing
+multiple smart contracts.
 
 If our application simultaneously required access to another contract in
 PaperNet or BondNet this would be easy:

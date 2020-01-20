@@ -16,7 +16,7 @@ The tutorial will take you through the following steps:
 #. :ref:`cdb-enable-couch`
 #. :ref:`cdb-create-index`
 #. :ref:`cdb-add-index`
-#. :ref:`cdb-install-instantiate`
+#. :ref:`cdb-install-deploy`
 #. :ref:`cdb-query`
 #. :ref:`cdb-best`
 #. :ref:`cdb-pagination`
@@ -303,7 +303,7 @@ This will create two fabric peer nodes that use CouchDB as the state database.
 It will also create one ordering node and a single channel named
 ``mychannel``.
 
-.. _cdb-install-instantiate:
+.. _cdb-install-deploy:
 
 Install and define the Chaincode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
