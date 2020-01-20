@@ -253,7 +253,7 @@ the following steps to avoid long queries:
 
 - For range queries, composite key queries, and JSON queries:
 
-    * Utilize paging support (as of v1.3) instead of one large result set.
+    * Utilize paging support instead of one large result set.
 
 - If you want to build a dashboard or collect aggregate data as part of your
   application, you can query an off-chain database that replicates the data

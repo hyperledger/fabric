@@ -281,21 +281,5 @@ whatever you want them to be. As a result, it's important to keep track of these
 policies to ensure that the ACLs for peer proposals are not impossible to satisfy
 (unless that is the intention).
 
-#### Migration considerations for customers using the experimental ACL feature
-
-Previously, the management of access control lists was done in an `isolated_data`
-section of the channel creation transaction and updated via `PEER_RESOURCE_UPDATE`
-transactions. Originally, it was thought that the `resources` tree would handle the
-update of several functions that, ultimately, were handled in other ways, so
-maintaining a separate parallel peer configuration tree was judged to be unnecessary.
-
-Migration for customers using the experimental resources tree in v1.1 is possible.
-Because the official v1.2 release does not support the old ACL methods, the network
-operators should shut down all their peers.  Then, they should upgrade them to v1.2,
-submit a channel reconfiguration transaction which enables the v1.2 capability and
-sets the desired ACLs, and then finally restart the upgraded peers.  The restarted
-peers will immediately consume the new channel configuration and enforce the ACLs as
-desired.
-
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
