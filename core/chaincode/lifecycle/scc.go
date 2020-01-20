@@ -514,6 +514,8 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 		return nil, errors.Errorf("chaincode definition not agreed to by this org (%s)", i.SCC.OrgMSPID)
 	}
 
+	logger.Infof("Successfully endorsed commit for chaincode name '%s' on channel '%s' with definition {%s}", input.Name, i.Stub.GetChannelID(), cd)
+
 	return &lb.CommitChaincodeDefinitionResult{}, nil
 }
 
