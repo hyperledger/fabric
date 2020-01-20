@@ -50,7 +50,7 @@ A gateway can be used by an application in two different ways:
   profile. Typically, one or two peers from the application's organization are
   specified, and they use [service discovery](../discovery-overview.html) to
   discover the available network topology. This includes peers, orderers,
-  channels, instantiated smart contracts and their endorsement policies. (In
+  channels, deployed smart contracts and their endorsement policies. (In
   production environments, a gateway configuration should specify at least two
   peers for availability.)
 

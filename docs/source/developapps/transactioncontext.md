@@ -10,7 +10,7 @@ processing. These range from querying or updating the ledger, both the immutable
 blockchain and the modifiable world state, to retrieving the
 transaction-submitting application's digital identity.
 
-A transaction context is created when a smart contract is instantiated, and
+A transaction context is created when a smart contract is deployed to a channel and
 made available to every subsequent transaction invocation. A transaction context
 helps smart contract developers write programs that are powerful, efficient and
 easy to reason about.
