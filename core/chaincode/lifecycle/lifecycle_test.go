@@ -129,22 +129,28 @@ var _ = Describe("Resources", func() {
 		BeforeEach(func() {
 			fakePublicState = map[string][]byte{}
 			err := resources.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.ChaincodeDefinition{
+				Sequence: 5,
 				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
-					Version: "version",
+					Version:           "version",
+					EndorsementPlugin: "my endorsement plugin",
 				},
-				ValidationInfo: &lb.ChaincodeValidationInfo{},
-				Collections:    &pb.CollectionConfigPackage{},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "my validation plugin",
+					ValidationParameter: []byte("some awesome policy"),
+				},
+				Collections: &pb.CollectionConfigPackage{},
 			}, fakePublicState)
 			Expect(err).NotTo(HaveOccurred())
 			fakeReadableState = &mock.ReadWritableState{}
 			fakeReadableState.GetStateStub = fakePublicState.GetState
 		})
 
-		It("returns that the chaincode is defined and the definition", func() {
+		It("returns that the chaincode is defined and that the chaincode definition can be converted to a string suitable for log messages", func() {
 			exists, definition, err := resources.ChaincodeDefinitionIfDefined("cc-name", fakeReadableState)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
 			Expect(definition.EndorsementInfo.Version).To(Equal("version"))
+			Expect(fmt.Sprintf("{%s}", definition)).To(Equal("{sequence: 5, endorsement info: (version: 'version', plugin: 'my endorsement plugin', init required: false), validation info: (plugin: 'my validation plugin', policy: '736f6d6520617765736f6d6520706f6c696379'), collections: ()}"))
 		})
 
 		Context("when the requested chaincode is _lifecycle", func() {

@@ -284,7 +284,7 @@ func (ef *ExternalFunctions) CheckCommitReadiness(chname, ccname string, cd *Cha
 		return nil, err
 	}
 
-	logger.Infof("Successfully checked commit readiness of chaincode definition %s, name '%s' on channel '%s'", cd, ccname, chname)
+	logger.Infof("Successfully checked commit readiness of chaincode name '%s' on channel '%s' with definition {%s}", ccname, chname, cd)
 
 	return approvals, nil
 }
@@ -304,8 +304,6 @@ func (ef *ExternalFunctions) CommitChaincodeDefinition(chname, ccname string, cd
 	if err = ef.Resources.Serializer.Serialize(NamespacesName, ccname, cd, publicState); err != nil {
 		return nil, errors.WithMessage(err, "could not serialize chaincode definition")
 	}
-
-	logger.Infof("Successfully committed definition %s, name '%s' on channel '%s'", cd, ccname, chname)
 
 	return approvals, nil
 }
@@ -447,7 +445,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		return errors.WithMessage(err, "could not serialize chaincode package info to state")
 	}
 
-	logger.Infof("Successfully approved definition %s, name '%s', package ID '%s', on channel '%s'", cd, ccname, packageID, chname)
+	logger.Infof("Successfully endorsed chaincode approval with name '%s', package ID '%s', on channel '%s' with definition {%s}", ccname, packageID, chname, cd)
 
 	return nil
 }
@@ -479,7 +477,7 @@ func (ef *ExternalFunctions) QueryChaincodeDefinition(name string, publicState R
 		return nil, errors.WithMessagef(err, "could not deserialize namespace %s as chaincode", name)
 	}
 
-	logger.Infof("Successfully queried definition %s, name '%s'", definedChaincode, name)
+	logger.Infof("Successfully queried chaincode name '%s' with definition {%s},", name, definedChaincode)
 
 	return definedChaincode, nil
 }
