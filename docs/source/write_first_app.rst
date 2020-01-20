@@ -12,13 +12,12 @@ Writing Your First Application
           :doc:`developapps/developing_applications` section or the
           :doc:`tutorial/commercial_paper`.
 
-This tutorial provides an introduction to building Fabric applications. After you
-build a fabric network and deploy your smart contracts, you can use the Fabric
-SDKs to interact with the network. In this tutorial, We will use the application
-SDK --- described in detail in the :doc:`/developapps/application` topic -- to
-invoke a smart contract which queries and updates the ledger using the smart
-contract SDK --- described in detail in section :doc:`/developapps/smartcontract`.
-We will also a Certificate Authority to generate the X.509 certificates that an
+This tutorial provides an introduction to using a Fabric application to interact
+with a deployed blockchain network. We will use sample programs built using the
+Fabric SDK --- described in detail in the :doc:`/developapps/application` topic -- to
+invoke a smart contract which queries and updates the ledger with the smart
+contract SDK --- described in detail in :doc:`/developapps/smartcontract`.
+We will also use a Certificate Authority to generate the X.509 certificates that an
 application needs to interact with a permissioned blockchain. The sample
 applications and the smart contract they invoke are collectively known as
 ``FabCar``.
@@ -26,8 +25,8 @@ applications and the smart contract they invoke are collectively known as
 We’ll go through three principle steps:
 
   **1. Setting up a development environment.** Our application needs a network
-  to interact with, so we'll get a basic network our smart contracts and
-  application will use.
+  to interact with, so we'll deploy a basic network for our smart contracts and
+  application.
 
   .. image:: images/AppConceptsOverview.png
 
@@ -40,13 +39,9 @@ We’ll go through three principle steps:
   We'll get into the code of the apps and the transactions they create,
   including querying a car, querying a range of cars, and creating a new car.
 
-After completing this tutorial you should have a basic understanding of how an
-application is programmed in conjunction with a smart contract to interact with
-the ledger hosted and replicated on the peers in a Fabric network.
-
-.. note:: These applications are also compatible with :doc:`discovery-overview`
-          and :doc:`private-data/private-data`, though we won't explicitly show
-          how to use our apps to leverage those features.
+After completing this tutorial you should have a basic understanding of how Fabric
+applications and smart contracts work together to interact with the ledger
+hosted and replicated on the peers of a Fabric network.
 
 Set up the blockchain network
 -----------------------------
@@ -81,29 +76,36 @@ Navigate to the ``fabcar`` subdirectory within your local clone of the
   cd fabric-samples/fabcar
 
 Launch your network using the ``startFabric.sh`` shell script. This command will
-spin up a blockchain network comprising peers, orderers, certificate
-authorities and more.  It will also install and instantiate a JavaScript version
-of the ``FabCar`` smart contract which will be used by our application to access
-the ledger. We'll learn more about these components as we go through the
-tutorial.
+deploy the Fabric test network with two peers, an ordering service. and
+Certificate Authorities that will later be used to create the certificates that
+will be used by our applications. It will also install and instantiate a JavaScript
+version of the ``FabCar`` smart contract which will be used by our application
+to access the ledger. We'll learn more about these components as we go through
+the tutorial.
 
 .. code:: bash
 
   ./startFabric.sh javascript
 
-Alright, you’ve now got a sample network up and running, and the ``FabCar``
-smart contract installed and instantiated. Let’s install our application
-pre-requisites so that we can try it out, and see how everything works together.
+If the command is successful, you will see the Certificate Authorities and the
+crypto material required to bring up the network being created, followed by the
+peer and ordering nodes being brought up. You will then see the ``FabCar`` being
+deployed to a channel, followed by some help text printed out by the ``startFabric.sh``
+script. We can now start to interact with this network using our sample programs.
 
 Install the application
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-.. note:: The following instructions require you to be in the
-          ``fabcar/javascript`` subdirectory within your local clone of the
-          ``fabric-samples`` repo.
+From the ``fabcar`` directory inside ``fabric-samples``, navigate to the
+``javascript`` folder.
 
-Run the following command to install the Fabric dependencies for the
-applications. It will take about a minute to complete:
+.. code:: bash
+
+  cd javascript
+
+This directory contains sample programs that were developed using the Fabric
+SDK for Node.js. Run the following command to install the application dependencies.
+It will take about a minute to complete:
 
 .. code:: bash
 
@@ -118,8 +120,8 @@ certificate authorities, generating a valid identity which is then used by
 ``fabric-network`` class methods.
 
 Once ``npm install`` completes, everything is in place to run the application.
-For this tutorial, you'll primarily be using the application JavaScript files in
-the ``fabcar/javascript`` directory. Let's take a look at what's inside:
+Let's take a look at the set sample JavaScript application files in this
+directory:
 
 .. code:: bash
 
@@ -145,7 +147,7 @@ Enrolling the admin user
 .. note:: The following two sections involve communication with the Certificate
           Authority. You may find it useful to stream the CA logs when running
           the upcoming programs by opening a new terminal shell and running
-          ``docker logs -f ca.example.com``.
+          ``docker logs -f ca_org1``.
 
 When we created the network, an admin user --- literally called ``admin`` ---
 was created as the **registrar** for the certificate authority (CA). Our first
@@ -156,9 +158,6 @@ locally and the public key is then sent to the CA which returns an encoded
 certificate for use by the application. These three credentials are then stored
 in the wallet, allowing us to act as an administrator for the CA.
 
-We will subsequently register and enroll a new application user which will be
-used by our application to interact with the blockchain.
-
 Let's enroll user ``admin``:
 
 .. code:: bash
@@ -168,35 +167,34 @@ Let's enroll user ``admin``:
 This command has stored the CA administrator's credentials in the ``wallet``
 directory.
 
-Register and enroll ``user1``
------------------------------
+Register and enroll an application user
+---------------------------------------
 
-Now that we have the administrator's credentials in a wallet, we can enroll a
-new user --- ``user1`` --- which will be used to query and update the ledger:
+Our ``admin`` is used to work with the CA. Now that we have the administrator's
+credentials in a wallet, we can create a new application user which will be used
+to interact with the blockchain. Run the following command to register and enroll
+a new user named ``fabcarUser``:
 
 .. code:: bash
 
   node registerUser.js
 
-Similar to the admin enrollment, this program uses a CSR to enroll ``user1`` and
+Similar to the admin enrollment, this program uses a CSR to enroll ``fabcarUser`` and
 store its credentials alongside those of ``admin`` in the wallet. We now have
-identities for two separate users --- ``admin`` and ``user1`` --- and these are
+identities for two separate users --- ``admin`` and ``fabcarUser`` --- that can be
 used by our application.
-
-Time to interact with the ledger...
 
 Querying the ledger
 -------------------
 
-Each peer in a blockchain network hosts a copy of the ledger, and an application
-program can query the ledger by invoking a smart contract which queries the most
-recent value of the ledger and returns it to the application.
+Each peer in a blockchain network hosts a copy of the `ledger <./ledger/ledger.html>`_, and an application
+program can view the most recent data from the ledger using a read only invoke of
+a smart contract called a query.
 
 Here is a simplified representation of how a query works:
 
 .. image:: tutorial/write_first_app.diagram.1.png
 
-Applications read data from the `ledger <./ledger/ledger.html>`_ using a query.
 The most common queries involve the current values of data in the ledger -- its
 `world state <./ledger/ledger.html#world-state>`_. The world state is
 represented as a set of key-value pairs, and applications can query data for a
@@ -540,6 +538,23 @@ The ownership of ``CAR12`` has been changed from Tom to Dave.
           access control logic. For example, only certain authorized users may
           create new cars, and only the car owner may transfer the car to
           somebody else.
+
+Clean up
+--------
+
+When you are finished using the fabcar application, you can bring down the
+test network using ``FabricDown.sh`` script.
+
+
+.. code:: bash
+
+  ./FabricDown.sh
+
+This command will bring down the CA's, peers, and ordering node of the network
+that we created, and will remove the ``admin`` and ``fabcarUser`` crypto
+material that was generated by the application. Note that all of the data on the
+ledger will be lost. If you want to go through the tutorial again, you will
+start from a clean initial state.
 
 Summary
 -------
