@@ -1,5 +1,7 @@
 # Commercial paper tutorial
 
+*Note: This tutorial uses the [1.4.x and older lifecycle process](https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html) in which a chaincode is instantiated on a channel and does not yet work with the Fabric 2.0 release. The commercial paper tutorial will be updated soon to use a multi-organization network and the new chaincode lifecycle.*
+
 **Audience:** Architects, application and smart contract developers,
 administrators
 
