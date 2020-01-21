@@ -282,7 +282,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 				return
 			}
 
-			peerInstance.Server = server
+			peerInstance.SetServer(server)
 			peerInstance.ServerConfig = test.serverConfig
 
 			assert.NoError(t, err, "NewGRPCServer should not have returned an error")

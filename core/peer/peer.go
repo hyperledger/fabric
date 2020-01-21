@@ -110,7 +110,7 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ServerRootCAs...)
 
 	// now update the client roots for the peerServer
-	err := p.Server.SetClientRootCAs(trustedRoots)
+	err := p.server.SetClientRootCAs(trustedRoots)
 	if err != nil {
 		msg := "Failed to update trusted roots from latest config block. " +
 			"This peer may not be able to communicate with members of channel %s (%s)"
@@ -174,7 +174,6 @@ func (c *configSupport) GetChannelConfig(cid string) cc.Config {
 
 // A Peer holds references to subsystems and channels associated with a Fabric peer.
 type Peer struct {
-	Server                   *comm.GRPCServer
 	ServerConfig             comm.ServerConfig
 	CredentialSupport        *comm.CredentialSupport
 	StoreProvider            transientstore.StoreProvider
@@ -187,6 +186,7 @@ type Peer struct {
 	// go routines.
 	validationWorkersSemaphore semaphore.Semaphore
 
+	server             *comm.GRPCServer
 	pluginMapper       plugin.Mapper
 	channelInitializer func(cid string)
 
@@ -485,6 +485,7 @@ func (p *Peer) GetApplicationConfig(cid string) (channelconfig.Application, bool
 // ready
 func (p *Peer) Initialize(
 	init func(string),
+	server *comm.GRPCServer,
 	pm plugin.Mapper,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
@@ -492,6 +493,7 @@ func (p *Peer) Initialize(
 	nWorkers int,
 ) {
 	// TODO: exported dep fields or constructor
+	p.server = server
 	p.validationWorkersSemaphore = semaphore.New(nWorkers)
 	p.pluginMapper = pm
 	p.channelInitializer = init
