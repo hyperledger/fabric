@@ -28,7 +28,7 @@ The chaincode package should be used to provide two pieces of information to the
 * provide chaincode endpoint information in a `connection.json` file placed in the release directory. The `bin/run` section describes the `connection.json` file
 
 There is plenty of flexibility to gathering the above information. The sample scripts in the [External builder and launcher sample scripts](#external-builder-and-launcher-sample-scripts) illustrate a simple approach to providing the information.
-As an example of flexibility, consider packaging couchdb index files (see [Add the index to your chaincode folder](https://hyperledger-fabric.readthedocs.io/en/release-1.4/couchdb_tutorial.html#add-the-index-to-your-chaincode-folder)). Sample scripts below describe an approach to packaging the files into code.tar.gz.
+As an example of flexibility, consider packaging couchdb index files (see [Add the index to your chaincode folder](couchdb_tutorial.html#add-the-index-to-your-chaincode-folder)). Sample scripts below describe an approach to packaging the files into code.tar.gz.
 
 ```
 tar cfz code.tar.gz connection.json metadata
