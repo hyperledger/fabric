@@ -17,9 +17,18 @@ Maintainers
 | Kostas Christidis | kchristidis | kostas | <kostas@gmail.com>
 | Manish Sethi | manish-sethi | manish-sethi | <manish.sethi@gmail.com>
 | Matthew Sykes | sykesm | sykesm | <sykesmat@us.ibm.com>
-| Pam Andrejko | pamandrejko | pandrejko | <pama@ibm.com>
 | Srinivasan Muralidharan | muralisrini | muralisr | <srinivasan.muralidharan99@gmail.com>
 | Yacov Manevich | yacovm | yacovm | <yacovm@il.ibm.com>
+
+**Documentation Maintainers**
+
+| Name | GitHub | Chat | email
+|------|--------|------|----------------------
+| Anthony O'Dowd | odowdaibm  | odowdaibm | <a_o-dowd@uk.ibm.com>
+| Chris Gabriel  | denali49   | cmgabriel | <alaskadd@gmail.com>
+| Joe Alewine | joealewine | joe-alewine | <joe.alewine@ibm.com>
+| Nikhil Gupta | nikhil550 | nikhilgupta | <negupta@us.ibm.com>
+| Pam Andrejko | pamandrejko | pandrejko | <pama@ibm.com>
 
 **Release Managers**
 
@@ -40,4 +49,3 @@ Maintainers
 | Yaoguo Jiang | jiangyaoguo | jiangyaoguo | <jiangyaoguo@gmail.com>
 | Greg Haskins | ghaskins | ghaskins | <gregory.haskins@gmail.com>
 | Keith Smith | smithbk | smithbk | <bksmith@us.ibm.com>
-
