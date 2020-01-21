@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
@@ -92,7 +93,7 @@ func NewServer(
 	expirationCheckDisabled bool,
 ) ab.AtomicBroadcastServer {
 	s := &server{
-		dh: deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS, deliver.NewMetrics(metricsProvider), expirationCheckDisabled),
+		dh: deliver.NewHandler(deliverSupport{Registrar: r}, timeWindow, mutualTLS, deliver.NewMetrics(metricsProvider), expirationCheckDisabled, &semaphore.NoopSemaphore{}),
 		bh: &broadcast.Handler{
 			SupportRegistrar: broadcastSupport{Registrar: r},
 			Metrics:          broadcast.NewMetrics(metricsProvider),

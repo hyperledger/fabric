@@ -117,7 +117,7 @@ func (fbrs *filteredBlockResponseSender) SendBlockResponse(
 	b := blockEvent(*block)
 	filteredBlock, err := b.toFilteredBlock()
 	if err != nil {
-		logger.Warningf("Failed to generate filtered block due to: %s", err)
+		logger.Warningf("[channel: %s] Failed to generate filtered block due to: %s", channelID, err)
 		return fbrs.SendStatusResponse(common.Status_BAD_REQUEST)
 	}
 	response := &peer.DeliverResponse{
@@ -135,6 +135,7 @@ type blockAndPrivateDataResponseSender struct {
 	peer.Deliver_DeliverWithPrivateDataServer
 	CollectionPolicyChecker
 	IdentityDeserializerManager
+	deliver.Semaphore
 }
 
 // SendStatusResponse generates status reply proto message
@@ -152,7 +153,7 @@ func (bprs *blockAndPrivateDataResponseSender) SendBlockResponse(
 	chain deliver.Chain,
 	signedData *protoutil.SignedData,
 ) error {
-	pvtData, err := bprs.getPrivateData(block, chain, channelID, signedData)
+	pvtData, err := bprs.getPrivateDataWithThrottling(block, chain, channelID, signedData)
 	if err != nil {
 		return err
 	}
@@ -171,8 +172,9 @@ func (bprs *blockAndPrivateDataResponseSender) DataType() string {
 	return "block_and_pvtdata"
 }
 
-// getPrivateData returns private data for the block
-func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
+// getPrivateDataWithThrottling returns private data for the block.
+// It throttles concurrent calls to limit the number of os threads created due to concurrent ledger access.
+func (bprs *blockAndPrivateDataResponseSender) getPrivateDataWithThrottling(
 	block *common.Block,
 	chain deliver.Chain,
 	channelID string,
@@ -183,6 +185,13 @@ func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
 	if !ok {
 		return nil, errors.New("wrong chain type")
 	}
+
+	// throttling limits the number of os threads created due to concurrent ledger access (file i/o)
+	if err := bprs.Semaphore.Acquire(bprs.Deliver_DeliverWithPrivateDataServer.Context()); err != nil {
+		logger.Debugf("Error acquiring semaphore: %s. Abort getting private data for block %d.", err, block.Header.Number)
+		return nil, errors.WithMessage(err, deliver.ContextDoneWrapMsg)
+	}
+	defer bprs.Semaphore.Release()
 
 	pvtData, err := channel.Ledger().GetPvtDataByNum(block.Header.Number, nil)
 	if err != nil {
@@ -284,6 +293,7 @@ func (s *DeliverServer) DeliverWithPrivateData(srv peer.Deliver_DeliverWithPriva
 			Deliver_DeliverWithPrivateDataServer: srv,
 			CollectionPolicyChecker:              s.CollectionPolicyChecker,
 			IdentityDeserializerManager:          s.IdentityDeserializerMgr,
+			Semaphore:                            s.DeliverHandler.ThrottleSemaphore,
 		},
 	}
 	err = s.DeliverHandler.Handle(srv.Context(), deliverServer)

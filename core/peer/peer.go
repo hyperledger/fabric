@@ -144,7 +144,7 @@ func (flbs fileLedgerBlockStore) AddBlock(*common.Block) error {
 	return nil
 }
 
-func (flbs fileLedgerBlockStore) RetrieveBlocks(startBlockNumber uint64) (commonledger.ResultsIterator, error) {
+func (flbs fileLedgerBlockStore) RetrieveBlocks(startBlockNumber uint64) (commonledger.BlocksIterator, error) {
 	return flbs.GetBlocksIterator(startBlockNumber)
 }
 

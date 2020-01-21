@@ -72,6 +72,44 @@ func TestBlockItrClose(t *testing.T) {
 	assert.Nil(t, bh)
 }
 
+func TestWaitForNextBlockAvailable(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	defer blkfileMgrWrapper.close()
+	blkfileMgr := blkfileMgrWrapper.blockfileMgr
+
+	blocks := testutil.ConstructTestBlocks(t, 5)
+	blkfileMgrWrapper.addBlocks(blocks)
+
+	itr, err := blkfileMgr.retrieveBlocks(1)
+	assert.NoError(t, err)
+
+	nextBlockAvailable, closed := itr.WaitForNextBlock()
+	assert.Equal(t, true, nextBlockAvailable)
+	assert.Equal(t, false, closed)
+}
+
+func TestWaitForNextBlockClosed(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	defer blkfileMgrWrapper.close()
+	blkfileMgr := blkfileMgrWrapper.blockfileMgr
+
+	blocks := testutil.ConstructTestBlocks(t, 5)
+	blkfileMgrWrapper.addBlocks(blocks)
+
+	itr, err := blkfileMgr.retrieveBlocks(1)
+	assert.NoError(t, err)
+
+	itr.Close()
+
+	nextBlockAvailable, closed := itr.WaitForNextBlock()
+	assert.Equal(t, true, closed)
+	assert.Equal(t, false, nextBlockAvailable)
+}
+
 func TestRaceToDeadlock(t *testing.T) {
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
@@ -133,12 +171,12 @@ func TestCloseMultipleItrsWaitForFutureBlock(t *testing.T) {
 	itr1, err := blkfileMgr.retrieveBlocks(7)
 	assert.NoError(t, err)
 	// itr1 does not retrieve any block because it closes before new blocks are added
-	go iterateInBackground(t, itr1, 9, wg, []uint64{})
+	go iterateInBackground(t, itr1, 9, wg, []uint64{}, true)
 
 	itr2, err := blkfileMgr.retrieveBlocks(8)
 	assert.NoError(t, err)
 	// itr2 retrieves two blocks 8 and 9. Because it started waiting for 8 and quits at 9
-	go iterateInBackground(t, itr2, 9, wg, []uint64{8, 9})
+	go iterateInBackground(t, itr2, 9, wg, []uint64{8, 9}, false)
 
 	// sleep for the background iterators to get started
 	time.Sleep(2 * time.Second)
@@ -147,12 +185,15 @@ func TestCloseMultipleItrsWaitForFutureBlock(t *testing.T) {
 	wg.Wait()
 }
 
-func iterateInBackground(t *testing.T, itr *blocksItr, quitAfterBlkNum uint64, wg *sync.WaitGroup, expectedBlockNums []uint64) {
+func iterateInBackground(t *testing.T, itr *blocksItr, quitAfterBlkNum uint64, wg *sync.WaitGroup, expectedBlockNums []uint64, itrCloseInvoked bool) {
 	defer wg.Done()
 	retrievedBlkNums := []uint64{}
 	defer func() { assert.Equal(t, expectedBlockNums, retrievedBlkNums) }()
 
 	for {
+		nextBlockAvailable, closed := itr.WaitForNextBlock()
+		assert.Equal(t, itrCloseInvoked, closed)
+		assert.Equal(t, !itrCloseInvoked, nextBlockAvailable)
 		blk, err := itr.Next()
 		assert.NoError(t, err)
 		if blk == nil {

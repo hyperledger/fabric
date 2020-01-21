@@ -65,7 +65,7 @@ func (store *fsBlockStore) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 }
 
 // RetrieveBlocks returns an iterator that can be used for iterating over a range of blocks
-func (store *fsBlockStore) RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error) {
+func (store *fsBlockStore) RetrieveBlocks(startNum uint64) (ledger.BlocksIterator, error) {
 	return store.fileMgr.retrieveBlocks(startNum)
 }
 

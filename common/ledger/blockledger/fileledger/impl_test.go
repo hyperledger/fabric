@@ -64,7 +64,7 @@ func (tev *testEnv) shutDown() {
 
 type mockBlockStore struct {
 	blockchainInfo             *cb.BlockchainInfo
-	resultsIterator            cl.ResultsIterator
+	resultsIterator            cl.BlocksIterator
 	block                      *cb.Block
 	envelope                   *cb.Envelope
 	txValidationCode           peer.TxValidationCode
@@ -81,7 +81,7 @@ func (mbs *mockBlockStore) GetBlockchainInfo() (*cb.BlockchainInfo, error) {
 	return mbs.blockchainInfo, mbs.getBlockchainInfoError
 }
 
-func (mbs *mockBlockStore) RetrieveBlocks(startNum uint64) (cl.ResultsIterator, error) {
+func (mbs *mockBlockStore) RetrieveBlocks(startNum uint64) (cl.BlocksIterator, error) {
 	return mbs.resultsIterator, mbs.defaultError
 }
 
@@ -119,6 +119,11 @@ type mockBlockStoreIterator struct {
 func (m *mockBlockStoreIterator) Next() (cl.QueryResult, error) {
 	args := m.Called()
 	return args.Get(0), args.Error(1)
+}
+
+func (m *mockBlockStoreIterator) WaitForNextBlock() (bool, bool) {
+	m.Called()
+	return true, false
 }
 
 func (m *mockBlockStoreIterator) Close() {

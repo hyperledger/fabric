@@ -29,6 +29,11 @@ func (nfei *NotFoundErrorIterator) Next() (*cb.Block, cb.Status) {
 	return nil, cb.Status_NOT_FOUND
 }
 
+// WaitForNextBlock return max block number available and a bool for iterator should close
+func (nfei *NotFoundErrorIterator) WaitForNextBlock() (bool, bool) {
+	return true, false
+}
+
 // ReadyChan returns a closed channel
 func (nfei *NotFoundErrorIterator) ReadyChan() <-chan struct{} {
 	return closedChan

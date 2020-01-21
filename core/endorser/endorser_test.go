@@ -9,6 +9,7 @@ package endorser_test
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,6 +19,7 @@ import (
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/fake"
@@ -167,8 +169,9 @@ var _ = Describe("Endorser", func() {
 				EndorsementsFailed:       fakeEndorsementsFailed,
 				DuplicateTxsFailure:      fakeDuplicateTxsFailure,
 			},
-			Support:        fakeSupport,
-			ChannelFetcher: fakeChannelFetcher,
+			Support:           fakeSupport,
+			ChannelFetcher:    fakeChannelFetcher,
+			ThrottleSemaphore: semaphore.New(10),
 		}
 	})
 
@@ -281,6 +284,98 @@ var _ = Describe("Endorser", func() {
 				Response: &pb.Response{
 					Status:  500,
 					Message: "duplicate transaction found [6f142589e4ef6a1e62c9c816e2074f70baa9f7cf67c2f0c287d4ef907d6d2015]. Creator [0a066d73702d6964]",
+				},
+			}))
+		})
+	})
+
+	Context("when concurrency semaphore is set", func() {
+		var (
+			fakeSemaphore *fake.Semaphore
+		)
+
+		BeforeEach(func() {
+			fakeSemaphore = &fake.Semaphore{}
+			fakeSemaphore.AcquireReturns(nil)
+			e.ThrottleSemaphore = fakeSemaphore
+		})
+
+		It("handles concurrent requests", func() {
+			wg := &sync.WaitGroup{}
+			wg.Add(10)
+			for i := 0; i < 10; i++ {
+				go func(count int) {
+					proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(proposalResponse.Endorsement).To(Equal(&pb.Endorsement{
+						Endorser:  []byte("endorser-identity"),
+						Signature: []byte("endorser-signature"),
+					}))
+					wg.Done()
+				}(i)
+			}
+			wg.Wait()
+
+			Expect(fakeSemaphore.AcquireCallCount()).To(Equal(10))
+			Expect(fakeSemaphore.ReleaseCallCount()).To(Equal(10))
+		})
+	})
+
+	Context("when concurrent requests exceeds max concurrency", func() {
+		var (
+			sema semaphore.Semaphore
+		)
+
+		BeforeEach(func() {
+			sema = semaphore.New(2)
+			e.ThrottleSemaphore = sema
+		})
+
+		It("handles concurrent requests", func() {
+			wg := &sync.WaitGroup{}
+			wg.Add(10)
+			for i := 0; i < 10; i++ {
+				go func(count int) {
+					proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(proposalResponse.Endorsement).To(Equal(&pb.Endorsement{
+						Endorser:  []byte("endorser-identity"),
+						Signature: []byte("endorser-signature"),
+					}))
+					wg.Done()
+				}(i)
+			}
+			wg.Wait()
+
+			// no permit should be still acquired after all requests are done
+			Expect(len(sema)).To(Equal(0))
+		})
+	})
+
+	Context("when the client context is cancelled", func() {
+		var (
+			ctx    context.Context
+			cancel func()
+		)
+
+		BeforeEach(func() {
+			// simulate all permits in the semaphore have been acquired so that when the endorser
+			// processes the proposal, it will eventually run into context canceled condition
+			semaphore := semaphore.New(1)
+			semaphore.Acquire(context.Background())
+			e.ThrottleSemaphore = semaphore
+
+			ctx, cancel = context.WithCancel(context.Background())
+			cancel()
+		})
+
+		It("wraps and returns an error and responds to the client", func() {
+			proposalResponse, err := e.ProcessProposal(ctx, signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
+				Response: &pb.Response{
+					Status:  500,
+					Message: "failed to acquire semaphore for endorsement: context canceled",
 				},
 			}))
 		})
@@ -492,7 +587,7 @@ var _ = Describe("Endorser", func() {
 		Expect(blkHt).To(Equal(uint64(7)))
 
 		// TODO, this deserves a better test, but there was none before and this logic,
-		// really seems far too jumbled to be in the endorser package.  There are seperate
+		// really seems far too jumbled to be in the endorser package.  There are separate
 		// tests of the private data assembly functions in their test file.
 		Expect(privateData).NotTo(BeNil())
 		Expect(privateData.EndorsedAt).To(Equal(uint64(7)))

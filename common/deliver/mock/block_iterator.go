@@ -24,6 +24,18 @@ type BlockIterator struct {
 		result1 *common.Block
 		result2 common.Status
 	}
+	WaitForNextBlockStub        func() (bool, bool)
+	waitForNextBlockMutex       sync.RWMutex
+	waitForNextBlockArgsForCall []struct {
+	}
+	waitForNextBlockReturns struct {
+		result1 bool
+		result2 bool
+	}
+	waitForNextBlockReturnsOnCall map[int]struct {
+		result1 bool
+		result2 bool
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -106,6 +118,61 @@ func (fake *BlockIterator) NextReturnsOnCall(i int, result1 *common.Block, resul
 	}{result1, result2}
 }
 
+func (fake *BlockIterator) WaitForNextBlock() (bool, bool) {
+	fake.waitForNextBlockMutex.Lock()
+	ret, specificReturn := fake.waitForNextBlockReturnsOnCall[len(fake.waitForNextBlockArgsForCall)]
+	fake.waitForNextBlockArgsForCall = append(fake.waitForNextBlockArgsForCall, struct {
+	}{})
+	fake.recordInvocation("WaitForNextBlock", []interface{}{})
+	fake.waitForNextBlockMutex.Unlock()
+	if fake.WaitForNextBlockStub != nil {
+		return fake.WaitForNextBlockStub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.waitForNextBlockReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *BlockIterator) WaitForNextBlockCallCount() int {
+	fake.waitForNextBlockMutex.RLock()
+	defer fake.waitForNextBlockMutex.RUnlock()
+	return len(fake.waitForNextBlockArgsForCall)
+}
+
+func (fake *BlockIterator) WaitForNextBlockCalls(stub func() (bool, bool)) {
+	fake.waitForNextBlockMutex.Lock()
+	defer fake.waitForNextBlockMutex.Unlock()
+	fake.WaitForNextBlockStub = stub
+}
+
+func (fake *BlockIterator) WaitForNextBlockReturns(result1 bool, result2 bool) {
+	fake.waitForNextBlockMutex.Lock()
+	defer fake.waitForNextBlockMutex.Unlock()
+	fake.WaitForNextBlockStub = nil
+	fake.waitForNextBlockReturns = struct {
+		result1 bool
+		result2 bool
+	}{result1, result2}
+}
+
+func (fake *BlockIterator) WaitForNextBlockReturnsOnCall(i int, result1 bool, result2 bool) {
+	fake.waitForNextBlockMutex.Lock()
+	defer fake.waitForNextBlockMutex.Unlock()
+	fake.WaitForNextBlockStub = nil
+	if fake.waitForNextBlockReturnsOnCall == nil {
+		fake.waitForNextBlockReturnsOnCall = make(map[int]struct {
+			result1 bool
+			result2 bool
+		})
+	}
+	fake.waitForNextBlockReturnsOnCall[i] = struct {
+		result1 bool
+		result2 bool
+	}{result1, result2}
+}
+
 func (fake *BlockIterator) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -113,6 +180,8 @@ func (fake *BlockIterator) Invocations() map[string][][]interface{} {
 	defer fake.closeMutex.RUnlock()
 	fake.nextMutex.RLock()
 	defer fake.nextMutex.RUnlock()
+	fake.waitForNextBlockMutex.RLock()
+	defer fake.waitForNextBlockMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

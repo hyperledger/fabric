@@ -29,6 +29,9 @@ type Iterator interface {
 	// Next blocks until there is a new block available, or returns an error if
 	// the next block is no longer retrievable
 	Next() (*cb.Block, cb.Status)
+	// WaitForNextBlock waits until next block is available or the Close method has been invoked
+	// It returns bools to indicate if next block is available and if the Close method has been invoked
+	WaitForNextBlock() (bool, bool)
 	// Close releases resources acquired by the Iterator
 	Close()
 }

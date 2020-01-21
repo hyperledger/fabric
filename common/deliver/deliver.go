@@ -26,6 +26,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ContextDoneWrapMsg defines the error wrap msg so that the client will receive the same error msg in case of context done
+const ContextDoneWrapMsg = "context finished before block retrieved"
+
 var logger = flogging.MustGetLogger("common.deliver")
 
 //go:generate counterfeiter -o mock/chain_manager.go -fake-name ChainManager . ChainManager
@@ -85,6 +88,16 @@ func (inspector InspectorFunc) Inspect(ctx context.Context, p proto.Message) err
 	return inspector(ctx, p)
 }
 
+//go:generate counterfeiter -o mock/semaphore.go -fake-name Semaphore . Semaphore
+
+// Semaphore defines the interface that acquires and releases a permit
+type Semaphore interface {
+	// Acquire acquires a permit
+	Acquire(ctx context.Context) error
+	// Release releases a permit.
+	Release()
+}
+
 // Handler handles server requests.
 type Handler struct {
 	ExpirationCheckFunc func(identityBytes []byte) time.Time
@@ -92,6 +105,7 @@ type Handler struct {
 	TimeWindow          time.Duration
 	BindingInspector    Inspector
 	Metrics             *Metrics
+	ThrottleSemaphore   Semaphore
 }
 
 //go:generate counterfeiter -o mock/receiver.go -fake-name Receiver . Receiver
@@ -139,7 +153,7 @@ func ExtractChannelHeaderCertHash(msg proto.Message) []byte {
 }
 
 // NewHandler creates an implementation of the Handler interface.
-func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metrics *Metrics, expirationCheckDisabled bool) *Handler {
+func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metrics *Metrics, expirationCheckDisabled bool, throttleSemaphore Semaphore) *Handler {
 	expirationCheck := crypto.ExpiresAt
 	if expirationCheckDisabled {
 		expirationCheck = noExpiration
@@ -150,6 +164,7 @@ func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metri
 		BindingInspector:    InspectorFunc(comm.NewBindingInspector(mutualTLS, ExtractChannelHeaderCertHash)),
 		Metrics:             metrics,
 		ExpirationCheckFunc: expirationCheck,
+		ThrottleSemaphore:   throttleSemaphore,
 	}
 }
 
@@ -159,6 +174,7 @@ func (h *Handler) Handle(ctx context.Context, srv *Server) error {
 	logger.Debugf("Starting new deliver loop for %s", addr)
 	h.Metrics.StreamsOpened.Add(1)
 	defer h.Metrics.StreamsClosed.Add(1)
+
 	for {
 		logger.Debugf("Attempting to read seek info message from %s", addr)
 		envelope, err := srv.Recv()
@@ -260,7 +276,14 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 
 	logger.Debugf("[channel: %s] Received seekInfo (%p) %v from %s", chdr.ChannelId, seekInfo, seekInfo, addr)
 
+	// throttling limits the number of os threads created due to concurrent ledger access (file i/o)
+	// release after getting the iterator
+	if err := h.ThrottleSemaphore.Acquire(ctx); err != nil {
+		logger.Debugf("[channel: %s] Error acquiring semaphore: %s. Abort getting block iterator.", chdr.ChannelId, err)
+		return cb.Status_INTERNAL_SERVER_ERROR, errors.WithMessage(err, ContextDoneWrapMsg)
+	}
 	cursor, number := chain.Reader().Iterator(seekInfo.Start)
+	h.ThrottleSemaphore.Release()
 	defer cursor.Close()
 	var stopNum uint64
 	switch stop := seekInfo.Stop.Type.(type) {
@@ -293,17 +316,18 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 
 		var block *cb.Block
 		var status cb.Status
+		var getBlockError error
 
 		iterCh := make(chan struct{})
 		go func() {
-			block, status = cursor.Next()
+			block, status, getBlockError = h.getNextBlock(ctx, chdr.ChannelId, cursor)
 			close(iterCh)
 		}()
 
 		select {
 		case <-ctx.Done():
 			logger.Debugf("Context canceled, aborting wait for next block")
-			return cb.Status_INTERNAL_SERVER_ERROR, errors.Wrapf(ctx.Err(), "context finished before block retrieved")
+			return cb.Status_INTERNAL_SERVER_ERROR, errors.Wrapf(ctx.Err(), ContextDoneWrapMsg)
 		case <-erroredChan:
 			// TODO, today, the only user of the errorChan is the orderer consensus implementations.  If the peer ever reports
 			// this error, we will need to update this error message, possibly finding a way to signal what error text to return.
@@ -311,6 +335,10 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 			return cb.Status_SERVICE_UNAVAILABLE, nil
 		case <-iterCh:
 			// Iterator has set the block and status vars
+		}
+
+		if getBlockError != nil {
+			return cb.Status_INTERNAL_SERVER_ERROR, getBlockError
 		}
 
 		if status != cb.Status_SUCCESS {
@@ -344,6 +372,24 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	logger.Debugf("[channel: %s] Done delivering to %s for (%p)", chdr.ChannelId, addr, seekInfo)
 
 	return cb.Status_SUCCESS, nil
+}
+
+func (h *Handler) getNextBlock(ctx context.Context, channelID string, it blockledger.Iterator) (*cb.Block, cb.Status, error) {
+	_, closed := it.WaitForNextBlock()
+	if closed {
+		logger.Debugf("[channel: %s] next block is not available because the Close method has been invoked", channelID)
+		return nil, cb.Status_SERVICE_UNAVAILABLE, nil
+	}
+
+	// throttling limits the number of os threads created due to concurrent ledger access (file i/o)
+	// semaphore.Acquire calls ctx.Done and returns an error if the contxt is canceled.
+	if err := h.ThrottleSemaphore.Acquire(ctx); err != nil {
+		logger.Debugf("[channel: %s] Error acquiring semaphore: %s. Abort getting next block.", channelID, err)
+		return nil, cb.Status_INTERNAL_SERVER_ERROR, errors.WithMessage(err, ContextDoneWrapMsg)
+	}
+	defer h.ThrottleSemaphore.Release()
+	block, status := it.Next()
+	return block, status, nil
 }
 
 func (h *Handler) parseEnvelope(ctx context.Context, envelope *cb.Envelope) (*cb.Payload, *cb.ChannelHeader, *cb.SignatureHeader, error) {

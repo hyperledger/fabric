@@ -30,7 +30,7 @@ type Ledger interface {
 	// GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
 	// The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 	// ResultsIterator contains type BlockHolder
-	GetBlocksIterator(startBlockNumber uint64) (ResultsIterator, error)
+	GetBlocksIterator(startBlockNumber uint64) (BlocksIterator, error)
 	// Close closes the ledger
 	Close()
 }
@@ -42,6 +42,14 @@ type ResultsIterator interface {
 	Next() (QueryResult, error)
 	// Close releases resources occupied by the iterator
 	Close()
+}
+
+// BlocksIterator - an iterator for query blocks
+type BlocksIterator interface {
+	ResultsIterator
+	// WaitForNextBlock waits until next block is available or the Close method has been invoked
+	// It returns bools to indicate if next block is available and if the Close method has been invoked
+	WaitForNextBlock() (bool, bool)
 }
 
 // QueryResultsIterator - an iterator for query result set

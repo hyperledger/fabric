@@ -39,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -105,6 +106,14 @@ const (
 )
 
 var chaincodeDevMode bool
+
+// Semaphore defines the interface that acquires and releases a permit
+type Semaphore interface {
+	// Acquire acquires a permit
+	Acquire(ctx context.Context) error
+	// Release releases a permit.
+	Release()
+}
 
 func startCmd() *cobra.Command {
 	// Set the flags on the node start command.
@@ -463,6 +472,12 @@ func serve(args []string) error {
 		}
 	}
 
+	// Create a semaphore to throttle concurrent client requests for endorsement and deliver service
+	var throttleSemaphore Semaphore = &semaphore.NoopSemaphore{}
+	if maxConcurrency := coreConfig.LimitsConcurrencyClients; maxConcurrency != 0 {
+		throttleSemaphore = semaphore.New(maxConcurrency)
+	}
+
 	metrics := deliver.NewMetrics(metricsProvider)
 	abServer := &peer.DeliverServer{
 		DeliverHandler: deliver.NewHandler(
@@ -471,6 +486,7 @@ func serve(args []string) error {
 			mutualTLS,
 			metrics,
 			false,
+			throttleSemaphore,
 		),
 		PolicyCheckerProvider: policyCheckerProvider,
 	}
@@ -714,6 +730,7 @@ func serve(args []string) error {
 		LocalMSP:               localMSP,
 		Support:                endorserSupport,
 		Metrics:                endorser.NewMetrics(metricsProvider),
+		ThrottleSemaphore:      throttleSemaphore,
 	}
 
 	// deploy system chaincodes

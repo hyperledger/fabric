@@ -88,6 +88,16 @@ type ChannelFetcher interface {
 	Channel(channelID string) *Channel
 }
 
+//go:generate counterfeiter -o fake/semaphore.go -fake-name Semaphore . Semaphore
+
+// Semaphore defines the interface that acquires and releases a permit
+type Semaphore interface {
+	// Acquire acquires a permit
+	Acquire(ctx context.Context) error
+	// Release releases a permit.
+	Release()
+}
+
 type Channel struct {
 	IdentityDeserializer msp.IdentityDeserializer
 }
@@ -100,6 +110,7 @@ type Endorser struct {
 	Support                Support
 	PvtRWSetAssembler      PvtRWSetAssembler
 	Metrics                *Metrics
+	ThrottleSemaphore      Semaphore
 }
 
 // call specified chaincode (system or user)
@@ -317,13 +328,13 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		e.Metrics.ProposalDuration.With(meterLabels...).Observe(time.Since(startTime).Seconds())
 	}()
 
-	pResp, err := e.ProcessProposalSuccessfullyOrError(up)
+	pResp, err := e.ProcessProposalSuccessfullyOrError(ctx, up)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 	}
 
 	if pResp.Endorsement != nil || up.ChannelHeader.ChannelId == "" {
-		// We mark the tx as successfull only if it was successfully endorsed, or
+		// We mark the tx as successful only if it was successfully endorsed, or
 		// if it was a system chaincode on a channel-less channel and therefore
 		// cannot be endorsed.
 		success = true
@@ -334,7 +345,9 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	return pResp, nil
 }
 
-func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb.ProposalResponse, error) {
+// ProcessProposalSuccessfullyOrError processes the proposal and returns a response or error.
+// It throttles the nubmer of concurrent requests to prevent system resource exhaustion.
+func (e *Endorser) ProcessProposalSuccessfullyOrError(ctx context.Context, up *UnpackedProposal) (*pb.ProposalResponse, error) {
 	txParams := &ccprovider.TransactionParams{
 		ChannelID:  up.ChannelHeader.ChannelId,
 		TxID:       up.ChannelHeader.TxId,
@@ -368,15 +381,10 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		txParams.HistoryQueryExecutor = hqe
 	}
 
-	cdLedger, err := e.Support.ChaincodeEndorsementInfo(up.ChannelID(), up.ChaincodeName, txParams.TXSimulator)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "make sure the chaincode %s has been successfully defined on channel %s and try again", up.ChaincodeName, up.ChannelID())
-	}
-
 	// 1 -- simulate
-	res, simulationResult, ccevent, err := e.SimulateProposal(txParams, up.ChaincodeName, up.Input)
+	cdLedger, res, simulationResult, ccevent, err := e.performSimulationWithThrottling(ctx, up, txParams)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error in simulation")
+		return nil, err
 	}
 
 	cceventBytes, err := CreateCCEventBytes(ccevent)
@@ -439,6 +447,30 @@ func (e *Endorser) ProcessProposalSuccessfullyOrError(up *UnpackedProposal) (*pb
 		Payload:     mPrpBytes,
 		Response:    res,
 	}, nil
+}
+
+// performSimulationWithThrottling simulates the proposal and returns endorsement info and simulation result.
+// It throttles concurrent calls to limit the number of os threads created due to concurrent ledger access.
+func (e *Endorser) performSimulationWithThrottling(ctx context.Context, up *UnpackedProposal, txParams *ccprovider.TransactionParams) (
+	*lifecycle.ChaincodeEndorsementInfo, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
+
+	if err := e.ThrottleSemaphore.Acquire(ctx); err != nil {
+		return nil, nil, nil, nil, errors.WithMessage(err, "failed to acquire semaphore for endorsement")
+	}
+	defer e.ThrottleSemaphore.Release()
+
+	// get chaincode endorsement info
+	cdLedger, err := e.Support.ChaincodeEndorsementInfo(up.ChannelID(), up.ChaincodeName, txParams.TXSimulator)
+	if err != nil {
+		return nil, nil, nil, nil, errors.WithMessagef(err, "make sure the chaincode %s has been successfully defined on channel %s and try again", up.ChaincodeName, up.ChannelID())
+	}
+
+	// simulate
+	res, simulationResult, ccevent, err := e.SimulateProposal(txParams, up.ChaincodeName, up.Input)
+	if err != nil {
+		return nil, nil, nil, nil, errors.WithMessage(err, "error in simulation")
+	}
+	return cdLedger, res, simulationResult, ccevent, nil
 }
 
 // determine whether or not a transaction simulator should be

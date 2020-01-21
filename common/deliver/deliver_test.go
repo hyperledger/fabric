@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -24,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
@@ -68,7 +70,8 @@ var _ = Describe("Deliver", func() {
 				time.Second,
 				false,
 				deliver.NewMetrics(&disabled.Provider{}),
-				false)
+				false,
+				semaphore.New(1))
 			Expect(handler).NotTo(BeNil())
 
 			Expect(handler.ChainManager).To(Equal(fakeChainManager))
@@ -84,7 +87,8 @@ var _ = Describe("Deliver", func() {
 					time.Second,
 					false,
 					deliver.NewMetrics(&disabled.Provider{}),
-					false)
+					false,
+					semaphore.New(1))
 
 				Expect(handler.ExpirationCheckFunc(serializedIdentity)).To(Equal(cert.NotAfter))
 			})
@@ -97,7 +101,8 @@ var _ = Describe("Deliver", func() {
 					time.Second,
 					false,
 					deliver.NewMetrics(&disabled.Provider{}),
-					true)
+					true,
+					semaphore.New(100))
 
 				Expect(handler.ExpirationCheckFunc(serializedIdentity)).NotTo(Equal(cert.NotAfter))
 			})
@@ -167,6 +172,7 @@ var _ = Describe("Deliver", func() {
 			}
 			fakeBlockIterator = &mock.BlockIterator{}
 			fakeBlockIterator.NextReturns(block, cb.Status_SUCCESS)
+			fakeBlockIterator.WaitForNextBlockReturns(true, false)
 
 			fakeBlockReader = &mock.BlockReader{}
 			fakeBlockReader.HeightReturns(1000)
@@ -210,6 +216,7 @@ var _ = Describe("Deliver", func() {
 				ExpirationCheckFunc: func([]byte) time.Time {
 					return time.Time{}
 				},
+				ThrottleSemaphore: &semaphore.NoopSemaphore{},
 			}
 			server = &deliver.Server{
 				Receiver:       fakeReceiver,
@@ -771,7 +778,7 @@ var _ = Describe("Deliver", func() {
 			})
 		})
 
-		Context("when the client disconnects before reading from the chain", func() {
+		Context("when the client disconnects before reading from the chain and the handler has a NoopSemaphore", func() {
 			var (
 				ctx    context.Context
 				cancel func()
@@ -790,6 +797,25 @@ var _ = Describe("Deliver", func() {
 
 			AfterEach(func() {
 				close(done)
+			})
+
+			It("aborts the deliver stream", func() {
+				err := handler.Handle(ctx, server)
+				Expect(err).To(MatchError("context finished before block retrieved: context canceled"))
+			})
+		})
+
+		Context("when the client disconnects before reading from the chain and the handler has a semaphore", func() {
+			var (
+				ctx    context.Context
+				cancel func()
+			)
+
+			BeforeEach(func() {
+				semaphore := semaphore.New(1)
+				handler.ThrottleSemaphore = semaphore
+				ctx, cancel = context.WithCancel(context.Background())
+				cancel()
 			})
 
 			It("aborts the deliver stream", func() {
@@ -1004,6 +1030,7 @@ var _ = Describe("Deliver", func() {
 		Context("when next block status does not indicate success", func() {
 			BeforeEach(func() {
 				fakeBlockIterator.NextReturns(nil, cb.Status_UNKNOWN)
+
 			})
 
 			It("forwards the status response", func() {
@@ -1013,6 +1040,103 @@ var _ = Describe("Deliver", func() {
 				Expect(fakeResponseSender.SendStatusResponseCallCount()).To(Equal(1))
 				resp := fakeResponseSender.SendStatusResponseArgsForCall(0)
 				Expect(resp).To(Equal(cb.Status_UNKNOWN))
+			})
+		})
+
+		Context("when WaitForNextBlock indicates Close method has been closed", func() {
+			BeforeEach(func() {
+				fakeBlockIterator.WaitForNextBlockReturns(false, true)
+
+			})
+
+			It("sends the Status_SERVICE_UNAVAILABLE response", func() {
+				err := handler.Handle(context.Background(), server)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeResponseSender.SendStatusResponseCallCount()).To(Equal(1))
+				resp := fakeResponseSender.SendStatusResponseArgsForCall(0)
+				Expect(resp).To(Equal(cb.Status_SERVICE_UNAVAILABLE))
+			})
+		})
+
+		Context("when concurrency semaphore is set", func() {
+			var (
+				fakeSemaphore *mock.Semaphore
+			)
+
+			BeforeEach(func() {
+				fakeSemaphore = &mock.Semaphore{}
+				fakeSemaphore.AcquireReturns(nil)
+				handler.ThrottleSemaphore = fakeSemaphore
+				seekInfo = &ab.SeekInfo{Start: &ab.SeekPosition{}, Stop: seekOldest}
+				fakeBlockReader.HeightReturns(3)
+			})
+
+			It("handles concurrent requests", func() {
+				wg := &sync.WaitGroup{}
+				wg.Add(10)
+				for i := 0; i < 10; i++ {
+					go func(count int) {
+						fakeRecv := &mock.Receiver{}
+						fakeRecv.RecvReturns(envelope, nil)
+						fakeRecv.RecvReturnsOnCall(1, nil, io.EOF)
+						srv := &deliver.Server{
+							Receiver:       fakeRecv,
+							PolicyChecker:  fakePolicyChecker,
+							ResponseSender: fakeResponseSender,
+						}
+						err := handler.Handle(context.Background(), srv)
+						Expect(err).NotTo(HaveOccurred())
+						wg.Done()
+					}(i)
+				}
+				wg.Wait()
+
+				Expect(fakeSemaphore.AcquireCallCount()).To(Equal(20))
+				Expect(fakeSemaphore.ReleaseCallCount()).To(Equal(20))
+				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(10))
+				Expect(fakeBlockIterator.NextCallCount()).To(Equal(10))
+				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(10))
+			})
+		})
+
+		Context("when concurrent requests exceeds max concurrency", func() {
+			var (
+				sema semaphore.Semaphore
+			)
+
+			BeforeEach(func() {
+				sema = semaphore.New(2)
+				handler.ThrottleSemaphore = sema
+				seekInfo = &ab.SeekInfo{Start: &ab.SeekPosition{}, Stop: seekOldest}
+				fakeBlockReader.HeightReturns(3)
+			})
+
+			It("handles concurrent requests", func() {
+				wg := &sync.WaitGroup{}
+				wg.Add(10)
+				for i := 0; i < 10; i++ {
+					go func(count int) {
+						fakeRecv := &mock.Receiver{}
+						fakeRecv.RecvReturns(envelope, nil)
+						fakeRecv.RecvReturnsOnCall(1, nil, io.EOF)
+						srv := &deliver.Server{
+							Receiver:       fakeRecv,
+							PolicyChecker:  fakePolicyChecker,
+							ResponseSender: fakeResponseSender,
+						}
+						err := handler.Handle(context.Background(), srv)
+						Expect(err).NotTo(HaveOccurred())
+						wg.Done()
+					}(i)
+				}
+				wg.Wait()
+
+				// no permit should be still acquired after all requests are done
+				Expect(len(sema)).To(Equal(0))
+				Expect(fakeBlockReader.IteratorCallCount()).To(Equal(10))
+				Expect(fakeBlockIterator.NextCallCount()).To(Equal(10))
+				Expect(fakeResponseSender.SendBlockResponseCallCount()).To(Equal(10))
 			})
 		})
 	})

@@ -422,10 +422,10 @@ peer:
 
     # Limits is used to configure some internal resource limits.
     limits:
-      # Concurrency limits the number of concurrently running system chaincode requests.
-      # This option is only supported for qscc at this time.
+      # Concurrency limits the number of concurrently running client requests
+      # including system chaincode invocation, endorsements, and events.
       concurrency:
-        qscc: 5000
+        clients: 10000
 
 ###############################################################################
 #

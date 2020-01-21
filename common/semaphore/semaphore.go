@@ -43,3 +43,16 @@ func (s Semaphore) Release() {
 		panic("semaphore buffer is empty")
 	}
 }
+
+// NoopSemaphore is a no-op semaphore that does nothing to acquire or release a permit.
+type NoopSemaphore struct {
+}
+
+// Acquire does nothing
+func (d *NoopSemaphore) Acquire(ctx context.Context) error {
+	return nil
+}
+
+// Release does nothing
+func (d *NoopSemaphore) Release() {
+}

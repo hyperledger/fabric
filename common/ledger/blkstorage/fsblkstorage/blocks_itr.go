@@ -68,6 +68,19 @@ func (itr *blocksItr) shouldClose() bool {
 	return itr.closeMarker
 }
 
+// WaitForNextBlock waits until next block is available or the Close method has been invoked
+// It returns bools to indicate if next block is available and if the Close method has been invoked
+func (itr *blocksItr) WaitForNextBlock() (bool, bool) {
+	if itr.maxBlockNumAvailable < itr.blockNumToRetrieve {
+		itr.maxBlockNumAvailable = itr.waitForBlock(itr.blockNumToRetrieve)
+	}
+	shouldClose := itr.shouldClose()
+	if shouldClose {
+		return false, true
+	}
+	return itr.maxBlockNumAvailable >= itr.blockNumToRetrieve, false
+}
+
 // Next moves the cursor to next block and returns true iff the iterator is not exhausted
 func (itr *blocksItr) Next() (ledger.QueryResult, error) {
 	if itr.maxBlockNumAvailable < itr.blockNumToRetrieve {

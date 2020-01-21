@@ -114,6 +114,10 @@ type Config struct {
 	// qscc system chaincode requests.
 	LimitsConcurrencyQSCC int
 
+	// LimitsConcurrencyClients sets the limits for concurrently running client requests
+	// for endorsement and deliver service.
+	LimitsConcurrencyClients int
+
 	// ----- TLS -----
 	// Require server-side TLS.
 	// TODO: create separate sub-struct for PeerTLS config.
@@ -232,6 +236,7 @@ func (c *Config) load() error {
 	c.PeerTLSEnabled = viper.GetBool("peer.tls.enabled")
 	c.NetworkID = viper.GetString("peer.networkId")
 	c.LimitsConcurrencyQSCC = viper.GetInt("peer.limits.concurrency.qscc")
+	c.LimitsConcurrencyClients = viper.GetInt("peer.limits.concurrency.clients")
 	c.DiscoveryEnabled = viper.GetBool("peer.discovery.enabled")
 	c.ProfileEnabled = viper.GetBool("peer.profile.enabled")
 	c.ProfileListenAddress = viper.GetString("peer.profile.listenAddress")

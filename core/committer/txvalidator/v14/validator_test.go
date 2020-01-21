@@ -1493,9 +1493,9 @@ func (m *mockLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error)
 	return args.Get(0).(*common.Block), nil
 }
 
-func (m *mockLedger) GetBlocksIterator(startBlockNumber uint64) (ledger2.ResultsIterator, error) {
+func (m *mockLedger) GetBlocksIterator(startBlockNumber uint64) (ledger2.BlocksIterator, error) {
 	args := m.Called(startBlockNumber)
-	return args.Get(0).(ledger2.ResultsIterator), nil
+	return args.Get(0).(ledger2.BlocksIterator), nil
 }
 
 func (m *mockLedger) DoesPvtDataInfoExist(blkNum uint64) (bool, error) {

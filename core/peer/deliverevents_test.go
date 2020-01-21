@@ -20,9 +20,11 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/deliver"
+	delivermock "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -61,6 +63,17 @@ type collectionPolicyChecker interface {
 	CollectionPolicyChecker
 }
 
+//go:generate counterfeiter -o mock/chain.go -fake-name Chain . chain
+type chain interface {
+	Chain
+}
+
+//go:generate counterfeiter -o mock/deliver_with_pvtdata_srv.go -fake-name DeliverWithPrivateDataServer . deliverWithPrivateDataServer
+
+type deliverWithPrivateDataServer interface {
+	peer.Deliver_DeliverWithPrivateDataServer
+}
+
 // mockIterator mock structure implementing
 // the blockledger.Iterator interface
 type mockIterator struct {
@@ -74,6 +87,10 @@ func (m *mockIterator) Next() (*common.Block, common.Status) {
 
 func (m *mockIterator) ReadyChan() <-chan struct{} {
 	panic("implement me")
+}
+
+func (m *mockIterator) WaitForNextBlock() (bool, bool) {
+	return true, false
 }
 
 func (m *mockIterator) Close() {
@@ -407,7 +424,7 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 
 			metrics := deliver.NewMetrics(&disabled.Provider{})
 			server := &DeliverServer{
-				DeliverHandler:        deliver.NewHandler(chainManager, time.Second, false, metrics, false),
+				DeliverHandler:        deliver.NewHandler(chainManager, time.Second, false, metrics, false, semaphore.New(100)),
 				PolicyCheckerProvider: defaultPolicyCheckerProvider,
 			}
 
@@ -417,6 +434,98 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestEventsServer_getPrivateDataWithThrottling(t *testing.T) {
+	fakeDeliverSrv := &fake.DeliverWithPrivateDataServer{}
+	fakeDeliverSrv.ContextReturns(context.Background())
+	fakeDeserializerMgr := &fake.IdentityDeserializerManager{}
+	fakeDeserializerMgr.DeserializerReturns(nil, nil)
+	fakePeerLedger := &fake.PeerLedger{}
+	fakePeerLedger.GetPvtDataByNumReturns([]*ledger.TxPvtData{}, nil)
+	fakeChain := &fake.Chain{}
+	fakeChain.LedgerReturns(fakePeerLedger)
+
+	// when number of concurrent calls (10) exceeds the semaphore permits (2)
+	semaphore := semaphore.New(2)
+	fakeBlock := &common.Block{
+		Header: &common.BlockHeader{
+			Number:   1,
+			DataHash: []byte{},
+		},
+		Data:     &common.BlockData{},
+		Metadata: &common.BlockMetadata{},
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go func(count int) {
+			sender := &blockAndPrivateDataResponseSender{
+				Deliver_DeliverWithPrivateDataServer: fakeDeliverSrv,
+				IdentityDeserializerManager:          fakeDeserializerMgr,
+				Semaphore:                            semaphore,
+			}
+			_, err := sender.getPrivateDataWithThrottling(fakeBlock, fakeChain, "testchannel", &protoutil.SignedData{})
+			assert.NoError(t, err)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	assert.Equal(t, 0, len(semaphore))
+
+	// verify number of semaphore.Acquire and semaphore.Release calls
+	fakeSemaphore := &delivermock.Semaphore{}
+	fakeSemaphore.AcquireReturns(nil)
+	wg = &sync.WaitGroup{}
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go func(count int) {
+			sender := &blockAndPrivateDataResponseSender{
+				Deliver_DeliverWithPrivateDataServer: fakeDeliverSrv,
+				IdentityDeserializerManager:          fakeDeserializerMgr,
+				Semaphore:                            fakeSemaphore,
+			}
+			_, err := sender.getPrivateDataWithThrottling(fakeBlock, fakeChain, "testchannel", &protoutil.SignedData{})
+			assert.NoError(t, err)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	assert.Equal(t, 10, fakeSemaphore.AcquireCallCount())
+	assert.Equal(t, 10, fakeSemaphore.ReleaseCallCount())
+}
+
+func TestEventsServer_getPrivateDataWithThrottling_contextCanceled(t *testing.T) {
+	fakeDeliverSrv := &fake.DeliverWithPrivateDataServer{}
+	ctx, cancel := context.WithCancel(context.Background())
+	fakeDeliverSrv.ContextReturns(ctx)
+
+	fakePeerLedger := &fake.PeerLedger{}
+	fakePeerLedger.GetPvtDataByNumReturns([]*ledger.TxPvtData{}, nil)
+	fakeChain := &fake.Chain{}
+	fakeChain.LedgerReturns(fakePeerLedger)
+
+	fakeBlock := &common.Block{
+		Header: &common.BlockHeader{
+			Number:   1,
+			DataHash: []byte{},
+		},
+		Data:     &common.BlockData{},
+		Metadata: &common.BlockMetadata{},
+	}
+
+	// create a semaphore and acquire all permits so that it will eventually catch ctx.Done event
+	semaphore := semaphore.New(1)
+	semaphore.Acquire(context.Background())
+	cancel()
+
+	sender := &blockAndPrivateDataResponseSender{
+		Deliver_DeliverWithPrivateDataServer: fakeDeliverSrv,
+		Semaphore:                            semaphore,
+	}
+	_, err := sender.getPrivateDataWithThrottling(fakeBlock, fakeChain, "testchannel", &protoutil.SignedData{})
+	assert.EqualError(t, err, fmt.Sprintf("%s: context canceled", deliver.ContextDoneWrapMsg))
 }
 
 func TestEventsServer_DeliverWithPrivateData(t *testing.T) {
@@ -563,7 +672,7 @@ func TestEventsServer_DeliverWithPrivateData(t *testing.T) {
 			chainManager, deliverServer := test.prepare(wg)
 
 			metrics := deliver.NewMetrics(&disabled.Provider{})
-			handler := deliver.NewHandler(chainManager, time.Second, false, metrics, false)
+			handler := deliver.NewHandler(chainManager, time.Second, false, metrics, false, semaphore.New(1))
 			server := &DeliverServer{
 				DeliverHandler:          handler,
 				PolicyCheckerProvider:   defaultPolicyCheckerProvider,

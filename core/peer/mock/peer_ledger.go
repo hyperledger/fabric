@@ -104,17 +104,17 @@ type PeerLedger struct {
 		result1 *common.BlockchainInfo
 		result2 error
 	}
-	GetBlocksIteratorStub        func(uint64) (ledgera.ResultsIterator, error)
+	GetBlocksIteratorStub        func(uint64) (ledgera.BlocksIterator, error)
 	getBlocksIteratorMutex       sync.RWMutex
 	getBlocksIteratorArgsForCall []struct {
 		arg1 uint64
 	}
 	getBlocksIteratorReturns struct {
-		result1 ledgera.ResultsIterator
+		result1 ledgera.BlocksIterator
 		result2 error
 	}
 	getBlocksIteratorReturnsOnCall map[int]struct {
-		result1 ledgera.ResultsIterator
+		result1 ledgera.BlocksIterator
 		result2 error
 	}
 	GetConfigHistoryRetrieverStub        func() (ledger.ConfigHistoryRetriever, error)
@@ -700,7 +700,7 @@ func (fake *PeerLedger) GetBlockchainInfoReturnsOnCall(i int, result1 *common.Bl
 	}{result1, result2}
 }
 
-func (fake *PeerLedger) GetBlocksIterator(arg1 uint64) (ledgera.ResultsIterator, error) {
+func (fake *PeerLedger) GetBlocksIterator(arg1 uint64) (ledgera.BlocksIterator, error) {
 	fake.getBlocksIteratorMutex.Lock()
 	ret, specificReturn := fake.getBlocksIteratorReturnsOnCall[len(fake.getBlocksIteratorArgsForCall)]
 	fake.getBlocksIteratorArgsForCall = append(fake.getBlocksIteratorArgsForCall, struct {
@@ -724,7 +724,7 @@ func (fake *PeerLedger) GetBlocksIteratorCallCount() int {
 	return len(fake.getBlocksIteratorArgsForCall)
 }
 
-func (fake *PeerLedger) GetBlocksIteratorCalls(stub func(uint64) (ledgera.ResultsIterator, error)) {
+func (fake *PeerLedger) GetBlocksIteratorCalls(stub func(uint64) (ledgera.BlocksIterator, error)) {
 	fake.getBlocksIteratorMutex.Lock()
 	defer fake.getBlocksIteratorMutex.Unlock()
 	fake.GetBlocksIteratorStub = stub
@@ -737,28 +737,28 @@ func (fake *PeerLedger) GetBlocksIteratorArgsForCall(i int) uint64 {
 	return argsForCall.arg1
 }
 
-func (fake *PeerLedger) GetBlocksIteratorReturns(result1 ledgera.ResultsIterator, result2 error) {
+func (fake *PeerLedger) GetBlocksIteratorReturns(result1 ledgera.BlocksIterator, result2 error) {
 	fake.getBlocksIteratorMutex.Lock()
 	defer fake.getBlocksIteratorMutex.Unlock()
 	fake.GetBlocksIteratorStub = nil
 	fake.getBlocksIteratorReturns = struct {
-		result1 ledgera.ResultsIterator
+		result1 ledgera.BlocksIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *PeerLedger) GetBlocksIteratorReturnsOnCall(i int, result1 ledgera.ResultsIterator, result2 error) {
+func (fake *PeerLedger) GetBlocksIteratorReturnsOnCall(i int, result1 ledgera.BlocksIterator, result2 error) {
 	fake.getBlocksIteratorMutex.Lock()
 	defer fake.getBlocksIteratorMutex.Unlock()
 	fake.GetBlocksIteratorStub = nil
 	if fake.getBlocksIteratorReturnsOnCall == nil {
 		fake.getBlocksIteratorReturnsOnCall = make(map[int]struct {
-			result1 ledgera.ResultsIterator
+			result1 ledgera.BlocksIterator
 			result2 error
 		})
 	}
 	fake.getBlocksIteratorReturnsOnCall[i] = struct {
-		result1 ledgera.ResultsIterator
+		result1 ledgera.BlocksIterator
 		result2 error
 	}{result1, result2}
 }

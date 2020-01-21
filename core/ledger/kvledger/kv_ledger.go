@@ -135,7 +135,7 @@ func (l *kvLedger) initTxMgr(
 	}
 	l.txtmgmt = txmgr
 	// This is a workaround for populating lifecycle cache.
-	// See comments on this function for deatils
+	// See comments on this function for details
 	qe, err := txmgr.NewQueryExecutorNoCollChecks()
 	if err != nil {
 		return err
@@ -357,7 +357,7 @@ func (l *kvLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 // GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
 // The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 // ResultsIterator contains type BlockHolder
-func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (commonledger.ResultsIterator, error) {
+func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (commonledger.BlocksIterator, error) {
 	blkItr, err := l.blockStore.RetrieveBlocks(startBlockNumber)
 	if err != nil {
 		return nil, err
@@ -628,7 +628,7 @@ func (l *kvLedger) Close() {
 
 type blocksItr struct {
 	blockAPIsRWLock *sync.RWMutex
-	blocksItr       commonledger.ResultsIterator
+	blocksItr       commonledger.BlocksIterator
 }
 
 func (itr *blocksItr) Next() (commonledger.QueryResult, error) {
@@ -639,6 +639,10 @@ func (itr *blocksItr) Next() (commonledger.QueryResult, error) {
 	itr.blockAPIsRWLock.RLock()
 	itr.blockAPIsRWLock.RUnlock()
 	return block, nil
+}
+
+func (itr *blocksItr) WaitForNextBlock() (bool, bool) {
+	return itr.blocksItr.WaitForNextBlock()
 }
 
 func (itr *blocksItr) Close() {

@@ -63,7 +63,7 @@ type BlockStoreProvider interface {
 type BlockStore interface {
 	AddBlock(block *common.Block) error
 	GetBlockchainInfo() (*common.BlockchainInfo, error)
-	RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error)
+	RetrieveBlocks(startNum uint64) (ledger.BlocksIterator, error)
 	RetrieveBlockByHash(blockHash []byte) (*common.Block, error)
 	RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) // blockNum of  math.MaxUint64 will return last block
 	RetrieveTxByID(txID string) (*common.Envelope, error)

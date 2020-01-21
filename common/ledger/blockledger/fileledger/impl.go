@@ -27,7 +27,7 @@ type FileLedger struct {
 type FileLedgerBlockStore interface {
 	AddBlock(block *cb.Block) error
 	GetBlockchainInfo() (*cb.BlockchainInfo, error)
-	RetrieveBlocks(startBlockNumber uint64) (ledger.ResultsIterator, error)
+	RetrieveBlocks(startBlockNumber uint64) (ledger.BlocksIterator, error)
 }
 
 // NewFileLedger creates a new FileLedger for interaction with the ledger
@@ -38,7 +38,7 @@ func NewFileLedger(blockStore FileLedgerBlockStore) *FileLedger {
 type fileLedgerIterator struct {
 	ledger         *FileLedger
 	blockNumber    uint64
-	commonIterator ledger.ResultsIterator
+	commonIterator ledger.BlocksIterator
 }
 
 // Next blocks until there is a new block available, or until Close is called.
@@ -54,6 +54,11 @@ func (i *fileLedgerIterator) Next() (*cb.Block, cb.Status) {
 		return nil, cb.Status_SERVICE_UNAVAILABLE
 	}
 	return result.(*cb.Block), cb.Status_SUCCESS
+}
+
+// WaitForNextBlock waits until next block is available or the Close method has been invoked
+func (i *fileLedgerIterator) WaitForNextBlock() (bool, bool) {
+	return i.commonIterator.WaitForNextBlock()
 }
 
 // Close releases resources acquired by the Iterator
