@@ -242,15 +242,13 @@ Ordering Service
 
 :Answer:
   A consensus plugin needs to implement the ``Consenter`` and ``Chain``
-  interfaces defined in the `consensus package`_. There are two plugins built
-  against these interfaces already: raft_ and kafka_. You can study them to take
-  cues for your own implementation. The ordering service code can be found under
+  interfaces defined in the `consensus package`_. There is a plugin built
+  against raft_ . You can study it to learn more for your own implementation. The ordering service code can be found under
   the `orderer package`_.
 
-.. _consensus package: https://github.com/hyperledger/fabric/blob/master/orderer/consensus/consensus.go
-.. _raft: https://github.com/hyperledger/fabric/tree/master/orderer/consensus/etcdraft
-.. _kafka: https://github.com/hyperledger/fabric/tree/master/orderer/consensus/kafka
-.. _orderer package: https://github.com/hyperledger/fabric/tree/master/orderer
+.. _consensus package: https://github.com/hyperledger/fabric/blob/release-2.0/orderer/consensus/consensus.go
+.. _raft: https://github.com/hyperledger/fabric/tree/release-2.0/orderer/consensus/etcdraft
+.. _orderer package: https://github.com/hyperledger/fabric/tree/release-2.0/orderer
 
 ..
 
@@ -261,78 +259,6 @@ Ordering Service
 :Answer:
   This falls under reconfiguring the network. Please consult the topic on
   :doc:`commands/configtxlator`.
-
-Solo
-~~~~
-
-:Question:
-  **How can I deploy Solo in production?**
-
-:Answer:
-  Solo is not intended for production.  It is not, and will never be, fault
-  tolerant.  It has been deprecated in favor of Raft and may be removed in a
-  future release.
-
-Kafka
-~~~~~
-
-:Question:
-  **How do I remove a node from the ordering service?**
-
-:Answer:
-  This is a two step-process:
-
-  1. Add the node's certificate to the relevant orderer's MSP CRL to prevent peers/clients from connecting to it.
-  2. Prevent the node from connecting to the Kafka cluster by leveraging standard Kafka access control measures such as TLS CRLs, or firewalling.
-
-..
-
-:Question:
-  **I have never deployed a Kafka/ZK cluster before, and I want to use the
-  Kafka-based ordering service. How do I proceed?**
-
-:Answer:
-  The Hyperledger Fabric documentation assumes the reader generally has the
-  operational expertise to setup, configure, and manage a Kafka cluster
-  (see :ref:`kafka-caveat`). If you insist on proceeding without such expertise,
-  you should complete, *at a minimum*, the first 6 steps of the
-  `Kafka Quickstart guide`_ before experimenting with the Kafka-based ordering
-  service. You can also consult `this sample configuration file`_ for a brief
-  explanation of the sensible defaults for Kafka/ZooKeeper.
-
-.. _Kafka Quickstart guide: https://kafka.apache.org/quickstart
-.. _this sample configuration file: https://github.com/hyperledger/fabric/blob/release-1.1/bddtests/dc-orderer-kafka.yml
-
-..
-
-:Question:
-  **Where can I find a Docker composition for a network that uses the
-  Kafka-based ordering service?**
-
-:Answer:
-  Consult `the end-to-end CLI example`_.
-
-.. _the end-to-end CLI example: https://github.com/hyperledger/fabric/blob/release-1.3/examples/e2e_cli/docker-compose-e2e.yaml
-
-..
-
-:Question:
-  **Why is there a ZooKeeper dependency in the Kafka-based ordering service?**
-
-:Answer:
-  Kafka uses it internally for coordination between its brokers.
-
-..
-
-:Question:
-  **I'm trying to follow the BYFN example and get a "service unavailable" error,
-  what should I do?**
-
-:Answer:
-  Check the ordering service's logs. A "Rejecting deliver request because of
-  consenter error" log message is usually indicative of a connection problem
-  with the Kafka cluster. Ensure that the Kafka cluster is set up properly, and
-  is reachable by the ordering service's nodes.
 
 BFT
 ~~~
