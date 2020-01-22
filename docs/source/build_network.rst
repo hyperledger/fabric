@@ -412,8 +412,9 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
   ../bin/configtxgen -profile SampleMultiNodeEtcdRaft -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
 
 .. note:: The orderer genesis block and the subsequent artifacts we are about to create
-          will be output into the ``channel-artifacts`` directory at the root of this
-          project. The `channelID` in the above command is the name of the system channel.
+          will be output into the ``channel-artifacts`` directory at the root of the
+          ``first-network`` directory. The `channelID` in the above command is the
+          name of the system channel.
 
 .. _createchanneltx:
 
