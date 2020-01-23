@@ -262,11 +262,6 @@ func serve(args []string) error {
 		cs.SetClientCertificate(clientCert)
 	}
 
-	peerServer, err := comm.NewGRPCServer(listenAddr, serverConfig)
-	if err != nil {
-		logger.Fatalf("Failed to create peer server (%s)", err)
-	}
-
 	transientStoreProvider, err := transientstore.NewStoreProvider(
 		filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "transientstore"),
 	)
@@ -277,7 +272,6 @@ func serve(args []string) error {
 	deliverServiceConfig := deliverservice.GlobalConfig()
 
 	peerInstance := &peer.Peer{
-		Server:                   peerServer,
 		ServerConfig:             serverConfig,
 		CredentialSupport:        cs,
 		StoreProvider:            transientStoreProvider,
@@ -316,25 +310,6 @@ func serve(args []string) error {
 	if err != nil {
 		logger.Panicf("Could not create the deliver grpc client: [%+v]", err)
 	}
-
-	// FIXME: Creating the gossip service has the side effect of starting a bunch
-	// of go routines and registration with the grpc server.
-	gossipService, err := initGossipService(
-		policyMgr,
-		metricsProvider,
-		peerServer,
-		signingIdentity,
-		cs,
-		coreConfig.PeerAddress,
-		deliverGRPCClient,
-		deliverServiceConfig,
-	)
-	if err != nil {
-		return errors.WithMessage(err, "failed to initialize gossip service")
-	}
-	defer gossipService.Stop()
-
-	peerInstance.GossipService = gossipService
 
 	policyChecker := policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
@@ -435,6 +410,30 @@ func serve(args []string) error {
 			EbMetadataProvider:              ebMetadataProvider,
 		},
 	)
+
+	peerServer, err := comm.NewGRPCServer(listenAddr, serverConfig)
+	if err != nil {
+		logger.Fatalf("Failed to create peer server (%s)", err)
+	}
+
+	// FIXME: Creating the gossip service has the side effect of starting a bunch
+	// of go routines and registration with the grpc server.
+	gossipService, err := initGossipService(
+		policyMgr,
+		metricsProvider,
+		peerServer,
+		signingIdentity,
+		cs,
+		coreConfig.PeerAddress,
+		deliverGRPCClient,
+		deliverServiceConfig,
+	)
+	if err != nil {
+		return errors.WithMessage(err, "failed to initialize gossip service")
+	}
+	defer gossipService.Stop()
+
+	peerInstance.GossipService = gossipService
 
 	// Configure CC package storage
 	lsccInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
@@ -760,6 +759,7 @@ func serve(args []string) error {
 			// this is expected to disappear with FAB-15061
 			cceventmgmt.GetMgr().Register(cid, sub)
 		},
+		peerServer,
 		plugin.MapBasedMapper(validationPluginsByName),
 		lifecycleValidatorCommitter,
 		lsccInst,

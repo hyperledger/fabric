@@ -116,14 +116,38 @@ func TestInitialize(t *testing.T) {
 	peerInstance, cleanup := NewTestPeer(t)
 	defer cleanup()
 
+	org1CA, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-cert.pem"))
+	require.NoError(t, err)
+	org1Server1Key, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-server1-key.pem"))
+	require.NoError(t, err)
+	org1Server1Cert, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-server1-cert.pem"))
+	require.NoError(t, err)
+	serverConfig := comm.ServerConfig{
+		SecOpts: comm.SecureOptions{
+			UseTLS:            true,
+			Certificate:       org1Server1Cert,
+			Key:               org1Server1Key,
+			ServerRootCAs:     [][]byte{org1CA},
+			RequireClientCert: true,
+		},
+	}
+
+	server, err := comm.NewGRPCServer("localhost:0", serverConfig)
+	if err != nil {
+		t.Fatalf("NewGRPCServer failed with error [%s]", err)
+		return
+	}
+
 	peerInstance.Initialize(
 		nil,
+		server,
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&ledgermocks.DeployedChaincodeInfoProvider{},
 		nil,
 		nil,
 		runtime.NumCPU(),
 	)
+	assert.Equal(t, peerInstance.server, server)
 }
 
 func TestCreateChannel(t *testing.T) {
@@ -133,6 +157,7 @@ func TestCreateChannel(t *testing.T) {
 	var initArg string
 	peerInstance.Initialize(
 		func(cid string) { initArg = cid },
+		nil,
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&ledgermocks.DeployedChaincodeInfoProvider{},
 		nil,
@@ -214,4 +239,10 @@ func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.Ledg
 		Enabled: true,
 	}
 	return ledgermgmt.NewLedgerMgr(ledgerInitializer), nil
+}
+
+// SetServer sets the gRPC server for the peer.
+// It should only be used in peer/pkg_test.
+func (p *Peer) SetServer(server *comm.GRPCServer) {
+	p.server = server
 }
