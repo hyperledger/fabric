@@ -137,6 +137,64 @@ though the chaincode level endorsement policy may require endorsement from
 In this way you can control which organizations are entrusted to write to certain
 private data collections.
 
+Private data implicit collections
+---------------------------------
+
+Starting in v2.0, an implicit private data collection can be used for each
+organization in a channel, so that you don't have to define collections if you'd
+like to utilize per-organization collections. Each org-specific implicit collection
+has a distribution policy and endorsement policy of the matching organization.
+You can therefore utilize implicit collections for use cases where you'd like
+to ensure that a specific organization has written to a collection key namespace.
+The v2.0 chaincode lifecycle uses implicit collections to track which organizations
+have approved a chaincode definition. Similarly, you can use implicit collections
+in application chaincode to track which organizations have approved or voted
+for some change in state.
+
+Private data implicit collection definition
+-------------------------------------------
+
+Whereas explicit collections can be configured through a collection definition JSON
+file via chaincode, org-specific implicit collections can be configured via the channel
+configuration under an organization's ``PrivateDataImplicitCollection`` configuration field.
+These properties mirror a subset of those configurable for explicit collections and currently
+support configuration values for ``RequiredPeerCount``, ``MaxPeerCount``, ``BlockToLive``,
+``MemberOnlyRead``, and ``MemberOnlyWrite``. Defining the member org policy and endorsement policy
+for implicit collections is currently not supported.
+
+Here is a sample snippet of the ``configtx.yaml`` channel configuration's ``Organizations`` section,
+containing an org-specific implicit collection definition for ``Org1``:
+
+.. code:: bash
+
+  Organizations:
+      - &Org1
+          Name: Org1MSP
+          ID: Org1MSP
+          MSPDir: msp
+          Policies:
+              Readers:
+                  Type: Signature
+                  Rule: "OR('Org1.member')"
+              Writers:
+                  Type: Signature
+                  Rule: "OR('Org1.member')"
+              Admins:
+                  Type: Signature
+                  Rule: "OR('Org1.admin')"
+              Endorsement:
+                  Type: Signature
+                  Rule: "OR('Org1.member')"
+          AnchorPeers:
+              - Host: peer0.org1.example.com
+                Port: 7051
+          PrivateDataImplicitCollection:
+              RequiredPeerCount: 0
+              MaxPeerCount: 1
+              BlockToLive: 10
+              MemberOnlyRead: true
+              MemberOnlyWrite: true
+
 Private data dissemination
 --------------------------
 
@@ -212,17 +270,6 @@ A single chaincode can reference multiple collections.
 
 Referencing implicit collections from chaincode
 -----------------------------------------------
-
-Starting in v2.0, an implicit private data collection can be used for each
-organization in a channel, so that you don't have to define collections if you'd
-like to utilize per-organization collections. Each org-specific implicit collection
-has a distribution policy and endorsement policy of the matching organization.
-You can therefore utilize implicit collections for use cases where you'd like
-to ensure that a specific organization has written to a collection key namespace.
-The v2.0 chaincode lifecycle uses implicit collections to track which organizations
-have approved a chaincode definition. Similarly, you can use implicit collections
-in application chaincode to track which organizations have approved or voted
-for some change in state.
 
 To write and read an implicit private data collection key, in the ``PutPrivateData``
 and ``GetPrivateData`` chaincode APIs, specify the collection parameter as
