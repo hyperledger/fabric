@@ -8,7 +8,7 @@ In this topic, we'll cover:
 * [What is a policy](#what-is-a-policy)
 * [Why are policies needed](#why-are-policies-needed)
 * [How are policies implemented throughout Fabric](#how-are-policies-implemented-throughout-fabric)
-* [Fabric policy domains](#fabric-policy-domains)
+* [Fabric policy domains](#the-fabric-policy-domains)
 * [How do you write a policy in Fabric](#how-do-you-write-a-policy-in-fabric)
 * [Fabric chaincode lifecycle](#fabric-chaincode-lifecyle)
 * [Overriding policy definitions](#overriding-policy-definitions)
@@ -137,7 +137,7 @@ required to sign (approve) any configuration _update_. It is the policy that
 defines how the policy is updated. Thus, each channel configuration element
 includes a reference to a policy which governs its modification.
 
-## The policy domains
+## The Fabric policy domains
 
 While Fabric policies are flexible and can be configured to meet the needs of a
 network, the policy structure naturally leads to a division between the domains
@@ -247,21 +247,21 @@ sign.
 ## An example: channel configuration policy
 
 Understanding policies begins with examining the `configtx.yaml` where the
-channel policies are defined. We can use the `configtx.yaml` file in the BYFN
-(first-network) tutorial to see examples of both policy syntax types. Navigate to the [fabric-samples/first-network](https://github.com/hyperledger/fabric-samples/blob/master/first-network/configtx.yaml)
-directory and examine the configtx.yaml file for BYFN.
+channel policies are defined. We can use the `configtx.yaml` file in the Fabric
+test network to see examples of both policy syntax types. We are going to examine
+the configtx.yaml file used by the [fabric-samples/test-network](https://github.com/hyperledger/fabric-samples/blob/master/test-network/configtx/configtx.yaml) sample.
 
-The first section of the file defines the Organizations of the network. Inside each
-organization definition are the default policies for that organization, `Readers, Writers,
-Admins, and Endorsement`, although you can name your policies anything you want.
+The first section of the file defines the organizations of the network. Inside each
+organization definition are the default policies for that organization, `Readers`, `Writers`,
+`Admins`, and `Endorsement`, although you can name your policies anything you want.
 Each policy has a `Type` which describes how the policy is expressed (`Signature`
 or `ImplicitMeta`) and a `Rule`.
 
-The BYFN example below shows the `Org1` organization definition in the system
-channel, where the policy `Type` is `Signature` and the Endorsement policy rule
-is defined as `"OR('Org1MSP.peer')"` which  means that peer that is a member of
-`Org1MSP` is required to sign. It is these Signature policies that become the
-sub-policies that the ImplicitMeta policies point to.  
+The test network example below shows the Org1 organization definition in the system
+channel, where the policy `Type` is `Signature` and the endorsement policy rule
+is defined as `"OR('Org1MSP.peer')"`. This policy specifies that a peer that is
+a member of `Org1MSP` is required to sign. It is these signature policies that
+become the sub-policies that the ImplicitMeta policies point to.  
 
 <details>
   <summary>
@@ -298,51 +298,57 @@ sub-policies that the ImplicitMeta policies point to.
 ```
 </details>
 
-The next example shows the `ImplicitMeta` policy type used in the `Orderer`
-section of the `configtx.yaml` file which defines the default
-behavior of the orderer and also contains the associated policies `Readers`,
-`Writers`, and `Admins`. Again, these ImplicitMeta policies are evaluated based
-on their underlying Signature sub-policies which we saw in the snippet above.
+The next example shows the `ImplicitMeta` policy type used in the `Application`
+section of the `configtx.yaml`. These set of policies lie on the
+`/Channel/Application/` path. If you use the default set of Fabric ACLs, these
+policies define the behavior of many important features of application channels,
+such as who can query the channel ledger, invoke a chaincode, or update a channel
+config. These policies point to the sub-policies defined for each organization.
+The Org1 defined in the section above contains `Reader`, `Writer`, and `Admin`
+sub-policies that are evaluated by the `Reader`, `Writer`, and `Admin` `ImplicitMeta`
+policies in the `Application` section. Because the test network is built with the
+default policies, you can use the example Org1 to query the channel ledger, invoke a
+chaincode, and approve channel updates for any test network channel that you
+create.
 
 <details>
   <summary>
     **Click here to see an example of ImplicitMeta policies**
   </summary>
 ```
-
 ################################################################################
 #
-#   SECTION: Orderer
+#   SECTION: Application
 #
 #   - This section defines the values to encode into a config transaction or
-#   genesis block for orderer related parameters
+#   genesis block for application related parameters
 #
 ################################################################################
-Orderer: &OrdererDefaults
+Application: &ApplicationDefaults
 
-# Organizations is the list of orgs which are defined as participants on
-# the orderer side of the network
-Organizations:
+    # Organizations is the list of orgs which are defined as participants on
+    # the application side of the network
+    Organizations:
 
-# Policies defines the set of policies at this level of the config tree
-# For Orderer policies, their canonical path is
-#   /Channel/Orderer/<PolicyName>
-Policies:
-Readers:
-    Type: ImplicitMeta
-    Rule: "ANY Readers"
-Writers:
-    Type: ImplicitMeta
-    Rule: "ANY Writers"
-Admins:
-    Type: ImplicitMeta
-    Rule: "MAJORITY Admins"
-# BlockValidation specifies what signatures must be included in the block
-# from the orderer for the peer to validate it.
-BlockValidation:
-    Type: ImplicitMeta
-    Rule: "ANY Writers"
-
+    # Policies defines the set of policies at this level of the config tree
+    # For Application policies, their canonical path is
+    #   /Channel/Application/<PolicyName>
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
 ```
 </details>
 
@@ -357,7 +363,7 @@ specified during that process that dictate the security across the network. More
 the flow are available in the [Chaincode for Operators](../chaincode4noah.html)
 tutorial, but for purposes of this topic you should understand how policies are
 used in this flow. The new flow includes two steps where policies are specified:
-when chaincode is **approved**  by organization members, and when it is **committed**
+when chaincode is **approved** by organization members, and when it is **committed**
 to the channel.
 
 The `Application` section of  the `configtx.yaml` file includes the default
