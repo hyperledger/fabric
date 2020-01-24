@@ -304,8 +304,8 @@ Important notes
 
 - **Error handling for private metadata retrieval**: In case a plugin retrieves
   metadata for private data by making use of the ``StateFetcher`` interface,
-  it is important that errors are handled as follows: ``CollConfigNotDefinedError''
-  and ``InvalidCollNameError'', signalling that the specified collection does
+  it is important that errors are handled as follows: ``CollConfigNotDefinedError``
+  and ``InvalidCollNameError``, signalling that the specified collection does
   not exist, should be handled as deterministic errors and should not lead the
   plugin to return an ``ExecutionFailureError``.
 
