@@ -212,6 +212,8 @@ func GenerateImplicitCollectionForOrg(mspid string) *pb.StaticCollectionConfig {
 				SignaturePolicy: cauthdsl.SignedByMspMember(mspid),
 			},
 		},
+		RequiredPeerCount: 0,
+		MaximumPeerCount:  1,
 	}
 }
 
