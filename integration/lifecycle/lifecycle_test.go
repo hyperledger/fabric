@@ -68,11 +68,12 @@ var _ = Describe("Lifecycle", func() {
 		core.Ledger.State.StateDatabase = "CouchDB"
 		core.Ledger.State.CouchDBConfig.CouchDBAddress = couchAddr
 		processes[couchDB.Name] = couchProcess
-		setTermFileEnvForBinaryExternalBuilder := func(envKey, termFile string, externalBuilders []*fabricconfig.ExternalBuilder) {
+		setTermFileEnvForBinaryExternalBuilder := func(envKey, termFile string, externalBuilders []fabricconfig.ExternalBuilder) {
 			os.Setenv(envKey, termFile)
-			for _, e := range externalBuilders {
+			for i, e := range externalBuilders {
 				if e.Name == "binary" {
 					e.EnvironmentWhitelist = append(e.EnvironmentWhitelist, envKey)
+					externalBuilders[i] = e
 				}
 			}
 		}
