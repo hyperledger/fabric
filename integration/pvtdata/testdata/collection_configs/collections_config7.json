@@ -1,0 +1,14 @@
+[
+ 	{
+	 	"name": "collectionMarbles",
+	 	"policy": "OR('Org1MSP.member', 'Org2MSP.member')",
+	 	"blockToLive":1000000,
+		"memberOnlyRead": false
+	},
+ 	{
+	 	"name": "collectionMarblePrivateDetails",
+	 	"policy": "OR('Org2MSP.member', 'Org3MSP.member')",
+	 	"blockToLive":1000000,
+		"memberOnlyRead": false
+ 	}
+]

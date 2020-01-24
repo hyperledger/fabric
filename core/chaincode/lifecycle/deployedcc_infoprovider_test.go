@@ -311,7 +311,11 @@ var _ = Describe("ValidatorCommitter", func() {
 				}
 			}
 			Expect(firstOrg).NotTo(BeNil())
+			Expect(firstOrg.RequiredPeerCount).To(Equal(int32(0)))
+			Expect(firstOrg.MaximumPeerCount).To(Equal(int32(1)))
 			Expect(secondOrg).NotTo(BeNil())
+			Expect(secondOrg.RequiredPeerCount).To(Equal(int32(0)))
+			Expect(secondOrg.MaximumPeerCount).To(Equal(int32(1)))
 		})
 
 		Context("when the chaincode does not exist", func() {
