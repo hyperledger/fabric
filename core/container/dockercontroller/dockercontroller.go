@@ -110,6 +110,7 @@ type DockerVM struct {
 	NetworkMode     string
 	PlatformBuilder PlatformBuilder
 	LoggingEnv      []string
+	MSPID           string
 }
 
 // HealthCheck checks if the DockerVM is able to communicate with the Docker
@@ -268,6 +269,8 @@ func (vm *DockerVM) GetEnv(ccid string, tlsConfig *ccintf.TLSConfig) []string {
 	} else {
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
 	}
+
+	envs = append(envs, fmt.Sprintf("CORE_PEER_LOCALMSPID=%s", vm.MSPID))
 
 	return envs
 }
