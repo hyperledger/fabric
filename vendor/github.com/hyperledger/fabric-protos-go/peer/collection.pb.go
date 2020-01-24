@@ -146,7 +146,7 @@ type StaticCollectionConfig struct {
 	// this number of peers is not achieved.
 	RequiredPeerCount int32 `protobuf:"varint,3,opt,name=required_peer_count,json=requiredPeerCount,proto3" json:"required_peer_count,omitempty"`
 	// The maximum number of peers that private data will be sent to
-	// upon endorsement. This number should be greater than or equal to required_peer_count.
+	// upon endorsement. This number has to be bigger than required_peer_count.
 	MaximumPeerCount int32 `protobuf:"varint,4,opt,name=maximum_peer_count,json=maximumPeerCount,proto3" json:"maximum_peer_count,omitempty"`
 	// The number of blocks after which the collection data expires.
 	// For instance if the value is set to 10, a key last modified by block number 100

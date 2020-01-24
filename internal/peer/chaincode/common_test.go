@@ -210,6 +210,16 @@ const sampleCollectionConfigGood = `[
 	}
 ]`
 
+const sampleCollectionConfigGoodNoMaxPeerCountOrRequiredPeerCount = `[
+	{
+		"name": "foo",
+		"policy": "OR('A.member', 'B.member')",
+		"blockToLive":10,
+		"memberOnlyRead": true,
+		"memberOnlyWrite": true
+	}
+]`
+
 const sampleCollectionConfigGoodWithSignaturePolicy = `[
 	{
 		"name": "foo",
@@ -289,6 +299,22 @@ func TestCollectionParsing(t *testing.T) {
 	pol, _ := cauthdsl.FromString("OR('A.member', 'B.member')")
 	assert.Equal(t, 3, int(conf.RequiredPeerCount))
 	assert.Equal(t, 483279847, int(conf.MaximumPeerCount))
+	assert.Equal(t, "foo", conf.Name)
+	assert.True(t, proto.Equal(pol, conf.MemberOrgsPolicy.GetSignaturePolicy()))
+	assert.Equal(t, 10, int(conf.BlockToLive))
+	assert.Equal(t, true, conf.MemberOnlyRead)
+	assert.Nil(t, conf.EndorsementPolicy)
+	t.Logf("conf=%s", conf)
+
+	// Test default values for RequiredPeerCount and MaxPeerCount
+	ccp, ccpBytes, err = getCollectionConfigFromBytes([]byte(sampleCollectionConfigGoodNoMaxPeerCountOrRequiredPeerCount))
+	assert.NoError(t, err)
+	assert.NotNil(t, ccp)
+	assert.NotNil(t, ccpBytes)
+	conf = ccp.Config[0].GetStaticCollectionConfig()
+	pol, _ = cauthdsl.FromString("OR('A.member', 'B.member')")
+	assert.Equal(t, 0, int(conf.RequiredPeerCount))
+	assert.Equal(t, 1, int(conf.MaximumPeerCount))
 	assert.Equal(t, "foo", conf.Name)
 	assert.True(t, proto.Equal(pol, conf.MemberOrgsPolicy.GetSignaturePolicy()))
 	assert.Equal(t, 10, int(conf.BlockToLive))
