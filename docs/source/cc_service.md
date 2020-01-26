@@ -2,7 +2,7 @@
 
 Fabric v2.0 supports chaincode deployment and execution outside of Fabric that enables users to manage a chaincode runtime independently of the peer. This facilitates deployment of chaincode on Fabric cloud deployments such as Kubernetes. Instead of building and launching the chaincode on every peer, chaincode can now run as a service whose lifecycle is managed outside of Fabric. This capability leverages the Fabric v2.0 external builder and launcher functionality which enables operators to extend a peer with programs to build, launch, and discover chaincode. Before reading this topic you should become familiar with the [External Builder and Launcher](./cc_launcher.html) content.
 
-Prior to the availability of the external builders, the chaincode package content was required to be a set of source code files for a particular language which could be built and launched as a chaincode binary. The new external build and launcher functionality now allows users to optionally customize the build process. And with respect to running the chaincode as an external service, the build process allows you to specify the endpoint information of the server where the chaincode is running. Hence the package simply consists of the externally running chaincode server endpoint information and TLS artifacts for secure connection. TLS is optional but highly recommended for all environments except a simple test environment.
+Prior to the availability of the external builders, the chaincode package content was required to be a set of source code files for a particular language which could be built and launched as a chaincode binary. The new external build and launcher functionality now allows users to optionally customize the build process. With respect to running the chaincode as an external service, the build process allows you to specify the endpoint information of the server where the chaincode is running. Hence the package simply consists of the externally running chaincode server endpoint information and TLS artifacts for secure connection. TLS is optional but highly recommended for all environments except a simple test environment.
 
 The rest of this topic describes how to configure chaincode as an external service:
 
@@ -139,12 +139,12 @@ exit 0
 For chaincode as an external service, the `bin/release` script is responsible for providing the `connection.json` to the peer by placing it in the `RELEASE_OUTPUT_DIR`.  The `connection.json` file has the following JSON structure
 
 * **address** - chaincode server endpoint accessible from peer. Must be specified in “<host>:<port>” format.
-* **dial_timeout** - interval to wait for connection to complete. Specified as a string qualified with units (examples : "10s", "500ms", "1m"). Default is “3s” if not specified.
-* **tls_required** - true or false. If false "client_auth_required", "key_path", "cert_path", "root_cert_path" are not required. Default is “true”.
-* **client_auth_required** - if true then you need to specify "key_path" and "cert_path" for client authentication. Default is false. Ignored if tls_required is false.
-* **key_path** - path to the key file. This path is relative to the “release directory” (see “RELEASE_OUTPUT_DIR” below). Required if client_auth_required is true. Ignored if tls_required is false.
-* **cert_path**  - path to the certificate file. This path is relative to the “release directory” (see “RELEASE_OUTPUT_DIR” below). Required if client_auth_required is true. Ignored if tls_required is false.
-* **root_cert_path**  - path to the root cert for authenticating the server. This path is relative to the “release directory” (see “RELEASE_OUTPUT_DIR” below). Required when tls_required is set to true.
+* **dial_timeout** - interval to wait for connection to complete. Specified as a string qualified with time units (e.g, "10s", "500ms", "1m"). Default is “3s” if not specified.
+* **tls_required** - true or false. If false, "client_auth_required", "client_key", "client_cert", and "root_cert" are not required. Default is “true”.
+* **client_auth_required** - if true, "client_key" and "client_cert" are required. Default is false. It is ignored if tls_required is false.
+* **client_key** - PEM encoded string of the client private key.
+* **client_cert**  - PEM encoded string of the client certificate.
+* **root_cert**  - PEM encoded string of the server (peer) root certificate.
 
 For example:
 
@@ -152,17 +152,15 @@ For example:
 {
   "address": "your.chaincode.host.com:9999",
   "dial_timeout": "10s",
-  "tls_required": true,
+  "tls_required": "true",
   "client_auth_required": "true",
-  "key_path": "chaincode/server/tls/key.pem",
-  "cert_path": "chaincode/server/tls/cert.pem",
-  "root_cert_path": "chaincode/server/tls/rootcert.pem"
+  "client_key": "-----BEGIN EC PRIVATE KEY----- ... -----END EC PRIVATE KEY-----",
+  "client_cert": "-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----",
+  "root_cert": "-----BEGIN CERTIFICATE---- ... -----END CERTIFICATE-----"
 }
 ```
 
-**Note:** As noted above, the TLS paths are relative to the RELEASE_OUTPUT_DIR directory. Also, in the future, the PEM may be included in the JSON itself.
-
-As noted in the `bin/build` section, this sample assumes the chaincode package directly contains the `connection.json` file which the build script copied to the `BUILD_OUTPUT_DIR`. The peer invokes the release script with two arguments:
+As noted in the `bin/build` section, this sample assumes the chaincode package directly contains the `connection.json` file which the build script copies to the `BUILD_OUTPUT_DIR`. The peer invokes the release script with two arguments:
 
 ```
 bin/release BUILD_OUTPUT_DIR RELEASE_OUTPUT_DIR
