@@ -40,6 +40,7 @@ var _ = Describe("Instance", func() {
 			Builder: &externalbuilder.Builder{
 				Location: "testdata/goodbuilder",
 				Logger:   logger,
+				MSPID:    "mspid",
 			},
 		}
 	})
