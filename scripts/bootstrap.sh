@@ -32,14 +32,18 @@ printHelp() {
 # be skipped, since this script doesn't terminate upon errors.
 
 dockerPull() {
-    image_tag=$1
+    #three_digit_image_tag is passed in, e.g. "1.4.4"
+    three_digit_image_tag=$1
     shift
+    #two_digit_image_tag is derived, e.g. "1.4", especially useful as a local tag for two digit references to most recent baseos, ccenv, javaenv, nodeenv patch releases
+    two_digit_image_tag=$(echo $three_digit_image_tag | cut -d'.' -f1,2)
     while [[ $# -gt 0 ]]
     do
         image_name="$1"
-        echo "====> hyperledger/fabric-$image_name:$image_tag"
-        docker pull "hyperledger/fabric-$image_name:$image_tag"
-        docker tag "hyperledger/fabric-$image_name:$image_tag" "hyperledger/fabric-$image_name"
+        echo "====> hyperledger/fabric-$image_name:$three_digit_image_tag"
+        docker pull "hyperledger/fabric-$image_name:$three_digit_image_tag"
+        docker tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name"
+        docker tag "hyperledger/fabric-$image_name:$three_digit_image_tag" "hyperledger/fabric-$image_name:$two_digit_image_tag"
         shift
     done
 }
