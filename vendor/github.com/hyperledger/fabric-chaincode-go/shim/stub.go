@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"os"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
@@ -130,6 +131,18 @@ func (s *ChaincodeStub) GetChannelID() string {
 // GetDecorations ...
 func (s *ChaincodeStub) GetDecorations() map[string][]byte {
 	return s.decorations
+}
+
+// GetMSPID returns the local mspid of the peer by checking the CORE_PEER_LOCALMSPID
+// env var and returns an error if the env var is not set
+func GetMSPID() (string, error) {
+	mspid := os.Getenv("CORE_PEER_LOCALMSPID")
+
+	if mspid == "" {
+		return "", errors.New("'CORE_PEER_LOCALMSPID' is not set")
+	}
+
+	return mspid, nil
 }
 
 // ------------- Call Chaincode functions ---------------
