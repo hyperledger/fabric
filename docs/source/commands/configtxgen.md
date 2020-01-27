@@ -25,7 +25,7 @@ Usage of configtxgen:
   -inspectChannelCreateTx string
     	Prints the configuration contained in the transaction at the specified path
   -outputAnchorPeersUpdate string
-    	Creates an config update to update an anchor peer (works only with the default channel creation, and only for the first update)
+    	[DEPRECATED] Creates a config update to update an anchor peer (works only with the default channel creation, and only for the first update)
   -outputBlock string
     	The path to write the genesis block to (if set)
   -outputCreateChannelTx string

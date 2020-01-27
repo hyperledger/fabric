@@ -375,6 +375,36 @@ Get installed chaincodes on peer:
 Package ID: myccv1:a7ca45a7cc85f1d89c905b775920361ed089a364e12a9b6d55ba75c965ddd6a9, Label: myccv1
 ```
 
+  * You can also use the `--output` flag to have the CLI format the output as
+    JSON.
+
+    ```
+    peer lifecycle chaincode queryinstalled --peerAddresses peer0.org1.example.com:7051 --output json
+    ```
+
+    If successful, the command will return the chaincodes you have installed as JSON.
+
+    ```
+    {
+      "installed_chaincodes": [
+        {
+          "package_id": "mycc_1:aab9981fa5649cfe25369fce7bb5086a69672a631e4f95c4af1b5198fe9f845b",
+          "label": "mycc_1",
+          "references": {
+            "mychannel": {
+              "chaincodes": [
+                {
+                  "name": "mycc",
+                  "version": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+    ```
+
 ### peer lifecycle chaincode getinstalledpackage example
 
 You can retrieve an installed chaincode package from a peer using the
@@ -531,5 +561,79 @@ chaincode.
     Name: mycc, Version: 1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc
     Name: yourcc, Version: 2, Sequence: 3, Endorsement Plugin: escc, Validation Plugin: vscc
     ```
+
+  * You can also use the `--output` flag to have the CLI format the output as
+    JSON.
+
+    - For querying a specific chaincode definition
+
+      ```
+      export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+      peer lifecycle chaincode querycommitted -o orderer.example.com:7050 --channelID mychannel --name mycc --tls --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --output json
+      ```
+
+      If successful, the command will return a JSON that has committed chaincode definition for chaincode 'mycc' on channel 'mychannel'.
+
+      ```
+      {
+        "sequence": 1,
+        "version": "1",
+        "endorsement_plugin": "escc",
+        "validation_plugin": "vscc",
+        "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+        "collections": {},
+        "init_required": true,
+        "approvals": {
+          "Org1MSP": true,
+          "Org2MSP": true
+        }
+      }
+      ```
+
+      The `validation_parameter` is base64 encoded. An example of the command to decode it is as follows.
+
+      ```
+      echo EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA== | base64 -d
+
+       /Channel/Application/Endorsement
+      ```
+
+    - For querying all chaincode definitions on that channel
+
+      ```
+      export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+      peer lifecycle chaincode querycommitted -o orderer.example.com:7050 --channelID mychannel --tls --cafile $ORDERER_CA --peerAddresses peer0.org1.example.com:7051 --output json
+      ```
+
+      If successful, the command will return a JSON that has committed chaincode definitions on channel 'mychannel'.
+
+      ```
+      {
+        "chaincode_definitions": [
+          {
+            "name": "mycc",
+            "sequence": 1,
+            "version": "1",
+            "endorsement_plugin": "escc",
+            "validation_plugin": "vscc",
+            "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+            "collections": {},
+            "init_required": true
+          },
+          {
+            "name": "yourcc",
+            "sequence": 3,
+            "version": "2",
+            "endorsement_plugin": "escc",
+            "validation_plugin": "vscc",
+            "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+            "collections": {}
+          }
+        ]
+      }
+      ```
+
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
