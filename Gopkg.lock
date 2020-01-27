@@ -381,7 +381,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:df59338c43e4b283f17e868945ee72582d46e109f8974625327ea636e0dcef9c"
+  digest = "1:a147a4e692d119a8caecd62b2db67a4ed7169c1a9d60edcbfa2c666842d68d83"
   name = "github.com/hyperledger/fabric-chaincode-go"
   packages = [
     "pkg/statebased",
@@ -390,7 +390,7 @@
     "shimtest",
   ]
   pruneopts = "NUT"
-  revision = "303babf9dbed6e278a1065786122b437473d4e8a"
+  revision = "3a1af156c39db72b9ad8f54124fc926ad12a42b6"
 
 [[projects]]
   digest = "1:0f4305e5a43e324844412168385a23ff23dafc55369fcbbc2ea77fb974f828cc"
