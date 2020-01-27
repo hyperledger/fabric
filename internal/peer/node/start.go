@@ -534,6 +534,7 @@ func serve(args []string) error {
 				"CORE_CHAINCODE_LOGGING_SHIM=" + chaincodeConfig.ShimLogLevel,
 				"CORE_CHAINCODE_LOGGING_FORMAT=" + chaincodeConfig.LogFormat,
 			},
+			MSPID: mspID,
 		}
 		if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
 			logger.Panicf("failed to register docker health check: %s", err)
@@ -541,7 +542,7 @@ func serve(args []string) error {
 	}
 
 	externalVM := &externalbuilder.Detector{
-		Builders:    externalbuilder.CreateBuilders(coreConfig.ExternalBuilders),
+		Builders:    externalbuilder.CreateBuilders(coreConfig.ExternalBuilders, mspID),
 		DurablePath: externalBuilderOutput,
 	}
 
