@@ -267,6 +267,16 @@ var _ = Describe("EndToEnd", func() {
 			Expect(containers).To(HaveLen(2))
 
 			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+
+			By("retrieving the local mspid of the peer via simple chaincode")
+			sess, err := network.PeerUserSession(network.Peer("Org2", "peer0"), "User1", commands.ChaincodeQuery{
+				ChannelID: "testchannel",
+				Name:      "mycc",
+				Ctor:      `{"Args":["mspid"]}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Expect(sess).To(gbytes.Say("Org2MSP"))
 		})
 	})
 
