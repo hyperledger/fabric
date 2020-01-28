@@ -39,6 +39,7 @@ func TestLabels(t *testing.T) {
 		{label: "a:b", success: false},
 		{label: "a__b", success: true},
 		{label: "a_b", success: true},
+		{label: "a a", success: false},
 		{label: "a_bb", success: true},
 		{label: "aa", success: true},
 		{label: "v1.0.0", success: true},
@@ -46,7 +47,7 @@ func TestLabels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.label, func(t *testing.T) {
-			err := validateLabel(tt.label)
+			err := ValidateLabel(tt.label)
 			if tt.success {
 				assert.NoError(t, err)
 			} else {
