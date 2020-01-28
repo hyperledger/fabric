@@ -29,6 +29,9 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/matchers"
+	"github.com/onsi/gomega/types"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -856,12 +859,14 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 // VerifyMembership checks that each peer has discovered the expected
 // peers in the network
 func (n *Network) VerifyMembership(expectedPeers []*Peer, channel string, chaincodes ...string) {
-	expectedDiscoveredPeers := make([]DiscoveredPeer, len(expectedPeers))
+	// all peers currently include _lifecycle as an available chaincode
+	chaincodes = append(chaincodes, "_lifecycle")
+	expectedDiscoveredPeerMatchers := make([]types.GomegaMatcher, len(expectedPeers))
 	for i, peer := range expectedPeers {
-		expectedDiscoveredPeers[i] = n.DiscoveredPeer(peer, chaincodes...)
+		expectedDiscoveredPeerMatchers[i] = n.DiscoveredPeerMatcher(peer, chaincodes...) //n.DiscoveredPeer(peer, chaincodes...)
 	}
 	for _, peer := range expectedPeers {
-		Eventually(DiscoverPeers(n, peer, "User1", channel), n.EventuallyTimeout).Should(ConsistOf(expectedDiscoveredPeers))
+		Eventually(DiscoverPeers(n, peer, "User1", channel), n.EventuallyTimeout).Should(ConsistOf(expectedDiscoveredPeerMatchers))
 	}
 }
 
@@ -1247,7 +1252,8 @@ func (n *Network) Peer(orgName, peerName string) *Peer {
 	return nil
 }
 
-// the function creates a new DiscoveredPeer from the peer and chaincodes passed as arguments
+// DiscoveredPeer creates a new DiscoveredPeer from the peer and chaincodes
+// passed as arguments.
 func (n *Network) DiscoveredPeer(p *Peer, chaincodes ...string) DiscoveredPeer {
 	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
 	Expect(err).NotTo(HaveOccurred())
@@ -1257,6 +1263,31 @@ func (n *Network) DiscoveredPeer(p *Peer, chaincodes ...string) DiscoveredPeer {
 		Endpoint:   fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, ListenPort)),
 		Identity:   string(peerCert),
 		Chaincodes: chaincodes,
+	}
+}
+
+func (n *Network) DiscoveredPeerMatcher(p *Peer, chaincodes ...string) types.GomegaMatcher {
+	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
+	Expect(err).NotTo(HaveOccurred())
+
+	return MatchAllFields(Fields{
+		"MSPID":      Equal(n.Organization(p.Organization).MSPID),
+		"Endpoint":   Equal(fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, ListenPort))),
+		"Identity":   Equal(string(peerCert)),
+		"Chaincodes": containElements(chaincodes...),
+	})
+}
+
+// containElements succeeds if a slice contains the passed in elements.
+func containElements(elements ...string) types.GomegaMatcher {
+	ms := make([]types.GomegaMatcher, 0, len(elements))
+	for _, element := range elements {
+		ms = append(ms, &matchers.ContainElementMatcher{
+			Element: element,
+		})
+	}
+	return &matchers.AndMatcher{
+		Matchers: ms,
 	}
 }
 

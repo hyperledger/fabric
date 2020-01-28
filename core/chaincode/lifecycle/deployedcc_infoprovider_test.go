@@ -481,55 +481,6 @@ var _ = Describe("ValidatorCommitter", func() {
 		})
 	})
 
-	Describe("LifecycleEndorsementPolicyAsBytes", func() {
-		It("returns the endorsement policy for the lifecycle chaincode", func() {
-			b, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(b).NotTo(BeNil())
-			policy := &cb.ApplicationPolicy{}
-			err = proto.Unmarshal(b, policy)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(policy.GetChannelConfigPolicyReference()).To(Equal("/Channel/Application/LifecycleEndorsement"))
-		})
-
-		Context("when the endorsement policy reference is not found", func() {
-			BeforeEach(func() {
-				fakePolicyManager.GetPolicyReturns(nil, false)
-			})
-
-			It("returns an error", func() {
-				b, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
-				Expect(err).NotTo(HaveOccurred())
-				policy := &cb.ApplicationPolicy{}
-				err = proto.Unmarshal(b, policy)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(policy.GetSignaturePolicy()).NotTo(BeNil())
-			})
-
-			Context("when the application config cannot be retrieved", func() {
-				BeforeEach(func() {
-					fakeChannelConfig.ApplicationConfigReturns(nil, false)
-				})
-
-				It("returns an error", func() {
-					_, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
-					Expect(err).To(MatchError("could not get application config for channel 'channel-id'"))
-				})
-			})
-		})
-
-		Context("when the channel config cannot be retrieved", func() {
-			BeforeEach(func() {
-				fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
-			})
-
-			It("returns an error", func() {
-				_, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
-				Expect(err).To(MatchError("could not get channel config for channel 'channel-id'"))
-			})
-		})
-	})
-
 	Describe("ValidationInfo", func() {
 		It("returns the validation info as defined in the new lifecycle", func() {
 			vPlugin, vParm, uerr, verr := vc.ValidationInfo("channel-id", "cc-name", fakeQueryExecutor)

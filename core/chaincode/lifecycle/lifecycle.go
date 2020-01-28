@@ -10,8 +10,11 @@ import (
 	"bytes"
 	"fmt"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -246,6 +249,35 @@ func (r *Resources) ChaincodeDefinitionIfDefined(chaincodeName string, state Rea
 	}
 
 	return true, definedChaincode, nil
+}
+
+func (r *Resources) LifecycleEndorsementPolicyAsBytes(channelID string) ([]byte, error) {
+	channelConfig := r.ChannelConfigSource.GetStableChannelConfig(channelID)
+	if channelConfig == nil {
+		return nil, errors.Errorf("could not get channel config for channel '%s'", channelID)
+	}
+
+	if _, ok := channelConfig.PolicyManager().GetPolicy(LifecycleEndorsementPolicyRef); ok {
+		return LifecycleDefaultEndorsementPolicyBytes, nil
+	}
+
+	// This was a channel which was upgraded or did not define a lifecycle endorsement policy, use a default
+	// of "a majority of orgs must have a member sign".
+	ac, ok := channelConfig.ApplicationConfig()
+	if !ok {
+		return nil, errors.Errorf("could not get application config for channel '%s'", channelID)
+	}
+	orgs := ac.Organizations()
+	mspids := make([]string, 0, len(orgs))
+	for _, org := range orgs {
+		mspids = append(mspids, org.MSPID())
+	}
+
+	return protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
+		Type: &cb.ApplicationPolicy_SignaturePolicy{
+			SignaturePolicy: cauthdsl.SignedByNOutOfGivenRole(int32(len(mspids)/2+1), msp.MSPRole_MEMBER, mspids),
+		},
+	}), nil
 }
 
 // ExternalFunctions is intended primarily to support the SCC functions.
