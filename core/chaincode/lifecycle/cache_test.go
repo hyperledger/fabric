@@ -31,26 +31,43 @@ import (
 
 var _ = Describe("Cache", func() {
 	var (
-		c                   *lifecycle.Cache
-		resources           *lifecycle.Resources
-		fakeCCStore         *mock.ChaincodeStore
-		fakeParser          *mock.PackageParser
-		fakeMetadataHandler *mock.MetadataHandler
-		channelCache        *lifecycle.ChannelCache
-		localChaincodes     map[string]*lifecycle.LocalChaincode
-		fakePublicState     MapLedgerShim
-		fakePrivateState    MapLedgerShim
-		fakeQueryExecutor   *mock.SimpleQueryExecutor
-		chaincodeCustodian  *lifecycle.ChaincodeCustodian
+		c                       *lifecycle.Cache
+		resources               *lifecycle.Resources
+		fakeCCStore             *mock.ChaincodeStore
+		fakeParser              *mock.PackageParser
+		fakeChannelConfigSource *mock.ChannelConfigSource
+		fakeChannelConfig       *mock.ChannelConfig
+		fakeApplicationConfig   *mock.ApplicationConfig
+		fakeCapabilities        *mock.ApplicationCapabilities
+		fakePolicyManager       *mock.PolicyManager
+		fakeMetadataHandler     *mock.MetadataHandler
+		channelCache            *lifecycle.ChannelCache
+		localChaincodes         map[string]*lifecycle.LocalChaincode
+		fakePublicState         MapLedgerShim
+		fakePrivateState        MapLedgerShim
+		fakeQueryExecutor       *mock.SimpleQueryExecutor
+		chaincodeCustodian      *lifecycle.ChaincodeCustodian
 	)
 
 	BeforeEach(func() {
 		fakeCCStore = &mock.ChaincodeStore{}
 		fakeParser = &mock.PackageParser{}
+		fakeChannelConfigSource = &mock.ChannelConfigSource{}
+		fakeChannelConfig = &mock.ChannelConfig{}
+		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
+		fakeApplicationConfig = &mock.ApplicationConfig{}
+		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
+		fakeCapabilities = &mock.ApplicationCapabilities{}
+		fakeCapabilities.LifecycleV20Returns(true)
+		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
+		fakePolicyManager = &mock.PolicyManager{}
+		fakePolicyManager.GetPolicyReturns(nil, true)
+		fakeChannelConfig.PolicyManagerReturns(fakePolicyManager)
 		resources = &lifecycle.Resources{
-			PackageParser:  fakeParser,
-			ChaincodeStore: fakeCCStore,
-			Serializer:     &lifecycle.Serializer{},
+			PackageParser:       fakeParser,
+			ChaincodeStore:      fakeCCStore,
+			ChannelConfigSource: fakeChannelConfigSource,
+			Serializer:          &lifecycle.Serializer{},
 		}
 
 		fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
@@ -216,6 +233,45 @@ var _ = Describe("Cache", func() {
 			It("returns an error", func() {
 				_, err := c.ChaincodeInfo("missing-channel-id", "chaincode-name")
 				Expect(err).To(MatchError("unknown channel 'missing-channel-id'"))
+			})
+		})
+
+		Context("when the chaincode name is the _lifecycle system chaincode", func() {
+			It("returns info about _lifecycle", func() {
+				localInfo, err := c.ChaincodeInfo("channel-id", "_lifecycle")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(localInfo).To(Equal(&lifecycle.LocalChaincodeInfo{
+					Definition: &lifecycle.ChaincodeDefinition{
+						Sequence: 1,
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationParameter: lifecycle.LifecycleDefaultEndorsementPolicyBytes,
+						},
+					},
+					InstallInfo: &lifecycle.ChaincodeInstallInfo{},
+					Approved:    true,
+				}))
+			})
+		})
+
+		Context("when the application config cannot be found", func() {
+			BeforeEach(func() {
+				fakeChannelConfig.ApplicationConfigReturns(nil, false)
+			})
+
+			It("returns an error", func() {
+				_, err := c.ChaincodeInfo("channel-id", "_lifecycle")
+				Expect(err).To(MatchError("application config does not exist for channel 'channel-id'"))
+			})
+		})
+
+		Context("when the application config V2_0 capabilities are not enabled", func() {
+			BeforeEach(func() {
+				fakeCapabilities.LifecycleV20Returns(false)
+			})
+
+			It("returns an error", func() {
+				_, err := c.ChaincodeInfo("channel-id", "_lifecycle")
+				Expect(err).To(MatchError("cannot use _lifecycle without V2_0 application capabilities enabled for channel 'channel-id'"))
 			})
 		})
 	})
@@ -689,6 +745,14 @@ var _ = Describe("Cache", func() {
 					Policy:            []byte("validation-parameter"),
 					CollectionsConfig: &pb.CollectionConfigPackage{},
 					Approved:          false,
+					Installed:         true,
+				},
+				chaincode.Metadata{
+					Name:              "_lifecycle",
+					Version:           "1",
+					Policy:            lifecycle.LifecycleDefaultEndorsementPolicyBytes,
+					CollectionsConfig: nil,
+					Approved:          true,
 					Installed:         true,
 				},
 			))
