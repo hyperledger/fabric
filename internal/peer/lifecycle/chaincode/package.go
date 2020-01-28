@@ -59,6 +59,9 @@ func (p *PackageInput) Validate() error {
 	if p.Label == "" {
 		return errors.New("package label must be specified")
 	}
+	if err := persistence.ValidateLabel(p.Label); err != nil {
+		return err
+	}
 
 	return nil
 }
