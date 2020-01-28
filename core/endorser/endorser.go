@@ -111,8 +111,14 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 		logger.Infof("finished chaincode: %s duration: %dms", chaincodeName, elapsedMillisec)
 	}(time.Now())
 
+	meterLabels := []string{
+		"channel", txParams.ChannelID,
+		"chaincode", chaincodeName,
+	}
+
 	res, ccevent, err := e.Support.Execute(txParams, chaincodeName, input)
 	if err != nil {
+		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 		return nil, nil, err
 	}
 
@@ -138,22 +144,25 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	// table changes in lscc will be thrown away
 	cds, err := protoutil.UnmarshalChaincodeDeploymentSpec(input.Args[2])
 	if err != nil {
+		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 		return nil, nil, err
 	}
 
 	// this should not be a system chaincode
 	if e.Support.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
+		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 		return nil, nil, errors.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, txParams.ChannelID)
 	}
 
 	if len(cds.CodePackage) != 0 {
+		e.Metrics.SimulationFailure.With(meterLabels...).Add(1)
 		return nil, nil, errors.Errorf("lscc upgrade/deploy should not include a code packages")
 	}
 
 	_, _, err = e.Support.ExecuteLegacyInit(txParams, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, cds.ChaincodeSpec.Input)
 	if err != nil {
 		// increment the failure to indicate instantion/upgrade failures
-		meterLabels := []string{
+		meterLabels = []string{
 			"channel", txParams.ChannelID,
 			"chaincode", cds.ChaincodeSpec.ChaincodeId.Name,
 		}
@@ -187,12 +196,14 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 
 	simResult, err := txParams.TXSimulator.GetTxSimulationResults()
 	if err != nil {
+		e.Metrics.SimulationFailure.Add(1)
 		return nil, nil, nil, err
 	}
 
 	if simResult.PvtSimulationResults != nil {
 		if chaincodeName == "lscc" {
 			// TODO: remove once we can store collection configuration outside of LSCC
+			e.Metrics.SimulationFailure.Add(1)
 			return nil, nil, nil, errors.New("Private data is forbidden to be used in instantiate")
 		}
 		pvtDataWithConfig, err := AssemblePvtRWSet(txParams.ChannelID, simResult.PvtSimulationResults, txParams.TXSimulator, e.Support.GetDeployedCCInfoProvider())
@@ -201,10 +212,12 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 		txParams.TXSimulator.Done()
 
 		if err != nil {
+			e.Metrics.SimulationFailure.Add(1)
 			return nil, nil, nil, errors.WithMessage(err, "failed to obtain collections config")
 		}
 		endorsedAt, err := e.Support.GetLedgerHeight(txParams.ChannelID)
 		if err != nil {
+			e.Metrics.SimulationFailure.Add(1)
 			return nil, nil, nil, errors.WithMessage(err, fmt.Sprintf("failed to obtain ledger height for channel '%s'", txParams.ChannelID))
 		}
 		// Add ledger height at which transaction was endorsed,
@@ -214,12 +227,14 @@ func (e *Endorser) SimulateProposal(txParams *ccprovider.TransactionParams, chai
 		// Ideally, ledger should add support in the simulator as a first class function `GetHeight()`.
 		pvtDataWithConfig.EndorsedAt = endorsedAt
 		if err := e.PrivateDataDistributor.DistributePrivateData(txParams.ChannelID, txParams.TxID, pvtDataWithConfig, endorsedAt); err != nil {
+			e.Metrics.SimulationFailure.Add(1)
 			return nil, nil, nil, err
 		}
 	}
 
 	pubSimResBytes, err := simResult.GetPubSimulationBytes()
 	if err != nil {
+		e.Metrics.SimulationFailure.Add(1)
 		return nil, nil, nil, err
 	}
 

@@ -200,6 +200,10 @@ The following metrics are currently exported for consumption by Prometheus.
 |                                                     |           |                                                            +------------------+-------------------------------------------------------------+
 |                                                     |           |                                                            | success          |                                                             |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
+| endorser_proposal_simulation_failures               | counter   | The number of failed proposal simulations                  | channel          |                                                             |
+|                                                     |           |                                                            +------------------+-------------------------------------------------------------+
+|                                                     |           |                                                            | chaincode        |                                                             |
++-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
 | endorser_proposal_validation_failures               | counter   | The number of proposals that have failed initial           |                  |                                                             |
 |                                                     |           | validation.                                                |                  |                                                             |
 +-----------------------------------------------------+-----------+------------------------------------------------------------+------------------+-------------------------------------------------------------+
@@ -452,6 +456,8 @@ associated with the metric.
 | endorser.proposal_acl_failures.%{channel}.%{chaincode}                                  | counter   | The number of proposals that failed ACL checks.            |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | endorser.proposal_duration.%{channel}.%{chaincode}.%{success}                           | histogram | The time to complete a proposal.                           |
++-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| endorser.proposal_simulation_failures.%{channel}.%{chaincode}                           | counter   | The number of failed proposal simulations                  |
 +-----------------------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | endorser.proposal_validation_failures                                                   | counter   | The number of proposals that have failed initial           |
 |                                                                                         |           | validation.                                                |
