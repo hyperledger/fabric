@@ -17,7 +17,7 @@ import (
 
 //Unit test of couch db util functionality
 func TestCreateCouchDBConnectionAndDB(t *testing.T) {
-
+	startCouchDB()
 	database := "testcreatecouchdbconnectionanddb"
 	cleanup(database)
 	defer cleanup(database)
@@ -32,6 +32,7 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 
 //Unit test of couch db util functionality
 func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
+	startCouchDB()
 	config := testConfig()
 	config.CreateGlobalChangesDB = false
 	database := "_global_changes"
@@ -51,7 +52,7 @@ func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 
 //Unit test of couch db util functionality
 func TestCreateCouchDBSystemDBs(t *testing.T) {
-
+	startCouchDB()
 	database := "testcreatecouchdbsystemdb"
 	cleanup(database)
 	defer cleanup(database)
