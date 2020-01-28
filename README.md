@@ -64,6 +64,7 @@ Please visit the [Hyperledger Fabric wiki](https://wiki.hyperledger.org/display/
 Please visit our
 online documentation for
 information on getting started using and developing with the fabric, SDK and chaincode:
+- [v2.0](http://hyperledger-fabric.readthedocs.io/en/release-2.0/)
 - [v1.4](http://hyperledger-fabric.readthedocs.io/en/release-1.4/)
 - [v1.3](http://hyperledger-fabric.readthedocs.io/en/release-1.3/)
 - [v1.2](http://hyperledger-fabric.readthedocs.io/en/release-1.2/)
