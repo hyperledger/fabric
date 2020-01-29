@@ -13,7 +13,7 @@ Maintainers
 | Gari Singh | mastersingh24 | mastersingh24 | <gari.r.singh@gmail.com>
 | Jason Yellick | jyellick | jyellick | <jyellick@us.ibm.com>
 | Jay Guo | guoger | guoger | <guojiannan1101@gmail.com>
-| Jonathan Levi | hacera | JonathanLevi | <jonathan@hacera.com>
+| Jonathan Levi | hacera-jonathan | JonathanLevi | <jonathan@hacera.com>
 | Kostas Christidis | kchristidis | kostas | <kostas@gmail.com>
 | Manish Sethi | manish-sethi | manish-sethi | <manish.sethi@gmail.com>
 | Matthew Sykes | sykesm | sykesm | <sykesmat@us.ibm.com>
