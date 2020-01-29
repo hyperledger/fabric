@@ -28,7 +28,7 @@ Chaincode API
 Every chaincode program must implement the ``Chaincode`` interface:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#Chaincode>`__
-  - `node.js <https://fabric-shim.github.io/ChaincodeInterface.html>`__
+  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/release-1.4/api/fabric-shim.ChaincodeInterface.html>`__
   - `Java <https://hyperledger.github.io/fabric-chaincode-java/release-1.4/api/org/hyperledger/fabric/shim/Chaincode.html>`_
 
 whose methods are called in response to received transactions.
@@ -41,7 +41,7 @@ application state. The ``Invoke`` method is called in response to receiving an
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStubInterface>`__
-  - `node.js <https://fabric-shim.github.io/ChaincodeStub.html>`__
+  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/release-1.4/api/fabric-shim.ChaincodeStub.html>`__
   - `Java <https://hyperledger.github.io/fabric-chaincode-java/release-1.4/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`_
 
 which is used to access and modify the ledger, and to make invocations between
