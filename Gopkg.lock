@@ -370,14 +370,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b1c26a7393cb28a859e794f8eb364f5bae72ad9762e301325c50c7fa43544667"
+  digest = "1:920a1c89ab74d92f68a3d2aa568ee34805cfe9df38ba80fee1c84ebcaf05eb0c"
   name = "github.com/hyperledger/fabric-amcl"
   packages = [
     "amcl",
     "amcl/FP256BN",
   ]
   pruneopts = "NUT"
-  revision = "5ccba6eab8d6b39aa2cdd88db202bba0e25da5d7"
+  revision = "d1aa2665426abb6ec7a5519b1ad7febd405048d3"
 
 [[projects]]
   branch = "master"
