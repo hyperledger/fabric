@@ -1,3 +1,113 @@
+## "v2.0.0"
+
+* [77ff3d2](https://github.com/hyperledger/fabric/commit/77ff3d2) Install doc and script updates for v2.0.0
+* [324d2d1](https://github.com/hyperledger/fabric/commit/324d2d1) Add release notes for v2.0.0
+* [5eec23d](https://github.com/hyperledger/fabric/commit/5eec23d) What's New updates for v2.0.0 release
+* [7f772f9](https://github.com/hyperledger/fabric/commit/7f772f9) Add Core Maintainers to /docs in CODEOWNERS
+* [63228ea](https://github.com/hyperledger/fabric/commit/63228ea) Revert "FAB-14693 Vendor updated fabric-amcl package"
+* [a04d430](https://github.com/hyperledger/fabric/commit/a04d430) [FAB-17439](https://jira.hyperledger.org/browse/FAB-17439) Add integration test for verifying fabric-chaincode-go shim API function GetMSPID()
+* [ac2f490](https://github.com/hyperledger/fabric/commit/ac2f490) [FAB-17421](https://jira.hyperledger.org/browse/FAB-17421) Reword links to contract APIs and documentation
+* [94eeecf](https://github.com/hyperledger/fabric/commit/94eeecf) Enable service discovery querying _lifecycle endorsers
+* [3777652](https://github.com/hyperledger/fabric/commit/3777652) Validate label when packaging _lifecycle chaincode
+* [419690a](https://github.com/hyperledger/fabric/commit/419690a) [FAB-17431](https://jira.hyperledger.org/browse/FAB-17431) Use two digit version for chaincode images
+* [d25d2a5](https://github.com/hyperledger/fabric/commit/d25d2a5) Create a new Documentation Maintainers sub-group
+* [e7fb9c7](https://github.com/hyperledger/fabric/commit/e7fb9c7) [FAB-17303](https://jira.hyperledger.org/browse/FAB-17303) Set RequiredPeerCount and MaxPeerCount defaults for implicit and explicit collections
+* [9bd0a95](https://github.com/hyperledger/fabric/commit/9bd0a95) [FAB-17439](https://jira.hyperledger.org/browse/FAB-17439) Expose peer's MSPID to chaincode as an env var (#549)
+* [be23695](https://github.com/hyperledger/fabric/commit/be23695) Bump fabric-chaincode-go (#564)
+* [666a5b7](https://github.com/hyperledger/fabric/commit/666a5b7) [FAB-17410](https://jira.hyperledger.org/browse/FAB-17410) Updated doc links to latest levels
+* [2777611](https://github.com/hyperledger/fabric/commit/2777611) [FAB-17428](https://jira.hyperledger.org/browse/FAB-17428) Deprecate --outputAnchorPeersUpdate flag in configtxgen
+* [ded1729](https://github.com/hyperledger/fabric/commit/ded1729) Updating chaincode document.
+* [da131ec](https://github.com/hyperledger/fabric/commit/da131ec) Stop _lifecycle ccs that are no longer referenced
+* [5c6bdda](https://github.com/hyperledger/fabric/commit/5c6bdda) No need to explicitly deregister handler from registry
+* [0f18fc9](https://github.com/hyperledger/fabric/commit/0f18fc9) [FAB-16033](https://jira.hyperledger.org/browse/FAB-16033) Update channel_artifacts location in doc.
+* [0da8233](https://github.com/hyperledger/fabric/commit/0da8233) Update resources in enable _lifecycle doc
+* [5131473](https://github.com/hyperledger/fabric/commit/5131473) Update _lifecycle resources in configtx.yaml
+* [868da99](https://github.com/hyperledger/fabric/commit/868da99) Improve chaincode lifecycle peer log messages (#530)
+* [dbac8a5](https://github.com/hyperledger/fabric/commit/dbac8a5) Add disclaimer for commercial paper tutorial
+* [f94d3b1](https://github.com/hyperledger/fabric/commit/f94d3b1) Remove references to instantiating a chaincode
+* [5cadc61](https://github.com/hyperledger/fabric/commit/5cadc61) [FAB-17411](https://jira.hyperledger.org/browse/FAB-17411) Update Fabric versions where necessary
+* [8556a43](https://github.com/hyperledger/fabric/commit/8556a43) [FAB-17265](https://jira.hyperledger.org/browse/FAB-17265) Move private data tutorial to use test network
+* [1462df9](https://github.com/hyperledger/fabric/commit/1462df9) [FAB-16895](https://jira.hyperledger.org/browse/FAB-16895) Move ledger benchmark tests
+* [22a0d2c](https://github.com/hyperledger/fabric/commit/22a0d2c) Documentation update: external chaincode and index for db
+* [b6a2325](https://github.com/hyperledger/fabric/commit/b6a2325) Documentation update: external chaincode and index for db
+* [04e5312](https://github.com/hyperledger/fabric/commit/04e5312) Documentation update: external chaincode and index for db
+* [fc16896](https://github.com/hyperledger/fabric/commit/fc16896) Documentation update: external chaincode and index for db
+* [03d8a85](https://github.com/hyperledger/fabric/commit/03d8a85) [FAB-17400](https://jira.hyperledger.org/browse/FAB-17400) Improve log message for approved definition
+* [ca35d68](https://github.com/hyperledger/fabric/commit/ca35d68) [FAB-17402](https://jira.hyperledger.org/browse/FAB-17402) Test network doc user feedback fix
+* [9c6021d](https://github.com/hyperledger/fabric/commit/9c6021d) Add orderer.yaml BootstrapFile usage and default comments (#514)
+* [3b8224e](https://github.com/hyperledger/fabric/commit/3b8224e) Remove reference to First Network in network concept doc
+* [11358a4](https://github.com/hyperledger/fabric/commit/11358a4) [FAB-17287](https://jira.hyperledger.org/browse/FAB-17287): Update wallet description
+* [b1260cb](https://github.com/hyperledger/fabric/commit/b1260cb) Fix integration test for static leader (#513)
+* [c7d595a](https://github.com/hyperledger/fabric/commit/c7d595a) [FAB-17169](https://jira.hyperledger.org/browse/FAB-17169) Add AZP Status Badge (#510)
+* [470f133](https://github.com/hyperledger/fabric/commit/470f133) Static leader should not give up on retrieving blocks (#507)
+* [2d6becc](https://github.com/hyperledger/fabric/commit/2d6becc) [FAB-17266](https://jira.hyperledger.org/browse/FAB-17266) Move CouchDB tutorial to test network
+* [af66ef8](https://github.com/hyperledger/fabric/commit/af66ef8) [FAB-17379](https://jira.hyperledger.org/browse/FAB-17379) Fix print format for querycommitted
+* [3a66888](https://github.com/hyperledger/fabric/commit/3a66888) [FAB-15198](https://jira.hyperledger.org/browse/FAB-15198) Document peer crash scenario when indexes are not installed
+* [21fc6f6](https://github.com/hyperledger/fabric/commit/21fc6f6) [FAB-17339](https://jira.hyperledger.org/browse/FAB-17339) Refactor couchDB unit test (#482)
+* [c491d69](https://github.com/hyperledger/fabric/commit/c491d69) Fix go routine leak in core/scc tests (#502)
+* [8aab447](https://github.com/hyperledger/fabric/commit/8aab447) Implement stop for runtime launcher
+* [b578a96](https://github.com/hyperledger/fabric/commit/b578a96) Chaincode persistence uses period separator (#492)
+* [143d2e9](https://github.com/hyperledger/fabric/commit/143d2e9) lifecycle cache should remove stale cc def references
+* [0bd45e5](https://github.com/hyperledger/fabric/commit/0bd45e5) [FAB-17173](https://jira.hyperledger.org/browse/FAB-17173) Document that CouchDB indexes may not get applied in crash scenarios
+* [73303a5](https://github.com/hyperledger/fabric/commit/73303a5) Remove BYFN reference from private data architecture doc
+* [7d56fac](https://github.com/hyperledger/fabric/commit/7d56fac) [FAB-4955](https://jira.hyperledger.org/browse/FAB-4955) Update doc for building on Windows
+* [0df1557](https://github.com/hyperledger/fabric/commit/0df1557) [FAB-17315](https://jira.hyperledger.org/browse/FAB-17315) english colon illegal filename problem on windows when lifecycle chaincode install Signed-off-by: kevinxiong <59443487@qq.com>
+* [d0d935a](https://github.com/hyperledger/fabric/commit/d0d935a) Log message should start with upper case.
+* [58af762](https://github.com/hyperledger/fabric/commit/58af762) Reject re-defining identical uncommitted cc def
+* [ac9f694](https://github.com/hyperledger/fabric/commit/ac9f694) Bump hyperledger/fabric-chaincode-go
+* [803434a](https://github.com/hyperledger/fabric/commit/803434a) Bump hyperledger/fabric-protos-go
+* [dcdd599](https://github.com/hyperledger/fabric/commit/dcdd599) [FAB-17370](https://jira.hyperledger.org/browse/FAB-17370) Delete old info about shim’s Logger (#489)
+* [8318470](https://github.com/hyperledger/fabric/commit/8318470) Reduce the number of peers in test networks
+* [d80c5f5](https://github.com/hyperledger/fabric/commit/d80c5f5) Fixing Number in Chaincode for Operators topic
+* [f101cab](https://github.com/hyperledger/fabric/commit/f101cab) Remove t.Parallel from common/cluster tests
+* [83dacb4](https://github.com/hyperledger/fabric/commit/83dacb4) Fix and chaincode label regexp and Backfill tests
+* [4549cfb](https://github.com/hyperledger/fabric/commit/4549cfb) Ensure we capture final line of chaincode output
+* [5d2cb8f](https://github.com/hyperledger/fabric/commit/5d2cb8f) Add channel name to blockpuller logger
+* [02f85b4](https://github.com/hyperledger/fabric/commit/02f85b4) [FAB-17317](https://jira.hyperledger.org/browse/FAB-17317) Add code to stop init_public container
+* [69ecb07](https://github.com/hyperledger/fabric/commit/69ecb07) [FAB-17307](https://jira.hyperledger.org/browse/FAB-17307) InitRequired param check for ApproveForMyorg (#462)
+* [04c1f85](https://github.com/hyperledger/fabric/commit/04c1f85) Fix CODEOWNERS group name
+* [f1c6d88](https://github.com/hyperledger/fabric/commit/f1c6d88) Small edits to upgrade docs
+* [80febba](https://github.com/hyperledger/fabric/commit/80febba) Fix Broken link in cc as a service doc
+* [9b25eab](https://github.com/hyperledger/fabric/commit/9b25eab) [FAB-13625](https://jira.hyperledger.org/browse/FAB-13625) Add memberOnlyWrite integration test
+* [2f80112](https://github.com/hyperledger/fabric/commit/2f80112) make correction of the docker-compose command in build_network.rst In file docs/source/build_network.rst, one of docker-compose command has extra option "up".
+* [6ac19e5](https://github.com/hyperledger/fabric/commit/6ac19e5) Range query UT for keys with special or non-English characters
+* [e4f00b9](https://github.com/hyperledger/fabric/commit/e4f00b9) Cleanup packaging utilities chaincode/platforms
+* [42606a5](https://github.com/hyperledger/fabric/commit/42606a5) Use `go list -json` to build go cc dependencies
+* [571842f](https://github.com/hyperledger/fabric/commit/571842f) Wait for orderer to terminate before restarting (#460)
+* [92af234](https://github.com/hyperledger/fabric/commit/92af234) [FAB-17263](https://jira.hyperledger.org/browse/FAB-17263) Update upgrade doc with peer docker command
+* [f26c2b4](https://github.com/hyperledger/fabric/commit/f26c2b4) [FAB-15817](https://jira.hyperledger.org/browse/FAB-15817) Prefer last config in signatures metadata field (#363)
+* [269cb04](https://github.com/hyperledger/fabric/commit/269cb04) external chaincode service doc update
+* [12a2fd3](https://github.com/hyperledger/fabric/commit/12a2fd3) Remove gerrit specific .gitreview
+* [9e59923](https://github.com/hyperledger/fabric/commit/9e59923) Remove CAP theorem information from first network tutorial
+* [bfc762b](https://github.com/hyperledger/fabric/commit/bfc762b) [FAB-17184](https://jira.hyperledger.org/browse/FAB-17184) Skip pulling from remote peers if all remaining missing rwsets (#365)
+* [ff7c083](https://github.com/hyperledger/fabric/commit/ff7c083) [FAB-17301](https://jira.hyperledger.org/browse/FAB-17301) Add documentation build instructions to contribution guide
+* [d35acaa](https://github.com/hyperledger/fabric/commit/d35acaa) [FAB-16120](https://jira.hyperledger.org/browse/FAB-16120) Adding IT for MSP inconsistence (#305)
+* [c939f45](https://github.com/hyperledger/fabric/commit/c939f45) Fabcar uses first-network instead basic-network
+* [2e2506d](https://github.com/hyperledger/fabric/commit/2e2506d) Point CODEOWNERS to group
+* [2dae4c0](https://github.com/hyperledger/fabric/commit/2dae4c0) Remove Gerrit reference (#453)
+* [d89b9a6](https://github.com/hyperledger/fabric/commit/d89b9a6) Test Network tutorial header fix (#452)
+* [c34eae3](https://github.com/hyperledger/fabric/commit/c34eae3) [FAB-17262](https://jira.hyperledger.org/browse/FAB-17262) Fix instructions in build_network
+* [2a39779](https://github.com/hyperledger/fabric/commit/2a39779) [FAB-17279](https://jira.hyperledger.org/browse/FAB-17279) Discovery supports collection level endorsement policies (#445)
+* [65f8a01](https://github.com/hyperledger/fabric/commit/65f8a01) [FAB-17297](https://jira.hyperledger.org/browse/FAB-17297) Use wget in bootstrap.sh
+* [74345be](https://github.com/hyperledger/fabric/commit/74345be) FABN-1428: Relocate Node SDK documentation
+* [f20eeb4](https://github.com/hyperledger/fabric/commit/f20eeb4) [FAB-17231](https://jira.hyperledger.org/browse/FAB-17231) Update externalBuilders description in sampleconfig (#443)
+* [c54b8c0](https://github.com/hyperledger/fabric/commit/c54b8c0) [DOC] Standardize orderer address env var
+* [9495e67](https://github.com/hyperledger/fabric/commit/9495e67) Remove CKA_PRIVATE from pubkeyT to broaden compatibility with HSMs
+* [0b5923b](https://github.com/hyperledger/fabric/commit/0b5923b) [FAB-17238](https://jira.hyperledger.org/browse/FAB-17238) Refactor couchdb test in ./core/ledger/
+* [de14789](https://github.com/hyperledger/fabric/commit/de14789) FGJ-67: Relocate Java SDK docs
+* [fa0f68c](https://github.com/hyperledger/fabric/commit/fa0f68c) Increase open file limit to address Gossip flakes (#430)
+* [ca905ee](https://github.com/hyperledger/fabric/commit/ca905ee) fix wrong protobuf import in mgr_test.go
+* [2fbd83d](https://github.com/hyperledger/fabric/commit/2fbd83d) [FAB-17176](https://jira.hyperledger.org/browse/FAB-17176) Make decode hooks consistent in viperutil (#424)
+* [28c6efd](https://github.com/hyperledger/fabric/commit/28c6efd) define couchDB connection pool size [FAB-17277](https://jira.hyperledger.org/browse/FAB-17277) fix too many TCP connections between peer and CouchDB
+* [c25924a](https://github.com/hyperledger/fabric/commit/c25924a) [DOC] Mention deprecatation of Kafka and Solo (#425)
+* [2902908](https://github.com/hyperledger/fabric/commit/2902908) [FAB-17272](https://jira.hyperledger.org/browse/FAB-17272) Fix Docker Build Context
+* [f0ef0b5](https://github.com/hyperledger/fabric/commit/f0ef0b5) [FAB-17228](https://jira.hyperledger.org/browse/FAB-17228) External cc clients/servers use consistent key/cert model (#407)
+* [b3ac630](https://github.com/hyperledger/fabric/commit/b3ac630) Fixing operations guide toc for new cclauncher materia
+* [c80d1c0](https://github.com/hyperledger/fabric/commit/c80d1c0) [FAB-17233](https://jira.hyperledger.org/browse/FAB-17233) Update chaincode package comment
+* [fcfe51a](https://github.com/hyperledger/fabric/commit/fcfe51a) [FAB-17248](https://jira.hyperledger.org/browse/FAB-17248) Prepare for fabric next rel (v2.0.0)
+* [21594ac](https://github.com/hyperledger/fabric/commit/21594ac) Getting started link fix
+* [977ed80](https://github.com/hyperledger/fabric/commit/977ed80) Fix bootstrap.sh
+
 ## "v2.0.0-beta"
 
 * [7cd1eda](https://github.com/hyperledger/fabric/commit/7cd1eda) Add release notes for v2.0.0-beta
