@@ -272,7 +272,7 @@ data can be bound to the same conditions as regular channel state data, specific
   for example to specify that only an owner's organization peer, custodian's organization
   peer, or other third party must endorse such transactions.
 
-### Private data sharing example
+### Example scenario: Asset transfer using private data collections
 
 The private data sharing patterns mentioned above can be combined to enable powerful
 chaincode-based applications. For example, consider how an asset transfer scenario
