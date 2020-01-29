@@ -30,7 +30,7 @@ are called in response to received transactions. You can find the reference
 documentation of the Chaincode Shim API for different languages below:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#Chaincode>`__
-  - `node.js <https://fabric-shim.github.io/ChaincodeInterface.html>`__
+  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeInterface.html>`__
   - `Java <https://hyperledger.github.io/fabric-chaincode-java/master/api/org/hyperledger/fabric/shim/Chaincode.html>`_
 
 In each language, the ``Invoke`` method is called by clients to submit transaction
@@ -54,7 +54,7 @@ function by using the `peer chaincode invoke` command and passing the
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
-  - `node.js <https://fabric-shim.github.io/ChaincodeStub.html>`__
+  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html>`__
   - `Java <https://hyperledger.github.io/fabric-chaincode-java/master/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`_
 
 which is used to access and modify the ledger, and to make invocations between
