@@ -23,6 +23,14 @@ documentation.
 .. note:: If you're on Windows please see the specific note on `Windows
    extras`_ below.
 
+Install wget
+------------
+
+If you will be downloading Fabric binaries based on the :doc:`install` documentation,
+you will need ``wget`` installed.
+
+  - MacOSX does not include ``wget`` by default, you can install it using ``brew install wget``.
+
 Docker and Docker Compose
 -------------------------
 
@@ -183,7 +191,7 @@ Alternatively, you can change the Docker Quickstart Terminal command
 to use MSYS2 bash by changing the target of the Windows shortcut from:
 
 ::
-   
+
    "C:\Program Files\Git\bin\bash.exe" --login -i "C:\Program Files\Docker Toolbox\start.sh"
 
 to:

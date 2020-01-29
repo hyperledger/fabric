@@ -197,9 +197,9 @@ For more information about this network, check out :doc:`test_network`.
 Upgrading to Fabric v2.0
 ------------------------
 
-While a Beta release is not an intended upgrade target for existing Fabric
-deployments, there is nothing preventing you from testing an upgrade scenario
-to get familiar with the process.
+A major new release brings some additional upgrade considerations. Rest assured
+though, that rolling upgrades from v1.4.x to v2.0 are supported, so that network
+components can be upgraded one at a time with no downtime.
 
 The upgrade docs have been significantly expanded and reworked, and now have a
 standalone home in the documentation: :doc:`upgrade`. Here you'll find documentation on
@@ -213,7 +213,7 @@ The release notes provide more details for users moving to the new release.
 Specifically, take a look at the changes and deprecations that are being
 announced with the new Fabric v2.0 release.
 
-* `Fabric v2.0.0-beta release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.0-beta>`_.
+* `Fabric v2.0.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
