@@ -63,8 +63,6 @@ This tutorial provides a detailed overview of the operations of the Fabric
 chaincode lifecycle rather than the specific commands. To learn more about how
 to use the Fabric lifecycle using the Peer CLI, see [Install and define a chaincode](build_network.html#install-define-chaincode)
 in the Building your First Network Tutorial or the [peer lifecycle command reference](commands/peerlifecycle.html).
-To learn more about how to use the Fabric lifecycle using the Fabric SDK for
-Node.js, visit [How to install and start your chaincode](https://hyperledger.github.io/fabric-sdk-node/master/tutorial-chaincode-lifecycle.html).
 
 ### Step One: Packaging the smart contract
 
@@ -86,7 +84,7 @@ automatically create a file in this format.
   chaincode language, code path, and package label.
   You can see an example of a metadata file below:
   ```
-  {"Path":"github.com/chaincode/fabcar/go","Type":"golang","Label":"fabcarv1"}
+  {"Path":"fabric-samples/chaincode/fabcar/go","Type":"golang","Label":"fabcarv1"}
   ```
 
 ![Packaging the chaincode](lifecycle/Lifecycle-package.png)
