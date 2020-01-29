@@ -261,7 +261,7 @@ Notice how:
   See interaction points **2a**, **2b**, **2c** and **2d**.
 
 Control is passed between chaincode using the `invokeChaincode()`
-[API](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#invokeChaincode__anchor).
+[API](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#invokeChaincode__anchor).
 This API passes control from one chaincode to another chaincode.
 
 Although we have only discussed query transactions in the example, it is

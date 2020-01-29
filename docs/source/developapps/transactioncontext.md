@@ -117,9 +117,9 @@ The APIs in the stub fall into the following categories:
   smart contracts to get, put and delete state corresponding to individual
   objects from the world state, using their key:
 
-    * [getState()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getState__anchor)
-    * [putState()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#putState__anchor)
-    * [deleteState()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#deleteState__anchor)
+    * [getState()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getState__anchor)
+    * [putState()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#putState__anchor)
+    * [deleteState()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#deleteState__anchor)
 
   <br> These basic APIs are complemented by query APIs which enable contracts to
   retrieve a set of states, rather than an individual state. See interaction
@@ -128,12 +128,12 @@ The APIs in the stub fall into the following categories:
   [database](../ledger/ledger.html#world-state-database-options).  For large
   queries, the result sets can be paginated to reduce storage requirements:
 
-    * [getStateByRange()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getStateByRange__anchor)
-    * [getStateByRangeWithPagination()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getStateByRangeWithPagination__anchor)
-    * [getStateByPartialCompositeKey()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKey__anchor)
-    * [getStateByPartialCompositeKeyWithPagination()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKeyWithPagination__anchor)
-    * [getQueryResult()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getQueryResult__anchor)
-    * [getQueryResultWithPagination()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getQueryResultWithPagination__anchor)
+    * [getStateByRange()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getStateByRange__anchor)
+    * [getStateByRangeWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getStateByRangeWithPagination__anchor)
+    * [getStateByPartialCompositeKey()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKey__anchor)
+    * [getStateByPartialCompositeKeyWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKeyWithPagination__anchor)
+    * [getQueryResult()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getQueryResult__anchor)
+    * [getQueryResultWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getQueryResultWithPagination__anchor)
 
 
 * **Private data APIs**. See interaction point **(3)**. These APIs enable smart
@@ -141,9 +141,9 @@ The APIs in the stub fall into the following categories:
   the APIs for world state interactions, but for private data. There are APIs to
   get, put and delete a private data state by its key:
 
-    * [getPrivateData()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getPrivateData__anchor)
-    * [putPrivateData()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#putPrivateData__anchor)
-    * [deletePrivateData()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#deletePrivateData__anchor)
+    * [getPrivateData()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getPrivateData__anchor)
+    * [putPrivateData()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#putPrivateData__anchor)
+    * [deletePrivateData()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#deletePrivateData__anchor)
 
   <br> This set is complemented by set of APIs to query private data **(4)**.
   These APIs allow smart contracts to retrieve a set of states from a private
@@ -152,9 +152,9 @@ The APIs in the stub fall into the following categories:
   [database](../ledger/ledger.html#world-state-database-options). There are
   currently no pagination APIs for private data collections.
 
-    * [getPrivateDataByRange()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getPrivateDataByRange__anchor)
-    * [getPrivateDataByPartialCompositeKey()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getPrivateDataByPartialCompositeKey__anchor)
-    * [getPrivateDataQueryResult()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getPrivateDataQueryResult__anchor)
+    * [getPrivateDataByRange()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getPrivateDataByRange__anchor)
+    * [getPrivateDataByPartialCompositeKey()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getPrivateDataByPartialCompositeKey__anchor)
+    * [getPrivateDataQueryResult()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getPrivateDataQueryResult__anchor)
 
 
 * **Transaction APIs**. See interaction point **(5)**. These APIs are used by a
@@ -162,25 +162,25 @@ The APIs in the stub fall into the following categories:
   being processed by the smart contract. This includes the transaction
   identifier and the time when the transaction proposal was created.
 
-    * [getTxID()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getTxID__anchor)
+    * [getTxID()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getTxID__anchor)
       returns the identifier of the current transaction proposal **(5)**.
-    * [getTxTimestamp()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getTxTimestamp__anchor)
+    * [getTxTimestamp()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getTxTimestamp__anchor)
       returns the timestamp when the current transaction proposal was created by
       the application **(5)**.
-    * [getCreator()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getCreator__anchor)
+    * [getCreator()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getCreator__anchor)
       returns the raw identity (X.509 or otherwise) of the creator of
       transaction proposal. If this is an X.509 certificate then it is often
       more appropriate to use [`ctx.ClientIdentity`](#clientidentity).
-    * [getSignedProposal()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getSignedProposal__anchor)
+    * [getSignedProposal()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getSignedProposal__anchor)
       returns a signed copy of the current transaction proposal being processed
       by the smart contract.
-    * [getBinding()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getBinding__anchor)
+    * [getBinding()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getBinding__anchor)
       is used to prevent transactions being maliciously or accidentally replayed
       using a nonce. (For practical purposes, a nonce is a random number
       generated by the client application and incorporated in a cryptographic
       hash.) For example, this API could be used by a smart contract at **(1)**
       to detect a replay of the transaction **(5)**.
-    * [getTransient()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getTransient__anchor)
+    * [getTransient()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getTransient__anchor)
       allows a smart contract to access the transient data an application passes
       to a smart contract. See interaction points **(9)** and **(10)**.
       Transient data is private to the application-smart contract interaction.
@@ -200,19 +200,19 @@ The APIs in the stub fall into the following categories:
   stored values, including the transaction identifiers that performed the state
   update, allowing the transactions to be read from the blockchain **(10)**.
 
-    * [createCompositeKey()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#createCompositeKey__anchor)
-    * [splitCompositeKey()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#splitCompositeKey__anchor)
-    * [setStateValidationParameter()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#setStateValidationParameter__anchor)
-    * [getStateValidationParameter()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getStateValidationParameter__anchor)
-    * [getPrivateDataValidationParameter()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getPrivateDataValidationParameter__anchor)
-    * [setPrivateDataValidationParameter()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#setPrivateDataValidationParameter__anchor)
-    * [getHistoryForKey()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getHistoryForKey__anchor)
+    * [createCompositeKey()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#createCompositeKey__anchor)
+    * [splitCompositeKey()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#splitCompositeKey__anchor)
+    * [setStateValidationParameter()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#setStateValidationParameter__anchor)
+    * [getStateValidationParameter()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getStateValidationParameter__anchor)
+    * [getPrivateDataValidationParameter()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getPrivateDataValidationParameter__anchor)
+    * [setPrivateDataValidationParameter()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#setPrivateDataValidationParameter__anchor)
+    * [getHistoryForKey()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getHistoryForKey__anchor)
 
   <br>
 
 * **Event APIs** are used manage event processing in a smart contract.
 
-    * [setEvent()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#setEvent__anchor)
+    * [setEvent()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#setEvent__anchor)
 
       Smart contracts use this API to add user events to a transaction response.
       See interaction point **(5)**. These events are ultimately recorded on the
@@ -226,12 +226,12 @@ The APIs in the stub fall into the following categories:
   the current channel name and passing control to a different chaincode on the
   same peer.
 
-    * [getChannelID()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getChannelID__anchor)
+    * [getChannelID()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getChannelID__anchor)
 
       See interaction point **(13)**.  A smart contract running on any peer can
       use this API to determined on which channel the application invoked the
       smart contract.
-    * [invokeChaincode()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#invokeChaincode__anchor)
+    * [invokeChaincode()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#invokeChaincode__anchor)
 
       See interaction point **(14)**.  Peer3 owned by MagnetoCorp has multiple
       smart contracts installed on it.  These smart contracts are able to call
@@ -243,9 +243,9 @@ The APIs in the stub fall into the following categories:
   detailed manipulation of chaincode input; the smart contract `Contract` class
   does all of this parameter marshalling automatically for developers.
 
-    * [getFunctionAndParameters()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getFunctionAndParameters__anchor)
-    * [getStringArgs()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getStringArgs__anchor)
-    * [getArgs()](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#getArgs__anchor)
+    * [getFunctionAndParameters()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getFunctionAndParameters__anchor)
+    * [getStringArgs()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getStringArgs__anchor)
+    * [getArgs()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getArgs__anchor)
 
 
 ## ClientIdentity
@@ -259,21 +259,21 @@ the proposal in transaction `t6` **(5)**.
 of X.509 utility APIs on top of it to make it easier to use for this common use
 case.
 
-* [getX509Certificate()](https://fabric-shim.github.io/master/fabric-shim.ClientIdentity.html#getX509Certificate__anchor)
+* [getX509Certificate()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ClientIdentity.html#getX509Certificate__anchor)
   returns the full X.509 certificate of the transaction submitter, including all
   its attributes and their values. See interaction point **(6)**.
-* [getAttributeValue()](https://fabric-shim.github.io/master/fabric-shim.ClientIdentity.html#getAttributeValue__anchor)
+* [getAttributeValue()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ClientIdentity.html#getAttributeValue__anchor)
   returns the value of a particular X.509 attribute, for example, the
   organizational unit `OU`, or distinguished name `DN`. See interaction point
   **(6)**.
-* [assertAttributeValue()](https://fabric-shim.github.io/master/fabric-shim.ClientIdentity.html#assertAttributeValue__anchor)
+* [assertAttributeValue()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ClientIdentity.html#assertAttributeValue__anchor)
   returns `TRUE` if the specified attribute of the X.509 attribute has a
   specified value. See interaction point **(6)**.
-* [getID()](https://fabric-shim.github.io/master/fabric-shim.ClientIdentity.html#getID__anchor)
+* [getID()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ClientIdentity.html#getID__anchor)
   returns the unique identity of the transaction submitter, according to their
   distinguished name and the issuing CA's distinguished name. The format is
   `x509::{subject DN}::{issuer DN}`. See interaction point **(6)**.
-* [getMSPID()](https://fabric-shim.github.io/master/fabric-shim.ClientIdentity.html#getMSPID__anchor)
+* [getMSPID()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ClientIdentity.html#getMSPID__anchor)
   returns the channel MSP of the transaction submitter. This allows a smart
   contract to make processing decisions based on the submitter's organizational
   identity. See interaction point **(15)** or **(16)**.

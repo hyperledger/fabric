@@ -403,7 +403,7 @@ environment. Note the following key program lines:
   This statement brings into scope two key Hyperledger Fabric classes that will
   be used extensively by the smart contract  -- `Contract` and `Context`. You
   can learn more about these classes in the
-  [`fabric-shim` JSDOCS](https://fabric-shim.github.io/).
+  [`fabric-shim` JSDOCS](https://hyperledger.github.io/fabric-chaincode-node/).
 
 
 * `class CommercialPaperContract extends Contract {`
@@ -473,9 +473,9 @@ file system within the target peer's docker container. Once the smart contract
 is installed on the peer and instantiated on a channel,
 `papercontract` can be invoked by applications, and interact with the ledger
 database via the
-[putState()](https://fabric-shim.github.io/release-1.4/fabric-shim.ChaincodeStub.html#putState__anchor)
+[putState()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#putState__anchor)
 and
-[getState()](https://fabric-shim.github.io/release-1.4/fabric-shim.ChaincodeStub.html#getState__anchor)
+[getState()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getState__anchor)
 Fabric APIs. Examine how these APIs are used by `StateList` class within
 `ledger-api\statelist.js`.
 
