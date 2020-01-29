@@ -30,7 +30,7 @@ Hyperledger Fabric offers a number of APIs to support developing smart contracts
 in various programming languages. Smart contract APIs are available for Go, Node.js, and Java:
 
   * `Go contract-api <https://github.com/hyperledger/fabric-contract-api-go>`__.
-  * `Node.js contract API <https://github.com/hyperledger/fabric-chaincode-node>`__ and `Node.js contract API documentation <https://fabric-shim.github.io/>`__.
+  * `Node.js contract API <https://github.com/hyperledger/fabric-chaincode-node>`__ and `Node.js contract API documentation <https://hyperledger.github.io/fabric-chaincode-node/>`__.
   * `Java contract API <https://github.com/hyperledger/fabric-chaincode-java>`__ and `Java contract API documentation <https://hyperledger.github.io/fabric-chaincode-java/>`__.
 
 Hyperledger Fabric application SDKs
