@@ -4,7 +4,7 @@
 
 ARG GO_VER
 ARG ALPINE_VER
-FROM golang:${GO_VER}-alpine as golang
+FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
 
 RUN apk add --no-cache \
 	bash \
