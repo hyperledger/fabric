@@ -77,10 +77,11 @@ General:
         # ServerPrivateKey defines the file location of the private key of the TLS certificate.
         ServerPrivateKey:
     # Genesis method: The method by which the genesis block for the orderer
-    # system channel is specified. Available options are "provisional", "file":
-    #  - provisional: Utilizes a genesis profile, specified by GenesisProfile,
-    #                 to dynamically generate a new genesis block.
-    #  - file: Uses the file provided by GenesisFile as the genesis block.
+    # system channel is specified. The option can be one of:
+    #   "provisional" -  utilizes a genesis profile, specified by GenesisProfile, 
+    #   to dynamically generate a new genesis block
+    #   "file" - path to a file containing the genesis block or config block of system channel
+    #   "none" - allows an orderer to start without a system channel configuration
     GenesisMethod: provisional
 
     # Genesis profile: The profile to use to dynamically generate the genesis

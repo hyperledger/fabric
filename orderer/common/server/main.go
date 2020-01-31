@@ -564,6 +564,8 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 		bootstrapBlock = encoder.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlockForChannel(conf.General.SystemChannel)
 	case "file":
 		bootstrapBlock = file.New(conf.General.GenesisFile).GenesisBlock()
+	case "none": // simply honor the configuration value
+		return nil
 	default:
 		logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)
 	}
@@ -653,10 +655,9 @@ func initializeMultichannelRegistrar(
 	lf blockledger.Factory,
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
-	genesisBlock := extractBootstrapBlock(conf)
 	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
-		initializeBootstrapChannel(genesisBlock, lf)
+		initializeBootstrapChannel(bootstrapBlock, lf)
 	} else {
 		logger.Info("Not bootstrapping because of existing channels")
 	}

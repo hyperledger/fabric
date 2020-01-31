@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
@@ -33,6 +34,7 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
@@ -238,6 +240,36 @@ func TestInitializeBootstrapChannel(t *testing.T) {
 	}
 }
 
+func TestExtractBootstrapBlock(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, genesisconfig.TestChainID)
+	defer os.Remove(genesisFile)
+
+	tests := []struct {
+		config *localconfig.TopLevel
+		block  *common.Block
+	}{
+		{
+			config: &localconfig.TopLevel{
+				General: localconfig.General{GenesisMethod: "file", GenesisFile: genesisFile},
+			},
+			block: file.New(genesisFile).GenesisBlock(),
+		},
+		{
+			config: &localconfig.TopLevel{
+				General: localconfig.General{GenesisMethod: "none"},
+			},
+			block: nil,
+		},
+	}
+	for _, tt := range tests {
+		b := extractBootstrapBlock(tt.config)
+		assert.Truef(t, proto.Equal(tt.block, b), "wanted %v, got %v", tt.block, b)
+	}
+}
+
 func TestExtractSysChanLastConfig(t *testing.T) {
 	rlf := ramledger.New(10)
 	conf := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
@@ -343,7 +375,10 @@ func TestLoadLocalMSP(t *testing.T) {
 func TestInitializeMultiChainManager(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
-	conf := genesisConfig(t)
+
+	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, genesisconfig.TestChainID)
+	defer os.Remove(genesisFile)
+	conf := genesisConfig(t, genesisFile)
 	assert.NotPanics(t, func() {
 		initializeLocalMsp(conf)
 		lf, _ := createLedgerFactory(conf, &disabled.Provider{})
@@ -380,7 +415,10 @@ func TestInitializeGrpcServer(t *testing.T) {
 func TestUpdateTrustedRoots(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
-	initializeLocalMsp(genesisConfig(t))
+
+	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, genesisconfig.TestChainID)
+	defer os.Remove(genesisFile)
+
 	// get a free random port
 	listenAddr := func() string {
 		l, _ := net.Listen("tcp", "localhost:0")
@@ -390,6 +428,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	port, _ := strconv.ParseUint(strings.Split(listenAddr, ":")[1], 10, 16)
 	conf := &localconfig.TopLevel{
 		General: localconfig.General{
+			GenesisMethod: "file",
+			GenesisFile:   genesisFile,
 			ListenAddress: "localhost",
 			ListenPort:    uint16(port),
 			TLS: localconfig.TLS{
@@ -410,8 +450,8 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		}
 	}
 	lf, _ := createLedgerFactory(conf, &disabled.Provider{})
-	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
-	initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t), localmsp.NewSigner(), &disabled.Provider{}, &mocks.HealthChecker{}, lf, callback)
+	bootBlock := file.New(genesisFile).GenesisBlock()
+	initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t, genesisFile), localmsp.NewSigner(), &disabled.Provider{}, &mocks.HealthChecker{}, lf, callback)
 	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
 	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))
 	// mutual TLS not required so no updates should have occurred
@@ -455,7 +495,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		predDialer,
 		comm.ServerConfig{},
 		nil,
-		genesisConfig(t),
+		genesisConfig(t, genesisFile),
 		localmsp.NewSigner(),
 		&disabled.Provider{},
 		&server_mocks.HealthChecker{},
@@ -717,17 +757,16 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 	assert.NotNil(t, consenters["etcdraft"])
 }
 
-func genesisConfig(t *testing.T) *localconfig.TopLevel {
+func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 	t.Helper()
-	localMSPDir, _ := configtest.GetDevMspDir()
+	localMSPDir, err := configtest.GetDevMspDir()
+	assert.NoError(t, err)
 	return &localconfig.TopLevel{
 		General: localconfig.General{
-			LedgerType:     "ram",
-			GenesisMethod:  "provisional",
-			GenesisProfile: "SampleDevModeSolo",
-			SystemChannel:  genesisconfig.TestChainID,
-			LocalMSPDir:    localMSPDir,
-			LocalMSPID:     "SampleOrg",
+			GenesisMethod: "file",
+			GenesisFile:   genesisFile,
+			LocalMSPDir:   localMSPDir,
+			LocalMSPID:    "SampleOrg",
 			BCCSP: &factory.FactoryOpts{
 				ProviderName: "SW",
 				SwOpts: &factory.SwOpts{
@@ -781,4 +820,17 @@ func TestCreateReplicator(t *testing.T) {
 
 	err = r.verifierRetriever.RetrieveVerifier("system").VerifyBlockSignature(nil, nil)
 	assert.NoError(t, err)
+}
+
+func produceGenesisFile(t *testing.T, profile, channelID string) string {
+	configDir, err := configtest.GetDevConfigDir()
+	require.NoError(t, err)
+	conf := genesisconfig.Load(profile, configDir)
+	f, err := ioutil.TempFile("", fmt.Sprintf("%s-genesis_block-", t.Name()))
+	require.NoError(t, err)
+	_, err = f.Write(utils.MarshalOrPanic(encoder.New(conf).GenesisBlockForChannel(channelID)))
+	require.NoError(t, err)
+	err = f.Close()
+	require.NoError(t, err)
+	return f.Name()
 }
