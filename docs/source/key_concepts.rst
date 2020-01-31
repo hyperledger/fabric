@@ -5,7 +5,6 @@ Key Concepts
    :maxdepth: 1
 
    blockchain
-   functionalities
    fabric_model
    network/network.md
    identity/identity.md
