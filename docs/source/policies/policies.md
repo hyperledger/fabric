@@ -10,7 +10,7 @@ In this topic, we'll cover:
 * [How are policies implemented throughout Fabric](#how-are-policies-implemented-throughout-fabric)
 * [Fabric policy domains](#the-fabric-policy-domains)
 * [How do you write a policy in Fabric](#how-do-you-write-a-policy-in-fabric)
-* [Fabric chaincode lifecycle](#fabric-chaincode-lifecyle)
+* [Fabric chaincode lifecycle](#fabric-chaincode-lifecycle)
 * [Overriding policy definitions](#overriding-policy-definitions)
 
 ## What is a policy
