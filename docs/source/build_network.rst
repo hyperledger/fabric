@@ -168,10 +168,10 @@ the following command instead:
   ./byfn.sh up -l javascript
 
 .. note:: For more information on the Node.js shim, please refer to its
-          `documentation <https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeInterface.html>`_.
+          `documentation <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeInterface.html>`_.
 
 .. note:: For more information on the Java shim, please refer to its
-          `documentation <https://hyperledger.github.io/fabric-chaincode-java/release-2.0/api/org/hyperledger/fabric/shim/Chaincode.html>`_.
+          `documentation <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/Chaincode.html>`_.
 
 Тo make the sample run with Java chaincode, you have to specify ``-l java`` as follows:
 

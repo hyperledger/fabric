@@ -20,13 +20,13 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
 
+sys.path.insert(0, os.path.abspath('.'))
 
 import sphinx_rtd_theme
 
 placeholder_replacements = {
-    "{BRANCH}" : "master"
+    "{BRANCH}": "release-2.0"
 }
 
 # -- General configuration ------------------------------------------------
@@ -39,12 +39,12 @@ placeholder_replacements = {
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
-    'sphinx.ext.imgmath',
-    'sphinx.ext.ifconfig',
-    'sphinx.ext.viewcode']
+              'sphinx.ext.doctest',
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.todo',
+              'sphinx.ext.imgmath',
+              'sphinx.ext.ifconfig',
+              'sphinx.ext.viewcode']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -99,7 +99,6 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -126,7 +125,6 @@ def placeholderReplace(app, docname, source):
         result = result.replace(key, app.config.placeholder_replacements[key])
     source[0] = result
 
-
 def setup(app):
     app.add_stylesheet('css/custom.css')
     app.add_config_value('placeholder_replacements', {}, True)
@@ -136,7 +134,6 @@ def setup(app):
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'hyperledger-fabricdocsdoc'
-
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -162,20 +159,20 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'hyperledger-fabricdocs.tex', u'hyperledger-fabricdocs Documentation',
+    (master_doc, 'hyperledger-fabricdocs.tex',
+     u'hyperledger-fabricdocs Documentation',
      u'hyperledger', 'manual'),
 ]
-
 
 # -- Options for manual page output ---------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'hyperledger-fabricdocs', u'hyperledger-fabricdocs Documentation',
+    (master_doc, 'hyperledger-fabricdocs',
+     u'hyperledger-fabricdocs Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output -------------------------------------------
 
@@ -183,12 +180,11 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'hyperledger-fabricdocs', u'hyperledger-fabricdocs Documentation',
+    (master_doc, 'hyperledger-fabricdocs',
+     u'hyperledger-fabricdocs Documentation',
      author, 'hyperledger-fabricdocs', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-
 
 # -- Options for Epub output ----------------------------------------------
 

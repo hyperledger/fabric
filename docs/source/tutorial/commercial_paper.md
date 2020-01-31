@@ -473,9 +473,9 @@ file system within the target peer's docker container. Once the smart contract
 is installed on the peer and instantiated on a channel,
 `papercontract` can be invoked by applications, and interact with the ledger
 database via the
-[putState()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#putState__anchor)
+[putState()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#putState__anchor)
 and
-[getState()](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-shim.ChaincodeStub.html#getState__anchor)
+[getState()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getState__anchor)
 Fabric APIs. Examine how these APIs are used by `StateList` class within
 `ledger-api\statelist.js`.
 
