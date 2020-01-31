@@ -165,7 +165,7 @@ else
 fi
 
 BINARY_FILE=hyperledger-fabric-${ARCH}-${VERSION}.tar.gz
-CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}-${CA_VERSION}.tar.gz
+CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}.${CA_VERSION}.tar.gz
 
 # then parse opts
 while getopts "h?dsb" opt; do
