@@ -55,7 +55,7 @@ name. A smart contract can explicitly assign this name when the class is
 constructed, or let the `Contract` class implicitly assign a default name.
 
 Examine the `papercontract.js` chaincode
-[file](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/contract/lib/papercontract.js#L31):
+[file](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/contract/lib/papercontract.js#L31):
 
 ```javascript
 class CommercialPaperContract extends Contract {

@@ -131,7 +131,7 @@ Alternatively, the environment variable setting `FABRIC_SDK_DISCOVERY=false`
 will always override the application choice.
 
 Examine the [connection
-profile](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
+profile](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
 used by the MagnetoCorp issue application. See how all the peers, orderers and
 even CAs are specified in this file, including their roles.
 

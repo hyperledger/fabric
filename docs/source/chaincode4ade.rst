@@ -30,8 +30,8 @@ are called in response to received transactions. You can find the reference
 documentation of the Chaincode Shim API for different languages below:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#Chaincode>`__
-  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeInterface.html>`__
-  - `Java <https://hyperledger.github.io/fabric-chaincode-java/master/api/org/hyperledger/fabric/shim/Chaincode.html>`_
+  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeInterface.html>`__
+  - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/Chaincode.html>`_
 
 In each language, the ``Invoke`` method is called by clients to submit transaction
 proposals. This method allows you to use the chaincode to read and write data on
@@ -49,13 +49,18 @@ the peer CLI to approve the chaincode definition, use the ``--init-required``
 flag to request the execution of the ``Init`` function. Then call the ``Init``
 function by using the `peer chaincode invoke` command and passing the
 ``--isInit`` flag. If you are using the Fabric SDK for Node.js, visit
-`How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/master/tutorial-chaincode-lifecycle.html>`__. For more information, see :doc:`chaincode4noah`.
+`How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`__. For more information, see :doc:`chaincode4noah`.
 
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
+<<<<<<< HEAD
   - `node.js <https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html>`__
   - `Java <https://hyperledger.github.io/fabric-chaincode-java/master/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`_
+=======
+  - `node.js <https://fabric-shim.github.io/ChaincodeStub.html>`__
+  - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`_
+>>>>>>> Add dynamic variables to doc
 
 which is used to access and modify the ledger, and to make invocations between
 chaincodes.
@@ -528,7 +533,7 @@ to make updates to the key/value in the future. The client identity
 library extension APIs can be used within chaincode to retrieve this
 submitter information to make such access control decisions.
 
-See the `client identity (CID) library documentation <https://github.com/hyperledger/fabric-chaincode-go/blob/master/pkg/cid/README.md>`_
+See the `client identity (CID) library documentation <https://github.com/hyperledger/fabric-chaincode-go/blob/{BRANCH}/pkg/cid/README.md>`_
 for more details.
 
 To add the client identity shim extension to your chaincode as a dependency, see :ref:`vendoring`.

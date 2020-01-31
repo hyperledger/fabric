@@ -91,7 +91,7 @@ File system, In-memory and CouchDB.*
   recovery.
 
 Use factory functions provided by the `Wallets`
-[class](https://hyperledger.github.io/fabric-sdk-node/master/module-fabric-network.Wallets.html)
+[class](https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/module-fabric-network.Wallets.html)
 to create wallets.
 
 ### Hardware Security Module
@@ -108,7 +108,7 @@ in the HSM.
 
 To enable the use of HSM-managed identities, an `IdentityProvider` must be
 configured with the HSM connection information and registered with the wallet.
-For further details, refer to the [Using wallets to manage identities](https://hyperledger.github.io/fabric-sdk-node/master/tutorial-wallet.html) tutorial.
+For further details, refer to the [Using wallets to manage identities](https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-wallet.html) tutorial.
 
 ## Structure
 
@@ -173,7 +173,7 @@ manipulate these data.
 ## Operations
 
 The different wallet types all implement a common
-[Wallet](https://hyperledger.github.io/fabric-sdk-node/master/module-fabric-network.Wallet.html)
+[Wallet](https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/module-fabric-network.Wallet.html)
 interface which provides a standard set of APIs to manage identities. It means
 that applications can be made independent of the underlying wallet storage
 mechanism; for example, File system and HSM wallets are handled in a very
@@ -186,7 +186,7 @@ deleted.*
 An application can use a wallet according to a simple lifecycle. Wallets can be
 opened or created, and subsequently identities can be added, updated, read and
 deleted. Spend a little time on the different `Wallet` methods in the
-[JSDoc](https://hyperledger.github.io/fabric-sdk-node/master/module-fabric-network.Wallet.html)
+[JSDoc](https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/module-fabric-network.Wallet.html)
 to see how they work; the commercial paper tutorial provides a nice example in
 `addToWallet.js`:
 

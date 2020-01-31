@@ -113,7 +113,7 @@ about chaincode; everyone else can think in terms of smart contracts.
 
 At the heart of a smart contract is a set of `transaction` definitions. For
 example, look at
-[`fabcar.js`](https://github.com/hyperledger/fabric-samples/blob/master/chaincode/fabcar/javascript/lib/fabcar.js#L93),
+[`fabcar.js`](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/javascript/lib/fabcar.js#L93),
 where you can see a smart contract transaction that creates a new car:
 
 ```javascript

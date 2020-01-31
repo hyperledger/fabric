@@ -171,7 +171,7 @@ the following command instead:
           `documentation <https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeInterface.html>`_.
 
 .. note:: For more information on the Java shim, please refer to its
-          `documentation <https://hyperledger.github.io/fabric-chaincode-java/master/api/org/hyperledger/fabric/shim/Chaincode.html>`_.
+          `documentation <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/Chaincode.html>`_.
 
 Тo make the sample run with Java chaincode, you have to specify ``-l java`` as follows:
 

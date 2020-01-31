@@ -42,7 +42,7 @@ Because the ordering system channel does not define an **application** capabilit
 
 **Take caution** when specifying or modifying an application capability. Because the ordering service does not validate that the capability level exists, it will allow a channel to be created (or modified) to contain, for example, a v1.8 application capability even if no such capability exists. Any peer attempting to read a configuration block with this capability would, as we have shown, crash, and even if it was possible to modify the channel once again to a valid capability level, it would not matter, as no peer would be able to get past the block with the invalid v1.8 capability.
 
-For a full look at the current valid orderer, application, and channel capabilities check out a [sample `configtx.yaml` file](http://github.com/hyperledger/fabric/blob/master/sampleconfig/configtx.yaml), which lists them in the "Capabilities" section.
+For a full look at the current valid orderer, application, and channel capabilities check out a [sample `configtx.yaml` file](http://github.com/hyperledger/fabric/blob/{BRANCH}/sampleconfig/configtx.yaml), which lists them in the "Capabilities" section.
 
 For more specific information about capabilities and where they reside in the channel configuration, check out [defining capability requirements](capability_requirements.html).
 
