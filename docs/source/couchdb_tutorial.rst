@@ -28,7 +28,7 @@ and for more information on the Fabric ledger refer to the `Ledger <ledger/ledge
 topic. Follow the tutorial below for details on how to leverage CouchDB in your
 blockchain network.
 
-Throughout this tutorial, we will use the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__
+Throughout this tutorial, we will use the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__
 as our use case to demonstrate how to use CouchDB with Fabric and will deploy
 Marbles to the Fabric test network. You should have completed the task
 :doc:`install`.
@@ -102,7 +102,7 @@ in a query, CouchDB requires an index of the sorted fields.
    otherwise, the query will fail and an error will be thrown.
 
 To demonstrate building an index, we will use the data from the `Marbles
-sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__.
+sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__.
 In this example, the Marbles data structure is defined as:
 
 .. code:: javascript
@@ -245,7 +245,7 @@ chaincode using the :doc:`commands/peerlifecycle` command. The JSON index files
 must be located under the path ``META-INF/statedb/couchdb/indexes`` which is
 located inside the directory where the chaincode resides.
 
-The `Marbles sample <https://github.com/hyperledger/fabric-samples/tree/master/chaincode/marbles02/go>`__  below illustrates how the index
+The `Marbles sample <https://github.com/hyperledger/fabric-samples/tree/{BRANCH}/chaincode/marbles02/go>`__  below illustrates how the index
 is packaged with the chaincode.
 
 .. image:: images/couchdb_tutorial_pkg_example.png
@@ -502,7 +502,7 @@ Build the query in chaincode
 ----------------------------
 
 You can perform complex rich queries against the data on the ledger using
-queries defined within your chaincode. The `marbles02 sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__
+queries defined within your chaincode. The `marbles02 sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__
 includes two rich query functions:
 
   * **queryMarbles** --
@@ -722,7 +722,7 @@ listener application would iterate through the block transactions and build a da
 store using the key/value writes from each valid transaction's ``rwset``. The
 :doc:`peer_event_services` provide replayable events to ensure the integrity of
 downstream data stores. For an example of how you can use an event listener to write
-data to an external database, visit the `Off chain data sample <https://github.com/hyperledger/fabric-samples/tree/master/off_chain_data>`__
+data to an external database, visit the `Off chain data sample <https://github.com/hyperledger/fabric-samples/tree/{BRANCH}/off_chain_data>`__
 in the Fabric Samples.
 
 .. _cdb-pagination:
@@ -739,7 +739,7 @@ chaincode that executes the query until no more results are returned. For more i
 this `topic on pagination with CouchDB <couchdb_as_state_database.html#couchdb-pagination>`__.
 
 
-We will use the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__
+We will use the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__
 function ``queryMarblesWithPagination`` to  demonstrate how
 pagination can be implemented in chaincode and the client application.
 
@@ -876,7 +876,7 @@ No records are returned, indicating that all pages have been retrieved:
 
 For an example of how a client application can iterate over
 the result sets using pagination, search for the ``getQueryResultForQueryStringWithPagination``
-function in the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02/go/marbles_chaincode.go>`__.
+function in the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__.
 
 .. _cdb-update-index:
 

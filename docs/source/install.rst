@@ -68,7 +68,7 @@ the binaries and images.
 	  information on where to find the latest version of curl and
 	  get the right environment. Alternately, you can substitute
 	  the un-shortened URL:
-	  https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap.sh
+	  https://raw.githubusercontent.com/hyperledger/fabric/{BRANCH}/scripts/bootstrap.sh
 
 The command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you

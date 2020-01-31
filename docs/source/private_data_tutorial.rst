@@ -26,7 +26,7 @@ configuring and using private data with Fabric:
 #. :ref:`pd-indexes`
 #. :ref:`pd-ref-material`
 
-This tutorial will deploy the `marbles private data sample <https://github.com/hyperledger/fabric-samples/tree/master/chaincode/marbles02_private>`__
+This tutorial will deploy the `marbles private data sample <https://github.com/hyperledger/fabric-samples/tree/{BRANCH}/chaincode/marbles02_private>`__
 to the Fabric test network to demonstrate how to create, deploy, and use a collection of
 private data. You should have completed the task :doc:`install`.
 
@@ -167,7 +167,7 @@ and the data key. Recall the collection  ``collectionMarbles`` allows members of
 Org1 and Org2 to have the private data in a side database, and the collection
 ``collectionMarblePrivateDetails`` allows only members of Org1 to have the
 private data in a side database. For implementation details refer to the
-following two `marbles private data functions <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02_private/go/marbles_chaincode_private.go>`__:
+following two `marbles private data functions <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02_private/go/marbles_chaincode_private.go>`__:
 
  * **readMarble** for querying the values of the ``name, color, size and owner`` attributes
  * **readMarblePrivateDetails** for querying the values of the ``price`` attribute
@@ -904,7 +904,7 @@ Using indexes with private data
 
 Indexes can also be applied to private data collections, by packaging indexes in
 the ``META-INF/statedb/couchdb/collections/<collection_name>/indexes`` directory
-alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02_private/go/META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexOwner.json>`__ .
+alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02_private/go/META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexOwner.json>`__ .
 
 For deployment of chaincode to production environments, it is recommended
 to define any indexes alongside chaincode so that the chaincode and supporting
