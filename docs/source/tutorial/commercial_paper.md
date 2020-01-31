@@ -28,18 +28,16 @@ network.
 * [Set up machine](#prerequisites) and [download samples](#download-samples)
 * [Create a network](#create-network)
 *  Understand the structure of a [smart contract](#smart-contract)
-* Work as an organization, [MagnetoCorp](#working-as-magnetocorp), to
-  [install](#install-contract) and [instantiate](#instantiate-contract) smart
-  contract
+* Deploy the [Smart Contract to the channel](#deploy-the-smart-contract-to-the-channel)
+  by approving the chaincode definition as MagnetoCorp and Digibank.
 * Understand the structure of a MagnetoCorp
   [application](#application-structure), including its
   [dependencies](#application-dependencies)
 * Configure and use a [wallet and identities](#wallet)
-* Run a MagnetoCorp application to [issue a commercial
-  paper](#issue-application)
+* Run a MagnetoCorp application to [issue a commercial paper](#issue-application)
 * Understand how a second organization, [Digibank](#working-as-digibank), uses
   the smart contract in their [applications](#digibank-applications)
-* As Digibank, [run](#run-as-digibank) applications that
+* As Digibank, run applications that
   [buy](#buy-application) and [redeem](#redeem-application) commercial paper
 
 This tutorial has been tested on MacOS and Ubuntu, and should work on other
@@ -87,61 +85,31 @@ requirement to install these when you first run the tutorial:
 
 ## Download samples
 
-The commercial paper tutorial is one of the Hyperledger Fabric
-[samples](https://github.com/hyperledger/fabric-samples) held in a public
-[GitHub](https://www.github.com) repository called `fabric-samples`. As you're
-going to run the tutorial on your machine, your first task is to download the
-`fabric-samples` repository.
+The commercial paper tutorial is one of the samples in the `fabric-samples`
+directory. Before you begin this tutorial, ensure that you have followed  the
+instructions to install the Fabric [Prerequisites](prereqs.html) and
+[Download the Samples, Binaries and Docker Images](install.html).
+When you are finished, you have cloned the `fabric-samples` that contain the
+tutorial artifacts
 
 ![commercialpaper.download](./commercial_paper.diagram.2.png) *Download the
 `fabric-samples` GitHub repository to your local machine.*
 
-`$GOPATH` is an important environment variable in Hyperledger Fabric; it
-identifies the root directory for installation. It is important to get right no
-matter which programming language you're using! Open a new terminal window and
-check your `$GOPATH` is set using the `env` command:
-
-```
-$ env
-...
-GOPATH=/Users/username/go
-NVM_BIN=/Users/username/.nvm/versions/node/v8.11.2/bin
-NVM_IOJS_ORG_MIRROR=https://iojs.org/dist
-...
-```
-
-Use the following
-[instructions](https://github.com/golang/go/wiki/SettingGOPATH) if your
-`$GOPATH` is not set.
-
-You can now create a directory relative to `$GOPATH `where `fabric-samples` will
-be installed:
-
-```
-$ mkdir -p $GOPATH/src/github.com/hyperledger/
-$ cd $GOPATH/src/github.com/hyperledger/
-```
-
-Use the [`git clone`](https://git-scm.com/docs/git-clone) command to copy
-[`fabric-samples`](https://github.com/hyperledger/fabric-samples) repository to
-this location:
-
-```
-$ git clone https://github.com/hyperledger/fabric-samples.git
-```
-
-Feel free to examine the directory structure of `fabric-samples`:
+After downloading, feel free to examine the directory structure of `fabric-samples`:
 
 ```
 $ cd fabric-samples
 $ ls
 
-CODE_OF_CONDUCT.md    balance-transfer            fabric-ca
-CONTRIBUTING.md       basic-network               first-network
-Jenkinsfile           chaincode                   high-throughput
-LICENSE               chaincode-docker-devmode    scripts
-MAINTAINERS.md        commercial-paper            README.md
-fabcar
+CODEOWNERS	       		basic-network			            first-network
+CODE_OF_CONDUCT.md		chaincode		                 	high-throughput
+CONTRIBUTING.md			  chaincode-docker-devmode	    interest_rate_swaps
+Jenkinsfile			      ci				                    off_chain_data
+LICENSE				        ci.properties			            scripts
+MAINTAINERS.md			  commercial-paper		          test-network
+README.md			        docs
+SECURITY.md			      fabcar
+
 ```
 
 Notice the `commercial-paper` directory -- that's where our sample is located!
@@ -167,125 +135,101 @@ indicates that you should run the `ls` command from Isabella's window.
 
 ## Create network
 
-The tutorial currently uses the basic network; it will be updated soon to a
-configuration which better reflects the multi-organization structure of
-PaperNet. For now, this network is sufficient to show you how to develop an
-application and smart contract.
+The tutorial deploys the commercial paper tutorial to the Fabric test network.
+The test network is a basic network that contains two peer organizations, Org1
+and Org2, and an ordering service operated by an ordering organization. We will
+use the organizations provided by the test network to operate the commercial paper
+tutorial. We will operate Org2 as MagnetoCorp and Org1 as DigiBank. We will also
+create a channel, `mychannel` that both organizations will be members join. This
+simple setup allows us to trade our sample commercial paper on a distributed
+blockchain network.
 
-![commercialpaper.network](./commercial_paper.diagram.3.png) *The Hyperledger
-Fabric basic network comprises a peer and its ledger database, an orderer and a
-certificate authority (CA). Each of these components runs as a docker
-container.*
+![commercialpaper.network](./commercial_paper.diagram.3.png) *The Fabric test
+network comprises of two peer organizations, Org1 and Org2, with one peer and its
+ledger database, an ordering node. Each of these components runs as a docker container.*
 
-The peer, its [ledger](../ledger/ledger.html#world-state-database-options), the
+The two peers, the peer [ledgers](../ledger/ledger.html#world-state-database-options), the
 orderer and the CA each run in the their own docker container. In production
 environments, organizations typically use existing CAs that are shared with
 other systems; they're not dedicated to the Fabric network.
 
-You can manage the basic network using the commands and configuration included
-in the `fabric-samples\basic-network` directory. Let's start the network on your
-local machine with the `start.sh` shell script:
-
+You can start the test network with the desired options using a script provided
+in the commercial paper directory. Change to that directory in the `fabric-samples`:
 ```
-$ cd fabric-samples/basic-network
-$ ./start.sh
-
-docker-compose -f docker-compose.yml up -d ca.example.com orderer.example.com peer0.org1.example.com couchdb
-Creating network "net_basic" with the default driver
-Pulling ca.example.com (hyperledger/fabric-ca:)...
-latest: Pulling from hyperledger/fabric-ca
-3b37166ec614: Pull complete
-504facff238f: Pull complete
-(...)
-Pulling orderer.example.com (hyperledger/fabric-orderer:)...
-latest: Pulling from hyperledger/fabric-orderer
-3b37166ec614: Already exists
-504facff238f: Already exists
-(...)
-Pulling couchdb (hyperledger/fabric-couchdb:)...
-latest: Pulling from hyperledger/fabric-couchdb
-3b37166ec614: Already exists
-504facff238f: Already exists
-(...)
-Pulling peer0.org1.example.com (hyperledger/fabric-peer:)...
-latest: Pulling from hyperledger/fabric-peer
-3b37166ec614: Already exists
-504facff238f: Already exists
-(...)
-Creating orderer.example.com ... done
-Creating couchdb             ... done
-Creating ca.example.com         ... done
-Creating peer0.org1.example.com ... done
-(...)
-2018-11-07 13:47:31.634 UTC [channelCmd] InitCmdFactory -> INFO 001 Endorser and orderer connections initialized
-2018-11-07 13:47:31.730 UTC [channelCmd] executeJoin -> INFO 002 Successfully submitted proposal to join channel
+cd fabric-samples/commercial-paper
 ```
-
-Notice how the `docker-compose -f docker-compose.yml up -d ca.example.com...`
-command pulls the four Hyperledger Fabric container images from
-[DockerHub](https://hub.docker.com/), and then starts them. These containers
-have the most up-to-date version of the software for these Hyperledger Fabric
-components. Feel free to explore the `basic-network` directory -- we'll use
-much of its contents during this tutorial.
-
-You can list the docker containers that are running the basic-network components
-using the `docker ps` command:
-
+You can use the following commadn to start the test network:
+```
+./roles/network-starter.sh
+```
+If the command is successful, you can use the `docker ps` command to see the nodes
+of the test network running on your local machine:
 ```
 $ docker ps
 
-CONTAINER ID        IMAGE                        COMMAND                  CREATED              STATUS              PORTS                                            NAMES
-ada3d078989b        hyperledger/fabric-peer      "peer node start"        About a minute ago   Up About a minute   0.0.0.0:7051->7051/tcp, 0.0.0.0:7053->7053/tcp   peer0.org1.example.com
-1fa1fd107bfb        hyperledger/fabric-orderer   "orderer"                About a minute ago   Up About a minute   0.0.0.0:7050->7050/tcp                           orderer.example.com
-53fe614274f7        hyperledger/fabric-couchdb   "tini -- /docker-ent…"   About a minute ago   Up About a minute   4369/tcp, 9100/tcp, 0.0.0.0:5984->5984/tcp       couchdb
-469201085a20        hyperledger/fabric-ca        "sh -c 'fabric-ca-se…"   About a minute ago   Up About a minute   0.0.0.0:7054->7054/tcp                           ca.example.com
+CONTAINER ID        IMAGE                               COMMAND                  CREATED             STATUS              PORTS                                        NAMES
+321cc489b10f        hyperledger/fabric-peer:latest      "peer node start"        2 minutes ago       Up 2 minutes        0.0.0.0:7051->7051/tcp                       peer0.org1.example.com
+ad668671f95f        hyperledger/fabric-peer:latest      "peer node start"        2 minutes ago       Up 2 minutes        7051/tcp, 0.0.0.0:9051->9051/tcp             peer0.org2.example.com
+caadbe4d8592        hyperledger/fabric-couchdb          "tini -- /docker-ent…"   2 minutes ago       Up 2 minutes        4369/tcp, 9100/tcp, 0.0.0.0:7984->5984/tcp   couchdb1
+ebabe52903b8        hyperledger/fabric-couchdb          "tini -- /docker-ent…"   2 minutes ago       Up 2 minutes        4369/tcp, 9100/tcp, 0.0.0.0:5984->5984/tcp   couchdb0
+7c72711c6e18        hyperledger/fabric-orderer:latest   "orderer"                2 minutes ago       Up 2 minutes        0.0.0.0:7050->7050/tcp                       orderer.example.com
 ```
 
-See if you can map these containers to the basic-network (you may need to
+See if you can map these containers to the test network (you may need to
 horizontally scroll to locate the information):
 
-* A peer `peer0.org1.example.com` is running in container `ada3d078989b`
-* An orderer `orderer.example.com` is running in container `1fa1fd107bfb`
-* A CouchDB database `couchdb` is running in container `53fe614274f7`
-* A CA `ca.example.com` is running in container `469201085a20`
+* A peer `peer0.org1.example.com` is running in container `321cc489b10f`
+* A peer `peer0.org2.example.com` is running in container `ad668671f95f`
+* The CouchDB database `couchdb0` of one peer is running in container `ebabe52903b8`
+* Another CouchDB database `couchdb1` of one peer is running in container `caadbe4d8592`
+* An orderer `orderer.example.com` is running in container `7c72711c6e18`
 
 These containers all form a [docker network](https://docs.docker.com/network/)
-called `net_basic`. You can view the network with the `docker network` command:
+called `net_test`. You can view the network with the `docker network` command:
 
 ```
-$ docker network inspect net_basic
+$ docker network inspect net_test
 
     {
-        "Name": "net_basic",
-        "Id": "62e9d37d00a0eda6c6301a76022c695f8e01258edaba6f65e876166164466ee5",
-        "Created": "2018-11-07T13:46:30.4992927Z",
-        "Containers": {
-            "1fa1fd107bfbe61522e4a26a57c2178d82b2918d5d423e7ee626c79b8a233624": {
-                "Name": "orderer.example.com",
-                "IPv4Address": "172.20.0.4/16",
-            },
-            "469201085a20b6a8f476d1ac993abce3103e59e3a23b9125032b77b02b715f2c": {
-                "Name": "ca.example.com",
-                "IPv4Address": "172.20.0.2/16",
-            },
-            "53fe614274f7a40392210f980b53b421e242484dd3deac52bbfe49cb636ce720": {
-                "Name": "couchdb",
-                "IPv4Address": "172.20.0.3/16",
-            },
-            "ada3d078989b568c6e060fa7bf62301b4bf55bed8ac1c938d514c81c42d8727a": {
-                "Name": "peer0.org1.example.com",
-                "IPv4Address": "172.20.0.5/16",
-            }
-        },
-        "Labels": {}
-    }
-```
+          "Name": "net_test",
+          "Id": "b77b99d29e37677fac48b7ecd78383bdebf09ebdd6b00e87e3d9444252b1ce31",
+          "Created": "2020-01-30T23:04:39.6157465Z",
+          "Containers": {
+              "321cc489b10ff46554d0b215da307d38daf35b68bbea635ae0ae3176c3ae0945": {
+                  "Name": "peer0.org1.example.com",
+                  "IPv4Address": "192.168.224.5/20",
+              },
+              "7c72711c6e18caf7bff4cf78c27efc9ef3b2359a749c926c8aba1beacfdb0211": {
+                  "Name": "orderer.example.com",
+                  "IPv4Address": "192.168.224.4/20",
+              },
+              "ad668671f95f351f0119320198e1d1e19ebbb0d75766c6c8b9bb7bd36ba506af": {
+                  "Name": "peer0.org2.example.com",
+                  "IPv4Address": "192.168.224.6/20",
+              },
+              "caadbe4d8592aa558fe14d07a424a9e04365620ede1143b6ce5902ce038c0851": {
+                  "Name": "couchdb1",
+                  "IPv4Address": "192.168.224.2/20",
+              },
+              "ebabe52903b8597d016dbc0d0ca4373ef75162d3400efbe6416975abafd08a8f": {
+                  "Name": "couchdb0",
+                  "IPv4Address": "192.168.224.3/20",
+              }
+          },
+          "Labels": {}
+      }
+  ]
 
-See how the four containers use different IP addresses, while being part of a
+```
+See how the five containers use different IP addresses, while being part of a
 single docker network. (We've abbreviated the output for clarity.)
 
+Because we are operating Org1 and Org2 as DigiBank and MagnetoCorp,
+`peer0.org1.example.com` will be the DigiBank's peer on the network while
+`peer0.org2.example.com` will belong to MagnetoCorp.
+
 To recap: you've downloaded the Hyperledger Fabric samples repository from
-GitHub and you've got the basic network running on your local machine. Let's now
+GitHub and you've got the test network running on your local machine. Let's now
 start to play the role of MagnetoCorp, who wish to trade commercial paper.
 
 ## Working as MagnetoCorp
@@ -301,11 +245,11 @@ example.
 Let's now monitor PaperNet as a MagnetoCorp administrator. Open a new window in
 the `fabric-samples` directory, and locate and run the `monitordocker.sh`
 script to start the `logspout` tool for the PaperNet docker containers
-associated with the docker network `net_basic`:
-
+associated with the docker network `net_test`:
+${DIR}/organization/magnetocorp/configuration/cli/monitordocker.sh" net_test
 ```
 (magnetocorp admin)$ cd commercial-paper/organization/magnetocorp/configuration/cli/
-(magnetocorp admin)$ ./monitordocker.sh net_basic
+(magnetocorp admin)$ ./monitordocker.sh net_test
 ...
 latest: Pulling from gliderlabs/logspout
 4fe2ade4980c: Pull complete
@@ -320,55 +264,32 @@ Note that you can pass a port number to the above command if the default port in
 (magnetocorp admin)$ ./monitordocker.sh net_basic <port_number>
 ```
 
-This window will now show output from the docker containers, so let's start
-another terminal window which will allow the MagnetoCorp administrator to
-interact with the network.
-
 ![commercialpaper.workmagneto](./commercial_paper.diagram.4.png) *A MagnetoCorp
 administrator interacts with the network via a docker container.*
 
+This window will now show output from the docker containers, so let's start
+another terminal window which will allow the MagnetoCorp administrator to
+interact with the network. Use the following command to change into the folder
+that contains the Smart contract and application files that belong to MagnetoCorp.
+```
+(magnetocorp admin)$ cd organization/magnetocorp/
+```
+
 To interact with PaperNet, a MagnetoCorp administrator needs to use the
-Hyperledger Fabric `peer` commands. Conveniently, these are available pre-built
-in the `hyperledger/fabric-tools`
-[docker image](https://hub.docker.com/r/hyperledger/fabric-tools/).
-
-Let's start a MagnetoCorp-specific docker container for the administrator using
-the `docker-compose` [command](https://docs.docker.com/compose/overview/):
-
+Hyperledger Fabric `peer` commands. We will use Org2 in the Fabric test network
+to operate on the network as MagnetoCorp. Run the following environment variables
+in your terminal.
 ```
-(magnetocorp admin)$ cd commercial-paper/organization/magnetocorp/configuration/cli/
-(magnetocorp admin)$ docker-compose -f docker-compose.yml up -d cliMagnetoCorp
-
-Pulling cliMagnetoCorp (hyperledger/fabric-tools:)...
-latest: Pulling from hyperledger/fabric-tools
-3b37166ec614: Already exists
-(...)
-Digest: sha256:058cff3b378c1f3ebe35d56deb7bf33171bf19b327d91b452991509b8e9c7870
-Status: Downloaded newer image for hyperledger/fabric-tools:latest
-Creating cliMagnetoCorp ... done
+export PATH=${PWD}/../../../bin:${PWD}:$PATH
+export FABRIC_CFG_PATH=${PWD}/../../../config
+export CORE_PEER_ADDRESS="localhost:9051"
+export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_MSPCONFIGPATH="${PWD}/../../../test-network/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp"
+export CORE_PEER_TLS_ENABLED="true"
+export CORE_PEER_TLS_ROOTCERT_FILE="${PWD}/../../../test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt"
+export ORDERER_CA="${PWD}/../../../test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 ```
-
-Again, see how the `hyperledger/fabric-tools` docker image was retrieved from
-Docker Hub and added to the network:
-
-```
-(magnetocorp admin)$ docker ps
-
-CONTAINER ID        IMAGE                        COMMAND                  CREATED              STATUS              PORTS                                            NAMES
-562a88b25149        hyperledger/fabric-tools     "/bin/bash"              About a minute ago   Up About a minute                                                    cliMagnetoCorp
-b7f3586e5d02        gliderlabs/logspout          "/bin/logspout"          7 minutes ago        Up 7 minutes        127.0.0.1:8000->80/tcp                           logspout
-ada3d078989b        hyperledger/fabric-peer      "peer node start"        29 minutes ago       Up 29 minutes       0.0.0.0:7051->7051/tcp, 0.0.0.0:7053->7053/tcp   peer0.org1.example.com
-1fa1fd107bfb        hyperledger/fabric-orderer   "orderer"                29 minutes ago       Up 29 minutes       0.0.0.0:7050->7050/tcp                           orderer.example.com
-53fe614274f7        hyperledger/fabric-couchdb   "tini -- /docker-ent…"   29 minutes ago       Up 29 minutes       4369/tcp, 9100/tcp, 0.0.0.0:5984->5984/tcp       couchdb
-469201085a20        hyperledger/fabric-ca        "sh -c 'fabric-ca-se…"   29 minutes ago       Up 29 minutes       0.0.0.0:7054->7054/tcp                           ca.example.com
-```
-
-The MagnetoCorp administrator will use the command line in container
-`562a88b25149` to interact with PaperNet. Notice also the `logspout` container
-`b7f3586e5d02`; this is capturing the output of all other docker containers for
-the `monitordocker.sh` command.
-
-Let's now use this command line to interact with PaperNet as the MagnetoCorp
+We can now use this terminal to interact with PaperNet as the MagnetoCorp
 administrator.
 
 ## Smart contract
@@ -381,7 +302,6 @@ task is to examine this smart contract.
 Open a new terminal window to represent a MagnetoCorp developer and change to
 the directory that contains MagnetoCorp's copy of the smart contract to view it
 with your chosen editor (VS Code in this tutorial):
-
 ```
 (magnetocorp developer)$ cd commercial-paper/organization/magnetocorp/contract
 (magnetocorp developer)$ code .
@@ -448,12 +368,14 @@ Feel free to examine other files in the `contract` directory to understand how
 the smart contract works, and read in detail how `papercontract.js` is
 designed in the smart contract [topic](../developapps/smartcontract.html).
 
-## Install contract
+## Deploy the smart contract to the channel
 
 Before `papercontract` can be invoked by applications, it must be installed onto
-the appropriate peer nodes in PaperNet.  MagnetoCorp and DigiBank administrators
-are able to install `papercontract` onto peers over which they respectively have
-authority.
+the appropriate peer nodes of the test network and then defined on the channel
+using the [Fabric chaincode lifecycle](../chaincode4noah.html). The Fabric chaincode
+lifecycle allows multiple organizations to agree to the important parameters of a
+chaincode before the chainocde is deployed to a channel. As a result, we need to
+install and then approve the chaincode as both MagnetoCorp and DigiBank.
 
 ![commercialpaper.install](./commercial_paper.diagram.6.png) *A MagnetoCorp
 administrator installs a copy of the `papercontract` onto a MagnetoCorp peer.*
@@ -463,105 +385,129 @@ within a Hyperledger Fabric artifact called [chaincode](../chaincode.html). One
 or more smart contracts can be defined within a single chaincode, and installing
 a chaincode will allow them to be consumed by the different organizations in
 PaperNet.  It means that only administrators need to worry about chaincode;
-everyone else can think in terms of smart contracts.
+everyone else can think in terms of smart contracts
 
-The MagnetoCorp administrator uses the `peer chaincode install` command to copy
-the `papercontract` smart contract from their local machine's file system to the
-file system within the target peer's docker container. Once the smart contract
-is installed on the peer and instantiated on a channel,
-`papercontract` can be invoked by applications, and interact with the ledger
-database via the
-[putState()](https://fabric-shim.github.io/release-1.3/fabric-shim.ChaincodeStub.html#putState__anchor)
-and
-[getState()](https://fabric-shim.github.io/release-1.3/fabric-shim.ChaincodeStub.html#getState__anchor)
-Fabric APIs. Examine how these APIs are used by `StateList` class within
-`ledger-api\statelist.js`.
+### Install and approve the smart contract as MagnetoCorp
 
-Let's now install `papercontract` as the MagnetoCorp administrator. In the
-MagnetoCorp administrator's command window, use the `docker exec` command to run
-the `peer chaincode install` command in the `cliMagnetCorp` container:
-
+Let's now install `papercontract` as the MagnetoCorp administrator. First, the
+smart contract needs be packaged into a chaincode using the `peer lifecycle chaincode package`
+command. In the MagnetoCorp administrator's command window, run the following
+command to package the chaincode:
 ```
-(magnetocorp admin)$ docker exec cliMagnetoCorp peer chaincode install -n papercontract -v 0 -p /opt/gopath/src/github.com/contract -l node
-
-2018-11-07 14:21:48.400 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 001 Using default escc
-2018-11-07 14:21:48.400 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default vscc
-2018-11-07 14:21:48.466 UTC [chaincodeCmd] install -> INFO 003 Installed remotely response:<status:200 payload:"OK" >
+(magnetocorp admin)$ peer lifecycle chaincode package cp.tar.gz --lang node --path ./contract --label cp_0
 ```
+The MagnetoCorp admin can now install the chaincode on its peer using the
+`peer lifecycle chaincode install` command:
+```
+(magnetocorp admin)$ peer lifecycle chaincode install cp.tar.gz
 
-The `cliMagnetCorp` container has set
-`CORE_PEER_ADDRESS=peer0.org1.example.com:7051` to target its commands to
-`peer0.org1.example.com`, and the `INFO 003 Installed remotely...` indicates
-`papercontract` has been successfully installed on this peer. Currently, the
-MagnetoCorp administrator only has to install a copy of `papercontract` on a
-single MagentoCorp peer.
+2020-01-30 18:32:33.762 EST [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nEcp_0:ffda93e26b183e231b7e9d5051e1ee7ca47fbf24f00a8376ec54120b1a2a335c\022\004cp_0" >
+2020-01-30 18:32:33.762 EST [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: cp_0:ffda93e26b183e231b7e9d5051e1ee7ca47fbf24f00a8376ec54120b1a2a335c
+```
+Because the MagnetoCorp admin has set `CORE_PEER_ADDRESS=localhost:9051` to
+target its commands to `peer0.org2.example.com`, and the `INFO 003 Installed remotely...`
+indicates `papercontract` has been successfully installed on this peer.
 
-Note how `peer chaincode install` command specified the smart contract path,
-`-p`, relative to the `cliMagnetoCorp` container's file system:
-`/opt/gopath/src/github.com/contract`. This path has been mapped to the local
-file system path `.../organization/magnetocorp/contract` via the
-`magnetocorp/configuration/cli/docker-compose.yml` file:
-
-```yaml
-volumes:
-    - ...
-    - ./../../../../organization/magnetocorp:/opt/gopath/src/github.com/
-    - ...
+After we install the smart contract, we need to approve a chaindode definition
+for `papercontract` as MagnetoCorp. The first step is to find the packageID of
+the chaincode we installed on our peer. Because we will use the packeID in
+a future command, we will use the command below to save in an environment
+variable.
+```
+(magnetocorp admin)$ export PACKAGE_ID=$(peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[0].package_id')
+```
+The MagnetoCorp admin can now approve the chaincode definition using the
+` peer lifecycle chaincode approveformyorg` command:
+```
+(magnetocorp admin)$ peer lifecycle chaincode approveformyorg --orderer localhost:7050 \
+--ordererTLSHostnameOverride orderer.example.com --channelID mychannel \
+--name papercontract -v 0 --package-id $PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
 ```
 
-See how the `volume` directive maps `organization/magnetocorp` to
-`/opt/gopath/src/github.com/` providing this container access to your local file
-system where MagnetoCorp's copy of the `papercontract` smart contract is held.
+One of the most important chaincode parameters on that an organizations needs to
+approve is the chaincode [endorsement policy](../endorsement-policies.html),
+describing the set of organizations that must endorse (execute and sign) a
+transaction before it can be determined as valid. By approving the `papercontract`
+chaincode without the ``--policy`` flag, the magnetocorp admin agrees to the
+default endorsement policy, which requires a majority of organizations on the channel
+to endorse a transaction. All transactions, whether valid or invalid, will be
+recorded on the [ledger blockchain](../ledger/ledger.html#blockchain), but only
+valid transactions will update the [world state](../ledger/ledger.html#world-state).
 
-You can read more about `docker compose`
-[here](https://docs.docker.com/compose/overview/) and `peer chaincode install`
-command [here](../commands/peerchaincode.html).
+### Install and approve the smart contract as DigiBank
 
-## Instantiate contract
+By default, the Fabric Chaincode lifecycle requires a majority of organizations
+on the channel to successfully commit the chaincode definition to the channel.
+Because the test network has two organizations, we need to approve the chaincode
+as both organizations. Open a new terminal window in the `fabric-samples` and
+navigate to the older that contains the DigiBank smart contract and application
+files:
+```
+(digibank admin)$ cd organization/digibank/
+```
+Set the following environment variables to act interact with the network as the
+DigiBank admin:
+```
+export PATH=${PWD}/../../../bin:${PWD}:$PATH
+export FABRIC_CFG_PATH=${PWD}/../../../config
+export CORE_PEER_TLS_ROOTCERT_FILE="${PWD}/../../../test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt"
+export ORDERER_CA="${PWD}/../../../test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+export CORE_PEER_ADDRESS="localhost:7051"
+export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_MSPCONFIGPATH="${PWD}/../../../test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
+export CORE_PEER_TLS_ENABLED="true"
+export CORE_PEER_TLS_ROOTCERT_FILE="${PWD}/../../../test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+export ORDERER_CA="${PWD}/../../../test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
+export PEER0_ORG1_CA="${PWD}/../../../test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+export PEER0_ORG2_CA="${PWD}/../../../test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt"
+```
 
-Now that `papercontract` chaincode containing the `CommercialPaper` smart
-contract is installed on the required PaperNet peers, an administrator can make
-it available to different network channels, so that it can be invoked by
-applications connected to those channels. Because we're using the basic network
-configuration for PaperNet, we're only going to make `papercontract` available
-in a single network channel, `mychannel`.
+We can now install and approve `papercontract` as the DigiBank. Run the following
+command to package the chaincode:
+```
+(digibank admin)$ peer lifecycle chaincode package cp.tar.gz --lang node --path ./contract --label cp_0
+```
+The DigiBank admin can now install the chaincode on `peer0.org1.example.com`:
+```
+(digibank admin)$ peer lifecycle chaincode install cp.tar.gz
+```
+We then need to query and save the packageID of the chaincode that was installed
+on DigiBank's peer.
+```
+(digibank admin)$ export PACKAGE_ID=$(peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[0].package_id')
+```
+The Digibank admin can now approve the chaincode definition of `papercontract` for
+the digibank organization.
+```
+(digibank admin)$ peer lifecycle chaincode approveformyorg --orderer localhost:7050 \
+--ordererTLSHostnameOverride orderer.example.com --channelID mychannel \
+--name papercontract -v 0 --package-id $PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
+```
+
+### Commit the chaincode definition to the channel
+
+Now that DigiBank and MagnetoCorp have approved the `papernet` chaincode, we now
+have the majority we need (2 out of 2) to commit the chaincode definition to the
+channel. Once the chaincode has been successfully defined on the channel,
+the `CommercialPaper` smart contract inside the `papercontract` chaincode can be
+invoked by client applications on the channel. Since either organization can
+commit the chaincode to the channel, continue operating from the DigiBank window
+and commit the chaincode as the DigiBank admin:
 
 ![commercialpaper.instant](./commercial_paper.diagram.7.png) *A MagnetoCorp
 administrator instantiates `papercontract` chaincode containing the smart
 contract. A new docker chaincode container will be created to run
 `papercontract`.*
 
-The MagnetoCorp administrator uses the `peer chaincode instantiate` command to
-instantiate `papercontract` on `mychannel`:
-
+The DigiBank administrator uses the `peer lifecycle chaincode commit` command
+to commit the chaincode definition of `papercontract` to `mychannel`:
 ```
-(magnetocorp admin)$ docker exec cliMagnetoCorp peer chaincode instantiate -n papercontract -v 0 -l node -c '{"Args":["org.papernet.commercialpaper:instantiate"]}' -C mychannel -P "AND ('Org1MSP.member')"
-
-2018-11-07 14:22:11.162 UTC [chaincodeCmd] InitCmdFactory -> INFO 001 Retrieved channel (mychannel) orderer endpoint: orderer.example.com:7050
-2018-11-07 14:22:11.163 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 002 Using default escc
-2018-11-07 14:22:11.163 UTC [chaincodeCmd] checkChaincodeCmdParams -> INFO 003 Using default vscc
+(magnetocorp admin)$ peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --peerAddresses localhost:7051 --tlsRootCertFiles ${PEER0_ORG1_CA} --peerAddresses localhost:9051 --tlsRootCertFiles ${PEER0_ORG2_CA} --channelID mychannel --name papercontract -v 0 --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 ```
-This command may take a few minutes to complete.
-
-One of the most important parameters on `instantiate` is `-P`. It specifies the
-[endorsement policy](../endorsement-policies.html) for `papercontract`,
-describing the set of organizations that must endorse (execute and sign) a
-transaction before it can be determined as valid. All transactions, whether
-valid or invalid, will be recorded on the [ledger blockchain](../ledger/ledger.html#blockchain),
-but only valid transactions will update the [world
-state](../ledger/ledger.html#world-state).
-
-In passing, see how `instantiate` passes the orderer address
-`orderer.example.com:7050`. This is because it additionally submits an
-instantiate transaction to the orderer, which will include the transaction
-in the next block and distribute the transaction to all peers that have joined
-`mychannel`, enabling any peer to execute the chaincode in their own
-isolated chaincode container. Note that `instantiate` only needs to be issued
-once for the channel where `papercontract` will run even though typically it is
-installed on many peers.
-
-See how a `papercontract` container has been started with the `docker ps`
-command:
+This command may take a few minutes to complete. The chaincode container
+will start after the chaincode definition has been committed to the channel.
+You can use the the `docker ps` command to see `papercontract` container starting
+on both peers.
 
 ```
 (magnetocorp admin)$ docker ps
@@ -864,55 +810,8 @@ abstract away network details and
 processing strategies such as transaction retry.
 
 Let's now follow the lifecycle of MagnetoCorp `00001` by switching our emphasis
-to DigiBank, who will buy the commercial paper.
+to Balaji of DigiBank, who will buy the commercial paper.
 
-## Working as DigiBank
-
-Now that commercial paper `00001`has been issued by MagnetoCorp, let's switch
-context to interact with PaperNet as employees of DigiBank. First, we'll act as
-administrator who will create a console configured to interact with PaperNet.
-Then Balaji, an end user, will use Digibank's `buy` application to buy
-commercial paper `00001`, moving it to the next stage in its lifecycle.
-
-![commercialpaper.workdigi](./commercial_paper.diagram.5.png) *DigiBank
-administrators and applications interact with the PaperNet network.*
-
-As the tutorial currently uses the basic network for PaperNet, the network
-configuration is quite simple. Administrators use a console similar to
-MagnetoCorp, but configured for Digibank's file system. Likewise, Digibank end
-users will use applications which invoke the same smart contract as MagnetoCorp
-applications, though they contain Digibank-specific logic and configuration.
-It's the smart contract which captures the shared business process, and the
-ledger which holds the shared business data, no matter which applications call
-them.
-
-Let's open up a separate terminal to allow the DigiBank administrator to
-interact with PaperNet. In `fabric-samples`:
-
-```
-(digibank admin)$ cd commercial-paper/organization/digibank/configuration/cli/
-(digibank admin)$ docker-compose -f docker-compose.yml up -d cliDigiBank
-
-(...)
-Creating cliDigiBank ... done
-```
-
-This docker container is now available for Digibank administrators to interact
-with the network:
-
-```(digibank admin)$ docker ps
-CONTAINER ID        IMAGE                            COMMAND                  CREATED             STATUS              PORT         NAMES
-858c2d2961d4        hyperledger/fabric-tools         "/bin/bash"              18 seconds ago      Up 18 seconds                    cliDigiBank
-```
-
-In this tutorial, you'll use the command line container named `cliDigiBank` to
-interact with the network on behalf of DigiBank. We've not shown all the docker
-containers, and in the real world DigiBank users would only see the network
-components (peers, orderers, CAs) to which they have access.
-
-Digibank's administrator doesn't have much to do in this tutorial right now
-because the PaperNet network configuration is so simple. Let's turn our
-attention to Balaji.
 
 ## Digibank applications
 
@@ -935,7 +834,6 @@ As you can see, this directory contains both the `buy` and `redeem` applications
 that will be used by Balaji.
 
 
-
 ![commercialpaper.vscode3](./commercial_paper.diagram.12.png) *DigiBank's
 commercial paper directory containing the `buy.js` and `redeem.js`
 applications.*
@@ -948,7 +846,7 @@ DigiBank's `buy.js` application is very similar in structure to MagnetoCorp's
     `Isabella`
 
     ```JavaScript
-    const wallet = new FileSystemWallet('../identity/user/balaji/wallet');`
+    const wallet = new FileSystemWallet('../identity/user/balaji/wallet');
     ```
 
     See how the application uses the `balaji` wallet when it connects to the
@@ -959,7 +857,7 @@ DigiBank's `buy.js` application is very similar in structure to MagnetoCorp's
   * **Transaction**: the invoked transaction is `buy` rather than `issue`
 
     ```JavaScript
-    `const buyResponse = await contract.submitTransaction('buy', 'MagnetoCorp', '00001'...);`
+    const buyResponse = await contract.submitTransaction('buy', 'MagnetoCorp', '00001'...);
     ```
 
     A `buy` transaction is submitted with the values `MagnetoCorp`, `00001`...,
@@ -978,7 +876,7 @@ their dependencies and set up Balaji's wallet so that he can use these
 applications to buy and redeem commercial paper.
 
 Like MagnetoCorp, Digibank must the install the required application packages
-using the `npm install` command, and again, this make take a short time to
+using the ``npm install`` command, and again, this make take a short time to
 complete.
 
 In the DigiBank administrator window, install the application dependencies:
