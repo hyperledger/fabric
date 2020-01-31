@@ -88,7 +88,7 @@ and **redeem**. It's these transactions that bring commercial papers into
 existence and move them through their lifecycle. We'll examine these
 [transactions](#transaction-definition) soon, but for now notice for JavaScript, that the
 `CommericalPaperContract` extends the Hyperledger Fabric `Contract`
-[class](https://hyperledger.github.io/fabric-chaincode-node/release-2.0/api/fabric-contract-api.Contract.html).
+[class](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-contract-api.Contract.html).
 
 With Java, the class must be decorated with the `@Contract(...)` annotation. This provides the opportunity
 to supply additional information about the contract, such as license and author. The `@Default()` annotation
