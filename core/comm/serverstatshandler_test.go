@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/core/comm"
-	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
+	"github.com/hyperledger/fabric/core/comm/testpb"
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/stats"
@@ -66,8 +66,8 @@ func TestConnMetricsGRPCServer(t *testing.T) {
 	srv, err := comm.NewGRPCServerFromListener(
 		listener,
 		comm.ServerConfig{
-			SecOpts:         &comm.SecureOptions{UseTLS: false},
-			MetricsProvider: fakeProvider,
+			SecOpts:            comm.SecureOptions{UseTLS: false},
+			ServerStatsHandler: comm.NewServerStatsHandler(fakeProvider),
 		},
 	)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -80,7 +80,7 @@ func TestConnMetricsGRPCServer(t *testing.T) {
 	defer srv.Stop()
 
 	// test grpc connection counts
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	gt.Expect(openConn.AddCallCount()).To(Equal(0))

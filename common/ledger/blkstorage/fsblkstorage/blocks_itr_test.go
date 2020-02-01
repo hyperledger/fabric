@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,8 +37,8 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks[:5])
 
 	itr, err := blkfileMgr.retrieveBlocks(1)
-	defer itr.Close()
 	assert.NoError(t, err)
+	defer itr.Close()
 	readyChan := make(chan struct{})
 	doneChan := make(chan bool)
 	go testIterateAndVerify(t, itr, blocks[1:], 4, readyChan, doneChan)

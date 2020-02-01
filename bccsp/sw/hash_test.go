@@ -42,7 +42,7 @@ func TestHash(t *testing.T) {
 		Value:   expectetValue,
 		Err:     nil,
 	}
-	csp := CSP{hashers: hashers}
+	csp := CSP{Hashers: hashers}
 	value, err := csp.Hash(expectetMsg, expectedOpts)
 	assert.Equal(t, expectetValue, value)
 	assert.Nil(t, err)
@@ -54,7 +54,7 @@ func TestHash(t *testing.T) {
 		Value:   nil,
 		Err:     expectedErr,
 	}
-	csp = CSP{hashers: hashers}
+	csp = CSP{Hashers: hashers}
 	value, err = csp.Hash(expectetMsg, expectedOpts)
 	assert.Nil(t, value)
 	assert.Contains(t, err.Error(), expectedErr.Error())
@@ -73,7 +73,7 @@ func TestGetHash(t *testing.T) {
 		ValueHash: expectetValue,
 		Err:       nil,
 	}
-	csp := CSP{hashers: hashers}
+	csp := CSP{Hashers: hashers}
 	value, err := csp.GetHash(expectedOpts)
 	assert.Equal(t, expectetValue, value)
 	assert.Nil(t, err)
@@ -84,7 +84,7 @@ func TestGetHash(t *testing.T) {
 		ValueHash: expectetValue,
 		Err:       expectedErr,
 	}
-	csp = CSP{hashers: hashers}
+	csp = CSP{Hashers: hashers}
 	value, err = csp.GetHash(expectedOpts)
 	assert.Nil(t, value)
 	assert.Contains(t, err.Error(), expectedErr.Error())

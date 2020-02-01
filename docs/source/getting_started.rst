@@ -7,6 +7,7 @@ Getting Started
 
    prereqs
    install
+   test_network
 
 Before we begin, if you haven't already done so, you may wish to check that
 you have all the :doc:`prereqs` installed on the platform(s)
@@ -18,22 +19,37 @@ install HyperLedger Fabric. While we work on developing real installers for the
 Fabric binaries, we provide a script that will :doc:`install` to your system.
 The script also will download the Docker images to your local registry.
 
+After you have downloaded the Fabric Samples and Docker images to your local
+machine, you can get started working with Fabric with the
+:doc:`test_network` tutorial.
 
-Hyperledger Fabric SDKs
-^^^^^^^^^^^^^^^^^^^^^^^
+Hyperledger Fabric smart contract (chaincode) APIs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Hyperledger Fabric offers a number of SDKs to support various programming
-languages. There are two officially released SDKs for Node.js and Java:
+Hyperledger Fabric offers a number of APIs to support developing smart contracts (chaincode)
+in various programming languages. Smart contract APIs are available for Go, Node.js, and Java:
 
-  * `Hyperledger Fabric Node SDK <https://github.com/hyperledger/fabric-sdk-node>`__ and `Node SDK documentation <https://fabric-sdk-node.github.io/>`__.
-  * `Hyperledger Fabric Java SDK <https://github.com/hyperledger/fabric-sdk-java>`__.
+  * `Go contract-api <https://github.com/hyperledger/fabric-contract-api-go>`__.
+  * `Node.js contract API <https://github.com/hyperledger/fabric-chaincode-node>`__ and `Node.js contract API documentation <https://hyperledger.github.io/fabric-chaincode-node/>`__.
+  * `Java contract API <https://github.com/hyperledger/fabric-chaincode-java>`__ and `Java contract API documentation <https://hyperledger.github.io/fabric-chaincode-java/>`__.
 
-In addition, there are three more SDKs that have not yet been officially released
-(for Python, Go and REST), but they are still available for downloading and testing:
+Hyperledger Fabric application SDKs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-  * `Hyperledger Fabric Python SDK <https://github.com/hyperledger/fabric-sdk-py>`__.
-  * `Hyperledger Fabric Go SDK <https://github.com/hyperledger/fabric-sdk-go>`__.
-  * `Hyperledger Fabric REST SDK <https://github.com/hyperledger/fabric-sdk-rest>`__.
+Hyperledger Fabric offers a number of SDKs to support developing applications
+in various programming languages. SDKs are available for Node.js and Java:
+
+  * `Node.js SDK <https://github.com/hyperledger/fabric-sdk-node>`__ and `Node.js SDK documentation <https://hyperledger.github.io/fabric-sdk-node/>`__.
+  * `Java SDK <https://github.com/hyperledger/fabric-gateway-java>`__ and `Java SDK documentation <https://hyperledger.github.io/fabric-gateway-java/>`__.
+
+In addition, there are two more application SDKs that have not yet been officially released
+(for Python and Go), but they are still available for downloading and testing:
+
+  * `Python SDK <https://github.com/hyperledger/fabric-sdk-py>`__.
+  * `Go SDK <https://github.com/hyperledger/fabric-sdk-go>`__.
+
+Currently, Node.js and Java support the new application programming model delivered in
+Hyperledger Fabric v1.4. Support for Go is planned to be delivered in a later release.
 
 Hyperledger Fabric CA
 ^^^^^^^^^^^^^^^^^^^^^

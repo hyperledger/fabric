@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package couchdb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,10 +19,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
-	"github.com/hyperledger/fabric/integration/runner"
-	"github.com/spf13/viper"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdbtest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const badConnectURL = "couchdb:5990"
@@ -29,13 +30,9 @@ const badParseConnectURL = "http://host.com|5432"
 const updateDocumentConflictError = "conflict"
 const updateDocumentConflictReason = "Document update conflict."
 
-var couchDBDef *CouchDBDef
-
 func cleanup(database string) error {
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
-
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	if err != nil {
 		fmt.Println("Unexpected error", err)
 		return err
@@ -57,70 +54,43 @@ type Asset struct {
 
 var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
 
-func TestMain(m *testing.M) {
-	os.Exit(testMain(m))
+var testAddress string
+var cleanupCouchDB = func() {}
+
+func testConfig() *Config {
+	return &Config{
+		Address:               testAddress,
+		Username:              "",
+		Password:              "",
+		MaxRetries:            3,
+		MaxRetriesOnStartup:   20,
+		RequestTimeout:        35 * time.Second,
+		CreateGlobalChangesDB: true,
+	}
 }
 
-func testMain(m *testing.M) int {
-	// Read the core.yaml file for default config.
-	ledgertestutil.SetupCoreYAMLConfig()
-
-	// Switch to CouchDB
-	couchAddress, cleanup := couchDBSetup()
-	defer cleanup()
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
-	defer viper.Set("ledger.state.stateDatabase", "goleveldb")
-
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", couchAddress)
-	// Replace with correct username/password such as
-	// admin/admin if user security is enabled on couchdb.
-	viper.Set("ledger.state.couchDBConfig.username", "")
-	viper.Set("ledger.state.couchDBConfig.password", "")
-	viper.Set("ledger.state.couchDBConfig.maxRetries", 3)
-	viper.Set("ledger.state.couchDBConfig.maxRetriesOnStartup", 20)
-	viper.Set("ledger.state.couchDBConfig.requestTimeout", time.Second*35)
-	viper.Set("ledger.state.couchDBConfig.createGlobalChangesDB", true)
-
+func TestMain(m *testing.M) {
 	//set the logging level to DEBUG to test debug only code
 	flogging.ActivateSpec("couchdb=debug")
 
-	// Create CouchDB definition from config parameters
-	couchDBDef = GetCouchDBDefinition()
+	rc := m.Run()
+	cleanupCouchDB()
 
-	//run the tests
-	return m.Run()
+	os.Exit(rc)
 }
 
-func couchDBSetup() (addr string, cleanup func()) {
-	externalCouch, set := os.LookupEnv("COUCHDB_ADDR")
-	if set {
-		return externalCouch, func() {}
+func startCouchDB() {
+	if testAddress == "" {
+		testAddress, cleanupCouchDB = couchdbtest.CouchDBSetup((nil))
 	}
-
-	couchDB := &runner.CouchDB{}
-	if err := couchDB.Start(); err != nil {
-		err := fmt.Errorf("failed to start couchDB: %s", err)
-		panic(err)
-	}
-	return couchDB.Address(), func() { couchDB.Stop() }
-}
-
-func TestDBConnectionDef(t *testing.T) {
-
-	//create a new connection
-	_, err := CreateConnectionDefinition(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
-	assert.NoError(t, err, "Error when trying to create database connection definition")
-
 }
 
 func TestDBBadConnectionDef(t *testing.T) {
-
-	//create a new connection
-	_, err := CreateConnectionDefinition(badParseConnectURL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	startCouchDB()
+	config := testConfig()
+	config.Address = badParseConnectURL
+	_, err := CreateCouchInstance(config, &disabled.Provider{})
 	assert.Error(t, err, "Did not receive error when trying to create database connection definition with a bad hostname")
-
 }
 
 func TestEncodePathElement(t *testing.T) {
@@ -142,16 +112,48 @@ func TestEncodePathElement(t *testing.T) {
 
 }
 
-func TestBadCouchDBInstance(t *testing.T) {
+func TestHealthCheck(t *testing.T) {
+	startCouchDB()
+	client := &http.Client{}
 
-	//Create a bad connection definition
-	badConnectDef := CouchConnectionDef{URL: badParseConnectURL, Username: "", Password: "",
-		MaxRetries: 3, MaxRetriesOnStartup: 10, RequestTimeout: time.Second * 30}
+	config := testConfig()
+	config.Address = testAddress + "1"
+	badCouchDBInstance := CouchInstance{
+		conf:   config,
+		client: client,
+		stats:  newStats(&disabled.Provider{}),
+	}
+	err := badCouchDBInstance.HealthCheck(context.Background())
+	assert.Error(t, err, "Health check should result in an error if unable to connect to couch db")
+	assert.Contains(t, err.Error(), "failed to connect to couch db")
+
+	//Create a good couchdb instance
+	goodCouchDBInstance := CouchInstance{
+		conf:   testConfig(),
+		client: client,
+		stats:  newStats(&disabled.Provider{}),
+	}
+	err = goodCouchDBInstance.HealthCheck(context.Background())
+	assert.NoError(t, err)
+}
+
+func TestBadCouchDBInstance(t *testing.T) {
 
 	client := &http.Client{}
 
 	//Create a bad couchdb instance
-	badCouchDBInstance := CouchInstance{badConnectDef, client}
+	badCouchDBInstance := CouchInstance{
+		conf: &Config{
+			Address:             badParseConnectURL,
+			Username:            "",
+			Password:            "",
+			MaxRetries:          3,
+			MaxRetriesOnStartup: 10,
+			RequestTimeout:      30 * time.Second,
+		},
+		client: client,
+		stats:  newStats(&disabled.Provider{}),
+	}
 
 	//Create a bad CouchDatabase
 	badDB := CouchDatabase{&badCouchDBInstance, "baddb", 1}
@@ -227,15 +229,14 @@ func TestBadCouchDBInstance(t *testing.T) {
 }
 
 func TestDBCreateSaveWithoutRevision(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbcreatesavewithoutrevision"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -250,15 +251,14 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 }
 
 func TestDBCreateEnsureFullCommit(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbensurefullcommit"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -275,32 +275,69 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 	assert.NoError(t, commiterr, "Error when trying to ensure a full commit")
 }
 
-func TestDBBadDatabaseName(t *testing.T) {
+func TestIsEmpty(t *testing.T) {
+	startCouchDB()
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
+	assert.NoError(t, err)
 
+	isEmpty, err := couchInstance.IsEmpty(nil)
+	require.NoError(t, err)
+	require.True(t, isEmpty)
+
+	testdbs := []string{"testdb1", "testdb2"}
+	defer func() {
+		for _, d := range testdbs {
+			cleanup(d)
+		}
+	}()
+
+	for _, d := range testdbs {
+		db := CouchDatabase{CouchInstance: couchInstance, DBName: d}
+		require.NoError(t, db.CreateDatabaseIfNotExist())
+	}
+	isEmpty, err = couchInstance.IsEmpty(nil)
+	require.NoError(t, err)
+	require.False(t, isEmpty)
+
+	ignore := []string{"testdb1"}
+	isEmpty, err = couchInstance.IsEmpty(ignore)
+	require.NoError(t, err)
+	require.False(t, isEmpty)
+
+	ignore = []string{"testdb1", "testdb2"}
+	isEmpty, err = couchInstance.IsEmpty(ignore)
+	require.NoError(t, err)
+	require.True(t, isEmpty)
+
+	couchInstance.conf.Address = "junk"
+	couchInstance.conf.MaxRetries = 0
+	isEmpty, err = couchInstance.IsEmpty(ignore)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unable to connect to CouchDB, check the hostname and port: Get http://junk/_all_dbs")
+}
+
+func TestDBBadDatabaseName(t *testing.T) {
+	startCouchDB()
 	//create a new instance and database object using a valid database name mixed case
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	_, dberr := CreateCouchDatabase(couchInstance, "testDB")
 	assert.Error(t, dberr, "Error should have been thrown for an invalid db name")
 
 	//create a new instance and database object using a valid database name letters and numbers
-	couchInstance, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err = CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	_, dberr = CreateCouchDatabase(couchInstance, "test132")
 	assert.NoError(t, dberr, "Error when testing a valid database name")
 
 	//create a new instance and database object using a valid database name - special characters
-	couchInstance, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err = CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	_, dberr = CreateCouchDatabase(couchInstance, "test1234~!@#$%^&*()[]{}.")
 	assert.Error(t, dberr, "Error should have been thrown for an invalid db name")
 
 	//create a new instance and database object using a invalid database name - too long	/*
-	couchInstance, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err = CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	_, dberr = CreateCouchDatabase(couchInstance, "a12345678901234567890123456789012345678901234"+
 		"56789012345678901234567890123456789012345678901234567890123456789012345678901234567890"+
@@ -311,38 +348,43 @@ func TestDBBadDatabaseName(t *testing.T) {
 }
 
 func TestDBBadConnection(t *testing.T) {
-
+	startCouchDB()
 	//create a new instance and database object
 	//Limit the maxRetriesOnStartup to 3 in order to reduce time for the failure
-	_, err := CreateCouchInstance(badConnectURL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, 3, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	config := testConfig()
+	config.Address = badConnectURL
+	config.MaxRetriesOnStartup = 3
+	_, err := CreateCouchInstance(config, &disabled.Provider{})
 	assert.Error(t, err, "Error should have been thrown for a bad connection")
 }
 
 func TestBadDBCredentials(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbbadcredentials"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
+	badConfig := testConfig()
+	badConfig.Username = "fred"
+	badConfig.Password = "fred"
 	//create a new instance and database object
-	_, err = CreateCouchInstance(couchDBDef.URL, "fred", "fred",
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	_, err = CreateCouchInstance(badConfig, &disabled.Provider{})
 	assert.Error(t, err, "Error should have been thrown for bad credentials")
 
 }
 
 func TestDBCreateDatabaseAndPersist(t *testing.T) {
+	startCouchDB()
 
 	//Test create and persist with default configured maxRetries
-	testDBCreateDatabaseAndPersist(t, couchDBDef.MaxRetries)
+	testDBCreateDatabaseAndPersist(t, testConfig().MaxRetries)
 
 	//Test create and persist with 0 retries
 	testDBCreateDatabaseAndPersist(t, 0)
 
 	//Test batch operations with default configured maxRetries
-	testBatchBatchOperations(t, couchDBDef.MaxRetries)
+	testBatchBatchOperations(t, testConfig().MaxRetries)
 
 	//Test batch operations with 0 retries
 	testBatchBatchOperations(t, 0)
@@ -357,8 +399,7 @@ func testDBCreateDatabaseAndPersist(t *testing.T, maxRetries int) {
 	defer cleanup(database)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		maxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -565,7 +606,7 @@ func testDBCreateDatabaseAndPersist(t *testing.T, maxRetries int) {
 }
 
 func TestDBRequestTimeout(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbrequesttimeout"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -576,27 +617,32 @@ func TestDBRequestTimeout(t *testing.T) {
 
 	//create a new instance and database object with a timeout that will fail
 	//Also use a maxRetriesOnStartup=3 to reduce the number of retries
-	_, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, 3, impossibleTimeout, couchDBDef.CreateGlobalChangesDB)
+	config := testConfig()
+	config.MaxRetriesOnStartup = 3
+	config.RequestTimeout = impossibleTimeout
+	_, err = CreateCouchInstance(config, &disabled.Provider{})
 	assert.Error(t, err, "Error should have been thown while trying to create a couchdb instance with a connection timeout")
 
 	//create a new instance and database object
-	_, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		-1, 3, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	config = testConfig()
+	config.MaxRetries = -1
+	config.MaxRetriesOnStartup = 3
+	_, err = CreateCouchInstance(config, &disabled.Provider{})
 	assert.Error(t, err, "Error should have been thrown while attempting to create a database")
 
 }
 
 func TestDBTimeoutConflictRetry(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbtimeoutretry"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, 3, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	config := testConfig()
+	config.MaxRetriesOnStartup = 3
+	couchInstance, err := CreateCouchInstance(config, &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -628,29 +674,30 @@ func TestDBTimeoutConflictRetry(t *testing.T) {
 }
 
 func TestDBBadNumberOfRetries(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbbadretries"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object
-	_, err = CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		-1, 3, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	config := testConfig()
+	config.MaxRetries = -1
+	config.MaxRetriesOnStartup = 3
+	_, err = CreateCouchInstance(config, &disabled.Provider{})
 	assert.Error(t, err, "Error should have been thrown while attempting to create a database")
 
 }
 
 func TestDBBadJSON(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbbadjson"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -672,15 +719,14 @@ func TestDBBadJSON(t *testing.T) {
 }
 
 func TestPrefixScan(t *testing.T) {
-
+	startCouchDB()
 	database := "testprefixscan"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -731,7 +777,7 @@ func TestPrefixScan(t *testing.T) {
 }
 
 func TestDBSaveAttachment(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbsaveattachment"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -742,14 +788,14 @@ func TestDBSaveAttachment(t *testing.T) {
 	attachment := &AttachmentInfo{}
 	attachment.AttachmentBytes = byteText
 	attachment.ContentType = "text/plain"
+	attachment.Length = uint64(len(byteText))
 	attachment.Name = "valueBytes"
 
 	attachments := []*AttachmentInfo{}
 	attachments = append(attachments, attachment)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -766,19 +812,19 @@ func TestDBSaveAttachment(t *testing.T) {
 	assert.NoError(t, geterr2, "Error when trying to retrieve a document with attachment")
 	assert.NotNil(t, couchDoc.Attachments)
 	assert.Equal(t, byteText, couchDoc.Attachments[0].AttachmentBytes)
+	assert.Equal(t, attachment.Length, couchDoc.Attachments[0].Length)
 
 }
 
 func TestDBDeleteDocument(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbdeletedocument"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -805,15 +851,14 @@ func TestDBDeleteDocument(t *testing.T) {
 }
 
 func TestDBDeleteNonExistingDocument(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbdeletenonexistingdocument"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -827,7 +872,7 @@ func TestDBDeleteNonExistingDocument(t *testing.T) {
 }
 
 func TestCouchDBVersion(t *testing.T) {
-
+	startCouchDB()
 	err := checkCouchDBVersion("2.0.0")
 	assert.NoError(t, err, "Error should not have been thrown for valid version")
 
@@ -843,7 +888,7 @@ func TestCouchDBVersion(t *testing.T) {
 }
 
 func TestIndexOperations(t *testing.T) {
-
+	startCouchDB()
 	database := "testindexoperations"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -861,8 +906,7 @@ func TestIndexOperations(t *testing.T) {
 	byteJSON10 := []byte(`{"_id":"10", "asset_name":"marble10","color":"white","size":10,"owner":"tom"}`)
 
 	//create a new instance and database object   --------------------------------------------------------
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -1016,7 +1060,7 @@ func TestIndexOperations(t *testing.T) {
 }
 
 func TestRichQuery(t *testing.T) {
-
+	startCouchDB()
 	byteJSON01 := []byte(`{"asset_name":"marble01","color":"blue","size":1,"owner":"jerry"}`)
 	byteJSON02 := []byte(`{"asset_name":"marble02","color":"red","size":2,"owner":"tom"}`)
 	byteJSON03 := []byte(`{"asset_name":"marble03","color":"green","size":3,"owner":"jerry"}`)
@@ -1120,8 +1164,7 @@ func TestRichQuery(t *testing.T) {
 	defer cleanup(database)
 
 	//create a new instance and database object   --------------------------------------------------------
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -1262,6 +1305,12 @@ func TestRichQuery(t *testing.T) {
 	//There should be 4 results
 	assert.Equal(t, 4, len(queryResult))
 
+	//Attachments retrieved should be correct
+	assert.Equal(t, attachment2.AttachmentBytes, queryResult[0].Attachments[0].AttachmentBytes)
+	assert.Equal(t, attachment3.AttachmentBytes, queryResult[1].Attachments[0].AttachmentBytes)
+	assert.Equal(t, attachment4.AttachmentBytes, queryResult[2].Attachments[0].AttachmentBytes)
+	assert.Equal(t, attachment5.AttachmentBytes, queryResult[3].Attachments[0].AttachmentBytes)
+
 	//Test query with for tom  -------------------------------------------------------------------
 	queryString = `{"selector":{"owner":{"$eq":"tom"}}}`
 
@@ -1355,8 +1404,7 @@ func testBatchBatchOperations(t *testing.T, maxRetries int) {
 	defer cleanup(database)
 
 	//create a new instance and database object   --------------------------------------------------------
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -1549,15 +1597,14 @@ func addRevisionAndDeleteStatus(revision string, value []byte, deleted bool) []b
 }
 
 func TestDatabaseSecuritySettings(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbsecuritysettings"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
 	defer cleanup(database)
 
 	//create a new instance and database object   --------------------------------------------------------
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 
@@ -1604,7 +1651,7 @@ func TestDatabaseSecuritySettings(t *testing.T) {
 }
 
 func TestURLWithSpecialCharacters(t *testing.T) {
-
+	startCouchDB()
 	database := "testdb+with+plus_sign"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -1619,8 +1666,7 @@ func TestURLWithSpecialCharacters(t *testing.T) {
 	assert.Equal(t, "http://127.0.0.1:5984/testdb%2Bwith%2Bplus_sign/_index/designdoc/json/indexname", couchdbURL.String())
 
 	//create a new instance and database object   --------------------------------------------------------
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB)
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
 

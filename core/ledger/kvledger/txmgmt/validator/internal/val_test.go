@@ -9,10 +9,10 @@ package internal
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,6 +24,18 @@ func TestNewPubAndHashUpdates(t *testing.T) {
 
 	actual := NewPubAndHashUpdates()
 	assert.Equal(t, expected, actual)
+}
+
+func TestContainsPostOrderWrites(t *testing.T) {
+	u := NewPubAndHashUpdates()
+	rws := &rwsetutil.TxRwSet{}
+	u.ApplyWriteSet(rws, nil, nil, false)
+	assert.False(t, u.PubUpdates.ContainsPostOrderWrites)
+	u.ApplyWriteSet(rws, nil, nil, true)
+	assert.True(t, u.PubUpdates.ContainsPostOrderWrites)
+	// once set to true, should always return true
+	u.ApplyWriteSet(rws, nil, nil, false)
+	assert.True(t, u.PubUpdates.ContainsPostOrderWrites)
 }
 
 func TestContainsPvtWrites_ReturnsTrue(t *testing.T) {
@@ -129,7 +141,7 @@ func TestApplyWriteSet(t *testing.T) {
 	testdb := testdbEnv.GetDBHandle("testdb")
 
 	// Call
-	pahu.ApplyWriteSet(txRWSet1, ver1, testdb)
+	pahu.ApplyWriteSet(txRWSet1, ver1, testdb, false)
 
 	// Check result
 	assert.Equal(t, expected, pahu)

@@ -9,14 +9,15 @@ package privdata
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMembershipInfoProvider(t *testing.T) {
-	peerSelfSignedData := common.SignedData{
+	peerSelfSignedData := protoutil.SignedData{
 		Identity:  []byte("peer0"),
 		Signature: []byte{1, 2, 3},
 		Data:      []byte{4, 5, 6},
@@ -37,18 +38,32 @@ func TestMembershipInfoProvider(t *testing.T) {
 	assert.False(t, res)
 	assert.Nil(t, err)
 
-	// verify membership provider returns nil and error when collection policy config is nil
+	// verify membership provider returns false and nil when collection policy config is nil
 	res, err = membershipProvider.AmMemberOf("test1", nil)
 	assert.False(t, res)
-	assert.Error(t, err)
-	assert.Equal(t, "Collection policy config is nil", err.Error())
+	assert.Nil(t, err)
+
+	// verify membership provider returns false and nil when collection policy config is invalid
+	res, err = membershipProvider.AmMemberOf("test1", getBadAccessPolicy([]string{"signer0"}, 1))
+	assert.False(t, res)
+	assert.Nil(t, err)
 }
 
-func getAccessPolicy(signers []string) *common.CollectionPolicyConfig {
+func getAccessPolicy(signers []string) *peer.CollectionPolicyConfig {
 	var data [][]byte
 	for _, signer := range signers {
 		data = append(data, []byte(signer))
 	}
 	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), data)
+	return createCollectionPolicyConfig(policyEnvelope)
+}
+
+func getBadAccessPolicy(signers []string, badIndex int32) *peer.CollectionPolicyConfig {
+	var data [][]byte
+	for _, signer := range signers {
+		data = append(data, []byte(signer))
+	}
+	// use a out of range index to trigger error
+	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(badIndex)), data)
 	return createCollectionPolicyConfig(policyEnvelope)
 }

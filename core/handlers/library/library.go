@@ -11,9 +11,9 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/auth/filter"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	"github.com/hyperledger/fabric/core/handlers/decoration/decorator"
-	"github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	"github.com/hyperledger/fabric/core/handlers/endorsement/builtin"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/builtin"
 )
 

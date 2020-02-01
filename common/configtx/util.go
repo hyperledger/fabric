@@ -8,7 +8,8 @@ package configtx
 
 import (
 	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric/protos/common"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // UnmarshalConfig attempts to unmarshal bytes to a *cb.Config
@@ -85,4 +86,18 @@ func UnmarshalConfigEnvelopeOrPanic(data []byte) *cb.ConfigEnvelope {
 		panic(err)
 	}
 	return result
+}
+
+// UnmarshalConfigUpdateFromPayload unmarshals configuration update from given payload
+func UnmarshalConfigUpdateFromPayload(payload *cb.Payload) (*cb.ConfigUpdate, error) {
+	configEnv, err := UnmarshalConfigEnvelope(payload.Data)
+	if err != nil {
+		return nil, err
+	}
+	configUpdateEnv, err := protoutil.EnvelopeToConfigUpdate(configEnv.LastUpdate)
+	if err != nil {
+		return nil, err
+	}
+
+	return UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
 }

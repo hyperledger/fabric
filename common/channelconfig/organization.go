@@ -9,9 +9,9 @@ package channelconfig
 import (
 	"fmt"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/msp"
-	cb "github.com/hyperledger/fabric/protos/common"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 
@@ -66,6 +66,11 @@ func (oc *OrganizationConfig) Name() string {
 // MSPID returns the MSP ID associated with this org
 func (oc *OrganizationConfig) MSPID() string {
 	return oc.mspID
+}
+
+// MSP returns the actual MSP implementation for this org.
+func (oc *OrganizationConfig) MSP() msp.MSP {
+	return oc.msp
 }
 
 // Validate returns whether the configuration is valid

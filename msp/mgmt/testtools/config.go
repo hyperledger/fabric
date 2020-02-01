@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msptesttools
 
 import (
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -16,21 +16,18 @@ import (
 // LoadTestMSPSetup sets up the local MSP
 // and a chain MSP for the default chain
 func LoadMSPSetupForTesting() error {
-	dir, err := configtest.GetDevMspDir()
-	if err != nil {
-		return err
-	}
+	dir := configtest.GetDevMspDir()
 	conf, err := msp.GetLocalMspConfig(dir, nil, "SampleOrg")
 	if err != nil {
 		return err
 	}
 
-	err = mgmt.GetLocalMSP().Setup(conf)
+	err = mgmt.GetLocalMSP(factory.GetDefault()).Setup(conf)
 	if err != nil {
 		return err
 	}
 
-	err = mgmt.GetManagerForChain(util.GetTestChainID()).Setup([]msp.MSP{mgmt.GetLocalMSP()})
+	err = mgmt.GetManagerForChain("testchannelid").Setup([]msp.MSP{mgmt.GetLocalMSP(factory.GetDefault())})
 	if err != nil {
 		return err
 	}
@@ -40,10 +37,6 @@ func LoadMSPSetupForTesting() error {
 
 // Loads the development local MSP for use in testing.  Not valid for production/runtime context
 func LoadDevMsp() error {
-	mspDir, err := configtest.GetDevMspDir()
-	if err != nil {
-		return err
-	}
-
+	mspDir := configtest.GetDevMspDir()
 	return mgmt.LoadLocalMsp(mspDir, nil, "SampleOrg")
 }

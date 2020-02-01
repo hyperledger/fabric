@@ -108,7 +108,7 @@ must to be set in addition to those above:
 * ``CORE_PEER_TLS_CLIENTKEY_FILE`` = fully qualified path of the client private key
 
 When running a command that connects to orderer service, like `peer channel <create|update|fetch>`
-or `peer chaincode <invoke|instantiate>`, following command line arguments must also be specified
+or `peer chaincode <invoke>`, following command line arguments must also be specified
 if TLS is enabled on the orderer:
 
 * --tls
@@ -139,9 +139,7 @@ of the CA certificates trusted by the peer or orderer node.
 
 If you see the error message ``remote error: tls: bad certificate`` in your chaincode logs,
 ensure that your chaincode has been built using the chaincode shim provided with Fabric v1.1
-or newer. If your chaincode does not contain a vendored copy of the shim, deleting the
-chaincode container and restarting its peer will rebuild the chaincode container using the
-current shim version.
+or newer.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

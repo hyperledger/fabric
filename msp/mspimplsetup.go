@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
-	m "github.com/hyperledger/fabric/protos/msp"
 	errors "github.com/pkg/errors"
 )
 
@@ -150,7 +150,7 @@ func (msp *bccspmsp) setupCAs(conf *m.FabricMSPConfig) error {
 		msp.intermediateCerts[i] = id
 	}
 
-	// root CA and intermediate CA certificates are sanitized, they can be reimported
+	// root CA and intermediate CA certificates are sanitized, they can be re-imported
 	msp.opts = &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()}
 	for _, id := range msp.rootCerts {
 		msp.opts.Roots.AddCert(id.(*identity).cert)
@@ -163,6 +163,10 @@ func (msp *bccspmsp) setupCAs(conf *m.FabricMSPConfig) error {
 }
 
 func (msp *bccspmsp) setupAdmins(conf *m.FabricMSPConfig) error {
+	return msp.internalSetupAdmin(conf)
+}
+
+func (msp *bccspmsp) setupAdminsPreV142(conf *m.FabricMSPConfig) error {
 	// make and fill the set of admin certs (if present)
 	msp.admins = make([]Identity, len(conf.Admins))
 	for i, admCert := range conf.Admins {
@@ -172,6 +176,19 @@ func (msp *bccspmsp) setupAdmins(conf *m.FabricMSPConfig) error {
 		}
 
 		msp.admins[i] = id
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) setupAdminsV142(conf *m.FabricMSPConfig) error {
+	// make and fill the set of admin certs (if present)
+	if err := msp.setupAdminsPreV142(conf); err != nil {
+		return err
+	}
+
+	if len(msp.admins) == 0 && (!msp.ouEnforcement || msp.adminOU == nil) {
+		return errors.New("administrators must be declared when no admin ou classification is set")
 	}
 
 	return nil
@@ -197,15 +214,18 @@ func (msp *bccspmsp) setupCRLs(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
-func (msp *bccspmsp) finalizeSetupCAs(config *m.FabricMSPConfig) error {
+func (msp *bccspmsp) finalizeSetupCAs() error {
 	// ensure that our CAs are properly formed and that they are valid
 	for _, id := range append(append([]Identity{}, msp.rootCerts...), msp.intermediateCerts...) {
-		if !isCACert(id.(*identity).cert) {
-			return errors.Errorf("CA Certificate did not have the Subject Key Identifier extension, (SN: %s)", id.(*identity).cert.SerialNumber)
+		if !id.(*identity).cert.IsCA {
+			return errors.Errorf("CA Certificate did not have the CA attribute, (SN: %x)", id.(*identity).cert.SerialNumber)
+		}
+		if _, err := getSubjectKeyIdentifierFromCert(id.(*identity).cert); err != nil {
+			return errors.WithMessagef(err, "CA Certificate problem with Subject Key Identifier extension, (SN: %x)", id.(*identity).cert.SerialNumber)
 		}
 
 		if err := msp.validateCAIdentity(id.(*identity)); err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("CA Certificate is not valid, (SN: %s)", id.(*identity).cert.SerialNumber))
+			return errors.WithMessagef(err, "CA Certificate is not valid, (SN: %s)", id.(*identity).cert.SerialNumber)
 		}
 	}
 
@@ -215,7 +235,7 @@ func (msp *bccspmsp) finalizeSetupCAs(config *m.FabricMSPConfig) error {
 	for _, id := range append([]Identity{}, msp.intermediateCerts...) {
 		chain, err := msp.getUniqueValidationChain(id.(*identity).cert, msp.getValidityOptsForCert(id.(*identity).cert))
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("failed getting validation chain, (SN: %s)", id.(*identity).cert.SerialNumber))
+			return errors.WithMessagef(err, "failed getting validation chain, (SN: %s)", id.(*identity).cert.SerialNumber)
 		}
 
 		// Recall chain[0] is id.(*identity).id so it does not count as a parent
@@ -231,6 +251,14 @@ func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 	if config.FabricNodeOus != nil {
 
 		msp.ouEnforcement = config.FabricNodeOus.Enable
+
+		if config.FabricNodeOus.ClientOuIdentifier == nil || len(config.FabricNodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier) == 0 {
+			return errors.New("Failed setting up NodeOUs. ClientOU must be different from nil.")
+		}
+
+		if config.FabricNodeOus.PeerOuIdentifier == nil || len(config.FabricNodeOus.PeerOuIdentifier.OrganizationalUnitIdentifier) == 0 {
+			return errors.New("Failed setting up NodeOUs. PeerOU must be different from nil.")
+		}
 
 		// ClientOU
 		msp.clientOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier}
@@ -253,6 +281,83 @@ func (msp *bccspmsp) setupNodeOUs(config *m.FabricMSPConfig) error {
 		}
 
 	} else {
+		msp.ouEnforcement = false
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) setupNodeOUsV142(config *m.FabricMSPConfig) error {
+	if config.FabricNodeOus == nil {
+		msp.ouEnforcement = false
+		return nil
+	}
+
+	msp.ouEnforcement = config.FabricNodeOus.Enable
+
+	counter := 0
+	// ClientOU
+	if config.FabricNodeOus.ClientOuIdentifier != nil {
+		msp.clientOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOus.ClientOuIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.ClientOuIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.clientOU.CertifiersIdentifier = certifiersIdentifier
+		}
+		counter++
+	} else {
+		msp.clientOU = nil
+	}
+
+	// PeerOU
+	if config.FabricNodeOus.PeerOuIdentifier != nil {
+		msp.peerOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.PeerOuIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOus.PeerOuIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.PeerOuIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.peerOU.CertifiersIdentifier = certifiersIdentifier
+		}
+		counter++
+	} else {
+		msp.peerOU = nil
+	}
+
+	// AdminOU
+	if config.FabricNodeOus.AdminOuIdentifier != nil {
+		msp.adminOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.AdminOuIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOus.AdminOuIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.AdminOuIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.adminOU.CertifiersIdentifier = certifiersIdentifier
+		}
+		counter++
+	} else {
+		msp.adminOU = nil
+	}
+
+	// OrdererOU
+	if config.FabricNodeOus.OrdererOuIdentifier != nil {
+		msp.ordererOU = &OUIdentifier{OrganizationalUnitIdentifier: config.FabricNodeOus.OrdererOuIdentifier.OrganizationalUnitIdentifier}
+		if len(config.FabricNodeOus.OrdererOuIdentifier.Certificate) != 0 {
+			certifiersIdentifier, err := msp.getCertifiersIdentifier(config.FabricNodeOus.OrdererOuIdentifier.Certificate)
+			if err != nil {
+				return err
+			}
+			msp.ordererOU.CertifiersIdentifier = certifiersIdentifier
+		}
+		counter++
+	} else {
+		msp.ordererOU = nil
+	}
+
+	if counter == 0 {
+		// Disable NodeOU
 		msp.ouEnforcement = false
 	}
 
@@ -288,7 +393,7 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 
 		certifiersIdentifier, err := msp.getCertifiersIdentifier(ou.Certificate)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("failed getting certificate for [%v]", ou))
+			return errors.WithMessagef(err, "failed getting certificate for [%v]", ou)
 		}
 
 		// Check for duplicates
@@ -351,12 +456,15 @@ func (msp *bccspmsp) setupTLSCAs(conf *m.FabricMSPConfig) error {
 			continue
 		}
 
-		if !isCACert(cert) {
-			return errors.Errorf("CA Certificate did not have the Subject Key Identifier extension, (SN: %s)", cert.SerialNumber)
+		if !cert.IsCA {
+			return errors.Errorf("CA Certificate did not have the CA attribute, (SN: %x)", cert.SerialNumber)
+		}
+		if _, err := getSubjectKeyIdentifierFromCert(cert); err != nil {
+			return errors.WithMessagef(err, "CA Certificate problem with Subject Key Identifier extension, (SN: %x)", cert.SerialNumber)
 		}
 
 		if err := msp.validateTLSCAIdentity(cert, opts); err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("CA Certificate is not valid, (SN: %s)", cert.SerialNumber))
+			return errors.WithMessagef(err, "CA Certificate is not valid, (SN: %s)", cert.SerialNumber)
 		}
 	}
 
@@ -399,7 +507,7 @@ func (msp *bccspmsp) preSetupV1(conf *m.FabricMSPConfig) error {
 	}
 
 	// Finalize setup of the CAs
-	if err := msp.finalizeSetupCAs(conf); err != nil {
+	if err := msp.finalizeSetupCAs(); err != nil {
 		return err
 	}
 
@@ -421,6 +529,55 @@ func (msp *bccspmsp) preSetupV1(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
+func (msp *bccspmsp) preSetupV142(conf *m.FabricMSPConfig) error {
+	// setup crypto config
+	if err := msp.setupCrypto(conf); err != nil {
+		return err
+	}
+
+	// Setup CAs
+	if err := msp.setupCAs(conf); err != nil {
+		return err
+	}
+
+	// Setup CRLs
+	if err := msp.setupCRLs(conf); err != nil {
+		return err
+	}
+
+	// Finalize setup of the CAs
+	if err := msp.finalizeSetupCAs(); err != nil {
+		return err
+	}
+
+	// setup the signer (if present)
+	if err := msp.setupSigningIdentity(conf); err != nil {
+		return err
+	}
+
+	// setup TLS CAs
+	if err := msp.setupTLSCAs(conf); err != nil {
+		return err
+	}
+
+	// setup the OUs
+	if err := msp.setupOUs(conf); err != nil {
+		return err
+	}
+
+	// setup NodeOUs
+	if err := msp.setupNodeOUsV142(conf); err != nil {
+		return err
+	}
+
+	// Setup Admins
+	if err := msp.setupAdmins(conf); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (msp *bccspmsp) postSetupV1(conf *m.FabricMSPConfig) error {
 	// make sure that admins are valid members as well
 	// this way, when we validate an admin MSP principal
@@ -428,7 +585,7 @@ func (msp *bccspmsp) postSetupV1(conf *m.FabricMSPConfig) error {
 	for i, admin := range msp.admins {
 		err := admin.Validate()
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("admin %d is invalid", i))
+			return errors.WithMessagef(err, "admin %d is invalid", i)
 		}
 	}
 
@@ -454,6 +611,20 @@ func (msp *bccspmsp) setupV11(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
+func (msp *bccspmsp) setupV142(conf *m.FabricMSPConfig) error {
+	err := msp.preSetupV142(conf)
+	if err != nil {
+		return err
+	}
+
+	err = msp.postSetupV142(conf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (msp *bccspmsp) postSetupV11(conf *m.FabricMSPConfig) error {
 	// Check for OU enforcement
 	if !msp.ouEnforcement {
@@ -472,7 +643,26 @@ func (msp *bccspmsp) postSetupV11(conf *m.FabricMSPConfig) error {
 	for i, admin := range msp.admins {
 		err = admin.SatisfiesPrincipal(principal)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("admin %d is invalid", i))
+			return errors.WithMessagef(err, "admin %d is invalid", i)
+		}
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) postSetupV142(conf *m.FabricMSPConfig) error {
+	// Check for OU enforcement
+	if !msp.ouEnforcement {
+		// No enforcement required. Call post setup as per V1
+		return msp.postSetupV1(conf)
+	}
+
+	// Check that admins are clients or admins
+	for i, admin := range msp.admins {
+		err1 := msp.hasOURole(admin, m.MSPRole_CLIENT)
+		err2 := msp.hasOURole(admin, m.MSPRole_ADMIN)
+		if err1 != nil && err2 != nil {
+			return errors.Errorf("admin %d is invalid [%s,%s]", i, err1, err2)
 		}
 	}
 

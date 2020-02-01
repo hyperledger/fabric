@@ -11,36 +11,40 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/node"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
+	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
+
+// currently defined system chaincode names that shouldn't
+// be allowed as user-defined chaincode names
+var systemChaincodeNames = map[string]struct{}{
+	"cscc": {},
+	"escc": {},
+	"lscc": {},
+	"qscc": {},
+	"vscc": {},
+}
 
 // checkInstantiationPolicy evaluates an instantiation policy against a signed proposal
 func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.Envelope, instantiationPolicy []byte, payl *common.Payload) commonerrors.TxValidationError {
 	// get the signature header
-	shdr, err := utils.GetSignatureHeader(payl.Header.SignatureHeader)
+	shdr, err := protoutil.UnmarshalSignatureHeader(payl.Header.SignatureHeader)
 	if err != nil {
 		return policyErr(err)
 	}
 
 	// construct signed data we can evaluate the instantiation policy against
-	sd := []*common.SignedData{{
+	sd := []*protoutil.SignedData{{
 		Data:      env.Payload,
 		Identity:  shdr.Creator,
 		Signature: env.Signature,
@@ -52,7 +56,7 @@ func (vscc *Validator) checkInstantiationPolicy(chainName string, env *common.En
 	return nil
 }
 
-func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfig) error {
+func validateNewCollectionConfigs(newCollectionConfigs []*pb.CollectionConfig) error {
 	newCollectionsMap := make(map[string]bool, len(newCollectionConfigs))
 	// Process each collection config from a set of collection configs
 	for _, newCollectionConfig := range newCollectionConfigs {
@@ -79,7 +83,7 @@ func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfi
 		maximumPeerCount := newCollection.GetMaximumPeerCount()
 		requiredPeerCount := newCollection.GetRequiredPeerCount()
 		if maximumPeerCount < requiredPeerCount {
-			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be greater than the required peer count (%d)",
+			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be less than the required peer count (%d)",
 				collectionName, maximumPeerCount, requiredPeerCount)
 
 		}
@@ -92,7 +96,7 @@ func validateNewCollectionConfigs(newCollectionConfigs []*common.CollectionConfi
 		// make sure that the signature policy is meaningful (only consists of ORs)
 		err := validateSpOrConcat(newCollection.MemberOrgsPolicy.GetSignaturePolicy().Rule)
 		if err != nil {
-			return errors.WithMessage(err, fmt.Sprintf("collection-name: %s -- error in member org policy", collectionName))
+			return errors.WithMessagef(err, "collection-name: %s -- error in member org policy", collectionName)
 		}
 	}
 	return nil
@@ -117,7 +121,7 @@ func validateSpOrConcat(sp *common.SignaturePolicy) error {
 	return nil
 }
 
-func checkForMissingCollections(newCollectionsMap map[string]*common.StaticCollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+func checkForMissingCollections(newCollectionsMap map[string]*pb.StaticCollectionConfig, oldCollectionConfigs []*pb.CollectionConfig,
 ) error {
 	var missingCollections []string
 
@@ -147,7 +151,7 @@ func checkForMissingCollections(newCollectionsMap map[string]*common.StaticColle
 	return nil
 }
 
-func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*common.StaticCollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*pb.StaticCollectionConfig, oldCollectionConfigs []*pb.CollectionConfig,
 ) error {
 	var modifiedCollectionsBTL []string
 
@@ -177,9 +181,9 @@ func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*common.StaticC
 	return nil
 }
 
-func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*common.CollectionConfig, oldCollectionConfigs []*common.CollectionConfig,
+func validateNewCollectionConfigsAgainstOld(newCollectionConfigs []*pb.CollectionConfig, oldCollectionConfigs []*pb.CollectionConfig,
 ) error {
-	newCollectionsMap := make(map[string]*common.StaticCollectionConfig, len(newCollectionConfigs))
+	newCollectionsMap := make(map[string]*pb.StaticCollectionConfig, len(newCollectionConfigs))
 
 	for _, newCollectionConfig := range newCollectionConfigs {
 		newCollection := newCollectionConfig.GetStaticCollectionConfig()
@@ -206,7 +210,7 @@ func validateCollectionName(collectionName string) error {
 	match := validCollectionNameRegex.FindString(collectionName)
 	if len(match) != len(collectionName) {
 		return fmt.Errorf("collection-name: %s not allowed. A valid collection name follows the pattern: %s",
-			collectionName, ccmetadata.AllowedCharsCollectionName)
+			collectionName, AllowedCharsCollectionName)
 	}
 	return nil
 }
@@ -219,7 +223,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	cdRWSet *ccprovider.ChaincodeData,
 	lsccArgs [][]byte,
 	lsccFunc string,
-	ac channelconfig.ApplicationCapabilities,
+	ac vc.Capabilities,
 	channelName string,
 ) commonerrors.TxValidationError {
 	/********************************************/
@@ -267,7 +271,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 	// The following condition check added in v1.1 may not be needed as it is not possible to have the chaincodeName~collection key in
 	// the lscc namespace before a chaincode deploy. To avoid forks in v1.2, the following condition is retained.
 	if lsccFunc == lscc.DEPLOY {
-		colCriteria := common.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
+		colCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
 		ccp, err := privdata.RetrieveCollectionConfigPackageFromState(colCriteria, state)
 		if err != nil {
 			// fail if we get any error other than NoSuchCollectionError
@@ -286,7 +290,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 
 	// TODO: Once the new chaincode lifecycle is available (FAB-8724), the following validation
 	// and other validation performed in ValidateLSCCInvocation can be moved to LSCC itself.
-	newCollectionConfigPackage := &common.CollectionConfigPackage{}
+	newCollectionConfigPackage := &pb.CollectionConfigPackage{}
 
 	if collectionsConfigArg != nil {
 		err := proto.Unmarshal(collectionsConfigArg, newCollectionConfigPackage)
@@ -306,7 +310,7 @@ func (vscc *Validator) validateRWSetAndCollection(
 
 		if lsccFunc == lscc.UPGRADE {
 
-			collectionCriteria := common.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
+			collectionCriteria := privdata.CollectionCriteria{Channel: channelName, Namespace: cdRWSet.Name}
 			// oldCollectionConfigPackage denotes the existing collection config package in the ledger
 			oldCollectionConfigPackage, err := privdata.RetrieveCollectionConfigPackageFromState(collectionCriteria, state)
 			if err != nil {
@@ -339,9 +343,9 @@ func (vscc *Validator) ValidateLSCCInvocation(
 	env *common.Envelope,
 	cap *pb.ChaincodeActionPayload,
 	payl *common.Payload,
-	ac channelconfig.ApplicationCapabilities,
+	ac vc.Capabilities,
 ) commonerrors.TxValidationError {
-	cpp, err := utils.GetChaincodeProposalPayload(cap.ChaincodeProposalPayload)
+	cpp, err := protoutil.UnmarshalChaincodeProposalPayload(cap.ChaincodeProposalPayload)
 	if err != nil {
 		logger.Errorf("VSCC error: GetChaincodeProposalPayload failed, err %s", err)
 		return policyErr(err)
@@ -379,17 +383,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("Wrong number of arguments for invocation lscc(%s): received %d", lsccFunc, len(lsccArgs)))
 		}
 
-		cdsArgs, err := utils.GetChaincodeDeploymentSpec(lsccArgs[1], platforms.NewRegistry(
-			// XXX We should definitely _not_ have this external dependency in VSCC
-			// as adding a platform could cause non-determinism.  This is yet another
-			// reason why all of this custom LSCC validation at commit time has no
-			// long term hope of staying deterministic and needs to be removed.
-			&golang.Platform{},
-			&node.Platform{},
-			&java.Platform{},
-			&car.Platform{},
-		))
-
+		cdsArgs, err := protoutil.UnmarshalChaincodeDeploymentSpec(lsccArgs[1])
 		if err != nil {
 			return policyErr(fmt.Errorf("GetChaincodeDeploymentSpec error %s", err))
 		}
@@ -399,15 +393,40 @@ func (vscc *Validator) ValidateLSCCInvocation(
 			return policyErr(fmt.Errorf("VSCC error: invocation of lscc(%s) does not have appropriate arguments", lsccFunc))
 		}
 
+		switch cdsArgs.ChaincodeSpec.Type.String() {
+		case "GOLANG", "NODE", "JAVA", "CAR":
+		default:
+			return policyErr(fmt.Errorf("unexpected chaincode spec type: %s", cdsArgs.ChaincodeSpec.Type.String()))
+		}
+
+		// validate chaincode name
+		ccName := cdsArgs.ChaincodeSpec.ChaincodeId.Name
+		// it must comply with the lscc.ChaincodeNameRegExp
+		if !lscc.ChaincodeNameRegExp.MatchString(ccName) {
+			return policyErr(errors.Errorf("invalid chaincode name '%s'", ccName))
+		}
+
+		// it can't match the name of one of the system chaincodes
+		if _, in := systemChaincodeNames[ccName]; in {
+			return policyErr(errors.Errorf("chaincode name '%s' is reserved for system chaincodes", ccName))
+		}
+
+		// validate chaincode version
+		ccVersion := cdsArgs.ChaincodeSpec.ChaincodeId.Version
+		// it must comply with the lscc.ChaincodeVersionRegExp
+		if !lscc.ChaincodeVersionRegExp.MatchString(ccVersion) {
+			return policyErr(errors.Errorf("invalid chaincode version '%s'", ccVersion))
+		}
+
 		// get the rwset
-		pRespPayload, err := utils.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(cap.Action.ProposalResponsePayload)
 		if err != nil {
 			return policyErr(fmt.Errorf("GetProposalResponsePayload error %s", err))
 		}
 		if pRespPayload.Extension == nil {
 			return policyErr(fmt.Errorf("nil pRespPayload.Extension"))
 		}
-		respPayload, err := utils.GetChaincodeAction(pRespPayload.Extension)
+		respPayload, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
 		if err != nil {
 			return policyErr(fmt.Errorf("GetChaincodeAction error %s", err))
 		}
@@ -618,7 +637,7 @@ func (vscc *Validator) getInstantiatedCC(chid, ccid string) (cd *ccprovider.Chai
 }
 
 type state struct {
-	State
+	vs.State
 }
 
 // GetState retrieves the value for the given key in the given namespace

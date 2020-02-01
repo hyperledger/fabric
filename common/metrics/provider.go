@@ -46,6 +46,10 @@ type CounterOpts struct {
 	// of these label names.
 	LabelNames []string
 
+	// LabelHelp provides help information for labels. When set, this information
+	// will be used to populate the documentation.
+	LabelHelp map[string]string
+
 	// StatsdFormat determines how the fully-qualified statsd bucket name is
 	// constructed from Namespace, Subsystem, Name, and Labels. This is done by
 	// including field references in `%{reference}` escape sequences.
@@ -61,7 +65,7 @@ type CounterOpts struct {
 	StatsdFormat string
 }
 
-// A Gauge is a memter that expresses the current value of some metric.
+// A Gauge is a meter that expresses the current value of some metric.
 type Gauge interface {
 	// With is used to provide label values when recording a Gauge value. This
 	// must be used to provide values for all LabelNames provided to GaugeOpts.
@@ -93,6 +97,10 @@ type GaugeOpts struct {
 	// of these label names.
 	LabelNames []string
 
+	// LabelHelp provides help information for labels. When set, this information
+	// will be used to populate the documentation.
+	LabelHelp map[string]string
+
 	// StatsdFormat determines how the fully-qualified statsd bucket name is
 	// constructed from Namespace, Subsystem, Name, and Labels. This is done by
 	// including field references in `%{reference}` escape sequences.
@@ -108,7 +116,7 @@ type GaugeOpts struct {
 	StatsdFormat string
 }
 
-// A Histogram is a memter that records an observed value into quantized
+// A Histogram is a meter that records an observed value into quantized
 // buckets.
 type Histogram interface {
 	// With is used to provide label values when recording a Histogram
@@ -140,6 +148,10 @@ type HistogramOpts struct {
 	// metric. When a metric is recorded, label values must be provided for each
 	// of these label names.
 	LabelNames []string
+
+	// LabelHelp provides help information for labels. When set, this information
+	// will be used to populate the documentation.
+	LabelHelp map[string]string
 
 	// StatsdFormat determines how the fully-qualified statsd bucket name is
 	// constructed from Namespace, Subsystem, Name, and Labels. This is done by

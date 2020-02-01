@@ -24,14 +24,17 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	. "github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go/gossip"
+	msprotos "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	bccsp "github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	policiesmocks "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
-	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	lifecyclemocks "github.com/hyperledger/fabric/core/cclifecycle/mocks"
@@ -48,12 +51,11 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	gcommon "github.com/hyperledger/fabric/gossip/common"
 	gdisc "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/protoext"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protos/common"
-	. "github.com/hyperledger/fabric/protos/discovery"
-	"github.com/hyperledger/fabric/protos/gossip"
-	msprotos "github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -70,32 +72,35 @@ var (
 		"col12": {orgPrincipal("Org1MSP"), orgPrincipal("Org2MSP")},
 	})
 
-	cc1Bytes = utils.MarshalOrPanic(&ccprovider.ChaincodeData{
+	cc1Bytes = protoutil.MarshalOrPanic(&ccprovider.ChaincodeData{
 		Name:    "cc1",
 		Version: "1.0",
 		Id:      []byte{42},
-		Policy:  utils.MarshalOrPanic(policyFromString("AND('Org1MSP.member', 'Org1MSP.member')")),
+		Policy:  protoutil.MarshalOrPanic(policyFromString("AND('Org1MSP.member', 'Org1MSP.member')")),
 	})
 
-	cc2Bytes = utils.MarshalOrPanic(&ccprovider.ChaincodeData{
+	cc2Bytes = protoutil.MarshalOrPanic(&ccprovider.ChaincodeData{
 		Name:    "cc2",
 		Version: "1.0",
 		Id:      []byte{43},
-		Policy:  utils.MarshalOrPanic(policyFromString("AND('Org1MSP.member', 'Org2MSP.member')")),
+		Policy:  protoutil.MarshalOrPanic(policyFromString("AND('Org1MSP.member', 'Org2MSP.member')")),
 	})
 )
 
 func TestMain(m *testing.M) {
-	var err error
 	if err := buildBinaries(); err != nil {
-		fmt.Printf("failed generating artifacts: +%v", err)
-		return
+		fmt.Printf("failed to build binaries: +%v", err)
+		gexec.CleanupBuildArtifacts()
+		os.Exit(1)
 	}
 
+	var err error
 	testdir, err = generateChannelArtifacts()
 	if err != nil {
-		fmt.Printf("failed generating artifacts: +%v", err)
-		return
+		fmt.Printf("failed to generate channel artifacts: +%v", err)
+		os.RemoveAll(testdir)
+		gexec.CleanupBuildArtifacts()
+		os.Exit(1)
 	}
 
 	peerDirPrefix := filepath.Join(testdir, "crypto-config", "peerOrganizations")
@@ -114,13 +119,13 @@ func TestMain(m *testing.M) {
 
 func TestGreenPath(t *testing.T) {
 	t.Parallel()
-	client, service := createClientAndService(t, testdir)
+	client, admin, service := createClientAndService(t, testdir)
 	defer service.Stop()
 	defer client.conn.Close()
 
-	service.lc.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2~collection").Return(collectionConfigBytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2~collection").Return(collectionConfigBytes, nil)
 
 	ccWithCollection := &ChaincodeInterest{
 		Chaincodes: []*ChaincodeCall{
@@ -139,17 +144,20 @@ func TestGreenPath(t *testing.T) {
 	nonExistentCollection := &ChaincodeCall{Name: "cc2", CollectionNames: []string{"col3"}}
 	_ = nonExistentCollection
 	req, err := req.AddPeersQuery().AddPeersQuery(col1).AddPeersQuery(nonExistentCollection).AddConfigQuery().AddEndorsersQuery(cc2cc, ccWithCollection)
-	assert.NoError(t, err)
-	res, err := client.Send(context.Background(), req, client.AuthInfo)
-	assert.NoError(t, err)
 
 	t.Run("Local peer query", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := admin.Send(context.Background(), req, admin.AuthInfo)
+		assert.NoError(t, err)
 		returnedPeers, err := res.ForLocal().Peers()
 		assert.NoError(t, err)
 		assert.True(t, peersToTestPeers(returnedPeers).Equal(testPeers.withoutStateInfo()))
 	})
 
 	t.Run("Channel peer queries", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := client.Send(context.Background(), req, client.AuthInfo)
+		assert.NoError(t, err)
 		returnedPeers, err := res.ForChannel("mychannel").Peers()
 		assert.NoError(t, err)
 		assert.True(t, peersToTestPeers(returnedPeers).Equal(testPeers))
@@ -168,6 +176,9 @@ func TestGreenPath(t *testing.T) {
 	})
 
 	t.Run("Endorser chaincode to chaincode", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := client.Send(context.Background(), req, client.AuthInfo)
+		assert.NoError(t, err)
 		endorsers, err := res.ForChannel("mychannel").Endorsers(cc2cc.Chaincodes, disc.NoFilter)
 		assert.NoError(t, err)
 		endorsersByMSP := map[string][]string{}
@@ -181,6 +192,9 @@ func TestGreenPath(t *testing.T) {
 	})
 
 	t.Run("Endorser chaincode with collection", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := client.Send(context.Background(), req, client.AuthInfo)
+		assert.NoError(t, err)
 		endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
 		assert.NoError(t, err)
 
@@ -193,6 +207,9 @@ func TestGreenPath(t *testing.T) {
 	})
 
 	t.Run("Config query", func(t *testing.T) {
+		assert.NoError(t, err)
+		res, err := client.Send(context.Background(), req, client.AuthInfo)
+		assert.NoError(t, err)
 		conf, err := res.ForChannel("mychannel").Config()
 		assert.NoError(t, err)
 		// Ensure MSP Configs are exactly as they appear in the config block
@@ -213,13 +230,13 @@ func TestGreenPath(t *testing.T) {
 
 func TestEndorsementComputationFailure(t *testing.T) {
 	t.Parallel()
-	client, service := createClientAndService(t, testdir)
+	client, _, service := createClientAndService(t, testdir)
 	defer service.Stop()
 	defer client.conn.Close()
 
-	service.lc.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2~collection").Return(collectionConfigBytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2~collection").Return(collectionConfigBytes, nil)
 
 	// Now test a collection query that should fail because cc2's endorsement policy is Org1MSP AND org2MSP
 	// but the collection is configured only to have peers from Org1MSP
@@ -240,13 +257,13 @@ func TestEndorsementComputationFailure(t *testing.T) {
 
 func TestLedgerFailure(t *testing.T) {
 	t.Parallel()
-	client, service := createClientAndService(t, testdir)
+	client, _, service := createClientAndService(t, testdir)
 	defer service.Stop()
 	defer client.conn.Close()
 
-	service.lc.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
-	service.lc.query.On("GetState", "lscc", "cc2").Return(nil, errors.New("IO error"))
-	service.lc.query.On("GetState", "lscc", "cc12~collection").Return(collectionConfigBytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil)
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc2").Return(nil, errors.New("IO error"))
+	service.lsccMetadataManager.query.On("GetState", "lscc", "cc12~collection").Return(collectionConfigBytes, nil)
 
 	ccWithCollection := &ChaincodeInterest{
 		Chaincodes: []*ChaincodeCall{
@@ -266,7 +283,7 @@ func TestLedgerFailure(t *testing.T) {
 
 func TestRevocation(t *testing.T) {
 	t.Parallel()
-	client, service := createClientAndService(t, testdir)
+	client, _, service := createClientAndService(t, testdir)
 	defer service.Stop()
 	defer client.conn.Close()
 
@@ -336,15 +353,15 @@ func (w *mspWrapper) DeserializeIdentity(serializedIdentity []byte) (msp.Identit
 	return w.MSPManager.DeserializeIdentity(serializedIdentity)
 }
 
-type lifeCycle struct {
-	*cc.Lifecycle
+type lsccMetadataManager struct {
+	*cclifecycle.MetadataManager
 	query *lifecyclemocks.Query
 }
 
-func newLifeCycle() *lifeCycle {
+func newLSCCMetadataManager() *lsccMetadataManager {
 	enumerator := &lifecyclemocks.Enumerator{}
 	enumerator.On("Enumerate").Return(nil, nil)
-	lc, err := cc.NewLifeCycle(enumerator)
+	m, err := cclifecycle.NewMetadataManager(enumerator)
 	if err != nil {
 		panic(err)
 	}
@@ -352,13 +369,13 @@ func newLifeCycle() *lifeCycle {
 	query := &lifecyclemocks.Query{}
 	query.On("Done").Return()
 	qc.On("NewQuery").Return(query, nil)
-	_, err = lc.NewChannelSubscription("mychannel", qc)
+	_, err = m.NewChannelSubscription("mychannel", qc)
 	if err != nil {
 		panic(err)
 	}
-	return &lifeCycle{
-		Lifecycle: lc,
-		query:     query,
+	return &lsccMetadataManager{
+		MetadataManager: m,
+		query:           query,
 	}
 }
 
@@ -369,8 +386,8 @@ type principalEvaluator struct {
 
 type service struct {
 	*grpc.Server
-	lc  *lifeCycle
-	sup *support
+	lsccMetadataManager *lsccMetadataManager
+	sup                 *support
 }
 
 type support struct {
@@ -388,7 +405,7 @@ func (s *sequenceWrapper) Sequence() uint64 {
 	return s.instance.Load().(*mocks.ConfigtxValidator).Sequence()
 }
 
-func createSupport(t *testing.T, dir string, lc *lifeCycle) *support {
+func createSupport(t *testing.T, dir string, lsccMetadataManager *lsccMetadataManager) *support {
 	configs := make(map[string]*msprotos.FabricMSPConfig)
 	mspMgr := createMSPManager(t, dir, configs)
 	mspManagerWrapper := &mspWrapper{
@@ -409,13 +426,13 @@ func createSupport(t *testing.T, dir string, lc *lifeCycle) *support {
 
 	org1Admin, err := cauthdsl.FromString("OR('Org1MSP.admin')")
 	assert.NoError(t, err)
-	org1AdminPolicy, _, err := cauthdsl.NewPolicyProvider(org1MSP).NewPolicy(utils.MarshalOrPanic(org1Admin))
+	org1AdminPolicy, _, err := cauthdsl.NewPolicyProvider(org1MSP).NewPolicy(protoutil.MarshalOrPanic(org1Admin))
 	assert.NoError(t, err)
 	acl := discacl.NewDiscoverySupport(channelVerifier, org1AdminPolicy, chConfig)
 
 	gSup := &mocks.GossipSupport{}
 	gSup.On("ChannelExists", "mychannel").Return(true)
-	gSup.On("PeersOfChannel", gcommon.ChainID("mychannel")).Return(testPeers.toStateInfoSet())
+	gSup.On("PeersOfChannel", gcommon.ChannelID("mychannel")).Return(testPeers.toStateInfoSet())
 	gSup.On("Peers").Return(testPeers.toMembershipSet())
 	gSup.On("IdentityInfo").Return(testPeers.toIdentitySet())
 
@@ -426,8 +443,8 @@ func createSupport(t *testing.T, dir string, lc *lifeCycle) *support {
 		},
 	}
 
-	ccSup := ccsupport.NewDiscoverySupport(lc)
-	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, pe, lc)
+	ccSup := ccsupport.NewDiscoverySupport(lsccMetadataManager)
+	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, pe, lsccMetadataManager)
 
 	fakeBlockGetter := &mocks.ConfigBlockGetter{}
 	fakeBlockGetter.GetCurrConfigBlockReturns(createGenesisBlock(filepath.Join(dir, "crypto-config")))
@@ -439,7 +456,7 @@ func createSupport(t *testing.T, dir string, lc *lifeCycle) *support {
 	}
 }
 
-func createClientAndService(t *testing.T, testdir string) (*client, *service) {
+func createClientAndService(t *testing.T, testdir string) (*client, *client, *service) {
 	ca, err := tlsgen.NewCA()
 	assert.NoError(t, err)
 
@@ -448,15 +465,15 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 
 	// Create a server on an ephemeral port
 	gRPCServer, err := comm.NewGRPCServer("127.0.0.1:", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			Key:         serverKeyPair.Key,
 			Certificate: serverKeyPair.Cert,
 			UseTLS:      true,
 		},
 	})
 
-	lc := newLifeCycle()
-	sup := createSupport(t, testdir, lc)
+	l := newLSCCMetadataManager()
+	sup := createSupport(t, testdir, l)
 	svc := discovery.NewService(discovery.Config{
 		TLS:                          gRPCServer.TLSEnabled(),
 		AuthCacheEnabled:             true,
@@ -472,16 +489,9 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 	clientKeyPair, err := ca.NewClientCertKeyPair()
 	assert.NoError(t, err)
 
-	signer := createSigner(t)
-
-	authInfo := &AuthInfo{
-		ClientIdentity:    signer.Creator,
-		ClientTlsCertHash: util.ComputeSHA256(clientKeyPair.TLSCert.Raw),
-	}
-
 	dialer, err := comm.NewGRPCClient(comm.ClientConfig{
 		Timeout: time.Second * 3,
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:        true,
 			Certificate:   clientKeyPair.Cert,
 			Key:           clientKeyPair.Key,
@@ -490,18 +500,42 @@ func createClientAndService(t *testing.T, testdir string) (*client, *service) {
 	})
 	assert.NoError(t, err)
 
-	conn, err := dialer.NewConnection(gRPCServer.Address(), "")
+	conn, err := dialer.NewConnection(gRPCServer.Address())
 	assert.NoError(t, err)
 
-	wrapperClient := &client{AuthInfo: authInfo, conn: conn}
+	userSigner := createUserSigner(t)
+	wrapperUserClient := &client{AuthInfo: &AuthInfo{
+		ClientIdentity:    userSigner.Creator,
+		ClientTlsCertHash: util.ComputeSHA256(clientKeyPair.TLSCert.Raw),
+	}, conn: conn}
 	var signerCacheSize uint = 10
-	c := disc.NewClient(wrapperClient.newConnection, signer.Sign, signerCacheSize)
-	wrapperClient.Client = c
-	service := &service{Server: gRPCServer.Server(), lc: lc, sup: sup}
-	return wrapperClient, service
+	wrapperUserClient.Client = disc.NewClient(wrapperUserClient.newConnection, userSigner.Sign, signerCacheSize)
+
+	adminSigner := createAdminSigner(t)
+	wrapperAdminClient := &client{AuthInfo: &AuthInfo{
+		ClientIdentity:    adminSigner.Creator,
+		ClientTlsCertHash: util.ComputeSHA256(clientKeyPair.TLSCert.Raw),
+	}, conn: conn}
+	wrapperAdminClient.Client = disc.NewClient(wrapperAdminClient.newConnection, adminSigner.Sign, signerCacheSize)
+
+	service := &service{Server: gRPCServer.Server(), lsccMetadataManager: l, sup: sup}
+	return wrapperUserClient, wrapperAdminClient, service
 }
 
-func createSigner(t *testing.T) *signer {
+func createUserSigner(t *testing.T) *signer {
+	identityDir := filepath.Join(testdir, "crypto-config", "peerOrganizations", "org1.example.com", "users", "User1@org1.example.com", "msp")
+	certPath := filepath.Join(identityDir, "signcerts", "User1@org1.example.com-cert.pem")
+	keyPath := filepath.Join(identityDir, "keystore")
+	keys, err := ioutil.ReadDir(keyPath)
+	assert.NoError(t, err)
+	assert.Len(t, keys, 1)
+	keyPath = filepath.Join(keyPath, keys[0].Name())
+	signer, err := newSigner("Org1MSP", certPath, keyPath)
+	assert.NoError(t, err)
+	return signer
+}
+
+func createAdminSigner(t *testing.T) *signer {
 	identityDir := filepath.Join(testdir, "crypto-config", "peerOrganizations", "org1.example.com", "users", "Admin@org1.example.com", "msp")
 	certPath := filepath.Join(identityDir, "signcerts", "Admin@org1.example.com-cert.pem")
 	keyPath := filepath.Join(identityDir, "keystore")
@@ -515,9 +549,12 @@ func createSigner(t *testing.T) *signer {
 }
 
 func createMSP(t *testing.T, dir, mspID string) (msp.MSP, *msprotos.FabricMSPConfig) {
-	channelMSP, err := msp.New(&msp.BCCSPNewOpts{
-		NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_1},
-	})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	channelMSP, err := msp.New(
+		&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_4_3}},
+		cryptoProvider,
+	)
 	assert.NoError(t, err)
 
 	mspConf, err := msp.GetVerifyingMspConfig(dir, mspID, "bccsp")
@@ -563,7 +600,7 @@ func createChannelConfigGetter(s *sequenceWrapper, mspMgr msp.MSPManager) discac
 	resources := &mocks.Resources{}
 	resources.ConfigtxValidatorReturns(s)
 	resources.MSPManagerReturns(mspMgr)
-	chConfig := &mocks.ChanConfig{}
+	chConfig := &mocks.ChannelConfigGetter{}
 	chConfig.GetChannelConfigReturns(resources)
 	return chConfig
 }
@@ -571,27 +608,24 @@ func createChannelConfigGetter(s *sequenceWrapper, mspMgr msp.MSPManager) discac
 func createPolicyManagerGetter(t *testing.T, mspMgr msp.MSPManager) *mocks.ChannelPolicyManagerGetter {
 	org1Org2Members, err := cauthdsl.FromString("OR('Org1MSP.client', 'Org2MSP.client')")
 	assert.NoError(t, err)
-	org1Org2MembersPolicy, _, err := cauthdsl.NewPolicyProvider(mspMgr).NewPolicy(utils.MarshalOrPanic(org1Org2Members))
+	org1Org2MembersPolicy, _, err := cauthdsl.NewPolicyProvider(mspMgr).NewPolicy(protoutil.MarshalOrPanic(org1Org2Members))
 	assert.NoError(t, err)
-	_ = org1Org2MembersPolicy
+
 	polMgr := &mocks.ChannelPolicyManagerGetter{}
-	policyMgr := &policiesmocks.Manager{
-		PolicyMap: map[string]policies.Policy{
-			policies.ChannelApplicationWriters: org1Org2MembersPolicy,
-		},
-	}
+	policyMgr := &mocks.PolicyManager{}
+	policyMgr.On("GetPolicy", policies.ChannelApplicationWriters).Return(org1Org2MembersPolicy, true)
 	polMgr.On("Manager", "mychannel").Return(policyMgr, false)
 	return polMgr
 }
 
 func buildBinaries() error {
 	var err error
-	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/common/tools/cryptogen")
+	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	idemixgen, err = gexec.Build("github.com/hyperledger/fabric/common/tools/idemixgen")
+	idemixgen, err = gexec.Build("github.com/hyperledger/fabric/cmd/idemixgen")
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -607,7 +641,7 @@ func generateChannelArtifacts() (string, error) {
 	args := []string{
 		"generate",
 		fmt.Sprintf("--output=%s", cryptoConfigDir),
-		fmt.Sprintf("--config=%s", filepath.Join("..", "..", "examples", "e2e_cli", "crypto-config.yaml")),
+		fmt.Sprintf("--config=%s", filepath.Join("testdata", "crypto-config.yaml")),
 	}
 	b, err := exec.Command(cryptogen, args...).CombinedOutput()
 	if err != nil {
@@ -623,8 +657,8 @@ func generateChannelArtifacts() (string, error) {
 }
 
 func createGenesisBlock(cryptoConfigDir string) *common.Block {
-	appConfig := genesisconfig.Load("TwoOrgsChannel", filepath.Join("..", "..", "examples", "e2e_cli"))
-	ordererConfig := genesisconfig.Load("TwoOrgsOrdererGenesis", filepath.Join("..", "..", "examples", "e2e_cli"))
+	appConfig := genesisconfig.Load("TwoOrgsChannel", "testdata")
+	ordererConfig := genesisconfig.Load("TwoOrgsOrdererGenesis", "testdata")
 	// Glue the two parts together, without loss of generality - to the application parts
 	appConfig.Orderer = ordererConfig.Orderer
 	channelConfig := appConfig
@@ -745,7 +779,7 @@ func peersToTestPeers(peers []*disc.Peer) testPeerSet {
 		pkiID := gcommon.PKIidType(hex.EncodeToString(util.ComputeSHA256(p.Identity)))
 		var stateInfoMember gdisc.NetworkMember
 		if p.StateInfoMessage != nil {
-			stateInfo, _ := p.StateInfoMessage.ToGossipMessage()
+			stateInfo, _ := protoext.EnvelopeToGossipMessage(p.StateInfoMessage.Envelope)
 			stateInfoMember = gdisc.NetworkMember{
 				PKIid:      pkiID,
 				Envelope:   p.StateInfoMessage.Envelope,
@@ -780,7 +814,7 @@ func newPeer(dir, mspID string, org, id int) *testPeer {
 		Mspid:   mspID,
 		IdBytes: certBytes,
 	}
-	identityBytes := utils.MarshalOrPanic(sID)
+	identityBytes := protoutil.MarshalOrPanic(sID)
 	pkiID := gcommon.PKIidType(hex.EncodeToString(util.ComputeSHA256(identityBytes)))
 	return &testPeer{
 		mspID:        mspID,
@@ -815,7 +849,7 @@ func stateInfoMsg(pkiID gcommon.PKIidType) gdisc.NetworkMember {
 			StateInfo: si,
 		},
 	}
-	sm, _ := gm.NoopSign()
+	sm, _ := protoext.NoopSign(gm)
 	return gdisc.NetworkMember{
 		Properties: si.Properties,
 		PKIid:      pkiID,
@@ -836,7 +870,7 @@ func aliveMsg(pkiID gcommon.PKIidType) gdisc.NetworkMember {
 			AliveMsg: am,
 		},
 	}
-	sm, _ := gm.NoopSign()
+	sm, _ := protoext.NoopSign(gm)
 	return gdisc.NetworkMember{
 		PKIid:    pkiID,
 		Endpoint: string(pkiID),
@@ -845,14 +879,14 @@ func aliveMsg(pkiID gcommon.PKIidType) gdisc.NetworkMember {
 }
 
 func buildCollectionConfig(col2principals map[string][]*msprotos.MSPPrincipal) []byte {
-	collections := &common.CollectionConfigPackage{}
+	collections := &peer.CollectionConfigPackage{}
 	for col, principals := range col2principals {
-		collections.Config = append(collections.Config, &common.CollectionConfig{
-			Payload: &common.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &common.StaticCollectionConfig{
+		collections.Config = append(collections.Config, &peer.CollectionConfig{
+			Payload: &peer.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &peer.StaticCollectionConfig{
 					Name: col,
-					MemberOrgsPolicy: &common.CollectionPolicyConfig{
-						Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+					MemberOrgsPolicy: &peer.CollectionPolicyConfig{
+						Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
 							SignaturePolicy: &common.SignaturePolicyEnvelope{
 								Identities: principals,
 							},
@@ -862,13 +896,13 @@ func buildCollectionConfig(col2principals map[string][]*msprotos.MSPPrincipal) [
 			},
 		})
 	}
-	return utils.MarshalOrPanic(collections)
+	return protoutil.MarshalOrPanic(collections)
 }
 
 func orgPrincipal(mspID string) *msprotos.MSPPrincipal {
 	return &msprotos.MSPPrincipal{
 		PrincipalClassification: msprotos.MSPPrincipal_ROLE,
-		Principal: utils.MarshalOrPanic(&msprotos.MSPRole{
+		Principal: protoutil.MarshalOrPanic(&msprotos.MSPRole{
 			MspIdentifier: mspID,
 			Role:          msprotos.MSPRole_MEMBER,
 		}),
@@ -912,7 +946,7 @@ func serializeIdentity(clientCert string, mspID string) ([]byte, error) {
 		Mspid:   mspID,
 		IdBytes: b,
 	}
-	return utils.MarshalOrPanic(sId), nil
+	return protoutil.MarshalOrPanic(sId), nil
 }
 
 func (si *signer) Sign(msg []byte) ([]byte, error) {

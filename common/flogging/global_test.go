@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/flogging/mock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,6 +65,23 @@ func TestGlobalInitJSON(t *testing.T) {
 	assert.Regexp(t, `{"level":"debug","ts":\d+.\d+,"name":"testlogger","caller":"flogging/global_test.go:\d+","msg":"this is a message"}\s+`, buf.String())
 }
 
+func TestGlobalInitLogfmt(t *testing.T) {
+	flogging.Reset()
+	defer flogging.Reset()
+
+	buf := &bytes.Buffer{}
+	flogging.Init(flogging.Config{
+		Format:  "logfmt",
+		LogSpec: "DEBUG",
+		Writer:  buf,
+	})
+
+	logger := flogging.MustGetLogger("testlogger")
+	logger.Debug("this is a message")
+
+	assert.Regexp(t, `^ts=\d+.\d+ level=debug name=testlogger caller=flogging/global_test.go:\d+ msg="this is a message"`, buf.String())
+}
+
 func TestGlobalInitPanic(t *testing.T) {
 	flogging.Reset()
 	defer flogging.Reset()
@@ -78,12 +96,12 @@ func TestGlobalInitPanic(t *testing.T) {
 func TestGlobalDefaultLevel(t *testing.T) {
 	flogging.Reset()
 
-	assert.Equal(t, "INFO", flogging.DefaultLevel())
+	assert.Equal(t, "info", flogging.DefaultLevel())
 }
 
-func TestGlobalGetLoggerLevel(t *testing.T) {
+func TestGlobalLoggerLevel(t *testing.T) {
 	flogging.Reset()
-	assert.Equal(t, "INFO", flogging.GetLoggerLevel("some.logger"))
+	assert.Equal(t, "info", flogging.LoggerLevel("some.logger"))
 }
 
 func TestGlobalMustGetLogger(t *testing.T) {
@@ -116,4 +134,28 @@ func TestActivateSpecPanic(t *testing.T) {
 	assert.Panics(t, func() {
 		flogging.ActivateSpec("busted")
 	})
+}
+
+func TestGlobalSetObserver(t *testing.T) {
+	flogging.Reset()
+	defer flogging.Reset()
+
+	observer := &mock.Observer{}
+
+	flogging.Global.SetObserver(observer)
+	o := flogging.Global.SetObserver(nil)
+	assert.Exactly(t, observer, o)
+}
+
+func TestGlobalSetWriter(t *testing.T) {
+	flogging.Reset()
+	defer flogging.Reset()
+
+	w := &bytes.Buffer{}
+
+	old := flogging.Global.SetWriter(w)
+	flogging.Global.SetWriter(old)
+	original := flogging.Global.SetWriter(nil)
+
+	assert.Exactly(t, old, original)
 }

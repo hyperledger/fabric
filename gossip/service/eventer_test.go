@@ -10,12 +10,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/hyperledger/fabric/protos/peer"
 )
 
-const testChainID = "foo"
+const testChannelID = "foo"
 
 func init() {
 	util.SetupTestLogging()
@@ -49,8 +49,8 @@ func (mc *mockConfig) Organizations() map[string]channelconfig.ApplicationOrg {
 	return mc.orgs
 }
 
-func (mc *mockConfig) ChainID() string {
-	return testChainID
+func (mc *mockConfig) ChannelID() string {
+	return testChannelID
 }
 
 const testOrgID = "testID"

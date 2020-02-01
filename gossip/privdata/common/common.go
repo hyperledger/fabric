@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package common
 
 import (
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/peer"
 )
 
 // privdata_common holds types that are used both in privdata and mocks packages.
@@ -24,7 +24,7 @@ type DigKey struct {
 	SeqInBlock uint64
 }
 
-type Dig2CollectionConfig map[DigKey]*common.StaticCollectionConfig
+type Dig2CollectionConfig map[DigKey]*peer.StaticCollectionConfig
 
 // FetchedPvtDataContainer container for pvt data elements
 // returned by Fetcher

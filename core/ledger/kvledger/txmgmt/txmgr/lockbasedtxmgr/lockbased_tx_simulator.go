@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -25,9 +26,9 @@ type lockBasedTxSimulator struct {
 	paginatedQueriesPerformed bool
 }
 
-func newLockBasedTxSimulator(txmgr *LockBasedTxMgr, txid string) (*lockBasedTxSimulator, error) {
+func newLockBasedTxSimulator(txmgr *LockBasedTxMgr, txid string, hasher ledger.Hasher) (*lockBasedTxSimulator, error) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
-	helper := newQueryHelper(txmgr, rwsetBuilder)
+	helper := newQueryHelper(txmgr, rwsetBuilder, true, hasher)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
 	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, txid}, rwsetBuilder, false, false, false, false}, nil
 }

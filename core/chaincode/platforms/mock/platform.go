@@ -2,61 +2,30 @@
 package mock
 
 import (
-	"archive/tar"
 	"sync"
 
-	platforms_test "github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 )
 
 type Platform struct {
-	NameStub        func() string
-	nameMutex       sync.RWMutex
-	nameArgsForCall []struct{}
-	nameReturns     struct {
-		result1 string
+	DockerBuildOptionsStub        func(string) (util.DockerBuildOptions, error)
+	dockerBuildOptionsMutex       sync.RWMutex
+	dockerBuildOptionsArgsForCall []struct {
+		arg1 string
 	}
-	nameReturnsOnCall map[int]struct {
-		result1 string
-	}
-	ValidatePathStub        func(path string) error
-	validatePathMutex       sync.RWMutex
-	validatePathArgsForCall []struct {
-		path string
-	}
-	validatePathReturns struct {
-		result1 error
-	}
-	validatePathReturnsOnCall map[int]struct {
-		result1 error
-	}
-	ValidateCodePackageStub        func(code []byte) error
-	validateCodePackageMutex       sync.RWMutex
-	validateCodePackageArgsForCall []struct {
-		code []byte
-	}
-	validateCodePackageReturns struct {
-		result1 error
-	}
-	validateCodePackageReturnsOnCall map[int]struct {
-		result1 error
-	}
-	GetDeploymentPayloadStub        func(path string) ([]byte, error)
-	getDeploymentPayloadMutex       sync.RWMutex
-	getDeploymentPayloadArgsForCall []struct {
-		path string
-	}
-	getDeploymentPayloadReturns struct {
-		result1 []byte
+	dockerBuildOptionsReturns struct {
+		result1 util.DockerBuildOptions
 		result2 error
 	}
-	getDeploymentPayloadReturnsOnCall map[int]struct {
-		result1 []byte
+	dockerBuildOptionsReturnsOnCall map[int]struct {
+		result1 util.DockerBuildOptions
 		result2 error
 	}
 	GenerateDockerfileStub        func() (string, error)
 	generateDockerfileMutex       sync.RWMutex
-	generateDockerfileArgsForCall []struct{}
-	generateDockerfileReturns     struct {
+	generateDockerfileArgsForCall []struct {
+	}
+	generateDockerfileReturns struct {
 		result1 string
 		result2 error
 	}
@@ -64,222 +33,79 @@ type Platform struct {
 		result1 string
 		result2 error
 	}
-	GenerateDockerBuildStub        func(path string, code []byte, tw *tar.Writer) error
-	generateDockerBuildMutex       sync.RWMutex
-	generateDockerBuildArgsForCall []struct {
-		path string
-		code []byte
-		tw   *tar.Writer
+	NameStub        func() string
+	nameMutex       sync.RWMutex
+	nameArgsForCall []struct {
 	}
-	generateDockerBuildReturns struct {
-		result1 error
+	nameReturns struct {
+		result1 string
 	}
-	generateDockerBuildReturnsOnCall map[int]struct {
-		result1 error
-	}
-	GetMetadataProviderStub        func(code []byte) platforms_test.MetadataProvider
-	getMetadataProviderMutex       sync.RWMutex
-	getMetadataProviderArgsForCall []struct {
-		code []byte
-	}
-	getMetadataProviderReturns struct {
-		result1 platforms_test.MetadataProvider
-	}
-	getMetadataProviderReturnsOnCall map[int]struct {
-		result1 platforms_test.MetadataProvider
+	nameReturnsOnCall map[int]struct {
+		result1 string
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Platform) Name() string {
-	fake.nameMutex.Lock()
-	ret, specificReturn := fake.nameReturnsOnCall[len(fake.nameArgsForCall)]
-	fake.nameArgsForCall = append(fake.nameArgsForCall, struct{}{})
-	fake.recordInvocation("Name", []interface{}{})
-	fake.nameMutex.Unlock()
-	if fake.NameStub != nil {
-		return fake.NameStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.nameReturns.result1
-}
-
-func (fake *Platform) NameCallCount() int {
-	fake.nameMutex.RLock()
-	defer fake.nameMutex.RUnlock()
-	return len(fake.nameArgsForCall)
-}
-
-func (fake *Platform) NameReturns(result1 string) {
-	fake.NameStub = nil
-	fake.nameReturns = struct {
-		result1 string
-	}{result1}
-}
-
-func (fake *Platform) NameReturnsOnCall(i int, result1 string) {
-	fake.NameStub = nil
-	if fake.nameReturnsOnCall == nil {
-		fake.nameReturnsOnCall = make(map[int]struct {
-			result1 string
-		})
-	}
-	fake.nameReturnsOnCall[i] = struct {
-		result1 string
-	}{result1}
-}
-
-func (fake *Platform) ValidatePath(path string) error {
-	fake.validatePathMutex.Lock()
-	ret, specificReturn := fake.validatePathReturnsOnCall[len(fake.validatePathArgsForCall)]
-	fake.validatePathArgsForCall = append(fake.validatePathArgsForCall, struct {
-		path string
-	}{path})
-	fake.recordInvocation("ValidatePath", []interface{}{path})
-	fake.validatePathMutex.Unlock()
-	if fake.ValidatePathStub != nil {
-		return fake.ValidatePathStub(path)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.validatePathReturns.result1
-}
-
-func (fake *Platform) ValidatePathCallCount() int {
-	fake.validatePathMutex.RLock()
-	defer fake.validatePathMutex.RUnlock()
-	return len(fake.validatePathArgsForCall)
-}
-
-func (fake *Platform) ValidatePathArgsForCall(i int) string {
-	fake.validatePathMutex.RLock()
-	defer fake.validatePathMutex.RUnlock()
-	return fake.validatePathArgsForCall[i].path
-}
-
-func (fake *Platform) ValidatePathReturns(result1 error) {
-	fake.ValidatePathStub = nil
-	fake.validatePathReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Platform) ValidatePathReturnsOnCall(i int, result1 error) {
-	fake.ValidatePathStub = nil
-	if fake.validatePathReturnsOnCall == nil {
-		fake.validatePathReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.validatePathReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Platform) ValidateCodePackage(code []byte) error {
-	var codeCopy []byte
-	if code != nil {
-		codeCopy = make([]byte, len(code))
-		copy(codeCopy, code)
-	}
-	fake.validateCodePackageMutex.Lock()
-	ret, specificReturn := fake.validateCodePackageReturnsOnCall[len(fake.validateCodePackageArgsForCall)]
-	fake.validateCodePackageArgsForCall = append(fake.validateCodePackageArgsForCall, struct {
-		code []byte
-	}{codeCopy})
-	fake.recordInvocation("ValidateCodePackage", []interface{}{codeCopy})
-	fake.validateCodePackageMutex.Unlock()
-	if fake.ValidateCodePackageStub != nil {
-		return fake.ValidateCodePackageStub(code)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.validateCodePackageReturns.result1
-}
-
-func (fake *Platform) ValidateCodePackageCallCount() int {
-	fake.validateCodePackageMutex.RLock()
-	defer fake.validateCodePackageMutex.RUnlock()
-	return len(fake.validateCodePackageArgsForCall)
-}
-
-func (fake *Platform) ValidateCodePackageArgsForCall(i int) []byte {
-	fake.validateCodePackageMutex.RLock()
-	defer fake.validateCodePackageMutex.RUnlock()
-	return fake.validateCodePackageArgsForCall[i].code
-}
-
-func (fake *Platform) ValidateCodePackageReturns(result1 error) {
-	fake.ValidateCodePackageStub = nil
-	fake.validateCodePackageReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Platform) ValidateCodePackageReturnsOnCall(i int, result1 error) {
-	fake.ValidateCodePackageStub = nil
-	if fake.validateCodePackageReturnsOnCall == nil {
-		fake.validateCodePackageReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.validateCodePackageReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Platform) GetDeploymentPayload(path string) ([]byte, error) {
-	fake.getDeploymentPayloadMutex.Lock()
-	ret, specificReturn := fake.getDeploymentPayloadReturnsOnCall[len(fake.getDeploymentPayloadArgsForCall)]
-	fake.getDeploymentPayloadArgsForCall = append(fake.getDeploymentPayloadArgsForCall, struct {
-		path string
-	}{path})
-	fake.recordInvocation("GetDeploymentPayload", []interface{}{path})
-	fake.getDeploymentPayloadMutex.Unlock()
-	if fake.GetDeploymentPayloadStub != nil {
-		return fake.GetDeploymentPayloadStub(path)
+func (fake *Platform) DockerBuildOptions(arg1 string) (util.DockerBuildOptions, error) {
+	fake.dockerBuildOptionsMutex.Lock()
+	ret, specificReturn := fake.dockerBuildOptionsReturnsOnCall[len(fake.dockerBuildOptionsArgsForCall)]
+	fake.dockerBuildOptionsArgsForCall = append(fake.dockerBuildOptionsArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("DockerBuildOptions", []interface{}{arg1})
+	fake.dockerBuildOptionsMutex.Unlock()
+	if fake.DockerBuildOptionsStub != nil {
+		return fake.DockerBuildOptionsStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getDeploymentPayloadReturns.result1, fake.getDeploymentPayloadReturns.result2
+	fakeReturns := fake.dockerBuildOptionsReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *Platform) GetDeploymentPayloadCallCount() int {
-	fake.getDeploymentPayloadMutex.RLock()
-	defer fake.getDeploymentPayloadMutex.RUnlock()
-	return len(fake.getDeploymentPayloadArgsForCall)
+func (fake *Platform) DockerBuildOptionsCallCount() int {
+	fake.dockerBuildOptionsMutex.RLock()
+	defer fake.dockerBuildOptionsMutex.RUnlock()
+	return len(fake.dockerBuildOptionsArgsForCall)
 }
 
-func (fake *Platform) GetDeploymentPayloadArgsForCall(i int) string {
-	fake.getDeploymentPayloadMutex.RLock()
-	defer fake.getDeploymentPayloadMutex.RUnlock()
-	return fake.getDeploymentPayloadArgsForCall[i].path
+func (fake *Platform) DockerBuildOptionsCalls(stub func(string) (util.DockerBuildOptions, error)) {
+	fake.dockerBuildOptionsMutex.Lock()
+	defer fake.dockerBuildOptionsMutex.Unlock()
+	fake.DockerBuildOptionsStub = stub
 }
 
-func (fake *Platform) GetDeploymentPayloadReturns(result1 []byte, result2 error) {
-	fake.GetDeploymentPayloadStub = nil
-	fake.getDeploymentPayloadReturns = struct {
-		result1 []byte
+func (fake *Platform) DockerBuildOptionsArgsForCall(i int) string {
+	fake.dockerBuildOptionsMutex.RLock()
+	defer fake.dockerBuildOptionsMutex.RUnlock()
+	argsForCall := fake.dockerBuildOptionsArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Platform) DockerBuildOptionsReturns(result1 util.DockerBuildOptions, result2 error) {
+	fake.dockerBuildOptionsMutex.Lock()
+	defer fake.dockerBuildOptionsMutex.Unlock()
+	fake.DockerBuildOptionsStub = nil
+	fake.dockerBuildOptionsReturns = struct {
+		result1 util.DockerBuildOptions
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *Platform) GetDeploymentPayloadReturnsOnCall(i int, result1 []byte, result2 error) {
-	fake.GetDeploymentPayloadStub = nil
-	if fake.getDeploymentPayloadReturnsOnCall == nil {
-		fake.getDeploymentPayloadReturnsOnCall = make(map[int]struct {
-			result1 []byte
+func (fake *Platform) DockerBuildOptionsReturnsOnCall(i int, result1 util.DockerBuildOptions, result2 error) {
+	fake.dockerBuildOptionsMutex.Lock()
+	defer fake.dockerBuildOptionsMutex.Unlock()
+	fake.DockerBuildOptionsStub = nil
+	if fake.dockerBuildOptionsReturnsOnCall == nil {
+		fake.dockerBuildOptionsReturnsOnCall = make(map[int]struct {
+			result1 util.DockerBuildOptions
 			result2 error
 		})
 	}
-	fake.getDeploymentPayloadReturnsOnCall[i] = struct {
-		result1 []byte
+	fake.dockerBuildOptionsReturnsOnCall[i] = struct {
+		result1 util.DockerBuildOptions
 		result2 error
 	}{result1, result2}
 }
@@ -287,7 +113,8 @@ func (fake *Platform) GetDeploymentPayloadReturnsOnCall(i int, result1 []byte, r
 func (fake *Platform) GenerateDockerfile() (string, error) {
 	fake.generateDockerfileMutex.Lock()
 	ret, specificReturn := fake.generateDockerfileReturnsOnCall[len(fake.generateDockerfileArgsForCall)]
-	fake.generateDockerfileArgsForCall = append(fake.generateDockerfileArgsForCall, struct{}{})
+	fake.generateDockerfileArgsForCall = append(fake.generateDockerfileArgsForCall, struct {
+	}{})
 	fake.recordInvocation("GenerateDockerfile", []interface{}{})
 	fake.generateDockerfileMutex.Unlock()
 	if fake.GenerateDockerfileStub != nil {
@@ -296,7 +123,8 @@ func (fake *Platform) GenerateDockerfile() (string, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.generateDockerfileReturns.result1, fake.generateDockerfileReturns.result2
+	fakeReturns := fake.generateDockerfileReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Platform) GenerateDockerfileCallCount() int {
@@ -305,7 +133,15 @@ func (fake *Platform) GenerateDockerfileCallCount() int {
 	return len(fake.generateDockerfileArgsForCall)
 }
 
+func (fake *Platform) GenerateDockerfileCalls(stub func() (string, error)) {
+	fake.generateDockerfileMutex.Lock()
+	defer fake.generateDockerfileMutex.Unlock()
+	fake.GenerateDockerfileStub = stub
+}
+
 func (fake *Platform) GenerateDockerfileReturns(result1 string, result2 error) {
+	fake.generateDockerfileMutex.Lock()
+	defer fake.generateDockerfileMutex.Unlock()
 	fake.GenerateDockerfileStub = nil
 	fake.generateDockerfileReturns = struct {
 		result1 string
@@ -314,6 +150,8 @@ func (fake *Platform) GenerateDockerfileReturns(result1 string, result2 error) {
 }
 
 func (fake *Platform) GenerateDockerfileReturnsOnCall(i int, result1 string, result2 error) {
+	fake.generateDockerfileMutex.Lock()
+	defer fake.generateDockerfileMutex.Unlock()
 	fake.GenerateDockerfileStub = nil
 	if fake.generateDockerfileReturnsOnCall == nil {
 		fake.generateDockerfileReturnsOnCall = make(map[int]struct {
@@ -327,131 +165,67 @@ func (fake *Platform) GenerateDockerfileReturnsOnCall(i int, result1 string, res
 	}{result1, result2}
 }
 
-func (fake *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
-	var codeCopy []byte
-	if code != nil {
-		codeCopy = make([]byte, len(code))
-		copy(codeCopy, code)
-	}
-	fake.generateDockerBuildMutex.Lock()
-	ret, specificReturn := fake.generateDockerBuildReturnsOnCall[len(fake.generateDockerBuildArgsForCall)]
-	fake.generateDockerBuildArgsForCall = append(fake.generateDockerBuildArgsForCall, struct {
-		path string
-		code []byte
-		tw   *tar.Writer
-	}{path, codeCopy, tw})
-	fake.recordInvocation("GenerateDockerBuild", []interface{}{path, codeCopy, tw})
-	fake.generateDockerBuildMutex.Unlock()
-	if fake.GenerateDockerBuildStub != nil {
-		return fake.GenerateDockerBuildStub(path, code, tw)
+func (fake *Platform) Name() string {
+	fake.nameMutex.Lock()
+	ret, specificReturn := fake.nameReturnsOnCall[len(fake.nameArgsForCall)]
+	fake.nameArgsForCall = append(fake.nameArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Name", []interface{}{})
+	fake.nameMutex.Unlock()
+	if fake.NameStub != nil {
+		return fake.NameStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.generateDockerBuildReturns.result1
+	fakeReturns := fake.nameReturns
+	return fakeReturns.result1
 }
 
-func (fake *Platform) GenerateDockerBuildCallCount() int {
-	fake.generateDockerBuildMutex.RLock()
-	defer fake.generateDockerBuildMutex.RUnlock()
-	return len(fake.generateDockerBuildArgsForCall)
+func (fake *Platform) NameCallCount() int {
+	fake.nameMutex.RLock()
+	defer fake.nameMutex.RUnlock()
+	return len(fake.nameArgsForCall)
 }
 
-func (fake *Platform) GenerateDockerBuildArgsForCall(i int) (string, []byte, *tar.Writer) {
-	fake.generateDockerBuildMutex.RLock()
-	defer fake.generateDockerBuildMutex.RUnlock()
-	return fake.generateDockerBuildArgsForCall[i].path, fake.generateDockerBuildArgsForCall[i].code, fake.generateDockerBuildArgsForCall[i].tw
+func (fake *Platform) NameCalls(stub func() string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = stub
 }
 
-func (fake *Platform) GenerateDockerBuildReturns(result1 error) {
-	fake.GenerateDockerBuildStub = nil
-	fake.generateDockerBuildReturns = struct {
-		result1 error
+func (fake *Platform) NameReturns(result1 string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = nil
+	fake.nameReturns = struct {
+		result1 string
 	}{result1}
 }
 
-func (fake *Platform) GenerateDockerBuildReturnsOnCall(i int, result1 error) {
-	fake.GenerateDockerBuildStub = nil
-	if fake.generateDockerBuildReturnsOnCall == nil {
-		fake.generateDockerBuildReturnsOnCall = make(map[int]struct {
-			result1 error
+func (fake *Platform) NameReturnsOnCall(i int, result1 string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = nil
+	if fake.nameReturnsOnCall == nil {
+		fake.nameReturnsOnCall = make(map[int]struct {
+			result1 string
 		})
 	}
-	fake.generateDockerBuildReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Platform) GetMetadataProvider(code []byte) platforms_test.MetadataProvider {
-	var codeCopy []byte
-	if code != nil {
-		codeCopy = make([]byte, len(code))
-		copy(codeCopy, code)
-	}
-	fake.getMetadataProviderMutex.Lock()
-	ret, specificReturn := fake.getMetadataProviderReturnsOnCall[len(fake.getMetadataProviderArgsForCall)]
-	fake.getMetadataProviderArgsForCall = append(fake.getMetadataProviderArgsForCall, struct {
-		code []byte
-	}{codeCopy})
-	fake.recordInvocation("GetMetadataProvider", []interface{}{codeCopy})
-	fake.getMetadataProviderMutex.Unlock()
-	if fake.GetMetadataProviderStub != nil {
-		return fake.GetMetadataProviderStub(code)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.getMetadataProviderReturns.result1
-}
-
-func (fake *Platform) GetMetadataProviderCallCount() int {
-	fake.getMetadataProviderMutex.RLock()
-	defer fake.getMetadataProviderMutex.RUnlock()
-	return len(fake.getMetadataProviderArgsForCall)
-}
-
-func (fake *Platform) GetMetadataProviderArgsForCall(i int) []byte {
-	fake.getMetadataProviderMutex.RLock()
-	defer fake.getMetadataProviderMutex.RUnlock()
-	return fake.getMetadataProviderArgsForCall[i].code
-}
-
-func (fake *Platform) GetMetadataProviderReturns(result1 platforms_test.MetadataProvider) {
-	fake.GetMetadataProviderStub = nil
-	fake.getMetadataProviderReturns = struct {
-		result1 platforms_test.MetadataProvider
-	}{result1}
-}
-
-func (fake *Platform) GetMetadataProviderReturnsOnCall(i int, result1 platforms_test.MetadataProvider) {
-	fake.GetMetadataProviderStub = nil
-	if fake.getMetadataProviderReturnsOnCall == nil {
-		fake.getMetadataProviderReturnsOnCall = make(map[int]struct {
-			result1 platforms_test.MetadataProvider
-		})
-	}
-	fake.getMetadataProviderReturnsOnCall[i] = struct {
-		result1 platforms_test.MetadataProvider
+	fake.nameReturnsOnCall[i] = struct {
+		result1 string
 	}{result1}
 }
 
 func (fake *Platform) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.nameMutex.RLock()
-	defer fake.nameMutex.RUnlock()
-	fake.validatePathMutex.RLock()
-	defer fake.validatePathMutex.RUnlock()
-	fake.validateCodePackageMutex.RLock()
-	defer fake.validateCodePackageMutex.RUnlock()
-	fake.getDeploymentPayloadMutex.RLock()
-	defer fake.getDeploymentPayloadMutex.RUnlock()
+	fake.dockerBuildOptionsMutex.RLock()
+	defer fake.dockerBuildOptionsMutex.RUnlock()
 	fake.generateDockerfileMutex.RLock()
 	defer fake.generateDockerfileMutex.RUnlock()
-	fake.generateDockerBuildMutex.RLock()
-	defer fake.generateDockerBuildMutex.RUnlock()
-	fake.getMetadataProviderMutex.RLock()
-	defer fake.getMetadataProviderMutex.RUnlock()
+	fake.nameMutex.RLock()
+	defer fake.nameMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

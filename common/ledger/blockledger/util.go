@@ -8,8 +8,9 @@ package blockledger
 
 import (
 	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 var closedChan chan struct{}
@@ -43,6 +44,7 @@ func (nfei *NotFoundErrorIterator) Close() {}
 func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 	var nextBlockNumber uint64
 	var previousBlockHash []byte
+	var err error
 
 	if rl.Height() > 0 {
 		it, _ := rl.Iterator(&ab.SeekPosition{
@@ -55,14 +57,13 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 			panic("Error seeking to newest block for chain with non-zero height")
 		}
 		nextBlockNumber = block.Header.Number + 1
-		previousBlockHash = block.Header.Hash()
+		previousBlockHash = protoutil.BlockHeaderHash(block.Header)
 	}
 
 	data := &cb.BlockData{
 		Data: make([][]byte, len(messages)),
 	}
 
-	var err error
 	for i, msg := range messages {
 		data.Data[i], err = proto.Marshal(msg)
 		if err != nil {
@@ -70,8 +71,8 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 		}
 	}
 
-	block := cb.NewBlock(nextBlockNumber, previousBlockHash)
-	block.Header.DataHash = data.Hash()
+	block := protoutil.NewBlock(nextBlockNumber, previousBlockHash)
+	block.Header.DataHash = protoutil.BlockDataHash(data)
 	block.Data = data
 
 	return block

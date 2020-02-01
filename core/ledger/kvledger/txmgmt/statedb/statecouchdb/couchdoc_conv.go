@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -26,7 +27,8 @@ const (
 )
 
 type keyValue struct {
-	key string
+	key      string
+	revision string
 	*statedb.VersionedValue
 }
 
@@ -86,6 +88,11 @@ func couchDocToKeyValue(doc *couchdb.CouchDoc) (*keyValue, error) {
 	if err != nil {
 		return nil, err
 	}
+	var revision string
+	if jsonResult[revField] != nil {
+		revision = jsonResult[revField].(string)
+	}
+
 	// remove the _id, _rev and version fields
 	delete(jsonResult, idField)
 	delete(jsonResult, revField)
@@ -105,14 +112,16 @@ func couchDocToKeyValue(doc *couchdb.CouchDoc) (*keyValue, error) {
 			return nil, err
 		}
 	}
-	return &keyValue{key, &statedb.VersionedValue{
-		Value:    returnValue,
-		Metadata: returnMetadata,
-		Version:  returnVersion},
+	return &keyValue{
+		key, revision,
+		&statedb.VersionedValue{
+			Value:    returnValue,
+			Metadata: returnMetadata,
+			Version:  returnVersion},
 	}, nil
 }
 
-func keyValToCouchDoc(kv *keyValue, revision string) (*couchdb.CouchDoc, error) {
+func keyValToCouchDoc(kv *keyValue) (*couchdb.CouchDoc, error) {
 	type kvType int32
 	const (
 		kvTypeDelete = iota
@@ -148,8 +157,8 @@ func keyValToCouchDoc(kv *keyValue, revision string) (*couchdb.CouchDoc, error) 
 	// add the (version + metadata), id, revision, and delete marker (if needed)
 	jsonMap[versionField] = verAndMetadata
 	jsonMap[idField] = key
-	if revision != "" {
-		jsonMap[revField] = revision
+	if kv.revision != "" {
+		jsonMap[revField] = kv.revision
 	}
 	if kvtype == kvTypeDelete {
 		jsonMap[deletedField] = true
@@ -201,6 +210,34 @@ func decodeSavepoint(couchDoc *couchdb.CouchDoc) (*version.Height, error) {
 	return &version.Height{BlockNum: savepointDoc.BlockNum, TxNum: savepointDoc.TxNum}, nil
 }
 
+type dataformatInfo struct {
+	Version string `json:"Version"`
+}
+
+func encodeDataformatInfo(dataFormatVersion string) (*couchdb.CouchDoc, error) {
+	var err error
+	dataformatInfo := &dataformatInfo{
+		Version: dataFormatVersion,
+	}
+	dataformatInfoJSON, err := json.Marshal(dataformatInfo)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to marshal dataformatInfo [%#v]", dataformatInfo)
+		logger.Errorf("%+v", err)
+		return nil, err
+	}
+	return &couchdb.CouchDoc{JSONValue: dataformatInfoJSON, Attachments: nil}, nil
+}
+
+func decodeDataformatInfo(couchDoc *couchdb.CouchDoc) (string, error) {
+	dataformatInfo := &dataformatInfo{}
+	if err := json.Unmarshal(couchDoc.JSONValue, dataformatInfo); err != nil {
+		err = errors.Wrapf(err, "failed to unmarshal json [%#v] into dataformatInfo", couchDoc.JSONValue)
+		logger.Errorf("%+v", err)
+		return "", err
+	}
+	return dataformatInfo.Version, nil
+}
+
 func validateValue(value []byte) error {
 	isJSON, jsonVal := tryCastingToJSON(value)
 	if !isJSON {
@@ -215,6 +252,9 @@ func validateKey(key string) error {
 	}
 	if strings.HasPrefix(key, "_") {
 		return errors.Errorf("invalid key [%s], cannot begin with \"_\"", key)
+	}
+	if key == "" {
+		return errors.New("invalid key. Empty string is not supported as a key by couchdb")
 	}
 	return nil
 }

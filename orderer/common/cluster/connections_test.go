@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,6 @@ import (
 )
 
 func TestConcurrentConnections(t *testing.T) {
-	t.Parallel()
 	// Scenario: Have 100 goroutines try to create a connection together at the same time,
 	// wait until one of them succeeds, and then wait until they all return,
 	// and also ensure they all return the same connection reference
@@ -28,7 +28,7 @@ func TestConcurrentConnections(t *testing.T) {
 	dialer := &mocks.SecureDialer{}
 	conn := &grpc.ClientConn{}
 	dialer.On("Dial", mock.Anything, mock.Anything).Return(conn, nil)
-	connStore := cluster.NewConnectionStore(dialer)
+	connStore := cluster.NewConnectionStore(dialer, &disabled.Gauge{})
 	connect := func() {
 		defer wg.Done()
 		conn2, err := connStore.Connection("", nil)
@@ -59,7 +59,6 @@ func (cms *connectionMapperSpy) Lookup(cert []byte) (*grpc.ClientConn, bool) {
 }
 
 func TestConcurrentLookupMiss(t *testing.T) {
-	t.Parallel()
 	// Scenario: 2 concurrent connection attempts are made,
 	// and the first 2 Lookup operations are delayed,
 	// which makes the connection store attempt to connect
@@ -70,7 +69,7 @@ func TestConcurrentLookupMiss(t *testing.T) {
 	conn := &grpc.ClientConn{}
 	dialer.On("Dial", mock.Anything, mock.Anything).Return(conn, nil)
 
-	connStore := cluster.NewConnectionStore(dialer)
+	connStore := cluster.NewConnectionStore(dialer, &disabled.Gauge{})
 	// Wrap the connection mapping with a spy that intercepts Lookup() invocations
 	spy := &connectionMapperSpy{
 		ConnectionMapper: connStore.Connections,

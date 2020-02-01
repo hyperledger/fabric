@@ -7,18 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package blockledger
 
 import (
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 )
 
-// Factory retrieves or creates new ledgers by chainID
+// Factory retrieves or creates new ledgers by channelID
 type Factory interface {
 	// GetOrCreate gets an existing ledger (if it exists)
 	// or creates it if it does not
-	GetOrCreate(chainID string) (ReadWriter, error)
+	GetOrCreate(channelID string) (ReadWriter, error)
 
-	// ChainIDs returns the chain IDs the Factory is aware of
-	ChainIDs() []string
+	// ChannelIDs returns the channel IDs the Factory is aware of
+	ChannelIDs() []string
 
 	// Close releases all resources acquired by the factory
 	Close()

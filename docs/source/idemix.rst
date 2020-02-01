@@ -67,6 +67,7 @@ In order to use Idemix in Hyperledger Fabric, the following three basic steps
 are required:
 
 .. image:: images/idemix-three-steps.png
+
 *Compare the roles in this image to the ones above.*
 
 1. Consider the issuer.
@@ -79,7 +80,7 @@ are required:
    required in step 2.
 
    For a development environment and if you are not using Fabric CA, you may use
-   ``idemixgen``to create these files.
+   ``idemixgen`` to create these files.
 
 2. Consider the verifier.
 
@@ -87,7 +88,7 @@ are required:
    ``IssuerRevocationPublicKey`` from step 1.
 
    For example, consider the following excerpt from
-   `configtx.yaml in the Hyperledger Java SDK sample <https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/fixture/sdkintegration/e2e-2Orgs/v1.3/configtx.yaml>`_:
+   `configtx.yaml in the Hyperledger Java SDK sample <https://github.com/hyperledger/fabric-sdk-java/blob/{BRANCH}/src/test/fixture/sdkintegration/e2e-2Orgs/v1.3/configtx.yaml>`_:
 
    .. code:: bash
 
@@ -136,7 +137,7 @@ Idemix and chaincode
 From a verifier perspective, there is one more actor to consider: chaincode.
 What can chaincode learn about the transactor when an Idemix credential is used?
 
-The `cid (Client Identity) library <https://github.com/hyperledger/fabric/tree/master/core/chaincode/shim/ext/cid>`_
+The `cid (Client Identity) library <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/pkg/cid>`_
 (for golang only) has been extended to support the ``GetAttributeValue`` function
 when an Idemix credential is used. However, as mentioned in the "Current
 limitations" section below, there are only two attributes which are disclosed in
@@ -152,13 +153,39 @@ If Fabric CA is the credential issuer:
   create an 'admin' identity, register the identity with the ``role`` attribute
   and a value of ``2``.
 
-For an example of using the `cid` library to retrieve these attributes, see
-`this java SDK example <https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/fixture/sdkintegration/gocc/sampleIdemix/src/github.com/example_cc/example_cc.go>`_.
+For an example of setting an affiliation in the Java SDK see this `sample <https://github.com/hyperledger/fabric-sdk-java/blob/{BRANCH}/src/test/java/org/hyperledger/fabric/sdkintegration/End2endIdemixIT.java#L121>`_.
+
+For an example of using the CID library in go chaincode to retrieve attributes,
+see this `go chaincode <https://github.com/hyperledger/fabric-sdk-java/blob/{BRANCH}/src/test/fixture/sdkintegration/gocc/sampleIdemix/src/github.com/example_cc/example_cc.go#L88>`_.
+
+Idemix organizations cannot be used to endorse a chaincode or approve a chaincode
+definition. This needs to be taken into account when you set the
+LifecycleEndorsement and Endorsement policies on your channels. For more
+information, see the limitations section below.
 
 Current limitations
 -------------------
 
 The current version of Idemix does have a few limitations.
+
+* **Idemix organizations and endorsement policies**
+
+  Idemix organizations cannot be used to endorse a chaincode transaction or
+  approve a chaincode definition. By default, the
+  ``Channel/Application/LifecycleEndorsement`` and
+  ``Channel/Application/Endorsement`` policies will require signatures from a
+  majority of organizations active on the channel. This implies that a channel
+  that contains a large number of Idemix organizations may not be able to
+  reach the majority needed to fulfill the default policy. For example, if a
+  channel has two MSP Organizations and two Idemix organizations, the channel
+  policy will require that three out of four organizations approve a chaincode
+  definition to commit that definition to the channel. Because Idemix
+  organizations cannot approve a chaincode definition, the policy will only be
+  able to validate two out of four signatures.
+
+  If your channel contains a sufficient number of Idemix organizations to affect
+  the endorsement policy, you can use a signature policy to explicitly specify
+  the required MSP organizations.
 
 * **Fixed set of attributes**
 

@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
 // collElgNotifier listens for the chaincode events and determines whether the peer has become eligible for one or more existing
@@ -18,6 +18,11 @@ type collElgNotifier struct {
 	deployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 	membershipInfoProvider        ledger.MembershipInfoProvider
 	listeners                     map[string]collElgListener
+}
+
+func (n *collElgNotifier) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+	// Noop
+	return nil
 }
 
 // InterestedInNamespaces implements function in interface ledger.StateListener
@@ -38,7 +43,7 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 	qe := trigger.CommittedStateQueryExecutor
 	postCommitQE := trigger.PostCommitQueryExecutor
 
-	stateUpdates := convertToKVWrites(trigger.StateUpdates)
+	stateUpdates := extractPublicUpdates(trigger.StateUpdates)
 	ccLifecycleInfo, err := n.deployedChaincodeInfoProvider.UpdatedChaincodes(stateUpdates)
 	if err != nil {
 		return err
@@ -47,19 +52,19 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 	for _, ccInfo := range ccLifecycleInfo {
 		ledgerid := trigger.LedgerID
 		ccName := ccInfo.Name
-		if existingCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ccName, qe); err != nil {
+		if existingCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ledgerid, ccName, qe); err != nil {
 			return err
 		}
 		if existingCCInfo == nil { // not an upgrade transaction
 			continue
 		}
-		if postCommitCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ccName, postCommitQE); err != nil {
+		if postCommitCCInfo, err = n.deployedChaincodeInfoProvider.ChaincodeInfo(ledgerid, ccName, postCommitQE); err != nil {
 			return err
 		}
 		elgEnabledCollNames, err := n.elgEnabledCollNames(
 			ledgerid,
-			existingCCInfo.CollectionConfigPkg,
-			postCommitCCInfo.CollectionConfigPkg,
+			existingCCInfo.ExplicitCollectionConfigPkg,
+			postCommitCCInfo.ExplicitCollectionConfigPkg,
 		)
 		if err != nil {
 			return err
@@ -88,12 +93,12 @@ func (n *collElgNotifier) invokeLedgerSpecificNotifier(ledgerID string, commting
 
 // elgEnabledCollNames returns the names of the collections for which the peer is not eligible as per 'existingPkg' and is eligible as per 'postCommitPkg'
 func (n *collElgNotifier) elgEnabledCollNames(ledgerID string,
-	existingPkg, postCommitPkg *common.CollectionConfigPackage) ([]string, error) {
+	existingPkg, postCommitPkg *peer.CollectionConfigPackage) ([]string, error) {
 
 	collectionNames := []string{}
 	exisingConfs := retrieveCollConfs(existingPkg)
 	postCommitConfs := retrieveCollConfs(postCommitPkg)
-	existingConfMap := map[string]*common.StaticCollectionConfig{}
+	existingConfMap := map[string]*peer.StaticCollectionConfig{}
 	for _, existingConf := range exisingConfs {
 		existingConfMap[existingConf.Name] = existingConf
 	}
@@ -118,7 +123,7 @@ func (n *collElgNotifier) elgEnabledCollNames(ledgerID string,
 }
 
 // elgEnabled returns true if the peer is not eligible for a collection as per 'existingPolicy' and is eligible as per 'postCommitPolicy'
-func (n *collElgNotifier) elgEnabled(ledgerID string, existingPolicy, postCommitPolicy *common.CollectionPolicyConfig) (bool, error) {
+func (n *collElgNotifier) elgEnabled(ledgerID string, existingPolicy, postCommitPolicy *peer.CollectionPolicyConfig) (bool, error) {
 	existingMember, err := n.membershipInfoProvider.AmMemberOf(ledgerID, existingPolicy)
 	if err != nil || existingMember {
 		return false, err
@@ -126,10 +131,10 @@ func (n *collElgNotifier) elgEnabled(ledgerID string, existingPolicy, postCommit
 	return n.membershipInfoProvider.AmMemberOf(ledgerID, postCommitPolicy)
 }
 
-func convertToKVWrites(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
+func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
 	m := map[string][]*kvrwset.KVWrite{}
 	for ns, updates := range stateUpdates {
-		m[ns] = updates.([]*kvrwset.KVWrite)
+		m[ns] = updates.PublicUpdates
 	}
 	return m
 }
@@ -143,8 +148,11 @@ type collElgListener interface {
 	ProcessCollsEligibilityEnabled(commitingBlk uint64, nsCollMap map[string][]string) error
 }
 
-func retrieveCollConfs(collConfPkg *common.CollectionConfigPackage) []*common.StaticCollectionConfig {
-	var staticCollConfs []*common.StaticCollectionConfig
+func retrieveCollConfs(collConfPkg *peer.CollectionConfigPackage) []*peer.StaticCollectionConfig {
+	if collConfPkg == nil {
+		return nil
+	}
+	var staticCollConfs []*peer.StaticCollectionConfig
 	protoConfArray := collConfPkg.Config
 	for _, protoConf := range protoConfArray {
 		staticCollConfs = append(staticCollConfs, protoConf.GetStaticCollectionConfig())

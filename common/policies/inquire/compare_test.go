@@ -9,9 +9,9 @@ package inquire
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,7 +67,7 @@ func TestNewComparablePrincipal(t *testing.T) {
 			role: expectedMember, mspID: mspID,
 			principal: &msp.MSPPrincipal{
 				PrincipalClassification: msp.MSPPrincipal_ROLE,
-				Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: mspID}),
+				Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: mspID}),
 			},
 		}
 		assert.Equal(t, expectedPrincipal, NewComparablePrincipal(member(mspID)))
@@ -80,7 +80,7 @@ func TestNewComparablePrincipal(t *testing.T) {
 			mspID: mspID,
 			principal: &msp.MSPPrincipal{
 				PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-				Principal:               utils.MarshalOrPanic(&msp.OrganizationUnit{OrganizationalUnitIdentifier: "ou", MspIdentifier: mspID}),
+				Principal:               protoutil.MarshalOrPanic(&msp.OrganizationUnit{OrganizationalUnitIdentifier: "ou", MspIdentifier: mspID}),
 			},
 		}
 		assert.Equal(t, expectedPrincipal, NewComparablePrincipal(ou(mspID)))
@@ -177,24 +177,24 @@ func TestNewComparablePrincipalSet(t *testing.T) {
 func member(orgName string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: orgName})}
+		Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: orgName})}
 }
 
 func peer(orgName string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: orgName})}
+		Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: orgName})}
 }
 
 func ou(orgName string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               utils.MarshalOrPanic(&msp.OrganizationUnit{OrganizationalUnitIdentifier: "ou", MspIdentifier: orgName})}
+		Principal:               protoutil.MarshalOrPanic(&msp.OrganizationUnit{OrganizationalUnitIdentifier: "ou", MspIdentifier: orgName})}
 }
 
 func identity(orgName string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               utils.MarshalOrPanic(&msp.SerializedIdentity{Mspid: orgName, IdBytes: []byte("identity")}),
+		Principal:               protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: orgName, IdBytes: []byte("identity")}),
 	}
 }

@@ -8,18 +8,16 @@ package pvtdatastorage
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/willf/bitset"
 )
 
@@ -27,16 +25,19 @@ var logger = flogging.MustGetLogger("pvtdatastorage")
 
 type provider struct {
 	dbProvider *leveldbhelper.Provider
+	pvtData    *PrivateDataConfig
 }
 
 type store struct {
-	db        *leveldbhelper.DBHandle
-	ledgerid  string
-	btlPolicy pvtdatapolicy.BTLPolicy
+	db              *leveldbhelper.DBHandle
+	ledgerid        string
+	btlPolicy       pvtdatapolicy.BTLPolicy
+	batchesInterval int
+	maxBatchSize    int
+	purgeInterval   uint64
 
 	isEmpty            bool
 	lastCommittedBlock uint64
-	batchPending       bool
 	purgerLock         sync.Mutex
 	collElgProcSync    *collElgProcSync
 	// After committing the pvtdata of old blocks,
@@ -106,16 +107,26 @@ type entriesForPvtDataOfOldBlocks struct {
 //////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
-func NewProvider() Provider {
-	dbPath := ledgerconfig.GetPvtdataStorePath()
-	dbProvider := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dbPath})
-	return &provider{dbProvider: dbProvider}
+func NewProvider(conf *PrivateDataConfig) (Provider, error) {
+	dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.StorePath})
+	if err != nil {
+		return nil, err
+	}
+	return &provider{
+		dbProvider: dbProvider,
+		pvtData:    conf,
+	}, nil
 }
 
 // OpenStore returns a handle to a store
 func (p *provider) OpenStore(ledgerid string) (Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
-	s := &store{db: dbHandle, ledgerid: ledgerid,
+	s := &store{
+		db:              dbHandle,
+		ledgerid:        ledgerid,
+		batchesInterval: p.pvtData.BatchesInterval,
+		maxBatchSize:    p.pvtData.MaxBatchSize,
+		purgeInterval:   uint64(p.pvtData.PurgeInterval),
 		collElgProcSync: &collElgProcSync{
 			notification: make(chan bool, 1),
 			procComplete: make(chan bool, 1),
@@ -125,8 +136,8 @@ func (p *provider) OpenStore(ledgerid string) (Store, error) {
 		return nil, err
 	}
 	s.launchCollElgProc()
-	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d], batchPending [%t]",
-		s.isEmpty, s.lastCommittedBlock, s.batchPending)
+	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d]",
+		s.isEmpty, s.lastCommittedBlock)
 	return s, nil
 }
 
@@ -144,10 +155,28 @@ func (s *store) initState() error {
 	if s.isEmpty, s.lastCommittedBlock, err = s.getLastCommittedBlockNum(); err != nil {
 		return err
 	}
-	if s.batchPending, err = s.hasPendingCommit(); err != nil {
+
+	// TODO: FAB-16298 -- the concept of pendingBatch is no longer valid
+	// for pvtdataStore. We can remove it v2.1. We retain the concept in
+	// v2.0 to allow rolling upgrade from v142 to v2.0
+	batchPending, err := s.hasPendingCommit()
+	if err != nil {
 		return err
 	}
-	if blist, err = s.GetLastUpdatedOldBlocksList(); err != nil {
+
+	if batchPending {
+		committingBlockNum := s.nextBlockNum()
+		batch := leveldbhelper.NewUpdateBatch()
+		batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(committingBlockNum))
+		batch.Delete(pendingCommitKey)
+		if err := s.db.WriteBatch(batch, true); err != nil {
+			return err
+		}
+		s.isEmpty = false
+		s.lastCommittedBlock = committingBlockNum
+	}
+
+	if blist, err = s.getLastUpdatedOldBlocksList(); err != nil {
 		return err
 	}
 	if len(blist) > 0 {
@@ -162,21 +191,17 @@ func (s *store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 }
 
 // Prepare implements the function in the interface `Store`
-func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingData *ledger.MissingPrivateDataList) error {
-	if s.batchPending {
-		return &ErrIllegalCall{`A pending batch exists as as result of last invoke to "Prepare" call.
-			 Invoke "Commit" or "Rollback" on the pending batch before invoking "Prepare" function`}
-	}
+func (s *store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error {
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
-		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, recived block number=%d", expectedBlockNum, blockNum)}
+		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, received block number=%d", expectedBlockNum, blockNum)}
 	}
 
 	batch := leveldbhelper.NewUpdateBatch()
 	var err error
 	var keyBytes, valBytes []byte
 
-	storeEntries, err := prepareStoreEntries(blockNum, pvtData, s.btlPolicy, missingData)
+	storeEntries, err := prepareStoreEntries(blockNum, pvtData, s.btlPolicy, missingPvtData)
 	if err != nil {
 		return err
 	}
@@ -205,44 +230,17 @@ func (s *store) Prepare(blockNum uint64, pvtData []*ledger.TxPvtData, missingDat
 		batch.Put(keyBytes, valBytes)
 	}
 
-	batch.Put(pendingCommitKey, emptyValue)
-	if err := s.db.WriteBatch(batch, true); err != nil {
-		return err
-	}
-	s.batchPending = true
-	logger.Debugf("Saved %d private data write sets for block [%d]", len(pvtData), blockNum)
-	return nil
-}
-
-// Commit implements the function in the interface `Store`
-func (s *store) Commit() error {
-	if !s.batchPending {
-		return &ErrIllegalCall{"No pending batch to commit"}
-	}
 	committingBlockNum := s.nextBlockNum()
 	logger.Debugf("Committing private data for block [%d]", committingBlockNum)
-	batch := leveldbhelper.NewUpdateBatch()
-	batch.Delete(pendingCommitKey)
 	batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(committingBlockNum))
 	if err := s.db.WriteBatch(batch, true); err != nil {
 		return err
 	}
-	s.batchPending = false
+
 	s.isEmpty = false
-	s.lastCommittedBlock = committingBlockNum
+	atomic.StoreUint64(&s.lastCommittedBlock, committingBlockNum)
 	logger.Debugf("Committed private data for block [%d]", committingBlockNum)
 	s.performPurgeIfScheduled(committingBlockNum)
-	return nil
-}
-
-// Rollback implements the function in the interface `Store`
-// Not deleting the existing data entries and expiry entries for now
-// Because the next try would have exact same entries and will overwrite those
-func (s *store) Rollback() error {
-	if !s.batchPending {
-		return &ErrIllegalCall{"No pending batch to rollback"}
-	}
-	s.batchPending = false
 	return nil
 }
 
@@ -251,10 +249,10 @@ func (s *store) Rollback() error {
 // Given a list of old block's pvtData, `CommitPvtDataOfOldBlocks` performs the following four
 // operations
 // (1) construct dataEntries for all pvtData
-// (2) construct update entries (i.e., dataEntries, expiryEntries, missingDataEntries, and
-//     lastUpdatedOldBlocksList) from the above created data entries
+// (2) construct update entries (i.e., dataEntries, expiryEntries, missingDataEntries)
+//     from the above created data entries
 // (3) create a db update batch from the update entries
-// (4) commit the update entries to the pvtStore
+// (4) commit the update batch to the pvtStore
 func (s *store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
 	if s.isLastUpdatedOldBlocksSet {
 		return &ErrIllegalCall{`The lastUpdatedOldBlocksList is set. It means that the
@@ -265,22 +263,24 @@ func (s *store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPv
 	dataEntries := constructDataEntriesFromBlocksPvtData(blocksPvtData)
 
 	// (2) construct update entries (i.e., dataEntries, expiryEntries, missingDataEntries) from the above created data entries
+	logger.Debugf("Constructing pvtdatastore entries for pvtData of [%d] old blocks", len(blocksPvtData))
 	updateEntries, err := s.constructUpdateEntriesFromDataEntries(dataEntries)
 	if err != nil {
 		return err
 	}
 
 	// (3) create a db update batch from the update entries
+	logger.Debug("Constructing update batch from pvtdatastore entries")
 	batch, err := constructUpdateBatchFromUpdateEntries(updateEntries)
 	if err != nil {
 		return err
 	}
 
-	// (4) commit the update entries to the pvtStore
+	// (4) commit the update batch to the pvtStore
+	logger.Debug("Committing the update batch to pvtdatastore")
 	if err := s.commitBatch(batch); err != nil {
 		return err
 	}
-	s.isLastUpdatedOldBlocksSet = true
 
 	return nil
 }
@@ -311,7 +311,7 @@ func (s *store) constructUpdateEntriesFromDataEntries(dataEntries []*dataEntry) 
 			return nil, err
 		}
 
-		// get the existing expiryData ntry
+		// get the existing expiryData entry
 		var expiryData *ExpiryData
 		if !neverExpires(expiryKey.expiringBlk) {
 			if expiryData, err = s.getExpiryDataFromUpdateEntriesOrStore(updateEntries, expiryKey); err != nil {
@@ -337,7 +337,7 @@ func (s *store) constructUpdateEntriesFromDataEntries(dataEntries []*dataEntry) 
 		}
 
 		updateEntries.addDataEntry(dataEntry)
-		if expiryData != nil { // would be nill for the never expiring entry
+		if expiryData != nil { // would be nil for the never expiring entry
 			expiryEntry := &expiryEntry{&expiryKey, expiryData}
 			updateEntries.updateAndAddExpiryEntry(expiryEntry, dataEntry.key)
 		}
@@ -432,9 +432,6 @@ func constructUpdateBatchFromUpdateEntries(updateEntries *entriesForPvtDataOfOld
 		return nil, err
 	}
 
-	// (4) add lastUpdatedOldBlocksList to the batch
-	addLastUpdatedOldBlocksList(batch, updateEntries)
-
 	return batch, nil
 }
 
@@ -482,36 +479,6 @@ func addUpdatedMissingDataEntriesToUpdateBatch(batch *leveldbhelper.UpdateBatch,
 	return nil
 }
 
-func addLastUpdatedOldBlocksList(batch *leveldbhelper.UpdateBatch, entries *entriesForPvtDataOfOldBlocks) {
-	// create a list of blocks' pvtData which are being stored. If this list is
-	// found during the recovery, the stateDB may not be in sync with the pvtData
-	// and needs recovery. In a normal flow, once the stateDB is synced, the
-	// block list would be deleted.
-	updatedBlksListMap := make(map[uint64]bool)
-
-	for dataKey := range entries.dataEntries {
-		updatedBlksListMap[dataKey.blkNum] = true
-	}
-
-	var updatedBlksList lastUpdatedOldBlocksList
-	for blkNum := range updatedBlksListMap {
-		updatedBlksList = append(updatedBlksList, blkNum)
-	}
-
-	// better to store as sorted list
-	sort.SliceStable(updatedBlksList, func(i, j int) bool {
-		return updatedBlksList[i] < updatedBlksList[j]
-	})
-
-	buf := proto.NewBuffer(nil)
-	buf.EncodeVarint(uint64(len(updatedBlksList)))
-	for _, blkNum := range updatedBlksList {
-		buf.EncodeVarint(blkNum)
-	}
-
-	batch.Put(lastUpdatedOldBlocksKey, buf.Bytes())
-}
-
 func (s *store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
 	// commit the batch to the store
 	if err := s.db.WriteBatch(batch, true); err != nil {
@@ -521,7 +488,32 @@ func (s *store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
 	return nil
 }
 
-func (s *store) GetLastUpdatedOldBlocksList() ([]uint64, error) {
+// TODO FAB-16293 -- GetLastUpdatedOldBlocksPvtData() can be removed either in v2.0 or in v2.1.
+// If we decide to rebuild stateDB in v2.0, by default, the rebuild logic would take
+// care of synching stateDB with pvtdataStore without calling GetLastUpdatedOldBlocksPvtData().
+// Hence, it can be safely removed. Suppose if we decide not to rebuild stateDB in v2.0,
+// we can remove this function in v2.1.
+// GetLastUpdatedOldBlocksPvtData implements the function in the interface `Store`
+func (s *store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error) {
+	if !s.isLastUpdatedOldBlocksSet {
+		return nil, nil
+	}
+
+	updatedBlksList, err := s.getLastUpdatedOldBlocksList()
+	if err != nil {
+		return nil, err
+	}
+
+	blksPvtData := make(map[uint64][]*ledger.TxPvtData)
+	for _, blkNum := range updatedBlksList {
+		if blksPvtData[blkNum], err = s.GetPvtDataByBlockNum(blkNum, nil); err != nil {
+			return nil, err
+		}
+	}
+	return blksPvtData, nil
+}
+
+func (s *store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 	var v []byte
 	var err error
 	if v, err = s.db.Get(lastUpdatedOldBlocksKey); err != nil {
@@ -547,10 +539,13 @@ func (s *store) GetLastUpdatedOldBlocksList() ([]uint64, error) {
 	return updatedBlksList, nil
 }
 
+// TODO FAB-16294 -- ResetLastUpdatedOldBlocksList() can be removed in v2.1.
+// From v2.0 onwards, we do not store the last updatedBlksList. Only to support
+// the rolling upgrade from v142 to v2.0, we retain the ResetLastUpdatedOldBlocksList()
+// in v2.0.
+
+// ResetLastUpdatedOldBlocksList implements the function in the interface `Store`
 func (s *store) ResetLastUpdatedOldBlocksList() error {
-	if !s.isLastUpdatedOldBlocksSet {
-		return &ErrIllegalCall{"No updated old block list"}
-	}
 	batch := leveldbhelper.NewUpdateBatch()
 	batch.Delete(lastUpdatedOldBlocksKey)
 	if err := s.db.WriteBatch(batch, true); err != nil {
@@ -568,8 +563,9 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	if s.isEmpty {
 		return nil, &ErrOutOfRange{"The store is empty"}
 	}
-	if blockNum > s.lastCommittedBlock {
-		return nil, &ErrOutOfRange{fmt.Sprintf("Last committed block=%d, block requested=%d", s.lastCommittedBlock, blockNum)}
+	lastCommittedBlock := atomic.LoadUint64(&s.lastCommittedBlock)
+	if blockNum > lastCommittedBlock {
+		return nil, &ErrOutOfRange{fmt.Sprintf("Last committed block=%d, block requested=%d", lastCommittedBlock, blockNum)}
 	}
 	startKey, endKey := getDataKeysForRangeScanByBlockNum(blockNum)
 	logger.Debugf("Querying private data storage for write sets using startKey=%#v, endKey=%#v", startKey, endKey)
@@ -583,12 +579,19 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 
 	for itr.Next() {
 		dataKeyBytes := itr.Key()
-		if v11Format(dataKeyBytes) {
+		v11Fmt, err := v11Format(dataKeyBytes)
+		if err != nil {
+			return nil, err
+		}
+		if v11Fmt {
 			return v11RetrievePvtdata(itr, filter)
 		}
 		dataValueBytes := itr.Value()
-		dataKey := decodeDatakey(dataKeyBytes)
-		expired, err := isExpired(dataKey.nsCollBlk, s.btlPolicy, s.lastCommittedBlock)
+		dataKey, err := decodeDatakey(dataKeyBytes)
+		if err != nil {
+			return nil, err
+		}
+		expired, err := isExpired(dataKey.nsCollBlk, s.btlPolicy, lastCommittedBlock)
 		if err != nil {
 			return nil, err
 		}
@@ -619,9 +622,16 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	return blockPvtdata, nil
 }
 
+// TODO: FAB-16297 -- Remove init() as it is no longer needed. The private data feature
+// became stable from v1.2 onwards. To allow the initiation of pvtdata store with non-zero
+// block height (mainly during a rolling upgrade from an existing v1.1 network to v1.2),
+// we introduced pvtdata init() function which would take the height of block store and
+// set it as a height of pvtdataStore. From v2.0 onwards, it is no longer needed as we do
+// not support a rolling upgrade from v1.1 to v2.0
+
 // InitLastCommittedBlock implements the function in the interface `Store`
 func (s *store) InitLastCommittedBlock(blockNum uint64) error {
-	if !(s.isEmpty && !s.batchPending) {
+	if !s.isEmpty {
 		return &ErrIllegalCall{"The private data store is not empty. InitLastCommittedBlock() function call is not allowed"}
 	}
 	batch := leveldbhelper.NewUpdateBatch()
@@ -661,7 +671,7 @@ func (s *store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 		missingDataKey := decodeMissingDataKey(missingDataKeyBytes)
 
 		if isMaxBlockLimitReached && (missingDataKey.blkNum != lastProcessedBlock) {
-			// esnures that exactly maxBlock number
+			// ensures that exactly maxBlock number
 			// of blocks' entries are processed
 			break
 		}
@@ -712,6 +722,7 @@ func (s *store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 	return missingPvtDataInfo, nil
 }
 
+// ProcessCollsEligibilityEnabled implements the function in the interface `Store`
 func (s *store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error {
 	key := encodeCollElgKey(committingBlk)
 	m := newCollElgInfo(nsCollMap)
@@ -729,7 +740,7 @@ func (s *store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap m
 }
 
 func (s *store) performPurgeIfScheduled(latestCommittedBlk uint64) {
-	if latestCommittedBlk%ledgerconfig.GetPvtdataStorePurgeInterval() != 0 {
+	if latestCommittedBlk%s.purgeInterval != 0 {
 		return
 	}
 	go func() {
@@ -777,7 +788,10 @@ func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 	for itr.Next() {
 		expiryKeyBytes := itr.Key()
 		expiryValueBytes := itr.Value()
-		expiryKey := decodeExpiryKey(expiryKeyBytes)
+		expiryKey, err := decodeExpiryKey(expiryKeyBytes)
+		if err != nil {
+			return nil, err
+		}
 		expiryValue, err := decodeExpiryValue(expiryValueBytes)
 		if err != nil {
 			return nil, err
@@ -788,20 +802,18 @@ func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 }
 
 func (s *store) launchCollElgProc() {
-	maxBatchSize := ledgerconfig.GetPvtdataStoreCollElgProcMaxDbBatchSize()
-	batchesInterval := ledgerconfig.GetPvtdataStoreCollElgProcDbBatchesInterval()
 	go func() {
-		s.processCollElgEvents(maxBatchSize, batchesInterval) // process collection eligibility events when store is opened - in case there is an unprocessed events from previous run
+		s.processCollElgEvents() // process collection eligibility events when store is opened - in case there is an unprocessed events from previous run
 		for {
 			logger.Debugf("Waiting for collection eligibility event")
 			s.collElgProcSync.waitForNotification()
-			s.processCollElgEvents(maxBatchSize, batchesInterval)
+			s.processCollElgEvents()
 			s.collElgProcSync.done()
 		}
 	}()
 }
 
-func (s *store) processCollElgEvents(maxBatchSize, batchesInterval int) {
+func (s *store) processCollElgEvents() {
 	logger.Debugf("Starting to process collection eligibility events")
 	s.purgerLock.Lock()
 	defer s.purgerLock.Unlock()
@@ -837,10 +849,10 @@ func (s *store) processCollElgEvents(maxBatchSize, batchesInterval int) {
 					copy(copyVal, originalVal)
 					batch.Put(encodeMissingDataKey(modifiedKey), copyVal)
 					collEntriesConverted++
-					if batch.Len() > maxBatchSize {
+					if batch.Len() > s.maxBatchSize {
 						s.db.WriteBatch(batch, true)
 						batch = leveldbhelper.NewUpdateBatch()
-						sleepTime := time.Duration(batchesInterval)
+						sleepTime := time.Duration(s.batchesInterval)
 						logger.Infof("Going to sleep for %d milliseconds between batches. Entries for [ns=%s, coll=%s] converted so far = %d",
 							sleepTime, ns, coll, collEntriesConverted)
 						s.purgerLock.Unlock()
@@ -858,7 +870,7 @@ func (s *store) processCollElgEvents(maxBatchSize, batchesInterval int) {
 	} // event loop
 
 	s.db.WriteBatch(batch, true)
-	logger.Debugf("Converted [%d] inelligible mising data entries to elligible", totalEntriesConverted)
+	logger.Debugf("Converted [%d] ineligible missing data entries to eligible", totalEntriesConverted)
 }
 
 // LastCommittedBlockHeight implements the function in the interface `Store`
@@ -866,12 +878,7 @@ func (s *store) LastCommittedBlockHeight() (uint64, error) {
 	if s.isEmpty {
 		return 0, nil
 	}
-	return s.lastCommittedBlock + 1, nil
-}
-
-// HasPendingBatch implements the function in the interface `Store`
-func (s *store) HasPendingBatch() (bool, error) {
-	return s.batchPending, nil
+	return atomic.LoadUint64(&s.lastCommittedBlock) + 1, nil
 }
 
 // IsEmpty implements the function in the interface `Store`
@@ -888,9 +895,12 @@ func (s *store) nextBlockNum() uint64 {
 	if s.isEmpty {
 		return 0
 	}
-	return s.lastCommittedBlock + 1
+	return atomic.LoadUint64(&s.lastCommittedBlock) + 1
 }
 
+// TODO: FAB-16298 -- the concept of pendingBatch is no longer valid
+// for pvtdataStore. We can remove it v2.1. We retain the concept in
+// v2.0 to allow rolling upgrade from v142 to v2.0
 func (s *store) hasPendingCommit() (bool, error) {
 	var v []byte
 	var err error

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,12 +25,16 @@ func TestEndToEnd(t *testing.T) {
 	RunSpecs(t, "EndToEnd Suite")
 }
 
-var components *nwo.Components
+var (
+	buildServer *nwo.BuildServer
+	components  *nwo.Components
+)
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	components = &nwo.Components{}
-	components.Build()
+	buildServer = nwo.NewBuildServer()
+	buildServer.Serve()
 
+	components = buildServer.Components()
 	payload, err := json.Marshal(components)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -41,11 +46,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = SynchronizedAfterSuite(func() {
 }, func() {
-	components.Cleanup()
+	buildServer.Shutdown()
 })
 
-func BasePort() int {
-	return 30000 + 1000*GinkgoParallelNode()
+func StartPort() int {
+	return integration.E2EBasePort.StartPortForNode()
 }
 
 type DatagramReader struct {
@@ -79,6 +84,10 @@ func (dr *DatagramReader) Buffer() *gbytes.Buffer {
 
 func (dr *DatagramReader) Address() string {
 	return dr.sock.LocalAddr().String()
+}
+
+func (dr *DatagramReader) String() string {
+	return string(dr.buffer.Contents())
 }
 
 func (dr *DatagramReader) Start() {

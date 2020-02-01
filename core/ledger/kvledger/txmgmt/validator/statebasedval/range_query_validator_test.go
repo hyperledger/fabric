@@ -19,11 +19,11 @@ package statebasedval
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,17 +37,17 @@ func TestRangeQueryBoundaryConditions(t *testing.T) {
 
 	testcase1 := "NoResults"
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key7", EndKey: "key10", ItrExhausted: true}
-	rqi1.SetRawReads([]*kvrwset.KVRead{})
+	rwsetutil.SetRawReads(rqi1, []*kvrwset.KVRead{})
 	testRangeQuery(t, testcase1, batch, version.NewHeight(1, 4), "ns1", rqi1, true)
 
 	testcase2 := "NoResultsDuringValidation"
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "key7", EndKey: "key10", ItrExhausted: true}
-	rqi2.SetRawReads([]*kvrwset.KVRead{rwsetutil.NewKVRead("key8", version.NewHeight(1, 8))})
+	rwsetutil.SetRawReads(rqi2, []*kvrwset.KVRead{rwsetutil.NewKVRead("key8", version.NewHeight(1, 8))})
 	testRangeQuery(t, testcase2, batch, version.NewHeight(1, 4), "ns1", rqi2, false)
 
 	testcase3 := "OneExtraTailingResultsDuringValidation"
 	rqi3 := &kvrwset.RangeQueryInfo{StartKey: "key1", EndKey: "key4", ItrExhausted: true}
-	rqi3.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi3, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key1", version.NewHeight(1, 0)),
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 	})
@@ -55,7 +55,7 @@ func TestRangeQueryBoundaryConditions(t *testing.T) {
 
 	testcase4 := "TwoExtraTailingResultsDuringValidation"
 	rqi4 := &kvrwset.RangeQueryInfo{StartKey: "key1", EndKey: "key5", ItrExhausted: true}
-	rqi4.SetRawReads([]*kvrwset.KVRead{
+	rwsetutil.SetRawReads(rqi4, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key1", version.NewHeight(1, 0)),
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 	})

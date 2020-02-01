@@ -31,6 +31,7 @@ type DB interface {
 	ClearCachedVersions()
 	GetChaincodeEventListener() cceventmgmt.ChaincodeLifecycleEventListener
 	GetPrivateData(namespace, collection, key string) (*statedb.VersionedValue, error)
+	GetPrivateDataHash(namespace, collection, key string) (*statedb.VersionedValue, error)
 	GetValueHash(namespace, collection string, keyHash []byte) (*statedb.VersionedValue, error)
 	GetKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, error)
 	GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([]*statedb.VersionedValue, error)
@@ -53,6 +54,14 @@ type HashedCompositeKey struct {
 	Namespace      string
 	CollectionName string
 	KeyHash        string
+}
+
+// PvtKVWrite encloses Key, IsDelete, Value, and Version components
+type PvtKVWrite struct {
+	Key      string
+	IsDelete bool
+	Value    []byte
+	Version  *version.Height
 }
 
 // UpdateBatch encapsulates the updates to Public, Private, and Hashed data.
@@ -148,6 +157,18 @@ func (nsb nsBatch) GetCollectionNames() []string {
 	return nsb.GetUpdatedNamespaces()
 }
 
+func (nsb nsBatch) getCollectionUpdates(collName string) map[string]*statedb.VersionedValue {
+	return nsb.GetUpdates(collName)
+}
+
+func (b UpdateMap) getUpdatedNamespaces() []string {
+	namespaces := []string{}
+	for ns := range b {
+		namespaces = append(namespaces, ns)
+	}
+	return namespaces
+}
+
 func (b UpdateMap) getOrCreateNsBatch(ns string) nsBatch {
 	batch, ok := b[ns]
 	if !ok {
@@ -191,9 +212,12 @@ func (h HashedUpdateBatch) ToCompositeKeyMap() map[HashedCompositeKey]*statedb.V
 	return m
 }
 
+// PvtdataCompositeKeyMap is a map of PvtdataCompositeKey to VersionedValue
+type PvtdataCompositeKeyMap map[PvtdataCompositeKey]*statedb.VersionedValue
+
 // ToCompositeKeyMap rearranges the update batch data in the form of a single map
-func (p PvtUpdateBatch) ToCompositeKeyMap() map[PvtdataCompositeKey]*statedb.VersionedValue {
-	m := make(map[PvtdataCompositeKey]*statedb.VersionedValue)
+func (p PvtUpdateBatch) ToCompositeKeyMap() PvtdataCompositeKeyMap {
+	m := make(PvtdataCompositeKeyMap)
 	for ns, nsBatch := range p.UpdateMap {
 		for _, coll := range nsBatch.GetCollectionNames() {
 			for key, vv := range nsBatch.GetUpdates(coll) {

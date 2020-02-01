@@ -19,13 +19,13 @@ package ccprovider
 import (
 	"bytes"
 	"fmt"
+	"hash"
 	"io/ioutil"
 	"os"
 
 	"github.com/golang/protobuf/proto"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //----- CDSData ------
@@ -57,20 +57,21 @@ func (data *CDSData) Equals(other *CDSData) bool {
 	return other != nil && bytes.Equal(data.CodeHash, other.CodeHash) && bytes.Equal(data.MetaDataHash, other.MetaDataHash)
 }
 
+// GetHasher interface defines a subset of bccsp which contains GetHash function.
+type GetHasher interface {
+	GetHash(opts bccsp.HashOpts) (h hash.Hash, err error)
+}
+
 //--------- CDSPackage ------------
 
 //CDSPackage encapsulates ChaincodeDeploymentSpec.
 type CDSPackage struct {
-	buf     []byte
-	depSpec *pb.ChaincodeDeploymentSpec
-	data    *CDSData
-	datab   []byte
-	id      []byte
-}
-
-// resets data
-func (ccpack *CDSPackage) reset() {
-	*ccpack = CDSPackage{}
+	buf       []byte
+	depSpec   *pb.ChaincodeDeploymentSpec
+	data      *CDSData
+	datab     []byte
+	id        []byte
+	GetHasher GetHasher
 }
 
 // GetId gets the fingerprint of the chaincode based on package computation
@@ -131,12 +132,9 @@ func (ccpack *CDSPackage) getCDSData(cds *pb.ChaincodeDeploymentSpec) ([]byte, [
 		return nil, nil, nil, err
 	}
 
-	if err = factory.InitFactories(nil); err != nil {
-		return nil, nil, nil, fmt.Errorf("Internal error, BCCSP could not be initialized : %s", err)
-	}
-
 	//compute hashes now
-	hash, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
+	// hash, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
+	hash, err := ccpack.GetHasher.GetHash(&bccsp.SHAOpts{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -211,8 +209,6 @@ func (ccpack *CDSPackage) ValidateCC(ccdata *ChaincodeData) error {
 
 //InitFromBuffer sets the buffer if valid and returns ChaincodeData
 func (ccpack *CDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
-	//incase ccpack is reused
-	ccpack.reset()
 
 	depSpec := &pb.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(buf, depSpec)
@@ -235,11 +231,9 @@ func (ccpack *CDSPackage) InitFromBuffer(buf []byte) (*ChaincodeData, error) {
 }
 
 //InitFromFS returns the chaincode and its package from the file system
-func (ccpack *CDSPackage) InitFromPath(ccname string, ccversion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
-	//incase ccpack is reused
-	ccpack.reset()
+func (ccpack *CDSPackage) InitFromPath(ccNameVersion string, path string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
 
-	buf, err := GetChaincodePackageFromPath(ccname, ccversion, path)
+	buf, err := GetChaincodePackageFromPath(ccNameVersion, path)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -257,8 +251,8 @@ func (ccpack *CDSPackage) InitFromPath(ccname string, ccversion string, path str
 }
 
 //InitFromFS returns the chaincode and its package from the file system
-func (ccpack *CDSPackage) InitFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
-	return ccpack.InitFromPath(ccname, ccversion, chaincodeInstallPath)
+func (ccpack *CDSPackage) InitFromFS(ccNameVersion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+	return ccpack.InitFromPath(ccNameVersion, chaincodeInstallPath)
 }
 
 //PutChaincodeToFS - serializes chaincode to a package on the file system

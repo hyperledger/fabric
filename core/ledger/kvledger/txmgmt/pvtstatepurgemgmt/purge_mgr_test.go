@@ -18,22 +18,32 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	levelDBtestEnvName = "levelDB_TestEnv"
+	couchDBtestEnvName = "couchDB_TestEnv"
+)
+
+// Tests will be run against each environment in this array
+// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
+var testEnvs = map[string]privacyenabledstate.TestEnv{
+	levelDBtestEnvName: &privacyenabledstate.LevelDBCommonStorageTestEnv{},
+	couchDBtestEnvName: &privacyenabledstate.CouchDBCommonStorageTestEnv{},
+}
+
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("pvtstatepurgemgmt,privacyenabledstate=debug")
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/pvtstatepurgemgmt")
-	os.Exit(m.Run())
+	exitCode := m.Run()
+	for _, testEnv := range testEnvs {
+		testEnv.StopExternalResource()
+	}
+	os.Exit(exitCode)
 }
 
 func TestPurgeMgr(t *testing.T) {
-	dbEnvs := []privacyenabledstate.TestEnv{
-		&privacyenabledstate.LevelDBCommonStorageTestEnv{},
-		&privacyenabledstate.CouchDBCommonStorageTestEnv{},
-	}
-	for _, dbEnv := range dbEnvs {
+	for _, dbEnv := range testEnvs {
 		t.Run(dbEnv.GetName(), func(t *testing.T) { testPurgeMgr(t, dbEnv) })
 	}
 }
@@ -100,8 +110,61 @@ func testPurgeMgr(t *testing.T, dbEnv privacyenabledstate.TestEnv) {
 	testHelper.checkPvtdataDoesNotExist("ns1", "coll4", "pvtkey4")
 }
 
+func TestPurgeMgrForCommittingPvtDataOfOldBlocks(t *testing.T) {
+	for _, dbEnv := range testEnvs {
+		t.Run(dbEnv.GetName(), func(t *testing.T) { testPurgeMgrForCommittingPvtDataOfOldBlocks(t, dbEnv) })
+	}
+}
+
+func testPurgeMgrForCommittingPvtDataOfOldBlocks(t *testing.T, dbEnv privacyenabledstate.TestEnv) {
+	ledgerid := "testledger-purge-mgr-pvtdata-oldblocks"
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns1", "coll1"}: 1,
+		},
+	)
+
+	testHelper := &testHelper{}
+	testHelper.init(t, ledgerid, btlPolicy, dbEnv)
+	defer testHelper.cleanup()
+
+	// committing block 1
+	block1Updates := privacyenabledstate.NewUpdateBatch()
+	// pvt data pvtkey1 is missing but the pvtkey2 is present.
+	// pvtkey1 and pvtkey2 both would get expired and purged while committing block 3
+	putHashUpdates(block1Updates, "ns1", "coll1", "pvtkey1", []byte("pvtvalue1-1"), version.NewHeight(1, 1))
+	putPvtAndHashUpdates(t, block1Updates, "ns1", "coll1", "pvtkey2", []byte("pvtvalue1-2"), version.NewHeight(1, 1))
+	testHelper.commitUpdatesForTesting(1, block1Updates)
+
+	// pvtkey1 should not exist but pvtkey2 should exist
+	testHelper.checkOnlyPvtKeyDoesNotExist("ns1", "coll1", "pvtkey1")
+	testHelper.checkPvtdataExists("ns1", "coll1", "pvtkey2", []byte("pvtvalue1-2"))
+
+	// committing block 2
+	block2Updates := privacyenabledstate.NewUpdateBatch()
+	testHelper.commitUpdatesForTesting(2, block2Updates)
+
+	// Commit pvtkey1 via commit of missing data and this should be added to toPurge list as it
+	// should be removed while committing block 3
+	block1PvtData := privacyenabledstate.NewUpdateBatch()
+	putPvtUpdates(block1PvtData, "ns1", "coll1", "pvtkey1", []byte("pvtvalue1-1"), version.NewHeight(1, 1))
+	testHelper.commitPvtDataOfOldBlocksForTesting(block1PvtData)
+
+	// both pvtkey1 and pvtkey1 should exist
+	testHelper.checkPvtdataExists("ns1", "coll1", "pvtkey1", []byte("pvtvalue1-1"))
+	testHelper.checkPvtdataExists("ns1", "coll1", "pvtkey2", []byte("pvtvalue1-2"))
+
+	// committing block 3
+	block3Updates := privacyenabledstate.NewUpdateBatch()
+	testHelper.commitUpdatesForTesting(3, block3Updates)
+
+	// both pvtkey1 and pvtkey1 should not exist
+	testHelper.checkPvtdataDoesNotExist("ns1", "coll1", "pvtkey1")
+	testHelper.checkPvtdataDoesNotExist("ns1", "coll1", "pvtkey2")
+}
+
 func TestKeyUpdateBeforeExpiryBlock(t *testing.T) {
-	dbEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	dbEnv := testEnvs[levelDBtestEnvName]
 	ledgerid := "testledger-perge-mgr"
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
@@ -141,7 +204,7 @@ func TestKeyUpdateBeforeExpiryBlock(t *testing.T) {
 }
 
 func TestOnlyHashUpdateInExpiryBlock(t *testing.T) {
-	dbEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	dbEnv := testEnvs[levelDBtestEnvName]
 	ledgerid := "testledger-perge-mgr"
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
@@ -188,7 +251,7 @@ func TestOnlyHashUpdateInExpiryBlock(t *testing.T) {
 }
 
 func TestOnlyHashDeleteBeforeExpiryBlock(t *testing.T) {
-	dbEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	dbEnv := testEnvs[levelDBtestEnvName]
 	ledgerid := "testledger-perge-mgr"
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
@@ -251,6 +314,11 @@ func (h *testHelper) commitUpdatesForTesting(blkNum uint64, updates *privacyenab
 	h.purgeMgr.BlockCommitDone()
 }
 
+func (h *testHelper) commitPvtDataOfOldBlocksForTesting(updates *privacyenabledstate.UpdateBatch) {
+	assert.NoError(h.t, h.purgeMgr.UpdateBookkeepingForPvtDataOfOldBlocks(updates.PvtUpdates))
+	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, nil))
+}
+
 func (h *testHelper) checkPvtdataExists(ns, coll, key string, value []byte) {
 	vv, _ := h.fetchPvtdataFronDB(ns, coll, key)
 	vv, hashVersion := h.fetchPvtdataFronDB(ns, coll, key)
@@ -270,6 +338,12 @@ func (h *testHelper) checkOnlyPvtKeyExists(ns, coll, key string, value []byte) {
 	assert.NotNil(h.t, vv)
 	assert.Nil(h.t, hashVersion)
 	assert.Equal(h.t, value, vv.Value)
+}
+
+func (h *testHelper) checkOnlyPvtKeyDoesNotExist(ns, coll, key string) {
+	kv, err := h.db.GetPrivateData(ns, coll, key)
+	assert.Nil(h.t, err)
+	assert.Nil(h.t, kv)
 }
 
 func (h *testHelper) checkOnlyKeyHashExists(ns, coll, key string) {

@@ -9,8 +9,12 @@ solutions.
 .. toctree::
    :maxdepth: 1
 
-   namespace.md
+   contractname.md
+   chaincodenamespace.md
    transactioncontext.md
    transactionhandler.md
+   endorsementpolicies.md
+   connectionprofile.md
+   connectionoptions.md
    wallet.md
    gateway.md

@@ -12,14 +12,15 @@ import (
 	"math/rand"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -28,8 +29,9 @@ import (
 // Its operations are not thread safe.
 type BlockPuller struct {
 	// Configuration
+	MaxPullBlockRetries uint64
 	MaxTotalBufferBytes int
-	Signer              crypto.LocalSigner
+	Signer              identity.SignerSerializer
 	TLSCert             []byte
 	Channel             string
 	FetchTimeout        time.Duration
@@ -37,9 +39,9 @@ type BlockPuller struct {
 	Logger              *flogging.FabricLogger
 	Dialer              Dialer
 	VerifyBlockSequence BlockSequenceVerifier
-	Endpoints           []string
+	Endpoints           []EndpointCriteria
 	// Internal state
-	stream       *impatientStream
+	stream       *ImpatientStream
 	blockBuff    []*common.Block
 	latestSeq    uint64
 	endpoint     string
@@ -63,7 +65,7 @@ func (p *BlockPuller) Clone() *BlockPuller {
 }
 
 // Close makes the BlockPuller close the connection and stream
-// with the remote endpoint.
+// with the remote endpoint, and wipe the internal block buffer.
 func (p *BlockPuller) Close() {
 	if p.cancelStream != nil {
 		p.cancelStream()
@@ -76,27 +78,38 @@ func (p *BlockPuller) Close() {
 	p.conn = nil
 	p.endpoint = ""
 	p.latestSeq = 0
+	p.blockBuff = nil
 }
 
 // PullBlock blocks until a block with the given sequence is fetched
-// from some remote ordering node.
+// from some remote ordering node, or until consecutive failures
+// of fetching the block exceed MaxPullBlockRetries.
 func (p *BlockPuller) PullBlock(seq uint64) *common.Block {
+	retriesLeft := p.MaxPullBlockRetries
 	for {
 		block := p.tryFetchBlock(seq)
 		if block != nil {
 			return block
 		}
+		retriesLeft--
+		if retriesLeft == 0 && p.MaxPullBlockRetries > 0 {
+			p.Logger.Errorf("Failed pulling block [%d]: retry count exhausted(%d)", seq, p.MaxPullBlockRetries)
+			return nil
+		}
+		time.Sleep(p.RetryTimeout)
 	}
 }
 
 // HeightsByEndpoints returns the block heights by endpoints of orderers
-func (p *BlockPuller) HeightsByEndpoints() map[string]uint64 {
+func (p *BlockPuller) HeightsByEndpoints() (map[string]uint64, error) {
+	endpointsInfo := p.probeEndpoints(0)
 	res := make(map[string]uint64)
-	for endpoint, endpointInfo := range p.probeEndpoints(1).byEndpoints() {
+	for endpoint, endpointInfo := range endpointsInfo.byEndpoints() {
 		endpointInfo.conn.Close()
 		res[endpoint] = endpointInfo.lastBlockSeq + 1
 	}
-	return res
+	p.Logger.Info("Returning the heights of OSNs mapped by endpoints", res)
+	return res, endpointsInfo.err
 }
 
 func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
@@ -126,7 +139,7 @@ func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
 		return nil
 	}
 
-	if err := p.VerifyBlockSequence(p.blockBuff); err != nil {
+	if err := p.VerifyBlockSequence(p.blockBuff, p.Channel); err != nil {
 		p.Close()
 		p.Logger.Errorf("Failed verifying received blocks: %v", err)
 		return nil
@@ -176,16 +189,16 @@ func (p *BlockPuller) pullBlocks(seq uint64, reConnected bool) error {
 		totalSize += size
 		p.blockBuff = append(p.blockBuff, block)
 		nextExpectedSequence++
-		p.Logger.Infof("Got block %d of size %dKB from %s", seq, size/1024, p.endpoint)
+		p.Logger.Infof("Got block [%d] of size %d KB from %s", seq, size/1024, p.endpoint)
 	}
 	return nil
 }
 
-func (p *BlockPuller) obtainStream(reConnected bool, env *common.Envelope, seq uint64) (*impatientStream, error) {
-	var stream *impatientStream
+func (p *BlockPuller) obtainStream(reConnected bool, env *common.Envelope, seq uint64) (*ImpatientStream, error) {
+	var stream *ImpatientStream
 	var err error
 	if reConnected {
-		p.Logger.Infof("Sending request for block %d to %s", seq, p.endpoint)
+		p.Logger.Infof("Sending request for block [%d] to %s", seq, p.endpoint)
 		stream, err = p.requestBlocks(p.endpoint, NewImpatientStream(p.conn, p.FetchTimeout), env)
 		if err != nil {
 			return nil, err
@@ -260,41 +273,59 @@ func (p *BlockPuller) probeEndpoints(minRequestedSequence uint64) *endpointInfoB
 	var wg sync.WaitGroup
 	wg.Add(len(p.Endpoints))
 
+	var forbiddenErr uint32
+	var unavailableErr uint32
+
 	for _, endpoint := range p.Endpoints {
-		go func(endpoint string) {
+		go func(endpoint EndpointCriteria) {
 			defer wg.Done()
-			endpointInfo, err := p.probeEndpoint(endpoint, minRequestedSequence)
+			ei, err := p.probeEndpoint(endpoint, minRequestedSequence)
 			if err != nil {
+				p.Logger.Warningf("Received error of type '%v' from %s", err, endpoint)
+				if err == ErrForbidden {
+					atomic.StoreUint32(&forbiddenErr, 1)
+				}
+				if err == ErrServiceUnavailable {
+					atomic.StoreUint32(&unavailableErr, 1)
+				}
 				return
 			}
-			endpointsInfo <- endpointInfo
+			endpointsInfo <- ei
 		}(endpoint)
 	}
 	wg.Wait()
 
 	close(endpointsInfo)
-	return &endpointInfoBucket{
+	eib := &endpointInfoBucket{
 		bucket: endpointsInfo,
 		logger: p.Logger,
 	}
+
+	if unavailableErr == 1 && len(endpointsInfo) == 0 {
+		eib.err = ErrServiceUnavailable
+	}
+	if forbiddenErr == 1 && len(endpointsInfo) == 0 {
+		eib.err = ErrForbidden
+	}
+	return eib
 }
 
 // probeEndpoint returns a gRPC connection and the latest block sequence of an endpoint with the given
 // requires minimum sequence, or error if something goes wrong.
-func (p *BlockPuller) probeEndpoint(endpoint string, minRequestedSequence uint64) (*endpointInfo, error) {
+func (p *BlockPuller) probeEndpoint(endpoint EndpointCriteria, minRequestedSequence uint64) (*endpointInfo, error) {
 	conn, err := p.Dialer.Dial(endpoint)
 	if err != nil {
 		p.Logger.Warningf("Failed connecting to %s: %v", endpoint, err)
 		return nil, err
 	}
 
-	lastBlockSeq, err := p.fetchLastBlockSeq(minRequestedSequence, endpoint, conn)
+	lastBlockSeq, err := p.fetchLastBlockSeq(minRequestedSequence, endpoint.Endpoint, conn)
 	if err != nil {
 		conn.Close()
 		return nil, err
 	}
 
-	return &endpointInfo{conn: conn, lastBlockSeq: lastBlockSeq, endpoint: endpoint}, nil
+	return &endpointInfo{conn: conn, lastBlockSeq: lastBlockSeq, endpoint: endpoint.Endpoint}, nil
 }
 
 // randomEndpoint returns a random endpoint of the given endpointInfo
@@ -330,7 +361,7 @@ func (p *BlockPuller) fetchLastBlockSeq(minRequestedSequence uint64, endpoint st
 
 	block, err := extractBlockFromResponse(resp)
 	if err != nil {
-		p.Logger.Errorf("Received a bad block from %s: %v", endpoint, err)
+		p.Logger.Warningf("Received %v from %s: %v", resp, endpoint, err)
 		return 0, err
 	}
 	stream.CloseSend()
@@ -346,10 +377,10 @@ func (p *BlockPuller) fetchLastBlockSeq(minRequestedSequence uint64, endpoint st
 	return block.Header.Number, nil
 }
 
-// requestBlocks starts requesting blocks from the given endpoint, using the given streamCreator by sending
+// requestBlocks starts requesting blocks from the given endpoint, using the given ImpatientStreamCreator by sending
 // the given envelope.
 // It returns a stream that is used to pull blocks, or error if something goes wrong.
-func (p *BlockPuller) requestBlocks(endpoint string, newStream streamCreator, env *common.Envelope) (*impatientStream, error) {
+func (p *BlockPuller) requestBlocks(endpoint string, newStream ImpatientStreamCreator, env *common.Envelope) (*ImpatientStream, error) {
 	stream, err := newStream()
 	if err != nil {
 		p.Logger.Warningf("Failed establishing deliver stream with %s", endpoint)
@@ -371,6 +402,9 @@ func extractBlockFromResponse(resp *orderer.DeliverResponse) (*common.Block, err
 		if block == nil {
 			return nil, errors.New("block is nil")
 		}
+		if block.Data == nil {
+			return nil, errors.New("block data is nil")
+		}
 		if block.Header == nil {
 			return nil, errors.New("block header is nil")
 		}
@@ -378,13 +412,21 @@ func extractBlockFromResponse(resp *orderer.DeliverResponse) (*common.Block, err
 			return nil, errors.New("block metadata is empty")
 		}
 		return block, nil
+	case *orderer.DeliverResponse_Status:
+		if t.Status == common.Status_FORBIDDEN {
+			return nil, ErrForbidden
+		}
+		if t.Status == common.Status_SERVICE_UNAVAILABLE {
+			return nil, ErrServiceUnavailable
+		}
+		return nil, errors.Errorf("faulty node, received: %v", resp)
 	default:
 		return nil, errors.Errorf("response is of type %v, but expected a block", reflect.TypeOf(resp.Type))
 	}
 }
 
 func (p *BlockPuller) seekLastEnvelope() (*common.Envelope, error) {
-	return utils.CreateSignedEnvelopeWithTLSBinding(
+	return protoutil.CreateSignedEnvelopeWithTLSBinding(
 		common.HeaderType_DELIVER_SEEK_INFO,
 		p.Channel,
 		p.Signer,
@@ -396,7 +438,7 @@ func (p *BlockPuller) seekLastEnvelope() (*common.Envelope, error) {
 }
 
 func (p *BlockPuller) seekNextEnvelope(startSeq uint64) (*common.Envelope, error) {
-	return utils.CreateSignedEnvelopeWithTLSBinding(
+	return protoutil.CreateSignedEnvelopeWithTLSBinding(
 		common.HeaderType_DELIVER_SEEK_INFO,
 		p.Channel,
 		p.Signer,
@@ -409,22 +451,24 @@ func (p *BlockPuller) seekNextEnvelope(startSeq uint64) (*common.Envelope, error
 
 func last() *orderer.SeekInfo {
 	return &orderer.SeekInfo{
-		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}}},
-		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+		Start:         &orderer.SeekPosition{Type: &orderer.SeekPosition_Newest{Newest: &orderer.SeekNewest{}}},
+		Stop:          &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior:      orderer.SeekInfo_BLOCK_UNTIL_READY,
+		ErrorResponse: orderer.SeekInfo_BEST_EFFORT,
 	}
 }
 
 func nextSeekInfo(startSeq uint64) *orderer.SeekInfo {
 	return &orderer.SeekInfo{
-		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: startSeq}}},
-		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+		Start:         &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: startSeq}}},
+		Stop:          &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior:      orderer.SeekInfo_BLOCK_UNTIL_READY,
+		ErrorResponse: orderer.SeekInfo_BEST_EFFORT,
 	}
 }
 
 func blockSize(block *common.Block) int {
-	return len(utils.MarshalOrPanic(block))
+	return len(protoutil.MarshalOrPanic(block))
 }
 
 type endpointInfo struct {
@@ -436,6 +480,7 @@ type endpointInfo struct {
 type endpointInfoBucket struct {
 	bucket <-chan *endpointInfo
 	logger *flogging.FabricLogger
+	err    error
 }
 
 func (eib endpointInfoBucket) byEndpoints() map[string]*endpointInfo {
@@ -451,22 +496,23 @@ func (eib endpointInfoBucket) byEndpoints() map[string]*endpointInfo {
 	return infoByEndpoints
 }
 
-type streamCreator func() (*impatientStream, error)
+// ImpatientStreamCreator creates an ImpatientStream
+type ImpatientStreamCreator func() (*ImpatientStream, error)
 
-// impatientStream aborts the stream if it waits for too long for a message.
-type impatientStream struct {
+// ImpatientStream aborts the stream if it waits for too long for a message.
+type ImpatientStream struct {
 	waitTimeout time.Duration
 	orderer.AtomicBroadcast_DeliverClient
 	cancelFunc func()
 }
 
-func (stream *impatientStream) abort() {
+func (stream *ImpatientStream) abort() {
 	stream.cancelFunc()
 }
 
 // Recv blocks until a response is received from the stream or the
 // timeout expires.
-func (stream *impatientStream) Recv() (*orderer.DeliverResponse, error) {
+func (stream *ImpatientStream) Recv() (*orderer.DeliverResponse, error) {
 	// Initialize a timeout to cancel the stream when it expires
 	timeout := time.NewTimer(stream.waitTimeout)
 	defer timeout.Stop()
@@ -494,9 +540,9 @@ func (stream *impatientStream) Recv() (*orderer.DeliverResponse, error) {
 	}
 }
 
-// NewImpatientStream returns a streamCreator that creates impatientStreams.
-func NewImpatientStream(conn *grpc.ClientConn, waitTimeout time.Duration) streamCreator {
-	return func() (*impatientStream, error) {
+// NewImpatientStream returns a ImpatientStreamCreator that creates impatientStreams.
+func NewImpatientStream(conn *grpc.ClientConn, waitTimeout time.Duration) ImpatientStreamCreator {
+	return func() (*ImpatientStream, error) {
 		abc := orderer.NewAtomicBroadcastClient(conn)
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -507,7 +553,7 @@ func NewImpatientStream(conn *grpc.ClientConn, waitTimeout time.Duration) stream
 		}
 
 		once := &sync.Once{}
-		return &impatientStream{
+		return &ImpatientStream{
 			waitTimeout: waitTimeout,
 			// The stream might be canceled while Close() is being called, but also
 			// while a timeout expires, so ensure it's only called once.

@@ -8,11 +8,11 @@ package chaincode
 
 import (
 	"github.com/golang/protobuf/proto"
+	common2 "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policies/inquire"
-	common2 "github.com/hyperledger/fabric/protos/common"
 )
 
 var logger = flogging.MustGetLogger("discovery.DiscoverySupport")
@@ -35,7 +35,7 @@ func NewDiscoverySupport(ci MetadataRetriever) *DiscoverySupport {
 	return s
 }
 
-func (s *DiscoverySupport) PolicyByChaincode(channel string, cc string) policies.InquireablePolicy {
+func (s *DiscoverySupport) PoliciesByChaincode(channel string, cc string, _ ...string) []policies.InquireablePolicy {
 	chaincodeData := s.ci.Metadata(channel, cc, false)
 	if chaincodeData == nil {
 		logger.Info("Chaincode", cc, "wasn't found")
@@ -50,5 +50,5 @@ func (s *DiscoverySupport) PolicyByChaincode(channel string, cc string) policies
 		logger.Warningf("Invalid policy, either Identities(%v) or Rule(%v) are empty:", pol.Identities, pol.Rule)
 		return nil
 	}
-	return inquire.NewInquireableSignaturePolicy(pol)
+	return []policies.InquireablePolicy{inquire.NewInquireableSignaturePolicy(pol)}
 }

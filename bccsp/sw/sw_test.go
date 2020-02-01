@@ -68,7 +68,7 @@ func TestKeyDerivInvalidInputs(t *testing.T) {
 		Value:   nil,
 		Err:     nil,
 	}
-	csp.(*CSP).keyDerivers = keyDerivers
+	csp.(*CSP).KeyDerivers = keyDerivers
 	_, err = csp.KeyDeriv(&mocks.MockKey{}, &mocks.KeyDerivOpts{EphemeralValue: false})
 	assert.Error(t, err, "KeyDerivation of a non-ephemeral key must fail. KeyStore is programmed to fail.")
 	assert.Contains(t, err.Error(), "cannot store key")

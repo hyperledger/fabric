@@ -9,10 +9,10 @@ package mocks
 import (
 	"testing"
 
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -40,7 +40,7 @@ func TestGossipMock(t *testing.T) {
 		g.Peers()
 	})
 	g.On("PeersOfChannel", mock.Anything).Return([]discovery.NetworkMember{})
-	assert.Empty(t, g.PeersOfChannel(common.ChainID("A")))
+	assert.Empty(t, g.PeersOfChannel(common.ChannelID("A")))
 
 	assert.Panics(t, func() {
 		g.UpdateMetadata([]byte{})
@@ -49,8 +49,8 @@ func TestGossipMock(t *testing.T) {
 		g.Gossip(nil)
 	})
 	assert.NotPanics(t, func() {
-		g.UpdateLedgerHeight(0, common.ChainID("A"))
+		g.UpdateLedgerHeight(0, common.ChannelID("A"))
 		g.Stop()
-		g.JoinChan(nil, common.ChainID("A"))
+		g.JoinChan(nil, common.ChannelID("A"))
 	})
 }

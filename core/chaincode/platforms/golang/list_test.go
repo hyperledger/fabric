@@ -1,26 +1,127 @@
 /*
-Copyright 2017 - Greg Haskins <gregory.haskins@gmail.com>
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package golang
 
-import "testing"
+import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
 
-func Test_listDeps(t *testing.T) {
-	_, err := listDeps(nil, "github.com/hyperledger/fabric/peer")
-	if err != nil {
-		t.Errorf("list failed: %s", err)
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func Test_gopathDependencyPackageInfo(t *testing.T) {
+	t.Run("TestPeer", func(t *testing.T) {
+		deps, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/cmd/peer")
+		assert.NoError(t, err, "failed to get dependencyPackageInfo")
+
+		var found bool
+		for _, pi := range deps {
+			if pi.ImportPath == "github.com/hyperledger/fabric/cmd/peer" {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "expected to find the peer package")
+	})
+
+	t.Run("TestIncomplete", func(t *testing.T) {
+		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/BadImport")
+		assert.EqualError(t, err, "failed to calculate dependencies: incomplete package: bogus/package")
+	})
+
+	t.Run("TestFromGoroot", func(t *testing.T) {
+		deps, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "os")
+		assert.NoError(t, err)
+		assert.Empty(t, deps)
+	})
+
+	t.Run("TestFailure", func(t *testing.T) {
+		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "./doesnotexist")
+		assert.EqualError(t, err, "listing deps for pacakge ./doesnotexist failed: exit status 1")
+	})
+}
+
+func TestPackageInfoFiles(t *testing.T) {
+	packageInfo := &PackageInfo{
+		GoFiles:        []string{"file1.go", "file2.go"},
+		CFiles:         []string{"file1.c", "file2.c"},
+		CgoFiles:       []string{"file_cgo1.go", "file_cgo2.go"},
+		HFiles:         []string{"file1.h", "file2.h"},
+		SFiles:         []string{"file1.s", "file2.s"},
+		IgnoredGoFiles: []string{"file1_ignored.go", "file2_ignored.go"},
 	}
+	expected := []string{
+		"file1.go", "file2.go",
+		"file1.c", "file2.c",
+		"file_cgo1.go", "file_cgo2.go",
+		"file1.h", "file2.h",
+		"file1.s", "file2.s",
+		"file1_ignored.go", "file2_ignored.go",
+	}
+	assert.Equal(t, expected, packageInfo.Files())
+}
+
+func Test_listModuleInfo(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err, "failed to get working directory")
+	defer func() {
+		err := os.Chdir(cwd)
+		require.NoError(t, err)
+	}()
+
+	err = os.Chdir("testdata/ccmodule")
+	require.NoError(t, err, "failed to change to module directory")
+
+	moduleDir, err := os.Getwd()
+	require.NoError(t, err, "failed to get module working directory")
+
+	mi, err := listModuleInfo("GOPROXY=https://proxy.golang.org")
+	assert.NoError(t, err, "failed to get module info")
+
+	expected := &ModuleInfo{
+		ModulePath: "ccmodule",
+		ImportPath: "ccmodule",
+		Dir:        moduleDir,
+		GoMod:      filepath.Join(moduleDir, "go.mod"),
+	}
+	assert.Equal(t, expected, mi)
+
+	err = os.Chdir("nested")
+	require.NoError(t, err, "failed to change to module directory")
+
+	mi, err = listModuleInfo("GOPROXY=https://proxy.golang.org")
+	assert.NoError(t, err, "failed to get module info")
+
+	expected = &ModuleInfo{
+		ModulePath: "ccmodule",
+		ImportPath: "ccmodule/nested",
+		Dir:        moduleDir,
+		GoMod:      filepath.Join(moduleDir, "go.mod"),
+	}
+	assert.Equal(t, expected, mi)
+}
+
+func Test_listModuleInfoFailure(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "module")
+	require.NoError(t, err, "failed to create temporary directory")
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err, "failed to get working directory")
+	defer func() {
+		err := os.Chdir(cwd)
+		require.NoError(t, err)
+	}()
+	err = os.Chdir(tempDir)
+	require.NoError(t, err, "failed to change to temporary directory")
+
+	_, err = listModuleInfo()
+	assert.EqualError(t, err, "'go list' failed with: go: cannot find main module; see 'go help modules': exit status 1")
 }

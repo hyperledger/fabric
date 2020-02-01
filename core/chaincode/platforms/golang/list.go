@@ -1,84 +1,145 @@
 /*
-Copyright 2017 - Greg Haskins <gregory.haskins@gmail.com>
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package golang
 
 import (
-	"bytes"
-	"errors"
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
-//runProgram non-nil Env, timeout (typically secs or millisecs), program name and args
-func runProgram(env Env, timeout time.Duration, pgm string, args ...string) ([]byte, error) {
-	if env == nil {
-		return nil, fmt.Errorf("<%s, %v>: nil env provided", pgm, args)
-	}
-	var stdOut bytes.Buffer
-	var stdErr bytes.Buffer
+const listTimeout = 3 * time.Minute
 
-	cmd := exec.Command(pgm, args...)
-	cmd.Env = flattenEnv(env)
-	cmd.Stdout = &stdOut
-	cmd.Stderr = &stdErr
-	err := cmd.Start()
-
-	// Create a go routine that will wait for the command to finish
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Wait()
-	}()
-
-	select {
-	case <-time.After(timeout):
-		if err = cmd.Process.Kill(); err != nil {
-			return nil, fmt.Errorf("<%s, %v>: failed to kill: %s", pgm, args, err)
-		} else {
-			return nil, errors.New(fmt.Sprintf("<%s, %v>: timeout(%d msecs)", pgm, args, timeout/time.Millisecond))
-		}
-	case err = <-done:
-		if err != nil {
-			return nil, fmt.Errorf("<%s, %v>: failed with error: \"%s\"\n%s", pgm, args, err, string(stdErr.Bytes()))
-		}
-
-		return stdOut.Bytes(), nil
-	}
+// PackageInfo is the subset of data from `go list -deps -json` that's
+// necessary to calculate chaincode package dependencies.
+type PackageInfo struct {
+	ImportPath     string
+	Dir            string
+	GoFiles        []string
+	Goroot         bool
+	CFiles         []string
+	CgoFiles       []string
+	HFiles         []string
+	SFiles         []string
+	IgnoredGoFiles []string
+	Incomplete     bool
 }
 
-// Logic inspired by: https://dave.cheney.net/2014/09/14/go-list-your-swiss-army-knife
-func list(env Env, template, pkg string) ([]string, error) {
-	if env == nil {
-		env = getEnv()
-	}
+func (p PackageInfo) Files() []string {
+	var files []string
+	files = append(files, p.GoFiles...)
+	files = append(files, p.CFiles...)
+	files = append(files, p.CgoFiles...)
+	files = append(files, p.HFiles...)
+	files = append(files, p.SFiles...)
+	files = append(files, p.IgnoredGoFiles...)
+	return files
+}
 
-	lst, err := runProgram(env, 60*time.Second, "go", "list", "-f", template, pkg)
+// gopathDependencyPackageInfo extracts dependency information for
+// specified package.
+func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), listTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "go", "list", "-deps", "-json", pkg)
+	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, wrapExitErr(err, "'go list -deps' failed")
+	}
+	decoder := json.NewDecoder(stdout)
+
+	err = cmd.Start()
 	if err != nil {
 		return nil, err
 	}
 
-	return strings.Split(strings.Trim(string(lst), "\n"), "\n"), nil
+	var list []PackageInfo
+	for {
+		var packageInfo PackageInfo
+		err := decoder.Decode(&packageInfo)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if packageInfo.Incomplete {
+			return nil, fmt.Errorf("failed to calculate dependencies: incomplete package: %s", packageInfo.ImportPath)
+		}
+		if packageInfo.Goroot {
+			continue
+		}
+
+		list = append(list, packageInfo)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return nil, errors.Wrapf(err, "listing deps for pacakge %s failed", pkg)
+	}
+
+	return list, nil
 }
 
-func listDeps(env Env, pkg string) ([]string, error) {
-	return list(env, "{{ join .Deps \"\\n\"}}", pkg)
+func wrapExitErr(err error, message string) error {
+	if ee, ok := err.(*exec.ExitError); ok {
+		return errors.Wrapf(err, message+" with: %s", strings.TrimRight(string(ee.Stderr), "\n\r\t"))
+	}
+	return errors.Wrap(err, message)
 }
 
-func listImports(env Env, pkg string) ([]string, error) {
-	return list(env, "{{ join .Imports \"\\n\"}}", pkg)
+type ModuleInfo struct {
+	Dir        string
+	GoMod      string
+	ImportPath string
+	ModulePath string
+}
+
+// listModuleInfo extracts module information for the curent working directory.
+func listModuleInfo(extraEnv ...string) (*ModuleInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), listTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "go", "list", "-json", ".")
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	cmd.Env = append(cmd.Env, extraEnv...)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, wrapExitErr(err, "'go list' failed")
+	}
+
+	var moduleData struct {
+		ImportPath string
+		Module     struct {
+			Dir   string
+			Path  string
+			GoMod string
+		}
+	}
+
+	if err := json.Unmarshal(output, &moduleData); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal output from 'go list'")
+	}
+
+	return &ModuleInfo{
+		Dir:        moduleData.Module.Dir,
+		GoMod:      moduleData.Module.GoMod,
+		ImportPath: moduleData.ImportPath,
+		ModulePath: moduleData.Module.Path,
+	}, nil
 }

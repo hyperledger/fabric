@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,6 +9,7 @@ package couchdb
 import (
 	"bytes"
 	"encoding/hex"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -15,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
 )
@@ -31,28 +34,49 @@ var chainNameAllowedLength = 50
 var namespaceNameAllowedLength = 50
 var collectionNameAllowedLength = 50
 
-//CreateCouchInstance creates a CouchDB instance
-func CreateCouchInstance(couchDBConnectURL, id, pw string, maxRetries,
-	maxRetriesOnStartup int, connectionTimeout time.Duration, createGlobalChangesDB bool) (*CouchInstance, error) {
-
-	couchConf, err := CreateConnectionDefinition(couchDBConnectURL,
-		id, pw, maxRetries, maxRetriesOnStartup, connectionTimeout, createGlobalChangesDB)
+func CreateCouchInstance(config *Config, metricsProvider metrics.Provider) (*CouchInstance, error) {
+	// make sure the address is valid
+	connectURL := &url.URL{
+		Host:   config.Address,
+		Scheme: "http",
+	}
+	_, err := url.Parse(connectURL.String())
 	if err != nil {
-		logger.Errorf("Error calling CouchDB CreateConnectionDefinition(): %s", err)
-		return nil, err
+		return nil, errors.WithMessagef(
+			err,
+			"failed to parse CouchDB address '%s'",
+			config.Address,
+		)
 	}
 
 	// Create the http client once
 	// Clients and Transports are safe for concurrent use by multiple goroutines
 	// and for efficiency should only be created once and re-used.
-	client := &http.Client{Timeout: couchConf.RequestTimeout}
+	client := &http.Client{Timeout: config.RequestTimeout}
 
-	transport := &http.Transport{Proxy: http.ProxyFromEnvironment}
-	transport.DisableCompression = false
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          2000,
+		MaxIdleConnsPerHost:   2000,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
 	client.Transport = transport
 
 	//Create the CouchDB instance
-	couchInstance := &CouchInstance{conf: *couchConf, client: client}
+	couchInstance := &CouchInstance{
+		conf:   config,
+		client: client,
+		stats:  newStats(metricsProvider),
+	}
 	connectInfo, retVal, verifyErr := couchInstance.VerifyCouchConfig()
 	if verifyErr != nil {
 		return nil, verifyErr
@@ -144,8 +168,10 @@ func CreateSystemDatabasesIfNotExist(couchInstance *CouchInstance) error {
 func constructCouchDBUrl(connectURL *url.URL, dbName string, pathElements ...string) *url.URL {
 	var buffer bytes.Buffer
 	buffer.WriteString(connectURL.String())
-	buffer.WriteString("/")
-	buffer.WriteString(encodePathElement(dbName))
+	if dbName != "" {
+		buffer.WriteString("/")
+		buffer.WriteString(encodePathElement(dbName))
+	}
 	for _, pathElement := range pathElements {
 		buffer.WriteString("/")
 		buffer.WriteString(encodePathElement(pathElement))
@@ -169,8 +195,11 @@ func ConstructMetadataDBName(dbName string) string {
 	return dbName + "_"
 }
 
-// ConstructNamespaceDBName truncates db name to couchdb allowed length to
-// construct the namespaceDBName
+// ConstructNamespaceDBName truncates db name to couchdb allowed length to construct the final namespaceDBName
+// The passed namespace will be in one of the following formats:
+// <chaincode>                 - for namespaces containing regular public data
+// <chaincode>$$p<collection>  - for namespaces containing private data collections
+// <chaincode>$$h<collection>  - for namespaces containing hashes of private data collections
 func ConstructNamespaceDBName(chainName, namespace string) string {
 	// replace upper-case in namespace with a escape sequence '$' and the respective lower-case letter
 	escapedNamespace := escapeUpperCase(namespace)
@@ -181,10 +210,10 @@ func ConstructNamespaceDBName(chainName, namespace string) string {
 	// <first 50 chars (i.e., namespaceNameAllowedLength) chars of namespace> +
 	// (<SHA256 hash of [chainName_namespace]>)
 	//
-	// For namespaceDBName of form 'chainName_namespace$$collection', on length limit violation, the truncated
+	// For namespaceDBName of form 'chainName_namespace$$[hp]collection', on length limit violation, the truncated
 	// namespaceDBName would contain <first 50 chars (i.e., chainNameAllowedLength) of chainName> + "_" +
 	// <first 50 chars (i.e., namespaceNameAllowedLength) of namespace> + "$$" + <first 50 chars
-	// (i.e., collectionNameAllowedLength) of collection> + (<SHA256 hash of [chainName_namespace$$pcollection]>)
+	// (i.e., collectionNameAllowedLength) of [hp]collection> + (<SHA256 hash of [chainName_namespace$$[hp]collection]>)
 
 	if len(namespaceDBName) > maxLength {
 		// Compute the hash of untruncated namespaceDBName that needs to be appended to
@@ -232,12 +261,12 @@ func ConstructNamespaceDBName(chainName, namespace string) string {
 //CouchDB Rules: Only lowercase characters (a-z), digits (0-9), and any of the characters
 //_, $, (, ), +, -, and / are allowed. Must begin with a letter.
 //
-//Restictions have already been applied to the database name from Orderer based on
+//Restrictions have already been applied to the database name from Orderer based on
 //restrictions required by Kafka and couchDB (except a '.' char). The databaseName
 // passed in here is expected to follow `[a-z][a-z0-9.$_-]*` pattern.
 //
 //This validation will simply check whether the database name matches the above pattern and will replace
-// all occurence of '.' by '$'. This will not cause collisions in the transformed named
+// all occurrence of '.' by '$'. This will not cause collisions in the transformed named
 func mapAndValidateDatabaseName(databaseName string) (string, error) {
 	// test Length
 	if len(databaseName) <= 0 {

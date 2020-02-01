@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package endorser
 
 import (
-	"github.com/hyperledger/fabric/core/handlers/endorsement/api/state"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/pkg/errors"
 )
 
@@ -22,7 +22,7 @@ type QueryCreator interface {
 
 // ChannelState defines state operations
 type ChannelState struct {
-	transientstore.Store
+	*transientstore.Store
 	QueryCreator
 }
 
@@ -41,7 +41,7 @@ func (cs *ChannelState) FetchState() (endorsement.State, error) {
 
 // StateContext defines an execution context that interacts with the state
 type StateContext struct {
-	transientstore.Store
+	*transientstore.Store
 	ledger.QueryExecutor
 }
 
@@ -54,7 +54,7 @@ func (sc *StateContext) GetTransientByTXID(txID string) ([]*rwset.TxPvtReadWrite
 	defer scanner.Close()
 	var data []*rwset.TxPvtReadWriteSet
 	for {
-		res, err := scanner.NextWithConfig()
+		res, err := scanner.Next()
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

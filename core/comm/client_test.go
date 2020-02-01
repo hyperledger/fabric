@@ -11,19 +11,24 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
-	testpb "github.com/hyperledger/fabric/core/comm/testdata/grpc"
+	"github.com/hyperledger/fabric/core/comm/testpb"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -47,7 +52,7 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	assert.False(t, client.TLSEnabled())
 	assert.False(t, client.MutualTLSRequired())
 
-	secOpts := &comm.SecureOptions{
+	secOpts := comm.SecureOptions{
 		UseTLS: false,
 	}
 	config.SecOpts = secOpts
@@ -57,7 +62,7 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	assert.False(t, client.TLSEnabled())
 	assert.False(t, client.MutualTLSRequired())
 
-	secOpts = &comm.SecureOptions{
+	secOpts = comm.SecureOptions{
 		UseTLS:            true,
 		ServerRootCAs:     [][]byte{testCerts.caPEM},
 		RequireClientCert: false,
@@ -68,7 +73,7 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	assert.True(t, client.TLSEnabled())
 	assert.False(t, client.MutualTLSRequired())
 
-	secOpts = &comm.SecureOptions{
+	secOpts = comm.SecureOptions{
 		Certificate:       testCerts.certPEM,
 		Key:               testCerts.keyPEM,
 		UseTLS:            true,
@@ -89,7 +94,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 
 	// bad root cert
 	config := comm.ClientConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:        true,
 			ServerRootCAs: [][]byte{[]byte(badPEM)},
 		},
@@ -99,7 +104,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 
 	// missing key
 	missing := "both Key and Certificate are required when using mutual TLS"
-	config.SecOpts = &comm.SecureOptions{
+	config.SecOpts = comm.SecureOptions{
 		Certificate:       []byte("cert"),
 		UseTLS:            true,
 		RequireClientCert: true,
@@ -108,7 +113,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 	assert.Equal(t, missing, err.Error())
 
 	// missing cert
-	config.SecOpts = &comm.SecureOptions{
+	config.SecOpts = comm.SecureOptions{
 		Key:               []byte("key"),
 		UseTLS:            true,
 		RequireClientCert: true,
@@ -118,7 +123,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 
 	// bad key
 	failed := "failed to load client certificate"
-	config.SecOpts = &comm.SecureOptions{
+	config.SecOpts = comm.SecureOptions{
 		Certificate:       testCerts.certPEM,
 		Key:               []byte(badPEM),
 		UseTLS:            true,
@@ -128,7 +133,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), failed)
 
 	// bad cert
-	config.SecOpts = &comm.SecureOptions{
+	config.SecOpts = comm.SecureOptions{
 		Certificate:       []byte(badPEM),
 		Key:               testCerts.keyPEM,
 		UseTLS:            true,
@@ -138,22 +143,14 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), failed)
 }
 
-func TestNewConnection_Timeout(t *testing.T) {
-	t.Parallel()
-	testAddress := "localhost:20040"
-	config := comm.ClientConfig{
-		Timeout: 1 * time.Second,
-	}
-	client, err := comm.NewGRPCClient(config)
-	conn, err := client.NewConnection(testAddress, "")
-	assert.Contains(t, err.Error(), "context deadline exceeded")
-	t.Log(err)
-	assert.Nil(t, conn)
-}
-
 func TestNewConnection(t *testing.T) {
 	t.Parallel()
 	testCerts := loadCerts(t)
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	badAddress := l.Addr().String()
+	defer l.Close()
 
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(testCerts.caPEM)
@@ -162,12 +159,12 @@ func TestNewConnection(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		clientPort int
-		config     comm.ClientConfig
-		serverTLS  *tls.Config
-		success    bool
-		errorMsg   string
+		name          string
+		clientAddress string
+		config        comm.ClientConfig
+		serverTLS     *tls.Config
+		success       bool
+		errorMsg      string
 	}{
 		{
 			name: "client / server same port",
@@ -177,27 +174,27 @@ func TestNewConnection(t *testing.T) {
 			success: true,
 		},
 		{
-			name:       "client / server wrong port",
-			clientPort: 20040,
+			name:          "client / server wrong port",
+			clientAddress: badAddress,
 			config: comm.ClientConfig{
 				Timeout: time.Second,
 			},
 			success:  false,
-			errorMsg: "context deadline exceeded",
+			errorMsg: "(connection refused|context deadline exceeded)",
 		},
 		{
-			name: "client / server wrong port but with asynchronous should succeed",
+			name:          "client / server wrong port but with asynchronous should succeed",
+			clientAddress: badAddress,
 			config: comm.ClientConfig{
 				AsyncConnect: true,
 				Timeout:      testTimeout,
 			},
-			clientPort: 20040,
-			success:    true,
+			success: true,
 		},
 		{
 			name: "client TLS / server no TLS",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:       testCerts.certPEM,
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
@@ -212,7 +209,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client TLS / server TLS match",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
 					Key:           testCerts.keyPEM,
 					UseTLS:        true,
@@ -228,7 +225,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client TLS / server TLS no server roots",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
 					Key:           testCerts.keyPEM,
 					UseTLS:        true,
@@ -245,7 +242,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client TLS / server TLS missing client cert",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:   testCerts.certPEM,
 					Key:           testCerts.keyPEM,
 					UseTLS:        true,
@@ -256,20 +253,23 @@ func TestNewConnection(t *testing.T) {
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
+				MaxVersion:   tls.VersionTLS12, // https://github.com/golang/go/issues/33368
 			},
 			success:  false,
-			errorMsg: "context deadline exceeded",
+			errorMsg: "tls: bad certificate",
 		},
 		{
 			name: "client TLS / server TLS client cert",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					Certificate:       testCerts.certPEM,
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM}},
-				Timeout: testTimeout},
+					ServerRootCAs:     [][]byte{testCerts.caPEM},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
@@ -280,7 +280,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "server TLS pinning success",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 						if bytes.Equal(rawCerts[0], testCerts.serverCert.Certificate[0]) {
 							return nil
@@ -291,8 +291,10 @@ func TestNewConnection(t *testing.T) {
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM}},
-				Timeout: testTimeout},
+					ServerRootCAs:     [][]byte{testCerts.caPEM},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
@@ -303,7 +305,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "server TLS pinning failure",
 			config: comm.ClientConfig{
-				SecOpts: &comm.SecureOptions{
+				SecOpts: comm.SecureOptions{
 					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 						return errors.New("TLS certificate mismatch")
 					},
@@ -311,8 +313,10 @@ func TestNewConnection(t *testing.T) {
 					Key:               testCerts.keyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM}},
-				Timeout: testTimeout},
+					ServerRootCAs:     [][]byte{testCerts.caPEM},
+				},
+				Timeout: testTimeout,
+			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
@@ -344,16 +348,16 @@ func TestNewConnection(t *testing.T) {
 				t.Fatalf("error creating client for test: %v", err)
 			}
 			address := lis.Addr().String()
-			if test.clientPort > 0 {
-				address = fmt.Sprintf("localhost:%d", test.clientPort)
+			if test.clientAddress != "" {
+				address = test.clientAddress
 			}
-			conn, err := client.NewConnection(address, "")
+			conn, err := client.NewConnection(address)
 			if test.success {
 				assert.NoError(t, err)
 				assert.NotNil(t, conn)
 			} else {
 				t.Log(errors.WithStack(err))
-				assert.Contains(t, err.Error(), test.errorMsg)
+				assert.Regexp(t, test.errorMsg, err.Error())
 			}
 		})
 	}
@@ -364,7 +368,7 @@ func TestSetServerRootCAs(t *testing.T) {
 	testCerts := loadCerts(t)
 
 	config := comm.ClientConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:        true,
 			ServerRootCAs: [][]byte{testCerts.caPEM},
 		},
@@ -392,7 +396,7 @@ func TestSetServerRootCAs(t *testing.T) {
 
 	// initial config should work
 	t.Log("running initial good config")
-	conn, err := client.NewConnection(address, "")
+	conn, err := client.NewConnection(address)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 	if conn != nil {
@@ -404,7 +408,7 @@ func TestSetServerRootCAs(t *testing.T) {
 	err = client.SetServerRootCAs([][]byte{})
 	assert.NoError(t, err)
 	// now connection should fail
-	_, err = client.NewConnection(address, "")
+	_, err = client.NewConnection(address)
 	assert.Error(t, err)
 
 	// good root cert
@@ -412,7 +416,7 @@ func TestSetServerRootCAs(t *testing.T) {
 	err = client.SetServerRootCAs([][]byte{[]byte(testCerts.caPEM)})
 	assert.NoError(t, err)
 	// now connection should succeed again
-	conn, err = client.NewConnection(address, "")
+	conn, err = client.NewConnection(address)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 	if conn != nil {
@@ -493,13 +497,13 @@ func TestSetMessageSize(t *testing.T) {
 			if test.maxSendSize > 0 {
 				client.SetMaxSendMsgSize(test.maxSendSize)
 			}
-			conn, err := client.NewConnection(address, "")
+			conn, err := client.NewConnection(address)
 			assert.NoError(t, err)
 			defer conn.Close()
 			// create service client from conn
 			svcClient := testpb.NewEchoServiceClient(conn)
 			callCtx := context.Background()
-			callCtx, cancel := context.WithTimeout(callCtx, timeout)
+			callCtx, cancel := context.WithTimeout(callCtx, testTimeout)
 			defer cancel()
 			//invoke service
 			echo := &testpb.Echo{
@@ -526,8 +530,6 @@ type testCerts struct {
 	caPEM      []byte
 	certPEM    []byte
 	keyPEM     []byte
-	serverKey  []byte
-	serverPEM  []byte
 	clientCert tls.Certificate
 	serverCert tls.Certificate
 }
@@ -557,6 +559,111 @@ func loadCerts(t *testing.T) testCerts {
 		filepath.Join("testdata", "certs", "Org1-server1-cert.pem"),
 		filepath.Join("testdata", "certs", "Org1-server1-key.pem"),
 	)
+	assert.NoError(t, err)
 
 	return certs
+}
+
+func TestServerNameOverride(t *testing.T) {
+	tlsOption := comm.ServerNameOverride("override-name")
+	testConfig := &tls.Config{}
+	tlsOption(testConfig)
+	assert.Equal(t, &tls.Config{
+		ServerName: "override-name",
+	}, testConfig)
+}
+
+func TestCertPoolOverride(t *testing.T) {
+	tlsOption := comm.CertPoolOverride(&x509.CertPool{})
+	testConfig := &tls.Config{}
+	assert.NotEqual(t, &tls.Config{
+		RootCAs: &x509.CertPool{},
+	}, testConfig)
+	tlsOption(testConfig)
+	assert.Equal(t, &tls.Config{
+		RootCAs: &x509.CertPool{},
+	}, testConfig)
+}
+
+func TestDynamicClientTLSLoading(t *testing.T) {
+	t.Parallel()
+	ca1, err := tlsgen.NewCA()
+	assert.NoError(t, err)
+
+	ca2, err := tlsgen.NewCA()
+	assert.NoError(t, err)
+
+	clientKP, err := ca1.NewClientCertKeyPair()
+	assert.NoError(t, err)
+
+	serverKP, err := ca2.NewServerCertKeyPair("127.0.0.1")
+	assert.NoError(t, err)
+
+	client, err := comm.NewGRPCClient(comm.ClientConfig{
+		AsyncConnect: true,
+		Timeout:      time.Second * 1,
+		SecOpts: comm.SecureOptions{
+			UseTLS:        true,
+			ServerRootCAs: [][]byte{ca1.CertBytes()},
+			Certificate:   clientKP.Cert,
+			Key:           clientKP.Key,
+		},
+	})
+	assert.NoError(t, err)
+
+	server, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{
+		Logger: flogging.MustGetLogger("test"),
+		SecOpts: comm.SecureOptions{
+			UseTLS:      true,
+			Key:         serverKP.Key,
+			Certificate: serverKP.Cert,
+		},
+	})
+	assert.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		server.Start()
+	}()
+
+	var dynamicRootCerts atomic.Value
+	dynamicRootCerts.Store(ca1.CertBytes())
+
+	conn, err := client.NewConnection(server.Address(), func(tlsConfig *tls.Config) {
+		tlsConfig.RootCAs = x509.NewCertPool()
+		tlsConfig.RootCAs.AppendCertsFromPEM(dynamicRootCerts.Load().([]byte))
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+
+	waitForConnState := func(state connectivity.State, succeedOrFail string) {
+		deadline := time.Now().Add(time.Second * 30)
+		for conn.GetState() != state {
+			time.Sleep(time.Millisecond * 10)
+			if time.Now().After(deadline) {
+				t.Fatalf("Test timed out, waited for connection to %s", succeedOrFail)
+			}
+		}
+	}
+
+	// Poll the connection state to wait for it to fail
+	waitForConnState(connectivity.TransientFailure, "fail")
+
+	// Update the TLS root CAs with the good one
+	dynamicRootCerts.Store(ca2.CertBytes())
+
+	// Reset exponential back-off to make the test faster
+	conn.ResetConnectBackoff()
+
+	// Poll the connection state to wait for it to succeed
+	waitForConnState(connectivity.Ready, "succeed")
+
+	err = conn.Close()
+	assert.NoError(t, err)
+
+	server.Stop()
+	wg.Wait()
 }

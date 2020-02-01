@@ -15,13 +15,13 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
-	putil "github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -157,7 +157,7 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 		if err != nil {
 			panic(fmt.Sprintf("Could not retrieve header of the last block form file: %s", err))
 		}
-		lastBlockHash := lastBlockHeader.Hash()
+		lastBlockHash := protoutil.BlockHeaderHash(lastBlockHeader)
 		previousBlockHash := lastBlockHeader.PreviousHash
 		bcInfo = &common.BlockchainInfo{
 			Height:            cpInfo.lastBlockNumber + 1,
@@ -260,7 +260,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 	if err != nil {
 		return errors.WithMessage(err, "error serializing block")
 	}
-	blockHash := block.Header.Hash()
+	blockHash := protoutil.BlockHeaderHash(block.Header)
 	//Get the location / offset where each transaction starts in the block and where the block ends
 	txOffsets := info.txOffsets
 	currentOffset := mgr.cpInfo.latestFileChunksize
@@ -408,7 +408,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 		}
 
 		//Update the blockIndexInfo with what was actually stored in file system
-		blockIdxInfo.blockHash = info.blockHeader.Hash()
+		blockIdxInfo.blockHash = protoutil.BlockHeaderHash(info.blockHeader)
 		blockIdxInfo.blockNum = info.blockHeader.Number
 		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
 			locPointer: locPointer{offset: int(blockPlacementInfo.blockStartOffset)}}
@@ -548,7 +548,7 @@ func (mgr *blockfileMgr) fetchTransactionEnvelope(lp *fileLocPointer) (*common.E
 		return nil, err
 	}
 	_, n := proto.DecodeVarint(txEnvelopeBytes)
-	return putil.GetEnvelopeFromBlock(txEnvelopeBytes[n:])
+	return protoutil.GetEnvelopeFromBlock(txEnvelopeBytes[n:])
 }
 
 func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {
@@ -647,20 +647,20 @@ func (i *checkpointInfo) marshal() ([]byte, error) {
 	buffer := proto.NewBuffer([]byte{})
 	var err error
 	if err = buffer.EncodeVarint(uint64(i.latestFileChunkSuffixNum)); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error encoding the latestFileChunkSuffixNum [%d]", i.latestFileChunkSuffixNum)
 	}
 	if err = buffer.EncodeVarint(uint64(i.latestFileChunksize)); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error encoding the latestFileChunksize [%d]", i.latestFileChunksize)
 	}
 	if err = buffer.EncodeVarint(i.lastBlockNumber); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error encoding the lastBlockNumber [%d]", i.lastBlockNumber)
 	}
 	var chainEmptyMarker uint64
 	if i.isChainEmpty {
 		chainEmptyMarker = 1
 	}
 	if err = buffer.EncodeVarint(chainEmptyMarker); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error encoding chainEmptyMarker [%d]", chainEmptyMarker)
 	}
 	return buffer.Bytes(), nil
 }

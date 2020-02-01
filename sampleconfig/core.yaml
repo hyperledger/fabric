@@ -10,10 +10,12 @@
 ###############################################################################
 peer:
 
-    # The Peer id is used for identifying this Peer instance.
+    # The peer id provides a name for this peer instance and is used when
+    # naming docker resources.
     id: jdoe
 
-    # The networkId allows for logical seperation of networks
+    # The networkId allows for logical separation of networks and is used when
+    # naming docker resources.
     networkId: dev
 
     # The Address at local network interface this Peer will listen on.
@@ -41,12 +43,14 @@ peer:
     # This case is useful for docker containers.
     addressAutoDetect: false
 
-    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the
-    # current setting
-    gomaxprocs: -1
-
     # Keepalive settings for peer server and clients
     keepalive:
+        # Interval is the duration after which if the server does not see
+        # any activity from the client it pings the client to see if it's alive
+        interval: 7200s
+        # Timeout is the duration the server waits for a response
+        # from the client after sending a ping before closing the connection
+        timeout: 20s
         # MinInterval is the minimum permitted time between client pings.
         # If clients send pings more frequently, the peer server will
         # disconnect them
@@ -98,6 +102,9 @@ peer:
         # with ordering service and disseminate block across peers in
         # its own organization
         orgLeader: false
+
+        # Interval for membershipTracker polling
+        membershipTrackerInterval: 5s
 
         # Overrides the endpoint that the peer publishes to peers
         # in its organization. For peers in foreign organizations
@@ -190,11 +197,39 @@ peer:
             reconcileBatchSize: 10
             # reconcileSleepInterval determines the time reconciler sleeps from end of an iteration until the beginning
             # of the next reconciliation iteration.
-            reconcileSleepInterval: 5m
+            reconcileSleepInterval: 1m
+            # reconciliationEnabled is a flag that indicates whether private data reconciliation is enable or not.
+            reconciliationEnabled: true
+            # skipPullingInvalidTransactionsDuringCommit is a flag that indicates whether pulling of invalid
+            # transaction's private data from other peers need to be skipped during the commit time and pulled
+            # only through reconciler.
+            skipPullingInvalidTransactionsDuringCommit: false
+
+        # Gossip state transfer related configuration
+        state:
+            # indicates whenever state transfer is enabled or not
+            # default value is true, i.e. state transfer is active
+            # and takes care to sync up missing blocks allowing
+            # lagging peer to catch up to speed with rest network
+            enabled: true
+            # checkInterval interval to check whether peer is lagging behind enough to
+            # request blocks via state transfer from another peer.
+            checkInterval: 10s
+            # responseTimeout amount of time to wait for state transfer response from
+            # other peers
+            responseTimeout: 3s
+            # batchSize the number of blocks to request via state transfer from another peer
+            batchSize: 10
+            # blockBufferSize reflects the size of the re-ordering buffer
+            # which captures blocks and takes care to deliver them in order
+            # down to the ledger layer. The actually buffer size is bounded between
+            # 0 and 2*blockBufferSize, each channel maintains its own buffer
+            blockBufferSize: 100
+            # maxRetries maximum number of re-tries to ask
+            # for single state transfer request
+            maxRetries: 3
 
     # TLS Settings
-    # Note that peer-chaincode connections through chaincodeListenAddress is
-    # not mutual TLS auth. See comments on chaincodeListenAddress for more info
     tls:
         # Require server-side TLS
         enabled:  false
@@ -262,8 +297,6 @@ peer:
             Pin:
             Hash:
             Security:
-            FileKeyStore:
-                KeyStore:
 
     # Path on the file system where peer will find MSP local configurations
     mspConfigPath: msp
@@ -294,6 +327,16 @@ peer:
         # It sets the delivery service maximal delay between consecutive retries
         reConnectBackoffThreshold: 3600s
 
+        # A list of orderer endpoint addresses which should be overridden
+        # when found in channel configurations.
+        addressOverrides:
+        #  - from:
+        #    to:
+        #    caCertsFile:
+        #  - from:
+        #    to:
+        #    caCertsFile:
+
     # Type for the local MSP - by default it's of type bccsp
     localMspType: bccsp
 
@@ -302,16 +345,6 @@ peer:
     profile:
         enabled:     false
         listenAddress: 0.0.0.0:6060
-
-    # The admin service is used for administrative operations such as
-    # control over logger levels, etc.
-    # Only peer administrators can use the service.
-    adminService:
-        # The interface and port on which the admin server will listen on.
-        # If this is commented out, or the port number is equal to the port
-        # of the peer listen address - the admin service is attached to the
-        # peer's service (defaults to 7051).
-        #listenAddress: 0.0.0.0:7055
 
     # Handlers defines custom handlers that can filter and mutate
     # objects passing within the peer, such as:
@@ -386,6 +419,14 @@ peer:
         # Whether to allow non-admins to perform non channel scoped queries.
         # When this is false, it means that only peer admins can perform non channel scoped queries.
         orgMembersAllowedAccess: false
+
+    # Limits is used to configure some internal resource limits.
+    limits:
+      # Concurrency limits the number of concurrently running system chaincode requests.
+      # This option is only supported for qscc at this time.
+      concurrency:
+        qscc: 5000
+
 ###############################################################################
 #
 #    VM section
@@ -452,7 +493,7 @@ chaincode:
         name:
 
     # Generic builder environment, suitable for most chaincode types
-    builder: $(DOCKER_NS)/fabric-ccenv:latest
+    builder: $(DOCKER_NS)/fabric-ccenv:$(TWO_DIGIT_VERSION)
 
     # Enables/disables force pulling of the base docker images (listed below)
     # during user chaincode instantiation.
@@ -461,30 +502,38 @@ chaincode:
 
     golang:
         # golang will never need more than baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        runtime: $(DOCKER_NS)/fabric-baseos:$(TWO_DIGIT_VERSION)
 
         # whether or not golang chaincode should be linked dynamically
         dynamicLink: false
-
-    car:
-        # car may need more facilities (JVM, etc) in the future as the catalog
-        # of platforms are expanded.  For now, we can just use baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
     java:
         # This is an image based on java:openjdk-8 with addition compiler
         # tools added for java shim layer packaging.
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
-        runtime: $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+        runtime: $(DOCKER_NS)/fabric-javaenv:$(TWO_DIGIT_VERSION)
 
     node:
-        # need node.js engine at runtime, currently available in baseimage
-        # but not in baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseimage:$(ARCH)-$(BASE_VERSION)
+        # This is an image based on node:$(NODE_VER)-alpine
+        runtime: $(DOCKER_NS)/fabric-nodeenv:$(TWO_DIGIT_VERSION)
+
+    # List of directories to treat as external builders and launchers for
+    # chaincode. The external builder detection processing will iterate over the
+    # builders in the order specified below.
+    externalBuilders: []
+        # - path: /path/to/directory
+        #   name: descriptive-builder-name
+        #   environmentWhitelist:
+        #      - ENVVAR_NAME_TO_PROPAGATE_FROM_PEER
+        #      - GOPROXY
+
+    # The maximum duration to wait for the chaincode build and install process
+    # to complete.
+    installTimeout: 300s
 
     # Timeout duration for starting up a container and waiting for Register
-    # to come through. 1sec should be plenty for chaincode unit tests
+    # to come through.
     startuptimeout: 300s
 
     # Timeout duration for Invoke and Init calls to prevent runaway.
@@ -513,26 +562,12 @@ chaincode:
     # whitelist, add "myscc: enable" to the list below, and register in
     # chaincode/importsysccs.go
     system:
-        +lifecycle: enable
+        _lifecycle: enable
         cscc: enable
         lscc: enable
         escc: enable
         vscc: enable
         qscc: enable
-
-    # System chaincode plugins: in addition to being imported and compiled
-    # into fabric through core/chaincode/importsysccs.go, system chaincodes
-    # can also be loaded as shared objects compiled as Go plugins.
-    # See examples/plugins/scc for an example.
-    # Like regular system chaincodes, plugins must also be white listed in the
-    # chaincode.system section above.
-    systemPlugins:
-      # example configuration:
-      # - enabled: true
-      #   name: myscc
-      #   path: /opt/lib/myscc.so
-      #   invokableExternal: true
-      #   invokableCC2CC: true
 
     # Logging section for the chaincode container
     logging:
@@ -545,7 +580,7 @@ chaincode:
 
 ###############################################################################
 #
-#    Ledger section - ledger configuration encompases both the blockchain
+#    Ledger section - ledger configuration encompasses both the blockchain
 #    and the state
 #
 ###############################################################################
@@ -569,7 +604,7 @@ ledger:
        # This username must have read and write authority on CouchDB
        username:
        # The password is recommended to pass as an environment variable
-       # during start up (eg LEDGER_COUCHDBCONFIG_PASSWORD).
+       # during start up (eg CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD).
        # If it is stored here, the file must be access control protected
        # to prevent unintended users from discovering the password.
        password:
@@ -598,6 +633,11 @@ ledger:
        # This is optional.  Creating the global changes database will require
        # additional system resources to track changes and maintain the database
        createGlobalChangesDB: false
+       # CacheSize denotes the maximum mega bytes (MB) to be allocated for the in-memory state
+       # cache. Note that CacheSize needs to be a multiple of 32 MB. If it is not a multiple
+       # of 32 MB, the peer would round the size to the next multiple of 32 MB.
+       # To disable the cache, 0 MB needs to be assigned to the cacheSize.
+       cacheSize: 64
 
   history:
     # enableHistoryDatabase - options are true or false
@@ -606,14 +646,52 @@ ledger:
     # CouchDB or alternate database for the state.
     enableHistoryDatabase: true
 
+  pvtdataStore:
+    # the maximum db batch size for converting
+    # the ineligible missing data entries to eligible missing data entries
+    collElgProcMaxDbBatchSize: 5000
+    # the minimum duration (in milliseconds) between writing
+    # two consecutive db batches for converting the ineligible missing data entries to eligible missing data entries
+    collElgProcDbBatchesInterval: 1000
+
+###############################################################################
+#
+#    Operations section
+#
+###############################################################################
+operations:
+    # host and port for the operations server
+    listenAddress: 127.0.0.1:9443
+
+    # TLS configuration for the operations endpoint
+    tls:
+        # TLS enabled
+        enabled: false
+
+        # path to PEM encoded server certificate for the operations server
+        cert:
+            file:
+
+        # path to PEM encoded server key for the operations server
+        key:
+            file:
+
+        # most operations service endpoints require client authentication when TLS
+        # is enabled. clientAuthRequired requires client certificate authentication
+        # at the TLS layer to access all resources.
+        clientAuthRequired: false
+
+        # paths to PEM encoded ca certificates to trust for client authentication
+        clientRootCAs:
+            files: []
+
 ###############################################################################
 #
 #    Metrics section
 #
-#
 ###############################################################################
 metrics:
-    # statsd, prometheus, or disabled
+    # metrics provider is one of statsd, prometheus, or disabled
     provider: disabled
 
     # statsd configuration
@@ -624,38 +702,9 @@ metrics:
         # statsd server address
         address: 127.0.0.1:8125
 
-        # the interval at which locally cached counters and gauges are pushsed
+        # the interval at which locally cached counters and gauges are pushed
         # to statsd; timings are pushed immediately
         writeInterval: 10s
 
-        # prefix is prepended to all emitted statsd merics
-        prefix: peer
-
-    prometheus:
-        # listen address for prometheus scrape endpoint
-        listenAddress: 127.0.0.1:8080
-
-        # path to expose the metrics handler
-        handlerPath: /metrics
-
-        tls:
-            # TLS enabled
-            enabled: true
-
-            # path to PEM encoded server certificate for the scrape server
-            cert:
-                file: tls/server.crt
-
-            # path to PEM encoded server key for the scrape server
-            key:
-                file: tls/server.key
-
-            # require client certificate authentication to access metrics
-            # endpoint
-            clientAuthRequired: true
-
-            # paths to PEM encoded ca certificates to use for client
-            # authentication
-            clientRootCAs:
-                files:
-                - tls/ca.crt
+        # prefix is prepended to all emitted statsd metrics
+        prefix:

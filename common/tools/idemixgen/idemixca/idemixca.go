@@ -11,9 +11,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
+	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/idemix"
 	"github.com/hyperledger/fabric/msp"
-	m "github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 
@@ -63,7 +63,7 @@ func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, re
 		return nil, errors.WithMessage(err, "Error getting PRNG")
 	}
 	sk := idemix.RandModOrder(rng)
-	ni := idemix.RandModOrder(rng)
+	ni := idemix.BigToBytes(idemix.RandModOrder(rng))
 	msg := idemix.NewCredRequest(sk, ni, key.Ipk, rng)
 	cred, err := idemix.NewCredential(key, msg, attrs, rng)
 	if err != nil {

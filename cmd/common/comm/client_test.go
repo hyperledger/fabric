@@ -17,11 +17,12 @@ import (
 
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTLSClient(t *testing.T) {
 	srv, err := comm.NewGRPCServer("127.0.0.1:", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
+		SecOpts: comm.SecureOptions{
 			UseTLS:      true,
 			Key:         loadFileOrDie(filepath.Join("testdata", "server", "key.pem")),
 			Certificate: loadFileOrDie(filepath.Join("testdata", "server", "cert.pem")),
@@ -30,13 +31,15 @@ func TestTLSClient(t *testing.T) {
 	assert.NoError(t, err)
 	go srv.Start()
 	defer srv.Stop()
-	conf := Config{}
+	conf := Config{
+		PeerCACertPath: filepath.Join("testdata", "server", "ca.pem"),
+	}
 	cl, err := NewClient(conf)
 	assert.NoError(t, err)
 	_, port, _ := net.SplitHostPort(srv.Address())
 	dial := cl.NewDialer(net.JoinHostPort("localhost", port))
 	conn, err := dial()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	conn.Close()
 }
 
@@ -54,7 +57,7 @@ func TestDialBadEndpoint(t *testing.T) {
 
 func TestNonTLSClient(t *testing.T) {
 	srv, err := comm.NewGRPCServer("127.0.0.1:", comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{},
+		SecOpts: comm.SecureOptions{},
 	})
 	assert.NoError(t, err)
 	go srv.Start()
@@ -63,9 +66,9 @@ func TestNonTLSClient(t *testing.T) {
 	cl, err := NewClient(conf)
 	assert.NoError(t, err)
 	_, port, _ := net.SplitHostPort(srv.Address())
-	dial := cl.NewDialer(fmt.Sprintf("localhost:%s", port))
+	dial := cl.NewDialer(net.JoinHostPort("127.0.0.1", port))
 	conn, err := dial()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	conn.Close()
 }
 

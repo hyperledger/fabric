@@ -18,19 +18,15 @@ import (
 	"regexp"
 	"strings"
 
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/ccmetadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
-	cutil "github.com/hyperledger/fabric/core/container/util"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-var logger = flogging.MustGetLogger("node-platform")
+var logger = flogging.MustGetLogger("chaincode.platform.node")
 
 // Platform for chaincodes written in Go
-type Platform struct {
-}
+type Platform struct{}
 
 // Returns whether the given file or directory exists or not
 func pathExists(path string) (bool, error) {
@@ -45,12 +41,12 @@ func pathExists(path string) (bool, error) {
 }
 
 // Name returns the name of this platform
-func (nodePlatform *Platform) Name() string {
+func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_NODE.String()
 }
 
 // ValidateSpec validates Go chaincodes
-func (nodePlatform *Platform) ValidatePath(rawPath string) error {
+func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
@@ -74,13 +70,7 @@ func (nodePlatform *Platform) ValidatePath(rawPath string) error {
 	return nil
 }
 
-func (nodePlatform *Platform) ValidateCodePackage(code []byte) error {
-
-	if len(code) == 0 {
-		// Nothing to validate if no CodePackage was included
-		return nil
-	}
-
+func (p *Platform) ValidateCodePackage(code []byte) error {
 	// FAB-2122: Scan the provided tarball to ensure it only contains source-code under
 	// the src folder.
 	//
@@ -134,7 +124,7 @@ func (nodePlatform *Platform) ValidateCodePackage(code []byte) error {
 }
 
 // Generates a deployment payload by putting source files in src/$file entries in .tar.gz format
-func (nodePlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) {
+func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	var err error
 
@@ -157,8 +147,7 @@ func (nodePlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) 
 
 	logger.Debugf("Packaging node.js project from path %s", folder)
 
-	if err = cutil.WriteFolderToTarPackage(tw, folder, []string{"node_modules"}, nil, nil); err != nil {
-
+	if err = util.WriteFolderToTarPackage(tw, folder, []string{"node_modules"}, nil, nil); err != nil {
 		logger.Errorf("Error writing folder to tar package %s", err)
 		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
 	}
@@ -174,11 +163,10 @@ func (nodePlatform *Platform) GetDeploymentPayload(path string) ([]byte, error) 
 	return payload.Bytes(), nil
 }
 
-func (nodePlatform *Platform) GenerateDockerfile() (string, error) {
-
+func (p *Platform) GenerateDockerfile() (string, error) {
 	var buf []string
 
-	buf = append(buf, "FROM "+cutil.GetDockerfileFromConfig("chaincode.node.runtime"))
+	buf = append(buf, "FROM "+util.GetDockerImageFromConfig("chaincode.node.runtime"))
 	buf = append(buf, "ADD binpackage.tar /usr/local/src")
 
 	dockerFileContents := strings.Join(buf, "\n")
@@ -186,23 +174,18 @@ func (nodePlatform *Platform) GenerateDockerfile() (string, error) {
 	return dockerFileContents, nil
 }
 
-func (nodePlatform *Platform) GenerateDockerBuild(path string, code []byte, tw *tar.Writer) error {
+var buildScript = `
+set -e
+if [ -x /chaincode/build.sh ]; then
+	/chaincode/build.sh
+else
+	cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production
+fi
+`
 
-	codepackage := bytes.NewReader(code)
-	binpackage := bytes.NewBuffer(nil)
-	err := util.DockerBuild(util.DockerBuildOptions{
-		Cmd:          fmt.Sprint("cp -R /chaincode/input/src/. /chaincode/output && cd /chaincode/output && npm install --production"),
-		InputStream:  codepackage,
-		OutputStream: binpackage,
-	})
-	if err != nil {
-		return err
-	}
-
-	return cutil.WriteBytesToPackage("binpackage.tar", binpackage.Bytes(), tw)
-}
-
-//GetMetadataProvider fetches metadata provider given deployment spec
-func (nodePlatform *Platform) GetMetadataProvider(code []byte) platforms.MetadataProvider {
-	return &ccmetadata.TargzMetadataProvider{Code: code}
+func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+	return util.DockerBuildOptions{
+		Image: util.GetDockerImageFromConfig("chaincode.node.runtime"),
+		Cmd:   buildScript,
+	}, nil
 }

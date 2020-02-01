@@ -10,8 +10,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 
-	"github.com/Shopify/sarama"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
+
+	"github.com/Shopify/sarama"
 )
 
 func newBrokerConfig(

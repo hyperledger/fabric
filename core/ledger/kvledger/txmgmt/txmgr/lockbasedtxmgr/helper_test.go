@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,6 +9,9 @@ package lockbasedtxmgr
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -15,12 +19,11 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPvtdataResultsItr(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns1", "coll1"}: 0,
@@ -46,7 +49,9 @@ func TestPvtdataResultsItr(t *testing.T) {
 	putPvtUpdates(t, updates, "ns2", "coll1", "key6", []byte("pvt_value6"), version.NewHeight(1, 6))
 	putPvtUpdates(t, updates, "ns3", "coll1", "key7", []byte("pvt_value7"), version.NewHeight(1, 7))
 	txMgr.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 7))
-	queryHelper := newQueryHelper(txMgr, nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	queryHelper := newQueryHelper(txMgr, nil, true, cryptoProvider)
 
 	resItr, err := queryHelper.getPrivateDataRangeScanIterator("ns1", "coll1", "key1", "key3")
 	assert.NoError(t, err)
@@ -99,21 +104,97 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	s1.SetPrivateDataMetadata("ns", "coll", key1, metadata1)
 	s1.Done()
 	blkAndPvtdata1 := prepareNextBlockForTestFromSimulator(t, bg, s1)
-	assert.NoError(t, txMgr.ValidateAndPrepare(blkAndPvtdata1, true))
+	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
+	assert.NoError(t, err)
 	assert.NoError(t, txMgr.Commit())
 
 	t.Run("query-helper-for-queryexecutor", func(t *testing.T) {
-		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), nil)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), nil, true, cryptoProvider)
 		metadataRetrieved, err := queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.NoError(t, err)
 		assert.Equal(t, metadata1, metadataRetrieved)
 	})
 
 	t.Run("query-helper-for-txsimulator", func(t *testing.T) {
-		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), rwsetutil.NewRWSetBuilder())
-		_, err := queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		assert.NoError(t, err)
+		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), rwsetutil.NewRWSetBuilder(), true, cryptoProvider)
+		_, err = queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.EqualError(t, err, "retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
 	})
+}
+
+func TestGetPvtdataHash(t *testing.T) {
+	for _, testEnv := range testEnvs {
+		testGetPvtdataHash(t, testEnv)
+	}
+}
+
+func testGetPvtdataHash(t *testing.T, env testEnv) {
+	ledgerid := "test-get-pvtdata-hash"
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns", "coll"}: 0,
+		},
+	)
+	env.init(t, ledgerid, btlPolicy)
+	defer env.cleanup()
+	txMgr := env.getTxMgr().(*LockBasedTxMgr)
+	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+
+	batch := privacyenabledstate.NewUpdateBatch()
+	batch.HashUpdates.Put(
+		"ns", "coll",
+		util.ComputeStringHash("existing-key"),
+		util.ComputeStringHash("existing-value"),
+		version.NewHeight(1, 1),
+	)
+	assert.NoError(t, txMgr.db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 5)))
+
+	s, _ := txMgr.NewTxSimulator("test_tx1")
+	simulator := s.(*lockBasedTxSimulator)
+	hash, err := simulator.GetPrivateDataHash("ns", "coll", "non-existing-key")
+	assert.NoError(t, err)
+	assert.Nil(t, hash)
+
+	hash, err = simulator.GetPrivateDataHash("ns", "coll", "existing-key")
+	assert.NoError(t, err)
+	assert.Equal(t, util.ComputeStringHash("existing-value"), hash)
+	simulator.Done()
+
+	simRes, err := simulator.GetTxSimulationResults()
+	assert.NoError(t, err)
+	assert.False(t, simRes.ContainsPvtWrites())
+	txrwset, _ := rwsetutil.TxRwSetFromProtoMsg(simRes.PubSimulationResults)
+
+	expectedRwSet := &rwsetutil.TxRwSet{
+		NsRwSets: []*rwsetutil.NsRwSet{
+			{
+				NameSpace: "ns",
+				KvRwSet:   &kvrwset.KVRWSet{},
+				CollHashedRwSets: []*rwsetutil.CollHashedRwSet{
+					{
+						CollectionName: "coll",
+						HashedRwSet: &kvrwset.HashedRWSet{
+							HashedReads: []*kvrwset.KVReadHash{
+								{
+									KeyHash: util.ComputeStringHash("existing-key"),
+									Version: &kvrwset.Version{BlockNum: 1, TxNum: 1},
+								},
+								{
+									KeyHash: util.ComputeStringHash("non-existing-key"),
+									Version: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	assert.Equal(t, expectedRwSet, txrwset)
 }
 
 func putPvtUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {

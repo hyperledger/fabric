@@ -19,7 +19,7 @@ they are the properties which determine their permissions.
 
 For an identity to be **verifiable**, it must come from a **trusted** authority.
 A [membership service provider](../membership/membership.html)
-(MSP) is how this is achieved in Fabric. More specifically, an MSP is a component
+(MSP) is that trusted authority in Fabric. More specifically, an MSP is a component
 that defines the rules that govern the valid identities for this organization.
 The default MSP implementation in Fabric uses X.509 certificates as identities,
 adopting a traditional Public Key Infrastructure (PKI) hierarchical model (more
@@ -61,7 +61,7 @@ sure it comes from a verified source.
 *The elements of Public Key Infrastructure (PKI). A PKI is comprised of Certificate
 Authorities who issue digital certificates to parties (e.g., users of a service, service
 provider), who then use them to authenticate themselves in the messages they exchange
-with their environment. A CA's Certificate Revocation List (CRL) constitutes a reference
+in their environment. A CA's Certificate Revocation List (CRL) constitutes a reference
 for the certificates that are no longer valid. Revocation of a certificate can happen for
 a number of reasons. For example, a certificate may be revoked because the cryptographic
 private material associated to the certificate has been exposed.*
@@ -222,7 +222,7 @@ it is inherently not capable of providing SSL certificates for general/automatic
 in browsers. However, because **some** CA must be used to manage identity
 (even in a test environment), Fabric CA can be used to provide and manage
 certificates. It is also possible --- and fully appropriate --- to use a
-public/commerical root or intermediate CA to provide identification.
+public/commercial root or intermediate CA to provide identification.
 
 If you're interested, you can read a lot more about Fabric CA
 [in the CA documentation section](http://hyperledger-fabric-ca.readthedocs.io/).

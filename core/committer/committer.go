@@ -17,8 +17,8 @@ limitations under the License.
 package committer
 
 import (
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/common"
 )
 
 // Committer is the interface supported by committers
@@ -30,8 +30,8 @@ import (
 // change
 type Committer interface {
 
-	// CommitWithPvtData block and private data into the ledger
-	CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error
+	// CommitLegacy block and private data into the ledger
+	CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error
 
 	// GetPvtDataAndBlockByNum retrieves block with private data with given
 	// sequence number
@@ -45,17 +45,21 @@ type Committer interface {
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
 
+	// DoesPvtDataInfoExistInLedger returns true if the ledger has pvtdata info
+	// about a given block number.
+	DoesPvtDataInfoExistInLedger(blockNum uint64) (bool, error)
+
 	// Gets blocks with sequence numbers provided in the slice
 	GetBlocks(blockSeqs []uint64) []*common.Block
 
 	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
 	GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error)
 
-	// CommitPvtData commits the private data corresponding to already committed block
+	// CommitPvtDataOfOldBlocks commits the private data corresponding to already committed block
 	// If hashes for some of the private data supplied in this function does not match
 	// the corresponding hash present in the block, the unmatched private data is not
 	// committed and instead the mismatch inforation is returned back
-	CommitPvtData(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error)
+	CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error)
 
 	// GetMissingPvtDataTracker return the MissingPvtDataTracker
 	GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error)

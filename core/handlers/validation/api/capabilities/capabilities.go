@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package validation
 
-import "github.com/hyperledger/fabric/core/handlers/validation/api"
+import validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 
 // Capabilities defines what capabilities the validation
 // should take into account when validating a transaction
@@ -43,15 +43,20 @@ type Capabilities interface {
 	//  - new chaincode lifecycle, as described in FAB-11237
 	V1_3Validation() bool
 
-	// MetadataLifecycle indicates whether the peer should use the deprecated and problematic
-	// v1.0/v1.1 lifecycle, or whether it should use the newer per channel peer local chaincode
-	// metadata package approach planned for release with Fabric v1.2
+	// StorePvtDataOfInvalidTx returns true if the peer needs to store
+	// the pvtData of invalid transactions (as introduced in v142).
+	StorePvtDataOfInvalidTx() bool
+
+	// V2_0Validation returns true if this channel supports transaction validation
+	// as introduced in v2.0. This includes:
+	//  - new chaincode lifecycle
+	//  - implicit per-org collections
+	V2_0Validation() bool
+
+	// MetadataLifecycle is an obsolete capability but left so as not to break the interface
 	MetadataLifecycle() bool
 
 	// KeyLevelEndorsement returns true if this channel supports endorsement
 	// policies expressible at a ledger key granularity, as described in FAB-8812
 	KeyLevelEndorsement() bool
-
-	// FabToken returns true if fabric token function is supported.
-	FabToken() bool
 }

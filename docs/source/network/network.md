@@ -6,9 +6,6 @@ you're an architect, administrator or developer, you can use this topic to get a
 solid understanding of the major structure and process components in a
 Hyperledger Fabric blockchain network. This topic will use a manageable worked
 example that introduces all of the major components in a blockchain network.
-After understanding this example you can read more detailed information about
-these components elsewhere in the documentation, or try
-[building a sample network](../build_network.html).
 
 After reading this topic and understanding the concept of policies, you will
 have a solid understanding of the decisions that organizations need to make to
@@ -109,7 +106,7 @@ Firstly, different components of the blockchain network use certificates to
 identify themselves to each other as being from a particular organization.
 That's why there is usually more than one CA supporting a blockchain network --
 different organizations often use different CAs. We're going to use four CAs in
-our network; one of for each organization. Indeed, CAs are so important that
+our network; one for each organization. Indeed, CAs are so important that
 Hyperledger Fabric provides you with a built-in one (called *Fabric-CA*) to help
 you get going, though in practice, organizations will choose to use their own
 CA.
@@ -173,10 +170,9 @@ organizations. For example, we might run O4 in R4 and connect it to O2, a
 separate orderer node in organization R1.  In this way, we would have a
 multi-site, multi-organization administration structure.
 
-We'll discuss the ordering service a little more [later in this
-topic](#the-ordering-service), but for now just think of the ordering service as
-an administration point which provides different organizations controlled access
-to the network.
+We'll discuss the ordering service a little [later in this topic](#the-ordering-service),
+but for now just think of the ordering service as an administration point which
+provides different organizations controlled access to the network.
 
 ## Defining a Consortium
 
@@ -322,7 +318,7 @@ Notice how the network has grown:
 ![network.appsmartcontract](./network.diagram.6.png)
 
 *A smart contract S5 has been installed onto P1.  Client application A1 in
-organization R1 can use S5 to access the ledger via peer node P1.  A1, P1 and
+organization R1 can use S5 to access the ledger via peer node P1. A1, P1 and
 O4 are all joined to channel C1, i.e. they can all make use of the
 communication facilities provided by that channel.*
 
@@ -342,64 +338,77 @@ ledger; S5 provides a well-defined set of ways by which the ledger L1 can
 be queried or updated. In short, client application A1 has to go through smart
 contract S5 to get to ledger L1!
 
-Smart contract chaincodes can be created by application developers in each
-organization to implement a business process shared by the consortium members.
-Smart contracts are used to help generate transactions which can be subsequently
-distributed to the every node in the network.  We'll discuss this idea a little
-later; it'll be easier to understand when the network is bigger. For now, the
-important thing to understand is that to get to this point two operations must
-have been performed on the smart contract; it must have been **installed**, and
-then **instantiated**.
+Smart contracts can be created by application developers in each organization to
+implement a business process shared by the consortium members. Smart contracts
+are used to help generate transactions which can be subsequently distributed to
+every node in the network. We'll discuss this idea a little later; it'll be
+easier to understand when the network is bigger. For now, the important thing to
+understand is that to get to this point two operations must have been performed
+on the smart contract; it must have been **installed** on peers, and then
+**defined** on a channel.
 
-### Installing a smart contract
+Hyperledger Fabric users often use the terms **smart contract** and
+**chaincode** interchangeably. In general, a smart contract defines the
+**transaction logic** that controls the lifecycle of a business object contained
+in the world state. It is then packaged into a chaincode which is then deployed
+to a blockchain network. Think of smart contracts as governing transactions,
+whereas chaincode governs how smart contracts are packaged for deployment.
+
+### Installing a chaincode package
 
 After a smart contract S5 has been developed, an administrator in organization
-R1 must [install](../glossary.html#install) it onto peer node P1. This is a
-straightforward operation; after it has occurred, P1 has full knowledge of S5.
-Specifically, P1 can see the **implementation** logic of S5 -- the program code
-that it uses to access the ledger L1. We contrast this to the S5 **interface**
-which merely describes the inputs and outputs of S5, without regard to its
-implementation.
+R1 must create a chaincode package and [install](../glossary.html#install) it
+onto peer node P1. This is a straightforward operation; once completed, P1 has
+full knowledge of S5. Specifically, P1 can see the **implementation** logic of
+S5 -- the program code that it uses to access the ledger L1. We contrast this to
+the S5 **interface** which merely describes the inputs and outputs of S5,
+without regard to its implementation.
 
 When an organization has multiple peers in a channel, it can choose the peers
 upon which it installs smart contracts; it does not need to install a smart
 contract on every peer.
 
-### Instantiating a smart contract
+### Defining a chaincode
 
-However, just because P1 has installed S5, the other components connected to
-channel C1 are unaware of it; it must first be
-[instantiated](../glossary.html#instantiate) on channel C1.  In our example,
-which only has a single peer node P1, an administrator in organization R1 must
-instantiate S5 on channel C1 using P1. After instantiation, every component on
-channel C1 is aware of the existence of S5; and in our example it means that S5
-can now be [invoked](../glossary.html#invoke) by client application A1!
+Although a chaincode is installed on the peers of individual organizations, it
+is governed and operated in the scope of a channel. Each organization needs to
+approve a **chaincode definition**, a set of parameters that establish how a
+chaincode will be used on a channel. An organization must approve a chaincode
+definition in order to use the installed smart contract to query the ledger
+and endorse transactions. In our example, which only has a single peer node P1,
+an administrator in organization R1 must approve a chaincode definition for S5.
+
+A sufficient number of organizations need to approve a chaincode definition (A
+majority, by default) before the chaincode definition can be committed to the
+channel and used to interact with the channel ledger. Because the channel only
+has one member, the administrator of R1 can commit the chaincode definition of
+S5 to the channel C1. Once the definition has been committed, S5 can now be
+[invoked](../glossary.html#invoke) by client application A1!
 
 Note that although every component on the channel can now access S5, they are
 not able to see its program logic.  This remains private to those nodes who have
 installed it; in our example that means P1. Conceptually this means that it's
-the smart contract **interface** that is instantiated, in contrast to the smart
-contract **implementation** that is installed. To reinforce this idea;
-installing a smart contract shows how we think of it being **physically hosted**
-on a peer, whereas instantiating a smart contract shows how we consider it
-**logically hosted** by the channel.
+the smart contract **interface** that is defined and committed to a channel, in
+contrast to the smart contract **implementation** that is installed. To reinforce
+this idea; installing a smart contract shows how we think of it being
+**physically hosted** on a peer, whereas a smart contract that has been defined
+on a channel shows how we consider it **logically hosted** by the channel.
 
 ### Endorsement policy
 
-The most important piece of additional information supplied at instantiation is
-an [endorsement policy](../glossary.html#endorsement-policy). It describes which
-organizations must approve transactions before they will be accepted by other
+The most important piece of information supplied within the chaincode definition
+is the [endorsement policy](../glossary.html#endorsement-policy). It describes
+which organizations must approve transactions before they will be accepted by other
 organizations onto their copy of the ledger. In our sample network, transactions
-can be only be accepted onto ledger L1 if R1 or R2 endorse them.
+can only be accepted onto ledger L1 if R1 or R2 endorse them.
 
-The act of instantiation places the endorsement policy in channel configuration
-CC1; it enables it to be accessed by any member of the channel. You can read
-more about endorsement policies in the
-[transaction flow topic](../txflow.html).
+Committing the chaincode definition to the channel places the endorsement policy
+on the channel ledger; it enables it to be accessed by any member of the channel.
+You can read more about endorsement policies in the [transaction flow topic](../txflow.html).
 
 ### Invoking a smart contract
 
-Once a smart contract has been installed on a peer node and instantiated on a
+Once a smart contract has been installed on a peer node and defined on a
 channel it can be [invoked](../glossary.html#invoke) by a client application.
 Client applications do this by sending transaction proposals to peers owned by
 the organizations specified by the smart contract endorsement policy. The
@@ -431,20 +440,21 @@ Let's see how the network has evolved:
 
 *The network has grown through the addition of infrastructure from
 organization R2. Specifically, R2 has added peer node P2, which hosts a copy of
-ledger L1, and chaincode S5. P2 has also joined channel C1, as has application
-A2. A2 and P2 are identified using certificates from CA2. All of this means
-that both applications A1 and A2 can invoke S5 on C1 either using peer node P1
-or P2.*
+ledger L1, and chaincode S5. R2 approves the same chaincode definition as R1.
+P2 has also joined channel C1, as has application A2. A2 and P2 are identified
+using certificates from CA2. All of this means that both applications A1 and A2
+can invoke S5 on C1 either using peer node P1 or P2.*
 
 We can see that organization R2 has added a peer node, P2, on channel C1. P2
 also hosts a copy of the ledger L1 and smart contract S5. We can see that R2 has
 also added client application A2 which can connect to the network via channel
-C1.  To achieve this, an administrator in organization R2 has created peer node
-P2 and joined it to channel C1, in the same way as an administrator in R1.
+C1. To achieve this, an administrator in organization R2 has created peer node
+P2 and joined it to channel C1, in the same way as an administrator in R1. The
+administrator also has to approve the same chaincode definition as R1.
 
 We have created our first operational network! At this stage in network
 development, we have a channel in which organizations R1 and R2 can fully
-transact with each other.  Specifically, this means that applications A1 and A2
+transact with each other. Specifically, this means that applications A1 and A2
 can generate transactions using smart contract S5 and ledger L1 on channel C1.
 
 ### Generating and accepting transactions
@@ -525,23 +535,27 @@ anchor peer all at the same time! Only the anchor peer is optional -- for all
 practical purposes there will always be a leader peer and at least one
 endorsing peer and at least one committing peer.
 
-### Install not instantiate
+### Adding organizations and peers to the channel
 
-In a similar way to organization R1, organization R2 must install smart contract
-S5 onto its peer node, P2. That's obvious -- if applications A1 or A2 wish to
-use S5 on peer node P2 to generate transactions, it must first be present;
+When R2 joins the channel, the organization must install smart contract S5
+onto its peer node, P2. That's obvious -- if applications A1 or A2 wish to use
+S5 on peer node P2 to generate transactions, it must first be present;
 installation is the mechanism by which this happens. At this point, peer node P2
 has a physical copy of the smart contract and the ledger; like P1, it can both
 generate and accept transactions onto its copy of ledger L1.
 
-However, in contrast to organization R1, organization R2 does not need to
-instantiate smart contract S5 on channel C1. That's because S5 has already been
-instantiated on the channel by organization R1. Instantiation only needs to
-happen once; any peer which subsequently joins the channel knows that smart
-contract S5 is available to the channel. This fact reflects the fact that ledger
-L1 and smart contract really exist in a physical manner on the peer nodes, and a
-logical manner on the channel; R2 is merely adding another physical instance of
-L1 and S5 to the network.
+R2 must approve the same chaincode definition as was approved by R1 in order to
+use smart contract S5. Because the chaincode definition has already been
+committed to the channel by organization R1, R2 can use the chaincode as soon as
+the organization approves the chaincode definition and installs the chaincode
+package. The commit transaction only needs to happen once. A new organization
+can use the chaincode as soon as they approve the chaincode parameters agreed to
+by other members of the channel. Because the approval of a chaincode definition
+occurs at the organization level, R2 can approve the chaincode definition once
+and join multiple peers to the channel with the chaincode package installed.
+However, if R2 wanted to change the chaincode definition, both R1 and R2 would
+need to approve a new definition for their organization, and then one of the
+organizations would need to commit the definition to the channel.
 
 In our network, we can see that channel C1 connects two client applications, two
 peer nodes and an ordering service.  Since there is only one channel, there is
@@ -577,8 +591,9 @@ to help us understand channels will become cumbersome. Imagine how complicated
 our diagram would be if we added another peer or client application, or another
 channel?
 
-That's what we're going to do in a minute, so before we do, let's
-simplify the visual vocabulary. Here's a simplified representation of the network we've developed so far:
+That's what we're going to do in a minute, so before we do, let's simplify the
+visual vocabulary. Here's a simplified representation of the network we've
+developed so far:
 
 ![network.vocabulary](./network.diagram.8.png)
 
@@ -778,11 +793,11 @@ separate; it is scoped to channel C1.  This makes sense -- the purpose of the
 channel C2 is to provide private communications between the members of the
 consortium X2, and the ledger L2 is the private store for their transactions.
 
-In a similar way, the smart contract S6, installed on peer node P3, and
-instantiated on channel C2, is used to provide controlled access to ledger L2.
-Application A3 can now use channel C2 to invoke the services provided by smart
-contract S6 to generate transactions that can be accepted onto every copy of the
-ledger L2 in the network.
+In a similar way, the smart contract S6, installed on peer node P3, and defined
+on channel C2, is used to provide controlled access to ledger L2. Application A3
+can now use channel C2 to invoke the services provided by smart contract S6 to
+generate transactions that can be accepted onto every copy of the ledger L2 in
+the network.
 
 At this point in time, we have a single network that has two completely separate
 channels defined within it.  These channels provide independently managed
@@ -941,7 +956,7 @@ R4 however, could grant even more power over the network configuration to R1! R4
 could add R1 to the mod_policy such that R1 would be able to manage change of
 the network policy too.
 
-This second power is much more powerful than the first, because now R1 now has
+This second power is much more powerful than the first, because R1 now has
 **full control** over the network configuration NC4! This means that R1 can, in
 principle remove R4's management rights from the network.  In practice, R4 would
 configure the mod_policy such that R4 would need to also approve the change, or
@@ -972,7 +987,7 @@ application channels and one ordering channel. The organizations R1 and R4 are
 responsible for the ordering channel, R1 and R2 are responsible for the blue
 application channel while R2 and R3 are responsible for the red application
 channel. Client applications A1 is an element of organization R1, and CA1 is
-its certificate authority. Note that peer P2 of organization R2 can use the
+it's certificate authority. Note that peer P2 of organization R2 can use the
 communication facilities of the blue and the red application channel. Each
 application channel has its own channel configuration, in this case CC1 and
 CC2. The channel configuration of the system channel is part of the network

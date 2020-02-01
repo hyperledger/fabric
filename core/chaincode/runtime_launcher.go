@@ -7,51 +7,115 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"strconv"
 	"time"
 
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/container/inproccontroller"
+	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
+	"github.com/hyperledger/fabric/core/chaincode/extcc"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/pkg/errors"
 )
 
 // LaunchRegistry tracks launching chaincode instances.
 type LaunchRegistry interface {
-	Launching(cname string) (launchState *LaunchState, started bool)
-	Deregister(cname string) error
+	Launching(ccid string) (launchState *LaunchState, started bool)
+	Deregister(ccid string) error
 }
 
-// PackageProvider gets chaincode packages from the filesystem.
-type PackageProvider interface {
-	GetChaincodeCodePackage(ccname string, ccversion string) ([]byte, error)
+// ConnectionHandler handles the `Chaincode` client connection
+type ConnectionHandler interface {
+	Stream(ccid string, ccinfo *ccintf.ChaincodeServerInfo, sHandler extcc.StreamHandler) error
 }
 
 // RuntimeLauncher is responsible for launching chaincode runtimes.
 type RuntimeLauncher struct {
-	Runtime         Runtime
-	Registry        LaunchRegistry
-	PackageProvider PackageProvider
-	StartupTimeout  time.Duration
+	Runtime           Runtime
+	Registry          LaunchRegistry
+	StartupTimeout    time.Duration
+	Metrics           *LaunchMetrics
+	PeerAddress       string
+	CACert            []byte
+	CertGenerator     CertGenerator
+	ConnectionHandler ConnectionHandler
 }
 
-func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error {
+// CertGenerator generates client certificates for chaincode.
+type CertGenerator interface {
+	// Generate returns a certificate and private key and associates
+	// the hash of the certificates with the given chaincode name
+	Generate(ccName string) (*accesscontrol.CertAndPrivKeyPair, error)
+}
+
+func (r *RuntimeLauncher) ChaincodeClientInfo(ccid string) (*ccintf.PeerConnection, error) {
+	var tlsConfig *ccintf.TLSConfig
+	if r.CertGenerator != nil {
+		certKeyPair, err := r.CertGenerator.Generate(string(ccid))
+		if err != nil {
+			return nil, errors.WithMessagef(err, "failed to generate TLS certificates for %s", ccid)
+		}
+
+		tlsConfig = &ccintf.TLSConfig{
+			ClientCert: certKeyPair.Cert,
+			ClientKey:  certKeyPair.Key,
+			RootCert:   r.CACert,
+		}
+	}
+
+	return &ccintf.PeerConnection{
+		Address:   r.PeerAddress,
+		TLSConfig: tlsConfig,
+	}, nil
+}
+
+func (r *RuntimeLauncher) Launch(ccid string, streamHandler extcc.StreamHandler) error {
 	var startFailCh chan error
 	var timeoutCh <-chan time.Time
 
-	cname := ccci.Name + ":" + ccci.Version
-	launchState, started := r.Registry.Launching(cname)
-	if !started {
+	startTime := time.Now()
+	launchState, alreadyStarted := r.Registry.Launching(ccid)
+	if !alreadyStarted {
 		startFailCh = make(chan error, 1)
 		timeoutCh = time.NewTimer(r.StartupTimeout).C
 
-		codePackage, err := r.getCodePackage(ccci)
-		if err != nil {
-			return err
-		}
-
 		go func() {
-			if err := r.Runtime.Start(ccci, codePackage); err != nil {
-				startFailCh <- errors.WithMessage(err, "error starting container")
+			// go through the build process to obtain connecion information
+			ccservinfo, err := r.Runtime.Build(ccid)
+			if err != nil {
+				startFailCh <- errors.WithMessage(err, "error building chaincode")
+				return
 			}
+
+			// chaincode server model indicated... proceed to connect to CC
+			if ccservinfo != nil {
+				if err = r.ConnectionHandler.Stream(ccid, ccservinfo, streamHandler); err != nil {
+					startFailCh <- errors.WithMessagef(err, "connection to %s failed", ccid)
+					return
+				}
+
+				launchState.Notify(errors.Errorf("connection to %s terminated", ccid))
+				return
+			}
+
+			// default peer-as-server model... compute connection information for CC callback
+			// and proceed to launch chaincode
+			ccinfo, err := r.ChaincodeClientInfo(ccid)
+			if err != nil {
+				startFailCh <- errors.WithMessage(err, "could not get connection info")
+				return
+			}
+			if ccinfo == nil {
+				startFailCh <- errors.New("could not get connection info")
+				return
+			}
+			if err = r.Runtime.Start(ccid, ccinfo); err != nil {
+				startFailCh <- errors.WithMessage(err, "error starting container")
+				return
+			}
+			exitCode, err := r.Runtime.Wait(ccid)
+			if err != nil {
+				launchState.Notify(errors.Wrap(err, "failed to wait on container exit"))
+			}
+			launchState.Notify(errors.Errorf("container exited with %d", exitCode))
 		}()
 	}
 
@@ -61,32 +125,34 @@ func (r *RuntimeLauncher) Launch(ccci *ccprovider.ChaincodeContainerInfo) error 
 		err = errors.WithMessage(launchState.Err(), "chaincode registration failed")
 	case err = <-startFailCh:
 		launchState.Notify(err)
+		r.Metrics.LaunchFailures.With("chaincode", ccid).Add(1)
 	case <-timeoutCh:
-		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", cname)
+		err = errors.Errorf("timeout expired while starting chaincode %s for transaction", ccid)
 		launchState.Notify(err)
+		r.Metrics.LaunchTimeouts.With("chaincode", ccid).Add(1)
 	}
 
-	if err != nil && !started {
+	success := true
+	if err != nil && !alreadyStarted {
+		success = false
 		chaincodeLogger.Debugf("stopping due to error while launching: %+v", err)
-		defer r.Registry.Deregister(cname)
-		if err := r.Runtime.Stop(ccci); err != nil {
-			chaincodeLogger.Debugf("stop failed: %+v", err)
-		}
+		defer r.Registry.Deregister(ccid)
 	}
+
+	r.Metrics.LaunchDuration.With(
+		"chaincode", ccid,
+		"success", strconv.FormatBool(success),
+	).Observe(time.Since(startTime).Seconds())
 
 	chaincodeLogger.Debug("launch complete")
 	return err
 }
 
-func (r *RuntimeLauncher) getCodePackage(ccci *ccprovider.ChaincodeContainerInfo) ([]byte, error) {
-	if ccci.ContainerType == inproccontroller.ContainerType {
-		return nil, nil
-	}
-
-	codePackage, err := r.PackageProvider.GetChaincodeCodePackage(ccci.Name, ccci.Version)
+func (r *RuntimeLauncher) Stop(ccid string) error {
+	err := r.Runtime.Stop(ccid)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get chaincode package")
+		return errors.WithMessagef(err, "failed to stop chaincode %s", ccid)
 	}
 
-	return codePackage, nil
+	return nil
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
 	endorsement2 "github.com/hyperledger/fabric/core/handlers/endorsement/api"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 )
 
 var logger = flogging.MustGetLogger("core.handlers")
@@ -57,23 +57,6 @@ type registry struct {
 
 var once sync.Once
 var reg registry
-
-// Config configures the factory methods
-// and plugins for the registry
-type Config struct {
-	AuthFilters []*HandlerConfig `mapstructure:"authFilters" yaml:"authFilters"`
-	Decorators  []*HandlerConfig `mapstructure:"decorators" yaml:"decorators"`
-	Endorsers   PluginMapping    `mapstructure:"endorsers" yaml:"endorsers"`
-	Validators  PluginMapping    `mapstructure:"validators" yaml:"validators"`
-}
-
-type PluginMapping map[string]*HandlerConfig
-
-// HandlerConfig defines configuration for a plugin or compiled handler
-type HandlerConfig struct {
-	Name    string `mapstructure:"name" yaml:"name"`
-	Library string `mapstructure:"library" yaml:"library"`
-}
 
 // InitRegistry creates the (only) instance
 // of the registry
@@ -143,7 +126,7 @@ func (r *registry) loadCompiled(handlerFactory string, handlerType HandlerType, 
 	}
 }
 
-// loadPlugin loads a pluggagle handler
+// loadPlugin loads a pluggable handler
 func (r *registry) loadPlugin(pluginPath string, handlerType HandlerType, extraArgs ...string) {
 	if _, err := os.Stat(pluginPath); err != nil {
 		logger.Panicf(fmt.Sprintf("Could not find plugin at path %s: %s", pluginPath, err))
@@ -251,7 +234,7 @@ func panicWithDefinitionError(factory string) {
 }
 
 // Lookup returns a list of handlers with the given
-// given type, or nil if none exist
+// type, or nil if none exist
 func (r *registry) Lookup(handlerType HandlerType) interface{} {
 	if handlerType == Auth {
 		return r.filters

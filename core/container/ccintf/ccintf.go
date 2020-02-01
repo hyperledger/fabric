@@ -6,15 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 
 package ccintf
 
-//This package defines the interfaces that support runtime and
-//communication between chaincode and peer (chaincode support).
-//Currently inproccontroller uses it. dockercontroller does not.
-
 import (
-	"fmt"
+	"github.com/hyperledger/fabric/core/comm"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
+
+// These structures can/should probably be moved out of here.
 
 // ChaincodeStream interface for stream between Peer and chaincode instance.
 type ChaincodeStream interface {
@@ -22,27 +20,21 @@ type ChaincodeStream interface {
 	Recv() (*pb.ChaincodeMessage, error)
 }
 
-// CCSupport must be implemented by the chaincode support side in peer
-// (such as chaincode_support)
-type CCSupport interface {
-	HandleChaincodeStream(ChaincodeStream) error
+// PeerConnection instructs the chaincode how to connect back to the peer
+type PeerConnection struct {
+	Address   string
+	TLSConfig *TLSConfig
 }
 
-// GetCCHandlerKey is used to pass CCSupport via context
-func GetCCHandlerKey() string {
-	return "CCHANDLER"
+// TLSConfig is used to pass the TLS context into the chaincode launch
+type TLSConfig struct {
+	ClientCert []byte
+	ClientKey  []byte
+	RootCert   []byte
 }
 
-//CCID encapsulates chaincode ID
-type CCID struct {
-	Name    string
-	Version string
-}
-
-//GetName returns canonical chaincode name based on the fields of CCID
-func (ccid *CCID) GetName() string {
-	if ccid.Version != "" {
-		return fmt.Sprintf("%s-%s", ccid.Name, ccid.Version)
-	}
-	return ccid.Name
+// ChaincodeServerInfo provides chaincode connection information
+type ChaincodeServerInfo struct {
+	Address      string
+	ClientConfig comm.ClientConfig
 }

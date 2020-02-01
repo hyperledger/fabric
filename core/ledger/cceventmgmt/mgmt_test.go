@@ -10,10 +10,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,8 +35,8 @@ func TestCCEventMgmt(t *testing.T) {
 	// cc1 is deployed and installed. cc2 is deployed but not installed. cc3 is not deployed but installed
 	mockProvider := newMockProvider()
 	mockProvider.setChaincodeInstalled(cc1Def, cc1DBArtifactsTar)
-	mockProvider.setChaincodeDeployed("channel1", cc1Def)
-	mockProvider.setChaincodeDeployed("channel1", cc2Def)
+	mockProvider.setChaincodeDeployed("channel1", cc1Def, true)
+	mockProvider.setChaincodeDeployed("channel1", cc2Def, true)
 	mockProvider.setChaincodeInstalled(cc3Def, cc3DBArtifactsTar)
 	setEventMgrForTest(newMgr(mockProvider))
 	defer clearEventMgrForTest()
@@ -80,6 +80,13 @@ func TestCCEventMgmt(t *testing.T) {
 	assert.Equal(t, 2, handler1.doneRecievedCount)
 	assert.Equal(t, 1, handler2.doneRecievedCount)
 	assert.Equal(t, 3, handler3.doneRecievedCount)
+
+	// setting cc2Def as a new lifecycle definition should cause install not to trigger event
+	mockProvider.setChaincodeDeployed("channel1", cc2Def, false)
+	handler1.eventsRecieved = []*mockEvent{}
+	eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar)
+	eventMgr.ChaincodeInstallDone(true)
+	assert.NotContains(t, handler1.eventsRecieved, cc2ExpectedEvent)
 }
 
 func TestLSCCListener(t *testing.T) {
@@ -87,15 +94,13 @@ func TestLSCCListener(t *testing.T) {
 
 	cc1Def := &ChaincodeDefinition{Name: "testChaincode1", Version: "v1", Hash: []byte("hash_testChaincode")}
 	cc2Def := &ChaincodeDefinition{Name: "testChaincode2", Version: "v1", Hash: []byte("hash_testChaincode")}
-	cc3Def := &ChaincodeDefinition{Name: "testChaincode~collection", Version: "v1", Hash: []byte("hash_testChaincode")}
 
 	ccDBArtifactsTar := []byte("ccDBArtifacts")
 
-	// cc1, cc2, cc3 installed but not deployed
+	// cc1, cc2 installed but not deployed
 	mockProvider := newMockProvider()
 	mockProvider.setChaincodeInstalled(cc1Def, ccDBArtifactsTar)
 	mockProvider.setChaincodeInstalled(cc2Def, ccDBArtifactsTar)
-	mockProvider.setChaincodeInstalled(cc3Def, ccDBArtifactsTar)
 
 	setEventMgrForTest(newMgr(mockProvider))
 	defer clearEventMgrForTest()
@@ -107,48 +112,49 @@ func TestLSCCListener(t *testing.T) {
 		func(map[string][]*kvrwset.KVWrite) ([]*ledger.ChaincodeLifecycleInfo, error) {
 			return []*ledger.ChaincodeLifecycleInfo{
 				{Name: cc1Def.Name},
+				{Name: cc2Def.Name},
 			}, nil
 		}
-	mockInfoProvider.ChaincodeInfoStub = func(chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
-		return &ledger.DeployedChaincodeInfo{
-			Name:    chaincodeName,
-			Hash:    cc1Def.Hash,
-			Version: cc1Def.Version,
-		}, nil
+	mockInfoProvider.ChaincodeInfoStub = func(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
+		switch chaincodeName {
+		case cc1Def.Name:
+			return &ledger.DeployedChaincodeInfo{
+				Name:     chaincodeName,
+				Hash:     cc1Def.Hash,
+				Version:  cc1Def.Version,
+				IsLegacy: true, // event for legacy chaincode lifecycle
+			}, nil
+		case cc2Def.Name:
+			return &ledger.DeployedChaincodeInfo{
+				Name:     chaincodeName,
+				Hash:     cc1Def.Hash,
+				Version:  cc1Def.Version,
+				IsLegacy: false, // event for new chaincode lifecycle
+			}, nil
+		default:
+			return nil, nil
+		}
 	}
 	lsccStateListener := &KVLedgerLSCCStateListener{mockInfoProvider}
 
 	// test1 regular deploy lscc event gets sent to handler
 	t.Run("DeployEvent", func(t *testing.T) {
-		lsccStateListener.HandleStateUpdates(&ledger.StateUpdateTrigger{
-			LedgerID:           channelName,
-			CommittingBlockNum: 50},
+		lsccStateListener.HandleStateUpdates(
+			&ledger.StateUpdateTrigger{
+				LedgerID: channelName,
+			},
 		)
+		// processes legacy event
 		assert.Contains(t, handler1.eventsRecieved, &mockEvent{cc1Def, ccDBArtifactsTar})
-	})
-
-	// test2 delete lscc event NOT sent to handler
-	t.Run("DeleteEvent", func(t *testing.T) {
-		lsccStateListener.HandleStateUpdates(&ledger.StateUpdateTrigger{
-			LedgerID:           channelName,
-			CommittingBlockNum: 50},
-		)
+		// does not processes new lifecycle event
 		assert.NotContains(t, handler1.eventsRecieved, &mockEvent{cc2Def, ccDBArtifactsTar})
-	})
-
-	// test3 collection lscc event (with tilda separator in chaincode key) NOT sent to handler
-	t.Run("CollectionEvent", func(t *testing.T) {
-		lsccStateListener.HandleStateUpdates(&ledger.StateUpdateTrigger{
-			LedgerID:           channelName,
-			CommittingBlockNum: 50},
-		)
-		assert.NotContains(t, handler1.eventsRecieved, &mockEvent{cc3Def, ccDBArtifactsTar})
 	})
 }
 
 type mockProvider struct {
-	chaincodesDeployed  map[[3]string]bool
-	chaincodesInstalled map[[2]string][]byte
+	chaincodesDeployed             map[[3]string]bool
+	chaincodesDeployedNewLifecycle map[[3]string]bool
+	chaincodesInstalled            map[[2]string][]byte
 }
 
 type mockHandler struct {
@@ -173,31 +179,29 @@ func (l *mockHandler) ChaincodeDeployDone(succeeded bool) {
 func newMockProvider() *mockProvider {
 	return &mockProvider{
 		make(map[[3]string]bool),
+		make(map[[3]string]bool),
 		make(map[[2]string][]byte),
 	}
 }
 
-func (p *mockProvider) setChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition) {
-	p.chaincodesDeployed[[3]string{chainid, chaincodeDefinition.Name, chaincodeDefinition.Version}] = true
+func (p *mockProvider) setChaincodeDeployed(chainid string, chaincodeDefinition *ChaincodeDefinition, isLegacy bool) {
+	p.chaincodesDeployed[[3]string{chainid, chaincodeDefinition.Name, chaincodeDefinition.Version}] = isLegacy
 }
 
 func (p *mockProvider) setChaincodeInstalled(chaincodeDefinition *ChaincodeDefinition, dbArtifactsTar []byte) {
 	p.chaincodesInstalled[[2]string{chaincodeDefinition.Name, chaincodeDefinition.Version}] = dbArtifactsTar
 }
 
-func (p *mockProvider) setChaincodeDeployAndInstalled(chainid string, chaincodeDefinition *ChaincodeDefinition, dbArtifactsTar []byte) {
-	p.setChaincodeDeployed(chainid, chaincodeDefinition)
-	p.setChaincodeInstalled(chaincodeDefinition, dbArtifactsTar)
-}
-
 func (p *mockProvider) GetDeployedChaincodeInfo(chainid string, chaincodeDefinition *ChaincodeDefinition) (*ledger.DeployedChaincodeInfo, error) {
-	if p.chaincodesDeployed[[3]string{chainid, chaincodeDefinition.Name, chaincodeDefinition.Version}] {
-		return &ledger.DeployedChaincodeInfo{
-			Name:    chaincodeDefinition.Name,
-			Version: chaincodeDefinition.Version,
-		}, nil
+	isLegacy, ok := p.chaincodesDeployed[[3]string{chainid, chaincodeDefinition.Name, chaincodeDefinition.Version}]
+	if !ok {
+		return nil, nil
 	}
-	return nil, nil
+	return &ledger.DeployedChaincodeInfo{
+		Name:     chaincodeDefinition.Name,
+		Version:  chaincodeDefinition.Version,
+		IsLegacy: isLegacy,
+	}, nil
 }
 
 func (p *mockProvider) RetrieveChaincodeArtifacts(chaincodeDefinition *ChaincodeDefinition) (installed bool, dbArtifactsTar []byte, err error) {

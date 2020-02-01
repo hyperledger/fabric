@@ -14,6 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/fabenc"
+	"github.com/hyperledger/fabric/common/flogging/mock"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -33,15 +34,15 @@ func TestFabricLoggerEncoding(t *testing.T) {
 
 	buf.Reset()
 	fl.Info("string value", 0, 1.23, struct{}{})
-	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m string value 0 1.23 {} {\"extra\": \"field\"}\n", buf.String())
+	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m string value 0 1.23 {} extra=field\n", buf.String())
 
 	buf.Reset()
 	fl.Infof("string %s, %d, %.3f, %v", "strval", 0, 1.23, struct{}{})
-	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m string strval, 0, 1.230, {} {\"extra\": \"field\"}\n", buf.String())
+	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m string strval, 0, 1.230, {} extra=field\n", buf.String())
 
 	buf.Reset()
 	fl.Infow("this is a message", "int", 0, "float", 1.23, "struct", struct{}{})
-	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m this is a message {\"extra\": \"field\", \"int\": 0, \"float\": 1.23, \"struct\": {}}\n", buf.String())
+	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m this is a message extra=field int=0 float=1.23 struct={}\n", buf.String())
 }
 
 func TestFabricLogger(t *testing.T) {
@@ -307,4 +308,31 @@ func TestGRPCLogger(t *testing.T) {
 
 	callWrapper(gl, "message")
 	assert.Equal(t, "grpc DEBUG TestGRPCLogger message\n", buf.String())
+}
+
+// FAB-15432
+//
+// When the FabricLogger is used, the zap Core check function should not be
+// driven if the minimum log level is above the level we are logging at.
+// In other words, with a log spec of "info", logging at Debug should prevent
+// a call to Check while logging at Info will not.
+func TestEnabledLevelCheck(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logging, err := flogging.New(flogging.Config{
+		LogSpec: "info",
+		Writer:  buf,
+	})
+	assert.NoError(t, err)
+
+	fakeObserver := &mock.Observer{}
+	logging.SetObserver(fakeObserver)
+
+	logger := logging.ZapLogger("foo")
+	fabricLogger := flogging.NewFabricLogger(logger)
+
+	fabricLogger.Debug("debug message")
+	assert.Equal(t, 0, fakeObserver.CheckCallCount(), "Check should not have been called")
+
+	fabricLogger.Info("info message")
+	assert.Equal(t, 1, fakeObserver.CheckCallCount(), "Check should have been called")
 }

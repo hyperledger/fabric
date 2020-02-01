@@ -11,37 +11,47 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	lgr "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/queryresult"
-	"github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
-	"github.com/spf13/viper"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	ledgertestutil.SetupCoreYAMLConfig()
 	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,valimpl,confighistory,pvtstatepurgemgmt=debug")
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger")
-	viper.Set("ledger.history.enableHistoryDatabase", true)
 	os.Exit(m.Run())
 }
 
+func TestKVLedgerNilHistoryDBProvider(t *testing.T) {
+	kvl := &kvLedger{}
+	qe, err := kvl.NewHistoryQueryExecutor()
+	assert.Nil(
+		t,
+		qe,
+		"NewHistoryQueryExecutor should return nil when history db provider is nil",
+	)
+	assert.NoError(
+		t,
+		err,
+		"NewHistoryQueryExecutor should return an error when history db provider is nil",
+	)
+}
+
 func TestKVLedgerBlockStorage(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
-	provider := testutilNewProvider(t)
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t)
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := gb.Header.Hash()
-	ledger, _ := provider.Create(gb)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	ledger, err := provider.Create(gb)
+	assert.NoError(t, err)
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -58,10 +68,10 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block1.Header.Hash()
+	block1Hash := protoutil.BlockHeaderHash(block1.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
 	}, bcInfo)
@@ -75,10 +85,10 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block2Hash := block2.Header.Hash()
+	block2Hash := protoutil.BlockHeaderHash(block2.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash}, bcInfo)
 
@@ -96,11 +106,11 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	// get the tran id from the 2nd block, then use it to test GetTransactionByID()
 	txEnvBytes2 := block1.Data.Data[0]
-	txEnv2, err := putils.GetEnvelopeFromBlock(txEnvBytes2)
+	txEnv2, err := protoutil.GetEnvelopeFromBlock(txEnvBytes2)
 	assert.NoError(t, err, "Error upon GetEnvelopeFromBlock")
-	payload2, err := putils.GetPayload(txEnv2)
+	payload2, err := protoutil.UnmarshalPayload(txEnv2.Payload)
 	assert.NoError(t, err, "Error upon GetPayload")
-	chdr, err := putils.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
+	chdr, err := protoutil.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
 	assert.NoError(t, err, "Error upon GetChannelHeaderFromBytes")
 	txID2 := chdr.TxId
 	processedTran2, err := ledger.GetTransactionByID(txID2)
@@ -118,16 +128,70 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.Equal(t, peer.TxValidationCode_VALID, validCode)
 }
 
-func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
-	t.Skip()
-	env := newTestEnv(t)
-	defer env.cleanup()
-	provider := testutilNewProvider(t)
+func TestAddCommitHash(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t)
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := gb.Header.Hash()
-	ledger, _ := provider.Create(gb)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	ledger, err := provider.Create(gb)
+	assert.NoError(t, err)
+	defer ledger.Close()
+
+	// metadata associated with the above created geneis block is
+	// empty. Hence, no commitHash would be empty.
+	commitHash, err := ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 0)
+
+	bcInfo, _ := ledger.GetBlockchainInfo()
+	assert.Equal(t, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
+	}, bcInfo)
+
+	txid := util.GenerateUUID()
+	simulator, _ := ledger.NewTxSimulator(txid)
+	simulator.SetState("ns1", "key1", []byte("value1"))
+	simulator.SetState("ns1", "key2", []byte("value2"))
+	simulator.SetState("ns1", "key3", []byte("value3"))
+	simulator.Done()
+	simRes, _ := simulator.GetTxSimulationResults()
+	pubSimBytes, _ := simRes.GetPubSimulationBytes()
+	block1 := bg.NextBlock([][]byte{pubSimBytes})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
+
+	commitHash, err = ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 32)
+
+	// if the kvledger.commitHash is nil and the block number is > 1, the
+	// commitHash should not be added to the block
+	block2 := bg.NextBlock([][]byte{pubSimBytes})
+	ledger.(*kvLedger).commitHash = nil
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
+
+	commitHash, err = ledger.(*kvLedger).lastPersistedCommitHash()
+	assert.NoError(t, err)
+	assert.Equal(t, commitHash, ledger.(*kvLedger).commitHash)
+	assert.Equal(t, len(commitHash), 0)
+
+}
+
+func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
+	t.Skip()
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t)
+	defer provider.Close()
+
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	ledger, err := provider.Create(gb)
+	assert.NoError(t, err)
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -144,10 +208,10 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlockWithTxid([][]byte{pubSimBytes}, []string{txid})
-	assert.NoError(t, ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1}))
+	assert.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block1.Header.Hash()
+	block1Hash := protoutil.BlockHeaderHash(block1.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
 	}, bcInfo)
@@ -161,56 +225,62 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block2Hash := block2.Header.Hash()
+	block2Hash := protoutil.BlockHeaderHash(block2.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
 	}, bcInfo)
 
 	pvtdataAndBlock, _ := ledger.GetPvtDataAndBlockByNum(0, nil)
 	assert.Equal(t, gb, pvtdataAndBlock.Block)
-	assert.Nil(t, pvtdataAndBlock.BlockPvtData)
+	assert.Nil(t, pvtdataAndBlock.PvtData)
 
 	pvtdataAndBlock, _ = ledger.GetPvtDataAndBlockByNum(1, nil)
 	assert.Equal(t, block1, pvtdataAndBlock.Block)
-	assert.NotNil(t, pvtdataAndBlock.BlockPvtData)
-	assert.True(t, pvtdataAndBlock.BlockPvtData[0].Has("ns1", "coll1"))
-	assert.True(t, pvtdataAndBlock.BlockPvtData[0].Has("ns1", "coll2"))
+	assert.NotNil(t, pvtdataAndBlock.PvtData)
+	assert.True(t, pvtdataAndBlock.PvtData[0].Has("ns1", "coll1"))
+	assert.True(t, pvtdataAndBlock.PvtData[0].Has("ns1", "coll2"))
 
 	pvtdataAndBlock, _ = ledger.GetPvtDataAndBlockByNum(2, nil)
 	assert.Equal(t, block2, pvtdataAndBlock.Block)
-	assert.Nil(t, pvtdataAndBlock.BlockPvtData)
+	assert.Nil(t, pvtdataAndBlock.PvtData)
 }
 
 func TestKVLedgerDBRecovery(t *testing.T) {
-	env := newTestEnv(t)
-	defer env.cleanup()
-	provider := testutilNewProviderWithCollectionConfig(t,
-		"ns", map[string]uint64{"coll": 0},
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider1 := testutilNewProviderWithCollectionConfig(
+		t,
+		"ns",
+		map[string]uint64{"coll": 0},
+		conf,
 	)
-	defer provider.Close()
+	defer provider1.Close()
+
 	testLedgerid := "testLedger"
 	bg, gb := testutil.NewBlockGenerator(t, testLedgerid, false)
-	ledger, _ := provider.Create(gb)
-	defer ledger.Close()
-	gbHash := gb.Header.Hash()
-	checkBCSummaryForTest(t, ledger,
+	ledger1, err := provider1.Create(gb)
+	assert.NoError(t, err)
+	defer ledger1.Close()
+
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	checkBCSummaryForTest(t, ledger1,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil},
 		},
 	)
 
 	// creating and committing the second data block
-	blockAndPvtdata1 := prepareNextBlockForTest(t, ledger, bg, "SimulateForBlk1",
+	blockAndPvtdata1 := prepareNextBlockForTest(t, ledger1, bg, "SimulateForBlk1",
 		map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
 		map[string]string{"key1": "pvtValue1.1", "key2": "pvtValue2.1", "key3": "pvtValue3.1"})
-	assert.NoError(t, ledger.CommitWithPvtData(blockAndPvtdata1))
-	checkBCSummaryForTest(t, ledger,
+	assert.NoError(t, ledger1.CommitLegacy(blockAndPvtdata1, &lgr.CommitOptions{}))
+	checkBCSummaryForTest(t, ledger1,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 2,
-				CurrentBlockHash:  blockAndPvtdata1.Block.Header.Hash(),
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
 				PreviousBlockHash: gbHash},
 		},
 	)
@@ -219,19 +289,20 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// SCENARIO 1: peer writes the second block to the block storage and fails
 	// before committing the block to state DB and history DB
 	//======================================================================================
-	blockAndPvtdata2 := prepareNextBlockForTest(t, ledger, bg, "SimulateForBlk2",
+	blockAndPvtdata2 := prepareNextBlockForTest(t, ledger1, bg, "SimulateForBlk2",
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
 
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true))
-	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata2))
+	_, _, err = ledger1.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true)
+	assert.NoError(t, err)
+	assert.NoError(t, ledger1.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata2))
 
 	// block storage should be as of block-2 but the state and history db should be as of block-1
-	checkBCSummaryForTest(t, ledger,
+	checkBCSummaryForTest(t, ledger1,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 3,
-				CurrentBlockHash:  blockAndPvtdata2.Block.Header.Hash(),
-				PreviousBlockHash: blockAndPvtdata1.Block.Header.Hash()},
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header)},
 
 			stateDBSavePoint: uint64(1),
 			stateDBKVs:       map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
@@ -243,16 +314,22 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		},
 	)
 	// Now, assume that peer fails here before committing the transaction to the statedb and historydb
-	ledger.Close()
-	provider.Close()
+	ledger1.Close()
+	provider1.Close()
 
 	// Here the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// StateDB and HistoryDB should be recovered before returning from NewKVLedger call
-	provider = testutilNewProviderWithCollectionConfig(t,
-		"ns", map[string]uint64{"coll": 0},
+	provider2 := testutilNewProviderWithCollectionConfig(
+		t,
+		"ns",
+		map[string]uint64{"coll": 0},
+		conf,
 	)
-	ledger, _ = provider.Open(testLedgerid)
-	checkBCSummaryForTest(t, ledger,
+	defer provider2.Close()
+	ledger2, err := provider2.Open(testLedgerid)
+	assert.NoError(t, err)
+	defer ledger2.Close()
+	checkBCSummaryForTest(t, ledger2,
 		&bcSummary{
 			stateDBSavePoint: uint64(2),
 			stateDBKVs:       map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
@@ -260,7 +337,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 			historyDBSavePoint: uint64(2),
 			historyKey:         "key1",
-			historyVals:        []string{"value1.1", "value1.2"},
+			historyVals:        []string{"value1.2", "value1.1"},
 		},
 	)
 
@@ -268,21 +345,22 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// SCENARIO 2: peer fails after committing the third block to the block storage and state DB
 	// but before committing to history DB
 	//======================================================================================
-	blockAndPvtdata3 := prepareNextBlockForTest(t, ledger, bg, "SimulateForBlk3",
+	blockAndPvtdata3 := prepareNextBlockForTest(t, ledger2, bg, "SimulateForBlk3",
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 	)
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true))
-	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata3))
+	_, _, err = ledger2.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true)
+	assert.NoError(t, err)
+	assert.NoError(t, ledger2.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata3))
 	// committing the transaction to state DB
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.Commit())
+	assert.NoError(t, ledger2.(*kvLedger).txtmgmt.Commit())
 
 	// assume that peer fails here after committing the transaction to state DB but before history DB
-	checkBCSummaryForTest(t, ledger,
+	checkBCSummaryForTest(t, ledger2,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 4,
-				CurrentBlockHash:  blockAndPvtdata3.Block.Header.Hash(),
-				PreviousBlockHash: blockAndPvtdata2.Block.Header.Hash()},
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header)},
 
 			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
@@ -290,20 +368,26 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 			historyDBSavePoint: uint64(2),
 			historyKey:         "key1",
-			historyVals:        []string{"value1.1", "value1.2"},
+			historyVals:        []string{"value1.2", "value1.1"},
 		},
 	)
-	ledger.Close()
-	provider.Close()
+	ledger2.Close()
+	provider2.Close()
 
 	// we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// history DB should be recovered before returning from NewKVLedger call
-	provider = testutilNewProviderWithCollectionConfig(t,
-		"ns", map[string]uint64{"coll": 0},
+	provider3 := testutilNewProviderWithCollectionConfig(
+		t,
+		"ns",
+		map[string]uint64{"coll": 0},
+		conf,
 	)
-	ledger, _ = provider.Open(testLedgerid)
+	defer provider3.Close()
+	ledger3, err := provider3.Open(testLedgerid)
+	assert.NoError(t, err)
+	defer ledger3.Close()
 
-	checkBCSummaryForTest(t, ledger,
+	checkBCSummaryForTest(t, ledger3,
 		&bcSummary{
 			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
@@ -311,7 +395,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 			historyDBSavePoint: uint64(3),
 			historyKey:         "key1",
-			historyVals:        []string{"value1.1", "value1.2", "value1.3"},
+			historyVals:        []string{"value1.3", "value1.2", "value1.1"},
 		},
 	)
 
@@ -320,20 +404,21 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// SCENARIO 3: peer fails after committing the fourth block to the block storgae
 	// and history DB but before committing to state DB
 	//======================================================================================
-	blockAndPvtdata4 := prepareNextBlockForTest(t, ledger, bg, "SimulateForBlk4",
+	blockAndPvtdata4 := prepareNextBlockForTest(t, ledger3, bg, "SimulateForBlk4",
 		map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
 	)
 
-	assert.NoError(t, ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true))
-	assert.NoError(t, ledger.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata4))
-	assert.NoError(t, ledger.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
+	_, _, err = ledger3.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true)
+	assert.NoError(t, err)
+	assert.NoError(t, ledger3.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata4))
+	assert.NoError(t, ledger3.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
 
-	checkBCSummaryForTest(t, ledger,
+	checkBCSummaryForTest(t, ledger3,
 		&bcSummary{
 			bcInfo: &common.BlockchainInfo{Height: 5,
-				CurrentBlockHash:  blockAndPvtdata4.Block.Header.Hash(),
-				PreviousBlockHash: blockAndPvtdata3.Block.Header.Hash()},
+				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata4.Block.Header),
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header)},
 
 			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
@@ -341,19 +426,25 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 			historyDBSavePoint: uint64(4),
 			historyKey:         "key1",
-			historyVals:        []string{"value1.1", "value1.2", "value1.3", "value1.4"},
+			historyVals:        []string{"value1.4", "value1.3", "value1.2", "value1.1"},
 		},
 	)
-	ledger.Close()
-	provider.Close()
+	ledger3.Close()
+	provider3.Close()
 
 	// we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
 	// state DB should be recovered before returning from NewKVLedger call
-	provider = testutilNewProviderWithCollectionConfig(t,
-		"ns", map[string]uint64{"coll": 0},
+	provider4 := testutilNewProviderWithCollectionConfig(
+		t,
+		"ns",
+		map[string]uint64{"coll": 0},
+		conf,
 	)
-	ledger, _ = provider.Open(testLedgerid)
-	checkBCSummaryForTest(t, ledger,
+	defer provider4.Close()
+	ledger4, err := provider4.Open(testLedgerid)
+	assert.NoError(t, err)
+	defer ledger4.Close()
+	checkBCSummaryForTest(t, ledger4,
 		&bcSummary{
 			stateDBSavePoint: uint64(4),
 			stateDBKVs:       map[string]string{"key1": "value1.4", "key2": "value2.4", "key3": "value3.4"},
@@ -361,26 +452,20 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 			historyDBSavePoint: uint64(4),
 			historyKey:         "key1",
-			historyVals:        []string{"value1.1", "value1.2", "value1.3", "value1.4"},
+			historyVals:        []string{"value1.4", "value1.3", "value1.2", "value1.1"},
 		},
 	)
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
-
-	//call a helper method to load the core.yaml
-	ledgertestutil.SetupCoreYAMLConfig()
-
-	logger.Debugf("TestLedgerWithCouchDbEnabledWithBinaryAndJSONData  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
-		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())
-
-	env := newTestEnv(t)
-	defer env.cleanup()
-	provider := testutilNewProvider(t)
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t)
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := gb.Header.Hash()
-	ledger, _ := provider.Create(gb)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	ledger, err := provider.Create(gb)
+	assert.NoError(t, err)
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -398,10 +483,10 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
 
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block1})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block1.Header.Hash()
+	block1Hash := protoutil.BlockHeaderHash(block1.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash}, bcInfo)
 
@@ -429,10 +514,10 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	simulationResults = append(simulationResults, pubSimBytes2)
 
 	block2 := bg.NextBlock(simulationResults)
-	ledger.CommitWithPvtData(&lgr.BlockAndPvtData{Block: block2})
+	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block2Hash := block2.Header.Hash()
+	block2Hash := protoutil.BlockHeaderHash(block2.Header)
 	assert.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
 	}, bcInfo)
@@ -456,7 +541,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	assert.True(t, proto.Equal(b2, block2), "proto messages are not equal")
 
 	//Similar test has been pushed down to historyleveldb_test.go as well
-	if ledgerconfig.IsHistoryDBEnabled() == true {
+	if conf.HistoryDBConfig.Enabled {
 		logger.Debugf("History is enabled\n")
 		qhistory, err := ledger.NewHistoryQueryExecutor()
 		assert.NoError(t, err, "Error when trying to retrieve history database executor")
@@ -475,11 +560,26 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 			count++
 		}
 		assert.Equal(t, 3, count)
-		// test the last value in the history matches the last value set for key7
-		expectedValue := []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"TRAIN\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")
+		// test the last value in the history matches the first value set for key7
+		expectedValue := []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"AIR MAYBE\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")
 		assert.Equal(t, expectedValue, retrievedValue)
 
 	}
+}
+
+func prepareNextBlockWithMissingPvtDataForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockGenerator,
+	txid string, pubKVs map[string]string, pvtKVs map[string]string) (*lgr.BlockAndPvtData, *lgr.TxPvtData) {
+
+	blockAndPvtData := prepareNextBlockForTest(t, l, bg, txid, pubKVs, pvtKVs)
+
+	blkMissingDataInfo := make(lgr.TxMissingPvtDataMap)
+	blkMissingDataInfo.Add(0, "ns", "coll", true)
+	blockAndPvtData.MissingPvtData = blkMissingDataInfo
+
+	pvtData := blockAndPvtData.PvtData[0]
+	delete(blockAndPvtData.PvtData, 0)
+
+	return blockAndPvtData, pvtData
 }
 
 func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockGenerator,
@@ -497,7 +597,7 @@ func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockG
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
 	return &lgr.BlockAndPvtData{Block: block,
-		BlockPvtData: map[uint64]*lgr.TxPvtData{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
+		PvtData: lgr.TxPvtDataMap{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
 	}
 }
 

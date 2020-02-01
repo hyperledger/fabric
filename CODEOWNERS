@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Fabric Maintainers
+*       @hyperledger/fabric-core-maintainers
+/docs/  @hyperledger/fabric-core-doc-maintainers @hyperledger/fabric-core-maintainers

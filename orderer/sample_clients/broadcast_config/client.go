@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"os"
 
-	genesisconfig "github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"google.golang.org/grpc"
 )
 
@@ -53,7 +53,6 @@ type argsImpl struct {
 }
 
 var conf *localconfig.TopLevel
-var genConf *genesisconfig.Profile
 
 func init() {
 	var err error
@@ -66,10 +65,8 @@ func init() {
 	// Load local MSP
 	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil {
-		panic(fmt.Errorf("Failed to initialize local MSP: %s", err))
+		panic(fmt.Errorf("failed to initialize local MSP: %s", err))
 	}
-
-	genConf = genesisconfig.Load(conf.General.GenesisProfile)
 }
 
 func main() {
@@ -78,10 +75,16 @@ func main() {
 
 	flag.StringVar(&srv, "server", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort), "The RPC server to connect to.")
 	flag.StringVar(&cmd.name, "cmd", "newChain", "The action that this client is requesting via the config transaction.")
-	flag.StringVar(&cmd.args.consensusType, "consensusType", genConf.Orderer.OrdererType, "In case of a newChain command, the type of consensus the ordering service is running on.")
+	flag.StringVar(&cmd.args.consensusType, "consensusType", "solo", "In case of a newChain command, the type of consensus the ordering service is running on.")
 	flag.StringVar(&cmd.args.creationPolicy, "creationPolicy", "AcceptAllPolicy", "In case of a newChain command, the chain creation policy this request should be validated against.")
 	flag.StringVar(&cmd.args.chainID, "chainID", "mychannel", "In case of a newChain command, the chain ID to create.")
 	flag.Parse()
+
+	signer, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	if err != nil {
+		fmt.Println("Failed to load local signing identity:", err)
+		os.Exit(0)
+	}
 
 	conn, err := grpc.Dial(srv, grpc.WithInsecure())
 	defer func() {
@@ -102,7 +105,12 @@ func main() {
 
 	switch cmd.name {
 	case "newChain":
-		env := newChainRequest(cmd.args.consensusType, cmd.args.creationPolicy, cmd.args.chainID)
+		env := newChainRequest(
+			cmd.args.consensusType,
+			cmd.args.creationPolicy,
+			cmd.args.chainID,
+			signer,
+		)
 		fmt.Println("Requesting the creation of chain", cmd.args.chainID)
 		fmt.Println(bc.broadcast(env))
 	default:

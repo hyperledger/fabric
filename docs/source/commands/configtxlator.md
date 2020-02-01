@@ -26,7 +26,8 @@ Flags:
                         --help-man).
   --hostname="0.0.0.0"  The hostname or IP on which the REST server will listen
   --port=7059           The port on which the REST server will listen
-
+  --CORS=CORS ...       Allowable CORS domains, e.g. '*' or 'www.example.com'
+                        (may be repeated).
 ```
 
 
@@ -43,7 +44,6 @@ Flags:
                         example, 'common.Config'.
   --input=/dev/stdin    A file containing the JSON document.
   --output=/dev/stdout  A file to write the output to.
-
 ```
 
 
@@ -60,7 +60,6 @@ Flags:
                         example, 'common.Config'.
   --input=/dev/stdin    A file containing the proto message.
   --output=/dev/stdout  A file to write the JSON document to.
-
 ```
 
 
@@ -78,7 +77,6 @@ Flags:
   --updated=UPDATED        The updated config message.
   --channel_id=CHANNEL_ID  The name of the channel for this update.
   --output=/dev/stdout     A file to write the JSON document to.
-
 ```
 
 
@@ -90,7 +88,6 @@ Show version information
 
 Flags:
   --help  Show context-sensitive help (also try --help-long and --help-man).
-
 ```
 
 ## Examples

@@ -6,6 +6,16 @@ SPDX-License-Identifier: Apache-2.0
 
 package pvtstatepurgemgmt
 
+func (pvtdataKeys *PvtdataKeys) addAll(toAdd *PvtdataKeys) {
+	for ns, colls := range toAdd.Map {
+		for coll, keysAndHashes := range colls.Map {
+			for _, k := range keysAndHashes.List {
+				pvtdataKeys.add(ns, coll, k.Key, k.Hash)
+			}
+		}
+	}
+}
+
 func (pvtdataKeys *PvtdataKeys) add(ns string, coll string, key string, keyhash []byte) {
 	colls := pvtdataKeys.getOrCreateCollections(ns)
 	keysAndHashes := colls.getOrCreateKeysAndHashes(coll)

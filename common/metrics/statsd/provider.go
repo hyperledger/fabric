@@ -9,6 +9,7 @@ package statsd
 import (
 	"github.com/go-kit/kit/metrics/statsd"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/metrics/internal/namer"
 )
 
 const defaultFormat = "%{#fqname}"
@@ -22,14 +23,8 @@ func (p *Provider) NewCounter(o metrics.CounterOpts) metrics.Counter {
 		o.StatsdFormat = defaultFormat
 	}
 	counter := &Counter{
-		namer: &namer{
-			namespace:  o.Namespace,
-			subsystem:  o.Subsystem,
-			name:       o.Name,
-			nameFormat: o.StatsdFormat,
-			labelNames: sliceToSet(o.LabelNames),
-		},
 		statsdProvider: p.Statsd,
+		namer:          namer.NewCounterNamer(o),
 	}
 
 	if len(o.LabelNames) == 0 {
@@ -44,14 +39,8 @@ func (p *Provider) NewGauge(o metrics.GaugeOpts) metrics.Gauge {
 		o.StatsdFormat = defaultFormat
 	}
 	gauge := &Gauge{
-		namer: &namer{
-			namespace:  o.Namespace,
-			subsystem:  o.Subsystem,
-			name:       o.Name,
-			nameFormat: o.StatsdFormat,
-			labelNames: sliceToSet(o.LabelNames),
-		},
 		statsdProvider: p.Statsd,
+		namer:          namer.NewGaugeNamer(o),
 	}
 
 	if len(o.LabelNames) == 0 {
@@ -66,14 +55,8 @@ func (p *Provider) NewHistogram(o metrics.HistogramOpts) metrics.Histogram {
 		o.StatsdFormat = defaultFormat
 	}
 	histogram := &Histogram{
-		namer: &namer{
-			namespace:  o.Namespace,
-			subsystem:  o.Subsystem,
-			name:       o.Name,
-			nameFormat: o.StatsdFormat,
-			labelNames: sliceToSet(o.LabelNames),
-		},
 		statsdProvider: p.Statsd,
+		namer:          namer.NewHistogramNamer(o),
 	}
 
 	if len(o.LabelNames) == 0 {
@@ -85,7 +68,7 @@ func (p *Provider) NewHistogram(o metrics.HistogramOpts) metrics.Histogram {
 
 type Counter struct {
 	Counter        *statsd.Counter
-	namer          *namer
+	namer          *namer.Namer
 	statsdProvider *statsd.Statsd
 }
 
@@ -103,7 +86,7 @@ func (c *Counter) With(labelValues ...string) metrics.Counter {
 
 type Gauge struct {
 	Gauge          *statsd.Gauge
-	namer          *namer
+	namer          *namer.Namer
 	statsdProvider *statsd.Statsd
 }
 
@@ -128,7 +111,7 @@ func (g *Gauge) With(labelValues ...string) metrics.Gauge {
 
 type Histogram struct {
 	Timing         *statsd.Timing
-	namer          *namer
+	namer          *namer.Namer
 	statsdProvider *statsd.Statsd
 }
 
@@ -142,12 +125,4 @@ func (h *Histogram) Observe(value float64) {
 		panic("label values must be provided by calling With")
 	}
 	h.Timing.Observe(value)
-}
-
-func sliceToSet(set []string) map[string]struct{} {
-	labelSet := map[string]struct{}{}
-	for _, s := range set {
-		labelSet[s] = struct{}{}
-	}
-	return labelSet
 }

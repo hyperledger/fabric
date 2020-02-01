@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package statedb
@@ -54,10 +44,10 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	expectedResult = false
 	assert.Equal(t, expectedResult, actualResult)
 
-	//Get() should return nill as key2 does not exist
+	//Get() should return nil as key2 does not exist
 	actualVersionedValue = batch.Get("ns1", "key2")
 	assert.Nil(t, actualVersionedValue)
-	//Get() should return nill as ns3 does not exist
+	//Get() should return nil as ns3 does not exist
 	actualVersionedValue = batch.Get("ns3", "key2")
 	assert.Nil(t, actualVersionedValue)
 
@@ -162,4 +152,34 @@ func TestPaginatedRangeValidation(t *testing.T) {
 	err = ValidateRangeMetadata(queryOptions)
 	assert.Error(t, err, "An should have been thrown for an invalid option")
 
+}
+
+func TestMergeUpdateBatch(t *testing.T) {
+	batch1 := NewUpdateBatch()
+	batch1.Put("ns1", "key1", []byte("batch1_value1"), version.NewHeight(1, 1))
+	batch1.Put("ns1", "key2", []byte("batch1_value2"), version.NewHeight(2, 2))
+	batch1.Put("ns1", "key3", []byte("batch1_value3"), version.NewHeight(3, 3))
+
+	batch2 := NewUpdateBatch()
+	batch2.ContainsPostOrderWrites = true
+	batch2.Put("ns1", "key1", []byte("batch2_value1"), version.NewHeight(4, 4)) // overwrite key1 with new value
+	batch2.Delete("ns1", "key2", version.NewHeight(5, 5))                       // overwrite key2 with deletion
+	batch2.Put("ns1", "key4", []byte("batch2_value4"), version.NewHeight(6, 6)) // new key only in batch2
+	batch2.Delete("ns1", "key5", version.NewHeight(7, 7))                       // delete key only in batch2
+	batch2.Put("ns2", "key6", []byte("batch2_value6"), version.NewHeight(8, 8)) // namespace only in batch2
+
+	batch1.Merge(batch2)
+
+	// prepare final expected batch by writing all updates in the above order
+	expectedBatch := NewUpdateBatch()
+	expectedBatch.ContainsPostOrderWrites = true
+	expectedBatch.Put("ns1", "key1", []byte("batch1_value1"), version.NewHeight(1, 1))
+	expectedBatch.Put("ns1", "key2", []byte("batch1_value2"), version.NewHeight(2, 2))
+	expectedBatch.Put("ns1", "key3", []byte("batch1_value3"), version.NewHeight(3, 3))
+	expectedBatch.Put("ns1", "key1", []byte("batch2_value1"), version.NewHeight(4, 4))
+	expectedBatch.Delete("ns1", "key2", version.NewHeight(5, 5))
+	expectedBatch.Put("ns1", "key4", []byte("batch2_value4"), version.NewHeight(6, 6))
+	expectedBatch.Delete("ns1", "key5", version.NewHeight(7, 7))
+	expectedBatch.Put("ns2", "key6", []byte("batch2_value6"), version.NewHeight(8, 8))
+	assert.Equal(t, expectedBatch, batch1)
 }

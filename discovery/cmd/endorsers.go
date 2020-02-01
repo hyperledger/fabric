@@ -14,11 +14,12 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
+	. "github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/cmd/common"
-	"github.com/hyperledger/fabric/discovery/client"
-	. "github.com/hyperledger/fabric/protos/discovery"
-	"github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/msp"
+	discovery "github.com/hyperledger/fabric/discovery/client"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/pkg/errors"
 )
 
@@ -37,12 +38,18 @@ type EndorsersCmd struct {
 	channel     *string
 	chaincodes  *[]string
 	collections *map[string]string
+	noPrivReads *[]string
 	parser      ResponseParser
 }
 
 // SetCollections sets the collections to be the given collections
 func (pc *EndorsersCmd) SetCollections(collections *map[string]string) {
 	pc.collections = collections
+}
+
+// SetNoPrivateReads sets the collections that are expected not to have private reads
+func (pc *EndorsersCmd) SetNoPrivateReads(noPrivReads *[]string) {
+	pc.noPrivReads = noPrivReads
 }
 
 // SetChaincodes sets the chaincodes to be the given chaincodes
@@ -76,6 +83,7 @@ func (pc *EndorsersCmd) Execute(conf common.Config) error {
 	ccAndCol := &chaincodesAndCollections{
 		Chaincodes:  pc.chaincodes,
 		Collections: pc.collections,
+		NoPrivReads: pc.noPrivReads,
 	}
 	cc2collections, err := ccAndCol.parseInput()
 	if err != nil {
@@ -88,6 +96,7 @@ func (pc *EndorsersCmd) Execute(conf common.Config) error {
 		ccCalls = append(ccCalls, &ChaincodeCall{
 			Name:            cc,
 			CollectionNames: cc2collections[cc],
+			NoPrivateReads:  ccAndCol.noPrivateReads(cc),
 		})
 	}
 
@@ -133,6 +142,16 @@ func (parser *EndorserResponseParser) ParseResponse(channel string, res ServiceR
 type chaincodesAndCollections struct {
 	Chaincodes  *[]string
 	Collections *map[string]string
+	NoPrivReads *[]string
+}
+
+func (ec *chaincodesAndCollections) noPrivateReads(chaincodeName string) bool {
+	for _, cc := range *ec.NoPrivReads {
+		if chaincodeName == cc {
+			return true
+		}
+	}
+	return false
 }
 
 func (ec *chaincodesAndCollections) existsInChaincodes(chaincodeName string) bool {
@@ -149,6 +168,11 @@ func (ec *chaincodesAndCollections) parseInput() (map[string][]string, error) {
 	if ec.Chaincodes == nil {
 		ec.Chaincodes = &emptyChaincodes
 	}
+
+	if ec.NoPrivReads == nil {
+		ec.NoPrivReads = &emptyChaincodes
+	}
+
 	var emptyCollections map[string]string
 	if ec.Collections == nil {
 		ec.Collections = &emptyCollections
@@ -160,12 +184,19 @@ func (ec *chaincodesAndCollections) parseInput() (map[string][]string, error) {
 		res[cc] = nil
 	}
 
+	for _, cc := range *ec.NoPrivReads {
+		if !ec.existsInChaincodes(cc) {
+			return nil, errors.Errorf("chaincode %s is specified as not containing private data reads but should be explicitly defined via a chaincode flag", cc)
+		}
+	}
+
 	for cc, collections := range *ec.Collections {
 		if !ec.existsInChaincodes(cc) {
 			return nil, errors.Errorf("a collection specified chaincode %s but it wasn't specified with a chaincode flag", cc)
 		}
 		res[cc] = strings.Split(collections, ",")
 	}
+
 	return res, nil
 }
 
@@ -215,11 +246,11 @@ func endpointFromEnvelope(env *gossip.Envelope) string {
 	if env == nil {
 		return ""
 	}
-	aliveMsg, _ := env.ToGossipMessage()
+	aliveMsg, _ := protoext.EnvelopeToGossipMessage(env)
 	if aliveMsg == nil {
 		return ""
 	}
-	if !aliveMsg.IsAliveMsg() {
+	if !protoext.IsAliveMsg(aliveMsg.GossipMessage) {
 		return ""
 	}
 	if aliveMsg.GetAliveMsg().Membership == nil {
@@ -232,11 +263,11 @@ func ledgerHeightFromEnvelope(env *gossip.Envelope) uint64 {
 	if env == nil {
 		return 0
 	}
-	stateInfoMsg, _ := env.ToGossipMessage()
+	stateInfoMsg, _ := protoext.EnvelopeToGossipMessage(env)
 	if stateInfoMsg == nil {
 		return 0
 	}
-	if !stateInfoMsg.IsStateInfoMsg() {
+	if !protoext.IsStateInfoMsg(stateInfoMsg.GossipMessage) {
 		return 0
 	}
 	if stateInfoMsg.GetStateInfo().Properties == nil {

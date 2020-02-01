@@ -13,20 +13,35 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/coreos/etcd/raft"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/viperutil"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
+	"github.com/hyperledger/fabric/orderer/consensus/inactive"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/raft"
 )
+
+// CreateChainCallback creates a new chain
+type CreateChainCallback func()
+
+//go:generate mockery -dir . -name InactiveChainRegistry -case underscore -output mocks
+
+// InactiveChainRegistry registers chains that are inactive
+type InactiveChainRegistry interface {
+	// TrackChain tracks a chain with the given name, and calls the given callback
+	// when this chain should be created.
+	TrackChain(chainName string, genesisBlock *common.Block, createChain CreateChainCallback)
+}
 
 //go:generate mockery -dir . -name ChainGetter -case underscore -output mocks
 
@@ -40,24 +55,32 @@ type ChainGetter interface {
 
 // Config contains etcdraft configurations
 type Config struct {
-	WALDir string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	WALDir            string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	SnapDir           string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
+	EvictionSuspicion string // Duration threshold that the node samples in order to suspect its eviction from the channel.
 }
 
-// Consenter implements etddraft consenter
+// Consenter implements etcdraft consenter
 type Consenter struct {
-	Communication cluster.Communicator
+	CreateChain           func(chainName string)
+	InactiveChainRegistry InactiveChainRegistry
+	Dialer                *cluster.PredicateDialer
+	Communication         cluster.Communicator
 	*Dispatcher
-	Chains ChainGetter
-	Logger *flogging.FabricLogger
-	Config Config
-	Cert   []byte
+	Chains         ChainGetter
+	Logger         *flogging.FabricLogger
+	EtcdRaftConfig Config
+	OrdererConfig  localconfig.TopLevel
+	Cert           []byte
+	Metrics        *Metrics
+	BCCSP          bccsp.BCCSP
 }
 
 // TargetChannel extracts the channel from the given proto.Message.
 // Returns an empty string on failure.
 func (c *Consenter) TargetChannel(message proto.Message) string {
 	switch req := message.(type) {
-	case *orderer.StepRequest:
+	case *orderer.ConsensusRequest:
 		return req.Channel
 	case *orderer.SubmitRequest:
 		return req.Channel
@@ -84,21 +107,32 @@ func (c *Consenter) ReceiverByChain(channelID string) MessageReceiver {
 }
 
 func (c *Consenter) detectSelfID(consenters map[uint64]*etcdraft.Consenter) (uint64, error) {
+	thisNodeCertAsDER, err := pemToDER(c.Cert, 0, "server", c.Logger)
+	if err != nil {
+		return 0, err
+	}
+
 	var serverCertificates []string
 	for nodeID, cst := range consenters {
 		serverCertificates = append(serverCertificates, string(cst.ServerTlsCert))
-		if bytes.Equal(c.Cert, cst.ServerTlsCert) {
+
+		certAsDER, err := pemToDER(cst.ServerTlsCert, nodeID, "server", c.Logger)
+		if err != nil {
+			return 0, err
+		}
+
+		if bytes.Equal(thisNodeCertAsDER, certAsDER) {
 			return nodeID, nil
 		}
 	}
 
-	c.Logger.Error("Could not find", string(c.Cert), "among", serverCertificates)
-	return 0, errors.Errorf("failed to detect own Raft ID because no matching certificate found")
+	c.Logger.Warning("Could not find", string(c.Cert), "among", serverCertificates)
+	return 0, cluster.ErrNotInChannel
 }
 
 // HandleChain returns a new Chain instance or an error upon failure
 func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *common.Metadata) (consensus.Chain, error) {
-	m := &etcdraft.Metadata{}
+	m := &etcdraft.ConfigMetadata{}
 	if err := proto.Unmarshal(support.SharedConfig().ConsensusMetadata(), m); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consensus metadata")
 	}
@@ -107,17 +141,46 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		return nil, errors.New("etcdraft options have not been provided")
 	}
 
+	isMigration := (metadata == nil || len(metadata.Value) == 0) && (support.Height() > 1)
+	if isMigration {
+		c.Logger.Debugf("Block metadata is nil at block height=%d, it is consensus-type migration", support.Height())
+	}
+
 	// determine raft replica set mapping for each node to its id
 	// for newly started chain we need to read and initialize raft
 	// metadata by creating mapping between conseter and its id.
 	// In case chain has been restarted we restore raft metadata
 	// information from the recently committed block meta data
 	// field.
-	raftMetadata, err := raftMetadata(metadata, m)
-
-	id, err := c.detectSelfID(raftMetadata.Consenters)
+	blockMetadata, err := ReadBlockMetadata(metadata, m)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrapf(err, "failed to read Raft metadata")
+	}
+
+	consenters := CreateConsentersMap(blockMetadata, m)
+
+	id, err := c.detectSelfID(consenters)
+	if err != nil {
+		c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
+			c.CreateChain(support.ChannelID())
+		})
+		return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
+	}
+
+	var evictionSuspicion time.Duration
+	if c.EtcdRaftConfig.EvictionSuspicion == "" {
+		c.Logger.Infof("EvictionSuspicion not set, defaulting to %v", DefaultEvictionSuspicion)
+		evictionSuspicion = DefaultEvictionSuspicion
+	} else {
+		evictionSuspicion, err = time.ParseDuration(c.EtcdRaftConfig.EvictionSuspicion)
+		if err != nil {
+			c.Logger.Panicf("Failed parsing Consensus.EvictionSuspicion: %s: %v", c.EtcdRaftConfig.EvictionSuspicion, err)
+		}
+	}
+
+	tickInterval, err := time.ParseDuration(m.Options.TickInterval)
+	if err != nil {
+		return nil, errors.Errorf("failed to parse TickInterval (%s) to time duration", m.Options.TickInterval)
 	}
 
 	opts := Options{
@@ -126,65 +189,116 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		MemoryStorage: raft.NewMemoryStorage(),
 		Logger:        c.Logger,
 
-		TickInterval:    time.Duration(m.Options.TickInterval) * time.Millisecond,
-		ElectionTick:    int(m.Options.ElectionTick),
-		HeartbeatTick:   int(m.Options.HeartbeatTick),
-		MaxInflightMsgs: int(m.Options.MaxInflightMsgs),
-		MaxSizePerMsg:   m.Options.MaxSizePerMsg,
+		TickInterval:         tickInterval,
+		ElectionTick:         int(m.Options.ElectionTick),
+		HeartbeatTick:        int(m.Options.HeartbeatTick),
+		MaxInflightBlocks:    int(m.Options.MaxInflightBlocks),
+		MaxSizePerMsg:        uint64(support.SharedConfig().BatchSize().PreferredMaxBytes),
+		SnapshotIntervalSize: m.Options.SnapshotIntervalSize,
 
-		RaftMetadata: raftMetadata,
-		WALDir:       path.Join(c.Config.WALDir, support.ChainID()),
+		BlockMetadata: blockMetadata,
+		Consenters:    consenters,
+
+		MigrationInit: isMigration,
+
+		WALDir:            path.Join(c.EtcdRaftConfig.WALDir, support.ChannelID()),
+		SnapDir:           path.Join(c.EtcdRaftConfig.SnapDir, support.ChannelID()),
+		EvictionSuspicion: evictionSuspicion,
+		Cert:              c.Cert,
+		Metrics:           c.Metrics,
 	}
 
-	rpc := &cluster.RPC{Channel: support.ChainID(), Comm: c.Communication}
-	return NewChain(support, opts, c.Communication, rpc, nil)
+	rpc := &cluster.RPC{
+		Timeout:       c.OrdererConfig.General.Cluster.RPCTimeout,
+		Logger:        c.Logger,
+		Channel:       support.ChannelID(),
+		Comm:          c.Communication,
+		StreamsByType: cluster.NewStreamsByType(),
+	}
+	return NewChain(
+		support,
+		opts,
+		c.Communication,
+		rpc,
+		c.BCCSP,
+		func() (BlockPuller, error) {
+			return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
+		},
+		func() {
+			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.CreateChain(support.ChannelID()) })
+		},
+		nil,
+	)
 }
 
-func raftMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.Metadata) (*etcdraft.RaftMetadata, error) {
-	m := &etcdraft.RaftMetadata{
-		Consenters:      map[uint64]*etcdraft.Consenter{},
-		NextConsenterID: 1,
-	}
+// ReadBlockMetadata attempts to read raft metadata from block metadata, if available.
+// otherwise, it reads raft metadata from config metadata supplied.
+func ReadBlockMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.ConfigMetadata) (*etcdraft.BlockMetadata, error) {
 	if blockMetadata != nil && len(blockMetadata.Value) != 0 { // we have consenters mapping from block
+		m := &etcdraft.BlockMetadata{}
 		if err := proto.Unmarshal(blockMetadata.Value, m); err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal block's metadata")
 		}
 		return m, nil
 	}
 
+	m := &etcdraft.BlockMetadata{
+		NextConsenterId: 1,
+		ConsenterIds:    make([]uint64, len(configMetadata.Consenters)),
+	}
 	// need to read consenters from the configuration
-	for _, consenter := range configMetadata.Consenters {
-		m.Consenters[m.NextConsenterID] = consenter
-		m.NextConsenterID++
+	for i := range m.ConsenterIds {
+		m.ConsenterIds[i] = m.NextConsenterId
+		m.NextConsenterId++
 	}
 
 	return m, nil
 }
 
 // New creates a etcdraft Consenter
-func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
-	srvConf comm.ServerConfig, srv *comm.GRPCServer, r *multichannel.Registrar) *Consenter {
+func New(
+	clusterDialer *cluster.PredicateDialer,
+	conf *localconfig.TopLevel,
+	srvConf comm.ServerConfig,
+	srv *comm.GRPCServer,
+	r *multichannel.Registrar,
+	icr InactiveChainRegistry,
+	metricsProvider metrics.Provider,
+	bccsp bccsp.BCCSP,
+) *Consenter {
 	logger := flogging.MustGetLogger("orderer.consensus.etcdraft")
 
-	var config Config
-	if err := viperutil.Decode(conf.Consensus, &config); err != nil {
+	var cfg Config
+	err := mapstructure.Decode(conf.Consensus, &cfg)
+	if err != nil {
 		logger.Panicf("Failed to decode etcdraft configuration: %s", err)
 	}
 
 	consenter := &Consenter{
-		Cert:   srvConf.SecOpts.Certificate,
-		Logger: logger,
-		Chains: r,
-		Config: config,
+		CreateChain:           r.CreateChain,
+		Cert:                  srvConf.SecOpts.Certificate,
+		Logger:                logger,
+		Chains:                r,
+		EtcdRaftConfig:        cfg,
+		OrdererConfig:         *conf,
+		Dialer:                clusterDialer,
+		Metrics:               NewMetrics(metricsProvider),
+		InactiveChainRegistry: icr,
+		BCCSP:                 bccsp,
 	}
 	consenter.Dispatcher = &Dispatcher{
 		Logger:        logger,
 		ChainSelector: consenter,
 	}
 
-	comm := createComm(clusterDialer, conf, consenter)
+	comm := createComm(clusterDialer, consenter, conf.General.Cluster, metricsProvider)
 	consenter.Communication = comm
 	svc := &cluster.Service{
+		CertExpWarningThreshold:          conf.General.Cluster.CertExpirationWarningThreshold,
+		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
+		StreamCountReporter: &cluster.StreamCountReporter{
+			Metrics: comm.Metrics,
+		},
 		StepLogger: flogging.MustGetLogger("orderer.common.cluster.step"),
 		Logger:     flogging.MustGetLogger("orderer.common.cluster"),
 		Dispatcher: comm,
@@ -193,16 +307,18 @@ func New(clusterDialer *cluster.PredicateDialer, conf *localconfig.TopLevel,
 	return consenter
 }
 
-func createComm(clusterDialer *cluster.PredicateDialer,
-	conf *localconfig.TopLevel,
-	c *Consenter) *cluster.Comm {
+func createComm(clusterDialer *cluster.PredicateDialer, c *Consenter, config localconfig.Cluster, p metrics.Provider) *cluster.Comm {
+	metrics := cluster.NewMetrics(p)
 	comm := &cluster.Comm{
-		Logger:       flogging.MustGetLogger("orderer.common.cluster"),
-		Chan2Members: make(map[string]cluster.MemberMapping),
-		Connections:  cluster.NewConnectionStore(clusterDialer),
-		RPCTimeout:   conf.General.Cluster.RPCTimeout,
-		ChanExt:      c,
-		H:            c,
+		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
+		CertExpWarningThreshold:          config.CertExpirationWarningThreshold,
+		SendBufferSize:                   config.SendBufferSize,
+		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
+		Chan2Members:                     make(map[string]cluster.MemberMapping),
+		Connections:                      cluster.NewConnectionStore(clusterDialer, metrics.EgressTLSConnectionCount),
+		Metrics:                          metrics,
+		ChanExt:                          c,
+		H:                                c,
 	}
 	c.Communication = comm
 	return comm

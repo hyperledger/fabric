@@ -26,7 +26,6 @@ import (
 
 	mocks2 "github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/hyperledger/fabric/bccsp/sw/mocks"
-	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,7 +44,7 @@ func TestKeyImport(t *testing.T) {
 		Value:   expectetValue,
 		Err:     expectedErr,
 	}
-	csp := CSP{keyImporters: keyImporters}
+	csp := CSP{KeyImporters: keyImporters}
 	value, err := csp.KeyImport(expectedRaw, expectedOpts)
 	assert.Nil(t, value)
 	assert.Contains(t, err.Error(), expectedErr.Error())
@@ -57,7 +56,7 @@ func TestKeyImport(t *testing.T) {
 		Value:   expectetValue,
 		Err:     nil,
 	}
-	csp = CSP{keyImporters: keyImporters}
+	csp = CSP{KeyImporters: keyImporters}
 	value, err = csp.KeyImport(expectedRaw, expectedOpts)
 	assert.Equal(t, expectetValue, value)
 	assert.Nil(t, err)
@@ -126,7 +125,7 @@ func TestECDSAPKIXPublicKeyImportOptsKeyImporter(t *testing.T) {
 
 	k, err := rsa.GenerateKey(rand.Reader, 512)
 	assert.NoError(t, err)
-	raw, err := utils.PublicKeyToDER(&k.PublicKey)
+	raw, err := x509.MarshalPKIXPublicKey(&k.PublicKey)
 	assert.NoError(t, err)
 	_, err = ki.KeyImport(raw, &mocks2.KeyImportOpts{})
 	assert.Error(t, err)
@@ -176,20 +175,6 @@ func TestECDSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
 	assert.Contains(t, err.Error(), "Invalid raw material. Expected *ecdsa.PublicKey.")
 }
 
-func TestRSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
-	t.Parallel()
-
-	ki := rsaGoPublicKeyImportOptsKeyImporter{}
-
-	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected *rsa.PublicKey.")
-
-	_, err = ki.KeyImport(nil, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected *rsa.PublicKey.")
-}
-
 func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
 	t.Parallel()
 
@@ -207,5 +192,5 @@ func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
 	cert.PublicKey = "Hello world"
 	_, err = ki.KeyImport(cert, &mocks2.KeyImportOpts{})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Certificate's public key type not recognized. Supported keys: [ECDSA, RSA]")
+	assert.Contains(t, err.Error(), "Certificate's public key type not recognized. Supported keys: [ECDSA]")
 }

@@ -9,10 +9,10 @@ package aclmgmt
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 //--------- errors ---------
@@ -36,7 +36,7 @@ func (e InvalidIdInfo) Error() string {
 //policyEvalutor interface provides the interfaces for policy evaluation
 type policyEvaluator interface {
 	PolicyRefForAPI(resName string) string
-	Evaluate(polName string, id []*common.SignedData) error
+	Evaluate(polName string, id []*protoutil.SignedData) error
 }
 
 //policyEvaluatorImpl implements policyEvaluator
@@ -58,13 +58,13 @@ func (pe *policyEvaluatorImpl) PolicyRefForAPI(resName string) string {
 	return pm.PolicyRefForAPI(resName)
 }
 
-func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*common.SignedData) error {
+func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.SignedData) error {
 	policy, ok := pe.bundle.PolicyManager().GetPolicy(polName)
 	if !ok {
 		return PolicyNotFound(polName)
 	}
 
-	return policy.Evaluate(sd)
+	return policy.EvaluateSignedData(sd)
 }
 
 //------ resourcePolicyProvider ----------
@@ -94,42 +94,43 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 	aclLogger.Debugf("acl check(%s)", polName)
 
 	//we will implement other identifiers. In the end we just need a SignedData
-	var sd []*common.SignedData
-	var err error
-	switch idinfo.(type) {
+	var sd []*protoutil.SignedData
+	switch idinfo := idinfo.(type) {
 	case *pb.SignedProposal:
-		signedProp, _ := idinfo.(*pb.SignedProposal)
-		// Prepare SignedData
-		proposal, err := utils.GetProposal(signedProp.ProposalBytes)
+		signedProp := idinfo
+		proposal, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 		if err != nil {
 			return fmt.Errorf("Failing extracting proposal during check policy with policy [%s]: [%s]", polName, err)
 		}
 
-		header, err := utils.GetHeader(proposal.Header)
+		header, err := protoutil.UnmarshalHeader(proposal.Header)
 		if err != nil {
 			return fmt.Errorf("Failing extracting header during check policy [%s]: [%s]", polName, err)
 		}
 
-		shdr, err := utils.GetSignatureHeader(header.SignatureHeader)
+		shdr, err := protoutil.UnmarshalSignatureHeader(header.SignatureHeader)
 		if err != nil {
 			return fmt.Errorf("Invalid Proposal's SignatureHeader during check policy [%s]: [%s]", polName, err)
 		}
 
-		sd = []*common.SignedData{{
+		sd = []*protoutil.SignedData{{
 			Data:      signedProp.ProposalBytes,
 			Identity:  shdr.Creator,
 			Signature: signedProp.Signature,
 		}}
+
 	case *common.Envelope:
-		sd, err = idinfo.(*common.Envelope).AsSignedData()
+		var err error
+		sd, err = protoutil.EnvelopeAsSignedData(idinfo)
 		if err != nil {
 			return err
 		}
+
 	default:
 		return InvalidIdInfo(polName)
 	}
 
-	err = rp.pEvaluator.Evaluate(polName, sd)
+	err := rp.pEvaluator.Evaluate(polName, sd)
 	if err != nil {
 		return fmt.Errorf("failed evaluating policy on signed data during check policy [%s]: [%s]", polName, err)
 	}
@@ -148,26 +149,34 @@ type resourceProvider struct {
 	resGetter ResourceGetter
 
 	//default provider to be used for undefined resources
-	defaultProvider ACLProvider
+	defaultProvider defaultACLProvider
 }
 
 //create a new resourceProvider
-func newResourceProvider(rg ResourceGetter, defprov ACLProvider) *resourceProvider {
+func newResourceProvider(rg ResourceGetter, defprov defaultACLProvider) *resourceProvider {
 	return &resourceProvider{rg, defprov}
+}
+
+func (rp *resourceProvider) enforceDefaultBehavior(resName string, channelID string, idinfo interface{}) bool {
+	// we currently enforce using p types if defined.  In future we will allow p types
+	// to be overridden through peer configuration
+	return rp.defaultProvider.IsPtypePolicy(resName)
 }
 
 //CheckACL implements the ACL
 func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
-	resCfg := rp.resGetter(channelID)
+	if !rp.enforceDefaultBehavior(resName, channelID, idinfo) {
+		resCfg := rp.resGetter(channelID)
 
-	if resCfg != nil {
-		pp := &aclmgmtPolicyProviderImpl{&policyEvaluatorImpl{resCfg}}
-		policyName := pp.GetPolicyName(resName)
-		if policyName != "" {
-			aclLogger.Debugf("acl policy %s found in config for resource %s", policyName, resName)
-			return pp.CheckACL(policyName, idinfo)
+		if resCfg != nil {
+			pp := &aclmgmtPolicyProviderImpl{&policyEvaluatorImpl{resCfg}}
+			policyName := pp.GetPolicyName(resName)
+			if policyName != "" {
+				aclLogger.Debugf("acl policy %s found in config for resource %s", policyName, resName)
+				return pp.CheckACL(policyName, idinfo)
+			}
+			aclLogger.Debugf("acl policy not found in config for resource %s", resName)
 		}
-		aclLogger.Debugf("acl policy not found in config for resource %s", resName)
 	}
 
 	return rp.defaultProvider.CheckACL(resName, channelID, idinfo)

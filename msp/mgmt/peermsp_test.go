@@ -9,21 +9,21 @@ package mgmt
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLocalMSP(t *testing.T) {
-	mspDir, err := configtest.GetDevMspDir()
-	if err != nil {
-		t.Fatalf("GetDevMspDir failed, err %s", err)
-	}
-
-	err = LoadLocalMsp(mspDir, nil, "SampleOrg")
+	mspDir := configtest.GetDevMspDir()
+	err := LoadLocalMsp(mspDir, nil, "SampleOrg")
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
 	}
 
-	_, err = GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	_, err = GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fatalf("GetDefaultSigningIdentity failed, err %s", err)
 	}

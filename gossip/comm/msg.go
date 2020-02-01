@@ -7,18 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
-	"sync"
-
-	proto "github.com/hyperledger/fabric/protos/gossip"
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/pkg/errors"
 )
 
 // ReceivedMessageImpl is an implementation of ReceivedMessage
 type ReceivedMessageImpl struct {
-	*proto.SignedGossipMessage
-	lock     sync.Locker
+	*protoext.SignedGossipMessage
 	conn     *connection
-	connInfo *proto.ConnectionInfo
+	connInfo *protoext.ConnectionInfo
 }
 
 // GetSourceEnvelope Returns the Envelope the ReceivedMessage was
@@ -29,7 +27,7 @@ func (m *ReceivedMessageImpl) GetSourceEnvelope() *proto.Envelope {
 
 // Respond sends a msg to the source that sent the ReceivedMessageImpl
 func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
-	sMsg, err := msg.NoopSign()
+	sMsg, err := protoext.NoopSign(msg)
 	if err != nil {
 		err = errors.WithStack(err)
 		m.conn.logger.Errorf("Failed creating SignedGossipMessage: %+v", err)
@@ -39,13 +37,13 @@ func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
 }
 
 // GetGossipMessage returns the inner GossipMessage
-func (m *ReceivedMessageImpl) GetGossipMessage() *proto.SignedGossipMessage {
+func (m *ReceivedMessageImpl) GetGossipMessage() *protoext.SignedGossipMessage {
 	return m.SignedGossipMessage
 }
 
 // GetConnectionInfo returns information about the remote peer
 // that send the message
-func (m *ReceivedMessageImpl) GetConnectionInfo() *proto.ConnectionInfo {
+func (m *ReceivedMessageImpl) GetConnectionInfo() *protoext.ConnectionInfo {
 	return m.connInfo
 }
 

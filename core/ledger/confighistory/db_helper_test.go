@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEncodeDecodeCompositeKey(t *testing.T) {
@@ -36,7 +37,8 @@ func TestCompareEncodedHeight(t *testing.T) {
 func TestQueries(t *testing.T) {
 	testDBPath := "/tmp/fabric/core/ledger/confighistory"
 	deleteTestPath(t, testDBPath)
-	provider := newDBProvider(testDBPath)
+	provider, err := newDBProvider(testDBPath)
+	require.NoError(t, err)
 	defer deleteTestPath(t, testDBPath)
 
 	db := provider.getDB("ledger1")

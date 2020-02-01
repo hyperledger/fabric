@@ -11,11 +11,12 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	protopeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	lgrutil "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
-	protopeer "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -85,7 +86,7 @@ func (v *verifier) verifyMostRecentCollectionConfigBelow(blockNum uint64, chainc
 func (v *verifier) verifyBlockAndPvtData(blockNum uint64, filter ledger.PvtNsCollFilter, verifyLogic func(r *retrievedBlockAndPvtdata)) {
 	out, err := v.lgr.GetPvtDataAndBlockByNum(blockNum, filter)
 	v.assert.NoError(err)
-	v.t.Logf("Retrieved Block = %s, pvtdata = %s", spew.Sdump(out.Block), spew.Sdump(out.BlockPvtData))
+	v.t.Logf("Retrieved Block = %s, pvtdata = %s", spew.Sdump(out.Block), spew.Sdump(out.PvtData))
 	verifyLogic(&retrievedBlockAndPvtdata{out, v.assert})
 }
 
@@ -93,6 +94,14 @@ func (v *verifier) verifyBlockAndPvtDataSameAs(blockNum uint64, expectedOut *led
 	v.verifyBlockAndPvtData(blockNum, nil, func(r *retrievedBlockAndPvtdata) {
 		r.sameAs(expectedOut)
 	})
+}
+
+func (v *verifier) verifyMissingPvtDataSameAs(recentNBlocks int, expectedMissingData ledger.MissingPvtDataInfo) {
+	missingDataTracker, err := v.lgr.GetMissingPvtDataTracker()
+	v.assert.NoError(err)
+	missingPvtData, err := missingDataTracker.GetMissingPvtDataInfoForMostRecentBlocks(recentNBlocks)
+	v.assert.NoError(err)
+	v.assert.Equal(expectedMissingData, missingPvtData)
 }
 
 func (v *verifier) verifyGetTransactionByID(txid string, expectedOut *protopeer.ProcessedTransaction) {
@@ -109,6 +118,23 @@ func (v *verifier) verifyTxValidationCode(txid string, expectedCode protopeer.Tx
 	v.assert.Equal(int32(expectedCode), tran.ValidationCode)
 }
 
+func (v *verifier) verifyHistory(ns, key string, expectedVals []string) {
+	hqe, err := v.lgr.NewHistoryQueryExecutor()
+	v.assert.NoError(err)
+	itr, err := hqe.GetHistoryForKey(ns, key)
+	v.assert.NoError(err)
+	historyValues := []string{}
+	for {
+		result, err := itr.Next()
+		v.assert.NoError(err)
+		if result == nil {
+			break
+		}
+		historyValues = append(historyValues, string(result.(*queryresult.KeyModification).GetValue()))
+	}
+	v.assert.Equal(expectedVals, historyValues)
+}
+
 ////////////  structs used by verifier  //////////////////////////////////////////////////////////////
 type expectedCollConfInfo struct {
 	committingBlockNum uint64
@@ -121,7 +147,7 @@ type retrievedBlockAndPvtdata struct {
 }
 
 func (r *retrievedBlockAndPvtdata) sameAs(expectedBlockAndPvtdata *ledger.BlockAndPvtData) {
-	r.samePvtdata(expectedBlockAndPvtdata.BlockPvtData)
+	r.samePvtdata(expectedBlockAndPvtdata.PvtData)
 	r.sameBlockHeaderAndData(expectedBlockAndPvtdata.Block)
 	r.sameMetadata(expectedBlockAndPvtdata.Block)
 }
@@ -131,11 +157,11 @@ func (r *retrievedBlockAndPvtdata) hasNumTx(numTx int) {
 }
 
 func (r *retrievedBlockAndPvtdata) hasNoPvtdata() {
-	r.assert.Len(r.BlockPvtData, 0)
+	r.assert.Len(r.PvtData, 0)
 }
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key, value string) {
-	txPvtData := r.BlockAndPvtData.BlockPvtData[uint64(txSeq)]
+	txPvtData := r.BlockAndPvtData.PvtData[uint64(txSeq)]
 	for _, nsdata := range txPvtData.WriteSet.NsPvtRwset {
 		if nsdata.Namespace == ns {
 			for _, colldata := range nsdata.CollectionPvtRwset {
@@ -156,7 +182,7 @@ func (r *retrievedBlockAndPvtdata) pvtdataShouldContain(txSeq int, ns, coll, key
 }
 
 func (r *retrievedBlockAndPvtdata) pvtdataShouldNotContain(ns, coll string) {
-	allTxPvtData := r.BlockAndPvtData.BlockPvtData
+	allTxPvtData := r.BlockAndPvtData.PvtData
 	for _, txPvtData := range allTxPvtData {
 		r.assert.False(txPvtData.Has(ns, coll))
 	}
@@ -173,9 +199,19 @@ func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 	retrievedMetadata := r.Block.Metadata.Metadata
 	expectedMetadata := expectedBlock.Metadata.Metadata
 	r.assert.Equal(len(expectedMetadata), len(retrievedMetadata))
-	for i := 0; i < len(retrievedMetadata); i++ {
+	for i := 0; i < len(expectedMetadata); i++ {
 		if len(expectedMetadata[i])+len(retrievedMetadata[i]) != 0 {
-			r.assert.Equal(expectedMetadata[i], retrievedMetadata[i])
+			if i != int(common.BlockMetadataIndex_COMMIT_HASH) {
+				r.assert.Equal(expectedMetadata[i], retrievedMetadata[i])
+			} else {
+				// in order to compare the exact hash value, we need to duplicate the
+				// production code in this test too (which is not recommended).
+				commitHash := &common.Metadata{}
+				err := proto.Unmarshal(retrievedMetadata[common.BlockMetadataIndex_COMMIT_HASH],
+					commitHash)
+				r.assert.NoError(err)
+				r.assert.Equal(len(commitHash.Value), 32)
+			}
 		}
 	}
 }
@@ -187,9 +223,9 @@ func (r *retrievedBlockAndPvtdata) containsValidationCode(txSeq int, validationC
 }
 
 func (r *retrievedBlockAndPvtdata) samePvtdata(expectedPvtdata map[uint64]*ledger.TxPvtData) {
-	r.assert.Equal(len(expectedPvtdata), len(r.BlockAndPvtData.BlockPvtData))
+	r.assert.Equal(len(expectedPvtdata), len(r.BlockAndPvtData.PvtData))
 	for txNum, pvtData := range expectedPvtdata {
-		actualPvtData := r.BlockAndPvtData.BlockPvtData[txNum]
+		actualPvtData := r.BlockAndPvtData.PvtData[txNum]
 		r.assert.Equal(pvtData.SeqInBlock, actualPvtData.SeqInBlock)
 		r.assert.True(proto.Equal(pvtData.WriteSet, actualPvtData.WriteSet))
 	}

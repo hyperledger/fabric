@@ -23,7 +23,7 @@ exercised.
 
 Application developers need to be aware of these resources and the default
 policies associated with them. The complete list of these resources are found in
-`configtx.yaml`. You can look at a [sample `configtx.yaml` file here](http://github.com/hyperledger/fabric/blob/release-1.2/sampleconfig/configtx.yaml).
+`configtx.yaml`. You can look at a [sample `configtx.yaml` file here](http://github.com/hyperledger/fabric/blob/release-2.0/sampleconfig/configtx.yaml).
 
 The resources named in `configtx.yaml` is an exhaustive list of all internal resources
 currently defined by Fabric. The loose convention adopted there is `<component>/<resource>`.
@@ -101,14 +101,14 @@ where `Admins` is eventually being specified by lower level `Signature` policy.
 Access control defaults exist inside `configtx.yaml`, the file that `configtxgen`
 uses to build channel configurations.
 
-Access control can be updated one of two ways, either by editing `configtx.yaml`
-itself, which will propagate the ACL change to any new channels, or by updating
-access control in the channel configuration of a particular channel.
+Access control can be updated in one of two ways, either by editing `configtx.yaml`
+itself, which will be used when creating new channel configurations, or by updating
+access control in the channel configuration of an existing channel.
 
 ## How ACLs are formatted in `configtx.yaml`
 
 ACLs are formatted as a key-value pair consisting of a resource function name
-followed by a string. To see what this looks like, reference this [sample configtx.yaml file](https://github.com/hyperledger/fabric/blob/release-1.2/sampleconfig/configtx.yaml).
+followed by a string. To see what this looks like, reference this [sample configtx.yaml file](https://github.com/hyperledger/fabric/blob/release-2.0/sampleconfig/configtx.yaml).
 
 Two excerpts from this sample:
 
@@ -280,22 +280,6 @@ administrators are members), but it is possible to overwrite these policies to
 whatever you want them to be. As a result, it's important to keep track of these
 policies to ensure that the ACLs for peer proposals are not impossible to satisfy
 (unless that is the intention).
-
-#### Migration considerations for customers using the experimental ACL feature
-
-Previously, the management of access control lists was done in an `isolated_data`
-section of the channel creation transaction and updated via `PEER_RESOURCE_UPDATE`
-transactions. Originally, it was thought that the `resources` tree would handle the
-update of several functions that, ultimately, were handled in other ways, so
-maintaining a separate parallel peer configuration tree was judged to be unnecessary.
-
-Migration for customers using the experimental resources tree in v1.1 is possible.
-Because the official v1.2 release does not support the old ACL methods, the network
-operators should shut down all their peers.  Then, they should upgrade them to v1.2,
-submit a channel reconfiguration transaction which enables the v1.2 capability and
-sets the desired ACLs, and then finally restart the upgraded peers.  The restarted
-peers will immediately consume the new channel configuration and enforce the ACLs as
-desired.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->

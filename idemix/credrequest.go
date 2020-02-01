@@ -32,7 +32,7 @@ const credRequestLabel = "credRequest"
 
 // NewCredRequest creates a new Credential Request, the first message of the interactive credential issuance protocol
 // (from user to issuer)
-func NewCredRequest(sk *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublicKey, rng *amcl.RAND) *CredRequest {
+func NewCredRequest(sk *FP256BN.BIG, IssuerNonce []byte, ipk *IssuerPublicKey, rng *amcl.RAND) *CredRequest {
 	// Set Nym as h_{sk}^{sk}
 	HSk := EcpFromProto(ipk.HSk)
 	Nym := HSk.Mul(sk)
@@ -57,7 +57,7 @@ func NewCredRequest(sk *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublic
 	index = appendBytesG1(proofData, index, t)
 	index = appendBytesG1(proofData, index, HSk)
 	index = appendBytesG1(proofData, index, Nym)
-	index = appendBytesBig(proofData, index, IssuerNonce)
+	index = appendBytes(proofData, index, IssuerNonce)
 	copy(proofData[index:], ipk.Hash)
 	proofC := HashModOrder(proofData)
 
@@ -67,7 +67,7 @@ func NewCredRequest(sk *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublic
 	// Done
 	return &CredRequest{
 		Nym:         EcpToProto(Nym),
-		IssuerNonce: BigToBytes(IssuerNonce),
+		IssuerNonce: IssuerNonce,
 		ProofC:      BigToBytes(proofC),
 		ProofS:      BigToBytes(proofS)}
 }
@@ -75,7 +75,7 @@ func NewCredRequest(sk *FP256BN.BIG, IssuerNonce *FP256BN.BIG, ipk *IssuerPublic
 // Check cryptographically verifies the credential request
 func (m *CredRequest) Check(ipk *IssuerPublicKey) error {
 	Nym := EcpFromProto(m.GetNym())
-	IssuerNonce := FP256BN.FromBytes(m.GetIssuerNonce())
+	IssuerNonce := m.GetIssuerNonce()
 	ProofC := FP256BN.FromBytes(m.GetProofC())
 	ProofS := FP256BN.FromBytes(m.GetProofS())
 
@@ -98,7 +98,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey) error {
 	index = appendBytesG1(proofData, index, t)
 	index = appendBytesG1(proofData, index, HSk)
 	index = appendBytesG1(proofData, index, Nym)
-	index = appendBytesBig(proofData, index, IssuerNonce)
+	index = appendBytes(proofData, index, IssuerNonce)
 	copy(proofData[index:], ipk.Hash)
 
 	if *ProofC != *HashModOrder(proofData) {

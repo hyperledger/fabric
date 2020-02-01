@@ -1,64 +1,91 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package fsblkstorage
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMultipleBlockStores(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath(), 0))
-	defer env.Cleanup()
+	tempdir := testPath()
+	defer os.RemoveAll(tempdir)
 
+	env := newTestEnv(t, NewConf(tempdir, 0))
 	provider := env.provider
-	store1, _ := provider.OpenBlockStore("ledger1")
-	defer store1.Shutdown()
+	defer provider.Close()
 
-	store2, _ := provider.CreateBlockStore("ledger2")
+	subdirs, err := provider.List()
+	require.NoError(t, err)
+	require.Empty(t, subdirs)
+
+	store1, err := provider.OpenBlockStore("ledger1")
+	require.NoError(t, err)
+	defer store1.Shutdown()
+	store2, err := provider.CreateBlockStore("ledger2")
+	require.NoError(t, err)
 	defer store2.Shutdown()
 
 	blocks1 := testutil.ConstructTestBlocks(t, 5)
 	for _, b := range blocks1 {
-		store1.AddBlock(b)
+		err := store1.AddBlock(b)
+		require.NoError(t, err)
 	}
 
 	blocks2 := testutil.ConstructTestBlocks(t, 10)
 	for _, b := range blocks2 {
-		store2.AddBlock(b)
+		err := store2.AddBlock(b)
+		require.NoError(t, err)
 	}
 	checkBlocks(t, blocks1, store1)
 	checkBlocks(t, blocks2, store2)
 	checkWithWrongInputs(t, store1, 5)
 	checkWithWrongInputs(t, store2, 10)
+
+	store1.Shutdown()
+	store2.Shutdown()
+	provider.Close()
+
+	// Reopen provider
+	newenv := newTestEnv(t, NewConf(tempdir, 0))
+	newprovider := newenv.provider
+	defer newprovider.Close()
+
+	subdirs, err = newprovider.List()
+	require.NoError(t, err)
+	require.Len(t, subdirs, 2)
+
+	newstore1, err := newprovider.OpenBlockStore("ledger1")
+	require.NoError(t, err)
+	defer newstore1.Shutdown()
+	newstore2, err := newprovider.CreateBlockStore("ledger2")
+	require.NoError(t, err)
+	defer newstore2.Shutdown()
+
+	checkBlocks(t, blocks1, newstore1)
+	checkBlocks(t, blocks2, newstore2)
+	checkWithWrongInputs(t, newstore1, 5)
+	checkWithWrongInputs(t, newstore2, 10)
 }
 
 func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.BlockStore) {
 	bcInfo, _ := store.GetBlockchainInfo()
 	assert.Equal(t, uint64(len(expectedBlocks)), bcInfo.Height)
-	assert.Equal(t, expectedBlocks[len(expectedBlocks)-1].GetHeader().Hash(), bcInfo.CurrentBlockHash)
+	assert.Equal(t, protoutil.BlockHeaderHash(expectedBlocks[len(expectedBlocks)-1].GetHeader()), bcInfo.CurrentBlockHash)
 
 	itr, _ := store.RetrieveBlocks(0)
 	for i := 0; i < len(expectedBlocks); i++ {
@@ -72,13 +99,13 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.
 		retrievedBlock, _ := store.RetrieveBlockByNumber(uint64(blockNum))
 		assert.Equal(t, block, retrievedBlock)
 
-		retrievedBlock, _ = store.RetrieveBlockByHash(block.Header.Hash())
+		retrievedBlock, _ = store.RetrieveBlockByHash(protoutil.BlockHeaderHash(block.Header))
 		assert.Equal(t, block, retrievedBlock)
 
 		for txNum := 0; txNum < len(block.Data.Data); txNum++ {
 			txEnvBytes := block.Data.Data[txNum]
-			txEnv, _ := utils.GetEnvelopeFromBlock(txEnvBytes)
-			txid, err := extractTxID(txEnvBytes)
+			txEnv, _ := protoutil.GetEnvelopeFromBlock(txEnvBytes)
+			txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes)
 			assert.NoError(t, err)
 
 			retrievedBlock, _ := store.RetrieveBlockByTxID(txid)
@@ -124,15 +151,21 @@ func TestBlockStoreProvider(t *testing.T) {
 	defer env.Cleanup()
 
 	provider := env.provider
-	stores := []blkstorage.BlockStore{}
+	storeNames, err := provider.List()
+	assert.NoError(t, err)
+	assert.Empty(t, storeNames)
+
+	var stores []blkstorage.BlockStore
 	numStores := 10
 	for i := 0; i < numStores; i++ {
 		store, _ := provider.OpenBlockStore(constructLedgerid(i))
 		defer store.Shutdown()
 		stores = append(stores, store)
 	}
+	assert.Equal(t, numStores, len(stores))
 
-	storeNames, _ := provider.List()
+	storeNames, err = provider.List()
+	assert.NoError(t, err)
 	assert.Equal(t, numStores, len(storeNames))
 
 	for i := 0; i < numStores; i++ {

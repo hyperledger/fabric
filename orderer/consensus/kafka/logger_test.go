@@ -8,7 +8,6 @@ package kafka
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -140,8 +139,8 @@ func TestLogPossibleKafkaVersionMismatch(t *testing.T) {
 	partition := int32(0)
 
 	buf := gbytes.NewBuffer()
-	flogging.Global.SetWriter(buf)
-	defer flogging.Global.SetWriter(os.Stderr)
+	old := flogging.SetWriter(buf)
+	defer flogging.SetWriter(old)
 
 	broker := sarama.NewMockBroker(t, 500)
 	defer broker.Close()

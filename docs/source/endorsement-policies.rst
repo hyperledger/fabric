@@ -17,29 +17,35 @@ of endorsements and that they are from the expected sources (both of these are
 specified in the endorsement policy). The endorsements are also checked to make
 sure they're valid (i.e., that they are valid signatures from valid certificates).
 
-Two ways to require endorsement
--------------------------------
+Multiple ways to require endorsement
+------------------------------------
 
-By default, endorsement policies are specified for a channel's chaincode at
-instantiation or upgrade time (that is, one endorsement policy covers all of the
-state associated with a chaincode).
+By default, endorsement policies are specified in the chaincode definition,
+which is agreed to by channel members and then committed to a channel (that is,
+one endorsement policy covers all of the state associated with a chaincode).
 
-However, there are cases where it may be necessary for a particular state (a
-particular key-value pair, in other words) to have a different endorsement policy.
-This **state-based endorsement** allows the default chaincode-level endorsement
-policies to be overridden by a different policy for the specified keys.
+For private data collections, you can also specify an endorsement policy
+at the private data collection level, which would override the chaincode
+level endorsement policy for any keys in the private data collection, thereby
+further restricting which organizations can write to a private data collection.
 
-To illustrate the circumstances in which these two types of endorsement policies
+Finally, there are cases where it may be necessary for a particular public
+channel state or private data collection state (a particular key-value pair,
+in other words) to have a different endorsement policy.
+This **state-based endorsement** allows the chaincode-level or collection-level
+endorsement policies to be overridden by a different policy for the specified keys.
+
+To illustrate the circumstances in which the various types of endorsement policies
 might be used, consider a channel on which cars are being exchanged. The "creation"
 --- also known as "issuance" -- of a car as an asset that can be traded (putting
 the key-value pair that represents it into the world state, in other words) would
 have to satisfy the chaincode-level endorsement policy. To see how to set a
 chaincode-level endorsement policy, check out the section below.
 
-If the car requires a specific endorsement policy, it can be defined either when
-the car is created or afterwards. There are a number of reasons why it might
-be necessary or preferable to set a state-specific endorsement policy. The car
-might have historical importance or value that makes it necessary to have the
+If the key representing the car requires a specific endorsement policy, it can be
+defined either when the car is created or afterwards. There are a number of reasons
+why it might be necessary or preferable to set a state-specific endorsement policy. The
+car might have historical importance or value that makes it necessary to have the
 endorsement of a licensed appraiser. Also, the owner of the car (if they're a
 member of the channel) might also want to ensure that their peer signs off on a
 transaction. In both cases, **an endorsement policy is required for a particular
@@ -52,10 +58,20 @@ section. But first, let's see how we set a chaincode-level endorsement policy.
 Setting chaincode-level endorsement policies
 --------------------------------------------
 
-Chaincode-level endorsement policies can be specified at instantiate time using
-either the SDK (for some sample code on how to do this, click
-`here <https://github.com/hyperledger/fabric-sdk-node/blob/f8ffa90dc1b61a4a60a6fa25de760c647587b788/test/integration/e2e/e2eUtils.js#L178>`_)
-or in the peer CLI using the ``-P`` switch followed by the policy.
+Chaincode-level endorsement policies are agreed to by channel members when they
+approve a chaincode definition for their organization. A sufficient number of
+channel members need to approve a chaincode definition to meet the
+``Channel/Application/LifecycleEndorsement`` policy, which by default is set to
+a majority of channel members, before the definition can be committed to the
+channel. Once the definition has been committed, the chaincode is ready to use.
+Any invoke of the chaincode that writes data to the ledger will need to be
+validated by enough channel members to meet the endorsement policy.
+
+You can specify an endorsement policy for a chainocode using the Fabric SDKs.
+For an example, visit the `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`_
+in the Node.js SDK documentation. You can also create an endorsement policy from
+your CLI when you approve and commit a chaincode definition with the Fabric peer
+binaries by using the ``—-signature-policy`` flag.
 
 .. note:: Don't worry about the policy syntax (``'Org1.member'``, et all) right
           now. We'll talk more about the syntax in the next section.
@@ -64,31 +80,54 @@ For example:
 
 ::
 
-    peer chaincode instantiate -C <channelid> -n mycc -P "AND('Org1.member', 'Org2.member')"
+    peer lifecycle chaincode approveformyorg --channelID mychannel —-signature-policy "AND('Org1.member', 'Org2.member')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
-This command deploys chaincode ``mycc`` ("my chaincode") with the policy
+The above command approves the chaincode definition of ``mycc`` with the policy
 ``AND('Org1.member', 'Org2.member')`` which would require that a member of both
-Org1 and Org2 sign the transaction.
+Org1 and Org2 sign the transaction. After a sufficient number of channel members
+approve a chaincode definition for ``mycc``, the definition and endorsement
+policy can be committed to the channel using the command below:
 
-Notice that, if the identity classification is enabled (see :doc:`msp`),
-one can use the ``PEER`` role to restrict endorsement to only peers.
+::
+
+    peer lifecycle chaincode commit -o orderer.example.com:7050 --channelID mychannel —-signature-policy "AND('Org1.member', 'Org2.member')" --name mycc --version 1.0 --sequence 1 --init-required --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses peer0.org2.example.com:9051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+
+Notice that, if the identity classification is enabled (see :doc:`msp`), one can
+use the ``PEER`` role to restrict endorsement to only peers.
+
+For example:
+
+
+::
+
+    peer lifecycle chaincode approveformyorg --channelID mychannel —-signature-policy "AND('Org1.peer', 'Org2.peer')" --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
+
+In addition to the specifying an endorsement policy from the CLI or SDK, a
+chaincode can also use policies in the channel configuration as endorsement
+policies. You can use the ``--channel-config-policy``flag to select a channel policy with
+format used by the channel configuration and by ACLs.
 
 For example:
 
 ::
 
-    peer chaincode instantiate -C <channelid> -n mycc -P "AND('Org1.peer', 'Org2.peer')"
+    peer lifecycle chaincode approveformyorg --channelID mychannel --channel-config-policy Channel/Application/Admins --name mycc --version 1.0 --package-id mycc_1:3a8c52d70c36313cfebbaf09d8616e7a6318ababa01c7cbe40603c373bcfe173 --sequence 1 --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --waitForEvent
 
-A new organization added to the channel after instantiation can query a chaincode
-(provided the query has appropriate authorization as defined by channel policies
-and any application level checks enforced by the chaincode) but will not be able
-to execute or endorse the chaincode. The endorsement policy needs to be modified
-to allow transactions to be committed with endorsements from the new organization.
+If you do not specify a policy, the chaincode definition will use the
+``Channel/Application/Endorsement`` policy by default, which requires that a
+transaction be validated by a majority of channel members. This policy depends on
+the membership of the channel, so it will be updated automatically when organizations
+are added or removed from a channel. One advantage of using channel policies is
+that they can be written to be updated automatically with channel membership.
 
-.. note:: if not specified at instantiation time, the endorsement policy
-          defaults to "any member of the organizations in the channel".
-          For example, a channel with "Org1" and "Org2" would have a default
-          endorsement policy of "OR('Org1.member', 'Org2.member')".
+If you specify an endorsement policy using the ``—-signature-policy`` flag or
+the SDK, you will need to update the policy when organizations join or leave the
+channel. A new organization added to the channel after the chaincode has been defined
+will be able to query a chaincode (provided the query has appropriate authorization as
+defined by channel policies and any application level checks enforced by the
+chaincode) but will not be able to execute or endorse the chaincode. Only
+organizations listed in the endorsement policy syntax will be able sign
+transactions.
 
 Endorsement policy syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -129,14 +168,39 @@ For example:
     'Org2.member'), AND('Org1.member', 'Org3.member'), AND('Org2.member',
     'Org3.member'))``.
 
+Setting collection-level endorsement policies
+---------------------------------------------
+Similar to chaincode-level endorsement policies, when you approve and commit
+a chaincode definition, you can also specify the chaincode's private data collections
+and corresponding collection-level endorsement policies. If a collection-level
+endorsement policy is set, transactions that write to a private data collection
+key will require that the specified organization peers have endorsed the transaction.
+
+You can use collection-level endorsement policies to restrict which organization
+peers can write to the private data collection key namespace, for example to
+ensure that non-authorized organizations cannot write to a collection, and to
+have confidence that any state in a private data collection has been endorsed
+by the required collection organization(s).
+
+The collection-level endorsement policy may be less restrictive or more restrictive
+than the chaincode-level endorsement policy and the collection's private data
+distribution policy.  For example a majority of organizations may be required
+to endorse a chaincode transaction, but a specific organization may be required
+to endorse a transaction that includes a key in a specific collection.
+
+The syntax for collection-level endorsement policies exactly matches the syntax
+for chaincode-level endorsement policies --- in the collection configuration
+you can specify an ``endorsementPolicy`` with either a ``signaturePolicy`` or
+``channelConfigPolicy``. For more details see :doc:`private-data-arch`.
+
 .. _key-level-endorsement:
 
 Setting key-level endorsement policies
 --------------------------------------
 
-Setting regular chaincode-level endorsement policies is tied to the lifecycle of
-the corresponding chaincode. They can only be set or modified when instantiating
-or upgrading the corresponding chaincode on a channel.
+Setting regular chaincode-level or collection-level endorsement policies is tied to
+the lifecycle of the corresponding chaincode. They can only be set or modified when
+defining the chaincode on a channel.
 
 In contrast, key-level endorsement policies can be set and modified in a more
 granular fashion from within a chaincode. The modification is part of the
@@ -165,9 +229,9 @@ following functions apply:
     GetPrivateDataValidationParameter(collection, key string) ([]byte, error)
 
 To help set endorsement policies and marshal them into validation
-parameter byte arrays, the shim provides convenience functions that allow the
-chaincode developer to deal with endorsement policies in terms of the MSP
-identifiers of organizations:
+parameter byte arrays, the Go shim provides an extension with convenience
+functions that allow the chaincode developer to deal with endorsement policies
+in terms of the MSP identifiers of organizations, see `KeyEndorsementPolicy <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/pkg/statebased#KeyEndorsementPolicy>`_:
 
 .. code-block:: Go
 
@@ -181,19 +245,18 @@ identifiers of organizations:
 
         // DelOrgs delete the specified channel orgs from the existing key-level endorsement
         // policy for this KVS key. If any org is not present, an error will be returned.
-        DelOrgs([]string) error
-
-        // DelAllOrgs removes any key-level endorsement policy from this KVS key.
-        DelAllOrgs() error
+        DelOrgs(organizations ...string) error
 
         // ListOrgs returns an array of channel orgs that are required to endorse changes
-        ListOrgs() ([]string, error)
+        ListOrgs() ([]string)
     }
 
 For example, to set an endorsement policy for a key where two specific orgs are
 required to endorse the key change, pass both org ``MSPIDs`` to ``AddOrgs()``,
 and then call ``Policy()`` to construct the endorsement policy byte array that
 can be passed to ``SetStateValidationParameter()``.
+
+To add the shim extension to your chaincode as a dependency, see :ref:`vendoring`.
 
 Validation
 ----------
@@ -202,29 +265,29 @@ At commit time, setting a value of a key is no different from setting the
 endorsement policy of a key --- both update the state of the key and are
 validated based on the same rules.
 
-+---------------------+-----------------------------+--------------------------+
-| Validation          | no validation parameter set | validation parameter set |
-+=====================+=============================+==========================+
-| modify value        | check chaincode ep          | check key-level ep       |
-+---------------------+-----------------------------+--------------------------+
-| modify key-level ep | check chaincode ep          | check key-level ep       |
-+---------------------+-----------------------------+--------------------------+
++---------------------+------------------------------------+--------------------------+
+| Validation          | no validation parameter set        | validation parameter set |
++=====================+====================================+==========================+
+| modify value        | check chaincode or collection ep   | check key-level ep       |
++---------------------+------------------------------------+--------------------------+
+| modify key-level ep | check chaincode or collection ep   | check key-level ep       |
++---------------------+------------------------------------+--------------------------+
 
 As we discussed above, if a key is modified and no key-level endorsement policy
-is present, the chaincode-level endorsement policy applies by default. This is
-also true when a key-level endorsement policy is set for a key for the first time
+is present, the chaincode-level or collection-level endorsement policy applies by default.
+This is also true when a key-level endorsement policy is set for a key for the first time
 --- the new key-level endorsement policy must first be endorsed according to the
-pre-existing chaincode-level endorsement policy.
+pre-existing chaincode-level or collection-level endorsement policy.
 
 If a key is modified and a key-level endorsement policy is present, the key-level
-endorsement policy overrides the chaincode-level endorsement policy. In practice,
-this means that the key-level endorsement policy can be either less restrictive
-or more restrictive than the chaincode-level endorsement policy. Because the
-chaincode-level endorsement policy must be satisfied in order to set a key-level
-endorsement policy for the first time, no trust assumptions have been violated.
+endorsement policy overrides the chaincode-level or collection-level endorsement policy.
+In practice, this means that the key-level endorsement policy can be either less restrictive
+or more restrictive than the chaincode-level or collection-level endorsement policies.
+Because the chaincode-level or collection-level endorsement policy must be satisfied in order
+to set a key-level endorsement policy for the first time, no trust assumptions have been violated.
 
 If a key's endorsement policy is removed (set to nil), the chaincode-level
-endorsement policy becomes the default again.
+or collection-level endorsement policy becomes the default again.
 
 If a transaction modifies multiple keys with different associated key-level
 endorsement policies, all of these policies need to be satisfied in order

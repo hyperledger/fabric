@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cc
+package cclifecycle
 
 import (
 	"bytes"
@@ -15,22 +15,26 @@ import (
 )
 
 // Subscription channels information flow
-// about a specific channel into the Lifecycle
+// about a specific channel into the Lifecycle.
 type Subscription struct {
 	sync.Mutex
-	lc             *Lifecycle
-	channel        string
-	queryCreator   QueryCreator
-	pendingUpdates chan *cceventmgmt.ChaincodeDefinition
+	metadataManager *MetadataManager
+	channel         string
+	queryCreator    QueryCreator
+	pendingUpdates  []*cceventmgmt.ChaincodeDefinition
 }
 
-type depCCsRetriever func(Query, ChaincodePredicate, bool, ...string) (chaincode.MetadataSet, error)
+type deployedCCsRetrieverFunc func(Query, ChaincodePredicate, bool, ...string) (chaincode.MetadataSet, error)
 
-// HandleChaincodeDeploy is expected to be invoked when a chaincode is deployed via a deploy transaction and the chaicndoe was already
-// installed on the peer. This also gets invoked when an already deployed chaincode is installed on the peer
+// HandleChaincodeDeploy is expected to be invoked when a chaincode is
+// deployed via a deploy transaction and the chaincode was already installed
+// on the peer. This also gets invoked when an already deployed chaincode is
+// installed on the peer.
 func (sub *Subscription) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
 	Logger.Debug("Channel", sub.channel, "got a new deployment:", chaincodeDefinition)
-	sub.pendingUpdates <- chaincodeDefinition
+	sub.Lock()
+	defer sub.Unlock()
+	sub.pendingUpdates = append(sub.pendingUpdates, chaincodeDefinition)
 	return nil
 }
 
@@ -43,7 +47,7 @@ func (sub *Subscription) processPendingUpdate(ccDef *cceventmgmt.ChaincodeDefini
 	installedCC := []chaincode.InstalledChaincode{{
 		Name:    ccDef.Name,
 		Version: ccDef.Version,
-		Id:      ccDef.Hash,
+		Hash:    ccDef.Hash,
 	}}
 	ccs, err := queryChaincodeDefinitions(query, installedCC, DeployedChaincodes)
 	if err != nil {
@@ -51,12 +55,12 @@ func (sub *Subscription) processPendingUpdate(ccDef *cceventmgmt.ChaincodeDefini
 		return
 	}
 	Logger.Debug("Updating channel", sub.channel, "with", ccs.AsChaincodes())
-	sub.lc.updateState(sub.channel, ccs)
-	sub.lc.fireChangeListeners(sub.channel)
+	sub.metadataManager.updateState(sub.channel, ccs)
+	sub.metadataManager.fireChangeListeners(sub.channel)
 }
 
-// ChaincodeDeployDone gets invoked when the chaincode deploy transaction or chaincode install
-// (the context in which the above function was invoked)
+// ChaincodeDeployDone gets invoked when the chaincode deploy transaction or
+// chaincode install (the context in which the above function was invoked).
 func (sub *Subscription) ChaincodeDeployDone(succeeded bool) {
 	// Run a new goroutine which would dispatch a single pending update.
 	// This is to prevent any ledger locks being obtained during the state query
@@ -64,24 +68,28 @@ func (sub *Subscription) ChaincodeDeployDone(succeeded bool) {
 	// We first lock and then take the pending update, to preserve order.
 	sub.Lock()
 	go func() {
-		defer sub.Unlock()
-		update := <-sub.pendingUpdates
+		defer func() {
+			sub.pendingUpdates = nil
+			sub.Unlock()
+		}()
 		// If we haven't succeeded in deploying the chaincode, just skip the update
 		if !succeeded {
-			Logger.Error("Chaincode deploy for", update.Name, "failed")
+			Logger.Errorf("Chaincode deploy for updates %v failed", sub.pendingUpdates)
 			return
 		}
-		sub.processPendingUpdate(update)
+		for _, update := range sub.pendingUpdates {
+			sub.processPendingUpdate(update)
+		}
 	}()
 }
 
-func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, deployedCCs depCCsRetriever) (chaincode.MetadataSet, error) {
+func queryChaincodeDefinitions(query Query, installedCCs []chaincode.InstalledChaincode, deployedCCs deployedCCsRetrieverFunc) (chaincode.MetadataSet, error) {
 	// map from string and version to chaincode ID
-	installedCCsToIDs := make(map[nameVersion][]byte)
+	installedCCsToIDs := map[nameVersion][]byte{}
 	// Populate the map
-	for _, cc := range ccs {
-		Logger.Debug("Chaincode", cc, "'s version is", cc.Version, "and Id is", cc.Id)
-		installedCCsToIDs[installedCCToNameVersion(cc)] = cc.Id
+	for _, cc := range installedCCs {
+		Logger.Debug("Chaincode", cc, "'s version is", cc.Version, "and Id is", cc.Hash)
+		installedCCsToIDs[installedCCToNameVersion(cc)] = cc.Hash
 	}
 
 	filter := func(cc chaincode.Metadata) bool {
@@ -97,5 +105,5 @@ func queryChaincodeDefinitions(query Query, ccs []chaincode.InstalledChaincode, 
 		return true
 	}
 
-	return deployedCCs(query, filter, false, names(ccs)...)
+	return deployedCCs(query, filter, false, names(installedCCs)...)
 }

@@ -18,3 +18,5 @@ information. For example:
 ```
 
 ## Syntax
+
+The `peer version` command takes no arguments.

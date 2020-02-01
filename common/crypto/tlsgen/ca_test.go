@@ -10,7 +10,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"net"
@@ -24,6 +23,7 @@ import (
 
 func createTLSService(t *testing.T, ca CA, host string) *grpc.Server {
 	keyPair, err := ca.NewServerCertKeyPair(host)
+	assert.NoError(t, err)
 	cert, err := tls.X509KeyPair(keyPair.Cert, keyPair.Key)
 	assert.NoError(t, err)
 	tlsConf := &tls.Config{
@@ -55,11 +55,8 @@ func TestTLSCA(t *testing.T) {
 	defer l.Close()
 
 	probeTLS := func(kp *CertKeyPair) error {
-		keyBytes, err := base64.StdEncoding.DecodeString(kp.PrivKeyString())
+		cert, err := tls.X509KeyPair(kp.Cert, kp.Key)
 		assert.NoError(t, err)
-		certBytes, err := base64.StdEncoding.DecodeString(kp.PubKeyString())
-		assert.NoError(t, err)
-		cert, err := tls.X509KeyPair(certBytes, keyBytes)
 		tlsCfg := &tls.Config{
 			RootCAs:      x509.NewCertPool(),
 			Certificates: []tls.Certificate{cert},

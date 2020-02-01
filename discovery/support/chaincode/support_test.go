@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/chaincode"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,7 +64,7 @@ func TestSupport(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			sup := NewDiscoverySupport(&mockMetadataRetriever{res: test.input})
-			res := sup.PolicyByChaincode("", "")
+			res := sup.PoliciesByChaincode("", "")
 			if test.shouldBeNil {
 				assert.Nil(t, res)
 			} else {

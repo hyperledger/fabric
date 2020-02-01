@@ -9,14 +9,15 @@ package service
 import (
 	"reflect"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/msp"
 )
 
 // Config enumerates the configuration methods required by gossip
 type Config interface {
-	// ChainID returns the chainID for this channel
-	ChainID() string
+	// ChannelID returns the ChannelID for this channel
+	ChannelID() string
 
 	// Organizations returns a map of org ID to ApplicationOrgConfig
 	Organizations() map[string]channelconfig.ApplicationOrg
@@ -30,7 +31,7 @@ type Config interface {
 
 // ConfigProcessor receives config updates
 type ConfigProcessor interface {
-	// ProcessConfig should be invoked whenever a channel's configuration is initialized or updated
+	// ProcessConfigUpdate should be invoked whenever a channel's configuration is initialized or updated
 	ProcessConfigUpdate(config Config)
 }
 
@@ -41,7 +42,6 @@ type configStore struct {
 
 type configEventReceiver interface {
 	updateAnchors(config Config)
-	updateEndpoints(chainID string, endpoints []string)
 }
 
 type configEventer struct {
@@ -60,10 +60,10 @@ func newConfigEventer(receiver configEventReceiver) *configEventer {
 // but only if the configuration value actually changed
 // Note, that a changing sequence number is ignored as changing configuration
 func (ce *configEventer) ProcessConfigUpdate(config Config) {
-	logger.Debugf("Processing new config for channel %s", config.ChainID())
+	logger.Debugf("Processing new config for channel %s", config.ChannelID())
 	orgMap := cloneOrgConfig(config.Organizations())
 	if ce.lastConfig != nil && reflect.DeepEqual(ce.lastConfig.orgMap, orgMap) {
-		logger.Debugf("Ignoring new config for channel %s because it contained no anchor peer updates", config.ChainID())
+		logger.Debugf("Ignoring new config for channel %s because it contained no anchor peer updates", config.ChannelID())
 	} else {
 
 		var newAnchorPeers []*peer.AnchorPeer
@@ -77,10 +77,9 @@ func (ce *configEventer) ProcessConfigUpdate(config Config) {
 		}
 		ce.lastConfig = newConfig
 
-		logger.Debugf("Calling out because config was updated for channel %s", config.ChainID())
+		logger.Debugf("Calling out because config was updated for channel %s", config.ChannelID())
 		ce.receiver.updateAnchors(config)
 	}
-	ce.receiver.updateEndpoints(config.ChainID(), config.OrdererAddresses())
 }
 
 func cloneOrgConfig(src map[string]channelconfig.ApplicationOrg) map[string]channelconfig.ApplicationOrg {
@@ -111,4 +110,8 @@ func (ag *appGrp) MSPID() string {
 
 func (ag *appGrp) AnchorPeers() []*peer.AnchorPeer {
 	return ag.anchorPeers
+}
+
+func (ag *appGrp) MSP() msp.MSP {
+	return nil
 }

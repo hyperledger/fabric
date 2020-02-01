@@ -1,3 +1,13 @@
+.. note:: Users who are migrating from Gerrit to GitHub: You can follow simple
+          Git workflows to move your development from Gerrit to GitHub. After
+          forking the Fabric repo, simply push the branches you want to save from
+          your current Gerrit-based local repo to your remote forked repository.
+          Once you've pushed the changes you want to save, simply delete your
+          local Gerrit-based repository and clone your fork.
+
+          For a basic Git workflow recommendation please see our doc at
+          :doc:`github/github`.
+
 Contributions Welcome!
 ======================
 
@@ -7,6 +17,63 @@ there's always plenty to do!
 First things first, please review the Hyperledger `Code of
 Conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
 before participating. It is important that we keep things civil.
+
+Ways to contribute
+------------------
+There are many ways you can contribute to Hyperledger Fabric, both as a user and
+as a developer.
+
+As a user:
+
+- `Making Feature/Enhancement Proposals`_
+- `Reporting bugs`_
+- Help test an upcoming Epic on the
+  `release roadmap <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`_.
+  Contact the Epic assignee via the Jira work item or on
+  `RocketChat <https://chat.hyperledger.org>`_.
+
+As a developer:
+
+- If you only have a little time, consider picking up a
+  `"help-wanted" <https://jira.hyperledger.org/issues/?filter=10147>`_ task,
+  see `Fixing issues and working stories`_.
+- If you can commit to full-time development, either propose a new feature
+  (see `Making Feature/Enhancement Proposals`_) and
+  bring a team to implement it, or join one of the teams working on an existing Epic.
+  If you see an Epic that interests you on the
+  `release roadmap <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`_,
+  contact the Epic assignee via the Jira work item or on `RocketChat <https://chat.hyperledger.org/>`_.
+
+Getting a Linux Foundation account
+----------------------------------
+
+In order to participate in the development of the Hyperledger Fabric
+project, you will need a Linux Foundation
+account. Once you have a LF ID you will be able to
+access all the Hyperledger community tools, including
+`Jira issue management <https://jira.hyperledger.org>`__,
+`RocketChat <https://chat.hyperledger.org/>`__, and the
+`Wiki <https://wiki.hyperledger.org/display/fabric/Hyperledger+Fabric>`__ (for editing, only).
+
+Follow the steps below to create a Linux Foundation account if you don't
+already have one.
+
+1. Go to the `Linux Foundation ID
+   website <https://identity.linuxfoundation.org/>`__.
+
+2. Select the option ``I need to create a Linux Foundation ID``, and fill
+   out the form that appears.
+
+3. Wait a few minutes, then look for an email message with the subject line:
+   "Validate your Linux Foundation ID email".
+
+4. Open the received URL to validate your email address.
+
+5. Verify that your browser displays the message
+   ``You have successfully validated your e-mail address``.
+
+6. Access `Jira issue management <https://jira.hyperledger.org>`__, or
+   `RocketChat <https://chat.hyperledger.org/>`__.
 
 Project Governance
 ------------------
@@ -21,7 +88,7 @@ approved.
 Maintainers
 ~~~~~~~~~~~
 
-The Fabric project is lead by the project's top level :doc:`maintainers <MAINTAINERS>`.
+The Fabric project is lead by the project's top level `maintainers <https://github.com/hyperledger/fabric/blob/master/MAINTAINERS.md>`__.
 The maintainers are responsible for reviewing and merging all patches submitted
 for review, and they guide the overall technical direction of the project within
 the guidelines established by the Hyperledger Technical Steering Committee (TSC).
@@ -31,7 +98,7 @@ Becoming a maintainer
 
 The project's maintainers will, from time-to-time, consider
 adding or removing a maintainer. An existing maintainer can submit a
-change set to the :doc:`MAINTAINERS.rst <MAINTAINERS>` file. A nominated
+change set to the `maintainers <https://github.com/hyperledger/fabric/blob/master/MAINTAINERS.md>`__ file. A nominated
 Contributor may become a Maintainer by a majority approval of the proposal
 by the existing Maintainers. Once approved, the change set is then merged
 and the individual is added to (or alternatively, removed from) the maintainers
@@ -47,9 +114,9 @@ Release cadence
 
 The Fabric maintainers have settled on a quarterly (approximately) release
 cadence (see `releases <https://github.com/hyperledger/fabric#releases>`__).
-We are also actively considering adopting an LTS (long term support) release
-process, though the details of this are still being worked out by the
-maintainers. Follow the discussion on the #fabric-maintainers channel in Chat.
+At any given time, there will be a stable LTS (long term support) release branch,
+as well as the master branch for upcoming new features.
+Follow the discussion on the #fabric-release channel in RocketChat.
 
 Making Feature/Enhancement Proposals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -75,19 +142,19 @@ design discussion.
 
 Getting the support of three or more of the Hyperledger Fabric maintainers for
 the new feature will greatly enhance the probability that the feature's related
-CRs will be included in a subsequent release.
+PRs will be included in a subsequent release.
 
 Maintainers meeting
 ~~~~~~~~~~~~~~~~~~~
 
-The maintainers hold a bi-weekly meeting every other Wednesday at 9 am ET
-on `Zoom <https://zoom.us/my/hyperledger.community>`__. Please see the
-`community calendar <https://wiki.hyperledger.org/community/calendar-public-meetings>`__
-for details.
-
+The maintainers hold regular maintainers meetings.
 The purpose of the maintainers meeting is to plan for and review the progress of
 releases, and to discuss the technical and operational direction of the project
 and sub-projects.
+
+Please see the
+`wiki <https://wiki.hyperledger.org/display/fabric/Maintainer+Meetings>`__
+for maintainer meeting details.
 
 New feature/enhancement proposals as described above should be presented to a
 maintainers meeting for consideration, feedback and acceptance.
@@ -119,17 +186,6 @@ you have all the :doc:`prerequisites <prereqs>` installed on the platform(s)
 on which you'll be developing blockchain applications and/or operating
 Hyperledger Fabric.
 
-Getting a Linux Foundation account
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In order to participate in the development of the Hyperledger Fabric
-project, you will need a :doc:`Linux Foundation
-account <Gerrit/lf-account>`. You will need to use your LF ID to
-access to all the Hyperledger community development tools, including
-`Gerrit <https://gerrit.hyperledger.org>`__,
-`Jira <https://jira.hyperledger.org>`__ and the
-`Wiki <https://wiki.hyperledger.org/start>`__ (for editing, only).
-
 Getting help
 ~~~~~~~~~~~~
 
@@ -155,9 +211,11 @@ reported, then you might add a comment that you also are interested in seeing
 the defect fixed.
 
 .. note:: If the defect is security-related, please follow the Hyperledger
-          `security bug reporting process <https://wiki.hyperledger.org/security>`__.
+          `security bug reporting process <https://wiki.hyperledger.org/display/HYP/Defect+Response>`__.
 
-If it has not been previously reported, create a new JIRA. Please try to provide
+If it has not been previously reported, you may either submit a PR with a
+well documented commit message describing the defect and the fix, or you 
+may create a new JIRA. Please try to provide
 sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
@@ -171,10 +229,8 @@ Submitting your fix
 
 If you just submitted a JIRA for a bug you've discovered, and would like to
 provide a fix, we would welcome that gladly! Please assign the JIRA issue to
-yourself, then you can submit a change request (CR).
-
-.. note:: If you need help with submitting your first CR, we have created a
-          brief :doc:`tutorial <submit_cr>` for you.
+yourself, then submit a pull request (PR). Please refer to :doc:`github/github`
+for a detailed workflow.
 
 Fixing issues and working stories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -190,24 +246,54 @@ assignment if you cannot finish in a reasonable time, or add a comment
 saying that you are still actively working the issue if you need a
 little more time.
 
-Reviewing submitted Change Requests (CRs)
+Reviewing submitted Pull Requests (PRs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Another way to contribute and learn about Hyperledger Fabric is to help the
-maintainers with the review of the CRs that are open. Indeed
-maintainers have the difficult role of having to review all the CRs
+maintainers with the review of the PRs that are open. Indeed
+maintainers have the difficult role of having to review all the PRs
 that are being submitted and evaluate whether they should be merged or
 not. You can review the code and/or documentation changes, test the
 changes, and tell the submitters and maintainers what you think. Once
-your review and/or test is complete just reply to the CR with your
+your review and/or test is complete just reply to the PR with your
 findings, by adding comments and/or voting. A comment saying something
 like "I tried it on system X and it works" or possibly "I got an error
 on system X: xxx " will help the maintainers in their evaluation. As a
-result, maintainers will be able to process CRs faster and everybody
+result, maintainers will be able to process PRs faster and everybody
 will gain from it.
 
-Just browse through `the open CRs on Gerrit
-<https://gerrit.hyperledger.org/r/#/q/status:open>`__ to get started.
+Just browse through `the open PRs on GitHub
+<https://github.com/hyperledger/fabric/pulls>`__ to get started.
+
+PR Aging
+~~~~~~~~
+
+As the Fabric project has grown, so too has the backlog of open PRs. One
+problem that nearly all projects face is effectively managing that backlog
+and Fabric is no exception. In an effort to keep the backlog of Fabric and
+related project PRs manageable, we are introducing an aging policy which
+will be enforced by bots.  This is consistent with how other large projects
+manage their PR backlog.
+
+PR Aging Policy
+~~~~~~~~~~~~~~~
+
+The Fabric project maintainers will automatically monitor all PR activity for
+delinquency. If a PR has not been updated in 2 weeks, a reminder comment will be
+added requesting that the PR either be updated to address any outstanding
+comments or abandoned if it is to be withdrawn. If a delinquent PR goes another
+2 weeks without an update, it will be automatically abandoned. If a PR has aged
+more than 2 months since it was originally submitted, even if it has activity,
+it will be flagged for maintainer review.
+
+If a submitted PR has passed all validation but has not been reviewed in 72
+hours (3 days), it will be flagged to the #fabric-pr-review channel daily until
+it receives a review comment(s).
+
+This policy applies to all official Fabric projects (fabric, fabric-ca,
+fabric-samples, fabric-test, fabric-sdk-node, fabric-sdk-java, fabric-gateway-java,
+fabric-chaincode-node, fabric-chaincode-java, fabric-chaincode-evm,
+fabric-baseimage, and fabric-amcl).
 
 Setting up development environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -215,7 +301,7 @@ Setting up development environment
 Next, try :doc:`building the project <dev-setup/build>` in your local
 development environment to ensure that everything is set up correctly.
 
-What makes a good change request?
+What makes a good pull request?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 -  One change at a time. Not five, not three, not ten. One and only one.
@@ -251,7 +337,7 @@ What makes a good change request?
    of unit testing for a good set of criteria to keep in mind for writing
    effective unit tests.
 
--  Minimize the lines of code per CR. Why? Maintainers have day jobs,
+-  Minimize the lines of code per PR. Why? Maintainers have day jobs,
    too. If you send a 1,000 or 2,000 LOC change, how long do you think
    it takes to review all of that code? Keep your changes to < 200-300
    LOC, if possible. If you have a larger change, decompose it into
@@ -264,26 +350,17 @@ What makes a good change request?
    bunch of generated code (protobufs, etc.). Again, there can be
    exceptions.
 
-.. note:: Large change requests, e.g. those with more than 300 LOC are more likely
-          than not going to receive a -2, and you'll be asked to refactor the
-          change to conform with this guidance.
-
--  Do not stack change requests (e.g. submit a CR from the same local branch
-   as your previous CR) unless they are related. This will minimize merge
-   conflicts and allow changes to be merged more quickly. If you stack requests
-   your subsequent requests may be held up because of review comments in the
-   preceding requests.
+.. note:: Large pull requests, e.g. those with more than 300 LOC are more than likely
+          not going to receive an approval, and you'll be asked to refactor
+          the change to conform with this guidance.
 
 -  Write a meaningful commit message. Include a meaningful 55 (or less)
    character title, followed by a blank line, followed by a more
    comprehensive description of the change. Each change MUST include the JIRA
    identifier corresponding to the change (e.g. [FAB-1234]). This can be
-   in the title but should also be in the body of the commit message. See the
-   :doc:`complete requirements <Gerrit/changes>` for an acceptable change
-   request.
+   in the title but should also be in the body of the commit message.
 
-.. note:: That Gerrit will automatically create a hyperlink to the JIRA item.
-          e.g.
+.. note:: Example commit message:
 
           ::
 
@@ -292,7 +369,7 @@ What makes a good change request?
               Fix [FAB-1234] added a check to ensure that when foobar(foo string)
               is called, that there is a non-empty string argument.
 
-Finally, be responsive. Don't let a change request fester with review
+Finally, be responsive. Don't let a pull request fester with review
 comments such that it gets to a point that it requires a rebase. It only
 further delays getting it merged and adds more work for you - to
 remediate the merge conflicts.
@@ -334,13 +411,8 @@ Related Topics
    jira_navigation
    dev-setup/devenv
    dev-setup/build
-   Gerrit/lf-account
-   Gerrit/gerrit
-   Gerrit/changes
-   Gerrit/reviewing
-   Gerrit/best-practices
    testing
-   Style-guides/go-style
+   style-guides/go-style
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

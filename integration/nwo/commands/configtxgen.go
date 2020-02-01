@@ -31,6 +31,7 @@ type CreateChannelTx struct {
 	Profile               string
 	ConfigPath            string
 	OutputCreateChannelTx string
+	BaseProfile           string
 }
 
 func (c CreateChannelTx) SessionName() string {
@@ -43,6 +44,7 @@ func (c CreateChannelTx) Args() []string {
 		"-profile", c.Profile,
 		"-configPath", c.ConfigPath,
 		"-outputCreateChannelTx", c.OutputCreateChannelTx,
+		"-channelCreateTxBaseProfile", c.BaseProfile,
 	}
 }
 
@@ -65,5 +67,23 @@ func (o OutputAnchorPeersUpdate) Args() []string {
 		"-configPath", o.ConfigPath,
 		"-asOrg", o.AsOrg,
 		"-outputAnchorPeersUpdate", o.OutputAnchorPeersUpdate,
+	}
+}
+
+type PrintOrg struct {
+	ConfigPath string
+	ChannelID  string
+	PrintOrg   string
+}
+
+func (p PrintOrg) SessionName() string {
+	return "configtxgen-print-org"
+}
+
+func (p PrintOrg) Args() []string {
+	return []string{
+		"-configPath", p.ConfigPath,
+		"-channelID", p.ChannelID,
+		"-printOrg", p.PrintOrg,
 	}
 }

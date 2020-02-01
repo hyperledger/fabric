@@ -21,8 +21,8 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,13 +31,13 @@ func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	txRwSet := &TxRwSet{}
 
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "k0", EndKey: "k9", ItrExhausted: true}
-	rqi1.SetRawReads([]*kvrwset.KVRead{
+	SetRawReads(rqi1, []*kvrwset.KVRead{
 		{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
 		{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
 	})
 
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "k00", EndKey: "k90", ItrExhausted: true}
-	rqi2.SetMerkelSummary(&kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
+	SetMerkelSummary(rqi2, &kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
 
 	txRwSet.NsRwSets = []*NsRwSet{
 		{NameSpace: "ns1", KvRwSet: &kvrwset.KVRWSet{
@@ -125,6 +125,13 @@ func TestCollHashedRwSetConversion(t *testing.T) {
 	assert.Equal(t, collHashedRwSet.PvtRwSetHash, collHashedRwSet1.PvtRwSetHash)
 }
 
+func TestNumCollections(t *testing.T) {
+	var txRwSet *TxRwSet
+	assert.Equal(t, 0, txRwSet.NumCollections())         // nil TxRwSet
+	assert.Equal(t, 0, (&TxRwSet{}).NumCollections())    // empty TxRwSet
+	assert.Equal(t, 4, sampleTxRwSet().NumCollections()) // sample TxRwSet
+}
+
 func sampleTxRwSet() *TxRwSet {
 	txRwSet := &TxRwSet{}
 	txRwSet.NsRwSets = append(txRwSet.NsRwSets, sampleNsRwSet("ns-1"))
@@ -148,13 +155,13 @@ func sampleNsRwSetWithNoCollHashedRWs(ns string) *NsRwSet {
 
 func sampleKvRwSet() *kvrwset.KVRWSet {
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "k0", EndKey: "k9", ItrExhausted: true}
-	rqi1.SetRawReads([]*kvrwset.KVRead{
+	SetRawReads(rqi1, []*kvrwset.KVRead{
 		{Key: "k1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}},
 		{Key: "k2", Version: &kvrwset.Version{BlockNum: 1, TxNum: 2}},
 	})
 
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "k00", EndKey: "k90", ItrExhausted: true}
-	rqi2.SetMerkelSummary(&kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
+	SetMerkelSummary(rqi2, &kvrwset.QueryReadsMerkleSummary{MaxDegree: 5, MaxLevel: 4, MaxLevelHashes: [][]byte{[]byte("Hash-1"), []byte("Hash-2")}})
 	return &kvrwset.KVRWSet{
 		Reads:            []*kvrwset.KVRead{{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
 		RangeQueriesInfo: []*kvrwset.RangeQueryInfo{rqi1},

@@ -64,9 +64,9 @@ type VersionedDB interface {
 	// However, as of now, the both implementations of this function (leveldb and couchdb) are deterministic in returing an error
 	// i.e., an error is returned only if the key-value are found to be invalid for the underlying db
 	ValidateKeyValue(key string, value []byte) error
-	// BytesKeySuppoted returns true if the implementation (underlying db) supports the any bytes to be used as key.
+	// BytesKeySupported returns true if the implementation (underlying db) supports the any bytes to be used as key.
 	// For instance, leveldb supports any bytes for the key while the couchdb supports only valid utf-8 string
-	BytesKeySuppoted() bool
+	BytesKeySupported() bool
 	// Open opens the db
 	Open() error
 	// Close closes the db
@@ -128,7 +128,7 @@ type QueryResultsIterator interface {
 type QueryResult interface{}
 
 type nsUpdates struct {
-	m map[string]*VersionedValue
+	M map[string]*VersionedValue
 }
 
 func newNsUpdates() *nsUpdates {
@@ -137,21 +137,22 @@ func newNsUpdates() *nsUpdates {
 
 // UpdateBatch encloses the details of multiple `updates`
 type UpdateBatch struct {
-	updates map[string]*nsUpdates
+	ContainsPostOrderWrites bool
+	Updates                 map[string]*nsUpdates
 }
 
 // NewUpdateBatch constructs an instance of a Batch
 func NewUpdateBatch() *UpdateBatch {
-	return &UpdateBatch{make(map[string]*nsUpdates)}
+	return &UpdateBatch{false, make(map[string]*nsUpdates)}
 }
 
 // Get returns the VersionedValue for the given namespace and key
 func (batch *UpdateBatch) Get(ns string, key string) *VersionedValue {
-	nsUpdates, ok := batch.updates[ns]
+	nsUpdates, ok := batch.Updates[ns]
 	if !ok {
 		return nil
 	}
-	vv, ok := nsUpdates.m[key]
+	vv, ok := nsUpdates.M[key]
 	if !ok {
 		return nil
 	}
@@ -179,19 +180,19 @@ func (batch *UpdateBatch) Delete(ns string, key string, version *version.Height)
 
 // Exists checks whether the given key exists in the batch
 func (batch *UpdateBatch) Exists(ns string, key string) bool {
-	nsUpdates, ok := batch.updates[ns]
+	nsUpdates, ok := batch.Updates[ns]
 	if !ok {
 		return false
 	}
-	_, ok = nsUpdates.m[key]
+	_, ok = nsUpdates.M[key]
 	return ok
 }
 
 // GetUpdatedNamespaces returns the names of the namespaces that are updated
 func (batch *UpdateBatch) GetUpdatedNamespaces() []string {
-	namespaces := make([]string, len(batch.updates))
+	namespaces := make([]string, len(batch.Updates))
 	i := 0
-	for ns := range batch.updates {
+	for ns := range batch.Updates {
 		namespaces[i] = ns
 		i++
 	}
@@ -200,16 +201,16 @@ func (batch *UpdateBatch) GetUpdatedNamespaces() []string {
 
 // Update updates the batch with a latest entry for a namespace and a key
 func (batch *UpdateBatch) Update(ns string, key string, vv *VersionedValue) {
-	batch.getOrCreateNsUpdates(ns).m[key] = vv
+	batch.getOrCreateNsUpdates(ns).M[key] = vv
 }
 
 // GetUpdates returns all the updates for a namespace
 func (batch *UpdateBatch) GetUpdates(ns string) map[string]*VersionedValue {
-	nsUpdates, ok := batch.updates[ns]
+	nsUpdates, ok := batch.Updates[ns]
 	if !ok {
 		return nil
 	}
-	return nsUpdates.m
+	return nsUpdates.M
 }
 
 // GetRangeScanIterator returns an iterator that iterates over keys of a specific namespace in sorted order
@@ -223,11 +224,21 @@ func (batch *UpdateBatch) GetRangeScanIterator(ns string, startKey string, endKe
 	return newNsIterator(ns, startKey, endKey, batch)
 }
 
+// Merge merges another updates batch with this updates batch
+func (batch *UpdateBatch) Merge(toMerge *UpdateBatch) {
+	batch.ContainsPostOrderWrites = batch.ContainsPostOrderWrites || toMerge.ContainsPostOrderWrites
+	for ns, nsUpdates := range toMerge.Updates {
+		for key, vv := range nsUpdates.M {
+			batch.Update(ns, key, vv)
+		}
+	}
+}
+
 func (batch *UpdateBatch) getOrCreateNsUpdates(ns string) *nsUpdates {
-	nsUpdates := batch.updates[ns]
+	nsUpdates := batch.Updates[ns]
 	if nsUpdates == nil {
 		nsUpdates = newNsUpdates()
-		batch.updates[ns] = nsUpdates
+		batch.Updates[ns] = nsUpdates
 	}
 	return nsUpdates
 }
@@ -241,11 +252,11 @@ type nsIterator struct {
 }
 
 func newNsIterator(ns string, startKey string, endKey string, batch *UpdateBatch) *nsIterator {
-	nsUpdates, ok := batch.updates[ns]
+	nsUpdates, ok := batch.Updates[ns]
 	if !ok {
 		return &nsIterator{}
 	}
-	sortedKeys := util.GetSortedKeys(nsUpdates.m)
+	sortedKeys := util.GetSortedKeys(nsUpdates.M)
 	var nextIndex int
 	var lastIndex int
 	if startKey == "" {
@@ -267,7 +278,7 @@ func (itr *nsIterator) Next() (QueryResult, error) {
 		return nil, nil
 	}
 	key := itr.sortedKeys[itr.nextIndex]
-	vv := itr.nsUpdates.m[key]
+	vv := itr.nsUpdates.M[key]
 	itr.nextIndex++
 	return &VersionedKV{CompositeKey{itr.ns, key}, VersionedValue{vv.Value, vv.Metadata, vv.Version}}, nil
 }

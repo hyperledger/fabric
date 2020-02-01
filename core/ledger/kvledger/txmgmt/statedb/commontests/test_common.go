@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package commontests
@@ -22,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -876,9 +865,6 @@ func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvide
 	_, err = executeRangeQuery(t, db, "ns1", nextStartKey, "key22", int32(2), returnKeys)
 	assert.NoError(t, err)
 
-	//Set queryLimit to 2
-	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 2)
-
 	//Test implicit pagination
 	//Test range query with no pagesize and a small queryLimit
 	returnKeys = []string{}
@@ -889,9 +875,47 @@ func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvide
 	returnKeys = []string{"key1", "key10", "key11", "key12"}
 	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(4), returnKeys)
 	assert.NoError(t, err)
+}
 
-	//reset queryLimit to 1000
-	viper.Set("ledger.state.couchDBConfig.internalQueryLimit", 1000)
+// TestRangeQuerySpecialCharacters tests range queries for keys with special characters and/or non-English characters
+func TestRangeQuerySpecialCharacters(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db, err := dbProvider.GetDBHandle("testrangequeryspecialcharacters")
+	assert.NoError(t, err)
+	db.Open()
+	defer db.Close()
+
+	batch := statedb.NewUpdateBatch()
+	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
+	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
+	jsonValue2 := `{"asset_name": "marble2","color": "red","size": 2,"owner": "jerry"}`
+	batch.Put("ns1", "key2", []byte(jsonValue2), version.NewHeight(1, 1))
+	jsonValue3 := `{"asset_name": "marble3","color": "red","size": 2,"owner": "jerry"}`
+	batch.Put("ns1", "key1&%-", []byte(jsonValue3), version.NewHeight(1, 1))
+	jsonValue4 := `{"asset_name": "marble4","color": "red","size": 4,"owner": "martha"}`
+	batch.Put("ns1", "key1-a", []byte(jsonValue4), version.NewHeight(1, 4))
+	jsonValue5 := `{"asset_name": "marble5","color": "red","size": 2,"owner": "jerry"}`
+	batch.Put("ns1", "key1%=", []byte(jsonValue5), version.NewHeight(1, 2))
+	jsonValue6 := `{"asset_name": "marble6","color": "red","size": 3,"owner": "fred"}`
+	batch.Put("ns1", "key1español", []byte(jsonValue6), version.NewHeight(1, 3))
+	jsonValue7 := `{"asset_name": "marble7","color": "blue","size": 5,"owner": "fred"}`
+	batch.Put("ns1", "key1中文", []byte(jsonValue7), version.NewHeight(1, 5))
+	jsonValue8 := `{"asset_name": "marble8","color": "blue","size": 7,"owner": "fred"}`
+	batch.Put("ns1", "key1한국어", []byte(jsonValue8), version.NewHeight(1, 7))
+	jsonValue9 := `{"asset_name": "marble9","color": "blue","size": 5,"owner": "fred"}`
+	batch.Put("ns1", "中文key1", []byte(jsonValue9), version.NewHeight(1, 5))
+	jsonValue10 := `{"asset_name": "marble10","color": "green","size": 10,"owner": "mary"}`
+	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 10))
+	jsonValue11 := `{"asset_name": "marble11","color": "cyan","size": 8,"owner": "joe"}`
+	batch.Put("ns1", "key1z", []byte(jsonValue11), version.NewHeight(1, 11))
+
+	savePoint := version.NewHeight(2, 22)
+	db.ApplyUpdates(batch, savePoint)
+
+	//Test range query for the keys with special or non-English characters
+	returnKeys := []string{"key1", "key1%=", "key1&%-", "key1-a", "key10", "key1español", "key1z", "key1中文", "key1한국어"}
+	// returnKeys := []string{"key1", "key1%=", "key1&%-", "key1-a", "key10", "key1español", "key1z"}
+	_, err = executeRangeQuery(t, db, "ns1", "key1", "key2", int32(10), returnKeys)
+	assert.NoError(t, err)
 }
 
 func executeRangeQuery(t *testing.T, db statedb.VersionedDB, namespace, startKey, endKey string, limit int32, returnKeys []string) (string, error) {
@@ -946,4 +970,23 @@ func TestItrWithoutClose(t *testing.T, itr statedb.ResultsIterator, expectedKeys
 	queryResult, err := itr.Next()
 	assert.NoError(t, err, "An unexpected error was thrown during iterator Next()")
 	assert.Nil(t, queryResult)
+}
+
+func TestApplyUpdatesWithNilHeight(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db, err := dbProvider.GetDBHandle("test-apply-updates-with-nil-height")
+	assert.NoError(t, err)
+
+	batch1 := statedb.NewUpdateBatch()
+	batch1.Put("ns", "key1", []byte("value1"), version.NewHeight(1, 4))
+	savePoint := version.NewHeight(1, 5)
+	assert.NoError(t, db.ApplyUpdates(batch1, savePoint))
+
+	batch2 := statedb.NewUpdateBatch()
+	batch2.Put("ns", "key1", []byte("value2"), version.NewHeight(1, 1))
+	assert.NoError(t, db.ApplyUpdates(batch2, nil))
+
+	ht, err := db.GetLatestSavePoint()
+	assert.NoError(t, err)
+	assert.Equal(t, savePoint, ht) // savepoint should still be what was set with batch1
+	// (because batch2 calls ApplyUpdates with savepoint as nil)
 }

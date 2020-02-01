@@ -9,28 +9,28 @@ package fabricconfig
 import "time"
 
 type Orderer struct {
-	General    *General    `yaml:"General,omitempty"`
-	FileLedger *FileLedger `yaml:"FileLedger,omitempty"`
-	RAMLedger  *RAMLedger  `yaml:"RAMLedger,omitempty"`
-	Kafka      *Kafka      `yaml:"Kafka,omitempty"`
+	General    *General           `yaml:"General,omitempty"`
+	FileLedger *FileLedger        `yaml:"FileLedger,omitempty"`
+	Kafka      *Kafka             `yaml:"Kafka,omitempty"`
+	Operations *OrdererOperations `yaml:"Operations,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
 
 type General struct {
-	LedgerType     string                 `yaml:"LedgerType,omitempty"`
-	ListenAddress  string                 `yaml:"ListenAddress,omitempty"`
-	ListenPort     int                    `yaml:"ListenPort,omitempty"`
-	TLS            *OrdererTLS            `yaml:"TLS,omitempty"`
-	Keepalive      *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
-	GenesisMethod  string                 `yaml:"GenesisMethod,omitempty"`
-	GenesisProfile string                 `yaml:"GenesisProfile,omitempty"`
-	GenesisFile    string                 `yaml:"GenesisFile,omitempty"`
-	LocalMSPDir    string                 `yaml:"LocalMSPDir,omitempty"`
-	LocalMSPID     string                 `yaml:"LocalMSPID,omitempty"`
-	Profile        *OrdererProfile        `yaml:"Profile,omitempty"`
-	BCCSP          *BCCSP                 `yaml:"BCCSP,omitempty"`
-	Authentication *OrdererAuthentication `yaml:"Authentication,omitempty"`
+	ListenAddress   string                 `yaml:"ListenAddress,omitempty"`
+	ListenPort      int                    `yaml:"ListenPort,omitempty"`
+	TLS             *OrdererTLS            `yaml:"TLS,omitempty"`
+	Keepalive       *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
+	BootstrapMethod string                 `yaml:"BootstrapMethod,omitempty"`
+	GenesisProfile  string                 `yaml:"GenesisProfile,omitempty"`
+	GenesisFile     string                 `yaml:"GenesisFile,omitempty"` // will be replaced by the BootstrapFile
+	BootstrapFile   string                 `yaml:"BootstrapFile,omitempty"`
+	LocalMSPDir     string                 `yaml:"LocalMSPDir,omitempty"`
+	LocalMSPID      string                 `yaml:"LocalMSPID,omitempty"`
+	Profile         *OrdererProfile        `yaml:"Profile,omitempty"`
+	BCCSP           *BCCSP                 `yaml:"BCCSP,omitempty"`
+	Authentication  *OrdererAuthentication `yaml:"Authentication,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
@@ -74,10 +74,6 @@ type FileLedger struct {
 	Prefix   string `yaml:"Prefix,omitempty"`
 }
 
-type RAMLedger struct {
-	HistorySize int `yaml:"HistorySize,omitempty"`
-}
-
 type Kafka struct {
 	Retry     *Retry            `yaml:"Retry,omitempty"`
 	Verbose   bool              `yaml:"Verbose"`
@@ -106,4 +102,22 @@ type NetworkTimeouts struct {
 type Backoff struct {
 	RetryBackoff time.Duration `yaml:"RetryBackoff,omitempty"`
 	RetryMax     int           `yaml:"RetryMax,omitempty"`
+}
+
+type OrdererOperations struct {
+	ListenAddress string          `yaml:"ListenAddress,omitempty"`
+	Metrics       *OrdererMetrics `yaml:"Metrics,omitempty"`
+	TLS           *OrdererTLS     `yaml:"TLS"`
+}
+
+type OrdererMetrics struct {
+	Provider string         `yaml:"Provider"`
+	Statsd   *OrdererStatsd `yaml:"Statsd,omitempty"`
+}
+
+type OrdererStatsd struct {
+	Network       string        `yaml:"Network,omitempty"`
+	Address       string        `yaml:"Address,omitempty"`
+	WriteInterval time.Duration `yaml:"WriteInterval,omitempty"`
+	Prefix        string        `yaml:"Prefix,omitempty"`
 }

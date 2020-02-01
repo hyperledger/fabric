@@ -1,44 +1,114 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package leveldbhelper
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
-var dbNameKeySep = []byte{0x00}
-var lastKeyIndicator = byte(0x01)
+// internalDBName is used to keep track of data related to internals such as data format
+// _ is used as name because this is not allowed as a channelname
+const internalDBName = "_"
+
+var (
+	dbNameKeySep     = []byte{0x00}
+	lastKeyIndicator = byte(0x01)
+	formatVersionKey = []byte{'f'} // a single key in db whose value indicates the version of the data format
+)
+
+// Conf configuration for `Provider`
+//
+// `ExpectedFormatVersion` is the expected value of the format key in the internal database.
+// At the time of opening the db, A check is performed that
+// either the db is empty (i.e., opening for the first time) or the value
+// of the formatVersionKey is equal to `ExpectedFormatVersion`. Otherwise, an error is returned.
+// A nil value for ExpectedFormatVersion indicates that the format is never set and hence there is no such record
+type Conf struct {
+	DBPath                string
+	ExpectedFormatVersion string
+}
 
 // Provider enables to use a single leveldb as multiple logical leveldbs
 type Provider struct {
-	db        *DB
-	dbHandles map[string]*DBHandle
+	db *DB
+
 	mux       sync.Mutex
+	dbHandles map[string]*DBHandle
 }
 
 // NewProvider constructs a Provider
-func NewProvider(conf *Conf) *Provider {
+func NewProvider(conf *Conf) (*Provider, error) {
+	db, err := openDBAndCheckFormat(conf)
+	if err != nil {
+		return nil, err
+	}
+	return &Provider{
+		db:        db,
+		dbHandles: make(map[string]*DBHandle),
+	}, nil
+}
+
+func openDBAndCheckFormat(conf *Conf) (d *DB, e error) {
 	db := CreateDB(conf)
 	db.Open()
-	return &Provider{db, make(map[string]*DBHandle), sync.Mutex{}}
+
+	defer func() {
+		if e != nil {
+			db.Close()
+		}
+	}()
+
+	internalDB := &DBHandle{
+		db:     db,
+		dbName: internalDBName,
+	}
+
+	dbEmpty, err := db.IsEmpty()
+	if err != nil {
+		return nil, err
+	}
+
+	if dbEmpty && conf.ExpectedFormatVersion != "" {
+		logger.Infof("DB is empty Setting db format as %s", conf.ExpectedFormatVersion)
+		if err := internalDB.Put(formatVersionKey, []byte(conf.ExpectedFormatVersion), true); err != nil {
+			return nil, err
+		}
+		return db, nil
+	}
+
+	formatVersion, err := internalDB.Get(formatVersionKey)
+	if err != nil {
+		return nil, err
+	}
+	logger.Debugf("Checking for db format at path [%s]", conf.DBPath)
+
+	if !bytes.Equal(formatVersion, []byte(conf.ExpectedFormatVersion)) {
+		logger.Errorf("The db at path [%s] contains data in unexpected format. expected data format = [%s] (%#v), data format = [%s] (%#v).",
+			conf.DBPath, conf.ExpectedFormatVersion, []byte(conf.ExpectedFormatVersion), formatVersion, formatVersion)
+		return nil, &dataformat.ErrVersionMismatch{
+			ExpectedVersion: conf.ExpectedFormatVersion,
+			Version:         string(formatVersion),
+			DBInfo:          fmt.Sprintf("leveldb at [%s]", conf.DBPath),
+		}
+	}
+	logger.Debug("format is latest, nothing to do")
+	return db, nil
+}
+
+// GetDataFormat returns the format of the data
+func (p *Provider) GetDataFormat() (string, error) {
+	f, err := p.GetDBHandle(internalDBName).Get(formatVersionKey)
+	return string(f), err
 }
 
 // GetDBHandle returns a handle to a named db

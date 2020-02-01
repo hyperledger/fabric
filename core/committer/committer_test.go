@@ -7,20 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package committer
 
 import (
-	"errors"
-	"sync/atomic"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/configtxgentest"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/encoder"
-	"github.com/hyperledger/fabric/common/tools/configtxgen/localconfig"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
-	cut "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -44,6 +38,11 @@ func (m *mockLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 		PreviousBlockHash: m.previousHash,
 	}
 	return info, nil
+}
+
+func (m *mockLedger) DoesPvtDataInfoExist(blkNum uint64) (bool, error) {
+	args := m.Called()
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *mockLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
@@ -105,7 +104,7 @@ func (m *mockLedger) GetPvtDataByNum(blockNum uint64, filter ledger2.PvtNsCollFi
 	return args.Get(0).([]*ledger2.TxPvtData), args.Error(1)
 }
 
-func (m *mockLedger) CommitWithPvtData(blockAndPvtdata *ledger2.BlockAndPvtData) error {
+func (m *mockLedger) CommitLegacy(blockAndPvtdata *ledger2.BlockAndPvtData, commitOpts *ledger2.CommitOptions) error {
 	m.height += 1
 	m.previousHash = m.currentHash
 	m.currentHash = blockAndPvtdata.Block.Header.DataHash
@@ -113,27 +112,12 @@ func (m *mockLedger) CommitWithPvtData(blockAndPvtdata *ledger2.BlockAndPvtData)
 	return args.Error(0)
 }
 
-func (m *mockLedger) CommitPvtData(blockPvtData []*ledger2.BlockPvtData) ([]*ledger2.PvtdataHashMismatch, error) {
+func (m *mockLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger2.ReconciledPvtdata) ([]*ledger2.PvtdataHashMismatch, error) {
 	panic("implement me")
 }
 
 func (m *mockLedger) GetMissingPvtDataTracker() (ledger2.MissingPvtDataTracker, error) {
 	panic("implement me")
-}
-
-func (m *mockLedger) PurgePrivateData(maxBlockNumToRetain uint64) error {
-	args := m.Called(maxBlockNumToRetain)
-	return args.Error(0)
-}
-
-func (m *mockLedger) PrivateDataMinBlockNum() (uint64, error) {
-	args := m.Called()
-	return args.Get(0).(uint64), args.Error(1)
-}
-
-func (m *mockLedger) Prune(policy ledger.PrunePolicy) error {
-	args := m.Called(policy)
-	return args.Error(0)
 }
 
 func createLedger(channelID string) (*common.Block, *mockLedger) {
@@ -151,7 +135,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	gb, ledger := createLedger("TestLedger")
 	block1 := testutil.ConstructBlock(t, 1, gb.Header.DataHash, [][]byte{{1, 2, 3, 4}, {5, 6, 7, 8}}, true)
 
-	ledger.On("CommitWithPvtData", mock.Anything).Run(func(args mock.Arguments) {
+	ledger.On("CommitLegacy", mock.Anything).Run(func(args mock.Arguments) {
 		b := args.Get(0).(*ledger2.BlockAndPvtData)
 		assert.Equal(t, uint64(1), b.Block.Header.GetNumber())
 		assert.Equal(t, gb.Header.DataHash, b.Block.Header.PreviousHash)
@@ -165,9 +149,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.Equal(t, uint64(1), height)
 	assert.NoError(t, err)
 
-	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
-		Block: block1,
-	})
+	err = committer.CommitLegacy(&ledger2.BlockAndPvtData{Block: block1}, &ledger2.CommitOptions{})
 	assert.NoError(t, err)
 
 	height, err = committer.LedgerHeight()
@@ -177,56 +159,4 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	blocks := committer.GetBlocks([]uint64{0})
 	assert.Equal(t, 1, len(blocks))
 	assert.NoError(t, err)
-}
-
-func TestNewLedgerCommitterReactive(t *testing.T) {
-	t.Parallel()
-	chainID := "TestLedger"
-	_, ledger := createLedger(chainID)
-	ledger.On("CommitWithPvtData", mock.Anything).Return(nil)
-	var configArrived int32
-	committer := NewLedgerCommitterReactive(ledger, func(_ *common.Block) error {
-		atomic.AddInt32(&configArrived, 1)
-		return nil
-	})
-
-	height, err := committer.LedgerHeight()
-	assert.Equal(t, uint64(1), height)
-	assert.NoError(t, err)
-
-	profile := configtxgentest.Load(localconfig.SampleSingleMSPSoloProfile)
-	block := encoder.New(profile).GenesisBlockForChannel(chainID)
-	txsFilter := cut.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
-	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
-
-	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
-		Block: block,
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&configArrived))
-}
-
-func TestNewLedgerCommitterReactiveFailedConfigUpdate(t *testing.T) {
-	t.Parallel()
-	chainID := "TestLedger"
-	_, ledger := createLedger(chainID)
-	ledger.On("CommitWithPvtData", mock.Anything).Return(nil)
-	var configArrived int32
-	committer := NewLedgerCommitterReactive(ledger, func(_ *common.Block) error {
-		return errors.New("failed update config")
-	})
-
-	height, err := committer.LedgerHeight()
-	assert.Equal(t, uint64(1), height)
-	assert.NoError(t, err)
-
-	profile := configtxgentest.Load(localconfig.SampleSingleMSPSoloProfile)
-	block := encoder.New(profile).GenesisBlockForChannel(chainID)
-
-	err = committer.CommitWithPvtData(&ledger2.BlockAndPvtData{
-		Block: block,
-	})
-
-	assert.Error(t, err)
-	assert.Equal(t, int32(0), atomic.LoadInt32(&configArrived))
 }

@@ -8,13 +8,27 @@ package storageutil
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
-// SerializeMetadata serializes metadata entries for stroing in statedb
+// SerializeMetadata serializes metadata entries for storing in statedb
 func SerializeMetadata(metadataEntries []*kvrwset.KVMetadataEntry) ([]byte, error) {
 	metadata := &kvrwset.KVMetadataWrite{Entries: metadataEntries}
 	return proto.Marshal(metadata)
+}
+
+// SerializeMetadataByMap takes the metadata entries in the form of a map and serializes the metadata for storing in statedb
+func SerializeMetadataByMap(metadataMap map[string][]byte) ([]byte, error) {
+	if metadataMap == nil {
+		return nil, nil
+	}
+	names := util.GetSortedKeys(metadataMap)
+	metadataEntries := []*kvrwset.KVMetadataEntry{}
+	for _, k := range names {
+		metadataEntries = append(metadataEntries, &kvrwset.KVMetadataEntry{Name: k, Value: metadataMap[k]})
+	}
+	return SerializeMetadata(metadataEntries)
 }
 
 // DeserializeMetadata deserializes metadata bytes from statedb

@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-//go:generate protoc --go_out=plugins=grpc:. testpb/echo.proto
+//go:generate protoc --proto_path=testpb --go_out=plugins=grpc,paths=source_relative:testpb testpb/echo.proto
 
 func TestGrpcmetrics(t *testing.T) {
 	RegisterFailHandler(Fail)

@@ -15,7 +15,6 @@ The `peer` command has five different subcommands within it:
 ```
 peer chaincode [option] [flags]
 peer channel   [option] [flags]
-peer logging   [option] [flags]
 peer node      [option] [flags]
 peer version   [option] [flags]
 ```

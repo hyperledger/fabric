@@ -10,6 +10,8 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 )
 
+//gendoc:ignore
+
 var (
 	cgoCallsGaugeOpts       = metrics.GaugeOpts{Namespace: "go", Name: "cgo_calls"}
 	goRoutinesGaugeOpts     = metrics.GaugeOpts{Namespace: "go", Name: "goroutine_count"}

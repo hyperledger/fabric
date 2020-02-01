@@ -9,6 +9,8 @@ package endorsement
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/graph"
@@ -17,8 +19,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	. "github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/protos/discovery"
-	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 
@@ -41,7 +41,7 @@ type chaincodeMetadataFetcher interface {
 type policyFetcher interface {
 	// PolicyByChaincode returns a policy that can be inquired which identities
 	// satisfy it
-	PolicyByChaincode(channel string, cc string) policies.InquireablePolicy
+	PoliciesByChaincode(channel string, cc string, collections ...string) []policies.InquireablePolicy
 }
 
 type gossipSupport interface {
@@ -50,7 +50,7 @@ type gossipSupport interface {
 
 	// PeersOfChannel returns the NetworkMembers considered alive
 	// and also subscribed to the channel given
-	PeersOfChannel(common.ChainID) Members
+	PeersOfChannel(common.ChannelID) Members
 
 	// Peers returns the NetworkMembers considered alive
 	Peers() Members
@@ -76,8 +76,8 @@ func NewEndorsementAnalyzer(gs gossipSupport, pf policyFetcher, pe principalEval
 type peerPrincipalEvaluator func(member NetworkMember, principal *msp.MSPPrincipal) bool
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
-func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
-	chanMembership, err := ea.PeersAuthorizedByCriteria(chainID, interest)
+func (ea *endorsementAnalyzer) PeersForEndorsement(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+	chanMembership, err := ea.PeersAuthorizedByCriteria(channelID, interest)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -87,7 +87,7 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 	membersById := aliveMembership.ByID()
 	// Compute a mapping between the PKI-IDs of members to their identities
 	identitiesOfMembers := computeIdentitiesOfMembers(ea.IdentityInfo(), membersById)
-	principalsSets, err := ea.computePrincipalSets(chainID, interest)
+	principalsSets, err := ea.computePrincipalSets(channelID, interest)
 	if err != nil {
 		logger.Warningf("Principal set computation failed: %v", err)
 		return nil, errors.WithStack(err)
@@ -95,7 +95,7 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 
 	return ea.computeEndorsementResponse(&context{
 		chaincode:           interest.Chaincodes[0].Name,
-		channel:             string(chainID),
+		channel:             string(channelID),
 		principalsSets:      principalsSets,
 		channelMembersById:  channelMembersById,
 		aliveMembership:     aliveMembership,
@@ -103,8 +103,8 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(chainID common.ChainID, inter
 	})
 }
 
-func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(chainID common.ChainID, interest *discovery.ChaincodeInterest) (Members, error) {
-	peersOfChannel := ea.PeersOfChannel(chainID)
+func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (Members, error) {
+	peersOfChannel := ea.PeersOfChannel(channelID)
 	if interest == nil || len(interest.Chaincodes) == 0 {
 		return peersOfChannel, nil
 	}
@@ -113,7 +113,7 @@ func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(chainID common.ChainID,
 	metadataAndCollectionFilters, err := loadMetadataAndFilters(metadataAndFilterContext{
 		identityInfoByID: identitiesByID,
 		interest:         interest,
-		chainID:          chainID,
+		chainID:          channelID,
 		evaluator:        ea,
 		fetch:            ea,
 	})
@@ -167,15 +167,19 @@ func (ea *endorsementAnalyzer) computeEndorsementResponse(ctx *context) (*discov
 	}, nil
 }
 
-func (ea *endorsementAnalyzer) computePrincipalSets(chainID common.ChainID, interest *discovery.ChaincodeInterest) (policies.PrincipalSets, error) {
+func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (policies.PrincipalSets, error) {
+	sessionLogger := logger.With("channel", string(channelID))
 	var inquireablePolicies []policies.InquireablePolicy
 	for _, chaincode := range interest.Chaincodes {
-		pol := ea.PolicyByChaincode(string(chainID), chaincode.Name)
-		if pol == nil {
-			logger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
+		policies := ea.PoliciesByChaincode(string(channelID), chaincode.Name, chaincode.CollectionNames...)
+		if len(policies) == 0 {
+			sessionLogger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
-		inquireablePolicies = append(inquireablePolicies, pol)
+
+		for _, pol := range policies {
+			inquireablePolicies = append(inquireablePolicies, pol)
+		}
 	}
 
 	var cpss []inquire.ComparablePrincipalSets
@@ -204,7 +208,7 @@ func (ea *endorsementAnalyzer) computePrincipalSets(chainID common.ChainID, inte
 }
 
 type metadataAndFilterContext struct {
-	chainID          common.ChainID
+	chainID          common.ChannelID
 	interest         *discovery.ChaincodeInterest
 	fetch            chaincodeMetadataFetcher
 	identityInfoByID map[string]api.PeerIdentityInfo
@@ -218,6 +222,7 @@ type metadataAndColFilter struct {
 }
 
 func loadMetadataAndFilters(ctx metadataAndFilterContext) (*metadataAndColFilter, error) {
+	sessionLogger := logger.With("channel", string(ctx.chainID))
 	var metadata []*chaincode.Metadata
 	var filters []identityFilter
 
@@ -228,16 +233,21 @@ func loadMetadataAndFilters(ctx metadataAndFilterContext) (*metadataAndColFilter
 		}
 		metadata = append(metadata, ccMD)
 		if len(chaincode.CollectionNames) == 0 {
+			sessionLogger.Debugf("No collections for %s, skipping", chaincode.Name)
+			continue
+		}
+		if chaincode.NoPrivateReads {
+			sessionLogger.Debugf("No private reads, skipping")
 			continue
 		}
 		principalSetByCollections, err := principalsFromCollectionConfig(ccMD.CollectionsConfig)
 		if err != nil {
-			logger.Warningf("Failed initializing collection filter for chaincode %s: %v", chaincode.Name, err)
+			sessionLogger.Warningf("Failed initializing collection filter for chaincode %s: %v", chaincode.Name, err)
 			return nil, errors.WithStack(err)
 		}
 		filter, err := principalSetByCollections.toIdentityFilter(string(ctx.chainID), ctx.evaluator, chaincode)
 		if err != nil {
-			logger.Warningf("Failed computing collection principal sets for chaincode %s due to %v", chaincode.Name, err)
+			sessionLogger.Warningf("Failed computing collection principal sets for chaincode %s due to %v", chaincode.Name, err)
 			return nil, errors.WithStack(err)
 		}
 		filters = append(filters, filter)

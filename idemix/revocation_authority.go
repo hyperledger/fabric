@@ -11,11 +11,12 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/asn1"
+	"math/big"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
-	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/pkg/errors"
 )
 
@@ -94,12 +95,12 @@ func VerifyEpochPK(pk *ecdsa.PublicKey, epochPK *ECP2, epochPkSig []byte, epoch 
 	}
 	digest := sha256.Sum256(bytesToSign)
 
-	r, s, err := utils.UnmarshalECDSASignature(epochPkSig)
-	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal ECDSA signature")
+	var sig struct{ R, S *big.Int }
+	if _, err := asn1.Unmarshal(epochPkSig, &sig); err != nil {
+		return errors.Wrap(err, "failed unmashalling signature")
 	}
 
-	if !ecdsa.Verify(pk, digest[:], r, s) {
+	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {
 		return errors.Errorf("EpochPKSig invalid")
 	}
 

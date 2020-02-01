@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package api
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/hyperledger/fabric/gossip/common"
@@ -47,4 +48,34 @@ func TestPeerIdentitySetByID(t *testing.T) {
 		"p1": p1,
 		"p2": p2,
 	}, is.ByID())
+}
+
+func TestPeerIdentitySetFilter(t *testing.T) {
+	p1 := PeerIdentityInfo{
+		Organization: OrgIdentityType("ORG1"),
+		PKIId:        common.PKIidType("p1"),
+	}
+	p2 := PeerIdentityInfo{
+		Organization: OrgIdentityType("ORG2"),
+		PKIId:        common.PKIidType("p2"),
+	}
+	p3 := PeerIdentityInfo{
+		Organization: OrgIdentityType("ORG2"),
+		PKIId:        common.PKIidType("p3"),
+	}
+	is := PeerIdentitySet{
+		p1, p2, p3,
+	}
+	assert.Equal(t, PeerIdentitySet{p1}, is.Filter(func(info PeerIdentityInfo) bool {
+		return bytes.Equal(info.Organization, OrgIdentityType("ORG1"))
+	}))
+	var emptySet PeerIdentitySet
+	assert.Equal(t, emptySet, is.Filter(func(_ PeerIdentityInfo) bool {
+		return false
+	}))
+	assert.Equal(t, PeerIdentitySet{p3}, is.Filter(func(info PeerIdentityInfo) bool {
+		return bytes.Equal(info.Organization, OrgIdentityType("ORG2"))
+	}).Filter(func(info PeerIdentityInfo) bool {
+		return bytes.Equal(info.PKIId, common.PKIidType("p3"))
+	}))
 }

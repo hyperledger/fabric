@@ -63,8 +63,8 @@ type identityMapperImpl struct {
 	sa         api.SecurityAdvisor
 	pkiID2Cert map[string]*storedIdentity
 	sync.RWMutex
-	stopChan chan struct{}
-	sync.Once
+	stopChan  chan struct{}
+	once      sync.Once
 	selfPKIID string
 }
 
@@ -87,11 +87,12 @@ func NewIdentityMapper(mcs api.MessageCryptoService, selfIdentity api.PeerIdenti
 }
 
 func (is *identityMapperImpl) periodicalPurgeUnusedIdentities() {
+	usageTh := GetIdentityUsageThreshold()
 	for {
 		select {
 		case <-is.stopChan:
 			return
-		case <-time.After(usageThreshold / 10):
+		case <-time.After(usageTh / 10):
 			is.SuspectPeers(func(_ api.PeerIdentityType) bool {
 				return false
 			})
@@ -166,8 +167,8 @@ func (is *identityMapperImpl) Sign(msg []byte) ([]byte, error) {
 }
 
 func (is *identityMapperImpl) Stop() {
-	is.Once.Do(func() {
-		is.stopChan <- struct{}{}
+	is.once.Do(func() {
+		close(is.stopChan)
 	})
 }
 
@@ -197,11 +198,12 @@ func (is *identityMapperImpl) SuspectPeers(isSuspected api.PeerSuspector) {
 // used for a long time
 func (is *identityMapperImpl) validateIdentities(isSuspected api.PeerSuspector) []*storedIdentity {
 	now := time.Now()
+	usageTh := GetIdentityUsageThreshold()
 	is.RLock()
 	defer is.RUnlock()
 	var revokedIdentities []*storedIdentity
 	for pkiID, storedIdentity := range is.pkiID2Cert {
-		if pkiID != is.selfPKIID && storedIdentity.fetchLastAccessTime().Add(usageThreshold).Before(now) {
+		if pkiID != is.selfPKIID && storedIdentity.fetchLastAccessTime().Add(usageTh).Before(now) {
 			revokedIdentities = append(revokedIdentities, storedIdentity)
 			continue
 		}
@@ -275,12 +277,12 @@ func (si *storedIdentity) cancelExpirationTimer() {
 // Identities that are not used at least once during the given time
 // are purged
 func SetIdentityUsageThreshold(duration time.Duration) {
-	usageThreshold = duration
+	atomic.StoreInt64((*int64)(&usageThreshold), int64(duration))
 }
 
 // GetIdentityUsageThreshold returns the usage threshold of identities.
 // Identities that are not used at least once during the usage threshold
 // duration are purged.
 func GetIdentityUsageThreshold() time.Duration {
-	return usageThreshold
+	return time.Duration(atomic.LoadInt64((*int64)(&usageThreshold)))
 }

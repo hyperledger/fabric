@@ -41,6 +41,7 @@ var _ = Describe("SpecHandler", func() {
 		Expect(fakeLogging.SpecCallCount()).To(Equal(1))
 		Expect(resp.Code).To(Equal(http.StatusOK))
 		Expect(resp.Body).To(MatchJSON(`{"spec": "the-returned-specification"}`))
+		Expect(resp.Header().Get("Content-Type")).To(Equal("application/json"))
 	})
 
 	It("sets the current logging spec", func() {

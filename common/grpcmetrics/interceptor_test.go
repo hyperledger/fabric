@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ = Describe("Interceptor", func() {
@@ -271,8 +272,11 @@ var _ = Describe("Interceptor", func() {
 		})
 
 		Context("when stream recv returns an error", func() {
+			var errCh chan error
+
 			BeforeEach(func() {
-				fakeEchoService.EchoStreamReturns(errors.New("oh bother"))
+				errCh = make(chan error)
+				fakeEchoService.EchoStreamStub = func(svs testpb.EchoService_EchoStreamServer) error { return <-errCh }
 			})
 
 			It("does not increment the update count", func() {
@@ -281,8 +285,11 @@ var _ = Describe("Interceptor", func() {
 
 				err = streamClient.Send(&testpb.Message{Message: "hello"})
 				Expect(err).NotTo(HaveOccurred())
+
+				errCh <- errors.New("oh bother")
 				_, err = streamClient.Recv()
-				Expect(err).To(MatchError(grpc.Errorf(codes.Unknown, "oh bother")))
+				Expect(err).To(MatchError(status.Errorf(codes.Unknown, "oh bother")))
+
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())
 
@@ -310,4 +317,5 @@ func streamMessages(streamClient testpb.EchoService_EchoStreamClient) {
 
 	msg, err = streamClient.Recv()
 	Expect(err).To(Equal(io.EOF))
+	Expect(msg).To(BeNil())
 }

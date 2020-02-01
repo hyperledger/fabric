@@ -41,6 +41,8 @@ type expiryKeeper interface {
 	updateBookkeeping(toTrack []*expiryInfo, toClear []*expiryInfoKey) error
 	// retrieve returns the keys info that are supposed to be expired by the given block number
 	retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error)
+	// retrieveByExpiryKey retrieves the expiryInfo for given expiryKey
+	retrieveByExpiryKey(expiryKey *expiryInfoKey) (*expiryInfo, error)
 }
 
 func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) expiryKeeper {
@@ -95,6 +97,15 @@ func (ek *expKeeper) retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error) {
 	return listExpinfo, nil
 }
 
+func (ek *expKeeper) retrieveByExpiryKey(expiryKey *expiryInfoKey) (*expiryInfo, error) {
+	key := encodeExpiryInfoKey(expiryKey)
+	value, err := ek.db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return decodeExpiryInfo(key, value)
+}
+
 func encodeKV(expinfo *expiryInfo) (key []byte, value []byte, err error) {
 	key = encodeExpiryInfoKey(expinfo.expiryInfoKey)
 	value, err = encodeExpiryInfoValue(expinfo.pvtdataKeys)
@@ -111,8 +122,14 @@ func encodeExpiryInfoValue(pvtdataKeys *PvtdataKeys) ([]byte, error) {
 }
 
 func decodeExpiryInfo(key []byte, value []byte) (*expiryInfo, error) {
-	expiryBlk, n := util.DecodeOrderPreservingVarUint64(key[1:])
-	committingBlk, _ := util.DecodeOrderPreservingVarUint64(key[n+1:])
+	expiryBlk, n, err := util.DecodeOrderPreservingVarUint64(key[1:])
+	if err != nil {
+		return nil, err
+	}
+	committingBlk, _, err := util.DecodeOrderPreservingVarUint64(key[n+1:])
+	if err != nil {
+		return nil, err
+	}
 	pvtdataKeys := &PvtdataKeys{}
 	if err := proto.Unmarshal(value, pvtdataKeys); err != nil {
 		return nil, err

@@ -7,64 +7,51 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
-	"errors"
-	"fmt"
-
+	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/privdata/common"
 	"github.com/hyperledger/fabric/gossip/util"
-	gossip2 "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
+	"github.com/pkg/errors"
 )
 
-// StorageDataRetriever defines an API to retrieve private date from the storage
-type StorageDataRetriever interface {
-	// CollectionRWSet retrieves for give digest relevant private data if
-	// available otherwise returns nil
-	CollectionRWSet(dig []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error)
+//go:generate mockery -dir . -name RWSetScanner -case underscore -output mocks/
+
+// RWSetScanner is the local interface used to generate mocks for foreign interface.
+type RWSetScanner interface {
+	transientstore.RWSetScanner
 }
 
-//go:generate mockery -dir . -name DataStore -case underscore -output mocks/
-//go:generate mockery -dir ../../core/transientstore/ -name RWSetScanner -case underscore -output mocks/
-//go:generate mockery -dir ../../core/ledger/ -name ConfigHistoryRetriever -case underscore -output mocks/
-
-// DataStore defines set of APIs need to get private data
-// from underlined data store
-type DataStore interface {
-	// GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
-	// RWSets persisted from different endorsers (via Gossip)
-	GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (transientstore.RWSetScanner, error)
-
-	// GetPvtDataByNum returns a slice of the private data from the ledger
-	// for given block and based on the filter which indicates a map of
-	// collections and namespaces of private data to retrieve
-	GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error)
-
-	// GetConfigHistoryRetriever returns the ConfigHistoryRetriever
-	GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error)
-
-	// Get recent block sequence number
-	LedgerHeight() (uint64, error)
+// StorageDataRetriever defines an API to retrieve private date from the storage.
+type StorageDataRetriever interface {
+	// CollectionRWSet retrieves for give digest relevant private data if
+	// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
+	CollectionRWSet(dig []*protosgossip.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error)
 }
 
 type dataRetriever struct {
-	store DataStore
+	store     *transientstore.Store
+	committer committer.Committer
 }
 
 // NewDataRetriever constructing function for implementation of the
 // StorageDataRetriever interface
-func NewDataRetriever(store DataStore) StorageDataRetriever {
-	return &dataRetriever{store: store}
+func NewDataRetriever(store *transientstore.Store, committer committer.Committer) StorageDataRetriever {
+	return &dataRetriever{
+		store:     store,
+		committer: committer,
+	}
 }
 
 // CollectionRWSet retrieves for give digest relevant private data if
-// available otherwise returns nil
-func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error) {
-	height, err := dr.store.LedgerHeight()
+// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error
+func (dr *dataRetriever) CollectionRWSet(digests []*protosgossip.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, bool, error) {
+	height, err := dr.committer.LedgerHeight()
 	if err != nil {
 		// if there is an error getting info from the ledger, we need to try to read from transient store
-		return nil, fmt.Errorf("wasn't able to read ledger height, due to %s", err)
+		return nil, false, errors.Wrap(err, "wasn't able to read ledger height")
 	}
 	if height <= blockNum {
 		logger.Debug("Current ledger height ", height, "is below requested block sequence number",
@@ -94,13 +81,14 @@ func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, block
 			}] = pvtRWSet
 		}
 
-		return results, nil
+		return results, false, nil
 	}
 	// Since ledger height is above block sequence number private data is might be available in the ledger
-	return dr.fromLedger(digests, blockNum)
+	results, err := dr.fromLedger(digests, blockNum)
+	return results, true, err
 }
 
-func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error) {
+func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, blockNum uint64) (Dig2PvtRWSetWithConfig, error) {
 	filter := make(map[string]ledger.PvtCollFilter)
 	for _, dig := range digests {
 		if _, ok := filter[dig.Namespace]; !ok {
@@ -109,9 +97,9 @@ func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum u
 		filter[dig.Namespace][dig.Collection] = true
 	}
 
-	pvtData, err := dr.store.GetPvtDataByNum(blockNum, filter)
+	pvtData, err := dr.committer.GetPvtDataByNum(blockNum, filter)
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("wasn't able to obtain private data, block sequence number", blockNum, "due to", err))
+		return nil, errors.Errorf("wasn't able to obtain private data, block sequence number %d, due to %s", blockNum, err)
 	}
 
 	results := make(Dig2PvtRWSetWithConfig)
@@ -134,26 +122,26 @@ func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum u
 			pvtRWSetWithConfig.RWSet = append(pvtRWSetWithConfig.RWSet, pvtRWSet...)
 		}
 
-		confHistoryRetriever, err := dr.store.GetConfigHistoryRetriever()
+		confHistoryRetriever, err := dr.committer.GetConfigHistoryRetriever()
 		if err != nil {
-			return nil, errors.New(fmt.Sprint("cannot obtain configuration history retriever, for collection, ", dig.Collection,
-				" txID ", dig.TxId, " block sequence number ", dig.BlockSeq, " due to", err))
+			return nil, errors.Errorf("cannot obtain configuration history retriever, for collection <%s>"+
+				" txID <%s> block sequence number <%d> due to <%s>", dig.Collection, dig.TxId, dig.BlockSeq, err)
 		}
 
 		configInfo, err := confHistoryRetriever.MostRecentCollectionConfigBelow(dig.BlockSeq, dig.Namespace)
 		if err != nil {
-			return nil, errors.New(fmt.Sprint("cannot find recent collection config update below block sequence = ", dig.BlockSeq,
-				" collection name = ", dig.Collection, " for chaincode ", dig.Namespace))
+			return nil, errors.Errorf("cannot find recent collection config update below block sequence = %d,"+
+				" collection name = <%s> for chaincode <%s>", dig.BlockSeq, dig.Collection, dig.Namespace)
 		}
 
 		if configInfo == nil {
-			return nil, errors.New(fmt.Sprint("no collection config update below block sequence = ", dig.BlockSeq,
-				" collection name = ", dig.Collection, " for chaincode ", dig.Namespace, " is available "))
+			return nil, errors.Errorf("no collection config update below block sequence = <%d>"+
+				" collection name = <%s> for chaincode <%s> is available ", dig.BlockSeq, dig.Collection, dig.Namespace)
 		}
 		configs := extractCollectionConfig(configInfo.CollectionConfig, dig.Collection)
 		if configs == nil {
-			return nil, errors.New(fmt.Sprint("no collection config was found for collection ", dig.Collection,
-				" namespace ", dig.Namespace, " txID ", dig.TxId))
+			return nil, errors.Errorf("no collection config was found for collection <%s>"+
+				" namespace <%s> txID <%s>", dig.Collection, dig.Namespace, dig.TxId)
 		}
 		pvtRWSetWithConfig.CollectionConfig = configs
 		results[common.DigKey{
@@ -168,21 +156,21 @@ func (dr *dataRetriever) fromLedger(digests []*gossip2.PvtDataDigest, blockNum u
 	return results, nil
 }
 
-func (dr *dataRetriever) fromTransientStore(dig *gossip2.PvtDataDigest, filter map[string]ledger.PvtCollFilter) (*util.PrivateRWSetWithConfig, error) {
+func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, filter map[string]ledger.PvtCollFilter) (*util.PrivateRWSetWithConfig, error) {
 	results := &util.PrivateRWSetWithConfig{}
 	it, err := dr.store.GetTxPvtRWSetByTxid(dig.TxId, filter)
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("was not able to retrieve private data from transient store, namespace", dig.Namespace,
-			", collection name", dig.Collection, ", txID", dig.TxId, ", due to", err))
+		return nil, errors.Errorf("was not able to retrieve private data from transient store, namespace <%s>"+
+			", collection name %s, txID <%s>, due to <%s>", dig.Namespace, dig.Collection, dig.TxId, err)
 	}
 	defer it.Close()
 
 	maxEndorsedAt := uint64(0)
 	for {
-		res, err := it.NextWithConfig()
+		res, err := it.Next()
 		if err != nil {
-			return nil, errors.New(fmt.Sprint("error getting next element out of private data iterator, namespace", dig.Namespace,
-				", collection name", dig.Collection, ", txID", dig.TxId, ", due to", err))
+			return nil, errors.Errorf("error getting next element out of private data iterator, namespace <%s>"+
+				", collection name <%s>, txID <%s>, due to <%s>", dig.Namespace, dig.Collection, dig.TxId, err)
 		}
 		if res == nil {
 			return results, nil
@@ -228,13 +216,13 @@ func (dr *dataRetriever) extractPvtRWsets(pvtRWSets []*rwset.NsPvtReadWriteSet, 
 	for _, nsws := range pvtRWSets {
 		// and in each namespace - iterate over all collections
 		if nsws.Namespace != namespace {
-			logger.Warning("Received private data namespace ", nsws.Namespace, " instead of ", namespace, " skipping...")
+			logger.Debug("Received private data namespace ", nsws.Namespace, " instead of ", namespace, " skipping...")
 			continue
 		}
 		for _, col := range nsws.CollectionPvtRwset {
 			// This isn't the collection we're looking for
 			if col.CollectionName != collectionName {
-				logger.Warning("Received private data collection ", col.CollectionName, " instead of ", collectionName, " skipping...")
+				logger.Debug("Received private data collection ", col.CollectionName, " instead of ", collectionName, " skipping...")
 				continue
 			}
 			// Add the collection pRWset to the accumulated set

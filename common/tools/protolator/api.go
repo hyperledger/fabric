@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package protolator
@@ -63,10 +53,10 @@ type StaticallyOpaqueFieldProto interface {
 // StaticallyOpaqueMapFieldProto should be implemented by protos which have maps to bytes fields
 // which are the marshaled value of a fixed type
 type StaticallyOpaqueMapFieldProto interface {
-	// StaticallyOpaqueFields returns the field names which contain opaque data
+	// StaticallyOpaqueMapFields returns the field names which contain opaque data
 	StaticallyOpaqueMapFields() []string
 
-	// StaticallyOpaqueFieldProto returns a newly allocated proto message of the correct
+	// StaticallyOpaqueMapFieldProto returns a newly allocated proto message of the correct
 	// type for the field name.
 	StaticallyOpaqueMapFieldProto(name string, key string) (proto.Message, error)
 }
@@ -74,10 +64,10 @@ type StaticallyOpaqueMapFieldProto interface {
 // StaticallyOpaqueSliceFieldProto should be implemented by protos which have maps to bytes fields
 // which are the marshaled value of a fixed type
 type StaticallyOpaqueSliceFieldProto interface {
-	// StaticallyOpaqueFields returns the field names which contain opaque data
+	// StaticallyOpaqueSliceFields returns the field names which contain opaque data
 	StaticallyOpaqueSliceFields() []string
 
-	// StaticallyOpaqueFieldProto returns a newly allocated proto message of the correct
+	// StaticallyOpaqueSliceFieldProto returns a newly allocated proto message of the correct
 	// type for the field name.
 	StaticallyOpaqueSliceFieldProto(name string, index int) (proto.Message, error)
 }
@@ -96,10 +86,10 @@ type VariablyOpaqueFieldProto interface {
 // VariablyOpaqueMapFieldProto should be implemented by protos which have maps to bytes fields
 // which are the marshaled value of a a message type determined by the other contents of the proto
 type VariablyOpaqueMapFieldProto interface {
-	// VariablyOpaqueFields returns the field names which contain opaque data
+	// VariablyOpaqueMapFields returns the field names which contain opaque data
 	VariablyOpaqueMapFields() []string
 
-	// VariablyOpaqueFieldProto returns a newly allocated proto message of the correct
+	// VariablyOpaqueMapFieldProto returns a newly allocated proto message of the correct
 	// type for the field name.
 	VariablyOpaqueMapFieldProto(name string, key string) (proto.Message, error)
 }
@@ -107,7 +97,7 @@ type VariablyOpaqueMapFieldProto interface {
 // VariablyOpaqueSliceFieldProto should be implemented by protos which have maps to bytes fields
 // which are the marshaled value of a a message type determined by the other contents of the proto
 type VariablyOpaqueSliceFieldProto interface {
-	// VariablyOpaqueFields returns the field names which contain opaque data
+	// VariablyOpaqueSliceFields returns the field names which contain opaque data
 	VariablyOpaqueSliceFields() []string
 
 	// VariablyOpaqueFieldProto returns a newly allocated proto message of the correct
@@ -129,7 +119,7 @@ type DynamicFieldProto interface {
 // DynamicMapFieldProto should be implemented by protos which have maps to messages whose attributes
 // (such as their opaque types) cannot be determined until runtime
 type DynamicMapFieldProto interface {
-	// DynamicFields returns the field names which are dynamic
+	// DynamicMapFields returns the field names which are dynamic
 	DynamicMapFields() []string
 
 	// DynamicMapFieldProto returns a newly allocated dynamic message, decorating an underlying
@@ -140,7 +130,7 @@ type DynamicMapFieldProto interface {
 // DynamicSliceFieldProto should be implemented by protos which have slices of messages whose attributes
 // (such as their opaque types) cannot be determined until runtime
 type DynamicSliceFieldProto interface {
-	// DynamicFields returns the field names which are dynamic
+	// DynamicSliceFields returns the field names which are dynamic
 	DynamicSliceFields() []string
 
 	// DynamicSliceFieldProto returns a newly allocated dynamic message, decorating an underlying
@@ -148,7 +138,7 @@ type DynamicSliceFieldProto interface {
 	DynamicSliceFieldProto(name string, index int, underlying proto.Message) (proto.Message, error)
 }
 
-// DecoreatedProto should be implemented by the dynamic wrappers applied by the Dynamic*FieldProto interfaces
+// DecoratedProto should be implemented by the dynamic wrappers applied by the Dynamic*FieldProto interfaces
 // This is necessary for the proto system to unmarshal, because it discovers proto message type by reflection
 // (Rather than by interface definition as it probably should ( https://github.com/golang/protobuf/issues/291 )
 type DecoratedProto interface {

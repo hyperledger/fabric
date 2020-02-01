@@ -9,8 +9,9 @@ package msptesttools
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFakeSetup(t *testing.T) {
@@ -19,17 +20,19 @@ func TestFakeSetup(t *testing.T) {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
 	}
 
-	_, err = mgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	_, err = mgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fatalf("GetDefaultSigningIdentity failed, err %s", err)
 	}
 
-	msps, err := mgmt.GetManagerForChain(util.GetTestChainID()).GetMSPs()
+	msps, err := mgmt.GetManagerForChain("testchannelid").GetMSPs()
 	if err != nil {
 		t.Fatalf("EnlistedMSPs failed, err %s", err)
 	}
 
 	if msps == nil || len(msps) == 0 {
-		t.Fatalf("There are no MSPS in the manager for chain %s", util.GetTestChainID())
+		t.Fatalf("There are no MSPS in the manager for chain %s", "testchannelid")
 	}
 }

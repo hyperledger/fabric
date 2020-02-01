@@ -15,17 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCertEncoding(t *testing.T) {
-	pair, err := newCertKeyPair(false, false, "", nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, pair)
-	assert.NotEmpty(t, pair.PrivKeyString())
-	assert.NotEmpty(t, pair.PubKeyString())
-	pair2, err := CertKeyPairFromString(pair.PrivKeyString(), pair.PubKeyString())
-	assert.Equal(t, pair.Key, pair2.Key)
-	assert.Equal(t, pair.Cert, pair2.Cert)
-}
-
 func TestLoadCert(t *testing.T) {
 	pair, err := newCertKeyPair(false, false, "", nil, nil)
 	assert.NoError(t, err)

@@ -7,21 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package endorsement
 
 import (
+	. "github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/gossip/api"
-	. "github.com/hyperledger/fabric/protos/discovery"
 	"github.com/pkg/errors"
 )
 
-func principalsFromCollectionConfig(configBytes []byte) (principalSetsByCollectionName, error) {
+func principalsFromCollectionConfig(ccp *peer.CollectionConfigPackage) (principalSetsByCollectionName, error) {
 	principalSetsByCollections := make(principalSetsByCollectionName)
-	if len(configBytes) == 0 {
+	if ccp == nil {
 		return principalSetsByCollections, nil
-	}
-	ccp, err := privdata.ParseCollectionConfig(configBytes)
-	if err != nil {
-		return nil, errors.Wrapf(err, "invalid collection bytes")
 	}
 	for _, colConfig := range ccp.Config {
 		staticCol := colConfig.GetStaticCollectionConfig()

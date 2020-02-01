@@ -10,15 +10,18 @@ import (
 	"encoding/base64"
 	"strings"
 
+	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
 )
 
@@ -28,26 +31,65 @@ const (
 	nsJoiner       = "$$"
 	pvtDataPrefix  = "p"
 	hashDataPrefix = "h"
+	couchDB        = "CouchDB"
 )
+
+// StateDBConfig encapsulates the configuration for stateDB on the ledger.
+type StateDBConfig struct {
+	// ledger.StateDBConfig is used to configure the stateDB for the ledger.
+	*ledger.StateDBConfig
+	// LevelDBPath is the filesystem path when statedb type is "goleveldb".
+	// It is internally computed by the ledger component,
+	// so it is not in ledger.StateDBConfig and not exposed to other components.
+	LevelDBPath string
+}
 
 // CommonStorageDBProvider implements interface DBProvider
 type CommonStorageDBProvider struct {
 	statedb.VersionedDBProvider
+	HealthCheckRegistry ledger.HealthCheckRegistry
 	bookkeepingProvider bookkeeping.Provider
 }
 
 // NewCommonStorageDBProvider constructs an instance of DBProvider
-func NewCommonStorageDBProvider(bookkeeperProvider bookkeeping.Provider) (DBProvider, error) {
+func NewCommonStorageDBProvider(
+	bookkeeperProvider bookkeeping.Provider,
+	metricsProvider metrics.Provider,
+	healthCheckRegistry ledger.HealthCheckRegistry,
+	stateDBConf *StateDBConfig,
+	sysNamespaces []string,
+) (DBProvider, error) {
+
 	var vdbProvider statedb.VersionedDBProvider
 	var err error
-	if ledgerconfig.IsCouchDBEnabled() {
-		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(); err != nil {
+
+	if stateDBConf != nil && stateDBConf.StateDatabase == couchDB {
+		cache := statedb.NewCache(stateDBConf.CouchDB.UserCacheSizeMBs, sysNamespaces)
+		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, cache); err != nil {
 			return nil, err
 		}
 	} else {
-		vdbProvider = stateleveldb.NewVersionedDBProvider()
+		if vdbProvider, err = stateleveldb.NewVersionedDBProvider(stateDBConf.LevelDBPath); err != nil {
+			return nil, err
+		}
 	}
-	return &CommonStorageDBProvider{vdbProvider, bookkeeperProvider}, nil
+
+	dbProvider := &CommonStorageDBProvider{vdbProvider, healthCheckRegistry, bookkeeperProvider}
+
+	err = dbProvider.RegisterHealthChecker()
+	if err != nil {
+		return nil, err
+	}
+
+	return dbProvider, nil
+}
+
+// RegisterHealthChecker implements function from interface DBProvider
+func (p *CommonStorageDBProvider) RegisterHealthChecker() error {
+	if healthChecker, ok := p.VersionedDBProvider.(healthz.HealthChecker); ok {
+		return p.HealthCheckRegistry.RegisterChecker("couchdb", healthChecker)
+	}
+	return nil
 }
 
 // GetDBHandle implements function from interface DBProvider
@@ -98,7 +140,7 @@ func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*sta
 		ns := deriveHashedDataNs(key.Namespace, key.CollectionName)
 		// No need to check for duplicates as hashedKeys are in separate namespace
 		var keyHashStr string
-		if !s.BytesKeySuppoted() {
+		if !s.BytesKeySupported() {
 			keyHashStr = base64.StdEncoding.EncodeToString([]byte(key.KeyHash))
 		} else {
 			keyHashStr = key.KeyHash
@@ -139,10 +181,15 @@ func (s *CommonStorageDB) GetPrivateData(namespace, collection, key string) (*st
 	return s.GetState(derivePvtDataNs(namespace, collection), key)
 }
 
+// GetPrivateDataHash implements corresponding function in interface DB
+func (s *CommonStorageDB) GetPrivateDataHash(namespace, collection, key string) (*statedb.VersionedValue, error) {
+	return s.GetValueHash(namespace, collection, util.ComputeStringHash(key))
+}
+
 // GetValueHash implements corresponding function in interface DB
 func (s *CommonStorageDB) GetValueHash(namespace, collection string, keyHash []byte) (*statedb.VersionedValue, error) {
 	keyHashStr := string(keyHash)
-	if !s.BytesKeySuppoted() {
+	if !s.BytesKeySupported() {
 		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
 	}
 	return s.GetState(deriveHashedDataNs(namespace, collection), keyHashStr)
@@ -151,7 +198,7 @@ func (s *CommonStorageDB) GetValueHash(namespace, collection string, keyHash []b
 // GetKeyHashVersion implements corresponding function in interface DB
 func (s *CommonStorageDB) GetKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, error) {
 	keyHashStr := string(keyHash)
-	if !s.BytesKeySuppoted() {
+	if !s.BytesKeySupported() {
 		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
 	}
 	return s.GetVersion(deriveHashedDataNs(namespace, collection), keyHashStr)
@@ -165,7 +212,7 @@ func (s *CommonStorageDB) GetCachedKeyHashVersion(namespace, collection string, 
 	}
 
 	keyHashStr := string(keyHash)
-	if !s.BytesKeySuppoted() {
+	if !s.BytesKeySupported() {
 		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
 	}
 	return bulkOptimizable.GetCachedVersion(deriveHashedDataNs(namespace, collection), keyHashStr)
@@ -197,16 +244,16 @@ func (s *CommonStorageDB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height 
 	// combinedUpdates includes both updates to public db and private db, which are partitioned by a separate namespace
 	combinedUpdates := updates.PubUpdates
 	addPvtUpdates(combinedUpdates, updates.PvtUpdates)
-	addHashedUpdates(combinedUpdates, updates.HashUpdates, !s.BytesKeySuppoted())
+	addHashedUpdates(combinedUpdates, updates.HashUpdates, !s.BytesKeySupported())
 	s.metadataHint.setMetadataUsedFlag(updates)
 	return s.VersionedDB.ApplyUpdates(combinedUpdates.UpdateBatch, height)
 }
 
 // GetStateMetadata implements corresponding function in interface DB. This implementation provides
 // an optimization such that it keeps track if a namespaces has never stored metadata for any of
-// its items, the value 'nil' is returned without going to the db. This is intented to be invoked
+// its items, the value 'nil' is returned without going to the db. This is intended to be invoked
 // in the validation and commit path. This saves the chaincodes from paying unnecessary performance
-// penality if they do not use features that leverage metadata (such as key-level endorsement),
+// penalty if they do not use features that leverage metadata (such as key-level endorsement),
 func (s *CommonStorageDB) GetStateMetadata(namespace, key string) ([]byte, error) {
 	if !s.metadataHint.metadataEverUsedFor(namespace) {
 		return nil, nil
@@ -219,7 +266,7 @@ func (s *CommonStorageDB) GetStateMetadata(namespace, key string) ([]byte, error
 }
 
 // GetPrivateDataMetadataByHash implements corresponding function in interface DB. For additional details, see
-// decription of the similar function 'GetStateMetadata'
+// description of the similar function 'GetStateMetadata'
 func (s *CommonStorageDB) GetPrivateDataMetadataByHash(namespace, collection string, keyHash []byte) ([]byte, error) {
 	if !s.metadataHint.metadataEverUsedFor(namespace) {
 		return nil, nil
@@ -232,7 +279,7 @@ func (s *CommonStorageDB) GetPrivateDataMetadataByHash(namespace, collection str
 }
 
 // HandleChaincodeDeploy initializes database artifacts for the database associated with the namespace
-// This function delibrately suppresses the errors that occur during the creation of the indexes on couchdb.
+// This function deliberately suppresses the errors that occur during the creation of the indexes on couchdb.
 // This is because, in the present code, we do not differentiate between the errors because of couchdb interaction
 // and the errors because of bad index files - the later being unfixable by the admin. Note that the error suppression
 // is acceptable since peer can continue in the committing role without the indexes. However, executing chaincode queries

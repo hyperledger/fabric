@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,6 +9,7 @@ package lockbasedtxmgr
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/stretchr/testify/assert"
@@ -52,20 +54,21 @@ func TestCollectionValidation(t *testing.T) {
 }
 
 func TestPvtGetNoCollection(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-get-no-collection", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
-	queryHelper := newQueryHelper(txMgr, nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	queryHelper := newQueryHelper(txMgr, nil, true, cryptoProvider)
 	valueHash, metadataBytes, err := queryHelper.getPrivateDataValueHash("cc", "coll", "key")
 	assert.Nil(t, valueHash)
 	assert.Nil(t, metadataBytes)
 	assert.Error(t, err)
 	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
 }
-
 func TestPvtPutNoCollection(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-put-no-collection", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
@@ -74,4 +77,16 @@ func TestPvtPutNoCollection(t *testing.T) {
 	err = txsim.SetPrivateDataMetadata("cc", "coll", "key", map[string][]byte{})
 	assert.Error(t, err)
 	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
+}
+
+func TestNoCollectionValidationCheck(t *testing.T) {
+	testEnv := testEnvsMap[levelDBtestEnvName]
+	testEnv.init(t, "test-no-collection-validation-check", nil)
+	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	qe, err := txMgr.NewQueryExecutorNoCollChecks()
+	assert.NoError(t, err)
+	valueHash, err := qe.GetPrivateDataHash("cc", "coll", "key")
+	assert.Nil(t, valueHash)
+	assert.NoError(t, err)
 }

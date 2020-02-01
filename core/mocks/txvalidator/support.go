@@ -19,12 +19,10 @@ package support
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protos/common"
 )
 
 type Support struct {
@@ -63,11 +61,7 @@ func (ms *Support) Apply(configtx *common.ConfigEnvelope) error {
 	return ms.ApplyVal
 }
 
-func (ms *Support) PolicyManager() policies.Manager {
-	return &mockpolicies.Manager{}
-}
-
-func (ms *Support) GetMSPIDs(cid string) []string {
+func (ms *Support) GetMSPIDs() []string {
 	return []string{"SampleOrg"}
 }
 

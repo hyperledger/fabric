@@ -11,9 +11,9 @@ import (
 	"math"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 	"github.com/pkg/errors"
 	"github.com/willf/bitset"
 )
@@ -73,9 +73,12 @@ func encodeExpiryValue(expiryData *ExpiryData) ([]byte, error) {
 	return proto.Marshal(expiryData)
 }
 
-func decodeExpiryKey(expiryKeyBytes []byte) *expiryKey {
-	height, _ := version.NewHeightFromBytes(expiryKeyBytes[1:])
-	return &expiryKey{expiringBlk: height.BlockNum, committingBlk: height.TxNum}
+func decodeExpiryKey(expiryKeyBytes []byte) (*expiryKey, error) {
+	height, _, err := version.NewHeightFromBytes(expiryKeyBytes[1:])
+	if err != nil {
+		return nil, err
+	}
+	return &expiryKey{expiringBlk: height.BlockNum, committingBlk: height.TxNum}, nil
 }
 
 func decodeExpiryValue(expiryValueBytes []byte) (*ExpiryData, error) {
@@ -84,15 +87,18 @@ func decodeExpiryValue(expiryValueBytes []byte) (*ExpiryData, error) {
 	return expiryData, err
 }
 
-func decodeDatakey(datakeyBytes []byte) *dataKey {
-	v, n := version.NewHeightFromBytes(datakeyBytes[1:])
+func decodeDatakey(datakeyBytes []byte) (*dataKey, error) {
+	v, n, err := version.NewHeightFromBytes(datakeyBytes[1:])
+	if err != nil {
+		return nil, err
+	}
 	blkNum := v.BlockNum
 	tranNum := v.TxNum
 	remainingBytes := datakeyBytes[n+1:]
 	nilByteIndex := bytes.IndexByte(remainingBytes, nilByte)
 	ns := string(remainingBytes[:nilByteIndex])
 	coll := string(remainingBytes[nilByteIndex+1:])
-	return &dataKey{nsCollBlk{ns, coll, blkNum}, tranNum}
+	return &dataKey{nsCollBlk{ns, coll, blkNum}, tranNum}, nil
 }
 
 func decodeDataValue(datavalueBytes []byte) (*rwset.CollectionPvtReadWriteSet, error) {
@@ -129,7 +135,7 @@ func decodeMissingDataKey(keyBytes []byte) *missingDataKey {
 		return key
 	}
 
-	splittedKey := bytes.Split(keyBytes[1:], []byte{nilByte})
+	splittedKey := bytes.SplitN(keyBytes[1:], []byte{nilByte}, 3) //encoded bytes for blknum may contain empty bytes
 	key.ns = string(splittedKey[0])
 	key.coll = string(splittedKey[1])
 	key.blkNum, _ = util.DecodeReverseOrderVarUint64(splittedKey[2])
@@ -196,4 +202,16 @@ func createRangeScanKeysForIneligibleMissingData(maxBlkNum uint64, ns, coll stri
 func createRangeScanKeysForCollElg() (startKey, endKey []byte) {
 	return encodeCollElgKey(math.MaxUint64),
 		encodeCollElgKey(0)
+}
+
+func datakeyRange(blockNum uint64) (startKey, endKey []byte) {
+	startKey = append(pvtDataKeyPrefix, version.NewHeight(blockNum, 0).ToBytes()...)
+	endKey = append(pvtDataKeyPrefix, version.NewHeight(blockNum, math.MaxUint64).ToBytes()...)
+	return
+}
+
+func eligibleMissingdatakeyRange(blkNum uint64) (startKey, endKey []byte) {
+	startKey = append(eligibleMissingDataKeyPrefix, util.EncodeReverseOrderVarUint64(blkNum)...)
+	endKey = append(eligibleMissingDataKeyPrefix, util.EncodeReverseOrderVarUint64(blkNum-1)...)
+	return
 }

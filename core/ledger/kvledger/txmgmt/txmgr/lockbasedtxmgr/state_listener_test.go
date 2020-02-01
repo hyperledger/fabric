@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,14 +9,15 @@ package lockbasedtxmgr
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/queryresult"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,7 +45,7 @@ func TestStateListener(t *testing.T) {
 	sampleBatch.PubUpdates.Put("ns1", "key1_2", []byte("value1_2"), version.NewHeight(1, 2))
 	sampleBatch.PubUpdates.Put("ns2", "key2_1", []byte("value2_1"), version.NewHeight(1, 3))
 	sampleBatch.PubUpdates.Put("ns3", "key3_1", []byte("value3_1"), version.NewHeight(1, 4))
-	dummyBlock := common.NewBlock(1, []byte("dummyHash"))
+	dummyBlock := protoutil.NewBlock(1, []byte("dummyHash"))
 	txmgr.current = &current{block: dummyBlock, batch: sampleBatch}
 	txmgr.invokeNamespaceListeners()
 	assert.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
@@ -52,17 +54,33 @@ func TestStateListener(t *testing.T) {
 	expectedLedgerid, expectedStateUpdate, expectedHt :=
 		testLedgerid,
 		ledger.StateUpdates{
-			"ns1": []*kvrwset.KVWrite{
-				{Key: "key1_1", Value: []byte("value1_1")}, {Key: "key1_2", Value: []byte("value1_2")}},
-			"ns2": []*kvrwset.KVWrite{{Key: "key2_1", Value: []byte("value2_1")}},
+			"ns1": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key1_1", Value: []byte("value1_1")},
+					{Key: "key1_2", Value: []byte("value1_2")},
+				},
+			},
+			"ns2": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key2_1", Value: []byte("value2_1")},
+				},
+			},
 		},
 		uint64(1)
 	checkHandleStateUpdatesCallback(t, ml1, 0, expectedLedgerid, expectedStateUpdate, expectedHt)
 	expectedLedgerid, expectedStateUpdate, expectedHt =
 		testLedgerid,
 		ledger.StateUpdates{
-			"ns2": []*kvrwset.KVWrite{{Key: "key2_1", Value: []byte("value2_1")}},
-			"ns3": []*kvrwset.KVWrite{{Key: "key3_1", Value: []byte("value3_1")}},
+			"ns2": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key2_1", Value: []byte("value2_1")},
+				},
+			},
+			"ns3": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key3_1", Value: []byte("value3_1")},
+				},
+			},
 		},
 		uint64(1)
 	checkHandleStateUpdatesCallback(t, ml2, 0, expectedLedgerid, expectedStateUpdate, expectedHt)
@@ -75,7 +93,12 @@ func TestStateListener(t *testing.T) {
 	// This should cause callback only to ml3
 	sampleBatch = privacyenabledstate.NewUpdateBatch()
 	sampleBatch.PubUpdates.Put("ns4", "key4_1", []byte("value4_1"), version.NewHeight(2, 1))
-	txmgr.current = &current{block: common.NewBlock(2, []byte("anotherDummyHash")), batch: sampleBatch}
+	sampleBatch.HashUpdates.Put("ns4", "coll1", []byte("key-hash-1"), []byte("value-hash-1"), version.NewHeight(2, 2))
+	sampleBatch.HashUpdates.Put("ns4", "coll1", []byte("key-hash-2"), []byte("value-hash-2"), version.NewHeight(2, 2))
+	sampleBatch.HashUpdates.Put("ns4", "coll2", []byte("key-hash-3"), []byte("value-hash-3"), version.NewHeight(2, 3))
+	sampleBatch.HashUpdates.Delete("ns4", "coll2", []byte("key-hash-4"), version.NewHeight(2, 4))
+
+	txmgr.current = &current{block: protoutil.NewBlock(2, []byte("anotherDummyHash")), batch: sampleBatch}
 	txmgr.invokeNamespaceListeners()
 	assert.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
 	assert.Equal(t, 1, ml2.HandleStateUpdatesCallCount())
@@ -84,7 +107,21 @@ func TestStateListener(t *testing.T) {
 	expectedLedgerid, expectedStateUpdate, expectedHt =
 		testLedgerid,
 		ledger.StateUpdates{
-			"ns4": []*kvrwset.KVWrite{{Key: "key4_1", Value: []byte("value4_1")}},
+			"ns4": &ledger.KVStateUpdates{
+				PublicUpdates: []*kvrwset.KVWrite{
+					{Key: "key4_1", Value: []byte("value4_1")},
+				},
+				CollHashUpdates: map[string][]*kvrwset.KVWriteHash{
+					"coll1": {
+						{KeyHash: []byte("key-hash-1"), ValueHash: []byte("value-hash-1")},
+						{KeyHash: []byte("key-hash-2"), ValueHash: []byte("value-hash-2")},
+					},
+					"coll2": {
+						{KeyHash: []byte("key-hash-3"), ValueHash: []byte("value-hash-3")},
+						{KeyHash: []byte("key-hash-4"), IsDelete: true},
+					},
+				},
+			},
 		},
 		uint64(2)
 
@@ -103,13 +140,25 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 
 	namespace := "ns"
+	populateCollConfigForTest(t, txMgr,
+		[]collConfigkey{
+			{"ns", "coll"},
+		},
+		version.NewHeight(1, 0),
+	)
+
 	initialData := []*queryresult.KV{
 		{Namespace: namespace, Key: "key1", Value: []byte("value1")},
 		{Namespace: namespace, Key: "key2", Value: []byte("value2")},
 		{Namespace: namespace, Key: "key3", Value: []byte("value3")},
 	}
+
+	initialPvtdata := []*testutilPvtdata{
+		{coll: "coll", key: "key1", value: []byte("value1")},
+		{coll: "coll", key: "key2", value: []byte("value2")},
+	}
 	// populate initial data in db
-	testutilPopulateDB(t, txMgr, namespace, initialData, version.NewHeight(1, 1))
+	testutilPopulateDB(t, txMgr, namespace, initialData, initialPvtdata, version.NewHeight(1, 1))
 
 	sl := new(mock.StateListener)
 	sl.InterestedInNamespacesStub = func() []string { return []string{"ns"} }
@@ -121,21 +170,24 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	sim.SetState(namespace, "key1", []byte("value1_new"))
 	sim.DeleteState(namespace, "key2")
 	sim.SetState(namespace, "key4", []byte("value4_new"))
+	sim.SetPrivateData(namespace, "coll", "key1", []byte("value1_new")) // change value for key1
+	sim.DeletePrivateData(namespace, "coll", "key2")                    // delete key2
 	simRes, err := sim.GetTxSimulationResults()
 	simResBytes, err := simRes.GetPubSimulationBytes()
 	assert.NoError(t, err)
 	block := testutil.ConstructBlock(t, 1, nil, [][]byte{simResBytes}, false)
 
 	// invoke ValidateAndPrepare function
-	err = txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block}, false)
+	_, _, err = txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block}, false)
 	assert.NoError(t, err)
 
 	// validate that the query executors passed to the state listener
 	trigger := sl.HandleStateUpdatesArgsForCall(0)
 	assert.NotNil(t, trigger)
-
 	expectedCommittedData := initialData
 	checkQueryExecutor(t, trigger.CommittedStateQueryExecutor, namespace, expectedCommittedData)
+	expectedCommittedPvtdata := initialPvtdata
+	checkQueryExecutorForPvtdataHashes(t, trigger.CommittedStateQueryExecutor, namespace, expectedCommittedPvtdata)
 
 	expectedPostCommitData := []*queryresult.KV{
 		{Namespace: namespace, Key: "key1", Value: []byte("value1_new")},
@@ -143,6 +195,11 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 		{Namespace: namespace, Key: "key4", Value: []byte("value4_new")},
 	}
 	checkQueryExecutor(t, trigger.PostCommitQueryExecutor, namespace, expectedPostCommitData)
+	expectedPostCommitPvtdata := []*testutilPvtdata{
+		{coll: "coll", key: "key1", value: []byte("value1_new")},
+		{coll: "coll", key: "key2", value: nil},
+	}
+	checkQueryExecutorForPvtdataHashes(t, trigger.PostCommitQueryExecutor, namespace, expectedPostCommitPvtdata)
 }
 
 func checkHandleStateUpdatesCallback(t *testing.T, ml *mock.StateListener, callNumber int,
@@ -157,8 +214,16 @@ func checkHandleStateUpdatesCallback(t *testing.T, ml *mock.StateListener, callN
 
 func checkEqualUpdates(t *testing.T, expected, actual ledger.StateUpdates) {
 	assert.Equal(t, len(expected), len(actual))
-	for ns, expectedUpdates := range expected {
-		assert.ElementsMatch(t, expectedUpdates, actual[ns])
+	for ns, e := range expected {
+		assert.ElementsMatch(t, e.PublicUpdates, actual[ns].PublicUpdates)
+		checkEqualCollsUpdates(t, e.CollHashUpdates, actual[ns].CollHashUpdates)
+	}
+}
+
+func checkEqualCollsUpdates(t *testing.T, expected, actual map[string][]*kvrwset.KVWriteHash) {
+	assert.Equal(t, len(expected), len(actual))
+	for coll, e := range expected {
+		assert.ElementsMatch(t, e, actual[coll])
 	}
 }
 
@@ -185,4 +250,16 @@ func checkQueryExecutor(t *testing.T, qe ledger.SimpleQueryExecutor, namespace s
 		actualRes = append(actualRes, res.(*queryresult.KV))
 	}
 	assert.Equal(t, expectedResults, actualRes)
+}
+
+func checkQueryExecutorForPvtdataHashes(t *testing.T, qe ledger.SimpleQueryExecutor, namespace string, expectedPvtdata []*testutilPvtdata) {
+	for _, p := range expectedPvtdata {
+		valueHash, err := qe.GetPrivateDataHash(namespace, p.coll, p.key)
+		assert.NoError(t, err)
+		if p.value == nil {
+			assert.Nil(t, valueHash) // key does not exist
+		} else {
+			assert.Equal(t, util.ComputeHash(p.value), valueHash)
+		}
+	}
 }

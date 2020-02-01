@@ -12,13 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/cmd/common"
 	. "github.com/hyperledger/fabric/discovery/client"
-	"github.com/hyperledger/fabric/discovery/cmd"
+	discovery "github.com/hyperledger/fabric/discovery/cmd"
 	"github.com/hyperledger/fabric/discovery/cmd/mocks"
-	"github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/gossip/protoext"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -71,7 +72,7 @@ func TestParsePeers(t *testing.T) {
 		IdBytes: []byte("identity"),
 	}
 
-	idBytes := utils.MarshalOrPanic(sID)
+	idBytes := protoutil.MarshalOrPanic(sID)
 
 	validPeer := &Peer{
 		MSPID:            "Org1MSP",
@@ -104,7 +105,7 @@ func TestParsePeers(t *testing.T) {
 	}
 }
 
-func aliveMessage(id int) *gossip.SignedGossipMessage {
+func aliveMessage(id int) *protoext.SignedGossipMessage {
 	g := &gossip.GossipMessage{
 		Content: &gossip.GossipMessage_AliveMsg{
 			AliveMsg: &gossip.AliveMessage{
@@ -118,11 +119,11 @@ func aliveMessage(id int) *gossip.SignedGossipMessage {
 			},
 		},
 	}
-	sMsg, _ := g.NoopSign()
+	sMsg, _ := protoext.NoopSign(g)
 	return sMsg
 }
 
-func stateInfoMessage(height uint64) *gossip.SignedGossipMessage {
+func stateInfoMessage(height uint64) *protoext.SignedGossipMessage {
 	g := &gossip.GossipMessage{
 		Content: &gossip.GossipMessage_StateInfo{
 			StateInfo: &gossip.StateInfo{
@@ -140,6 +141,6 @@ func stateInfoMessage(height uint64) *gossip.SignedGossipMessage {
 			},
 		},
 	}
-	sMsg, _ := g.NoopSign()
+	sMsg, _ := protoext.NoopSign(g)
 	return sMsg
 }

@@ -42,9 +42,13 @@ type batch struct {
 	*leveldbhelper.UpdateBatch
 }
 
-func newDBProvider(dbPath string) *dbProvider {
+func newDBProvider(dbPath string) (*dbProvider, error) {
 	logger.Debugf("Opening db for config history: db path = %s", dbPath)
-	return &dbProvider{leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dbPath})}
+	p, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: dbPath})
+	if err != nil {
+		return nil, err
+	}
+	return &dbProvider{Provider: p}, nil
 }
 
 func newBatch() *batch {

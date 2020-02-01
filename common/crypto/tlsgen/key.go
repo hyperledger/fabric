@@ -13,20 +13,13 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"encoding/pem"
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 )
-
-func (p *CertKeyPair) PrivKeyString() string {
-	return base64.StdEncoding.EncodeToString(p.Key)
-}
-
-func (p *CertKeyPair) PubKeyString() string {
-	return base64.StdEncoding.EncodeToString(p.Cert)
-}
 
 func newPrivKey() (*ecdsa.PrivateKey, []byte, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -70,7 +63,10 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 		template.NotAfter = tenYearsFromNow
 		template.IsCA = true
 		template.KeyUsage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
+		template.ExtKeyUsage = []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		}
 		template.BasicConstraintsValid = true
 	} else {
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
@@ -96,6 +92,9 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 	pubKey := encodePEM("CERTIFICATE", rawBytes)
 
 	block, _ := pem.Decode(pubKey)
+	if block == nil { // Never comes unless x509 or pem has bug
+		return nil, errors.Errorf("%s: wrong PEM encoding", pubKey)
+	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return nil, err
@@ -111,20 +110,4 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 
 func encodePEM(keyType string, data []byte) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: keyType, Bytes: data})
-}
-
-// CertKeyPairFromString converts the given strings in base64 encoding to a CertKeyPair
-func CertKeyPairFromString(privKey string, pubKey string) (*CertKeyPair, error) {
-	priv, err := base64.StdEncoding.DecodeString(privKey)
-	if err != nil {
-		return nil, err
-	}
-	pub, err := base64.StdEncoding.DecodeString(pubKey)
-	if err != nil {
-		return nil, err
-	}
-	return &CertKeyPair{
-		Key:  priv,
-		Cert: pub,
-	}, nil
 }

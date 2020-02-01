@@ -9,8 +9,11 @@ package chaincode_test
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	. "github.com/onsi/ginkgo"
@@ -47,9 +50,9 @@ type certGenerator interface {
 	chaincode.CertGenerator
 }
 
-//go:generate counterfeiter -o mock/processor.go --fake-name Processor . processor
-type processor interface {
-	chaincode.Processor
+//go:generate counterfeiter -o mock/container_router.go --fake-name ContainerRouter . containerRouter
+type containerRouter interface {
+	chaincode.ContainerRouter
 }
 
 //go:generate counterfeiter -o mock/invoker.go --fake-name Invoker . invoker
@@ -57,15 +60,8 @@ type invoker interface {
 	chaincode.Invoker
 }
 
-//go:generate counterfeiter -o mock/package_provider.go --fake-name PackageProvider . packageProvider
-type packageProvider interface {
-	chaincode.PackageProvider
-}
-
-// This is a bit weird, we need to import the chaincode/lifecycle package, but there is an error,
-// even if we alias it to another name, so, calling 'lifecycleIface' instead of 'lifecycle'
-//go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycleIface
-type lifecycleIface interface {
+//go:generate counterfeiter -o mock/lifecycle.go --fake-name Lifecycle . lifecycle_
+type lifecycle_ interface {
 	chaincode.Lifecycle
 }
 
@@ -79,24 +75,9 @@ type transactionRegistry interface {
 	chaincode.TransactionRegistry
 }
 
-//go:generate counterfeiter -o mock/system_chaincode_provider.go --fake-name SystemCCProvider . systemCCProvider
-type systemCCProvider interface {
-	chaincode.SystemCCProvider
-}
-
 //go:generate counterfeiter -o mock/acl_provider.go --fake-name ACLProvider . aclProvider
 type aclProvider interface {
 	chaincode.ACLProvider
-}
-
-//go:generate counterfeiter -o mock/chaincode_definition_getter.go --fake-name ChaincodeDefinitionGetter . chaincodeDefinitionGetter
-type chaincodeDefinitionGetter interface {
-	chaincode.ChaincodeDefinitionGetter
-}
-
-//go:generate counterfeiter -o mock/instantiation_policy_checker.go --fake-name InstantiationPolicyChecker . instantiationPolicyChecker
-type instantiationPolicyChecker interface {
-	chaincode.InstantiationPolicyChecker
 }
 
 //go:generate counterfeiter -o mock/ledger_getter.go --fake-name LedgerGetter . ledgerGetter
@@ -139,4 +120,39 @@ type registry interface {
 //go:generate counterfeiter -o fake/application_config_retriever.go --fake-name ApplicationConfigRetriever . applicationConfigRetriever
 type applicationConfigRetriever interface {
 	chaincode.ApplicationConfigRetriever
+}
+
+//go:generate counterfeiter -o mock/collection_store.go --fake-name CollectionStore . collectionStore
+type collectionStore interface {
+	privdata.CollectionStore
+}
+
+//go:generate counterfeiter -o mock/application_capabilities.go --fake-name ApplicationCapabilities . applicationCapabilities
+type applicationCapabilities interface {
+	channelconfig.ApplicationCapabilities
+}
+
+//go:generate counterfeiter -o mock/application_config.go --fake-name ApplicationConfig . applicationConfig
+type applicationConfig interface {
+	channelconfig.Application
+}
+
+//go:generate counterfeiter -o mock/resources.go --fake-name Resources . resources
+type resources interface {
+	channelconfig.Resources
+}
+
+//go:generate counterfeiter -o mock/policy_manager.go -fake-name PolicyManager . policyManager
+type policyManager interface {
+	policies.Manager
+}
+
+//go:generate counterfeiter -o mock/policy.go -fake-name Policy . policy
+type policy interface {
+	policies.Policy
+}
+
+//go:generate counterfeiter -o mock/connectionhandler.go --fake-name ConnectionHandler . connectionHandler
+type connectionHandler interface {
+	chaincode.ConnectionHandler
 }

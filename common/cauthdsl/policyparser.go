@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package cauthdsl
@@ -24,9 +14,9 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // Gate values
@@ -38,17 +28,17 @@ const (
 
 // Role values for principals
 const (
-	RoleAdmin  = "admin"
-	RoleMember = "member"
-	RoleClient = "client"
-	RolePeer   = "peer"
-	// RoleOrderer = "orderer" TODO
+	RoleAdmin   = "admin"
+	RoleMember  = "member"
+	RoleClient  = "client"
+	RolePeer    = "peer"
+	RoleOrderer = "orderer"
 )
 
 var (
 	regex = regexp.MustCompile(
-		fmt.Sprintf("^([[:alnum:].-]+)([.])(%s|%s|%s|%s)$",
-			RoleAdmin, RoleMember, RoleClient, RolePeer),
+		fmt.Sprintf("^([[:alnum:].-]+)([.])(%s|%s|%s|%s|%s)$",
+			RoleAdmin, RoleMember, RoleClient, RolePeer, RoleOrderer),
 	)
 	regexErr = regexp.MustCompile("^No parameter '([^']+)' found[.]$")
 )
@@ -147,10 +137,10 @@ func secondPass(args ...interface{}) (interface{}, error) {
 	}
 
 	/* get the n in the t out of n */
-	var n int = len(args) - 1
+	var n int = len(args) - 2
 
-	/* sanity check - t better be <= n */
-	if t > n {
+	/* sanity check - t should be positive, permit equal to n+1, but disallow over n+1 */
+	if t < 0 || t > n+1 {
 		return nil, fmt.Errorf("Invalid t-out-of-n predicate, t %d, n %d", t, n)
 	}
 
@@ -180,6 +170,8 @@ func secondPass(args ...interface{}) (interface{}, error) {
 				r = msp.MSPRole_CLIENT
 			case RolePeer:
 				r = msp.MSPRole_PEER
+			case RoleOrderer:
+				r = msp.MSPRole_ORDERER
 			default:
 				return nil, fmt.Errorf("Error parsing role %s", t)
 			}
@@ -187,7 +179,7 @@ func secondPass(args ...interface{}) (interface{}, error) {
 			/* build the principal we've been told */
 			p := &msp.MSPPrincipal{
 				PrincipalClassification: msp.MSPPrincipal_ROLE,
-				Principal:               utils.MarshalOrPanic(&msp.MSPRole{MspIdentifier: subm[0][1], Role: r})}
+				Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{MspIdentifier: subm[0][1], Role: r})}
 			ctx.principals = append(ctx.principals, p)
 
 			/* create a SignaturePolicy that requires a signature from

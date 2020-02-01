@@ -7,26 +7,29 @@ SPDX-License-Identifier: Apache-2.0
 package privacyenabledstate
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/privacyenabledstate")
-	// Disable auto warm to avoid error logs when the couchdb database has been dropped
-	viper.Set("ledger.state.couchDBConfig.autoWarmIndexes", false)
-	os.Exit(m.Run())
+	exitCode := m.Run()
+	for _, testEnv := range testEnvs {
+		testEnv.StopExternalResource()
+	}
+	os.Exit(exitCode)
 }
 
 func TestBatch(t *testing.T) {
@@ -82,7 +85,7 @@ func TestDB(t *testing.T) {
 func testDB(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
 
@@ -107,6 +110,10 @@ func testDB(t *testing.T, env TestEnv) {
 	vv, err = db.GetPrivateData("ns1", "coll1", "key1")
 	assert.NoError(t, err)
 	assert.Equal(t, &statedb.VersionedValue{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
+
+	vv, err = db.GetPrivateDataHash("ns1", "coll1", "key1")
+	assert.NoError(t, err)
+	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
 
 	vv, err = db.GetValueHash("ns1", "coll1", util.ComputeStringHash("key1"))
 	assert.NoError(t, err)
@@ -144,7 +151,7 @@ func TestGetStateMultipleKeys(t *testing.T) {
 func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
 
@@ -187,7 +194,7 @@ func TestGetStateRangeScanIterator(t *testing.T) {
 func testGetStateRangeScanIterator(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
 
@@ -248,7 +255,7 @@ func TestQueryOnCouchDB(t *testing.T) {
 func testQueryOnCouchDB(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 	updates := NewUpdateBatch()
 
 	jsonValues := []string{
@@ -423,10 +430,10 @@ func TestHandleChainCodeDeployOnCouchDB(t *testing.T) {
 	}
 }
 
-func createCollectionConfig(collectionName string) *common.CollectionConfig {
-	return &common.CollectionConfig{
-		Payload: &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
+func createCollectionConfig(collectionName string) *peer.CollectionConfig {
+	return &peer.CollectionConfig{
+		Payload: &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
 				Name:              collectionName,
 				MemberOrgsPolicy:  nil,
 				RequiredPeerCount: 0,
@@ -440,10 +447,10 @@ func createCollectionConfig(collectionName string) *common.CollectionConfig {
 func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
-	db := env.GetDBHandle("test-handle-chaincode-deploy")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	coll1 := createCollectionConfig("collectionMarbles")
-	ccp := &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1}}
+	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1}}
 	chaincodeDef := &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccp}
 
 	commonStorageDB := db.(*CommonStorageDB)
@@ -482,7 +489,7 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	assert.NoError(t, err)
 
 	coll2 := createCollectionConfig("collectionMarblesPrivateDetails")
-	ccp = &common.CollectionConfigPackage{Config: []*common.CollectionConfig{coll1, coll2}}
+	ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2}}
 	chaincodeDef = &cceventmgmt.ChaincodeDefinition{Name: "ns1", Hash: nil, Version: "", CollectionConfigs: ccp}
 
 	// The collection config is added to the chaincodeDef and it contains all collections
@@ -545,7 +552,7 @@ func TestMetadataRetrieval(t *testing.T) {
 func testMetadataRetrieval(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
-	db := env.GetDBHandle("test-ledger-id")
+	db := env.GetDBHandle(generateLedgerID(t))
 
 	updates := NewUpdateBatch()
 	updates.PubUpdates.PutValAndMetadata("ns1", "key1", []byte("value1"), []byte("metadata1"), version.NewHeight(1, 1))
@@ -585,4 +592,11 @@ func putPvtUpdatesWithMetadata(t *testing.T, updates *UpdateBatch, ns, coll, key
 func deletePvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, ver *version.Height) {
 	updates.PvtUpdates.Delete(ns, coll, key, ver)
 	updates.HashUpdates.Delete(ns, coll, util.ComputeStringHash(key), ver)
+}
+
+func generateLedgerID(t *testing.T) string {
+	bytes := make([]byte, 8)
+	_, err := io.ReadFull(rand.Reader, bytes)
+	assert.NoError(t, err)
+	return fmt.Sprintf("x%s", hex.EncodeToString(bytes))
 }

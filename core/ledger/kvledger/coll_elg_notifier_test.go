@@ -9,10 +9,11 @@ package kvledger
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,17 +26,17 @@ func TestCollElgNotifier(t *testing.T) {
 	// Returns 3 collections - the bool value indicates the eligibility of peer for corresponding collection
 	mockDeployedChaincodeInfoProvider.ChaincodeInfoReturnsOnCall(0,
 		&ledger.DeployedChaincodeInfo{
-			CollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
+			ExplicitCollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
 				map[string]bool{"coll1": true, "coll2": true, "coll3": false})}, nil)
 
 	// post commit - returns 4 collections
 	mockDeployedChaincodeInfoProvider.ChaincodeInfoReturnsOnCall(1,
 		&ledger.DeployedChaincodeInfo{
-			CollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
+			ExplicitCollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
 				map[string]bool{"coll1": false, "coll2": true, "coll3": true, "coll4": true})}, nil)
 
 	mockMembershipInfoProvider := &mock.MembershipInfoProvider{}
-	mockMembershipInfoProvider.AmMemberOfStub = func(channel string, p *common.CollectionPolicyConfig) (bool, error) {
+	mockMembershipInfoProvider.AmMemberOfStub = func(channel string, p *peer.CollectionPolicyConfig) (bool, error) {
 		return testutilIsEligibleForMockPolicy(p), nil
 	}
 
@@ -51,11 +52,13 @@ func TestCollElgNotifier(t *testing.T) {
 	collElgNotifier.HandleStateUpdates(&ledger.StateUpdateTrigger{
 		LedgerID:           "testLedger",
 		CommittingBlockNum: uint64(500),
-		StateUpdates: map[string]interface{}{
-			"doesNotMatterNS": []*kvrwset.KVWrite{
-				{
-					Key:   "doesNotMatterKey",
-					Value: []byte("doesNotMatterVal"),
+		StateUpdates: map[string]*ledger.KVStateUpdates{
+			"doesNotMatterNS": {
+				PublicUpdates: []*kvrwset.KVWrite{
+					{
+						Key:   "doesNotMatterKey",
+						Value: []byte("doesNotMatterVal"),
+					},
 				},
 			},
 		},
@@ -83,30 +86,30 @@ func (m *mockCollElgListener) ProcessCollsEligibilityEnabled(commitingBlk uint64
 	return nil
 }
 
-func testutilPrepapreMockCollectionConfigPkg(collEligibilityMap map[string]bool) *common.CollectionConfigPackage {
-	pkg := &common.CollectionConfigPackage{}
+func testutilPrepapreMockCollectionConfigPkg(collEligibilityMap map[string]bool) *peer.CollectionConfigPackage {
+	pkg := &peer.CollectionConfigPackage{}
 	for collName, isEligible := range collEligibilityMap {
 		var version int32
 		if isEligible {
 			version = 1
 		}
-		policy := &common.CollectionPolicyConfig{
-			Payload: &common.CollectionPolicyConfig_SignaturePolicy{
+		policy := &peer.CollectionPolicyConfig{
+			Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
 				SignaturePolicy: &common.SignaturePolicyEnvelope{Version: version},
 			},
 		}
-		sCollConfig := &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
+		sCollConfig := &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
 				Name:             collName,
 				MemberOrgsPolicy: policy,
 			},
 		}
-		config := &common.CollectionConfig{Payload: sCollConfig}
+		config := &peer.CollectionConfig{Payload: sCollConfig}
 		pkg.Config = append(pkg.Config, config)
 	}
 	return pkg
 }
 
-func testutilIsEligibleForMockPolicy(p *common.CollectionPolicyConfig) bool {
+func testutilIsEligibleForMockPolicy(p *peer.CollectionPolicyConfig) bool {
 	return p.GetSignaturePolicy().Version == 1
 }

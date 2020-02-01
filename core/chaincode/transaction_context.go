@@ -9,24 +9,55 @@ package chaincode
 import (
 	"sync"
 
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type TransactionContext struct {
-	ChainID              string
+	ChannelID            string
+	NamespaceID          string
 	SignedProp           *pb.SignedProposal
 	Proposal             *pb.Proposal
 	ResponseNotifier     chan *pb.ChaincodeMessage
 	TXSimulator          ledger.TxSimulator
 	HistoryQueryExecutor ledger.HistoryQueryExecutor
+	CollectionStore      privdata.CollectionStore
+	IsInitTransaction    bool
 
 	// tracks open iterators used for range queries
 	queryMutex          sync.Mutex
 	queryIteratorMap    map[string]commonledger.ResultsIterator
 	pendingQueryResults map[string]*PendingQueryResult
 	totalReturnCount    map[string]*int32
+
+	// cache used to save the result of collection acl
+	// as a transactionContext is created for every chaincode
+	// invoke (even in case of chaincode-calling-chaincode,
+	// we do not need to store the namespace in the map and
+	// collection alone is sufficient.
+	CollectionACLCache CollectionACLCache
+}
+
+// CollectionACLCache encapsulates a cache that stores read
+// write permission on a collection
+type CollectionACLCache map[string]*readWritePermission
+
+type readWritePermission struct {
+	read, write bool
+}
+
+func (c CollectionACLCache) put(collection string, rwPermission *readWritePermission) {
+	c[collection] = rwPermission
+}
+
+func (c CollectionACLCache) get(collection string) *readWritePermission {
+	return c[collection]
+}
+
+func (t *TransactionContext) InitializeCollectionACLCache() {
+	t.CollectionACLCache = make(CollectionACLCache)
 }
 
 func (t *TransactionContext) InitializeQueryContext(queryID string, iter commonledger.ResultsIterator) {

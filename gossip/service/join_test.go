@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -18,9 +20,9 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/filter"
 	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -40,7 +42,7 @@ type gossipMock struct {
 	mock.Mock
 }
 
-func (g *gossipMock) SelfChannelInfo(common.ChainID) *proto.SignedGossipMessage {
+func (g *gossipMock) SelfChannelInfo(common.ChannelID) *protoext.SignedGossipMessage {
 	panic("implement me")
 }
 
@@ -48,7 +50,7 @@ func (g *gossipMock) SelfMembershipInfo() discovery.NetworkMember {
 	panic("implement me")
 }
 
-func (*gossipMock) PeerFilter(channel common.ChainID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
+func (*gossipMock) PeerFilter(channel common.ChannelID, messagePredicate api.SubChannelSelectionCriteria) (filter.RoutingFilter, error) {
 	panic("implement me")
 }
 
@@ -64,7 +66,7 @@ func (*gossipMock) Peers() []discovery.NetworkMember {
 	panic("implement me")
 }
 
-func (*gossipMock) PeersOfChannel(common.ChainID) []discovery.NetworkMember {
+func (*gossipMock) PeersOfChannel(common.ChannelID) []discovery.NetworkMember {
 	panic("implement me")
 }
 
@@ -74,13 +76,13 @@ func (*gossipMock) UpdateMetadata(metadata []byte) {
 
 // UpdateLedgerHeight updates the ledger height the peer
 // publishes to other peers in the channel
-func (*gossipMock) UpdateLedgerHeight(height uint64, chainID common.ChainID) {
+func (*gossipMock) UpdateLedgerHeight(height uint64, channelID common.ChannelID) {
 	panic("implement me")
 }
 
 // UpdateChaincodes updates the chaincodes the peer publishes
 // to other peers in the channel
-func (*gossipMock) UpdateChaincodes(chaincode []*proto.Chaincode, chainID common.ChainID) {
+func (*gossipMock) UpdateChaincodes(chaincode []*proto.Chaincode, channelID common.ChannelID) {
 	panic("implement me")
 }
 
@@ -88,15 +90,15 @@ func (*gossipMock) Gossip(msg *proto.GossipMessage) {
 	panic("implement me")
 }
 
-func (*gossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
+func (*gossipMock) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan protoext.ReceivedMessage) {
 	panic("implement me")
 }
 
-func (g *gossipMock) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
-	g.Called(joinMsg, chainID)
+func (g *gossipMock) JoinChan(joinMsg api.JoinChannelMessage, channelID common.ChannelID) {
+	g.Called(joinMsg, channelID)
 }
 
-func (g *gossipMock) LeaveChan(chainID common.ChainID) {
+func (g *gossipMock) LeaveChan(channelID common.ChannelID) {
 	panic("implement me")
 }
 
@@ -104,11 +106,15 @@ func (g *gossipMock) IdentityInfo() api.PeerIdentitySet {
 	panic("implement me")
 }
 
+func (*gossipMock) IsInMyOrg(member discovery.NetworkMember) bool {
+	panic("implement me")
+}
+
 func (*gossipMock) Stop() {
 	panic("implement me")
 }
 
-func (*gossipMock) SendByCriteria(*proto.SignedGossipMessage, gossip.SendCriteria) error {
+func (*gossipMock) SendByCriteria(*protoext.SignedGossipMessage, gossip.SendCriteria) error {
 	panic("implement me")
 }
 
@@ -118,6 +124,10 @@ type appOrgMock struct {
 
 func (*appOrgMock) Name() string {
 	panic("implement me")
+}
+
+func (*appOrgMock) MSP() msp.MSP {
+	panic("generate this fake instead")
 }
 
 func (ao *appOrgMock) MSPID() string {
@@ -136,7 +146,7 @@ func (c *configMock) OrdererAddresses() []string {
 	return []string{"localhost:7050"}
 }
 
-func (*configMock) ChainID() string {
+func (*configMock) ChannelID() string {
 	return "A"
 }
 
@@ -158,7 +168,7 @@ func TestJoinChannelConfig(t *testing.T) {
 	g1SvcMock.On("JoinChan", mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		failChan <- struct{}{}
 	})
-	g1 := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("OrgMSP0"), gossipSvc: g1SvcMock}
+	g1 := &GossipService{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("OrgMSP0"), gossipSvc: g1SvcMock}
 	g1.updateAnchors(&configMock{
 		orgs2AppOrgs: map[string]channelconfig.ApplicationOrg{
 			"Org0": &appOrgMock{id: "Org0"},
@@ -175,7 +185,7 @@ func TestJoinChannelConfig(t *testing.T) {
 	g2SvcMock.On("JoinChan", mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		succChan <- struct{}{}
 	})
-	g2 := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: g2SvcMock}
+	g2 := &GossipService{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: g2SvcMock}
 	g2.updateAnchors(&configMock{
 		orgs2AppOrgs: map[string]channelconfig.ApplicationOrg{
 			"Org0": &appOrgMock{id: "Org0"},
@@ -200,14 +210,14 @@ func TestJoinChannelNoAnchorPeers(t *testing.T) {
 	gMock.On("JoinChan", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		defer joinChanCalled.Done()
 		jcm := args.Get(0).(api.JoinChannelMessage)
-		channel := args.Get(1).(common.ChainID)
+		channel := args.Get(1).(common.ChannelID)
 		assert.Len(t, jcm.Members(), 2)
 		assert.Contains(t, jcm.Members(), api.OrgIdentityType("Org0"))
 		assert.Contains(t, jcm.Members(), api.OrgIdentityType("Org1"))
 		assert.Equal(t, "A", string(channel))
 	})
 
-	g := &gossipServiceImpl{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: gMock}
+	g := &GossipService{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: gMock}
 
 	appOrg0 := &appOrgMock{id: "Org0"}
 	appOrg1 := &appOrgMock{id: "Org1"}
