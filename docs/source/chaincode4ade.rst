@@ -54,13 +54,8 @@ function by using the `peer chaincode invoke` command and passing the
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
-<<<<<<< HEAD
-  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html>`__
-  - `Java <https://hyperledger.github.io/fabric-chaincode-java/master/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`_
-=======
-  - `node.js <https://fabric-shim.github.io/ChaincodeStub.html>`__
+  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html>`__
   - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`_
->>>>>>> Add dynamic variables to doc
 
 which is used to access and modify the ledger, and to make invocations between
 chaincodes.

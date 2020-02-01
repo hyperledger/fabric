@@ -117,15 +117,9 @@ The APIs in the stub fall into the following categories:
   smart contracts to get, put and delete state corresponding to individual
   objects from the world state, using their key:
 
-<<<<<<< HEAD
-    * [getState()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getState__anchor)
-    * [putState()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#putState__anchor)
-    * [deleteState()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#deleteState__anchor)
-=======
-    * [getState()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getState__anchor)
-    * [putState()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#putState__anchor)
-    * [deleteState()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#deleteState__anchor)
->>>>>>> Add dynamic variables to doc
+    * [getState()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getState__anchor)
+    * [putState()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#putState__anchor)
+    * [deleteState()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#deleteState__anchor)
 
   <br> These basic APIs are complemented by query APIs which enable contracts to
   retrieve a set of states, rather than an individual state. See interaction
@@ -134,37 +128,21 @@ The APIs in the stub fall into the following categories:
   [database](../ledger/ledger.html#world-state-database-options).  For large
   queries, the result sets can be paginated to reduce storage requirements:
 
-<<<<<<< HEAD
-    * [getStateByRange()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getStateByRange__anchor)
-    * [getStateByRangeWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getStateByRangeWithPagination__anchor)
-    * [getStateByPartialCompositeKey()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKey__anchor)
-    * [getStateByPartialCompositeKeyWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKeyWithPagination__anchor)
-    * [getQueryResult()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getQueryResult__anchor)
-    * [getQueryResultWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getQueryResultWithPagination__anchor)
-=======
-    * [getStateByRange()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getStateByRange__anchor)
-    * [getStateByRangeWithPagination()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getStateByRangeWithPagination__anchor)
-    * [getStateByPartialCompositeKey()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKey__anchor)
-    * [getStateByPartialCompositeKeyWithPagination()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKeyWithPagination__anchor)
-    * [getQueryResult()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getQueryResult__anchor)
-    * [getQueryResultWithPagination()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getQueryResultWithPagination__anchor)
->>>>>>> Add dynamic variables to doc
-
+    * [getStateByRange()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getStateByRange__anchor)
+    * [getStateByRangeWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getStateByRangeWithPagination__anchor)
+    * [getStateByPartialCompositeKey()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKey__anchor)
+    * [getStateByPartialCompositeKeyWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getStateByPartialCompositeKeyWithPagination__anchor)
+    * [getQueryResult()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getQueryResult__anchor)
+    * [getQueryResultWithPagination()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getQueryResultWithPagination__anchor)
 
 * **Private data APIs**. See interaction point **(3)**. These APIs enable smart
   contracts to interact with a private data collection. They are analogous to
   the APIs for world state interactions, but for private data. There are APIs to
   get, put and delete a private data state by its key:
 
-<<<<<<< HEAD
-    * [getPrivateData()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getPrivateData__anchor)
-    * [putPrivateData()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#putPrivateData__anchor)
-    * [deletePrivateData()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#deletePrivateData__anchor)
-=======
-    * [getPrivateData()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getPrivateData__anchor)
-    * [putPrivateData()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#putPrivateData__anchor)
-    * [deletePrivateData()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#deletePrivateData__anchor)
->>>>>>> Add dynamic variables to doc
+    * [getPrivateData()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getPrivateData__anchor)
+    * [putPrivateData()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#putPrivateData__anchor)
+    * [deletePrivateData()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#deletePrivateData__anchor)
 
   <br> This set is complemented by set of APIs to query private data **(4)**.
   These APIs allow smart contracts to retrieve a set of states from a private
@@ -173,61 +151,34 @@ The APIs in the stub fall into the following categories:
   [database](../ledger/ledger.html#world-state-database-options). There are
   currently no pagination APIs for private data collections.
 
-<<<<<<< HEAD
-    * [getPrivateDataByRange()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getPrivateDataByRange__anchor)
-    * [getPrivateDataByPartialCompositeKey()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getPrivateDataByPartialCompositeKey__anchor)
-    * [getPrivateDataQueryResult()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getPrivateDataQueryResult__anchor)
-=======
-    * [getPrivateDataByRange()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getPrivateDataByRange__anchor)
-    * [getPrivateDataByPartialCompositeKey()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getPrivateDataByPartialCompositeKey__anchor)
-    * [getPrivateDataQueryResult()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getPrivateDataQueryResult__anchor)
->>>>>>> Add dynamic variables to doc
-
+    * [getPrivateDataByRange()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getPrivateDataByRange__anchor)
+    * [getPrivateDataByPartialCompositeKey()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getPrivateDataByPartialCompositeKey__anchor)
+    * [getPrivateDataQueryResult()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getPrivateDataQueryResult__anchor)
 
 * **Transaction APIs**. See interaction point **(5)**. These APIs are used by a
   smart contract to retrieve details about the current transaction proposal
   being processed by the smart contract. This includes the transaction
   identifier and the time when the transaction proposal was created.
 
-<<<<<<< HEAD
-    * [getTxID()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getTxID__anchor)
+    * [getTxID()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getTxID__anchor)
       returns the identifier of the current transaction proposal **(5)**.
-    * [getTxTimestamp()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getTxTimestamp__anchor)
+    * [getTxTimestamp()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getTxTimestamp__anchor)
       returns the timestamp when the current transaction proposal was created by
       the application **(5)**.
-    * [getCreator()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getCreator__anchor)
+    * [getCreator()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getCreator__anchor)
       returns the raw identity (X.509 or otherwise) of the creator of
       transaction proposal. If this is an X.509 certificate then it is often
       more appropriate to use [`ctx.ClientIdentity`](#clientidentity).
-    * [getSignedProposal()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getSignedProposal__anchor)
+    * [getSignedProposal()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getSignedProposal__anchor)
       returns a signed copy of the current transaction proposal being processed
       by the smart contract.
-    * [getBinding()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getBinding__anchor)
-=======
-    * [getTxID()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getTxID__anchor)
-      returns the identifier of the current transaction proposal **(5)**.
-    * [getTxTimestamp()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getTxTimestamp__anchor)
-      returns the timestamp when the current transaction proposal was created by
-      the application **(5)**.
-    * [getCreator()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getCreator__anchor)
-      returns the raw identity (X.509 or otherwise) of the creator of
-      transaction proposal. If this is an X.509 certificate then it is often
-      more appropriate to use [`ctx.ClientIdentity`](#clientidentity).
-    * [getSignedProposal()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getSignedProposal__anchor)
-      returns a signed copy of the current transaction proposal being processed
-      by the smart contract.
-    * [getBinding()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getBinding__anchor)
->>>>>>> Add dynamic variables to doc
+    * [getBinding()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getBinding__anchor)
       is used to prevent transactions being maliciously or accidentally replayed
       using a nonce. (For practical purposes, a nonce is a random number
       generated by the client application and incorporated in a cryptographic
       hash.) For example, this API could be used by a smart contract at **(1)**
       to detect a replay of the transaction **(5)**.
-<<<<<<< HEAD
-    * [getTransient()](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeStub.html#getTransient__anchor)
-=======
-    * [getTransient()](https://fabric-shim.github.io/{BRANCH}/fabric-shim.ChaincodeStub.html#getTransient__anchor)
->>>>>>> Add dynamic variables to doc
+    * [getTransient()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#getTransient__anchor)
       allows a smart contract to access the transient data an application passes
       to a smart contract. See interaction points **(9)** and **(10)**.
       Transient data is private to the application-smart contract interaction.
