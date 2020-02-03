@@ -423,11 +423,12 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		SkipPullingInvalidTransactions: false,
 	}
 
+	mspID := "Org1MSP"
 	capabilityProvider := &capabilitymock.CapabilityProvider{}
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coord := privdata.NewCoordinator(privdata.Support{
+	coord := privdata.NewCoordinator(mspID, privdata.Support{
 		Validator:          v,
 		TransientStore:     &mockTransientStore{},
 		Committer:          committer,

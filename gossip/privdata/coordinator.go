@@ -127,6 +127,7 @@ type Support struct {
 }
 
 type coordinator struct {
+	mspID          string
 	selfSignedData common.SignedData
 	Support
 	transientBlockRetention        uint64
@@ -142,9 +143,10 @@ type CoordinatorConfig struct {
 }
 
 // NewCoordinator creates a new instance of coordinator
-func NewCoordinator(support Support, selfSignedData common.SignedData, metrics *metrics.PrivdataMetrics,
+func NewCoordinator(mspID string, support Support, selfSignedData common.SignedData, metrics *metrics.PrivdataMetrics,
 	config CoordinatorConfig) Coordinator {
 	return &coordinator{Support: support,
+		mspID:                          mspID,
 		selfSignedData:                 selfSignedData,
 		transientBlockRetention:        config.TransientBlockRetention,
 		metrics:                        metrics,
@@ -823,7 +825,15 @@ func (c *coordinator) accessPolicyForCollection(chdr *common.ChannelHeader, name
 }
 
 // isEligible checks if this peer is eligible for a given CollectionAccessPolicy
+// It is used upon commit to determine if the peer is eligible to retrieve/persist
+// the private data collection data for a given transaction.
 func (c *coordinator) isEligible(ap privdata.CollectionAccessPolicy, namespace string, col string) bool {
+	// Simple check to see if mspID part of collection's MemberOrgs list - FAB-17059
+	if util.Contains(c.mspID, ap.MemberOrgs()) {
+		return true
+	}
+
+	// If not part of list fall back to default policy evaluation logic
 	filt := ap.AccessFilter()
 	eligible := filt(c.selfSignedData)
 	if !eligible {

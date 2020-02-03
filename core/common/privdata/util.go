@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
+	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	mspp "github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 
@@ -34,4 +36,34 @@ func getPolicy(collectionPolicyConfig *common.CollectionPolicyConfig, deserializ
 	}
 
 	return accessPolicy, nil
+}
+
+// getMemberOrgs returns a list containing member orgs from a list of MSPPrincipals, it will skip identities it fails to process
+func getMemberOrgs(identities []*mspp.MSPPrincipal, deserializer msp.IdentityDeserializer) []string {
+	memberOrgs := []string{}
+
+	// get member org MSP IDs from the envelope
+	for _, principal := range identities {
+		switch principal.PrincipalClassification {
+		case mspp.MSPPrincipal_ROLE:
+			// Principal contains the msp role
+			mspRole := &mspp.MSPRole{}
+			err := proto.Unmarshal(principal.Principal, mspRole)
+			if err == nil {
+				memberOrgs = append(memberOrgs, mspRole.MspIdentifier)
+			}
+		case mspp.MSPPrincipal_IDENTITY:
+			principalId, err := deserializer.DeserializeIdentity(principal.Principal)
+			if err == nil {
+				memberOrgs = append(memberOrgs, principalId.GetMSPIdentifier())
+			}
+		case mspp.MSPPrincipal_ORGANIZATION_UNIT:
+			OU := &mspp.OrganizationUnit{}
+			err := proto.Unmarshal(principal.Principal, OU)
+			if err == nil {
+				memberOrgs = append(memberOrgs, OU.MspIdentifier)
+			}
+		}
+	}
+	return memberOrgs
 }

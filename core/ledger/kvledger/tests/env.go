@@ -166,7 +166,8 @@ func initLedgerMgmt() {
 	identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
 		return mgmt.GetManagerForChain(chainID)
 	}
-	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
+	mspID := viper.GetString("peer.localMspId")
+	membershipInfoProvider := privdata.NewMembershipInfoProvider(mspID, createSelfSignedData(), identityDeserializerFactory)
 
 	ledgermgmt.InitializeExistingTestEnvWithInitializer(
 		&ledgermgmt.Initializer{

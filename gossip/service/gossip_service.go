@@ -294,7 +294,9 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, oac OrdererAddress
 		SkipPullingInvalidTransactions: viper.GetBool("peer.gossip.pvtData.skipPullingInvalidTransactionsDuringCommit"),
 	}
 
-	coordinator := privdata2.NewCoordinator(privdata2.Support{
+	selfSignedData := g.createSelfSignedData()
+	mspID := string(g.secAdv.OrgByPeerIdentity(selfSignedData.Identity))
+	coordinator := privdata2.NewCoordinator(mspID, privdata2.Support{
 		ChainID:            chainID,
 		CollectionStore:    support.Cs,
 		Validator:          support.Validator,
@@ -302,7 +304,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, oac OrdererAddress
 		Committer:          support.Committer,
 		Fetcher:            fetcher,
 		CapabilityProvider: support.CapabilityProvider,
-	}, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig)
+	}, selfSignedData, g.metrics.PrivdataMetrics, coordinatorConfig)
 
 	reconcilerConfig := privdata2.GetReconcilerConfig()
 	var reconciler privdata2.PvtDataReconciler
