@@ -150,3 +150,153 @@ func TestBuildCommitters(t *testing.T) {
 	committer, err = db.buildCommitters(badBatch)
 	assert.EqualError(t, err, "nil version not supported")
 }
+
+func TestExecuteCommitter(t *testing.T) {
+	env := testEnv
+	env.init(t, &statedb.Cache{})
+	defer env.cleanup()
+
+	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-execute-committer")
+	assert.NoError(t, err)
+	db := versionedDB.(*VersionedDB)
+
+	committerDB, err := db.getNamespaceDBHandle("ns")
+	assert.NoError(t, err)
+	couchDocKey1, err := keyValToCouchDoc(&keyValue{
+		key:            "key1",
+		revision:       "",
+		VersionedValue: &statedb.VersionedValue{Value: []byte("value1"), Metadata: nil, Version: version.NewHeight(1, 1)},
+	})
+	assert.NoError(t, err)
+	couchDocKey2, err := keyValToCouchDoc(&keyValue{
+		key:            "key2",
+		revision:       "",
+		VersionedValue: &statedb.VersionedValue{Value: nil, Metadata: nil, Version: version.NewHeight(1, 1)},
+	})
+	assert.NoError(t, err)
+
+	committers := []*committer{
+		{
+			db:             committerDB,
+			batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDocKey1}},
+			namespace:      "ns",
+			cacheKVs:       make(statedb.CacheKVs),
+			cacheEnabled:   true,
+		},
+		{
+			db:             committerDB,
+			batchUpdateMap: map[string]*batchableDocument{"key2": {CouchDoc: *couchDocKey2}},
+			namespace:      "ns",
+			cacheKVs:       make(statedb.CacheKVs),
+			cacheEnabled:   true,
+		},
+	}
+
+	err = db.executeCommitter(committers)
+	assert.NoError(t, err)
+	vv, err := db.GetState("ns", "key1")
+	assert.NoError(t, err)
+	assert.Equal(t, vv.Value, []byte("value1"))
+	assert.Equal(t, vv.Version, version.NewHeight(1, 1))
+
+	committers = []*committer{
+		{
+			db:             committerDB,
+			batchUpdateMap: map[string]*batchableDocument{},
+			namespace:      "ns",
+			cacheKVs:       make(statedb.CacheKVs),
+			cacheEnabled:   true,
+		},
+	}
+	err = db.executeCommitter(committers)
+	assert.EqualError(t, err, "error handling CouchDB request. Error:bad_request,  Status Code:400,  Reason:`docs` parameter must be an array.")
+}
+
+func TestCommitUpdates(t *testing.T) {
+	env := testEnv
+	env.init(t, &statedb.Cache{})
+	defer env.cleanup()
+
+	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-commitupdates")
+	assert.NoError(t, err)
+	db := versionedDB.(*VersionedDB)
+
+	nsUpdates := map[string]*statedb.VersionedValue{
+		"key1": {
+			Value:    nil,
+			Metadata: nil,
+			Version:  version.NewHeight(1, 1),
+		},
+		"key2": {
+			Value:    []byte("value2"),
+			Metadata: nil,
+			Version:  version.NewHeight(1, 1),
+		},
+	}
+
+	committerDB, err := db.getNamespaceDBHandle("ns")
+	assert.NoError(t, err)
+	couchDoc, err := keyValToCouchDoc(&keyValue{key: "key1", revision: "", VersionedValue: nsUpdates["key1"]})
+	assert.NoError(t, err)
+
+	var tests = []struct {
+		committer   *committer
+		expectedErr string
+	}{
+		{
+			committer: &committer{
+				db:             committerDB,
+				batchUpdateMap: map[string]*batchableDocument{},
+				namespace:      "ns",
+				cacheKVs:       make(statedb.CacheKVs),
+				cacheEnabled:   true,
+			},
+			expectedErr: "error handling CouchDB request. Error:bad_request,  Status Code:400,  Reason:`docs` parameter must be an array.",
+		},
+		{
+			committer: &committer{
+				db:             committerDB,
+				batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDoc}},
+				namespace:      "ns",
+				cacheKVs:       make(statedb.CacheKVs),
+				cacheEnabled:   true,
+			},
+			expectedErr: "",
+		},
+		{
+			committer: &committer{
+				db:             committerDB,
+				batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDoc}},
+				namespace:      "ns",
+				cacheKVs:       make(statedb.CacheKVs),
+				cacheEnabled:   true,
+			},
+			expectedErr: "error saving document ID: key1. Error: conflict,  Reason: Document update conflict.: error handling CouchDB request. Error:conflict,  Status Code:409,  Reason:Document update conflict.",
+		},
+	}
+
+	for _, test := range tests {
+		err := test.committer.commitUpdates()
+		if test.expectedErr == "" {
+			assert.NoError(t, err)
+		} else {
+			assert.EqualError(t, err, test.expectedErr)
+		}
+	}
+
+	couchDoc, err = keyValToCouchDoc(&keyValue{key: "key2", revision: "", VersionedValue: nsUpdates["key2"]})
+	assert.NoError(t, err)
+
+	committer := &committer{
+		db:             committerDB,
+		batchUpdateMap: map[string]*batchableDocument{"key2": {CouchDoc: *couchDoc}},
+		namespace:      "ns",
+		cacheKVs:       statedb.CacheKVs{"key2": &statedb.CacheValue{}},
+		cacheEnabled:   true,
+	}
+
+	assert.Empty(t, committer.cacheKVs["key2"].AdditionalInfo)
+	err = committer.commitUpdates()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, committer.cacheKVs["key2"].AdditionalInfo)
+}
