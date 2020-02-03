@@ -56,9 +56,9 @@ func (mock *collectionAccessPolicyMock) MaximumPeerCount() int {
 	return args.Int(0)
 }
 
-func (mock *collectionAccessPolicyMock) MemberOrgs() []string {
+func (mock *collectionAccessPolicyMock) MemberOrgs() map[string]struct{} {
 	args := mock.Called()
-	return args.Get(0).([]string)
+	return args.Get(0).(map[string]struct{})
 }
 
 func (mock *collectionAccessPolicyMock) IsMemberOnlyRead() bool {
@@ -72,7 +72,7 @@ func (mock *collectionAccessPolicyMock) IsMemberOnlyWrite() bool {
 }
 
 func (mock *collectionAccessPolicyMock) Setup(requiredPeerCount int, maxPeerCount int,
-	accessFilter privdata.Filter, orgs []string, memberOnlyRead bool) {
+	accessFilter privdata.Filter, orgs map[string]struct{}, memberOnlyRead bool) {
 	mock.On("AccessFilter").Return(accessFilter)
 	mock.On("RequiredPeerCount").Return(requiredPeerCount)
 	mock.On("MaximumPeerCount").Return(maxPeerCount)
@@ -178,7 +178,10 @@ func TestDistributor(t *testing.T) {
 	policyMock := &collectionAccessPolicyMock{}
 	policyMock.Setup(1, 2, func(_ protoutil.SignedData) bool {
 		return true
-	}, []string{"org1", "org2"}, false)
+	}, map[string]struct{}{
+		"org1": {},
+		"org2": {},
+	}, false)
 
 	accessFactoryMock.On("AccessPolicy", c1ColConfig, channelID).Return(policyMock, nil)
 	accessFactoryMock.On("AccessPolicy", c2ColConfig, channelID).Return(policyMock, nil)

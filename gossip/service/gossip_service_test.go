@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -797,6 +798,7 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 	)
 	go gRPCServer.Start()
 
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(factory.GetDefault()))
 	gossipService := &GossipService{
 		mcs:             cryptoService,
 		gossipSvc:       gossip,
@@ -808,6 +810,7 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 			credentialSupport: comm.NewCredentialSupport(),
 		},
 		peerIdentity:  api.PeerIdentityType(conf.InternalEndpoint),
+		secAdv:        secAdv,
 		metrics:       metrics,
 		serviceConfig: serviceConfig,
 	}
