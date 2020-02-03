@@ -12,9 +12,13 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb/msgs"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/pkg/errors"
 )
 
 func encodeVersionAndMetadata(version *version.Height, metadata []byte) (string, error) {
+	if version == nil {
+		return "", errors.New("nil version not supported")
+	}
 	msg := &msgs.VersionFieldProto{
 		VersionBytes: version.ToBytes(),
 		Metadata:     metadata,
