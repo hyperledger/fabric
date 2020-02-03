@@ -16,6 +16,7 @@ import (
 )
 
 func TestMembershipInfoProvider(t *testing.T) {
+	mspID := "peer0"
 	peerSelfSignedData := common.SignedData{
 		Identity:  []byte("peer0"),
 		Signature: []byte{1, 2, 3},
@@ -27,7 +28,7 @@ func TestMembershipInfoProvider(t *testing.T) {
 	}
 
 	// verify membership provider returns true
-	membershipProvider := NewMembershipInfoProvider(peerSelfSignedData, identityDeserializer)
+	membershipProvider := NewMembershipInfoProvider(mspID, peerSelfSignedData, identityDeserializer)
 	res, err := membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
 	assert.True(t, res)
 	assert.Nil(t, err)
