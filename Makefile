@@ -78,7 +78,7 @@ METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
-GO_VER = $(shell grep "GO_VER" ci.properties |cut -d'=' -f2-)
+GO_VER = 1.13.4
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
@@ -136,7 +136,7 @@ gotools: gotools-install
 
 .PHONY: check-go-version
 check-go-version:
-	@scripts/check_go_version.sh
+	@scripts/check_go_version.sh $(GO_VER)
 
 .PHONY: integration-test
 integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
