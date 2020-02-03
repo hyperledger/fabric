@@ -7,10 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package privdata
 
 import (
-	"fmt"
-
-	"github.com/golang/protobuf/proto"
-	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -23,7 +19,7 @@ import (
 type SimpleCollection struct {
 	name         string
 	accessPolicy policies.Policy
-	memberOrgs   []string
+	memberOrgs   map[string]struct{}
 	conf         peer.StaticCollectionConfig
 }
 
@@ -45,7 +41,7 @@ func (sc *SimpleCollection) CollectionID() string {
 }
 
 // MemberOrgs returns the MSP IDs that are part of this collection
-func (sc *SimpleCollection) MemberOrgs() []string {
+func (sc *SimpleCollection) MemberOrgs() map[string]struct{} {
 	return sc.memberOrgs
 }
 
@@ -108,34 +104,8 @@ func (sc *SimpleCollection) Setup(collectionConfig *peer.StaticCollectionConfig,
 		return err
 	}
 
-	// get member org MSP IDs from the envelope
-	for _, principal := range accessPolicyEnvelope.Identities {
-		switch principal.PrincipalClassification {
-		case m.MSPPrincipal_ROLE:
-			// Principal contains the msp role
-			mspRole := &m.MSPRole{}
-			err := proto.Unmarshal(principal.Principal, mspRole)
-			if err != nil {
-				return errors.Wrap(err, "Could not unmarshal MSPRole from principal")
-			}
-			sc.memberOrgs = append(sc.memberOrgs, mspRole.MspIdentifier)
-		case m.MSPPrincipal_IDENTITY:
-			principalId, err := deserializer.DeserializeIdentity(principal.Principal)
-			if err != nil {
-				return errors.Wrap(err, "Invalid identity principal, not a certificate")
-			}
-			sc.memberOrgs = append(sc.memberOrgs, principalId.GetMSPIdentifier())
-		case m.MSPPrincipal_ORGANIZATION_UNIT:
-			OU := &m.OrganizationUnit{}
-			err := proto.Unmarshal(principal.Principal, OU)
-			if err != nil {
-				return errors.Wrap(err, "Could not unmarshal OrganizationUnit from principal")
-			}
-			sc.memberOrgs = append(sc.memberOrgs, OU.MspIdentifier)
-		default:
-			return errors.New(fmt.Sprintf("Invalid principal type %d", int32(principal.PrincipalClassification)))
-		}
-	}
+	// get member org MSP IDs from the envelope, identities that fail to deserialize will not be returned
+	sc.memberOrgs = getMemberOrgs(accessPolicyEnvelope.Identities, deserializer)
 
 	return nil
 }

@@ -334,10 +334,8 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 func (d *distributorImpl) identitiesOfEligiblePeers(eligiblePeers []discovery.NetworkMember, colAP privdata.CollectionAccessPolicy) map[string]api.PeerIdentitySet {
 	return d.gossipAdapter.IdentityInfo().
 		Filter(func(info api.PeerIdentityInfo) bool {
-			for _, orgID := range colAP.MemberOrgs() {
-				if bytes.Equal(info.Organization, []byte(orgID)) {
-					return true
-				}
+			if _, ok := colAP.MemberOrgs()[string(info.Organization)]; ok {
+				return true
 			}
 			// peer not in the org
 			return false
