@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	fileledger "github.com/hyperledger/fabric/common/ledger/blockledger/file"
 	ramledger "github.com/hyperledger/fabric/common/ledger/blockledger/ram"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	mockchannelconfig "github.com/hyperledger/fabric/common/mocks/config"
@@ -28,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mockCrypto() crypto.LocalSigner {
@@ -41,9 +45,11 @@ func newRAMLedgerAndFactory(maxSize int,
 	if err != nil {
 		panic(err)
 	}
-	err = rl.Append(genesisBlockSys)
-	if err != nil {
-		panic(err)
+	if genesisBlockSys != nil {
+		err = rl.Append(genesisBlockSys)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return rlf, rl
 }
@@ -114,16 +120,16 @@ func TestNewRegistrar(t *testing.T) {
 	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
-	// This test checks to make sure the orderer refuses to come up if it cannot find a system channel
-	t.Run("No system chain - failure", func(t *testing.T) {
+	// This test checks to make sure the orderer can be started without a system channel
+	t.Run("No system channel", func(t *testing.T) {
 		lf := ramledger.New(10)
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		assert.Panics(t, func() {
+		assert.NotPanics(t, func() {
 			NewRegistrar(conf, lf, mockCrypto(), &disabled.Provider{}).Initialize(consenters)
-		}, "Should have panicked when starting without a system chain")
+		}, "Should not panic when starting without a system channel")
 	})
 
 	// This test checks to make sure that the orderer refuses to come up if there are multiple system channels
@@ -371,22 +377,58 @@ func TestResourcesCheck(t *testing.T) {
 	})
 }
 
+func newLedgerAndFactory(dir string, chainID string, genesisBlockSys *cb.Block) (blockledger.Factory, blockledger.ReadWriter) {
+	rlf := fileledger.New(dir, &disabled.Provider{})
+	rl, err := rlf.GetOrCreate(chainID)
+	if err != nil {
+		panic(err)
+	}
+
+	if genesisBlockSys != nil {
+		err = rl.Append(genesisBlockSys)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return rlf, rl
+}
+
 // The registrar's BroadcastChannelSupport implementation should reject message types which should not be processed directly.
-func TestBroadcastChannelSupportRejection(t *testing.T) {
+func TestBroadcastChannelSupport(t *testing.T) {
 	// system channel
 	confSys := configtxgentest.Load(genesisconfig.SampleInsecureSoloProfile)
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
-	conf := localconfig.TopLevel{}
 
 	t.Run("Rejection", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
 
-		ledgerFactory, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChainID, genesisBlockSys)
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, genesisconfig.TestChainID, genesisBlockSys)
 		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
-		registrar := NewRegistrar(conf, ledgerFactory, mockCrypto(), &disabled.Provider{})
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{})
 		registrar.Initialize(mockConsenters)
 		randomValue := 1
 		configTx := makeConfigTx(genesisconfig.TestChainID, randomValue)
-		_, _, _, err := registrar.BroadcastChannelSupport(configTx)
+		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
 		assert.Error(t, err, "Messages of type HeaderType_CONFIG should return an error.")
+	})
+
+	t.Run("No system channel", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
+		config := localconfig.TopLevel{}
+		config.General.GenesisMethod = "none"
+		config.General.GenesisFile = ""
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{})
+		registrar.Initialize(mockConsenters)
+		configTx := makeConfigTxFull("testchannelid", 1)
+		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
+		assert.Error(t, err)
+		assert.Equal(t, "channel creation request not allowed because the orderer system channel is not yet defined", err.Error())
 	})
 }

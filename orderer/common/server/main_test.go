@@ -379,11 +379,46 @@ func TestInitializeMultiChainManager(t *testing.T) {
 	genesisFile := produceGenesisFile(t, genesisconfig.SampleDevModeSoloProfile, genesisconfig.TestChainID)
 	defer os.Remove(genesisFile)
 	conf := genesisConfig(t, genesisFile)
-	assert.NotPanics(t, func() {
-		initializeLocalMsp(conf)
+	signer := localmsp.NewSigner()
+
+	t.Run("registrar with a system channel", func(t *testing.T) {
 		lf, _ := createLedgerFactory(conf, &disabled.Provider{})
-		bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
-		initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, conf, localmsp.NewSigner(), &disabled.Provider{}, &mocks.HealthChecker{}, lf)
+		bootBlock := file.New(genesisFile).GenesisBlock()
+		initializeBootstrapChannel(bootBlock, lf)
+		registrar := initializeMultichannelRegistrar(
+			bootBlock,
+			&replicationInitiator{},
+			&cluster.PredicateDialer{},
+			comm.ServerConfig{},
+			nil,
+			conf,
+			signer,
+			&disabled.Provider{},
+			&server_mocks.HealthChecker{},
+			lf,
+		)
+		assert.NotNil(t, registrar)
+		assert.Equal(t, genesisconfig.TestChainID, registrar.SystemChannelID())
+	})
+
+	t.Run("registrar without a system channel", func(t *testing.T) {
+		conf.General.GenesisMethod = "none"
+		conf.General.GenesisFile = ""
+		lf, _ := createLedgerFactory(conf, &disabled.Provider{})
+		registrar := initializeMultichannelRegistrar(
+			nil,
+			&replicationInitiator{},
+			&cluster.PredicateDialer{},
+			comm.ServerConfig{},
+			nil,
+			conf,
+			signer,
+			&disabled.Provider{},
+			&server_mocks.HealthChecker{},
+			lf,
+		)
+		assert.NotNil(t, registrar)
+		assert.Empty(t, registrar.SystemChannelID())
 	})
 }
 
@@ -451,6 +486,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	}
 	lf, _ := createLedgerFactory(conf, &disabled.Provider{})
 	bootBlock := file.New(genesisFile).GenesisBlock()
+	initializeBootstrapChannel(bootBlock, lf)
 	initializeMultichannelRegistrar(bootBlock, &replicationInitiator{}, &cluster.PredicateDialer{}, comm.ServerConfig{}, nil, genesisConfig(t, genesisFile), localmsp.NewSigner(), &disabled.Provider{}, &mocks.HealthChecker{}, lf, callback)
 	t.Logf("# app CAs: %d", len(caSupport.AppRootCAsByChain[genesisconfig.TestChainID]))
 	t.Logf("# orderer CAs: %d", len(caSupport.OrdererRootCAsByChainAndOrg[genesisconfig.TestChainID]["SampleOrg"]))

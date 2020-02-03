@@ -93,11 +93,6 @@ func Main() {
 
 // Start provides a layer of abstraction for benchmark test
 func Start(cmd string, conf *localconfig.TopLevel) {
-	bootstrapBlock := extractBootstrapBlock(conf)
-	if err := ValidateBootstrapBlock(bootstrapBlock); err != nil {
-		logger.Panicf("Failed validating bootstrap block: %v", err)
-	}
-
 	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
 	err := opsSystem.Start()
 	if err != nil {
@@ -107,8 +102,6 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	metricsProvider := opsSystem.Provider
 
 	lf, _ := createLedgerFactory(conf, metricsProvider)
-	sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
-	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
 
 	signer := localmsp.NewSigner()
 
@@ -123,38 +116,54 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		ClientRootCAs:               serverConfig.SecOpts.ClientRootCAs,
 	}
 
+	var clusterBootBlock *cb.Block
 	var r *replicationInitiator
 	clusterServerConfig := serverConfig
 	clusterGRPCServer := grpcServer // by default, cluster shares the same grpc server
 	clusterClientConfig := comm.ClientConfig{SecOpts: &comm.SecureOptions{}, KaOpts: &comm.KeepaliveOptions{}}
 	var clusterDialer *cluster.PredicateDialer
-
-	var reuseGrpcListener bool
-	typ := consensusType(bootstrapBlock)
+	var clusterType, reuseGrpcListener bool
 	var serversToUpdate []*comm.GRPCServer
 
-	clusterType := isClusterType(clusterBootBlock)
-	if clusterType {
-		logger.Infof("Setting up cluster for orderer type %s", typ)
-
-		clusterClientConfig = initializeClusterClientConfig(conf)
-		clusterDialer = &cluster.PredicateDialer{
-			ClientConfig: clusterClientConfig,
+	if conf.General.GenesisMethod == "file" {
+		bootstrapBlock := extractBootstrapBlock(conf)
+		if err := ValidateBootstrapBlock(bootstrapBlock); err != nil {
+			logger.Panicf("Failed validating bootstrap block: %v", err)
 		}
 
-		r = createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
-		// Only clusters that are equipped with a recent config block can replicate.
-		if conf.General.GenesisMethod == "file" {
-			r.replicateIfNeeded(bootstrapBlock)
-		}
+		sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
+		clusterBootBlock = selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
 
-		if reuseGrpcListener = reuseListener(conf, typ); !reuseGrpcListener {
-			clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
-		}
+		typ := consensusType(bootstrapBlock)
+		clusterType = isClusterType(clusterBootBlock)
+		if clusterType {
+			logger.Infof("Setting up cluster for orderer type %s", typ)
 
-		// If we have a separate gRPC server for the cluster,
-		// we need to update its TLS CA certificate pool.
-		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
+			clusterClientConfig = initializeClusterClientConfig(conf)
+			clusterDialer = &cluster.PredicateDialer{
+				ClientConfig: clusterClientConfig,
+			}
+
+			r = createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer)
+			// Only clusters that are equipped with a recent config block can replicate.
+			if conf.General.GenesisMethod == "file" {
+				r.replicateIfNeeded(bootstrapBlock)
+			}
+
+			if reuseGrpcListener = reuseListener(conf, typ); !reuseGrpcListener {
+				clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
+			}
+
+			// If we have a separate gRPC server for the cluster,
+			// we need to update its TLS CA certificate pool.
+			serversToUpdate = append(serversToUpdate, clusterGRPCServer)
+		}
+		// Are we bootstrapping?
+		if len(lf.ChainIDs()) == 0 {
+			initializeBootstrapChannel(clusterBootBlock, lf)
+		} else {
+			logger.Info("Not bootstrapping because of existing channels")
+		}
 	}
 
 	// if cluster is reusing client-facing server, then it is already
@@ -655,25 +664,19 @@ func initializeMultichannelRegistrar(
 	lf blockledger.Factory,
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
-	// Are we bootstrapping?
-	if len(lf.ChainIDs()) == 0 {
-		initializeBootstrapChannel(bootstrapBlock, lf)
-	} else {
-		logger.Info("Not bootstrapping because of existing channels")
-	}
-
-	consenters := make(map[string]consensus.Consenter)
-
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, callbacks...)
 
+	consenters := map[string]consensus.Consenter{}
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics
 	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider, healthChecker)
 	// Note, we pass a 'nil' channel here, we could pass a channel that
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
-	if isClusterType(bootstrapBlock) {
-		initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider)
+	if conf.General.GenesisMethod == "file" {
+		if isClusterType(bootstrapBlock) {
+			initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider)
+		}
 	}
 	registrar.Initialize(consenters)
 	return registrar
