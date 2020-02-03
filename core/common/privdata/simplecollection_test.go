@@ -130,8 +130,8 @@ func TestNewSimpleCollectionWithGoodConfig(t *testing.T) {
 
 	// check members
 	members := sc.MemberOrgs()
-	assert.True(t, members[0] == "signer0")
-	assert.True(t, members[1] == "signer1")
+	assert.Contains(t, members, "signer0")
+	assert.Contains(t, members, "signer1")
 
 	// check required peer count
 	assert.True(t, sc.RequiredPeerCount() == 1)
@@ -177,8 +177,8 @@ func TestSetupGoodConfigCollection(t *testing.T) {
 
 	// check members
 	members := sc.MemberOrgs()
-	assert.True(t, members[0] == "signer0")
-	assert.True(t, members[1] == "signer1")
+	assert.Contains(t, members, "signer0")
+	assert.Contains(t, members, "signer1")
 
 	// check required peer count
 	assert.True(t, sc.RequiredPeerCount() == 1)
