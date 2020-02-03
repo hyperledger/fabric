@@ -307,14 +307,16 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		PullRetryThreshold:             g.serviceConfig.PvtDataPullRetryThreshold,
 		SkipPullingInvalidTransactions: g.serviceConfig.SkipPullingInvalidTransactionsDuringCommit,
 	}
-	coordinator := gossipprivdata.NewCoordinator(gossipprivdata.Support{
+	selfSignedData := g.createSelfSignedData()
+	mspID := string(g.secAdv.OrgByPeerIdentity(selfSignedData.Identity))
+	coordinator := gossipprivdata.NewCoordinator(mspID, gossipprivdata.Support{
 		ChainID:            channelID,
 		CollectionStore:    support.CollectionStore,
 		Validator:          support.Validator,
 		Committer:          support.Committer,
 		Fetcher:            fetcher,
 		CapabilityProvider: support.CapabilityProvider,
-	}, store, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig,
+	}, store, selfSignedData, g.metrics.PrivdataMetrics, coordinatorConfig,
 		support.IdDeserializeFactory)
 
 	privdataConfig := gossipprivdata.GlobalConfig()

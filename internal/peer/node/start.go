@@ -219,9 +219,9 @@ func serve(args []string) error {
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
 	flogging.SetObserver(logObserver)
 
-	membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(), identityDeserializerFactory)
-
 	mspID := coreConfig.LocalMSPID
+
+	membershipInfoProvider := privdata.NewMembershipInfoProvider(mspID, createSelfSignedData(), identityDeserializerFactory)
 
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "lifecycle", "chaincodes")
 	ccStore := persistence.NewStore(chaincodeInstallPath)
