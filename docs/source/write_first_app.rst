@@ -163,7 +163,7 @@ Enrolling the admin user
 .. note:: The following two sections involve communication with the Certificate
           Authority. You may find it useful to stream the CA logs when running
           the upcoming programs by opening a new terminal shell and running
-          ``docker logs -f ca.example.com``.
+          ``docker logs -f ca_peerOrg1``.
 
 When we created the network, an admin user --- literally called ``admin`` ---
 was created as the **registrar** for the certificate authority (CA). Our first
@@ -271,11 +271,11 @@ The application connects to the network using a gateway:
 This code creates a new gateway and then uses it to connect the application to
 the network. ``ccp`` describes the network that the gateway will access with the
 identity ``user1`` from ``wallet``. See how the ``ccp`` has been loaded from
-``../../basic-network/connection.json`` and parsed as a JSON file:
+``../../first-network/connection-org1.json`` and parsed as a JSON file:
 
 .. code:: bash
 
-  const ccpPath = path.resolve(__dirname, '..', '..', 'basic-network', 'connection.json');
+  const ccpPath = path.resolve(__dirname, '..', '..', 'first-network', 'connection-org1.json');
   const ccpJSON = fs.readFileSync(ccpPath, 'utf8');
   const ccp = JSON.parse(ccpJSON);
 
