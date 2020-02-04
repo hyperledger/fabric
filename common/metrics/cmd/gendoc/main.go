@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"text/template"
@@ -27,6 +28,69 @@ var templatePath = flag.String(
 	"The documentation template.",
 )
 
+func createFuncMap() template.FuncMap {
+	return template.FuncMap{
+		"OrdererPrometheusTable": emptyStrFunc,
+		"OrdererStatsdTable":     emptyStrFunc,
+		"PeerPrometheusTable":    emptyStrFunc,
+		"PeerStatsdTable":        emptyStrFunc,
+		"IsCA": func() bool {
+			return false
+		},
+		"PrometheusTable": emptyStrFunc,
+		"StatsdTable":     emptyStrFunc,
+		"PrometheusDescription": func() string {
+			return "The following metrics are currently exported for consumption by Prometheus.\n" +
+				"Label provides the names of the labels that can be attached to a metric. " +
+				"For example, a `channel` label denotes a channel is associated with this metric."
+		},
+		"StatsDDescription": func() string {
+			return fmt.Sprintf("The following metrics are currently emitted for consumption by" +
+				"StatsD. The ``%%{variable_name}`` nomenclature represents segments that" +
+				"vary based on context.\n\n" +
+				"For example, %%{channel} will be replaced with the name of the channel" +
+				"associated with the metric.")
+		},
+	}
+}
+
+func emptyStrFunc() string {
+	return ""
+}
+
+func createCells(patterns []string) (gendoc.Cells, error) {
+
+	pkgs, err := packages.Load(&packages.Config{Mode: packages.LoadSyntax}, patterns...)
+	if err != nil {
+		return nil, err
+	}
+
+	options, err := gendoc.Options(pkgs)
+	if err != nil {
+		return nil, err
+	}
+
+	cells, err := gendoc.NewCells(options)
+	if err != nil {
+		return nil, err
+	}
+
+	return cells, err
+
+}
+
+func createStatsdTable(cells gendoc.Cells) string {
+	buf := &bytes.Buffer{}
+	gendoc.NewStatsdTable(cells).Generate(buf)
+	return buf.String()
+}
+
+func createPrometheusTable(cells gendoc.Cells) string {
+	buf := &bytes.Buffer{}
+	gendoc.NewPrometheusTable(cells).Generate(buf)
+	return buf.String()
+}
+
 func main() {
 	flag.Parse()
 
@@ -35,32 +99,64 @@ func main() {
 		patterns = []string{"github.com/hyperledger/fabric/..."}
 	}
 
-	pkgs, err := packages.Load(&packages.Config{Mode: packages.LoadSyntax}, patterns...)
-	if err != nil {
-		panic(err)
+	var peerpatterns, ordererpatterns []string
+	for i, pattern := range patterns {
+		if pattern == "peerpackages" {
+			peerpatterns = patterns[i+1:]
+			ordererpatterns = patterns[1 : i-1]
+			break
+		}
 	}
 
-	options, err := gendoc.Options(pkgs)
-	if err != nil {
-		panic(err)
-	}
+	funcMap := createFuncMap()
 
-	cells, err := gendoc.NewCells(options)
-	if err != nil {
-		panic(err)
-	}
+	if len(peerpatterns) == 0 && len(ordererpatterns) == 0 {
 
-	funcMap := template.FuncMap{
-		"PrometheusTable": func() string {
-			buf := &bytes.Buffer{}
-			gendoc.NewPrometheusTable(cells).Generate(buf)
-			return buf.String()
-		},
-		"StatsdTable": func() string {
-			buf := &bytes.Buffer{}
-			gendoc.NewStatsdTable(cells).Generate(buf)
-			return buf.String()
-		},
+		defaultCells, err := createCells(patterns)
+		if err != nil {
+			panic(err)
+		}
+
+		funcMap["PrometheusTable"] = func() string {
+			return createPrometheusTable(defaultCells)
+		}
+
+		funcMap["StatsdTable"] = func() string {
+			return createStatsdTable(defaultCells)
+		}
+
+		funcMap["IsCA"] = func() string {
+			return "true"
+		}
+
+	} else {
+
+		ordererCells, err := createCells(ordererpatterns)
+		if err != nil {
+			panic(err)
+		}
+
+		peerCells, err := createCells(peerpatterns)
+		if err != nil {
+			panic(err)
+		}
+
+		funcMap["OrdererPrometheusTable"] = func() string {
+			return createPrometheusTable(ordererCells)
+		}
+
+		funcMap["OrdererStatsdTable"] = func() string {
+			return createStatsdTable(ordererCells)
+		}
+
+		funcMap["PeerPrometheusTable"] = func() string {
+			return createPrometheusTable(peerCells)
+		}
+
+		funcMap["PeerStatsdTable"] = func() string {
+			return createStatsdTable(peerCells)
+		}
+
 	}
 
 	docTemplate, err := ioutil.ReadFile(*templatePath)
