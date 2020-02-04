@@ -1,0 +1,87 @@
+{
+  "axioms": {
+    "linguist":"language",
+    "licensee":"license",
+    "packagers":"packager"
+  },
+  "rules": {
+    "all": {
+      "license-file-exists:file-existence": ["error", {"files": ["LICENSE*", "COPYING*"], "nocase": true}],
+      "readme-file-exists:file-existence": ["error", {"files": ["README*"], "nocase": true}],
+
+      "contributing-file-exists:file-existence": ["error", {"files": ["CONTRIB*", ".github/CONTRIB*"]}],
+      "code-of-conduct-file-exists:file-existence": ["error", {"files": [
+        "CODEOFCONDUCT*", "CODE-OF-CONDUCT*", "CODE_OF_CONDUCT*",
+        ".github/CODEOFCONDUCT*", ".github/CODE-OF-CONDUCT*", ".github/CODE_OF_CONDUCT*"
+        ]}],
+      "changelog-file-exists:file-existence": ["error", {"files": ["CHANGELOG*"], "nocase": true}],
+      "security-file-exists:file-existence": ["error", {"files": ["SECURITY.md"]}],
+      "support-file-exists:file-existence": ["warning", {"files": ["{docs/,.github/,}SUPPORT*"], "nocase": true}],
+      "readme-references-license:file-contents": ["error", {"files": ["README*"], "content": "license", "flags": "i"}],
+      "binaries-not-present:file-type-exclusion": ["error", {"type": ["**/*.exe", "**/*.dll", "!node_modules/**"]}],
+      "test-directory-exists:directory-existence": ["error", {"directories": ["**/test*", "**/specs"], "nocase": true}],
+      "integrates-with-ci:file-existence": [
+        "error",
+        {
+          "files": [
+            ".gitlab-ci.yml", 
+            ".travis.yml", 
+            "appveyor.yml", 
+            ".appveyor.yml", 
+            "circle.yml", 
+            ".circleci/config.yml", 
+            "Jenkinsfile", 
+            ".drone.yml",
+            ".github/workflows/*",
+            "ci/azure-pipelines.yml"
+          ]
+        }
+      ],
+      "code-of-conduct-file-contains-email:file-contents": [
+        "warning",
+        {
+          "files": [
+            "CODEOFCONDUCT*", "CODE-OF-CONDUCT*", "CODE_OF_CONDUCT*",
+            ".github/CODEOFCONDUCT*", ".github/CODE-OF-CONDUCT*", ".github/CODE_OF_CONDUCT*"
+          ],
+          "content": ".+@.+\\..+",
+          "flags": "i",
+          "human-readable-content": "email address"
+        }
+      ],
+      "source-license-headers-exist:file-starts-with": ["warning", {"files": ["**/*.js", "!node_modules/**"], "lineCount": 5, "patterns": ["Copyright", "License"], "flags": "i"}],
+      "github-issue-template-exists:file-existence": ["warning", {"files": ["ISSUE_TEMPLATE*", ".github/ISSUE_TEMPLATE*"]}],
+      "github-pull-request-template-exists:file-existence": ["warning", {"files": ["PULL_REQUEST_TEMPLATE*", ".github/PULL_REQUEST_TEMPLATE*"]}]
+    },
+    "language=javascript": {
+      "package-metadata-exists:file-existence": ["error", {"files": ["package.json"]}]
+    },
+    "language=ruby": {
+      "package-metadata-exists:file-existence": ["error", {"files": ["Gemfile"]}]
+    },
+    "language=java": {
+      "package-metadata-exists:file-existence": ["error", {"files": ["pom.xml", "build.xml", "build.gradle"]}]
+    },
+    "license=*": {
+      "license-detectable-by-licensee": ["error"]
+    },
+    "license=Apache-2.0": {
+      "notice-file-exists:apache-notice": ["error"]
+    },
+    "language=python": {
+      "package-metadata-exists:file-existence": ["error", {"files": ["setup.py", "requirements.txt"]}]
+    },
+    "language=objective-c": {
+      "package-metadata-exists:file-existence": ["error", {"files": ["Cartfile", "Podfile", "*.podspec"]}]
+    },
+    "language=swift": {
+      "package-metadata-exists:file-existence": ["error", {"files": ["Package.swift"]}]
+    },
+    "language=erlang": {
+      "package-metadata-exists:file-existence": ["error", {"files": ["rebar.config"]}]
+    },
+    "language=elixir": {
+      "package-metadata-exists:file-existence": ["error", {"files": ["mix.exs"]}]
+    }
+  }
+}
