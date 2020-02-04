@@ -842,6 +842,35 @@ var _ = Describe("ExternalFunctions", func() {
 					Expect(err).To(MatchError("attempted to redefine uncommitted sequence (5) for namespace cc-name with unchanged content"))
 				})
 			})
+
+			Context("when uncommitted definition has update of only package ID", func() {
+				It("succeeds", func() {
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash2", fakePublicState, fakeOrgState)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when deserializing chaincode-source metadata fails", func() {
+				BeforeEach(func() {
+					fakeOrgKVStore["chaincode-sources/metadata/cc-name#5"] = []byte("garbage")
+				})
+
+				It("wraps and returns the error", func() {
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					Expect(err).To(MatchError("could not deserialize chaincode-source metadata for cc-name#5: could not unmarshal metadata for namespace chaincode-sources/cc-name#5: proto: can't skip unknown wire type 7"))
+				})
+			})
+
+			Context("when deserializing chaincode package fails", func() {
+				BeforeEach(func() {
+					fakeOrgKVStore["chaincode-sources/fields/cc-name#5/PackageID"] = []byte("garbage")
+				})
+
+				It("wraps and returns the error", func() {
+					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
+					Expect(err).To(MatchError("could not deserialize chaincode package for cc-name#5: could not unmarshal state for key chaincode-sources/fields/cc-name#5/PackageID: proto: can't skip unknown wire type 7"))
+				})
+			})
 		})
 
 		Context("when the definition is for an expired sequence number", func() {
