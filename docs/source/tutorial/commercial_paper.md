@@ -438,7 +438,7 @@ environment. Note the following key program lines:
   examine the `buy` and `redeem` methods to see how they use this class.
 
 
-* `return paper.toBuffer();`
+* `return paper;`
 
   This statement returns a binary buffer as response from the `issue`
   transaction for processing by the caller of the smart contract.
@@ -662,12 +662,11 @@ Note the following key program lines in `issue.js`:
   `papercontract` was previously instantiated.
 
 
-*  `const contract = await network.getContract('papercontract', 'org.papernet.comm...');`
+*  `const contract = await network.getContract('papercontract');`
 
-  This statement gives the application addressability to smart contract defined
-  by the namespace `org.papernet.commercialpaper` within `papercontract`. Once
-  an application has issued getContract, it can submit any transaction
-  implemented within it.
+  This statement gives the application access to the `papercontract` chaincode.
+  Once an application has issued getContract, it can submit to any smart contract
+  transaction implemented within the chaincode.
 
 
 * `const issueResponse = await contract.submitTransaction('issue', 'MagnetoCorp', '00001'...);`
@@ -715,8 +714,8 @@ download and their exact versions:
 
 ```json
   "dependencies": {
-    "fabric-network": "^1.4.0-beta",
-    "fabric-client": "^1.4.0-beta",
+    "fabric-network": "^1.4.0",
+    "fabric-client": "^1.4.0",
     "js-yaml": "^3.12.0"
   },
 ```
