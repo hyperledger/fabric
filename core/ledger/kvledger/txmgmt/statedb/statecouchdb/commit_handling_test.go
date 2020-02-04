@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -79,4 +80,73 @@ func TestGetRevision(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "", revisionsMap["key-in-db"])
 
+}
+
+func TestBuildCommittersForNs(t *testing.T) {
+	env := testEnv
+	env.init(t, &statedb.Cache{})
+	defer env.cleanup()
+
+	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-build-committers-for-ns")
+	assert.NoError(t, err)
+	db := versionedDB.(*VersionedDB)
+
+	nsUpdates := map[string]*statedb.VersionedValue{
+		"bad-key": {},
+	}
+
+	_, err = db.buildCommittersForNs("ns", nsUpdates)
+	assert.EqualError(t, err, "nil version not supported")
+
+	nsUpdates = make(map[string]*statedb.VersionedValue)
+	// populate updates with maxBatchSize + 1.
+	dummyHeight := version.NewHeight(1, 1)
+	for i := 0; i <= env.config.MaxBatchUpdateSize; i++ {
+		nsUpdates[strconv.Itoa(i)] = &statedb.VersionedValue{
+			Value:    nil,
+			Metadata: nil,
+			Version:  dummyHeight,
+		}
+	}
+
+	committers, err := db.buildCommittersForNs("ns", nsUpdates)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(committers))
+	assert.Equal(t, "ns", committers[0].namespace)
+	assert.Equal(t, "ns", committers[1].namespace)
+
+}
+
+func TestBuildCommitters(t *testing.T) {
+	env := testEnv
+	env.init(t, &statedb.Cache{})
+	defer env.cleanup()
+
+	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-build-committers")
+	assert.NoError(t, err)
+	db := versionedDB.(*VersionedDB)
+
+	dummyHeight := version.NewHeight(1, 1)
+	batch := statedb.NewUpdateBatch()
+	batch.Put("ns-1", "key1", []byte("value1"), dummyHeight)
+	batch.Put("ns-2", "key1", []byte("value2"), dummyHeight)
+	for i := 0; i <= env.config.MaxBatchUpdateSize; i++ {
+		batch.Put("maxBatch", "key1", []byte("value3"), dummyHeight)
+	}
+	namespaceSet := map[string]bool{
+		"ns-1": true, "ns-2": true, "maxBatch": true,
+	}
+
+	committer, err := db.buildCommitters(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(committer))
+	for _, commit := range committer {
+		assert.True(t, namespaceSet[commit.namespace])
+	}
+
+	badBatch := statedb.NewUpdateBatch()
+	badBatch.Put("bad-ns", "bad-key", []byte("bad-value"), nil)
+
+	committer, err = db.buildCommitters(badBatch)
+	assert.EqualError(t, err, "nil version not supported")
 }
