@@ -457,7 +457,6 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 
 			if err := uncommittedParameters.Equal(cd.Parameters()); err == nil {
 				// also check package ID updates
-				uncommittedPackageID := ""
 				metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(ChaincodeSourcesName, privateName, orgState)
 				if err != nil {
 					return errors.WithMessagef(err, "could not deserialize chaincode-source metadata for %s", privateName)
@@ -467,11 +466,10 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 					if err := ef.Resources.Serializer.Deserialize(ChaincodeSourcesName, privateName, metadata, ccLocalPackage, orgState); err != nil {
 						return errors.WithMessagef(err, "could not deserialize chaincode package for %s", privateName)
 					}
-					uncommittedPackageID = ccLocalPackage.PackageID
-				}
 
-				if uncommittedPackageID == packageID {
-					return errors.Errorf("attempted to redefine uncommitted sequence (%d) for namespace %s with unchanged content", requestedSequence, ccname)
+					if ccLocalPackage.PackageID == packageID {
+						return errors.Errorf("attempted to redefine uncommitted sequence (%d) for namespace %s with unchanged content", requestedSequence, ccname)
+					}
 				}
 			}
 		}
