@@ -12,12 +12,6 @@ A Blockchain Platform for the Enterprise
 Enterprise grade permissioned distributed ledger platform that offers
 modularity and versatility for a broad set of industry use cases.
 
-.. raw:: html
-
-   <br/><br/>
-   <iframe width="560" height="315" src="https://www.youtube.com/embed/EKa5Gh9whgU" frameborder="0" allowfullscreen></iframe>
-   <br/><br/>
-
 .. toctree::
    :maxdepth: 1
 
