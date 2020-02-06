@@ -182,7 +182,7 @@ type chainCreation struct {
 
 // TrackChain tracks a chain with the given name, and calls the given callback
 // when this chain should be activated.
-func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common.Block, createChainCallback etcdraft.CreateChainCallback) {
+func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common.Block, createChainCallback func()) {
 	dc.lock.Lock()
 	defer dc.lock.Unlock()
 

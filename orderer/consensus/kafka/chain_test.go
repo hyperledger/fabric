@@ -3485,7 +3485,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker2.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &disabled.Provider{}, &mockkafka.HealthChecker{})
+		consenter, _ := New(mockLocalConfig.Kafka, &disabled.Provider{}, &mockkafka.HealthChecker{}, nil, func(string) {})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3574,7 +3574,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker0.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &disabled.Provider{}, &mockkafka.HealthChecker{})
+		consenter, _ := New(mockLocalConfig.Kafka, &disabled.Provider{}, &mockkafka.HealthChecker{}, nil, func(string) {})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}
@@ -3636,7 +3636,7 @@ func TestDeliverSession(t *testing.T) {
 		defer env.broker0.Close()
 
 		// initialize consenter
-		consenter, _ := New(mockLocalConfig.Kafka, &disabled.Provider{}, &mockkafka.HealthChecker{})
+		consenter, _ := New(mockLocalConfig.Kafka, &disabled.Provider{}, &mockkafka.HealthChecker{}, nil, func(string) {})
 
 		// initialize chain
 		metadata := &cb.Metadata{Value: utils.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: env.height})}

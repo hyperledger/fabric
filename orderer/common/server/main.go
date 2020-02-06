@@ -665,15 +665,19 @@ func initializeMultichannelRegistrar(
 
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, callbacks...)
 
+	var icr kafka.InactiveChainRegistry = &kafka.NoopInactiveChainRegistry{}
+	if isClusterType(bootstrapBlock) {
+		etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider)
+		icr = etcdConsenter.InactiveChainRegistry
+	}
+
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics
-	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider, healthChecker)
+	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider, healthChecker, icr, registrar.CreateChain)
 	// Note, we pass a 'nil' channel here, we could pass a channel that
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
-	if isClusterType(bootstrapBlock) {
-		initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider)
-	}
+
 	registrar.Initialize(consenters)
 	return registrar
 }
@@ -689,7 +693,7 @@ func initializeEtcdraftConsenter(
 	srv *comm.GRPCServer,
 	registrar *multichannel.Registrar,
 	metricsProvider metrics.Provider,
-) {
+) *etcdraft.Consenter {
 	replicationRefreshInterval := conf.General.Cluster.ReplicationBackgroundRefreshInterval
 	if replicationRefreshInterval == 0 {
 		replicationRefreshInterval = defaultReplicationBackgroundRefreshInterval
@@ -729,6 +733,7 @@ func initializeEtcdraftConsenter(
 	go icr.run()
 	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr, metricsProvider)
 	consenters["etcdraft"] = raftConsenter
+	return raftConsenter
 }
 
 func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {

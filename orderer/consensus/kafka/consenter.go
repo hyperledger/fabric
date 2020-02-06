@@ -12,8 +12,10 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 //go:generate counterfeiter -o mock/health_checker.go -fake-name HealthChecker . healthChecker
@@ -24,7 +26,7 @@ type healthChecker interface {
 }
 
 // New creates a Kafka-based consenter. Called by orderer's main.go.
-func New(config localconfig.Kafka, metricsProvider metrics.Provider, healthChecker healthChecker) (consensus.Consenter, *Metrics) {
+func New(config localconfig.Kafka, mp metrics.Provider, healthChecker healthChecker, icr InactiveChainRegistry, mkChain func(string)) (consensus.Consenter, *Metrics) {
 	if config.Verbose {
 		logging.SetLevel(logging.DEBUG, "orderer.consensus.kafka.sarama")
 	}
@@ -36,13 +38,19 @@ func New(config localconfig.Kafka, metricsProvider metrics.Provider, healthCheck
 		config.Version,
 		defaultPartition)
 
-	metrics := NewMetrics(metricsProvider, brokerConfig.MetricRegistry)
+	metrics := NewMetrics(mp, brokerConfig.MetricRegistry)
+
+	_, isNoopICR := icr.(*NoopInactiveChainRegistry)
+	isRaft := !isNoopICR && icr != nil // a non-noop and not nil InactiveChainRegistry is a Raft one
 
 	return &consenterImpl{
-		brokerConfigVal: brokerConfig,
-		tlsConfigVal:    config.TLS,
-		retryOptionsVal: config.Retry,
-		kafkaVersionVal: config.Version,
+		mkChain:               mkChain,
+		isRaft:                isRaft,
+		inactiveChainRegistry: icr,
+		brokerConfigVal:       brokerConfig,
+		tlsConfigVal:          config.TLS,
+		retryOptionsVal:       config.Retry,
+		kafkaVersionVal:       config.Version,
 		topicDetailVal: &sarama.TopicDetail{
 			NumPartitions:     1,
 			ReplicationFactor: config.Topic.ReplicationFactor,
@@ -52,18 +60,33 @@ func New(config localconfig.Kafka, metricsProvider metrics.Provider, healthCheck
 	}, metrics
 }
 
+// InactiveChainRegistry registers chains that are inactive
+type InactiveChainRegistry interface {
+	// TrackChain tracks a chain with the given name, and calls the given callback
+	// when this chain should be created.
+	TrackChain(chainName string, genesisBlock *cb.Block, createChain func())
+}
+
+type NoopInactiveChainRegistry struct{}
+
+func (*NoopInactiveChainRegistry) TrackChain(chainName string, genesisBlock *cb.Block, createChain func()) {
+}
+
 // consenterImpl holds the implementation of type that satisfies the
 // consensus.Consenter interface --as the HandleChain contract requires-- and
 // the commonConsenter one.
 type consenterImpl struct {
-	brokerConfigVal *sarama.Config
-	tlsConfigVal    localconfig.TLS
-	retryOptionsVal localconfig.Retry
-	kafkaVersionVal sarama.KafkaVersion
-	topicDetailVal  *sarama.TopicDetail
-	metricsProvider metrics.Provider
-	healthChecker   healthChecker
-	metrics         *Metrics
+	mkChain               func(string)
+	isRaft                bool
+	brokerConfigVal       *sarama.Config
+	tlsConfigVal          localconfig.TLS
+	retryOptionsVal       localconfig.Retry
+	kafkaVersionVal       sarama.KafkaVersion
+	topicDetailVal        *sarama.TopicDetail
+	metricsProvider       metrics.Provider
+	healthChecker         healthChecker
+	metrics               *Metrics
+	inactiveChainRegistry InactiveChainRegistry
 }
 
 // HandleChain creates/returns a reference to a consensus.Chain object for the
@@ -72,6 +95,16 @@ type consenterImpl struct {
 // multichannel.NewManagerImpl() when ranging over the ledgerFactory's
 // existingChains.
 func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
+
+	// Check if this node was migrated from Raft
+	if consenter.isRaft {
+		logger.Infof("This node was migrated from Kafka to Raft, skipping activation of Kafka chain")
+		consenter.inactiveChainRegistry.TrackChain(support.ChainID(), support.Block(0), func() {
+			consenter.mkChain(support.ChainID())
+		})
+		return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChainID())}, nil
+	}
+
 	lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset := getOffsets(metadata.Value, support.ChainID())
 	ch, err := newChain(consenter, support, lastOffsetPersisted, lastOriginalOffsetProcessed, lastResubmittedConfigOffset)
 	if err != nil {

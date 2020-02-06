@@ -32,6 +32,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"github.com/tedsuo/ifrit/grouper"
 )
 
 var _ = Describe("Kafka2RaftMigration", func() {
@@ -580,6 +581,9 @@ var _ = Describe("Kafka2RaftMigration", func() {
 		// with a three orderers, a system channel and two standard channels.
 		// It then restarts the orderers onto a Raft-based system, and verifies that the
 		// newly restarted orderers perform as expected.
+		// Afterwards, it adds a new orderer to the system channel and ensures
+		// that it can successfully autonomously join application channels
+		// if added to them later on.
 		It("executes bootstrap to raft - multi node", func() {
 			//=== Step 1: Config update on system channel, MAINTENANCE ===
 			By("1) Config update on system channel, State=MAINTENANCE")
@@ -712,6 +716,73 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			RunExpectQueryRetry(network, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 100)
 			RunExpectQueryInvokeQuery(network, o1, peer, channel2, 90)
+
+			By("Extending the network configuration to add a new orderer")
+			o4 := &nwo.Orderer{
+				Name:         "orderer4",
+				Organization: "OrdererOrg",
+			}
+			ports := nwo.Ports{}
+			for _, portName := range nwo.OrdererPortNames() {
+				ports[portName] = network.ReservePort()
+			}
+			network.PortsByOrdererID[o4.ID()] = ports
+			network.Orderers = append(network.Orderers, o4)
+			network.GenerateOrdererConfig(o4)
+			extendNetwork(network)
+
+			fourthOrdererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(o4), "server.crt")
+			fourthOrdererCertificate, err := ioutil.ReadFile(fourthOrdererCertificatePath)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Adding the fourth orderer to the system channel")
+			nwo.AddConsenter(network, peer, o1, "systemchannel", protosraft.Consenter{
+				ServerTlsCert: fourthOrdererCertificate,
+				ClientTlsCert: fourthOrdererCertificate,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(o4, nwo.ClusterPort)),
+			})
+
+			By("Obtaining the last config block from an orderer")
+			// Get the last config block of the system channel
+			configBlock := nwo.GetConfigBlock(network, peer, o1, "systemchannel")
+			// Plant it in the file system of orderer2, the new node to be onboarded.
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), utils.MarshalOrPanic(configBlock), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Launching the fourth orderer")
+			o4Runner := network.OrdererRunner(o4)
+			o4Process := ifrit.Invoke(grouper.Member{Name: o4.ID(), Runner: o4Runner})
+
+			defer func() {
+				o4Process.Signal(syscall.SIGTERM)
+				Eventually(o4Process.Wait(), network.EventuallyTimeout).Should(Receive())
+			}()
+
+			Eventually(o4Process.Ready()).Should(BeClosed())
+
+			By("Waiting for the orderer to figure out it was migrated")
+			Eventually(o4Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("This node was migrated from Kafka to Raft, skipping activation of Kafka chain"))
+
+			By("Adding the fourth orderer to the application channel")
+			nwo.AddConsenter(network, peer, o1, channel1, protosraft.Consenter{
+				ServerTlsCert: fourthOrdererCertificate,
+				ClientTlsCert: fourthOrdererCertificate,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(o4, nwo.ClusterPort)),
+			})
+
+			chan1BlockNum = nwo.CurrentConfigBlockNumber(network, peer, o1, channel1)
+
+			By("Ensuring the added orderer has synced the application channel")
+			assertBlockReception(
+				map[string]int{
+					channel1: int(chan1BlockNum),
+				},
+				[]*nwo.Orderer{o4},
+				peer,
+				network,
+			)
 		})
 	})
 
