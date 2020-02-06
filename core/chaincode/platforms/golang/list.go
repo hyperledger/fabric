@@ -89,7 +89,7 @@ func gopathDependencyPackageInfo(goos, goarch, pkg string) ([]PackageInfo, error
 
 	err = cmd.Wait()
 	if err != nil {
-		return nil, errors.Wrapf(err, "listing deps for pacakge %s failed", pkg)
+		return nil, errors.Wrapf(err, "listing deps for package %s failed", pkg)
 	}
 
 	return list, nil
