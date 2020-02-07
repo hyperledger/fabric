@@ -318,7 +318,7 @@ If the command is successful, you should see the following response:
 
 Because the endorsement policy for the fabcar chaincode requires the transaction
 to be signed by Org1 and Org2, the chaincode invoke command needs to target both
-`peer0.org1.example.com` and `peer0.org1.example.com` using the `--peerAddresses`
+`peer0.org1.example.com` and `peer0.org2.example.com` using the `--peerAddresses`
 flag. Because TLS is enabled for the network, the command also needs to reference
 the TLS certificate for each peer using the `--tlsRootCertFiles` flag.
 
