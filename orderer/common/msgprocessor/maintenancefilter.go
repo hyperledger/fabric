@@ -24,7 +24,7 @@ import (
 type MaintenanceFilterSupport interface {
 	// OrdererConfig returns the config.Orderer for the channel and whether the Orderer config exists
 	OrdererConfig() (channelconfig.Orderer, bool)
-
+	// ChannelID returns the ChannelID
 	ChannelID() string
 }
 
@@ -117,7 +117,8 @@ func (mf *MaintenanceFilter) inspect(configEnvelope *cb.ConfigEnvelope, ordererC
 		}
 	}
 
-	// ConsensusType.Type can only change in maintenance-mode, and only from kafka to raft (for now).
+	// ConsensusType.Type can only change in maintenance-mode, and only within the set of permitted types.
+	// Note: only kafka to etcdraft or solo to etcdraft transitions are actually supported.
 	if ordererConfig.ConsensusType() != nextOrdererConfig.ConsensusType() {
 		if ordererConfig.ConsensusState() == orderer.ConsensusType_STATE_NORMAL {
 			return errors.Errorf("attempted to change consensus type from %s to %s, but current config ConsensusType.State is not in maintenance mode",
