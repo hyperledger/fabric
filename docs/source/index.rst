@@ -27,7 +27,6 @@ modularity and versatility for a broad set of industry use cases.
    architecture
    Fabric-FAQ
    CONTRIBUTING
-   style_guide
    glossary
    releases
    questions
