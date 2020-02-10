@@ -11,12 +11,20 @@
 Contributions Welcome!
 ======================
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   style_guide
+
 We welcome contributions to Hyperledger in many forms, and
 there's always plenty to do!
 
 First things first, please review the Hyperledger `Code of
 Conduct <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
 before participating. It is important that we keep things civil.
+
+.. node:: If you want to contribute to this documentation, please check out the :doc:`style_guide`.
 
 Ways to contribute
 ------------------
@@ -214,7 +222,7 @@ the defect fixed.
           `security bug reporting process <https://wiki.hyperledger.org/display/HYP/Defect+Response>`__.
 
 If it has not been previously reported, you may either submit a PR with a
-well documented commit message describing the defect and the fix, or you 
+well documented commit message describing the defect and the fix, or you
 may create a new JIRA. Please try to provide
 sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
