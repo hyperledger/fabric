@@ -42,10 +42,10 @@ StatsD
 ~~~~~~
 
 The following orderer metrics are emitted for consumption by StatsD. The
-``%{variable_name}`` nomenclature represents segments that vary based on
+\`\`%{variable_name}\`\` nomenclature represents segments that vary based on
 context.
 
-For example, ``%{channel}`` will be replaced with the name of the channel
+For example, \`\`%{channel}\`\` will be replaced with the name of the channel
 associated with the metric.
 
 ${orderer_statsd}
@@ -64,10 +64,10 @@ StatsD
 ~~~~~~
 
 The following peer metrics are emitted for consumption by StatsD. The
-``%{variable_name}`` nomenclature represents segments that vary based on
+\`\`%{variable_name}\`\` nomenclature represents segments that vary based on
 context.
 
-For example, ``%{channel}`` will be replaced with the name of the channel
+For example, \`\`%{channel}\`\` will be replaced with the name of the channel
 associated with the metric.
 
 ${peer_statsd}
