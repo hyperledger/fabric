@@ -200,7 +200,8 @@ policy. For example, even if a chaincode endorsement policy only requires
 signatures from one or two organizations, a majority of channel members still
 need to approve the chaincode definition according to the default policy. When
 committing a channel definition, you need to target enough peer organizations in
-the channel to satisfy your LifecycleEndorsement policy.
+the channel to satisfy your LifecycleEndorsement policy. You can learn more
+about the Fabric chaincode lifecycle policies in the [Policies concept topic](policies/policies.html).
 
 You can also set the ``Channel/Application/LifecycleEndorsement`` policy to be a
 signature policy and explicitly specify the set of organizations on the channel
