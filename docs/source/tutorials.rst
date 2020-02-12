@@ -28,6 +28,7 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    :maxdepth: 1
    :caption: Tutorials
 
+   deploy_chaincode.md
    write_first_app
    tutorial/commercial_paper
    build_network
