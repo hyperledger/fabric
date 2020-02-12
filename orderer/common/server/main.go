@@ -665,7 +665,7 @@ func initializeMultichannelRegistrar(
 
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, callbacks...)
 
-	var icr kafka.InactiveChainRegistry = &kafka.NoopInactiveChainRegistry{}
+	var icr etcdraft.InactiveChainRegistry
 	if isClusterType(bootstrapBlock) {
 		etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider)
 		icr = etcdConsenter.InactiveChainRegistry
