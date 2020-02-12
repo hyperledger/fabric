@@ -40,12 +40,8 @@ func New(config localconfig.Kafka, mp metrics.Provider, healthChecker healthChec
 
 	metrics := NewMetrics(mp, brokerConfig.MetricRegistry)
 
-	_, isNoopICR := icr.(*NoopInactiveChainRegistry)
-	isRaft := !isNoopICR && icr != nil // a non-noop and not nil InactiveChainRegistry is a Raft one
-
 	return &consenterImpl{
 		mkChain:               mkChain,
-		isRaft:                isRaft,
 		inactiveChainRegistry: icr,
 		brokerConfigVal:       brokerConfig,
 		tlsConfigVal:          config.TLS,
@@ -67,23 +63,16 @@ type InactiveChainRegistry interface {
 	TrackChain(chainName string, genesisBlock *cb.Block, createChain func())
 }
 
-type NoopInactiveChainRegistry struct{}
-
-func (*NoopInactiveChainRegistry) TrackChain(chainName string, genesisBlock *cb.Block, createChain func()) {
-}
-
 // consenterImpl holds the implementation of type that satisfies the
 // consensus.Consenter interface --as the HandleChain contract requires-- and
 // the commonConsenter one.
 type consenterImpl struct {
 	mkChain               func(string)
-	isRaft                bool
 	brokerConfigVal       *sarama.Config
 	tlsConfigVal          localconfig.TLS
 	retryOptionsVal       localconfig.Retry
 	kafkaVersionVal       sarama.KafkaVersion
 	topicDetailVal        *sarama.TopicDetail
-	metricsProvider       metrics.Provider
 	healthChecker         healthChecker
 	metrics               *Metrics
 	inactiveChainRegistry InactiveChainRegistry
@@ -97,7 +86,7 @@ type consenterImpl struct {
 func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
 
 	// Check if this node was migrated from Raft
-	if consenter.isRaft {
+	if consenter.inactiveChainRegistry != nil {
 		logger.Infof("This node was migrated from Kafka to Raft, skipping activation of Kafka chain")
 		consenter.inactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
 			consenter.mkChain(support.ChannelID())

@@ -706,7 +706,7 @@ func initializeMultichannelRegistrar(
 
 	consenters := map[string]consensus.Consenter{}
 
-	var icr kafka.InactiveChainRegistry = &kafka.NoopInactiveChainRegistry{}
+	var icr etcdraft.InactiveChainRegistry
 	if conf.General.BootstrapMethod == "file" && isClusterType(bootstrapBlock, bccsp) {
 		etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider, bccsp)
 		icr = etcdConsenter.InactiveChainRegistry
