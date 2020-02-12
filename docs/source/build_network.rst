@@ -156,7 +156,7 @@ Next, you can bring the network up with one of the following commands:
 
 The above command will compile Golang chaincode images and spin up the corresponding
 containers. Go is the default chaincode language, however there is also support
-for `Node.js <https://fabric-shim.github.io/>`_ and `Java <https://hyperledger.github.io/fabric-chaincode-java/>`_
+for `Node.js <https://hyperledger.github.io/fabric-chaincode-node/>`_ and `Java <https://hyperledger.github.io/fabric-chaincode-java/>`_
 chaincode. If you'd like to run through this tutorial with node chaincode, pass
 the following command instead:
 
@@ -168,10 +168,10 @@ the following command instead:
   ./byfn.sh up -l javascript
 
 .. note:: For more information on the Node.js shim, please refer to its
-          `documentation <https://fabric-shim.github.io/ChaincodeInterface.html>`_.
+          `documentation <https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeInterface.html>`_.
 
 .. note:: For more information on the Java shim, please refer to its
-          `documentation <https://hyperledger.github.io/fabric-chaincode-java/master/api/org/hyperledger/fabric/shim/Chaincode.html>`_.
+          `documentation <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/Chaincode.html>`_.
 
 Тo make the sample run with Java chaincode, you have to specify ``-l java`` as follows:
 
@@ -412,8 +412,9 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
   ../bin/configtxgen -profile SampleMultiNodeEtcdRaft -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
 
 .. note:: The orderer genesis block and the subsequent artifacts we are about to create
-          will be output into the ``channel-artifacts`` directory at the root of this
-          project. The `channelID` in the above command is the name of the system channel.
+          will be output into the ``channel-artifacts`` directory at the root of the
+          ``first-network`` directory. The `channelID` in the above command is the
+          name of the system channel.
 
 .. _createchanneltx:
 

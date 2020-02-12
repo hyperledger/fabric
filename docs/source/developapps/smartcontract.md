@@ -54,8 +54,8 @@ Examples here are given in both JavaScript and Java.
 
 A copy of the PaperNet commercial paper smart contract is contained in a single
 file. View it with your browser, or open it in your favorite editor if you've downloaded it.
-  - `papercontract.js` - [JavaScript version](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/contract/lib/papercontract.js)
-  - `CommercialPaperContract.java` - [Java version](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp//contract-java/src/main/java/org/example/CommercialPaperContract.java)
+  - `papercontract.js` - [JavaScript version](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/contract/lib/papercontract.js)
+  - `CommercialPaperContract.java` - [Java version](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp//contract-java/src/main/java/org/example/CommercialPaperContract.java)
 
 
 You may notice from the file path that this is MagnetoCorp's copy of the smart
@@ -88,7 +88,7 @@ and **redeem**. It's these transactions that bring commercial papers into
 existence and move them through their lifecycle. We'll examine these
 [transactions](#transaction-definition) soon, but for now notice for JavaScript, that the
 `CommericalPaperContract` extends the Hyperledger Fabric `Contract`
-[class](https://fabric-shim.github.io/release-1.4/fabric-contract-api.Contract.html).
+[class](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-contract-api.Contract.html).
 
 With Java, the class must be decorated with the `@Contract(...)` annotation. This provides the opportunity
 to supply additional information about the contract, such as license and author. The `@Default()` annotation
@@ -99,7 +99,7 @@ If you are using a TypeScript implementation, there are similar `@Contract(...)`
 
 For more information on the available annotations, consult the available API documentation:
 * [API documentation for Java smart contracts](https://hyperledger.github.io/fabric-chaincode-java/)
-* [API documentation for Node.js smart contracts](https://fabric-shim.github.io/)
+* [API documentation for Node.js smart contracts](https://hyperledger.github.io/fabric-chaincode-node/)
 
 These classes, annotations, and the `Context` class, were brought into scope earlier:
 
@@ -513,7 +513,7 @@ Locate the `CommercialPaper` class:
 <details open="true">
 <summary>JavaScript</summary>
 In the
-[paper.js file](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/contract/lib/paper.js):
+[paper.js file](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/contract/lib/paper.js):
 
 ```JavaScript
 class CommercialPaper extends State {...}
@@ -588,7 +588,7 @@ A few important points to note:
     key, can be serialized and de-serialized, and so on.  `State` helps our code
     be more legible when we are storing more than one business object type on
     the ledger. Examine the `State` class in the `state.js`
-    [file](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/contract/ledger-api/state.js).
+    [file](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/contract/ledger-api/state.js).
 
 
   * A paper computes its own key when it is created -- this key will be used
@@ -630,7 +630,7 @@ if (paper.getOwner() === redeemingOwner) {
 ## Access the ledger
 
 Now locate the `PaperList` class in the `paperlist.js`
-[file](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/contract/lib/paperlist.js):
+[file](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/contract/lib/paperlist.js):
 
 ```JavaScript
 class PaperList extends StateList {
@@ -654,7 +654,7 @@ async addPaper(paper) {
 ```
 
 You can see in the `StateList.js`
-[file](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/contract/ledger-api/statelist.js)
+[file](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/contract/ledger-api/statelist.js)
 how the `StateList` class uses the Fabric API `putState()` to write the
 commercial paper as state data in the ledger:
 

@@ -3,7 +3,7 @@
 [rocketchat-url]: https://chat.hyperledger.org/channel/fabric
 [rocketchat-image]: https://open.rocket.chat/images/join-chat.svg
 
-[![Build Status](https://jenkins.hyperledger.org/buildStatus/icon?job=fabric-merge-x86_64)](https://jenkins.hyperledger.org/view/fabric/job/fabric-merge-x86_64/)
+[![Build Status](https://dev.azure.com/Hyperledger/Fabric/_apis/build/status/Merge?branchName=master)](https://dev.azure.com/Hyperledger/Fabric/_build/latest?definitionId=51&branchName=master)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/955/badge)](https://bestpractices.coreinfrastructure.org/projects/955)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hyperledger/fabric)](https://goreportcard.com/report/github.com/hyperledger/fabric)
 [![GoDoc](https://godoc.org/github.com/hyperledger/fabric?status.svg)](https://godoc.org/github.com/hyperledger/fabric)
@@ -24,6 +24,7 @@ open source architecture; Hyperledger Fabric is your starting point.
 
 ## Releases
 
+- [v2.0.0 - January 29, 2020](https://github.com/hyperledger/fabric/releases/tag/v2.0.0)
 - [v2.0.0-beta - December 12, 2019](https://github.com/hyperledger/fabric/releases/tag/v2.0.0-beta)
 - [v2.0.0-alpha - April 9, 2019](https://github.com/hyperledger/fabric/releases/tag/v2.0.0-alpha)
 - [v1.4.4 - November 14, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.4)
@@ -64,6 +65,7 @@ Please visit the [Hyperledger Fabric wiki](https://wiki.hyperledger.org/display/
 Please visit our
 online documentation for
 information on getting started using and developing with the fabric, SDK and chaincode:
+- [v2.0](http://hyperledger-fabric.readthedocs.io/en/release-2.0/)
 - [v1.4](http://hyperledger-fabric.readthedocs.io/en/release-1.4/)
 - [v1.3](http://hyperledger-fabric.readthedocs.io/en/release-1.3/)
 - [v1.2](http://hyperledger-fabric.readthedocs.io/en/release-1.2/)

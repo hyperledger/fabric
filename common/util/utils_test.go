@@ -71,7 +71,7 @@ func TestToChaincodeArgs(t *testing.T) {
 	}
 }
 
-func TestMetadataSignatureBytesNormal(t *testing.T) {
+func TestConcatenateBytesNormal(t *testing.T) {
 	first := []byte("first")
 	second := []byte("second")
 	third := []byte("third")
@@ -83,7 +83,7 @@ func TestMetadataSignatureBytesNormal(t *testing.T) {
 	}
 }
 
-func TestMetadataSignatureBytesNil(t *testing.T) {
+func TestConcatenateBytesNil(t *testing.T) {
 	first := []byte("first")
 	second := []byte(nil)
 	third := []byte("third")

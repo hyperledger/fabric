@@ -122,6 +122,12 @@ FAB-16477 and FAB-17116 The orderer config `general.genesismethod` and
 `general.genesisfile` will be replaced by the new `general.bootstrapmethod` and
 `general.bootstrapfile`.
 
+FAB-17428 - The configtxgen flag `--outputAnchorPeersUpdate` is officially deprecated.
+This flag was originally used for creating channel config updates to update an anchor peer
+and only worked for the first update of the default channel creation. The flag will be
+officially removed in FAB-17427 in favor of using the `configtx.yaml` for the default
+channel configuration.
+
 Known Vulnerabilities
 ---------------------
 FAB-8664 - Peer should detect and react when its org has been removed

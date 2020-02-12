@@ -79,7 +79,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		By("creating and joining channels")
 		network.CreateAndJoinChannels(orderer)
 		By("enabling new lifecycle capabilities")
-		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer1"), network.Peer("Org2", "peer1"))
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 		chaincode := nwo.Chaincode{
 			Name:            "mycc",
@@ -119,7 +119,7 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 			Name:      "mycc",
 			Ctor:      `{"Args":["invoke","a","b","10"]}`,
 			PeerAddresses: []string{
-				network.PeerAddress(network.Peer("Org2", "peer1"), nwo.ListenPort),
+				network.PeerAddress(network.Peer("Org2", "peer0"), nwo.ListenPort),
 			},
 			WaitForEvent: true,
 			ClientAuth:   network.ClientAuthRequired,
@@ -203,8 +203,8 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, i
 		Name:      "mycc",
 		Ctor:      `{"Args":["invoke","a","b","10"]}`,
 		PeerAddresses: []string{
-			n.PeerAddress(n.Peer("Org1", "peer1"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
 		ClientAuth:   n.ClientAuthRequired,

@@ -46,7 +46,7 @@ An application has to follow six basic steps to submit a transaction:
 
 You're going to see how a typical application performs these six steps using the
 Fabric SDK. You'll find the application code in the `issue.js` file. [View
-it](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/application/issue.js)
+it](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/application/issue.js)
 in your browser, or open it in your favourite editor if you've downloaded it.
 Spend a few moments looking at the overall structure of the application; even
 with comments and spacing, it's only 100 lines of code!
@@ -61,7 +61,7 @@ const { FileSystemWallet, Gateway } = require('fabric-network');
 ```
 
 You can read about the `fabric-network` classes in the
-[node SDK documentation](https://hyperledger.github.io/fabric-sdk-node/master/module-fabric-network.html), but for
+[node SDK documentation](https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/module-fabric-network.html), but for
 now, let's see how they are used to connect MagnetoCorp's application to
 PaperNet. The application uses the Fabric **Wallet** class as follows:
 
@@ -115,7 +115,7 @@ transaction proposal to the right peer nodes in the network using the
 options](./connectionoptions.html).
 
 Spend a few moments examining the connection
-[profile](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
+[profile](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
 `./gateway/connectionProfile.yaml`. It uses
 [YAML](http://yaml.org/spec/1.2/spec.html#Preview), making it easy to read.
 
@@ -250,9 +250,9 @@ Note how the application provides a name -- `papercontract` -- and an explicit
 contract name: `org.papernet.commercialpaper`! We see how a [contract
 name](./contractname.html) picks out one contract from the `papercontract.js`
 chaincode file that contains many contracts. In PaperNet, `papercontract.js` was
-installed and instantiated with the name `papercontract`, and if you're
-interested, read [how](../chaincode4noah.html) to install and instantiate a
-chaincode containing multiple smart contracts.
+installed and deployed to the channel with the name `papercontract`, and if you're
+interested, read [how](../chaincode4noah.html) to deploy a chaincode containing
+multiple smart contracts.
 
 If our application simultaneously required access to another contract in
 PaperNet or BondNet this would be easy:

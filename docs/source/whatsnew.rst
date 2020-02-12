@@ -1,17 +1,21 @@
-What's new in the v2.0 Beta release
-===================================
+What's new in Hyperledger Fabric v2.0
+=====================================
 
-The Beta release of Hyperledger Fabric v2.0 allows users to try out upcoming
-features of Fabric v2.0. While the v2.0 release is not yet production ready,
-the Beta is feature complete, meaning it includes all the features that are
-expected to be delivered in the final v2.0 release.
+The first Hyperledger Fabric major release since v1.0, Fabric v2.0
+delivers important new features and changes for users and operators alike,
+including support for new application and privacy patterns, enhanced
+governance around smart contracts, and new options for operating nodes.
 
-Let’s take a peek at some of the highlights of Fabric v2.0....
+What has stayed the same is the ability to upgrade network components on
+your own terms, with support for rolling upgrades from v1.4.x, and the ability
+to enable the new capabilities only when member organizations are ready.
 
-Decentralized chaincode lifecycle
----------------------------------
+Let's take a look at some of the highlights of the Fabric v2.0 release...
 
-Fabric v2.0 introduces decentralized governance for chaincode, with a new
+Decentralized governance for smart contracts
+--------------------------------------------
+
+Fabric v2.0 introduces decentralized governance for smart contracts, with a new
 process for installing a chaincode on your peers and starting it on a channel.
 The new Fabric chaincode lifecycle allows multiple organizations to come to
 agreement on the parameters of a chaincode, such as the chaincode endorsement
@@ -27,7 +31,7 @@ offers several improvements over the previous lifecycle:
   trust models (such as that of the previous lifecycle model) as well as
   decentralized models requiring a sufficient number of organizations to
   agree on an endorsement policy and other details before the chaincode
-  ecomes active on a channel.
+  becomes active on a channel.
 
 * **More deliberate chaincode upgrade process** In the previous chaincode
   lifecycle, the upgrade transaction could be issued by a single organization,
@@ -55,7 +59,7 @@ offers several improvements over the previous lifecycle:
   like to track different types of assets in their own ‘copy’ of the chaincode.
 
 * **Chaincode packages do not need to be identical across channel members**
-  Organizations can customize a chaincode for their own use case, for example
+  Organizations can extend a chaincode for their own use case, for example
   to perform different validations in the interest of their organization.
   As long as the required number of organizations endorse chaincode transactions
   with matching results, the transaction will be validated and committed to the
@@ -71,43 +75,36 @@ only when the channel application capability is updated to v2.0.
 See the :doc:`chaincode4noah` tutorial for complete details of the new
 chaincode lifecycle.
 
-External chaincode launcher
----------------------------
+New chaincode application patterns for collaboration and consensus
+------------------------------------------------------------------
 
-While chaincode is still run in a docker container by default in Fabric v2.0,
-the external chaincode launcher feature empowers operators to build and launch
-chaincode with the technology of their choice.
+The same decentralized methods of coming to agreement that underpin the
+new chaincode lifecycle management can also be used in your own chaincode
+applications to ensure organizations consent to data transactions before
+they are committed to the ledger.
 
-* **Eliminate Docker daemon dependency** Prior releases of Fabric required
-  peers to have access to a Docker daemon in order to build and launch
-  chaincode - something that may not be desirable in production environments
-  due to the privileges required by the peer process.
+* **Automated checks** As mentioned above, organizations can add automated
+  checks to chaincode functions to validate additional information before
+  endorsing a transaction proposal.
 
-* **Alternatives to containers** Chaincode is no longer required to be run
-  in Docker containers, and may be executed in the operator’s choice of
-  environment (including containers).
-
-* **External builder executables** An operator can provide a set of external
-  builder executables to override how the peer builds and launches chaincode.
-
-* **Chaincode as an external service** Traditionally, chaincodes are launched
-  by and then connect to the peer. It is now possible to run chaincode as
-  an external service, for example in a Kubernetes pod, which a peer can
-  connect to and utilize for chaincode execution. See :doc:`cc_service` for more
-  information.
-
-See :doc:`cc_launcher` to learn more about the external chaincode launcher feature.
+* **Decentralized agreement** Human decisions can be modeled into a chaincode process
+  that spans multiple transactions. The chaincode may require actors from
+  various organizations to indicate their terms and conditions of agreement
+  in a ledger transaction. Then, a final chaincode proposal can
+  verify that the conditions from all the individual transactors are met,
+  and "settle" the business transaction with finality across all channel
+  members. For a concrete example of indicating terms and conditions in private,
+  see the asset transfer scenario in the :doc:`private-data/private-data` documentation.
 
 Private data enhancements
 -------------------------
 
-Fabric v2.0 enables new patterns for working with and sharing private data,
+Fabric v2.0 also enables new patterns for working with and sharing private data,
 without the requirement of creating private data collections for all
 combinations of channel members that may want to transact. Specifically,
 instead of sharing private data within a collection of multiple members,
-you may want to share private data across collections at a transaction or
-state key level with selected channel members. Each private data collection
-may contain a single organization, or perhaps a single organization along
+you may want to share private data across collections, where each collection
+may include a single organization, or perhaps a single organization along
 with a regulator or auditor.
 
 Several enhancements in Fabric v2.0 make these new private data patterns possible:
@@ -123,20 +120,48 @@ Several enhancements in Fabric v2.0 make these new private data patterns possibl
   optionally be defined with an endorsement policy that overrides the
   chaincode-level endorsement policy for keys within the collection. This
   feature can be used to restrict which organizations can write data to a
-  collection. For example, you could utilize organization-specific private
-  data collections to allow each organization to individually consent to state
-  updates. This pattern is useful for implementing workflows that span individual
-  transactions, for example to support voting or approval scenarios with data
-  privacy and nonrepudiation.
+  collection, and is what enables the new chaincode lifecycle and chaincode
+  application patterns mentioned earlier. For example, you may have a chaincode
+  endorsement policy that requires a majority of organizations to endorse,
+  but for any given transaction, you may need two transacting organizations
+  to individually endorse their agreement in their own private data collections.
 
 * **Implicit per-organization collections** If you’d like to utilize
   per-organization private data patterns, you don’t even need to define the
   collections when deploying chaincode in Fabric v2.0.  Implicit
   organization-specific collections can be used without any upfront definition.
 
-To learn more about the new private data patterns, see :doc:`private-data/private-data` (conceptual information)
-for information about private data sharing and :doc:`private-data-arch` (reference information)
-for documentation about private data collection configuration and implicit collections.
+To learn more about the new private data patterns, see the :doc:`private-data/private-data` (conceptual
+documentation). For details about private data collection configuration and
+implicit collections, see the :doc:`private-data-arch` (reference documentation).
+
+External chaincode launcher
+---------------------------
+
+The external chaincode launcher feature empowers operators to build and launch
+chaincode with the technology of their choice. Use of external builders and launchers
+is not required as the default behavior builds and runs chaincode in the same manner
+as prior releases using the Docker API.
+
+* **Eliminate Docker daemon dependency** Prior releases of Fabric required
+  peers to have access to a Docker daemon in order to build and launch
+  chaincode - something that may not be desirable in production environments
+  due to the privileges required by the peer process.
+
+* **Alternatives to containers** Chaincode is no longer required to be run
+  in Docker containers, and may be executed in the operator’s choice of
+  environment (including containers).
+
+* **External builder executables** An operator can provide a set of external
+  builder executables to override how the peer builds and launches chaincode.
+
+* **Chaincode as an external service** Traditionally, chaincodes are launched
+  by the peer, and then connect back to the peer. It is now possible to run chaincode as
+  an external service, for example in a Kubernetes pod, which a peer can
+  connect to and utilize for chaincode execution. See :doc:`cc_service` for more
+  information.
+
+See :doc:`cc_launcher` to learn more about the external chaincode launcher feature.
 
 State database cache for improved performance on CouchDB
 --------------------------------------------------------
@@ -172,9 +197,9 @@ For more information about this network, check out :doc:`test_network`.
 Upgrading to Fabric v2.0
 ------------------------
 
-While a Beta release is not an intended upgrade target for existing Fabric
-deployments, there is nothing preventing you from testing an upgrade scenario
-to get familiar with the process.
+A major new release brings some additional upgrade considerations. Rest assured
+though, that rolling upgrades from v1.4.x to v2.0 are supported, so that network
+components can be upgraded one at a time with no downtime.
 
 The upgrade docs have been significantly expanded and reworked, and now have a
 standalone home in the documentation: :doc:`upgrade`. Here you'll find documentation on
@@ -188,7 +213,7 @@ The release notes provide more details for users moving to the new release.
 Specifically, take a look at the changes and deprecations that are being
 announced with the new Fabric v2.0 release.
 
-* `Fabric v2.0.0-beta release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.0-beta>`_.
+* `Fabric v2.0.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

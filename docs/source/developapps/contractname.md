@@ -6,8 +6,8 @@ administrators
 A chaincode is a generic container for deploying code to a Hyperledger Fabric
 blockchain network. One or more related smart contracts are defined within a
 chaincode. Every smart contract has a name that uniquely identifies it within a
-chaincode. Applications access a particular smart contract within an
-instantiated chaincode using its contract name.
+chaincode. Applications access a particular smart contract within a chaincode
+using its contract name.
 
 In this topic, we're going to cover:
 * [How a chaincode contains multiple smart contracts](#chaincode)
@@ -24,8 +24,8 @@ rather than the low level details of how to interact with a Fabric network.
 
 Smart contracts are one example of a high level programming abstraction, and it
 is possible to define smart contracts within in a chaincode container. When a
-chaincode is installed and instantiated, all the smart contracts within it are
-made available to the corresponding channel.
+chaincode is installed on your peer and deployed to a channel, all the smart
+contracts within it are made available to your applications.
 
 ![contract.chaincode](./develop.diagram.20.png) *Multiple smart contracts can be
 defined within a chaincode. Each is uniquely identified by their name within a
@@ -55,7 +55,7 @@ name. A smart contract can explicitly assign this name when the class is
 constructed, or let the `Contract` class implicitly assign a default name.
 
 Examine the `papercontract.js` chaincode
-[file](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/contract/lib/papercontract.js#L31):
+[file](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/contract/lib/papercontract.js#L31):
 
 ```javascript
 class CommercialPaperContract extends Contract {
@@ -94,7 +94,7 @@ name are explicitly or implicitly specified.
 
 ## Application
 
-Once a chaincode has been installed on a peer and instantiated on a channel, the
+Once a chaincode has been installed on a peer and deployed to a channel, the
 smart contracts in it are accessible to an application:
 
 ```javascript

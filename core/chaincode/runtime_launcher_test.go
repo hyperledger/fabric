@@ -159,7 +159,6 @@ var _ = Describe("RuntimeLauncher", func() {
 		})
 
 		It("starts the runtime for the chaincode with no TLS", func() {
-
 			err := runtimeLauncher.Launch("chaincode-name:chaincode-version", fakeStreamHandler)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -445,7 +444,7 @@ var _ = Describe("RuntimeLauncher", func() {
 		})
 	})
 
-	Context("when stopping the runtime fails", func() {
+	Context("when stopping the runtime fails while launching", func() {
 		BeforeEach(func() {
 			fakeRuntime.StartReturns(errors.New("whirled-peas"))
 			fakeRuntime.StopReturns(errors.New("applesauce"))
@@ -454,6 +453,26 @@ var _ = Describe("RuntimeLauncher", func() {
 		It("preserves the initial error", func() {
 			err := runtimeLauncher.Launch("chaincode-name:chaincode-version", fakeStreamHandler)
 			Expect(err).To(MatchError("error starting container: whirled-peas"))
+		})
+	})
+
+	It("stops the runtime for the chaincode", func() {
+		err := runtimeLauncher.Stop("chaincode-name:chaincode-version")
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(fakeRuntime.StopCallCount()).To(Equal(1))
+		ccidArg := fakeRuntime.StopArgsForCall(0)
+		Expect(ccidArg).To(Equal("chaincode-name:chaincode-version"))
+	})
+
+	Context("when stopping the runtime fails while stopping", func() {
+		BeforeEach(func() {
+			fakeRuntime.StopReturns(errors.New("liver-mush"))
+		})
+
+		It("preserves the initial error", func() {
+			err := runtimeLauncher.Stop("chaincode-name:chaincode-version")
+			Expect(err).To(MatchError("failed to stop chaincode chaincode-name:chaincode-version: liver-mush"))
 		})
 	})
 })

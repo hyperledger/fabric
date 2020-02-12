@@ -64,6 +64,9 @@ BUILD_DIR ?= build
 EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
 PROJECT_VERSION=$(BASE_VERSION)-snapshot-$(EXTRA_VERSION)
 
+#TWO_DIGIT_VERSION is derived, e.g. "2.0", especially useful as a local tag for two digit references to most recent baseos and ccenv patch releases
+TWO_DIGIT_VERSION = $(shell echo $(BASE_VERSION) | cut -d'.' -f1,2)
+
 PKGNAME = github.com/hyperledger/fabric
 ARCH=$(shell go env GOARCH)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
@@ -75,7 +78,7 @@ METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
-GO_VER = $(shell grep "GO_VER" ci.properties |cut -d'=' -f2-)
+GO_VER = 1.13.4
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
@@ -133,7 +136,7 @@ gotools: gotools-install
 
 .PHONY: check-go-version
 check-go-version:
-	@scripts/check_go_version.sh
+	@scripts/check_go_version.sh $(GO_VER)
 
 .PHONY: integration-test
 integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
@@ -226,6 +229,7 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		$(BUILD_ARGS) \
 		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
 	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(BASE_VERSION)
+	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(TWO_DIGIT_VERSION)
 	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)
 	@touch $@
 

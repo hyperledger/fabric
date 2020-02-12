@@ -359,7 +359,7 @@ Below is a representation of how an application would call different
 transactions in a smart contract. Each transaction uses a broad set of APIs such
 as ``getStateByRange`` to interact with the ledger. You can read more about
 these APIs in `detail
-<https://fabric-shim.github.io/master/index.html?redirect=true>`_.
+<https://hyperledger.github.io/fabric-chaincode-node/>`_.
 
 .. image:: images/RunningtheSample.png
 

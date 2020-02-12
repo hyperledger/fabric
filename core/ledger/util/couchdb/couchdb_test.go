@@ -55,6 +55,7 @@ type Asset struct {
 var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
 
 var testAddress string
+var cleanupCouchDB = func() {}
 
 func testConfig() *Config {
 	return &Config{
@@ -69,23 +70,23 @@ func testConfig() *Config {
 }
 
 func TestMain(m *testing.M) {
-	os.Exit(testMain(m))
-}
-
-func testMain(m *testing.M) int {
-	// Switch to CouchDB
-	address, cleanup := couchdbtest.CouchDBSetup("", "")
-	testAddress = address
-	defer cleanup()
-
 	//set the logging level to DEBUG to test debug only code
 	flogging.ActivateSpec("couchdb=debug")
 
-	//run the tests
-	return m.Run()
+	rc := m.Run()
+	cleanupCouchDB()
+
+	os.Exit(rc)
+}
+
+func startCouchDB() {
+	if testAddress == "" {
+		testAddress, cleanupCouchDB = couchdbtest.CouchDBSetup((nil))
+	}
 }
 
 func TestDBBadConnectionDef(t *testing.T) {
+	startCouchDB()
 	config := testConfig()
 	config.Address = badParseConnectURL
 	_, err := CreateCouchInstance(config, &disabled.Provider{})
@@ -112,6 +113,7 @@ func TestEncodePathElement(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
+	startCouchDB()
 	client := &http.Client{}
 
 	config := testConfig()
@@ -227,7 +229,7 @@ func TestBadCouchDBInstance(t *testing.T) {
 }
 
 func TestDBCreateSaveWithoutRevision(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbcreatesavewithoutrevision"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -249,7 +251,7 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 }
 
 func TestDBCreateEnsureFullCommit(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbensurefullcommit"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -274,6 +276,7 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 }
 
 func TestIsEmpty(t *testing.T) {
+	startCouchDB()
 	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err)
 
@@ -314,7 +317,7 @@ func TestIsEmpty(t *testing.T) {
 }
 
 func TestDBBadDatabaseName(t *testing.T) {
-
+	startCouchDB()
 	//create a new instance and database object using a valid database name mixed case
 	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
@@ -345,7 +348,7 @@ func TestDBBadDatabaseName(t *testing.T) {
 }
 
 func TestDBBadConnection(t *testing.T) {
-
+	startCouchDB()
 	//create a new instance and database object
 	//Limit the maxRetriesOnStartup to 3 in order to reduce time for the failure
 	config := testConfig()
@@ -356,7 +359,7 @@ func TestDBBadConnection(t *testing.T) {
 }
 
 func TestBadDBCredentials(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbbadcredentials"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -372,6 +375,7 @@ func TestBadDBCredentials(t *testing.T) {
 }
 
 func TestDBCreateDatabaseAndPersist(t *testing.T) {
+	startCouchDB()
 
 	//Test create and persist with default configured maxRetries
 	testDBCreateDatabaseAndPersist(t, testConfig().MaxRetries)
@@ -602,7 +606,7 @@ func testDBCreateDatabaseAndPersist(t *testing.T, maxRetries int) {
 }
 
 func TestDBRequestTimeout(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbrequesttimeout"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -629,7 +633,7 @@ func TestDBRequestTimeout(t *testing.T) {
 }
 
 func TestDBTimeoutConflictRetry(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbtimeoutretry"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -670,7 +674,7 @@ func TestDBTimeoutConflictRetry(t *testing.T) {
 }
 
 func TestDBBadNumberOfRetries(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbbadretries"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -686,7 +690,7 @@ func TestDBBadNumberOfRetries(t *testing.T) {
 }
 
 func TestDBBadJSON(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbbadjson"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -715,7 +719,7 @@ func TestDBBadJSON(t *testing.T) {
 }
 
 func TestPrefixScan(t *testing.T) {
-
+	startCouchDB()
 	database := "testprefixscan"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -773,7 +777,7 @@ func TestPrefixScan(t *testing.T) {
 }
 
 func TestDBSaveAttachment(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbsaveattachment"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -813,7 +817,7 @@ func TestDBSaveAttachment(t *testing.T) {
 }
 
 func TestDBDeleteDocument(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbdeletedocument"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -847,7 +851,7 @@ func TestDBDeleteDocument(t *testing.T) {
 }
 
 func TestDBDeleteNonExistingDocument(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbdeletenonexistingdocument"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -868,7 +872,7 @@ func TestDBDeleteNonExistingDocument(t *testing.T) {
 }
 
 func TestCouchDBVersion(t *testing.T) {
-
+	startCouchDB()
 	err := checkCouchDBVersion("2.0.0")
 	assert.NoError(t, err, "Error should not have been thrown for valid version")
 
@@ -884,7 +888,7 @@ func TestCouchDBVersion(t *testing.T) {
 }
 
 func TestIndexOperations(t *testing.T) {
-
+	startCouchDB()
 	database := "testindexoperations"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -1056,7 +1060,7 @@ func TestIndexOperations(t *testing.T) {
 }
 
 func TestRichQuery(t *testing.T) {
-
+	startCouchDB()
 	byteJSON01 := []byte(`{"asset_name":"marble01","color":"blue","size":1,"owner":"jerry"}`)
 	byteJSON02 := []byte(`{"asset_name":"marble02","color":"red","size":2,"owner":"tom"}`)
 	byteJSON03 := []byte(`{"asset_name":"marble03","color":"green","size":3,"owner":"jerry"}`)
@@ -1593,7 +1597,7 @@ func addRevisionAndDeleteStatus(revision string, value []byte, deleted bool) []b
 }
 
 func TestDatabaseSecuritySettings(t *testing.T) {
-
+	startCouchDB()
 	database := "testdbsecuritysettings"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)
@@ -1647,7 +1651,7 @@ func TestDatabaseSecuritySettings(t *testing.T) {
 }
 
 func TestURLWithSpecialCharacters(t *testing.T) {
-
+	startCouchDB()
 	database := "testdb+with+plus_sign"
 	err := cleanup(database)
 	assert.NoError(t, err, "Error when trying to cleanup  Error: %s", err)

@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -234,10 +235,10 @@ func packageID(label string, hash []byte) string {
 }
 
 func CCFileName(packageID string) string {
-	return packageID + ".tar.gz"
+	return strings.Replace(packageID, ":", ".", 1) + ".tar.gz"
 }
 
-var packageFileMatcher = regexp.MustCompile("^(.+):([0-9abcdef]+)[.]tar[.]gz$")
+var packageFileMatcher = regexp.MustCompile("^(.+)[.]([0-9a-f]{64})[.]tar[.]gz$")
 
 func installedChaincodeFromFilename(fileName string) (chaincode.InstalledChaincode, bool) {
 	matches := packageFileMatcher.FindStringSubmatch(fileName)

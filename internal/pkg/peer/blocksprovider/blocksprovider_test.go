@@ -268,14 +268,31 @@ var _ = Describe("Blocksprovider", func() {
 		})
 	})
 
-	When("the consecutive errors are unbounded", func() {
+	When("the consecutive errors are unbounded and the peer is not a static leader", func() {
 		BeforeEach(func() {
 			fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
 			fakeDeliverStreamer.DeliverReturnsOnCall(500, fakeDeliverClient, nil)
 		})
 
-		It("the sleep time hits the maximum value in an exponential fashion and retries until exceeding the max retry duration", func() {
+		It("hits the maximum sleep time value in an exponential fashion and retries until exceeding the max retry duration", func() {
+			d.YieldLeadership = true
 			Eventually(fakeSleeper.SleepCallCount).Should(Equal(380))
+			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
+			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
+			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))
+			Expect(fakeSleeper.SleepArgsForCall(379)).To(Equal(10 * time.Second))
+		})
+	})
+
+	When("the consecutive errors are unbounded and the peer is static leader", func() {
+		BeforeEach(func() {
+			fakeDeliverStreamer.DeliverReturns(nil, fmt.Errorf("deliver-error"))
+			fakeDeliverStreamer.DeliverReturnsOnCall(500, fakeDeliverClient, nil)
+		})
+
+		It("hits the maximum sleep time value in an exponential fashion and retries indefinitely", func() {
+			d.YieldLeadership = false
+			Eventually(fakeSleeper.SleepCallCount).Should(Equal(500))
 			Expect(fakeSleeper.SleepArgsForCall(25)).To(Equal(9539 * time.Millisecond))
 			Expect(fakeSleeper.SleepArgsForCall(26)).To(Equal(10 * time.Second))
 			Expect(fakeSleeper.SleepArgsForCall(27)).To(Equal(10 * time.Second))

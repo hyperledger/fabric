@@ -64,7 +64,7 @@ var _ bool = Describe("PrivateData", func() {
 	})
 
 	Describe("Dissemination when pulling is disabled", func() {
-		It("disseminates private data per collections_config1", func() {
+		BeforeEach(func() {
 			By("setting up the network")
 			network = initThreeOrgsSetup()
 
@@ -78,7 +78,9 @@ var _ bool = Describe("PrivateData", func() {
 
 			By("starting the network")
 			process, orderer = startNetwork(network)
+		})
 
+		It("disseminates private data per collections_config1", func() {
 			By("deploying legacy chaincode and adding marble1")
 			testChaincode := chaincode{
 				Chaincode: nwo.Chaincode{
@@ -101,6 +103,34 @@ var _ bool = Describe("PrivateData", func() {
 			)
 
 			assertPvtdataPresencePerCollectionConfig1(network, testChaincode.Name, "marble1")
+		})
+
+		When("collection config does not have maxPeerCount or requiredPeerCount", func() {
+			It("disseminates private data per collections_config7 with default maxPeerCount and requiredPeerCount", func() {
+				By("deploying legacy chaincode and adding marble1")
+				testChaincode := chaincode{
+					Chaincode: nwo.Chaincode{
+						Name:    "marblesp",
+						Version: "1.0",
+						Path:    "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+						Ctor:    `{"Args":["init"]}`,
+						Policy:  `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+						// collections_config1.json defines the access as follows:
+						// 1. collectionMarbles - Org1, Org2 have access to this collection
+						// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
+						CollectionsConfig: collectionConfig("collections_config7.json"),
+					},
+					isLegacy: true,
+				}
+				deployChaincode(network, orderer, testChaincode)
+				peer := network.Peer("Org1", "peer0")
+				addMarble(network, orderer, testChaincode.Name,
+					`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`,
+					peer,
+				)
+
+				assertPvtdataPresencePerCollectionConfig7(network, testChaincode.Name, "marble1", peer)
+			})
 		})
 	})
 
@@ -701,7 +731,7 @@ func initThreeOrgsSetup() *nwo.Network {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	config := nwo.BasicSolo()
+	config := nwo.FullSolo()
 
 	// add org3 with one peer
 	config.Organizations = append(config.Organizations, &nwo.Organization{
@@ -971,6 +1001,36 @@ func assertPvtdataPresencePerCollectionConfig2(n *nwo.Network, chaincodeName, ma
 	}
 }
 
+func assertPvtdataPresencePerCollectionConfig7(n *nwo.Network, chaincodeName, marbleName string, excludedPeer *nwo.Peer, peers ...*nwo.Peer) {
+	if len(peers) == 0 {
+		peers = n.Peers
+	}
+	collectionMPresence := 0
+	collectionMPDPresence := 0
+	for _, peer := range peers {
+		// exclude the peer that invoked originally and count number of peers disseminated to
+		if peer != excludedPeer {
+			switch peer.Organization {
+
+			case "Org1":
+				collectionMPresence += checkPresentInCollectionM(n, chaincodeName, marbleName, peer)
+				assertNotPresentInCollectionMPD(n, chaincodeName, marbleName, peer)
+
+			case "Org2":
+				collectionMPresence += checkPresentInCollectionM(n, chaincodeName, marbleName, peer)
+				collectionMPDPresence += checkPresentInCollectionMPD(n, chaincodeName, marbleName, peer)
+
+			case "Org3":
+				assertNotPresentInCollectionM(n, chaincodeName, marbleName, peer)
+				collectionMPDPresence += checkPresentInCollectionMPD(n, chaincodeName, marbleName, peer)
+			}
+		}
+	}
+	Expect(collectionMPresence).To(Equal(1))
+	Expect(collectionMPDPresence).To(Equal(1))
+
+}
+
 // assertGetMarblesByRange asserts that
 func assertGetMarblesByRange(n *nwo.Network, chaincodeName, marbleRange string, peer *nwo.Peer) {
 	query := fmt.Sprintf(`{"Args":["getMarblesByRange", %s]}`, marbleRange)
@@ -992,6 +1052,50 @@ func assertPresentInCollectionMPD(n *nwo.Network, chaincodeName, marbleName stri
 	query := fmt.Sprintf(`{"Args":["readMarblePrivateDetails","%s"]}`, marbleName)
 	expectedMsg := fmt.Sprintf(`{"docType":"marblePrivateDetails","name":"%s"`, marbleName)
 	queryChaincodePerPeer(n, query, chaincodeName, expectedMsg, true, peerList...)
+}
+
+// checkPresentInCollectionM checks then number of peers that have the private data for given marble
+// in collection 'readMarble'
+func checkPresentInCollectionM(n *nwo.Network, chaincodeName, marbleName string, peerList ...*nwo.Peer) int {
+	query := fmt.Sprintf(`{"Args":["readMarble","%s"]}`, marbleName)
+	expectedMsg := fmt.Sprintf(`{"docType":"marble","name":"%s"`, marbleName)
+	command := commands.ChaincodeQuery{
+		ChannelID: channelID,
+		Name:      chaincodeName,
+		Ctor:      query,
+	}
+	present := 0
+	for _, peer := range peerList {
+		sess, err := n.PeerUserSession(peer, "User1", command)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
+		if bytes.Contains(sess.Buffer().Contents(), []byte(expectedMsg)) {
+			present++
+		}
+	}
+	return present
+}
+
+// checkPresentInCollectionMPD checks the number of peers that have the private data for given marble
+// in collection 'readMarblePrivateDetails'
+func checkPresentInCollectionMPD(n *nwo.Network, chaincodeName, marbleName string, peerList ...*nwo.Peer) int {
+	query := fmt.Sprintf(`{"Args":["readMarblePrivateDetails","%s"]}`, marbleName)
+	expectedMsg := fmt.Sprintf(`{"docType":"marblePrivateDetails","name":"%s"`, marbleName)
+	command := commands.ChaincodeQuery{
+		ChannelID: channelID,
+		Name:      chaincodeName,
+		Ctor:      query,
+	}
+	present := 0
+	for _, peer := range peerList {
+		sess, err := n.PeerUserSession(peer, "User1", command)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
+		if bytes.Contains(sess.Buffer().Contents(), []byte(expectedMsg)) {
+			present++
+		}
+	}
+	return present
 }
 
 // assertNotPresentInCollectionM asserts that the private data for given marble is NOT present

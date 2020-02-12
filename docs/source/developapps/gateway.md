@@ -50,7 +50,7 @@ A gateway can be used by an application in two different ways:
   profile. Typically, one or two peers from the application's organization are
   specified, and they use [service discovery](../discovery-overview.html) to
   discover the available network topology. This includes peers, orderers,
-  channels, instantiated smart contracts and their endorsement policies. (In
+  channels, deployed smart contracts and their endorsement policies. (In
   production environments, a gateway configuration should specify at least two
   peers for availability.)
 
@@ -131,7 +131,7 @@ Alternatively, the environment variable setting `FABRIC_SDK_DISCOVERY=false`
 will always override the application choice.
 
 Examine the [connection
-profile](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
+profile](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
 used by the MagnetoCorp issue application. See how all the peers, orderers and
 even CAs are specified in this file, including their roles.
 

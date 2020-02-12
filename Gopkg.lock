@@ -370,18 +370,18 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0606c84c601a8974f4a830bfd9b7777bff894e0ce8adb27771df627301fac210"
+  digest = "1:920a1c89ab74d92f68a3d2aa568ee34805cfe9df38ba80fee1c84ebcaf05eb0c"
   name = "github.com/hyperledger/fabric-amcl"
   packages = [
-    "core",
-    "core/FP256BN",
+    "amcl",
+    "amcl/FP256BN",
   ]
   pruneopts = "NUT"
-  revision = "4cd1fa8b40d1e8f6a747f2d19fdb49d2376d1693"
+  revision = "d1aa2665426abb6ec7a5519b1ad7febd405048d3"
 
 [[projects]]
   branch = "master"
-  digest = "1:3744d14df8305f7573c5aeaa3752b57c8bb187d56a814ecbd775086b429c8727"
+  digest = "1:9be51560fb2b402591efb1a7eb2cf0445a7ff50f1e0cb801508b586bbdde649e"
   name = "github.com/hyperledger/fabric-chaincode-go"
   packages = [
     "pkg/statebased",
@@ -390,7 +390,7 @@
     "shimtest",
   ]
   pruneopts = "NUT"
-  revision = "d970cbc54e830c5dc8480ce3e71ffdc663d20fa5"
+  revision = "2d899240a7ed642a381ba9df2f6b0c303cb149dc"
 
 [[projects]]
   digest = "1:0f4305e5a43e324844412168385a23ff23dafc55369fcbbc2ea77fb974f828cc"
@@ -402,7 +402,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4e7cbd9c444eb8e2df4378ad67e7a1add44514e283b738283e44ba507cde39ef"
+  digest = "1:395a5f977a65907f61b64aff820dcdeb250deacf27f9ebffe3b3f516a1e98d4e"
   name = "github.com/hyperledger/fabric-protos-go"
   packages = [
     "common",
@@ -419,7 +419,7 @@
     "transientstore",
   ]
   pruneopts = "NUT"
-  revision = "f5500d5e3e856d49ba46d8eb24e5f4a04be4f1c0"
+  revision = "e9cfc186ba7b712d582dfce320b7441e50e18b4e"
 
 [[projects]]
   branch = "master"
@@ -1060,8 +1060,8 @@
     "github.com/gorilla/mux",
     "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/hashicorp/go-version",
-    "github.com/hyperledger/fabric-amcl/core",
-    "github.com/hyperledger/fabric-amcl/core/FP256BN",
+    "github.com/hyperledger/fabric-amcl/amcl",
+    "github.com/hyperledger/fabric-amcl/amcl/FP256BN",
     "github.com/hyperledger/fabric-chaincode-go/pkg/statebased",
     "github.com/hyperledger/fabric-chaincode-go/shim",
     "github.com/hyperledger/fabric-chaincode-go/shimtest",
@@ -1087,6 +1087,7 @@
     "github.com/onsi/gomega/gbytes",
     "github.com/onsi/gomega/gexec",
     "github.com/onsi/gomega/gstruct",
+    "github.com/onsi/gomega/matchers",
     "github.com/onsi/gomega/types",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",

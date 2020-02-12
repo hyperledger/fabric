@@ -20,6 +20,7 @@ export CORE_PEER_TLS_ENABLED="true"
 export CORE_TLS_CLIENT_CERT_FILE="$ARTIFACTS/client.crt"
 export CORE_TLS_CLIENT_KEY_FILE="$ARTIFACTS/client.key"
 export CORE_PEER_TLS_ROOTCERT_FILE="$ARTIFACTS/root.crt"
+export CORE_PEER_LOCALMSPID="$(jq -r .mspid "$ARTIFACTS/chaincode.json")"
 
 jq -r .client_cert "$ARTIFACTS/chaincode.json" > "$CORE_TLS_CLIENT_CERT_FILE"
 jq -r .client_key  "$ARTIFACTS/chaincode.json" > "$CORE_TLS_CLIENT_KEY_FILE"

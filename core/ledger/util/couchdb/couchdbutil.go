@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -34,7 +35,6 @@ var namespaceNameAllowedLength = 50
 var collectionNameAllowedLength = 50
 
 func CreateCouchInstance(config *Config, metricsProvider metrics.Provider) (*CouchInstance, error) {
-
 	// make sure the address is valid
 	connectURL := &url.URL{
 		Host:   config.Address,

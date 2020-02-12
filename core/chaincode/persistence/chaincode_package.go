@@ -240,13 +240,13 @@ type ChaincodePackageParser struct {
 	MetadataProvider MetadataProvider
 }
 
-var (
-	// LabelRegexp is the regular expression controlling
-	// the allowed characters for the package label
-	LabelRegexp = regexp.MustCompile(`^[[:alnum:]][[:alnum:]_.+-]*$`)
-)
+// LabelRegexp is the regular expression controlling the allowed characters
+// for the package label.
+var LabelRegexp = regexp.MustCompile(`^[[:alnum:]][[:alnum:]_.+-]*$`)
 
-func validateLabel(label string) error {
+// ValidateLabel return an error if the provided label contains any invalid
+// characters, as determined by LabelRegexp.
+func ValidateLabel(label string) error {
 	if !LabelRegexp.MatchString(label) {
 		return errors.Errorf("invalid label '%s'. Label must be non-empty, can only consist of alphanumerics, symbols from '.+-_', and can only begin with alphanumerics", label)
 	}
@@ -309,7 +309,7 @@ func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, erro
 		return nil, errors.Errorf("did not find any package metadata (missing %s)", MetadataFile)
 	}
 
-	if err := validateLabel(ccPackageMetadata.Label); err != nil {
+	if err := ValidateLabel(ccPackageMetadata.Label); err != nil {
 		return nil, err
 	}
 

@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -22,7 +23,7 @@ import (
 )
 
 func TestPvtdataResultsItr(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns1", "coll1"}: 0,

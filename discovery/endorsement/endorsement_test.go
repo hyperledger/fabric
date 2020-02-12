@@ -498,6 +498,59 @@ func TestPeersForEndorsement(t *testing.T) {
 			peerIdentityString("p12"): {},
 		}, extractPeers(desc))
 	})
+
+	t.Run("Private data blind write", func(t *testing.T) {
+		// Scenario XII: The collection has only p0 in it
+		// The chaincode EP is p6 or p0.
+		// The collection endorsement policy is p0 and p6.
+		// However p6 is not in the collection at all (only p0),
+		// so it doesn't have the pre-images.
+		// To that end, the client indicates that it's a blind write
+		// by turning on the "noPrivateRead" field in the request.
+		// This might seem like a pathological case, but it's
+		// effective because it is in the intersection of
+		// several use cases.
+
+		collectionOrgs := []*msp.MSPPrincipal{
+			peerRole("p0"),
+		}
+		col2principals := map[string][]*msp.MSPPrincipal{
+			"collection": collectionOrgs,
+		}
+
+		mf := &metadataFetcher{}
+		mf.On("Metadata").Return(&chaincode.Metadata{
+			Name:              cc,
+			Version:           "1.0",
+			CollectionsConfig: buildCollectionConfig(col2principals),
+		}).Once()
+		pb := principalBuilder{}
+		chaincodeEP := pb.newSet().addPrincipal(peerRole("p0")).newSet(). // p0 or p6
+											addPrincipal(peerRole("p6")).buildPolicy()
+		collectionEP := pb.newSet().addPrincipal(peerRole("p0")). // p0 and p6
+										addPrincipal(peerRole("p6")).buildPolicy()
+		g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
+		pf := &policyFetcherMock{}
+		pf.On("PoliciesByChaincode", cc).Return([]policies.InquireablePolicy{chaincodeEP, collectionEP}).Once()
+		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
+		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
+			Chaincodes: []*discoveryprotos.ChaincodeCall{
+				{
+					Name:            cc,
+					CollectionNames: []string{"collection"},
+					NoPrivateReads:  true, // This means a blind write
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, desc)
+		assert.Len(t, desc.Layouts, 1)
+		assert.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		assert.Equal(t, map[string]struct{}{
+			peerIdentityString("p0"): {},
+			peerIdentityString("p6"): {},
+		}, extractPeers(desc))
+	})
 }
 
 func TestPeersAuthorizedByCriteria(t *testing.T) {

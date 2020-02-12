@@ -141,10 +141,13 @@ Application: &ApplicationDefaults
         # (e.g.,who can receive Block events). This section does NOT specify the resource's
         # definition or API, but just the ACL policy for it.
         #
-        # User's can override these defaults with their own policy mapping by defining the
+        # Users can override these defaults with their own policy mapping by defining the
         # mapping under ACLs in their channel definition
 
         #---New Lifecycle System Chaincode (_lifecycle) function to policy mapping for access control--#
+
+        # ACL policy for _lifecycle's "CheckCommitReadiness" function
+        _lifecycle/CheckCommitReadiness: /Channel/Application/Writers
 
         # ACL policy for _lifecycle's "CommitChaincodeDefinition" function
         _lifecycle/CommitChaincodeDefinition: /Channel/Application/Writers
@@ -152,8 +155,8 @@ Application: &ApplicationDefaults
         # ACL policy for _lifecycle's "QueryChaincodeDefinition" function
         _lifecycle/QueryChaincodeDefinition: /Channel/Application/Readers
 
-        # ACL policy for _lifecycle's "QueryNamespaceDefinitions" function
-        _lifecycle/QueryNamespaceDefinitions: /Channel/Application/Readers
+        # ACL policy for _lifecycle's "QueryChaincodeDefinitions" function
+        _lifecycle/QueryChaincodeDefinitions: /Channel/Application/Readers
 
         #---Lifecycle System Chaincode (lscc) function to policy mapping for access control---#
 

@@ -58,7 +58,7 @@ var _ = Describe("Release interoperability", func() {
 		orderer = network.Orderer("orderer")
 		endorsers = []*nwo.Peer{
 			network.Peer("Org1", "peer0"),
-			network.Peer("Org2", "peer1"),
+			network.Peer("Org2", "peer0"),
 		}
 	})
 
@@ -209,9 +209,11 @@ var _ = Describe("Release interoperability", func() {
 			}
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
-			By("committing the old transaction, expecting to hit an MVCC conflict")
+			By("committing the old transaction")
+			// FAB-17458: because the endorsed tx doesn't have _lifecycle in read set,
+			// it has no read conflict with the cc upgrade via new lifecycle.
 			err = CommitTx(network, env, endorsers[0], deliveryClient, ordererClient, userSigner, txid)
-			Expect(err).To(MatchError(ContainSubstring("transaction invalidated with status (MVCC_READ_CONFLICT)")))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("deploys a chaincode with the new lifecycle, invokes it and the tx is committed only after the chaincode is upgraded via _lifecycle", func() {

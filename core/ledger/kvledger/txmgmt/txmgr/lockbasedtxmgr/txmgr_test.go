@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -839,7 +840,7 @@ func TestValidateKey(t *testing.T) {
 // TestTxSimulatorUnsupportedTx verifies that a simulation must throw an error when an unsupported transaction
 // is perfromed - queries on private data are supported in a read-only tran
 func TestTxSimulatorUnsupportedTx(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "testtxsimulatorunsupportedtx", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
@@ -995,7 +996,7 @@ func TestConstructUniquePvtData(t *testing.T) {
 
 func TestFindAndRemoveStalePvtData(t *testing.T) {
 	ledgerid := "TestFindAndRemoveStalePvtData"
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, ledgerid, nil)
 	defer testEnv.cleanup()
 	db := testEnv.getVDB()
@@ -1178,7 +1179,7 @@ func testValidationAndCommitOfOldPvtData(t *testing.T, env testEnv) {
 }
 
 func TestTxSimulatorMissingPvtdata(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries", nil)
 	defer testEnv.cleanup()
 
@@ -1224,7 +1225,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 			{"ns", "coll"}: 1,
 		},
 	)
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, ledgerid, btlPolicy)
 	defer testEnv.cleanup()
 
@@ -1332,7 +1333,7 @@ func testPvtValueEqual(t *testing.T, txMgr txmgr.TxMgr, ns, coll, key string, va
 
 func TestDeleteOnCursor(t *testing.T) {
 	cID := "cid"
-	env := testEnvs[0]
+	env := testEnvsMap[levelDBtestEnvName]
 	env.init(t, "TestDeleteOnCursor", nil)
 	defer env.cleanup()
 
@@ -1380,7 +1381,7 @@ func TestDeleteOnCursor(t *testing.T) {
 
 func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	ledgerid := "TestTxSimulatorMissingPvtdataExpiry"
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns", "coll"}: 1,

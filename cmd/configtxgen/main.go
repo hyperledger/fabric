@@ -217,7 +217,7 @@ func main() {
 	flag.StringVar(&configPath, "configPath", "", "The path containing the configuration to use (if set)")
 	flag.StringVar(&inspectBlock, "inspectBlock", "", "Prints the configuration contained in the block at the specified path")
 	flag.StringVar(&inspectChannelCreateTx, "inspectChannelCreateTx", "", "Prints the configuration contained in the transaction at the specified path")
-	flag.StringVar(&outputAnchorPeersUpdate, "outputAnchorPeersUpdate", "", "Creates an config update to update an anchor peer (works only with the default channel creation, and only for the first update)")
+	flag.StringVar(&outputAnchorPeersUpdate, "outputAnchorPeersUpdate", "", "[DEPRECATED] Creates a config update to update an anchor peer (works only with the default channel creation, and only for the first update)")
 	flag.StringVar(&asOrg, "asOrg", "", "Performs the config generation as a particular organization (by name), only including values in the write set that org (likely) has privilege to set")
 	flag.StringVar(&printOrg, "printOrg", "", "Prints the definition of an organization as JSON. (useful for adding an org to a channel manually)")
 

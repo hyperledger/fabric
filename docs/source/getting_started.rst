@@ -23,17 +23,15 @@ After you have downloaded the Fabric Samples and Docker images to your local
 machine, you can get started working with Fabric with the
 :doc:`test_network` tutorial.
 
-Hyperledger Fabric smart contract (chaincode) SDKs
+Hyperledger Fabric smart contract (chaincode) APIs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Hyperledger Fabric offers a number of SDKs to support developing smart contracts (chaincode)
-in various programming languages. Smart contract SDKs are available for Go, Node.js, and Java:
+Hyperledger Fabric offers a number of APIs to support developing smart contracts (chaincode)
+in various programming languages. Smart contract APIs are available for Go, Node.js, and Java:
 
-  * Go SDK documentation
-    * `Low-level <https://github.com/hyperledger/fabric-chaincode-go>`__.
-    * `High-level <https://github.com/hyperledger/fabric-contract-api-go>`__.
-  * `Node.js SDK <https://github.com/hyperledger/fabric-chaincode-node>`__ and `Node.js SDK documentation <https://fabric-shim.github.io/>`__.
-  * `Java SDK <https://github.com/hyperledger/fabric-chaincode-java>`__ and `Java SDK documentation <https://hyperledger.github.io/fabric-chaincode-java/>`__.
+  * `Go contract-api <https://github.com/hyperledger/fabric-contract-api-go>`__.
+  * `Node.js contract API <https://github.com/hyperledger/fabric-chaincode-node>`__ and `Node.js contract API documentation <https://hyperledger.github.io/fabric-chaincode-node/>`__.
+  * `Java contract API <https://github.com/hyperledger/fabric-chaincode-java>`__ and `Java contract API documentation <https://hyperledger.github.io/fabric-chaincode-java/>`__.
 
 Hyperledger Fabric application SDKs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -35,7 +35,8 @@ conditional_packages=(
 # join array elements by the specified string
 join_by() {
     local IFS="$1"; shift
-    [ "$#" -ne 0 ] && echo "$*"
+    [ "$#" -eq 0 ] && return 0
+    echo "$*"
 }
 
 contains_element() {

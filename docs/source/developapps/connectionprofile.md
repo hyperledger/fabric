@@ -111,7 +111,7 @@ They allow an application to declare how it would like the gateway to use the
 connection profile. They are interpreted by the SDK to control interaction
 patterns with network components, for example to select which identity to
 connect with, or which peers to use for event notifications. Read
-[about](./connectoptions.html) the list of available connection options and
+[about](./connectionoptions.html) the list of available connection options and
 when to use them.
 
 ## Structure
@@ -119,7 +119,7 @@ when to use them.
 To help you understand the structure of a connection profile, we're going to
 step through an example for the network shown [above](#scenario). Its connection
 profile is based on the PaperNet commercial paper sample, and
-[stored](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
+[stored](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
 in the GitHub repository. For convenience, we've reproduced it [below](#sample).
 You will find it helpful to display it in another browser window as you now read
 about it:
@@ -258,7 +258,7 @@ about it:
 
 Now you've understood a connection profile for MagnetoCorp, you might like to
 look at a
-[corresponding](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
+[corresponding](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml)
 profile for DigiBank. Locate where the profile is the same as MagnetoCorp's, see
 where it's similar, and finally where it's different. Think about why these
 differences make sense for DigiBank applications.
@@ -272,7 +272,7 @@ details of the network topology.
 ## Sample
 
 This file is reproduced inline from the GitHub commercial paper
-[sample](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml).
+[sample](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml).
 
 ```yaml
 1: ---

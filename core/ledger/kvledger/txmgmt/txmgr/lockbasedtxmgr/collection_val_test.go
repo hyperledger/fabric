@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -53,7 +54,7 @@ func TestCollectionValidation(t *testing.T) {
 }
 
 func TestPvtGetNoCollection(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-get-no-collection", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
@@ -67,7 +68,7 @@ func TestPvtGetNoCollection(t *testing.T) {
 	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
 }
 func TestPvtPutNoCollection(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-put-no-collection", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
@@ -79,7 +80,7 @@ func TestPvtPutNoCollection(t *testing.T) {
 }
 
 func TestNoCollectionValidationCheck(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-no-collection-validation-check", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)

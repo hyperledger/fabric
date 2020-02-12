@@ -9,7 +9,7 @@ describes the channel update process in detail.**
 
 For users who want to transition channels from using Kafka-based ordering
 services to [Raft-based](./orderer/ordering_service.html#Raft) ordering services,
-v1.4.2 allows this to be accomplished through a series of configuration update
+nodes at v1.4.2 or higher allow this to be accomplished through a series of configuration update
 transactions on each channel in the network.
 
 This tutorial will describe this process at a high level, calling out specific

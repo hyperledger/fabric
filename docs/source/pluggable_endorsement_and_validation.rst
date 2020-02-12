@@ -96,7 +96,7 @@ The name of the custom plugin needs to be referenced by the chaincode definition
 to be used by the chaincode. If you are using the peer CLI to approve the
 chaincode definition, use the ``--escc`` and ``--vscc`` flag to select the name
 of the custom endorsement or validation library. If you are using the
-Fabric SDK for Node.js, visit `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/master/tutorial-chaincode-lifecycle.html>`__.
+Fabric SDK for Node.js, visit `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`__.
 For more information, see :doc:`chaincode4noah`.
 
 .. note:: Hereafter, custom endorsement or validation logic implementation is
@@ -304,8 +304,8 @@ Important notes
 
 - **Error handling for private metadata retrieval**: In case a plugin retrieves
   metadata for private data by making use of the ``StateFetcher`` interface,
-  it is important that errors are handled as follows: ``CollConfigNotDefinedError''
-  and ``InvalidCollNameError'', signalling that the specified collection does
+  it is important that errors are handled as follows: ``CollConfigNotDefinedError``
+  and ``InvalidCollNameError``, signalling that the specified collection does
   not exist, should be handled as deterministic errors and should not lead the
   plugin to return an ``ExecutionFailureError``.
 

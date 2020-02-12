@@ -31,26 +31,43 @@ import (
 
 var _ = Describe("Cache", func() {
 	var (
-		c                   *lifecycle.Cache
-		resources           *lifecycle.Resources
-		fakeCCStore         *mock.ChaincodeStore
-		fakeParser          *mock.PackageParser
-		fakeMetadataHandler *mock.MetadataHandler
-		channelCache        *lifecycle.ChannelCache
-		localChaincodes     map[string]*lifecycle.LocalChaincode
-		fakePublicState     MapLedgerShim
-		fakePrivateState    MapLedgerShim
-		fakeQueryExecutor   *mock.SimpleQueryExecutor
-		chaincodeCustodian  *lifecycle.ChaincodeCustodian
+		c                       *lifecycle.Cache
+		resources               *lifecycle.Resources
+		fakeCCStore             *mock.ChaincodeStore
+		fakeParser              *mock.PackageParser
+		fakeChannelConfigSource *mock.ChannelConfigSource
+		fakeChannelConfig       *mock.ChannelConfig
+		fakeApplicationConfig   *mock.ApplicationConfig
+		fakeCapabilities        *mock.ApplicationCapabilities
+		fakePolicyManager       *mock.PolicyManager
+		fakeMetadataHandler     *mock.MetadataHandler
+		channelCache            *lifecycle.ChannelCache
+		localChaincodes         map[string]*lifecycle.LocalChaincode
+		fakePublicState         MapLedgerShim
+		fakePrivateState        MapLedgerShim
+		fakeQueryExecutor       *mock.SimpleQueryExecutor
+		chaincodeCustodian      *lifecycle.ChaincodeCustodian
 	)
 
 	BeforeEach(func() {
 		fakeCCStore = &mock.ChaincodeStore{}
 		fakeParser = &mock.PackageParser{}
+		fakeChannelConfigSource = &mock.ChannelConfigSource{}
+		fakeChannelConfig = &mock.ChannelConfig{}
+		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
+		fakeApplicationConfig = &mock.ApplicationConfig{}
+		fakeChannelConfig.ApplicationConfigReturns(fakeApplicationConfig, true)
+		fakeCapabilities = &mock.ApplicationCapabilities{}
+		fakeCapabilities.LifecycleV20Returns(true)
+		fakeApplicationConfig.CapabilitiesReturns(fakeCapabilities)
+		fakePolicyManager = &mock.PolicyManager{}
+		fakePolicyManager.GetPolicyReturns(nil, true)
+		fakeChannelConfig.PolicyManagerReturns(fakePolicyManager)
 		resources = &lifecycle.Resources{
-			PackageParser:  fakeParser,
-			ChaincodeStore: fakeCCStore,
-			Serializer:     &lifecycle.Serializer{},
+			PackageParser:       fakeParser,
+			ChaincodeStore:      fakeCCStore,
+			ChannelConfigSource: fakeChannelConfigSource,
+			Serializer:          &lifecycle.Serializer{},
 		}
 
 		fakeCCStore.ListInstalledChaincodesReturns([]chaincode.InstalledChaincode{
@@ -117,6 +134,9 @@ var _ = Describe("Cache", func() {
 			}))): {
 				References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
 					"channel-id": {
+						"chaincode-name": channelCache.Chaincodes["chaincode-name"],
+					},
+					"another-channel-id": {
 						"chaincode-name": channelCache.Chaincodes["chaincode-name"],
 					},
 				},
@@ -215,6 +235,45 @@ var _ = Describe("Cache", func() {
 				Expect(err).To(MatchError("unknown channel 'missing-channel-id'"))
 			})
 		})
+
+		Context("when the chaincode name is the _lifecycle system chaincode", func() {
+			It("returns info about _lifecycle", func() {
+				localInfo, err := c.ChaincodeInfo("channel-id", "_lifecycle")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(localInfo).To(Equal(&lifecycle.LocalChaincodeInfo{
+					Definition: &lifecycle.ChaincodeDefinition{
+						Sequence: 1,
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationParameter: lifecycle.LifecycleDefaultEndorsementPolicyBytes,
+						},
+					},
+					InstallInfo: &lifecycle.ChaincodeInstallInfo{},
+					Approved:    true,
+				}))
+			})
+		})
+
+		Context("when the application config cannot be found", func() {
+			BeforeEach(func() {
+				fakeChannelConfig.ApplicationConfigReturns(nil, false)
+			})
+
+			It("returns an error", func() {
+				_, err := c.ChaincodeInfo("channel-id", "_lifecycle")
+				Expect(err).To(MatchError("application config does not exist for channel 'channel-id'"))
+			})
+		})
+
+		Context("when the application config V2_0 capabilities are not enabled", func() {
+			BeforeEach(func() {
+				fakeCapabilities.LifecycleV20Returns(false)
+			})
+
+			It("returns an error", func() {
+				_, err := c.ChaincodeInfo("channel-id", "_lifecycle")
+				Expect(err).To(MatchError("cannot use _lifecycle without V2_0 application capabilities enabled for channel 'channel-id'"))
+			})
+		})
 	})
 
 	Describe("ListInstalledChaincodes", func() {
@@ -226,6 +285,12 @@ var _ = Describe("Cache", func() {
 					PackageID: "packageID",
 					References: map[string][]*chaincode.Metadata{
 						"channel-id": {
+							&chaincode.Metadata{
+								Name:    "chaincode-name",
+								Version: "chaincode-version",
+							},
+						},
+						"another-channel-id": {
 							&chaincode.Metadata{
 								Name:    "chaincode-name",
 								Version: "chaincode-version",
@@ -245,6 +310,12 @@ var _ = Describe("Cache", func() {
 				PackageID: "packageID",
 				References: map[string][]*chaincode.Metadata{
 					"channel-id": {
+						&chaincode.Metadata{
+							Name:    "chaincode-name",
+							Version: "chaincode-version",
+						},
+					},
+					"another-channel-id": {
 						&chaincode.Metadata{
 							Name:    "chaincode-name",
 							Version: "chaincode-version",
@@ -533,7 +604,7 @@ var _ = Describe("Cache", func() {
 
 			It("wraps and returns the error", func() {
 				err := c.Initialize("channel-id", fakeQueryExecutor)
-				Expect(err).To(MatchError("could not check opaque org state for 'chaincode-name' on channel 'channel-id': could not get value for key namespaces/metadata/chaincode-name#7: private-data-error"))
+				Expect(err).To(MatchError("could not check opaque org state for chaincode source hash for 'chaincode-name' on channel 'channel-id': private-data-error"))
 			})
 
 			Context("when the private state returns an error for the chaincode source metadata", func() {
@@ -674,6 +745,14 @@ var _ = Describe("Cache", func() {
 					Policy:            []byte("validation-parameter"),
 					CollectionsConfig: &pb.CollectionConfigPackage{},
 					Approved:          false,
+					Installed:         true,
+				},
+				chaincode.Metadata{
+					Name:              "_lifecycle",
+					Version:           "1",
+					Policy:            lifecycle.LifecycleDefaultEndorsementPolicyBytes,
+					CollectionsConfig: nil,
+					Approved:          true,
 					Installed:         true,
 				},
 			))
@@ -867,11 +946,11 @@ var _ = Describe("Cache", func() {
 			var (
 				definitionTrigger *ledger.StateUpdateTrigger
 				approvalTrigger   *ledger.StateUpdateTrigger
-				install           func()
-				define            func()
-				approve           func()
+				install           func(string)
+				define            func(string, int64)
+				approve           func(string, string, int64)
 				verifyNoEvent     func()
-				verifyEvent       func()
+				verifyEvent       func(string, string)
 			)
 			BeforeEach(func() {
 				definitionTrigger = &ledger.StateUpdateTrigger{
@@ -904,21 +983,21 @@ var _ = Describe("Cache", func() {
 					PostCommitQueryExecutor: fakeQueryExecutor,
 				}
 
-				install = func() {
+				install = func(packageID string) {
 					c.HandleChaincodeInstalled(
 						&persistence.ChaincodePackageMetadata{
 							Type:  "cc-type",
 							Path:  "cc-path",
 							Label: "label",
 						},
-						"packageID-1",
+						packageID,
 					)
 				}
 
-				define = func() {
-					err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name-1",
+				define = func(chaincodeName string, sequence int64) {
+					err := resources.Serializer.Serialize(lifecycle.NamespacesName, chaincodeName,
 						&lifecycle.ChaincodeDefinition{
-							Sequence:        1,
+							Sequence:        sequence,
 							EndorsementInfo: &lb.ChaincodeEndorsementInfo{Version: "version-1"},
 						}, fakePublicState)
 					Expect(err).NotTo(HaveOccurred())
@@ -926,16 +1005,17 @@ var _ = Describe("Cache", func() {
 					Expect(err).NotTo(HaveOccurred())
 				}
 
-				approve = func() {
-					err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name-1#1",
+				approve = func(packageID, chaincodeName string, sequence int64) {
+					err := resources.Serializer.Serialize(lifecycle.NamespacesName, fmt.Sprintf("%s#%d", chaincodeName, sequence),
 						&lifecycle.ChaincodeParameters{
 							EndorsementInfo: &lb.ChaincodeEndorsementInfo{Version: "version-1"},
 						},
 						fakePrivateState)
 					Expect(err).NotTo(HaveOccurred())
-					err = resources.Serializer.Serialize(lifecycle.ChaincodeSourcesName, "chaincode-name-1#1",
+					err = resources.Serializer.Serialize(lifecycle.ChaincodeSourcesName, fmt.Sprintf("%s#%d", chaincodeName, sequence),
+
 						&lifecycle.ChaincodeLocalPackage{
-							PackageID: "packageID-1",
+							PackageID: packageID,
 						},
 						fakePrivateState)
 					Expect(err).NotTo(HaveOccurred())
@@ -948,24 +1028,23 @@ var _ = Describe("Cache", func() {
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(0))
 				}
 
-				verifyEvent = func() {
+				verifyEvent = func(packageID, chaincodeName string) {
 					Expect(fakeListener.HandleChaincodeDeployCallCount()).To(Equal(1))
 					ccdef, dbArtifacts := fakeListener.HandleChaincodeDeployArgsForCall(0)
-					Expect(ccdef.Name).To(Equal("chaincode-name-1"))
+					Expect(ccdef.Name).To(Equal(chaincodeName))
 					Expect(ccdef.Version).To(Equal("version-1"))
-					Expect(ccdef.Hash).To(Equal([]byte("packageID-1")))
+					Expect(ccdef.Hash).To(Equal([]byte(packageID)))
 					Expect(dbArtifacts).To(Equal([]byte("db-artifacts")))
 				}
 			})
 
 			Context("when chaincode becomes invokable by the sequence of events define, install, and approve", func() {
-
 				It("causes the event listener to receive event on approve step", func() {
-					define()
-					install()
+					define("chaincode-name-1", 1)
+					install("packageID-1")
 					verifyNoEvent()
-					approve()
-					verifyEvent()
+					approve("packageID-1", "chaincode-name-1", 1)
+					verifyEvent("packageID-1", "chaincode-name-1")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(0))
 					c.StateCommitDone("channel-id")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
@@ -973,13 +1052,12 @@ var _ = Describe("Cache", func() {
 			})
 
 			Context("when chaincode becomes invokable by the sequence of events install, define, and approve", func() {
-
 				It("causes the event listener to receive event on approve step", func() {
-					install()
-					define()
+					install("packageID-1")
+					define("chaincode-name-1", 1)
 					verifyNoEvent()
-					approve()
-					verifyEvent()
+					approve("packageID-1", "chaincode-name-1", 1)
+					verifyEvent("packageID-1", "chaincode-name-1")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(0))
 					c.StateCommitDone("channel-id")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
@@ -987,13 +1065,12 @@ var _ = Describe("Cache", func() {
 			})
 
 			Context("when chaincode becomes invokable by the sequence of events install, approve, and define", func() {
-
 				It("causes the event listener to receive event on define step", func() {
-					install()
-					approve()
+					install("packageID-1")
+					approve("packageID-1", "chaincode-name-1", 1)
 					verifyNoEvent()
-					define()
-					verifyEvent()
+					define("chaincode-name-1", 1)
+					verifyEvent("packageID-1", "chaincode-name-1")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(0))
 					c.StateCommitDone("channel-id")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
@@ -1001,13 +1078,12 @@ var _ = Describe("Cache", func() {
 			})
 
 			Context("when chaincode becomes invokable by the sequence of events approve, install, and define", func() {
-
 				It("causes the event listener to receive event on define step", func() {
-					approve()
-					install()
+					approve("packageID-1", "chaincode-name-1", 1)
+					install("packageID-1")
 					verifyNoEvent()
-					define()
-					verifyEvent()
+					define("chaincode-name-1", 1)
+					verifyEvent("packageID-1", "chaincode-name-1")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(0))
 					c.StateCommitDone("channel-id")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
@@ -1015,26 +1091,56 @@ var _ = Describe("Cache", func() {
 			})
 
 			Context("when chaincode becomes invokable by the sequence of events define, approve, and install", func() {
-
 				It("causes the event listener to receive event on install step", func() {
-					define()
-					approve()
+					define("chaincode-name-1", 1)
+					approve("packageID-1", "chaincode-name-1", 1)
 					verifyNoEvent()
-					install()
-					verifyEvent()
+					install("packageID-1")
+					verifyEvent("packageID-1", "chaincode-name-1")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
 				})
 			})
 
 			Context("when chaincode becomes invokable by the sequence of events approve, define, and install", func() {
-
 				It("causes the event listener to receive event on install step", func() {
-					approve()
-					define()
+					approve("packageID-1", "chaincode-name-1", 1)
+					define("chaincode-name-1", 1)
 					verifyNoEvent()
-					install()
-					verifyEvent()
+					install("packageID-1")
+					verifyEvent("packageID-1", "chaincode-name-1")
 					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
+				})
+			})
+
+			Context("when chaincode definition is updated by the sequence of events install, approve, and define for existing chaincode name", func() {
+				BeforeEach(func() {
+					channelCache.Chaincodes["chaincode-name"].InstallInfo = &lifecycle.ChaincodeInstallInfo{
+						Label:     "chaincode-label",
+						PackageID: "packageID",
+					}
+					definitionTrigger.StateUpdates["_lifecycle"].PublicUpdates[0].Key = "namespaces/fields/chaincode-name/Sequence"
+
+					approvalTrigger.StateUpdates["_lifecycle"].CollHashUpdates["_implicit_org_my-mspid"] = []*kvrwset.KVWriteHash{
+						{KeyHash: util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#4/EndorsementInfo"))},
+					}
+
+				})
+
+				It("receives the event and cleans up stale chaincode definition references", func() {
+					install("packageID-1")
+					approve("packageID-1", "chaincode-name", 4)
+					define("chaincode-name", 4)
+					c.StateCommitDone("channel-id")
+					verifyEvent("packageID-1", "chaincode-name")
+					Expect(fakeListener.ChaincodeDeployDoneCallCount()).To(Equal(1))
+
+					installedCC, err := c.GetInstalledChaincode("packageID")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(installedCC.References["channel-id"]).To(HaveLen(0))
+					Expect(installedCC.References["another-channel-id"]).To(HaveLen(1))
+					installedCC, err = c.GetInstalledChaincode("packageID-1")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(installedCC.References["channel-id"]).To(HaveLen(1))
 				})
 			})
 		})

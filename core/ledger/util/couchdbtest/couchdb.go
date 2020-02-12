@@ -14,29 +14,21 @@ import (
 )
 
 // CouchDBSetup setup external couchDB resource.
-func CouchDBSetup(couchdbMountDir string, localdHostDir string) (addr string, cleanup func()) {
+func CouchDBSetup(binds []string) (addr string, cleanup func()) {
+	// check if couchDB is being started externally.
 	externalCouch, set := os.LookupEnv("COUCHDB_ADDR")
 	if set {
 		return externalCouch, func() {}
 	}
 
 	couchDB := &runner.CouchDB{}
-	if couchdbMountDir != "" || localdHostDir != "" {
-		couchDB.Name = "ledger13_upgrade_test"
-		couchDB.Binds = []string{
-			fmt.Sprintf("%s:%s", couchdbMountDir, "/opt/couchdb/data"),
-			fmt.Sprintf("%s:%s", localdHostDir, "/opt/couchdb/etc/local.d"),
-		}
-	}
+	couchDB.Binds = binds
+
 	err := couchDB.Start()
 	if err != nil {
 		err = fmt.Errorf("failed to start couchDB : %s", err)
 		panic(err)
 	}
 
-	os.Setenv("COUCHDB_ADDR", couchDB.Address())
-	return couchDB.Address(), func() {
-		couchDB.Stop()
-		os.Unsetenv("COUCHDB_ADDR")
-	}
+	return couchDB.Address(), func() { couchDB.Stop() }
 }
