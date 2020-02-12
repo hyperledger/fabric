@@ -61,8 +61,9 @@ every organization on a channel needs to complete each step.
 
 This tutorial provides a detailed overview of the operations of the Fabric
 chaincode lifecycle rather than the specific commands. To learn more about how
-to use the Fabric lifecycle using the Peer CLI, see [Install and define a chaincode](build_network.html#install-define-chaincode)
-in the Building your First Network Tutorial or the [peer lifecycle command reference](commands/peerlifecycle.html).
+to use the Fabric lifecycle using the Peer CLI, see the
+[Deploying a smart contract to a channel tutorial](deploy_chaincode.html)
+or the [peer lifecycle command reference](commands/peerlifecycle.html).
 
 ### Step One: Packaging the smart contract
 
