@@ -10,9 +10,9 @@ values.
 
 In this topic, we're going to cover:
 
-* [What is a Ledger?](#what-is-a-ledger?)
+* [What is a Ledger?](#what-is-a-ledger)
 * [Storing facts about business objects](#ledgers-facts-and-states)
-* [A blockchain ledger](#a-blockchain-ledger)
+* [A blockchain ledger](#the-ledger)
 * [The world state](#world-state)
 * [The blockchain data structure](#blockchain)
 * [How blocks are stored in a blockchain](#blocks)
@@ -375,7 +375,7 @@ the same chaincode can access a given namespace.
 
 A blockchain is not namespaced. It contains transactions from many different
 smart contract namespaces. You can read more about chaincode namespaces in this
-[topic](./developapps/chaincodenamespace.html).
+[topic](../developapps/chaincodenamespace.html).
 
 Let's now look at how the concept of a namespace is applied within a Hyperledger
 Fabric channel.
@@ -389,7 +389,7 @@ smart contracts to communicate between channels so that ledger information can
 be accessed between them.
 
 You can read more about how ledgers work with channels in this
-[topic](./developapps/chaincodenamespace.html#channel).
+[topic](../developapps/chaincodenamespace.html#channels).
 
 
 ## More information
