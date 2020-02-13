@@ -5,7 +5,7 @@
 
 A chaincode needs to be packaged before it can be installed on your peers.
 This example uses the `peer lifecycle chaincode package` command to package
-a Golang chaincode.
+a Go chaincode.
 
   * Use the `--label` flag to provide a chaincode package label of `myccv1`
     that your organization will use to identify the package.

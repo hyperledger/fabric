@@ -40,7 +40,7 @@ is motivated by these same two concerns -- to present the current value of a set
 of ledger states, and to capture the history of the transactions that determined
 these states.
 
-## Ledgers, Facts and States
+## Ledgers, Facts, and States
 
 A ledger doesn't literally store business objects -- instead it stores **facts**
 about those objects. When we say "we store a business object in a ledger" what

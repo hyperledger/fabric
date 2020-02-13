@@ -244,7 +244,7 @@ The `deployCC` subcommand will install the **fabcar** chaincode on
 the chaincode on the channel specified using the channel flag (or `mychannel`
 if no channel is specified). If are deploying a chaincode for the first time, the
 script will install the chaincode dependencies. By default, The script installs
-the Golang version of the fabcar chaincode. However, you can use the language
+the Go version of the fabcar chaincode. However, you can use the language
 flag, `-l`, to install the Java or javascript versions of the chaincode.
 
 After the **fabcar** chaincode definition has been committed to the channel, the

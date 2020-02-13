@@ -7,8 +7,8 @@ State Database options
 The current options for the peer state database are LevelDB and CouchDB. LevelDB is the default
 key-value state database embedded in the peer process. CouchDB is an alternative external state database.
 Like the LevelDB key-value store, CouchDB can store any binary data that is modeled in chaincode
-(CouchDB attachment functionality is used internally for non-JSON binary data). But as a document
-object store, CouchDB allows you to store data in JSON format, issue rich queries against your data,
+(CouchDB attachments are used internally for non-JSON data). As a document object store,
+CouchDB allows you to store data in JSON format, issue rich queries against your data,
 and use indexes to support your queries.
 
 Both LevelDB and CouchDB support core chaincode operations such as getting and setting a key

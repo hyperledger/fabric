@@ -1,8 +1,8 @@
 Coding guidelines
 -----------------
 
-Coding Golang
-~~~~~~~~~~~~~~
+Coding in Go
+~~~~~~~~~~~~
 
 We code in Go™ and try to follow the best practices and style outlined in
 `Effective Go <https://golang.org/doc/effective_go.html>`__ and the
@@ -54,7 +54,7 @@ manage the generation with the following tools:
 API Documentation
 ^^^^^^^^^^^^^^^^^
 
-The API documentation for Hyperledger Fabric's Golang APIs is available
+The API documentation for Hyperledger Fabric's Go APIs is available
 in `GoDoc <https://godoc.org/github.com/hyperledger/fabric>`_.
 
 

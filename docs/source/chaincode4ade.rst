@@ -4,7 +4,7 @@ Chaincode for Developers
 What is Chaincode?
 ------------------
 
-Chaincode is a program, written in `Go <https://golang.org>`_, `node.js <https://nodejs.org>`_,
+Chaincode is a program, written in `Go <https://golang.org>`_, `Node.js <https://nodejs.org>`_,
 or `Java <https://java.com/en/>`_ that implements a prescribed interface.
 Chaincode runs in a secured Docker container isolated from the endorsing peer
 process. Chaincode initializes and manages the ledger state through transactions
@@ -30,7 +30,7 @@ are called in response to received transactions. You can find the reference
 documentation of the Chaincode Shim API for different languages below:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#Chaincode>`__
-  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeInterface.html>`__
+  - `Node.js <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeInterface.html>`__
   - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/Chaincode.html>`_
 
 In each language, the ``Invoke`` method is called by clients to submit transaction
@@ -54,7 +54,7 @@ function by using the `peer chaincode invoke` command and passing the
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
-  - `node.js <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html>`__
+  - `Node.js <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html>`__
   - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`_
 
 which is used to access and modify the ledger, and to make invocations between
@@ -74,7 +74,7 @@ Choosing a Location for the Code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you haven't been doing programming in Go, you may want to make sure that
-you have :ref:`Golang` installed and your system properly configured.
+you have :ref:`Go` installed and your system properly configured.
 
 Now, you will want to create a directory for your chaincode application as a
 child directory of ``$GOPATH/src/``.
