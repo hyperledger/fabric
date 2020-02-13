@@ -154,7 +154,7 @@ Next, you can bring the network up with one of the following commands:
 
   ./byfn.sh up
 
-The above command will compile Golang chaincode images and spin up the corresponding
+The above command will compile Go chaincode images and spin up the corresponding
 containers. Go is the default chaincode language, however there is also support
 for `Node.js <https://hyperledger.github.io/fabric-chaincode-node/>`_ and `Java <https://hyperledger.github.io/fabric-chaincode-java/>`_
 chaincode. If you'd like to run through this tutorial with node chaincode, pass
@@ -163,7 +163,7 @@ the following command instead:
 .. code:: bash
 
   # we use the -l flag to specify the chaincode language
-  # forgoing the -l flag will default to Golang
+  # forgoing the -l flag will default to "golang"
 
   ./byfn.sh up -l javascript
 
@@ -632,18 +632,18 @@ each package you create, you need to provide a chaincode package label as a
 description of the chaincode. Use the following commands to package a sample
 Go, Node.js or Java chaincode.
 
-**Golang**
+**Go**
 
 .. code:: bash
 
-    # before packaging Golang chaincode, vendoring Go dependencies is required like the following commands.
+    # before packaging Go chaincode, vendoring Go dependencies is required like the following commands.
     cd /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/go
     GO111MODULE=on go mod vendor
     cd -
 
-    # this packages a Golang chaincode.
+    # this packages a Go chaincode.
     # make note of the --lang flag to indicate "golang" chaincode
-    # for go chaincode --path takes the relative path from $GOPATH/src
+    # for Go chaincode --path takes the relative path from $GOPATH/src
     # The --label flag is used to create the package label
     peer lifecycle chaincode package mycc.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/abstore/go/ --lang golang --label mycc_1
 
@@ -653,7 +653,7 @@ Go, Node.js or Java chaincode.
 
     # this packages a Node.js chaincode
     # make note of the --lang flag to indicate "node" chaincode
-    # for node chaincode --path takes the absolute path to the node.js chaincode
+    # for node chaincode --path takes the absolute path to the Node.js chaincode
     # The --label flag is used to create the package label
     peer lifecycle chaincode package mycc.tar.gz --path /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/javascript/ --lang node --label mycc_1
 
@@ -663,7 +663,7 @@ Go, Node.js or Java chaincode.
 
     # this packages a java chaincode
     # make note of the --lang flag to indicate "java" chaincode
-    # for java chaincode --path takes the absolute path to the java chaincode
+    # for java chaincode --path takes the absolute path to the Java chaincode
     # The --label flag is used to create the package label
     peer lifecycle chaincode package mycc.tar.gz --path /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/java/ --lang java --label mycc_1
 
@@ -1195,12 +1195,12 @@ channel, use the following steps to interact with the **marbles02** chaincode:
 
 .. code:: bash
 
-       # before packaging Golang chaincode, vendoring Go dependencies is required like the following commands.
+       # before packaging Go chaincode, vendoring dependencies is required.
        cd /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/marbles02/go
        GO111MODULE=on go mod vendor
        cd -
 
-       # packages and installs the Golang chaincode
+       # package and install the Go chaincode
        peer lifecycle chaincode package marbles.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/marbles02/go/ --lang golang --label marbles_1
        peer lifecycle chaincode install marbles.tar.gz
 

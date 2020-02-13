@@ -44,7 +44,7 @@ policy.
 Policies are one of the things that make Hyperledger Fabric different from other
 blockchains like Ethereum or Bitcoin. In those systems, transactions can be
 generated and validated by any node in the network. The policies that govern the
-network are fixed at any point in time and can only to be changed using the same
+network are fixed at any point in time and can only be changed using the same
 process that governs the code. Because Fabric is a permissioned blockchain whose
 users are recognized by the underlying infrastructure, those users have the
 ability to decide on the governance of the network before it is launched, and

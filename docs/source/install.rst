@@ -1,5 +1,5 @@
-Install Samples, Binaries and Docker Images
-===========================================
+Install Samples, Binaries, and Docker Images
+============================================
 
 While we work on developing real installers for the Hyperledger Fabric
 binaries, we provide a script that will download and install samples and

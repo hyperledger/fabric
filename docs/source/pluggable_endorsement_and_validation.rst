@@ -28,7 +28,7 @@ Fabric allows for the implementation and deployment of custom endorsement and
 validation logic into the peer to be associated with chaincode handling in a
 pluggable manner. This logic can be either compiled into the peer as built in
 selectable logic, or compiled and deployed alongside the peer as a
-`Golang plugin <https://golang.org/pkg/plugin/>`_.
+`Go plugin <https://golang.org/pkg/plugin/>`_.
 
 By default, A chaincode will use the built in endorsement and validation logic.
 However, users have the option of selecting custom endorsement and validation
@@ -67,7 +67,7 @@ validation logic to be added, this construct needs to be extended with any
 additional methods.
 
 Since this is cumbersome and poses a deployment challenge, one can also deploy
-custom endorsement and validation as a Golang plugin by adding another property
+custom endorsement and validation as a Go plugin by adding another property
 under the ``name`` called ``library``.
 
 For example, if we have custom endorsement and validation logic which is

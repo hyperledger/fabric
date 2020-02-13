@@ -6,9 +6,9 @@ The document serves to provide details on the setup and best practices for MSPs.
 Membership Service Provider (MSP) is a Hyperledger Fabric component that offers
 an abstraction of membership operations.
 
-In particular, MSP abstracts away all cryptographic mechanisms and protocols
-behind issuing certificates, validating certificates and user authentication. An
-MSP may define their own notion of identity, and the rules by which those
+In particular, an MSP abstracts away all cryptographic mechanisms and protocols
+behind issuing certificates, validating certificates, and user authentication.
+An MSP may define its own notion of identity, and the rules by which those
 identities are governed (identity validation) and authenticated (signature
 generation and verification).
 
@@ -37,7 +37,7 @@ to as the *MSP Identifier* or *MSP ID*. MSP Identifiers are required to be uniqu
 instance. For example, shall two MSP instances with the same identifier be
 detected at the system channel genesis, orderer setup will fail.
 
-In the case of default implementation of MSP, a set of parameters need to be
+In the case of the default MSP implementation, a set of parameters need to be
 specified to allow for identity (certificate) validation and signature
 verification. These parameters are deduced by
 `RFC5280 <http://www.ietf.org/rfc/rfc5280.txt>`_, and include:
@@ -61,7 +61,7 @@ verification. These parameters are deduced by
   exactly one of the listed (intermediate or root) MSP Certificate
   Authorities; this is an optional parameter
 - A list of self-signed (X.509) certificates to constitute the *TLS root of
-  trust* for TLS certificate.
+  trust* for TLS certificates.
 - A list of X.509 certificates to represent intermediate TLS CAs this provider
   considers; these certificates ought to be
   certified by exactly one of the certificates in the TLS root of trust;
@@ -94,11 +94,11 @@ support for enforcing revocation of TLS certificates.
 How to generate MSP certificates and their signing keys?
 --------------------------------------------------------
 
-To generate X.509 certificates to feed its MSP configuration, the application
-can use `Openssl <https://www.openssl.org/>`_. We emphasize that in Hyperledger
-Fabric there is no support for certificates including RSA keys.
+`Openssl <https://www.openssl.org/>`_ can be used to generate X.509
+certificates and keys. Please note that Hyperledger Fabric does not support
+RSA key and certificates.
 
-Alternatively one can use ``cryptogen`` tool, whose operation is explained in
+Alternatively, the ``cryptogen`` tool can be used as described in
 :doc:`getting_started`.
 
 `Hyperledger Fabric CA <http://hyperledger-fabric-ca.readthedocs.io/en/latest/>`_

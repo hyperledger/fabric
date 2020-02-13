@@ -78,11 +78,10 @@ automatically create a file in this format.
 - The chaincode needs to be packaged in a tar file, ending with a `.tar.gz` file
   extension.
 - The tar file needs to contain two files (no directory): a metadata file
-  "Chaincode-Package-Metadata.json" and another tar containing the chaincode
-  files.
-- "Chaincode-Package-Metadata.json" contains JSON that specifies the
-  chaincode language, code path, and package label.
-  You can see an example of a metadata file below:
+  "metadata.json" and another tar containing the chaincode files.
+- "metadata.json" contains JSON that specifies the
+  chaincode language, code path, and package label. You can see an example of
+  a metadata file below:
   ```
   {"Path":"fabric-samples/chaincode/fabcar/go","Type":"golang","Label":"fabcarv1"}
   ```
@@ -414,7 +413,7 @@ defining it on a channel in production.
 
   ![Using different chaincode languages](lifecycle/Lifecycle-languages.png)
 
-*Org1 installs a package of the MYCC chaincode written in Golang, while Org2
+*Org1 installs a package of the MYCC chaincode written in Go, while Org2
 installs MYCC written in Java.*
 
 Organizations can also use this capability to install smart contracts that
