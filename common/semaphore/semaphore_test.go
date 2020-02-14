@@ -19,7 +19,7 @@ func TestNewSemaphorePanic(t *testing.T) {
 	assert.PanicsWithValue(t, "permits must be greater than 0", func() { semaphore.New(0) })
 }
 
-func TestSemaphoreBlocking(t *testing.T) {
+func TestSemaphoreAcquireBlocking(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	sema := semaphore.New(5)
@@ -42,7 +42,7 @@ func TestSemaphoreBlocking(t *testing.T) {
 	gt.Eventually(done).Should(BeClosed())
 }
 
-func TestSemaphoreContextError(t *testing.T) {
+func TestSemaphoreAcquireContextError(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	sema := semaphore.New(1)
@@ -55,6 +55,17 @@ func TestSemaphoreContextError(t *testing.T) {
 	go func() { errCh <- sema.Acquire(ctx) }()
 
 	gt.Eventually(errCh).Should(Receive(Equal(context.Canceled)))
+}
+
+func TestSemaphoreTryAcquireBufferFull(t *testing.T) {
+	gt := NewGomegaWithT(t)
+
+	sema := semaphore.New(5)
+	for i := 0; i < 5; i++ {
+		gt.Expect(t, true, sema.TryAcquire())
+	}
+
+	gt.Expect(t, false, sema.TryAcquire())
 }
 
 func TestSemaphoreReleaseTooMany(t *testing.T) {

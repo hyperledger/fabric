@@ -422,10 +422,15 @@ peer:
 
     # Limits is used to configure some internal resource limits.
     limits:
-      # Concurrency limits the number of concurrently running system chaincode requests.
-      # This option is only supported for qscc at this time.
-      concurrency:
-        qscc: 5000
+        # Concurrency limits the number of concurrently running requests to a service on each peer.
+        # Currently this option is only applied to endorser service and deliver service.
+        # When the property is missing or the value is 0, the concurrency limit is disabled for the service.
+        concurrency:
+            # endorserService limits concurrent requests to endorser service that handles chaincode deployment, query and invocation,
+            # including both user chaincodes and system chaincodes.
+            endorserService: 2500
+            # deliverService limits concurrent event listeners registered to deliver service for blocks and transaction events.
+            deliverService: 2500
 
 ###############################################################################
 #

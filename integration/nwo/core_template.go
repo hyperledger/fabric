@@ -136,7 +136,8 @@ peer:
     orgMembersAllowedAccess: false
   limits:
     concurrency:
-      qscc: 500
+      endorserService: 100
+      deliverService: 1
 
 vm:
   endpoint: unix:///var/run/docker.sock
