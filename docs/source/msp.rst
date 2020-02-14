@@ -189,17 +189,24 @@ below:
 
    NodeOUs:
      Enable: true
+     # For each identity classification that you would like to utilize, specify
+     # an OU identifier.
+     # You can optionally configure that the OU identifier must be issued by a specific CA
+     # or intermediate certificate from your organization. However, it is typical to NOT
+     # configure a specific Certificate. By not configuring a specific Certificate, you will be
+     # able to add other CA or intermediate certs later, without having to reissue all credentials.
+     # For this reason, the sample below comments out the Certificate field.
      ClientOUIdentifier:
-       Certificate: "cacerts/cacert.pem"
+       # Certificate: "cacerts/cacert.pem"
        OrganizationalUnitIdentifier: "client"
      AdminOUIdentifier:
-       Certificate: "cacerts/cacert.pem"
+       # Certificate: "cacerts/cacert.pem"
        OrganizationalUnitIdentifier: "admin"
      PeerOUIdentifier:
-       Certificate: "cacerts/cacert.pem"
+       # Certificate: "cacerts/cacert.pem"
        OrganizationalUnitIdentifier: "peer"
      OrdererOUIdentifier:
-       Certificate: "cacerts/cacert.pem"
+       # Certificate: "cacerts/cacert.pem"
        OrganizationalUnitIdentifier: "orderer"
 
 Identity classification is enabled when ``NodeOUs.Enable`` is set to ``true``. Then the client
@@ -210,10 +217,12 @@ the ``NodeOUs.ClientOUIdentifier`` (``NodeOUs.AdminOUIdentifier``, ``NodeOUs.Pee
 a. ``OrganizationalUnitIdentifier``: Is the OU value that the x509 certificate needs to contain
    to be considered a client (admin, peer, orderer respectively). If this field is empty, then the classification
    is not applied.
-b. ``Certificate``: Set this to the path of the CA or intermediate CA certificate under which client
-   (peer, admin or orderer) identities should be validated. The field is relative to the MSP root
-   folder. This field is optional. You can leave this field blank and allow the certificate to be
-   validated under any CA defined in the MSP configuration.
+b. ``Certificate``: (Optional) Set this to the path of the CA or intermediate CA certificate
+   under which client (peer, admin or orderer) identities should be validated.
+   The field is relative to the MSP root folder. Only a single Certificate can be specified.
+   If you do not set this field, then the identities are validated under any CA defined in
+   the organization's MSP configuration, which could be desirable in the future if you need
+   to add other CA or intermediate certificates.
 
 Notice that if the ``NodeOUs.ClientOUIdentifier`` section (``NodeOUs.AdminOUIdentifier``,
 ``NodeOUs.PeerOUIdentifier``, ``NodeOUs.OrdererOUIdentifier``) is missing, then the classification
