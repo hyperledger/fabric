@@ -305,6 +305,12 @@ func InitCmd(cmd *cobra.Command, args []string) {
 		LogSpec: loggingSpec,
 	})
 
+	// chaincode packaging does not require material from the local MSP
+	if cmd.CommandPath() == "peer lifecycle chaincode package" {
+		mainLogger.Debug("peer lifecycle chaincode package does not need to init crypto")
+		return
+	}
+
 	// Init the MSP
 	var mspMgrConfigDir = config.GetPath("peer.mspConfigPath")
 	var mspID = viper.GetString("peer.localMspId")
