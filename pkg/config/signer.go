@@ -18,6 +18,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
 )
@@ -68,6 +69,7 @@ func NewSigner(publicCert []byte, privateCert []byte, mspID string) (*Signer, er
 		privateKey: privateKey,
 		publicKey:  publicKey,
 	}
+
 	return signer, nil
 }
 
@@ -82,7 +84,11 @@ func (s *Signer) Serialize() ([]byte, error) {
 	// serialize identities by prepending the MSPID and appending
 	// the ASN.1 DER content of the cert
 	sID := &msp.SerializedIdentity{Mspid: s.mspID, IdBytes: pemBytes}
-	idBytes := MarshalOrPanic(sID)
+
+	idBytes, err := proto.Marshal(sID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal serialized identity: %v", err)
+	}
 
 	return idBytes, nil
 }

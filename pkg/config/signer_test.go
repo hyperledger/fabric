@@ -92,6 +92,7 @@ func TestNewSigner(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // capture range variable
 		t.Run(tc.spec, func(t *testing.T) {
 			gt := NewGomegaWithT(t)
 
