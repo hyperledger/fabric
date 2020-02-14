@@ -1006,16 +1006,3 @@ func TestChannelConfig(t *testing.T) {
 	gService.updateAnchors(mc)
 	assert.True(t, gService.amIinChannel(string(orgInChannelA), mc))
 }
-
-func defaultDeliverClientDialOpts() []grpc.DialOption {
-	dialOpts := []grpc.DialOption{grpc.WithBlock()}
-	dialOpts = append(
-		dialOpts,
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
-	kaOpts := comm.DefaultKeepaliveOptions
-	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
-
-	return dialOpts
-}
