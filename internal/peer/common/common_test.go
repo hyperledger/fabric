@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -17,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -191,10 +193,47 @@ func TestInitCmd(t *testing.T) {
 
 	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
 	os.Setenv("FABRIC_LOGGING_SPEC", "chaincode=debug:test.test2=fatal:abc=error")
-	common.InitCmd(nil, nil)
+	common.InitCmd(&cobra.Command{}, nil)
 	assert.Equal(t, "debug", flogging.LoggerLevel("chaincode"))
 	assert.Equal(t, "info", flogging.LoggerLevel("test"))
 	assert.Equal(t, "fatal", flogging.LoggerLevel("test.test2"))
 	assert.Equal(t, "error", flogging.LoggerLevel("abc"))
 	os.Setenv("FABRIC_LOGGING_SPEC", origEnvValue)
+}
+
+func TestInitCmdWithoutInitCrypto(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+	defer viper.Reset()
+
+	peerCmd := &cobra.Command{
+		Use: "peer",
+	}
+	lifecycleCmd := &cobra.Command{
+		Use: "lifecycle",
+	}
+	chaincodeCmd := &cobra.Command{
+		Use: "chaincode",
+	}
+	packageCmd := &cobra.Command{
+		Use: "package",
+	}
+	// peer lifecycle chaincode package
+	chaincodeCmd.AddCommand(packageCmd)
+	lifecycleCmd.AddCommand(chaincodeCmd)
+	peerCmd.AddCommand(lifecycleCmd)
+
+	// MSPCONFIGPATH is default value
+	common.InitCmd(packageCmd, nil)
+
+	// set MSPCONFIGPATH to be a missing dir, the function InitCrypto will fail
+	// confirm that 'peer lifecycle chaincode package' mandates does not require MSPCONFIG information
+	viper.SetEnvPrefix("core")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	dir := os.TempDir() + "/" + util.GenerateUUID()
+	os.Setenv("CORE_PEER_MSPCONFIGPATH", dir)
+
+	common.InitCmd(packageCmd, nil)
 }
