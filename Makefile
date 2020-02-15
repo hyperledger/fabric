@@ -17,7 +17,7 @@
 #   - orderer - builds a native fabric orderer binary
 #   - release - builds release packages for the host platform
 #   - release-all - builds release packages for all target platforms
-#   - publish-images - publishes release docker images to nexus3 or docker hub.
+#   - publish-images - publishes r elease docker images to nexus3 or docker hub.
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 #   - profile - runs unit tests for all packages in coverprofile mode (slow)
