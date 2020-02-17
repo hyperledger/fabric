@@ -121,9 +121,10 @@ func InitConfig(cmdRoot string) error {
 func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	// Check whether msp folder exists
 	fi, err := os.Stat(mspMgrConfigDir)
-	if os.IsNotExist(err) || !fi.IsDir() {
-		// No need to try to load MSP from folder which is not available
-		return errors.Errorf("cannot init crypto, folder \"%s\" does not exist", mspMgrConfigDir)
+	if err != nil {
+		return errors.Errorf("cannot init crypto, specified path \"%s\" does not exist or cannot be accessed: %v", mspMgrConfigDir, err)
+	} else if !fi.IsDir() {
+		return errors.Errorf("cannot init crypto, specified path \"%s\" is not a directory", mspMgrConfigDir)
 	}
 	// Check whether localMSPID exists
 	if localMSPID == "" {
