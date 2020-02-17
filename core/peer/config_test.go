@@ -245,7 +245,6 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.authentication.timewindow", "15m")
 	viper.Set("peer.tls.enabled", "false")
 	viper.Set("peer.networkId", "testNetwork")
-	viper.Set("peer.limits.concurrency.qscc", 5000)
 	viper.Set("peer.limits.concurrency.endorserService", 2500)
 	viper.Set("peer.limits.concurrency.deliverService", 2500)
 	viper.Set("peer.discovery.enabled", true)
@@ -303,7 +302,6 @@ func TestGlobalConfig(t *testing.T) {
 		PeerAddress:                           "localhost:8080",
 		PeerID:                                "testPeerID",
 		NetworkID:                             "testNetwork",
-		LimitsConcurrencyQSCC:                 5000,
 		LimitsConcurrencyEndorserService:      2500,
 		LimitsConcurrencyDeliverService:       2500,
 		DiscoveryEnabled:                      true,
