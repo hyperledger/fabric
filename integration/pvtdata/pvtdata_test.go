@@ -71,7 +71,7 @@ var _ bool = Describe("PrivateData", func() {
 	Describe("Dissemination when pulling is disabled", func() {
 		BeforeEach(func() {
 			By("setting up the network")
-			network = initThreeOrgsSetup()
+			network = initThreeOrgsSetup(true)
 
 			By("setting the pull retry threshold to 0 on all peers")
 			// set pull retry threshold to 0
@@ -372,7 +372,7 @@ var _ bool = Describe("PrivateData", func() {
 
 		BeforeEach(func() {
 			By("setting up the network")
-			network = initThreeOrgsSetup()
+			network = initThreeOrgsSetup(true)
 			legacyChaincode = nwo.Chaincode{
 				Name:    "marblesp",
 				Version: "1.0",
@@ -950,7 +950,7 @@ var _ bool = Describe("PrivateData", func() {
 	})
 })
 
-func initThreeOrgsSetup() *nwo.Network {
+func initThreeOrgsSetup(removePeer1 bool) *nwo.Network {
 	var err error
 	testDir, err := ioutil.TempDir("", "e2e-pvtdata")
 	Expect(err).NotTo(HaveOccurred())
@@ -981,6 +981,11 @@ func initThreeOrgsSetup() *nwo.Network {
 
 	n := nwo.New(config, testDir, client, StartPort(), components)
 	n.GenerateConfigTree()
+
+	if !removePeer1 {
+		Expect(n.Peers).To(HaveLen(5))
+		return n
+	}
 
 	// remove peer1 from org1 and org2 so we can add it back later, we generate the config tree above
 	// with the two peers so the config files exist later when adding the peer back
