@@ -586,3 +586,94 @@ func generateOrgConfigGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.Con
 
 	return orgGroup, nil
 }
+
+// CreateSignedConfigUpdateEnvelope creates a signed configuration update envelope.
+func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIdentity, signatures ...*cb.ConfigSignature) (*cb.Envelope, error) {
+	if configUpdate == nil {
+		return nil, errors.New("no config update specified")
+	}
+	if signingIdentity == nil {
+		return nil, errors.New("no signing identity specified")
+	}
+	if len(signatures) == 0 {
+		return nil, errors.New("no signatures specified")
+	}
+
+	update, err := proto.Marshal(configUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config update")
+	}
+
+	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: update,
+		Signatures:   signatures,
+	}
+
+	signedEnvelope, err := createSignedEnvelopeWithTLSBinding(cb.HeaderType_CONFIG_UPDATE, configUpdate.ChannelId, signingIdentity, configUpdateEnvelope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signed config update envelope: %s", err)
+	}
+
+	return signedEnvelope, nil
+}
+
+// CreateSignedEnvelopeWithTLSBinding creates a signed envelope of the desired
+// type, with marshaled dataMsg and signs it. It also includes a TLS cert hash
+// into the channel header
+func createSignedEnvelopeWithTLSBinding(
+	txType cb.HeaderType,
+	channelID string,
+	signer *SigningIdentity,
+	envelope proto.Message,
+) (*cb.Envelope, error) {
+	channelHeader := &cb.ChannelHeader{
+		Type: int32(txType),
+		Timestamp: &timestamp.Timestamp{
+			Seconds: time.Now().Unix(),
+			Nanos:   0,
+		},
+		ChannelId: channelID,
+	}
+
+	signatureHeader, err := signer.CreateSignatureHeader()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signature header: %v", err)
+	}
+
+	cHeader, err := proto.Marshal(channelHeader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal channel header: %s", err)
+	}
+	sHeader, err := proto.Marshal(signatureHeader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal signature header: %s", err)
+	}
+	data, err := proto.Marshal(envelope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config update envelope: %s", err)
+	}
+
+	payload := &cb.Payload{
+		Header: &cb.Header{
+			ChannelHeader:   cHeader,
+			SignatureHeader: sHeader,
+		},
+		Data: data,
+	}
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %s", err)
+	}
+
+	sig, err := signer.Sign(rand.Reader, payloadBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign envelope's payload: %v", err)
+	}
+
+	env := &cb.Envelope{
+		Payload:   payloadBytes,
+		Signature: sig,
+	}
+
+	return env, nil
+}

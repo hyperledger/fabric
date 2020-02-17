@@ -20,11 +20,12 @@ import (
 )
 
 func TestSignConfigUpdate(t *testing.T) {
+	t.Parallel()
 	publicKey, privateKey := generatePublicAndPrivateKey()
 
 	gt := NewGomegaWithT(t)
 
-	signingIdentity, err := NewSigningIdentity([]byte(publicKey), []byte(privateKey), "test-msp")
+	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
 	gt.Expect(err).NotTo(HaveOccurred())
 	configSignature, err := SignConfigUpdate(&common.ConfigUpdate{}, signingIdentity)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -306,6 +307,99 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			env, err := NewCreateChannelTx(profile, mspConfig)
 			gt.Expect(env).To(BeNil())
 			gt.Expect(err).To(MatchError(tt.err))
+		})
+	}
+}
+
+func TestCreateSignedConfigUpdateEnvelope(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	publicKey, privateKey := generatePublicAndPrivateKey()
+	configUpdate := &common.ConfigUpdate{
+		ChannelId: "testchannel",
+	}
+	// create signingIdentity
+	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
+	gt.Expect(err).NotTo(HaveOccurred())
+	// create detached config signature
+	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	// create signed config envelope
+	signedEnv, err := CreateSignedConfigUpdateEnvelope(configUpdate, signingIdentity, configSignature)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	payload := &common.Payload{}
+	err = proto.Unmarshal(signedEnv.Payload, payload)
+	gt.Expect(err).NotTo(HaveOccurred())
+	// check header channel ID equal
+	channelHeader := &common.ChannelHeader{}
+	err = proto.Unmarshal(payload.GetHeader().GetChannelHeader(), channelHeader)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(channelHeader.ChannelId).To(Equal(configUpdate.ChannelId))
+	// check config update envelope signatures are equal
+	configEnv := &common.ConfigUpdateEnvelope{}
+	err = proto.Unmarshal(payload.Data, configEnv)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(configEnv.Signatures)).To(Equal(1))
+	expectedSignatures := configEnv.Signatures[0]
+	gt.Expect(expectedSignatures.SignatureHeader).To(Equal(configSignature.SignatureHeader))
+	gt.Expect(expectedSignatures.Signature).To(Equal(configSignature.Signature))
+}
+
+func TestCreateSignedConfigupdateEnvelopeFailures(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+	publicKey, privateKey := generatePublicAndPrivateKey()
+	configUpdate := &common.ConfigUpdate{
+		ChannelId: "testchannel",
+	}
+	// create signingIdentity
+	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
+	gt.Expect(err).NotTo(HaveOccurred())
+	// create detached config signature
+	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
+	gt.Expect(err).NotTo(HaveOccurred())
+	tests := []struct {
+		spec            string
+		configUpdate    *common.ConfigUpdate
+		signingIdentity *SigningIdentity
+		configSignature []*common.ConfigSignature
+		expectedErr     string
+	}{
+		{
+			spec:            "when the signing identity is not specified",
+			configUpdate:    configUpdate,
+			signingIdentity: nil,
+			configSignature: []*common.ConfigSignature{configSignature},
+			expectedErr:     "no signing identity specified",
+		},
+		{
+			spec:            "when no signatures are provided",
+			configUpdate:    configUpdate,
+			signingIdentity: signingIdentity,
+			configSignature: nil,
+			expectedErr:     "no signatures specified",
+		},
+		{
+			spec:            "when no signatures are provided",
+			configUpdate:    nil,
+			signingIdentity: signingIdentity,
+			configSignature: []*common.ConfigSignature{configSignature},
+			expectedErr:     "no config update specified",
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+
+			// create signed config envelope
+			signedEnv, err := CreateSignedConfigUpdateEnvelope(tc.configUpdate, tc.signingIdentity, tc.configSignature...)
+			gt.Expect(err).To(MatchError(tc.expectedErr))
+			gt.Expect(signedEnv).To(BeNil())
 		})
 	}
 }
