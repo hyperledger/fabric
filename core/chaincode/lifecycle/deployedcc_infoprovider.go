@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	validationState "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/pkg/errors"
@@ -42,6 +43,7 @@ var (
 )
 
 type ValidatorCommitter struct {
+	CoreConfig                   *peer.Config
 	Resources                    *Resources
 	LegacyDeployedCCInfoProvider LegacyDeployedCCInfoProvider
 }
@@ -150,7 +152,7 @@ func (vc *ValidatorCommitter) CollectionInfo(channelName, chaincodeName, collect
 
 	matches := ImplicitCollectionMatcher.FindStringSubmatch(collectionName)
 	if len(matches) == 2 {
-		return GenerateImplicitCollectionForOrg(matches[1]), nil
+		return vc.GenerateImplicitCollectionForOrg(matches[1]), nil
 	}
 
 	if definedChaincode.Collections != nil {
@@ -197,13 +199,20 @@ func (vc *ValidatorCommitter) ChaincodeImplicitCollections(channelName string) (
 	orgs := ac.Organizations()
 	implicitCollections := make([]*pb.StaticCollectionConfig, 0, len(orgs))
 	for _, org := range orgs {
-		implicitCollections = append(implicitCollections, GenerateImplicitCollectionForOrg(org.MSPID()))
+		implicitCollections = append(implicitCollections, vc.GenerateImplicitCollectionForOrg(org.MSPID()))
 	}
 
 	return implicitCollections, nil
 }
 
-func GenerateImplicitCollectionForOrg(mspid string) *pb.StaticCollectionConfig {
+// GenerateImplicitCollectionForOrg generates implicit collection for the org
+func (vc *ValidatorCommitter) GenerateImplicitCollectionForOrg(mspid string) *pb.StaticCollectionConfig {
+	// set collection MaximumPeerCount to 0 when its mspid does not match the local mspid
+	// set collection MaximumPeerCount to 1 when its mspid matches the local mspid (i.e., peer's own org)
+	maxPeerCount := int32(0)
+	if mspid == vc.CoreConfig.LocalMSPID {
+		maxPeerCount = 1
+	}
 	return &pb.StaticCollectionConfig{
 		Name: ImplicitCollectionNameForOrg(mspid),
 		MemberOrgsPolicy: &pb.CollectionPolicyConfig{
@@ -212,7 +221,7 @@ func GenerateImplicitCollectionForOrg(mspid string) *pb.StaticCollectionConfig {
 			},
 		},
 		RequiredPeerCount: 0,
-		MaximumPeerCount:  1,
+		MaximumPeerCount:  maxPeerCount,
 	}
 }
 

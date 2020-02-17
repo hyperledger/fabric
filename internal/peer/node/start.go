@@ -369,6 +369,7 @@ func serve(args []string) error {
 	}
 
 	lifecycleValidatorCommitter := &lifecycle.ValidatorCommitter{
+		CoreConfig:                   coreConfig,
 		Resources:                    lifecycleResources,
 		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
 	}
