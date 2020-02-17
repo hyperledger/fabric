@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -313,13 +314,14 @@ func (dc *deployedCCInfoProviderWrapper) AllCollectionsConfigPkg(channelName, ch
 func (dc *deployedCCInfoProviderWrapper) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*peer.StaticCollectionConfig, error) {
 	collConfigs := make([]*peer.StaticCollectionConfig, 0, len(dc.orgMSPIDs))
 	for _, mspID := range dc.orgMSPIDs {
-		collConfigs = append(collConfigs, lifecycle.GenerateImplicitCollectionForOrg(mspID))
+		collConfigs = append(collConfigs, dc.ValidatorCommitter.GenerateImplicitCollectionForOrg(mspID))
 	}
 	return collConfigs, nil
 }
 
 func createDeployedCCInfoProvider(orgMSPIDs []string) ledger.DeployedChaincodeInfoProvider {
 	deployedCCInfoProvider := &lifecycle.ValidatorCommitter{
+		CoreConfig: &corepeer.Config{},
 		Resources: &lifecycle.Resources{
 			Serializer: &lifecycle.Serializer{},
 		},
