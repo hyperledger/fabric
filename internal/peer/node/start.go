@@ -674,9 +674,6 @@ func serve(args []string) error {
 		factory.GetDefault(),
 	)
 	qsccInst := scc.SelfDescribingSysCC(qscc.New(aclProvider, peerInstance))
-	if maxConcurrency := coreConfig.LimitsConcurrencyQSCC; maxConcurrency != 0 {
-		qsccInst = scc.Throttle(maxConcurrency, qsccInst)
-	}
 
 	pb.RegisterChaincodeSupportServer(ccSrv.Server(), ccSupSrv)
 

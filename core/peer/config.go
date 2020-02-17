@@ -110,10 +110,6 @@ type Config struct {
 	// Limits is used to configure some internal resource limits.
 	// TODO: create separate sub-struct for Limits config.
 
-	// LimitsConcurrencyQSCC sets the limits for number of concurrently running
-	// qscc system chaincode requests.
-	LimitsConcurrencyQSCC int
-
 	// LimitsConcurrencyEndorserService sets the limits for concurrent requests sent to
 	// endorser service that handles chaincode deployment, query and invocation,
 	// including both user chaincodes and system chaincodes.
@@ -240,7 +236,6 @@ func (c *Config) load() error {
 
 	c.PeerTLSEnabled = viper.GetBool("peer.tls.enabled")
 	c.NetworkID = viper.GetString("peer.networkId")
-	c.LimitsConcurrencyQSCC = viper.GetInt("peer.limits.concurrency.qscc")
 	c.LimitsConcurrencyEndorserService = viper.GetInt("peer.limits.concurrency.endorserService")
 	c.LimitsConcurrencyDeliverService = viper.GetInt("peer.limits.concurrency.deliverService")
 	c.DiscoveryEnabled = viper.GetBool("peer.discovery.enabled")
