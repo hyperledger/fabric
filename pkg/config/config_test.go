@@ -15,6 +15,7 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 
@@ -22,22 +23,21 @@ import (
 )
 
 func TestSignConfigUpdate(t *testing.T) {
-	t.Parallel()
-	t.Run("success", func(t *testing.T) {
-		gt := NewGomegaWithT(t)
+	publicKey, privateKey := generatePublicAndPrivateKey()
 
-		signer, err := NewSigner([]byte(publicKey), []byte(privateKey), "test-msp")
-		gt.Expect(err).NotTo(HaveOccurred())
-		configSignature, err := SignConfigUpdate(&cb.ConfigUpdate{}, signer)
-		gt.Expect(err).NotTo(HaveOccurred())
+	gt := NewGomegaWithT(t)
 
-		expectedCreator, err := signer.Serialize()
-		gt.Expect(err).NotTo(HaveOccurred())
-		signatureHeader := &cb.SignatureHeader{}
-		err = proto.Unmarshal(configSignature.SignatureHeader, signatureHeader)
-		gt.Expect(err).NotTo(HaveOccurred())
-		gt.Expect(signatureHeader.Creator).To(Equal(expectedCreator))
-	})
+	signingIdentity, err := NewSigningIdentity([]byte(publicKey), []byte(privateKey), "test-msp")
+	gt.Expect(err).NotTo(HaveOccurred())
+	configSignature, err := SignConfigUpdate(&common.ConfigUpdate{}, signingIdentity)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	expectedCreator, err := signingIdentity.Serialize()
+	gt.Expect(err).NotTo(HaveOccurred())
+	signatureHeader := &common.SignatureHeader{}
+	err = proto.Unmarshal(configSignature.SignatureHeader, signatureHeader)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(signatureHeader.Creator).To(Equal(expectedCreator))
 }
 
 func TestNewCreateChannelTx(t *testing.T) {

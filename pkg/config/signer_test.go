@@ -25,21 +25,23 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var publicKey, privateKey []byte
-
 func TestMain(m *testing.M) {
-	publicKey, privateKey = generatePublicAndPrivateKey()
-
 	os.Exit(m.Run())
 }
 
-func TestNewSigner(t *testing.T) {
+func TestNewSigningIdentity(t *testing.T) {
+	t.Parallel()
+
+	publicKey, privateKey := generatePublicAndPrivateKey()
+
 	t.Run("success", func(t *testing.T) {
 		gt := NewGomegaWithT(t)
-		signer, err := NewSigner([]byte(publicKey), []byte(privateKey), "test-msp")
+		signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
 		gt.Expect(err).NotTo(HaveOccurred())
-		gt.Expect(signer.MSPId()).To(Equal("test-msp"))
-		gt.Expect(signer.Cert().Subject.CommonName).To(Equal("Wile E. Coyote"))
+		gt.Expect(signingIdentity.MSPId()).To(Equal("test-msp"))
+		cert, err := signingIdentity.Cert()
+		gt.Expect(err).ToNot(HaveOccurred())
+		gt.Expect(cert.Subject.CommonName).To(Equal("Wile E. Coyote"))
 	})
 
 	tests := []struct {
@@ -53,7 +55,7 @@ func TestNewSigner(t *testing.T) {
 		{
 			spec:        "nil public key",
 			publicKey:   nil,
-			privateKey:  []byte(privateKey),
+			privateKey:  privateKey,
 			mspID:       "test-msp",
 			expectedErr: "failed to get cert from pem: failed to decode pem bytes: []",
 			matchErr:    true,
@@ -61,22 +63,22 @@ func TestNewSigner(t *testing.T) {
 		{
 			spec:        "invalid public key",
 			publicKey:   []byte("apple"),
-			privateKey:  []byte(privateKey),
+			privateKey:  privateKey,
 			mspID:       "test-msp",
 			expectedErr: "failed to get cert from pem: failed to decode pem bytes",
 			matchErr:    false,
 		},
 		{
 			spec:        "public key is not a certificate",
-			publicKey:   []byte(privateKey),
-			privateKey:  []byte(privateKey),
+			publicKey:   privateKey,
+			privateKey:  privateKey,
 			mspID:       "test-msp",
-			expectedErr: "failed to get cert from pem: failed to parse x509 cert",
+			expectedErr: "failed to get cert from pem: failed to decode pem bytes",
 			matchErr:    false,
 		},
 		{
 			spec:        "nil private key",
-			publicKey:   []byte(publicKey),
+			publicKey:   publicKey,
 			privateKey:  nil,
 			mspID:       "test-msp",
 			expectedErr: "failed to decode private key from pem",
@@ -84,9 +86,9 @@ func TestNewSigner(t *testing.T) {
 		},
 		{
 			spec:        "empty mspID",
-			publicKey:   []byte(publicKey),
-			privateKey:  []byte(privateKey),
-			expectedErr: "failed to create new signer, mspID can not be empty",
+			publicKey:   publicKey,
+			privateKey:  privateKey,
+			expectedErr: "failed to create new signingIdentity, mspID can not be empty",
 			matchErr:    true,
 		},
 	}
@@ -94,9 +96,11 @@ func TestNewSigner(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc // capture range variable
 		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
+
 			gt := NewGomegaWithT(t)
 
-			_, err := NewSigner(tc.publicKey, tc.privateKey, tc.mspID)
+			_, err := NewSigningIdentity(tc.publicKey, tc.privateKey, tc.mspID)
 			if tc.matchErr {
 				gt.Expect(err).To(MatchError(tc.expectedErr))
 			} else {
@@ -107,52 +111,44 @@ func TestNewSigner(t *testing.T) {
 }
 
 func TestECDSAPublicKeyImport(t *testing.T) {
-	t.Run("certificate does not contain valid ecdsa publicKey", func(t *testing.T) {
-		gt := NewGomegaWithT(t)
-		x509cert := &x509.Certificate{PublicKey: struct{}{}}
-		_, err := ecdsaPublicKeyImport(x509cert)
-		gt.Expect(err).To(MatchError("certificate does not contain valid ECDSA public key"))
-	})
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+	x509cert := &x509.Certificate{PublicKey: struct{}{}}
+	_, err := ecdsaPublicKeyImport(x509cert)
+	gt.Expect(err).To(MatchError("certificate does not contain valid ECDSA public key"))
 }
 
 func TestECDSAPrivateKeyImport(t *testing.T) {
-	t.Run("nil private key", func(t *testing.T) {
-		gt := NewGomegaWithT(t)
-		_, err := ecdsaPrivateKeyImport(nil)
-		gt.Expect(err.Error()).To(ContainSubstring("invalid key type. The DER must contain an ecdsa.PrivateKey"))
-	})
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+	_, err := ecdsaPrivateKeyImport(nil)
+	gt.Expect(err.Error()).To(ContainSubstring("invalid key type. The DER must contain an ecdsa.PrivateKey"))
 }
 
 func TestSerialize(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		gt := NewGomegaWithT(t)
-		signer, err := NewSigner([]byte(publicKey), []byte(privateKey), "test-msp")
-		gt.Expect(err).NotTo(HaveOccurred())
+	t.Parallel()
 
-		sBytes, err := signer.Serialize()
-		gt.Expect(err).NotTo(HaveOccurred())
-		serializedIdentity := &msp.SerializedIdentity{}
-		err = proto.Unmarshal(sBytes, serializedIdentity)
-		gt.Expect(serializedIdentity.Mspid).To(Equal("test-msp"))
-	})
-}
+	publicKey, privateKey := generatePublicAndPrivateKey()
 
-func TestPublic(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		gt := NewGomegaWithT(t)
-		signer, err := NewSigner([]byte(publicKey), []byte(privateKey), "test-msp")
-		gt.Expect(err).NotTo(HaveOccurred())
+	gt := NewGomegaWithT(t)
+	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
+	gt.Expect(err).NotTo(HaveOccurred())
 
-		expectedCert, err := getCertFromPem([]byte(publicKey))
-		gt.Expect(err).NotTo(HaveOccurred())
-		expectedPublicKey, err := ecdsaPublicKeyImport(expectedCert)
-		gt.Expect(err).NotTo(HaveOccurred())
-		publicKey := signer.Public()
-		gt.Expect(publicKey).To(Equal(expectedPublicKey))
-	})
+	sBytes, err := signingIdentity.Serialize()
+	gt.Expect(err).NotTo(HaveOccurred())
+	serializedIdentity := &msp.SerializedIdentity{}
+	err = proto.Unmarshal(sBytes, serializedIdentity)
+	gt.Expect(err).ToNot(HaveOccurred())
+	gt.Expect(serializedIdentity.Mspid).To(Equal("test-msp"))
 }
 
 func TestSign(t *testing.T) {
+	t.Parallel()
+
+	publicKey, privateKey := generatePublicAndPrivateKey()
+
 	tests := []struct {
 		spec        string
 		reader      io.Reader
@@ -168,18 +164,21 @@ func TestSign(t *testing.T) {
 		{
 			spec:        "nil reader",
 			reader:      nil,
-			expectedErr: "failed to sign, reader can not be nil",
+			expectedErr: "reader can not be nil",
 		},
 	}
 
 	gt := NewGomegaWithT(t)
-	signer, err := NewSigner([]byte(publicKey), []byte(privateKey), "test-msp")
+	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	for _, tc := range tests {
+		tc := tc //capture range variable
 		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
+
 			gt := NewGomegaWithT(t)
-			_, err = signer.Sign(tc.reader, tc.digest)
+			_, err = signingIdentity.Sign(tc.reader, tc.digest)
 			if tc.expectedErr == "" {
 				gt.Expect(err).NotTo(HaveOccurred())
 			} else {
@@ -190,6 +189,8 @@ func TestSign(t *testing.T) {
 }
 
 func TestToLowS(t *testing.T) {
+	t.Parallel()
+
 	curve := elliptic.P256()
 	halfOrder := new(big.Int).Div(curve.Params().N, big.NewInt(2))
 
@@ -239,6 +240,8 @@ func TestToLowS(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			gt := NewGomegaWithT(t)
 			curve := elliptic.P256()
 			key := ecdsa.PublicKey{

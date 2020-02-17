@@ -8,16 +8,13 @@ package config
 
 import (
 	"crypto/rand"
-
-	"github.com/golang/protobuf/proto"
-
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
-
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
@@ -121,9 +118,10 @@ func NewCreateChannelTx(profile *Profile, mspConfig *mb.FabricMSPConfig) (*cb.En
 	return env, nil
 }
 
-// SignConfigUpdate signs the given configuration update with a specific signer.
-func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signer *Signer) (*cb.ConfigSignature, error) {
-	signatureHeader, err := signer.CreateSignatureHeader()
+// SignConfigUpdate signs the given configuration update with a
+// specific signing identity.
+func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIdentity) (*cb.ConfigSignature, error) {
+	signatureHeader, err := signingIdentity.CreateSignatureHeader()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signature header: %v", err)
 	}
@@ -141,8 +139,7 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signer *Signer) (*cb.Config
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal config update: %v", err)
 	}
-
-	configSignature.Signature, err = signer.Sign(rand.Reader, concatenateBytes(configSignature.SignatureHeader, configUpdateBytes))
+	configSignature.Signature, err = signingIdentity.Sign(rand.Reader, concatenateBytes(configSignature.SignatureHeader, configUpdateBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign config update: %v", err)
 	}
@@ -551,11 +548,9 @@ func makePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) (*cb.Header
 // concatenateBytes combines multiple arrays of bytes, for signatures or digests
 // over multiple fields.
 func concatenateBytes(data ...[]byte) []byte {
-	bytes := []byte{}
-	for _, d := range data {
-		for _, b := range d {
-			bytes = append(bytes, b)
-		}
+	var res []byte
+	for i := range data {
+		res = append(res, data[i]...)
 	}
-	return bytes
+	return res
 }
