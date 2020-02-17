@@ -7,11 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -120,17 +122,37 @@ func createCollectionConfigPackage(collectionsConfigFile string) (*pb.Collection
 }
 
 func printResponseAsJSON(proposalResponse *pb.ProposalResponse, msg proto.Message, out io.Writer) error {
-	err := proto.Unmarshal(proposalResponse.Response.Payload, msg)
-	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal proposal response's response payload as type %T", msg)
+	var result string
+
+	// peer lifecycle chaincode queryinstalled -O json
+	// peer lifecycle chaincode querycommitted --channelID channelID -O json
+	// Only in these two cases may the payload be empty
+	if proposalResponse.Response.Payload == nil {
+		var buffer bytes.Buffer
+		jsonpbMarshaler := &jsonpb.Marshaler{
+			EmitDefaults: true,
+			OrigName:     true,
+			Indent:       "\t",
+		}
+		if err := jsonpbMarshaler.Marshal(&buffer, msg); err != nil {
+			return errors.Wrapf(err, "failed to marshal type %T while proposal response's response payload is empty", msg)
+		}
+		result = buffer.String()
+	} else {
+		err := proto.Unmarshal(proposalResponse.Response.Payload, msg)
+		if err != nil {
+			return errors.Wrapf(err, "failed to unmarshal proposal response's response payload as type %T", msg)
+		}
+		resultBytes, err := json.MarshalIndent(msg, "", "\t")
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal output")
+		}
+		result = string(resultBytes)
 	}
 
-	bytes, err := json.MarshalIndent(msg, "", "\t")
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal output")
+	if _, err := fmt.Fprintf(out, "%s\n", result); err != nil {
+		return err
 	}
-
-	fmt.Fprintf(out, "%s\n", string(bytes))
 
 	return nil
 }

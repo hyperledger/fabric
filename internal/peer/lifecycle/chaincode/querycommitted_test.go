@@ -7,9 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
@@ -275,6 +277,31 @@ var _ = Describe("QueryCommitted", func() {
 			It("returns an error", func() {
 				err := committedQuerier.Query()
 				Expect(err).To(MatchError("query failed with status: 500 - capuccino"))
+			})
+		})
+
+		Context("when the payload is null and JSON-output is requested", func() {
+			BeforeEach(func() {
+				mockProposalResponse.Response = &pb.Response{
+					Status: 200,
+				}
+				mockEndorserClient.ProcessProposalReturns(mockProposalResponse, nil)
+				committedQuerier.Input.OutputFormat = "json"
+			})
+
+			It("queries committed chaincodes and writes the empty output as JSON", func() {
+				err := committedQuerier.Query()
+				Expect(err).NotTo(HaveOccurred())
+
+				msg := &lb.QueryChaincodeDefinitionsResult{}
+				var buffer bytes.Buffer
+				jsonpbMarshaler := &jsonpb.Marshaler{
+					EmitDefaults: true,
+					OrigName:     true,
+					Indent:       "\t",
+				}
+				err = jsonpbMarshaler.Marshal(&buffer, msg)
+				Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, buffer.String())))
 			})
 		})
 
