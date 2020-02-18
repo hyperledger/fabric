@@ -8,7 +8,9 @@ package common_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -61,10 +63,20 @@ func TestInitConfig(t *testing.T) {
 }
 
 func TestInitCryptoMissingDir(t *testing.T) {
-	dir := os.TempDir() + "/" + util.GenerateUUID()
+	dir := path.Join(os.TempDir(), util.GenerateUUID())
 	err := common.InitCrypto(dir, "SampleOrg", msp.ProviderTypeToString(msp.FABRIC))
-	assert.Error(t, err, "Should be able to initialize crypto with non-existing directory")
-	assert.Contains(t, err.Error(), fmt.Sprintf("folder \"%s\" does not exist", dir))
+	assert.Error(t, err, "Should not be able to initialize crypto with non-existing directory")
+	assert.Contains(t, err.Error(), fmt.Sprintf("specified path \"%s\" does not exist", dir))
+}
+
+func TestInitCryptoFileNotDir(t *testing.T) {
+	file := path.Join(os.TempDir(), util.GenerateUUID())
+	err := ioutil.WriteFile(file, []byte{}, 0644)
+	assert.Nil(t, err, "Failed to create test file")
+	defer os.Remove(file)
+	err = common.InitCrypto(file, "SampleOrg", msp.ProviderTypeToString(msp.FABRIC))
+	assert.Error(t, err, "Should not be able to initialize crypto with a file instead of a directory")
+	assert.Contains(t, err.Error(), fmt.Sprintf("specified path \"%s\" is not a directory", file))
 }
 
 func TestInitCrypto(t *testing.T) {
@@ -72,8 +84,6 @@ func TestInitCrypto(t *testing.T) {
 	localMspId := "SampleOrg"
 	err := common.InitCrypto(mspConfigPath, localMspId, msp.ProviderTypeToString(msp.FABRIC))
 	assert.NoError(t, err, "Unexpected error [%s] calling InitCrypto()", err)
-	err = common.InitCrypto("/etc/foobaz", localMspId, msp.ProviderTypeToString(msp.FABRIC))
-	assert.Error(t, err, fmt.Sprintf("Expected error [%s] calling InitCrypto()", err))
 	localMspId = ""
 	err = common.InitCrypto(mspConfigPath, localMspId, msp.ProviderTypeToString(msp.FABRIC))
 	assert.Error(t, err, fmt.Sprintf("Expected error [%s] calling InitCrypto()", err))
