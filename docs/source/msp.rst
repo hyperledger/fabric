@@ -309,9 +309,11 @@ Two ways to handle this:
   Configuration of that MSP would consist of a list of root CAs,
   intermediate CAs and admin certificates; and membership identities would
   include the organizational unit (``OU``) a member belongs to. Policies can then
-  be defined to capture members of a specific ``OU``, and these policies may
-  constitute the read/write policies of a channel or endorsement policies of
-  a chaincode. A limitation of this approach is that gossip peers would
+  be defined to capture members of a specific ``OU`` (should be one of: peer, admin, 
+  client, orderer, member), and these policies may constitute the read/write policies 
+  of a channel or endorsement policies of a chaincode. Specifying custom OUs in 
+  the profile section of ``configtx.yaml`` is currently not configured.
+  A limitation of this approach is that gossip peers would
   consider peers with membership identities under their local MSP as
   members of the same organization, and would consequently gossip
   with them organization-scoped data (e.g. their status).
