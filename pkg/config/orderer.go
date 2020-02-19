@@ -127,32 +127,7 @@ func NewOrdererGroup(conf *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, e
 // It defines the crypto material for the organization (its MSP)
 // It sets the mod_policy of all elements to "Admins"
 func newOrdererOrgGroup(conf *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
-	var err error
-
-	ordererOrgGroup := newConfigGroup()
-	ordererOrgGroup.ModPolicy = AdminsPolicyKey
-
-	if conf.SkipAsForeign {
-		return ordererOrgGroup, nil
-	}
-
-	if err = addPolicies(ordererOrgGroup, conf.Policies, AdminsPolicyKey); err != nil {
-		return nil, fmt.Errorf("failed to add policies: %v", err)
-	}
-
-	err = addValue(ordererOrgGroup, mspValue(mspConfig), AdminsPolicyKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add msp value: %v", err)
-	}
-
-	if len(conf.OrdererEndpoints) > 0 {
-		err = addValue(ordererOrgGroup, endpointsValue(conf.OrdererEndpoints), AdminsPolicyKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add orderer endpoints value: %v", err)
-		}
-	}
-
-	return ordererOrgGroup, nil
+	return generateOrgConfigGroup(conf, mspConfig)
 }
 
 // batchSizeValue returns the config definition for the orderer batch size
