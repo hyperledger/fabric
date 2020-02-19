@@ -109,6 +109,15 @@ func addImplicitMetaPolicyDefaults(cg *cb.ConfigGroup) {
 	addPolicy(cg, policies.ImplicitMetaAnyPolicy(channelconfig.WritersPolicyKey), channelconfig.AdminsPolicyKey)
 }
 
+// addOrdererImplicitMetaPolicyDefaults adds the orderer's Readers/Writers/Admins/BlockValidation policies, with Any/Any/Majority/Any rules respectively.
+func addOrdererImplicitMetaPolicyDefaults(cg *cb.ConfigGroup) {
+	cg.Policies[BlockValidationPolicyKey] = &cb.ConfigPolicy{
+		Policy:    policies.ImplicitMetaAnyPolicy(channelconfig.WritersPolicyKey).Value(),
+		ModPolicy: channelconfig.AdminsPolicyKey,
+	}
+	addImplicitMetaPolicyDefaults(cg)
+}
+
 // addSignaturePolicyDefaults adds the Readers/Writers/Admins policies as signature policies requiring one signature from the given mspID.
 // If devMode is set to true, the Admins policy will accept arbitrary user certs for admin functions, otherwise it requires the cert satisfies
 // the admin role principal.
@@ -186,15 +195,11 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 	ordererGroup := cb.NewConfigGroup()
 	if len(conf.Policies) == 0 {
 		logger.Warningf("Default policy emission is deprecated, please include policy specifications for the orderer group in configtx.yaml")
-		addImplicitMetaPolicyDefaults(ordererGroup)
+		addOrdererImplicitMetaPolicyDefaults(ordererGroup)
 	} else {
 		if err := addPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 			return nil, errors.Wrapf(err, "error adding policies to orderer group")
 		}
-	}
-	ordererGroup.Policies[BlockValidationPolicyKey] = &cb.ConfigPolicy{
-		Policy:    policies.ImplicitMetaAnyPolicy(channelconfig.WritersPolicyKey).Value(),
-		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 	addValue(ordererGroup, channelconfig.BatchSizeValue(
 		conf.BatchSize.MaxMessageCount,

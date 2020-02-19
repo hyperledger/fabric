@@ -190,9 +190,15 @@ var _ = Describe("Encoder", func() {
 		It("translates the config into a config group", func() {
 			cg, err := encoder.NewOrdererGroup(conf)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(cg.Policies)).To(Equal(2)) // BlockValidation automatically added
+			Expect(len(cg.Policies)).To(Equal(1))
 			Expect(cg.Policies["SamplePolicy"]).NotTo(BeNil())
-			Expect(cg.Policies["BlockValidation"]).NotTo(BeNil())
+			Expect(cg.Policies["SamplePolicy"].Policy).To(Equal(&cb.Policy{
+				Type: int32(cb.Policy_IMPLICIT_META),
+				Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+					SubPolicy: "Admins",
+					Rule:      cb.ImplicitMetaPolicy_ANY,
+				}),
+			}))
 			Expect(len(cg.Groups)).To(Equal(1))
 			Expect(cg.Groups["SampleOrg"]).NotTo(BeNil())
 			Expect(len(cg.Values)).To(Equal(5))
