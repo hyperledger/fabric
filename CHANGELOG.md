@@ -1,3 +1,53 @@
+## v1.4.5
+Wed Feb 19 12:32:43 EST 2020
+
+* [1893808](https://github.com/hyperledger/fabric/commit/1893808) Remove rollback code from private data store
+* [f354c81](https://github.com/hyperledger/fabric/commit/f354c81) [FAB-17472](https://jira.hyperledger.org/browse/FAB-17472) Clarify doc and samples for NodeOU Certificate
+* [d45bac4](https://github.com/hyperledger/fabric/commit/d45bac4) Add release notes for Fabric v1.4.5
+* [a9a1d07](https://github.com/hyperledger/fabric/commit/a9a1d07) [FAB-17059](https://jira.hyperledger.org/browse/FAB-17059) Extend private data integration tests to cover case when a new eligible peer with different certs joins the channel and attempts to fetch private data before processing the config update that adds its certs to the channel config
+* [ca1ae38](https://github.com/hyperledger/fabric/commit/ca1ae38) [FAB-17059](https://jira.hyperledger.org/browse/FAB-17059) Change collection membership eligibility checks to only compare mspID instead of Evaluating the certificate against the access policy
+* [e75bc71](https://github.com/hyperledger/fabric/commit/e75bc71) [FAB-17479](https://jira.hyperledger.org/browse/FAB-17479) Migrated Kafka cluster can be safely expanded later (#642)
+* [5eaae3a](https://github.com/hyperledger/fabric/commit/5eaae3a) Explicitly enumerate orderer and peer metrics
+* [9faad9e](https://github.com/hyperledger/fabric/commit/9faad9e) define couchDB connection pool size [FAB-17277](https://jira.hyperledger.org/browse/FAB-17277) fix too many TCP connections between peer and CouchDB
+* [b27a7c7](https://github.com/hyperledger/fabric/commit/b27a7c7) [FAB-16681](https://jira.hyperledger.org/browse/FAB-16681) Fix inconsistencies in the fabcar tutorial
+* [46daf02](https://github.com/hyperledger/fabric/commit/46daf02) [FAB-16508](https://jira.hyperledger.org/browse/FAB-16508) Update commercial paper tutorial to match code
+* [0a6993d](https://github.com/hyperledger/fabric/commit/0a6993d) Add Documentation Maintainers to CODEOWNERS file in release-1.4 branch
+* [52e5155](https://github.com/hyperledger/fabric/commit/52e5155) Point to Artifactory for chaintool downloads
+* [1786f10](https://github.com/hyperledger/fabric/commit/1786f10) [FABCN-378] Update links to chaincode JSDoc
+* [bc3bb1a](https://github.com/hyperledger/fabric/commit/bc3bb1a) [FAB-15578](https://jira.hyperledger.org/browse/FAB-15578) Fix typos on the endorser metric name
+* [975cc00](https://github.com/hyperledger/fabric/commit/975cc00) [FAB-16033](https://jira.hyperledger.org/browse/FAB-16033) Update channel_artifacts location in doc.
+* [cae8b55](https://github.com/hyperledger/fabric/commit/cae8b55) Static leader should not give up retrieving blocks
+* [f0ea825](https://github.com/hyperledger/fabric/commit/f0ea825) [FAB-17169](https://jira.hyperledger.org/browse/FAB-17169) Add AZP Status Badge (#511)
+* [3ad450d](https://github.com/hyperledger/fabric/commit/3ad450d) Go SDK link should point to 1.4 release
+* [1b6bea7](https://github.com/hyperledger/fabric/commit/1b6bea7) Update dead link to Go Chaincode SDK
+* [9ec196b](https://github.com/hyperledger/fabric/commit/9ec196b) Add CODEOWNERS group
+* [a8639ba](https://github.com/hyperledger/fabric/commit/a8639ba) Allow seperate TLS config for cluster and client (#393)
+* [d4dca95](https://github.com/hyperledger/fabric/commit/d4dca95) [FAB-17235](https://jira.hyperledger.org/browse/FAB-17235) Fixed broken links in Chaincode for Operators release-1.4
+* [835cae3](https://github.com/hyperledger/fabric/commit/835cae3) [FAB-15900](https://jira.hyperledger.org/browse/FAB-15900) Add pkcs11 section to orderer.yaml
+* [3bae50c](https://github.com/hyperledger/fabric/commit/3bae50c) [FAB-17289](https://jira.hyperledger.org/browse/FAB-17289) Fix gossip goroutine leak when reading msg (#439)
+* [24d418d](https://github.com/hyperledger/fabric/commit/24d418d) [FAB-17128](https://jira.hyperledger.org/browse/FAB-17128) Add single quote to channel name env var (#437)
+* [f627b88](https://github.com/hyperledger/fabric/commit/f627b88) Wrong protobuf import in etcdarft
+* [778f87b](https://github.com/hyperledger/fabric/commit/778f87b) [FAB-17177](https://jira.hyperledger.org/browse/FAB-17177)] Config block shouldn't verify itself in block replication
+* [0ce6685](https://github.com/hyperledger/fabric/commit/0ce6685) [FAB-17220](https://jira.hyperledger.org/browse/FAB-17220) Dynamically build TLS config in Raft client handshake
+* [eea42cb](https://github.com/hyperledger/fabric/commit/eea42cb) Increase open file limit to address Gossip flakes
+* [3a9b5e3](https://github.com/hyperledger/fabric/commit/3a9b5e3) Fix flaky etcdraft test by installing chaincode serially
+* [b4b0191](https://github.com/hyperledger/fabric/commit/b4b0191) Deliver can send multiple blocks when seeking newest
+* [634e14b](https://github.com/hyperledger/fabric/commit/634e14b) Attempt to fix flaky integration ApproveForMyOrg
+* [1fe6954](https://github.com/hyperledger/fabric/commit/1fe6954) Add hostconfig to build container
+* [20ea5df](https://github.com/hyperledger/fabric/commit/20ea5df) [FAB-17128](https://jira.hyperledger.org/browse/FAB-17128) Make channel name env var
+* [d8fac8a](https://github.com/hyperledger/fabric/commit/d8fac8a) [FAB-17166](https://jira.hyperledger.org/browse/FAB-17166) Gate UT, IT and DocBuild
+* [d5f056f](https://github.com/hyperledger/fabric/commit/d5f056f) [FAB-17132](https://jira.hyperledger.org/browse/FAB-17132) Add Parallel Strategy to Integration Tests
+* [36bf3ee](https://github.com/hyperledger/fabric/commit/36bf3ee) [FAB-17133](https://jira.hyperledger.org/browse/FAB-17133) Add Action to Trigger CI
+* [ef9960a](https://github.com/hyperledger/fabric/commit/ef9960a) Add CODEOWNERS file
+* [d3adcc0](https://github.com/hyperledger/fabric/commit/d3adcc0) Fix the style-guides directory naming scheme (#309)
+* [c4f834d](https://github.com/hyperledger/fabric/commit/c4f834d) [FAB-17115](https://jira.hyperledger.org/browse/FAB-17115) Update doc for GitHub migration
+* [2c3282e](https://github.com/hyperledger/fabric/commit/2c3282e) [FAB-17114](https://jira.hyperledger.org/browse/FAB-17114) Add AZP support for Fabric
+* [9998978](https://github.com/hyperledger/fabric/commit/9998978) [FAB-16712](https://jira.hyperledger.org/browse/FAB-16712) Update Java chaincode doc links
+* [633cfbf](https://github.com/hyperledger/fabric/commit/633cfbf) [FAB-17072](https://jira.hyperledger.org/browse/FAB-17072) Prepare for next fabric rel v1.4.5
+* [a3a9485](https://github.com/hyperledger/fabric/commit/a3a9485) [FAB-17068](https://jira.hyperledger.org/browse/FAB-17068) Add doc for /version endpoint
+* [9f8168f](https://github.com/hyperledger/fabric/commit/9f8168f) [FAB-17032](https://jira.hyperledger.org/browse/FAB-17032) Fix some errors in the doc.
+* [89655c3](https://github.com/hyperledger/fabric/commit/89655c3) Add consensus type ectdraft in orderer/README.md
+
 ## v1.4.4
 Thu Nov 14 14:20:45 EST 2019
 
