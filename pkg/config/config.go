@@ -299,7 +299,7 @@ func addPolicies(cg *cb.ConfigGroup, policyMap map[string]*Policy, modPolicy str
 		case SignaturePolicyType:
 			sp, err := FromString(policy.Rule)
 			if err != nil {
-				return fmt.Errorf("invalid signature policy rule '%s' error: %v", policy.Rule, err)
+				return fmt.Errorf("invalid signature policy rule: '%s' error: %v", policy.Rule, err)
 			}
 
 			signaturePolicy, err := proto.Marshal(sp)
@@ -534,6 +534,7 @@ func makePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) (*cb.Header
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal channel header: %v", err)
 	}
+
 	signatureHeader, err := proto.Marshal(sh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal signature header: %v", err)
@@ -543,6 +544,22 @@ func makePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) (*cb.Header
 		ChannelHeader:   channelHeader,
 		SignatureHeader: signatureHeader,
 	}, nil
+}
+
+// ComputeUpdate computes the config update from a base and modified config transaction.
+func ComputeUpdate(baseConfig, updatedConfig *cb.Config, channelID string) (*cb.ConfigUpdate, error) {
+	if channelID == "" {
+		return nil, errors.New("channel ID is empty")
+	}
+
+	updt, err := Compute(baseConfig, updatedConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute update: %v", err)
+	}
+
+	updt.ChannelId = channelID
+
+	return updt, nil
 }
 
 // concatenateBytes combines multiple arrays of bytes, for signatures or digests

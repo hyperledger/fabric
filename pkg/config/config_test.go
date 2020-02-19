@@ -41,17 +41,6 @@ func TestSignConfigUpdate(t *testing.T) {
 func TestNewCreateChannelTx(t *testing.T) {
 	t.Parallel()
 
-	gt := NewGomegaWithT(t)
-
-	profile := baseProfile()
-
-	mspConfig := &mb.FabricMSPConfig{}
-
-	// creating a create channel transaction
-	envelope, err := NewCreateChannelTx(profile, mspConfig)
-	gt.Expect(err).ToNot(HaveOccurred())
-	gt.Expect(envelope).ToNot(BeNil())
-
 	// The TwoOrgsChannel profile is defined in standard_networks.go under the BasicSolo configuration
 	// configtxgen -profile TwoOrgsChannel -channelID testChannel
 	expectedEnvelopeJSON := `{
@@ -198,64 +187,125 @@ func TestNewCreateChannelTx(t *testing.T) {
 		"signature": null
 	}`
 
-	// Unmarshalling actual and expected envelope to set
-	// the expected timestamp to the actual timestamp
-	expectedEnvelope := cb.Envelope{}
-	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedEnvelopeJSON), &expectedEnvelope)
-	gt.Expect(err).ToNot(HaveOccurred())
+	tests := []struct {
+		testName   string
+		profileMod func() *Profile
+	}{
+		{
+			testName: "When creating new create channel Tx with ImplicitMetaPolicyType",
+			profileMod: func() *Profile {
+				return baseProfile()
+			},
+		},
+		{
+			testName: "When creating new create channel Tx with ImplicitMetaPolicyType_ALL",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Policies[ReadersPolicyKey].Rule = "ALL Readers"
+				return profile
+			},
+		},
+		{
+			testName: "When creating new create channel Tx with SignatureTypePolicy",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Policies[ReadersPolicyKey].Type = SignaturePolicyType
+				profile.Policies[ReadersPolicyKey].Rule = "OutOf(1, 'A.member', 'B.member')"
+				return profile
+			},
+		},
+		{
+			testName: "When creating new create channel Tx with orderer defined in profile",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Orderer = &Orderer{
+					OrdererType: ConsensusTypeSolo,
+					Addresses:   []string{"1", "2"},
+					Policies:    createStandardPolicies(),
+				}
+				profile.Orderer.Policies[BlockValidationPolicyKey] = &Policy{
+					Type: ImplicitMetaPolicyType,
+					Rule: "ANY something",
+				}
+				return profile
+			},
+		},
+	}
 
-	expectedPayload := cb.Payload{}
-	err = proto.Unmarshal(expectedEnvelope.Payload, &expectedPayload)
-	gt.Expect(err).NotTo(HaveOccurred())
+	for _, tt := range tests {
+		tt := tt // capture range variable
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
 
-	expectedHeader := cb.ChannelHeader{}
-	err = proto.Unmarshal(expectedPayload.Header.ChannelHeader, &expectedHeader)
-	gt.Expect(err).NotTo(HaveOccurred())
+			mspConfig := &mb.FabricMSPConfig{}
+			profile := tt.profileMod()
 
-	expectedData := cb.ConfigUpdateEnvelope{}
-	err = proto.Unmarshal(expectedPayload.Data, &expectedData)
-	gt.Expect(err).NotTo(HaveOccurred())
+			// creating a create channel transaction
+			envelope, err := NewCreateChannelTx(profile, mspConfig)
+			gt.Expect(err).ToNot(HaveOccurred())
+			gt.Expect(envelope).ToNot(BeNil())
 
-	expectedConfigUpdate := cb.ConfigUpdate{}
-	err = proto.Unmarshal(expectedData.ConfigUpdate, &expectedConfigUpdate)
-	gt.Expect(err).NotTo(HaveOccurred())
+			// Unmarshalling actual and expected envelope to set
+			// the expected timestamp to the actual timestamp
+			expectedEnvelope := cb.Envelope{}
+			err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedEnvelopeJSON), &expectedEnvelope)
+			gt.Expect(err).ToNot(HaveOccurred())
 
-	actualPayload := cb.Payload{}
-	err = proto.Unmarshal(envelope.Payload, &actualPayload)
-	gt.Expect(err).NotTo(HaveOccurred())
+			expectedPayload := cb.Payload{}
+			err = proto.Unmarshal(expectedEnvelope.Payload, &expectedPayload)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	actualHeader := cb.ChannelHeader{}
-	err = proto.Unmarshal(actualPayload.Header.ChannelHeader, &actualHeader)
-	gt.Expect(err).NotTo(HaveOccurred())
+			expectedHeader := cb.ChannelHeader{}
+			err = proto.Unmarshal(expectedPayload.Header.ChannelHeader, &expectedHeader)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	actualData := cb.ConfigUpdateEnvelope{}
-	err = proto.Unmarshal(actualPayload.Data, &actualData)
-	gt.Expect(err).NotTo(HaveOccurred())
+			expectedData := cb.ConfigUpdateEnvelope{}
+			err = proto.Unmarshal(expectedPayload.Data, &expectedData)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	actualConfigUpdate := cb.ConfigUpdate{}
-	err = proto.Unmarshal(actualData.ConfigUpdate, &actualConfigUpdate)
-	gt.Expect(err).NotTo(HaveOccurred())
+			expectedConfigUpdate := cb.ConfigUpdate{}
+			err = proto.Unmarshal(expectedData.ConfigUpdate, &expectedConfigUpdate)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(actualConfigUpdate).To(Equal(expectedConfigUpdate))
+			actualPayload := cb.Payload{}
+			err = proto.Unmarshal(envelope.Payload, &actualPayload)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	// setting timestamps to match in ConfigUpdate
-	actualTimestamp := actualHeader.Timestamp
+			actualHeader := cb.ChannelHeader{}
+			err = proto.Unmarshal(actualPayload.Header.ChannelHeader, &actualHeader)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	expectedHeader.Timestamp = actualTimestamp
+			actualData := cb.ConfigUpdateEnvelope{}
+			err = proto.Unmarshal(actualPayload.Data, &actualData)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	expectedData.ConfigUpdate = actualData.ConfigUpdate
+			actualConfigUpdate := cb.ConfigUpdate{}
+			err = proto.Unmarshal(actualData.ConfigUpdate, &actualConfigUpdate)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	// Remarshalling envelopes with updated timestamps
-	expectedPayload.Data, err = proto.Marshal(&expectedData)
-	gt.Expect(err).NotTo(HaveOccurred())
+			gt.Expect(actualConfigUpdate).To(Equal(expectedConfigUpdate))
 
-	expectedPayload.Header.ChannelHeader, err = proto.Marshal(&expectedHeader)
-	gt.Expect(err).NotTo(HaveOccurred())
+			// setting timestamps to match in ConfigUpdate
+			actualTimestamp := actualHeader.Timestamp
 
-	expectedEnvelope.Payload, err = proto.Marshal(&expectedPayload)
-	gt.Expect(err).NotTo(HaveOccurred())
+			expectedHeader.Timestamp = actualTimestamp
 
-	gt.Expect(proto.Equal(envelope, &expectedEnvelope)).To(BeTrue())
+			expectedData.ConfigUpdate = actualData.ConfigUpdate
+
+			// Remarshalling envelopes with updated timestamps
+			expectedPayload.Data, err = proto.Marshal(&expectedData)
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			expectedPayload.Header.ChannelHeader, err = proto.Marshal(&expectedHeader)
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			expectedEnvelope.Payload, err = proto.Marshal(&expectedPayload)
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			gt.Expect(proto.Equal(envelope, &expectedEnvelope)).To(BeTrue())
+		})
+	}
 }
 
 func TestNewCreateChannelTxFailure(t *testing.T) {
@@ -267,7 +317,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		err        error
 	}{
 		{
-			testName: "When creating the default config template fails",
+			testName: "When creating the default config template with no policies defined fails",
 			profileMod: func() *Profile {
 				profile := baseProfile()
 				profile.Policies = nil
@@ -275,6 +325,90 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			},
 			err: errors.New("failed to create default config template: failed to create new channel group: " +
 				"failed to add policies: no policies defined"),
+		},
+		{
+			testName: "When creating the default config template with no ApplicationGroupKey defined fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Application = nil
+				return profile
+			},
+			err: errors.New("failed to create default config template: channel template config must contain " +
+				"an application section"),
+		},
+		{
+			testName: "When creating the default config template with no Admins policies defined fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				delete(profile.Policies, AdminsPolicyKey)
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to add policies: no Admins policy defined"),
+		},
+		{
+			testName: "When creating the default config template with no Readers policies defined fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				delete(profile.Policies, ReadersPolicyKey)
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to add policies: no Readers policy defined"),
+		},
+		{
+			testName: "When creating the default config template with no Writers policies defined fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				delete(profile.Policies, WritersPolicyKey)
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to add policies: no Writers policy defined"),
+		},
+		{
+			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Policies[ReadersPolicyKey].Rule = "ALL"
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to add policies: invalid implicit meta policy rule: 'ALL' error: expected two space separated " +
+				"tokens, but got 1"),
+		},
+		{
+			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to add policies: invalid implicit meta policy rule: 'ANYY Readers' error: unknown rule type " +
+				"'ANYY', expected ALL, ANY, or MAJORITY"),
+		},
+		{
+			testName: "When creating the default config template with SignatureTypePolicy and bad rule fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Policies[ReadersPolicyKey].Type = SignaturePolicyType
+				profile.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to add policies: invalid signature policy rule: 'ANYY Readers' error: Cannot transition " +
+				"token types from VARIABLE [ANYY] to VARIABLE [Readers]"),
+		},
+		{
+			testName: "When creating the default config template with an unknown policy type fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Policies[ReadersPolicyKey].Type = "GreenPolicy"
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to add policies: unknown policy type: GreenPolicy"),
 		},
 		{
 			testName: "When channel is not specified in config",
@@ -291,6 +425,37 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				return profile
 			},
 			err: errors.New("channel ID is empty"),
+		},
+		{
+			testName: "When no BlockValidation policy is defined",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Orderer = &Orderer{
+					OrdererType: ConsensusTypeSolo,
+					Policies:    createStandardPolicies(),
+				}
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to create orderer group: failed to add policies: no BlockValidation policy defined"),
+		},
+		{
+			testName: "When creating the consortiums group fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Consortium = ConsortiumsGroupKey
+				profile.Consortiums = map[string]*Consortium{
+					"Consortiums": {
+						Organizations: []*Organization{
+							{Name: "Org1"}, {Name: "Org2"},
+						},
+					},
+				}
+				return profile
+			},
+			err: errors.New("failed to create default config template: failed to create new channel group: " +
+				"failed to create consortiums group: failed to create consortium group: failed to create consortium " +
+				"org group Org1: failed to add policies: no policies defined"),
 		},
 	}
 
@@ -577,7 +742,6 @@ func TestGenerateOrgConfigGroup(t *testing.T) {
 		gt.Expect(err).NotTo(HaveOccurred())
 
 		gt.Expect(buf.String()).To(Equal(expectedPrintOrg))
-
 	})
 
 	t.Run("skip as foreign", func(t *testing.T) {
@@ -643,6 +807,94 @@ func TestGenerateOrgConfigGroupFailure(t *testing.T) {
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 			gt.Expect(configGroup).To(BeNil())
 		})
+	}
+}
 
+func TestComputeUpdate(t *testing.T) {
+	gt := NewGomegaWithT(t)
+
+	value1Name := "foo"
+	value2Name := "bar"
+	base := cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Version: 7,
+			Values: map[string]*cb.ConfigValue{
+				value1Name: {
+					Version: 3,
+					Value:   []byte("value1value"),
+				},
+				value2Name: {
+					Version: 6,
+					Value:   []byte("value2value"),
+				},
+			},
+		},
+	}
+	updated := cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Values: map[string]*cb.ConfigValue{
+				value1Name: base.ChannelGroup.Values[value1Name],
+				value2Name: {
+					Value: []byte("updatedValued2Value"),
+				},
+			},
+		},
+	}
+
+	channelID := "testChannel"
+
+	expectedReadSet := newConfigGroup()
+	expectedReadSet.Version = 7
+
+	expectedWriteSet := newConfigGroup()
+	expectedWriteSet.Version = 7
+	expectedWriteSet.Values = map[string]*cb.ConfigValue{
+		value2Name: {
+			Version: 7,
+			Value:   []byte("updatedValued2Value"),
+		},
+	}
+
+	expectedConfig := cb.ConfigUpdate{
+		ChannelId: channelID,
+		ReadSet:   expectedReadSet,
+		WriteSet:  expectedWriteSet,
+	}
+
+	configUpdate, err := ComputeUpdate(&base, &updated, channelID)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(configUpdate).To(Equal(&expectedConfig))
+}
+
+func TestComputeUpdateFailures(t *testing.T) {
+	t.Parallel()
+
+	base := cb.Config{}
+	updated := cb.Config{}
+
+	for _, test := range []struct {
+		name        string
+		channelID   string
+		expectedErr string
+	}{
+		{
+			name:        "When channel ID is not specified",
+			channelID:   "",
+			expectedErr: "channel ID is empty",
+		},
+		{
+			name:        "When failing to compute update",
+			channelID:   "testChannel",
+			expectedErr: "failed to compute update: no channel group included for original config",
+		},
+	} {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+			configUpdate, err := ComputeUpdate(&base, &updated, test.channelID)
+			gt.Expect(err).To(MatchError(test.expectedErr))
+			gt.Expect(configUpdate).To(BeNil())
+		})
 	}
 }
