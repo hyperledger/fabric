@@ -554,3 +554,35 @@ func concatenateBytes(data ...[]byte) []byte {
 	}
 	return res
 }
+
+// generateOrgConfigGroup returns an config group for a organization.
+// It defines the crypto material for the organization (its MSP).
+// It sets the mod_policy of all elements to "Admins".
+func generateOrgConfigGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+	var err error
+
+	orgGroup := newConfigGroup()
+	orgGroup.ModPolicy = AdminsPolicyKey
+
+	if org.SkipAsForeign {
+		return orgGroup, nil
+	}
+
+	if err = addPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
+		return nil, fmt.Errorf("failed to add policies: %v", err)
+	}
+
+	err = addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add msp value: %v", err)
+	}
+
+	if len(org.OrdererEndpoints) > 0 {
+		err = addValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add orderer endpoints value: %v", err)
+		}
+	}
+
+	return orgGroup, nil
+}

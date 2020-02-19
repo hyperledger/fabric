@@ -8,17 +8,14 @@ package config
 
 import (
 	"bytes"
-	"testing"
-
-	"github.com/hyperledger/fabric/common/tools/protolator"
-
 	"errors"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
-
+	"github.com/hyperledger/fabric/common/tools/protolator"
 	. "github.com/onsi/gomega"
 )
 
@@ -388,4 +385,170 @@ func createOrdererStandardPolicies() map[string]*Policy {
 	}
 
 	return policies
+}
+
+func TestGenerateOrgConfigGroup(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		gt := NewGomegaWithT(t)
+
+		// The organization is from network.BasicSolo Profile
+		// configtxgen -printOrg Org1
+		expectedPrintOrg := `{
+	"groups": {},
+	"mod_policy": "Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Admins"
+				}
+			},
+			"version": "0"
+		},
+		"Endorsement": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Endorsement"
+				}
+			},
+			"version": "0"
+		},
+		"LifecycleEndorsement": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Endorsement"
+				}
+			},
+			"version": "0"
+		},
+		"Readers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Readers"
+				}
+			},
+			"version": "0"
+		},
+		"Writers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {
+		"Endpoints": {
+			"mod_policy": "Admins",
+			"value": "Cg8xMjMuNDUuNjc3OjgwODA=",
+			"version": "0"
+		},
+		"MSP": {
+			"mod_policy": "Admins",
+			"value": "",
+			"version": "0"
+		}
+	},
+	"version": "0"
+}
+`
+		mspConfig := &mb.MSPConfig{}
+
+		org := baseProfile().Application.Organizations[0]
+		org.OrdererEndpoints = []string{"123.45.677:8080"}
+		configGroup, err := generateOrgConfigGroup(org, mspConfig)
+		gt.Expect(err).NotTo(HaveOccurred())
+
+		buf := bytes.Buffer{}
+		err = protolator.DeepMarshalJSON(&buf, configGroup)
+		gt.Expect(err).NotTo(HaveOccurred())
+
+		gt.Expect(buf.String()).To(Equal(expectedPrintOrg))
+
+	})
+
+	t.Run("skip as foreign", func(t *testing.T) {
+		t.Parallel()
+		gt := NewGomegaWithT(t)
+
+		expectedConfigGroup := newConfigGroup()
+		expectedConfigGroup.ModPolicy = AdminsPolicyKey
+		expectedBuf := bytes.Buffer{}
+		err := protolator.DeepMarshalJSON(&expectedBuf, expectedConfigGroup)
+		gt.Expect(err).NotTo(HaveOccurred())
+
+		mspConfig := &mb.MSPConfig{}
+
+		org := baseProfile().Application.Organizations[0]
+		org.SkipAsForeign = true
+		configGroup, err := generateOrgConfigGroup(org, mspConfig)
+		gt.Expect(err).NotTo(HaveOccurred())
+
+		buf := bytes.Buffer{}
+		err = protolator.DeepMarshalJSON(&buf, configGroup)
+		gt.Expect(err).NotTo(HaveOccurred())
+
+		gt.Expect(buf.String()).To(Equal(expectedBuf.String()))
+	})
+}
+
+func TestGenerateOrgConfigGroupFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		organizationMod func(*Organization)
+		mspConfig       *mb.MSPConfig
+		expectedErr     string
+	}{
+		{
+			"When failing to add policies",
+			func(o *Organization) {
+				o.Policies = nil
+			},
+			&mb.MSPConfig{},
+			"failed to add policies: no policies defined",
+		},
+		{
+			"When failing to add msp value",
+			func(o *Organization) {
+			},
+			nil,
+			"failed to add msp value: failed to marshal standard config value: proto: Marshal called with nil",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt // capture range variable
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			gt := NewGomegaWithT(t)
+			baseOrg := baseProfile().Application.Organizations[0]
+			tt.organizationMod(baseOrg)
+			configGroup, err := generateOrgConfigGroup(baseOrg, tt.mspConfig)
+			gt.Expect(err).To(MatchError(tt.expectedErr))
+			gt.Expect(configGroup).To(BeNil())
+		})
+
+	}
 }
