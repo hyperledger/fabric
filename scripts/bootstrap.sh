@@ -8,7 +8,7 @@
 # if version not passed in, default to latest released version
 VERSION=2.0.0
 # if ca version not passed in, default to latest released version
-CA_VERSION=1.4.4
+CA_VERSION=1.4.5
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
 THIRDPARTY_IMAGE_VERSION=0.4.18
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
@@ -23,8 +23,8 @@ printHelp() {
     echo "-s : bypass fabric-samples repo clone"
     echo "-b : bypass download of platform-specific binaries"
     echo
-    echo "e.g. bootstrap.sh 2.0.0 1.4.4 0.4.18 -s"
-    echo "would download docker images and binaries for Fabric v2.0.0 and Fabric CA v1.4.4"
+    echo "e.g. bootstrap.sh 2.0.0 1.4.5 0.4.18 -s"
+    echo "would download docker images and binaries for Fabric v2.0.0 and Fabric CA v1.4.5"
 }
 
 # dockerPull() pulls docker images from fabric and chaincode repositories
