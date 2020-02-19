@@ -8,16 +8,13 @@ package config
 
 import (
 	"crypto/rand"
-
-	"github.com/golang/protobuf/proto"
-
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
-
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
@@ -546,6 +543,21 @@ func makePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) (*cb.Header
 		ChannelHeader:   channelHeader,
 		SignatureHeader: signatureHeader,
 	}, nil
+}
+
+// ComputeUpdate computes the config update from a base and modified config transaction.
+func ComputeUpdate(baseConfig, updatedConfig *cb.Config, channelID string) (*cb.ConfigUpdate, error) {
+	if channelID == "" {
+		return nil, errors.New("channel ID is empty")
+	}
+	updt, err := Compute(baseConfig, updatedConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute update: %v", err)
+	}
+	updt.ChannelId = channelID
+
+	return updt, nil
+
 }
 
 // concatenateBytes combines multiple arrays of bytes, for signatures or digests

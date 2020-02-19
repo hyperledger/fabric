@@ -389,3 +389,93 @@ func createOrdererStandardPolicies() map[string]*Policy {
 
 	return policies
 }
+
+func TestComputeUpdate(t *testing.T) {
+	gt := NewGomegaWithT(t)
+
+	value1Name := "foo"
+	value2Name := "bar"
+	base := cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Version: 7,
+			Values: map[string]*cb.ConfigValue{
+				value1Name: {
+					Version: 3,
+					Value:   []byte("value1value"),
+				},
+				value2Name: {
+					Version: 6,
+					Value:   []byte("value2value"),
+				},
+			},
+		},
+	}
+	updated := cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Values: map[string]*cb.ConfigValue{
+				value1Name: base.ChannelGroup.Values[value1Name],
+				value2Name: {
+					Value: []byte("updatedValued2Value"),
+				},
+			},
+		},
+	}
+
+	channelID := "testChannel"
+
+	expectedReadSet := newConfigGroup()
+	expectedReadSet.Version = 7
+
+	expectedWriteSet := newConfigGroup()
+	expectedWriteSet.Version = 7
+	expectedWriteSet.Values = map[string]*cb.ConfigValue{
+		value2Name: {
+			Version: 7,
+			Value:   []byte("updatedValued2Value"),
+		},
+	}
+
+	expectedConfig := cb.ConfigUpdate{
+		ChannelId: channelID,
+		ReadSet:   expectedReadSet,
+		WriteSet:  expectedWriteSet,
+	}
+
+	configUpdate, err := ComputeUpdate(&base, &updated, channelID)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(configUpdate).To(Equal(&expectedConfig))
+
+}
+
+func TestComputeUpdateFailures(t *testing.T) {
+	t.Parallel()
+
+	base := cb.Config{}
+	updated := cb.Config{}
+
+	for _, test := range []struct {
+		name        string
+		channelID   string
+		expectedErr string
+	}{
+		{
+			name:        "When channel ID is not specified",
+			channelID:   "",
+			expectedErr: "channel ID is empty",
+		},
+		{
+			name:        "When failing to compute update",
+			channelID:   "testChannel",
+			expectedErr: "failed to compute update: no channel group included for original config",
+		},
+	} {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+			configUpdate, err := ComputeUpdate(&base, &updated, test.channelID)
+			gt.Expect(err).To(MatchError(test.expectedErr))
+			gt.Expect(configUpdate).To(BeNil())
+		})
+	}
+}
