@@ -146,7 +146,7 @@ var _ bool = Describe("PrivateData", func() {
 
 		BeforeEach(func() {
 			By("setting up the network")
-			network = initThreeOrgsSetup()
+			network = initThreeOrgsSetup(true)
 
 			By("starting the network")
 			peerProcesses = make(map[string]ifrit.Process)
