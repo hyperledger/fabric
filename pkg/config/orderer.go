@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"time"
@@ -18,8 +19,7 @@ import (
 	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 )
 
-// Orderer encodes the orderer-level configuration needed in config
-// transactions
+// Orderer encodes the orderer-level configuration needed in config transactions.
 type Orderer struct {
 	OrdererType   string
 	Addresses     []string
@@ -45,74 +45,27 @@ type Kafka struct {
 	Brokers []string
 }
 
-// NewOrdererGroup returns the orderer component of the channel configuration
+// NewOrdererGroup returns the orderer component of the channel configuration.
 // It defines parameters of the ordering service about how large blocks should be,
-// how frequently they should be emitted, etc. as well as the organizations of the ordering network
-// It sets the mod_policy of all elements to "Admins"
-// This group is always present in any channel configuration
+// how frequently they should be emitted, etc. as well as the organizations of the ordering network.
+// It sets the mod_policy of all elements to "Admins".
+// This group is always present in any channel configuration.
 func NewOrdererGroup(conf *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
-	var (
-		err               error
-		consensusMetadata []byte
-	)
-
 	ordererGroup := newConfigGroup()
 	ordererGroup.ModPolicy = AdminsPolicyKey
 
-	if err = addOrdererPolicies(ordererGroup, conf.Policies, AdminsPolicyKey); err != nil {
+	// add orderer policies
+	if err := addOrdererPolicies(ordererGroup, conf.Policies, AdminsPolicyKey); err != nil {
 		return nil, fmt.Errorf("failed to add policies: %v", err)
 	}
 
-	err = addValue(ordererGroup, batchSizeValue(
-		conf.BatchSize.MaxMessageCount,
-		conf.BatchSize.AbsoluteMaxBytes,
-		conf.BatchSize.PreferredMaxBytes,
-	), AdminsPolicyKey)
+	// add orderer values
+	err := addOrdererValues(ordererGroup, conf)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add batch size value: %v", err)
+		return nil, fmt.Errorf("failed to add orderer values: %v", err)
 	}
 
-	err = addValue(ordererGroup, batchTimeoutValue(conf.BatchTimeout.String()), AdminsPolicyKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add batch timeout value: %v", err)
-	}
-
-	err = addValue(ordererGroup, channelRestrictionsValue(conf.MaxChannels), AdminsPolicyKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add channel restrictions value: %v", err)
-	}
-
-	if len(conf.Capabilities) > 0 {
-		err = addValue(ordererGroup, capabilitiesValue(conf.Capabilities), AdminsPolicyKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add capabilities value: %v", err)
-		}
-	}
-
-	switch conf.OrdererType {
-	case ConsensusTypeSolo:
-	case ConsensusTypeKafka:
-		err = addValue(ordererGroup, kafkaBrokersValue(conf.Kafka.Brokers), AdminsPolicyKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add kafka brokers value: %v", err)
-		}
-	case ConsensusTypeEtcdRaft:
-		if conf.EtcdRaft == nil {
-			return nil, fmt.Errorf("missing etcdraft metadata for orderer type %s", ConsensusTypeEtcdRaft)
-		}
-
-		if consensusMetadata, err = marshalEtcdRaftMetadata(conf.EtcdRaft); err != nil {
-			return nil, fmt.Errorf("failed to marshal etcdraft metadata for orderer type %s: %v", ConsensusTypeEtcdRaft, err)
-		}
-	default:
-		return nil, fmt.Errorf("unknown orderer type %s", conf.OrdererType)
-	}
-
-	err = addValue(ordererGroup, consensusTypeValue(conf.OrdererType, consensusMetadata), AdminsPolicyKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add consensus type value: %v", err)
-	}
-
+	// add orderer groups
 	for _, org := range conf.Organizations {
 		ordererGroup.Groups[org.Name], err = newOrdererOrgGroup(org, mspConfig)
 		if err != nil {
@@ -123,15 +76,94 @@ func NewOrdererGroup(conf *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, e
 	return ordererGroup, nil
 }
 
-// newOrdererOrgGroup returns an orderer org component of the channel configuration
-// It defines the crypto material for the organization (its MSP)
-// It sets the mod_policy of all elements to "Admins"
+// newOrdererOrgGroup returns an orderer org component of the channel configuration.
+// It defines the crypto material for the organization (its MSP).
+// It sets the mod_policy of all elements to "Admins".
 func newOrdererOrgGroup(conf *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	return generateOrgConfigGroup(conf, mspConfig)
 }
 
-// batchSizeValue returns the config definition for the orderer batch size
-// It is a value for the /Channel/Orderer group
+// UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
+// via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
+func UpdateOrdererConfiguration(config *cb.Config, o *Orderer) error {
+	ordererGroup := config.ChannelGroup.Groups["Orderer"]
+
+	// update orderer addresses
+	if len(o.Addresses) > 0 {
+		err := addValue(config.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
+		if err != nil {
+			return fmt.Errorf("failed to add orderer addresses value: %v", err)
+		}
+	}
+
+	// update orderer values
+	err := addOrdererValues(ordererGroup, o)
+	if err != nil {
+		return fmt.Errorf("failed to add orderer values: %v", err)
+	}
+
+	return nil
+}
+
+// addOrdererValues adds configuration specified in *Orderer to an orderer *cb.ConfigGroup's Values map.
+func addOrdererValues(ordererGroup *cb.ConfigGroup, o *Orderer) error {
+	err := addValue(ordererGroup, batchSizeValue(
+		o.BatchSize.MaxMessageCount,
+		o.BatchSize.AbsoluteMaxBytes,
+		o.BatchSize.PreferredMaxBytes,
+	), AdminsPolicyKey)
+	if err != nil {
+		return fmt.Errorf("failed to add batch size value: %v", err)
+	}
+
+	err = addValue(ordererGroup, batchTimeoutValue(o.BatchTimeout.String()), AdminsPolicyKey)
+	if err != nil {
+		return fmt.Errorf("failed to add batch timeout value: %v", err)
+	}
+
+	err = addValue(ordererGroup, channelRestrictionsValue(o.MaxChannels), AdminsPolicyKey)
+	if err != nil {
+		return fmt.Errorf("failed to add channel restrictions value: %v", err)
+	}
+
+	if len(o.Capabilities) > 0 {
+		err = addValue(ordererGroup, capabilitiesValue(o.Capabilities), AdminsPolicyKey)
+		if err != nil {
+			return fmt.Errorf("failed to add capabilities value: %v", err)
+		}
+	}
+
+	var consensusMetadata []byte
+
+	switch o.OrdererType {
+	case ConsensusTypeSolo:
+	case ConsensusTypeKafka:
+		err = addValue(ordererGroup, kafkaBrokersValue(o.Kafka.Brokers), AdminsPolicyKey)
+		if err != nil {
+			return fmt.Errorf("failed to add kafka brokers value: %v", err)
+		}
+	case ConsensusTypeEtcdRaft:
+		if o.EtcdRaft == nil {
+			return fmt.Errorf("missing etcdraft metadata for orderer type %s", ConsensusTypeEtcdRaft)
+		}
+
+		if consensusMetadata, err = marshalEtcdRaftMetadata(o.EtcdRaft); err != nil {
+			return fmt.Errorf("failed to marshal etcdraft metadata for orderer type %s: %v", ConsensusTypeEtcdRaft, err)
+		}
+	default:
+		return fmt.Errorf("unknown orderer type %s", o.OrdererType)
+	}
+
+	err = addValue(ordererGroup, consensusTypeValue(o.OrdererType, consensusMetadata), AdminsPolicyKey)
+	if err != nil {
+		return fmt.Errorf("failed to add consensus type value: %v", err)
+	}
+
+	return nil
+}
+
+// batchSizeValue returns the config definition for the orderer batch size.
+// It is a value for the /Channel/Orderer group.
 func batchSizeValue(maxMessages, absoluteMaxBytes, preferredMaxBytes uint32) *standardConfigValue {
 	return &standardConfigValue{
 		key: BatchSizeKey,
@@ -143,8 +175,8 @@ func batchSizeValue(maxMessages, absoluteMaxBytes, preferredMaxBytes uint32) *st
 	}
 }
 
-// batchTimeoutValue returns the config definition for the orderer batch timeout
-// It is a value for the /Channel/Orderer group
+// batchTimeoutValue returns the config definition for the orderer batch timeout.
+// It is a value for the /Channel/Orderer group.
 func batchTimeoutValue(timeout string) *standardConfigValue {
 	return &standardConfigValue{
 		key: BatchTimeoutKey,
@@ -154,8 +186,8 @@ func batchTimeoutValue(timeout string) *standardConfigValue {
 	}
 }
 
-// endpointsValue returns the config definition for the orderer addresses at an org scoped level
-// It is a value for the /Channel/Orderer/<OrgName> group
+// endpointsValue returns the config definition for the orderer addresses at an org scoped level.
+// It is a value for the /Channel/Orderer/<OrgName> group.
 func endpointsValue(addresses []string) *standardConfigValue {
 	return &standardConfigValue{
 		key: EndpointsKey,
@@ -165,8 +197,8 @@ func endpointsValue(addresses []string) *standardConfigValue {
 	}
 }
 
-// channelRestrictionsValue returns the config definition for the orderer channel restrictions
-// It is a value for the /Channel/Orderer group
+// channelRestrictionsValue returns the config definition for the orderer channel restrictions.
+// It is a value for the /Channel/Orderer group.
 func channelRestrictionsValue(maxChannelCount uint64) *standardConfigValue {
 	return &standardConfigValue{
 		key: ChannelRestrictionsKey,
@@ -176,8 +208,8 @@ func channelRestrictionsValue(maxChannelCount uint64) *standardConfigValue {
 	}
 }
 
-// kafkaBrokersValue returns the config definition for the addresses of the ordering service's Kafka brokers
-// It is a value for the /Channel/Orderer group
+// kafkaBrokersValue returns the config definition for the addresses of the ordering service's Kafka brokers.
+// It is a value for the /Channel/Orderer group.
 func kafkaBrokersValue(brokers []string) *standardConfigValue {
 	return &standardConfigValue{
 		key: KafkaBrokersKey,
@@ -187,13 +219,8 @@ func kafkaBrokersValue(brokers []string) *standardConfigValue {
 	}
 }
 
-// marshalEtcdRaftMetadata serializes etcd RAFT metadata
+// marshalEtcdRaftMetadata serializes etcd RAFT metadata.
 func marshalEtcdRaftMetadata(md *eb.ConfigMetadata) ([]byte, error) {
-	var (
-		data []byte
-		err  error
-	)
-
 	copyMd := proto.Clone(md).(*eb.ConfigMetadata)
 	for _, c := range copyMd.Consenters {
 		// Expect the user to set the config value for client/server certs to the
@@ -202,16 +229,18 @@ func marshalEtcdRaftMetadata(md *eb.ConfigMetadata) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %v", c.GetHost(), c.GetPort(), err)
 		}
+
 		c.ClientTlsCert = clientCert
 
 		serverCert, err := ioutil.ReadFile(string(c.GetServerTlsCert()))
 		if err != nil {
 			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %v", c.GetHost(), c.GetPort(), err)
 		}
+
 		c.ServerTlsCert = serverCert
 	}
 
-	data, err = proto.Marshal(copyMd)
+	data, err := proto.Marshal(copyMd)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal config metadata: %v", err)
 	}
@@ -219,8 +248,8 @@ func marshalEtcdRaftMetadata(md *eb.ConfigMetadata) ([]byte, error) {
 	return data, nil
 }
 
-// consensusTypeValue returns the config definition for the orderer consensus type
-// It is a value for the /Channel/Orderer group
+// consensusTypeValue returns the config definition for the orderer consensus type.
+// It is a value for the /Channel/Orderer group.
 func consensusTypeValue(consensusType string, consensusMetadata []byte) *standardConfigValue {
 	return &standardConfigValue{
 		key: ConsensusTypeKey,
@@ -229,4 +258,17 @@ func consensusTypeValue(consensusType string, consensusMetadata []byte) *standar
 			Metadata: consensusMetadata,
 		},
 	}
+}
+
+// addOrdererPolicies adds *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
+// It checks that the BlockValidation policy is defined alongside the standard policy checks.
+func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]*Policy, modPolicy string) error {
+	switch {
+	case policyMap == nil:
+		return errors.New("no policies defined")
+	case policyMap[BlockValidationPolicyKey] == nil:
+		return errors.New("no BlockValidation policy defined")
+	}
+
+	return addPolicies(cg, policyMap, modPolicy)
 }

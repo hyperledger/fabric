@@ -251,19 +251,8 @@ func addValue(cg *cb.ConfigGroup, value *standardConfigValue, modPolicy string) 
 	return nil
 }
 
-// addOrdererPolicies adds *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
-func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]*Policy, modPolicy string) error {
-	switch {
-	case policyMap == nil:
-		return errors.New("no policies defined")
-	case policyMap[BlockValidationPolicyKey] == nil:
-		return errors.New("no BlockValidation policy defined")
-	}
-
-	return addPolicies(cg, policyMap, modPolicy)
-}
-
 // addPolicies adds *cb.ConfigPolicies to the passed *cb.ConfigGroup's Policies map.
+// TODO: evaluate if modPolicy actually needs to be passed in if all callers pass AdminsPolicyKey.
 func addPolicies(cg *cb.ConfigGroup, policyMap map[string]*Policy, modPolicy string) error {
 	switch {
 	case policyMap == nil:
