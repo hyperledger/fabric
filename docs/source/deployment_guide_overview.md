@@ -83,7 +83,7 @@ To install the Fabric CA client, which is used to register and enroll identities
 
 For an example of how to setup a CA and enroll its admin, check out [Setup Orderer Org CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#setup-orderer-org-ca). For an example of how to set up a TLS CA, check out [Setup TLS CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#setup-tls-ca). Note that bootstrapping the CA server means assigning a username and password that functions as "registering" the CA admin.
 
-### Step four: Use the CA to create identities and MSPs
+## Step four: Use the CA to create identities and MSPs
 
 After you have created your CAs, you can use them to create the certificates for the identities and components related to your organization (which is represented by an MSP). For each organization, you will need to, at a minimum:
 
