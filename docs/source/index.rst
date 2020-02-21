@@ -21,6 +21,7 @@ modularity and versatility for a broad set of industry use cases.
    getting_started
    developapps/developing_applications
    tutorials
+   deployment_guide_overview
    ops_guide
    upgrade
    command_ref
