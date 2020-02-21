@@ -8,16 +8,13 @@ package config
 
 import (
 	"bytes"
-	"testing"
-
-	"github.com/hyperledger/fabric/common/tools/protolator"
-
 	"errors"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
-
+	"github.com/hyperledger/fabric/common/tools/protolator"
 	. "github.com/onsi/gomega"
 )
 
@@ -309,6 +306,229 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			env, err := NewCreateChannelTx(profile, mspConfig)
 			gt.Expect(env).To(BeNil())
 			gt.Expect(err).To(MatchError(tt.err))
+		})
+	}
+}
+
+func TestAddOrgToConsortium(t *testing.T) {
+	gt := NewGomegaWithT(t)
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Consortiums": {
+					Groups: map[string]*cb.ConfigGroup{
+						"test-consortium": {},
+					},
+				},
+			},
+		},
+	}
+
+	org := &Organization{
+		Name:     "Org1",
+		ID:       "Org1MSP",
+		Policies: createApplicationOrgStandardPolicies(),
+	}
+
+	configUpdate, err := AddOrgToConsortium(org, "test-consortium", "testchannel", config, &mb.MSPConfig{})
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	expectedConfigUpdate := &cb.ConfigUpdate{
+		ChannelId: "testchannel",
+		ReadSet: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Consortiums": {
+					Groups: map[string]*cb.ConfigGroup{
+						"test-consortium": {},
+					},
+				},
+			},
+		},
+		WriteSet: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Consortiums": {
+					Groups: map[string]*cb.ConfigGroup{
+						"test-consortium": {
+							Version: 1,
+							Groups: map[string]*cb.ConfigGroup{
+								"Org1": {
+									Values: map[string]*cb.ConfigValue{
+										"MSP": {
+											ModPolicy: "Admins",
+											Value:     marshalOrPanic(&mb.MSPConfig{}),
+										},
+									},
+									Policies: map[string]*cb.ConfigPolicy{
+										"Admins": {
+											ModPolicy: "Admins",
+											Policy: &cb.Policy{
+												Type: 3,
+												Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
+													Rule:      cb.ImplicitMetaPolicy_Rule(cb.ImplicitMetaPolicy_MAJORITY),
+													SubPolicy: "Admins",
+												}),
+											},
+										},
+										"Endorsement": {
+											ModPolicy: "Admins",
+											Policy: &cb.Policy{
+												Type: 3,
+												Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
+													Rule:      cb.ImplicitMetaPolicy_Rule(cb.ImplicitMetaPolicy_MAJORITY),
+													SubPolicy: "Endorsement",
+												}),
+											},
+										},
+										"LifecycleEndorsement": {
+											ModPolicy: "Admins",
+											Policy: &cb.Policy{
+												Type: 3,
+												Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
+													Rule:      cb.ImplicitMetaPolicy_Rule(cb.ImplicitMetaPolicy_MAJORITY),
+													SubPolicy: "Endorsement",
+												}),
+											},
+										},
+										"Readers": {
+											ModPolicy: "Admins",
+											Policy: &cb.Policy{
+												Type: 3,
+												Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
+													Rule:      cb.ImplicitMetaPolicy_Rule(cb.ImplicitMetaPolicy_ANY),
+													SubPolicy: "Readers",
+												}),
+											},
+										},
+										"Writers": {
+											ModPolicy: "Admins",
+											Policy: &cb.Policy{
+												Type: 3,
+												Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
+													Rule:      cb.ImplicitMetaPolicy_Rule(cb.ImplicitMetaPolicy_ANY),
+													SubPolicy: "Writers",
+												}),
+											},
+										},
+									},
+									ModPolicy: "Admins",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	gt.Expect(proto.Equal(configUpdate, expectedConfigUpdate)).To(BeTrue())
+}
+
+// marshalOrPanic serializes a protobuf message and panics if this
+// operation fails.
+func marshalOrPanic(pb proto.Message) []byte {
+	data, err := proto.Marshal(pb)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func TestAddOrgToConsortiumFailures(t *testing.T) {
+	t.Parallel()
+
+	baseConfig := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Consortiums": {
+					Groups: map[string]*cb.ConfigGroup{
+						"test-consortium": {},
+					},
+				},
+			},
+		},
+	}
+
+	org := &Organization{
+		Name:     "test-org",
+		ID:       "test-org-msp-id",
+		Policies: createApplicationOrgStandardPolicies(),
+	}
+
+	for _, test := range []struct {
+		name        string
+		org         *Organization
+		consortium  string
+		channelID   string
+		config      *cb.Config
+		expectedErr string
+	}{
+		{
+			name:        "When the organization is nil",
+			org:         nil,
+			consortium:  "test-consortium",
+			channelID:   "test-channel",
+			config:      baseConfig,
+			expectedErr: "organization is empty",
+		},
+		{
+			name:        "When the consortium name is not specified",
+			org:         org,
+			consortium:  "",
+			channelID:   "test-channel",
+			config:      baseConfig,
+			expectedErr: "consortium is empty",
+		},
+		{
+			name:       "When the config doesn't contain a consortiums group",
+			org:        org,
+			consortium: "test-consortium",
+			channelID:  "test-channel",
+			config: &cb.Config{
+				ChannelGroup: &cb.ConfigGroup{
+					Groups: map[string]*cb.ConfigGroup{},
+				},
+			},
+			expectedErr: "consortiums group does not exist",
+		},
+		{
+			name:        "When the config doesn't contain the consortium",
+			org:         org,
+			consortium:  "what-the-what",
+			channelID:   "test-channel",
+			config:      baseConfig,
+			expectedErr: "consortium 'what-the-what' does not exist",
+		},
+		{
+			name: "When the config doesn't contain the consortium",
+			org: &Organization{
+				Name: "test-msp",
+				ID:   "test-org-msp-id",
+				Policies: map[string]*Policy{
+					"Admins": nil,
+				},
+			},
+			consortium:  "test-consortium",
+			channelID:   "test-channel",
+			config:      baseConfig,
+			expectedErr: "failed to create consortium org: failed to add policies: no Admins policy defined",
+		},
+		{
+			name:        "When the channel ID is not specified",
+			org:         org,
+			consortium:  "test-consortium",
+			channelID:   "",
+			config:      baseConfig,
+			expectedErr: "channel ID is empty",
+		},
+	} {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+
+			configUpdate, err := AddOrgToConsortium(test.org, test.consortium, test.channelID, test.config, &mb.MSPConfig{})
+			gt.Expect(configUpdate).To(BeNil())
+			gt.Expect(err).To(MatchError(test.expectedErr))
 		})
 	}
 }
