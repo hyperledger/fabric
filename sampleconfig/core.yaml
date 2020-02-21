@@ -204,6 +204,18 @@ peer:
             # transaction's private data from other peers need to be skipped during the commit time and pulled
             # only through reconciler.
             skipPullingInvalidTransactionsDuringCommit: false
+            # implicitCollectionDisseminationPolicy specifies the dessemination policy for the peer's own implicit collection.
+            # When a peer endorses a proposal that writes to its own implicit collection, below values override the default values
+            # for disseminating private data.
+            # Note that it is applicable to all channels the peer has joined. The implication is that requiredPeerCount has to
+            # be smaller than the number of peers in a channel that has the lowest numbers of peers from the organization.
+            implicitCollectionDisseminationPolicy:
+               # requiredPeerCount defines the minimum number of eligible peers to which the peer must successfully
+               # disseminate private data for its own implicit collection during endorsement. Default value is 0.
+               requiredPeerCount: 0
+               # maxPeerCount defines the maximum number of eligible peers to which the peer will attempt to
+               # disseminate private data for its own implicit collection during endorsement. Default value is 1.
+               maxPeerCount: 1
 
         # Gossip state transfer related configuration
         state:

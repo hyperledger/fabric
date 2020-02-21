@@ -1798,7 +1798,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	blockToLive = 10000
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "collection-name: mycollection3 -- requiredPeerCount (1) cannot be less than zero (-2)",
+	assert.EqualError(t, err, "collection-name: mycollection3 -- requiredPeerCount (-2) cannot be less than zero",
 		collName3, maximumPeerCount, requiredPeerCount)
 
 	// Test 11: requiredPeerCount > maximumPeerCount -> error

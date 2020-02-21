@@ -231,8 +231,8 @@ func validateNewCollectionConfigs(newCollectionConfigs []*pb.CollectionConfig) e
 
 		}
 		if requiredPeerCount < 0 {
-			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be less than zero (%d)",
-				collectionName, maximumPeerCount, requiredPeerCount)
+			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be less than zero",
+				collectionName, requiredPeerCount)
 
 		}
 

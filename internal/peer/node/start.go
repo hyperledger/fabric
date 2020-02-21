@@ -86,6 +86,7 @@ import (
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossipgossip "github.com/hyperledger/fabric/gossip/gossip"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/service"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
@@ -350,8 +351,10 @@ func serve(args []string) error {
 		PackageParser:       ccPackageParser,
 	}
 
+	privdataConfig := gossipprivdata.GlobalConfig()
 	lifecycleValidatorCommitter := &lifecycle.ValidatorCommitter{
 		CoreConfig:                   coreConfig,
+		PrivdataConfig:               privdataConfig,
 		Resources:                    lifecycleResources,
 		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
 	}
@@ -439,6 +442,7 @@ func serve(args []string) error {
 		coreConfig.PeerAddress,
 		deliverGRPCClient,
 		deliverServiceConfig,
+		privdataConfig,
 	)
 	if err != nil {
 		return errors.WithMessage(err, "failed to initialize gossip service")
@@ -1139,6 +1143,7 @@ func initGossipService(
 	peerAddress string,
 	deliverGRPCClient *comm.GRPCClient,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
+	privdataConfig *gossipprivdata.PrivdataConfig,
 ) (*gossipservice.GossipService, error) {
 
 	var certs *gossipcommon.TLSCertificates
@@ -1183,6 +1188,7 @@ func initGossipService(
 		deliverGRPCClient,
 		gossipConfig,
 		serviceConfig,
+		privdataConfig,
 		deliverServiceConfig,
 	)
 }

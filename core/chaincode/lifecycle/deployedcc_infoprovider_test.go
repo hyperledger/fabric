@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
@@ -32,6 +33,7 @@ var _ = Describe("ValidatorCommitter", func() {
 	var (
 		vc                      *lifecycle.ValidatorCommitter
 		resources               *lifecycle.Resources
+		privdataConfig          *privdata.PrivdataConfig
 		fakeLegacyProvider      *mock.LegacyDeployedCCInfoProvider
 		fakeQueryExecutor       *mock.SimpleQueryExecutor
 		fakeChannelConfigSource *mock.ChannelConfigSource
@@ -67,8 +69,15 @@ var _ = Describe("ValidatorCommitter", func() {
 			Serializer:          &lifecycle.Serializer{},
 		}
 
+		privdataConfig = &privdata.PrivdataConfig{
+			ImplicitCollDisseminationPolicy: privdata.ImplicitCollectionDisseminationPolicy{
+				RequiredPeerCount: 1,
+				MaxPeerCount:      2,
+			},
+		}
 		vc = &lifecycle.ValidatorCommitter{
 			CoreConfig:                   &peer.Config{LocalMSPID: "first-mspid"},
+			PrivdataConfig:               privdataConfig,
 			Resources:                    resources,
 			LegacyDeployedCCInfoProvider: fakeLegacyProvider,
 		}
@@ -312,13 +321,13 @@ var _ = Describe("ValidatorCommitter", func() {
 					secondOrg = collection
 				}
 			}
+			// Required/MaxPeerCount should match privdataConfig when the implicit collection is for peer's own org
 			Expect(firstOrg).NotTo(BeNil())
-			Expect(firstOrg.RequiredPeerCount).To(Equal(int32(0)))
-			// implicit collection MaximumPeerCount is 1 when its mspid matches peer's local mspid
-			Expect(firstOrg.MaximumPeerCount).To(Equal(int32(1)))
+			Expect(firstOrg.RequiredPeerCount).To(Equal(int32(privdataConfig.ImplicitCollDisseminationPolicy.RequiredPeerCount)))
+			Expect(firstOrg.MaximumPeerCount).To(Equal(int32(privdataConfig.ImplicitCollDisseminationPolicy.MaxPeerCount)))
+			// Required/MaxPeerCount should be 0 when the implicit collection is for other org
 			Expect(secondOrg).NotTo(BeNil())
 			Expect(secondOrg.RequiredPeerCount).To(Equal(int32(0)))
-			// implicit collection MaximumPeerCount is 0 when its mspid doesn't match peer's local mspid
 			Expect(secondOrg.MaximumPeerCount).To(Equal(int32(0)))
 		})
 

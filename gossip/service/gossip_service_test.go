@@ -133,6 +133,7 @@ func TestInitGossipService(t *testing.T) {
 		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
+		&privdata.PrivdataConfig{},
 		&deliverservice.DeliverServiceConfig{
 			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
@@ -809,10 +810,11 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 		deliveryFactory: &deliveryFactoryImpl{
 			credentialSupport: comm.NewCredentialSupport(),
 		},
-		peerIdentity:  api.PeerIdentityType(conf.InternalEndpoint),
-		secAdv:        secAdv,
-		metrics:       metrics,
-		serviceConfig: serviceConfig,
+		peerIdentity:   api.PeerIdentityType(conf.InternalEndpoint),
+		secAdv:         secAdv,
+		metrics:        metrics,
+		serviceConfig:  serviceConfig,
+		privdataConfig: privdata.GlobalConfig(),
 	}
 
 	return &gossipGRPC{GossipService: gossipService, grpc: gRPCServer}
@@ -933,6 +935,7 @@ func TestInvalidInitialization(t *testing.T) {
 		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
+		&privdata.PrivdataConfig{},
 		&deliverservice.DeliverServiceConfig{
 			PeerTLSEnabled:              false,
 			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
@@ -978,6 +981,7 @@ func TestChannelConfig(t *testing.T) {
 		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
+		&privdata.PrivdataConfig{},
 		&deliverservice.DeliverServiceConfig{
 			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,

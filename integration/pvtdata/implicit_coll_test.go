@@ -21,7 +21,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ bool = Describe("PrivateData implicit collection", func() {
+var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 	var (
 		network       *nwo.Network
 		process       ifrit.Process
@@ -33,11 +33,22 @@ var _ bool = Describe("PrivateData implicit collection", func() {
 		By("setting up the network")
 		network = initThreeOrgsSetup(false)
 
-		By("setting the pull retry threshold to 0 on all peers")
-		// set pull retry threshold to 0 to disable pulling
+		By("disabling pvtdata pull/dissemination/reconciliation on all peers except for enabling dissemination on org1 peers")
 		for _, p := range network.Peers {
 			core := network.ReadPeerConfig(p)
+			// disble pvtdata pulling on all peers by setting PullRetryThreshold to 0
 			core.Peer.Gossip.PvtData.PullRetryThreshold = 0
+			// disable pvtdata reconciliation on all peers
+			core.Peer.Gossip.PvtData.ReconciliationEnabled = false
+			if p.Organization == "Org1" {
+				// enable dissemination on org1 peers
+				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.RequiredPeerCount = 0
+				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.MaxPeerCount = 3
+			} else {
+				// disable dessemination on non-org1 peers
+				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.RequiredPeerCount = 0
+				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.MaxPeerCount = 0
+			}
 			network.WritePeerConfig(p, core)
 		}
 
@@ -65,11 +76,10 @@ var _ bool = Describe("PrivateData implicit collection", func() {
 		testCleanup(network, process)
 	})
 
-	It("disseminates implicit collection data owned by the peer's org ", func() {
+	It("disseminates pvtdata of implicit collection for the peer's own org but not implicit collection for another org", func() {
+		By("writing private data to org1's and org2's implicit collections")
 		peer1 := network.Peer("Org1", "peer0")
 		peer2 := network.Peer("Org2", "peer0")
-
-		By("writing private data to org1's and org2's implicit collections")
 		writeInput := []kvexecutor.KVData{
 			{Collection: "_implicit_org_Org1MSP", Key: "org1_key1", Value: "org1_value1"},
 			{Collection: "_implicit_org_Org2MSP", Key: "org2_key1", Value: "org2_value1"},
@@ -82,6 +92,7 @@ var _ bool = Describe("PrivateData implicit collection", func() {
 		Expect(err).NotTo(HaveOccurred())
 		readImplicitCollection(network, network.Peer("Org1", "peer0"), testChaincode.Name, readInput1, string(expectedMsg1), true)
 
+		// org1.peer1 should have _implicit_org_Org1MSP pvtdata because dissemination is enabled on org1 peers
 		By("querying org1.peer1 for _implicit_org_Org1MSP collection data, expecting pvtdata")
 		readImplicitCollection(network, network.Peer("Org1", "peer1"), testChaincode.Name, readInput1, string(expectedMsg1), true)
 
@@ -99,8 +110,10 @@ var _ bool = Describe("PrivateData implicit collection", func() {
 		Expect(err).NotTo(HaveOccurred())
 		readImplicitCollection(network, network.Peer("Org2", "peer0"), testChaincode.Name, readInput2, string(expectedMsg2), true)
 
-		By("querying org2.peer1 for _implicit_org_Org2MSP collection data, expecting pvtdata")
-		readImplicitCollection(network, network.Peer("Org2", "peer1"), testChaincode.Name, readInput2, string(expectedMsg2), true)
+		// org2.peer1 should have no _implicit_org_Org2MSP pvtdata because pull/dissemination/reconciliation are disabled on org2 peers
+		By("querying org2.peer1 for _implicit_org_Org2MSP collection data, expecting error")
+		readImplicitCollection(network, network.Peer("Org2", "peer1"), testChaincode.Name, readInput2,
+			"private data matching public hash version is not available", false)
 
 		By("querying org1.peer0 for _implicit_org_Org2MSP collection data, expecting error")
 		readImplicitCollection(network, network.Peer("Org1", "peer0"), testChaincode.Name, readInput2,
