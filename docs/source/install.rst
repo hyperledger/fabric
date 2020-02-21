@@ -26,10 +26,6 @@ Hyperledger Fabric.
           documentation for `shared drives <https://docs.docker.com/docker-for-windows/#shared-drives>`__
           and use a location under one of the shared drives.
 
-.. note:: If you are running on **Mac**, you may need to install ``wget`` before proceeding.
-          The ``wget`` command is used to download binaries from GitHub releases.
-          To install wget, ``brew install wget``.
-
 Determine a location on your machine where you want to place the `fabric-samples`
 repository and enter that directory in a terminal window. The
 command that follows will perform the following steps:
