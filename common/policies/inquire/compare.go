@@ -23,6 +23,12 @@ type ComparablePrincipal struct {
 	mspID     string
 }
 
+// Equal returns whether this ComparablePrincipal is equal to the given ComparablePrincipal.
+func (cp *ComparablePrincipal) Equal(cp2 *ComparablePrincipal) bool {
+	return cp.mspID == cp2.mspID &&
+		cp.equalPrincipals(cp2) && cp.equalRoles(cp2) && cp.equalOUs(cp2)
+}
+
 // NewComparablePrincipal creates a ComparablePrincipal out of the given MSPPrincipal.
 // Returns nil if a failure occurs.
 func NewComparablePrincipal(principal *msp.MSPPrincipal) *ComparablePrincipal {
@@ -179,4 +185,53 @@ func (cps ComparablePrincipalSet) Clone() ComparablePrincipalSet {
 		res[i] = cp
 	}
 	return res
+}
+
+func (cp *ComparablePrincipal) equalRoles(cp2 *ComparablePrincipal) bool {
+	if cp.role == nil && cp2.role == nil {
+		return true
+	}
+
+	if cp.role == nil || cp2.role == nil {
+		return false
+	}
+
+	return cp.role.MspIdentifier == cp2.role.MspIdentifier &&
+		cp.role.Role == cp2.role.Role
+}
+
+func (cp *ComparablePrincipal) equalOUs(cp2 *ComparablePrincipal) bool {
+	if cp.ou == nil && cp2.ou == nil {
+		return true
+	}
+
+	if cp.ou == nil || cp2.ou == nil {
+		return false
+	}
+
+	if cp.ou.OrganizationalUnitIdentifier != cp2.ou.OrganizationalUnitIdentifier {
+		return false
+	}
+
+	if cp.ou.MspIdentifier != cp2.ou.MspIdentifier {
+		return false
+	}
+
+	return bytes.Equal(cp.ou.CertifiersIdentifier, cp2.ou.CertifiersIdentifier)
+}
+
+func (cp *ComparablePrincipal) equalPrincipals(cp2 *ComparablePrincipal) bool {
+	if cp.principal == nil && cp2.principal == nil {
+		return true
+	}
+
+	if cp.principal == nil || cp2.principal == nil {
+		return false
+	}
+
+	if cp.principal.PrincipalClassification != cp2.principal.PrincipalClassification {
+		return false
+	}
+
+	return bytes.Equal(cp.principal.Principal, cp2.principal.Principal)
 }
