@@ -32,6 +32,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -271,8 +272,11 @@ func (ds *deliverServer) addExpectProbeAssert() {
 
 func (ds *deliverServer) addExpectPullAssert(seq uint64) {
 	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
-		assert.NotNil(ds.t, info.GetStart().GetSpecified())
-		assert.Equal(ds.t, seq, info.GetStart().GetSpecified().Number)
+		seekPosition := info.GetStart()
+		require.NotNil(ds.t, seekPosition)
+		seekSpecified := seekPosition.GetSpecified()
+		require.NotNil(ds.t, seekSpecified)
+		assert.Equal(ds.t, seq, seekSpecified.Number)
 		assert.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
 	}
 }
