@@ -67,6 +67,9 @@ peer:
       reconcileSleepInterval: 10s
       reconciliationEnabled: true
       skipPullingInvalidTransactionsDuringCommit: false
+      implicitCollectionDisseminationPolicy:
+        requiredPeerCount: 0
+        maxPeerCount: 1
     state:
        enabled: true
        checkInterval: 10s

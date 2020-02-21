@@ -171,6 +171,7 @@ type GossipService struct {
 	secAdv          api.SecurityAdvisor
 	metrics         *gossipmetrics.GossipMetrics
 	serviceConfig   *ServiceConfig
+	privdataConfig  *gossipprivdata.PrivdataConfig
 }
 
 // This is an implementation of api.JoinChannelMessage.
@@ -212,6 +213,7 @@ func New(
 	deliverGRPCClient *corecomm.GRPCClient,
 	gossipConfig *gossip.Config,
 	serviceConfig *ServiceConfig,
+	privdataConfig *gossipprivdata.PrivdataConfig,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 ) (*GossipService, error) {
 	serializedIdentity, err := peerIdentity.Serialize()
@@ -244,10 +246,11 @@ func New(
 			deliverGRPCClient:    deliverGRPCClient,
 			deliverServiceConfig: deliverServiceConfig,
 		},
-		peerIdentity:  serializedIdentity,
-		secAdv:        secAdv,
-		metrics:       gossipMetrics,
-		serviceConfig: serviceConfig,
+		peerIdentity:   serializedIdentity,
+		secAdv:         secAdv,
+		metrics:        gossipMetrics,
+		serviceConfig:  serviceConfig,
+		privdataConfig: privdataConfig,
 	}, nil
 }
 
@@ -320,12 +323,11 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 	}, store, selfSignedData, g.metrics.PrivdataMetrics, coordinatorConfig,
 		support.IdDeserializeFactory)
 
-	privdataConfig := gossipprivdata.GlobalConfig()
 	var reconciler gossipprivdata.PvtDataReconciler
 
-	if privdataConfig.ReconciliationEnabled {
+	if g.privdataConfig.ReconciliationEnabled {
 		reconciler = gossipprivdata.NewReconciler(channelID, g.metrics.PrivdataMetrics,
-			support.Committer, fetcher, privdataConfig)
+			support.Committer, fetcher, g.privdataConfig)
 	} else {
 		reconciler = &gossipprivdata.NoOpReconciler{}
 	}

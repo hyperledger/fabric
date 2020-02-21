@@ -19,6 +19,7 @@ import (
 	validationState "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/pkg/errors"
@@ -44,6 +45,7 @@ var (
 
 type ValidatorCommitter struct {
 	CoreConfig                   *peer.Config
+	PrivdataConfig               *privdata.PrivdataConfig
 	Resources                    *Resources
 	LegacyDeployedCCInfoProvider LegacyDeployedCCInfoProvider
 }
@@ -207,11 +209,13 @@ func (vc *ValidatorCommitter) ChaincodeImplicitCollections(channelName string) (
 
 // GenerateImplicitCollectionForOrg generates implicit collection for the org
 func (vc *ValidatorCommitter) GenerateImplicitCollectionForOrg(mspid string) *pb.StaticCollectionConfig {
-	// set collection MaximumPeerCount to 0 when its mspid does not match the local mspid
-	// set collection MaximumPeerCount to 1 when its mspid matches the local mspid (i.e., peer's own org)
-	maxPeerCount := int32(0)
+	// set Required/MaxPeerCount to 0 if it is other org's implicit collection (mspid does not match peer's local mspid)
+	// set Required/MaxPeerCount to the config values if it is the peer org's implicit collection (mspid matches peer's local mspid)
+	requiredPeerCount := 0
+	maxPeerCount := 0
 	if mspid == vc.CoreConfig.LocalMSPID {
-		maxPeerCount = 1
+		requiredPeerCount = vc.PrivdataConfig.ImplicitCollDisseminationPolicy.RequiredPeerCount
+		maxPeerCount = vc.PrivdataConfig.ImplicitCollDisseminationPolicy.MaxPeerCount
 	}
 	return &pb.StaticCollectionConfig{
 		Name: ImplicitCollectionNameForOrg(mspid),
@@ -220,8 +224,8 @@ func (vc *ValidatorCommitter) GenerateImplicitCollectionForOrg(mspid string) *pb
 				SignaturePolicy: policydsl.SignedByMspMember(mspid),
 			},
 		},
-		RequiredPeerCount: 0,
-		MaximumPeerCount:  maxPeerCount,
+		RequiredPeerCount: int32(requiredPeerCount),
+		MaximumPeerCount:  int32(maxPeerCount),
 	}
 }
 
