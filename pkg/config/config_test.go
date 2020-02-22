@@ -448,6 +448,8 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 		},
 	}
 
+	mspConfig := &mb.MSPConfig{Type: 0}
+
 	org := &Organization{
 		Name:     "test-org",
 		ID:       "test-org-msp-id",
@@ -460,6 +462,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 		consortium  string
 		channelID   string
 		config      *cb.Config
+		mspConfig   *mb.MSPConfig
 		expectedErr string
 	}{
 		{
@@ -468,7 +471,8 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			consortium:  "test-consortium",
 			channelID:   "test-channel",
 			config:      baseConfig,
-			expectedErr: "organization is empty",
+			mspConfig:   mspConfig,
+			expectedErr: "organization was not provided",
 		},
 		{
 			name:        "When the consortium name is not specified",
@@ -476,7 +480,8 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			consortium:  "",
 			channelID:   "test-channel",
 			config:      baseConfig,
-			expectedErr: "consortium is empty",
+			mspConfig:   mspConfig,
+			expectedErr: "consortium was not provided",
 		},
 		{
 			name:       "When the config doesn't contain a consortiums group",
@@ -488,6 +493,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 					Groups: map[string]*cb.ConfigGroup{},
 				},
 			},
+			mspConfig:   mspConfig,
 			expectedErr: "consortiums group does not exist",
 		},
 		{
@@ -496,6 +502,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			consortium:  "what-the-what",
 			channelID:   "test-channel",
 			config:      baseConfig,
+			mspConfig:   mspConfig,
 			expectedErr: "consortium 'what-the-what' does not exist",
 		},
 		{
@@ -510,6 +517,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			consortium:  "test-consortium",
 			channelID:   "test-channel",
 			config:      baseConfig,
+			mspConfig:   mspConfig,
 			expectedErr: "failed to create consortium org: failed to add policies: no Admins policy defined",
 		},
 		{
@@ -518,7 +526,35 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			consortium:  "test-consortium",
 			channelID:   "",
 			config:      baseConfig,
-			expectedErr: "channel ID is empty",
+			mspConfig:   mspConfig,
+			expectedErr: "channelID was not provided",
+		},
+		{
+			name:        "When the config is nil",
+			org:         org,
+			consortium:  "test-consortium",
+			channelID:   "test-channel",
+			config:      nil,
+			mspConfig:   mspConfig,
+			expectedErr: "config was not provided",
+		},
+		{
+			name:        "When the mspConfig is nil",
+			org:         org,
+			consortium:  "test-consortium",
+			channelID:   "test-channel",
+			config:      baseConfig,
+			mspConfig:   nil,
+			expectedErr: "mspConfig was not provided",
+		},
+		{
+			name:        "When the MSPConfig type does not match 0 or 1",
+			org:         org,
+			consortium:  "test-consortium",
+			channelID:   "test-channel",
+			config:      baseConfig,
+			mspConfig:   &mb.MSPConfig{Type: 555},
+			expectedErr: "mspConfig type must be 0 (FABRIC) or 1 (IDEMIX)",
 		},
 	} {
 		test := test
@@ -526,7 +562,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			configUpdate, err := AddOrgToConsortium(test.org, test.consortium, test.channelID, test.config, &mb.MSPConfig{})
+			configUpdate, err := AddOrgToConsortium(test.org, test.consortium, test.channelID, test.config, test.mspConfig)
 			gt.Expect(configUpdate).To(BeNil())
 			gt.Expect(err).To(MatchError(test.expectedErr))
 		})

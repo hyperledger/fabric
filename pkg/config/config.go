@@ -576,10 +576,22 @@ func concatenateBytes(data ...[]byte) []byte {
 // channel configuration.
 func AddOrgToConsortium(org *Organization, consortium, channelID string, config *cb.Config, mspConfig *mb.MSPConfig) (*cb.ConfigUpdate, error) {
 	if org == nil {
-		return nil, errors.New("organization is empty")
+		return nil, errors.New("organization was not provided")
 	}
 	if consortium == "" {
-		return nil, errors.New("consortium is empty")
+		return nil, errors.New("consortium was not provided")
+	}
+	if channelID == "" {
+		return nil, errors.New("channelID was not provided")
+	}
+	if config == nil {
+		return nil, errors.New("config was not provided")
+	}
+	if mspConfig == nil {
+		return nil, errors.New("mspConfig was not provided")
+	}
+	if mspConfig.Type != 0 && mspConfig.Type != 1 {
+		return nil, errors.New("mspConfig type must be 0 (FABRIC) or 1 (IDEMIX)")
 	}
 
 	updatedConfig := proto.Clone(config).(*cb.Config)
