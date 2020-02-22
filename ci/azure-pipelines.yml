@@ -44,10 +44,12 @@ jobs:
         displayName: Publish Documentation Artifacts
 
   - job: UnitTests
-    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
-    dependsOn: VerifyBuild
+#    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
+#    dependsOn: VerifyBuild
     pool:
       vmImage: ubuntu-18.04
+    strategy:
+      parallel: 3
     steps:
       - template: install_deps.yml
       - checkout: self
