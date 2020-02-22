@@ -48,6 +48,8 @@ jobs:
     dependsOn: VerifyBuild
     pool:
       vmImage: ubuntu-18.04
+    strategy:
+      parallel: 3
     steps:
       - template: install_deps.yml
       - checkout: self
