@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -33,6 +34,31 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+func TestCheckConfigMetadata(t *testing.T) {
+	tests := []struct {
+		metadata *etcdraft.ConfigMetadata
+		err      string
+	}{
+		{nil, "nil Raft config metadata"},
+		{&etcdraft.ConfigMetadata{}, "nil Raft config metadata options"},
+		{&etcdraft.ConfigMetadata{Options: &etcdraft.Options{}}, "none of HeartbeatTick (0), ElectionTick (0) and MaxInflightBlocks (0) can be zero"},
+		{&etcdraft.ConfigMetadata{Options: &etcdraft.Options{HeartbeatTick: 2, ElectionTick: 1, MaxInflightBlocks: 1}}, "ElectionTick (1) must be greater than HeartbeatTick (2)"},
+		{&etcdraft.ConfigMetadata{Options: &etcdraft.Options{HeartbeatTick: 1, ElectionTick: 2, MaxInflightBlocks: 1, TickInterval: "q"}}, "failed to parse TickInterval (q) to time duration: time: invalid duration q"},
+		{&etcdraft.ConfigMetadata{Options: &etcdraft.Options{HeartbeatTick: 1, ElectionTick: 2, MaxInflightBlocks: 1, TickInterval: "0"}}, "TickInterval cannot be zero"},
+		{&etcdraft.ConfigMetadata{Options: &etcdraft.Options{HeartbeatTick: 1, ElectionTick: 2, MaxInflightBlocks: 1, TickInterval: "1s"}}, "empty consenter set"},
+	}
+
+	for _, tc := range tests {
+		err := CheckConfigMetadata(tc.metadata)
+		if tc.err == "" {
+			assert.NoError(t, err)
+		} else {
+			assert.EqualError(t, err, tc.err)
+		}
+	}
+
+}
 
 func TestIsConsenterOfChannel(t *testing.T) {
 	certInsideConfigBlock, err := base64.StdEncoding.DecodeString("LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNmekNDQWlhZ0F3SUJBZ0l" +

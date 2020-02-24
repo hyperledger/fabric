@@ -385,6 +385,10 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
 		return errors.Errorf("nil Raft config metadata")
 	}
 
+	if metadata.Options == nil {
+		return errors.Errorf("nil Raft config metadata options")
+	}
+
 	if metadata.Options.HeartbeatTick == 0 ||
 		metadata.Options.ElectionTick == 0 ||
 		metadata.Options.MaxInflightBlocks == 0 {
@@ -396,7 +400,7 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
 	// check Raft options
 	if metadata.Options.ElectionTick <= metadata.Options.HeartbeatTick {
 		return errors.Errorf("ElectionTick (%d) must be greater than HeartbeatTick (%d)",
-			metadata.Options.HeartbeatTick, metadata.Options.HeartbeatTick)
+			metadata.Options.ElectionTick, metadata.Options.HeartbeatTick)
 	}
 
 	if d, err := time.ParseDuration(metadata.Options.TickInterval); err != nil {
