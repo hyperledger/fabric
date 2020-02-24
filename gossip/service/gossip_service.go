@@ -261,7 +261,8 @@ func (g *GossipService) DistributePrivateData(channelID string, txID string, pri
 	}
 
 	if err := handler.distributor.Distribute(txID, privData, blkHt); err != nil {
-		logger.Error("Failed to distributed private collection, txID", txID, "channel", channelID, "due to", err)
+		err := errors.WithMessagef(err, "failed to distribute private collection, txID %s, channel %s", txID, channelID)
+		logger.Error(err)
 		return err
 	}
 

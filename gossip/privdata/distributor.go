@@ -181,7 +181,7 @@ func (d *distributorImpl) computeDisseminationPlan(txID string,
 			logger.Debugf("Computing dissemination plan for collection [%s]", collectionName)
 			dPlan, err := d.disseminationPlanForMsg(colAP, colFilter, pvtDataMsg)
 			if err != nil {
-				return nil, errors.WithStack(err)
+				return nil, errors.WithMessagef(err, "could not build private data dissemination plan for chaincode %s and collection %s", namespace, collectionName)
 			}
 			disseminationPlan = append(disseminationPlan, dPlan...)
 		}
@@ -219,8 +219,17 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 	m := pvtDataMsg.GetPrivateData().Payload
 
 	eligiblePeers := d.eligiblePeersOfChannel(routingFilter)
-	identitySets := d.identitiesOfEligiblePeers(eligiblePeers, colAP)
 
+	// With the shift to per peer dissemination in FAB-15389, we must first check
+	// that there are enough eligible peers to satisfy RequiredPeerCount.
+	if (len(eligiblePeers)) < colAP.RequiredPeerCount() {
+		return nil, errors.Errorf("required to disseminate to at least %d peers, but know of only %d eligible peers", colAP.RequiredPeerCount(), len(eligiblePeers))
+	}
+
+	// Group eligible peers by org so that we can disseminate across orgs first
+	identitySetsByOrg := d.identitiesOfEligiblePeersByOrg(eligiblePeers, colAP)
+
+	// peerEndpoints are used for dissemination debug only
 	peerEndpoints := map[string]string{}
 	for _, peer := range eligiblePeers {
 		epToAdd := peer.Endpoint
@@ -230,28 +239,35 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 		peerEndpoints[string(peer.PKIid)] = epToAdd
 	}
 
-	maximumPeerCount := colAP.MaximumPeerCount()
-	requiredPeerCount := colAP.RequiredPeerCount()
+	// Initialize maximumPeerRemainingCount and requiredPeerRemainingCount,
+	// these will be decremented until we've selected enough peers for dissemination
+	maximumPeerRemainingCount := colAP.MaximumPeerCount()
+	requiredPeerRemainingCount := colAP.RequiredPeerCount()
 
-	remainingPeers := []api.PeerIdentityInfo{}
-	selectedPeerEndpoints := []string{}
+	remainingPeersAcrossOrgs := []api.PeerIdentityInfo{}
+	selectedPeerEndpointsForDebug := []string{}
 
 	rand.Seed(time.Now().Unix())
-	// Select one representative from each org
-	if maximumPeerCount > 0 {
-		for _, selectionPeers := range identitySets {
-			required := 1
-			if requiredPeerCount == 0 {
-				required = 0
+
+	// PHASE 1 - Select one peer from each eligible org
+	if maximumPeerRemainingCount > 0 {
+		for _, selectionPeersForOrg := range identitySetsByOrg {
+
+			// Peers are tagged as a required peer (acksRequired=1) for RequiredPeerCount up front before dissemination.
+			// TODO It would be better to attempt dissemination to MaxPeerCount first, and then verify that enough sends were acknowledged to meet RequiredPeerCount.
+			acksRequired := 1
+			if requiredPeerRemainingCount == 0 {
+				acksRequired = 0
 			}
-			selectedPeerIndex := rand.Intn(len(selectionPeers))
-			peer2SendPerOrg := selectionPeers[selectedPeerIndex]
-			selectedPeerEndpoints = append(selectedPeerEndpoints, peerEndpoints[string(peer2SendPerOrg.PKIId)])
+
+			selectedPeerIndex := rand.Intn(len(selectionPeersForOrg))
+			peer2SendPerOrg := selectionPeersForOrg[selectedPeerIndex]
+			selectedPeerEndpointsForDebug = append(selectedPeerEndpointsForDebug, peerEndpoints[string(peer2SendPerOrg.PKIId)])
 			sc := gossipgossip.SendCriteria{
 				Timeout:  d.pushAckTimeout,
 				Channel:  gossipCommon.ChannelID(d.chainID),
 				MaxPeers: 1,
-				MinAck:   required,
+				MinAck:   acksRequired,
 				IsEligible: func(member discovery.NetworkMember) bool {
 					return bytes.Equal(member.PKIid, peer2SendPerOrg.PKIId)
 				},
@@ -264,43 +280,42 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 				},
 			})
 
-			// Add unselected peers to remainingPeers
-			for i, peer := range selectionPeers {
+			// Add unselected peers to remainingPeersAcrossOrgs
+			for i, peer := range selectionPeersForOrg {
 				if i != selectedPeerIndex {
-					remainingPeers = append(remainingPeers, peer)
+					remainingPeersAcrossOrgs = append(remainingPeersAcrossOrgs, peer)
 				}
 			}
 
-			if requiredPeerCount > 0 {
-				requiredPeerCount--
+			if requiredPeerRemainingCount > 0 {
+				requiredPeerRemainingCount--
 			}
 
-			maximumPeerCount--
-			if maximumPeerCount == 0 {
+			maximumPeerRemainingCount--
+			if maximumPeerRemainingCount == 0 {
 				logger.Debug("MaximumPeerCount satisfied")
-				logger.Debugf("Disseminating private RWSet for TxID [%s] namespace [%s] collection [%s] to peers: %v", m.TxId, m.Namespace, m.CollectionName, selectedPeerEndpoints)
+				logger.Debugf("Disseminating private RWSet for TxID [%s] namespace [%s] collection [%s] to peers: %v", m.TxId, m.Namespace, m.CollectionName, selectedPeerEndpointsForDebug)
 				return disseminationPlan, nil
 			}
 		}
 	}
 
-	// criteria to select remaining peers to satisfy colAP.MaximumPeerCount() if there are still
-	// unselected peers remaining for dissemination
-	numPeersToSelect := maximumPeerCount
-	if len(remainingPeers) < maximumPeerCount {
-		numPeersToSelect = len(remainingPeers)
+	// PHASE 2 - Select additional peers to satisfy colAP.MaximumPeerCount() if there are still peers in the remainingPeersAcrossOrgs pool
+	numRemainingPeersToSelect := maximumPeerRemainingCount
+	if len(remainingPeersAcrossOrgs) < maximumPeerRemainingCount {
+		numRemainingPeersToSelect = len(remainingPeersAcrossOrgs)
 	}
-	if numPeersToSelect > 0 {
-		logger.Debugf("MaximumPeerCount not satisfied, selecting %d more peer(s) for dissemination", numPeersToSelect)
+	if numRemainingPeersToSelect > 0 {
+		logger.Debugf("MaximumPeerCount not yet satisfied after picking one peer per org, selecting %d more peer(s) for dissemination", numRemainingPeersToSelect)
 	}
-	for maximumPeerCount > 0 && len(remainingPeers) > 0 {
+	for maximumPeerRemainingCount > 0 && len(remainingPeersAcrossOrgs) > 0 {
 		required := 1
-		if requiredPeerCount == 0 {
+		if requiredPeerRemainingCount == 0 {
 			required = 0
 		}
-		selectedPeerIndex := rand.Intn(len(remainingPeers))
-		peer2Send := remainingPeers[selectedPeerIndex]
-		selectedPeerEndpoints = append(selectedPeerEndpoints, peerEndpoints[string(peer2Send.PKIId)])
+		selectedPeerIndex := rand.Intn(len(remainingPeersAcrossOrgs))
+		peer2Send := remainingPeersAcrossOrgs[selectedPeerIndex]
+		selectedPeerEndpointsForDebug = append(selectedPeerEndpointsForDebug, peerEndpoints[string(peer2Send.PKIId)])
 		sc := gossipgossip.SendCriteria{
 			Timeout:  d.pushAckTimeout,
 			Channel:  gossipCommon.ChannelID(d.chainID),
@@ -317,21 +332,22 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 				GossipMessage: proto.Clone(pvtDataMsg.GossipMessage).(*protosgossip.GossipMessage),
 			},
 		})
-		if requiredPeerCount > 0 {
-			requiredPeerCount--
+		if requiredPeerRemainingCount > 0 {
+			requiredPeerRemainingCount--
 		}
 
-		maximumPeerCount--
+		maximumPeerRemainingCount--
 
 		// remove the selected peer from remaining peers
-		remainingPeers = append(remainingPeers[:selectedPeerIndex], remainingPeers[selectedPeerIndex+1:]...)
+		remainingPeersAcrossOrgs = append(remainingPeersAcrossOrgs[:selectedPeerIndex], remainingPeersAcrossOrgs[selectedPeerIndex+1:]...)
 	}
 
-	logger.Debugf("Disseminating private RWSet for TxID [%s] namespace [%s] collection [%s] to peers: %v", m.TxId, m.Namespace, m.CollectionName, selectedPeerEndpoints)
+	logger.Debugf("Disseminating private RWSet for TxID [%s] namespace [%s] collection [%s] to peers: %v", m.TxId, m.Namespace, m.CollectionName, selectedPeerEndpointsForDebug)
 	return disseminationPlan, nil
 }
 
-func (d *distributorImpl) identitiesOfEligiblePeers(eligiblePeers []discovery.NetworkMember, colAP privdata.CollectionAccessPolicy) map[string]api.PeerIdentitySet {
+// identitiesOfEligiblePeersByOrg returns the peers eligible for a collection (aka PeerIdentitySet) grouped in a hash map keyed by orgid
+func (d *distributorImpl) identitiesOfEligiblePeersByOrg(eligiblePeers []discovery.NetworkMember, colAP privdata.CollectionAccessPolicy) map[string]api.PeerIdentitySet {
 	return d.gossipAdapter.IdentityInfo().
 		Filter(func(info api.PeerIdentityInfo) bool {
 			if _, ok := colAP.MemberOrgs()[string(info.Organization)]; ok {

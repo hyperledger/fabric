@@ -85,7 +85,8 @@ var _ bool = Describe("PrivateData", func() {
 			process, orderer = startNetwork(network)
 		})
 
-		It("disseminates private data per collections_config1", func() {
+		It("disseminates private data per collections_config1 (positive test) and collections_config8 (negative test)", func() {
+
 			By("deploying legacy chaincode and adding marble1")
 			testChaincode := chaincode{
 				Chaincode: nwo.Chaincode{
@@ -108,6 +109,37 @@ var _ bool = Describe("PrivateData", func() {
 			)
 
 			assertPvtdataPresencePerCollectionConfig1(network, testChaincode.Name, "marble1")
+
+			By("deploying chaincode with RequiredPeerCount greater than number of peers, endorsement will fail")
+			testChaincodeHighRequiredPeerCount := chaincode{
+				Chaincode: nwo.Chaincode{
+					Name:              "marblespHighRequiredPeerCount",
+					Version:           "1.0",
+					Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+					Ctor:              `{"Args":["init"]}`,
+					Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+					CollectionsConfig: collectionConfig("collections_config8_high_requiredPeerCount.json"),
+				},
+				isLegacy: true,
+			}
+			deployChaincode(network, orderer, testChaincodeHighRequiredPeerCount)
+
+			// attempt to add a marble with insufficient dissemination to meet RequiredPeerCount
+			marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`))
+
+			command := commands.ChaincodeInvoke{
+				ChannelID: channelID,
+				Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
+				Name:      testChaincodeHighRequiredPeerCount.Name,
+				Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+				Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
+				PeerAddresses: []string{
+					network.PeerAddress(network.Peer("Org1", "peer0"), nwo.ListenPort),
+				},
+				WaitForEvent: true,
+			}
+			expectedErrMsg := `Error: endorsement failure during invoke. response: status:500 message:"error in simulation: failed to distribute private collection`
+			invokeChaincodeExpectErr(network, network.Peer("Org1", "peer0"), command, expectedErrMsg)
 		})
 
 		When("collection config does not have maxPeerCount or requiredPeerCount", func() {
@@ -771,7 +803,7 @@ var _ bool = Describe("PrivateData", func() {
 					}
 					peer1 := network.Peer("Org1", "peer0")
 					expectedErrMsg := "tx creator does not have write access permission"
-					invokeChaincodeWithError(network, peer1, command, expectedErrMsg)
+					invokeChaincodeExpectErr(network, peer1, command, expectedErrMsg)
 
 					assertMarbleAPIs()
 					assertDeliverWithPrivateDataACLBehavior()
@@ -803,7 +835,7 @@ var _ bool = Describe("PrivateData", func() {
 					}
 					peer1 := network.Peer("Org1", "peer0")
 					expectedErrMsg := "tx creator does not have write access permission"
-					invokeChaincodeWithError(network, peer1, command, expectedErrMsg)
+					invokeChaincodeExpectErr(network, peer1, command, expectedErrMsg)
 
 					assertMarbleAPIs()
 					assertDeliverWithPrivateDataACLBehavior()
@@ -1100,7 +1132,7 @@ func invokeChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeI
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
 }
 
-func invokeChaincodeWithError(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedErrMsg string) {
+func invokeChaincodeExpectErr(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedErrMsg string) {
 	sess, err := n.PeerUserSession(peer, "User1", command)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
