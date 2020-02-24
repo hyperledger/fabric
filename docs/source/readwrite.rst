@@ -53,9 +53,9 @@ versions.
           <read key="K2", version="1">
         </read-set>
         <write-set>
-          <write key="K1", value="V1"
-          <write key="K3", value="V2"
-          <write key="K4", isDelete="true"
+          <write key="K1", value="V1">
+          <write key="K3", value="V2">
+          <write key="K4", isDelete="true">
         </write-set>
       </NsReadWriteSet>
     <TxReadWriteSet>
