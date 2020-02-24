@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
+	"sync"
+
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -19,13 +21,53 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/protoutil"
+	"gopkg.in/yaml.v2"
 )
 
 var logger = flogging.MustGetLogger("common.configtx.test")
 
+type profiles struct {
+	mutex    sync.Mutex
+	profiles map[string]*genesisconfig.Profile
+}
+
+func (p *profiles) Load(name string) *genesisconfig.Profile {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	if profile, ok := p.profiles[name]; ok {
+		return cloneProfile(profile)
+	}
+
+	if p.profiles == nil {
+		p.profiles = map[string]*genesisconfig.Profile{}
+	}
+
+	profile := genesisconfig.Load(name, configtest.GetDevConfigDir())
+	p.profiles[name] = profile
+	return cloneProfile(profile)
+}
+
+func cloneProfile(p *genesisconfig.Profile) *genesisconfig.Profile {
+	var result genesisconfig.Profile
+	serialized, err := yaml.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(serialized, &result)
+	if err != nil {
+		panic(err)
+	}
+
+	return &result
+}
+
+var profileCache = &profiles{}
+
 // MakeGenesisBlock creates a genesis block using the test templates for the given chainID
 func MakeGenesisBlock(chainID string) (*cb.Block, error) {
-	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+	profile := profileCache.Load(genesisconfig.SampleDevModeSoloProfile)
 	channelGroup, err := encoder.NewChannelGroup(profile)
 	if err != nil {
 		logger.Panicf("Error creating channel config: %s", err)
@@ -44,7 +86,7 @@ func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 
 // MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given chainID
 func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig, appOrgID, ordererOrgID string) (*cb.Block, error) {
-	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+	profile := profileCache.Load(genesisconfig.SampleDevModeSoloProfile)
 	profile.Orderer.Organizations = nil
 	channelGroup, err := encoder.NewChannelGroup(profile)
 	if err != nil {
