@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package service
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/metrics"
@@ -232,7 +233,8 @@ func (g *gossipServiceImpl) DistributePrivateData(chainID string, txID string, p
 	}
 
 	if err := handler.distributor.Distribute(txID, privData, blkHt); err != nil {
-		logger.Error("Failed to distributed private collection, txID", txID, "channel", chainID, "due to", err)
+		err := errors.WithMessage(err, fmt.Sprint("failed to distribute private collection, txID ", txID, ", channel %s", chainID))
+		logger.Error(err)
 		return err
 	}
 

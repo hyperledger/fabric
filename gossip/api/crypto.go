@@ -83,7 +83,7 @@ func (pis PeerIdentitySet) ByOrg() map[string]PeerIdentitySet {
 	return m
 }
 
-// ByOrg sorts the PeerIdentitySet by PKI-IDs of its peers
+// ByID sorts the PeerIdentitySet by PKI-IDs of its peers
 func (pis PeerIdentitySet) ByID() map[string]PeerIdentityInfo {
 	m := make(map[string]PeerIdentityInfo)
 	for _, id := range pis {

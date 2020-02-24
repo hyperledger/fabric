@@ -70,6 +70,7 @@ var _ bool = Describe("PrivateData", func() {
 
 		JustBeforeEach(func() {
 			process, orderer, expectedPeers = startNetwork(network)
+
 			By("installing and instantiating chaincode on all peers")
 			chaincode := nwo.Chaincode{
 				Name:              "marblesp",
@@ -85,16 +86,47 @@ var _ bool = Describe("PrivateData", func() {
 
 			By("waiting for block to propagate")
 			waitUntilAllPeersSameLedgerHeight(network, expectedPeers, "testchannel", getLedgerHeight(network, network.Peer("org1", "peer0"), "testchannel"))
+
 		})
 
 		AfterEach(func() {
 			testCleanup(testDir, network, process)
 		})
 
-		It("verifies private data was disseminated", func() {
-			By("verify access of initial setup")
+		It("verifies private data was disseminated (positive test) and verifies endorsement fails when dissemination RequiredPeerCount not met (negative test)", func() {
+
+			By("verify access of initial setup (positive test)")
 			verifyAccessInitialSetup(network)
+
+			// Integration test structure refactored in future releases. This is a backported integration test from master,
+			// hence it doesn't necessarily align with other integration tests in this file that have not yet been refactored.
+			By("deploying chaincode with RequiredPeerCount greater than number of peers, endorsement will fail (negative test)")
+			testChaincodeHighRequiredPeerCount := nwo.Chaincode{
+				Name:              "marblespHighRequiredPeerCount",
+				Version:           "1.0",
+				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
+				Ctor:              `{"Args":["init"]}`,
+				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config8_high_requiredPeerCount.json")}
+
+			nwo.DeployChaincode(network, "testchannel", orderer, testChaincodeHighRequiredPeerCount)
+
+			// attempt to add a marble with insufficient dissemination to meet RequiredPeerCount
+			command := commands.ChaincodeInvoke{
+				ChannelID: "testchannel",
+				Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
+				Name:      testChaincodeHighRequiredPeerCount.Name,
+				Ctor:      fmt.Sprintf(`{"Args":["initMarble","marble1","blue","35","tom","99"]}`),
+				PeerAddresses: []string{
+					network.PeerAddress(network.Peer("org1", "peer0"), nwo.ListenPort),
+				},
+				WaitForEvent: true,
+			}
+			expectedErrMsg := `Error: endorsement failure during invoke. response: status:500 message:"failed to distribute private collection`
+			invokeChaincodeExpectErr(network, network.Peer("org1", "peer0"), command, expectedErrMsg)
+
 		})
+
 	})
 
 	Describe("reconciliation and pulling", func() {
@@ -936,6 +968,13 @@ func invokeChaincode(n *nwo.Network, org string, peer string, ccname string, arg
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
+}
+
+func invokeChaincodeExpectErr(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke, expectedErrMsg string) {
+	sess, err := n.PeerUserSession(peer, "User1", command)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say(expectedErrMsg))
 }
 
 func getLedgerHeight(n *nwo.Network, peer *nwo.Peer, channelName string) int {
