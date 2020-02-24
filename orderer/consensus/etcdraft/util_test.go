@@ -153,6 +153,11 @@ func TestCheckConfigMetadata(t *testing.T) {
 			errRegex:    "nil Raft config metadata",
 		},
 		{
+			description: "nil options",
+			metadata:    &etcdraftproto.ConfigMetadata{},
+			errRegex:    "nil Raft config metadata options",
+		},
+		{
 			description: "HeartbeatTick is 0",
 			metadata: &etcdraftproto.ConfigMetadata{
 				Options: &etcdraftproto.Options{
