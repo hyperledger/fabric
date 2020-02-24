@@ -309,7 +309,7 @@ Two ways to handle this:
   Configuration of that MSP would consist of a list of root CAs,
   intermediate CAs and admin certificates; and membership identities would
   include the organizational unit (``OU``) a member belongs to. Policies can then
-  be defined to capture members of a specific ``OU`` (should be one of: peer, admin, 
+  be defined to capture members of a specific ``role`` (should be one of: peer, admin, 
   client, orderer, member), and these policies may constitute the read/write policies 
   of a channel or endorsement policies of a chaincode. Specifying custom OUs in 
   the profile section of ``configtx.yaml`` is currently not configured.
