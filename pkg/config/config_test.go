@@ -323,8 +323,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				profile.Policies = nil
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to add policies: no policies defined"),
+			err: errors.New("creating default config template: failed to add policies to " +
+				"channel group: no policies defined"),
 		},
 		{
 			testName: "When creating the default config template with no ApplicationGroupKey defined fails",
@@ -333,7 +333,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				profile.Application = nil
 				return profile
 			},
-			err: errors.New("failed to create default config template: channel template config must contain " +
+			err: errors.New("creating default config template: channel template config must contain " +
 				"an application section"),
 		},
 		{
@@ -343,8 +343,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				delete(profile.Policies, AdminsPolicyKey)
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to add policies: no Admins policy defined"),
+			err: errors.New("creating default config template: failed to add policies to channel group: " +
+				"no Admins policy defined"),
 		},
 		{
 			testName: "When creating the default config template with no Readers policies defined fails",
@@ -353,8 +353,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				delete(profile.Policies, ReadersPolicyKey)
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to add policies: no Readers policy defined"),
+			err: errors.New("creating default config template: failed to add policies to channel group: " +
+				"no Readers policy defined"),
 		},
 		{
 			testName: "When creating the default config template with no Writers policies defined fails",
@@ -363,8 +363,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				delete(profile.Policies, WritersPolicyKey)
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to add policies: no Writers policy defined"),
+			err: errors.New("creating default config template: failed to add policies to channel group: " +
+				"no Writers policy defined"),
 		},
 		{
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
@@ -373,8 +373,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				profile.Policies[ReadersPolicyKey].Rule = "ALL"
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to add policies: invalid implicit meta policy rule: 'ALL' error: expected two space separated " +
+			err: errors.New("creating default config template: failed to add policies to channel group: " +
+				"invalid implicit meta policy rule: 'ALL': expected two space separated " +
 				"tokens, but got 1"),
 		},
 		{
@@ -384,8 +384,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				profile.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to add policies: invalid implicit meta policy rule: 'ANYY Readers' error: unknown rule type " +
+			err: errors.New("creating default config template: failed to add policies to channel group: " +
+				"invalid implicit meta policy rule: 'ANYY Readers': unknown rule type " +
 				"'ANYY', expected ALL, ANY, or MAJORITY"),
 		},
 		{
@@ -396,8 +396,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				profile.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to add policies: invalid signature policy rule: 'ANYY Readers' error: Cannot transition " +
+			err: errors.New("creating default config template: failed to add policies to channel group: " +
+				"invalid signature policy rule: 'ANYY Readers': Cannot transition " +
 				"token types from VARIABLE [ANYY] to VARIABLE [Readers]"),
 		},
 		{
@@ -407,15 +407,15 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				profile.Policies[ReadersPolicyKey].Type = "GreenPolicy"
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to add policies: unknown policy type: GreenPolicy"),
+			err: errors.New("creating default config template: failed to add policies to channel group: " +
+				"unknown policy type: GreenPolicy"),
 		},
 		{
 			testName: "When channel is not specified in config",
 			profileMod: func() *Profile {
 				return nil
 			},
-			err: errors.New("profile is empty"),
+			err: errors.New("profile is required"),
 		},
 		{
 			testName: "When channel ID is not specified in config",
@@ -424,7 +424,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				profile.ChannelID = ""
 				return profile
 			},
-			err: errors.New("channel ID is empty"),
+			err: errors.New("profile's channel ID is required"),
 		},
 		{
 			testName: "When no BlockValidation policy is defined",
@@ -436,8 +436,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				}
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to create orderer group: failed to add policies: no BlockValidation policy defined"),
+			err: errors.New("creating default config template: " +
+				"failed to create orderer group: no BlockValidation policy defined"),
 		},
 		{
 			testName: "When creating the consortiums group fails",
@@ -453,9 +453,19 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				}
 				return profile
 			},
-			err: errors.New("failed to create default config template: failed to create new channel group: " +
-				"failed to create consortiums group: failed to create consortium group: failed to create consortium " +
-				"org group Org1: failed to add policies: no policies defined"),
+			err: errors.New("creating default config template: " +
+				"failed to create consortiums group: " +
+				"org group 'Org1': no policies defined"),
+		},
+		{
+			testName: "When creating the application group fails",
+			profileMod: func() *Profile {
+				profile := baseProfile()
+				profile.Application.Policies = nil
+				return profile
+			},
+			err: errors.New("creating default config template: " +
+				"failed to create application group: no policies defined"),
 		},
 	}
 
@@ -525,6 +535,9 @@ func TestCreateSignedConfigupdateEnvelopeFailures(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	// create detached config signature
 	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
+	badSigningIdentity := signingIdentity
+	badSigningIdentity.publicKey = nil
+
 	gt.Expect(err).NotTo(HaveOccurred())
 	tests := []struct {
 		spec            string
@@ -534,27 +547,14 @@ func TestCreateSignedConfigupdateEnvelopeFailures(t *testing.T) {
 		expectedErr     string
 	}{
 		{
-			spec:            "when the signing identity is not specified",
-			configUpdate:    configUpdate,
-			signingIdentity: nil,
-			configSignature: []*common.ConfigSignature{configSignature},
-			expectedErr:     "no signing identity specified",
-		},
-		{
-			spec:            "when no signatures are provided",
-			configUpdate:    configUpdate,
-			signingIdentity: signingIdentity,
-			configSignature: nil,
-			expectedErr:     "no signatures specified",
-		},
-		{
 			spec:            "when no signatures are provided",
 			configUpdate:    nil,
 			signingIdentity: signingIdentity,
 			configSignature: []*common.ConfigSignature{configSignature},
-			expectedErr:     "no config update specified",
+			expectedErr:     "failed to marshal config update: proto: Marshal called with nil",
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.spec, func(t *testing.T) {
@@ -1007,14 +1007,14 @@ func TestGenerateOrgConfigGroupFailure(t *testing.T) {
 				o.Policies = nil
 			},
 			&mb.MSPConfig{},
-			"failed to add policies: no policies defined",
+			"no policies defined",
 		},
 		{
 			"When failing to add msp value",
 			func(o *Organization) {
 			},
 			nil,
-			"failed to add msp value: failed to marshal standard config value: proto: Marshal called with nil",
+			"marshalling standard config value 'MSP': proto: Marshal called with nil",
 		},
 	}
 
@@ -1103,7 +1103,7 @@ func TestComputeUpdateFailures(t *testing.T) {
 		{
 			name:        "When channel ID is not specified",
 			channelID:   "",
-			expectedErr: "channel ID is empty",
+			expectedErr: "channel ID is required",
 		},
 		{
 			name:        "When failing to compute update",

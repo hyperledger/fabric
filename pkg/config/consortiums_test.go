@@ -70,10 +70,7 @@ func TestNewConsortiumsGroupFailure(t *testing.T) {
 	mspConfig := &mb.MSPConfig{}
 
 	consortiumsGroup, err := NewConsortiumsGroup(consortiums, mspConfig)
-	gt.Expect(err).To(MatchError("failed to create consortium group: " +
-		"failed to create consortium org group Org1: " +
-		"failed to add policies: no policies defined"),
-	)
+	gt.Expect(err).To(MatchError("org group 'Org1': no policies defined"))
 	gt.Expect(consortiumsGroup).To(BeNil())
 }
 

@@ -54,22 +54,21 @@ func NewOrdererGroup(conf *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, e
 	ordererGroup := newConfigGroup()
 	ordererGroup.ModPolicy = AdminsPolicyKey
 
-	// add orderer policies
 	if err := addOrdererPolicies(ordererGroup, conf.Policies, AdminsPolicyKey); err != nil {
-		return nil, fmt.Errorf("failed to add policies: %v", err)
+		return nil, err
 	}
 
 	// add orderer values
 	err := addOrdererValues(ordererGroup, conf)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add orderer values: %v", err)
+		return nil, err
 	}
 
 	// add orderer groups
 	for _, org := range conf.Organizations {
 		ordererGroup.Groups[org.Name], err = newOrdererOrgGroup(org, mspConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create orderer org group %s: %v", org.Name, err)
+			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
 	}
 
@@ -92,14 +91,14 @@ func UpdateOrdererConfiguration(config *cb.Config, o *Orderer) error {
 	if len(o.Addresses) > 0 {
 		err := addValue(config.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
 		if err != nil {
-			return fmt.Errorf("failed to add orderer addresses value: %v", err)
+			return err
 		}
 	}
 
 	// update orderer values
 	err := addOrdererValues(ordererGroup, o)
 	if err != nil {
-		return fmt.Errorf("failed to add orderer values: %v", err)
+		return err
 	}
 
 	return nil
@@ -113,23 +112,23 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o *Orderer) error {
 		o.BatchSize.PreferredMaxBytes,
 	), AdminsPolicyKey)
 	if err != nil {
-		return fmt.Errorf("failed to add batch size value: %v", err)
+		return err
 	}
 
 	err = addValue(ordererGroup, batchTimeoutValue(o.BatchTimeout.String()), AdminsPolicyKey)
 	if err != nil {
-		return fmt.Errorf("failed to add batch timeout value: %v", err)
+		return err
 	}
 
 	err = addValue(ordererGroup, channelRestrictionsValue(o.MaxChannels), AdminsPolicyKey)
 	if err != nil {
-		return fmt.Errorf("failed to add channel restrictions value: %v", err)
+		return err
 	}
 
 	if len(o.Capabilities) > 0 {
 		err = addValue(ordererGroup, capabilitiesValue(o.Capabilities), AdminsPolicyKey)
 		if err != nil {
-			return fmt.Errorf("failed to add capabilities value: %v", err)
+			return err
 		}
 	}
 
@@ -140,23 +139,23 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o *Orderer) error {
 	case ConsensusTypeKafka:
 		err = addValue(ordererGroup, kafkaBrokersValue(o.Kafka.Brokers), AdminsPolicyKey)
 		if err != nil {
-			return fmt.Errorf("failed to add kafka brokers value: %v", err)
+			return err
 		}
 	case ConsensusTypeEtcdRaft:
 		if o.EtcdRaft == nil {
-			return fmt.Errorf("missing etcdraft metadata for orderer type %s", ConsensusTypeEtcdRaft)
+			return fmt.Errorf("etcdraft metadata for orderer type '%s' is required", ConsensusTypeEtcdRaft)
 		}
 
 		if consensusMetadata, err = marshalEtcdRaftMetadata(o.EtcdRaft); err != nil {
-			return fmt.Errorf("failed to marshal etcdraft metadata for orderer type %s: %v", ConsensusTypeEtcdRaft, err)
+			return fmt.Errorf("marshalling etcdraft metadata for orderer type '%s': %v", ConsensusTypeEtcdRaft, err)
 		}
 	default:
-		return fmt.Errorf("unknown orderer type %s", o.OrdererType)
+		return fmt.Errorf("unknown orderer type '%s'", o.OrdererType)
 	}
 
 	err = addValue(ordererGroup, consensusTypeValue(o.OrdererType, consensusMetadata), AdminsPolicyKey)
 	if err != nil {
-		return fmt.Errorf("failed to add consensus type value: %v", err)
+		return err
 	}
 
 	return nil
@@ -242,7 +241,7 @@ func marshalEtcdRaftMetadata(md *eb.ConfigMetadata) ([]byte, error) {
 
 	data, err := proto.Marshal(copyMd)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal config metadata: %v", err)
+		return nil, fmt.Errorf("marshalling config metadata: %v", err)
 	}
 
 	return data, nil
