@@ -41,27 +41,27 @@ func NewApplicationGroup(conf *Application, mspConfig *mb.MSPConfig) (*cb.Config
 	applicationGroup.ModPolicy = AdminsPolicyKey
 
 	if err = addPolicies(applicationGroup, conf.Policies, AdminsPolicyKey); err != nil {
-		return nil, fmt.Errorf("failed to add policies: %v", err)
+		return nil, err
 	}
 
 	if len(conf.ACLs) > 0 {
 		err = addValue(applicationGroup, aclValues(conf.ACLs), AdminsPolicyKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to add acl values: %v", err)
+			return nil, err
 		}
 	}
 
 	if len(conf.Capabilities) > 0 {
 		err = addValue(applicationGroup, capabilitiesValue(conf.Capabilities), AdminsPolicyKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to add capabilities value: %v", err)
+			return nil, err
 		}
 	}
 
 	for _, org := range conf.Organizations {
 		applicationGroup.Groups[org.Name], err = newApplicationOrgGroup(org, mspConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create application org group %s: %v", org.Name, err)
+			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
 	}
 
@@ -83,12 +83,12 @@ func newApplicationOrgGroup(conf *Organization, mspConfig *mb.MSPConfig) (*cb.Co
 	}
 
 	if err = addPolicies(applicationOrgGroup, conf.Policies, AdminsPolicyKey); err != nil {
-		return nil, fmt.Errorf("failed to add policies: %v", err)
+		return nil, err
 	}
 
 	err = addValue(applicationOrgGroup, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add msp value: %v", err)
+		return nil, err
 	}
 
 	var anchorProtos []*pb.AnchorPeer
@@ -105,7 +105,7 @@ func newApplicationOrgGroup(conf *Organization, mspConfig *mb.MSPConfig) (*cb.Co
 	if len(anchorProtos) > 0 {
 		err = addValue(applicationOrgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to add anchor peers value: %v", err)
+			return nil, err
 		}
 	}
 

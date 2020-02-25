@@ -90,6 +90,7 @@ func (s *SigningIdentity) Cert() (*x509.Certificate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cert from pem: %v", err)
 	}
+
 	return cert, nil
 }
 
@@ -152,9 +153,6 @@ func createNonce() ([]byte, error) {
 		return nil, fmt.Errorf("failed to get random bytes: %v", err)
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate random nonce: %v", err)
-	}
 	return nonce, nil
 }
 
@@ -169,6 +167,7 @@ func toLowS(key ecdsa.PublicKey, sig ecdsaSignature) ecdsaSignature {
 		// Set s to N - s so that s will be less than or equal to half order
 		sig.S.Sub(key.Params().N, sig.S)
 	}
+
 	return sig
 }
 
@@ -176,12 +175,12 @@ func toLowS(key ecdsa.PublicKey, sig ecdsaSignature) ecdsaSignature {
 func getCertFromPem(pemBytes []byte) (*x509.Certificate, error) {
 	pemCert, _ := pem.Decode(pemBytes)
 	if pemCert == nil || pemCert.Type != "CERTIFICATE" {
-		return nil, fmt.Errorf("failed to decode pem bytes: %v", pemBytes)
+		return nil, fmt.Errorf("decoding pem bytes: %v", pemBytes)
 	}
 
 	cert, err := x509.ParseCertificate(pemCert.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse x509 cert: %v", err)
+		return nil, fmt.Errorf("parsing x509 cert: %v", err)
 	}
 
 	return cert, nil
@@ -208,7 +207,7 @@ func ecdsaPrivateKeyImport(pkBytes []byte) (*ecdsa.PrivateKey, error) {
 
 	ecdsaSK, ok := lowLevelKey.(*ecdsa.PrivateKey)
 	if !ok {
-		return nil, errors.New("failed to cast private key bytes to ECDSA private key")
+		return nil, errors.New("casting private key bytes to ECDSA private key")
 	}
 
 	return ecdsaSK, nil

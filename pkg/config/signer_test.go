@@ -57,7 +57,7 @@ func TestNewSigningIdentity(t *testing.T) {
 			publicKey:   nil,
 			privateKey:  privateKey,
 			mspID:       "test-msp",
-			expectedErr: "failed to get cert from pem: failed to decode pem bytes: []",
+			expectedErr: "failed to get cert from pem: decoding pem bytes: []",
 			matchErr:    true,
 		},
 		{
@@ -65,7 +65,7 @@ func TestNewSigningIdentity(t *testing.T) {
 			publicKey:   []byte("apple"),
 			privateKey:  privateKey,
 			mspID:       "test-msp",
-			expectedErr: "failed to get cert from pem: failed to decode pem bytes",
+			expectedErr: "failed to get cert from pem: decoding pem bytes",
 			matchErr:    false,
 		},
 		{
@@ -73,7 +73,7 @@ func TestNewSigningIdentity(t *testing.T) {
 			publicKey:   privateKey,
 			privateKey:  privateKey,
 			mspID:       "test-msp",
-			expectedErr: "failed to get cert from pem: failed to decode pem bytes",
+			expectedErr: "failed to get cert from pem: decoding pem bytes",
 			matchErr:    false,
 		},
 		{

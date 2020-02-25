@@ -104,7 +104,7 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 			ordererMod: func(o *Orderer) {
 				o.Policies = nil
 			},
-			err: errors.New("failed to add policies: no policies defined"),
+			err: errors.New("no policies defined"),
 		},
 		{
 			testName: "When marshalling etcdraft metadata for orderer group",
@@ -133,18 +133,16 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 					},
 				}
 			},
-			err: errors.New("failed to add orderer values: " +
-				"failed to marshal etcdraft metadata for orderer type etcdraft: " +
-				"cannot load client cert for consenter " +
-				"node-1.example.com:7050: open testdata/tls-client-1.pem: no such file or directory"),
+			err: errors.New("marshalling etcdraft metadata for orderer type 'etcdraft': " +
+				"cannot load client cert for consenter node-1.example.com:7050: open testdata/tls-client-1.pem: " +
+				"no such file or directory"),
 		},
 		{
 			testName: "When orderer type is unknown",
 			ordererMod: func(o *Orderer) {
 				o.OrdererType = "ConsensusTypeGreen"
 			},
-			err: errors.New("failed to add orderer values: " +
-				"unknown orderer type ConsensusTypeGreen"),
+			err: errors.New("unknown orderer type 'ConsensusTypeGreen'"),
 		},
 		{
 			testName: "When EtcdRaft config is not set for consensus type etcdraft",
@@ -152,15 +150,14 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 				o.OrdererType = ConsensusTypeEtcdRaft
 				o.EtcdRaft = nil
 			},
-			err: errors.New("failed to add orderer values: " +
-				"missing etcdraft metadata for orderer type etcdraft"),
+			err: errors.New("etcdraft metadata for orderer type 'etcdraft' is required"),
 		},
 		{
 			testName: "When adding policies to orderer org group",
 			ordererMod: func(o *Orderer) {
 				o.Organizations[0].Policies = nil
 			},
-			err: errors.New("failed to create orderer org group Org1: failed to add policies: no policies defined"),
+			err: errors.New("org group 'Org1': no policies defined"),
 		},
 	}
 
