@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -55,7 +55,7 @@ func getAccessPolicy(signers []string) *peer.CollectionPolicyConfig {
 	for _, signer := range signers {
 		data = append(data, []byte(signer))
 	}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), data)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), data)
 	return createCollectionPolicyConfig(policyEnvelope)
 }
 
@@ -65,6 +65,6 @@ func getBadAccessPolicy(signers []string, badIndex int32) *peer.CollectionPolicy
 		data = append(data, []byte(signer))
 	}
 	// use a out of range index to trigger error
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(badIndex)), data)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(badIndex)), data)
 	return createCollectionPolicyConfig(policyEnvelope)
 }

@@ -24,9 +24,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	fabricdisc "github.com/hyperledger/fabric/discovery"
@@ -317,7 +317,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 	pe := &principalEvaluator{}
 	pf := &policyFetcher{}
 
-	sigPol, _ := cauthdsl.FromString("OR(AND('A.member', 'B.member'), 'C.member', AND('A.member', 'D.member'))")
+	sigPol, _ := policydsl.FromString("OR(AND('A.member', 'B.member'), 'C.member', AND('A.member', 'D.member'))")
 	polBytes, _ := proto.Marshal(sigPol)
 	mdf.On("Metadata", "mycc").Return(&chaincode.Metadata{
 		Policy:  polBytes,
@@ -330,7 +330,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 		orgCombinations: orgCombinationsThatSatisfyPolicy,
 	})
 
-	sigPol, _ = cauthdsl.FromString("AND('B.member', 'C.member')")
+	sigPol, _ = policydsl.FromString("AND('B.member', 'C.member')")
 	polBytes, _ = proto.Marshal(sigPol)
 	mdf.On("Metadata", "mycc2").Return(&chaincode.Metadata{
 		Policy:  polBytes,
@@ -346,7 +346,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 		orgCombinations: orgCombinationsThatSatisfyPolicy2,
 	})
 
-	sigPol, _ = cauthdsl.FromString("AND('A.member', 'B.member', 'C.member', 'D.member')")
+	sigPol, _ = policydsl.FromString("AND('A.member', 'B.member', 'C.member', 'D.member')")
 	polBytes, _ = proto.Marshal(sigPol)
 	mdf.On("Metadata", "mycc3").Return(&chaincode.Metadata{
 		Policy:  polBytes,

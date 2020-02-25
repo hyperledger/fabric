@@ -4,7 +4,7 @@ Copyright IBM Corp. 2017 All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cauthdsl
+package policydsl
 
 import (
 	"reflect"
@@ -289,27 +289,27 @@ func TestOutOfErrorCase(t *testing.T) {
 
 	p2, err2 := FromString("OutOf(1)") // outof() if len(args)<2
 	assert.Nil(t, p2)
-	assert.EqualError(t, err2, "Expected at least two arguments to NOutOf. Given 1")
+	assert.EqualError(t, err2, "expected at least two arguments to NOutOf. Given 1")
 
 	p3, err3 := FromString("OutOf(true, 'A.member')") // outof() }else{. 1st arg is non of float, int, string
 	assert.Nil(t, p3)
-	assert.EqualError(t, err3, "Unexpected type bool")
+	assert.EqualError(t, err3, "unexpected type bool")
 
 	p4, err4 := FromString("OutOf(1, 2)") // oufof() switch default. 2nd arg is not string.
 	assert.Nil(t, p4)
-	assert.EqualError(t, err4, "Unexpected type float64")
+	assert.EqualError(t, err4, "unexpected type float64")
 
 	p5, err5 := FromString("OutOf(1, 'true')") // firstPass() switch default
 	assert.Nil(t, p5)
-	assert.EqualError(t, err5, "Unexpected type bool")
+	assert.EqualError(t, err5, "unexpected type bool")
 
 	p6, err6 := FromString(`OutOf('\'\\\'A\\\'\'', 'B.member')`) // secondPass() switch args[1].(type) default
 	assert.Nil(t, p6)
-	assert.EqualError(t, err6, "Unrecognized type, expected a number, got string")
+	assert.EqualError(t, err6, "unrecognized type, expected a number, got string")
 
 	p7, err7 := FromString(`OutOf(1, '\'1\'')`) // secondPass() switch args[1].(type) default
 	assert.Nil(t, p7)
-	assert.EqualError(t, err7, "Unrecognized type, expected a principal or a policy, got float64")
+	assert.EqualError(t, err7, "unrecognized type, expected a principal or a policy, got float64")
 
 	p8, err8 := FromString(`''`) // 2nd NewEvaluateExpressionWithFunction() returns an error
 	assert.Nil(t, p8)
@@ -342,7 +342,7 @@ func TestSecondPassBoundaryCheck(t *testing.T) {
 	// Prohibit t<0
 	p0, err0 := FromString("OutOf(-1, 'A.member', 'B.member')")
 	assert.Nil(t, p0)
-	assert.EqualError(t, err0, "Invalid t-out-of-n predicate, t -1, n 2")
+	assert.EqualError(t, err0, "invalid t-out-of-n predicate, t -1, n 2")
 
 	// Permit t==0 : always satisfied policy
 	// There is no clear usecase of t=0, but somebody may already use it, so we don't treat as an error.
@@ -377,5 +377,5 @@ func TestSecondPassBoundaryCheck(t *testing.T) {
 	// Prohibit t>n + 1
 	p3, err3 := FromString("OutOf(4, 'A.member', 'B.member')")
 	assert.Nil(t, p3)
-	assert.EqualError(t, err3, "Invalid t-out-of-n predicate, t 4, n 2")
+	assert.EqualError(t, err3, "invalid t-out-of-n predicate, t 4, n 2")
 }

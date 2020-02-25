@@ -11,9 +11,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -116,7 +116,7 @@ func (mp *MetadataProvider) Metadata(channel string, ccName string, includeColle
 	spe, err := mp.toSignaturePolicyEnvelope(channel, ccInfo.Definition.ValidationInfo.ValidationParameter)
 	if err != nil {
 		logger.Errorf("could not convert policy for chaincode '%s' on channel '%s', err '%s'", ccName, channel, err)
-		spe = cauthdsl.MarshaledRejectAllPolicy
+		spe = policydsl.MarshaledRejectAllPolicy
 	}
 
 	// report the sequence as the version to service discovery since

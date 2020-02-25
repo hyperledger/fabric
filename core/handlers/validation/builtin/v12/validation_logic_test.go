@@ -21,8 +21,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -301,7 +301,7 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 }
 
 func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
-	p := cauthdsl.SignedByMspMember(mspID)
+	p := policydsl.SignedByMspMember(mspID)
 
 	b, err := protoutil.Marshal(p)
 	if err != nil {
@@ -318,7 +318,7 @@ func getSignedByOneMemberTwicePolicy(mspID string) ([]byte, error) {
 
 	p := &common.SignaturePolicyEnvelope{
 		Version:    0,
-		Rule:       cauthdsl.NOutOf(2, []*common.SignaturePolicy{cauthdsl.SignedBy(0), cauthdsl.SignedBy(0)}),
+		Rule:       policydsl.NOutOf(2, []*common.SignaturePolicy{policydsl.SignedBy(0), policydsl.SignedBy(0)}),
 		Identities: []*mspproto.MSPPrincipal{principal},
 	}
 	b, err := protoutil.Marshal(p)
@@ -330,7 +330,7 @@ func getSignedByOneMemberTwicePolicy(mspID string) ([]byte, error) {
 }
 
 func getSignedByMSPAdminPolicy(mspID string) ([]byte, error) {
-	p := cauthdsl.SignedByMspAdmin(mspID)
+	p := policydsl.SignedByMspAdmin(mspID)
 
 	b, err := protoutil.Marshal(p)
 	if err != nil {
@@ -1031,7 +1031,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	collName1 := "mycollection1"
 	collName2 := "mycollection2"
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	var requiredPeerCount, maximumPeerCount int32
 	var blockToLive uint64
 	requiredPeerCount = 1
@@ -1119,7 +1119,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	/* test 1: success with an accept-all policy */
 	/*********************************************/
 
-	res, err := createCCDataRWset(ccname, ccname, ccver, cauthdsl.MarshaledAcceptAllPolicy)
+	res, err := createCCDataRWset(ccname, ccname, ccver, policydsl.MarshaledAcceptAllPolicy)
 	assert.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
@@ -1146,7 +1146,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	/* test 2: failure with a reject-all policy */
 	/********************************************/
 
-	res, err = createCCDataRWset(ccname, ccname, ccver, cauthdsl.MarshaledRejectAllPolicy)
+	res, err = createCCDataRWset(ccname, ccname, ccver, policydsl.MarshaledRejectAllPolicy)
 	assert.NoError(t, err)
 
 	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
@@ -1333,7 +1333,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	collName1 := "mycollection1"
 	collName2 := "mycollection2"
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	var requiredPeerCount, maximumPeerCount int32
 	var blockToLive uint64
 	requiredPeerCount = 1
@@ -1548,7 +1548,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 	ccver = "2"
 
 	// create lscc record with accept all instantiation policy
-	ipbytes, err := proto.Marshal(cauthdsl.AcceptAllPolicy)
+	ipbytes, err := proto.Marshal(policydsl.AcceptAllPolicy)
 	if err != nil {
 		t.Fatalf("Failed to marshal AcceptAllPolicy: %s", err)
 	}
@@ -1565,7 +1565,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 	ccver = ccver + ".2"
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver,
-		cauthdsl.MarshaledRejectAllPolicy, // here's where we specify the IP of the upgraded cc
+		policydsl.MarshaledRejectAllPolicy, // here's where we specify the IP of the upgraded cc
 	)
 	assert.NoError(t, err)
 
@@ -1606,7 +1606,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	v := newValidationInstance(state)
 
 	// create lscc record with reject all instantiation policy
-	ipbytes, err := proto.Marshal(cauthdsl.RejectAllPolicy)
+	ipbytes, err := proto.Marshal(policydsl.RejectAllPolicy)
 	if err != nil {
 		t.Fatalf("Failed to marshal RejectAllPolicy: %s", err)
 	}
@@ -1758,7 +1758,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	collName1 := "mycollection1"
 	collName2 := "mycollection2"
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	var requiredPeerCount, maximumPeerCount int32
 	var blockToLive uint64
 	requiredPeerCount = 1
@@ -1812,7 +1812,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	// Test 12: AND concatenation of orgs in access policy -> error
 	requiredPeerCount = 1
 	maximumPeerCount = 2
-	policyEnvelope = cauthdsl.Envelope(cauthdsl.And(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope = policydsl.Envelope(policydsl.And(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll3}, cdRWSet, lsccFunc, ac, chid)
 	assert.EqualError(t, err, "collection-name: mycollection3 -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2")
@@ -1847,7 +1847,7 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	collName2 := "mycollection2"
 	collName3 := "mycollection3"
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	var requiredPeerCount, maximumPeerCount int32
 	var blockToLive uint64
 	requiredPeerCount = 1

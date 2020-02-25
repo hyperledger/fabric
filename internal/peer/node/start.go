@@ -39,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -914,9 +915,9 @@ func registerDiscoveryService(
 	gossipService *gossipservice.GossipService,
 ) {
 	mspID := coreConfig.LocalMSPID
-	localAccessPolicy := localPolicy(cauthdsl.SignedByAnyAdmin([]string{mspID}))
+	localAccessPolicy := localPolicy(policydsl.SignedByAnyAdmin([]string{mspID}))
 	if coreConfig.DiscoveryOrgMembersAllowed {
-		localAccessPolicy = localPolicy(cauthdsl.SignedByAnyMember([]string{mspID}))
+		localAccessPolicy = localPolicy(policydsl.SignedByAnyMember([]string{mspID}))
 	}
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
 	acl := discacl.NewDiscoverySupport(channelVerifier, localAccessPolicy, discacl.ChannelConfigGetterFunc(peerInstance.GetStableChannelConfig))

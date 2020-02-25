@@ -16,7 +16,7 @@ import (
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -33,12 +33,12 @@ func createInstantiationPolicy(mspid string, role mspprotos.MSPRole_MSPRoleType)
 	principals := []*mspprotos.MSPPrincipal{{
 		PrincipalClassification: mspprotos.MSPPrincipal_ROLE,
 		Principal:               protoutil.MarshalOrPanic(&mspprotos.MSPRole{Role: role, MspIdentifier: mspid})}}
-	sigspolicy := []*common.SignaturePolicy{cauthdsl.SignedBy(int32(0))}
+	sigspolicy := []*common.SignaturePolicy{policydsl.SignedBy(int32(0))}
 
 	// create the policy: it requires exactly 1 signature from any of the principals
 	p := &common.SignaturePolicyEnvelope{
 		Version:    0,
-		Rule:       cauthdsl.NOutOf(1, sigspolicy),
+		Rule:       policydsl.NOutOf(1, sigspolicy),
 		Identities: principals,
 	}
 
