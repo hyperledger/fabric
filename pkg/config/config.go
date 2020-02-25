@@ -17,6 +17,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/common/policydsl"
 )
 
 // Profile encapsulates basic information for a channel config profile.
@@ -288,7 +289,7 @@ func addPolicies(cg *cb.ConfigGroup, policyMap map[string]*Policy, modPolicy str
 				},
 			}
 		case SignaturePolicyType:
-			sp, err := FromString(policy.Rule)
+			sp, err := policydsl.FromString(policy.Rule)
 			if err != nil {
 				return fmt.Errorf("invalid signature policy rule: '%s': %v", policy.Rule, err)
 			}
