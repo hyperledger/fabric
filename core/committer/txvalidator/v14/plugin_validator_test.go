@@ -11,7 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
@@ -100,7 +100,7 @@ func TestSamplePlugin(t *testing.T) {
 	txnData, _ := proto.Marshal(&transaction)
 
 	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilites)
-	acceptAllPolicyBytes, _ := proto.Marshal(cauthdsl.AcceptAllPolicy)
+	acceptAllPolicyBytes, _ := proto.Marshal(policydsl.AcceptAllPolicy)
 	ctx := &txvalidator.Context{
 		Namespace: "mycc",
 		VSCCName:  "vscc",

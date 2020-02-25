@@ -25,9 +25,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
@@ -66,7 +66,7 @@ type applicationCapabilities interface {
 // create a valid SignaturePolicyEnvelope to be used in tests
 var testPolicyEnvelope = &common.SignaturePolicyEnvelope{
 	Version: 0,
-	Rule:    cauthdsl.NOutOf(1, []*common.SignaturePolicy{cauthdsl.SignedBy(0)}),
+	Rule:    policydsl.NOutOf(1, []*common.SignaturePolicy{policydsl.SignedBy(0)}),
 	Identities: []*mb.MSPPrincipal{
 		{
 			PrincipalClassification: mb.MSPPrincipal_ORGANIZATION_UNIT,
@@ -428,7 +428,7 @@ func TestDeploy(t *testing.T) {
 	assert.Equal(t, true, ok)
 
 	collName1 := "mycollection1"
-	policyEnvelope := cauthdsl.SignedByAnyMember([]string{"SampleOrg"})
+	policyEnvelope := policydsl.SignedByAnyMember([]string{"SampleOrg"})
 	var requiredPeerCount, maximumPeerCount int32
 	requiredPeerCount = 1
 	maximumPeerCount = 2
@@ -1359,7 +1359,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 
 	// check MSPPrincipal_IDENTITY type
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	signaturePolicyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	signaturePolicyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	signaturePolicy := &peer.CollectionPolicyConfig_SignaturePolicy{
 		SignaturePolicy: signaturePolicyEnvelope,
 	}
@@ -1379,7 +1379,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	mockmsp.AssertNumberOfCalls(t, "DeserializeIdentity", 3)
 
 	// check MSPPrincipal_ROLE type
-	signaturePolicyEnvelope = cauthdsl.SignedByAnyMember([]string{"Org1"})
+	signaturePolicyEnvelope = policydsl.SignedByAnyMember([]string{"Org1"})
 	signaturePolicy.SignaturePolicy = signaturePolicyEnvelope
 	accessPolicy.Payload = signaturePolicy
 	cc = &peer.CollectionConfig{
@@ -1394,7 +1394,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	assert.NoError(t, err)
 
 	// check MSPPrincipal_ROLE type for unknown org
-	signaturePolicyEnvelope = cauthdsl.SignedByAnyMember([]string{"Org2"})
+	signaturePolicyEnvelope = policydsl.SignedByAnyMember([]string{"Org2"})
 	signaturePolicy.SignaturePolicy = signaturePolicyEnvelope
 	accessPolicy.Payload = signaturePolicy
 	cc = &peer.CollectionConfig{
@@ -1417,7 +1417,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	// create the policy: it requires exactly 1 signature from the first (and only) principal
 	signaturePolicy.SignaturePolicy = &common.SignaturePolicyEnvelope{
 		Version:    0,
-		Rule:       cauthdsl.NOutOf(1, []*common.SignaturePolicy{cauthdsl.SignedBy(0)}),
+		Rule:       policydsl.NOutOf(1, []*common.SignaturePolicy{policydsl.SignedBy(0)}),
 		Identities: []*mb.MSPPrincipal{principal},
 	}
 	accessPolicy.Payload = signaturePolicy
@@ -1590,7 +1590,7 @@ func getBadAccessPolicy(signers []string, badIndex int32) *peer.CollectionPolicy
 		data = append(data, []byte(signer))
 	}
 	// use a out of range index to trigger error
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(badIndex)), data)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(badIndex)), data)
 	return &peer.CollectionPolicyConfig{
 		Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
 			SignaturePolicy: policyEnvelope,

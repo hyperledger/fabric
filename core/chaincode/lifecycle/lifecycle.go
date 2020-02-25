@@ -14,9 +14,9 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/protoutil"
@@ -275,7 +275,7 @@ func (r *Resources) LifecycleEndorsementPolicyAsBytes(channelID string) ([]byte,
 
 	return protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
 		Type: &cb.ApplicationPolicy_SignaturePolicy{
-			SignaturePolicy: cauthdsl.SignedByNOutOfGivenRole(int32(len(mspids)/2+1), msp.MSPRole_MEMBER, mspids),
+			SignaturePolicy: policydsl.SignedByNOutOfGivenRole(int32(len(mspids)/2+1), msp.MSPRole_MEMBER, mspids),
 		},
 	}), nil
 }

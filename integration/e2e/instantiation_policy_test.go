@@ -22,7 +22,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/cmd/common/signer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 
@@ -202,7 +202,7 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 	for _, org := range lo.InstantiationOrgs {
 		instantiationMSPIDs = append(instantiationMSPIDs, org.MSPID)
 	}
-	instantiationPolicy := cauthdsl.SignedByAnyMember(instantiationMSPIDs)
+	instantiationPolicy := policydsl.SignedByAnyMember(instantiationMSPIDs)
 
 	nonce, err := time.Now().MarshalBinary()
 	Expect(err).NotTo(HaveOccurred())

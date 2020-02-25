@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,9 +38,9 @@ func marshalOrPanic(msg proto.Message) []byte {
 func makePolicySource(policyResult bool) *cb.Policy {
 	var policyData *cb.SignaturePolicyEnvelope
 	if policyResult {
-		policyData = AcceptAllPolicy
+		policyData = policydsl.AcceptAllPolicy
 	} else {
-		policyData = RejectAllPolicy
+		policyData = policydsl.RejectAllPolicy
 	}
 	return &cb.Policy{
 		Type:  int32(cb.Policy_SIGNATURE),
@@ -129,7 +130,7 @@ func TestEnvelopeBasedPolicyProvider(t *testing.T) {
 	assert.Nil(t, p)
 	assert.Error(t, err, "Empty policy element")
 
-	p, err = pp.NewPolicy(SignedByMspPeer("primus inter pares"))
+	p, err = pp.NewPolicy(policydsl.SignedByMspPeer("primus inter pares"))
 	assert.NotNil(t, p)
 	assert.NoError(t, err)
 }
@@ -142,10 +143,10 @@ func TestConverter(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "nil policy field")
 
-	p.signaturePolicyEnvelope = RejectAllPolicy
+	p.signaturePolicyEnvelope = policydsl.RejectAllPolicy
 
 	cp, err = p.Convert()
 	assert.NotNil(t, cp)
 	assert.NoError(t, err)
-	assert.Equal(t, cp, RejectAllPolicy)
+	assert.Equal(t, cp, policydsl.RejectAllPolicy)
 }

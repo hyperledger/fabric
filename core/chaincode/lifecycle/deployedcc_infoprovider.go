@@ -14,7 +14,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	validationState "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -217,7 +217,7 @@ func (vc *ValidatorCommitter) GenerateImplicitCollectionForOrg(mspid string) *pb
 		Name: ImplicitCollectionNameForOrg(mspid),
 		MemberOrgsPolicy: &pb.CollectionPolicyConfig{
 			Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
-				SignaturePolicy: cauthdsl.SignedByMspMember(mspid),
+				SignaturePolicy: policydsl.SignedByMspMember(mspid),
 			},
 		},
 		RequiredPeerCount: 0,
@@ -270,7 +270,7 @@ func (vc *ValidatorCommitter) ImplicitCollectionEndorsementPolicyAsBytes(channel
 
 	return protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
 		Type: &cb.ApplicationPolicy_SignaturePolicy{
-			SignaturePolicy: cauthdsl.SignedByAnyMember([]string{orgMSPID}),
+			SignaturePolicy: policydsl.SignedByAnyMember([]string{orgMSPID}),
 		},
 	}), nil, nil
 }

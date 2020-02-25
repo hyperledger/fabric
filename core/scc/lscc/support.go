@@ -9,6 +9,7 @@ package lscc
 import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -58,7 +59,7 @@ func (s *SupportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 		// to be able to instantiate
 		mspids := s.GetMSPIDs(channel)
 
-		p := cauthdsl.SignedByAnyAdmin(mspids)
+		p := policydsl.SignedByAnyAdmin(mspids)
 		ip, err = protoutil.Marshal(p)
 		if err != nil {
 			return nil, errors.Errorf("error marshalling default instantiation policy")

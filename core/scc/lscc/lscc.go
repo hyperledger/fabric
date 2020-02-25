@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/aclmgmt"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -1031,7 +1032,7 @@ func (lscc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			EP = args[3]
 		} else {
 			mspIDs := lscc.GetMSPIDs(channel)
-			p := cauthdsl.SignedByAnyMember(mspIDs)
+			p := policydsl.SignedByAnyMember(mspIDs)
 			EP, err = protoutil.Marshal(p)
 			if err != nil {
 				return shim.Error(err.Error())

@@ -4,7 +4,7 @@ Copyright IBM Corp. 2017 All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cauthdsl
+package policydsl
 
 import (
 	"fmt"
@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
 
 // Gate values
@@ -47,8 +47,9 @@ var (
 // This will be evaluated by second/third passes to convert to a proto policy
 func outof(args ...interface{}) (interface{}, error) {
 	toret := "outof("
+
 	if len(args) < 2 {
-		return nil, fmt.Errorf("Expected at least two arguments to NOutOf. Given %d", len(args))
+		return nil, fmt.Errorf("expected at least two arguments to NOutOf. Given %d", len(args))
 	}
 
 	arg0 := args[0]
@@ -60,11 +61,12 @@ func outof(args ...interface{}) (interface{}, error) {
 	} else if n, ok := arg0.(string); ok {
 		toret += n
 	} else {
-		return nil, fmt.Errorf("Unexpected type %s", reflect.TypeOf(arg0))
+		return nil, fmt.Errorf("unexpected type %s", reflect.TypeOf(arg0))
 	}
 
 	for _, arg := range args[1:] {
 		toret += ", "
+
 		switch t := arg.(type) {
 		case string:
 			if regex.MatchString(t) {
@@ -73,9 +75,10 @@ func outof(args ...interface{}) (interface{}, error) {
 				toret += t
 			}
 		default:
-			return nil, fmt.Errorf("Unexpected type %s", reflect.TypeOf(arg))
+			return nil, fmt.Errorf("unexpected type %s", reflect.TypeOf(arg))
 		}
 	}
+
 	return toret + ")", nil
 }
 
@@ -93,6 +96,7 @@ func firstPass(args ...interface{}) (interface{}, error) {
 	toret := "outof(ID"
 	for _, arg := range args {
 		toret += ", "
+
 		switch t := arg.(type) {
 		case string:
 			if regex.MatchString(t) {
@@ -104,7 +108,7 @@ func firstPass(args ...interface{}) (interface{}, error) {
 		case float64:
 			toret += strconv.Itoa(int(t))
 		default:
-			return nil, fmt.Errorf("Unexpected type %s", reflect.TypeOf(arg))
+			return nil, fmt.Errorf("unexpected type %s", reflect.TypeOf(arg))
 		}
 	}
 
@@ -114,7 +118,7 @@ func firstPass(args ...interface{}) (interface{}, error) {
 func secondPass(args ...interface{}) (interface{}, error) {
 	/* general sanity check, we expect at least 3 args */
 	if len(args) < 3 {
-		return nil, fmt.Errorf("At least 3 arguments expected, got %d", len(args))
+		return nil, fmt.Errorf("at least 3 arguments expected, got %d", len(args))
 	}
 
 	/* get the first argument, we expect it to be the context */
@@ -123,7 +127,7 @@ func secondPass(args ...interface{}) (interface{}, error) {
 	case *context:
 		ctx = v
 	default:
-		return nil, fmt.Errorf("Unrecognized type, expected the context, got %s", reflect.TypeOf(args[0]))
+		return nil, fmt.Errorf("unrecognized type, expected the context, got %s", reflect.TypeOf(args[0]))
 	}
 
 	/* get the second argument, we expect an integer telling us
@@ -133,7 +137,7 @@ func secondPass(args ...interface{}) (interface{}, error) {
 	case float64:
 		t = int(arg)
 	default:
-		return nil, fmt.Errorf("Unrecognized type, expected a number, got %s", reflect.TypeOf(args[1]))
+		return nil, fmt.Errorf("unrecognized type, expected a number, got %s", reflect.TypeOf(args[1]))
 	}
 
 	/* get the n in the t out of n */
@@ -141,10 +145,10 @@ func secondPass(args ...interface{}) (interface{}, error) {
 
 	/* sanity check - t should be positive, permit equal to n+1, but disallow over n+1 */
 	if t < 0 || t > n+1 {
-		return nil, fmt.Errorf("Invalid t-out-of-n predicate, t %d, n %d", t, n)
+		return nil, fmt.Errorf("invalid t-out-of-n predicate, t %d, n %d", t, n)
 	}
 
-	policies := make([]*common.SignaturePolicy, 0)
+	policies := make([]*cb.SignaturePolicy, 0)
 
 	/* handle the rest of the arguments */
 	for _, principal := range args[2:] {
@@ -156,30 +160,37 @@ func secondPass(args ...interface{}) (interface{}, error) {
 			/* split the string */
 			subm := regex.FindAllStringSubmatch(t, -1)
 			if subm == nil || len(subm) != 1 || len(subm[0]) != 4 {
-				return nil, fmt.Errorf("Error parsing principal %s", t)
+				return nil, fmt.Errorf("error parsing principal %s", t)
 			}
 
 			/* get the right role */
-			var r msp.MSPRole_MSPRoleType
+			var r mb.MSPRole_MSPRoleType
+
 			switch subm[0][3] {
 			case RoleMember:
-				r = msp.MSPRole_MEMBER
+				r = mb.MSPRole_MEMBER
 			case RoleAdmin:
-				r = msp.MSPRole_ADMIN
+				r = mb.MSPRole_ADMIN
 			case RoleClient:
-				r = msp.MSPRole_CLIENT
+				r = mb.MSPRole_CLIENT
 			case RolePeer:
-				r = msp.MSPRole_PEER
+				r = mb.MSPRole_PEER
 			case RoleOrderer:
-				r = msp.MSPRole_ORDERER
+				r = mb.MSPRole_ORDERER
 			default:
-				return nil, fmt.Errorf("Error parsing role %s", t)
+				return nil, fmt.Errorf("error parsing role %s", t)
 			}
 
 			/* build the principal we've been told */
-			p := &msp.MSPPrincipal{
-				PrincipalClassification: msp.MSPPrincipal_ROLE,
-				Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{MspIdentifier: subm[0][1], Role: r})}
+			mspRole, err := proto.Marshal(&mb.MSPRole{MspIdentifier: subm[0][1], Role: r})
+			if err != nil {
+				return nil, fmt.Errorf("error marshalling msp role: %s", err)
+			}
+
+			p := &mb.MSPPrincipal{
+				PrincipalClassification: mb.MSPPrincipal_ROLE,
+				Principal:               mspRole,
+			}
 			ctx.principals = append(ctx.principals, p)
 
 			/* create a SignaturePolicy that requires a signature from
@@ -195,11 +206,11 @@ func secondPass(args ...interface{}) (interface{}, error) {
 			ctx.IDNum++
 
 		/* if we've already got a policy we're good, just append it */
-		case *common.SignaturePolicy:
+		case *cb.SignaturePolicy:
 			policies = append(policies, t)
 
 		default:
-			return nil, fmt.Errorf("Unrecognized type, expected a principal or a policy, got %s", reflect.TypeOf(principal))
+			return nil, fmt.Errorf("unrecognized type, expected a principal or a policy, got %s", reflect.TypeOf(principal))
 		}
 	}
 
@@ -208,11 +219,11 @@ func secondPass(args ...interface{}) (interface{}, error) {
 
 type context struct {
 	IDNum      int
-	principals []*msp.MSPPrincipal
+	principals []*mb.MSPPrincipal
 }
 
 func newContext() *context {
-	return &context{IDNum: 0, principals: make([]*msp.MSPPrincipal, 0)}
+	return &context{IDNum: 0, principals: make([]*mb.MSPPrincipal, 0)}
 }
 
 // FromString takes a string representation of the policy,
@@ -233,7 +244,7 @@ func newContext() *context {
 //	- ORG is a string (representing the MSP identifier)
 //	- ROLE takes the value of any of the RoleXXX constants representing
 //    the required role
-func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
+func FromString(policy string) (*cb.SignaturePolicyEnvelope, error) {
 	// first we translate the and/or business into outof gates
 	intermediate, err := govaluate.NewEvaluableExpressionWithFunctions(
 		policy, map[string]govaluate.ExpressionFunction{
@@ -264,6 +275,7 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 
 		return nil, err
 	}
+
 	resStr, ok := intermediateRes.(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid policy string '%s'", policy)
@@ -275,7 +287,10 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 	// to user-implemented functions other than via arguments.
 	// We need this argument because we need a global place where
 	// we put the identities that the policy requires
-	exp, err := govaluate.NewEvaluableExpressionWithFunctions(resStr, map[string]govaluate.ExpressionFunction{"outof": firstPass})
+	exp, err := govaluate.NewEvaluableExpressionWithFunctions(
+		resStr,
+		map[string]govaluate.ExpressionFunction{"outof": firstPass},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -292,6 +307,7 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 
 		return nil, err
 	}
+
 	resStr, ok = res.(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid policy string '%s'", policy)
@@ -301,7 +317,10 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 	parameters := make(map[string]interface{}, 1)
 	parameters["ID"] = ctx
 
-	exp, err = govaluate.NewEvaluableExpressionWithFunctions(resStr, map[string]govaluate.ExpressionFunction{"outof": secondPass})
+	exp, err = govaluate.NewEvaluableExpressionWithFunctions(
+		resStr,
+		map[string]govaluate.ExpressionFunction{"outof": secondPass},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -318,12 +337,13 @@ func FromString(policy string) (*common.SignaturePolicyEnvelope, error) {
 
 		return nil, err
 	}
-	rule, ok := res.(*common.SignaturePolicy)
+
+	rule, ok := res.(*cb.SignaturePolicy)
 	if !ok {
 		return nil, fmt.Errorf("invalid policy string '%s'", policy)
 	}
 
-	p := &common.SignaturePolicyEnvelope{
+	p := &cb.SignaturePolicyEnvelope{
 		Identities: ctx.principals,
 		Version:    0,
 		Rule:       rule,
