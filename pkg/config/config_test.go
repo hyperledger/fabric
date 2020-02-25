@@ -21,17 +21,21 @@ import (
 
 func TestSignConfigUpdate(t *testing.T) {
 	t.Parallel()
-	publicKey, privateKey := generatePublicAndPrivateKey()
-
 	gt := NewGomegaWithT(t)
 
-	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
-	gt.Expect(err).NotTo(HaveOccurred())
+	cert, privateKey := generateCertAndPrivateKey()
+	signingIdentity := &SigningIdentity{
+		Certificate: cert,
+		PrivateKey:  privateKey,
+		MSPID:       "test-msp",
+	}
+
 	configSignature, err := SignConfigUpdate(&common.ConfigUpdate{}, signingIdentity)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	expectedCreator, err := signingIdentity.Serialize()
+	sh, err := createSignatureHeader(signingIdentity)
 	gt.Expect(err).NotTo(HaveOccurred())
+	expectedCreator := sh.Creator
 	signatureHeader := &common.SignatureHeader{}
 	err = proto.Unmarshal(configSignature.SignatureHeader, signatureHeader)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -490,14 +494,18 @@ func TestCreateSignedConfigUpdateEnvelope(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
-	publicKey, privateKey := generatePublicAndPrivateKey()
+	// create signingIdentity
+	cert, privateKey := generateCertAndPrivateKey()
+	signingIdentity := &SigningIdentity{
+		Certificate: cert,
+		PrivateKey:  privateKey,
+		MSPID:       "test-msp",
+	}
+
+	// create detached config signature
 	configUpdate := &common.ConfigUpdate{
 		ChannelId: "testchannel",
 	}
-	// create signingIdentity
-	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
-	gt.Expect(err).NotTo(HaveOccurred())
-	// create detached config signature
 	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -523,22 +531,25 @@ func TestCreateSignedConfigUpdateEnvelope(t *testing.T) {
 	gt.Expect(expectedSignatures.Signature).To(Equal(configSignature.Signature))
 }
 
-func TestCreateSignedConfigupdateEnvelopeFailures(t *testing.T) {
+func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
-	publicKey, privateKey := generatePublicAndPrivateKey()
+
+	// create signingIdentity
+	cert, privateKey := generateCertAndPrivateKey()
+	signingIdentity := &SigningIdentity{
+		Certificate: cert,
+		PrivateKey:  privateKey,
+		MSPID:       "test-msp",
+	}
+
+	// create detached config signature
 	configUpdate := &common.ConfigUpdate{
 		ChannelId: "testchannel",
 	}
-	// create signingIdentity
-	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
-	gt.Expect(err).NotTo(HaveOccurred())
-	// create detached config signature
 	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
-	badSigningIdentity := signingIdentity
-	badSigningIdentity.publicKey = nil
-
 	gt.Expect(err).NotTo(HaveOccurred())
+
 	tests := []struct {
 		spec            string
 		configUpdate    *common.ConfigUpdate
