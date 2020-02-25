@@ -38,11 +38,17 @@ func TestPluginLoadingFailure(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	peerListenAddress := peerListener.Addr()
 
+	chaincodeListener, err := net.Listen("tcp", "localhost:0")
+	gt.Expect(err).NotTo(HaveOccurred())
+	chaincodeListenAddress := chaincodeListener.Addr()
+
 	operationsListener, err := net.Listen("tcp", "localhost:0")
 	gt.Expect(err).NotTo(HaveOccurred())
 	operationsListenAddress := operationsListener.Addr()
 
 	err = peerListener.Close()
+	gt.Expect(err).NotTo(HaveOccurred())
+	err = chaincodeListener.Close()
 	gt.Expect(err).NotTo(HaveOccurred())
 	err = operationsListener.Close()
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -58,6 +64,7 @@ func TestPluginLoadingFailure(t *testing.T) {
 				fmt.Sprintf("CORE_PEER_FILESYSTEMPATH=%s", tempDir),
 				fmt.Sprintf("CORE_PEER_HANDLERS_%s_LIBRARY=%s", plugin, filepath.Join(parentDir, "internal/peer/testdata/invalid_plugins/invalidplugin.so")),
 				fmt.Sprintf("CORE_PEER_LISTENADDRESS=%s", peerListenAddress),
+				fmt.Sprintf("CORE_PEER_CHAINCODELISTENADDRESS=%s", chaincodeListenAddress),
 				fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", "msp"),
 				fmt.Sprintf("CORE_OPERATIONS_LISTENADDRESS=%s", operationsListenAddress),
 				"CORE_OPERATIONS_TLS_ENABLED=false",
