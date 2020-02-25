@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"bytes"
 	"crypto/rand"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"strings"
@@ -121,7 +123,7 @@ func NewCreateChannelTx(profile *Profile, mspConfig *mb.FabricMSPConfig) (*cb.En
 // SignConfigUpdate signs the given configuration update with a
 // specific signing identity.
 func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIdentity) (*cb.ConfigSignature, error) {
-	signatureHeader, err := signingIdentity.CreateSignatureHeader()
+	signatureHeader, err := createSignatureHeader(signingIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signature header: %v", err)
 	}
@@ -140,13 +142,45 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIde
 		return nil, fmt.Errorf("failed to marshal config update: %v", err)
 	}
 
-	configSignature.Signature, err = signingIdentity.Sign(rand.Reader, concatenateBytes(configSignature.SignatureHeader,
-		configUpdateBytes))
+	configSignature.Signature, err = signingIdentity.Sign(rand.Reader, concatenateBytes(configSignature.SignatureHeader, configUpdateBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign config update: %v", err)
 	}
 
 	return configSignature, nil
+}
+
+func createSignatureHeader(signingIdentity *SigningIdentity) (*cb.SignatureHeader, error) {
+	buffer := bytes.NewBuffer(nil)
+	err := pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: signingIdentity.Certificate.Raw})
+	if err != nil {
+		return nil, fmt.Errorf("pem encode: %v", err)
+	}
+	idBytes, err := proto.Marshal(&mb.SerializedIdentity{Mspid: signingIdentity.MSPID, IdBytes: buffer.Bytes()})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal serialized identity: %v", err)
+	}
+	nonce, err := createNonce()
+	if err != nil {
+		return nil, err
+	}
+
+	return &cb.SignatureHeader{
+		Creator: idBytes,
+		Nonce:   nonce,
+	}, nil
+}
+
+// createNonce generates a 24-byte nonce using the crypto/rand package.
+func createNonce() ([]byte, error) {
+	nonce := make([]byte, 24)
+
+	_, err := rand.Read(nonce)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get random bytes: %v", err)
+	}
+
+	return nonce, nil
 }
 
 // newChannelGroup defines the root of the channel configuration.
@@ -596,7 +630,7 @@ func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIden
 func createSignedEnvelopeWithTLSBinding(
 	txType cb.HeaderType,
 	channelID string,
-	signer *SigningIdentity,
+	signingIdentity *SigningIdentity,
 	envelope proto.Message,
 ) (*cb.Envelope, error) {
 	channelHeader := &cb.ChannelHeader{
@@ -608,7 +642,7 @@ func createSignedEnvelopeWithTLSBinding(
 		ChannelId: channelID,
 	}
 
-	signatureHeader, err := signer.CreateSignatureHeader()
+	signatureHeader, err := createSignatureHeader(signingIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("creating signature header: %v", err)
 	}
@@ -641,7 +675,7 @@ func createSignedEnvelopeWithTLSBinding(
 		return nil, fmt.Errorf("marshalling payload: %s", err)
 	}
 
-	sig, err := signer.Sign(rand.Reader, payloadBytes)
+	sig, err := signingIdentity.Sign(rand.Reader, payloadBytes, nil)
 	if err != nil {
 		return nil, fmt.Errorf("signing envelope's payload: %v", err)
 	}

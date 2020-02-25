@@ -7,178 +7,63 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"io"
 	"log"
 	"math/big"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
 	. "github.com/onsi/gomega"
 )
-
-func TestMain(m *testing.M) {
-	os.Exit(m.Run())
-}
-
-func TestNewSigningIdentity(t *testing.T) {
-	t.Parallel()
-
-	publicKey, privateKey := generatePublicAndPrivateKey()
-
-	t.Run("success", func(t *testing.T) {
-		gt := NewGomegaWithT(t)
-		signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
-		gt.Expect(err).NotTo(HaveOccurred())
-		gt.Expect(signingIdentity.MSPId()).To(Equal("test-msp"))
-		cert, err := signingIdentity.Cert()
-		gt.Expect(err).ToNot(HaveOccurred())
-		gt.Expect(cert.Subject.CommonName).To(Equal("Wile E. Coyote"))
-	})
-
-	tests := []struct {
-		spec        string
-		publicKey   []byte
-		privateKey  []byte
-		mspID       string
-		expectedErr string
-		matchErr    bool
-	}{
-		{
-			spec:        "nil public key",
-			publicKey:   nil,
-			privateKey:  privateKey,
-			mspID:       "test-msp",
-			expectedErr: "failed to get cert from pem: decoding pem bytes: []",
-			matchErr:    true,
-		},
-		{
-			spec:        "invalid public key",
-			publicKey:   []byte("apple"),
-			privateKey:  privateKey,
-			mspID:       "test-msp",
-			expectedErr: "failed to get cert from pem: decoding pem bytes",
-			matchErr:    false,
-		},
-		{
-			spec:        "public key is not a certificate",
-			publicKey:   privateKey,
-			privateKey:  privateKey,
-			mspID:       "test-msp",
-			expectedErr: "failed to get cert from pem: decoding pem bytes",
-			matchErr:    false,
-		},
-		{
-			spec:        "nil private key",
-			publicKey:   publicKey,
-			privateKey:  nil,
-			mspID:       "test-msp",
-			expectedErr: "failed to decode private key from pem",
-			matchErr:    true,
-		},
-		{
-			spec:        "empty mspID",
-			publicKey:   publicKey,
-			privateKey:  privateKey,
-			expectedErr: "failed to create new signingIdentity, mspID can not be empty",
-			matchErr:    true,
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc // capture range variable
-		t.Run(tc.spec, func(t *testing.T) {
-			t.Parallel()
-
-			gt := NewGomegaWithT(t)
-
-			_, err := NewSigningIdentity(tc.publicKey, tc.privateKey, tc.mspID)
-			if tc.matchErr {
-				gt.Expect(err).To(MatchError(tc.expectedErr))
-			} else {
-				gt.Expect(err.Error()).To(ContainSubstring(tc.expectedErr))
-			}
-		})
-	}
-}
-
-func TestECDSAPublicKeyImport(t *testing.T) {
-	t.Parallel()
-
-	gt := NewGomegaWithT(t)
-	x509cert := &x509.Certificate{PublicKey: struct{}{}}
-	_, err := ecdsaPublicKeyImport(x509cert)
-	gt.Expect(err).To(MatchError("certificate does not contain valid ECDSA public key"))
-}
-
-func TestECDSAPrivateKeyImport(t *testing.T) {
-	t.Parallel()
-
-	gt := NewGomegaWithT(t)
-	_, err := ecdsaPrivateKeyImport(nil)
-	gt.Expect(err.Error()).To(ContainSubstring("invalid key type. The DER must contain an ecdsa.PrivateKey"))
-}
-
-func TestSerialize(t *testing.T) {
-	t.Parallel()
-
-	publicKey, privateKey := generatePublicAndPrivateKey()
-
-	gt := NewGomegaWithT(t)
-	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	sBytes, err := signingIdentity.Serialize()
-	gt.Expect(err).NotTo(HaveOccurred())
-	serializedIdentity := &msp.SerializedIdentity{}
-	err = proto.Unmarshal(sBytes, serializedIdentity)
-	gt.Expect(err).ToNot(HaveOccurred())
-	gt.Expect(serializedIdentity.Mspid).To(Equal("test-msp"))
-}
 
 func TestSign(t *testing.T) {
 	t.Parallel()
 
-	publicKey, privateKey := generatePublicAndPrivateKey()
+	cert, privateKey := generateCertAndPrivateKey()
 
 	tests := []struct {
 		spec        string
+		privateKey  crypto.PrivateKey
 		reader      io.Reader
 		digest      []byte
 		expectedErr string
 	}{
 		{
 			spec:        "success",
+			privateKey:  privateKey,
 			reader:      rand.Reader,
 			digest:      []byte("banana"),
 			expectedErr: "",
 		},
 		{
-			spec:        "nil reader",
-			reader:      nil,
-			expectedErr: "reader can not be nil",
+			spec:        "unsupported rsa private key",
+			privateKey:  &rsa.PrivateKey{},
+			reader:      rand.Reader,
+			digest:      []byte("banana"),
+			expectedErr: "signing with private key of type *rsa.PrivateKey not supported",
 		},
 	}
 
-	gt := NewGomegaWithT(t)
-	signingIdentity, err := NewSigningIdentity(publicKey, privateKey, "test-msp")
-	gt.Expect(err).NotTo(HaveOccurred())
-
 	for _, tc := range tests {
-		tc := tc //capture range variable
+		tc := tc
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
-
 			gt := NewGomegaWithT(t)
-			_, err = signingIdentity.Sign(tc.reader, tc.digest)
+
+			signingIdentity := &SigningIdentity{
+				Certificate: cert,
+				PrivateKey:  tc.privateKey,
+				MSPID:       "test-msp",
+			}
+
+			_, err := signingIdentity.Sign(tc.reader, tc.digest, nil)
 			if tc.expectedErr == "" {
 				gt.Expect(err).NotTo(HaveOccurred())
 			} else {
@@ -252,7 +137,7 @@ func TestToLowS(t *testing.T) {
 	}
 }
 
-func generatePublicAndPrivateKey() ([]byte, []byte) {
+func generateCertAndPrivateKey() (*x509.Certificate, crypto.PrivateKey) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		log.Fatalf("Failed to generate private key: %s", err)
@@ -264,7 +149,7 @@ func generatePublicAndPrivateKey() ([]byte, []byte) {
 		log.Fatalf("Failed to generate serial number: %s", err)
 	}
 
-	template := x509.Certificate{
+	template := &x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName:   "Wile E. Coyote",
@@ -277,17 +162,14 @@ func generatePublicAndPrivateKey() ([]byte, []byte) {
 		BasicConstraintsValid: true,
 	}
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
-	publicKey := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-
-	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	cert, err := x509.ParseCertificate(derBytes)
 	if err != nil {
-		log.Fatalf("Unable to marshal private key: %v", err)
+		log.Fatalf("Failed to parse certificate: %s", err)
 	}
-	privateKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
 
-	return publicKey, privateKey
+	return cert, priv
 }
