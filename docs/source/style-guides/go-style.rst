@@ -57,18 +57,6 @@ API Documentation
 The API documentation for Hyperledger Fabric's Go APIs is available
 in `GoDoc <https://godoc.org/github.com/hyperledger/fabric>`_.
 
-
-Generating gRPC code
----------------------
-
-If you modify any ``.proto`` files, run the following command to
-generate/update the respective ``.pb.go`` files.
-
-::
-
-    cd $GOPATH/src/github.com/hyperledger/fabric
-    make protos
-
 Adding or updating Go packages
 ------------------------------
 
