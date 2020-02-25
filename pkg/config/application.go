@@ -31,34 +31,32 @@ type AnchorPeer struct {
 }
 
 // NewApplicationGroup returns the application component of the channel configuration.
-// It defines the organizations which are involved in application logic like chaincodes,
-// and how these members may interact with the orderer.
-// It sets the mod_policy of all elements to "Admins".
-func NewApplicationGroup(conf *Application, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+// By default, tt sets the mod_policy of all elements to "Admins".
+func NewApplicationGroup(application *Application, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	var err error
 
 	applicationGroup := newConfigGroup()
 	applicationGroup.ModPolicy = AdminsPolicyKey
 
-	if err = addPolicies(applicationGroup, conf.Policies, AdminsPolicyKey); err != nil {
+	if err = addPolicies(applicationGroup, application.Policies, AdminsPolicyKey); err != nil {
 		return nil, err
 	}
 
-	if len(conf.ACLs) > 0 {
-		err = addValue(applicationGroup, aclValues(conf.ACLs), AdminsPolicyKey)
+	if len(application.ACLs) > 0 {
+		err = addValue(applicationGroup, aclValues(application.ACLs), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if len(conf.Capabilities) > 0 {
-		err = addValue(applicationGroup, capabilitiesValue(conf.Capabilities), AdminsPolicyKey)
+	if len(application.Capabilities) > 0 {
+		err = addValue(applicationGroup, capabilitiesValue(application.Capabilities), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	for _, org := range conf.Organizations {
+	for _, org := range application.Organizations {
 		applicationGroup.Groups[org.Name], err = newApplicationOrgGroup(org, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
@@ -71,18 +69,18 @@ func NewApplicationGroup(conf *Application, mspConfig *mb.MSPConfig) (*cb.Config
 // newApplicationOrgGroup returns an application org component of the channel configuration.
 // It defines the crypto material for the organization (its MSP), as well as its anchor peers
 // for use by the gossip network.
-// It sets the mod_policy of all elements to "Admins".
-func newApplicationOrgGroup(conf *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+// By default, it sets the mod_policy of all elements to "Admins".
+func newApplicationOrgGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	var err error
 
 	applicationOrgGroup := newConfigGroup()
 	applicationOrgGroup.ModPolicy = AdminsPolicyKey
 
-	if conf.SkipAsForeign {
+	if org.SkipAsForeign {
 		return applicationOrgGroup, nil
 	}
 
-	if err = addPolicies(applicationOrgGroup, conf.Policies, AdminsPolicyKey); err != nil {
+	if err = addPolicies(applicationOrgGroup, org.Policies, AdminsPolicyKey); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +90,7 @@ func newApplicationOrgGroup(conf *Organization, mspConfig *mb.MSPConfig) (*cb.Co
 	}
 
 	var anchorProtos []*pb.AnchorPeer
-	for _, anchorPeer := range conf.AnchorPeers {
+	for _, anchorPeer := range org.AnchorPeers {
 		anchorProtos = append(anchorProtos, &pb.AnchorPeer{
 			Host: anchorPeer.Host,
 			Port: int32(anchorPeer.Port),

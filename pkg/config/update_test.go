@@ -20,7 +20,7 @@ func TestNoUpdate(t *testing.T) {
 	}
 	updated := &cb.ConfigGroup{}
 
-	_, err := Compute(&cb.Config{
+	_, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,
@@ -33,13 +33,13 @@ func TestMissingGroup(t *testing.T) {
 	gt := NewGomegaWithT(t)
 	group := &cb.ConfigGroup{}
 	t.Run("MissingOriginal", func(t *testing.T) {
-		_, err := Compute(&cb.Config{}, &cb.Config{ChannelGroup: group})
+		_, err := computeConfigUpdate(&cb.Config{}, &cb.Config{ChannelGroup: group})
 
 		gt.Expect(err).To(HaveOccurred())
 		gt.Expect(err).To(MatchError("no channel group included for original config"))
 	})
 	t.Run("MissingOriginal", func(t *testing.T) {
-		_, err := Compute(&cb.Config{ChannelGroup: group}, &cb.Config{})
+		_, err := computeConfigUpdate(&cb.Config{ChannelGroup: group}, &cb.Config{})
 
 		gt.Expect(err).To(HaveOccurred())
 		gt.Expect(err).To(MatchError("no channel group included for updated config"))
@@ -56,7 +56,7 @@ func TestGroupModPolicyUpdate(t *testing.T) {
 		ModPolicy: "bar",
 	}
 
-	cu, err := Compute(&cb.Config{
+	cu, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,
@@ -116,7 +116,7 @@ func TestGroupPolicyModification(t *testing.T) {
 		},
 	}
 
-	cu, err := Compute(&cb.Config{
+	cu, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,
@@ -176,7 +176,7 @@ func TestGroupValueModification(t *testing.T) {
 		},
 	}
 
-	cu, err := Compute(&cb.Config{
+	cu, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,
@@ -230,7 +230,7 @@ func TestGroupGroupsModification(t *testing.T) {
 		},
 	}
 
-	cu, err := Compute(&cb.Config{
+	cu, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,
@@ -294,7 +294,7 @@ func TestGroupValueAddition(t *testing.T) {
 		},
 	}
 
-	cu, err := Compute(&cb.Config{
+	cu, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,
@@ -359,7 +359,7 @@ func TestGroupPolicySwap(t *testing.T) {
 		},
 	}
 
-	cu, err := Compute(&cb.Config{
+	cu, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,
@@ -445,7 +445,7 @@ func TestComplex(t *testing.T) {
 		},
 	}
 
-	cu, err := Compute(&cb.Config{
+	cu, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,
@@ -536,7 +536,7 @@ func TestTwiceNestedModification(t *testing.T) {
 		},
 	}
 
-	cu, err := Compute(&cb.Config{
+	cu, err := computeConfigUpdate(&cb.Config{
 		ChannelGroup: original,
 	}, &cb.Config{
 		ChannelGroup: updated,

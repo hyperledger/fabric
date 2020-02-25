@@ -134,12 +134,12 @@ func TestNewApplicationGroupSkipAsForeign(t *testing.T) {
 
 func baseApplication() *Application {
 	return &Application{
-		Policies: createStandardPolicies(),
+		Policies: standardPolicies(),
 		Organizations: []*Organization{
 			{
 				Name:     "Org1",
 				ID:       "Org1MSP",
-				Policies: createApplicationOrgStandardPolicies(),
+				Policies: applicationOrgStandardPolicies(),
 				AnchorPeers: []*AnchorPeer{
 					{Host: "host1", Port: 123},
 				},
@@ -147,7 +147,7 @@ func baseApplication() *Application {
 			{
 				Name:     "Org2",
 				ID:       "Org2MSP",
-				Policies: createApplicationOrgStandardPolicies(),
+				Policies: applicationOrgStandardPolicies(),
 				AnchorPeers: []*AnchorPeer{
 					{Host: "host1", Port: 123},
 				},

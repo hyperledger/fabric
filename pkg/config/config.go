@@ -16,17 +16,18 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
 
-// Profile encapsulates basic information for a channel config profile.
-type Profile struct {
+// Channel encapsulates basic information for a channel config profile.
+type Channel struct {
 	Consortium   string
 	Application  *Application
 	Orderer      *Orderer
-	Consortiums  map[string]*Consortium
+	Consortiums  []*Consortium
 	Capabilities map[string]bool
 	Policies     map[string]*Policy
 	ChannelID    string
@@ -69,15 +70,15 @@ type standardConfigPolicy struct {
 	value *cb.Policy
 }
 
-// NewCreateChannelTx creates a create channel tx using the provided config profile.
-func NewCreateChannelTx(profile *Profile, mspConfig *mb.FabricMSPConfig) (*cb.Envelope, error) {
+// NewCreateChannelTx creates a create channel tx using the provided channel config.
+func NewCreateChannelTx(channelConfig *Channel, mspConfig *mb.FabricMSPConfig) (*cb.Envelope, error) {
 	var err error
 
-	if profile == nil {
-		return nil, errors.New("profile is required")
+	if channelConfig == nil {
+		return nil, errors.New("channel config is required")
 	}
 
-	channelID := profile.ChannelID
+	channelID := channelConfig.ChannelID
 
 	if channelID == "" {
 		return nil, errors.New("profile's channel ID is required")
@@ -93,12 +94,12 @@ func NewCreateChannelTx(profile *Profile, mspConfig *mb.FabricMSPConfig) (*cb.En
 		Config: config,
 	}
 
-	ct, err := defaultConfigTemplate(profile, mspconf)
+	ct, err := defaultConfigTemplate(channelConfig, mspconf)
 	if err != nil {
 		return nil, fmt.Errorf("creating default config template: %v", err)
 	}
 
-	newChannelConfigUpdate, err := newChannelCreateConfigUpdate(channelID, profile, ct, mspconf)
+	newChannelConfigUpdate, err := newChannelCreateConfigUpdate(channelID, channelConfig, ct, mspconf)
 	if err != nil {
 		return nil, fmt.Errorf("creating channel create config update: %v", err)
 	}
@@ -112,7 +113,7 @@ func NewCreateChannelTx(profile *Profile, mspConfig *mb.FabricMSPConfig) (*cb.En
 		ConfigUpdate: configUpdate,
 	}
 
-	env, err := createEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, newConfigUpdateEnv)
+	env, err := newEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, newConfigUpdateEnv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create envelope: %v", err)
 	}
@@ -123,7 +124,7 @@ func NewCreateChannelTx(profile *Profile, mspConfig *mb.FabricMSPConfig) (*cb.En
 // SignConfigUpdate signs the given configuration update with a
 // specific signing identity.
 func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIdentity) (*cb.ConfigSignature, error) {
-	signatureHeader, err := createSignatureHeader(signingIdentity)
+	signatureHeader, err := signatureHeader(signingIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signature header: %v", err)
 	}
@@ -150,7 +151,7 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIde
 	return configSignature, nil
 }
 
-func createSignatureHeader(signingIdentity *SigningIdentity) (*cb.SignatureHeader, error) {
+func signatureHeader(signingIdentity *SigningIdentity) (*cb.SignatureHeader, error) {
 	buffer := bytes.NewBuffer(nil)
 	err := pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: signingIdentity.Certificate.Raw})
 	if err != nil {
@@ -160,7 +161,7 @@ func createSignatureHeader(signingIdentity *SigningIdentity) (*cb.SignatureHeade
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal serialized identity: %v", err)
 	}
-	nonce, err := createNonce()
+	nonce, err := newNonce()
 	if err != nil {
 		return nil, err
 	}
@@ -171,8 +172,8 @@ func createSignatureHeader(signingIdentity *SigningIdentity) (*cb.SignatureHeade
 	}, nil
 }
 
-// createNonce generates a 24-byte nonce using the crypto/rand package.
-func createNonce() ([]byte, error) {
+// newNonce generates a 24-byte nonce using the crypto/rand package.
+func newNonce() ([]byte, error) {
 	nonce := make([]byte, 24)
 
 	_, err := rand.Read(nonce)
@@ -184,12 +185,12 @@ func createNonce() ([]byte, error) {
 }
 
 // newChannelGroup defines the root of the channel configuration.
-func newChannelGroup(conf *Profile, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func newChannelGroup(channelConfig *Channel, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	var err error
 
 	channelGroup := newConfigGroup()
 
-	if err = addPolicies(channelGroup, conf.Policies, AdminsPolicyKey); err != nil {
+	if err = addPolicies(channelGroup, channelConfig.Policies, AdminsPolicyKey); err != nil {
 		return nil, fmt.Errorf("failed to add policies to channel group: %v", err)
 	}
 
@@ -203,43 +204,43 @@ func newChannelGroup(conf *Profile, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, e
 		return nil, err
 	}
 
-	if conf.Orderer != nil && len(conf.Orderer.Addresses) > 0 {
-		err = addValue(channelGroup, ordererAddressesValue(conf.Orderer.Addresses), ordererAdminsPolicyName)
+	if channelConfig.Orderer != nil && len(channelConfig.Orderer.Addresses) > 0 {
+		err = addValue(channelGroup, ordererAddressesValue(channelConfig.Orderer.Addresses), ordererAdminsPolicyName)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if conf.Consortium != "" {
-		err = addValue(channelGroup, consortiumValue(conf.Consortium), AdminsPolicyKey)
+	if channelConfig.Consortium != "" {
+		err = addValue(channelGroup, consortiumValue(channelConfig.Consortium), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if len(conf.Capabilities) > 0 {
-		err = addValue(channelGroup, capabilitiesValue(conf.Capabilities), AdminsPolicyKey)
+	if len(channelConfig.Capabilities) > 0 {
+		err = addValue(channelGroup, capabilitiesValue(channelConfig.Capabilities), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if conf.Orderer != nil {
-		channelGroup.Groups[OrdererGroupKey], err = NewOrdererGroup(conf.Orderer, mspConfig)
+	if channelConfig.Orderer != nil {
+		channelGroup.Groups[OrdererGroupKey], err = NewOrdererGroup(channelConfig.Orderer, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create orderer group: %v", err)
 		}
 	}
 
-	if conf.Application != nil {
-		channelGroup.Groups[ApplicationGroupKey], err = NewApplicationGroup(conf.Application, mspConfig)
+	if channelConfig.Application != nil {
+		channelGroup.Groups[ApplicationGroupKey], err = NewApplicationGroup(channelConfig.Application, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create application group: %v", err)
 		}
 	}
 
-	if conf.Consortiums != nil {
-		channelGroup.Groups[ConsortiumsGroupKey], err = NewConsortiumsGroup(conf.Consortiums, mspConfig)
+	if channelConfig.Consortiums != nil {
+		channelGroup.Groups[ConsortiumsGroupKey], err = NewConsortiumsGroup(channelConfig.Consortiums, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create consortiums group: %v", err)
 		}
@@ -416,8 +417,8 @@ func mspValue(mspDef *mb.MSPConfig) *standardConfigValue {
 // defaultConfigTemplate generates a config template based on the assumption that
 // the input profile is a channel creation template and no system channel context
 // is available.
-func defaultConfigTemplate(conf *Profile, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
-	channelGroup, err := newChannelGroup(conf, mspConfig)
+func defaultConfigTemplate(channelConfig *Channel, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+	channelGroup, err := newChannelGroup(channelConfig, mspConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -435,20 +436,20 @@ func defaultConfigTemplate(conf *Profile, mspConfig *mb.MSPConfig) (*cb.ConfigGr
 // newChannelCreateConfigUpdate generates a ConfigUpdate which can be sent to the orderer to create a new channel.
 // Optionally, the channel group of the ordering system channel may be passed in, and the resulting ConfigUpdate
 // will extract the appropriate versions from this file.
-func newChannelCreateConfigUpdate(channelID string, conf *Profile, templateConfig *cb.ConfigGroup,
+func newChannelCreateConfigUpdate(channelID string, channelConfig *Channel, templateConfig *cb.ConfigGroup,
 	mspConfig *mb.MSPConfig) (*cb.ConfigUpdate, error) {
-	newChannelGroup, err := newChannelGroup(conf, mspConfig)
+	newChannelGroup, err := newChannelGroup(channelConfig, mspConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	updt, err := Compute(&cb.Config{ChannelGroup: templateConfig}, &cb.Config{ChannelGroup: newChannelGroup})
+	updt, err := computeConfigUpdate(&cb.Config{ChannelGroup: templateConfig}, &cb.Config{ChannelGroup: newChannelGroup})
 	if err != nil {
 		return nil, fmt.Errorf("computing update: %v", err)
 	}
 
 	wsValue, err := proto.Marshal(&cb.Consortium{
-		Name: conf.Consortium,
+		Name: channelConfig.Consortium,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshalling consortium: %v", err)
@@ -474,14 +475,14 @@ func newConfigGroup() *cb.ConfigGroup {
 	}
 }
 
-// createEnvelope creates an unsigned envelope of type txType using with the marshalled
+// newEnvelope creates an unsigned envelope of type txType using with the marshalled
 // cb.ConfigGroupEnvelope proto message.
-func createEnvelope(
+func newEnvelope(
 	txType cb.HeaderType,
 	channelID string,
 	dataMsg proto.Message,
 ) (*cb.Envelope, error) {
-	payloadChannelHeader := makeChannelHeader(txType, msgVersion, channelID, epoch)
+	payloadChannelHeader := channelHeader(txType, msgVersion, channelID, epoch)
 	payloadSignatureHeader := &cb.SignatureHeader{}
 
 	data, err := proto.Marshal(dataMsg)
@@ -489,7 +490,7 @@ func createEnvelope(
 		return nil, fmt.Errorf("marshalling envelope data: %v", err)
 	}
 
-	payloadHeader, err := makePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
+	payloadHeader, err := payloadHeader(payloadChannelHeader, payloadSignatureHeader)
 	if err != nil {
 		return nil, fmt.Errorf("making payload header: %v", err)
 	}
@@ -512,13 +513,12 @@ func createEnvelope(
 }
 
 // makeChannelHeader creates a ChannelHeader.
-func makeChannelHeader(headerType cb.HeaderType, version int32, channelID string, epoch uint64) *cb.ChannelHeader {
+func channelHeader(headerType cb.HeaderType, version int32, channelID string, epoch uint64) *cb.ChannelHeader {
 	return &cb.ChannelHeader{
 		Type:    int32(headerType),
 		Version: version,
 		Timestamp: &timestamp.Timestamp{
-			Seconds: time.Now().Unix(),
-			Nanos:   0,
+			Seconds: ptypes.TimestampNow().GetSeconds(),
 		},
 		ChannelId: channelID,
 		Epoch:     epoch,
@@ -526,7 +526,7 @@ func makeChannelHeader(headerType cb.HeaderType, version int32, channelID string
 }
 
 // makePayloadHeader creates a Payload Header.
-func makePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) (*cb.Header, error) {
+func payloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) (*cb.Header, error) {
 	channelHeader, err := proto.Marshal(ch)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling channel header: %v", err)
@@ -549,7 +549,7 @@ func ComputeUpdate(baseConfig, updatedConfig *cb.Config, channelID string) (*cb.
 		return nil, errors.New("channel ID is required")
 	}
 
-	updt, err := Compute(baseConfig, updatedConfig)
+	updt, err := computeConfigUpdate(baseConfig, updatedConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute update: %v", err)
 	}
@@ -570,10 +570,10 @@ func concatenateBytes(data ...[]byte) []byte {
 	return res
 }
 
-// generateOrgConfigGroup returns an config group for a organization.
+// newOrgConfigGroup returns an config group for a organization.
 // It defines the crypto material for the organization (its MSP).
 // It sets the mod_policy of all elements to "Admins".
-func generateOrgConfigGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func newOrgConfigGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	var err error
 
 	orgGroup := newConfigGroup()
@@ -642,7 +642,7 @@ func createSignedEnvelopeWithTLSBinding(
 		ChannelId: channelID,
 	}
 
-	signatureHeader, err := createSignatureHeader(signingIdentity)
+	signatureHeader, err := signatureHeader(signingIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("creating signature header: %v", err)
 	}

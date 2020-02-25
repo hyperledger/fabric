@@ -33,7 +33,7 @@ func TestSignConfigUpdate(t *testing.T) {
 	configSignature, err := SignConfigUpdate(&common.ConfigUpdate{}, signingIdentity)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	sh, err := createSignatureHeader(signingIdentity)
+	sh, err := signatureHeader(signingIdentity)
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedCreator := sh.Creator
 	signatureHeader := &common.SignatureHeader{}
@@ -193,17 +193,17 @@ func TestNewCreateChannelTx(t *testing.T) {
 
 	tests := []struct {
 		testName   string
-		profileMod func() *Profile
+		profileMod func() *Channel
 	}{
 		{
 			testName: "When creating new create channel Tx with ImplicitMetaPolicyType",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				return baseProfile()
 			},
 		},
 		{
 			testName: "When creating new create channel Tx with ImplicitMetaPolicyType_ALL",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Policies[ReadersPolicyKey].Rule = "ALL Readers"
 				return profile
@@ -211,7 +211,7 @@ func TestNewCreateChannelTx(t *testing.T) {
 		},
 		{
 			testName: "When creating new create channel Tx with SignatureTypePolicy",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Policies[ReadersPolicyKey].Type = SignaturePolicyType
 				profile.Policies[ReadersPolicyKey].Rule = "OutOf(1, 'A.member', 'B.member')"
@@ -220,12 +220,12 @@ func TestNewCreateChannelTx(t *testing.T) {
 		},
 		{
 			testName: "When creating new create channel Tx with orderer defined in profile",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Orderer = &Orderer{
 					OrdererType: ConsensusTypeSolo,
 					Addresses:   []string{"1", "2"},
-					Policies:    createStandardPolicies(),
+					Policies:    standardPolicies(),
 				}
 				profile.Orderer.Policies[BlockValidationPolicyKey] = &Policy{
 					Type: ImplicitMetaPolicyType,
@@ -317,12 +317,12 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 
 	tests := []struct {
 		testName   string
-		profileMod func() *Profile
+		profileMod func() *Channel
 		err        error
 	}{
 		{
 			testName: "When creating the default config template with no policies defined fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Policies = nil
 				return profile
@@ -332,7 +332,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with no ApplicationGroupKey defined fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Application = nil
 				return profile
@@ -342,7 +342,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with no Admins policies defined fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				delete(profile.Policies, AdminsPolicyKey)
 				return profile
@@ -352,7 +352,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with no Readers policies defined fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				delete(profile.Policies, ReadersPolicyKey)
 				return profile
@@ -362,7 +362,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with no Writers policies defined fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				delete(profile.Policies, WritersPolicyKey)
 				return profile
@@ -372,7 +372,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Policies[ReadersPolicyKey].Rule = "ALL"
 				return profile
@@ -383,7 +383,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
 				return profile
@@ -394,7 +394,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with SignatureTypePolicy and bad rule fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Policies[ReadersPolicyKey].Type = SignaturePolicyType
 				profile.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
@@ -406,7 +406,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with an unknown policy type fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Policies[ReadersPolicyKey].Type = "GreenPolicy"
 				return profile
@@ -416,14 +416,14 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When channel is not specified in config",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				return nil
 			},
-			err: errors.New("profile is required"),
+			err: errors.New("channel config is required"),
 		},
 		{
 			testName: "When channel ID is not specified in config",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.ChannelID = ""
 				return profile
@@ -432,11 +432,11 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When no BlockValidation policy is defined",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Orderer = &Orderer{
 					OrdererType: ConsensusTypeSolo,
-					Policies:    createStandardPolicies(),
+					Policies:    standardPolicies(),
 				}
 				return profile
 			},
@@ -445,13 +445,15 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the consortiums group fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Consortium = ConsortiumsGroupKey
-				profile.Consortiums = map[string]*Consortium{
-					"Consortiums": {
+				profile.Consortiums = []*Consortium{
+					{
+						Name: "Consortiums",
 						Organizations: []*Organization{
-							{Name: "Org1"}, {Name: "Org2"},
+							{Name: "Org1"},
+							{Name: "Org2"},
 						},
 					},
 				}
@@ -463,7 +465,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the application group fails",
-			profileMod: func() *Profile {
+			profileMod: func() *Channel {
 				profile := baseProfile()
 				profile.Application.Policies = nil
 				return profile
@@ -598,7 +600,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 	org := &Organization{
 		Name:     "Org1",
 		ID:       "Org1MSP",
-		Policies: createApplicationOrgStandardPolicies(),
+		Policies: applicationOrgStandardPolicies(),
 	}
 
 	configUpdate, err := AddOrgToConsortium(org, "test-consortium", "testchannel", config, &mb.MSPConfig{})
@@ -721,7 +723,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 	org := &Organization{
 		Name:     "test-org",
 		ID:       "test-org-msp-id",
-		Policies: createApplicationOrgStandardPolicies(),
+		Policies: applicationOrgStandardPolicies(),
 	}
 
 	for _, test := range []struct {
@@ -803,22 +805,22 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 	}
 }
 
-func baseProfile() *Profile {
-	return &Profile{
+func baseProfile() *Channel {
+	return &Channel{
 		ChannelID:  "testchannel",
 		Consortium: "SampleConsortium",
 		Application: &Application{
-			Policies: createStandardPolicies(),
+			Policies: standardPolicies(),
 			Organizations: []*Organization{
 				{
 					Name:     "Org1",
 					ID:       "Org1MSP",
-					Policies: createApplicationOrgStandardPolicies(),
+					Policies: applicationOrgStandardPolicies(),
 				},
 				{
 					Name:     "Org2",
 					ID:       "Org2MSP",
-					Policies: createApplicationOrgStandardPolicies(),
+					Policies: applicationOrgStandardPolicies(),
 				},
 			},
 			Capabilities: map[string]bool{
@@ -826,11 +828,11 @@ func baseProfile() *Profile {
 			},
 		},
 		Capabilities: map[string]bool{"V2_0": true},
-		Policies:     createStandardPolicies(),
+		Policies:     standardPolicies(),
 	}
 }
 
-func createStandardPolicies() map[string]*Policy {
+func standardPolicies() map[string]*Policy {
 	return map[string]*Policy{
 		ReadersPolicyKey: {
 			Type: ImplicitMetaPolicyType,
@@ -847,8 +849,8 @@ func createStandardPolicies() map[string]*Policy {
 	}
 }
 
-func createOrgStandardPolicies() map[string]*Policy {
-	policies := createStandardPolicies()
+func orgStandardPolicies() map[string]*Policy {
+	policies := standardPolicies()
 
 	policies[EndorsementPolicyKey] = &Policy{
 		Type: ImplicitMetaPolicyType,
@@ -858,8 +860,8 @@ func createOrgStandardPolicies() map[string]*Policy {
 	return policies
 }
 
-func createApplicationOrgStandardPolicies() map[string]*Policy {
-	policies := createOrgStandardPolicies()
+func applicationOrgStandardPolicies() map[string]*Policy {
+	policies := orgStandardPolicies()
 
 	policies[LifecycleEndorsementPolicyKey] = &Policy{
 		Type: ImplicitMetaPolicyType,
@@ -869,8 +871,8 @@ func createApplicationOrgStandardPolicies() map[string]*Policy {
 	return policies
 }
 
-func createOrdererStandardPolicies() map[string]*Policy {
-	policies := createStandardPolicies()
+func ordererStandardPolicies() map[string]*Policy {
+	policies := standardPolicies()
 
 	policies[BlockValidationPolicyKey] = &Policy{
 		Type: ImplicitMetaPolicyType,
@@ -880,7 +882,7 @@ func createOrdererStandardPolicies() map[string]*Policy {
 	return policies
 }
 
-func TestGenerateOrgConfigGroup(t *testing.T) {
+func TestNewOrgConfigGroup(t *testing.T) {
 	t.Parallel()
 
 	t.Run("success", func(t *testing.T) {
@@ -968,14 +970,14 @@ func TestGenerateOrgConfigGroup(t *testing.T) {
 
 		org := baseProfile().Application.Organizations[0]
 		org.OrdererEndpoints = []string{"123.45.677:8080"}
-		configGroup, err := generateOrgConfigGroup(org, mspConfig)
+		configGroup, err := newOrgConfigGroup(org, mspConfig)
 		gt.Expect(err).NotTo(HaveOccurred())
 
 		buf := bytes.Buffer{}
 		err = protolator.DeepMarshalJSON(&buf, configGroup)
 		gt.Expect(err).NotTo(HaveOccurred())
 
-		gt.Expect(buf.String()).To(Equal(expectedPrintOrg))
+		gt.Expect(buf.String()).To(MatchJSON(expectedPrintOrg))
 	})
 
 	t.Run("skip as foreign", func(t *testing.T) {
@@ -992,7 +994,7 @@ func TestGenerateOrgConfigGroup(t *testing.T) {
 
 		org := baseProfile().Application.Organizations[0]
 		org.SkipAsForeign = true
-		configGroup, err := generateOrgConfigGroup(org, mspConfig)
+		configGroup, err := newOrgConfigGroup(org, mspConfig)
 		gt.Expect(err).NotTo(HaveOccurred())
 
 		buf := bytes.Buffer{}
@@ -1003,7 +1005,7 @@ func TestGenerateOrgConfigGroup(t *testing.T) {
 	})
 }
 
-func TestGenerateOrgConfigGroupFailure(t *testing.T) {
+func TestNewOrgConfigGroupFailure(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -1037,7 +1039,7 @@ func TestGenerateOrgConfigGroupFailure(t *testing.T) {
 			gt := NewGomegaWithT(t)
 			baseOrg := baseProfile().Application.Organizations[0]
 			tt.organizationMod(baseOrg)
-			configGroup, err := generateOrgConfigGroup(baseOrg, tt.mspConfig)
+			configGroup, err := newOrgConfigGroup(baseOrg, tt.mspConfig)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 			gt.Expect(configGroup).To(BeNil())
 		})
