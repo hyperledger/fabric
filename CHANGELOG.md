@@ -1,3 +1,12 @@
+## v1.4.6
+Tue Feb 25 12:48:07 EST 2020
+
+* [ac6305e](https://github.com/hyperledger/fabric/commit/ac6305e) [FAB-17523](https://jira.hyperledger.org/browse/FAB-17523) Endorsing peer was not honoring RequiredPeerCount (#716) (#733)
+* [0c421c8](https://github.com/hyperledger/fabric/commit/0c421c8) Fix nil dereference in etcdraft config parsing (#724)
+* [9072299](https://github.com/hyperledger/fabric/commit/9072299) Add ending braces to ReadWrite set.
+* [a0b7584](https://github.com/hyperledger/fabric/commit/a0b7584) Optimize inquire.IsSubset (#713)
+* [60c8ab9](https://github.com/hyperledger/fabric/commit/60c8ab9) Prepare for next fabric rel v1.4.6
+
 ## v1.4.5
 Wed Feb 19 12:32:43 EST 2020
 
