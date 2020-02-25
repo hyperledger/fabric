@@ -288,13 +288,13 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 
 func baseOrderer() *Orderer {
 	return &Orderer{
-		Policies:    createOrdererStandardPolicies(),
+		Policies:    ordererStandardPolicies(),
 		OrdererType: ConsensusTypeSolo,
 		Organizations: []*Organization{
 			{
 				Name:     "Org1",
 				ID:       "Org1MSP",
-				Policies: createOrgStandardPolicies(),
+				Policies: orgStandardPolicies(),
 				OrdererEndpoints: []string{
 					"localhost:123",
 				},
@@ -302,7 +302,7 @@ func baseOrderer() *Orderer {
 			{
 				Name:     "Org2",
 				ID:       "Org2MSP",
-				Policies: createOrgStandardPolicies(),
+				Policies: orgStandardPolicies(),
 				OrdererEndpoints: []string{
 					"localhost:123",
 				},

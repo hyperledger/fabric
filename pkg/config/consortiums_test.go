@@ -65,7 +65,7 @@ func TestNewConsortiumsGroupFailure(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	consortiums := baseConsortiums()
-	consortiums["Consortium1"].Organizations[0].Policies = nil
+	consortiums[0].Organizations[0].Policies = nil
 
 	mspConfig := &mb.MSPConfig{}
 
@@ -80,8 +80,8 @@ func TestSkipAsForeignForConsortiumOrg(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	consortiums := baseConsortiums()
-	consortiums["Consortium1"].Organizations[0].SkipAsForeign = true
-	consortiums["Consortium1"].Organizations[1].SkipAsForeign = true
+	consortiums[0].Organizations[0].SkipAsForeign = true
+	consortiums[0].Organizations[1].SkipAsForeign = true
 
 	mspConfig := &mb.MSPConfig{}
 
@@ -102,19 +102,20 @@ func TestSkipAsForeignForConsortiumOrg(t *testing.T) {
 	}))
 }
 
-func baseConsortiums() map[string]*Consortium {
-	return map[string]*Consortium{
-		"Consortium1": {
+func baseConsortiums() []*Consortium {
+	return []*Consortium{
+		{
+			Name: "Consortium1",
 			Organizations: []*Organization{
 				{
 					Name:     "Org1",
 					ID:       "Org1MSP",
-					Policies: createOrgStandardPolicies(),
+					Policies: orgStandardPolicies(),
 				},
 				{
 					Name:     "Org2",
 					ID:       "Org2MSP",
-					Policies: createOrgStandardPolicies(),
+					Policies: orgStandardPolicies(),
 				},
 			},
 		},

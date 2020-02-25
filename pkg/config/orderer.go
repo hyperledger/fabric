@@ -50,22 +50,22 @@ type Kafka struct {
 // how frequently they should be emitted, etc. as well as the organizations of the ordering network.
 // It sets the mod_policy of all elements to "Admins".
 // This group is always present in any channel configuration.
-func NewOrdererGroup(conf *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func NewOrdererGroup(orderer *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	ordererGroup := newConfigGroup()
 	ordererGroup.ModPolicy = AdminsPolicyKey
 
-	if err := addOrdererPolicies(ordererGroup, conf.Policies, AdminsPolicyKey); err != nil {
+	if err := addOrdererPolicies(ordererGroup, orderer.Policies, AdminsPolicyKey); err != nil {
 		return nil, err
 	}
 
 	// add orderer values
-	err := addOrdererValues(ordererGroup, conf)
+	err := addOrdererValues(ordererGroup, orderer)
 	if err != nil {
 		return nil, err
 	}
 
 	// add orderer groups
-	for _, org := range conf.Organizations {
+	for _, org := range orderer.Organizations {
 		ordererGroup.Groups[org.Name], err = newOrdererOrgGroup(org, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
@@ -78,8 +78,8 @@ func NewOrdererGroup(conf *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, e
 // newOrdererOrgGroup returns an orderer org component of the channel configuration.
 // It defines the crypto material for the organization (its MSP).
 // It sets the mod_policy of all elements to "Admins".
-func newOrdererOrgGroup(conf *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
-	return generateOrgConfigGroup(conf, mspConfig)
+func newOrdererOrgGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+	return newOrgConfigGroup(org, mspConfig)
 }
 
 // UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration

@@ -16,7 +16,7 @@ import (
 
 // Compute computes the difference between two *cb.Configs and returns the
 // ReadSet and WriteSet diff as a *cb.ConfigUpdate
-func Compute(original, updated *cb.Config) (*cb.ConfigUpdate, error) {
+func computeConfigUpdate(original, updated *cb.Config) (*cb.ConfigUpdate, error) {
 	if original.ChannelGroup == nil {
 		return nil, fmt.Errorf("no channel group included for original config")
 	}
