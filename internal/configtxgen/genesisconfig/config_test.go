@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package genesisconfig
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -266,4 +268,34 @@ func TestConsensusSpecificInit(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestLoadConfigCache(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	v := viper.New()
+	topLevel := &TopLevel{
+		Orderer: &Orderer{
+			OrdererType: "Kafka",
+		},
+	}
+	dummyPath := "/config/dummy/path"
+	serializedTopLevel, err := json.Marshal(topLevel)
+	assert.NoError(t, err)
+	cfgCache := &configCache{
+		cache: make(map[string][]byte),
+	}
+	cfgCache.cache[dummyPath] = serializedTopLevel
+
+	config, err := cfgCache.load(v, dummyPath)
+	assert.NoError(t, err, "Load prepopulated value from config cache failed")
+	data, err := json.Marshal(config)
+	assert.NoError(t, err)
+	assert.Equal(t, serializedTopLevel, data, "Data loaded from config cache returned mismatch result")
+
+	config.Orderer.OrdererType = "Solo"
+	seralizedConfig, err := json.Marshal(config)
+	assert.NoError(t, err)
+	assert.NotEqual(t, cfgCache.cache[dummyPath], seralizedConfig, "Modified Load ouput matches with cache store unexpected")
 }

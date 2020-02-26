@@ -4,9 +4,11 @@
 package localconfig
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -283,6 +285,23 @@ var Defaults = TopLevel{
 // Load parses the orderer YAML file and environment, producing
 // a struct suitable for config use, returning error on failure.
 func Load() (*TopLevel, error) {
+	return cache.load()
+}
+
+// configCache stores marshalled bytes of config structures that produced from
+// EnhancedExactUnmarshal. Cache key is the path of the configuration file that was used.
+type configCache struct {
+	mutex sync.Mutex
+	cache map[string][]byte
+}
+
+var cache = &configCache{}
+
+// Load will load the configuration and cache it on the first call; subsequent
+// calls will return a clone of the configuration that was previously loaded.
+func (c *configCache) load() (*TopLevel, error) {
+	var uconf TopLevel
+
 	config := viper.New()
 	coreconfig.InitViper(config, "orderer")
 	config.SetEnvPrefix(Prefix)
@@ -294,12 +313,32 @@ func Load() (*TopLevel, error) {
 		return nil, fmt.Errorf("Error reading configuration: %s", err)
 	}
 
-	var uconf TopLevel
-	if err := viperutil.EnhancedExactUnmarshal(config, &uconf); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	serializedConf, ok := c.cache[config.ConfigFileUsed()]
+	if !ok {
+		err := viperutil.EnhancedExactUnmarshal(config, &uconf)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+		}
+
+		serializedConf, err = json.Marshal(uconf)
+		if err != nil {
+			return nil, err
+		}
+
+		if c.cache == nil {
+			c.cache = map[string][]byte{}
+		}
+		c.cache[config.ConfigFileUsed()] = serializedConf
 	}
 
+	err := json.Unmarshal(serializedConf, &uconf)
+	if err != nil {
+		return nil, err
+	}
 	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
+
 	return &uconf, nil
 }
 
