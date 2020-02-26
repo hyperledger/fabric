@@ -7,7 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package genesisconfig
 
 import (
+	"encoding/json"
+	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -217,21 +220,17 @@ func LoadTopLevel(configPaths ...string) *TopLevel {
 
 	err := config.ReadInConfig()
 	if err != nil {
-		logger.Panic("Error reading configuration: ", err)
+		logger.Panicf("Error reading configuration: %s", err)
 	}
 	logger.Debugf("Using config file: %s", config.ConfigFileUsed())
 
-	var uconf TopLevel
-	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
+	uconf, err := cache.load(config, config.ConfigFileUsed())
 	if err != nil {
-		logger.Panic("Error unmarshaling config into struct: ", err)
+		logger.Panicf("failed to load configCache: %s", err)
 	}
-
-	(&uconf).completeInitialization(filepath.Dir(config.ConfigFileUsed()))
-
 	logger.Infof("Loaded configuration: %s", config.ConfigFileUsed())
 
-	return &uconf
+	return uconf
 }
 
 // Load returns the orderer/application config combination that corresponds to
@@ -250,19 +249,18 @@ func Load(profile string, configPaths ...string) *Profile {
 
 	err := config.ReadInConfig()
 	if err != nil {
-		logger.Panic("Error reading configuration: ", err)
+		logger.Panicf("Error reading configuration: %s", err)
 	}
 	logger.Debugf("Using config file: %s", config.ConfigFileUsed())
 
-	var uconf TopLevel
-	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
+	uconf, err := cache.load(config, config.ConfigFileUsed())
 	if err != nil {
-		logger.Panic("Error unmarshaling config into struct: ", err)
+		logger.Panicf("Error loading config from config cache: %s", err)
 	}
 
 	result, ok := uconf.Profiles[profile]
 	if !ok {
-		logger.Panic("Could not find profile: ", profile)
+		logger.Panicf("Could not find profile: %s", profile)
 	}
 
 	result.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
@@ -445,4 +443,46 @@ loop:
 
 func translatePaths(configDir string, org *Organization) {
 	cf.TranslatePathInPlace(configDir, &org.MSPDir)
+}
+
+// configCache stores marshalled bytes of config structures that produced from
+// EnhancedExactUnmarshal. Cache key is the path of the configuration file that was used.
+type configCache struct {
+	mutex sync.Mutex
+	cache map[string][]byte
+}
+
+var cache = &configCache{
+	cache: make(map[string][]byte),
+}
+
+// load loads the TopLevel config structure from configCache.
+// if not successful, it unmarshal a config file, and populate configCache
+// with marshaled TopLevel struct.
+func (c *configCache) load(config *viper.Viper, configPath string) (*TopLevel, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	conf := &TopLevel{}
+	serializedConf, ok := c.cache[configPath]
+	if !ok {
+		err := viperutil.EnhancedExactUnmarshal(config, conf)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+		}
+		conf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
+
+		serializedConf, err = json.Marshal(conf)
+		if err != nil {
+			return nil, err
+		}
+		c.cache[configPath] = serializedConf
+		return conf, nil
+	}
+
+	err := json.Unmarshal(serializedConf, conf)
+	if err != nil {
+		return nil, err
+	}
+	return conf, nil
 }
