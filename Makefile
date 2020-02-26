@@ -43,8 +43,8 @@
 #   - help-docs - generate the command reference docs
 
 ALPINE_VER ?= 3.10
-BASE_VERSION = 2.0.0
-PREV_VERSION = 2.0.0-beta
+BASE_VERSION = 2.0.1
+PREV_VERSION = 2.0.0
 
 # BASEIMAGE_RELEASE should be removed now
 BASEIMAGE_RELEASE = 0.4.18
