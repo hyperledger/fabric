@@ -1,3 +1,32 @@
+## "v2.0.1"
+
+* [7282895](https://github.com/hyperledger/fabric/commit/7282895) [FAB-17515](https://jira.hyperledger.org/browse/FAB-17515) Support configuring BlockValidation policy for orderer group
+* [618a4ce](https://github.com/hyperledger/fabric/commit/618a4ce) [FAB-17491](https://jira.hyperledger.org/browse/FAB-17491) Do not disseminate pvtdata for other org's implicit collection
+* [727327d](https://github.com/hyperledger/fabric/commit/727327d) [FAB-17523](https://jira.hyperledger.org/browse/FAB-17523) Endorsing peer was not honoring RequiredPeerCount (#716) (#729)
+* [371c435](https://github.com/hyperledger/fabric/commit/371c435) Optimize inquire.IsSubset (#714)
+* [bb46909](https://github.com/hyperledger/fabric/commit/bb46909) [FAB-17059](https://jira.hyperledger.org/browse/FAB-17059) Extend private data integration tests to cover case when a new eligible peer with different certs joins the channel and attempts to fetch private data before processing the config update that adds its certs to the channel config
+* [0885c2f](https://github.com/hyperledger/fabric/commit/0885c2f) [FAB-17059](https://jira.hyperledger.org/browse/FAB-17059) Change collection membership eligibility checks to only compare mspID instead of Evaluating the certificate against the access policy
+* [f4e4a95](https://github.com/hyperledger/fabric/commit/f4e4a95) [FAB-17472](https://jira.hyperledger.org/browse/FAB-17472) Clarify doc and samples for NodeOU Certificate
+* [c742dd6](https://github.com/hyperledger/fabric/commit/c742dd6) [FAB-17453](https://jira.hyperledger.org/browse/FAB-17453) 'peer lifecycle chaincode package' mandates does not need to init crypto
+* [4665ec5](https://github.com/hyperledger/fabric/commit/4665ec5) [FAB-17479](https://jira.hyperledger.org/browse/FAB-17479) Migrated Kafka cluster can be safely expanded later (#645)
+* [61f5706](https://github.com/hyperledger/fabric/commit/61f5706) [FAB-14679](https://jira.hyperledger.org/browse/FAB-14679) Update commercial paper tutorial for new chaincode lifecycle
+* [c63e674](https://github.com/hyperledger/fabric/commit/c63e674) Explicitly enumerate orderer and peer metrics
+* [2daa2b0](https://github.com/hyperledger/fabric/commit/2daa2b0) Add link to policies topic to chaincode for operators (#659) (#660)
+* [dc8071c](https://github.com/hyperledger/fabric/commit/dc8071c) Update Copyright for 2020
+* [f8b21b1](https://github.com/hyperledger/fabric/commit/f8b21b1) fix typo
+* [4961395](https://github.com/hyperledger/fabric/commit/4961395) Fix typo in package error message
+* [993b7a0](https://github.com/hyperledger/fabric/commit/993b7a0) [FAB-17458](https://jira.hyperledger.org/browse/FAB-17458) check LifecycleV20 capability before getting cc info (#608)
+* [7a1d517](https://github.com/hyperledger/fabric/commit/7a1d517) Remove 1.x video from 2.0 docs
+* [5bf6583](https://github.com/hyperledger/fabric/commit/5bf6583) Remove Fabric functionalities doc
+* [361edb6](https://github.com/hyperledger/fabric/commit/361edb6) [FAB-17267](https://jira.hyperledger.org/browse/FAB-17267) Move add an org to a channel tutorial to test network
+* [b96f178](https://github.com/hyperledger/fabric/commit/b96f178) [FAB-17381](https://jira.hyperledger.org/browse/FAB-17381) Update policy concept for test network
+* [c987e77](https://github.com/hyperledger/fabric/commit/c987e77) Update branch to dynamic variable
+* [5fe6530](https://github.com/hyperledger/fabric/commit/5fe6530) Add support for placeholder replacement in doc builds
+* [13d12e5](https://github.com/hyperledger/fabric/commit/13d12e5) [FABCN-378] Update links to chaincode JSDoc
+* [721a6e7](https://github.com/hyperledger/fabric/commit/721a6e7) Remove link for node SDK tutorial
+* [913d770](https://github.com/hyperledger/fabric/commit/913d770) [FAB-17424](https://jira.hyperledger.org/browse/FAB-17424) Fix broken link in DevApps connection profile
+* [a521d2a](https://github.com/hyperledger/fabric/commit/a521d2a) Fix conditional_packages processing in UT script
+
 ## "v2.0.0"
 
 * [77ff3d2](https://github.com/hyperledger/fabric/commit/77ff3d2) Install doc and script updates for v2.0.0
