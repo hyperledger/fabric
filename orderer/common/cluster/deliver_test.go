@@ -180,9 +180,19 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 	if err != nil {
 		panic(err)
 	}
+
+	// FAB-16233 This is meant to mitigate timeouts when
+	// seekAssertions does not receive a value
+	timer := time.NewTimer(1 * time.Minute)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		panic("timed out waiting for seek assertions to receive a value")
 	// Get the next seek assertion and ensure the next seek is of the expected type
-	seekAssert := <-ds.seekAssertions
-	seekAssert(seekInfo, channel)
+	case seekAssert := <-ds.seekAssertions:
+		seekAssert(seekInfo, channel)
+	}
 
 	if seekInfo.GetStart().GetSpecified() != nil {
 		return ds.deliverBlocks(stream)
