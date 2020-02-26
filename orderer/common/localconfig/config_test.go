@@ -19,7 +19,9 @@ import (
 func TestLoadGoodConfig(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
-	cfg, err := Load()
+	cc := &configCache{}
+	cfg, err := cc.load()
+	assert.NoError(t, err)
 	assert.NotNil(t, cfg, "Could not load config")
 	assert.Nil(t, err, "Load good config returned unexpected error")
 }
@@ -28,7 +30,8 @@ func TestMissingConfigValueOverridden(t *testing.T) {
 	t.Run("when the value is missing and not overridden", func(t *testing.T) {
 		cleanup := configtest.SetDevFabricConfigPath(t)
 		defer cleanup()
-		cfg, err := Load()
+		cc := &configCache{}
+		cfg, err := cc.load()
 		assert.NotNil(t, cfg, "Could not load config")
 		assert.NoError(t, err, "Load good config returned unexpected error")
 		assert.Nil(t, cfg.Kafka.TLS.ClientRootCAs)
@@ -38,11 +41,33 @@ func TestMissingConfigValueOverridden(t *testing.T) {
 		os.Setenv("ORDERER_KAFKA_TLS_CLIENTROOTCAS", "msp/tlscacerts/tlsroot.pem")
 		cleanup := configtest.SetDevFabricConfigPath(t)
 		defer cleanup()
-		cfg, err := Load()
+		cache := &configCache{}
+		cfg, err := cache.load()
 		assert.NotNil(t, cfg, "Could not load config")
 		assert.NoError(t, err, "Load good config returned unexpected error")
 		assert.NotNil(t, cfg.Kafka.TLS.ClientRootCAs)
 	})
+}
+
+func TestLoadCached(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	// Load the initial config, update the environment, and load again.
+	// With the caching behavior, the update should not be reflected
+	initial, err := Load()
+	assert.NoError(t, err)
+	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
+	updated, err := Load()
+	assert.NoError(t, err)
+	assert.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
+
+	// Change the configuration we got back and load again.
+	// The new value should not contain the update to the initial
+	initial.General.LocalMSPDir = "/test/bad/mspDir"
+	updated, err = Load()
+	assert.NoError(t, err)
+	assert.NotEqual(t, initial, updated, "expected %#v to not equal %#v", updated, initial)
 }
 
 func TestLoadMissingConfigFile(t *testing.T) {
@@ -51,7 +76,8 @@ func TestLoadMissingConfigFile(t *testing.T) {
 	os.Setenv(envVar1, envVal1)
 	defer os.Unsetenv(envVar1)
 
-	cfg, err := Load()
+	cc := &configCache{}
+	cfg, err := cc.load()
 	assert.Nil(t, cfg, "Loaded missing config file")
 	assert.NotNil(t, err, "Loaded missing config file without error")
 }
@@ -64,20 +90,19 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 		assert.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
 	}()
 
-	{
-		// Create a malformed orderer.yaml file in temp dir
-		f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-		assert.Nil(t, err, "Error creating file: %s", err)
-		f.WriteString("General: 42")
-		assert.NoError(t, f.Close(), "Error closing file")
-	}
+	// Create a malformed orderer.yaml file in temp dir
+	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	assert.Nil(t, err, "Error creating file: %s", err)
+	f.WriteString("General: 42")
+	assert.NoError(t, f.Close(), "Error closing file")
 
 	envVar1 := "FABRIC_CFG_PATH"
 	envVal1 := name
 	os.Setenv(envVar1, envVal1)
 	defer os.Unsetenv(envVar1)
 
-	cfg, err := Load()
+	cc := &configCache{}
+	cfg, err := cc.load()
 	assert.Nil(t, cfg, "Loaded missing config file")
 	assert.NotNil(t, err, "Loaded missing config file without error")
 }
@@ -97,7 +122,10 @@ func TestEnvInnerVar(t *testing.T) {
 	defer os.Unsetenv(envVar2)
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
-	config, _ := Load()
+
+	cc := &configCache{}
+	config, err := cc.load()
+	assert.NoError(t, err)
 
 	assert.NotNil(t, config, "Could not load config")
 	assert.Equal(t, config.General.ListenPort, envVal1, "Environmental override of inner config test 1 did not work")
@@ -156,8 +184,9 @@ func TestKafkaSASLPlain(t *testing.T) {
 func TestClusterDefaults(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
-	cfg, err := Load()
 
+	cc := &configCache{}
+	cfg, err := cc.load()
 	assert.NoError(t, err)
 	assert.Equal(t, cfg.General.Cluster.ReplicationMaxRetries, Defaults.General.Cluster.ReplicationMaxRetries)
 }
@@ -187,7 +216,8 @@ Consensus:
 	os.Setenv(envVar1, envVal1)
 	defer os.Unsetenv(envVar1)
 
-	conf, err := Load()
+	cc := &configCache{}
+	conf, err := cc.load()
 	assert.NoError(t, err, "Load good config returned unexpected error")
 	assert.NotNil(t, conf, "Could not load config")
 
@@ -210,10 +240,11 @@ func TestConnectionTimeout(t *testing.T) {
 	t.Run("without connection timeout overridden", func(t *testing.T) {
 		cleanup := configtest.SetDevFabricConfigPath(t)
 		defer cleanup()
-		cfg, err := Load()
+		cc := &configCache{}
+		cfg, err := cc.load()
 		assert.NotNil(t, cfg, "Could not load config")
 		assert.NoError(t, err, "Load good config returned unexpected error")
-		assert.Equal(t, cfg.General.ConnectionTimeout, 0*time.Second)
+		assert.Equal(t, cfg.General.ConnectionTimeout, time.Duration(0))
 	})
 
 	t.Run("with connection timeout overridden", func(t *testing.T) {
@@ -221,7 +252,9 @@ func TestConnectionTimeout(t *testing.T) {
 		defer os.Unsetenv("ORDERER_GENERAL_CONNECTIONTIMEOUT")
 		cleanup := configtest.SetDevFabricConfigPath(t)
 		defer cleanup()
-		cfg, err := Load()
+
+		cc := &configCache{}
+		cfg, err := cc.load()
 		assert.NotNil(t, cfg, "Could not load config")
 		assert.NoError(t, err, "Load good config returned unexpected error")
 		assert.Equal(t, cfg.General.ConnectionTimeout, 10*time.Second)
