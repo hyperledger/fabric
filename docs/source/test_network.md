@@ -242,7 +242,7 @@ chaincode on the channel using the following command:
 The `deployCC` subcommand will install the **fabcar** chaincode on
 ``peer0.org1.example.com`` and ``peer0.org2.example.com`` and then deploy
 the chaincode on the channel specified using the channel flag (or `mychannel`
-if no channel is specified). If are deploying a chaincode for the first time, the
+if no channel is specified). If you are deploying a chaincode for the first time, the
 script will install the chaincode dependencies. By default, The script installs
 the Go version of the fabcar chaincode. However, you can use the language
 flag, `-l`, to install the Java or javascript versions of the chaincode.
