@@ -769,7 +769,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			consortium:  "test-consortium",
 			channelID:   "test-channel",
 			config:      baseConfig,
-			expectedErr: "failed to create consortium org: failed to add policies: no Admins policy defined",
+			expectedErr: "failed to create consortium org: no Admins policy defined",
 		},
 		{
 			name:        "When the channel ID is not specified",
@@ -777,7 +777,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			consortium:  "test-consortium",
 			channelID:   "",
 			config:      baseConfig,
-			expectedErr: "channel ID is empty",
+			expectedErr: "channel ID is required",
 		},
 	} {
 		test := test
