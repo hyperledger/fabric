@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//+build !gccgo,!appengine
+// +build !gccgo,!appengine
 
 package sha3
 
@@ -112,7 +112,7 @@ func (s *asmState) Write(b []byte) (int, error) {
 		if len(s.buf) == 0 && len(b) >= cap(s.buf) {
 			// Hash the data directly and push any remaining bytes
 			// into the buffer.
-			remainder := len(s.buf) % s.rate
+			remainder := len(b) % s.rate
 			kimd(s.function, &s.a, b[:len(b)-remainder])
 			if remainder != 0 {
 				s.copyIntoBuf(b[len(b)-remainder:])
