@@ -66,6 +66,50 @@ func newApplicationGroup(application *Application) (*cb.ConfigGroup, error) {
 	return applicationGroup, nil
 }
 
+// AddAnchorPeer adds an anchor peer to an existing channel config transaction.
+// It must add the anchor peer to an existing org and the anchor peer must not already
+// exist in the org.
+func AddAnchorPeer(config *cb.Config, orgName string, newAnchorPeer *AnchorPeer) error {
+	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+	if !ok {
+		return fmt.Errorf("application org %s does not exist in channel config", orgName)
+	}
+
+	anchorPeersProto := &pb.AnchorPeers{}
+
+	if anchorPeerConfigValue, ok := applicationOrgGroup.Values[AnchorPeersKey]; ok {
+		// Unmarshal existing anchor peers if the config value exists
+		err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
+		if err != nil {
+			return fmt.Errorf("failed unmarshalling %s's anchor peer endpoints: %v", orgName, err)
+		}
+	}
+
+	// Persist existing anchor peers if found
+	anchorProtos := anchorPeersProto.AnchorPeers
+
+	for _, anchorPeer := range anchorProtos {
+		if anchorPeer.Host == newAnchorPeer.Host && anchorPeer.Port == int32(newAnchorPeer.Port) {
+			return fmt.Errorf("application org %s already contains anchor peer endpoint %s:%d",
+				orgName, newAnchorPeer.Host, newAnchorPeer.Port)
+		}
+	}
+
+	// Append new anchor peer to anchorProtos
+	anchorProtos = append(anchorProtos, &pb.AnchorPeer{
+		Host: newAnchorPeer.Host,
+		Port: int32(newAnchorPeer.Port),
+	})
+
+	// Add anchor peers config value back to application org
+	err := addValue(applicationOrgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // RemoveAnchorPeer removes an anchor peer from an existing channel config transaction.
 // The removed anchor peer and org it belongs to must both already exist.
 func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove *AnchorPeer) error {
@@ -80,7 +124,7 @@ func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove *Anc
 		// Unmarshal existing anchor peers if the config value exists
 		err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshalling existing anchor peers: %v", err)
+			return fmt.Errorf("failed unmarshalling %s's anchor peer endpoints: %v", orgName, err)
 		}
 	}
 
@@ -93,14 +137,14 @@ func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove *Anc
 			// Add anchor peers config value back to application org
 			err := addValue(applicationOrgGroup, anchorPeersValue(existingAnchorPeers), AdminsPolicyKey)
 			if err != nil {
-				return fmt.Errorf("failed to remove anchor peer %v: %v", anchorPeerToRemove, err)
+				return fmt.Errorf("failed to remove anchor peer %v from org %s: %v", anchorPeerToRemove, orgName, err)
 			}
 
 			return nil
 		}
 	}
 
-	return fmt.Errorf("could not find anchor peer with host: %s, port: %d in existing anchor peers", anchorPeerToRemove.Host, anchorPeerToRemove.Port)
+	return fmt.Errorf("could not find anchor peer %s:%d in %s's anchor peer endpoints", anchorPeerToRemove.Host, anchorPeerToRemove.Port, orgName)
 }
 
 // aclValues returns the config definition for an application's resources based ACL definitions.
