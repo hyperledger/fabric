@@ -6,6 +6,13 @@
 
 package sha3
 
+// A storageBuf is an aligned array of maxRate bytes.
+type storageBuf [maxRate]byte
+
+func (b *storageBuf) asBytes() *[maxRate]byte {
+	return (*[maxRate]byte)(b)
+}
+
 var (
 	xorIn            = xorInGeneric
 	copyOut          = copyOutGeneric
