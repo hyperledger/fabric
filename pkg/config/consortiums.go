@@ -9,7 +9,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
@@ -60,7 +60,7 @@ func newConsortiumGroup(consortium *Consortium, mspConfig *mb.MSPConfig) (*cb.Co
 	consortiumGroup.ModPolicy = ordererAdminsPolicyName
 
 	for _, org := range consortium.Organizations {
-		consortiumGroup.Groups[org.Name], err = newConsortiumOrgGroup(org, mspConfig)
+		consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
@@ -77,31 +77,6 @@ func newConsortiumGroup(consortium *Consortium, mspConfig *mb.MSPConfig) (*cb.Co
 	}
 
 	return consortiumGroup, nil
-}
-
-// newConsortiumOrgGroup returns an org component of the channel configuration.
-// It defines the crypto material for the organization (its MSP).
-// By default, it sets the mod_policy of all elements to "Admins".
-func newConsortiumOrgGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
-	var err error
-
-	consortiumOrgGroup := newConfigGroup()
-	consortiumOrgGroup.ModPolicy = AdminsPolicyKey
-
-	if org.SkipAsForeign {
-		return consortiumOrgGroup, nil
-	}
-
-	if err = addPolicies(consortiumOrgGroup, org.Policies, AdminsPolicyKey); err != nil {
-		return nil, err
-	}
-
-	err = addValue(consortiumOrgGroup, mspValue(mspConfig), AdminsPolicyKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return consortiumOrgGroup, nil
 }
 
 // consortiumValue returns the config definition for the consortium name

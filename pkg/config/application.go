@@ -57,57 +57,13 @@ func NewApplicationGroup(application *Application, mspConfig *mb.MSPConfig) (*cb
 	}
 
 	for _, org := range application.Organizations {
-		applicationGroup.Groups[org.Name], err = newApplicationOrgGroup(org, mspConfig)
+		applicationGroup.Groups[org.Name], err = newOrgConfigGroup(org, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
 	}
 
 	return applicationGroup, nil
-}
-
-// newApplicationOrgGroup returns an application org component of the channel configuration.
-// It defines the crypto material for the organization (its MSP), as well as its anchor peers
-// for use by the gossip network.
-// By default, it sets the mod_policy of all elements to "Admins".
-func newApplicationOrgGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
-	var err error
-
-	applicationOrgGroup := newConfigGroup()
-	applicationOrgGroup.ModPolicy = AdminsPolicyKey
-
-	if org.SkipAsForeign {
-		return applicationOrgGroup, nil
-	}
-
-	if err = addPolicies(applicationOrgGroup, org.Policies, AdminsPolicyKey); err != nil {
-		return nil, err
-	}
-
-	err = addValue(applicationOrgGroup, mspValue(mspConfig), AdminsPolicyKey)
-	if err != nil {
-		return nil, err
-	}
-
-	var anchorProtos []*pb.AnchorPeer
-	for _, anchorPeer := range org.AnchorPeers {
-		anchorProtos = append(anchorProtos, &pb.AnchorPeer{
-			Host: anchorPeer.Host,
-			Port: int32(anchorPeer.Port),
-		})
-	}
-
-	// Avoid adding an unnecessary anchor peers element when one is not required
-	// This helps prevent a delta from the orderer system channel when computing
-	// more complex channel creation transactions
-	if len(anchorProtos) > 0 {
-		err = addValue(applicationOrgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return applicationOrgGroup, nil
 }
 
 // aclValues returns the config definition for an application's resources based ACL definitions.
