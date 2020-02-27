@@ -9,7 +9,7 @@ package genesis
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"

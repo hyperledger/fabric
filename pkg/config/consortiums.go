@@ -9,7 +9,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
