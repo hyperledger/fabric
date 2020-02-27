@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/tools/protolator"
@@ -30,13 +29,13 @@ func TestSignConfigUpdate(t *testing.T) {
 		MSPID:       "test-msp",
 	}
 
-	configSignature, err := SignConfigUpdate(&common.ConfigUpdate{}, signingIdentity)
+	configSignature, err := SignConfigUpdate(&cb.ConfigUpdate{}, signingIdentity)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	sh, err := signatureHeader(signingIdentity)
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedCreator := sh.Creator
-	signatureHeader := &common.SignatureHeader{}
+	signatureHeader := &cb.SignatureHeader{}
 	err = proto.Unmarshal(configSignature.SignatureHeader, signatureHeader)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(signatureHeader.Creator).To(Equal(expectedCreator))
@@ -505,7 +504,7 @@ func TestCreateSignedConfigUpdateEnvelope(t *testing.T) {
 	}
 
 	// create detached config signature
-	configUpdate := &common.ConfigUpdate{
+	configUpdate := &cb.ConfigUpdate{
 		ChannelId: "testchannel",
 	}
 	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
@@ -515,16 +514,16 @@ func TestCreateSignedConfigUpdateEnvelope(t *testing.T) {
 	signedEnv, err := CreateSignedConfigUpdateEnvelope(configUpdate, signingIdentity, configSignature)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	payload := &common.Payload{}
+	payload := &cb.Payload{}
 	err = proto.Unmarshal(signedEnv.Payload, payload)
 	gt.Expect(err).NotTo(HaveOccurred())
 	// check header channel ID equal
-	channelHeader := &common.ChannelHeader{}
+	channelHeader := &cb.ChannelHeader{}
 	err = proto.Unmarshal(payload.GetHeader().GetChannelHeader(), channelHeader)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(channelHeader.ChannelId).To(Equal(configUpdate.ChannelId))
 	// check config update envelope signatures are equal
-	configEnv := &common.ConfigUpdateEnvelope{}
+	configEnv := &cb.ConfigUpdateEnvelope{}
 	err = proto.Unmarshal(payload.Data, configEnv)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(len(configEnv.Signatures)).To(Equal(1))
@@ -546,7 +545,7 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 	}
 
 	// create detached config signature
-	configUpdate := &common.ConfigUpdate{
+	configUpdate := &cb.ConfigUpdate{
 		ChannelId: "testchannel",
 	}
 	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
@@ -554,16 +553,16 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 
 	tests := []struct {
 		spec            string
-		configUpdate    *common.ConfigUpdate
+		configUpdate    *cb.ConfigUpdate
 		signingIdentity *SigningIdentity
-		configSignature []*common.ConfigSignature
+		configSignature []*cb.ConfigSignature
 		expectedErr     string
 	}{
 		{
 			spec:            "when no signatures are provided",
 			configUpdate:    nil,
 			signingIdentity: signingIdentity,
-			configSignature: []*common.ConfigSignature{configSignature},
+			configSignature: []*cb.ConfigSignature{configSignature},
 			expectedErr:     "failed to marshal config update: proto: Marshal called with nil",
 		},
 	}

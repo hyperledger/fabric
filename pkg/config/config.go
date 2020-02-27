@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policydsl"
 )
 
@@ -144,7 +145,11 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIde
 		return nil, fmt.Errorf("failed to marshal config update: %v", err)
 	}
 
-	configSignature.Signature, err = signingIdentity.Sign(rand.Reader, concatenateBytes(configSignature.SignatureHeader, configUpdateBytes), nil)
+	configSignature.Signature, err = signingIdentity.Sign(
+		rand.Reader,
+		concatenateBytes(configSignature.SignatureHeader, configUpdateBytes),
+		nil,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign config update: %v", err)
 	}
@@ -152,16 +157,88 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIde
 	return configSignature, nil
 }
 
+// CreateSignedConfigUpdateEnvelope creates a signed configuration update envelope.
+func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIdentity,
+	signatures ...*cb.ConfigSignature) (*cb.Envelope, error) {
+	update, err := proto.Marshal(configUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config update: %v", err)
+	}
+
+	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: update,
+		Signatures:   signatures,
+	}
+
+	signedEnvelope, err := createSignedEnvelopeWithTLSBinding(cb.HeaderType_CONFIG_UPDATE, configUpdate.ChannelId,
+		signingIdentity, configUpdateEnvelope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signed config update envelope: %v", err)
+	}
+
+	return signedEnvelope, nil
+}
+
+// AddOrgToConsortium adds an org definition to a named consortium in a given
+// channel configuration.
+func AddOrgToConsortium(
+	org *Organization,
+	consortium, channelID string,
+	config *cb.Config,
+	mspConfig *mb.MSPConfig,
+) (*cb.ConfigUpdate, error) {
+	if org == nil {
+		return nil, errors.New("organization is empty")
+	}
+
+	if consortium == "" {
+		return nil, errors.New("consortium is empty")
+	}
+
+	updatedConfig := proto.Clone(config).(*cb.Config)
+
+	consortiumsGroup, ok := updatedConfig.ChannelGroup.Groups[ConsortiumsGroupKey]
+	if !ok {
+		return nil, errors.New("consortiums group does not exist")
+	}
+
+	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
+	if !ok {
+		return nil, fmt.Errorf("consortium '%s' does not exist", consortium)
+	}
+
+	orgGroup, err := newOrgConfigGroup(org, mspConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create consortium org: %v", err)
+	}
+
+	if consortiumGroup.Groups == nil {
+		consortiumGroup.Groups = map[string]*cb.ConfigGroup{}
+	}
+
+	consortiumGroup.Groups[org.Name] = orgGroup
+
+	configUpdate, err := ComputeUpdate(config, updatedConfig, channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	return configUpdate, nil
+}
+
 func signatureHeader(signingIdentity *SigningIdentity) (*cb.SignatureHeader, error) {
 	buffer := bytes.NewBuffer(nil)
+
 	err := pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: signingIdentity.Certificate.Raw})
 	if err != nil {
 		return nil, fmt.Errorf("pem encode: %v", err)
 	}
+
 	idBytes, err := proto.Marshal(&mb.SerializedIdentity{Mspid: signingIdentity.MSPID, IdBytes: buffer.Bytes()})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal serialized identity: %v", err)
 	}
+
 	nonce, err := newNonce()
 	if err != nil {
 		return nil, err
@@ -250,6 +327,56 @@ func newChannelGroup(channelConfig *Channel, mspConfig *mb.MSPConfig) (*cb.Confi
 	channelGroup.ModPolicy = AdminsPolicyKey
 
 	return channelGroup, nil
+}
+
+// newOrgConfigGroup returns an config group for a organization.
+// It defines the crypto material for the organization (its MSP).
+// It sets the mod_policy of all elements to "Admins".
+func newOrgConfigGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+	orgGroup := newConfigGroup()
+	orgGroup.ModPolicy = AdminsPolicyKey
+
+	if org.SkipAsForeign {
+		return orgGroup, nil
+	}
+
+	if err := addPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
+		return nil, err
+	}
+
+	err := addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// OrdererEndpoints are orderer org specific and are only added when specified for orderer orgs
+	if len(org.OrdererEndpoints) > 0 {
+		err = addValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// AnchorPeers are application org specific and are only added when specified for application orgs
+	anchorProtos := []*pb.AnchorPeer{}
+	for _, anchorPeer := range org.AnchorPeers {
+		anchorProtos = append(anchorProtos, &pb.AnchorPeer{
+			Host: anchorPeer.Host,
+			Port: int32(anchorPeer.Port),
+		})
+	}
+
+	// Avoid adding an unnecessary anchor peers element when one is not required
+	// This helps prevent a delta from the orderer system channel when computing
+	// more complex channel creation transactions
+	if len(anchorProtos) > 0 {
+		err = addValue(orgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add anchor peers value: %v", err)
+		}
+	}
+
+	return orgGroup, nil
 }
 
 // hashingAlgorithmValue returns the only currently valid hashing algorithm.
@@ -563,66 +690,12 @@ func ComputeUpdate(baseConfig, updatedConfig *cb.Config, channelID string) (*cb.
 // concatenateBytes combines multiple arrays of bytes, for signatures or digests
 // over multiple fields.
 func concatenateBytes(data ...[]byte) []byte {
-	var res []byte
+	res := []byte{}
 	for i := range data {
 		res = append(res, data[i]...)
 	}
 
 	return res
-}
-
-// newOrgConfigGroup returns an config group for a organization.
-// It defines the crypto material for the organization (its MSP).
-// It sets the mod_policy of all elements to "Admins".
-func newOrgConfigGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
-	var err error
-
-	orgGroup := newConfigGroup()
-	orgGroup.ModPolicy = AdminsPolicyKey
-
-	if org.SkipAsForeign {
-		return orgGroup, nil
-	}
-
-	if err = addPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
-		return nil, err
-	}
-
-	err = addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(org.OrdererEndpoints) > 0 {
-		err = addValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return orgGroup, nil
-}
-
-// CreateSignedConfigUpdateEnvelope creates a signed configuration update envelope.
-func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIdentity,
-	signatures ...*cb.ConfigSignature) (*cb.Envelope, error) {
-	update, err := proto.Marshal(configUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal config update: %v", err)
-	}
-
-	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: update,
-		Signatures:   signatures,
-	}
-
-	signedEnvelope, err := createSignedEnvelopeWithTLSBinding(cb.HeaderType_CONFIG_UPDATE, configUpdate.ChannelId,
-		signingIdentity, configUpdateEnvelope)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create signed config update envelope: %v", err)
-	}
-
-	return signedEnvelope, nil
 }
 
 // CreateSignedEnvelopeWithTLSBinding creates a signed envelope of the desired
@@ -687,44 +760,4 @@ func createSignedEnvelopeWithTLSBinding(
 	}
 
 	return env, nil
-}
-
-// AddOrgToConsortium adds an org definition to a named consortium in a given
-// channel configuration.
-func AddOrgToConsortium(org *Organization, consortium, channelID string, config *cb.Config, mspConfig *mb.MSPConfig) (*cb.ConfigUpdate, error) {
-	if org == nil {
-		return nil, errors.New("organization is empty")
-	}
-	if consortium == "" {
-		return nil, errors.New("consortium is empty")
-	}
-
-	updatedConfig := proto.Clone(config).(*cb.Config)
-
-	consortiumsGroup, ok := updatedConfig.ChannelGroup.Groups[ConsortiumsGroupKey]
-	if !ok {
-		return nil, errors.New("consortiums group does not exist")
-	}
-
-	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
-	if !ok {
-		return nil, fmt.Errorf("consortium '%s' does not exist", consortium)
-	}
-
-	orgGroup, err := newConsortiumOrgGroup(org, mspConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create consortium org: %v", err)
-	}
-
-	if consortiumGroup.Groups == nil {
-		consortiumGroup.Groups = map[string]*cb.ConfigGroup{}
-	}
-	consortiumGroup.Groups[org.Name] = orgGroup
-
-	configUpdate, err := ComputeUpdate(config, updatedConfig, channelID)
-	if err != nil {
-		return nil, err
-	}
-
-	return configUpdate, nil
 }

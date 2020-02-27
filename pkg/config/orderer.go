@@ -66,20 +66,13 @@ func NewOrdererGroup(orderer *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup
 
 	// add orderer groups
 	for _, org := range orderer.Organizations {
-		ordererGroup.Groups[org.Name], err = newOrdererOrgGroup(org, mspConfig)
+		ordererGroup.Groups[org.Name], err = newOrgConfigGroup(org, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
 	}
 
 	return ordererGroup, nil
-}
-
-// newOrdererOrgGroup returns an orderer org component of the channel configuration.
-// It defines the crypto material for the organization (its MSP).
-// It sets the mod_policy of all elements to "Admins".
-func newOrdererOrgGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
-	return newOrgConfigGroup(org, mspConfig)
 }
 
 // UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
