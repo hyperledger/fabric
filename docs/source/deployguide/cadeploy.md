@@ -176,7 +176,7 @@ fabric-ca-client enroll -d -u https://icaadmin:icaadminpw@my-machine.example.com
 
 The intermediate CA TLS signing certificate is generated under `FABRIC_CA_CLIENT_HOME=tls-ca/admin/msp-ica/signcert` and the private key is available under `FABRIC_CA_CLIENT_HOME=tls-ca/admin/msp-ica/keystore`.
 
-When you deploy the intermediate CA you will need to refer to these two file in the intermediate CA configuration .yaml file.
+When you deploy the intermediate CA you will need to refer to these two files in the intermediate CA configuration .yaml file.
 
 ## Deploy an organization CA
 
