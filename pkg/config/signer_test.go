@@ -73,6 +73,17 @@ func TestSign(t *testing.T) {
 	}
 }
 
+func TestPublic(t *testing.T) {
+	gt := NewGomegaWithT(t)
+
+	cert, privateKey := generateCertAndPrivateKey()
+	signingIdentity := &SigningIdentity{
+		Certificate: cert,
+		PrivateKey:  privateKey,
+	}
+	gt.Expect(signingIdentity.Public()).To(Equal(cert.PublicKey))
+}
+
 func TestToLowS(t *testing.T) {
 	t.Parallel()
 

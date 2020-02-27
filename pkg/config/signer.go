@@ -28,9 +28,15 @@ type ecdsaSignature struct {
 	R, S *big.Int
 }
 
-// Sign performs ECDSA sign with SigningIdentity's private key on given digest.
-// It ensures signatures are created with Low S values since Fabric normalizes
-// all signatures to Low S.
+// Public returns the public key associated with this signing
+// identity's certificate.
+func (s *SigningIdentity) Public() crypto.PublicKey {
+	return s.Certificate.PublicKey
+}
+
+// Sign performs ECDSA sign with this signing identity's private key on the
+// given digest. It ensures signatures are created with Low S values since
+// Fabric normalizes all signatures to Low S.
 // See https://github.com/bitcoin/bips/blob/master/bip-0146.mediawiki#low_s
 // for more detail.
 func (s *SigningIdentity) Sign(reader io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
