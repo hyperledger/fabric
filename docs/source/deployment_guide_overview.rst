@@ -91,6 +91,10 @@ While all of the non-TLS certificates associated with an organization can be cre
 
 **In a production network, it is recommended to deploy at least one CA per organization for enrollment purposes and another for TLS.** For example, if you deploy three peers that are associated with one organization and an ordering node that is associated with an ordering organization, you will need at least four CAs. Two of the CAs will be for the peer organization (generating the enrollment and TLS certificates for the peer, admins, communications, and the folder structure of the MSP representing the organization) and the other two will be for the orderer organization. Note that users will generally only register and enroll with the enrollment CA, while nodes will register and enroll with both the enrollment CA (where the node will get its signing certificates that identify it when it attempts to sign its actions) and with the TLS CA (where it will get the TLS certificates it uses to authenticate its communications).
 
+To install the Fabric CA client, which is used to register and enroll identities, follow the instructions in `the Fabric CA User's Guide <https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#overview>`_. Note that there are a number of configuration options when deploying a CA (the database type, for example, or whether to use LDAP).
+
+For an example of how to setup a CA and enroll its admin, check out `Setup Orderer Org CA <https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#setup-orderer-org-ca>`_. For an example of how to set up a TLS CA, check out `Setup TLS CA <https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#setup-tls-ca>`_. Note that bootstrapping the CA server means assigning a username and password that functions as "registering" the CA admin.
+
 .. _dg-step-four-use-the-ca-to-create-identities-and-msps:
 
 Step four: Use the CA to create identities and MSPs
@@ -196,14 +200,6 @@ Blockchain networks are all about connection, so once you've deployed nodes, you
 Part of the process of connecting nodes and creating channels will involve modifying policies to fit the use cases of business networks. For more information about policies, check out :doc:`policies/policies`.
 
 One of the common tasks in a Fabric will be the editing of existing channels. For a tutorial about that process, check out :doc:`config_update`. One popular channel update is to add an org to an existing channel. For a tutorial about that specific process, check out :doc:`channel_update_tutorial`. For information about upgrading nodes after they have been deployed, check out :doc:`upgrading_your_components`.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Deploying a Production CA
-
-   deployguide/ca-deploy-topology
-   deployguide/ca-config
-   deployguide/cadeploy
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
