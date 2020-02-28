@@ -150,6 +150,12 @@ func (e externalVMAdapter) Build(
 	return i, err
 }
 
+type disabledDockerBuilder struct{}
+
+func (disabledDockerBuilder) Build(string, *persistence.ChaincodePackageMetadata, io.Reader) (container.Instance, error) {
+	return nil, errors.New("docker build is disabled")
+}
+
 type endorserChannelAdapter struct {
 	peer *peer.Peer
 }
@@ -507,15 +513,14 @@ func serve(args []string) error {
 
 	chaincodeConfig := chaincode.GlobalConfig()
 
-	var client *docker.Client
-	var dockerVM *dockercontroller.DockerVM
+	var dockerBuilder container.DockerBuilder
 	if coreConfig.VMEndpoint != "" {
-		client, err = createDockerClient(coreConfig)
+		client, err := createDockerClient(coreConfig)
 		if err != nil {
 			logger.Panicf("cannot create docker client: %s", err)
 		}
 
-		dockerVM = &dockercontroller.DockerVM{
+		dockerVM := &dockercontroller.DockerVM{
 			PeerID:        coreConfig.PeerID,
 			NetworkID:     coreConfig.NetworkID,
 			BuildMetrics:  dockercontroller.NewBuildMetrics(opsSystem.Provider),
@@ -541,6 +546,12 @@ func serve(args []string) error {
 		if err := opsSystem.RegisterChecker("docker", dockerVM); err != nil {
 			logger.Panicf("failed to register docker health check: %s", err)
 		}
+		dockerBuilder = dockerVM
+	}
+
+	// docker is disabled when we're missing the docker config
+	if dockerBuilder == nil {
+		dockerBuilder = &disabledDockerBuilder{}
 	}
 
 	externalVM := &externalbuilder.Detector{
@@ -551,7 +562,7 @@ func serve(args []string) error {
 	buildRegistry := &container.BuildRegistry{}
 
 	containerRouter := &container.Router{
-		DockerBuilder:   dockerVM,
+		DockerBuilder:   dockerBuilder,
 		ExternalBuilder: externalVMAdapter{externalVM},
 		PackageProvider: &persistence.FallbackPackageLocator{
 			ChaincodePackageLocator: &persistence.ChaincodePackageLocator{
