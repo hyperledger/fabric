@@ -43,11 +43,7 @@
 #   - help-docs - generate the command reference docs
 
 ALPINE_VER ?= 3.10
-BASE_VERSION = 2.0.0
-PREV_VERSION = 2.0.0-beta
-
-# BASEIMAGE_RELEASE should be removed now
-BASEIMAGE_RELEASE = 0.4.18
+BASE_VERSION = 2.1.0
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
@@ -76,7 +72,6 @@ METADATA_VAR = Version=$(BASE_VERSION)
 METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
-METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
 GO_VER = 1.13.8
 GO_TAGS ?=
@@ -191,10 +186,6 @@ generate-metrics-doc: gotools
 protos: gotools
 	@echo "Compiling non-API protos..."
 	./scripts/compile_protos.sh
-
-.PHONY: changelog
-changelog:
-	./scripts/changelog.sh v$(PREV_VERSION) v$(BASE_VERSION)
 
 .PHONY: native
 native: $(RELEASE_EXES)

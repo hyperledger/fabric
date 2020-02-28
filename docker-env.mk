@@ -23,9 +23,6 @@ endif
 
 DBUILD = docker build --force-rm $(DOCKER_BUILD_FLAGS)
 
-BASE_DOCKER_NS ?= hyperledger
-BASE_DOCKER_TAG=$(ARCH)-$(BASEIMAGE_RELEASE)
-
 DOCKER_NS ?= hyperledger
 DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
 

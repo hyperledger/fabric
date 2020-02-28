@@ -6,13 +6,11 @@ information. For example:
 
 ```
  peer:
-   Version: 1.4.0
-   Commit SHA: 0efc897
-   Go version: go1.11.1
+   Version: 2.1.0
+   Commit SHA: b78d79b
+   Go version: go1.13.8
    OS/Arch: linux/amd64
    Chaincode:
-    Base Image Version: 0.4.14
-    Base Docker Namespace: hyperledger
     Base Docker Label: org.hyperledger.fabric
     Docker Namespace: hyperledger
 ```
