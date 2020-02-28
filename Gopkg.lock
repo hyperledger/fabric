@@ -401,7 +401,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
+  branch = "release-2.0"
   digest = "1:395a5f977a65907f61b64aff820dcdeb250deacf27f9ebffe3b3f516a1e98d4e"
   name = "github.com/hyperledger/fabric-protos-go"
   packages = [
