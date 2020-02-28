@@ -19,38 +19,49 @@ import (
 	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 )
 
-// Orderer encodes the orderer-level configuration needed in config transactions.
+// Orderer configures the ordering service behavior for a channel.
 type Orderer struct {
-	OrdererType   string
-	Addresses     []string
+	// OrdererType is the type of orderer
+	// Options: `Solo`, `Kafka` or `Raft`
+	OrdererType string
+	// Addresses is the list of orderer addresses.
+	Addresses []string
+	// BatchTimeout is the wait time between transactions.
 	BatchTimeout  time.Duration
 	BatchSize     BatchSize
 	Kafka         Kafka
 	EtcdRaft      *eb.ConfigMetadata
 	Organizations []*Organization
-	MaxChannels   uint64
-	Capabilities  map[string]bool
-	Policies      map[string]*Policy
+	// MaxChannels is the maximum count of channels an orderer supports.
+	MaxChannels uint64
+	// Capabilities is a map of the capabilities the orderer supports.
+	Capabilities map[string]bool
+	Policies     map[string]*Policy
 }
 
-// BatchSize contains configuration affecting the size of batches.
+// BatchSize is the configuration affecting the size of batches.
 type BatchSize struct {
-	MaxMessageCount   uint32
-	AbsoluteMaxBytes  uint32
+	// MaxMessageCount is the max message count.
+	MaxMessageCount uint32
+	// AbsoluteMaxBytes is the max block size (not including headers).
+	AbsoluteMaxBytes uint32
+	// PreferredMaxBytes is the preferred size of blocks.
 	PreferredMaxBytes uint32
 }
 
-// Kafka contains configuration for the Kafka-based orderer.
+// Kafka is a list of Kafka broker endpoints.
 type Kafka struct {
+	// Brokers contains the addresses of *at least two* kafka brokers
+	// Must be in `IP:port` notation
 	Brokers []string
 }
 
-// NewOrdererGroup returns the orderer component of the channel configuration.
+// newOrdererGroup returns the orderer component of the channel configuration.
 // It defines parameters of the ordering service about how large blocks should be,
 // how frequently they should be emitted, etc. as well as the organizations of the ordering network.
 // It sets the mod_policy of all elements to "Admins".
 // This group is always present in any channel configuration.
-func NewOrdererGroup(orderer *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func newOrdererGroup(orderer *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	ordererGroup := newConfigGroup()
 	ordererGroup.ModPolicy = AdminsPolicyKey
 

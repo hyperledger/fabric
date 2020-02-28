@@ -24,7 +24,7 @@ func TestNewApplicationGroup(t *testing.T) {
 
 	mspConfig := &mb.MSPConfig{}
 
-	applicationGroup, err := NewApplicationGroup(application, mspConfig)
+	applicationGroup, err := newApplicationGroup(application, mspConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// ApplicationGroup checks
@@ -98,7 +98,7 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 
 			mspConfig := &mb.MSPConfig{}
 
-			configGrp, err := NewApplicationGroup(application, mspConfig)
+			configGrp, err := newApplicationGroup(application, mspConfig)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 			gt.Expect(configGrp).To(BeNil())
 		})
@@ -116,7 +116,7 @@ func TestNewApplicationGroupSkipAsForeign(t *testing.T) {
 
 	mspConfig := &mb.MSPConfig{}
 
-	applicationGroup, err := NewApplicationGroup(application, mspConfig)
+	applicationGroup, err := newApplicationGroup(application, mspConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationGroup.Groups["Org1"]).To(Equal(&cb.ConfigGroup{
 		ModPolicy: AdminsPolicyKey,

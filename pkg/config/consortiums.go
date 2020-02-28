@@ -15,17 +15,16 @@ import (
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
 
-// Consortium represents a group of organizations which may create channels
-// with each other.
+// Consortium is a group of non-orderer organizations used in channel transactions.
 type Consortium struct {
 	Name          string
 	Organizations []*Organization
 }
 
-// NewConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
+// newConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
 // the ordering system channel.
 // It sets the mod_policy for all elements to "/Channel/Orderer/Admins".
-func NewConsortiumsGroup(consortiums []*Consortium, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func newConsortiumsGroup(consortiums []*Consortium, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	var err error
 
 	consortiumsGroup := newConfigGroup()
@@ -178,7 +177,7 @@ func signaturePolicy(policyName string, sigPolicy *cb.SignaturePolicyEnvelope) (
 	}, nil
 }
 
-// makeImplicitMetaPolicy creates a new *cb.Policy of cb.Policy_IMPLICIT_META type.
+// implicitMetaPolicy creates a new *cb.Policy of cb.Policy_IMPLICIT_META type.
 func implicitMetaPolicy(subPolicyName string, rule cb.ImplicitMetaPolicy_Rule) (*cb.Policy, error) {
 	implicitMetaPolicy, err := proto.Marshal(&cb.ImplicitMetaPolicy{
 		Rule:      rule,
