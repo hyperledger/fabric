@@ -35,48 +35,53 @@ type FactoryOpts struct {
 // Error is returned only if defaultBCCSP cannot be found
 func InitFactories(config *FactoryOpts) error {
 	factoriesInitOnce.Do(func() {
-		// Take some precautions on default opts
-		if config == nil {
-			config = GetDefaultOpts()
-		}
-
-		if config.ProviderName == "" {
-			config.ProviderName = "SW"
-		}
-
-		if config.SwOpts == nil {
-			config.SwOpts = GetDefaultOpts().SwOpts
-		}
-
-		// Initialize factories map
-		bccspMap = make(map[string]bccsp.BCCSP)
-
-		// Software-Based BCCSP
-		if config.SwOpts != nil {
-			f := &SWFactory{}
-			err := initBCCSP(f, config)
-			if err != nil {
-				factoriesInitError = errors.Wrapf(err, "Failed initializing BCCSP.")
-			}
-		}
-
-		// BCCSP Plugin
-		if config.PluginOpts != nil {
-			f := &PluginFactory{}
-			err := initBCCSP(f, config)
-			if err != nil {
-				factoriesInitError = errors.Wrapf(err, "Failed initializing PKCS11.BCCSP %s", factoriesInitError)
-			}
-		}
-
-		var ok bool
-		defaultBCCSP, ok = bccspMap[config.ProviderName]
-		if !ok {
-			factoriesInitError = errors.Errorf("%s\nCould not find default `%s` BCCSP", factoriesInitError, config.ProviderName)
-		}
+		factoriesInitError = initFactories(config)
 	})
 
 	return factoriesInitError
+}
+
+func initFactories(config *FactoryOpts) error {
+	// Take some precautions on default opts
+	if config == nil {
+		config = GetDefaultOpts()
+	}
+
+	if config.ProviderName == "" {
+		config.ProviderName = "SW"
+	}
+
+	if config.SwOpts == nil {
+		config.SwOpts = GetDefaultOpts().SwOpts
+	}
+
+	// Initialize factories map
+	bccspMap = make(map[string]bccsp.BCCSP)
+
+	// Software-Based BCCSP
+	if config.ProviderName == "SW" && config.SwOpts != nil {
+		f := &SWFactory{}
+		err := initBCCSP(f, config)
+		if err != nil {
+			return errors.Wrapf(err, "Failed initializing BCCSP.")
+		}
+	}
+
+	// BCCSP Plugin
+	if config.ProviderName == "PLUGIN" && config.PluginOpts != nil {
+		f := &PluginFactory{}
+		err := initBCCSP(f, config)
+		if err != nil {
+			return errors.Wrapf(err, "Failed initializing PLUGIN.BCCSP %s", factoriesInitError)
+		}
+	}
+
+	var ok bool
+	defaultBCCSP, ok = bccspMap[config.ProviderName]
+	if !ok {
+		return errors.Errorf("%s\nCould not find default `%s` BCCSP", factoriesInitError, config.ProviderName)
+	}
+	return nil
 }
 
 // GetBCCSPFromOpts returns a BCCSP created according to the options passed in input.

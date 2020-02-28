@@ -41,6 +41,51 @@ func TestSetFactories(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSetFactoriesWithMultipleProviders(t *testing.T) {
+	// testing SW Provider and ensuring other providers are not initialized
+	factoriesInitError = nil
+
+	err := setFactories(&FactoryOpts{
+		ProviderName: "SW",
+		SwOpts:       &SwOpts{},
+		Pkcs11Opts:   &pkcs11.PKCS11Opts{},
+		PluginOpts:   &PluginOpts{},
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed initializing SW.BCCSP")
+	assert.NotContains(t, err.Error(), "Failed initializing PKCS11.BCCSP")
+	assert.NotContains(t, err.Error(), "Failed initializing PLUGIN.BCCSP")
+
+	// testing PKCS11 Provider and ensuring other providers are not initialized
+	factoriesInitError = nil
+
+	err = setFactories(&FactoryOpts{
+		ProviderName: "PKCS11",
+		SwOpts:       &SwOpts{},
+		Pkcs11Opts:   &pkcs11.PKCS11Opts{},
+		PluginOpts:   &PluginOpts{},
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed initializing PKCS11.BCCSP")
+	assert.NotContains(t, err.Error(), "Failed initializing SW.BCCSP")
+	assert.NotContains(t, err.Error(), "Failed initializing PLUGIN.BCCSP")
+
+	// testing PLUGIN Provider and ensuring other providers are not initialized
+	factoriesInitError = nil
+
+	err = setFactories(&FactoryOpts{
+		ProviderName: "PLUGIN",
+		SwOpts:       &SwOpts{},
+		Pkcs11Opts:   &pkcs11.PKCS11Opts{},
+		PluginOpts:   &PluginOpts{},
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed initializing PLUGIN.BCCSP")
+	assert.NotContains(t, err.Error(), "Failed initializing SW.BCCSP")
+	assert.NotContains(t, err.Error(), "Failed initializing PKCS11.BCCSP")
+
+}
+
 func TestSetFactoriesInvalidArgs(t *testing.T) {
 	err := setFactories(&FactoryOpts{
 		ProviderName: "SW",
