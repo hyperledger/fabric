@@ -179,53 +179,6 @@ func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIden
 	return signedEnvelope, nil
 }
 
-// AddOrgToConsortium adds an org definition to a named consortium in a given
-// channel configuration.
-func AddOrgToConsortium(
-	org *Organization,
-	consortium, channelID string,
-	config *cb.Config,
-	mspConfig *mb.MSPConfig,
-) (*cb.ConfigUpdate, error) {
-	if org == nil {
-		return nil, errors.New("organization is empty")
-	}
-
-	if consortium == "" {
-		return nil, errors.New("consortium is empty")
-	}
-
-	updatedConfig := proto.Clone(config).(*cb.Config)
-
-	consortiumsGroup, ok := updatedConfig.ChannelGroup.Groups[ConsortiumsGroupKey]
-	if !ok {
-		return nil, errors.New("consortiums group does not exist")
-	}
-
-	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
-	if !ok {
-		return nil, fmt.Errorf("consortium '%s' does not exist", consortium)
-	}
-
-	orgGroup, err := newOrgConfigGroup(org, mspConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create consortium org: %v", err)
-	}
-
-	if consortiumGroup.Groups == nil {
-		consortiumGroup.Groups = map[string]*cb.ConfigGroup{}
-	}
-
-	consortiumGroup.Groups[org.Name] = orgGroup
-
-	configUpdate, err := ComputeUpdate(config, updatedConfig, channelID)
-	if err != nil {
-		return nil, err
-	}
-
-	return configUpdate, nil
-}
-
 func signatureHeader(signingIdentity *SigningIdentity) (*cb.SignatureHeader, error) {
 	buffer := bytes.NewBuffer(nil)
 

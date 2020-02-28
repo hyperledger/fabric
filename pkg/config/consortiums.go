@@ -22,39 +22,6 @@ type Consortium struct {
 	Organizations []*Organization
 }
 
-// AddOrgToConsortium adds an org definition to a named consortium in a given
-// channel configuration.
-func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string, mspConfig *mb.MSPConfig) error {
-	if org == nil {
-		return errors.New("organization is required")
-	}
-	if consortium == "" {
-		return errors.New("consortium is required")
-	}
-
-	consortiumsGroup, ok := config.ChannelGroup.Groups[ConsortiumsGroupKey]
-	if !ok {
-		return errors.New("consortiums group does not exist")
-	}
-
-	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
-	if !ok {
-		return fmt.Errorf("consortium '%s' does not exist", consortium)
-	}
-
-	orgGroup, err := newConsortiumOrgGroup(org, mspConfig)
-	if err != nil {
-		return fmt.Errorf("failed to create consortium org: %v", err)
-	}
-
-	if consortiumGroup.Groups == nil {
-		consortiumGroup.Groups = map[string]*cb.ConfigGroup{}
-	}
-	consortiumGroup.Groups[org.Name] = orgGroup
-
-	return nil
-}
-
 // NewConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
 // the ordering system channel.
 // It sets the mod_policy for all elements to "/Channel/Orderer/Admins".
@@ -84,6 +51,34 @@ func NewConsortiumsGroup(consortiums []*Consortium, mspConfig *mb.MSPConfig) (*c
 	}
 
 	return consortiumsGroup, nil
+}
+
+// AddOrgToConsortium adds an org definition to a named consortium in a given
+// channel configuration.
+func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string, mspConfig *mb.MSPConfig) error {
+	var err error
+
+	if org == nil {
+		return errors.New("organization is required")
+	}
+
+	if consortium == "" {
+		return errors.New("consortium is required")
+	}
+
+	consortiumsGroup := config.ChannelGroup.Groups[ConsortiumsGroupKey]
+
+	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
+	if !ok {
+		return fmt.Errorf("consortium '%s' does not exist", consortium)
+	}
+
+	consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org, mspConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create consortium org: %v", err)
+	}
+
+	return nil
 }
 
 // newConsortiumGroup returns a consortiums component of the channel configuration.
