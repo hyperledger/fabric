@@ -61,7 +61,7 @@ func setFactories(config *FactoryOpts) error {
 	bccspMap = make(map[string]bccsp.BCCSP)
 
 	// Software-Based BCCSP
-	if config.SwOpts != nil {
+	if config.ProviderName == "SW" && config.SwOpts != nil {
 		f := &SWFactory{}
 		err := initBCCSP(f, config)
 		if err != nil {
@@ -70,7 +70,7 @@ func setFactories(config *FactoryOpts) error {
 	}
 
 	// PKCS11-Based BCCSP
-	if config.Pkcs11Opts != nil {
+	if config.ProviderName == "PKCS11" && config.Pkcs11Opts != nil {
 		f := &PKCS11Factory{}
 		err := initBCCSP(f, config)
 		if err != nil {
@@ -79,11 +79,11 @@ func setFactories(config *FactoryOpts) error {
 	}
 
 	// BCCSP Plugin
-	if config.PluginOpts != nil {
+	if config.ProviderName == "PLUGIN" && config.PluginOpts != nil {
 		f := &PluginFactory{}
 		err := initBCCSP(f, config)
 		if err != nil {
-			factoriesInitError = errors.Wrapf(err, "Failed initializing PKCS11.BCCSP %s", factoriesInitError)
+			factoriesInitError = errors.Wrapf(err, "Failed initializing PLUGIN.BCCSP %s", factoriesInitError)
 		}
 	}
 
