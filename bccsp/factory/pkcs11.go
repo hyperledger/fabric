@@ -69,7 +69,7 @@ func setFactories(config *FactoryOpts) error {
 	}
 
 	// PKCS11-Based BCCSP
-	if config.Pkcs11Opts != nil {
+	if config.ProviderName == "PKCS11" && config.Pkcs11Opts != nil {
 		f := &PKCS11Factory{}
 		err := initBCCSP(f, config)
 		if err != nil {
