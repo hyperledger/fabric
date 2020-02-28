@@ -26,7 +26,7 @@ func TestNewConsortiumsGroup(t *testing.T) {
 
 	mspConfig := &mb.MSPConfig{}
 
-	consortiumsGroup, err := NewConsortiumsGroup(consortiums, mspConfig)
+	consortiumsGroup, err := newConsortiumsGroup(consortiums, mspConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// ConsortiumsGroup checks
@@ -72,7 +72,7 @@ func TestNewConsortiumsGroupFailure(t *testing.T) {
 
 	mspConfig := &mb.MSPConfig{}
 
-	consortiumsGroup, err := NewConsortiumsGroup(consortiums, mspConfig)
+	consortiumsGroup, err := newConsortiumsGroup(consortiums, mspConfig)
 	gt.Expect(err).To(MatchError("org group 'Org1': no policies defined"))
 	gt.Expect(consortiumsGroup).To(BeNil())
 }
@@ -84,7 +84,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 
 	consortiums := baseConsortiums()
 
-	consortiumsGroup, err := NewConsortiumsGroup(consortiums, &mb.MSPConfig{})
+	consortiumsGroup, err := newConsortiumsGroup(consortiums, &mb.MSPConfig{})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{
@@ -358,7 +358,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 
 			consortiums := baseConsortiums()
 
-			consortiumsGroup, err := NewConsortiumsGroup(consortiums, &mb.MSPConfig{})
+			consortiumsGroup, err := newConsortiumsGroup(consortiums, &mb.MSPConfig{})
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			config := &cb.Config{
@@ -387,7 +387,7 @@ func TestSkipAsForeignForConsortiumOrg(t *testing.T) {
 	mspConfig := &mb.MSPConfig{}
 
 	// returns a consortiums group with consortium groups that have empty consortium org groups with only mod policy
-	consortiumsGroup, err := NewConsortiumsGroup(consortiums, mspConfig)
+	consortiumsGroup, err := newConsortiumsGroup(consortiums, mspConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"]).To(Equal(&cb.ConfigGroup{
 		ModPolicy: AdminsPolicyKey,
