@@ -170,8 +170,7 @@ func GetDockerImageFromConfig(path string) string {
 		"$(ARCH)", runtime.GOARCH,
 		"$(PROJECT_VERSION)", metadata.Version,
 		"$(TWO_DIGIT_VERSION)", twoDigitVersion(metadata.Version),
-		"$(DOCKER_NS)", metadata.DockerNamespace,
-		"$(BASE_DOCKER_NS)", metadata.BaseDockerNamespace)
+		"$(DOCKER_NS)", metadata.DockerNamespace)
 
 	return r.Replace(viper.GetString(path))
 }
