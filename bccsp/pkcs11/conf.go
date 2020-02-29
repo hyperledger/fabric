@@ -88,6 +88,7 @@ type PKCS11Opts struct {
 	Pin        string `mapstructure:"pin" json:"pin"`
 	SoftVerify bool   `mapstructure:"softwareverify,omitempty" json:"softwareverify,omitempty"`
 	Immutable  bool   `mapstructure:"immutable,omitempty" json:"immutable,omitempty"`
+	AltId      string `mapstructure:"altid" json:"altid"`
 }
 
 // FileKeystoreOpts currently only ECDSA operations go to PKCS11, need a keystore still
