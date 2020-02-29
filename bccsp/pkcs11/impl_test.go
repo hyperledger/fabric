@@ -47,6 +47,7 @@ type testConfig struct {
 	hashFamily    string
 	softVerify    bool
 	immutable     bool
+	altId         string
 }
 
 func TestMain(m *testing.M) {
@@ -70,17 +71,18 @@ func testMain(m *testing.M) int {
 
 	lib, pin, label := FindPKCS11Lib()
 	tests := []testConfig{
-		{256, "SHA2", true, false},
-		{256, "SHA3", false, false},
-		{384, "SHA2", false, false},
-		{384, "SHA3", false, false},
-		{384, "SHA3", true, false},
+		{256, "SHA2", true, false, ""},
+		{256, "SHA3", false, false, ""},
+		{384, "SHA2", false, false, ""},
+		{384, "SHA3", false, false, ""},
+		{384, "SHA3", true, false, ""},
 	}
 
 	if strings.Contains(lib, "softhsm") {
 		tests = append(tests, []testConfig{
-			{256, "SHA2", true, false},
-			{256, "SHA2", true, true},
+			{256, "SHA2", true, false, ""},
+			{256, "SHA2", true, true, ""},
+			{256, "SHA2", true, true, "AnAltId"},
 		}...)
 	}
 
@@ -97,6 +99,7 @@ func testMain(m *testing.M) int {
 		opts.SecLevel = config.securityLevel
 		opts.SoftVerify = config.softVerify
 		opts.Immutable = config.immutable
+		opts.AltId = config.altId
 		fmt.Printf("Immutable = [%v]\n", opts.Immutable)
 		currentBCCSP, err = New(opts, keyStore)
 		if err != nil {
@@ -218,6 +221,10 @@ func TestInvalidNewParameter(t *testing.T) {
 }
 
 func TestInvalidSKI(t *testing.T) {
+	if currentTestConfig.altId != "" {
+		t.Skip("Skipping TestInvalidSKI since AltId is set for this test run.")
+	}
+
 	k, err := currentBCCSP.GetKey(nil)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
@@ -227,6 +234,51 @@ func TestInvalidSKI(t *testing.T) {
 	}
 
 	k, err = currentBCCSP.GetKey([]byte{0, 1, 2, 3, 4, 5, 6})
+	if err == nil {
+		t.Fatal("Error should be different from nil in this case")
+	}
+	if k != nil {
+		t.Fatal("Return value should be equal to nil in this case")
+	}
+}
+
+func TestInvalidAltId(t *testing.T) {
+	if currentTestConfig.altId == "" {
+		t.Skip("Skipping TestInvalidAltId since AltId not set for this test run.")
+	}
+
+	opts := PKCS11Opts{
+		HashFamily: currentTestConfig.hashFamily,
+		SecLevel:   currentTestConfig.securityLevel,
+		SoftVerify: currentTestConfig.softVerify,
+		Immutable:  currentTestConfig.immutable,
+		AltId:      "ADifferentAltId",
+		Library:    "lib",
+		Label:      "ForFabric",
+		Pin:        "98765432",
+	}
+
+	// Setup PKCS11 library and provide initial set of values
+	lib, _, _ := FindPKCS11Lib()
+	opts.Library = lib
+
+	// Generate a KeyPair associated to the initial label
+	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA P256 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating ECDSA P256 key. Key must be different from nil")
+	}
+
+	// Create temporary BCCSP set with an initial label
+	testBCCSP, err := New(opts, currentKS)
+	if err != nil {
+		t.Fatalf("Failed initiliazing Test BCCSP at [%+v] \n%s\n", opts, err)
+	}
+
+	// Now, try to retrieve the key using a different label
+	k, err = testBCCSP.GetKey([]byte{0, 1, 2, 3, 4, 5, 6})
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}

@@ -11,7 +11,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/asn1"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/miekg/pkcs11"
@@ -85,6 +87,65 @@ func TestOIDFromNamedCurve(t *testing.T) {
 	testOID, _ = oidFromNamedCurve(testCurve)
 	if testOID != nil {
 		t.Fatal("Expected nil to be returned.")
+	}
+}
+
+func TestAlternateLabelGeneration(t *testing.T) {
+	if currentTestConfig.altId == "" {
+		t.Skip("Skipping TestAlternateLabelGeneration since AltId is not set for this test run.")
+	}
+
+	// We generate a unique Alt ID for the test
+	uniqueAltId := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+	fakeSKI := []byte("FakeSKI")
+
+	opts := PKCS11Opts{
+		HashFamily: currentTestConfig.hashFamily,
+		SecLevel:   currentTestConfig.securityLevel,
+		SoftVerify: currentTestConfig.softVerify,
+		Immutable:  currentTestConfig.immutable,
+		AltId:      uniqueAltId,
+		Library:    "lib",
+		Label:      "ForFabric",
+		Pin:        "98765432",
+	}
+
+	// Setup PKCS11 library and provide initial set of values
+	lib, _, _ := FindPKCS11Lib()
+	opts.Library = lib
+
+	// Create temporary BCCSP set with the  label
+	testBCCSP, err := New(opts, currentKS)
+
+	p11lib := testBCCSP.(*impl).ctx
+	session := testBCCSP.(*impl).getSession()
+	defer testBCCSP.(*impl).returnSession(session)
+
+	// Passing fake SKI to ensure that the look up fails if the uniqueAltId is not used
+	k, err := findKeyPairFromSKI(p11lib, session, fakeSKI, uniqueAltId, privateKeyFlag)
+	if err == nil {
+		t.Fatalf("Found a key when expected to find none.")
+	}
+
+	// Now generate a new EC Key, which should be using the uniqueAltId
+	var oid asn1.ObjectIdentifier
+	if currentTestConfig.securityLevel == 256 {
+		oid = oidNamedCurveP256
+	} else if currentTestConfig.securityLevel == 384 {
+		oid = oidNamedCurveP384
+	}
+
+	_, _, err = testBCCSP.(*impl).generateECKey(oid, true)
+	if err != nil {
+		t.Fatalf("Failed generating Key [%s]", err)
+	}
+
+	k, err = findKeyPairFromSKI(p11lib, session, fakeSKI, uniqueAltId, privateKeyFlag)
+	if err != nil {
+		t.Fatalf("Found no key after generating an EC Key based on the AltId.")
+	}
+	if k == nil {
+		t.Fatalf("No Key returned from the findKeyPairFromSKI call.")
 	}
 }
 
