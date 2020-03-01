@@ -474,7 +474,7 @@ below provide a guided tour of what happens when you issue the command of
   in the `system-genesis-block` folder.
 
 - Once the organization crypto material and the system channel genesis block have
-  been generated, the `network.sh` can bring up the nodes of the netwowrk. The
+  been generated, the `network.sh` can bring up the nodes of the network. The
   script uses the ``docker-compose-test-net.yaml`` file in the `docker` folder
   to create the peer and orderer nodes. The `docker` folder also contains the
   ``docker-compose-e2e.yaml`` file that brings up the nodes of the network
