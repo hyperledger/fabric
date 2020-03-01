@@ -9,7 +9,7 @@ Fabric not answered here, please use
 Another approach to getting your questions answered to send an email to
 the `mailing
 list <https://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__
-(hyperledger-fabric@lists.hyperledger.org), or ask your questions on
+(fabric@lists.hyperledger.org), or ask your questions on
 `RocketChat <https://chat.hyperledger.org/>`__ (an alternative to Slack)
 on the #fabric or #fabric-questions channel.
 
