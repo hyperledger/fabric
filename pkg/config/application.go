@@ -9,6 +9,7 @@ package config
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
@@ -64,6 +65,43 @@ func NewApplicationGroup(application *Application, mspConfig *mb.MSPConfig) (*cb
 	}
 
 	return applicationGroup, nil
+}
+
+// RemoveAnchorPeer removes an anchor peer from an existing channel config transaction.
+// The removed anchor peer and org it belongs to must both already exist.
+func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove *AnchorPeer) error {
+	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+	if !ok {
+		return fmt.Errorf("application org %s does not exist in channel config", orgName)
+	}
+
+	anchorPeersProto := &pb.AnchorPeers{}
+
+	if anchorPeerConfigValue, ok := applicationOrgGroup.Values[AnchorPeersKey]; ok {
+		// Unmarshal existing anchor peers if the config value exists
+		err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
+		if err != nil {
+			return fmt.Errorf("failed unmarshalling existing anchor peers: %v", err)
+		}
+	}
+
+	existingAnchorPeers := anchorPeersProto.AnchorPeers
+
+	for i, anchorPeer := range existingAnchorPeers {
+		if anchorPeer.Host == anchorPeerToRemove.Host && anchorPeer.Port == int32(anchorPeerToRemove.Port) {
+			existingAnchorPeers = append(existingAnchorPeers[:i], existingAnchorPeers[i+1:]...)
+
+			// Add anchor peers config value back to application org
+			err := addValue(applicationOrgGroup, anchorPeersValue(existingAnchorPeers), AdminsPolicyKey)
+			if err != nil {
+				return fmt.Errorf("failed to remove anchor peer %v: %v", anchorPeerToRemove, err)
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("could not find anchor peer with host: %s, port: %d in existing anchor peers", anchorPeerToRemove.Host, anchorPeerToRemove.Port)
 }
 
 // aclValues returns the config definition for an application's resources based ACL definitions.
