@@ -241,11 +241,10 @@ func TestNewCreateChannelTx(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			mspConfig := &mb.FabricMSPConfig{}
 			profile := tt.profileMod()
 
 			// creating a create channel transaction
-			envelope, err := NewCreateChannelTx(profile, mspConfig)
+			envelope, err := NewCreateChannelTx(profile)
 			gt.Expect(err).ToNot(HaveOccurred())
 			gt.Expect(envelope).ToNot(BeNil())
 
@@ -481,10 +480,9 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			mspConfig := &mb.FabricMSPConfig{}
 			profile := tt.profileMod()
 
-			env, err := NewCreateChannelTx(profile, mspConfig)
+			env, err := NewCreateChannelTx(profile)
 			gt.Expect(env).To(BeNil())
 			gt.Expect(err).To(MatchError(tt.err))
 		})
@@ -563,7 +561,7 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 			configUpdate:    nil,
 			signingIdentity: signingIdentity,
 			configSignature: []*cb.ConfigSignature{configSignature},
-			expectedErr:     "failed to marshal config update: proto: Marshal called with nil",
+			expectedErr:     "marshalling config update: proto: Marshal called with nil",
 		},
 	}
 
@@ -589,14 +587,16 @@ func baseProfile() *Channel {
 			Policies: standardPolicies(),
 			Organizations: []*Organization{
 				{
-					Name:     "Org1",
-					ID:       "Org1MSP",
-					Policies: applicationOrgStandardPolicies(),
+					Name:      "Org1",
+					ID:        "Org1MSP",
+					Policies:  applicationOrgStandardPolicies(),
+					MSPConfig: &mb.FabricMSPConfig{},
 				},
 				{
-					Name:     "Org2",
-					ID:       "Org2MSP",
-					Policies: applicationOrgStandardPolicies(),
+					Name:      "Org2",
+					ID:        "Org2MSP",
+					Policies:  applicationOrgStandardPolicies(),
+					MSPConfig: &mb.FabricMSPConfig{},
 				},
 			},
 			Capabilities: map[string]bool{
@@ -742,11 +742,9 @@ func TestNewOrgConfigGroup(t *testing.T) {
 	"version": "0"
 }
 `
-		mspConfig := &mb.MSPConfig{}
-
 		org := baseProfile().Application.Organizations[0]
 		org.OrdererEndpoints = []string{"123.45.677:8080"}
-		configGroup, err := newOrgConfigGroup(org, mspConfig)
+		configGroup, err := newOrgConfigGroup(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 
 		buf := bytes.Buffer{}
@@ -766,11 +764,9 @@ func TestNewOrgConfigGroup(t *testing.T) {
 		err := protolator.DeepMarshalJSON(&expectedBuf, expectedConfigGroup)
 		gt.Expect(err).NotTo(HaveOccurred())
 
-		mspConfig := &mb.MSPConfig{}
-
 		org := baseProfile().Application.Organizations[0]
 		org.SkipAsForeign = true
-		configGroup, err := newOrgConfigGroup(org, mspConfig)
+		configGroup, err := newOrgConfigGroup(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 
 		buf := bytes.Buffer{}
@@ -787,7 +783,6 @@ func TestNewOrgConfigGroupFailure(t *testing.T) {
 	tests := []struct {
 		name            string
 		organizationMod func(*Organization)
-		mspConfig       *mb.MSPConfig
 		expectedErr     string
 	}{
 		{
@@ -795,15 +790,14 @@ func TestNewOrgConfigGroupFailure(t *testing.T) {
 			func(o *Organization) {
 				o.Policies = nil
 			},
-			&mb.MSPConfig{},
 			"no policies defined",
 		},
 		{
 			"When failing to add msp value",
 			func(o *Organization) {
+				o.MSPConfig = nil
 			},
-			nil,
-			"marshalling standard config value 'MSP': proto: Marshal called with nil",
+			"marshalling msp config: proto: Marshal called with nil",
 		},
 	}
 
@@ -815,7 +809,7 @@ func TestNewOrgConfigGroupFailure(t *testing.T) {
 			gt := NewGomegaWithT(t)
 			baseOrg := baseProfile().Application.Organizations[0]
 			tt.organizationMod(baseOrg)
-			configGroup, err := newOrgConfigGroup(baseOrg, tt.mspConfig)
+			configGroup, err := newOrgConfigGroup(baseOrg)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 			gt.Expect(configGroup).To(BeNil())
 		})

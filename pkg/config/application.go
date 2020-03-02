@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	mb "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
@@ -33,7 +32,7 @@ type AnchorPeer struct {
 
 // NewApplicationGroup returns the application component of the channel configuration.
 // By default, tt sets the mod_policy of all elements to "Admins".
-func NewApplicationGroup(application *Application, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func NewApplicationGroup(application *Application) (*cb.ConfigGroup, error) {
 	var err error
 
 	applicationGroup := newConfigGroup()
@@ -58,7 +57,7 @@ func NewApplicationGroup(application *Application, mspConfig *mb.MSPConfig) (*cb
 	}
 
 	for _, org := range application.Organizations {
-		applicationGroup.Groups[org.Name], err = newOrgConfigGroup(org, mspConfig)
+		applicationGroup.Groups[org.Name], err = newOrgConfigGroup(org)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
