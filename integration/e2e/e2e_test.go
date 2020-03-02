@@ -128,6 +128,24 @@ var _ = Describe("EndToEnd", func() {
 			network.CreateAndJoinChannel(orderer, "testchannel")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
+			By("attempting to install unsupported chaincode without docker")
+			badCC := chaincode
+			badCC.Lang = "unsupported-type"
+			badCC.Label = "chaincode-label"
+			badCC.PackageFile = filepath.Join(testDir, "unsupported-type.tar.gz")
+			nwo.PackageChaincodeBinary(badCC)
+			badCC.SetPackageIDFromPackageFile()
+			sess, err := network.PeerAdminSession(
+				network.Peer("Org1", "peer0"),
+				commands.ChaincodeInstall{
+					PackageFile: badCC.PackageFile,
+					ClientAuth:  network.ClientAuthRequired,
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+			Expect(sess.Err).To(gbytes.Say("docker build is disabled"))
+
 			By("deploying the chaincode")
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
