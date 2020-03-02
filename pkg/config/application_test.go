@@ -22,9 +22,7 @@ func TestNewApplicationGroup(t *testing.T) {
 
 	application := baseApplication()
 
-	mspConfig := &mb.MSPConfig{}
-
-	applicationGroup, err := NewApplicationGroup(application, mspConfig)
+	applicationGroup, err := NewApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// ApplicationGroup checks
@@ -96,9 +94,7 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 			application := baseApplication()
 			tt.applicationMod(application)
 
-			mspConfig := &mb.MSPConfig{}
-
-			configGrp, err := NewApplicationGroup(application, mspConfig)
+			configGrp, err := NewApplicationGroup(application)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 			gt.Expect(configGrp).To(BeNil())
 		})
@@ -114,9 +110,7 @@ func TestNewApplicationGroupSkipAsForeign(t *testing.T) {
 	application.Organizations[0].SkipAsForeign = true
 	application.Organizations[1].SkipAsForeign = true
 
-	mspConfig := &mb.MSPConfig{}
-
-	applicationGroup, err := NewApplicationGroup(application, mspConfig)
+	applicationGroup, err := NewApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationGroup.Groups["Org1"]).To(Equal(&cb.ConfigGroup{
 		ModPolicy: AdminsPolicyKey,
@@ -143,6 +137,7 @@ func baseApplication() *Application {
 				AnchorPeers: []*AnchorPeer{
 					{Host: "host1", Port: 123},
 				},
+				MSPConfig: &mb.FabricMSPConfig{},
 			},
 			{
 				Name:     "Org2",
@@ -151,6 +146,7 @@ func baseApplication() *Application {
 				AnchorPeers: []*AnchorPeer{
 					{Host: "host1", Port: 123},
 				},
+				MSPConfig: &mb.FabricMSPConfig{},
 			},
 		},
 		Capabilities: map[string]bool{

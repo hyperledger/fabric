@@ -25,7 +25,7 @@ type Consortium struct {
 // NewConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
 // the ordering system channel.
 // It sets the mod_policy for all elements to "/Channel/Orderer/Admins".
-func NewConsortiumsGroup(consortiums []*Consortium, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func NewConsortiumsGroup(consortiums []*Consortium) (*cb.ConfigGroup, error) {
 	var err error
 
 	consortiumsGroup := newConfigGroup()
@@ -44,7 +44,7 @@ func NewConsortiumsGroup(consortiums []*Consortium, mspConfig *mb.MSPConfig) (*c
 	addPolicy(consortiumsGroup, signaturePolicy, ordererAdminsPolicyName)
 
 	for _, consortium := range consortiums {
-		consortiumsGroup.Groups[consortium.Name], err = newConsortiumGroup(consortium, mspConfig)
+		consortiumsGroup.Groups[consortium.Name], err = newConsortiumGroup(consortium)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func NewConsortiumsGroup(consortiums []*Consortium, mspConfig *mb.MSPConfig) (*c
 
 // AddOrgToConsortium adds an org definition to a named consortium in a given
 // channel configuration.
-func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string, mspConfig *mb.MSPConfig) error {
+func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string) error {
 	var err error
 
 	if org == nil {
@@ -73,7 +73,7 @@ func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string,
 		return fmt.Errorf("consortium '%s' does not exist", consortium)
 	}
 
-	consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org, mspConfig)
+	consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org)
 	if err != nil {
 		return fmt.Errorf("failed to create consortium org: %v", err)
 	}
@@ -82,14 +82,14 @@ func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string,
 }
 
 // newConsortiumGroup returns a consortiums component of the channel configuration.
-func newConsortiumGroup(consortium *Consortium, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func newConsortiumGroup(consortium *Consortium) (*cb.ConfigGroup, error) {
 	var err error
 
 	consortiumGroup := newConfigGroup()
 	consortiumGroup.ModPolicy = ordererAdminsPolicyName
 
 	for _, org := range consortium.Organizations {
-		consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org, mspConfig)
+		consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
