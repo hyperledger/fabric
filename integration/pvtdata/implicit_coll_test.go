@@ -42,7 +42,7 @@ var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 			core.Peer.Gossip.PvtData.ReconciliationEnabled = false
 			if p.Organization == "Org1" {
 				// enable dissemination on org1 peers
-				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.RequiredPeerCount = 0
+				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.RequiredPeerCount = 1
 				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.MaxPeerCount = 3
 			} else {
 				// disable dessemination on non-org1 peers
