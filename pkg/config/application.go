@@ -198,3 +198,9 @@ func anchorPeersValue(anchorPeers []*pb.AnchorPeer) *standardConfigValue {
 		value: &pb.AnchorPeers{AnchorPeers: anchorPeers},
 	}
 }
+
+// getApplicationOrg returns the organization config group for an org in the
+// provided config.
+func getApplicationOrg(config *cb.Config, orgName string) *cb.ConfigGroup {
+	return config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+}

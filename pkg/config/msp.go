@@ -7,11 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
+	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -528,5 +530,62 @@ func unmarshalConfigValueAtKey(group *cb.ConfigGroup, key string, msg proto.Mess
 	if err != nil {
 		return fmt.Errorf("unmarshaling %s: %v", key, err)
 	}
+	return nil
+}
+
+// AddRootCAToMSP takes a root CA x509 certificate and adds it to the
+// list of rootCerts for the specified application org MSP.
+func AddRootCAToMSP(config *cb.Config, rootCA *x509.Certificate, orgName string) error {
+	if (rootCA.KeyUsage & x509.KeyUsageCertSign) == 0 {
+		return errors.New("certificate KeyUsage must be x509.KeyUsageCertSign")
+	}
+	if !rootCA.IsCA {
+		return errors.New("certificate must be a CA certificate")
+	}
+
+	org := getApplicationOrg(config, orgName)
+	err := addRootCAToOrgMSP(org, rootCA)
+	if err != nil {
+		return fmt.Errorf("failed to add rootCA to application org: %v", err)
+	}
+
+	return nil
+}
+
+// addRootCAToOrgMSP adds a rootCA to org MSP config. It takes a pointer to
+// org MSP config, and modifies in place.
+func addRootCAToOrgMSP(org *cb.ConfigGroup, rootCA *x509.Certificate) error {
+	configValue := org.Values[MSPKey]
+
+	mspConfig := &mb.MSPConfig{}
+	err := proto.Unmarshal(configValue.Value, mspConfig)
+	if err != nil {
+		return fmt.Errorf("unmarshalling mspConfig: %v", err)
+	}
+
+	fabricMSPConfig := &mb.FabricMSPConfig{}
+	err = proto.Unmarshal(mspConfig.Config, fabricMSPConfig)
+	if err != nil {
+		return fmt.Errorf("unmarshalling mspConfig: %v", err)
+	}
+
+	buffer := bytes.NewBuffer(nil)
+	err = pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: rootCA.Raw})
+	if err != nil {
+		return err
+	}
+	fabricMSPConfig.RootCerts = append(fabricMSPConfig.RootCerts, buffer.Bytes())
+
+	serializedMSPConfig, err := proto.Marshal(fabricMSPConfig)
+	if err != nil {
+		return fmt.Errorf("marshalling updated mspConfig: %v", err)
+	}
+	mspConfig.Config = serializedMSPConfig
+
+	err = addValue(org, mspValue(mspConfig), AdminsPolicyKey)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
