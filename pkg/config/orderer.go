@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	mb "github.com/hyperledger/fabric-protos-go/msp"
 	ob "github.com/hyperledger/fabric-protos-go/orderer"
 	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 )
@@ -61,7 +60,7 @@ type Kafka struct {
 // how frequently they should be emitted, etc. as well as the organizations of the ordering network.
 // It sets the mod_policy of all elements to "Admins".
 // This group is always present in any channel configuration.
-func newOrdererGroup(orderer *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+func newOrdererGroup(orderer *Orderer) (*cb.ConfigGroup, error) {
 	ordererGroup := newConfigGroup()
 	ordererGroup.ModPolicy = AdminsPolicyKey
 
@@ -77,7 +76,7 @@ func newOrdererGroup(orderer *Orderer, mspConfig *mb.MSPConfig) (*cb.ConfigGroup
 
 	// add orderer groups
 	for _, org := range orderer.Organizations {
-		ordererGroup.Groups[org.Name], err = newOrgConfigGroup(org, mspConfig)
+		ordererGroup.Groups[org.Name], err = newOrgConfigGroup(org)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
