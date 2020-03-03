@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package genesisconfig
 
 import (
-	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -275,27 +275,29 @@ func TestLoadConfigCache(t *testing.T) {
 	defer cleanup()
 
 	v := viper.New()
-	topLevel := &TopLevel{
-		Orderer: &Orderer{
-			OrdererType: "Kafka",
-		},
-	}
-	dummyPath := "/config/dummy/path"
-	serializedTopLevel, err := json.Marshal(topLevel)
+	devConfigDir := configtest.GetDevConfigDir()
+	v.AddConfigPath(devConfigDir)
+	v.SetConfigName("configtx")
+	err := v.ReadInConfig()
 	assert.NoError(t, err)
-	cfgCache := &configCache{
+
+	configPath := v.ConfigFileUsed()
+	c := &configCache{
 		cache: make(map[string][]byte),
 	}
-	cfgCache.cache[dummyPath] = serializedTopLevel
 
-	config, err := cfgCache.load(v, dummyPath)
-	assert.NoError(t, err, "Load prepopulated value from config cache failed")
-	data, err := json.Marshal(config)
+	// Load the initial config, update the environment, and load again.
+	// With the caching behavior, the update should not be reflected.
+	initial, err := c.load(v, configPath)
 	assert.NoError(t, err)
-	assert.Equal(t, serializedTopLevel, data, "Data loaded from config cache returned mismatch result")
+	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
+	updated, err := c.load(v, configPath)
+	assert.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
 
-	config.Orderer.OrdererType = "Solo"
-	seralizedConfig, err := json.Marshal(config)
+	// Change the configuration we got back and load again.
+	// The  new value should not contain the updated to the initial
+	initial.Orderer.OrdererType = "bad-Orderer-Type"
+	updated, err = c.load(v, configPath)
 	assert.NoError(t, err)
-	assert.NotEqual(t, cfgCache.cache[dummyPath], seralizedConfig, "Modified Load ouput matches with cache store unexpected")
+	assert.NotEqual(t, initial, updated, "expected %#v to not equal %#v", updated, initial)
 }
