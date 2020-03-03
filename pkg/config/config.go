@@ -4,6 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// EXPERIMENTAL - Package config allows the creation, retrieval, and modification of channel configtx.
 package config
 
 import (
