@@ -649,3 +649,32 @@ func ordererStandardPolicies() map[string]Policy {
 
 	return policies
 }
+
+func baseChannelGroup() (*cb.ConfigGroup, error) {
+	channelGroup := newConfigGroup()
+
+	application := baseApplication()
+	applicationGroup, err := newApplicationGroup(application)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, org := range application.Organizations {
+		orgGroup, err := newOrgConfigGroup(org)
+		if err != nil {
+			return nil, err
+		}
+		applicationGroup.Groups[org.Name] = orgGroup
+	}
+
+	orderer := baseOrderer()
+	ordererGroup, err := newOrdererGroup(orderer)
+	if err != nil {
+		return nil, err
+	}
+
+	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
+	channelGroup.Groups[OrdererGroupKey] = ordererGroup
+
+	return channelGroup, nil
+}
