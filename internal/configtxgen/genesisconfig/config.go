@@ -470,19 +470,19 @@ func (c *configCache) load(config *viper.Viper, configPath string) (*TopLevel, e
 		if err != nil {
 			return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
 		}
-		conf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 
 		serializedConf, err = json.Marshal(conf)
 		if err != nil {
 			return nil, err
 		}
 		c.cache[configPath] = serializedConf
-		return conf, nil
 	}
 
 	err := json.Unmarshal(serializedConf, conf)
 	if err != nil {
 		return nil, err
 	}
+
+	conf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 	return conf, nil
 }

@@ -67,7 +67,7 @@ func TestLoadCached(t *testing.T) {
 	initial.General.LocalMSPDir = "/test/bad/mspDir"
 	updated, err = Load()
 	assert.NoError(t, err)
-	assert.NotEqual(t, initial, updated, "expected %#v to equal %#v", updated, initial)
+	assert.NotEqual(t, initial, updated, "expected %#v to not equal %#v", updated, initial)
 }
 
 func TestLoadMissingConfigFile(t *testing.T) {
