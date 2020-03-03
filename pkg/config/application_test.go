@@ -136,7 +136,7 @@ func TestRemoveAnchorPeer(t *testing.T) {
 
 	baseApplicationConf := baseApplication()
 
-	applicationGroup, err := NewApplicationGroup(baseApplicationConf, &mb.MSPConfig{})
+	applicationGroup, err := NewApplicationGroup(baseApplicationConf)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{
@@ -428,7 +428,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 
 			baseApplicationConf := baseApplication()
 
-			applicationGroup, err := NewApplicationGroup(baseApplicationConf, &mb.MSPConfig{})
+			applicationGroup, err := NewApplicationGroup(baseApplicationConf)
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			config := &cb.Config{
