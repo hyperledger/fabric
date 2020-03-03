@@ -97,7 +97,7 @@ noverify = [
 
 [[constraint]]
   name = "golang.org/x/tools"
-  branch = "release-branch.go1.12"
+  branch = "release-branch.go1.13"
 
 [[constraint]]
   name = "google.golang.org/grpc"
