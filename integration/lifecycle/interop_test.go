@@ -114,7 +114,7 @@ var _ = Describe("Release interoperability", func() {
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simplemod"),
 			Lang:            "binary",
 			PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
 			SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
@@ -199,7 +199,7 @@ var _ = Describe("Release interoperability", func() {
 			chaincode = nwo.Chaincode{
 				Name:            "mycc",
 				Version:         "0.0",
-				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simplemod"),
 				Lang:            "binary",
 				PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
 				SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
@@ -225,7 +225,7 @@ var _ = Describe("Release interoperability", func() {
 			chaincode := nwo.Chaincode{
 				Name:            "mycc",
 				Version:         "0.0",
-				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simplemod"),
 				Lang:            "binary",
 				PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
 				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,

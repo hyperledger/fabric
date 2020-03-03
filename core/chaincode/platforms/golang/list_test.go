@@ -34,7 +34,7 @@ func Test_gopathDependencyPackageInfo(t *testing.T) {
 
 	t.Run("TestIncomplete", func(t *testing.T) {
 		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/BadImport")
-		assert.EqualError(t, err, "failed to calculate dependencies: incomplete package: bogus/package")
+		assert.EqualError(t, err, `listing deps for package github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/BadImport failed: exit status 1`)
 	})
 
 	t.Run("TestFromGoroot", func(t *testing.T) {

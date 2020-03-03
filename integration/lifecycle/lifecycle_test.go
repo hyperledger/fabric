@@ -123,7 +123,7 @@ var _ = Describe("Lifecycle", func() {
 		testPeers := network.PeersWithChannel("testchannel")
 		org1peer0 := network.Peer("Org1", "peer0")
 
-		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
+		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/simplemod")
 		chaincode := nwo.Chaincode{
 			Name:                "My_1st-Chaincode",
 			Version:             "Version-0.0",

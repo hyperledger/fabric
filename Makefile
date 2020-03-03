@@ -23,7 +23,6 @@
 #   - profile - runs unit tests for all packages in coverprofile mode (slow)
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
-#   - check-deps - check for vendored dependencies that are no longer used
 #   - license - checks go source files for Apache license header
 #   - native - ensures all native binaries are available
 #   - docker[-clean] - ensures all docker images are available[/cleaned]
@@ -134,11 +133,13 @@ check-go-version:
 	@scripts/check_go_version.sh $(GO_VER)
 
 .PHONY: integration-test
-integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
+integration-test: gotools ccenv-docker baseos-docker docker-thirdparty
+	@go list -e $(shell go list -m all)
 	./scripts/run-integration-tests.sh
 
 .PHONY: unit-test
 unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker
+	@go list -e $(shell go list -m all)
 	./scripts/run-unit-tests.sh
 
 .PHONY: unit-tests
@@ -163,14 +164,9 @@ profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
 .PHONY: linter
-linter: check-deps gotools
+linter: gotools
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
-
-.PHONY: check-deps
-check-deps: gotools
-	@echo "DEP: Checking for dependency issues.."
-	./scripts/check_deps.sh
 
 .PHONY: check-metrics-docs
 check-metrics-doc: gotools
