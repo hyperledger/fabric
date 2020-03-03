@@ -42,7 +42,9 @@ func TestNewOrdererGroup(t *testing.T) {
 			ordererConf.OrdererType = tt.ordererType
 			ordererConf.EtcdRaft = tt.configMetadata
 
-			ordererGroup, err := NewOrdererGroup(ordererConf)
+			mspConfig := &mb.MSPConfig{}
+
+			ordererGroup, err := NewOrdererGroup(ordererConf, mspConfig)
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			// OrdererGroup checks
@@ -168,7 +170,9 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 			ordererConf := baseOrderer()
 			tt.ordererMod(ordererConf)
 
-			ordererGroup, err := NewOrdererGroup(ordererConf)
+			mspConfig := &mb.MSPConfig{}
+
+			ordererGroup, err := NewOrdererGroup(ordererConf, mspConfig)
 			gt.Expect(err).To(MatchError(tt.err))
 			gt.Expect(ordererGroup).To(BeNil())
 		})
@@ -182,7 +186,9 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 
 	baseOrdererConf := baseOrderer()
 
-	ordererGroup, err := NewOrdererGroup(baseOrdererConf)
+	mspConfig := &mb.MSPConfig{}
+
+	ordererGroup, err := NewOrdererGroup(baseOrdererConf, mspConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	originalOrdererAddresses, err := proto.Marshal(&cb.OrdererAddresses{
@@ -291,7 +297,6 @@ func baseOrderer() *Orderer {
 				OrdererEndpoints: []string{
 					"localhost:123",
 				},
-				MSPConfig: &mb.FabricMSPConfig{},
 			},
 			{
 				Name:     "Org2",
@@ -300,7 +305,6 @@ func baseOrderer() *Orderer {
 				OrdererEndpoints: []string{
 					"localhost:123",
 				},
-				MSPConfig: &mb.FabricMSPConfig{},
 			},
 		},
 		Capabilities: map[string]bool{

@@ -24,7 +24,9 @@ func TestNewConsortiumsGroup(t *testing.T) {
 
 	consortiums := baseConsortiums()
 
-	consortiumsGroup, err := NewConsortiumsGroup(consortiums)
+	mspConfig := &mb.MSPConfig{}
+
+	consortiumsGroup, err := NewConsortiumsGroup(consortiums, mspConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// ConsortiumsGroup checks
@@ -68,7 +70,9 @@ func TestNewConsortiumsGroupFailure(t *testing.T) {
 	consortiums := baseConsortiums()
 	consortiums[0].Organizations[0].Policies = nil
 
-	consortiumsGroup, err := NewConsortiumsGroup(consortiums)
+	mspConfig := &mb.MSPConfig{}
+
+	consortiumsGroup, err := NewConsortiumsGroup(consortiums, mspConfig)
 	gt.Expect(err).To(MatchError("org group 'Org1': no policies defined"))
 	gt.Expect(consortiumsGroup).To(BeNil())
 }
@@ -80,7 +84,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 
 	consortiums := baseConsortiums()
 
-	consortiumsGroup, err := NewConsortiumsGroup(consortiums)
+	consortiumsGroup, err := NewConsortiumsGroup(consortiums, &mb.MSPConfig{})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{
@@ -92,10 +96,9 @@ func TestAddOrgToConsortium(t *testing.T) {
 	}
 
 	orgToAdd := &Organization{
-		Name:      "Org1",
-		ID:        "Org1MSP",
-		Policies:  applicationOrgStandardPolicies(),
-		MSPConfig: &mb.FabricMSPConfig{},
+		Name:     "Org1",
+		ID:       "Org1MSP",
+		Policies: applicationOrgStandardPolicies(),
 	}
 
 	expectedConfig := `
@@ -295,7 +298,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfig), &expectedConfigProto)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = AddOrgToConsortium(config, orgToAdd, "Consortium1")
+	err = AddOrgToConsortium(config, orgToAdd, "Consortium1", &mb.MSPConfig{})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(proto.Equal(config, &expectedConfigProto)).To(BeTrue())
@@ -355,7 +358,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 
 			consortiums := baseConsortiums()
 
-			consortiumsGroup, err := NewConsortiumsGroup(consortiums)
+			consortiumsGroup, err := NewConsortiumsGroup(consortiums, &mb.MSPConfig{})
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			config := &cb.Config{
@@ -366,7 +369,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 				},
 			}
 
-			err = AddOrgToConsortium(config, test.org, test.consortium)
+			err = AddOrgToConsortium(config, test.org, test.consortium, &mb.MSPConfig{})
 			gt.Expect(err).To(MatchError(test.expectedErr))
 		})
 	}
@@ -381,8 +384,10 @@ func TestSkipAsForeignForConsortiumOrg(t *testing.T) {
 	consortiums[0].Organizations[0].SkipAsForeign = true
 	consortiums[0].Organizations[1].SkipAsForeign = true
 
+	mspConfig := &mb.MSPConfig{}
+
 	// returns a consortiums group with consortium groups that have empty consortium org groups with only mod policy
-	consortiumsGroup, err := NewConsortiumsGroup(consortiums)
+	consortiumsGroup, err := NewConsortiumsGroup(consortiums, mspConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"]).To(Equal(&cb.ConfigGroup{
 		ModPolicy: AdminsPolicyKey,
@@ -404,16 +409,14 @@ func baseConsortiums() []*Consortium {
 			Name: "Consortium1",
 			Organizations: []*Organization{
 				{
-					Name:      "Org1",
-					ID:        "Org1MSP",
-					Policies:  orgStandardPolicies(),
-					MSPConfig: &mb.FabricMSPConfig{},
+					Name:     "Org1",
+					ID:       "Org1MSP",
+					Policies: orgStandardPolicies(),
 				},
 				{
-					Name:      "Org2",
-					ID:        "Org2MSP",
-					Policies:  orgStandardPolicies(),
-					MSPConfig: &mb.FabricMSPConfig{},
+					Name:     "Org2",
+					ID:       "Org2MSP",
+					Policies: orgStandardPolicies(),
 				},
 			},
 		},

@@ -50,10 +50,9 @@ type Resources struct {
 // Organization encodes the organization-level configuration needed in
 // config transactions.
 type Organization struct {
-	Name      string
-	ID        string
-	Policies  map[string]*Policy
-	MSPConfig *mb.FabricMSPConfig
+	Name     string
+	ID       string
+	Policies map[string]*Policy
 
 	AnchorPeers      []*AnchorPeer
 	OrdererEndpoints []string
@@ -74,7 +73,7 @@ type standardConfigPolicy struct {
 }
 
 // NewCreateChannelTx creates a create channel tx using the provided channel config.
-func NewCreateChannelTx(channelConfig *Channel) (*cb.Envelope, error) {
+func NewCreateChannelTx(channelConfig *Channel, mspConfig *mb.FabricMSPConfig) (*cb.Envelope, error) {
 	var err error
 
 	if channelConfig == nil {
@@ -87,19 +86,29 @@ func NewCreateChannelTx(channelConfig *Channel) (*cb.Envelope, error) {
 		return nil, errors.New("profile's channel ID is required")
 	}
 
-	ct, err := defaultConfigTemplate(channelConfig)
+	config, err := proto.Marshal(mspConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal msp config: %v", err)
+	}
+
+	// mspconf defaults type to FABRIC which implements an X.509 based provider
+	mspconf := &mb.MSPConfig{
+		Config: config,
+	}
+
+	ct, err := defaultConfigTemplate(channelConfig, mspconf)
 	if err != nil {
 		return nil, fmt.Errorf("creating default config template: %v", err)
 	}
 
-	newChannelConfigUpdate, err := newChannelCreateConfigUpdate(channelID, channelConfig, ct)
+	newChannelConfigUpdate, err := newChannelCreateConfigUpdate(channelID, channelConfig, ct, mspconf)
 	if err != nil {
 		return nil, fmt.Errorf("creating channel create config update: %v", err)
 	}
 
 	configUpdate, err := proto.Marshal(newChannelConfigUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling new channel config update: %v", err)
+		return nil, fmt.Errorf("failed marshalling new channel config update: %v", err)
 	}
 
 	newConfigUpdateEnv := &cb.ConfigUpdateEnvelope{
@@ -124,7 +133,7 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIde
 
 	header, err := proto.Marshal(signatureHeader)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling signature header: %v", err)
+		return nil, fmt.Errorf("failed to marshal signature header: %v", err)
 	}
 
 	configSignature := &cb.ConfigSignature{
@@ -133,7 +142,7 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity *SigningIde
 
 	configUpdateBytes, err := proto.Marshal(configUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling config update: %v", err)
+		return nil, fmt.Errorf("failed to marshal config update: %v", err)
 	}
 
 	configSignature.Signature, err = signingIdentity.Sign(
@@ -153,7 +162,7 @@ func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIden
 	signatures ...*cb.ConfigSignature) (*cb.Envelope, error) {
 	update, err := proto.Marshal(configUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling config update: %v", err)
+		return nil, fmt.Errorf("failed to marshal config update: %v", err)
 	}
 
 	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
@@ -180,7 +189,7 @@ func signatureHeader(signingIdentity *SigningIdentity) (*cb.SignatureHeader, err
 
 	idBytes, err := proto.Marshal(&mb.SerializedIdentity{Mspid: signingIdentity.MSPID, IdBytes: buffer.Bytes()})
 	if err != nil {
-		return nil, fmt.Errorf("marshalling serialized identity: %v", err)
+		return nil, fmt.Errorf("failed to marshal serialized identity: %v", err)
 	}
 
 	nonce, err := newNonce()
@@ -207,7 +216,7 @@ func newNonce() ([]byte, error) {
 }
 
 // newChannelGroup defines the root of the channel configuration.
-func newChannelGroup(channelConfig *Channel) (*cb.ConfigGroup, error) {
+func newChannelGroup(channelConfig *Channel, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	var err error
 
 	channelGroup := newConfigGroup()
@@ -248,21 +257,21 @@ func newChannelGroup(channelConfig *Channel) (*cb.ConfigGroup, error) {
 	}
 
 	if channelConfig.Orderer != nil {
-		channelGroup.Groups[OrdererGroupKey], err = NewOrdererGroup(channelConfig.Orderer)
+		channelGroup.Groups[OrdererGroupKey], err = NewOrdererGroup(channelConfig.Orderer, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create orderer group: %v", err)
 		}
 	}
 
 	if channelConfig.Application != nil {
-		channelGroup.Groups[ApplicationGroupKey], err = NewApplicationGroup(channelConfig.Application)
+		channelGroup.Groups[ApplicationGroupKey], err = NewApplicationGroup(channelConfig.Application, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create application group: %v", err)
 		}
 	}
 
 	if channelConfig.Consortiums != nil {
-		channelGroup.Groups[ConsortiumsGroupKey], err = NewConsortiumsGroup(channelConfig.Consortiums)
+		channelGroup.Groups[ConsortiumsGroupKey], err = NewConsortiumsGroup(channelConfig.Consortiums, mspConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create consortiums group: %v", err)
 		}
@@ -276,7 +285,7 @@ func newChannelGroup(channelConfig *Channel) (*cb.ConfigGroup, error) {
 // newOrgConfigGroup returns an config group for a organization.
 // It defines the crypto material for the organization (its MSP).
 // It sets the mod_policy of all elements to "Admins".
-func newOrgConfigGroup(org *Organization) (*cb.ConfigGroup, error) {
+func newOrgConfigGroup(org *Organization, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
 	orgGroup := newConfigGroup()
 	orgGroup.ModPolicy = AdminsPolicyKey
 
@@ -288,17 +297,7 @@ func newOrgConfigGroup(org *Organization) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 
-	conf, err := proto.Marshal(org.MSPConfig)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling msp config: %v", err)
-	}
-
-	// mspConfig defaults type to FABRIC which implements an X.509 based provider
-	mspConfig := &mb.MSPConfig{
-		Config: conf,
-	}
-
-	err = addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	err := addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {
 		return nil, err
 	}
@@ -499,8 +498,8 @@ func mspValue(mspDef *mb.MSPConfig) *standardConfigValue {
 // defaultConfigTemplate generates a config template based on the assumption that
 // the input profile is a channel creation template and no system channel context
 // is available.
-func defaultConfigTemplate(channelConfig *Channel) (*cb.ConfigGroup, error) {
-	channelGroup, err := newChannelGroup(channelConfig)
+func defaultConfigTemplate(channelConfig *Channel, mspConfig *mb.MSPConfig) (*cb.ConfigGroup, error) {
+	channelGroup, err := newChannelGroup(channelConfig, mspConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -518,8 +517,9 @@ func defaultConfigTemplate(channelConfig *Channel) (*cb.ConfigGroup, error) {
 // newChannelCreateConfigUpdate generates a ConfigUpdate which can be sent to the orderer to create a new channel.
 // Optionally, the channel group of the ordering system channel may be passed in, and the resulting ConfigUpdate
 // will extract the appropriate versions from this file.
-func newChannelCreateConfigUpdate(channelID string, channelConfig *Channel, templateConfig *cb.ConfigGroup) (*cb.ConfigUpdate, error) {
-	newChannelGroup, err := newChannelGroup(channelConfig)
+func newChannelCreateConfigUpdate(channelID string, channelConfig *Channel, templateConfig *cb.ConfigGroup,
+	mspConfig *mb.MSPConfig) (*cb.ConfigUpdate, error) {
+	newChannelGroup, err := newChannelGroup(channelConfig, mspConfig)
 	if err != nil {
 		return nil, err
 	}
