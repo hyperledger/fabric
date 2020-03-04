@@ -63,6 +63,7 @@ func TestTLSCA(t *testing.T) {
 		tlsCfg := &tls.Config{
 			RootCAs:      x509.NewCertPool(),
 			Certificates: []tls.Certificate{cert},
+			MaxVersion:   tls.VersionTLS12,
 		}
 		tlsCfg.RootCAs.AppendCertsFromPEM(ca.CertBytes())
 		tlsOpts := grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))

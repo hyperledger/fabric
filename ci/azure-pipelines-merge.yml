@@ -10,7 +10,7 @@ pr: none
 variables:
   GOPATH: $(Agent.BuildDirectory)/go
   PATH: $(Agent.BuildDirectory)/go/bin:/usr/local/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GOVER: 1.12.12
+  GOVER: 1.13.9
 
 jobs:
   - job: UnitTests
