@@ -7,14 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	"bytes"
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -543,48 +545,125 @@ func AddRootCAToMSP(config *cb.Config, rootCA *x509.Certificate, orgName string)
 		return errors.New("certificate must be a CA certificate")
 	}
 
-	org := getApplicationOrg(config, orgName)
-	err := addRootCAToOrgMSP(org, rootCA)
+	org, err := getApplicationOrg(config, orgName)
 	if err != nil {
-		return fmt.Errorf("failed to add rootCA to application org: %v", err)
+		return err
+	}
+	fabricMSPConfig, err := getFabricMSPConfig(org)
+	if err != nil {
+		return fmt.Errorf("getting msp config: %v", err)
+	}
+
+	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootCA.Raw})
+	if err != nil {
+		return err
+	}
+	fabricMSPConfig.RootCerts = append(fabricMSPConfig.RootCerts, certBytes)
+
+	err = addMSPConfigToOrg(org, fabricMSPConfig)
+	if err != nil {
+		return fmt.Errorf("adding msp config to org: %v", err)
 	}
 
 	return nil
 }
 
-// addRootCAToOrgMSP adds a rootCA to org MSP config. It takes a pointer to
-// org MSP config, and modifies in place.
-func addRootCAToOrgMSP(org *cb.ConfigGroup, rootCA *x509.Certificate) error {
-	configValue := org.Values[MSPKey]
+func getFabricMSPConfig(org *cb.ConfigGroup) (*mb.FabricMSPConfig, error) {
+	configValue, err := getOrgMSPValue(org)
+	if err != nil {
+		return nil, err
+	}
 
 	mspConfig := &mb.MSPConfig{}
-	err := proto.Unmarshal(configValue.Value, mspConfig)
+	err = proto.Unmarshal(configValue.Value, mspConfig)
 	if err != nil {
-		return fmt.Errorf("unmarshalling mspConfig: %v", err)
+		return nil, fmt.Errorf("unmarshalling mspConfig: %v", err)
 	}
 
 	fabricMSPConfig := &mb.FabricMSPConfig{}
 	err = proto.Unmarshal(mspConfig.Config, fabricMSPConfig)
 	if err != nil {
-		return fmt.Errorf("unmarshalling mspConfig: %v", err)
+		return nil, fmt.Errorf("unmarshalling mspConfig: %v", err)
 	}
 
-	buffer := bytes.NewBuffer(nil)
-	err = pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: rootCA.Raw})
+	return fabricMSPConfig, nil
+}
+
+func addMSPConfigToOrg(org *cb.ConfigGroup, fabricMSPConfig *mb.FabricMSPConfig) error {
+	configValue, err := getOrgMSPValue(org)
 	if err != nil {
 		return err
 	}
-	fabricMSPConfig.RootCerts = append(fabricMSPConfig.RootCerts, buffer.Bytes())
+
+	mspConfig := &mb.MSPConfig{}
+	err = proto.Unmarshal(configValue.Value, mspConfig)
+	if err != nil {
+		return fmt.Errorf("unmarshalling mspConfig: %v", err)
+	}
 
 	serializedMSPConfig, err := proto.Marshal(fabricMSPConfig)
 	if err != nil {
 		return fmt.Errorf("marshalling updated mspConfig: %v", err)
 	}
+
 	mspConfig.Config = serializedMSPConfig
 
 	err = addValue(org, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func getOrgMSPValue(org *cb.ConfigGroup) (*cb.ConfigValue, error) {
+	configValue, ok := org.Values[MSPKey]
+	if !ok {
+		return nil, errors.New("org doesn't have MSP value")
+	}
+	return configValue, nil
+}
+
+// RevokeCertificateFromMSP takes a variadic list of x509 certificates, creates
+// a new CRL signed by the specified ca certificate and private key, and appends
+// it to the revocation list for the specified application org MSP.
+func RevokeCertificateFromMSP(config *cb.Config, orgName string, caCert *x509.Certificate, caPrivKey *ecdsa.PrivateKey, certs ...*x509.Certificate) error {
+	org, err := getApplicationOrg(config, orgName)
+	if err != nil {
+		return err
+	}
+
+	fabricMSPConfig, err := getFabricMSPConfig(org)
+	if err != nil {
+		return fmt.Errorf("getting msp config: %v", err)
+	}
+
+	// TODO validate that this certificate was issued by this MSP
+
+	revokeTime := time.Now()
+	revokedCertificates := make([]pkix.RevokedCertificate, len(certs))
+	for i, cert := range certs {
+		revokedCertificates[i] = pkix.RevokedCertificate{
+			SerialNumber:   cert.SerialNumber,
+			RevocationTime: revokeTime,
+		}
+	}
+
+	crlBytes, err := caCert.CreateCRL(rand.Reader, caPrivKey, revokedCertificates, revokeTime, revokeTime.Add(365*24*time.Hour))
+	if err != nil {
+		return err
+	}
+
+	pemCRLBytes := pem.EncodeToMemory(&pem.Block{Type: "X509 CRL", Bytes: crlBytes})
+	if err != nil {
+		return err
+	}
+
+	fabricMSPConfig.RevocationList = append(fabricMSPConfig.RevocationList, pemCRLBytes)
+
+	err = addMSPConfigToOrg(org, fabricMSPConfig)
+	if err != nil {
+		return fmt.Errorf("adding msp config to org: %v", err)
 	}
 
 	return nil

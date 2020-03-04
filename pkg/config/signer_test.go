@@ -26,7 +26,7 @@ import (
 func TestSign(t *testing.T) {
 	t.Parallel()
 
-	cert, privateKey := generateCertAndPrivateKey()
+	cert, privateKey := generateCACertAndPrivateKey("org1.example.com")
 
 	tests := []struct {
 		spec        string
@@ -76,7 +76,7 @@ func TestSign(t *testing.T) {
 func TestPublic(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
-	cert, privateKey := generateCertAndPrivateKey()
+	cert, privateKey := generateCACertAndPrivateKey("org1.example.com")
 	signingIdentity := &SigningIdentity{
 		Certificate: cert,
 		PrivateKey:  privateKey,
@@ -148,23 +148,33 @@ func TestToLowS(t *testing.T) {
 	}
 }
 
-func generateCertAndPrivateKey() (*x509.Certificate, crypto.PrivateKey) {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		log.Fatalf("Failed to generate private key: %s", err)
-	}
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if err != nil {
-		log.Fatalf("Failed to generate serial number: %s", err)
-	}
-
+// generateCACertAndPrivateKey returns CA cert and private key.
+func generateCACertAndPrivateKey(orgName string) (*x509.Certificate, *ecdsa.PrivateKey) {
+	serialNumber := generateSerialNumber()
 	template := &x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			CommonName:   "Wile E. Coyote",
-			Organization: []string{"Acme Co"},
+			CommonName:   "ca." + orgName,
+			Organization: []string{orgName},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+	return generateCertAndPrivateKey(template, template, nil)
+}
+
+// generateCertAndPrivateKeyFromCACert returns a cert and private key signed by the given CACert.
+func generateCertAndPrivateKeyFromCACert(orgName string, caCert *x509.Certificate, privateKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey) {
+	serialNumber := generateSerialNumber()
+	template := &x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			CommonName:   "user." + orgName,
+			Organization: []string{orgName},
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
@@ -172,8 +182,20 @@ func generateCertAndPrivateKey() (*x509.Certificate, crypto.PrivateKey) {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
+	return generateCertAndPrivateKey(template, caCert, privateKey)
+}
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+func generateCertAndPrivateKey(template, parent *x509.Certificate, parentPriv *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey) {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		log.Fatalf("Failed to generate private key: %s", err)
+	}
+
+	if parentPriv == nil {
+		// create self-signed cert
+		parentPriv = priv
+	}
+	derBytes, err := x509.CreateCertificate(rand.Reader, template, parent, &priv.PublicKey, parentPriv)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
@@ -183,4 +205,15 @@ func generateCertAndPrivateKey() (*x509.Certificate, crypto.PrivateKey) {
 	}
 
 	return cert, priv
+}
+
+// generateSerialNumber returns a random serialNumber
+func generateSerialNumber() *big.Int {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		log.Fatalf("Failed to generate serial number: %s", err)
+	}
+
+	return serialNumber
 }

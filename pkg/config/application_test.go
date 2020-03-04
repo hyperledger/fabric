@@ -637,10 +637,14 @@ func baseApplication() Application {
 		Policies: standardPolicies(),
 		Organizations: []Organization{
 			{
-				Name: "Org1",
+				Name:     "Org1",
+				Policies: applicationOrgStandardPolicies(),
+				MSP:      baseMSP(),
 			},
 			{
-				Name: "Org2",
+				Name:     "Org2",
+				Policies: applicationOrgStandardPolicies(),
+				MSP:      baseMSP(),
 			},
 		},
 		Capabilities: map[string]bool{
