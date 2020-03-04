@@ -22,7 +22,7 @@ func TestSignConfigUpdate(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	cert, privateKey := generateCertAndPrivateKey()
+	cert, privateKey := generateCACertAndPrivateKey("org1.example.com")
 	signingIdentity := SigningIdentity{
 		Certificate: cert,
 		PrivateKey:  privateKey,
@@ -405,7 +405,7 @@ func TestCreateSignedConfigUpdateEnvelope(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	// create signingIdentity
-	cert, privateKey := generateCertAndPrivateKey()
+	cert, privateKey := generateCACertAndPrivateKey("org1.example.com")
 	signingIdentity := SigningIdentity{
 		Certificate: cert,
 		PrivateKey:  privateKey,
@@ -446,7 +446,7 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	// create signingIdentity
-	cert, privateKey := generateCertAndPrivateKey()
+	cert, privateKey := generateCACertAndPrivateKey("org1.example.com")
 	signingIdentity := SigningIdentity{
 		Certificate: cert,
 		PrivateKey:  privateKey,
@@ -650,7 +650,9 @@ func ordererStandardPolicies() map[string]Policy {
 	return policies
 }
 
-func baseChannelGroup() (*cb.ConfigGroup, error) {
+// baseApplicationChannelGroup creates a channel config group
+// that only contains an Application group.
+func baseApplicationChannelGroup() (*cb.ConfigGroup, error) {
 	channelGroup := newConfigGroup()
 
 	application := baseApplication()
@@ -667,14 +669,7 @@ func baseChannelGroup() (*cb.ConfigGroup, error) {
 		applicationGroup.Groups[org.Name] = orgGroup
 	}
 
-	orderer := baseOrderer()
-	ordererGroup, err := newOrdererGroup(orderer)
-	if err != nil {
-		return nil, err
-	}
-
 	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
-	channelGroup.Groups[OrdererGroupKey] = ordererGroup
 
 	return channelGroup, nil
 }
