@@ -219,7 +219,7 @@ func serve(args []string) error {
 	opsSystem := newOperationsSystem(coreConfig)
 	err = opsSystem.Start()
 	if err != nil {
-		return errors.WithMessage(err, "failed to initialize operations subsystems")
+		return errors.WithMessage(err, "failed to initialize operations subsystem")
 	}
 	defer opsSystem.Stop()
 
