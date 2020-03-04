@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -51,6 +50,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
+
+const TIMEOUT = 45 * time.Second
 
 func init() {
 	util.SetupTestLogging()
@@ -169,16 +170,16 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 		ElectionLeaderAliveThreshold:     election.DefLeaderAliveThreshold,
 		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
 	}
-	gossips := startPeers(t, serviceConfig, n, 0, 1, 2, 3, 4)
+	gossips := startPeers(serviceConfig, n, 0, 1, 2, 3, 4)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
-	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
+	addPeersToChannel(channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*20, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, TIMEOUT, time.Second*2)
 
 	services := make([]*electionService, n)
 
@@ -204,7 +205,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	}
 
 	// Is single leader was elected.
-	assert.True(t, waitForLeaderElection(t, services, time.Second*30, time.Second*2), "One leader should be selected")
+	assert.True(t, waitForLeaderElection(services, time.Second*30, time.Second*2), "One leader should be selected")
 
 	startsNum := 0
 	for i := 0; i < n; i++ {
@@ -235,16 +236,15 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
 	}
 	n := 2
-	gossips := startPeers(t, serviceConfig, n, 0, 1)
+	gossips := startPeers(serviceConfig, n, 0, 1)
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
+	addPeersToChannel(channelName, gossips, peerIndexes)
 
-	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
-
-	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, TIMEOUT, time.Second*2)
 
 	store := newTransientStore(t)
 	defer store.tearDown()
@@ -295,7 +295,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
 	}
 	n := 2
-	gossips := startPeers(t, serviceConfig, n, 0, 1)
+	gossips := startPeers(serviceConfig, n, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -303,9 +303,9 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 		peerIndexes[i] = i
 	}
 
-	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
+	addPeersToChannel(channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, TIMEOUT, time.Second*2)
 
 	store := newTransientStore(t)
 	defer store.tearDown()
@@ -343,7 +343,7 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 		ElectionLeaderElectionDuration:   election.DefLeaderElectionDuration,
 	}
 	n := 2
-	gossips := startPeers(t, serviceConfig, n, 0, 1)
+	gossips := startPeers(serviceConfig, n, 0, 1)
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
@@ -351,9 +351,9 @@ func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
 		peerIndexes[i] = i
 	}
 
-	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
+	addPeersToChannel(channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, TIMEOUT, time.Second*2)
 
 	store := newTransientStore(t)
 	defer store.tearDown()
@@ -472,16 +472,16 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	}
 
 	n := 10
-	gossips := startPeers(t, serviceConfig, n, 0, 1, 2, 3, 4)
+	gossips := startPeers(serviceConfig, n, 0, 1, 2, 3, 4)
 	// Joining all peers to first channel
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
-	addPeersToChannel(t, n, channelName, gossips, peerIndexes)
+	addPeersToChannel(channelName, gossips, peerIndexes)
 
-	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, TIMEOUT, time.Second*2)
 
 	logger.Warning("Starting leader election services")
 
@@ -497,7 +497,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	logger.Warning("Waiting for leader election")
 
-	assert.True(t, waitForLeaderElection(t, services, time.Second*30, time.Second*2), "One leader should be selected")
+	assert.True(t, waitForLeaderElection(services, time.Second*30, time.Second*2), "One leader should be selected")
 
 	startsNum := 0
 	for i := 0; i < n; i++ {
@@ -514,13 +514,13 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	secondChannelPeerIndexes := []int{1, 3, 5, 7}
 	secondChannelName := "chanB"
 	secondChannelServices := make([]*electionService, len(secondChannelPeerIndexes))
-	addPeersToChannel(t, n, secondChannelName, gossips, secondChannelPeerIndexes)
+	addPeersToChannel(secondChannelName, gossips, secondChannelPeerIndexes)
 
 	secondChannelGossips := make([]*gossipGRPC, 0)
 	for _, i := range secondChannelPeerIndexes {
 		secondChannelGossips = append(secondChannelGossips, gossips[i])
 	}
-	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips, len(secondChannelGossips), time.Second*30, time.Millisecond*100)
+	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips, len(secondChannelGossips), TIMEOUT, time.Millisecond*100)
 
 	for idx, i := range secondChannelPeerIndexes {
 		secondChannelServices[idx] = &electionService{nil, false, 0}
@@ -528,8 +528,8 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 			gossips[i].newLeaderElectionComponent(secondChannelName, secondChannelServices[idx].callback, electionMetrics)
 	}
 
-	assert.True(t, waitForLeaderElection(t, secondChannelServices, time.Second*30, time.Second*2), "One leader should be selected for chanB")
-	assert.True(t, waitForLeaderElection(t, services, time.Second*30, time.Second*2), "One leader should be selected for chanA")
+	assert.True(t, waitForLeaderElection(secondChannelServices, time.Second*30, time.Second*2), "One leader should be selected for chanB")
+	assert.True(t, waitForLeaderElection(services, time.Second*30, time.Second*2), "One leader should be selected for chanA")
 
 	startsNum = 0
 	for i := 0; i < n; i++ {
@@ -554,11 +554,11 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	stopPeers(gossips[:2])
 
-	waitForFullMembershipOrFailNow(t, channelName, gossips[2:], n-2, time.Second*30, time.Millisecond*100)
-	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips[1:], len(secondChannelGossips)-1, time.Second*30, time.Millisecond*100)
+	waitForFullMembershipOrFailNow(t, channelName, gossips[2:], n-2, TIMEOUT, time.Millisecond*100)
+	waitForFullMembershipOrFailNow(t, secondChannelName, secondChannelGossips[1:], len(secondChannelGossips)-1, TIMEOUT, time.Millisecond*100)
 
-	assert.True(t, waitForLeaderElection(t, services[2:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanA")
-	assert.True(t, waitForLeaderElection(t, secondChannelServices[1:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanB")
+	assert.True(t, waitForLeaderElection(services[2:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanA")
+	assert.True(t, waitForLeaderElection(secondChannelServices[1:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanB")
 
 	startsNum = 0
 	for i := 2; i < n; i++ {
@@ -629,7 +629,7 @@ func waitForFullMembershipOrFailNow(t *testing.T, channel string, gossips []*gos
 	t.Fatalf("Failed to establish full channel membership. Only %d out of %d peers have full membership", correctPeers, peersNum)
 }
 
-func waitForMultipleLeadersElection(t *testing.T, services []*electionService, leadersNum int, timeout time.Duration, testPollInterval time.Duration) bool {
+func waitForMultipleLeadersElection(services []*electionService, leadersNum int, timeout time.Duration, testPollInterval time.Duration) bool {
 	logger.Warning("Waiting for", leadersNum, "leaders")
 	end := time.Now().Add(timeout)
 	correctNumberOfLeadersFound := false
@@ -658,68 +658,32 @@ func waitForMultipleLeadersElection(t *testing.T, services []*electionService, l
 	return false
 }
 
-func waitForLeaderElection(t *testing.T, services []*electionService, timeout time.Duration, testPollInterval time.Duration) bool {
-	return waitForMultipleLeadersElection(t, services, 1, timeout, testPollInterval)
-}
-
-func waitUntilOrFailBlocking(t *testing.T, f func(), timeout time.Duration) {
-	successChan := make(chan struct{}, 1)
-	go func() {
-		f()
-		successChan <- struct{}{}
-	}()
-	select {
-	case <-time.NewTimer(timeout).C:
-		break
-	case <-successChan:
-		return
-	}
-	util.PrintStackTrace()
-	assert.Fail(t, "Timeout expired!")
+func waitForLeaderElection(services []*electionService, timeout time.Duration, testPollInterval time.Duration) bool {
+	return waitForMultipleLeadersElection(services, 1, timeout, testPollInterval)
 }
 
 func stopServices(services []*electionService) {
-	stoppingWg := sync.WaitGroup{}
-	stoppingWg.Add(len(services))
-	for i, sI := range services {
-		go func(i int, s_i election.LeaderElectionService) {
-			defer stoppingWg.Done()
-			s_i.Stop()
-		}(i, sI)
+	for _, service := range services {
+		service.Stop()
 	}
-	stoppingWg.Wait()
-	time.Sleep(time.Second * time.Duration(2))
 }
 
 func stopPeers(peers []*gossipGRPC) {
-	stoppingWg := sync.WaitGroup{}
-	stoppingWg.Add(len(peers))
-	for i, pI := range peers {
-		go func(i int, p_i *GossipService) {
-			defer stoppingWg.Done()
-			p_i.Stop()
-		}(i, pI.GossipService)
+	for _, peer := range peers {
+		peer.Stop()
 	}
-	stoppingWg.Wait()
-	time.Sleep(time.Second * time.Duration(2))
 }
 
-func addPeersToChannel(t *testing.T, n int, channel string, peers []*gossipGRPC, peerIndexes []int) {
+func addPeersToChannel(channel string, peers []*gossipGRPC, peerIndexes []int) {
 	jcm := &joinChanMsg{}
 
-	wg := sync.WaitGroup{}
 	for _, i := range peerIndexes {
-		wg.Add(1)
-		go func(i int) {
-			peers[i].JoinChan(jcm, gossipcommon.ChannelID(channel))
-			peers[i].UpdateLedgerHeight(0, gossipcommon.ChannelID(channel))
-			wg.Done()
-		}(i)
+		peers[i].JoinChan(jcm, gossipcommon.ChannelID(channel))
+		peers[i].UpdateLedgerHeight(0, gossipcommon.ChannelID(channel))
 	}
-	waitUntilOrFailBlocking(t, wg.Wait, time.Second*10)
 }
 
-func startPeers(t *testing.T, serviceConfig *ServiceConfig, n int, boot ...int) []*gossipGRPC {
+func startPeers(serviceConfig *ServiceConfig, n int, boot ...int) []*gossipGRPC {
 	var ports []int
 	var grpcs []*comm.GRPCServer
 	var certs []*gossipcommon.TLSCertificates
@@ -739,15 +703,9 @@ func startPeers(t *testing.T, serviceConfig *ServiceConfig, n int, boot ...int) 
 	}
 
 	peers := make([]*gossipGRPC, n)
-	wg := sync.WaitGroup{}
 	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func(i int) {
-			peers[i] = newGossipInstance(serviceConfig, ports[i], i, grpcs[i], certs[i], secDialOpts[i], 100, bootPorts...)
-			wg.Done()
-		}(i)
+		peers[i] = newGossipInstance(serviceConfig, ports[i], i, grpcs[i], certs[i], secDialOpts[i], 100, bootPorts...)
 	}
-	waitUntilOrFailBlocking(t, wg.Wait, time.Second*10)
 
 	return peers
 }
