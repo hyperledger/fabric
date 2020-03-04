@@ -57,10 +57,7 @@ func newApplicationGroup(application *Application) (*cb.ConfigGroup, error) {
 	}
 
 	for _, org := range application.Organizations {
-		applicationGroup.Groups[org.Name], err = newOrgConfigGroup(org)
-		if err != nil {
-			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
-		}
+		applicationGroup.Groups[org.Name] = newConfigGroup()
 	}
 
 	return applicationGroup, nil

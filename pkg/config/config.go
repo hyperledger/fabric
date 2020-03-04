@@ -73,8 +73,8 @@ type standardConfigPolicy struct {
 	value *cb.Policy
 }
 
-// NewCreateChannelTx creates a create channel tx using the provided channel configuration
-// and returns an unsigned envelope for a channel creation transaction.
+// NewCreateChannelTx creates a create channel tx using the provided application channel
+// configuration and returns an unsigned envelope for an application channel creation transaction.
 func NewCreateChannelTx(channelConfig *Channel) (*cb.Envelope, error) {
 	var err error
 
@@ -213,45 +213,10 @@ func newChannelGroup(channelConfig *Channel) (*cb.ConfigGroup, error) {
 
 	channelGroup := newConfigGroup()
 
-	if err = addPolicies(channelGroup, channelConfig.Policies, AdminsPolicyKey); err != nil {
-		return nil, fmt.Errorf("failed to add policies to channel group: %v", err)
-	}
-
-	err = addValue(channelGroup, hashingAlgorithmValue(), AdminsPolicyKey)
-	if err != nil {
-		return nil, err
-	}
-
-	err = addValue(channelGroup, blockDataHashingStructureValue(), AdminsPolicyKey)
-	if err != nil {
-		return nil, err
-	}
-
-	if channelConfig.Orderer != nil && len(channelConfig.Orderer.Addresses) > 0 {
-		err = addValue(channelGroup, ordererAddressesValue(channelConfig.Orderer.Addresses), ordererAdminsPolicyName)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if channelConfig.Consortium != "" {
-		err = addValue(channelGroup, consortiumValue(channelConfig.Consortium), AdminsPolicyKey)
+		err = addValue(channelGroup, consortiumValue(channelConfig.Consortium), "")
 		if err != nil {
 			return nil, err
-		}
-	}
-
-	if len(channelConfig.Capabilities) > 0 {
-		err = addValue(channelGroup, capabilitiesValue(channelConfig.Capabilities), AdminsPolicyKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if channelConfig.Orderer != nil {
-		channelGroup.Groups[OrdererGroupKey], err = newOrdererGroup(channelConfig.Orderer)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create orderer group: %v", err)
 		}
 	}
 
@@ -261,15 +226,6 @@ func newChannelGroup(channelConfig *Channel) (*cb.ConfigGroup, error) {
 			return nil, fmt.Errorf("failed to create application group: %v", err)
 		}
 	}
-
-	if channelConfig.Consortiums != nil {
-		channelGroup.Groups[ConsortiumsGroupKey], err = newConsortiumsGroup(channelConfig.Consortiums)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create consortiums group: %v", err)
-		}
-	}
-
-	channelGroup.ModPolicy = AdminsPolicyKey
 
 	return channelGroup, nil
 }
