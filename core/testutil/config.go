@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package testutil
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"runtime"
@@ -24,8 +23,6 @@ var configLogger = flogging.MustGetLogger("config")
 
 // SetupTestConfig setup the config during test execution
 func SetupTestConfig() {
-	flag.Parse()
-
 	// Now set the configuration file
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()

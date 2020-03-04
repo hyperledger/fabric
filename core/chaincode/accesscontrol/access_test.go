@@ -105,7 +105,8 @@ type ccClient struct {
 
 func newClient(t *testing.T, port int, cert *tls.Certificate, peerCACert []byte) (*ccClient, error) {
 	tlsCfg := &tls.Config{
-		RootCAs: x509.NewCertPool(),
+		RootCAs:    x509.NewCertPool(),
+		MaxVersion: tls.VersionTLS12,
 	}
 
 	tlsCfg.RootCAs.AppendCertsFromPEM(peerCACert)
