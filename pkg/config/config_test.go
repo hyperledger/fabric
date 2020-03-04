@@ -13,7 +13,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	. "github.com/onsi/gomega"
 )
@@ -149,6 +148,17 @@ func TestNewCreateChannelTx(t *testing.T) {
 										"value": {
 											"capabilities": {
 												"V1_3": {}
+											}
+										},
+										"version": "0"
+									},
+									"ACLs": {
+										"mod_policy": "Admins",
+										"value": {
+											"acls": {
+												"acl1": {
+													"policy_ref": "hi"
+												}
 											}
 										},
 										"version": "0"
@@ -319,16 +329,6 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		err        error
 	}{
 		{
-			testName: "When creating the default config template with no policies defined fails",
-			profileMod: func() *Channel {
-				profile := baseProfile()
-				profile.Policies = nil
-				return profile
-			},
-			err: errors.New("creating default config template: failed to add policies to " +
-				"channel group: no policies defined"),
-		},
-		{
 			testName: "When creating the default config template with no ApplicationGroupKey defined fails",
 			profileMod: func() *Channel {
 				profile := baseProfile()
@@ -342,40 +342,40 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When creating the default config template with no Admins policies defined fails",
 			profileMod: func() *Channel {
 				profile := baseProfile()
-				delete(profile.Policies, AdminsPolicyKey)
+				delete(profile.Application.Policies, AdminsPolicyKey)
 				return profile
 			},
-			err: errors.New("creating default config template: failed to add policies to channel group: " +
+			err: errors.New("creating default config template: failed to create application group: " +
 				"no Admins policy defined"),
 		},
 		{
 			testName: "When creating the default config template with no Readers policies defined fails",
 			profileMod: func() *Channel {
 				profile := baseProfile()
-				delete(profile.Policies, ReadersPolicyKey)
+				delete(profile.Application.Policies, ReadersPolicyKey)
 				return profile
 			},
-			err: errors.New("creating default config template: failed to add policies to channel group: " +
+			err: errors.New("creating default config template: failed to create application group: " +
 				"no Readers policy defined"),
 		},
 		{
 			testName: "When creating the default config template with no Writers policies defined fails",
 			profileMod: func() *Channel {
 				profile := baseProfile()
-				delete(profile.Policies, WritersPolicyKey)
+				delete(profile.Application.Policies, WritersPolicyKey)
 				return profile
 			},
-			err: errors.New("creating default config template: failed to add policies to channel group: " +
+			err: errors.New("creating default config template: failed to create application group: " +
 				"no Writers policy defined"),
 		},
 		{
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
 			profileMod: func() *Channel {
 				profile := baseProfile()
-				profile.Policies[ReadersPolicyKey].Rule = "ALL"
+				profile.Application.Policies[ReadersPolicyKey].Rule = "ALL"
 				return profile
 			},
-			err: errors.New("creating default config template: failed to add policies to channel group: " +
+			err: errors.New("creating default config template: failed to create application group: " +
 				"invalid implicit meta policy rule: 'ALL': expected two space separated " +
 				"tokens, but got 1"),
 		},
@@ -383,10 +383,10 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
 			profileMod: func() *Channel {
 				profile := baseProfile()
-				profile.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				profile.Application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
 				return profile
 			},
-			err: errors.New("creating default config template: failed to add policies to channel group: " +
+			err: errors.New("creating default config template: failed to create application group: " +
 				"invalid implicit meta policy rule: 'ANYY Readers': unknown rule type " +
 				"'ANYY', expected ALL, ANY, or MAJORITY"),
 		},
@@ -394,11 +394,11 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When creating the default config template with SignatureTypePolicy and bad rule fails",
 			profileMod: func() *Channel {
 				profile := baseProfile()
-				profile.Policies[ReadersPolicyKey].Type = SignaturePolicyType
-				profile.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				profile.Application.Policies[ReadersPolicyKey].Type = SignaturePolicyType
+				profile.Application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
 				return profile
 			},
-			err: errors.New("creating default config template: failed to add policies to channel group: " +
+			err: errors.New("creating default config template: failed to create application group: " +
 				"invalid signature policy rule: 'ANYY Readers': Cannot transition " +
 				"token types from VARIABLE [ANYY] to VARIABLE [Readers]"),
 		},
@@ -406,10 +406,10 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When creating the default config template with an unknown policy type fails",
 			profileMod: func() *Channel {
 				profile := baseProfile()
-				profile.Policies[ReadersPolicyKey].Type = "GreenPolicy"
+				profile.Application.Policies[ReadersPolicyKey].Type = "GreenPolicy"
 				return profile
 			},
-			err: errors.New("creating default config template: failed to add policies to channel group: " +
+			err: errors.New("creating default config template: failed to create application group: " +
 				"unknown policy type: GreenPolicy"),
 		},
 		{
@@ -427,39 +427,6 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				return profile
 			},
 			err: errors.New("profile's channel ID is required"),
-		},
-		{
-			testName: "When no BlockValidation policy is defined",
-			profileMod: func() *Channel {
-				profile := baseProfile()
-				profile.Orderer = &Orderer{
-					OrdererType: ConsensusTypeSolo,
-					Policies:    standardPolicies(),
-				}
-				return profile
-			},
-			err: errors.New("creating default config template: " +
-				"failed to create orderer group: no BlockValidation policy defined"),
-		},
-		{
-			testName: "When creating the consortiums group fails",
-			profileMod: func() *Channel {
-				profile := baseProfile()
-				profile.Consortium = ConsortiumsGroupKey
-				profile.Consortiums = []*Consortium{
-					{
-						Name: "Consortiums",
-						Organizations: []*Organization{
-							{Name: "Org1"},
-							{Name: "Org2"},
-						},
-					},
-				}
-				return profile
-			},
-			err: errors.New("creating default config template: " +
-				"failed to create consortiums group: " +
-				"org group 'Org1': no policies defined"),
 		},
 		{
 			testName: "When creating the application group fails",
@@ -580,85 +547,6 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 	}
 }
 
-func baseProfile() *Channel {
-	return &Channel{
-		ChannelID:  "testchannel",
-		Consortium: "SampleConsortium",
-		Application: &Application{
-			Policies: standardPolicies(),
-			Organizations: []*Organization{
-				{
-					Name:      "Org1",
-					ID:        "Org1MSP",
-					Policies:  applicationOrgStandardPolicies(),
-					MSPConfig: &mb.FabricMSPConfig{},
-				},
-				{
-					Name:      "Org2",
-					ID:        "Org2MSP",
-					Policies:  applicationOrgStandardPolicies(),
-					MSPConfig: &mb.FabricMSPConfig{},
-				},
-			},
-			Capabilities: map[string]bool{
-				"V1_3": true,
-			},
-		},
-		Capabilities: map[string]bool{"V2_0": true},
-		Policies:     standardPolicies(),
-	}
-}
-
-func standardPolicies() map[string]*Policy {
-	return map[string]*Policy{
-		ReadersPolicyKey: {
-			Type: ImplicitMetaPolicyType,
-			Rule: "ANY Readers",
-		},
-		WritersPolicyKey: {
-			Type: ImplicitMetaPolicyType,
-			Rule: "ANY Writers",
-		},
-		AdminsPolicyKey: {
-			Type: ImplicitMetaPolicyType,
-			Rule: "MAJORITY Admins",
-		},
-	}
-}
-
-func orgStandardPolicies() map[string]*Policy {
-	policies := standardPolicies()
-
-	policies[EndorsementPolicyKey] = &Policy{
-		Type: ImplicitMetaPolicyType,
-		Rule: "MAJORITY Endorsement",
-	}
-
-	return policies
-}
-
-func applicationOrgStandardPolicies() map[string]*Policy {
-	policies := orgStandardPolicies()
-
-	policies[LifecycleEndorsementPolicyKey] = &Policy{
-		Type: ImplicitMetaPolicyType,
-		Rule: "MAJORITY Endorsement",
-	}
-
-	return policies
-}
-
-func ordererStandardPolicies() map[string]*Policy {
-	policies := standardPolicies()
-
-	policies[BlockValidationPolicyKey] = &Policy{
-		Type: ImplicitMetaPolicyType,
-		Rule: "ANY Writers",
-	}
-
-	return policies
-}
-
 func TestNewOrgConfigGroup(t *testing.T) {
 	t.Parallel()
 
@@ -729,9 +617,9 @@ func TestNewOrgConfigGroup(t *testing.T) {
 		}
 	},
 	"values": {
-		"Endpoints": {
+		"AnchorPeers": {
 			"mod_policy": "Admins",
-			"value": "Cg8xMjMuNDUuNjc3OjgwODA=",
+			"value": "CgkKBWhvc3QxEHs=",
 			"version": "0"
 		},
 		"MSP": {
@@ -744,7 +632,6 @@ func TestNewOrgConfigGroup(t *testing.T) {
 }
 `
 		org := baseProfile().Application.Organizations[0]
-		org.OrdererEndpoints = []string{"123.45.677:8080"}
 		configGroup, err := newOrgConfigGroup(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 
@@ -904,4 +791,64 @@ func TestComputeUpdateFailures(t *testing.T) {
 			gt.Expect(configUpdate).To(BeNil())
 		})
 	}
+}
+
+func baseProfile() *Channel {
+	return &Channel{
+		ChannelID:    "testchannel",
+		Consortium:   "SampleConsortium",
+		Application:  baseApplication(),
+		Capabilities: map[string]bool{"V2_0": true},
+		Policies:     standardPolicies(),
+	}
+}
+
+func standardPolicies() map[string]*Policy {
+	return map[string]*Policy{
+		ReadersPolicyKey: {
+			Type: ImplicitMetaPolicyType,
+			Rule: "ANY Readers",
+		},
+		WritersPolicyKey: {
+			Type: ImplicitMetaPolicyType,
+			Rule: "ANY Writers",
+		},
+		AdminsPolicyKey: {
+			Type: ImplicitMetaPolicyType,
+			Rule: "MAJORITY Admins",
+		},
+	}
+}
+
+func orgStandardPolicies() map[string]*Policy {
+	policies := standardPolicies()
+
+	policies[EndorsementPolicyKey] = &Policy{
+		Type: ImplicitMetaPolicyType,
+		Rule: "MAJORITY Endorsement",
+	}
+
+	return policies
+}
+
+func applicationOrgStandardPolicies() map[string]*Policy {
+	policies := orgStandardPolicies()
+
+	policies[LifecycleEndorsementPolicyKey] = &Policy{
+		Type: ImplicitMetaPolicyType,
+		Rule: "MAJORITY Endorsement",
+	}
+
+	return policies
+}
+
+func ordererStandardPolicies() map[string]*Policy {
+	policies := standardPolicies()
+
+	policies[BlockValidationPolicyKey] = &Policy{
+		Type: ImplicitMetaPolicyType,
+		Rule: "ANY Writers",
+	}
+
+	return policies
 }
