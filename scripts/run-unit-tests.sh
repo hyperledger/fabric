@@ -19,9 +19,6 @@ serial_packages=(
     "github.com/hyperledger/fabric/gossip/..."
 )
 
-# packages which need to be tested with build tag pluginsenabled
-plugin_packages=()
-
 # packages which need to be tested with build tag pkcs11
 pkcs11_packages=(
     "github.com/hyperledger/fabric/bccsp/..."
@@ -196,11 +193,10 @@ main() {
     fi
 
     # expand the package specs into arrays of packages
-    local -a candidates packages packages_with_plugins packages_with_pkcs11
+    local -a candidates packages packages_with_pkcs11
     while IFS= read -r pkg; do candidates+=("$pkg"); done < <(go list "${package_spec[@]}")
     while IFS= read -r pkg; do packages+=("$pkg"); done < <(list_and_filter "${package_spec[@]}")
     while IFS= read -r pkg; do contains_element "$pkg" "${candidates[@]}" && packages+=("$pkg"); done < <(list_changed_conditional)
-    while IFS= read -r pkg; do contains_element "$pkg" "${packages[@]}" && packages_with_plugins+=("$pkg"); done < <(list_and_filter "${plugin_packages[@]}")
     while IFS= read -r pkg; do contains_element "$pkg" "${packages[@]}" && packages_with_pkcs11+=("$pkg"); done < <(list_and_filter "${pkcs11_packages[@]}")
 
     local all_packages=( "${packages[@]}" "${packages_with_pkcs11[@]}" "${packages_with_pkcs11[@]}" )
@@ -209,12 +205,10 @@ main() {
     elif [ "${JOB_TYPE}" = "PROFILE" ]; then
         echo "mode: set" > profile.cov
         [ "${#packages}" -eq 0 ] || run_tests_with_coverage "${packages[@]}"
-        [ "${#packages_with_plugins}" -eq 0 ] || GO_TAGS="${GO_TAGS} pluginsenabled" run_tests_with_coverage "${packages_with_plugins[@]}"
         [ "${#packages_with_pkcs11}" -eq 0 ] || GO_TAGS="${GO_TAGS} pkcs11" run_tests_with_coverage "${packages_with_pkcs11[@]}"
         gocov convert profile.cov | gocov-xml > report.xml
     else
         [ "${#packages}" -eq 0 ] || run_tests "${packages[@]}"
-        [ "${#packages_with_plugins}" -eq 0 ] || GO_TAGS="${GO_TAGS} pluginsenabled" run_tests "${packages_with_plugins[@]}"
         [ "${#packages_with_pkcs11}" -eq 0 ] || GO_TAGS="${GO_TAGS} pkcs11" run_tests "${packages_with_pkcs11[@]}"
     fi
 }
