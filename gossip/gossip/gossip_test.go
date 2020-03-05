@@ -1063,18 +1063,13 @@ func TestDataLeakage(t *testing.T) {
 	go waitForTestCompletion(&stopped, t)
 
 	peers := make([]*gossipGRPC, n)
-	wg := sync.WaitGroup{}
 	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func(i int) {
-			totPeers := append([]int(nil), ports[:i]...)
-			bootPeers := append(totPeers, ports[i+1:]...)
-			peers[i] = newGossipInstanceWithGrpcMcsMetrics(i, ports[i], grpcs[i], certs[i], secDialOpts[i], 100, mcs, metrics, bootPeers...)
-			wg.Done()
-		}(i)
+		totPeers := append([]int(nil), ports[:i]...)
+		bootPeers := append(totPeers, ports[i+1:]...)
+		peers[i] = newGossipInstanceWithGrpcMcsMetrics(i, ports[i], grpcs[i], certs[i], secDialOpts[i], 100, mcs, metrics, bootPeers...)
+
 	}
 
-	waitUntilOrFailBlocking(t, wg.Wait, "waiting to create all instances")
 	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1), "waiting for all instance to form membership view")
 
 	channels := []common.ChannelID{common.ChannelID("A"), common.ChannelID("B")}

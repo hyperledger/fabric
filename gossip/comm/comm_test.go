@@ -267,11 +267,11 @@ func TestMutualParallelSendWithAck(t *testing.T) {
 	<-inc2
 
 	for i := 0; i < msgNum; i++ {
-		go comm1.SendWithAck(createGossipMsg(), time.Second*5, 1, remotePeer(port2))
+		go comm1.SendWithAck(createGossipMsg(), time.Second*15, 1, remotePeer(port2))
 	}
 
 	for i := 0; i < msgNum; i++ {
-		go comm2.SendWithAck(createGossipMsg(), time.Second*5, 1, remotePeer(port1))
+		go comm2.SendWithAck(createGossipMsg(), time.Second*15, 1, remotePeer(port1))
 	}
 
 	go func() {
@@ -520,7 +520,7 @@ func TestGetConnectionInfo(t *testing.T) {
 	m1 := comm1.Accept(acceptAll)
 	comm2.Send(createGossipMsg(), remotePeer(port1))
 	select {
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 30):
 		t.Fatal("Didn't receive a message in time")
 	case msg := <-m1:
 		assert.Equal(t, comm2.GetPKIid(), msg.GetConnectionInfo().ID)
@@ -541,7 +541,7 @@ func TestCloseConn(t *testing.T) {
 	}
 	ta := credentials.NewTLS(tlsCfg)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	target := fmt.Sprintf("127.0.0.1:%d", port1)
 	conn, err := grpc.DialContext(ctx, target, grpc.WithTransportCredentials(ta), grpc.WithBlock())
@@ -856,10 +856,11 @@ func TestReConnections(t *testing.T) {
 
 func TestProbe(t *testing.T) {
 	t.Parallel()
+	timeout := time.Duration(2) * time.Second
 	comm1, port1 := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
 	comm2, port2 := newCommInstance(t, naiveSec)
-	time.Sleep(time.Duration(1) * time.Second)
+	time.Sleep(timeout)
 	assert.NoError(t, comm1.Probe(remotePeer(port2)))
 	_, err := comm1.Handshake(remotePeer(port2))
 	assert.NoError(t, err)
@@ -869,13 +870,13 @@ func TestProbe(t *testing.T) {
 	_, err = comm1.Handshake(remotePeer(tempPort))
 	assert.Error(t, err)
 	comm2.Stop()
-	time.Sleep(time.Duration(1) * time.Second)
+	time.Sleep(timeout)
 	assert.Error(t, comm1.Probe(remotePeer(port2)))
 	_, err = comm1.Handshake(remotePeer(port2))
 	assert.Error(t, err)
 	comm2, port2 = newCommInstance(t, naiveSec)
 	defer comm2.Stop()
-	time.Sleep(time.Duration(1) * time.Second)
+	time.Sleep(timeout)
 	assert.NoError(t, comm2.Probe(remotePeer(port1)))
 	_, err = comm2.Handshake(remotePeer(port1))
 	assert.NoError(t, err)

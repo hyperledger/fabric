@@ -1206,7 +1206,7 @@ func TestNewGossipStateProvider_BatchingOfStateRequest(t *testing.T) {
 		}
 		t.Log("All peer discovered each other!!!")
 		return true
-	}, 30*time.Second)
+	}, 60*time.Second)
 
 	// Waits for message which indicates that expected number of message batches received
 	// otherwise timeouts after 2 * defAntiEntropyInterval + 1 seconds

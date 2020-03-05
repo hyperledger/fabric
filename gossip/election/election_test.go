@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	testTimeout                       = 5 * time.Second
+	testTimeout                       = 30 * time.Second
 	testPollInterval                  = time.Millisecond * 300
 	testStartupGracePeriod            = time.Millisecond * 500
 	testMembershipSampleInterval      = time.Millisecond * 100
