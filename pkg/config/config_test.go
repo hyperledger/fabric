@@ -14,11 +14,13 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/tools/protolator"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
 	. "github.com/onsi/gomega"
 )
 
 func TestSignConfigUpdate(t *testing.T) {
 	t.Parallel()
+
 	gt := NewGomegaWithT(t)
 
 	cert, privateKey := generateCertAndPrivateKey()
@@ -42,6 +44,8 @@ func TestSignConfigUpdate(t *testing.T) {
 
 func TestNewCreateChannelTx(t *testing.T) {
 	t.Parallel()
+
+	gt := NewGomegaWithT(t)
 
 	// The TwoOrgsChannel profile is defined in standard_networks.go under the BasicSolo configuration
 	// configtxgen -profile TwoOrgsChannel -channelID testChannel
@@ -200,124 +204,71 @@ func TestNewCreateChannelTx(t *testing.T) {
 		"signature": null
 	}`
 
-	tests := []struct {
-		testName   string
-		profileMod func() *Channel
-	}{
-		{
-			testName: "When creating new create channel Tx with ImplicitMetaPolicyType",
-			profileMod: func() *Channel {
-				return baseProfile()
-			},
-		},
-		{
-			testName: "When creating new create channel Tx with ImplicitMetaPolicyType_ALL",
-			profileMod: func() *Channel {
-				profile := baseProfile()
-				profile.Policies[ReadersPolicyKey].Rule = "ALL Readers"
-				return profile
-			},
-		},
-		{
-			testName: "When creating new create channel Tx with SignatureTypePolicy",
-			profileMod: func() *Channel {
-				profile := baseProfile()
-				profile.Policies[ReadersPolicyKey].Type = SignaturePolicyType
-				profile.Policies[ReadersPolicyKey].Rule = "OutOf(1, 'A.member', 'B.member')"
-				return profile
-			},
-		},
-		{
-			testName: "When creating new create channel Tx with orderer defined in profile",
-			profileMod: func() *Channel {
-				profile := baseProfile()
-				profile.Orderer = &Orderer{
-					OrdererType: ConsensusTypeSolo,
-					Addresses:   []string{"1", "2"},
-					Policies:    standardPolicies(),
-				}
-				profile.Orderer.Policies[BlockValidationPolicyKey] = &Policy{
-					Type: ImplicitMetaPolicyType,
-					Rule: "ANY something",
-				}
-				return profile
-			},
-		},
-	}
+	profile := baseProfile()
 
-	for _, tt := range tests {
-		tt := tt // capture range variable
-		t.Run(tt.testName, func(t *testing.T) {
-			t.Parallel()
-			gt := NewGomegaWithT(t)
+	// creating a create channel transaction
+	envelope, err := NewCreateChannelTx(profile)
+	gt.Expect(err).ToNot(HaveOccurred())
+	gt.Expect(envelope).ToNot(BeNil())
 
-			profile := tt.profileMod()
+	// Unmarshalling actual and expected envelope to set
+	// the expected timestamp to the actual timestamp
+	expectedEnvelope := cb.Envelope{}
+	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedEnvelopeJSON), &expectedEnvelope)
+	gt.Expect(err).ToNot(HaveOccurred())
 
-			// creating a create channel transaction
-			envelope, err := NewCreateChannelTx(profile)
-			gt.Expect(err).ToNot(HaveOccurred())
-			gt.Expect(envelope).ToNot(BeNil())
+	expectedPayload := cb.Payload{}
+	err = proto.Unmarshal(expectedEnvelope.Payload, &expectedPayload)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			// Unmarshalling actual and expected envelope to set
-			// the expected timestamp to the actual timestamp
-			expectedEnvelope := cb.Envelope{}
-			err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedEnvelopeJSON), &expectedEnvelope)
-			gt.Expect(err).ToNot(HaveOccurred())
+	expectedHeader := cb.ChannelHeader{}
+	err = proto.Unmarshal(expectedPayload.Header.ChannelHeader, &expectedHeader)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			expectedPayload := cb.Payload{}
-			err = proto.Unmarshal(expectedEnvelope.Payload, &expectedPayload)
-			gt.Expect(err).NotTo(HaveOccurred())
+	expectedData := cb.ConfigUpdateEnvelope{}
+	err = proto.Unmarshal(expectedPayload.Data, &expectedData)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			expectedHeader := cb.ChannelHeader{}
-			err = proto.Unmarshal(expectedPayload.Header.ChannelHeader, &expectedHeader)
-			gt.Expect(err).NotTo(HaveOccurred())
+	expectedConfigUpdate := cb.ConfigUpdate{}
+	err = proto.Unmarshal(expectedData.ConfigUpdate, &expectedConfigUpdate)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			expectedData := cb.ConfigUpdateEnvelope{}
-			err = proto.Unmarshal(expectedPayload.Data, &expectedData)
-			gt.Expect(err).NotTo(HaveOccurred())
+	actualPayload := cb.Payload{}
+	err = proto.Unmarshal(envelope.Payload, &actualPayload)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			expectedConfigUpdate := cb.ConfigUpdate{}
-			err = proto.Unmarshal(expectedData.ConfigUpdate, &expectedConfigUpdate)
-			gt.Expect(err).NotTo(HaveOccurred())
+	actualHeader := cb.ChannelHeader{}
+	err = proto.Unmarshal(actualPayload.Header.ChannelHeader, &actualHeader)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			actualPayload := cb.Payload{}
-			err = proto.Unmarshal(envelope.Payload, &actualPayload)
-			gt.Expect(err).NotTo(HaveOccurred())
+	actualData := cb.ConfigUpdateEnvelope{}
+	err = proto.Unmarshal(actualPayload.Data, &actualData)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			actualHeader := cb.ChannelHeader{}
-			err = proto.Unmarshal(actualPayload.Header.ChannelHeader, &actualHeader)
-			gt.Expect(err).NotTo(HaveOccurred())
+	actualConfigUpdate := cb.ConfigUpdate{}
+	err = proto.Unmarshal(actualData.ConfigUpdate, &actualConfigUpdate)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			actualData := cb.ConfigUpdateEnvelope{}
-			err = proto.Unmarshal(actualPayload.Data, &actualData)
-			gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(actualConfigUpdate).To(Equal(expectedConfigUpdate))
 
-			actualConfigUpdate := cb.ConfigUpdate{}
-			err = proto.Unmarshal(actualData.ConfigUpdate, &actualConfigUpdate)
-			gt.Expect(err).NotTo(HaveOccurred())
+	// setting timestamps to match in ConfigUpdate
+	actualTimestamp := actualHeader.Timestamp
 
-			gt.Expect(actualConfigUpdate).To(Equal(expectedConfigUpdate))
+	expectedHeader.Timestamp = actualTimestamp
 
-			// setting timestamps to match in ConfigUpdate
-			actualTimestamp := actualHeader.Timestamp
+	expectedData.ConfigUpdate = actualData.ConfigUpdate
 
-			expectedHeader.Timestamp = actualTimestamp
+	// Remarshalling envelopes with updated timestamps
+	expectedPayload.Data, err = proto.Marshal(&expectedData)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			expectedData.ConfigUpdate = actualData.ConfigUpdate
+	expectedPayload.Header.ChannelHeader, err = proto.Marshal(&expectedHeader)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			// Remarshalling envelopes with updated timestamps
-			expectedPayload.Data, err = proto.Marshal(&expectedData)
-			gt.Expect(err).NotTo(HaveOccurred())
+	expectedEnvelope.Payload, err = proto.Marshal(&expectedPayload)
+	gt.Expect(err).NotTo(HaveOccurred())
 
-			expectedPayload.Header.ChannelHeader, err = proto.Marshal(&expectedHeader)
-			gt.Expect(err).NotTo(HaveOccurred())
-
-			expectedEnvelope.Payload, err = proto.Marshal(&expectedPayload)
-			gt.Expect(err).NotTo(HaveOccurred())
-
-			gt.Expect(proto.Equal(envelope, &expectedEnvelope)).To(BeTrue())
-		})
-	}
+	gt.Expect(envelope).To(Equal(&expectedEnvelope))
 }
 
 func TestNewCreateChannelTxFailure(t *testing.T) {
@@ -557,86 +508,126 @@ func TestNewOrgConfigGroup(t *testing.T) {
 		// The organization is from network.BasicSolo Profile
 		// configtxgen -printOrg Org1
 		expectedPrintOrg := `{
-	"groups": {},
-	"mod_policy": "Admins",
-	"policies": {
-		"Admins": {
-			"mod_policy": "Admins",
-			"policy": {
-				"type": 3,
-				"value": {
-					"rule": "MAJORITY",
-					"sub_policy": "Admins"
-				}
+		"groups": {},
+		"mod_policy": "Admins",
+		"policies": {
+			"Admins": {
+				"mod_policy": "Admins",
+				"policy": {
+					"type": 3,
+					"value": {
+						"rule": "MAJORITY",
+						"sub_policy": "Admins"
+					}
+				},
+				"version": "0"
 			},
-			"version": "0"
-		},
-		"Endorsement": {
-			"mod_policy": "Admins",
-			"policy": {
-				"type": 3,
-				"value": {
-					"rule": "MAJORITY",
-					"sub_policy": "Endorsement"
-				}
+			"Endorsement": {
+				"mod_policy": "Admins",
+				"policy": {
+					"type": 3,
+					"value": {
+						"rule": "MAJORITY",
+						"sub_policy": "Endorsement"
+					}
+				},
+				"version": "0"
 			},
-			"version": "0"
-		},
-		"LifecycleEndorsement": {
-			"mod_policy": "Admins",
-			"policy": {
-				"type": 3,
-				"value": {
-					"rule": "MAJORITY",
-					"sub_policy": "Endorsement"
-				}
+			"Readers": {
+				"mod_policy": "Admins",
+				"policy": {
+					"type": 3,
+					"value": {
+						"rule": "ANY",
+						"sub_policy": "Readers"
+					}
+				},
+				"version": "0"
 			},
-			"version": "0"
+			"Writers": {
+				"mod_policy": "Admins",
+				"policy": {
+					"type": 3,
+					"value": {
+						"rule": "ANY",
+						"sub_policy": "Writers"
+					}
+				},
+				"version": "0"
+			}
 		},
-		"Readers": {
-			"mod_policy": "Admins",
-			"policy": {
-				"type": 3,
+		"values": {
+			"Endpoints": {
+				"mod_policy": "Admins",
 				"value": {
-					"rule": "ANY",
-					"sub_policy": "Readers"
-				}
+					"addresses": [
+						"localhost:123"
+					]
+				},
+				"version": "0"
 			},
-			"version": "0"
-		},
-		"Writers": {
-			"mod_policy": "Admins",
-			"policy": {
-				"type": 3,
+			"MSP": {
+				"mod_policy": "Admins",
 				"value": {
-					"rule": "ANY",
-					"sub_policy": "Writers"
-				}
-			},
-			"version": "0"
-		}
-	},
-	"values": {
-		"AnchorPeers": {
-			"mod_policy": "Admins",
-			"value": "CgkKBWhvc3QxEHs=",
-			"version": "0"
+					"config": {
+						"admins": [],
+						"crypto_config": {
+							"identity_identifier_hash_function": "",
+							"signature_hash_family": ""
+						},
+						"fabric_node_ous": {
+							"admin_ou_identifier": {
+								"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+								"organizational_unit_identifier": ""
+							},
+							"client_ou_identifier": {
+								"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+								"organizational_unit_identifier": ""
+							},
+							"enable": false,
+							"orderer_ou_identifier": {
+								"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+								"organizational_unit_identifier": ""
+							},
+							"peer_ou_identifier": {
+								"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+								"organizational_unit_identifier": ""
+							}
+						},
+						"intermediate_certs": [],
+						"name": "",
+						"organizational_unit_identifiers": [
+							{
+								"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+								"organizational_unit_identifier": ""
+							}
+						],
+						"revocation_list": [],
+						"root_certs": [],
+						"signing_identity": {
+							"private_signer": {
+								"key_identifier": "",
+								"key_material": null
+							},
+							"public_signer": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+						},
+						"tls_intermediate_certs": [],
+						"tls_root_certs": []
+					},
+					"type": 0
+				},
+				"version": "0"
+			}
 		},
-		"MSP": {
-			"mod_policy": "Admins",
-			"value": "",
-			"version": "0"
-		}
-	},
-	"version": "0"
-}
+		"version": "0"
+	}
 `
-		org := baseProfile().Application.Organizations[0]
+		org := baseSystemChannelProfile().Orderer.Organizations[0]
 		configGroup, err := newOrgConfigGroup(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 
 		buf := bytes.Buffer{}
-		err = protolator.DeepMarshalJSON(&buf, configGroup)
+		err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: configGroup})
 		gt.Expect(err).NotTo(HaveOccurred())
 
 		gt.Expect(buf.String()).To(MatchJSON(expectedPrintOrg))
@@ -646,40 +637,14 @@ func TestNewOrgConfigGroup(t *testing.T) {
 func TestNewOrgConfigGroupFailure(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name            string
-		organizationMod func(*Organization)
-		expectedErr     string
-	}{
-		{
-			"When failing to add policies",
-			func(o *Organization) {
-				o.Policies = nil
-			},
-			"no policies defined",
-		},
-		{
-			"When failing to add msp value",
-			func(o *Organization) {
-				o.MSPConfig = nil
-			},
-			"marshalling msp config: proto: Marshal called with nil",
-		},
-	}
+	gt := NewGomegaWithT(t)
 
-	for _, tt := range tests {
-		tt := tt // capture range variable
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+	baseOrg := baseSystemChannelProfile().Orderer.Organizations[0]
+	baseOrg.Policies = nil
 
-			gt := NewGomegaWithT(t)
-			baseOrg := baseProfile().Application.Organizations[0]
-			tt.organizationMod(baseOrg)
-			configGroup, err := newOrgConfigGroup(baseOrg)
-			gt.Expect(err).To(MatchError(tt.expectedErr))
-			gt.Expect(configGroup).To(BeNil())
-		})
-	}
+	configGroup, err := newOrgConfigGroup(baseOrg)
+	gt.Expect(configGroup).To(BeNil())
+	gt.Expect(err).To(MatchError("no policies defined"))
 }
 
 func TestComputeUpdate(t *testing.T) {
@@ -776,6 +741,15 @@ func baseProfile() *Channel {
 		ChannelID:    "testchannel",
 		Consortium:   "SampleConsortium",
 		Application:  baseApplication(),
+		Capabilities: map[string]bool{"V2_0": true},
+	}
+}
+
+func baseSystemChannelProfile() *Channel {
+	return &Channel{
+		ChannelID:    "testsystemchannel",
+		Consortiums:  baseConsortiums(),
+		Orderer:      baseOrderer(),
 		Capabilities: map[string]bool{"V2_0": true},
 		Policies:     standardPolicies(),
 	}

@@ -10,9 +10,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	. "github.com/onsi/gomega"
 )
@@ -88,14 +86,16 @@ func TestAddOrgToConsortium(t *testing.T) {
 			Groups: map[string]*cb.ConfigGroup{
 				"Consortiums": consortiumsGroup,
 			},
+			Values:   map[string]*cb.ConfigValue{},
+			Policies: map[string]*cb.ConfigPolicy{},
 		},
 	}
 
 	orgToAdd := &Organization{
-		Name:      "Org1",
-		ID:        "Org1MSP",
-		Policies:  applicationOrgStandardPolicies(),
-		MSPConfig: &mb.FabricMSPConfig{},
+		Name:     "Org1",
+		ID:       "Org1MSP",
+		Policies: orgStandardPolicies(),
+		MSP:      baseMSP(),
 	}
 
 	expectedConfig := `
@@ -111,69 +111,102 @@ func TestAddOrgToConsortium(t *testing.T) {
 								"mod_policy": "Admins",
 								"policies": {
 									"Admins": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "MAJORITY",
-									"sub_policy": "Admins"
-									}
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"policy": {
+											"type": 3,
+											"value": {
+												"rule": "MAJORITY",
+												"sub_policy": "Admins"
+											}
+										},
+										"version": "0"
 									},
 									"Endorsement": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "MAJORITY",
-									"sub_policy": "Endorsement"
-									}
-									},
-									"version": "0"
-									},
-									"LifecycleEndorsement": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "MAJORITY",
-									"sub_policy": "Endorsement"
-									}
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"policy": {
+											"type": 3,
+											"value": {
+												"rule": "MAJORITY",
+												"sub_policy": "Endorsement"
+											}
+										},
+										"version": "0"
 									},
 									"Readers": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "ANY",
-									"sub_policy": "Readers"
-									}
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"policy": {
+											"type": 3,
+											"value": {
+												"rule": "ANY",
+												"sub_policy": "Readers"
+											}
+										},
+										"version": "0"
 									},
 									"Writers": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "ANY",
-									"sub_policy": "Writers"
-									}
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"policy": {
+											"type": 3,
+											"value": {
+												"rule": "ANY",
+												"sub_policy": "Writers"
+											}
+										},
+										"version": "0"
 									}
 								},
 								"values": {
 									"MSP": {
-									"mod_policy": "Admins",
-									"value": {
-									"config": null,
-									"type": 0
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"value": {
+											"config": {
+												"admins": [],
+												"crypto_config": {
+													"identity_identifier_hash_function": "",
+													"signature_hash_family": ""
+												},
+												"fabric_node_ous": {
+													"admin_ou_identifier": {
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													},
+													"client_ou_identifier": {
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													},
+													"enable": false,
+													"orderer_ou_identifier": {
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													},
+													"peer_ou_identifier": {
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													}
+												},
+												"intermediate_certs": [],
+												"name": "",
+												"organizational_unit_identifiers": [
+													{
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													}
+												],
+												"revocation_list": [],
+												"root_certs": [],
+												"signing_identity": {
+													"private_signer": {
+														"key_identifier": "",
+														"key_material": null
+													},
+													"public_signer": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+												},
+												"tls_intermediate_certs": [],
+												"tls_root_certs": []
+											},
+											"type": 0
+										},
+										"version": "0"
 									}
 								},
 								"version": "0"
@@ -183,58 +216,102 @@ func TestAddOrgToConsortium(t *testing.T) {
 								"mod_policy": "Admins",
 								"policies": {
 									"Admins": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "MAJORITY",
-									"sub_policy": "Admins"
-									}
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"policy": {
+											"type": 3,
+											"value": {
+												"rule": "MAJORITY",
+												"sub_policy": "Admins"
+											}
+										},
+										"version": "0"
 									},
 									"Endorsement": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "MAJORITY",
-									"sub_policy": "Endorsement"
-									}
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"policy": {
+											"type": 3,
+											"value": {
+												"rule": "MAJORITY",
+												"sub_policy": "Endorsement"
+											}
+										},
+										"version": "0"
 									},
 									"Readers": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "ANY",
-									"sub_policy": "Readers"
-									}
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"policy": {
+											"type": 3,
+											"value": {
+												"rule": "ANY",
+												"sub_policy": "Readers"
+											}
+										},
+										"version": "0"
 									},
 									"Writers": {
-									"mod_policy": "Admins",
-									"policy": {
-									"type": 3,
-									"value": {
-									"rule": "ANY",
-									"sub_policy": "Writers"
-									}
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"policy": {
+											"type": 3,
+											"value": {
+												"rule": "ANY",
+												"sub_policy": "Writers"
+											}
+										},
+										"version": "0"
 									}
 								},
 								"values": {
 									"MSP": {
-									"mod_policy": "Admins",
-									"value": {
-									"config": null,
-									"type": 0
-									},
-									"version": "0"
+										"mod_policy": "Admins",
+										"value": {
+											"config": {
+												"admins": [],
+												"crypto_config": {
+													"identity_identifier_hash_function": "",
+													"signature_hash_family": ""
+												},
+												"fabric_node_ous": {
+													"admin_ou_identifier": {
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													},
+													"client_ou_identifier": {
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													},
+													"enable": false,
+													"orderer_ou_identifier": {
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													},
+													"peer_ou_identifier": {
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													}
+												},
+												"intermediate_certs": [],
+												"name": "",
+												"organizational_unit_identifiers": [
+													{
+														"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+														"organizational_unit_identifier": ""
+													}
+												],
+												"revocation_list": [],
+												"root_certs": [],
+												"signing_identity": {
+													"private_signer": {
+														"key_identifier": "",
+														"key_material": null
+													},
+													"public_signer": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+												},
+												"tls_intermediate_certs": [],
+												"tls_root_certs": []
+											},
+											"type": 0
+										},
+										"version": "0"
 									}
 								},
 								"version": "0"
@@ -248,8 +325,8 @@ func TestAddOrgToConsortium(t *testing.T) {
 								"value": {
 									"type": 3,
 									"value": {
-									"rule": "ANY",
-									"sub_policy": "Admins"
+										"rule": "ANY",
+										"sub_policy": "Admins"
 									}
 								},
 								"version": "0"
@@ -268,8 +345,8 @@ func TestAddOrgToConsortium(t *testing.T) {
 								"identities": [],
 								"rule": {
 									"n_out_of": {
-									"n": 0,
-									"rules": []
+										"n": 0,
+										"rules": []
 									}
 								},
 								"version": 0
@@ -291,14 +368,14 @@ func TestAddOrgToConsortium(t *testing.T) {
 }
 `
 
-	expectedConfigProto := cb.Config{}
-	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfig), &expectedConfigProto)
+	expectedConfigProto := &cb.Config{}
+	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfig), expectedConfigProto)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	err = AddOrgToConsortium(config, orgToAdd, "Consortium1")
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(proto.Equal(config, &expectedConfigProto)).To(BeTrue())
+	gt.Expect(config).To(Equal(expectedConfigProto))
 }
 
 func TestAddOrgToConsortiumFailures(t *testing.T) {
@@ -307,7 +384,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 	orgToAdd := &Organization{
 		Name:     "test-org",
 		ID:       "test-org-msp-id",
-		Policies: applicationOrgStandardPolicies(),
+		Policies: orgStandardPolicies(),
 	}
 
 	for _, test := range []struct {
@@ -378,16 +455,16 @@ func baseConsortiums() []*Consortium {
 			Name: "Consortium1",
 			Organizations: []*Organization{
 				{
-					Name:      "Org1",
-					ID:        "Org1MSP",
-					Policies:  orgStandardPolicies(),
-					MSPConfig: &mb.FabricMSPConfig{},
+					Name:     "Org1",
+					ID:       "Org1MSP",
+					Policies: orgStandardPolicies(),
+					MSP:      baseMSP(),
 				},
 				{
-					Name:      "Org2",
-					ID:        "Org2MSP",
-					Policies:  orgStandardPolicies(),
-					MSPConfig: &mb.FabricMSPConfig{},
+					Name:     "Org2",
+					ID:       "Org2MSP",
+					Policies: orgStandardPolicies(),
+					MSP:      baseMSP(),
 				},
 			},
 		},

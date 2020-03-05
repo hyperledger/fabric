@@ -143,8 +143,8 @@ func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove *Anc
 	return fmt.Errorf("could not find anchor peer %s:%d in %s's anchor peer endpoints", anchorPeerToRemove.Host, anchorPeerToRemove.Port, orgName)
 }
 
-// GetAnchorPeer retrieves existing anchor peers from a application organization.
-func GetAnchorPeer(config *cb.Config, orgName string) ([]*AnchorPeer, error) {
+// GetAnchorPeers retrieves existing anchor peers from a application organization.
+func GetAnchorPeers(config *cb.Config, orgName string) ([]*AnchorPeer, error) {
 	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)
@@ -152,7 +152,7 @@ func GetAnchorPeer(config *cb.Config, orgName string) ([]*AnchorPeer, error) {
 
 	anchorPeerConfigValue, ok := applicationOrgGroup.Values[AnchorPeersKey]
 	if !ok {
-		return nil, fmt.Errorf("application org %s does not have anchor peer", orgName)
+		return nil, fmt.Errorf("application org %s does not have anchor peers", orgName)
 	}
 
 	anchorPeersProto := &pb.AnchorPeers{}

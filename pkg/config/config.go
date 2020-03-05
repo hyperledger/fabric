@@ -43,10 +43,10 @@ type Policy struct {
 
 // Organization is an organization in the channel configuration.
 type Organization struct {
-	Name      string
-	ID        string
-	Policies  map[string]*Policy
-	MSPConfig *mb.FabricMSPConfig
+	Name     string
+	ID       string
+	Policies map[string]*Policy
+	MSP      *MSP
 
 	AnchorPeers      []*AnchorPeer
 	OrdererEndpoints []string
@@ -230,7 +230,12 @@ func newOrgConfigGroup(org *Organization) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 
-	conf, err := proto.Marshal(org.MSPConfig)
+	fabricMSPConfig, err := org.MSP.toProto()
+	if err != nil {
+		return nil, fmt.Errorf("converting fabric msp config to proto: %v", err)
+	}
+
+	conf, err := proto.Marshal(fabricMSPConfig)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling msp config: %v", err)
 	}
@@ -247,7 +252,7 @@ func newOrgConfigGroup(org *Organization) (*cb.ConfigGroup, error) {
 
 	// OrdererEndpoints are orderer org specific and are only added when specified for orderer orgs
 	if len(org.OrdererEndpoints) > 0 {
-		err = addValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
+		err := addValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +271,7 @@ func newOrgConfigGroup(org *Organization) (*cb.ConfigGroup, error) {
 	// This helps prevent a delta from the orderer system channel when computing
 	// more complex channel creation transactions
 	if len(anchorProtos) > 0 {
-		err = addValue(orgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
+		err := addValue(orgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add anchor peers value: %v", err)
 		}
