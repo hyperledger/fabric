@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -21,7 +20,7 @@ import (
 // LegacyMetadataProvider provides metadata for a lscc-defined chaincode
 // on a specific channel.
 type LegacyMetadataProvider interface {
-	Metadata(channel string, cc string, includeCollections bool) *chaincode.Metadata
+	Metadata(channel string, cc string, collections ...string) *chaincode.Metadata
 }
 
 // ChaincodeInfoProvider provides metadata for a _lifecycle-defined
@@ -105,28 +104,54 @@ func (mp *MetadataProvider) toSignaturePolicyEnvelope(channelID string, policyBy
 }
 
 // Metadata implements the metadata retriever support interface for service discovery
-func (mp *MetadataProvider) Metadata(channel string, ccName string, includeCollections bool) *chaincode.Metadata {
+func (mp *MetadataProvider) Metadata(channel string, ccName string, collections ...string) *chaincode.Metadata {
 	ccInfo, err := mp.ChaincodeInfoProvider.ChaincodeInfo(channel, ccName)
 	if err != nil {
 		logger.Debugf("chaincode '%s' on channel '%s' not defined in _lifecycle. requesting metadata from lscc", ccName, channel)
 		// fallback to legacy metadata via cclifecycle
-		return mp.LegacyMetadataProvider.Metadata(channel, ccName, includeCollections)
+		return mp.LegacyMetadataProvider.Metadata(channel, ccName, collections...)
 	}
 
 	spe, err := mp.toSignaturePolicyEnvelope(channel, ccInfo.Definition.ValidationInfo.ValidationParameter)
 	if err != nil {
 		logger.Errorf("could not convert policy for chaincode '%s' on channel '%s', err '%s'", ccName, channel, err)
-		spe = policydsl.MarshaledRejectAllPolicy
+		return nil
 	}
 
 	// report the sequence as the version to service discovery since
 	// the version is no longer required to change when updating any
 	// part of the chaincode definition
 	ccMetadata := &chaincode.Metadata{
-		Name:              ccName,
-		Version:           strconv.FormatInt(ccInfo.Definition.Sequence, 10),
-		Policy:            spe,
-		CollectionsConfig: ccInfo.Definition.Collections,
+		Name:               ccName,
+		Version:            strconv.FormatInt(ccInfo.Definition.Sequence, 10),
+		Policy:             spe,
+		CollectionPolicies: map[string][]byte{},
+		CollectionsConfig:  ccInfo.Definition.Collections,
+	}
+
+	if ccInfo.Definition.Collections == nil {
+		return ccMetadata
+	}
+
+	// process any existing collection endorsement policies
+	for _, collectionName := range collections {
+		for _, conf := range ccInfo.Definition.Collections.Config {
+			staticCollConfig := conf.GetStaticCollectionConfig()
+			if staticCollConfig == nil {
+				continue
+			}
+			if staticCollConfig.Name == collectionName {
+				if staticCollConfig.EndorsementPolicy != nil {
+					ep := protoutil.MarshalOrPanic(staticCollConfig.EndorsementPolicy)
+					cspe, err := mp.toSignaturePolicyEnvelope(channel, ep)
+					if err != nil {
+						logger.Errorf("could not convert collection policy for chaincode '%s' collection '%s' on channel '%s', err '%s'", ccName, collectionName, channel, err)
+						return nil
+					}
+					ccMetadata.CollectionPolicies[collectionName] = cspe
+				}
+			}
+		}
 	}
 
 	return ccMetadata

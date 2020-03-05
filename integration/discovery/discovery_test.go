@@ -548,7 +548,7 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(discovered[0].Layouts).To(HaveLen(1))
 		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1), uint32(1)))
 
-		By("discovering endorsers for collection available on all peers")
+		By("discovering endorsers for a collection without collection EP, using chaincode EP")
 		endorsers.Collection = "mycc:collectionMarbles"
 		de = discoverEndorsers(network, endorsers)
 		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
@@ -556,6 +556,18 @@ var _ = Describe("DiscoveryService", func() {
 			ConsistOf(network.DiscoveredPeer(org2Peer0)),
 			ConsistOf(network.DiscoveredPeer(org3Peer0)),
 		))
+
+		By("discovering endorsers for a collection with collection EP, using collection EP")
+		endorsers.Collection = "mycc:collectionDetails"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			ConsistOf(network.DiscoveredPeer(org1Peer0)),
+			ConsistOf(network.DiscoveredPeer(org2Peer0)),
+		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("trying to discover endorsers as an org3 admin")
 		endorsers = commands.Endorsers{
