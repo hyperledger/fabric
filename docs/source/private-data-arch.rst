@@ -125,12 +125,12 @@ collection definitions:
  ]
 
 This example uses the organizations from the Fabric test network, ``Org1`` and
-``Org2`` . The policy in the  ``collectionMarbles`` definition authorizes both
+``Org2``. The policy in the  ``collectionMarbles`` definition authorizes both
 organizations to the private data. This is a typical configuration when the
 chaincode data needs to remain private from the ordering service nodes. However,
 the policy in the ``collectionMarblePrivateDetails`` definition restricts access
 to a subset of organizations in the channel (in this case ``Org1`` ). Additionally,
-writing to this collection requires endorsement from a ``Org1`` peer, even
+writing to this collection requires endorsement from an ``Org1`` peer, even
 though the chaincode level endorsement policy may require endorsement from
 ``Org1`` or ``Org2``. And since "memberOnlyWrite" is true, only clients from
 ``Org1`` may invoke chaincode that writes to the private data collection.

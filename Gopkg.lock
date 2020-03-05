@@ -836,11 +836,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9c4fed825c10231651e81bf0ab2c12e3a6cc349dcc62a78f8d3a9dfb6744855e"
+  digest = "1:4fa2ca25ca372413905486e2c02570b1f5ae72eeab50d223660fcd190582e0c3"
   name = "golang.org/x/crypto"
   packages = ["sha3"]
   pruneopts = "NUT"
-  revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
+  revision = "2aa609cf4a9d7d1126360de73b55b6002f9e052a"
 
 [[projects]]
   digest = "1:03004f72cd37290aa0cba90b66d418f3a7cfb47220207398b561e6abe7aa8f74"
@@ -920,26 +920,25 @@
   version = "v0.3.2"
 
 [[projects]]
-  branch = "release-branch.go1.12"
-  digest = "1:849e1ab274cc58121de7558d8cad12bf9dfe65d8315f3a081126c8442c66455e"
+  branch = "release-branch.go1.13"
+  digest = "1:ee5b8d737be478890647c1cc2618b5084600f768c0281ca3deeaba6e4de7d8a1"
   name = "golang.org/x/tools"
   packages = [
     "cmd/goimports",
     "go/ast/astutil",
     "go/gcexportdata",
-    "go/internal/cgo",
     "go/internal/gcimporter",
     "go/internal/packagesdriver",
     "go/packages",
     "go/types/typeutil",
-    "imports",
     "internal/fastwalk",
     "internal/gopathwalk",
+    "internal/imports",
     "internal/module",
     "internal/semver",
   ]
   pruneopts = "NUT"
-  revision = "aa82965741a9fecd12b026fbb3d3c6ed3231b8f8"
+  revision = "65e3620a7ae7ac25e8494a60f0e5ef4e4fba03b3"
 
 [[projects]]
   branch = "master"
@@ -1049,7 +1048,6 @@
     "github.com/go-kit/kit/metrics",
     "github.com/go-kit/kit/metrics/prometheus",
     "github.com/go-kit/kit/metrics/statsd",
-    "github.com/gogo/protobuf/proto",
     "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/protoc-gen-go",

@@ -242,9 +242,9 @@ chaincode on the channel using the following command:
 The `deployCC` subcommand will install the **fabcar** chaincode on
 ``peer0.org1.example.com`` and ``peer0.org2.example.com`` and then deploy
 the chaincode on the channel specified using the channel flag (or `mychannel`
-if no channel is specified). If are deploying a chaincode for the first time, the
+if no channel is specified). If you are deploying a chaincode for the first time, the
 script will install the chaincode dependencies. By default, The script installs
-the Golang version of the fabcar chaincode. However, you can use the language
+the Go version of the fabcar chaincode. However, you can use the language
 flag, `-l`, to install the Java or javascript versions of the chaincode.
 
 After the **fabcar** chaincode definition has been committed to the channel, the
@@ -474,7 +474,7 @@ below provide a guided tour of what happens when you issue the command of
   in the `system-genesis-block` folder.
 
 - Once the organization crypto material and the system channel genesis block have
-  been generated, the `network.sh` can bring up the nodes of the netwowrk. The
+  been generated, the `network.sh` can bring up the nodes of the network. The
   script uses the ``docker-compose-test-net.yaml`` file in the `docker` folder
   to create the peer and orderer nodes. The `docker` folder also contains the
   ``docker-compose-e2e.yaml`` file that brings up the nodes of the network

@@ -621,7 +621,7 @@ func isClusterType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) bool {
 }
 
 func consensusType(genesisBlock *cb.Block, bccsp bccsp.BCCSP) string {
-	if genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
+	if genesisBlock == nil || genesisBlock.Data == nil || len(genesisBlock.Data.Data) == 0 {
 		logger.Fatalf("Empty genesis block")
 	}
 	env := &cb.Envelope{}
@@ -701,20 +701,23 @@ func initializeMultichannelRegistrar(
 	bccsp bccsp.BCCSP,
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
+
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, bccsp, callbacks...)
 
 	consenters := map[string]consensus.Consenter{}
+
+	var icr etcdraft.InactiveChainRegistry
+	if conf.General.BootstrapMethod == "file" && isClusterType(bootstrapBlock, bccsp) {
+		etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider, bccsp)
+		icr = etcdConsenter.InactiveChainRegistry
+	}
+
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics
-	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider, healthChecker)
+	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider, healthChecker, icr, registrar.CreateChain)
 	// Note, we pass a 'nil' channel here, we could pass a channel that
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
-	if conf.General.BootstrapMethod == "file" {
-		if isClusterType(bootstrapBlock, bccsp) {
-			initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider, bccsp)
-		}
-	}
 	registrar.Initialize(consenters)
 	return registrar
 }
@@ -731,7 +734,7 @@ func initializeEtcdraftConsenter(
 	registrar *multichannel.Registrar,
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
-) {
+) *etcdraft.Consenter {
 	replicationRefreshInterval := conf.General.Cluster.ReplicationBackgroundRefreshInterval
 	if replicationRefreshInterval == 0 {
 		replicationRefreshInterval = defaultReplicationBackgroundRefreshInterval
@@ -771,6 +774,7 @@ func initializeEtcdraftConsenter(
 	go icr.run()
 	raftConsenter := etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, icr, metricsProvider, bccsp)
 	consenters["etcdraft"] = raftConsenter
+	return raftConsenter
 }
 
 func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {

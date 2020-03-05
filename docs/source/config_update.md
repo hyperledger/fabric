@@ -883,7 +883,7 @@ Now issue:
 peer channel fetch config config_block.pb -o $ORDERER_CONTAINER -c $CH_NAME --tls --cafile $TLS_ROOT_CA
 ```
 
-Next, we'll covert the protobuf version of the channel config into a JSON version called `config_block.json` (JSON files are easier for humans to read and understand):
+Next, we'll convert the protobuf version of the channel config into a JSON version called `config_block.json` (JSON files are easier for humans to read and understand):
 
 ```
 configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json

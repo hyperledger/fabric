@@ -303,7 +303,7 @@ contains the commercial paper smart contract!
 ![commercialpaper.vscode1](./commercial_paper.vscode.papercontract.png) *An
 example code editor displaying the commercial paper smart contract in `papercontract.js`*
 
-`papercontract.js` is a JavaScript program designed to run in the node.js
+`papercontract.js` is a JavaScript program designed to run in the Node.js
 environment. Note the following key program lines:
 
 * `const { Contract, Context } = require('fabric-contract-api');`
@@ -650,7 +650,7 @@ application [topic](../developapps/application.html).
 ## Application dependencies
 
 The `issue.js` application is written in JavaScript and designed to run in the
-node.js environment that acts as a client to the PaperNet network.
+Node.js environment that acts as a client to the PaperNet network.
 As is common practice, MagnetoCorp's application is built on many
 external node packages --- to improve quality and speed of development. Consider
 how `issue.js` includes the `js-yaml`
@@ -794,7 +794,7 @@ Disconnect from Fabric gateway.
 Issue program complete.
 ```
 
-The `node` command initializes a node.js environment, and runs `issue.js`. We
+The `node` command initializes a Node.js environment, and runs `issue.js`. We
 can see from the program output that MagnetoCorp commercial paper 00001 was
 issued with a face value of 5M USD.
 

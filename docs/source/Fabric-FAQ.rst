@@ -157,7 +157,7 @@ Chaincode (Smart Contracts and Digital Assets)
 
 :Answer:
   Chaincode can be written in any programming language and executed in
-  containers. Currently, Golang, node.js and java chaincode are supported.
+  containers. Currently, Go, Node.js and Java chaincode are supported.
 
 :Question:
   Does the Hyperledger Fabric have native currency?
@@ -267,11 +267,8 @@ BFT
   **When is a BFT version of the ordering service going to be available?**
 
 :Answer:
-  No date has been set. We are working towards a release during the 1.x cycle,
-  i.e. it will come with a minor version upgrade in Fabric. Track FAB-33_ for
-  updates.
-
-.. _FAB-33: https://jira.hyperledger.org/browse/FAB-33
+  No date has been set. We are working towards a release during the 2.x cycle,
+  i.e. it will come with a minor version upgrade in Fabric.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

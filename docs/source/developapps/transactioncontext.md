@@ -208,7 +208,7 @@ The APIs in the stub fall into the following categories:
 
   <br>
 
-* **Event APIs** are used manage event processing in a smart contract.
+* **Event APIs** are used to manage event processing in a smart contract.
 
     * [setEvent()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#setEvent__anchor)
 

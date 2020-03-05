@@ -38,6 +38,7 @@ import (
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
+	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
@@ -309,6 +310,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		nil,
 		gossipConfig,
 		&service.ServiceConfig{},
+		&privdata.PrivdataConfig{},
 		&deliverservice.DeliverServiceConfig{
 			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,

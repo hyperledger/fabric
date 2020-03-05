@@ -31,14 +31,6 @@ type Provider interface {
 type Store interface {
 	// Init initializes the store. This function is expected to be invoked before using the store
 	Init(btlPolicy pvtdatapolicy.BTLPolicy)
-	// InitLastCommittedBlockHeight sets the last committed block height into the pvt data store
-	// This function is used in a special case where the peer is started up with the blockchain
-	// from an earlier version of a peer when the pvt data feature (and hence this store) was not
-	// available. This function is expected to be called only this situation and hence is
-	// expected to throw an error if the store is not empty. On a successful return from this
-	// function the state of the store is expected to be same as of calling the prepare/commit
-	// function for block `0` through `blockNum` with no pvt data
-	InitLastCommittedBlock(blockNum uint64) error
 	// GetPvtDataByBlockNum returns only the pvt data  corresponding to the given block number
 	// The pvt data is filtered by the list of 'ns/collections' supplied in the filter
 	// A nil filter does not filter any results
@@ -67,8 +59,6 @@ type Store interface {
 	GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error)
 	// ResetLastUpdatedOldBlocksList removes the `lastUpdatedOldBlocksList` entry from the store
 	ResetLastUpdatedOldBlocksList() error
-	// IsEmpty returns true if the store does not have any block committed yet
-	IsEmpty() (bool, error)
 	// LastCommittedBlockHeight returns the height of the last committed block
 	LastCommittedBlockHeight() (uint64, error)
 	// Shutdown stops the store

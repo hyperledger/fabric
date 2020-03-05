@@ -15,7 +15,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -111,7 +111,7 @@ func TestNewSimpleCollectionWithBadConfig(t *testing.T) {
 func TestNewSimpleCollectionWithGoodConfig(t *testing.T) {
 	// create member access policy
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 
 	// create static collection config
@@ -130,8 +130,8 @@ func TestNewSimpleCollectionWithGoodConfig(t *testing.T) {
 
 	// check members
 	members := sc.MemberOrgs()
-	assert.True(t, members[0] == "signer0")
-	assert.True(t, members[1] == "signer1")
+	assert.Contains(t, members, "signer0")
+	assert.Contains(t, members, "signer1")
 
 	// check required peer count
 	assert.True(t, sc.RequiredPeerCount() == 1)
@@ -157,7 +157,7 @@ func TestSetupWithBadConfig(t *testing.T) {
 func TestSetupGoodConfigCollection(t *testing.T) {
 	// create member access policy
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 
 	// create static collection config
@@ -177,8 +177,8 @@ func TestSetupGoodConfigCollection(t *testing.T) {
 
 	// check members
 	members := sc.MemberOrgs()
-	assert.True(t, members[0] == "signer0")
-	assert.True(t, members[1] == "signer1")
+	assert.Contains(t, members, "signer0")
+	assert.Contains(t, members, "signer1")
 
 	// check required peer count
 	assert.True(t, sc.RequiredPeerCount() == 1)
@@ -187,7 +187,7 @@ func TestSetupGoodConfigCollection(t *testing.T) {
 func TestSimpleCollectionFilter(t *testing.T) {
 	// create member access policy
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-	policyEnvelope := cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), signers)
+	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 
 	// create static collection config

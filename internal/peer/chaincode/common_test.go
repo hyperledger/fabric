@@ -22,7 +22,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
@@ -296,7 +296,7 @@ func TestCollectionParsing(t *testing.T) {
 	assert.NotNil(t, ccp)
 	assert.NotNil(t, ccpBytes)
 	conf := ccp.Config[0].GetStaticCollectionConfig()
-	pol, _ := cauthdsl.FromString("OR('A.member', 'B.member')")
+	pol, _ := policydsl.FromString("OR('A.member', 'B.member')")
 	assert.Equal(t, 3, int(conf.RequiredPeerCount))
 	assert.Equal(t, 483279847, int(conf.MaximumPeerCount))
 	assert.Equal(t, "foo", conf.Name)
@@ -312,7 +312,7 @@ func TestCollectionParsing(t *testing.T) {
 	assert.NotNil(t, ccp)
 	assert.NotNil(t, ccpBytes)
 	conf = ccp.Config[0].GetStaticCollectionConfig()
-	pol, _ = cauthdsl.FromString("OR('A.member', 'B.member')")
+	pol, _ = policydsl.FromString("OR('A.member', 'B.member')")
 	assert.Equal(t, 0, int(conf.RequiredPeerCount))
 	assert.Equal(t, 1, int(conf.MaximumPeerCount))
 	assert.Equal(t, "foo", conf.Name)
@@ -327,7 +327,7 @@ func TestCollectionParsing(t *testing.T) {
 	assert.NotNil(t, ccp)
 	assert.NotNil(t, ccpBytes)
 	conf = ccp.Config[0].GetStaticCollectionConfig()
-	pol, _ = cauthdsl.FromString("OR('A.member', 'B.member')")
+	pol, _ = policydsl.FromString("OR('A.member', 'B.member')")
 	assert.Equal(t, 3, int(conf.RequiredPeerCount))
 	assert.Equal(t, 483279847, int(conf.MaximumPeerCount))
 	assert.Equal(t, "foo", conf.Name)
@@ -342,7 +342,7 @@ func TestCollectionParsing(t *testing.T) {
 	assert.NotNil(t, ccp)
 	assert.NotNil(t, ccpBytes)
 	conf = ccp.Config[0].GetStaticCollectionConfig()
-	pol, _ = cauthdsl.FromString("OR('A.member', 'B.member')")
+	pol, _ = policydsl.FromString("OR('A.member', 'B.member')")
 	assert.Equal(t, 3, int(conf.RequiredPeerCount))
 	assert.Equal(t, 483279847, int(conf.MaximumPeerCount))
 	assert.Equal(t, "foo", conf.Name)

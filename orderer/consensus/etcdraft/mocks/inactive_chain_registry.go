@@ -4,7 +4,6 @@ package mocks
 
 import (
 	common "github.com/hyperledger/fabric-protos-go/common"
-	etcdraft "github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -15,6 +14,6 @@ type InactiveChainRegistry struct {
 }
 
 // TrackChain provides a mock function with given fields: chainName, genesisBlock, createChain
-func (_m *InactiveChainRegistry) TrackChain(chainName string, genesisBlock *common.Block, createChain etcdraft.CreateChainCallback) {
+func (_m *InactiveChainRegistry) TrackChain(chainName string, genesisBlock *common.Block, createChain func()) {
 	_m.Called(chainName, genesisBlock, createChain)
 }

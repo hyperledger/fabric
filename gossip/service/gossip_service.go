@@ -171,6 +171,7 @@ type GossipService struct {
 	secAdv          api.SecurityAdvisor
 	metrics         *gossipmetrics.GossipMetrics
 	serviceConfig   *ServiceConfig
+	privdataConfig  *gossipprivdata.PrivdataConfig
 }
 
 // This is an implementation of api.JoinChannelMessage.
@@ -212,6 +213,7 @@ func New(
 	deliverGRPCClient *corecomm.GRPCClient,
 	gossipConfig *gossip.Config,
 	serviceConfig *ServiceConfig,
+	privdataConfig *gossipprivdata.PrivdataConfig,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 ) (*GossipService, error) {
 	serializedIdentity, err := peerIdentity.Serialize()
@@ -244,10 +246,11 @@ func New(
 			deliverGRPCClient:    deliverGRPCClient,
 			deliverServiceConfig: deliverServiceConfig,
 		},
-		peerIdentity:  serializedIdentity,
-		secAdv:        secAdv,
-		metrics:       gossipMetrics,
-		serviceConfig: serviceConfig,
+		peerIdentity:   serializedIdentity,
+		secAdv:         secAdv,
+		metrics:        gossipMetrics,
+		serviceConfig:  serviceConfig,
+		privdataConfig: privdataConfig,
 	}, nil
 }
 
@@ -261,7 +264,8 @@ func (g *GossipService) DistributePrivateData(channelID string, txID string, pri
 	}
 
 	if err := handler.distributor.Distribute(txID, privData, blkHt); err != nil {
-		logger.Error("Failed to distributed private collection, txID", txID, "channel", channelID, "due to", err)
+		err := errors.WithMessagef(err, "failed to distribute private collection, txID %s, channel %s", txID, channelID)
+		logger.Error(err)
 		return err
 	}
 
@@ -307,22 +311,23 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		PullRetryThreshold:             g.serviceConfig.PvtDataPullRetryThreshold,
 		SkipPullingInvalidTransactions: g.serviceConfig.SkipPullingInvalidTransactionsDuringCommit,
 	}
-	coordinator := gossipprivdata.NewCoordinator(gossipprivdata.Support{
+	selfSignedData := g.createSelfSignedData()
+	mspID := string(g.secAdv.OrgByPeerIdentity(selfSignedData.Identity))
+	coordinator := gossipprivdata.NewCoordinator(mspID, gossipprivdata.Support{
 		ChainID:            channelID,
 		CollectionStore:    support.CollectionStore,
 		Validator:          support.Validator,
 		Committer:          support.Committer,
 		Fetcher:            fetcher,
 		CapabilityProvider: support.CapabilityProvider,
-	}, store, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig,
+	}, store, selfSignedData, g.metrics.PrivdataMetrics, coordinatorConfig,
 		support.IdDeserializeFactory)
 
-	privdataConfig := gossipprivdata.GlobalConfig()
 	var reconciler gossipprivdata.PvtDataReconciler
 
-	if privdataConfig.ReconciliationEnabled {
+	if g.privdataConfig.ReconciliationEnabled {
 		reconciler = gossipprivdata.NewReconciler(channelID, g.metrics.PrivdataMetrics,
-			support.Committer, fetcher, privdataConfig)
+			support.Committer, fetcher, g.privdataConfig)
 	} else {
 		reconciler = &gossipprivdata.NoOpReconciler{}
 	}

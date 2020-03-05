@@ -106,14 +106,21 @@ type GossipElection struct {
 }
 
 type GossipPvtData struct {
-	PullRetryThreshold                         time.Duration `yaml:"pullRetryThreshold,omitempty"`
-	TransientstoreMaxBlockRetention            int           `yaml:"transientstoreMaxBlockRetention,omitempty"`
-	PushAckTimeout                             time.Duration `yaml:"pushAckTimeout,omitempty"`
-	BtlPullMargin                              int           `yaml:"btlPullMargin,omitempty"`
-	ReconcileBatchSize                         int           `yaml:"reconcileBatchSize,omitempty"`
-	ReconcileSleepInterval                     time.Duration `yaml:"reconcileSleepInterval,omitempty"`
-	ReconciliationEnabled                      bool          `yaml:"reconciliationEnabled"`
-	SkipPullingInvalidTransactionsDuringCommit bool          `yaml:"skipPullingInvalidTransactionsDuringCommit"`
+	PullRetryThreshold                         time.Duration                   `yaml:"pullRetryThreshold,omitempty"`
+	TransientstoreMaxBlockRetention            int                             `yaml:"transientstoreMaxBlockRetention,omitempty"`
+	PushAckTimeout                             time.Duration                   `yaml:"pushAckTimeout,omitempty"`
+	BtlPullMargin                              int                             `yaml:"btlPullMargin,omitempty"`
+	ReconcileBatchSize                         int                             `yaml:"reconcileBatchSize,omitempty"`
+	ReconcileSleepInterval                     time.Duration                   `yaml:"reconcileSleepInterval,omitempty"`
+	ReconciliationEnabled                      bool                            `yaml:"reconciliationEnabled"`
+	SkipPullingInvalidTransactionsDuringCommit bool                            `yaml:"skipPullingInvalidTransactionsDuringCommit"`
+	ImplicitCollDisseminationPolicy            ImplicitCollDisseminationPolicy `yaml:"implicitCollectionDisseminationPolicy"`
+}
+
+type ImplicitCollDisseminationPolicy struct {
+	RequiredPeerCount int `yaml:"requiredPeerCount,omitempty"`
+	// do not tag omitempty in order to override MaxPeerCount default with 0
+	MaxPeerCount int `yaml:"maxPeerCount"`
 }
 
 type GossipState struct {

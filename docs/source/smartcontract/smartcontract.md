@@ -138,7 +138,7 @@ A smart contract can describe an almost infinite array of business use cases
 relating to immutability of data in multi-organizational decision making. The
 job of a smart contract developer is to take an existing business process that
 might govern financial prices or delivery conditions, and express it as
-a smart contract in a programming language such as JavaScript, GOLANG or Java.
+a smart contract in a programming language such as JavaScript, Go, or Java.
 The legal and technical skills required to convert centuries of legal language
 into programming language is increasingly practiced by **smart contract
 auditors**. You can learn about how to design and develop a smart contract in
@@ -332,7 +332,7 @@ abbreviations:
 
 * **Validation system chaincode (VSCC)** validates a transaction, including checking
   endorsement policy and read-write set versioning. You can read more about the
-  LSCC implements this [process](../peers/peers.html#phase-3-validation).
+  VSCC implements this [process](../peers/peers.html#phase-3-validation).
 
 It is possible for low level Fabric developers and administrators to modify
 these system chaincodes for their own uses. However, the development and

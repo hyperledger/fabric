@@ -14,9 +14,9 @@ As you'll see, sometimes it is necessary to update your channel to a new capabil
 
 ## Node versions and capability versions
 
-If you're familiar with Hyperledger Fabric, you're aware that it follows the typical semantic versioning pattern: v1.1, v1.2.1, v2.0, etc. These versions refer to releases and their related binary versions.
+If you're familiar with Hyperledger Fabric, you're aware that it follows a typical versioning pattern: v1.1, v1.2.1, v2.0, etc. These versions refer to releases and their related binary versions.
 
-Capabilities follow the same semantic versioning convention. There are v1.1 capabilities and v1.2 capabilities and 2.0 capabilities and so on. But it's important to note a few distinctions.
+Capabilities follow the same versioning convention. There are v1.1 capabilities and v1.2 capabilities and 2.0 capabilities and so on. But it's important to note a few distinctions.
 
 * **There is not necessarily a new capability level with each release**.
   The need to establish a new capability is determined on a case by case basis and relies chiefly on the backwards compatibility of new features and older binary versions. Adding Raft ordering services in v1.4.1, for example, did not change the way either transactions or ordering service functions were handled and thus did not require the establishment of any new capabilities. [Private Data](./private-data/private-data.html), on the other hand, could not be handled by peers before v1.2, requiring the establishment of a v1.2 capability level. Because not every release contains a new feature (or a bug fix) that changes the way transactions are processed, certain releases will not require any new capabilities (for example, v1.4) while others will only have new capabilities at particular levels (such as v1.2 and v1.3). We'll discuss the "levels" of capabilities and where they reside in the configuration tree later.

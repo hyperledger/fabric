@@ -22,7 +22,7 @@ import (
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -222,7 +222,7 @@ func getCollectionConfigFromBytes(cconfBytes []byte) (*pb.CollectionConfigPackag
 
 	ccarray := make([]*pb.CollectionConfig, 0, len(*cconf))
 	for _, cconfitem := range *cconf {
-		p, err := cauthdsl.FromString(cconfitem.Policy)
+		p, err := policydsl.FromString(cconfitem.Policy)
 		if err != nil {
 			return nil, nil, errors.WithMessagef(err, "invalid policy %s", cconfitem.Policy)
 		}
@@ -289,7 +289,7 @@ func getApplicationPolicy(signaturePolicy, channelConfigPolicy string) (*pb.Appl
 
 	var applicationPolicy *pb.ApplicationPolicy
 	if signaturePolicy != "" {
-		signaturePolicyEnvelope, err := cauthdsl.FromString(signaturePolicy)
+		signaturePolicyEnvelope, err := policydsl.FromString(signaturePolicy)
 		if err != nil {
 			return nil, errors.Errorf("invalid signature policy: %s", signaturePolicy)
 		}
@@ -339,7 +339,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		}
 
 		if policy != common.UndefinedParamValue {
-			p, err := cauthdsl.FromString(policy)
+			p, err := policydsl.FromString(policy)
 			if err != nil {
 				return errors.Errorf("invalid policy %s", policy)
 			}

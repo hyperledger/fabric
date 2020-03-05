@@ -22,11 +22,11 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	ctxt "github.com/hyperledger/fabric/common/configtx/test"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -54,7 +54,7 @@ import (
 )
 
 func signedByAnyMember(ids []string) []byte {
-	p := cauthdsl.SignedByAnyMember(ids)
+	p := policydsl.SignedByAnyMember(ids)
 	return protoutil.MarshalOrPanic(p)
 }
 
@@ -639,7 +639,7 @@ func TestParallelValidation(t *testing.T) {
 
 	ccID := "mycc"
 
-	policy := cauthdsl.SignedByMspPeer("Org1")
+	policy := policydsl.SignedByMspPeer("Org1")
 	polBytes := protoutil.MarshalOrPanic(policy)
 	putCCInfo(l, ccID, polBytes, t)
 
@@ -1043,7 +1043,7 @@ func testInvokeOKSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator)
 	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, signerSerialized)
 	assert.NoError(t, err)
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
-	rwsetBuilder.AddToWriteSet("lscc", "cc", protoutil.MarshalOrPanic(&ccp.ChaincodeData{Name: "cc", Version: "ver", InstantiationPolicy: cauthdsl.MarshaledAcceptAllPolicy}))
+	rwsetBuilder.AddToWriteSet("lscc", "cc", protoutil.MarshalOrPanic(&ccp.ChaincodeData{Name: "cc", Version: "ver", InstantiationPolicy: policydsl.MarshaledAcceptAllPolicy}))
 	rwset, err := rwsetBuilder.GetTxSimulationResults()
 	assert.NoError(t, err)
 	rwsetBytes, err := rwset.GetPubSimulationBytes()
@@ -1406,7 +1406,7 @@ func validateTxWithStateBasedEndorsement(t *testing.T, l ledger.PeerLedger, v tx
 	ccID := "mycc"
 
 	putCCInfoWithVSCCAndVer(l, ccID, "vscc", ccVersion, signedByAnyMember([]string{"SampleOrg"}), t)
-	putSBEP(l, ccID, "key", cauthdsl.MarshaledRejectAllPolicy, t)
+	putSBEP(l, ccID, "key", policydsl.MarshaledRejectAllPolicy, t)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 3}}

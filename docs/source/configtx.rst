@@ -72,8 +72,8 @@ policies. It is defined as follows:
     }
 
 Because ``ConfigGroup`` is a recursive structure, it has hierarchical
-arrangement. The following example is expressed for clarity in golang
-notation.
+arrangement. The following example is expressed for clarity in Go
+syntax.
 
 ::
 
@@ -129,7 +129,7 @@ changing the Value and Policy fields respectively (or changing the
 ``mod_policy``). Each element's ``mod_policy`` is evaluated in the
 context of the current level of the config. Consider the following
 example mod policies defined at ``Channel.Groups["Application"]`` (Here,
-we use the golang map reference syntax, so
+we use the Go map reference syntax, so
 ``Channel.Groups["Application"].Policies["policy1"]`` refers to the base
 ``Channel`` group's ``Application`` group's ``Policies`` map's
 ``policy1`` policy.)

@@ -87,7 +87,7 @@ type eligibilityComputer struct {
 
 // computeEligibility computes eligilibity of private data and
 // groups all private data as either eligibleMissing or ineligibleMissing prior to fetching
-func (ec *eligibilityComputer) computeEligibility(pvtdataToRetrieve []*ledger.TxPvtdataInfo) (*pvtdataRetrievalInfo, error) {
+func (ec *eligibilityComputer) computeEligibility(mspID string, pvtdataToRetrieve []*ledger.TxPvtdataInfo) (*pvtdataRetrievalInfo, error) {
 	sources := make(map[rwSetKey][]*peer.Endorsement)
 	eligibleMissingKeys := make(rwsetKeys)
 	ineligibleMissingKeys := make(rwsetKeys)
@@ -125,7 +125,10 @@ func (ec *eligibilityComputer) computeEligibility(pvtdataToRetrieve []*ledger.Tx
 				collection: col,
 			}
 
-			if !policy.AccessFilter()(ec.selfSignedData) {
+			// First check if mspID is found in the MemberOrgs before falling back to AccessFilter policy evaluation
+			memberOrgs := policy.MemberOrgs()
+			if _, ok := memberOrgs[mspID]; !ok &&
+				!policy.AccessFilter()(ec.selfSignedData) {
 				ec.logger.Debugf("Peer is not eligible for collection: chaincode [%s], "+
 					"collection name [%s], txID [%s] the policy is [%#v]. Skipping.",
 					ns, col, txID, policy)
@@ -137,7 +140,7 @@ func (ec *eligibilityComputer) computeEligibility(pvtdataToRetrieve []*ledger.Tx
 			eligibleMissingKeys[key] = rwsetInfo{
 				invalid: invalid,
 			}
-			sources[key] = endorsersFromEligibleOrgs(ns, col, endorsers, policy.MemberOrgs())
+			sources[key] = endorsersFromEligibleOrgs(ns, col, endorsers, memberOrgs)
 		}
 	}
 
@@ -150,6 +153,7 @@ func (ec *eligibilityComputer) computeEligibility(pvtdataToRetrieve []*ledger.Tx
 }
 
 type PvtdataProvider struct {
+	mspID                                   string
 	selfSignedData                          protoutil.SignedData
 	logger                                  util.Logger
 	listMissingPrivateDataDurationHistogram metrics.Histogram
@@ -190,7 +194,7 @@ func (pdp *PvtdataProvider) RetrievePvtdata(pvtdataToRetrieve []*ledger.TxPvtdat
 		idDeserializerFactory:   pdp.idDeserializerFactory,
 	}
 
-	pvtdataRetrievalInfo, err := eligibilityComputer.computeEligibility(pvtdataToRetrieve)
+	pvtdataRetrievalInfo, err := eligibilityComputer.computeEligibility(pdp.mspID, pvtdataToRetrieve)
 	if err != nil {
 		return nil, err
 	}
@@ -543,7 +547,7 @@ func getTxIDBySeqInBlock(seqInBlock uint64, pvtdataToRetrieve []*ledger.TxPvtdat
 	return ""
 }
 
-func endorsersFromEligibleOrgs(ns string, col string, endorsers []*peer.Endorsement, orgs []string) []*peer.Endorsement {
+func endorsersFromEligibleOrgs(ns string, col string, endorsers []*peer.Endorsement, orgs map[string]struct{}) []*peer.Endorsement {
 	var res []*peer.Endorsement
 	for _, e := range endorsers {
 		sID := &msp.SerializedIdentity{}
@@ -552,7 +556,7 @@ func endorsersFromEligibleOrgs(ns string, col string, endorsers []*peer.Endorsem
 			logger.Warning("Failed unmarshalling endorser:", err)
 			continue
 		}
-		if !util.Contains(sID.Mspid, orgs) {
+		if _, ok := orgs[sID.Mspid]; !ok {
 			logger.Debug(sID.Mspid, "isn't among the collection's orgs:", orgs, "for namespace", ns, ",collection", col)
 			continue
 		}

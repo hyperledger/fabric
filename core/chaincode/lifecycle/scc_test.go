@@ -18,9 +18,9 @@ import (
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -926,7 +926,7 @@ var _ = Describe("SCC", func() {
 										Name: "test_collection",
 										MemberOrgsPolicy: &pb.CollectionPolicyConfig{
 											Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
-												SignaturePolicy: cauthdsl.SignedByMspMember("org0"),
+												SignaturePolicy: policydsl.SignedByMspMember("org0"),
 											},
 										},
 									},
@@ -997,7 +997,7 @@ var _ = Describe("SCC", func() {
 										Name: "test_collection",
 										MemberOrgsPolicy: &pb.CollectionPolicyConfig{
 											Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
-												SignaturePolicy: cauthdsl.SignedByMspMember("org0"),
+												SignaturePolicy: policydsl.SignedByMspMember("org0"),
 											},
 										},
 									},
@@ -1594,7 +1594,7 @@ type collectionConfig struct {
 func (cc *collectionConfig) toCollectionConfigProto() *pb.CollectionConfig {
 	memberOrgPolicy := cc.MemberOrgPolicy
 	if !cc.UseGivenMemberOrgPolicy {
-		spe, err := cauthdsl.FromString(cc.Policy)
+		spe, err := policydsl.FromString(cc.Policy)
 		Expect(err).NotTo(HaveOccurred())
 		spe.Identities = cc.Identities
 		memberOrgPolicy = &pb.CollectionPolicyConfig{

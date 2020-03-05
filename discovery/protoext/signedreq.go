@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package protoext
 
 import (
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/discovery"
 )
 

@@ -17,8 +17,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -115,66 +113,6 @@ func TestStore(t *testing.T) {
 	missingDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(1)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedMissingDataInfo, missingDataInfo)
-}
-
-func TestStoreWithExistingBlockchain(t *testing.T) {
-	testLedgerid := "test-ledger"
-	storeDir, err := ioutil.TempDir("", "lstore")
-	if err != nil {
-		t.Fatalf("Failed to create ledger storage directory: %s", err)
-	}
-	defer os.RemoveAll(storeDir)
-
-	// Construct a block storage
-	attrsToIndex := []blkstorage.IndexableAttr{
-		blkstorage.IndexableAttrBlockHash,
-		blkstorage.IndexableAttrBlockNum,
-		blkstorage.IndexableAttrTxID,
-		blkstorage.IndexableAttrBlockNumTranNum,
-	}
-	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	blockStoreProvider, err := fsblkstorage.NewProvider(
-		fsblkstorage.NewConf(filepath.Join(storeDir, "chains"), maxBlockFileSize),
-		indexConfig,
-		metricsProvider,
-	)
-	assert.NoError(t, err)
-	blkStore, err := blockStoreProvider.OpenBlockStore(testLedgerid)
-	assert.NoError(t, err)
-	testBlocks := testutil.ConstructTestBlocks(t, 10)
-
-	existingBlocks := testBlocks[0:9]
-	blockToAdd := testBlocks[9:][0]
-
-	// Add existingBlocks to the block storage directly without involving pvtdata store and close the block storage
-	for _, blk := range existingBlocks {
-		assert.NoError(t, blkStore.AddBlock(blk))
-	}
-	blockStoreProvider.Close()
-
-	// Simulating the upgrade from 1.0 situation:
-	// Open the ledger storage - pvtdata store is opened for the first time with an existing block storage
-	conf := buildPrivateDataConfig(storeDir)
-	blockStoreDir := filepath.Join(storeDir, "chains")
-	provider, err := NewProvider(blockStoreDir, conf, metricsProvider)
-	assert.NoError(t, err)
-	defer provider.Close()
-	store, err := provider.Open(testLedgerid)
-	assert.NoError(t, err)
-	store.Init(btlPolicyForSampleData())
-	defer store.Shutdown()
-
-	// test that pvtdata store is updated with info from existing block storage
-	pvtdataBlockHt, err := store.pvtdataStore.LastCommittedBlockHeight()
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(9), pvtdataBlockHt)
-
-	// Add one more block with ovtdata associated with one of the trans and commit in the normal course
-	pvtdata := samplePvtData(t, []uint64{0})
-	assert.NoError(t, store.CommitWithPvtData(&ledger.BlockAndPvtData{Block: blockToAdd, PvtData: pvtdata}))
-	pvtdataBlockHt, err = store.pvtdataStore.LastCommittedBlockHeight()
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), pvtdataBlockHt)
 }
 
 func TestCrashAfterPvtdataStoreCommit(t *testing.T) {

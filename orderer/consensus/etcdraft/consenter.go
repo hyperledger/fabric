@@ -31,16 +31,13 @@ import (
 	"go.etcd.io/etcd/raft"
 )
 
-// CreateChainCallback creates a new chain
-type CreateChainCallback func()
-
 //go:generate mockery -dir . -name InactiveChainRegistry -case underscore -output mocks
 
 // InactiveChainRegistry registers chains that are inactive
 type InactiveChainRegistry interface {
 	// TrackChain tracks a chain with the given name, and calls the given callback
 	// when this chain should be created.
-	TrackChain(chainName string, genesisBlock *common.Block, createChain CreateChainCallback)
+	TrackChain(chainName string, genesisBlock *common.Block, createChain func())
 }
 
 //go:generate mockery -dir . -name ChainGetter -case underscore -output mocks

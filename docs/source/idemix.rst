@@ -138,7 +138,7 @@ From a verifier perspective, there is one more actor to consider: chaincode.
 What can chaincode learn about the transactor when an Idemix credential is used?
 
 The `cid (Client Identity) library <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/pkg/cid>`_
-(for golang only) has been extended to support the ``GetAttributeValue`` function
+(for Go only) has been extended to support the ``GetAttributeValue`` function
 when an Idemix credential is used. However, as mentioned in the "Current
 limitations" section below, there are only two attributes which are disclosed in
 the Idemix case: ``ou`` and ``role``.

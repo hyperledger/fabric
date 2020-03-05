@@ -84,7 +84,7 @@ A filtered block contains:
  * array of filtered transactions.
  * transaction ID.
 
-   * type (e.g. ``ENDORSER_TRANSACTION``, ``CONFIG``.
+   * type (e.g. ``ENDORSER_TRANSACTION``, ``CONFIG``).
    * transaction validation code.
 
  * filtered transaction actions.

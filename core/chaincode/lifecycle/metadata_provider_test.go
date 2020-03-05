@@ -10,11 +10,11 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/pkg/errors"
 
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -41,7 +41,7 @@ var _ = Describe("MetadataProvider", func() {
 				ValidationInfo: &lb.ChaincodeValidationInfo{
 					ValidationParameter: protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
 						Type: &pb.ApplicationPolicy_SignaturePolicy{
-							SignaturePolicy: cauthdsl.AcceptAllPolicy,
+							SignaturePolicy: policydsl.AcceptAllPolicy,
 						},
 					}),
 				},
@@ -68,7 +68,7 @@ var _ = Describe("MetadataProvider", func() {
 			&chaincode.Metadata{
 				Name:              "cc-name",
 				Version:           "1",
-				Policy:            cauthdsl.MarshaledAcceptAllPolicy,
+				Policy:            policydsl.MarshaledAcceptAllPolicy,
 				CollectionsConfig: &pb.CollectionConfigPackage{},
 			},
 		))
@@ -104,7 +104,7 @@ var _ = Describe("MetadataProvider", func() {
 				&chaincode.Metadata{
 					Name:              "cc-name",
 					Version:           "1",
-					Policy:            cauthdsl.MarshaledRejectAllPolicy,
+					Policy:            policydsl.MarshaledRejectAllPolicy,
 					CollectionsConfig: &pb.CollectionConfigPackage{},
 				},
 			))
@@ -122,7 +122,7 @@ var _ = Describe("MetadataProvider", func() {
 			fakeChaincodeInfoProvider.ChaincodeInfoReturns(ccInfo, nil)
 
 			fakeConvertedPolicy = &mock.ConvertiblePolicy{}
-			fakeConvertedPolicy.ConvertReturns(cauthdsl.AcceptAllPolicy, nil)
+			fakeConvertedPolicy.ConvertReturns(policydsl.AcceptAllPolicy, nil)
 
 			fakeChannelPolicyReferenceProvider = &mock.ChannelPolicyReferenceProvider{}
 			fakeChannelPolicyReferenceProvider.NewPolicyReturns(fakeConvertedPolicy, nil)
@@ -135,7 +135,7 @@ var _ = Describe("MetadataProvider", func() {
 				&chaincode.Metadata{
 					Name:              "cc-name",
 					Version:           "1",
-					Policy:            cauthdsl.MarshaledAcceptAllPolicy,
+					Policy:            policydsl.MarshaledAcceptAllPolicy,
 					CollectionsConfig: &pb.CollectionConfigPackage{},
 				},
 			))
@@ -154,7 +154,7 @@ var _ = Describe("MetadataProvider", func() {
 					&chaincode.Metadata{
 						Name:              "cc-name",
 						Version:           "1",
-						Policy:            cauthdsl.MarshaledRejectAllPolicy,
+						Policy:            policydsl.MarshaledRejectAllPolicy,
 						CollectionsConfig: &pb.CollectionConfigPackage{},
 					},
 				))
@@ -174,7 +174,7 @@ var _ = Describe("MetadataProvider", func() {
 					&chaincode.Metadata{
 						Name:              "cc-name",
 						Version:           "1",
-						Policy:            cauthdsl.MarshaledRejectAllPolicy,
+						Policy:            policydsl.MarshaledRejectAllPolicy,
 						CollectionsConfig: &pb.CollectionConfigPackage{},
 					},
 				))
@@ -197,7 +197,7 @@ var _ = Describe("MetadataProvider", func() {
 					&chaincode.Metadata{
 						Name:              "cc-name",
 						Version:           "1",
-						Policy:            cauthdsl.MarshaledRejectAllPolicy,
+						Policy:            policydsl.MarshaledRejectAllPolicy,
 						CollectionsConfig: &pb.CollectionConfigPackage{},
 					},
 				))

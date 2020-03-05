@@ -21,8 +21,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	protospeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
@@ -48,7 +48,7 @@ import (
 )
 
 func signedByAnyMember(ids []string) []byte {
-	p := cauthdsl.SignedByAnyMember(ids)
+	p := policydsl.SignedByAnyMember(ids)
 	return protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: p}})
 }
 
@@ -468,7 +468,7 @@ func TestParallelValidation(t *testing.T) {
 
 	mockCR.On("CollectionValidationInfo", ccID, "col1", mock.Anything).Return(nil, nil, nil)
 
-	policy := cauthdsl.SignedByMspPeer("Org1")
+	policy := policydsl.SignedByMspPeer("Org1")
 	polBytes := protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policy}})
 	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
@@ -927,7 +927,7 @@ func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
 		Vscc:    "vscc",
 		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}), nil)
-	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.RejectAllPolicy}})}, nil)
+	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policydsl.RejectAllPolicy}})}, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 3}}

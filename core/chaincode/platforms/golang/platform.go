@@ -108,6 +108,9 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 // Directory constant copied from tar package.
 const c_ISDIR = 040000
 
+// Default compression to use for production. Test packages disable compression.
+var gzipCompressionLevel = gzip.DefaultCompression
+
 // GetDeploymentPayload creates a gzip compressed tape archive that contains the
 // required assets to build and run go chaincode.
 //
@@ -145,7 +148,10 @@ func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 	}
 
 	payload := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(payload)
+	gw, err := gzip.NewWriterLevel(payload, gzipCompressionLevel)
+	if err != nil {
+		return nil, err
+	}
 	tw := tar.NewWriter(gw)
 
 	// Create directories so they get sane ownership and permissions

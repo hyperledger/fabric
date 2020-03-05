@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	transientstore2 "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -132,6 +133,7 @@ func TestInitGossipService(t *testing.T) {
 		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
+		&privdata.PrivdataConfig{},
 		&deliverservice.DeliverServiceConfig{
 			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
@@ -797,6 +799,7 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 	)
 	go gRPCServer.Start()
 
+	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(factory.GetDefault()))
 	gossipService := &GossipService{
 		mcs:             cryptoService,
 		gossipSvc:       gossip,
@@ -807,9 +810,11 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 		deliveryFactory: &deliveryFactoryImpl{
 			credentialSupport: comm.NewCredentialSupport(),
 		},
-		peerIdentity:  api.PeerIdentityType(conf.InternalEndpoint),
-		metrics:       metrics,
-		serviceConfig: serviceConfig,
+		peerIdentity:   api.PeerIdentityType(conf.InternalEndpoint),
+		secAdv:         secAdv,
+		metrics:        metrics,
+		serviceConfig:  serviceConfig,
+		privdataConfig: privdata.GlobalConfig(),
 	}
 
 	return &gossipGRPC{GossipService: gossipService, grpc: gRPCServer}
@@ -930,6 +935,7 @@ func TestInvalidInitialization(t *testing.T) {
 		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
+		&privdata.PrivdataConfig{},
 		&deliverservice.DeliverServiceConfig{
 			PeerTLSEnabled:              false,
 			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
@@ -975,6 +981,7 @@ func TestChannelConfig(t *testing.T) {
 		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
+		&privdata.PrivdataConfig{},
 		&deliverservice.DeliverServiceConfig{
 			ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
 			ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
@@ -1005,17 +1012,4 @@ func TestChannelConfig(t *testing.T) {
 	gService.JoinChan(jcm, gossipcommon.ChannelID("A"))
 	gService.updateAnchors(mc)
 	assert.True(t, gService.amIinChannel(string(orgInChannelA), mc))
-}
-
-func defaultDeliverClientDialOpts() []grpc.DialOption {
-	dialOpts := []grpc.DialOption{grpc.WithBlock()}
-	dialOpts = append(
-		dialOpts,
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
-	kaOpts := comm.DefaultKeepaliveOptions
-	dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
-
-	return dialOpts
 }

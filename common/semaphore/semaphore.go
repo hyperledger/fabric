@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 // Package semaphore provides an implementation of a counting semaphore.
 package semaphore
 
-import "context"
+import (
+	"context"
+)
 
 // Semaphore is a buffered channel based implementation of a counting
 // semaphore.
@@ -32,6 +34,18 @@ func (s Semaphore) Acquire(ctx context.Context) error {
 		return ctx.Err()
 	case s <- struct{}{}:
 		return nil
+	}
+}
+
+// TryAcquire acquires the semaphore without blocking.
+// Returns true if the semaphore is acquired.
+// Otherwise, returns false and leaves the semaphore unchanged.
+func (s Semaphore) TryAcquire() bool {
+	select {
+	case s <- struct{}{}:
+		return true
+	default:
+		return false
 	}
 }
 
