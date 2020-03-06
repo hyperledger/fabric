@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -22,6 +23,7 @@ import (
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	ob "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/pkg/config"
 )
 
@@ -307,13 +309,13 @@ func marshalOrPanic(pb proto.Message) []byte {
 
 // createSigningIdentity returns a identity that can be used for signing transactions.
 // Signing identity can be retrieved from MSP configuration for each peer.
-func createSigningIdentity() *config.SigningIdentity {
+func createSigningIdentity() config.SigningIdentity {
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to generate private key: %v", err))
 	}
 
-	return &config.SigningIdentity{
+	return config.SigningIdentity{
 		Certificate: generateCert(),
 		PrivateKey:  privKey,
 		MSPID:       "Org1MSP",
@@ -351,12 +353,12 @@ func Example_usage() {
 
 	// Must retrieve the current orderer configuration from block and modify
 	// the desired values
-	orderer := &config.Orderer{
+	orderer := config.Orderer{
 		OrdererType: config.ConsensusTypeKafka,
 		Kafka: config.Kafka{
 			Brokers: []string{"kafka0:9092", "kafka1:9092", "kafka2:9092"}, // Add new broker
 		},
-		Organizations: []*config.Organization{
+		Organizations: []config.Organization{
 			{
 				Name: "OrdererOrg",
 				Policies: map[string]*config.Policy{
@@ -392,7 +394,7 @@ func Example_usage() {
 		panic(nil)
 	}
 
-	newAnchorPeer := &config.AnchorPeer{
+	newAnchorPeer := config.AnchorPeer{
 		Host: "127.0.0.2",
 		Port: 7051,
 	}
@@ -404,7 +406,7 @@ func Example_usage() {
 	}
 
 	// Remove an old anchor peer from Org1
-	oldAnchorPeer := &config.AnchorPeer{
+	oldAnchorPeer := config.AnchorPeer{
 		Host: "127.0.0.2",
 		Port: 7051,
 	}
@@ -428,7 +430,7 @@ func Example_usage() {
 	peer1SigningIdentity := createSigningIdentity()
 	peer2SigningIdentity := createSigningIdentity()
 
-	signingIdentities := []*config.SigningIdentity{
+	signingIdentities := []config.SigningIdentity{
 		peer1SigningIdentity,
 		peer2SigningIdentity,
 	}
@@ -448,4 +450,230 @@ func Example_usage() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func ExampleNewCreateChannelTx() {
+	channel := config.Channel{
+		ChannelID:  "testchannel",
+		Consortium: "SampleConsortium",
+		Application: config.Application{
+			Organizations: []config.Organization{
+				{
+					Name: "Org1",
+				},
+				{
+					Name: "Org2",
+				},
+			},
+			Capabilities: map[string]bool{"V1_3": true},
+			ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
+			Policies: map[string]*config.Policy{
+				config.ReadersPolicyKey: {
+					Type: config.ImplicitMetaPolicyType,
+					Rule: "ANY Readers",
+				},
+				config.WritersPolicyKey: {
+					Type: config.ImplicitMetaPolicyType,
+					Rule: "ANY Writers",
+				},
+				config.AdminsPolicyKey: {
+					Type: config.ImplicitMetaPolicyType,
+					Rule: "MAJORITY Admins",
+				},
+				config.EndorsementPolicyKey: {
+					Type: config.ImplicitMetaPolicyType,
+					Rule: "MAJORITY Endorsement",
+				},
+				config.LifecycleEndorsementPolicyKey: {
+					Type: config.ImplicitMetaPolicyType,
+					Rule: "MAJORITY Endorsement",
+				},
+			},
+		},
+	}
+
+	envelope, err := config.NewCreateChannelTx(channel)
+	if err != nil {
+		panic(err)
+	}
+
+	// The timestamps of the ChannelHeader varies so this comparison only considers the ConfigUpdateEnvelope JSON.
+	payload := &cb.Payload{}
+
+	err = proto.Unmarshal(envelope.Payload, payload)
+	if err != nil {
+		panic(err)
+	}
+
+	data := &cb.ConfigUpdateEnvelope{}
+
+	err = proto.Unmarshal(payload.Data, data)
+	if err != nil {
+		panic(err)
+	}
+
+	err = protolator.DeepMarshalJSON(os.Stdout, data)
+	if err != nil {
+		panic(err)
+	}
+
+	// Output:
+	// {
+	// 	"config_update": {
+	// 		"channel_id": "testchannel",
+	// 		"isolated_data": {},
+	// 		"read_set": {
+	// 			"groups": {
+	// 				"Application": {
+	// 					"groups": {
+	// 						"Org1": {
+	// 							"groups": {},
+	// 							"mod_policy": "",
+	// 							"policies": {},
+	// 							"values": {},
+	// 							"version": "0"
+	// 						},
+	// 						"Org2": {
+	// 							"groups": {},
+	// 							"mod_policy": "",
+	// 							"policies": {},
+	// 							"values": {},
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"mod_policy": "",
+	// 					"policies": {},
+	// 					"values": {},
+	// 					"version": "0"
+	// 				}
+	// 			},
+	// 			"mod_policy": "",
+	// 			"policies": {},
+	// 			"values": {
+	// 				"Consortium": {
+	// 					"mod_policy": "",
+	// 					"value": null,
+	// 					"version": "0"
+	// 				}
+	// 			},
+	// 			"version": "0"
+	// 		},
+	// 		"write_set": {
+	// 			"groups": {
+	// 				"Application": {
+	// 					"groups": {
+	// 						"Org1": {
+	// 							"groups": {},
+	// 							"mod_policy": "",
+	// 							"policies": {},
+	// 							"values": {},
+	// 							"version": "0"
+	// 						},
+	// 						"Org2": {
+	// 							"groups": {},
+	// 							"mod_policy": "",
+	// 							"policies": {},
+	// 							"values": {},
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"mod_policy": "Admins",
+	// 					"policies": {
+	// 						"Admins": {
+	// 							"mod_policy": "Admins",
+	// 							"policy": {
+	// 								"type": 3,
+	// 								"value": {
+	// 									"rule": "MAJORITY",
+	// 									"sub_policy": "Admins"
+	// 								}
+	// 							},
+	// 							"version": "0"
+	// 						},
+	// 						"Endorsement": {
+	// 							"mod_policy": "Admins",
+	// 							"policy": {
+	// 								"type": 3,
+	// 								"value": {
+	// 									"rule": "MAJORITY",
+	// 									"sub_policy": "Endorsement"
+	// 								}
+	// 							},
+	// 							"version": "0"
+	// 						},
+	// 						"LifecycleEndorsement": {
+	// 							"mod_policy": "Admins",
+	// 							"policy": {
+	// 								"type": 3,
+	// 								"value": {
+	// 									"rule": "MAJORITY",
+	// 									"sub_policy": "Endorsement"
+	// 								}
+	// 							},
+	// 							"version": "0"
+	// 						},
+	// 						"Readers": {
+	// 							"mod_policy": "Admins",
+	// 							"policy": {
+	// 								"type": 3,
+	// 								"value": {
+	// 									"rule": "ANY",
+	// 									"sub_policy": "Readers"
+	// 								}
+	// 							},
+	// 							"version": "0"
+	// 						},
+	// 						"Writers": {
+	// 							"mod_policy": "Admins",
+	// 							"policy": {
+	// 								"type": 3,
+	// 								"value": {
+	// 									"rule": "ANY",
+	// 									"sub_policy": "Writers"
+	// 								}
+	// 							},
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"values": {
+	// 						"ACLs": {
+	// 							"mod_policy": "Admins",
+	// 							"value": {
+	// 								"acls": {
+	// 									"event/Block": {
+	// 										"policy_ref": "/Channel/Application/Readers"
+	// 									}
+	// 								}
+	// 							},
+	// 							"version": "0"
+	// 						},
+	// 						"Capabilities": {
+	// 							"mod_policy": "Admins",
+	// 							"value": {
+	// 								"capabilities": {
+	// 									"V1_3": {}
+	// 								}
+	// 							},
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"version": "1"
+	// 				}
+	// 			},
+	// 			"mod_policy": "",
+	// 			"policies": {},
+	// 			"values": {
+	// 				"Consortium": {
+	// 					"mod_policy": "",
+	// 					"value": {
+	// 						"name": "SampleConsortium"
+	// 					},
+	// 					"version": "0"
+	// 				}
+	// 			},
+	// 			"version": "0"
+	// 		}
+	// 	},
+	// 	"signatures": []
+	// }
 }
