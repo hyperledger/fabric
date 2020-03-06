@@ -70,7 +70,7 @@ Usage:
 	network.sh up
 
  Examples:
-  network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0-beta
+  network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0
   network.sh createChannel -c channelName
   network.sh deployCC -l javascript
 ```
@@ -90,8 +90,7 @@ experience problems if you try to run the script from another directory:
 This command creates a Fabric network that consists of two peer nodes, one
 ordering node. No channel is created when you run `./network.sh up`, though we
 will get there in a [future step](#creating-a-channel). If the command completes
-successfully, the script will print out logs similar to these of the nodes being
-created.
+successfully, you will see the logs of the nodes being created:
 ```
 Creating network "net_test" with the default driver
 Creating volume "net_orderer.example.com" with default driver
@@ -242,10 +241,13 @@ chaincode on the channel using the following command:
 The `deployCC` subcommand will install the **fabcar** chaincode on
 ``peer0.org1.example.com`` and ``peer0.org2.example.com`` and then deploy
 the chaincode on the channel specified using the channel flag (or `mychannel`
-if no channel is specified). If are deploying a chaincode for the first time, the
-script will install the chaincode dependencies. By default, The script installs
-the Golang version of the fabcar chaincode. However, you can use the language
-flag, `-l`, to install the Java or javascript versions of the chaincode.
+if no channel is specified).  If you are deploying a chaincode for the first
+time, the script will install the chaincode dependencies. By default, The script
+installs the Go version of the fabcar chaincode. However, you can use the
+language flag, `-l`, to install the Java or javascript versions of the chaincode.
+You can find the Fabcar chaincode in the `chaincode` folder of the `fabric-samples`
+directory. This folder contains sample chaincode that are provided as examples and
+used by tutorials to highlight Fabric features.
 
 After the **fabcar** chaincode definition has been committed to the channel, the
 script initializes the chaincode by invoking the `init` function and then invokes
@@ -254,7 +256,16 @@ queries the chaincode to verify the that the data was added. If the chaincode wa
 installed, deployed, and invoked correctly, you should see the following list of
 cars printed in your logs:
 ```
-[{"Key":"CAR0", "Record":{"make":"Toyota","model":"Prius","colour":"blue","owner":"Tomoko"}},{"Key":"CAR1", "Record":{"make":"Ford","model":"Mustang","colour":"red","owner":"Brad"}},{"Key":"CAR2", "Record":{"make":"Hyundai","model":"Tucson","colour":"green","owner":"Jin Soo"}},{"Key":"CAR3", "Record":{"make":"Volkswagen","model":"Passat","colour":"yellow","owner":"Max"}},{"Key":"CAR4", "Record":{"make":"Tesla","model":"S","colour":"black","owner":"Adriana"}},{"Key":"CAR5", "Record":{"make":"Peugeot","model":"205","colour":"purple","owner":"Michel"}},{"Key":"CAR6", "Record":{"make":"Chery","model":"S22L","colour":"white","owner":"Aarav"}},{"Key":"CAR7", "Record":{"make":"Fiat","model":"Punto","colour":"violet","owner":"Pari"}},{"Key":"CAR8", "Record":{"make":"Tata","model":"Nano","colour":"indigo","owner":"Valeria"}},{"Key":"CAR9", "Record":{"make":"Holden","model":"Barina","colour":"brown","owner":"Shotaro"}}]
+[{"Key":"CAR0", "Record":{"make":"Toyota","model":"Prius","colour":"blue","owner":"Tomoko"}},
+{"Key":"CAR1", "Record":{"make":"Ford","model":"Mustang","colour":"red","owner":"Brad"}},
+{"Key":"CAR2", "Record":{"make":"Hyundai","model":"Tucson","colour":"green","owner":"Jin Soo"}},
+{"Key":"CAR3", "Record":{"make":"Volkswagen","model":"Passat","colour":"yellow","owner":"Max"}},
+{"Key":"CAR4", "Record":{"make":"Tesla","model":"S","colour":"black","owner":"Adriana"}},
+{"Key":"CAR5", "Record":{"make":"Peugeot","model":"205","colour":"purple","owner":"Michel"}},
+{"Key":"CAR6", "Record":{"make":"Chery","model":"S22L","colour":"white","owner":"Aarav"}},
+{"Key":"CAR7", "Record":{"make":"Fiat","model":"Punto","colour":"violet","owner":"Pari"}},
+{"Key":"CAR8", "Record":{"make":"Tata","model":"Nano","colour":"indigo","owner":"Valeria"}},
+{"Key":"CAR9", "Record":{"make":"Holden","model":"Barina","colour":"brown","owner":"Shotaro"}}]
 ===================== Query successful on peer0.org1 on channel 'mychannel' =====================
 ```
 
