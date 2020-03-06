@@ -57,10 +57,6 @@ type Organization struct {
 
 	AnchorPeers      []*AnchorPeer
 	OrdererEndpoints []string
-
-	// SkipAsForeign indicates that this org definition is actually unknown to this
-	// instance of the tool, so, parsing of this org's parameters should be ignored
-	SkipAsForeign bool
 }
 
 type standardConfigValue struct {
@@ -236,10 +232,6 @@ func newChannelGroup(channelConfig *Channel) (*cb.ConfigGroup, error) {
 func newOrgConfigGroup(org *Organization) (*cb.ConfigGroup, error) {
 	orgGroup := newConfigGroup()
 	orgGroup.ModPolicy = AdminsPolicyKey
-
-	if org.SkipAsForeign {
-		return orgGroup, nil
-	}
 
 	if err := addPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
 		return nil, err

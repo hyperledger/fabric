@@ -136,29 +136,6 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 	}
 }
 
-func TestNewApplicationGroupSkipAsForeign(t *testing.T) {
-	t.Parallel()
-
-	gt := NewGomegaWithT(t)
-
-	application := baseApplication()
-	application.Organizations[0].SkipAsForeign = true
-	application.Organizations[1].SkipAsForeign = true
-
-	applicationGroup, err := newApplicationGroup(application)
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(applicationGroup.Groups["Org1"]).To(Equal(&cb.ConfigGroup{
-		Groups:   make(map[string]*cb.ConfigGroup),
-		Values:   make(map[string]*cb.ConfigValue),
-		Policies: make(map[string]*cb.ConfigPolicy),
-	}))
-	gt.Expect(applicationGroup.Groups["Org2"]).To(Equal(&cb.ConfigGroup{
-		Groups:   make(map[string]*cb.ConfigGroup),
-		Values:   make(map[string]*cb.ConfigValue),
-		Policies: make(map[string]*cb.ConfigPolicy),
-	}))
-}
-
 func TestAddAnchorPeer(t *testing.T) {
 	t.Parallel()
 

@@ -372,32 +372,6 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 	}
 }
 
-func TestSkipAsForeignForConsortiumOrg(t *testing.T) {
-	t.Parallel()
-
-	gt := NewGomegaWithT(t)
-
-	consortiums := baseConsortiums()
-	consortiums[0].Organizations[0].SkipAsForeign = true
-	consortiums[0].Organizations[1].SkipAsForeign = true
-
-	// returns a consortiums group with consortium groups that have empty consortium org groups with only mod policy
-	consortiumsGroup, err := newConsortiumsGroup(consortiums)
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"]).To(Equal(&cb.ConfigGroup{
-		ModPolicy: AdminsPolicyKey,
-		Groups:    make(map[string]*cb.ConfigGroup),
-		Values:    make(map[string]*cb.ConfigValue),
-		Policies:  make(map[string]*cb.ConfigPolicy),
-	}))
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org2"]).To(Equal(&cb.ConfigGroup{
-		ModPolicy: AdminsPolicyKey,
-		Groups:    make(map[string]*cb.ConfigGroup),
-		Values:    make(map[string]*cb.ConfigValue),
-		Policies:  make(map[string]*cb.ConfigPolicy),
-	}))
-}
-
 func baseConsortiums() []*Consortium {
 	return []*Consortium{
 		{

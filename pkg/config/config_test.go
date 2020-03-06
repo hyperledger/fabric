@@ -641,28 +641,6 @@ func TestNewOrgConfigGroup(t *testing.T) {
 
 		gt.Expect(buf.String()).To(MatchJSON(expectedPrintOrg))
 	})
-
-	t.Run("skip as foreign", func(t *testing.T) {
-		t.Parallel()
-		gt := NewGomegaWithT(t)
-
-		expectedConfigGroup := newConfigGroup()
-		expectedConfigGroup.ModPolicy = AdminsPolicyKey
-		expectedBuf := bytes.Buffer{}
-		err := protolator.DeepMarshalJSON(&expectedBuf, expectedConfigGroup)
-		gt.Expect(err).NotTo(HaveOccurred())
-
-		org := baseProfile().Application.Organizations[0]
-		org.SkipAsForeign = true
-		configGroup, err := newOrgConfigGroup(org)
-		gt.Expect(err).NotTo(HaveOccurred())
-
-		buf := bytes.Buffer{}
-		err = protolator.DeepMarshalJSON(&buf, configGroup)
-		gt.Expect(err).NotTo(HaveOccurred())
-
-		gt.Expect(buf.String()).To(Equal(expectedBuf.String()))
-	})
 }
 
 func TestNewOrgConfigGroupFailure(t *testing.T) {
