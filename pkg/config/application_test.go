@@ -570,6 +570,84 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 	}
 }
 
+func TestGetAnchorPeer(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	channelGroup := newConfigGroup()
+	applicationGroup := newConfigGroup()
+
+	application := baseApplication()
+	for _, org := range application.Organizations {
+		orgGroup, err := newOrgConfigGroup(org)
+		gt.Expect(err).NotTo(HaveOccurred())
+		applicationGroup.Groups[org.Name] = orgGroup
+	}
+	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
+	config := &cb.Config{
+		ChannelGroup: channelGroup,
+	}
+
+	expectedAnchorPeer := &AnchorPeer{Host: "host1", Port: 123}
+
+	anchorPeers, err := GetAnchorPeer(config, "Org1")
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(anchorPeers)).To(Equal(1))
+	gt.Expect(anchorPeers[0]).To(Equal(expectedAnchorPeer))
+
+}
+
+func TestGetAnchorPeerFailures(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	channelGroup := newConfigGroup()
+	applicationGroup := newConfigGroup()
+
+	orgNoAnchor := &Organization{
+		Name:      "Org1",
+		ID:        "Org1MSP",
+		Policies:  applicationOrgStandardPolicies(),
+		MSPConfig: &mb.FabricMSPConfig{},
+	}
+	orgGroup, err := newOrgConfigGroup(orgNoAnchor)
+	gt.Expect(err).NotTo(HaveOccurred())
+	applicationGroup.Groups[orgNoAnchor.Name] = orgGroup
+
+	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
+	config := &cb.Config{
+		ChannelGroup: channelGroup,
+	}
+
+	for _, test := range []struct {
+		name        string
+		config      *cb.Config
+		orgName     string
+		expectedErr string
+	}{
+		{
+			name:        "When org does not exist in application channel",
+			config:      config,
+			orgName:     "bad-org",
+			expectedErr: "application org bad-org does not exist in channel config",
+		},
+		{
+			name:        "When org does not have an anchor peer",
+			config:      config,
+			orgName:     "Org1",
+			expectedErr: "application org Org1 does not have anchor peer",
+		},
+	} {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+			_, err := GetAnchorPeer(test.config, test.orgName)
+			gt.Expect(err).To(MatchError(test.expectedErr))
+		})
+	}
+}
+
 func baseApplication() *Application {
 	return &Application{
 		Policies: standardPolicies(),
