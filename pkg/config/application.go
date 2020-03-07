@@ -144,6 +144,35 @@ func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove *Anc
 	return fmt.Errorf("could not find anchor peer %s:%d in %s's anchor peer endpoints", anchorPeerToRemove.Host, anchorPeerToRemove.Port, orgName)
 }
 
+// GetAnchorPeer retrieves existing anchor peers from a application organization.
+func GetAnchorPeer(config *cb.Config, orgName string) ([]*AnchorPeer, error) {
+	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+	if !ok {
+		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)
+	}
+
+	anchorPeerConfigValue, ok := applicationOrgGroup.Values[AnchorPeersKey]
+	if !ok {
+		return nil, fmt.Errorf("application org %s does not have anchor peer", orgName)
+	}
+
+	anchorPeersProto := &pb.AnchorPeers{}
+	err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
+	if err != nil {
+		return nil, fmt.Errorf("failed unmarshalling %s's anchor peer endpoints: %v", orgName, err)
+	}
+
+	anchorPeers := []*AnchorPeer{}
+	for _, ap := range anchorPeersProto.AnchorPeers {
+		anchorPeers = append(anchorPeers, &AnchorPeer{
+			Host: ap.Host,
+			Port: int(ap.Port),
+		})
+	}
+
+	return anchorPeers, nil
+}
+
 // aclValues returns the config definition for an application's resources based ACL definitions.
 // It is a value for the /Channel/Application/.
 func aclValues(acls map[string]string) *standardConfigValue {
