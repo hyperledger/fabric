@@ -253,7 +253,7 @@ Then build the chaincode as suitable to your GO environment.
 
 ## Deploying the chaincode
 
-When the GO chaincode is ready for deployment, you can package the chaincode as explained in the [Packaging chaincode](#packaging-chaincode) section and deploy the chaincode as explained in the [chaincode lifecycle](./chaincode4noah.html#chaincode-lifecycle) documentation.
+When the GO chaincode is ready for deployment, you can package the chaincode as explained in the [Packaging chaincode](#packaging-chaincode) section and deploy the chaincode as explained in the [Fabric chaincode lifecycle](./chaincode_lifecycle.html) concept topic.
 
 ## Running the chaincode as an external service
 

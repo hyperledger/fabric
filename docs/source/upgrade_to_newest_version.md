@@ -2,7 +2,7 @@
 
 ## Chaincode lifecycle
 
-The new chaincode lifecycle that debuts in v2.0 allows multiple organizations to agree on how a chaincode will be operated before it can be used on a channel. For more information about the new chaincode lifecycle, check out [Chaincode for operators](./chaincode4noah.html).
+The new chaincode lifecycle that debuts in v2.0 allows multiple organizations to agree on how a chaincode will be operated before it can be used on a channel. For more information about the new chaincode lifecycle, check out [Fabric chaincode lifecycle](./chaincode_lifecycle.html) concept topic.
 
 It is a best practice to upgrade all of the peers on a channel before enabling the `Channel` and `Application` capabilities that enable the new chaincode lifecycle (the `Channel` capability is not strictly required, but it makes sense to update it at this time). Note that any peers that are not at v2.0 will crash after enabling either capability, while any ordering nodes that are not at v2.0 will crash after the `Channel` capability has been enabled. This crashing behavior is intentional, as the peer or orderer cannot safely participate in the channel if it does not support the required capabilities.
 
@@ -64,7 +64,7 @@ If the database is not dropped as part of the upgrade process, the peer start wi
 
 As can be expected for a 2.0 release, there is a full complement of new capabilities for 2.0.
 
-* **Application** `V2_0`: enables the new chaincode lifecycle as described in [Chaincode for Operators](./chaincode4noah.html).
+* **Application** `V2_0`: enables the new chaincode lifecycle as described in [Fabric chaincode lifecycle](./chaincode_lifecycle.html) concept topic.
 
 * **Channel** `V2_0`: this capability has no changes, but is used for consistency with the application and orderer capability levels.
 

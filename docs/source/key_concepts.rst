@@ -11,9 +11,10 @@ Key Concepts
    membership/membership.md
    policies/policies.md
    peers/peers.md
-   smartcontract/smartcontract.md
    ledger/ledger.md
    orderer/ordering_service.md
+   smartcontract/smartcontract.md
+   chaincode_lifecycle.md
    private-data/private-data.md
    capabilities_concept.md
    usecases
