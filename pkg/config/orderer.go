@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -32,7 +33,7 @@ type Orderer struct {
 	BatchTimeout  time.Duration
 	BatchSize     BatchSize
 	Kafka         Kafka
-	EtcdRaft      eb.ConfigMetadata
+	EtcdRaft      EtcdRaft
 	Organizations []Organization
 	// MaxChannels is the maximum count of channels an orderer supports.
 	MaxChannels uint64
@@ -58,6 +59,32 @@ type Kafka struct {
 	// Brokers contains the addresses of *at least two* kafka brokers
 	// Must be in `IP:port` notation
 	Brokers []string
+}
+
+// EtcdRaft is serialized and set as the value of ConsensusType.Metadata in
+// a channel configuration when the ConsensusType.Type is set to "etcdraft".
+type EtcdRaft struct {
+	Consenters []Consenter
+	Options    EtcdRaftOptions
+}
+
+// Consenter represents a consenting node (i.e. replica).
+type Consenter struct {
+	Host          string
+	Port          uint32
+	ClientTLSCert *x509.Certificate
+	ServerTLSCert *x509.Certificate
+}
+
+// EtcdRaftOptions to be specified for all the etcd/raft nodes.
+// These can be modified on a per-channel basis.
+type EtcdRaftOptions struct {
+	TickInterval      string
+	ElectionTick      uint32
+	HeartbeatTick     uint32
+	MaxInflightBlocks uint32
+	// Take snapshot when cumulative data exceeds certain size in bytes.
+	SnapshotIntervalSize uint32
 }
 
 // UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
@@ -243,26 +270,50 @@ func kafkaBrokersValue(brokers []string) *standardConfigValue {
 }
 
 // marshalEtcdRaftMetadata serializes etcd RAFT metadata.
-func marshalEtcdRaftMetadata(md eb.ConfigMetadata) ([]byte, error) {
-	for _, c := range md.Consenters {
-		// Expect the user to set the config value for client/server certs to the
-		// path where they are persisted locally, then load these files to memory.
-		clientCert, err := ioutil.ReadFile(string(c.GetClientTlsCert()))
-		if err != nil {
-			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %v", c.GetHost(), c.GetPort(), err)
-		}
+func marshalEtcdRaftMetadata(md EtcdRaft) ([]byte, error) {
+	consenters := []*eb.Consenter{}
 
-		c.ClientTlsCert = clientCert
-
-		serverCert, err := ioutil.ReadFile(string(c.GetServerTlsCert()))
-		if err != nil {
-			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %v", c.GetHost(), c.GetPort(), err)
-		}
-
-		c.ServerTlsCert = serverCert
+	if len(md.Consenters) == 0 {
+		return nil, errors.New("consenters are required")
 	}
 
-	data, err := proto.Marshal(&md)
+	for _, c := range md.Consenters {
+		if c.ClientTLSCert == nil {
+			return nil, fmt.Errorf("client tls cert for consenter %s:%d is required", c.Host, c.Port)
+		}
+
+		if c.ServerTLSCert == nil {
+			return nil, fmt.Errorf("server tls cert for consenter %s:%d is required", c.Host, c.Port)
+		}
+
+		consenter := &eb.Consenter{
+			Host: c.Host,
+			Port: c.Port,
+			ClientTlsCert: pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: c.ClientTLSCert.Raw,
+			}),
+			ServerTlsCert: pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: c.ServerTLSCert.Raw,
+			}),
+		}
+
+		consenters = append(consenters, consenter)
+	}
+
+	configMetadata := &eb.ConfigMetadata{
+		Consenters: consenters,
+		Options: &eb.Options{
+			TickInterval:         md.Options.TickInterval,
+			ElectionTick:         md.Options.ElectionTick,
+			HeartbeatTick:        md.Options.HeartbeatTick,
+			MaxInflightBlocks:    md.Options.MaxInflightBlocks,
+			SnapshotIntervalSize: md.Options.SnapshotIntervalSize,
+		},
+	}
+
+	data, err := proto.Marshal(configMetadata)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling config metadata: %v", err)
 	}

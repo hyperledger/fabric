@@ -448,7 +448,7 @@ func TestAddOrdererPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
+	baseOrdererConf := baseSoloOrderer()
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -478,7 +478,7 @@ func TestAddOrdererPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
+	baseOrdererConf := baseSoloOrderer()
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -500,7 +500,7 @@ func TestRemoveOrdererPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
+	baseOrdererConf := baseSoloOrderer()
 	baseOrdererConf.Policies["TestPolicy"] = baseOrdererConf.Policies[AdminsPolicyKey]
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
@@ -530,7 +530,7 @@ func TestRemoveOrdererPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
+	baseOrdererConf := baseSoloOrderer()
 	baseOrdererConf.Policies["TestPolicy"] = baseOrdererConf.Policies[AdminsPolicyKey]
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
@@ -600,7 +600,7 @@ func TestAddOrdererOrgPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
+	baseOrdererConf := baseSoloOrderer()
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -630,7 +630,7 @@ func TestAddOrdererOrgPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
+	baseOrdererConf := baseSoloOrderer()
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -652,7 +652,7 @@ func TestRemoveOrdererOrgPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
+	baseOrdererConf := baseSoloOrderer()
 	baseOrdererConf.Organizations[0].Policies["TestPolicy"] = baseOrdererConf.Organizations[0].Policies[AdminsPolicyKey]
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
@@ -682,7 +682,7 @@ func TestRemoveOrdererOrgPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
+	baseOrdererConf := baseSoloOrderer()
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
