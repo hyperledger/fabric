@@ -7,8 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package accesscontrol
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
+
+	"github.com/hyperledger/fabric/core/peer"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
@@ -36,6 +40,25 @@ func (auth *Authenticator) Wrap(srv pb.ChaincodeSupportServer) pb.ChaincodeSuppo
 	return newInterceptor(srv, auth.authenticate)
 }
 
+func GetPeerCerts() (*tlsgen.CertKeyPair, error) {
+	config, err := peer.GetServerConfig()
+	if err != nil {
+		logger.Error("Cannot get peer server config inside access")
+		return nil, err
+	}
+	block, _ := pem.Decode(config.SecOpts.Certificate)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		logger.Error("Could not generate necessary X509 certificate inside access")
+		return nil, err
+	}
+
+	return &tlsgen.CertKeyPair{
+		Cert:    config.SecOpts.Certificate,
+		Key:     config.SecOpts.Key,
+		TLSCert: cert}, nil
+}
+
 // NewAuthenticator returns a new authenticator that can wrap a chaincode service
 func NewAuthenticator(ca tlsgen.CA) *Authenticator {
 	return &Authenticator{
@@ -52,8 +75,8 @@ func (ac *Authenticator) Generate(ccName string) (*CertAndPrivKeyPair, error) {
 		return nil, err
 	}
 	return &CertAndPrivKeyPair{
-		Key:  cert.Key,
-		Cert: cert.Cert,
+		Key:  cert.PrivKeyString(),
+		Cert: cert.PubKeyString(),
 	}, nil
 }
 

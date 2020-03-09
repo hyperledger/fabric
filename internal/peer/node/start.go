@@ -999,28 +999,6 @@ func createChaincodeServer(coreConfig *peer.Config, ca tlsgen.CA, peerHostname s
 	// set the logger for the server
 	config.Logger = flogging.MustGetLogger("core.comm").With("server", "ChaincodeServer")
 
-	// Override TLS configuration if TLS is applicable
-	if config.SecOpts.UseTLS {
-		// Create a self-signed TLS certificate with a SAN that matches the computed chaincode endpoint
-		certKeyPair, err := ca.NewServerCertKeyPair(host)
-		if err != nil {
-			logger.Panicf("Failed generating TLS certificate for chaincode service: +%v", err)
-		}
-		config.SecOpts = comm.SecureOptions{
-			UseTLS: true,
-			// Require chaincode shim to authenticate itself
-			RequireClientCert: true,
-			// Trust only client certificates signed by ourselves
-			ClientRootCAs: [][]byte{ca.CertBytes()},
-			// Use our own self-signed TLS certificate and key
-			Certificate: certKeyPair.Cert,
-			Key:         certKeyPair.Key,
-			// No point in specifying server root CAs since this TLS config is only used for
-			// a gRPC server and not a client
-			ServerRootCAs: nil,
-		}
-	}
-
 	// Chaincode keepalive options - static for now
 	chaincodeKeepaliveOptions := comm.KeepaliveOptions{
 		ServerInterval:    time.Duration(2) * time.Hour,    // 2 hours - gRPC default
