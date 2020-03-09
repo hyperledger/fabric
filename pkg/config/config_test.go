@@ -593,7 +593,7 @@ func baseSystemChannelProfile() Channel {
 	return Channel{
 		ChannelID:    "testsystemchannel",
 		Consortiums:  baseConsortiums(),
-		Orderer:      baseOrderer(),
+		Orderer:      baseSoloOrderer(),
 		Capabilities: map[string]bool{"V2_0": true},
 		Policies:     standardPolicies(),
 		Consortium:   "testconsortium",

@@ -120,7 +120,7 @@ func TestGetMSPConfigurationForOrdererOrg(t *testing.T) {
 
 	expectedMSP := baseMSP()
 
-	ordererGroup, err := newOrdererGroup(baseOrderer())
+	ordererGroup, err := newOrdererGroup(baseSoloOrderer())
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{
@@ -309,7 +309,7 @@ func TestGetMSPConfigurationFailures(t *testing.T) {
 			consortiumsGroup, err := newConsortiumsGroup(baseConsortiums())
 			gt.Expect(err).NotTo(HaveOccurred())
 
-			ordererGroup, err := newOrdererGroup(baseOrderer())
+			ordererGroup, err := newOrdererGroup(baseSoloOrderer())
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			applicationGroup, err := newApplicationGroup(baseApplication())
