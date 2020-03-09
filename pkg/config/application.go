@@ -19,7 +19,6 @@ import (
 type Application struct {
 	Organizations []*Organization
 	Capabilities  map[string]bool
-	Resources     *Resources
 	Policies      map[string]*Policy
 	ACLs          map[string]string
 }

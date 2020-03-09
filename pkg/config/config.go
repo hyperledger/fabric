@@ -41,13 +41,6 @@ type Policy struct {
 	Rule string
 }
 
-// Resources is the default policy for the channel.
-type Resources struct {
-	// DefaultModPolicy is the label for the channel's policies.
-	// Options: https://github.com/hyperledger/fabric/blob/04d3bf296a7a387ad09513193e3cafff20b17388/common/policies/policy.go#L36-L6.
-	DefaultModPolicy string
-}
-
 // Organization is an organization in the channel configuration.
 type Organization struct {
 	Name      string
