@@ -72,7 +72,7 @@ Using the new chaincode lifecycle
 For existing Fabric deployments, you can continue to use the prior chaincode
 lifecycle with Fabric v2.0. The new chaincode lifecycle will become effective
 only when the channel application capability is updated to v2.0.
-See the :doc:`chaincode4noah` tutorial for complete details of the new
+See the :doc:`chaincode_lifecycle` concept topic for an overview of the new
 chaincode lifecycle.
 
 New chaincode application patterns for collaboration and consensus
