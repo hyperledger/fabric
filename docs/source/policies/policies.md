@@ -360,8 +360,8 @@ The new process allows multiple organizations to vote on how a chaincode will
 be operated before it can be used on a channel. This is significant because it is
 the combination of this new lifecycle process and the policies that are
 specified during that process that dictate the security across the network. More details on
-the flow are available in the [Chaincode for Operators](../chaincode4noah.html)
-tutorial, but for purposes of this topic you should understand how policies are
+the flow are available in the [Fabric chaincode lifecyle](../chaincode_lifecycle.html)
+concept topic, but for purposes of this topic you should understand how policies are
 used in this flow. The new flow includes two steps where policies are specified:
 when chaincode is **approved** by organization members, and when it is **committed**
 to the channel.
