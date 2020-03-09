@@ -255,7 +255,7 @@ to see what's happening from a single window. This can be really helpful for
 administrators when installing smart contracts or for developers when invoking
 smart contracts, for example.
 
-In the MagnetoCorp directory, run the the following command to run the
+In the MagnetoCorp directory, run the following command to run the
 `monitordocker.sh`  script and start the `logspout` tool for the containers
 associated with PaperNet running on `net_test`:
 ```
