@@ -362,7 +362,7 @@ designed in the smart contract [topic](../developapps/smartcontract.html).
 
 Before `papercontract` can be invoked by applications, it must be installed onto
 the appropriate peer nodes of the test network and then defined on the channel
-using the [Fabric chaincode lifecycle](../chaincode4noah.html#chaincode-lifecycle). The Fabric chaincode
+using the [Fabric chaincode lifecycle](../chaincode_lifecycle.html#chaincode-lifecycle). The Fabric chaincode
 lifecycle allows multiple organizations to agree to the parameters of a chaincode
 before the chainocde is deployed to a channel. As a result, we need to install
 and approve the chaincode as administrators of both MagnetoCorp and DigiBank.

@@ -6,9 +6,8 @@ What is Chaincode?
 
 Chaincode is a program, written in `Go <https://golang.org>`_, `Node.js <https://nodejs.org>`_,
 or `Java <https://java.com/en/>`_ that implements a prescribed interface.
-Chaincode runs in a secured Docker container isolated from the endorsing peer
-process. Chaincode initializes and manages the ledger state through transactions
-submitted by applications.
+Chaincode runs in a seperate process from the peer and initializes and manages
+the ledger state through transactions submitted by applications.
 
 A chaincode typically handles business logic agreed to by members of the
 network, so it similar to a "smart contract". A chaincode can be invoked to update or query
@@ -20,7 +19,10 @@ which does not participate in state validation checks in subsequent commit phase
 
 In the following sections, we will explore chaincode through the eyes of an
 application developer. We'll present a simple chaincode sample application
-and walk through the purpose of each method in the Chaincode Shim API.
+and walk through the purpose of each method in the Chaincode Shim API. If you
+are a network operator who is deploying a chaincode to running network,
+visit the :doc:`deploy_chaincode` tutorial and the :doc:`chaincode_lifecycle`
+concept topic.
 
 Chaincode API
 -------------
@@ -48,8 +50,7 @@ chaincode and the ability to add initial data to the ledger. If you are using
 the peer CLI to approve the chaincode definition, use the ``--init-required``
 flag to request the execution of the ``Init`` function. Then call the ``Init``
 function by using the `peer chaincode invoke` command and passing the
-``--isInit`` flag. If you are using the Fabric SDK for Node.js, visit
-`How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`__. For more information, see :doc:`chaincode4noah`.
+``--isInit`` flag. For more information, see :doc:`chaincode_lifecycle`.
 
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
@@ -388,128 +389,6 @@ function. Here's the whole chaincode program source.
     		fmt.Printf("Error starting SimpleAsset chaincode: %s", err)
     	}
     }
-
-Building Chaincode
-^^^^^^^^^^^^^^^^^^
-
-Now let's compile your chaincode.
-
-.. code:: bash
-
-  go get -u github.com/hyperledger/fabric-chaincode-go
-  go build
-
-Assuming there are no errors, now we can proceed to the next step, testing
-your chaincode.
-
-Testing Using dev mode
-^^^^^^^^^^^^^^^^^^^^^^
-
-Normally chaincodes are started and maintained by peer. However in “dev
-mode", chaincode is built and started by the user. This mode is useful
-during chaincode development phase for rapid code/build/run/debug cycle
-turnaround.
-
-We start "dev mode" by leveraging pre-generated orderer and channel artifacts for
-a sample dev network.  As such, the user can immediately jump into the process
-of compiling chaincode and driving calls.
-
-Install Hyperledger Fabric Samples
-----------------------------------
-
-If you haven't already done so, please :doc:`install`.
-
-Navigate to the ``chaincode-docker-devmode`` directory of the ``fabric-samples``
-clone:
-
-.. code:: bash
-
-  cd chaincode-docker-devmode
-
-Now open three terminals and navigate to your ``chaincode-docker-devmode``
-directory in each.
-
-Terminal 1 - Start the network
-------------------------------
-
-.. code:: bash
-
-    docker-compose -f docker-compose-simple.yaml up
-
-The above starts the network with the ``SingleSampleMSPSolo`` orderer profile and
-launches the peer in "dev mode".  It also launches two additional containers -
-one for the chaincode environment and a CLI to interact with the chaincode.  The
-commands for create and join channel are embedded in the CLI container, so we
-can jump immediately to the chaincode calls.
-
-- Note: the peer is not using TLS because the dev mode does not work with TLS.
-
-Terminal 2 - Build & start the chaincode
-----------------------------------------
-
-.. code:: bash
-
-  docker exec -it chaincode sh
-
-You should see the following:
-
-.. code:: sh
-
-  /opt/gopath/src/chaincode $
-
-Now, compile your chaincode:
-
-.. code:: sh
-
-  cd sacc
-  go build
-
-Now run the chaincode:
-
-.. code:: sh
-
-  CORE_CHAINCODE_ID_NAME=mycc:0 CORE_PEER_TLS_ENABLED=false ./sacc -peer.address peer:7052
-
-The chaincode is started with peer and chaincode logs indicating successful registration with the peer.
-Note that at this stage the chaincode is not associated with any channel. This is done in subsequent steps
-using the ``instantiate`` command.
-
-Terminal 3 - Use the chaincode
-------------------------------
-
-Even though you are in ``--peer-chaincodedev`` mode, you still have to install the
-chaincode so the life-cycle system chaincode can go through its checks normally.
-This requirement may be removed in future when in ``--peer-chaincodedev`` mode.
-
-We'll leverage the CLI container to drive these calls.
-
-.. code:: bash
-
-  docker exec -it cli bash
-
-.. code:: bash
-
-  peer chaincode install -p chaincodedev/chaincode/sacc -n mycc -v 0
-  peer chaincode instantiate -n mycc -v 0 -c '{"Args":["a","10"]}' -C myc
-
-Now issue an invoke to change the value of "a" to "20".
-
-.. code:: bash
-
-  peer chaincode invoke -n mycc -c '{"Args":["set", "a", "20"]}' -C myc
-
-Finally, query ``a``.  We should see a value of ``20``.
-
-.. code:: bash
-
-  peer chaincode query -n mycc -c '{"Args":["query","a"]}' -C myc
-
-Testing new chaincode
----------------------
-
-By default, we mount only ``sacc``.  However, you can easily test different
-chaincodes by adding them to the ``chaincode`` subdirectory and relaunching
-your network.  At this point they will be accessible in your ``chaincode`` container.
 
 Chaincode access control
 ------------------------

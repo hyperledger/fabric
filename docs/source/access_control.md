@@ -17,9 +17,9 @@ and policies.
 ### Resources
 
 Users interact with Fabric by targeting a [user chaincode](./chaincode4ade.html),
-[system chaincode](./chaincode4noah.html), or an [events stream source](./peer_event_services.html).
-As such, these endpoints are considered "resources" on which access control should be
-exercised.
+or an [events stream source](./peer_event_services.html), or system chaincode that
+are called in the background. As such, these endpoints are considered "resources"
+on which access control should be exercised.
 
 Application developers need to be aware of these resources and the default
 policies associated with them. The complete list of these resources are found in
