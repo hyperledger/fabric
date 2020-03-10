@@ -557,13 +557,13 @@ func TestGetAnchorPeer(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
-	config := cb.Config{
+	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
 
 	expectedAnchorPeer := AnchorPeer{Host: "host1", Port: 123}
 
-	err = AddAnchorPeer(&config, "Org1", expectedAnchorPeer)
+	err = AddAnchorPeer(config, "Org1", expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	anchorPeers, err := GetAnchorPeers(config, "Org1")
@@ -593,25 +593,22 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 	applicationGroup.Groups[orgNoAnchor.Name] = orgGroup
 
 	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
-	config := cb.Config{
+	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
 
 	for _, test := range []struct {
 		name        string
-		config      cb.Config
 		orgName     string
 		expectedErr string
 	}{
 		{
 			name:        "When org does not exist in application channel",
-			config:      config,
 			orgName:     "bad-org",
 			expectedErr: "application org bad-org does not exist in channel config",
 		},
 		{
 			name:        "When org config group does not have an anchor peers value",
-			config:      config,
 			orgName:     "Org1",
 			expectedErr: "application org Org1 does not have anchor peers",
 		},
@@ -620,7 +617,7 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
-			_, err := GetAnchorPeers(test.config, test.orgName)
+			_, err := GetAnchorPeers(config, test.orgName)
 			gt.Expect(err).To(MatchError(test.expectedErr))
 		})
 	}
