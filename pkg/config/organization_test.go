@@ -47,7 +47,7 @@ func TestGetApplicationOrg(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	channelGroup.Groups[ApplicationGroupKey].Groups["Org1"] = orgGroup
 
-	config := cb.Config{
+	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
 	expectedOrg := channel.Application.Organizations[0]
@@ -95,7 +95,7 @@ func TestGetOrdererOrg(t *testing.T) {
 	channelGroup, err := newSystemChannelGroup(channel)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	config := cb.Config{
+	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
 	expectedOrg := channel.Orderer.Organizations[0]
@@ -143,7 +143,7 @@ func TestGetConsortiumOrg(t *testing.T) {
 	channelGroup, err := newSystemChannelGroup(channel)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	config := cb.Config{
+	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
 	expectedOrg := channel.Consortiums[0].Organizations[0]

@@ -225,17 +225,29 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 	if len(channelConfig.Orderer.Addresses) <= 0 {
 		return nil, errors.New("orderer endpoints is not defined in channel config")
 	}
-	addValue(channelGroup, ordererAddressesValue(channelConfig.Orderer.Addresses), ordererAdminsPolicyName)
+
+	err = addValue(channelGroup, ordererAddressesValue(channelConfig.Orderer.Addresses), ordererAdminsPolicyName)
+	if err != nil {
+		return nil, err
+	}
 
 	if channelConfig.Consortium == "" {
 		return nil, errors.New("consortium is not defined in channel config")
 	}
-	addValue(channelGroup, consortiumValue(channelConfig.Consortium), AdminsPolicyKey)
+
+	err = addValue(channelGroup, consortiumValue(channelConfig.Consortium), AdminsPolicyKey)
+	if err != nil {
+		return nil, err
+	}
 
 	if len(channelConfig.Capabilities) <= 0 {
 		return nil, errors.New("capabilities is not defined in channel config")
 	}
-	addValue(channelGroup, capabilitiesValue(channelConfig.Capabilities), AdminsPolicyKey)
+
+	err = addValue(channelGroup, capabilitiesValue(channelConfig.Capabilities), AdminsPolicyKey)
+	if err != nil {
+		return nil, err
+	}
 
 	ordererGroup, err := newOrdererGroup(channelConfig.Orderer)
 	if err != nil {
@@ -571,4 +583,20 @@ func createSignedEnvelopeWithTLSBinding(
 	}
 
 	return env, nil
+}
+
+// unmarshalConfigValueAtKey unmarshals the value for the specified key in a config group
+// into the designated proto message.
+func unmarshalConfigValueAtKey(group *cb.ConfigGroup, key string, msg proto.Message) error {
+	valueAtKey, ok := group.Values[key]
+	if !ok {
+		return fmt.Errorf("config does not contain value for %s", key)
+	}
+
+	err := proto.Unmarshal(valueAtKey.Value, msg)
+	if err != nil {
+		return fmt.Errorf("unmarshalling %s: %v", key, err)
+	}
+
+	return nil
 }

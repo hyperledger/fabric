@@ -9,6 +9,7 @@ package config
 import (
 	"bytes"
 	"crypto/x509"
+	"encoding/pem"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -526,6 +527,152 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
 }
 
+func TestGetOrdererConfiguration(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		ordererType string
+	}{
+		{
+			ordererType: ConsensusTypeSolo,
+		},
+		{
+			ordererType: ConsensusTypeKafka,
+		},
+		{
+			ordererType: ConsensusTypeEtcdRaft,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt // capture range variable
+		t.Run(tt.ordererType, func(t *testing.T) {
+			t.Parallel()
+
+			gt := NewGomegaWithT(t)
+
+			baseOrdererConf := baseOrdererOfType(tt.ordererType)
+
+			ordererGroup, err := newOrdererGroup(baseOrdererConf)
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			ordererAddresses, err := proto.Marshal(&cb.OrdererAddresses{Addresses: baseOrdererConf.Addresses})
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			config := &cb.Config{
+				ChannelGroup: &cb.ConfigGroup{
+					Groups: map[string]*cb.ConfigGroup{
+						OrdererGroupKey: ordererGroup,
+					},
+					Values: map[string]*cb.ConfigValue{
+						OrdererAddressesKey: {
+							Value: ordererAddresses,
+						},
+					},
+				},
+			}
+
+			ordererConf, err := GetOrdererConfiguration(config)
+			gt.Expect(err).NotTo(HaveOccurred())
+			gt.Expect(ordererConf).To(Equal(baseOrdererConf))
+		})
+	}
+}
+
+func TestGetOrdererConfigurationFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		testName    string
+		ordererType string
+		configMod   func(*cb.Config, *GomegaWithT)
+		expectedErr string
+	}{
+		{
+			testName:    "When the orderer group does not exist",
+			ordererType: ConsensusTypeSolo,
+			configMod: func(config *cb.Config, gt *GomegaWithT) {
+				delete(config.ChannelGroup.Groups, OrdererGroupKey)
+			},
+			expectedErr: "config does not contain orderer group",
+		},
+		{
+			testName:    "When the config contains an unknown consensus type",
+			ordererType: ConsensusTypeSolo,
+			configMod: func(config *cb.Config, gt *GomegaWithT) {
+				err := addValue(config.ChannelGroup.Groups[OrdererGroupKey], consensusTypeValue("badtype", nil, 0), AdminsPolicyKey)
+				gt.Expect(err).NotTo(HaveOccurred())
+			},
+			expectedErr: "config contains unknown consensus type 'badtype'",
+		},
+		{
+			testName:    "Missing Kafka brokers for kafka orderer",
+			ordererType: ConsensusTypeKafka,
+			configMod: func(config *cb.Config, gt *GomegaWithT) {
+				delete(config.ChannelGroup.Groups[OrdererGroupKey].Values, KafkaBrokersKey)
+			},
+			expectedErr: "unable to find kafka brokers for kafka orderer",
+		},
+		{
+			testName:    "Failed unmarshaling etcd raft metadata",
+			ordererType: ConsensusTypeEtcdRaft,
+			configMod: func(config *cb.Config, gt *GomegaWithT) {
+				err := addValue(config.ChannelGroup.Groups[OrdererGroupKey], consensusTypeValue(ConsensusTypeEtcdRaft, nil, 0), AdminsPolicyKey)
+				gt.Expect(err).NotTo(HaveOccurred())
+			},
+			expectedErr: "unmarshaling etcd raft metadata: missing etcdraft metadata options in config",
+		},
+		{
+			testName:    "Invalid batch timeout",
+			ordererType: ConsensusTypeSolo,
+			configMod: func(config *cb.Config, gt *GomegaWithT) {
+				err := addValue(config.ChannelGroup.Groups[OrdererGroupKey], batchTimeoutValue("invalidtime"), AdminsPolicyKey)
+				gt.Expect(err).NotTo(HaveOccurred())
+			},
+			expectedErr: "batch timeout configuration 'invalidtime' is not a duration string",
+		},
+		{
+			testName:    "Missing orderer address in config",
+			ordererType: ConsensusTypeSolo,
+			configMod: func(config *cb.Config, gt *GomegaWithT) {
+				delete(config.ChannelGroup.Values, OrdererAddressesKey)
+			},
+			expectedErr: "config does not contain value for OrdererAddresses",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+
+			gt := NewGomegaWithT(t)
+
+			baseOrdererConfig := baseOrdererOfType(tt.ordererType)
+			ordererGroup, err := newOrdererGroup(baseOrdererConfig)
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			config := &cb.Config{
+				ChannelGroup: &cb.ConfigGroup{
+					Groups: map[string]*cb.ConfigGroup{
+						OrdererGroupKey: ordererGroup,
+					},
+					Values: map[string]*cb.ConfigValue{},
+				},
+			}
+			err = addValue(config.ChannelGroup, ordererAddressesValue(baseOrdererConfig.Addresses), ordererAdminsPolicyName)
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			if tt.configMod != nil {
+				tt.configMod(config, gt)
+			}
+
+			_, err = GetOrdererConfiguration(config)
+			gt.Expect(err).To(MatchError(tt.expectedErr))
+		})
+	}
+}
+
 func TestAddOrdererOrg(t *testing.T) {
 	t.Parallel()
 
@@ -712,54 +859,6 @@ func TestAddOrdererOrgFailures(t *testing.T) {
 
 	err = AddOrdererOrg(config, org)
 	gt.Expect(err).To(MatchError("failed to create orderer org 'OrdererOrg2': no policies defined"))
-}
-
-func baseOrdererOfType(ordererType string) Orderer {
-	switch ordererType {
-	case ConsensusTypeKafka:
-		return baseKafkaOrderer()
-	case ConsensusTypeEtcdRaft:
-		return baseEtcdRaftOrderer()
-	default:
-		return baseSoloOrderer()
-	}
-}
-
-func baseSoloOrderer() Orderer {
-	return Orderer{
-		Policies:    ordererStandardPolicies(),
-		OrdererType: ConsensusTypeSolo,
-		Organizations: []Organization{
-			{
-				Name:     "OrdererOrg",
-				Policies: orgStandardPolicies(),
-				OrdererEndpoints: []string{
-					"localhost:123",
-				},
-				MSP: baseMSP(),
-			},
-		},
-		Capabilities: map[string]bool{
-			"V1_3": true,
-		},
-		BatchSize: BatchSize{
-			MaxMessageCount:   100,
-			AbsoluteMaxBytes:  100,
-			PreferredMaxBytes: 100,
-		},
-		Addresses: []string{"localhost:123"},
-		State:     ConsensusStateNormal,
-	}
-}
-
-// marshalOrPanic is a helper for proto marshal.
-func marshalOrPanic(pb proto.Message) []byte {
-	data, err := proto.Marshal(pb)
-	if err != nil {
-		panic(err)
-	}
-
-	return data
 }
 
 func TestAddOrdererEndpoint(t *testing.T) {
@@ -1060,6 +1159,44 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 	}
 }
 
+func baseOrdererOfType(ordererType string) Orderer {
+	switch ordererType {
+	case ConsensusTypeKafka:
+		return baseKafkaOrderer()
+	case ConsensusTypeEtcdRaft:
+		return baseEtcdRaftOrderer()
+	default:
+		return baseSoloOrderer()
+	}
+}
+
+func baseSoloOrderer() Orderer {
+	return Orderer{
+		Policies:    ordererStandardPolicies(),
+		OrdererType: ConsensusTypeSolo,
+		Organizations: []Organization{
+			{
+				Name:     "OrdererOrg",
+				Policies: orgStandardPolicies(),
+				OrdererEndpoints: []string{
+					"localhost:123",
+				},
+				MSP: baseMSP(),
+			},
+		},
+		Capabilities: map[string]bool{
+			"V1_3": true,
+		},
+		BatchSize: BatchSize{
+			MaxMessageCount:   100,
+			AbsoluteMaxBytes:  100,
+			PreferredMaxBytes: 100,
+		},
+		Addresses: []string{"localhost:123"},
+		State:     ConsensusStateNormal,
+	}
+}
+
 func baseKafkaOrderer() Orderer {
 	orderer := baseSoloOrderer()
 	orderer.OrdererType = ConsensusTypeKafka
@@ -1071,6 +1208,9 @@ func baseKafkaOrderer() Orderer {
 }
 
 func baseEtcdRaftOrderer() Orderer {
+	certBlock, _ := pem.Decode([]byte(dummyCert))
+	cert, _ := x509.ParseCertificate(certBlock.Bytes)
+
 	orderer := baseSoloOrderer()
 	orderer.OrdererType = ConsensusTypeEtcdRaft
 	orderer.EtcdRaft = EtcdRaft{
@@ -1078,24 +1218,34 @@ func baseEtcdRaftOrderer() Orderer {
 			{
 				Host:          "node-1.example.com",
 				Port:          7050,
-				ClientTLSCert: &x509.Certificate{},
-				ServerTLSCert: &x509.Certificate{},
+				ClientTLSCert: cert,
+				ServerTLSCert: cert,
 			},
 			{
 				Host:          "node-2.example.com",
 				Port:          7050,
-				ClientTLSCert: &x509.Certificate{},
-				ServerTLSCert: &x509.Certificate{},
+				ClientTLSCert: cert,
+				ServerTLSCert: cert,
 			},
 			{
 				Host:          "node-3.example.com",
 				Port:          7050,
-				ClientTLSCert: &x509.Certificate{},
-				ServerTLSCert: &x509.Certificate{},
+				ClientTLSCert: cert,
+				ServerTLSCert: cert,
 			},
 		},
 		Options: EtcdRaftOptions{},
 	}
 
 	return orderer
+}
+
+// marshalOrPanic is a helper for proto marshal.
+func marshalOrPanic(pb proto.Message) []byte {
+	data, err := proto.Marshal(pb)
+	if err != nil {
+		panic(err)
+	}
+
+	return data
 }
