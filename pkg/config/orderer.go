@@ -29,8 +29,8 @@ type Orderer struct {
 	BatchTimeout  time.Duration
 	BatchSize     BatchSize
 	Kafka         Kafka
-	EtcdRaft      *eb.ConfigMetadata
-	Organizations []*Organization
+	EtcdRaft      eb.ConfigMetadata
+	Organizations []Organization
 	// MaxChannels is the maximum count of channels an orderer supports.
 	MaxChannels uint64
 	// Capabilities is a map of the capabilities the orderer supports.
@@ -60,7 +60,7 @@ type Kafka struct {
 // how frequently they should be emitted, etc. as well as the organizations of the ordering network.
 // It sets the mod_policy of all elements to "Admins".
 // This group is always present in any channel configuration.
-func newOrdererGroup(orderer *Orderer) (*cb.ConfigGroup, error) {
+func newOrdererGroup(orderer Orderer) (*cb.ConfigGroup, error) {
 	ordererGroup := newConfigGroup()
 	ordererGroup.ModPolicy = AdminsPolicyKey
 
@@ -87,7 +87,7 @@ func newOrdererGroup(orderer *Orderer) (*cb.ConfigGroup, error) {
 
 // UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
 // via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
-func UpdateOrdererConfiguration(config *cb.Config, o *Orderer) error {
+func UpdateOrdererConfiguration(config *cb.Config, o Orderer) error {
 	ordererGroup := config.ChannelGroup.Groups["Orderer"]
 
 	// update orderer addresses
@@ -108,7 +108,7 @@ func UpdateOrdererConfiguration(config *cb.Config, o *Orderer) error {
 }
 
 // addOrdererValues adds configuration specified in *Orderer to an orderer *cb.ConfigGroup's Values map.
-func addOrdererValues(ordererGroup *cb.ConfigGroup, o *Orderer) error {
+func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 	err := addValue(ordererGroup, batchSizeValue(
 		o.BatchSize.MaxMessageCount,
 		o.BatchSize.AbsoluteMaxBytes,
@@ -145,10 +145,6 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o *Orderer) error {
 			return err
 		}
 	case ConsensusTypeEtcdRaft:
-		if o.EtcdRaft == nil {
-			return fmt.Errorf("etcdraft metadata for orderer type '%s' is required", ConsensusTypeEtcdRaft)
-		}
-
 		if consensusMetadata, err = marshalEtcdRaftMetadata(o.EtcdRaft); err != nil {
 			return fmt.Errorf("marshalling etcdraft metadata for orderer type '%s': %v", ConsensusTypeEtcdRaft, err)
 		}
@@ -222,9 +218,8 @@ func kafkaBrokersValue(brokers []string) *standardConfigValue {
 }
 
 // marshalEtcdRaftMetadata serializes etcd RAFT metadata.
-func marshalEtcdRaftMetadata(md *eb.ConfigMetadata) ([]byte, error) {
-	copyMd := proto.Clone(md).(*eb.ConfigMetadata)
-	for _, c := range copyMd.Consenters {
+func marshalEtcdRaftMetadata(md eb.ConfigMetadata) ([]byte, error) {
+	for _, c := range md.Consenters {
 		// Expect the user to set the config value for client/server certs to the
 		// path where they are persisted locally, then load these files to memory.
 		clientCert, err := ioutil.ReadFile(string(c.GetClientTlsCert()))
@@ -242,7 +237,7 @@ func marshalEtcdRaftMetadata(md *eb.ConfigMetadata) ([]byte, error) {
 		c.ServerTlsCert = serverCert
 	}
 
-	data, err := proto.Marshal(copyMd)
+	data, err := proto.Marshal(&md)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling config metadata: %v", err)
 	}

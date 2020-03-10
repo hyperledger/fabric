@@ -95,43 +95,43 @@ func TestMSPToProtoFailure(t *testing.T) {
 	gt.Expect(fabricMSPConfigProto).To(BeNil())
 }
 
-func baseMSP() *MSP {
-	return &MSP{
+func baseMSP() MSP {
+	return MSP{
 		Name:              "",
 		RootCerts:         []x509.Certificate{},
 		IntermediateCerts: []x509.Certificate{},
 		Admins:            []x509.Certificate{},
 		RevocationList:    []pkix.CertificateList{},
-		SigningIdentity: &SigningIdentityInfo{
-			PrivateSigner: &KeyInfo{},
+		SigningIdentity: SigningIdentityInfo{
+			PrivateSigner: KeyInfo{},
 		},
-		OrganizationalUnitIdentifiers: []*OUIdentifier{
+		OrganizationalUnitIdentifiers: []OUIdentifier{
 			{
 				Certificate: x509.Certificate{
 					Raw: []byte{},
 				},
 			},
 		},
-		CryptoConfig:         &CryptoConfig{},
+		CryptoConfig:         CryptoConfig{},
 		TLSRootCerts:         []x509.Certificate{},
 		TLSIntermediateCerts: []x509.Certificate{},
-		NodeOus: &NodeOUs{
-			ClientOuIdentifier: &OUIdentifier{
+		NodeOus: NodeOUs{
+			ClientOuIdentifier: OUIdentifier{
 				Certificate: x509.Certificate{
 					Raw: []byte{},
 				},
 			},
-			PeerOuIdentifier: &OUIdentifier{
+			PeerOuIdentifier: OUIdentifier{
 				Certificate: x509.Certificate{
 					Raw: []byte{},
 				},
 			},
-			AdminOuIdentifier: &OUIdentifier{
+			AdminOuIdentifier: OUIdentifier{
 				Certificate: x509.Certificate{
 					Raw: []byte{},
 				},
 			},
-			OrdererOuIdentifier: &OUIdentifier{
+			OrdererOuIdentifier: OUIdentifier{
 				Certificate: x509.Certificate{
 					Raw: []byte{},
 				},

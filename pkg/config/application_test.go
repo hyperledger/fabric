@@ -126,7 +126,7 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 			gt := NewGomegaWithT(t)
 
 			application := baseApplication()
-			tt.applicationMod(application)
+			tt.applicationMod(&application)
 
 			configGrp, err := newApplicationGroup(application)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
@@ -155,12 +155,12 @@ func TestAddAnchorPeer(t *testing.T) {
 		},
 	}
 
-	newOrg1AnchorPeer := &AnchorPeer{
+	newOrg1AnchorPeer := AnchorPeer{
 		Host: "host3",
 		Port: 123,
 	}
 
-	newOrg2AnchorPeer := &AnchorPeer{
+	newOrg2AnchorPeer := AnchorPeer{
 		Host: "host4",
 		Port: 123,
 	}
@@ -303,14 +303,14 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 		testName      string
 		orgName       string
 		configMod     func(*GomegaWithT, *cb.Config)
-		newAnchorPeer *AnchorPeer
+		newAnchorPeer AnchorPeer
 		expectedErr   string
 	}{
 		{
 			testName:      "When the org for the application does not exist",
 			orgName:       "BadOrg",
 			configMod:     nil,
-			newAnchorPeer: &AnchorPeer{Host: "host3", Port: 123},
+			newAnchorPeer: AnchorPeer{Host: "host3", Port: 123},
 			expectedErr:   "application org BadOrg does not exist in channel config",
 		},
 		{
@@ -332,7 +332,7 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 					Value: v,
 				}
 			},
-			newAnchorPeer: &AnchorPeer{Host: "host1", Port: 123},
+			newAnchorPeer: AnchorPeer{Host: "host1", Port: 123},
 			expectedErr:   "application org Org1 already contains anchor peer endpoint host1:123",
 		},
 	}
@@ -483,7 +483,7 @@ func TestRemoveAnchorPeer(t *testing.T) {
 	"sequence": "0"
 }
 	`
-	anchorPeer1 := &AnchorPeer{Host: "host1", Port: 123}
+	anchorPeer1 := AnchorPeer{Host: "host1", Port: 123}
 	err = AddAnchorPeer(config, "Org1", anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedUpdatedConfig := &cb.Config{}
@@ -503,19 +503,19 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 	tests := []struct {
 		testName           string
 		orgName            string
-		anchorPeerToRemove *AnchorPeer
+		anchorPeerToRemove AnchorPeer
 		expectedErr        string
 	}{
 		{
 			testName:           "When the org for the application does not exist",
 			orgName:            "BadOrg",
-			anchorPeerToRemove: &AnchorPeer{Host: "host1", Port: 123},
+			anchorPeerToRemove: AnchorPeer{Host: "host1", Port: 123},
 			expectedErr:        "application org BadOrg does not exist in channel config",
 		},
 		{
 			testName:           "When the anchor peer being removed doesn't exist in the org",
 			orgName:            "Org1",
-			anchorPeerToRemove: &AnchorPeer{Host: "host2", Port: 123},
+			anchorPeerToRemove: AnchorPeer{Host: "host2", Port: 123},
 			expectedErr:        "could not find anchor peer host2:123 in Org1's anchor peer endpoints",
 		},
 	}
@@ -557,13 +557,13 @@ func TestGetAnchorPeer(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
-	config := &cb.Config{
+	config := cb.Config{
 		ChannelGroup: channelGroup,
 	}
 
-	expectedAnchorPeer := &AnchorPeer{Host: "host1", Port: 123}
+	expectedAnchorPeer := AnchorPeer{Host: "host1", Port: 123}
 
-	err = AddAnchorPeer(config, "Org1", expectedAnchorPeer)
+	err = AddAnchorPeer(&config, "Org1", expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	anchorPeers, err := GetAnchorPeers(config, "Org1")
@@ -582,7 +582,7 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 	applicationGroup, err := newApplicationGroup(baseApplication())
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	orgNoAnchor := &Organization{
+	orgNoAnchor := Organization{
 		Name:     "Org1",
 		ID:       "Org1MSP",
 		Policies: applicationOrgStandardPolicies(),
@@ -593,13 +593,13 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 	applicationGroup.Groups[orgNoAnchor.Name] = orgGroup
 
 	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
-	config := &cb.Config{
+	config := cb.Config{
 		ChannelGroup: channelGroup,
 	}
 
 	for _, test := range []struct {
 		name        string
-		config      *cb.Config
+		config      cb.Config
 		orgName     string
 		expectedErr string
 	}{
@@ -626,10 +626,10 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 	}
 }
 
-func baseApplication() *Application {
-	return &Application{
+func baseApplication() Application {
+	return Application{
 		Policies: standardPolicies(),
-		Organizations: []*Organization{
+		Organizations: []Organization{
 			{
 				Name: "Org1",
 			},

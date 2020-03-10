@@ -18,13 +18,13 @@ import (
 // Consortium is a group of non-orderer organizations used in channel transactions.
 type Consortium struct {
 	Name          string
-	Organizations []*Organization
+	Organizations []Organization
 }
 
 // newConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
 // the ordering system channel.
 // It sets the mod_policy for all elements to "/Channel/Orderer/Admins".
-func newConsortiumsGroup(consortiums []*Consortium) (*cb.ConfigGroup, error) {
+func newConsortiumsGroup(consortiums []Consortium) (*cb.ConfigGroup, error) {
 	var err error
 
 	consortiumsGroup := newConfigGroup()
@@ -54,12 +54,8 @@ func newConsortiumsGroup(consortiums []*Consortium) (*cb.ConfigGroup, error) {
 
 // AddOrgToConsortium adds an org definition to a named consortium in a given
 // channel configuration.
-func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string) error {
+func AddOrgToConsortium(config *cb.Config, org Organization, consortium string) error {
 	var err error
-
-	if org == nil {
-		return errors.New("organization is required")
-	}
 
 	if consortium == "" {
 		return errors.New("consortium is required")
@@ -81,7 +77,7 @@ func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string)
 }
 
 // newConsortiumGroup returns a consortiums component of the channel configuration.
-func newConsortiumGroup(consortium *Consortium) (*cb.ConfigGroup, error) {
+func newConsortiumGroup(consortium Consortium) (*cb.ConfigGroup, error) {
 	var err error
 
 	consortiumGroup := newConfigGroup()
