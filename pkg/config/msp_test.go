@@ -451,62 +451,6 @@ func TestMSPToProtoFailure(t *testing.T) {
 	gt.Expect(fabricMSPConfigProto).To(BeNil())
 }
 
-func baseMSP() MSP {
-	certBlock, _ := pem.Decode([]byte(dummyCert))
-	cert, _ := x509.ParseCertificate(certBlock.Bytes)
-
-	privKeyBlock, _ := pem.Decode([]byte(dummyPrivateKey))
-	privKey, _ := x509.ParsePKCS8PrivateKey(privKeyBlock.Bytes)
-
-	crlBlock, _ := pem.Decode([]byte(dummyCRL))
-	crl, _ := x509.ParseCRL(crlBlock.Bytes)
-
-	return MSP{
-		Name:              "MSPID",
-		RootCerts:         []x509.Certificate{*cert},
-		IntermediateCerts: []x509.Certificate{*cert},
-		Admins:            []x509.Certificate{*cert},
-		RevocationList:    []pkix.CertificateList{*crl},
-		SigningIdentity: SigningIdentityInfo{
-			PublicSigner: *cert,
-			PrivateSigner: KeyInfo{
-				KeyIdentifier: "SKI-1",
-				KeyMaterial:   privKey.(*ecdsa.PrivateKey),
-			},
-		},
-		OrganizationalUnitIdentifiers: []OUIdentifier{
-			{
-				Certificate:                  *cert,
-				OrganizationalUnitIdentifier: "OUID",
-			},
-		},
-		CryptoConfig: CryptoConfig{
-			SignatureHashFamily:            "SHA3",
-			IdentityIdentifierHashFunction: "SHA256",
-		},
-		TLSRootCerts:         []x509.Certificate{*cert},
-		TLSIntermediateCerts: []x509.Certificate{*cert},
-		NodeOus: NodeOUs{
-			ClientOUIdentifier: OUIdentifier{
-				Certificate:                  *cert,
-				OrganizationalUnitIdentifier: "OUID",
-			},
-			PeerOUIdentifier: OUIdentifier{
-				Certificate:                  *cert,
-				OrganizationalUnitIdentifier: "OUID",
-			},
-			AdminOUIdentifier: OUIdentifier{
-				Certificate:                  *cert,
-				OrganizationalUnitIdentifier: "OUID",
-			},
-			OrdererOUIdentifier: OUIdentifier{
-				Certificate:                  *cert,
-				OrganizationalUnitIdentifier: "OUID",
-			},
-		},
-	}
-}
-
 func TestAddRootCAToMSP(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
@@ -1312,5 +1256,61 @@ func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 			err = RevokeCertificateFromMSP(config, tc.orgName, caCert, caPrivKey, cert)
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
+	}
+}
+
+func baseMSP() MSP {
+	certBlock, _ := pem.Decode([]byte(dummyCert))
+	cert, _ := x509.ParseCertificate(certBlock.Bytes)
+
+	privKeyBlock, _ := pem.Decode([]byte(dummyPrivateKey))
+	privKey, _ := x509.ParsePKCS8PrivateKey(privKeyBlock.Bytes)
+
+	crlBlock, _ := pem.Decode([]byte(dummyCRL))
+	crl, _ := x509.ParseCRL(crlBlock.Bytes)
+
+	return MSP{
+		Name:              "MSPID",
+		RootCerts:         []x509.Certificate{*cert},
+		IntermediateCerts: []x509.Certificate{*cert},
+		Admins:            []x509.Certificate{*cert},
+		RevocationList:    []pkix.CertificateList{*crl},
+		SigningIdentity: SigningIdentityInfo{
+			PublicSigner: *cert,
+			PrivateSigner: KeyInfo{
+				KeyIdentifier: "SKI-1",
+				KeyMaterial:   privKey.(*ecdsa.PrivateKey),
+			},
+		},
+		OrganizationalUnitIdentifiers: []OUIdentifier{
+			{
+				Certificate:                  *cert,
+				OrganizationalUnitIdentifier: "OUID",
+			},
+		},
+		CryptoConfig: CryptoConfig{
+			SignatureHashFamily:            "SHA3",
+			IdentityIdentifierHashFunction: "SHA256",
+		},
+		TLSRootCerts:         []x509.Certificate{*cert},
+		TLSIntermediateCerts: []x509.Certificate{*cert},
+		NodeOus: NodeOUs{
+			ClientOUIdentifier: OUIdentifier{
+				Certificate:                  *cert,
+				OrganizationalUnitIdentifier: "OUID",
+			},
+			PeerOUIdentifier: OUIdentifier{
+				Certificate:                  *cert,
+				OrganizationalUnitIdentifier: "OUID",
+			},
+			AdminOUIdentifier: OUIdentifier{
+				Certificate:                  *cert,
+				OrganizationalUnitIdentifier: "OUID",
+			},
+			OrdererOUIdentifier: OUIdentifier{
+				Certificate:                  *cert,
+				OrganizationalUnitIdentifier: "OUID",
+			},
+		},
 	}
 }

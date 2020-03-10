@@ -521,20 +521,6 @@ func pemEncodePKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}), nil
 }
 
-// unmarshalConfigValueAtKey unmarshals the value for the specified key in a config group
-// into the designated proto message.
-func unmarshalConfigValueAtKey(group *cb.ConfigGroup, key string, msg proto.Message) error {
-	valueAtKey, ok := group.Values[key]
-	if !ok {
-		return fmt.Errorf("config does not contain value for %s", key)
-	}
-	err := proto.Unmarshal(valueAtKey.Value, msg)
-	if err != nil {
-		return fmt.Errorf("unmarshaling %s: %v", key, err)
-	}
-	return nil
-}
-
 // AddRootCAToMSP takes a root CA x509 certificate and adds it to the
 // list of rootCerts for the specified application org MSP.
 func AddRootCAToMSP(config *cb.Config, rootCA *x509.Certificate, orgName string) error {

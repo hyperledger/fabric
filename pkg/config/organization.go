@@ -16,7 +16,7 @@ import (
 )
 
 // GetApplicationOrg retrieves an existing org from an application organization config group.
-func GetApplicationOrg(config cb.Config, orgName string) (Organization, error) {
+func GetApplicationOrg(config *cb.Config, orgName string) (Organization, error) {
 	orgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return Organization{}, fmt.Errorf("application org %s does not exist in channel config", orgName)
@@ -26,7 +26,7 @@ func GetApplicationOrg(config cb.Config, orgName string) (Organization, error) {
 }
 
 // GetOrdererOrg retrieves an existing org from an orderer organization config group.
-func GetOrdererOrg(config cb.Config, orgName string) (Organization, error) {
+func GetOrdererOrg(config *cb.Config, orgName string) (Organization, error) {
 	orgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return Organization{}, fmt.Errorf("orderer org %s does not exist in channel config", orgName)
@@ -56,7 +56,7 @@ func GetOrdererOrg(config cb.Config, orgName string) (Organization, error) {
 }
 
 // GetConsortiumOrg retrieves an existing org from a consortium organization config group.
-func GetConsortiumOrg(config cb.Config, consortiumName, orgName string) (Organization, error) {
+func GetConsortiumOrg(config *cb.Config, consortiumName, orgName string) (Organization, error) {
 	consortium, ok := config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 	if !ok {
 		return Organization{}, fmt.Errorf("consortium %s does not exist in channel config", consortiumName)

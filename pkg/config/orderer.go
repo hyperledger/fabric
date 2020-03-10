@@ -109,6 +109,126 @@ func UpdateOrdererConfiguration(config *cb.Config, o Orderer) error {
 	return nil
 }
 
+// GetOrdererConfiguration returns the existing orderer configuration values from a config
+// transaction as an Orderer type. This can be used to retrieve existing values for the orderer
+// prior to updating the orderer configuration.
+func GetOrdererConfiguration(config *cb.Config) (Orderer, error) {
+	ordererGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey]
+	if !ok {
+		return Orderer{}, errors.New("config does not contain orderer group")
+	}
+
+	// CONSENSUS TYPE, STATE, AND METADATA
+	var etcdRaft EtcdRaft
+	kafkaBrokers := Kafka{}
+
+	consensusTypeProto := &ob.ConsensusType{}
+	err := unmarshalConfigValueAtKey(ordererGroup, ConsensusTypeKey, consensusTypeProto)
+	if err != nil {
+		return Orderer{}, errors.New("cannot determine consensus type of orderer")
+	}
+
+	ordererType := consensusTypeProto.Type
+	state := ConsensusState(ob.ConsensusType_State_name[int32(consensusTypeProto.State)])
+
+	switch consensusTypeProto.Type {
+	case ConsensusTypeSolo:
+	case ConsensusTypeKafka:
+		kafkaBrokersValue, ok := ordererGroup.Values[KafkaBrokersKey]
+		if !ok {
+			return Orderer{}, errors.New("unable to find kafka brokers for kafka orderer")
+		}
+
+		kafkaBrokersProto := &ob.KafkaBrokers{}
+		err := proto.Unmarshal(kafkaBrokersValue.Value, kafkaBrokersProto)
+		if err != nil {
+			return Orderer{}, fmt.Errorf("unmarshaling kafka brokers: %v", err)
+		}
+
+		kafkaBrokers.Brokers = kafkaBrokersProto.Brokers
+	case ConsensusTypeEtcdRaft:
+		etcdRaft, err = unmarshalEtcdRaftMetadata(consensusTypeProto.Metadata)
+		if err != nil {
+			return Orderer{}, fmt.Errorf("unmarshaling etcd raft metadata: %v", err)
+		}
+	default:
+		return Orderer{}, fmt.Errorf("config contains unknown consensus type '%s'", consensusTypeProto.Type)
+	}
+
+	// ORDERER ADDRESSES
+	ordererAddresses := &cb.OrdererAddresses{}
+	err = unmarshalConfigValueAtKey(config.ChannelGroup, OrdererAddressesKey, ordererAddresses)
+	if err != nil {
+		return Orderer{}, err
+	}
+
+	// BATCHSIZE AND TIMEOUT
+	batchSize := &ob.BatchSize{}
+	err = unmarshalConfigValueAtKey(ordererGroup, BatchSizeKey, batchSize)
+	if err != nil {
+		return Orderer{}, err
+	}
+
+	batchTimeoutProto := &ob.BatchTimeout{}
+	err = unmarshalConfigValueAtKey(ordererGroup, BatchTimeoutKey, batchTimeoutProto)
+	if err != nil {
+		return Orderer{}, err
+	}
+
+	batchTimeout, err := time.ParseDuration(batchTimeoutProto.Timeout)
+	if err != nil {
+		return Orderer{}, fmt.Errorf("batch timeout configuration '%s' is not a duration string", batchTimeoutProto.Timeout)
+	}
+
+	// ORDERER ORGS
+	var ordererOrgs []Organization
+	for orgName := range ordererGroup.Groups {
+		orgConfig, err := GetOrdererOrg(config, orgName)
+		if err != nil {
+			return Orderer{}, fmt.Errorf("retrieving orderer org %s: %v", orgName, err)
+		}
+
+		ordererOrgs = append(ordererOrgs, orgConfig)
+	}
+
+	// MAX CHANNELS
+	channelRestrictions := &ob.ChannelRestrictions{}
+	err = unmarshalConfigValueAtKey(ordererGroup, ChannelRestrictionsKey, channelRestrictions)
+	if err != nil {
+		return Orderer{}, err
+	}
+
+	// CAPABILITIES
+	capabilities, err := getCapabilities(ordererGroup)
+	if err != nil {
+		return Orderer{}, fmt.Errorf("retrieving orderer capabilities: %v", err)
+	}
+
+	// POLICIES
+	policies, err := GetPoliciesForOrderer(config)
+	if err != nil {
+		return Orderer{}, fmt.Errorf("retrieving orderer policies: %v", err)
+	}
+
+	return Orderer{
+		OrdererType:  ordererType,
+		Addresses:    ordererAddresses.Addresses,
+		BatchTimeout: batchTimeout,
+		BatchSize: BatchSize{
+			MaxMessageCount:   batchSize.MaxMessageCount,
+			AbsoluteMaxBytes:  batchSize.AbsoluteMaxBytes,
+			PreferredMaxBytes: batchSize.PreferredMaxBytes,
+		},
+		Kafka:         kafkaBrokers,
+		EtcdRaft:      etcdRaft,
+		Organizations: ordererOrgs,
+		MaxChannels:   channelRestrictions.MaxCount,
+		Capabilities:  capabilities,
+		Policies:      policies,
+		State:         state,
+	}, nil
+}
+
 // AddOrdererOrg adds a organization to an existing config's Orderer configuration.
 // Will not error if organization already exists.
 func AddOrdererOrg(config *cb.Config, org Organization) error {
@@ -122,6 +242,78 @@ func AddOrdererOrg(config *cb.Config, org Organization) error {
 	ordererGroup.Groups[org.Name] = orgGroup
 
 	return nil
+}
+
+// AddOrdererEndpoint adds an orderer's endpoint to an existing channel config transaction.
+// It must add the endpoint to an existing org and the endpoint must not already
+// exist in the org.
+func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint string) error {
+	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+	if !ok {
+		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
+	}
+
+	ordererAddrProto := &cb.OrdererAddresses{}
+
+	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
+		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
+		if err != nil {
+			return fmt.Errorf("failed unmarshalling orderer org %s's endpoints: %v", orgName, err)
+		}
+	}
+
+	existingOrdererEndpoints := ordererAddrProto.Addresses
+	for _, e := range existingOrdererEndpoints {
+		if e == endpoint {
+			return fmt.Errorf("orderer org %s already contains endpoint %s",
+				orgName, endpoint)
+		}
+	}
+
+	existingOrdererEndpoints = append(existingOrdererEndpoints, endpoint)
+
+	// Add orderer endpoints config value back to orderer org
+	err := addValue(ordererOrgGroup, endpointsValue(existingOrdererEndpoints), AdminsPolicyKey)
+	if err != nil {
+		return fmt.Errorf("failed to add endpoint %v to orderer org %s: %v", endpoint, orgName, err)
+	}
+
+	return nil
+}
+
+// RemoveOrdererEndpoint removes an orderer's endpoint from an existing channel config transaction.
+// The removed endpoint and org it belongs to must both already exist.
+func RemoveOrdererEndpoint(config *cb.Config, orgName string, endpoint string) error {
+	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+	if !ok {
+		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
+	}
+
+	ordererAddrProto := &cb.OrdererAddresses{}
+
+	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
+		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
+		if err != nil {
+			return fmt.Errorf("failed unmarshalling orderer org %s's endpoints: %v", orgName, err)
+		}
+	}
+
+	existingEndpoints := ordererAddrProto.Addresses
+	for i, e := range existingEndpoints {
+		if e == endpoint {
+			existingEndpoints = append(existingEndpoints[:i], existingEndpoints[i+1:]...)
+
+			// Add orderer endpoints config value back to orderer org
+			err := addValue(ordererOrgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
+			if err != nil {
+				return fmt.Errorf("failed to remove endpoint %v from orderer org %s: %v", endpoint, orgName, err)
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("could not find endpoint %s in orderer org %s", endpoint, orgName)
 }
 
 // newOrdererGroup returns the orderer component of the channel configuration.
@@ -212,6 +404,19 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 	return nil
 }
 
+// addOrdererPolicies adds *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
+// It checks that the BlockValidation policy is defined alongside the standard policy checks.
+func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
+	if policyMap == nil {
+		return errors.New("no policies defined")
+	}
+	if _, ok := policyMap[BlockValidationPolicyKey]; !ok {
+		return errors.New("no BlockValidation policy defined")
+	}
+
+	return addPolicies(cg, policyMap, modPolicy)
+}
+
 // batchSizeValue returns the config definition for the orderer batch size.
 // It is a value for the /Channel/Orderer group.
 func batchSizeValue(maxMessages, absoluteMaxBytes, preferredMaxBytes uint32) *standardConfigValue {
@@ -269,6 +474,19 @@ func kafkaBrokersValue(brokers []string) *standardConfigValue {
 	}
 }
 
+// consensusTypeValue returns the config definition for the orderer consensus type.
+// It is a value for the /Channel/Orderer group.
+func consensusTypeValue(consensusType string, consensusMetadata []byte, consensusState int32) *standardConfigValue {
+	return &standardConfigValue{
+		key: ConsensusTypeKey,
+		value: &ob.ConsensusType{
+			Type:     consensusType,
+			Metadata: consensusMetadata,
+			State:    ob.ConsensusType_State(consensusState),
+		},
+	}
+}
+
 // marshalEtcdRaftMetadata serializes etcd RAFT metadata.
 func marshalEtcdRaftMetadata(md EtcdRaft) ([]byte, error) {
 	consenters := []*eb.Consenter{}
@@ -321,101 +539,50 @@ func marshalEtcdRaftMetadata(md EtcdRaft) ([]byte, error) {
 	return data, nil
 }
 
-// consensusTypeValue returns the config definition for the orderer consensus type.
-// It is a value for the /Channel/Orderer group.
-func consensusTypeValue(consensusType string, consensusMetadata []byte, consensusState int32) *standardConfigValue {
-	return &standardConfigValue{
-		key: ConsensusTypeKey,
-		value: &ob.ConsensusType{
-			Type:     consensusType,
-			Metadata: consensusMetadata,
-			State:    ob.ConsensusType_State(consensusState),
-		},
-	}
-}
-
-// addOrdererPolicies adds *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
-// It checks that the BlockValidation policy is defined alongside the standard policy checks.
-func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
-	if policyMap == nil {
-		return errors.New("no policies defined")
-	}
-
-	if _, ok := policyMap[BlockValidationPolicyKey]; !ok {
-		return errors.New("no BlockValidation policy defined")
-	}
-
-	return addPolicies(cg, policyMap, modPolicy)
-}
-
-// AddOrdererEndpoint adds an orderer's endpoint to an existing channel config transaction.
-// It must add the endpoint to an existing org and the endpoint must not already
-// exist in the org.
-func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint string) error {
-	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
-	if !ok {
-		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
-	}
-
-	ordererAddrProto := &cb.OrdererAddresses{}
-
-	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
-		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
-		if err != nil {
-			return fmt.Errorf("failed unmarshalling orderer org %s's endpoints: %v", orgName, err)
-		}
-	}
-
-	existingOrdererEndpoints := ordererAddrProto.Addresses
-	for _, e := range existingOrdererEndpoints {
-		if e == endpoint {
-			return fmt.Errorf("orderer org %s already contains endpoint %s",
-				orgName, endpoint)
-		}
-	}
-
-	existingOrdererEndpoints = append(existingOrdererEndpoints, endpoint)
-
-	// Add orderer endpoints config value back to orderer org
-	err := addValue(ordererOrgGroup, endpointsValue(existingOrdererEndpoints), AdminsPolicyKey)
+// unmarshalEtcdRaftMetadata deserializes etcd RAFT metadata.
+func unmarshalEtcdRaftMetadata(mdBytes []byte) (EtcdRaft, error) {
+	etcdRaftMetadata := &eb.ConfigMetadata{}
+	err := proto.Unmarshal(mdBytes, etcdRaftMetadata)
 	if err != nil {
-		return fmt.Errorf("failed to add endpoint %v to orderer org %s: %v", endpoint, orgName, err)
+		return EtcdRaft{}, fmt.Errorf("unmarshaling etcd raft metadata: %v", err)
 	}
 
-	return nil
-}
+	consenters := []Consenter{}
 
-// RemoveOrdererEndpoint removes an orderer's endpoint from an existing channel config transaction.
-// The removed endpoint and org it belongs to must both already exist.
-func RemoveOrdererEndpoint(config *cb.Config, orgName string, endpoint string) error {
-	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
-	if !ok {
-		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
-	}
-
-	ordererAddrProto := &cb.OrdererAddresses{}
-
-	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
-		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
+	for _, c := range etcdRaftMetadata.Consenters {
+		clientTLSCertBlock, _ := pem.Decode(c.ClientTlsCert)
+		clientTLSCert, err := x509.ParseCertificate(clientTLSCertBlock.Bytes)
 		if err != nil {
-			return fmt.Errorf("failed unmarshalling orderer org %s's endpoints: %v", orgName, err)
+			return EtcdRaft{}, fmt.Errorf("unable to parse client tls cert: %v", err)
 		}
+		serverTLSCertBlock, _ := pem.Decode(c.ServerTlsCert)
+		serverTLSCert, err := x509.ParseCertificate(serverTLSCertBlock.Bytes)
+		if err != nil {
+			return EtcdRaft{}, fmt.Errorf("unable to parse server tls cert: %v", err)
+		}
+
+		consenter := Consenter{
+			Host:          c.Host,
+			Port:          c.Port,
+			ClientTLSCert: clientTLSCert,
+			ServerTLSCert: serverTLSCert,
+		}
+
+		consenters = append(consenters, consenter)
 	}
 
-	existingEndpoints := ordererAddrProto.Addresses
-	for i, e := range existingEndpoints {
-		if e == endpoint {
-			existingEndpoints = append(existingEndpoints[:i], existingEndpoints[i+1:]...)
-
-			// Add orderer endpoints config value back to orderer org
-			err := addValue(ordererOrgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
-			if err != nil {
-				return fmt.Errorf("failed to remove endpoint %v from orderer org %s: %v", endpoint, orgName, err)
-			}
-
-			return nil
-		}
+	if etcdRaftMetadata.Options == nil {
+		return EtcdRaft{}, errors.New("missing etcdraft metadata options in config")
 	}
 
-	return fmt.Errorf("could not find endpoint %s in orderer org %s", endpoint, orgName)
+	return EtcdRaft{
+		Consenters: consenters,
+		Options: EtcdRaftOptions{
+			TickInterval:         etcdRaftMetadata.Options.TickInterval,
+			ElectionTick:         etcdRaftMetadata.Options.ElectionTick,
+			HeartbeatTick:        etcdRaftMetadata.Options.HeartbeatTick,
+			MaxInflightBlocks:    etcdRaftMetadata.Options.MaxInflightBlocks,
+			SnapshotIntervalSize: etcdRaftMetadata.Options.SnapshotIntervalSize,
+		},
+	}, nil
 }
