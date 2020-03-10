@@ -144,7 +144,7 @@ func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove Anch
 }
 
 // GetAnchorPeers retrieves existing anchor peers from a application organization.
-func GetAnchorPeers(config cb.Config, orgName string) ([]AnchorPeer, error) {
+func GetAnchorPeers(config *cb.Config, orgName string) ([]AnchorPeer, error) {
 	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)
