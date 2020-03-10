@@ -52,14 +52,14 @@ type MSP struct {
 	// SigningIdentity holds information on the signing identity
 	// this peer is to use, and which is to be imported by the
 	// MSP defined before.
-	SigningIdentity *SigningIdentityInfo
+	SigningIdentity SigningIdentityInfo
 	// OrganizationalUnitIdentifiers holds one or more
 	// fabric organizational unit identifiers that belong to
 	// this MSP configuration.
-	OrganizationalUnitIdentifiers []*OUIdentifier
+	OrganizationalUnitIdentifiers []OUIdentifier
 	// CryptoConfig contains the configuration parameters
 	// for the cryptographic algorithms used by this MSP.
-	CryptoConfig *CryptoConfig
+	CryptoConfig CryptoConfig
 	// List of TLS root certificates trusted by this MSP.
 	// They are returned by GetTLSRootCerts.
 	TLSRootCerts []x509.Certificate
@@ -68,7 +68,7 @@ type MSP struct {
 	TLSIntermediateCerts []x509.Certificate
 	// fabric_node_ous contains the configuration to distinguish clients from peers from orderers
 	// based on the OUs.
-	NodeOus *NodeOUs
+	NodeOus NodeOUs
 }
 
 // SigningIdentityInfo represents the configuration information
@@ -81,7 +81,7 @@ type SigningIdentityInfo struct {
 	PublicSigner x509.Certificate
 	// PrivateSigner denotes a reference to the private key of the
 	// peer's signing identity.
-	PrivateSigner *KeyInfo
+	PrivateSigner KeyInfo
 }
 
 // KeyInfo represents a (secret) key that is either already stored
@@ -135,13 +135,13 @@ type NodeOUs struct {
 	// If true then an msp identity that does not contain any of the specified OU will be considered invalid.
 	Enable bool
 	// OU Identifier of the clients.
-	ClientOuIdentifier *OUIdentifier
+	ClientOuIdentifier OUIdentifier
 	// OU Identifier of the peers.
-	PeerOuIdentifier *OUIdentifier
+	PeerOuIdentifier OUIdentifier
 	// OU Identifier of the admins.
-	AdminOuIdentifier *OUIdentifier
+	AdminOuIdentifier OUIdentifier
 	// OU Identifier of the orderers.
-	OrdererOuIdentifier *OUIdentifier
+	OrdererOuIdentifier OUIdentifier
 }
 
 // toProto converts an MSP configuration to an mb.FabricMSPConfig proto.
@@ -211,7 +211,7 @@ func (m *MSP) toProto() (*mb.FabricMSPConfig, error) {
 	}, nil
 }
 
-func buildOUIdentifiers(identifiers []*OUIdentifier) []*mb.FabricOUIdentifier {
+func buildOUIdentifiers(identifiers []OUIdentifier) []*mb.FabricOUIdentifier {
 	fabricIdentifiers := []*mb.FabricOUIdentifier{}
 
 	for _, identifier := range identifiers {

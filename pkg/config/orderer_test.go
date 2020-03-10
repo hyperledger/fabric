@@ -22,12 +22,11 @@ func TestNewOrdererGroup(t *testing.T) {
 
 	tests := []struct {
 		ordererType           string
-		configMetadata        *eb.ConfigMetadata
 		numOrdererGroupValues int
 	}{
-		{ordererType: ConsensusTypeSolo, configMetadata: nil, numOrdererGroupValues: 5},
-		{ordererType: ConsensusTypeEtcdRaft, configMetadata: &eb.ConfigMetadata{}, numOrdererGroupValues: 5},
-		{ordererType: ConsensusTypeKafka, configMetadata: nil, numOrdererGroupValues: 6},
+		{ordererType: ConsensusTypeSolo, numOrdererGroupValues: 5},
+		{ordererType: ConsensusTypeEtcdRaft, numOrdererGroupValues: 5},
+		{ordererType: ConsensusTypeKafka, numOrdererGroupValues: 6},
 	}
 
 	for _, tt := range tests {
@@ -39,7 +38,6 @@ func TestNewOrdererGroup(t *testing.T) {
 
 			ordererConf := baseOrderer()
 			ordererConf.OrdererType = tt.ordererType
-			ordererConf.EtcdRaft = tt.configMetadata
 
 			ordererGroup, err := newOrdererGroup(ordererConf)
 			gt.Expect(err).NotTo(HaveOccurred())
@@ -96,7 +94,7 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 			testName: "When marshalling etcdraft metadata for orderer group",
 			ordererMod: func(o *Orderer) {
 				o.OrdererType = ConsensusTypeEtcdRaft
-				o.EtcdRaft = &eb.ConfigMetadata{
+				o.EtcdRaft = eb.ConfigMetadata{
 					Consenters: []*eb.Consenter{
 						{
 							Host:          "node-1.example.com",
@@ -131,14 +129,6 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 			err: errors.New("unknown orderer type 'ConsensusTypeGreen'"),
 		},
 		{
-			testName: "When EtcdRaft config is not set for consensus type etcdraft",
-			ordererMod: func(o *Orderer) {
-				o.OrdererType = ConsensusTypeEtcdRaft
-				o.EtcdRaft = nil
-			},
-			err: errors.New("etcdraft metadata for orderer type 'etcdraft' is required"),
-		},
-		{
 			testName: "When adding policies to orderer org group",
 			ordererMod: func(o *Orderer) {
 				o.Organizations[0].Policies = nil
@@ -155,7 +145,7 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 			gt := NewGomegaWithT(t)
 
 			ordererConf := baseOrderer()
-			tt.ordererMod(ordererConf)
+			tt.ordererMod(&ordererConf)
 
 			ordererGroup, err := newOrdererGroup(ordererConf)
 			gt.Expect(err).To(MatchError(tt.err))
@@ -214,7 +204,6 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 	updatedOrdererConf.BatchSize.MaxMessageCount = 10000
 	updatedOrdererConf.Addresses = []string{"newhost:345"}
 	updatedOrdererConf.OrdererType = ConsensusTypeEtcdRaft
-	updatedOrdererConf.EtcdRaft = &eb.ConfigMetadata{}
 
 	err = UpdateOrdererConfiguration(config, updatedOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -268,11 +257,11 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 	gt.Expect(config.ChannelGroup.Values[OrdererAddressesKey].Value).To(Equal(expectedOrdererAddresses))
 }
 
-func baseOrderer() *Orderer {
-	return &Orderer{
+func baseOrderer() Orderer {
+	return Orderer{
 		Policies:    ordererStandardPolicies(),
 		OrdererType: ConsensusTypeSolo,
-		Organizations: []*Organization{
+		Organizations: []Organization{
 			{
 				Name:     "OrdererOrg",
 				ID:       "OrdererOrgMSP",

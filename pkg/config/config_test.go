@@ -24,7 +24,7 @@ func TestSignConfigUpdate(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	cert, privateKey := generateCertAndPrivateKey()
-	signingIdentity := &SigningIdentity{
+	signingIdentity := SigningIdentity{
 		Certificate: cert,
 		PrivateKey:  privateKey,
 		MSPID:       "test-msp",
@@ -276,22 +276,12 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 
 	tests := []struct {
 		testName   string
-		profileMod func() *Channel
+		profileMod func() Channel
 		err        error
 	}{
 		{
-			testName: "When creating the default config template with no ApplicationGroupKey defined fails",
-			profileMod: func() *Channel {
-				profile := baseProfile()
-				profile.Application = nil
-				return profile
-			},
-			err: errors.New("creating default config template: channel template config must contain " +
-				"an application section"),
-		},
-		{
 			testName: "When creating the default config template with no Admins policies defined fails",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				delete(profile.Application.Policies, AdminsPolicyKey)
 				return profile
@@ -301,7 +291,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with no Readers policies defined fails",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				delete(profile.Application.Policies, ReadersPolicyKey)
 				return profile
@@ -311,7 +301,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with no Writers policies defined fails",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				delete(profile.Application.Policies, WritersPolicyKey)
 				return profile
@@ -321,7 +311,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				profile.Application.Policies[ReadersPolicyKey].Rule = "ALL"
 				return profile
@@ -332,7 +322,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				profile.Application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
 				return profile
@@ -343,7 +333,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with SignatureTypePolicy and bad rule fails",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				profile.Application.Policies[ReadersPolicyKey].Type = SignaturePolicyType
 				profile.Application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
@@ -355,7 +345,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the default config template with an unknown policy type fails",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				profile.Application.Policies[ReadersPolicyKey].Type = "GreenPolicy"
 				return profile
@@ -364,15 +354,8 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				"unknown policy type: GreenPolicy"),
 		},
 		{
-			testName: "When channel is not specified in config",
-			profileMod: func() *Channel {
-				return nil
-			},
-			err: errors.New("channel config is required"),
-		},
-		{
 			testName: "When channel ID is not specified in config",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				profile.ChannelID = ""
 				return profile
@@ -381,7 +364,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 		},
 		{
 			testName: "When creating the application group fails",
-			profileMod: func() *Channel {
+			profileMod: func() Channel {
 				profile := baseProfile()
 				profile.Application.Policies = nil
 				return profile
@@ -413,7 +396,7 @@ func TestCreateSignedConfigUpdateEnvelope(t *testing.T) {
 
 	// create signingIdentity
 	cert, privateKey := generateCertAndPrivateKey()
-	signingIdentity := &SigningIdentity{
+	signingIdentity := SigningIdentity{
 		Certificate: cert,
 		PrivateKey:  privateKey,
 		MSPID:       "test-msp",
@@ -454,7 +437,7 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 
 	// create signingIdentity
 	cert, privateKey := generateCertAndPrivateKey()
-	signingIdentity := &SigningIdentity{
+	signingIdentity := SigningIdentity{
 		Certificate: cert,
 		PrivateKey:  privateKey,
 		MSPID:       "test-msp",
@@ -471,7 +454,7 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 	tests := []struct {
 		spec            string
 		configUpdate    *cb.ConfigUpdate
-		signingIdentity *SigningIdentity
+		signingIdentity SigningIdentity
 		configSignature []*cb.ConfigSignature
 		expectedErr     string
 	}{
@@ -736,8 +719,8 @@ func TestComputeUpdateFailures(t *testing.T) {
 	}
 }
 
-func baseProfile() *Channel {
-	return &Channel{
+func baseProfile() Channel {
+	return Channel{
 		ChannelID:    "testchannel",
 		Consortium:   "SampleConsortium",
 		Application:  baseApplication(),
@@ -745,8 +728,8 @@ func baseProfile() *Channel {
 	}
 }
 
-func baseSystemChannelProfile() *Channel {
-	return &Channel{
+func baseSystemChannelProfile() Channel {
+	return Channel{
 		ChannelID:    "testsystemchannel",
 		Consortiums:  baseConsortiums(),
 		Orderer:      baseOrderer(),

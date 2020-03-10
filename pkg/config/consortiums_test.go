@@ -91,7 +91,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 		},
 	}
 
-	orgToAdd := &Organization{
+	orgToAdd := Organization{
 		Name:     "Org1",
 		ID:       "Org1MSP",
 		Policies: orgStandardPolicies(),
@@ -381,7 +381,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 func TestAddOrgToConsortiumFailures(t *testing.T) {
 	t.Parallel()
 
-	orgToAdd := &Organization{
+	orgToAdd := Organization{
 		Name:     "test-org",
 		ID:       "test-org-msp-id",
 		Policies: orgStandardPolicies(),
@@ -389,17 +389,11 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 
 	for _, test := range []struct {
 		name        string
-		org         *Organization
+		org         Organization
 		consortium  string
 		config      *cb.Config
 		expectedErr string
 	}{
-		{
-			name:        "When the organization is nil",
-			org:         nil,
-			consortium:  "Consortium1",
-			expectedErr: "organization is required",
-		},
 		{
 			name:        "When the consortium name is not specified",
 			org:         orgToAdd,
@@ -414,7 +408,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 		},
 		{
 			name: "When the config doesn't contain the consortium",
-			org: &Organization{
+			org: Organization{
 				Name: "test-msp",
 				ID:   "test-org-msp-id",
 				Policies: map[string]*Policy{
@@ -449,11 +443,11 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 	}
 }
 
-func baseConsortiums() []*Consortium {
-	return []*Consortium{
+func baseConsortiums() []Consortium {
+	return []Consortium{
 		{
 			Name: "Consortium1",
-			Organizations: []*Organization{
+			Organizations: []Organization{
 				{
 					Name:     "Org1",
 					ID:       "Org1MSP",

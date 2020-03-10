@@ -17,7 +17,7 @@ import (
 // Application is a copy of the orderer configuration with the addition of an anchor peers
 // list in the organization definition.
 type Application struct {
-	Organizations []*Organization
+	Organizations []Organization
 	Capabilities  map[string]bool
 	Policies      map[string]*Policy
 	ACLs          map[string]string
@@ -31,7 +31,7 @@ type AnchorPeer struct {
 
 // newApplicationGroup returns the application component of the channel configuration.
 // By default, it sets the mod_policy of all elements to "Admins".
-func newApplicationGroup(application *Application) (*cb.ConfigGroup, error) {
+func newApplicationGroup(application Application) (*cb.ConfigGroup, error) {
 	var err error
 
 	applicationGroup := newConfigGroup()
@@ -65,7 +65,7 @@ func newApplicationGroup(application *Application) (*cb.ConfigGroup, error) {
 // AddAnchorPeer adds an anchor peer to an existing channel config transaction.
 // It must add the anchor peer to an existing org and the anchor peer must not already
 // exist in the org.
-func AddAnchorPeer(config *cb.Config, orgName string, newAnchorPeer *AnchorPeer) error {
+func AddAnchorPeer(config *cb.Config, orgName string, newAnchorPeer AnchorPeer) error {
 	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return fmt.Errorf("application org %s does not exist in channel config", orgName)
@@ -108,7 +108,7 @@ func AddAnchorPeer(config *cb.Config, orgName string, newAnchorPeer *AnchorPeer)
 
 // RemoveAnchorPeer removes an anchor peer from an existing channel config transaction.
 // The removed anchor peer and org it belongs to must both already exist.
-func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove *AnchorPeer) error {
+func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove AnchorPeer) error {
 	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return fmt.Errorf("application org %s does not exist in channel config", orgName)
@@ -144,7 +144,7 @@ func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove *Anc
 }
 
 // GetAnchorPeers retrieves existing anchor peers from a application organization.
-func GetAnchorPeers(config *cb.Config, orgName string) ([]*AnchorPeer, error) {
+func GetAnchorPeers(config cb.Config, orgName string) ([]AnchorPeer, error) {
 	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)
@@ -161,9 +161,9 @@ func GetAnchorPeers(config *cb.Config, orgName string) ([]*AnchorPeer, error) {
 		return nil, fmt.Errorf("failed unmarshalling %s's anchor peer endpoints: %v", orgName, err)
 	}
 
-	anchorPeers := []*AnchorPeer{}
+	anchorPeers := []AnchorPeer{}
 	for _, ap := range anchorPeersProto.AnchorPeers {
-		anchorPeers = append(anchorPeers, &AnchorPeer{
+		anchorPeers = append(anchorPeers, AnchorPeer{
 			Host: ap.Host,
 			Port: int(ap.Port),
 		})

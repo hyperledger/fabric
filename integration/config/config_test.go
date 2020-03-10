@@ -69,11 +69,11 @@ var _ = Describe("Config", func() {
 		org1peer0 := network.Peer("Org1", "peer0")
 
 		By("setting up the channel")
-		channel := &config.Channel{
+		channel := config.Channel{
 			ChannelID:  "testchannel",
 			Consortium: "SampleConsortium",
-			Application: &config.Application{
-				Organizations: []*config.Organization{
+			Application: config.Application{
+				Organizations: []config.Organization{
 					{
 						Name: "Org1",
 					},
