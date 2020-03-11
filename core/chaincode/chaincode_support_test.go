@@ -11,25 +11,29 @@ import (
 	"bytes"
 	"compress/gzip"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
-
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
+	"github.com/hyperledger/fabric-protos-go/common"
 	plgr "github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
@@ -44,12 +48,20 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
+	cut "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/policy"
+	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
+	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -1298,4 +1310,185 @@ func TestMaxDuration(t *testing.T) {
 		result := maxDuration(tt.durations...)
 		assert.Equalf(t, tt.expected, result, "want %s got %s", tt.expected, result)
 	}
+}
+
+func startTxSimulation(peerInstance *peer.Peer, channelID string, txid string) (ledger.TxSimulator, ledger.HistoryQueryExecutor, error) {
+	lgr := peerInstance.GetLedger(channelID)
+	txsim, err := lgr.NewTxSimulator(txid)
+	if err != nil {
+		return nil, nil, err
+	}
+	historyQueryExecutor, err := lgr.NewHistoryQueryExecutor()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return txsim, historyQueryExecutor, nil
+}
+
+func endTxSimulationCIS(peerInstance *peer.Peer, channelID string, ccid *pb.ChaincodeID, txid string, txsim ledger.TxSimulator, payload []byte, commit bool, cis *pb.ChaincodeInvocationSpec, blockNumber uint64) error {
+	// get serialized version of the signer
+	ss, err := signer.Serialize()
+	if err != nil {
+		return err
+	}
+
+	// get a proposal - we need it to get a transaction
+	prop, returnedTxid, err := protoutil.CreateProposalFromCISAndTxid(txid, common.HeaderType_ENDORSER_TRANSACTION, channelID, cis, ss)
+	if err != nil {
+		return err
+	}
+	if returnedTxid != txid {
+		return errors.New("txids are not same")
+	}
+
+	return endTxSimulation(peerInstance, channelID, ccid, txsim, payload, commit, prop, blockNumber)
+}
+
+//getting a crash from ledger.Commit when doing concurrent invokes
+//It is likely intentional that ledger.Commit is serial (ie, the real
+//Committer will invoke this serially on each block). Mimic that here
+//by forcing serialization of the ledger.Commit call.
+//
+//NOTE-this should NOT have any effect on the older serial tests.
+//This affects only the tests in concurrent_test.go which call these
+//concurrently (100 concurrent invokes followed by 100 concurrent queries)
+var _commitLock_ sync.Mutex
+
+func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, _ []byte, commit bool, prop *pb.Proposal, blockNumber uint64) error {
+	txsim.Done()
+	if lgr := peerInstance.GetLedger(channelID); lgr != nil {
+		if commit {
+			var txSimulationResults *ledger.TxSimulationResults
+			var txSimulationBytes []byte
+			var err error
+
+			txsim.Done()
+
+			//get simulation results
+			if txSimulationResults, err = txsim.GetTxSimulationResults(); err != nil {
+				return err
+			}
+			if txSimulationBytes, err = txSimulationResults.GetPubSimulationBytes(); err != nil {
+				return err
+			}
+			// assemble a (signed) proposal response message
+			resp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200},
+				txSimulationBytes, nil, ccid, signer)
+			if err != nil {
+				return err
+			}
+
+			// get the envelope
+			env, err := protoutil.CreateSignedTx(prop, signer, resp)
+			if err != nil {
+				return err
+			}
+
+			envBytes, err := protoutil.GetBytesEnvelope(env)
+			if err != nil {
+				return err
+			}
+
+			//create the block with 1 transaction
+			bcInfo, err := lgr.GetBlockchainInfo()
+			if err != nil {
+				return err
+			}
+			block := protoutil.NewBlock(blockNumber, bcInfo.CurrentBlockHash)
+			block.Data.Data = [][]byte{envBytes}
+			txsFilter := cut.NewTxValidationFlagsSetValue(len(block.Data.Data), pb.TxValidationCode_VALID)
+			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
+
+			//commit the block
+
+			//see comment on _commitLock_
+			_commitLock_.Lock()
+			defer _commitLock_.Unlock()
+
+			blockAndPvtData := &ledger.BlockAndPvtData{
+				Block:   block,
+				PvtData: make(ledger.TxPvtDataMap),
+			}
+
+			// All tests are performed with just one transaction in a block.
+			// Hence, we can simiplify the procedure of constructing the
+			// block with private data. There is not enough need to
+			// add more than one transaction in a block for testing chaincode
+			// API.
+
+			// ASSUMPTION: Only one transaction in a block.
+			seqInBlock := uint64(0)
+
+			if txSimulationResults.PvtSimulationResults != nil {
+				blockAndPvtData.PvtData[seqInBlock] = &ledger.TxPvtData{
+					SeqInBlock: seqInBlock,
+					WriteSet:   txSimulationResults.PvtSimulationResults,
+				}
+			}
+
+			if err := lgr.CommitLegacy(blockAndPvtData, &ledger.CommitOptions{}); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func TestMain(m *testing.M) {
+	var err error
+
+	msptesttools.LoadMSPSetupForTesting()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		os.Exit(-1)
+		return
+	}
+	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	if err != nil {
+		fmt.Print("Could not initialize msp/signer")
+		os.Exit(-1)
+		return
+	}
+
+	setupTestConfig()
+	flogging.ActivateSpec("chaincode=debug")
+	os.Exit(m.Run())
+}
+
+func setupTestConfig() {
+	flag.Parse()
+
+	// Now set the configuration file
+	viper.SetEnvPrefix("CORE")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.SetConfigName("chaincodetest") // name of config file (without extension)
+	viper.AddConfigPath("./")            // path to look for the config file in
+	err := viper.ReadInConfig()          // Find and read the config file
+	if err != nil {                      // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+
+	// Init the BCCSP
+	err = factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
+}
+
+var signer msp.SigningIdentity
+
+func newPolicyChecker(peerInstance *peer.Peer) policy.PolicyChecker {
+	return policy.NewPolicyChecker(
+		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
+		&policymocks.MockIdentityDeserializer{
+			Identity: []byte("Admin"),
+			Msg:      []byte("msg1"),
+		},
+		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Admin")},
+	)
 }

@@ -29,6 +29,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func init() {
+	// Significantly reduce execution time of deployment payload tests.
+	gzipCompressionLevel = gzip.NoCompression
+}
+
 func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploymentSpec, error) {
 	codePackage := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(codePackage)
@@ -314,15 +319,17 @@ func TestGetDeploymentPayload(t *testing.T) {
 		{gopath: "", path: "testdata/ccmodule", succ: true},
 	}
 
-	for _, tst := range tests {
-		reset := updateGopath(t, tst.gopath)
-		_, err := platform.GetDeploymentPayload(tst.path)
-		if tst.succ {
-			assert.NoError(t, err, "expected success for path: %s", tst.path)
-		} else {
-			assert.Errorf(t, err, "expected error for path: %s", tst.path)
-		}
-		reset()
+	for i, tst := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			reset := updateGopath(t, tst.gopath)
+			_, err := platform.GetDeploymentPayload(tst.path)
+			if tst.succ {
+				assert.NoError(t, err, "expected success for path: %s", tst.path)
+			} else {
+				assert.Errorf(t, err, "expected error for path: %s", tst.path)
+			}
+			reset()
+		})
 	}
 }
 
