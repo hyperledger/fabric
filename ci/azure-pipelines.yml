@@ -15,8 +15,7 @@ variables:
 
 jobs:
   - job: VerifyBuild
-    pool:
-      vmImage: ubuntu-18.04
+    pool: fabric-test-8cpu-32gb
     steps:
       - template: install_deps.yml
       - checkout: self
@@ -28,10 +27,7 @@ jobs:
         name: SetJobTriggers
 
   - job: DocBuild
-    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.buildDoc'], 'true')
-    dependsOn: VerifyBuild
-    pool:
-      vmImage: ubuntu-18.04
+    pool: fabric-test-8cpu-32gb
     container:
       image: n42org/tox:3.4.0
     steps:
@@ -44,10 +40,7 @@ jobs:
         displayName: Publish Documentation Artifacts
 
   - job: UnitTests
-    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
-    dependsOn: VerifyBuild
-    pool:
-      vmImage: ubuntu-18.04
+    pool: fabric-test-8cpu-32gb
     steps:
       - template: install_deps.yml
       - checkout: self
@@ -59,10 +52,7 @@ jobs:
         displayName: Run Unit Tests
 
   - job: IntegrationTests
-    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
-    dependsOn: VerifyBuild
-    pool:
-      vmImage: ubuntu-18.04
+    pool: fabric-test-8cpu-32gb
     strategy:
       parallel: 5
     timeoutInMinutes: 90
