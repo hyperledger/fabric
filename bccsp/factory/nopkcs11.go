@@ -1,26 +1,19 @@
 // +build !pkcs11
 
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package factory
 
 import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
 )
+
+const pkcs11Enabled = false
 
 // FactoryOpts holds configuration information used to initialize factory implementations
 type FactoryOpts struct {
@@ -63,7 +56,7 @@ func initFactories(config *FactoryOpts) error {
 		f := &SWFactory{}
 		err := initBCCSP(f, config)
 		if err != nil {
-			return errors.Wrapf(err, "Failed initializing BCCSP.")
+			return errors.Wrapf(err, "Failed initializing BCCSP")
 		}
 	}
 
@@ -72,14 +65,14 @@ func initFactories(config *FactoryOpts) error {
 		f := &PluginFactory{}
 		err := initBCCSP(f, config)
 		if err != nil {
-			return errors.Wrapf(err, "Failed initializing PLUGIN.BCCSP %s", factoriesInitError)
+			return errors.Wrapf(err, "Failed initializing PLUGIN.BCCSP")
 		}
 	}
 
 	var ok bool
 	defaultBCCSP, ok = bccspMap[config.ProviderName]
 	if !ok {
-		return errors.Errorf("%s\nCould not find default `%s` BCCSP", factoriesInitError, config.ProviderName)
+		return errors.Errorf("Could not find default `%s` BCCSP", config.ProviderName)
 	}
 	return nil
 }

@@ -18,20 +18,15 @@ package factory
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	flag.Parse()
-	lib, pin, label := pkcs11.FindPKCS11Lib()
-
 	var jsonBCCSP, yamlBCCSP *FactoryOpts
 	jsonCFG := []byte(
 		`{ "default": "SW", "SW":{ "security": 384, "hash": "SHA3" } }`)
@@ -42,7 +37,16 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	yamlCFG := fmt.Sprintf(`
+	yamlCFG := `
+BCCSP:
+    default: SW
+    SW:
+        Hash: SHA3
+        Security: 256`
+
+	if pkcs11Enabled {
+		lib, pin, label := pkcs11.FindPKCS11Lib()
+		yamlCFG = fmt.Sprintf(`
 BCCSP:
     default: PKCS11
     SW:
@@ -56,15 +60,6 @@ BCCSP:
         Pin:     '%s'
         Label:   %s
         `, lib, pin, label)
-
-	if lib == "" {
-		fmt.Printf("Could not find PKCS11 libraries, running without\n")
-		yamlCFG = `
-BCCSP:
-    default: SW
-    SW:
-        Hash: SHA3
-        Security: 256`
 	}
 
 	viper.SetConfigType("yaml")
@@ -81,28 +76,23 @@ BCCSP:
 	}
 
 	cfgVariations := []*FactoryOpts{
-		{
-			ProviderName: "SW",
-			SwOpts: &SwOpts{
-				HashFamily: "SHA2",
-				SecLevel:   256,
-
-				Ephemeral: true,
-			},
-		},
 		{},
-		{
-			ProviderName: "SW",
-		},
+		{ProviderName: "SW"},
+		{ProviderName: "SW", SwOpts: &SwOpts{HashFamily: "SHA2", SecLevel: 256, Ephemeral: true}},
 		jsonBCCSP,
 		yamlBCCSP,
 	}
 
 	for index, config := range cfgVariations {
 		fmt.Printf("Trying configuration [%d]\n", index)
-		InitFactories(config)
-		InitFactories(nil)
-		m.Run()
+		factoriesInitError = initFactories(config)
+		if factoriesInitError != nil {
+			fmt.Fprintf(os.Stderr, "initFactories failed: %s", factoriesInitError)
+			os.Exit(1)
+		}
+		if rc := m.Run(); rc != 0 {
+			os.Exit(rc)
+		}
 	}
 	os.Exit(0)
 }
@@ -112,15 +102,4 @@ func TestGetDefault(t *testing.T) {
 	if bccsp == nil {
 		t.Fatal("Failed getting default BCCSP. Nil instance.")
 	}
-}
-
-func TestGetBCCSP(t *testing.T) {
-	bccsp, err := GetBCCSP("SW")
-	assert.NoError(t, err)
-	assert.NotNil(t, bccsp)
-
-	bccsp, err = GetBCCSP("BadName")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Could not find BCCSP, no 'BadName' provider")
-	assert.Nil(t, bccsp)
 }
