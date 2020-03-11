@@ -364,7 +364,7 @@ func Example_usage() {
 				Policies: map[string]config.Policy{
 					config.AdminsPolicyKey: {
 						Type: config.ImplicitMetaPolicyType,
-						Rule: "Majority Admins",
+						Rule: "MAJORITY Admins",
 					},
 					config.BlockValidationPolicyKey: {
 						Type: config.ImplicitMetaPolicyType,
@@ -416,6 +416,36 @@ func Example_usage() {
 		panic(err)
 	}
 
+	org := config.Organization{
+		Name:             "OrdererOrg2",
+		ID:               "OrdererOrg2MSP",
+		MSP:              config.MSP{},
+		OrdererEndpoints: []string{"127.0.0.1:7050"},
+		Policies: map[string]config.Policy{
+			config.AdminsPolicyKey: {
+				Type: config.ImplicitMetaPolicyType,
+				Rule: "MAJORITY Admins",
+			},
+			config.BlockValidationPolicyKey: {
+				Type: config.ImplicitMetaPolicyType,
+				Rule: "ANY Writers",
+			},
+			config.ReadersPolicyKey: {
+				Type: config.ImplicitMetaPolicyType,
+				Rule: "ANY Readers",
+			},
+			config.WritersPolicyKey: {
+				Type: config.ImplicitMetaPolicyType,
+				Rule: "ANY Writers",
+			},
+		},
+	}
+
+	err = config.AddOrdererOrg(updatedConfig, org)
+	if err != nil {
+		panic(err)
+	}
+
 	// Compute the delta
 	configUpdate, err := config.ComputeUpdate(baseConfig, updatedConfig, "testChannel")
 	if err != nil {
@@ -446,10 +476,303 @@ func Example_usage() {
 	}
 
 	// Sign the envelope with the list of signatures
-	_, err = config.CreateSignedConfigUpdateEnvelope(configUpdate, peer1SigningIdentity, configSignatures...)
+	envelope, err := config.CreateSignedConfigUpdateEnvelope(configUpdate, peer1SigningIdentity, configSignatures...)
 	if err != nil {
 		panic(err)
 	}
+
+	// The timestamps of the ChannelHeader varies so this comparison only considers the ConfigUpdateEnvelope JSON.
+	payload := &cb.Payload{}
+
+	err = proto.Unmarshal(envelope.Payload, payload)
+	if err != nil {
+		panic(err)
+	}
+
+	data := &cb.ConfigUpdateEnvelope{}
+
+	err = proto.Unmarshal(payload.Data, data)
+	if err != nil {
+		panic(err)
+	}
+
+	// Signature and nonce is different each run
+	data.Signatures = nil
+
+	err = protolator.DeepMarshalJSON(os.Stdout, data)
+	if err != nil {
+		panic(err)
+	}
+
+	// Output:
+	// {
+	// 	"config_update": {
+	// 		"channel_id": "testChannel",
+	// 		"isolated_data": {},
+	// 		"read_set": {
+	// 			"groups": {
+	// 				"Orderer": {
+	// 					"groups": {
+	// 						"OrdererOrg": {
+	// 							"groups": {},
+	// 							"mod_policy": "",
+	// 							"policies": {},
+	// 							"values": {},
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"mod_policy": "",
+	// 					"policies": {
+	// 						"Admins": {
+	// 							"mod_policy": "",
+	// 							"policy": null,
+	// 							"version": "0"
+	// 						},
+	// 						"BlockValidation": {
+	// 							"mod_policy": "",
+	// 							"policy": null,
+	// 							"version": "0"
+	// 						},
+	// 						"Readers": {
+	// 							"mod_policy": "",
+	// 							"policy": null,
+	// 							"version": "0"
+	// 						},
+	// 						"Writers": {
+	// 							"mod_policy": "",
+	// 							"policy": null,
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"values": {
+	// 						"Capabilities": {
+	// 							"mod_policy": "",
+	// 							"value": null,
+	// 							"version": "0"
+	// 						},
+	// 						"ConsensusType": {
+	// 							"mod_policy": "",
+	// 							"value": null,
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"version": "1"
+	// 				}
+	// 			},
+	// 			"mod_policy": "",
+	// 			"policies": {},
+	// 			"values": {},
+	// 			"version": "0"
+	// 		},
+	// 		"write_set": {
+	// 			"groups": {
+	// 				"Orderer": {
+	// 					"groups": {
+	// 						"OrdererOrg": {
+	// 							"groups": {},
+	// 							"mod_policy": "",
+	// 							"policies": {},
+	// 							"values": {},
+	// 							"version": "0"
+	// 						},
+	// 						"OrdererOrg2": {
+	// 							"groups": {},
+	// 							"mod_policy": "Admins",
+	// 							"policies": {
+	// 								"Admins": {
+	// 									"mod_policy": "Admins",
+	// 									"policy": {
+	// 										"type": 3,
+	// 										"value": {
+	// 											"rule": "MAJORITY",
+	// 											"sub_policy": "Admins"
+	// 										}
+	// 									},
+	// 									"version": "0"
+	// 								},
+	// 								"BlockValidation": {
+	// 									"mod_policy": "Admins",
+	// 									"policy": {
+	// 										"type": 3,
+	// 										"value": {
+	// 											"rule": "ANY",
+	// 											"sub_policy": "Writers"
+	// 										}
+	// 									},
+	// 									"version": "0"
+	// 								},
+	// 								"Readers": {
+	// 									"mod_policy": "Admins",
+	// 									"policy": {
+	// 										"type": 3,
+	// 										"value": {
+	// 											"rule": "ANY",
+	// 											"sub_policy": "Readers"
+	// 										}
+	// 									},
+	// 									"version": "0"
+	// 								},
+	// 								"Writers": {
+	// 									"mod_policy": "Admins",
+	// 									"policy": {
+	// 										"type": 3,
+	// 										"value": {
+	// 											"rule": "ANY",
+	// 											"sub_policy": "Writers"
+	// 										}
+	// 									},
+	// 									"version": "0"
+	// 								}
+	// 							},
+	// 							"values": {
+	// 								"Endpoints": {
+	// 									"mod_policy": "Admins",
+	// 									"value": {
+	// 										"addresses": [
+	// 											"127.0.0.1:7050"
+	// 										]
+	// 									},
+	// 									"version": "0"
+	// 								},
+	// 								"MSP": {
+	// 									"mod_policy": "Admins",
+	// 									"value": {
+	// 										"config": {
+	// 											"admins": [],
+	// 											"crypto_config": {
+	// 												"identity_identifier_hash_function": "",
+	// 												"signature_hash_family": ""
+	// 											},
+	// 											"fabric_node_ous": {
+	// 												"admin_ou_identifier": {
+	// 													"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+	// 													"organizational_unit_identifier": ""
+	// 												},
+	// 												"client_ou_identifier": {
+	// 													"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+	// 													"organizational_unit_identifier": ""
+	// 												},
+	// 												"enable": false,
+	// 												"orderer_ou_identifier": {
+	// 													"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+	// 													"organizational_unit_identifier": ""
+	// 												},
+	// 												"peer_ou_identifier": {
+	// 													"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+	// 													"organizational_unit_identifier": ""
+	// 												}
+	// 											},
+	// 											"intermediate_certs": [],
+	// 											"name": "",
+	// 											"organizational_unit_identifiers": [],
+	// 											"revocation_list": [],
+	// 											"root_certs": [],
+	// 											"signing_identity": {
+	// 												"private_signer": {
+	// 													"key_identifier": "",
+	// 													"key_material": null
+	// 												},
+	// 												"public_signer": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+	// 											},
+	// 											"tls_intermediate_certs": [],
+	// 											"tls_root_certs": []
+	// 										},
+	// 										"type": 0
+	// 									},
+	// 									"version": "0"
+	// 								}
+	// 							},
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"mod_policy": "",
+	// 					"policies": {
+	// 						"Admins": {
+	// 							"mod_policy": "",
+	// 							"policy": null,
+	// 							"version": "0"
+	// 						},
+	// 						"BlockValidation": {
+	// 							"mod_policy": "",
+	// 							"policy": null,
+	// 							"version": "0"
+	// 						},
+	// 						"Readers": {
+	// 							"mod_policy": "",
+	// 							"policy": null,
+	// 							"version": "0"
+	// 						},
+	// 						"Writers": {
+	// 							"mod_policy": "",
+	// 							"policy": null,
+	// 							"version": "0"
+	// 						}
+	// 					},
+	// 					"values": {
+	// 						"BatchSize": {
+	// 							"mod_policy": "Admins",
+	// 							"value": {
+	// 								"absolute_max_bytes": 100,
+	// 								"max_message_count": 500,
+	// 								"preferred_max_bytes": 100
+	// 							},
+	// 							"version": "1"
+	// 						},
+	// 						"BatchTimeout": {
+	// 							"mod_policy": "Admins",
+	// 							"value": {
+	// 								"timeout": "0s"
+	// 							},
+	// 							"version": "1"
+	// 						},
+	// 						"Capabilities": {
+	// 							"mod_policy": "",
+	// 							"value": null,
+	// 							"version": "0"
+	// 						},
+	// 						"ChannelRestrictions": {
+	// 							"mod_policy": "Admins",
+	// 							"value": null,
+	// 							"version": "1"
+	// 						},
+	// 						"ConsensusType": {
+	// 							"mod_policy": "",
+	// 							"value": null,
+	// 							"version": "0"
+	// 						},
+	// 						"KafkaBrokers": {
+	// 							"mod_policy": "Admins",
+	// 							"value": {
+	// 								"brokers": [
+	// 									"kafka0:9092",
+	// 									"kafka1:9092",
+	// 									"kafka2:9092"
+	// 								]
+	// 							},
+	// 							"version": "1"
+	// 						}
+	// 					},
+	// 					"version": "2"
+	// 				}
+	// 			},
+	// 			"mod_policy": "",
+	// 			"policies": {},
+	// 			"values": {
+	// 				"OrdererAddresses": {
+	// 					"mod_policy": "/Channel/Orderer/Admins",
+	// 					"value": {
+	// 						"addresses": [
+	// 							"127.0.0.1:7050"
+	// 						]
+	// 					},
+	// 					"version": "1"
+	// 				}
+	// 			},
+	// 			"version": "0"
+	// 		}
+	// 	},
+	// 	"signatures": []
+	// }
 }
 
 func ExampleNewCreateChannelTx() {
