@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	deliver_mocks "github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/flogging"
-	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -69,6 +69,9 @@ func TestMain(m *testing.M) {
 
 	os.Exit(m.Run())
 }
+
+//go:generate counterfeiter -o mocks/read_writer.go --fake-name ReadWriter . readWriter
+type readWriter interface{ blockledger.ReadWriter }
 
 func copyYamlFiles(src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
@@ -1045,9 +1048,9 @@ func TestVerifierLoader(t *testing.T) {
 			iterator.NextReturnsOnCall(0, testCase.lastBlock, common.Status_SUCCESS)
 			iterator.NextReturnsOnCall(1, testCase.lastConfigBlock, common.Status_SUCCESS)
 
-			ledger := &ledger_mocks.ReadWriter{}
-			ledger.On("Height").Return(testCase.ledgerHeight)
-			ledger.On("Iterator", mock.Anything).Return(iterator, uint64(1))
+			ledger := &server_mocks.ReadWriter{}
+			ledger.HeightReturns(testCase.ledgerHeight)
+			ledger.IteratorReturns(iterator, 1)
 
 			ledgerFactory := &server_mocks.Factory{}
 			ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, testCase.ledgerGetOrCreateErr)

@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
-	ledger_mocks "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/core/comm"
@@ -46,7 +45,6 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -910,9 +908,9 @@ func TestCreateReplicator(t *testing.T) {
 	iterator.NextReturnsOnCall(0, bootBlock, common.Status_SUCCESS)
 	iterator.NextReturnsOnCall(1, bootBlock, common.Status_SUCCESS)
 
-	ledger := &ledger_mocks.ReadWriter{}
-	ledger.On("Height").Return(uint64(1))
-	ledger.On("Iterator", mock.Anything).Return(iterator, uint64(1))
+	ledger := &server_mocks.ReadWriter{}
+	ledger.HeightReturns(1)
+	ledger.IteratorReturns(iterator, 1)
 
 	ledgerFactory := &server_mocks.Factory{}
 	ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, nil)
