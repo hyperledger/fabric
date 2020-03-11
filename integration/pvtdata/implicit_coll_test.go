@@ -41,12 +41,15 @@ var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 			core.Peer.Gossip.PvtData.PullRetryThreshold = 0
 			// disable pvtdata reconciliation on all peers
 			core.Peer.Gossip.PvtData.ReconciliationEnabled = false
+			// set timeout to 10s to prevent test flake
+			core.Peer.Gossip.DialTimeout = 10 * time.Second
+			core.Peer.Gossip.ConnTimeout = 10 * time.Second
 			if p.Organization == "Org1" {
 				// enable dissemination on org1 peers
 				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.RequiredPeerCount = 1
 				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.MaxPeerCount = 3
-				// increase timeout to avoid test flake
-				core.Peer.Gossip.PvtData.PushAckTimeout = 6 * time.Second
+				// set timeout to 10s to prevent test flake
+				core.Peer.Gossip.PvtData.PushAckTimeout = 10 * time.Second
 			} else {
 				// disable dessemination on non-org1 peers
 				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.RequiredPeerCount = 0
