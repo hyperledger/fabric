@@ -27,7 +27,7 @@ func TestMSPConfigManager(t *testing.T) {
 	mspVers := []msp.MSPVersion{msp.MSPv1_0, msp.MSPv1_1}
 
 	for _, ver := range mspVers {
-		mspCH := NewMSPConfigHandler(ver, factory.DefaultBCCSP)
+		mspCH := NewMSPConfigHandler(ver, factory.GetDefault())
 
 		_, err = mspCH.ProposeMSP(conf)
 		assert.NoError(t, err)
