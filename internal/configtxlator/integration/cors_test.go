@@ -72,7 +72,7 @@ var _ = Describe("CORS", func() {
 
 	Context("when the CORS wildcard is provided", func() {
 		BeforeEach(func() {
-			runServer("start", "--hostname", "127.0.0.1", "--port", "9998", "--CORS", "*")
+			runServer("start", "--hostname", "127.0.0.1", "--port", "0", "--CORS", "*")
 		})
 
 		It("it allows CORS requests from any domain", func() {
@@ -86,7 +86,7 @@ var _ = Describe("CORS", func() {
 
 	Context("when multiple CORS options are provided", func() {
 		BeforeEach(func() {
-			runServer("start", "--hostname", "127.0.0.1", "--port", "9998", "--CORS", "http://foo.com", "--CORS", "http://bar.com")
+			runServer("start", "--hostname", "127.0.0.1", "--port", "0", "--CORS", "http://foo.com", "--CORS", "http://bar.com")
 		})
 
 		It("it allows CORS requests from any of them", func() {
