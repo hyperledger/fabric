@@ -14,6 +14,8 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
 
@@ -135,13 +137,264 @@ type NodeOUs struct {
 	// If true then an msp identity that does not contain any of the specified OU will be considered invalid.
 	Enable bool
 	// OU Identifier of the clients.
-	ClientOuIdentifier OUIdentifier
+	ClientOUIdentifier OUIdentifier
 	// OU Identifier of the peers.
-	PeerOuIdentifier OUIdentifier
+	PeerOUIdentifier OUIdentifier
 	// OU Identifier of the admins.
-	AdminOuIdentifier OUIdentifier
+	AdminOUIdentifier OUIdentifier
 	// OU Identifier of the orderers.
-	OrdererOuIdentifier OUIdentifier
+	OrdererOUIdentifier OUIdentifier
+}
+
+// GetMSPConfigurationForApplicationOrg returns the MSP configuration for an existing application
+// org in a config transaction.
+func GetMSPConfigurationForApplicationOrg(config *cb.Config, orgName string) (MSP, error) {
+	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+	if !ok {
+		return MSP{}, fmt.Errorf("application org %s does not exist in config", orgName)
+	}
+
+	return getMSPConfigForOrg(applicationOrgGroup, orgName)
+}
+
+// GetMSPConfigurationForOrdererOrg returns the MSP configuration for an existing orderer org
+// in a config transaction.
+func GetMSPConfigurationForOrdererOrg(config *cb.Config, orgName string) (MSP, error) {
+	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+	if !ok {
+		return MSP{}, fmt.Errorf("orderer org %s does not exist in config", orgName)
+	}
+
+	return getMSPConfigForOrg(ordererOrgGroup, orgName)
+}
+
+// GetMSPConfigurationForConsortiumOrg returns the MSP configuration for an existing consortium
+// org in a config transaction.
+func GetMSPConfigurationForConsortiumOrg(config *cb.Config, consortiumName, orgName string) (MSP, error) {
+	consortiumGroup, ok := config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
+	if !ok {
+		return MSP{}, fmt.Errorf("consortium %s does not exist in config", consortiumName)
+	}
+
+	consortiumOrgGroup, ok := consortiumGroup.Groups[orgName]
+	if !ok {
+		return MSP{}, fmt.Errorf("consortium org %s does not exist in config", orgName)
+	}
+
+	return getMSPConfigForOrg(consortiumOrgGroup, orgName)
+}
+
+// getMSPConfigForOrg parses the MSP value in a config group for a specific org and returns
+// the configuration as an MSP type.
+func getMSPConfigForOrg(configGroup *cb.ConfigGroup, orgName string) (MSP, error) {
+	mspValueProto := &mb.MSPConfig{}
+	err := unmarshalConfigValueAtKey(configGroup, MSPKey, mspValueProto)
+	if err != nil {
+		return MSP{}, err
+	}
+
+	fabricMSPConfig := &mb.FabricMSPConfig{}
+	err = proto.Unmarshal(mspValueProto.Config, fabricMSPConfig)
+	if err != nil {
+		return MSP{}, fmt.Errorf("unmarshalling fabric msp config: %v", err)
+	}
+
+	// ROOT CERTS
+	rootCerts, err := parseCertificateListFromBytes(fabricMSPConfig.RootCerts)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing root certs: %v", err)
+	}
+
+	// INTERMEDIATE CERTS
+	intermediateCerts, err := parseCertificateListFromBytes(fabricMSPConfig.IntermediateCerts)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing intermediate certs: %v", err)
+	}
+
+	// ADMIN CERTS
+	adminCerts, err := parseCertificateListFromBytes(fabricMSPConfig.Admins)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing admin certs: %v", err)
+	}
+
+	// REVOCATION LIST
+	revocationList, err := parseCRL(fabricMSPConfig.RevocationList)
+	if err != nil {
+		return MSP{}, err
+	}
+
+	// SIGNING IDENTITY
+	publicSigner, err := parseCertificateFromBytes(fabricMSPConfig.SigningIdentity.PublicSigner)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing signing identity public signer: %v", err)
+	}
+
+	keyMaterial, err := parsePrivateKeyFromBytes(fabricMSPConfig.SigningIdentity.PrivateSigner.KeyMaterial)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing signing identity private key: %v", err)
+	}
+
+	signingIdentity := SigningIdentityInfo{
+		PublicSigner: publicSigner,
+		PrivateSigner: KeyInfo{
+			KeyIdentifier: fabricMSPConfig.SigningIdentity.PrivateSigner.KeyIdentifier,
+			KeyMaterial:   keyMaterial,
+		},
+	}
+
+	// OU IDENTIFIERS
+	ouIdentifiers, err := parseOUIdentifiers(fabricMSPConfig.OrganizationalUnitIdentifiers)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing ou identifiers: %v", err)
+	}
+
+	// TLS ROOT CERTS
+	tlsRootCerts, err := parseCertificateListFromBytes(fabricMSPConfig.TlsRootCerts)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing tls root certs: %v", err)
+	}
+
+	// TLS INTERMEDIATE CERTS
+	tlsIntermediateCerts, err := parseCertificateListFromBytes(fabricMSPConfig.TlsIntermediateCerts)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing tls intermediate certs: %v", err)
+	}
+
+	// NODE OUS
+	clientOUIdentifierCert, err := parseCertificateFromBytes(fabricMSPConfig.FabricNodeOus.ClientOuIdentifier.Certificate)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing client ou identifier cert: %v", err)
+	}
+
+	peerOUIdentifierCert, err := parseCertificateFromBytes(fabricMSPConfig.FabricNodeOus.PeerOuIdentifier.Certificate)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing peer ou identifier cert: %v", err)
+	}
+
+	adminOUIdentifierCert, err := parseCertificateFromBytes(fabricMSPConfig.FabricNodeOus.AdminOuIdentifier.Certificate)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing admin ou identifier cert: %v", err)
+	}
+
+	ordererOUIdentifierCert, err := parseCertificateFromBytes(fabricMSPConfig.FabricNodeOus.OrdererOuIdentifier.Certificate)
+	if err != nil {
+		return MSP{}, fmt.Errorf("parsing orderer ou identifier cert: %v", err)
+	}
+
+	nodeOUs := NodeOUs{
+		Enable: fabricMSPConfig.FabricNodeOus.Enable,
+		ClientOUIdentifier: OUIdentifier{
+			Certificate:                  clientOUIdentifierCert,
+			OrganizationalUnitIdentifier: fabricMSPConfig.FabricNodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier,
+		},
+		PeerOUIdentifier: OUIdentifier{
+			Certificate:                  peerOUIdentifierCert,
+			OrganizationalUnitIdentifier: fabricMSPConfig.FabricNodeOus.PeerOuIdentifier.OrganizationalUnitIdentifier,
+		},
+		AdminOUIdentifier: OUIdentifier{
+			Certificate:                  adminOUIdentifierCert,
+			OrganizationalUnitIdentifier: fabricMSPConfig.FabricNodeOus.AdminOuIdentifier.OrganizationalUnitIdentifier,
+		},
+		OrdererOUIdentifier: OUIdentifier{
+			Certificate:                  ordererOUIdentifierCert,
+			OrganizationalUnitIdentifier: fabricMSPConfig.FabricNodeOus.OrdererOuIdentifier.OrganizationalUnitIdentifier,
+		},
+	}
+
+	return MSP{
+		Name:                          fabricMSPConfig.Name,
+		RootCerts:                     rootCerts,
+		IntermediateCerts:             intermediateCerts,
+		Admins:                        adminCerts,
+		RevocationList:                revocationList,
+		SigningIdentity:               signingIdentity,
+		OrganizationalUnitIdentifiers: ouIdentifiers,
+		CryptoConfig: CryptoConfig{
+			SignatureHashFamily:            fabricMSPConfig.CryptoConfig.SignatureHashFamily,
+			IdentityIdentifierHashFunction: fabricMSPConfig.CryptoConfig.IdentityIdentifierHashFunction,
+		},
+		TLSRootCerts:         tlsRootCerts,
+		TLSIntermediateCerts: tlsIntermediateCerts,
+		NodeOus:              nodeOUs,
+	}, nil
+}
+
+func parseCertificateListFromBytes(certs [][]byte) ([]x509.Certificate, error) {
+	certificateList := []x509.Certificate{}
+
+	for _, cert := range certs {
+		certificate, err := parseCertificateFromBytes(cert)
+		if err != nil {
+			return certificateList, err
+		}
+
+		certificateList = append(certificateList, certificate)
+	}
+
+	return certificateList, nil
+}
+
+func parseCertificateFromBytes(cert []byte) (x509.Certificate, error) {
+	pemBlock, _ := pem.Decode(cert)
+
+	certificate, err := x509.ParseCertificate(pemBlock.Bytes)
+	if err != nil {
+		return x509.Certificate{}, err
+	}
+
+	return *certificate, nil
+}
+
+func parseCRL(crls [][]byte) ([]pkix.CertificateList, error) {
+	certificateLists := []pkix.CertificateList{}
+
+	for _, crl := range crls {
+		pemBlock, _ := pem.Decode(crl)
+
+		certificateList, err := x509.ParseCRL(pemBlock.Bytes)
+		if err != nil {
+			return certificateLists, fmt.Errorf("parsing crl: %v", err)
+		}
+
+		certificateLists = append(certificateLists, *certificateList)
+	}
+
+	return certificateLists, nil
+}
+
+func parsePrivateKeyFromBytes(priv []byte) (*ecdsa.PrivateKey, error) {
+	if len(priv) == 0 {
+		return nil, nil
+	}
+
+	pemBlock, _ := pem.Decode(priv)
+
+	privateKey, err := x509.ParseECPrivateKey(pemBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing ec private key: %v", err)
+	}
+
+	return privateKey, nil
+}
+
+func parseOUIdentifiers(identifiers []*mb.FabricOUIdentifier) ([]OUIdentifier, error) {
+	fabricIdentifiers := []OUIdentifier{}
+
+	for _, identifier := range identifiers {
+		cert, err := parseCertificateFromBytes(identifier.Certificate)
+		if err != nil {
+			return fabricIdentifiers, err
+		}
+
+		fabricOUIdentifier := OUIdentifier{
+			Certificate:                  cert,
+			OrganizationalUnitIdentifier: identifier.OrganizationalUnitIdentifier,
+		}
+
+		fabricIdentifiers = append(fabricIdentifiers, fabricOUIdentifier)
+	}
+
+	return fabricIdentifiers, nil
 }
 
 // toProto converts an MSP configuration to an mb.FabricMSPConfig proto.
@@ -154,7 +407,7 @@ func (m *MSP) toProto() (*mb.FabricMSPConfig, error) {
 	if m.SigningIdentity.PrivateSigner.KeyMaterial != nil {
 		keyMaterial, err = pemEncodeECDSAPrivateKey(m.SigningIdentity.PrivateSigner.KeyMaterial)
 		if err != nil {
-			return nil, fmt.Errorf("pem encode X.509 private key: %v", err)
+			return nil, fmt.Errorf("pem encode ec private key: %v", err)
 		}
 	}
 
@@ -176,20 +429,20 @@ func (m *MSP) toProto() (*mb.FabricMSPConfig, error) {
 	fabricNodeOUs := &mb.FabricNodeOUs{
 		Enable: m.NodeOus.Enable,
 		ClientOuIdentifier: &mb.FabricOUIdentifier{
-			Certificate:                  pemEncodeX509Certificate(m.NodeOus.ClientOuIdentifier.Certificate),
-			OrganizationalUnitIdentifier: m.NodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier,
+			Certificate:                  pemEncodeX509Certificate(m.NodeOus.ClientOUIdentifier.Certificate),
+			OrganizationalUnitIdentifier: m.NodeOus.ClientOUIdentifier.OrganizationalUnitIdentifier,
 		},
 		PeerOuIdentifier: &mb.FabricOUIdentifier{
-			Certificate:                  pemEncodeX509Certificate(m.NodeOus.PeerOuIdentifier.Certificate),
-			OrganizationalUnitIdentifier: m.NodeOus.PeerOuIdentifier.OrganizationalUnitIdentifier,
+			Certificate:                  pemEncodeX509Certificate(m.NodeOus.PeerOUIdentifier.Certificate),
+			OrganizationalUnitIdentifier: m.NodeOus.PeerOUIdentifier.OrganizationalUnitIdentifier,
 		},
 		AdminOuIdentifier: &mb.FabricOUIdentifier{
-			Certificate:                  pemEncodeX509Certificate(m.NodeOus.AdminOuIdentifier.Certificate),
-			OrganizationalUnitIdentifier: m.NodeOus.AdminOuIdentifier.OrganizationalUnitIdentifier,
+			Certificate:                  pemEncodeX509Certificate(m.NodeOus.AdminOUIdentifier.Certificate),
+			OrganizationalUnitIdentifier: m.NodeOus.AdminOUIdentifier.OrganizationalUnitIdentifier,
 		},
 		OrdererOuIdentifier: &mb.FabricOUIdentifier{
-			Certificate:                  pemEncodeX509Certificate(m.NodeOus.OrdererOuIdentifier.Certificate),
-			OrganizationalUnitIdentifier: m.NodeOus.OrdererOuIdentifier.OrganizationalUnitIdentifier,
+			Certificate:                  pemEncodeX509Certificate(m.NodeOus.OrdererOUIdentifier.Certificate),
+			OrganizationalUnitIdentifier: m.NodeOus.OrdererOUIdentifier.OrganizationalUnitIdentifier,
 		},
 	}
 
@@ -255,10 +508,24 @@ func pemEncodeX509Certificate(cert x509.Certificate) []byte {
 }
 
 func pemEncodeECDSAPrivateKey(priv *ecdsa.PrivateKey) ([]byte, error) {
-	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	privBytes, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling PKCS8 private key: %v", err)
+		return nil, fmt.Errorf("marshalling ec private key: %v", err)
 	}
 
-	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}), nil
+	return pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}), nil
+}
+
+// unmarshalConfigValueAtKey unmarshals the value for the specified key in a config group
+// into the designated proto message.
+func unmarshalConfigValueAtKey(group *cb.ConfigGroup, key string, msg proto.Message) error {
+	valueAtKey, ok := group.Values[key]
+	if !ok {
+		return fmt.Errorf("config does not contain value for %s", key)
+	}
+	err := proto.Unmarshal(valueAtKey.Value, msg)
+	if err != nil {
+		return fmt.Errorf("unmarshalling %s: %v", key, err)
+	}
+	return nil
 }
