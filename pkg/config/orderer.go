@@ -55,6 +55,43 @@ type Kafka struct {
 	Brokers []string
 }
 
+// UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
+// via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
+func UpdateOrdererConfiguration(config *cb.Config, o Orderer) error {
+	ordererGroup := config.ChannelGroup.Groups[OrdererGroupKey]
+
+	// update orderer addresses
+	if len(o.Addresses) > 0 {
+		err := addValue(config.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
+		if err != nil {
+			return err
+		}
+	}
+
+	// update orderer values
+	err := addOrdererValues(ordererGroup, o)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddOrdererOrg adds a organization to an existing config's Orderer configuration.
+// Will not error if organization already exists.
+func AddOrdererOrg(config *cb.Config, org Organization) error {
+	ordererGroup := config.ChannelGroup.Groups[OrdererGroupKey]
+
+	orgGroup, err := newOrgConfigGroup(org)
+	if err != nil {
+		return fmt.Errorf("failed to create orderer org '%s': %v", org.Name, err)
+	}
+
+	ordererGroup.Groups[org.Name] = orgGroup
+
+	return nil
+}
+
 // newOrdererGroup returns the orderer component of the channel configuration.
 // It defines parameters of the ordering service about how large blocks should be,
 // how frequently they should be emitted, etc. as well as the organizations of the ordering network.
@@ -83,28 +120,6 @@ func newOrdererGroup(orderer Orderer) (*cb.ConfigGroup, error) {
 	}
 
 	return ordererGroup, nil
-}
-
-// UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
-// via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
-func UpdateOrdererConfiguration(config *cb.Config, o Orderer) error {
-	ordererGroup := config.ChannelGroup.Groups["Orderer"]
-
-	// update orderer addresses
-	if len(o.Addresses) > 0 {
-		err := addValue(config.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
-		if err != nil {
-			return err
-		}
-	}
-
-	// update orderer values
-	err := addOrdererValues(ordererGroup, o)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // addOrdererValues adds configuration specified in *Orderer to an orderer *cb.ConfigGroup's Values map.

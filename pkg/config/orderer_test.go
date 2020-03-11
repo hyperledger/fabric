@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
@@ -14,6 +15,8 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ob "github.com/hyperledger/fabric-protos-go/orderer"
 	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/common/tools/protolator"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
 	. "github.com/onsi/gomega"
 )
 
@@ -255,6 +258,184 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 
 	gt.Expect(config.ChannelGroup.Groups["Orderer"].Values).To(Equal(expectedOrdererValues))
 	gt.Expect(config.ChannelGroup.Values[OrdererAddressesKey].Value).To(Equal(expectedOrdererAddresses))
+}
+
+func TestAddOrdererOrg(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	ordererGroup, err := newOrdererGroup(baseOrderer())
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	org := Organization{
+		Name:     "OrdererOrg2",
+		ID:       "OrdererOrgMSP2",
+		Policies: orgStandardPolicies(),
+		OrdererEndpoints: []string{
+			"localhost:123",
+		},
+		MSP: baseMSP(),
+	}
+
+	expectedConfigJSON := `
+{
+	"groups": {},
+	"mod_policy": "Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Admins"
+				}
+			},
+			"version": "0"
+		},
+		"Endorsement": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Endorsement"
+				}
+			},
+			"version": "0"
+		},
+		"Readers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Readers"
+				}
+			},
+			"version": "0"
+		},
+		"Writers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {
+		"Endpoints": {
+			"mod_policy": "Admins",
+			"value": {
+				"addresses": [
+					"localhost:123"
+				]
+			},
+			"version": "0"
+		},
+		"MSP": {
+			"mod_policy": "Admins",
+			"value": {
+				"config": {
+					"admins": [],
+					"crypto_config": {
+						"identity_identifier_hash_function": "",
+						"signature_hash_family": ""
+					},
+					"fabric_node_ous": {
+						"admin_ou_identifier": {
+							"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+							"organizational_unit_identifier": ""
+						},
+						"client_ou_identifier": {
+							"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+							"organizational_unit_identifier": ""
+						},
+						"enable": false,
+						"orderer_ou_identifier": {
+							"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+							"organizational_unit_identifier": ""
+						},
+						"peer_ou_identifier": {
+							"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+							"organizational_unit_identifier": ""
+						}
+					},
+					"intermediate_certs": [],
+					"name": "",
+					"organizational_unit_identifiers": [
+						{
+							"certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+							"organizational_unit_identifier": ""
+						}
+					],
+					"revocation_list": [],
+					"root_certs": [],
+					"signing_identity": {
+						"private_signer": {
+							"key_identifier": "",
+							"key_material": null
+						},
+						"public_signer": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+					},
+					"tls_intermediate_certs": [],
+					"tls_root_certs": []
+				},
+				"type": 0
+			},
+			"version": "0"
+		}
+	},
+	"version": "0"
+}
+`
+
+	err = AddOrdererOrg(config, org)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	actualOrdererConfigGroup := config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg2"]
+	buf := bytes.Buffer{}
+	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: actualOrdererConfigGroup})
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
+}
+
+func TestAddOrdererOrgFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	ordererGroup, err := newOrdererGroup(baseOrderer())
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	org := Organization{
+		Name: "OrdererOrg2",
+		ID:   "OrdererOrgMSP2",
+	}
+
+	err = AddOrdererOrg(config, org)
+	gt.Expect(err).To(MatchError("failed to create orderer org 'OrdererOrg2': no policies defined"))
 }
 
 func baseOrderer() Orderer {
