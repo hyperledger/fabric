@@ -81,7 +81,7 @@ func (b *PayloadsBufferImpl) Push(payload *proto.Payload) {
 	seqNum := payload.SeqNum
 
 	if seqNum < b.next || b.buf[seqNum] != nil {
-		logger.Debugf("Payload with sequence number = %d has been already processed", payload.SeqNum)
+		b.logger.Debugf("Payload with sequence number = %d has been already processed", payload.SeqNum)
 		return
 	}
 
