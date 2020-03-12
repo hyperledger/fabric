@@ -90,11 +90,11 @@ func TestChannelV143(t *testing.T) {
 	assert.True(t, cp.OrgSpecificOrdererEndpoints())
 }
 
-func TestChannelNotSuported(t *testing.T) {
+func TestChannelNotSupported(t *testing.T) {
 	cp := NewChannelProvider(map[string]*cb.Capability{
-		ChannelV1_1:          {},
-		ChannelV1_3:          {},
-		"Bogus_Not_suported": {},
+		ChannelV1_1:           {},
+		ChannelV1_3:           {},
+		"Bogus_Not_Supported": {},
 	})
-	assert.EqualError(t, cp.Supported(), "Channel capability Bogus_Not_suported is required but not supported")
+	assert.EqualError(t, cp.Supported(), "Channel capability Bogus_Not_Supported is required but not supported")
 }

@@ -45,9 +45,9 @@ func TestOrdererV142(t *testing.T) {
 	assert.True(t, op.ConsensusTypeMigration())
 }
 
-func TestNotSuported(t *testing.T) {
+func TestNotSupported(t *testing.T) {
 	op := NewOrdererProvider(map[string]*cb.Capability{
-		OrdererV1_1: {}, "Bogus_Not_suported": {},
+		OrdererV1_1: {}, "Bogus_Not_Supported": {},
 	})
-	assert.EqualError(t, op.Supported(), "Orderer capability Bogus_Not_suported is required but not supported")
+	assert.EqualError(t, op.Supported(), "Orderer capability Bogus_Not_Supported is required but not supported")
 }
