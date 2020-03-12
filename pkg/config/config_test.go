@@ -313,7 +313,10 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
 			profileMod: func() Channel {
 				profile := baseProfile()
-				profile.Application.Policies[ReadersPolicyKey].Rule = "ALL"
+				profile.Application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ALL",
+					Type: ImplicitMetaPolicyType,
+				}
 				return profile
 			},
 			err: errors.New("creating default config template: failed to create application group: " +
@@ -324,7 +327,10 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When creating the default config template with an invalid ImplicitMetaPolicy rule fails",
 			profileMod: func() Channel {
 				profile := baseProfile()
-				profile.Application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				profile.Application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ANYY Readers",
+					Type: ImplicitMetaPolicyType,
+				}
 				return profile
 			},
 			err: errors.New("creating default config template: failed to create application group: " +
@@ -335,8 +341,10 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When creating the default config template with SignatureTypePolicy and bad rule fails",
 			profileMod: func() Channel {
 				profile := baseProfile()
-				profile.Application.Policies[ReadersPolicyKey].Type = SignaturePolicyType
-				profile.Application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				profile.Application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ANYY Readers",
+					Type: SignaturePolicyType,
+				}
 				return profile
 			},
 			err: errors.New("creating default config template: failed to create application group: " +
@@ -347,7 +355,10 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When creating the default config template with an unknown policy type fails",
 			profileMod: func() Channel {
 				profile := baseProfile()
-				profile.Application.Policies[ReadersPolicyKey].Type = "GreenPolicy"
+				profile.Application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ALL",
+					Type: "GreenPolicy",
+				}
 				return profile
 			},
 			err: errors.New("creating default config template: failed to create application group: " +
@@ -738,8 +749,8 @@ func baseSystemChannelProfile() Channel {
 	}
 }
 
-func standardPolicies() map[string]*Policy {
-	return map[string]*Policy{
+func standardPolicies() map[string]Policy {
+	return map[string]Policy{
 		ReadersPolicyKey: {
 			Type: ImplicitMetaPolicyType,
 			Rule: "ANY Readers",
@@ -755,10 +766,10 @@ func standardPolicies() map[string]*Policy {
 	}
 }
 
-func orgStandardPolicies() map[string]*Policy {
+func orgStandardPolicies() map[string]Policy {
 	policies := standardPolicies()
 
-	policies[EndorsementPolicyKey] = &Policy{
+	policies[EndorsementPolicyKey] = Policy{
 		Type: ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	}
@@ -766,10 +777,10 @@ func orgStandardPolicies() map[string]*Policy {
 	return policies
 }
 
-func applicationOrgStandardPolicies() map[string]*Policy {
+func applicationOrgStandardPolicies() map[string]Policy {
 	policies := orgStandardPolicies()
 
-	policies[LifecycleEndorsementPolicyKey] = &Policy{
+	policies[LifecycleEndorsementPolicyKey] = Policy{
 		Type: ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	}
@@ -777,10 +788,10 @@ func applicationOrgStandardPolicies() map[string]*Policy {
 	return policies
 }
 
-func ordererStandardPolicies() map[string]*Policy {
+func ordererStandardPolicies() map[string]Policy {
 	policies := standardPolicies()
 
-	policies[BlockValidationPolicyKey] = &Policy{
+	policies[BlockValidationPolicyKey] = Policy{
 		Type: ImplicitMetaPolicyType,
 		Rule: "ANY Writers",
 	}

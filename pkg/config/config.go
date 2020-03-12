@@ -32,7 +32,7 @@ type Channel struct {
 	Orderer      Orderer
 	Consortiums  []Consortium
 	Capabilities map[string]bool
-	Policies     map[string]*Policy
+	Policies     map[string]Policy
 	ChannelID    string
 }
 
@@ -46,7 +46,7 @@ type Policy struct {
 type Organization struct {
 	Name     string
 	ID       string
-	Policies map[string]*Policy
+	Policies map[string]Policy
 	MSP      MSP
 
 	AnchorPeers      []AnchorPeer
@@ -312,15 +312,17 @@ func addValue(cg *cb.ConfigGroup, value *standardConfigValue, modPolicy string) 
 }
 
 // TODO: evaluate if modPolicy actually needs to be passed in if all callers pass AdminsPolicyKey.
-func addPolicies(cg *cb.ConfigGroup, policyMap map[string]*Policy, modPolicy string) error {
-	switch {
-	case policyMap == nil:
+func addPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
+	if policyMap == nil {
 		return errors.New("no policies defined")
-	case policyMap[AdminsPolicyKey] == nil:
+	}
+	if _, ok := policyMap[AdminsPolicyKey]; !ok {
 		return errors.New("no Admins policy defined")
-	case policyMap[ReadersPolicyKey] == nil:
+	}
+	if _, ok := policyMap[ReadersPolicyKey]; !ok {
 		return errors.New("no Readers policy defined")
-	case policyMap[WritersPolicyKey] == nil:
+	}
+	if _, ok := policyMap[WritersPolicyKey]; !ok {
 		return errors.New("no Writers policy defined")
 	}
 

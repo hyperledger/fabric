@@ -361,7 +361,7 @@ func Example_usage() {
 		Organizations: []config.Organization{
 			{
 				Name: "OrdererOrg",
-				Policies: map[string]*config.Policy{
+				Policies: map[string]config.Policy{
 					config.AdminsPolicyKey: {
 						Type: config.ImplicitMetaPolicyType,
 						Rule: "Majority Admins",
@@ -467,7 +467,7 @@ func ExampleNewCreateChannelTx() {
 			},
 			Capabilities: map[string]bool{"V1_3": true},
 			ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
-			Policies: map[string]*config.Policy{
+			Policies: map[string]config.Policy{
 				config.ReadersPolicyKey: {
 					Type: config.ImplicitMetaPolicyType,
 					Rule: "ANY Readers",

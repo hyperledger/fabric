@@ -35,7 +35,7 @@ type Orderer struct {
 	MaxChannels uint64
 	// Capabilities is a map of the capabilities the orderer supports.
 	Capabilities map[string]bool
-	Policies     map[string]*Policy
+	Policies     map[string]Policy
 }
 
 // BatchSize is the configuration affecting the size of batches.
@@ -259,11 +259,11 @@ func consensusTypeValue(consensusType string, consensusMetadata []byte) *standar
 
 // addOrdererPolicies adds *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
 // It checks that the BlockValidation policy is defined alongside the standard policy checks.
-func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]*Policy, modPolicy string) error {
-	switch {
-	case policyMap == nil:
+func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
+	if policyMap == nil {
 		return errors.New("no policies defined")
-	case policyMap[BlockValidationPolicyKey] == nil:
+	}
+	if _, ok := policyMap[BlockValidationPolicyKey]; !ok {
 		return errors.New("no BlockValidation policy defined")
 	}
 

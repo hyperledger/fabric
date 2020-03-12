@@ -19,7 +19,7 @@ import (
 )
 
 // GetPoliciesForConsortiums returns a map of policies for channel consortiums.
-func GetPoliciesForConsortiums(config cb.Config) (map[string]*Policy, error) {
+func GetPoliciesForConsortiums(config cb.Config) (map[string]Policy, error) {
 	consortiums, ok := config.ChannelGroup.Groups[ConsortiumsGroupKey]
 	if !ok {
 		return nil, errors.New("consortiums missing from config")
@@ -29,7 +29,7 @@ func GetPoliciesForConsortiums(config cb.Config) (map[string]*Policy, error) {
 }
 
 // GetPoliciesForConsortium returns a map of policies for a specific consortium.
-func GetPoliciesForConsortium(config cb.Config, consortiumName string) (map[string]*Policy, error) {
+func GetPoliciesForConsortium(config cb.Config, consortiumName string) (map[string]Policy, error) {
 	consortium, ok := config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 	if !ok {
 		return nil, fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
@@ -39,7 +39,7 @@ func GetPoliciesForConsortium(config cb.Config, consortiumName string) (map[stri
 }
 
 // GetPoliciesForConsortiumOrg returns a map of policies for a specific consortium org.
-func GetPoliciesForConsortiumOrg(config cb.Config, consortiumName, orgName string) (map[string]*Policy, error) {
+func GetPoliciesForConsortiumOrg(config cb.Config, consortiumName, orgName string) (map[string]Policy, error) {
 	org, ok := config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("consortium org %s does not exist in channel config", orgName)
@@ -49,7 +49,7 @@ func GetPoliciesForConsortiumOrg(config cb.Config, consortiumName, orgName strin
 }
 
 // GetPoliciesForOrderer returns a map of policies for channel orderer.
-func GetPoliciesForOrderer(config cb.Config) (map[string]*Policy, error) {
+func GetPoliciesForOrderer(config cb.Config) (map[string]Policy, error) {
 	orderer, ok := config.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return nil, errors.New("orderer missing from config")
@@ -59,7 +59,7 @@ func GetPoliciesForOrderer(config cb.Config) (map[string]*Policy, error) {
 }
 
 // GetPoliciesForOrdererOrg returns a map of policies for a specific consortium org.
-func GetPoliciesForOrdererOrg(config cb.Config, consortiumName, orgName string) (map[string]*Policy, error) {
+func GetPoliciesForOrdererOrg(config cb.Config, consortiumName, orgName string) (map[string]Policy, error) {
 	org, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("orderer org %s does not exist in channel config", orgName)
@@ -69,7 +69,7 @@ func GetPoliciesForOrdererOrg(config cb.Config, consortiumName, orgName string) 
 }
 
 // GetPoliciesForApplication returns a map of policies for application config group.
-func GetPoliciesForApplication(config cb.Config) (map[string]*Policy, error) {
+func GetPoliciesForApplication(config cb.Config) (map[string]Policy, error) {
 	application, ok := config.ChannelGroup.Groups[ApplicationGroupKey]
 	if !ok {
 		return nil, errors.New("application missing from config")
@@ -80,7 +80,7 @@ func GetPoliciesForApplication(config cb.Config) (map[string]*Policy, error) {
 
 // GetPoliciesForApplicationOrg returns a map of policies for specific application
 // organization.
-func GetPoliciesForApplicationOrg(config cb.Config, orgName string) (map[string]*Policy, error) {
+func GetPoliciesForApplicationOrg(config cb.Config, orgName string) (map[string]Policy, error) {
 	orgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)
@@ -90,15 +90,11 @@ func GetPoliciesForApplicationOrg(config cb.Config, orgName string) (map[string]
 }
 
 // getPolicies returns a map of Policy from given map of ConfigPolicy in organization config group.
-func getPolicies(policies map[string]*cb.ConfigPolicy) (map[string]*Policy, error) {
-	if policies == nil {
-		return map[string]*Policy{}, nil
-	}
-
-	p := map[string]*Policy{}
+func getPolicies(policies map[string]*cb.ConfigPolicy) (map[string]Policy, error) {
+	p := map[string]Policy{}
 	for name, policy := range policies {
-		switch policy.Policy.Type {
-		case int32(cb.Policy_IMPLICIT_META):
+		switch cb.Policy_PolicyType(policy.Policy.Type) {
+		case cb.Policy_IMPLICIT_META:
 			imp := &cb.ImplicitMetaPolicy{}
 			err := proto.Unmarshal(policy.Policy.Value, imp)
 			if err != nil {
@@ -109,12 +105,12 @@ func getPolicies(policies map[string]*cb.ConfigPolicy) (map[string]*Policy, erro
 				return nil, err
 			}
 
-			p[name] = &Policy{
+			p[name] = Policy{
 				Type: ImplicitMetaPolicyType,
 				Rule: rule,
 			}
 
-		case int32(cb.Policy_SIGNATURE):
+		case cb.Policy_SIGNATURE:
 			sp := &cb.SignaturePolicyEnvelope{}
 			err := proto.Unmarshal(policy.Policy.Value, sp)
 			if err != nil {
@@ -125,7 +121,7 @@ func getPolicies(policies map[string]*cb.ConfigPolicy) (map[string]*Policy, erro
 				return nil, err
 			}
 
-			p[name] = &Policy{
+			p[name] = Policy{
 				Type: SignaturePolicyType,
 				Rule: rule,
 			}
@@ -139,27 +135,27 @@ func getPolicies(policies map[string]*cb.ConfigPolicy) (map[string]*Policy, erro
 
 // implicitMetaToString converts a *cb.ImplicitMetaPolicy to a string representation.
 func implicitMetaToString(imp *cb.ImplicitMetaPolicy) (string, error) {
-	args := []string{}
+	var args string
 
 	switch imp.Rule {
 	case cb.ImplicitMetaPolicy_ANY:
-		args = append(args, cb.ImplicitMetaPolicy_ANY.String())
+		args += cb.ImplicitMetaPolicy_ANY.String()
 	case cb.ImplicitMetaPolicy_ALL:
-		args = append(args, cb.ImplicitMetaPolicy_ALL.String())
+		args += cb.ImplicitMetaPolicy_ALL.String()
 	case cb.ImplicitMetaPolicy_MAJORITY:
-		args = append(args, cb.ImplicitMetaPolicy_MAJORITY.String())
+		args += cb.ImplicitMetaPolicy_MAJORITY.String()
 	default:
 		return "", fmt.Errorf("unknown implicit meta policy rule type %v", imp.Rule)
 	}
 
-	args = append(args, imp.SubPolicy)
+	args = args + " " + imp.SubPolicy
 
-	return strings.Join(args, " "), nil
+	return args, nil
 }
 
 // signatureMetaToString converts a *cb.SignaturePolicyEnvelope to a string representation.
 func signatureMetaToString(sig *cb.SignaturePolicyEnvelope) (string, error) {
-	roles := []string{}
+	var roles []string
 	for _, id := range sig.Identities {
 		role, err := mspPrincipalToString(id)
 		if err != nil {
@@ -172,10 +168,9 @@ func signatureMetaToString(sig *cb.SignaturePolicyEnvelope) (string, error) {
 
 // mspPrincipalToString converts a *mb.MSPPrincipal to a string representation.
 func mspPrincipalToString(principal *mb.MSPPrincipal) (string, error) {
-	var res strings.Builder
-
 	switch principal.PrincipalClassification {
 	case mb.MSPPrincipal_ROLE:
+		var res strings.Builder
 		role := &mb.MSPRole{}
 		err := proto.Unmarshal(principal.Principal, role)
 		if err != nil {
@@ -210,7 +205,7 @@ func signaturePolicyToString(sig *cb.SignaturePolicy, IDs []string) (string, err
 	switch sig.Type.(type) {
 	case *cb.SignaturePolicy_NOutOf_:
 		nOutOf := sig.GetNOutOf()
-		policies := []string{}
+		var policies []string
 		var res strings.Builder
 
 		// get gate values

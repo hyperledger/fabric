@@ -409,11 +409,9 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 		{
 			name: "When the config doesn't contain the consortium",
 			org: Organization{
-				Name: "test-msp",
-				ID:   "test-org-msp-id",
-				Policies: map[string]*Policy{
-					"Admins": nil,
-				},
+				Name:     "test-msp",
+				ID:       "test-org-msp-id",
+				Policies: map[string]Policy{},
 			},
 			consortium:  "Consortium1",
 			expectedErr: "failed to create consortium org: no Admins policy defined",
