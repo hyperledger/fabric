@@ -87,7 +87,10 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 		{
 			testName: "When ImplicitMetaPolicy rules' subpolicy is missing",
 			applicationMod: func(application *Application) {
-				application.Policies[ReadersPolicyKey].Rule = "ALL"
+				application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ALL",
+					Type: ImplicitMetaPolicyType,
+				}
 			},
 			expectedErr: "invalid implicit meta policy rule: 'ALL': expected two space separated " +
 				"tokens, but got 1",
@@ -95,7 +98,10 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 		{
 			testName: "When ImplicitMetaPolicy rule is invalid",
 			applicationMod: func(application *Application) {
-				application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ANYY Readers",
+					Type: ImplicitMetaPolicyType,
+				}
 			},
 			expectedErr: "invalid implicit meta policy rule: 'ANYY Readers': unknown rule type " +
 				"'ANYY', expected ALL, ANY, or MAJORITY",
@@ -103,8 +109,10 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 		{
 			testName: "When SignatureTypePolicy rule is invalid",
 			applicationMod: func(application *Application) {
-				application.Policies[ReadersPolicyKey].Type = SignaturePolicyType
-				application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ANYY Readers",
+					Type: SignaturePolicyType,
+				}
 			},
 			expectedErr: "invalid signature policy rule: 'ANYY Readers': Cannot transition " +
 				"token types from VARIABLE [ANYY] to VARIABLE [Readers]",
@@ -112,7 +120,9 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 		{
 			testName: "When ImplicitMetaPolicy type is unknown policy type",
 			applicationMod: func(application *Application) {
-				application.Policies[ReadersPolicyKey].Type = "GreenPolicy"
+				application.Policies[ReadersPolicyKey] = Policy{
+					Type: "GreenPolicy",
+				}
 			},
 			expectedErr: "unknown policy type: GreenPolicy",
 		},

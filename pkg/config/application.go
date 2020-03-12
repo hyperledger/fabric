@@ -19,7 +19,7 @@ import (
 type Application struct {
 	Organizations []Organization
 	Capabilities  map[string]bool
-	Policies      map[string]*Policy
+	Policies      map[string]Policy
 	ACLs          map[string]string
 }
 

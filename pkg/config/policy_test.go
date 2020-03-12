@@ -16,7 +16,7 @@ func TestGetPolicies(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
-	expectedPolicies := map[string]*Policy{
+	expectedPolicies := map[string]Policy{
 		ReadersPolicyKey: {
 			Type: ImplicitMetaPolicyType,
 			Rule: "ALL Member",
@@ -44,5 +44,5 @@ func TestGetPolicies(t *testing.T) {
 
 	policies, err = getPolicies(nil)
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(map[string]*Policy{}).To(Equal(policies))
+	gt.Expect(map[string]Policy{}).To(Equal(policies))
 }

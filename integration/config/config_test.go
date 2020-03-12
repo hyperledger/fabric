@@ -91,7 +91,7 @@ var _ = Describe("Config", func() {
 				},
 				Capabilities: map[string]bool{"V1_3": true},
 				ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
-				Policies: map[string]*config.Policy{
+				Policies: map[string]config.Policy{
 					config.ReadersPolicyKey: {
 						Type: config.ImplicitMetaPolicyType,
 						Rule: "ANY Readers",
