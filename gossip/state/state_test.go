@@ -209,7 +209,11 @@ func (mc *mockCommitter) CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, c
 }
 
 func (mc *mockCommitter) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
-	args := mc.Called(seqNum)
+	mc.Lock()
+	m := mc.Mock
+	mc.Unlock()
+
+	args := m.Called(seqNum)
 	return args.Get(0).(*ledger.BlockAndPvtData), args.Error(1)
 }
 
@@ -225,15 +229,22 @@ func (mc *mockCommitter) LedgerHeight() (uint64, error) {
 }
 
 func (mc *mockCommitter) DoesPvtDataInfoExistInLedger(blkNum uint64) (bool, error) {
-	args := mc.Called(blkNum)
+	mc.Lock()
+	m := mc.Mock
+	mc.Unlock()
+	args := m.Called(blkNum)
 	return args.Get(0).(bool), args.Error(1)
 }
 
 func (mc *mockCommitter) GetBlocks(blockSeqs []uint64) []*pcomm.Block {
-	if mc.Called(blockSeqs).Get(0) == nil {
+	mc.Lock()
+	m := mc.Mock
+	mc.Unlock()
+
+	if m.Called(blockSeqs).Get(0) == nil {
 		return nil
 	}
-	return mc.Called(blockSeqs).Get(0).([]*pcomm.Block)
+	return m.Called(blockSeqs).Get(0).([]*pcomm.Block)
 }
 
 func (*mockCommitter) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
