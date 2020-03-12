@@ -893,12 +893,11 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 
 	t.Parallel()
 	// Returns whether the given networkMember was selected or not
-	wasNetworkMemberSelected := func(t *testing.T, networkMember discovery.NetworkMember, wg *sync.WaitGroup) bool {
+	wasNetworkMemberSelected := func(t *testing.T, networkMember discovery.NetworkMember) bool {
 		var wasGivenNetworkMemberSelected int32
 		finChan := make(chan struct{})
 		g := &mocks.GossipMock{}
 		g.On("Send", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
-			defer wg.Done()
 			msg := arguments.Get(0).(*proto.GossipMessage)
 			assert.NotNil(t, msg.GetStateRequest())
 			peer := arguments.Get(1).([]*comm.RemotePeer)[0]
@@ -953,14 +952,9 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 		{member: peerWithoutProperties, shouldGivenBeSelected: false},
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(tests))
 	for _, tst := range tests {
-		go func(shouldGivenBeSelected bool, member discovery.NetworkMember) {
-			assert.Equal(t, shouldGivenBeSelected, wasNetworkMemberSelected(t, member, &wg))
-		}(tst.shouldGivenBeSelected, tst.member)
+		assert.Equal(t, tst.shouldGivenBeSelected, wasNetworkMemberSelected(t, tst.member))
 	}
-	wg.Wait()
 }
 
 func TestAccessControl(t *testing.T) {
