@@ -60,7 +60,7 @@ func setFactories(config *FactoryOpts) error {
 	bccspMap = make(map[string]bccsp.BCCSP)
 
 	// Software-Based BCCSP
-	if config.SwOpts != nil {
+	if config.ProviderName == "SW" && config.SwOpts != nil {
 		f := &SWFactory{}
 		err := initBCCSP(f, config)
 		if err != nil {
