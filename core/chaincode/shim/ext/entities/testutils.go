@@ -18,7 +18,10 @@ var bccspInst b.BCCSP
 var o sync.Once
 
 func initOnce() {
-	factory.InitFactories(nil)
+	err := factory.InitFactories(nil)
+	if err != nil {
+		fmt.Printf("Could not initialize BCCSP Factories [%s]", err)
+	}
 	bccspInst = factory.GetDefault()
 }
 

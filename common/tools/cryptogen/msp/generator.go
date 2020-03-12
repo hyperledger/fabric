@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -195,7 +196,10 @@ func GenerateVerifyingMSP(baseDir string, signCA *ca.CA, tlsCA *ca.CA, nodeOUs b
 		return nil
 	}
 
-	factory.InitFactories(nil)
+	err = factory.InitFactories(nil)
+	if err != nil {
+		fmt.Printf("Could not initialize BCCSP Factories [%s]", err)
+	}
 	bcsp := factory.GetDefault()
 	priv, err := bcsp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: true})
 	ecPubKey, err := csp.GetECPublicKey(priv)

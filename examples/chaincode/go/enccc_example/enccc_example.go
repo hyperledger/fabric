@@ -214,9 +214,11 @@ func (t *EncCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 func main() {
-	factory.InitFactories(nil)
-
-	err := shim.Start(&EncCC{factory.GetDefault()})
+	err := factory.InitFactories(nil)
+	if err != nil {
+		fmt.Printf("Could not initialize BCCSP Factories [%s]", err)
+	}
+	err = shim.Start(&EncCC{factory.GetDefault()})
 	if err != nil {
 		fmt.Printf("Error starting EncCC chaincode: %s", err)
 	}
