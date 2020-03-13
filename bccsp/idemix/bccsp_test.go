@@ -143,6 +143,7 @@ var _ = Describe("Idemix Bridge", func() {
 				&bccsp.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(valid).To(BeTrue())
 		})
 
 		Describe("producing an idemix signature with no disclosed attribute", func() {

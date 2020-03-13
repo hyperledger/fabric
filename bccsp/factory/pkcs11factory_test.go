@@ -1,24 +1,14 @@
 // +build pkcs11
 
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package factory
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
@@ -65,12 +55,11 @@ func TestPKCS11FactoryGet(t *testing.T) {
 
 	opts = &FactoryOpts{
 		Pkcs11Opts: &pkcs11.PKCS11Opts{
-			SecLevel:     256,
-			HashFamily:   "SHA2",
-			FileKeystore: &pkcs11.FileKeystoreOpts{KeyStorePath: os.TempDir()},
-			Library:      lib,
-			Pin:          pin,
-			Label:        label,
+			SecLevel:   256,
+			HashFamily: "SHA2",
+			Library:    lib,
+			Pin:        pin,
+			Label:      label,
 		},
 	}
 	csp, err = f.Get(opts)
@@ -82,6 +71,37 @@ func TestPKCS11FactoryGet(t *testing.T) {
 			SecLevel:   256,
 			HashFamily: "SHA2",
 			Ephemeral:  true,
+			Library:    lib,
+			Pin:        pin,
+			Label:      label,
+		},
+	}
+	csp, err = f.Get(opts)
+	assert.NoError(t, err)
+	assert.NotNil(t, csp)
+}
+
+func TestPKCS11FactoryGetEmptyKeyStorePath(t *testing.T) {
+	f := &PKCS11Factory{}
+	lib, pin, label := pkcs11.FindPKCS11Lib()
+
+	opts := &FactoryOpts{
+		Pkcs11Opts: &pkcs11.PKCS11Opts{
+			SecLevel:   256,
+			HashFamily: "SHA2",
+			Library:    lib,
+			Pin:        pin,
+			Label:      label,
+		},
+	}
+	csp, err := f.Get(opts)
+	assert.NoError(t, err)
+	assert.NotNil(t, csp)
+
+	opts = &FactoryOpts{
+		Pkcs11Opts: &pkcs11.PKCS11Opts{
+			SecLevel:   256,
+			HashFamily: "SHA2",
 			Library:    lib,
 			Pin:        pin,
 			Label:      label,

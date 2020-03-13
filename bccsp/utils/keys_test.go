@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package utils
@@ -20,7 +10,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
@@ -30,7 +19,6 @@ import (
 )
 
 func TestOidFromNamedCurve(t *testing.T) {
-
 	var (
 		oidNamedCurveP224 = asn1.ObjectIdentifier{1, 3, 132, 0, 33}
 		oidNamedCurveP256 = asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}
@@ -163,11 +151,6 @@ func TestECDSAKeys(t *testing.T) {
 	}
 
 	_, err = PrivateKeyToPEM((*ecdsa.PrivateKey)(nil), nil)
-	if err == nil {
-		t.Fatal("PrivateKeyToPEM should fail on nil")
-	}
-
-	_, err = PrivateKeyToPEM((*rsa.PrivateKey)(nil), nil)
 	if err == nil {
 		t.Fatal("PrivateKeyToPEM should fail on nil")
 	}
@@ -369,8 +352,6 @@ func TestNil(t *testing.T) {
 	assert.Error(t, err)
 	_, err = PublicKeyToPEM((*ecdsa.PublicKey)(nil), nil)
 	assert.Error(t, err)
-	_, err = PublicKeyToPEM((*rsa.PublicKey)(nil), nil)
-	assert.Error(t, err)
 	_, err = PublicKeyToPEM(nil, []byte("hello world"))
 	assert.Error(t, err)
 
@@ -383,8 +364,6 @@ func TestNil(t *testing.T) {
 	assert.Error(t, err)
 	_, err = PublicKeyToDER((*ecdsa.PublicKey)(nil))
 	assert.Error(t, err)
-	_, err = PublicKeyToDER((*rsa.PublicKey)(nil))
-	assert.Error(t, err)
 	_, err = PublicKeyToDER("hello world")
 	assert.Error(t, err)
 
@@ -396,32 +375,4 @@ func TestNil(t *testing.T) {
 	assert.Error(t, err)
 	_, err = PublicKeyToEncryptedPEM("hello world", []byte("Hello world"))
 	assert.Error(t, err)
-
-}
-
-func TestPrivateKeyToPEM(t *testing.T) {
-	_, err := PrivateKeyToPEM(nil, nil)
-	assert.Error(t, err)
-
-	_, err = PrivateKeyToPEM("hello world", nil)
-	assert.Error(t, err)
-
-	key, err := rsa.GenerateKey(rand.Reader, 1024)
-	assert.NoError(t, err)
-	pem, err := PrivateKeyToPEM(key, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, pem)
-	key2, err := PEMtoPrivateKey(pem, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, key2)
-	assert.Equal(t, key.D, key2.(*rsa.PrivateKey).D)
-
-	pem, err = PublicKeyToPEM(&key.PublicKey, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, pem)
-	key3, err := PEMtoPublicKey(pem, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, key2)
-	assert.Equal(t, key.PublicKey.E, key3.(*rsa.PublicKey).E)
-	assert.Equal(t, key.PublicKey.N, key3.(*rsa.PublicKey).N)
 }

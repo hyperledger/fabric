@@ -73,11 +73,10 @@ func (ps *PubSub) Publish(topic string, item interface{}) error {
 	}
 	for _, sub := range s.ToArray() {
 		c := sub.(*subscription).c
-		// Not enough room in buffer, continue in order to not block publisher
-		if len(c) == subscriptionBuffSize {
-			continue
+		select {
+		case c <- item:
+		default: // Not enough room in buffer, continue in order to not block publisher
 		}
-		c <- item
 	}
 	return nil
 }
@@ -120,5 +119,4 @@ func (ps *PubSub) unSubscribe(sub *subscription) {
 	// Else, this is the last subscription for the topic.
 	// Remove the set from the subscriptions map
 	delete(ps.subscriptions, sub.top)
-
 }

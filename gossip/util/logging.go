@@ -48,6 +48,7 @@ type Logger interface {
 	Warning(args ...interface{})
 	Warningf(format string, args ...interface{})
 	IsEnabledFor(l zapcore.Level) bool
+	With(args ...interface{}) *flogging.FabricLogger
 }
 
 // GetLogger returns a logger for given gossip logger name and peerID
@@ -69,8 +70,13 @@ func GetLogger(name string, peerID string) Logger {
 	return lgr
 }
 
-// SetupTestLogging sets the default log levels for gossip unit tests
+// SetupTestLogging sets the default log levels for gossip unit tests to defaultTestSpec
 func SetupTestLogging() {
+	SetupTestLoggingWithLevel(defaultTestSpec)
+}
+
+// SetupTestLoggingWithLevel sets the default log levels for gossip unit tests to level
+func SetupTestLoggingWithLevel(level string) {
 	testMode = true
-	flogging.InitFromSpec(defaultTestSpec)
+	flogging.ActivateSpec(level)
 }

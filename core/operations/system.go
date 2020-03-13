@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/httpadmin"
+	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
@@ -26,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/statsd/goruntime"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/middleware"
-	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 //go:generate counterfeiter -o fakes/logger.go -fake-name Logger . Logger
@@ -86,6 +87,7 @@ func NewSystem(o Options) *System {
 	system.initializeHealthCheckHandler()
 	system.initializeLoggingHandler()
 	system.initializeMetricsProvider()
+	system.initializeVersionInfoHandler()
 
 	return system
 }
@@ -178,7 +180,7 @@ func (s *System) initializeMetricsProvider() error {
 	case "prometheus":
 		s.Provider = &prometheus.Provider{}
 		s.versionGauge = versionGauge(s.Provider)
-		s.mux.Handle("/metrics", s.handlerChain(prom.Handler(), s.options.TLS.Enabled))
+		s.mux.Handle("/metrics", s.handlerChain(promhttp.Handler(), s.options.TLS.Enabled))
 		return nil
 
 	default:
@@ -199,6 +201,14 @@ func (s *System) initializeLoggingHandler() {
 func (s *System) initializeHealthCheckHandler() {
 	s.healthHandler = healthz.NewHealthHandler()
 	s.mux.Handle("/healthz", s.handlerChain(s.healthHandler, false))
+}
+
+func (s *System) initializeVersionInfoHandler() {
+	versionInfo := &VersionInfoHandler{
+		CommitSHA: metadata.CommitSHA,
+		Version:   metadata.Version,
+	}
+	s.mux.Handle("/version", s.handlerChain(versionInfo, false))
 }
 
 func (s *System) startMetricsTickers() error {

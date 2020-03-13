@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"net"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -31,33 +32,28 @@ func AddPemToCertPool(pemCerts []byte, pool *x509.CertPool) error {
 	return nil
 }
 
-//utility function to parse PEM-encoded certs
+// parse PEM-encoded certs
 func pemToX509Certs(pemCerts []byte) ([]*x509.Certificate, []string, error) {
+	var certs []*x509.Certificate
+	var subjects []string
 
-	//it's possible that multiple certs are encoded
-	certs := []*x509.Certificate{}
-	subjects := []string{}
+	// it's possible that multiple certs are encoded
 	for len(pemCerts) > 0 {
 		var block *pem.Block
 		block, pemCerts = pem.Decode(pemCerts)
 		if block == nil {
 			break
 		}
-		/** TODO: check why msp does not add type to PEM header
-		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
-			continue
-		}
-		*/
 
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return nil, subjects, err
-		} else {
-			certs = append(certs, cert)
-			//extract and append the subject
-			subjects = append(subjects, string(cert.RawSubject))
+			return nil, []string{}, err
 		}
+
+		certs = append(certs, cert)
+		subjects = append(subjects, string(cert.RawSubject))
 	}
+
 	return certs, subjects, nil
 }
 
@@ -115,7 +111,7 @@ func noopBinding(_ context.Context, _ []byte) error {
 // ExtractCertificateHashFromContext extracts the hash of the certificate from the given context.
 // If the certificate isn't present, nil is returned
 func ExtractCertificateHashFromContext(ctx context.Context) []byte {
-	rawCert := ExtractCertificateFromContext(ctx)
+	rawCert := ExtractRawCertificateFromContext(ctx)
 	if len(rawCert) == 0 {
 		return nil
 	}
@@ -126,7 +122,7 @@ func ExtractCertificateHashFromContext(ctx context.Context) []byte {
 
 // ExtractCertificateFromContext returns the TLS certificate (if applicable)
 // from the given context of a gRPC stream
-func ExtractCertificateFromContext(ctx context.Context) []byte {
+func ExtractCertificateFromContext(ctx context.Context) *x509.Certificate {
 	pr, extracted := peer.FromContext(ctx)
 	if !extracted {
 		return nil
@@ -145,5 +141,32 @@ func ExtractCertificateFromContext(ctx context.Context) []byte {
 	if len(certs) == 0 {
 		return nil
 	}
-	return certs[0].Raw
+	return certs[0]
+}
+
+// ExtractRawCertificateFromContext returns the raw TLS certificate (if applicable)
+// from the given context of a gRPC stream
+func ExtractRawCertificateFromContext(ctx context.Context) []byte {
+	cert := ExtractCertificateFromContext(ctx)
+	if cert == nil {
+		return nil
+	}
+	return cert.Raw
+}
+
+// GetLocalIP returns the non loopback local IP of the host
+func GetLocalIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback then display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "", errors.Errorf("no non-loopback, IPv4 interface detected")
 }

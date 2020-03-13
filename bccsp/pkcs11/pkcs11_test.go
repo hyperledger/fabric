@@ -57,37 +57,6 @@ func TestLoadLib(t *testing.T) {
 	assert.Contains(t, err.Error(), "No PIN set")
 }
 
-func TestOIDFromNamedCurve(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestOIDFromNamedCurve")
-	}
-	// Test for valid OID for P224
-	testOID, boolValue := oidFromNamedCurve(elliptic.P224())
-	assert.Equal(t, oidNamedCurveP224, testOID, "Did not receive expected OID for elliptic.P224")
-	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P224")
-
-	// Test for valid OID for P256
-	testOID, boolValue = oidFromNamedCurve(elliptic.P256())
-	assert.Equal(t, oidNamedCurveP256, testOID, "Did not receive expected OID for elliptic.P256")
-	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P256")
-
-	// Test for valid OID for P384
-	testOID, boolValue = oidFromNamedCurve(elliptic.P384())
-	assert.Equal(t, oidNamedCurveP384, testOID, "Did not receive expected OID for elliptic.P384")
-	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P384")
-
-	// Test for valid OID for P521
-	testOID, boolValue = oidFromNamedCurve(elliptic.P521())
-	assert.Equal(t, oidNamedCurveP521, testOID, "Did not receive expected OID for elliptic.P521")
-	assert.Equal(t, true, boolValue, "Did not receive a true value when acquiring OID for elliptic.P521")
-
-	var testCurve elliptic.Curve
-	testOID, _ = oidFromNamedCurve(testCurve)
-	if testOID != nil {
-		t.Fatal("Expected nil to be returned.")
-	}
-}
-
 func TestNamedCurveFromOID(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping TestNamedCurveFromOID")

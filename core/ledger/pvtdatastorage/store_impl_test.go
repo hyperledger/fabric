@@ -14,28 +14,26 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("pvtdatastorage=debug")
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/core/ledger/pvtdatastorage")
 	os.Exit(m.Run())
 }
 
 func TestEmptyStore(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestEmptyStore", nil)
+	env := NewTestStoreEnv(t, "TestEmptyStore", nil, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
-	store := env.TestStore
-	testEmpty(true, assert, store)
-	testPendingBatch(false, assert, store)
+	store := env.TestStore.(*store)
+	assert.True(store.isEmpty)
 }
 
 func TestStoreBasicCommitAndRetrieval(t *testing.T) {
@@ -51,7 +49,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 		},
 	)
 
-	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval", btlPolicy)
+	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval", btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -83,16 +81,10 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	blk2MissingData.Add(3, "ns-1", "coll-1", true)
 
 	// no pvt data with block 0
-	assert.NoError(store.Prepare(0, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(0, nil, nil))
 
 	// pvt data with block 1 - commit
-	assert.NoError(store.Prepare(1, testData, blk1MissingData))
-	assert.NoError(store.Commit())
-
-	// pvt data with block 2 - rollback
-	assert.NoError(store.Prepare(2, testData, nil))
-	assert.NoError(store.Rollback())
+	assert.NoError(store.Commit(1, testData, blk1MissingData))
 
 	// pvt data retrieval for block 0 should return nil
 	var nilFilter ledger.PvtNsCollFilter
@@ -129,8 +121,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	assert.Nil(retrievedData)
 
 	// pvt data with block 2 - commit
-	assert.NoError(store.Prepare(2, testData, blk2MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(2, testData, blk2MissingData))
 
 	// retrieve the stored missing entries using GetMissingPvtDataInfoForMostRecentBlocks
 	// Only the code path of eligible entries would be covered in this unit-test. For
@@ -165,7 +156,6 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 }
 
 func TestCommitPvtDataOfOldBlocks(t *testing.T) {
-	viper.Set("ledger.pvtdataStore.purgeInterval", 2)
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns-1", "coll-1"}: 3,
@@ -178,7 +168,7 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 			{"ns-4", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocks", btlPolicy)
+	env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocks", btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -211,16 +201,13 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 	blk2MissingData.Add(3, "ns-1", "coll-1", true)
 
 	// COMMIT BLOCK 0 WITH NO DATA
-	assert.NoError(store.Prepare(0, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(0, nil, nil))
 
 	// COMMIT BLOCK 1 WITH PVTDATA AND MISSINGDATA
-	assert.NoError(store.Prepare(1, testData, blk1MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(1, testData, blk1MissingData))
 
 	// COMMIT BLOCK 2 WITH PVTDATA AND MISSINGDATA
-	assert.NoError(store.Prepare(2, nil, blk2MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(2, nil, blk2MissingData))
 
 	// CHECK MISSINGDATA ENTRIES ARE CORRECTLY STORED
 	expectedMissingPvtDataInfo := make(ledger.MissingPvtDataInfo)
@@ -298,32 +285,8 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 
-	// blksPvtData returns all the pvt data for a block for which the any pvtdata has been submitted
-	// using CommitPvtDataOfOldBlocks
-	blksPvtData, err := store.GetLastUpdatedOldBlocksPvtData()
-	assert.NoError(err)
-
-	expectedLastupdatedPvtdata := make(map[uint64][]*ledger.TxPvtData)
-	expectedLastupdatedPvtdata[1] = []*ledger.TxPvtData{
-		produceSamplePvtdata(t, 1, []string{"ns-1:coll-1", "ns-2:coll-1"}),
-		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-2:coll-1", "ns-2:coll-2", "ns-3:coll-1"}),
-		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
-	}
-	expectedLastupdatedPvtdata[2] = []*ledger.TxPvtData{
-		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1"}),
-	}
-	assert.Equal(expectedLastupdatedPvtdata, blksPvtData)
-
-	err = store.ResetLastUpdatedOldBlocksList()
-	assert.NoError(err)
-
-	blksPvtData, err = store.GetLastUpdatedOldBlocksPvtData()
-	assert.NoError(err)
-	assert.Nil(blksPvtData)
-
 	// COMMIT BLOCK 3 WITH NO PVTDATA
-	assert.NoError(store.Prepare(3, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(3, nil, nil))
 
 	// IN BLOCK 1, NS-1:COLL-2 AND NS-2:COLL-2 SHOULD HAVE EXPIRED BUT NOT PURGED
 	// HENCE, THE FOLLOWING COMMIT SHOULD CREATE ENTRIES IN THE STORE
@@ -350,12 +313,8 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 	assert.False(testDataKeyExists(t, store, ns1Coll2Blk1Tx2)) // expired still missing
 	assert.True(testDataKeyExists(t, store, ns3Coll2Blk1Tx2))  // never expires
 
-	err = store.ResetLastUpdatedOldBlocksList()
-	assert.NoError(err)
-
 	// COMMIT BLOCK 4 WITH NO PVTDATA
-	assert.NoError(store.Prepare(4, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(4, nil, nil))
 
 	testWaitForPurgerRoutineToFinish(store)
 
@@ -395,7 +354,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 			{"ns-3", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
@@ -416,24 +375,21 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	blk2MissingData.Add(1, "ns-1", "coll-2", true)
 
 	// no pvt data with block 0
-	assert.NoError(store.Prepare(0, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(0, nil, nil))
 
 	// write pvt data for block 1
 	testDataForBlk1 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	assert.NoError(store.Prepare(1, testDataForBlk1, blk1MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(1, testDataForBlk1, blk1MissingData))
 
 	// write pvt data for block 2
 	testDataForBlk2 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 5, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	assert.NoError(store.Prepare(2, testDataForBlk2, blk2MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(2, testDataForBlk2, blk2MissingData))
 
 	retrievedData, _ := store.GetPvtDataByBlockNum(1, nil)
 	// block 1 data should still be not expired
@@ -457,8 +413,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 
 	// Commit block 3 with no pvtdata
-	assert.NoError(store.Prepare(3, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(3, nil, nil))
 
 	// After committing block 3, the data for "ns-1:coll1" of block 1 should have expired and should not be returned by the store
 	expectedPvtdataFromBlock1 := []*ledger.TxPvtData{
@@ -481,8 +436,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 
 	// Commit block 4 with no pvtdata
-	assert.NoError(store.Prepare(4, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(store.Commit(4, nil, nil))
 
 	// After committing block 4, the data for "ns-2:coll2" of block 1 should also have expired and should not be returned by the store
 	expectedPvtdataFromBlock1 = []*ledger.TxPvtData{
@@ -516,7 +470,6 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 
 func TestStorePurge(t *testing.T) {
 	ledgerid := "TestStorePurge"
-	viper.Set("ledger.pvtdataStore.purgeInterval", 2)
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns-1", "coll-1"}: 1,
@@ -527,14 +480,13 @@ func TestStorePurge(t *testing.T) {
 			{"ns-3", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	s := env.TestStore
 
 	// no pvt data with block 0
-	assert.NoError(s.Prepare(0, nil, nil))
-	assert.NoError(s.Commit())
+	assert.NoError(s.Commit(0, nil, nil))
 
 	// construct missing data for block 1
 	blk1MissingData := make(ledger.TxMissingPvtDataMap)
@@ -550,12 +502,10 @@ func TestStorePurge(t *testing.T) {
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
 	}
-	assert.NoError(s.Prepare(1, testDataForBlk1, blk1MissingData))
-	assert.NoError(s.Commit())
+	assert.NoError(s.Commit(1, testDataForBlk1, blk1MissingData))
 
 	// write pvt data for block 2
-	assert.NoError(s.Prepare(2, nil, nil))
-	assert.NoError(s.Commit())
+	assert.NoError(s.Commit(2, nil, nil))
 	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store
 	ns1Coll1 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}, txNum: 2}
 	ns2Coll2 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-2", coll: "coll-2", blkNum: 1}, txNum: 2}
@@ -579,8 +529,7 @@ func TestStorePurge(t *testing.T) {
 	assert.True(testMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 3
-	assert.NoError(s.Prepare(3, nil, nil))
-	assert.NoError(s.Commit())
+	assert.NoError(s.Commit(3, nil, nil))
 	// data for ns-1:coll-1 and ns-2:coll-2 should exist in store (because purger should not be launched at block 3)
 	testWaitForPurgerRoutineToFinish(s)
 	assert.True(testDataKeyExists(t, s, ns1Coll1))
@@ -593,8 +542,7 @@ func TestStorePurge(t *testing.T) {
 	assert.True(testMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 4
-	assert.NoError(s.Prepare(4, nil, nil))
-	assert.NoError(s.Commit())
+	assert.NoError(s.Commit(4, nil, nil))
 	// data for ns-1:coll-1 should not exist in store (because purger should be launched at block 4)
 	// but ns-2:coll-2 should exist because it expires at block 5
 	testWaitForPurgerRoutineToFinish(s)
@@ -608,16 +556,14 @@ func TestStorePurge(t *testing.T) {
 	assert.True(testMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 5
-	assert.NoError(s.Prepare(5, nil, nil))
-	assert.NoError(s.Commit())
+	assert.NoError(s.Commit(5, nil, nil))
 	// ns-2:coll-2 should exist because though the data expires at block 5 but purger is launched every second block
 	testWaitForPurgerRoutineToFinish(s)
 	assert.False(testDataKeyExists(t, s, ns1Coll1))
 	assert.True(testDataKeyExists(t, s, ns2Coll2))
 
 	// write pvt data for block 6
-	assert.NoError(s.Prepare(6, nil, nil))
-	assert.NoError(s.Commit())
+	assert.NoError(s.Commit(6, nil, nil))
 	// ns-2:coll-2 should not exists now (because purger should be launched at block 6)
 	testWaitForPurgerRoutineToFinish(s)
 	assert.False(testDataKeyExists(t, s, ns1Coll1))
@@ -634,60 +580,101 @@ func TestStoreState(t *testing.T) {
 			{"ns-1", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, "TestStoreState", btlPolicy)
+	env := NewTestStoreEnv(t, "TestStoreState", btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
 	store := env.TestStore
 	testData := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 0, []string{"ns-1:coll-1", "ns-1:coll-2"}),
 	}
-	_, ok := store.Prepare(1, testData, nil).(*ErrIllegalArgs)
-	assert.True(ok)
-
-	assert.Nil(store.Prepare(0, testData, nil))
-	assert.NoError(store.Commit())
-
-	assert.Nil(store.Prepare(1, testData, nil))
-	_, ok = store.Prepare(2, testData, nil).(*ErrIllegalCall)
+	_, ok := store.Commit(1, testData, nil).(*ErrIllegalArgs)
 	assert.True(ok)
 }
 
-func TestInitLastCommittedBlock(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestStoreState", nil)
+func TestPendingBatch(t *testing.T) {
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns-1", "coll-1"}: 0,
+			{"ns-1", "coll-2"}: 0,
+		},
+	)
+	env := NewTestStoreEnv(t, "TestPendingBatch", btlPolicy, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
-	store := env.TestStore
+	s := env.TestStore
 	existingLastBlockNum := uint64(25)
-	assert.NoError(store.InitLastCommittedBlock(existingLastBlockNum))
+	batch := leveldbhelper.NewUpdateBatch()
+	batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(existingLastBlockNum))
+	assert.NoError(s.(*store).db.WriteBatch(batch, true))
+	s.(*store).lastCommittedBlock = existingLastBlockNum
+	s.(*store).isEmpty = false
+	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, s)
 
-	testEmpty(false, assert, store)
-	testPendingBatch(false, assert, store)
-	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, store)
+	// assume that a block has been prepared in v142 and the peer was
+	// killed for upgrade. When the pvtdataStore is opened again with
+	// v2.0 peer, the pendingBatch should be marked as committed.
+	batch = leveldbhelper.NewUpdateBatch()
 
-	env.CloseAndReopen()
-	testEmpty(false, assert, store)
-	testPendingBatch(false, assert, store)
-	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, store)
+	// store pvtData entries
+	dataKey := &dataKey{nsCollBlk{"ns-1", "coll-1", 26}, 1}
+	dataValue := &rwset.CollectionPvtReadWriteSet{CollectionName: "coll-1", Rwset: []byte("pvtdata")}
+	keyBytes := encodeDataKey(dataKey)
+	valueBytes, err := encodeDataValue(dataValue)
+	assert.NoError(err)
+	batch.Put(keyBytes, valueBytes)
 
-	err := store.InitLastCommittedBlock(30)
-	_, ok := err.(*ErrIllegalCall)
+	// store pendingBatch marker
+	batch.Put(pendingCommitKey, emptyValue)
+
+	// write to the store
+	assert.NoError(s.(*store).db.WriteBatch(batch, true))
+	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, s)
+
+	// as the block commit is pending, we cannot read the pvtData
+	hasPendingBatch, err := s.(*store).hasPendingCommit()
+	assert.NoError(err)
+	assert.Equal(true, hasPendingBatch)
+	pvtData, err := s.GetPvtDataByBlockNum(26, nil)
+	_, ok := err.(*ErrOutOfRange)
 	assert.True(ok)
+	assert.Nil(pvtData)
+
+	// emulate a version upgrade
+	env.CloseAndReopen()
+
+	s = env.TestStore
+	testLastCommittedBlockHeight(existingLastBlockNum+2, assert, s)
+	hasPendingBatch, err = s.(*store).hasPendingCommit()
+	assert.NoError(err)
+	assert.Equal(false, hasPendingBatch)
+	testDataKeyExists(t, s, dataKey)
+
+	expectedPvtData := &rwset.TxPvtReadWriteSet{
+		NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+			{
+				Namespace: "ns-1",
+				CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+					dataValue,
+				},
+			},
+		},
+	}
+	pvtData, err = s.GetPvtDataByBlockNum(26, nil)
+	assert.NoError(err)
+	assert.Equal(1, len(pvtData))
+	assert.Equal(uint64(1), pvtData[0].SeqInBlock)
+	assert.True(proto.Equal(expectedPvtData, pvtData[0].WriteSet))
 }
 
 func TestCollElgEnabled(t *testing.T) {
-	testCollElgEnabled(t)
-	defaultValBatchSize := ledgerconfig.GetPvtdataStoreCollElgProcMaxDbBatchSize()
-	defaultValInterval := ledgerconfig.GetPvtdataStoreCollElgProcDbBatchesInterval()
-	defer func() {
-		viper.Set("ledger.pvtdataStore.collElgProcMaxDbBatchSize", defaultValBatchSize)
-		viper.Set("ledger.pvtdataStore.collElgProcMaxDbBatchSize", defaultValInterval)
-	}()
-	viper.Set("ledger.pvtdataStore.collElgProcMaxDbBatchSize", 1)
-	viper.Set("ledger.pvtdataStore.collElgProcDbBatchesInterval", 1)
-	testCollElgEnabled(t)
+	conf := pvtDataConf()
+	testCollElgEnabled(t, conf)
+	conf.BatchesInterval = 1
+	conf.MaxBatchSize = 1
+	testCollElgEnabled(t, conf)
 }
 
-func testCollElgEnabled(t *testing.T) {
+func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	ledgerid := "TestCollElgEnabled"
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
@@ -697,16 +684,15 @@ func testCollElgEnabled(t *testing.T) {
 			{"ns-2", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, conf)
 	defer env.Cleanup()
 	assert := assert.New(t)
-	store := env.TestStore
+	testStore := env.TestStore
 
 	// Initial state: eligible for {ns-1:coll-1 and ns-2:coll-1 }
 
 	// no pvt data with block 0
-	assert.NoError(store.Prepare(0, nil, nil))
-	assert.NoError(store.Commit())
+	assert.NoError(testStore.Commit(0, nil, nil))
 
 	// construct and commit block 1
 	blk1MissingData := make(ledger.TxMissingPvtDataMap)
@@ -717,8 +703,7 @@ func testCollElgEnabled(t *testing.T) {
 	testDataForBlk1 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1"}),
 	}
-	assert.NoError(store.Prepare(1, testDataForBlk1, blk1MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(testStore.Commit(1, testDataForBlk1, blk1MissingData))
 
 	// construct and commit block 2
 	blk2MissingData := make(ledger.TxMissingPvtDataMap)
@@ -728,139 +713,48 @@ func testCollElgEnabled(t *testing.T) {
 	testDataForBlk2 := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 3, []string{"ns-1:coll-1"}),
 	}
-	assert.NoError(store.Prepare(2, testDataForBlk2, blk2MissingData))
-	assert.NoError(store.Commit())
+	assert.NoError(testStore.Commit(2, testDataForBlk2, blk2MissingData))
 
 	// Retrieve and verify missing data reported
 	// Expected missing data should be only blk1-tx1 (because, the other missing data is marked as ineliigible)
 	expectedMissingPvtDataInfo := make(ledger.MissingPvtDataInfo)
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-1", "coll-1")
 	expectedMissingPvtDataInfo.Add(1, 1, "ns-2", "coll-1")
-	missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err := testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
 	assert.NoError(err)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 
 	// Enable eligibility for {ns-1:coll2}
-	store.ProcessCollsEligibilityEnabled(
+	testStore.ProcessCollsEligibilityEnabled(
 		5,
 		map[string][]string{
 			"ns-1": {"coll-2"},
 		},
 	)
-	testutilWaitForCollElgProcToFinish(store)
+	testutilWaitForCollElgProcToFinish(testStore)
 
 	// Retrieve and verify missing data reported
 	// Expected missing data should include newly eiligible collections
 	expectedMissingPvtDataInfo.Add(1, 4, "ns-1", "coll-2")
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-1", "coll-2")
-	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
 	assert.NoError(err)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 
 	// Enable eligibility for {ns-2:coll2}
-	store.ProcessCollsEligibilityEnabled(6,
+	testStore.ProcessCollsEligibilityEnabled(6,
 		map[string][]string{
 			"ns-2": {"coll-2"},
 		},
 	)
-	testutilWaitForCollElgProcToFinish(store)
+	testutilWaitForCollElgProcToFinish(testStore)
 
 	// Retrieve and verify missing data reported
 	// Expected missing data should include newly eiligible collections
 	expectedMissingPvtDataInfo.Add(1, 4, "ns-2", "coll-2")
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-2", "coll-2")
-	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
-}
-
-func TestRollBack(t *testing.T) {
-	btlPolicy := btltestutil.SampleBTLPolicy(
-		map[[2]string]uint64{
-			{"ns-1", "coll-1"}: 0,
-			{"ns-1", "coll-2"}: 0,
-		},
-	)
-	env := NewTestStoreEnv(t, "TestRollBack", btlPolicy)
-	defer env.Cleanup()
-	assert := assert.New(t)
-	store := env.TestStore
-	assert.NoError(store.Prepare(0, nil, nil))
-	assert.NoError(store.Commit())
-
-	pvtdata := []*ledger.TxPvtData{
-		produceSamplePvtdata(t, 0, []string{"ns-1:coll-1", "ns-1:coll-2"}),
-		produceSamplePvtdata(t, 5, []string{"ns-1:coll-1", "ns-1:coll-2"}),
-	}
-	missingData := make(ledger.TxMissingPvtDataMap)
-	missingData.Add(1, "ns-1", "coll-1", true)
-	missingData.Add(5, "ns-1", "coll-1", true)
-	missingData.Add(5, "ns-2", "coll-2", false)
-
-	for i := 1; i <= 9; i++ {
-		assert.NoError(store.Prepare(uint64(i), pvtdata, missingData))
-		assert.NoError(store.Commit())
-	}
-
-	datakeyTx0 := &dataKey{
-		nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1"},
-		txNum:     0,
-	}
-	datakeyTx5 := &dataKey{
-		nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1"},
-		txNum:     5,
-	}
-	eligibleMissingdatakey := &missingDataKey{
-		nsCollBlk:  nsCollBlk{ns: "ns-1", coll: "coll-1"},
-		isEligible: true,
-	}
-
-	// test store state before preparing for block 10
-	testPendingBatch(false, assert, store)
-	testLastCommittedBlockHeight(10, assert, store)
-
-	// prepare for block 10 and test store for presence of datakeys and eligibile missingdatakeys
-	assert.NoError(store.Prepare(10, pvtdata, missingData))
-	testPendingBatch(true, assert, store)
-	testLastCommittedBlockHeight(10, assert, store)
-
-	datakeyTx0.blkNum = 10
-	datakeyTx5.blkNum = 10
-	eligibleMissingdatakey.blkNum = 10
-	assert.True(testDataKeyExists(t, store, datakeyTx0))
-	assert.True(testDataKeyExists(t, store, datakeyTx5))
-	assert.True(testMissingDataKeyExists(t, store, eligibleMissingdatakey))
-
-	// rollback last prepared block and test store for absence of datakeys and eligibile missingdatakeys
-	store.Rollback()
-	testPendingBatch(false, assert, store)
-	testLastCommittedBlockHeight(10, assert, store)
-	assert.False(testDataKeyExists(t, store, datakeyTx0))
-	assert.False(testDataKeyExists(t, store, datakeyTx5))
-	assert.False(testMissingDataKeyExists(t, store, eligibleMissingdatakey))
-
-	// For previously committed blocks the datakeys and eligibile missingdatakeys should still be present
-	for i := 1; i <= 9; i++ {
-		datakeyTx0.blkNum = uint64(i)
-		datakeyTx5.blkNum = uint64(i)
-		eligibleMissingdatakey.blkNum = uint64(i)
-		assert.True(testDataKeyExists(t, store, datakeyTx0))
-		assert.True(testDataKeyExists(t, store, datakeyTx5))
-		assert.True(testMissingDataKeyExists(t, store, eligibleMissingdatakey))
-	}
-}
-
-// TODO Add tests for simulating a crash between calls `Prepare` and `Commit`/`Rollback` - [FAB-13099]
-
-func testEmpty(expectedEmpty bool, assert *assert.Assertions, store Store) {
-	isEmpty, err := store.IsEmpty()
-	assert.NoError(err)
-	assert.Equal(expectedEmpty, isEmpty)
-}
-
-func testPendingBatch(expectedPending bool, assert *assert.Assertions, store Store) {
-	hasPendingBatch, err := store.HasPendingBatch()
-	assert.NoError(err)
-	assert.Equal(expectedPending, hasPendingBatch)
 }
 
 func testLastCommittedBlockHeight(expectedBlockHt uint64, assert *assert.Assertions, store Store) {

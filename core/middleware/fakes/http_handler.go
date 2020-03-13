@@ -2,8 +2,8 @@
 package fakes
 
 import (
-	http "net/http"
-	sync "sync"
+	"net/http"
+	"sync"
 )
 
 type HTTPHandler struct {

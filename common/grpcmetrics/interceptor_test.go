@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ = Describe("Interceptor", func() {
@@ -287,7 +288,7 @@ var _ = Describe("Interceptor", func() {
 
 				errCh <- errors.New("oh bother")
 				_, err = streamClient.Recv()
-				Expect(err).To(MatchError(grpc.Errorf(codes.Unknown, "oh bother")))
+				Expect(err).To(MatchError(status.Errorf(codes.Unknown, "oh bother")))
 
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())
@@ -316,4 +317,5 @@ func streamMessages(streamClient testpb.EchoService_EchoStreamClient) {
 
 	msg, err = streamClient.Recv()
 	Expect(err).To(Equal(io.EOF))
+	Expect(msg).To(BeNil())
 }

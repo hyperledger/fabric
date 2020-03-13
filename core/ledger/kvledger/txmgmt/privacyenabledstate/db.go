@@ -31,6 +31,7 @@ type DB interface {
 	ClearCachedVersions()
 	GetChaincodeEventListener() cceventmgmt.ChaincodeLifecycleEventListener
 	GetPrivateData(namespace, collection, key string) (*statedb.VersionedValue, error)
+	GetPrivateDataHash(namespace, collection, key string) (*statedb.VersionedValue, error)
 	GetValueHash(namespace, collection string, keyHash []byte) (*statedb.VersionedValue, error)
 	GetKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, error)
 	GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([]*statedb.VersionedValue, error)
@@ -154,6 +155,18 @@ func (b UpdateMap) Contains(ns, coll, key string) bool {
 
 func (nsb nsBatch) GetCollectionNames() []string {
 	return nsb.GetUpdatedNamespaces()
+}
+
+func (nsb nsBatch) getCollectionUpdates(collName string) map[string]*statedb.VersionedValue {
+	return nsb.GetUpdates(collName)
+}
+
+func (b UpdateMap) getUpdatedNamespaces() []string {
+	namespaces := []string{}
+	for ns := range b {
+		namespaces = append(namespaces, ns)
+	}
+	return namespaces
 }
 
 func (b UpdateMap) getOrCreateNsBatch(ns string) nsBatch {

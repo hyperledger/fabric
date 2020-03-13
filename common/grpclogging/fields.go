@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package grpclogging
 
 import (
-	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

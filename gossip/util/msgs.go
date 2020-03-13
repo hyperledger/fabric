@@ -10,24 +10,24 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/gossip/common"
-	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric/gossip/protoext"
 )
 
 // MembershipStore struct which encapsulates
 // membership message store abstraction
 type MembershipStore struct {
-	m map[string]*proto.SignedGossipMessage
+	m map[string]*protoext.SignedGossipMessage
 	sync.RWMutex
 }
 
 // NewMembershipStore creates new membership store instance
 func NewMembershipStore() *MembershipStore {
-	return &MembershipStore{m: make(map[string]*proto.SignedGossipMessage)}
+	return &MembershipStore{m: make(map[string]*protoext.SignedGossipMessage)}
 }
 
 // MsgByID returns a message stored by a certain ID, or nil
 // if such an ID isn't found
-func (m *MembershipStore) MsgByID(pkiID common.PKIidType) *proto.SignedGossipMessage {
+func (m *MembershipStore) MsgByID(pkiID common.PKIidType) *protoext.SignedGossipMessage {
 	m.RLock()
 	defer m.RUnlock()
 	if msg, exists := m.m[string(pkiID)]; exists {
@@ -44,7 +44,7 @@ func (m *MembershipStore) Size() int {
 }
 
 // Put associates msg with the given pkiID
-func (m *MembershipStore) Put(pkiID common.PKIidType, msg *proto.SignedGossipMessage) {
+func (m *MembershipStore) Put(pkiID common.PKIidType, msg *protoext.SignedGossipMessage) {
 	m.Lock()
 	defer m.Unlock()
 	m.m[string(pkiID)] = msg
@@ -59,10 +59,10 @@ func (m *MembershipStore) Remove(pkiID common.PKIidType) {
 
 // ToSlice returns a slice backed by the elements
 // of the MembershipStore
-func (m *MembershipStore) ToSlice() []*proto.SignedGossipMessage {
+func (m *MembershipStore) ToSlice() []*protoext.SignedGossipMessage {
 	m.RLock()
 	defer m.RUnlock()
-	members := make([]*proto.SignedGossipMessage, len(m.m))
+	members := make([]*protoext.SignedGossipMessage, len(m.m))
 	i := 0
 	for _, member := range m.m {
 		members[i] = member

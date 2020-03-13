@@ -2,10 +2,10 @@
 package fakes
 
 import (
+	"context"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/grpcmetrics/testpb"
-	"golang.org/x/net/context"
 )
 
 type EchoServiceServer struct {
@@ -53,7 +53,8 @@ func (fake *EchoServiceServer) Echo(arg1 context.Context, arg2 *testpb.Message) 
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.echoReturns.result1, fake.echoReturns.result2
+	fakeReturns := fake.echoReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *EchoServiceServer) EchoCallCount() int {
@@ -62,13 +63,22 @@ func (fake *EchoServiceServer) EchoCallCount() int {
 	return len(fake.echoArgsForCall)
 }
 
+func (fake *EchoServiceServer) EchoCalls(stub func(context.Context, *testpb.Message) (*testpb.Message, error)) {
+	fake.echoMutex.Lock()
+	defer fake.echoMutex.Unlock()
+	fake.EchoStub = stub
+}
+
 func (fake *EchoServiceServer) EchoArgsForCall(i int) (context.Context, *testpb.Message) {
 	fake.echoMutex.RLock()
 	defer fake.echoMutex.RUnlock()
-	return fake.echoArgsForCall[i].arg1, fake.echoArgsForCall[i].arg2
+	argsForCall := fake.echoArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *EchoServiceServer) EchoReturns(result1 *testpb.Message, result2 error) {
+	fake.echoMutex.Lock()
+	defer fake.echoMutex.Unlock()
 	fake.EchoStub = nil
 	fake.echoReturns = struct {
 		result1 *testpb.Message
@@ -77,6 +87,8 @@ func (fake *EchoServiceServer) EchoReturns(result1 *testpb.Message, result2 erro
 }
 
 func (fake *EchoServiceServer) EchoReturnsOnCall(i int, result1 *testpb.Message, result2 error) {
+	fake.echoMutex.Lock()
+	defer fake.echoMutex.Unlock()
 	fake.EchoStub = nil
 	if fake.echoReturnsOnCall == nil {
 		fake.echoReturnsOnCall = make(map[int]struct {
@@ -104,7 +116,8 @@ func (fake *EchoServiceServer) EchoStream(arg1 testpb.EchoService_EchoStreamServ
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.echoStreamReturns.result1
+	fakeReturns := fake.echoStreamReturns
+	return fakeReturns.result1
 }
 
 func (fake *EchoServiceServer) EchoStreamCallCount() int {
@@ -113,13 +126,22 @@ func (fake *EchoServiceServer) EchoStreamCallCount() int {
 	return len(fake.echoStreamArgsForCall)
 }
 
+func (fake *EchoServiceServer) EchoStreamCalls(stub func(testpb.EchoService_EchoStreamServer) error) {
+	fake.echoStreamMutex.Lock()
+	defer fake.echoStreamMutex.Unlock()
+	fake.EchoStreamStub = stub
+}
+
 func (fake *EchoServiceServer) EchoStreamArgsForCall(i int) testpb.EchoService_EchoStreamServer {
 	fake.echoStreamMutex.RLock()
 	defer fake.echoStreamMutex.RUnlock()
-	return fake.echoStreamArgsForCall[i].arg1
+	argsForCall := fake.echoStreamArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *EchoServiceServer) EchoStreamReturns(result1 error) {
+	fake.echoStreamMutex.Lock()
+	defer fake.echoStreamMutex.Unlock()
 	fake.EchoStreamStub = nil
 	fake.echoStreamReturns = struct {
 		result1 error
@@ -127,6 +149,8 @@ func (fake *EchoServiceServer) EchoStreamReturns(result1 error) {
 }
 
 func (fake *EchoServiceServer) EchoStreamReturnsOnCall(i int, result1 error) {
+	fake.echoStreamMutex.Lock()
+	defer fake.echoStreamMutex.Unlock()
 	fake.EchoStreamStub = nil
 	if fake.echoStreamReturnsOnCall == nil {
 		fake.echoStreamReturnsOnCall = make(map[int]struct {

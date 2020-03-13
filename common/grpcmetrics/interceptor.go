@@ -13,6 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/metrics"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 type UnaryMetrics struct {
@@ -28,12 +29,13 @@ func UnaryServerInterceptor(um *UnaryMetrics) grpc.UnaryServerInterceptor {
 
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
+		st, _ := status.FromError(err)
 		duration := time.Since(startTime)
 
 		um.RequestDuration.With(
-			"service", service, "method", method, "code", grpc.Code(err).String(),
+			"service", service, "method", method, "code", st.Code().String(),
 		).Observe(duration.Seconds())
-		um.RequestsCompleted.With("service", service, "method", method, "code", grpc.Code(err).String()).Add(1)
+		um.RequestsCompleted.With("service", service, "method", method, "code", st.Code().String()).Add(1)
 
 		return resp, err
 	}
@@ -61,12 +63,13 @@ func StreamServerInterceptor(sm *StreamMetrics) grpc.StreamServerInterceptor {
 
 		startTime := time.Now()
 		err := handler(svc, wrappedStream)
+		st, _ := status.FromError(err)
 		duration := time.Since(startTime)
 
 		sm.RequestDuration.With(
-			"service", service, "method", method, "code", grpc.Code(err).String(),
+			"service", service, "method", method, "code", st.Code().String(),
 		).Observe(duration.Seconds())
-		sm.RequestsCompleted.With("service", service, "method", method, "code", grpc.Code(err).String()).Add(1)
+		sm.RequestsCompleted.With("service", service, "method", method, "code", st.Code().String()).Add(1)
 
 		return err
 	}

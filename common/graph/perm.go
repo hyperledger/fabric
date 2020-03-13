@@ -6,17 +6,28 @@ SPDX-License-Identifier: Apache-2.0
 
 package graph
 
+import (
+	"math/rand"
+	"time"
+)
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 // treePermutations represents possible permutations
 // of a tree
 type treePermutations struct {
+	combinationUpperBound  int                             // The upper bound of combinations of direct descendants.
 	originalRoot           *TreeVertex                     // The root vertex of all sub-trees
 	permutations           []*TreeVertex                   // The accumulated permutations
 	descendantPermutations map[*TreeVertex][][]*TreeVertex // Defines the combinations of sub-trees based on the threshold of the current vertex
 }
 
 // newTreePermutation creates a new treePermutations object with a given root vertex
-func newTreePermutation(root *TreeVertex) *treePermutations {
+func newTreePermutation(root *TreeVertex, combinationUpperBound int) *treePermutations {
 	return &treePermutations{
+		combinationUpperBound:  combinationUpperBound,
 		descendantPermutations: make(map[*TreeVertex][][]*TreeVertex),
 		originalRoot:           root,
 		permutations:           []*TreeVertex{root},
@@ -94,6 +105,13 @@ func (tp *treePermutations) computeDescendantPermutations() {
 		// Skip leaves
 		if len(v.Descendants) == 0 {
 			continue
+		}
+
+		// Ensure we don't have too much combinations of descendants
+		for CombinationsExceed(len(v.Descendants), v.Threshold, tp.combinationUpperBound) {
+			// Randomly pick a descendant, and remove it
+			victim := rand.Intn(len(v.Descendants))
+			v.Descendants = append(v.Descendants[:victim], v.Descendants[victim+1:]...)
 		}
 
 		// Iterate over all options of selecting the threshold out of the descendants

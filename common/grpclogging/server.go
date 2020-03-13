@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 )
 
 // Leveler returns a zap level to use when logging from a grpc interceptor.
@@ -78,7 +79,7 @@ func UnaryServerInterceptor(logger *zap.Logger, opts ...Option) grpc.UnaryServer
 		logger := logger
 		startTime := time.Now()
 
-		fields := getFields(ctx, startTime, info.FullMethod)
+		fields := getFields(ctx, info.FullMethod)
 		logger = logger.With(fields...)
 		ctx = WithFields(ctx, fields)
 
@@ -95,9 +96,10 @@ func UnaryServerInterceptor(logger *zap.Logger, opts ...Option) grpc.UnaryServer
 		}
 
 		if ce := logger.Check(o.Level(ctx, info.FullMethod), "unary call completed"); ce != nil {
+			st, _ := status.FromError(err)
 			ce.Write(
 				Error(err),
-				zap.Stringer("grpc.code", grpc.Code(err)),
+				zap.Stringer("grpc.code", st.Code()),
 				zap.Duration("grpc.call_duration", time.Since(startTime)),
 			)
 		}
@@ -114,7 +116,7 @@ func StreamServerInterceptor(logger *zap.Logger, opts ...Option) grpc.StreamServ
 		ctx := stream.Context()
 		startTime := time.Now()
 
-		fields := getFields(ctx, startTime, info.FullMethod)
+		fields := getFields(ctx, info.FullMethod)
 		logger = logger.With(fields...)
 		ctx = WithFields(ctx, fields)
 
@@ -127,9 +129,10 @@ func StreamServerInterceptor(logger *zap.Logger, opts ...Option) grpc.StreamServ
 
 		err := handler(service, wrappedStream)
 		if ce := logger.Check(o.Level(ctx, info.FullMethod), "streaming call completed"); ce != nil {
+			st, _ := status.FromError(err)
 			ce.Write(
 				Error(err),
-				zap.Stringer("grpc.code", grpc.Code(err)),
+				zap.Stringer("grpc.code", st.Code()),
 				zap.Duration("grpc.call_duration", time.Since(startTime)),
 			)
 		}
@@ -137,8 +140,8 @@ func StreamServerInterceptor(logger *zap.Logger, opts ...Option) grpc.StreamServ
 	}
 }
 
-func getFields(ctx context.Context, startTime time.Time, method string) []zapcore.Field {
-	fields := []zap.Field{zap.Time("grpc.start_time", startTime)}
+func getFields(ctx context.Context, method string) []zapcore.Field {
+	var fields []zap.Field
 	if parts := strings.Split(method, "/"); len(parts) == 3 {
 		fields = append(fields, zap.String("grpc.service", parts[1]), zap.String("grpc.method", parts[2]))
 	}

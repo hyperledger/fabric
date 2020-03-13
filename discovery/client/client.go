@@ -14,15 +14,19 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/discovery"
-	"github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/discovery/protoext"
+	gprotoext "github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/pkg/errors"
 )
 
-var (
-	configTypes = []discovery.QueryType{discovery.ConfigQueryType, discovery.PeerMembershipQueryType, discovery.ChaincodeQueryType, discovery.LocalMembershipQueryType}
-)
+var configTypes = []protoext.QueryType{
+	protoext.ConfigQueryType,
+	protoext.PeerMembershipQueryType,
+	protoext.ChaincodeQueryType,
+	protoext.LocalMembershipQueryType,
+}
 
 // Client interacts with the discovery server
 type Client struct {
@@ -34,7 +38,7 @@ type Client struct {
 func NewRequest() *Request {
 	r := &Request{
 		invocationChainMapping: make(map[int][]InvocationChain),
-		queryMapping:           make(map[discovery.QueryType]map[string]int),
+		queryMapping:           make(map[protoext.QueryType]map[string]int),
 		Request:                &discovery.Request{},
 	}
 	// pre-populate types
@@ -49,7 +53,7 @@ type Request struct {
 	lastChannel string
 	lastIndex   int
 	// map from query type to channel to expected index in response
-	queryMapping map[discovery.QueryType]map[string]int
+	queryMapping map[protoext.QueryType]map[string]int
 	// map from expected index in response to invocation chains
 	invocationChainMapping map[int][]InvocationChain
 	*discovery.Request
@@ -65,7 +69,7 @@ func (req *Request) AddConfigQuery() *Request {
 		Channel: ch,
 		Query:   q,
 	})
-	req.addQueryMapping(discovery.ConfigQueryType, ch)
+	req.addQueryMapping(protoext.ConfigQueryType, ch)
 	return req
 }
 
@@ -91,7 +95,7 @@ func (req *Request) AddEndorsersQuery(interests ...*discovery.ChaincodeInterest)
 		invocationChains = append(invocationChains, interest.Chaincodes)
 	}
 	req.addChaincodeQueryMapping(invocationChains)
-	req.addQueryMapping(discovery.ChaincodeQueryType, ch)
+	req.addQueryMapping(protoext.ChaincodeQueryType, ch)
 	return req, nil
 }
 
@@ -104,7 +108,7 @@ func (req *Request) AddLocalPeersQuery() *Request {
 		Query: q,
 	})
 	var ic InvocationChain
-	req.addQueryMapping(discovery.LocalMembershipQueryType, channnelAndInvocationChain("", ic))
+	req.addQueryMapping(protoext.LocalMembershipQueryType, channnelAndInvocationChain("", ic))
 	return req
 }
 
@@ -127,7 +131,7 @@ func (req *Request) AddPeersQuery(invocationChain ...*discovery.ChaincodeCall) *
 		ic = InvocationChain(invocationChain)
 	}
 	req.addChaincodeQueryMapping([]InvocationChain{ic})
-	req.addQueryMapping(discovery.PeerMembershipQueryType, channnelAndInvocationChain(ch, ic))
+	req.addQueryMapping(protoext.PeerMembershipQueryType, channnelAndInvocationChain(ch, ic))
 	return req
 }
 
@@ -145,7 +149,7 @@ func (req *Request) addChaincodeQueryMapping(invocationChains []InvocationChain)
 	req.invocationChainMapping[req.lastIndex] = invocationChains
 }
 
-func (req *Request) addQueryMapping(queryType discovery.QueryType, key string) {
+func (req *Request) addQueryMapping(queryType protoext.QueryType, key string) {
 	req.queryMapping[queryType][key] = req.lastIndex
 	req.lastIndex++
 }
@@ -193,7 +197,7 @@ type localResponse struct {
 }
 
 func (cr *localResponse) Peers() ([]*Peer, error) {
-	return parsePeers(discovery.LocalMembershipQueryType, cr.response, "")
+	return parsePeers(protoext.LocalMembershipQueryType, cr.response, "")
 }
 
 type channelResponse struct {
@@ -203,7 +207,7 @@ type channelResponse struct {
 
 func (cr *channelResponse) Config() (*discovery.ConfigResult, error) {
 	res, exists := cr.response[key{
-		queryType: discovery.ConfigQueryType,
+		queryType: protoext.ConfigQueryType,
 		k:         cr.channel,
 	}]
 
@@ -218,7 +222,7 @@ func (cr *channelResponse) Config() (*discovery.ConfigResult, error) {
 	return nil, res.(error)
 }
 
-func parsePeers(queryType discovery.QueryType, r response, channel string, invocationChain ...*discovery.ChaincodeCall) ([]*Peer, error) {
+func parsePeers(queryType protoext.QueryType, r response, channel string, invocationChain ...*discovery.ChaincodeCall) ([]*Peer, error) {
 	peerKeys := key{
 		queryType: queryType,
 		k:         fmt.Sprintf("%s %s", channel, InvocationChain(invocationChain).String()),
@@ -237,14 +241,14 @@ func parsePeers(queryType discovery.QueryType, r response, channel string, invoc
 }
 
 func (cr *channelResponse) Peers(invocationChain ...*discovery.ChaincodeCall) ([]*Peer, error) {
-	return parsePeers(discovery.PeerMembershipQueryType, cr.response, cr.channel, invocationChain...)
+	return parsePeers(protoext.PeerMembershipQueryType, cr.response, cr.channel, invocationChain...)
 }
 
 func (cr *channelResponse) Endorsers(invocationChain InvocationChain, f Filter) (Endorsers, error) {
 	// If we have a key that has no chaincode field,
 	// it means it's an error returned from the service
 	if err, exists := cr.response[key{
-		queryType: discovery.ChaincodeQueryType,
+		queryType: protoext.ChaincodeQueryType,
 		k:         cr.channel,
 	}]; exists {
 		return nil, err.(error)
@@ -252,7 +256,7 @@ func (cr *channelResponse) Endorsers(invocationChain InvocationChain, f Filter) 
 
 	// Else, the service returned a response that isn't an error
 	res, exists := cr.response[key{
-		queryType:       discovery.ChaincodeQueryType,
+		queryType:       protoext.ChaincodeQueryType,
 		k:               cr.channel,
 		invocationChain: invocationChain.String(),
 	}]
@@ -328,7 +332,7 @@ func (resp response) ForChannel(ch string) ChannelResponse {
 }
 
 type key struct {
-	queryType       discovery.QueryType
+	queryType       protoext.QueryType
 	k               string
 	invocationChain string
 }
@@ -338,14 +342,14 @@ func (req *Request) computeResponse(r *discovery.Response) (response, error) {
 	resp := make(response)
 	for configType, channel2index := range req.queryMapping {
 		switch configType {
-		case discovery.ConfigQueryType:
+		case protoext.ConfigQueryType:
 			err = resp.mapConfig(channel2index, r)
-		case discovery.ChaincodeQueryType:
+		case protoext.ChaincodeQueryType:
 			err = resp.mapEndorsers(channel2index, r, req.invocationChainMapping)
-		case discovery.PeerMembershipQueryType:
-			err = resp.mapPeerMembership(channel2index, r, discovery.PeerMembershipQueryType)
-		case discovery.LocalMembershipQueryType:
-			err = resp.mapPeerMembership(channel2index, r, discovery.LocalMembershipQueryType)
+		case protoext.PeerMembershipQueryType:
+			err = resp.mapPeerMembership(channel2index, r, protoext.PeerMembershipQueryType)
+		case protoext.LocalMembershipQueryType:
+			err = resp.mapPeerMembership(channel2index, r, protoext.LocalMembershipQueryType)
 		}
 		if err != nil {
 			return nil, err
@@ -357,12 +361,12 @@ func (req *Request) computeResponse(r *discovery.Response) (response, error) {
 
 func (resp response) mapConfig(channel2index map[string]int, r *discovery.Response) error {
 	for ch, index := range channel2index {
-		config, err := r.ConfigAt(index)
+		config, err := protoext.ResponseConfigAt(r, index)
 		if config == nil && err == nil {
 			return errors.Errorf("expected QueryResult of either ConfigResult or Error but got %v instead", r.Results[index])
 		}
 		key := key{
-			queryType: discovery.ConfigQueryType,
+			queryType: protoext.ConfigQueryType,
 			k:         ch,
 		}
 
@@ -376,9 +380,9 @@ func (resp response) mapConfig(channel2index map[string]int, r *discovery.Respon
 	return nil
 }
 
-func (resp response) mapPeerMembership(key2Index map[string]int, r *discovery.Response, qt discovery.QueryType) error {
+func (resp response) mapPeerMembership(key2Index map[string]int, r *discovery.Response, qt protoext.QueryType) error {
 	for k, index := range key2Index {
-		membersRes, err := r.MembershipAt(index)
+		membersRes, err := protoext.ResponseMembershipAt(r, index)
 		if membersRes == nil && err == nil {
 			return errors.Errorf("expected QueryResult of either PeerMembershipResult or Error but got %v instead", r.Results[index])
 		}
@@ -403,17 +407,17 @@ func (resp response) mapPeerMembership(key2Index map[string]int, r *discovery.Re
 	return nil
 }
 
-func peersForChannel(membersRes *discovery.PeerMembershipResult, qt discovery.QueryType) ([]*Peer, error) {
+func peersForChannel(membersRes *discovery.PeerMembershipResult, qt protoext.QueryType) ([]*Peer, error) {
 	var peers []*Peer
 	for org, peersOfCurrentOrg := range membersRes.PeersByOrg {
 		for _, peer := range peersOfCurrentOrg.Peers {
-			aliveMsg, err := peer.MembershipInfo.ToGossipMessage()
+			aliveMsg, err := gprotoext.EnvelopeToGossipMessage(peer.MembershipInfo)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed unmarshaling alive message")
 			}
-			var stateInfoMsg *gossip.SignedGossipMessage
+			var stateInfoMsg *gprotoext.SignedGossipMessage
 			if isStateInfoExpected(qt) {
-				stateInfoMsg, err = peer.StateInfo.ToGossipMessage()
+				stateInfoMsg, err = gprotoext.EnvelopeToGossipMessage(peer.StateInfo)
 				if err != nil {
 					return nil, errors.Wrap(err, "failed unmarshaling stateInfo message")
 				}
@@ -435,8 +439,8 @@ func peersForChannel(membersRes *discovery.PeerMembershipResult, qt discovery.Qu
 	return peers, nil
 }
 
-func isStateInfoExpected(qt discovery.QueryType) bool {
-	return qt != discovery.LocalMembershipQueryType
+func isStateInfoExpected(qt protoext.QueryType) bool {
+	return qt != protoext.LocalMembershipQueryType
 }
 
 func (resp response) mapEndorsers(
@@ -444,14 +448,14 @@ func (resp response) mapEndorsers(
 	r *discovery.Response,
 	chaincodeQueryMapping map[int][]InvocationChain) error {
 	for ch, index := range channel2index {
-		ccQueryRes, err := r.EndorsersAt(index)
+		ccQueryRes, err := protoext.ResponseEndorsersAt(r, index)
 		if ccQueryRes == nil && err == nil {
 			return errors.Errorf("expected QueryResult of either ChaincodeQueryResult or Error but got %v instead", r.Results[index])
 		}
 
 		if err != nil {
 			key := key{
-				queryType: discovery.ChaincodeQueryType,
+				queryType: protoext.ChaincodeQueryType,
 				k:         ch,
 			}
 			resp[key] = errors.New(err.Content)
@@ -475,7 +479,7 @@ func (resp response) mapEndorsersOfChannel(ccRs *discovery.ChaincodeQueryResult,
 			return errors.Errorf("expected chaincode %s but got endorsement descriptor for %s", expectedCCName, desc.Chaincode)
 		}
 		key := key{
-			queryType:       discovery.ChaincodeQueryType,
+			queryType:       protoext.ChaincodeQueryType,
 			k:               channel,
 			invocationChain: invocationChain[i].String(),
 		}
@@ -525,11 +529,11 @@ func endorser(peer *discovery.Peer, chaincode, channel string) (*Peer, error) {
 	if peer.MembershipInfo == nil || peer.StateInfo == nil {
 		return nil, errors.Errorf("received empty envelope(s) for endorsers for chaincode %s, channel %s", chaincode, channel)
 	}
-	aliveMsg, err := peer.MembershipInfo.ToGossipMessage()
+	aliveMsg, err := gprotoext.EnvelopeToGossipMessage(peer.MembershipInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed unmarshaling gossip envelope to alive message")
 	}
-	stateInfMsg, err := peer.StateInfo.ToGossipMessage()
+	stateInfMsg, err := gprotoext.EnvelopeToGossipMessage(peer.StateInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed unmarshaling gossip envelope to state info message")
 	}
@@ -564,7 +568,7 @@ func NewClient(createConnection Dialer, s Signer, signerCacheSize uint) *Client 
 	}
 }
 
-func validateAliveMessage(message *gossip.SignedGossipMessage) error {
+func validateAliveMessage(message *gprotoext.SignedGossipMessage) error {
 	am := message.GetAliveMsg()
 	if am == nil {
 		return errors.New("message isn't an alive message")
@@ -579,7 +583,7 @@ func validateAliveMessage(message *gossip.SignedGossipMessage) error {
 	return nil
 }
 
-func validateStateInfoMessage(message *gossip.SignedGossipMessage) error {
+func validateStateInfoMessage(message *gprotoext.SignedGossipMessage) error {
 	si := message.GetStateInfo()
 	if si == nil {
 		return errors.New("message isn't a stateInfo message")

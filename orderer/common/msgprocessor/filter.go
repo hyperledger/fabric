@@ -9,7 +9,7 @@ package msgprocessor
 import (
 	"errors"
 
-	ab "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric-protos-go/common"
 )
 
 // ErrEmptyMessage is returned by the empty message filter on rejection.

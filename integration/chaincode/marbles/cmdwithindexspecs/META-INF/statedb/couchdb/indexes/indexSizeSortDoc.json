@@ -1,0 +1,12 @@
+{
+    "index":{
+        "fields":[
+            {"size":"desc"},
+            {"docType":"desc"},
+            {"owner":"desc"}
+        ]
+    },
+    "ddoc":"indexSizeSortDoc",
+    "name":"indexSizeSortDesc",
+    "type":"json"
+}

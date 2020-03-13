@@ -9,9 +9,9 @@ package queryutil
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 )
 
 type itrCombiner struct {
@@ -56,7 +56,7 @@ func (combiner *itrCombiner) Next() (commonledger.QueryResult, error) {
 			if err != nil {
 				return nil, err
 			}
-			if removed { // if the current iterator is exhaused and hence removed, decrement the index
+			if removed { // if the current iterator is exhausted and hence removed, decrement the index
 				// because indexes of the remaining iterators are decremented by one
 				i--
 			}

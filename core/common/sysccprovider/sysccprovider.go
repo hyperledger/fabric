@@ -27,17 +27,6 @@ import (
 // system chaincode package without importing it; more methods
 // should be added below if necessary
 type SystemChaincodeProvider interface {
-	// IsSysCC returns true if the supplied chaincode is a system chaincode
-	IsSysCC(name string) bool
-
-	// IsSysCCAndNotInvokableCC2CC returns true if the supplied chaincode
-	// is a system chaincode and is not invokable through a cc2cc invocation
-	IsSysCCAndNotInvokableCC2CC(name string) bool
-
-	// IsSysCCAndNotInvokable returns true if the supplied chaincode
-	// is a system chaincode and is not invokable through a proposal
-	IsSysCCAndNotInvokableExternal(name string) bool
-
 	// GetQueryExecutorForLedger returns a query executor for the
 	// ledger of the supplied channel.
 	// That's useful for system chaincodes that require unfettered
@@ -55,11 +44,11 @@ type SystemChaincodeProvider interface {
 
 // ChaincodeInstance is unique identifier of chaincode instance
 type ChaincodeInstance struct {
-	ChainID          string
+	ChannelID        string
 	ChaincodeName    string
 	ChaincodeVersion string
 }
 
 func (ci *ChaincodeInstance) String() string {
-	return ci.ChainID + "." + ci.ChaincodeName + "#" + ci.ChaincodeVersion
+	return ci.ChannelID + "." + ci.ChaincodeName + "#" + ci.ChaincodeVersion
 }

@@ -523,7 +523,7 @@ func (mr *MockOffsetFetchResponse) SetOffset(group, topic string, partition int3
 		partitions = make(map[int32]*OffsetFetchResponseBlock)
 		topics[topic] = partitions
 	}
-	partitions[partition] = &OffsetFetchResponseBlock{offset, metadata, kerror}
+	partitions[partition] = &OffsetFetchResponseBlock{offset, 0, metadata, kerror}
 	return mr
 }
 

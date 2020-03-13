@@ -11,8 +11,8 @@ package msgprocessor
 import (
 	"errors"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
-	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 const (
@@ -30,6 +30,10 @@ var ErrChannelDoesNotExist = errors.New("channel does not exist")
 // ErrPermissionDenied is returned by errors which are caused by transactions
 // which are not permitted due to an authorization failure.
 var ErrPermissionDenied = errors.New("permission denied")
+
+// ErrMaintenanceMode is returned when transactions are rejected because the orderer is in "maintenance mode",
+// as defined by ConsensusType.State != NORMAL. This typically happens during consensus-type migration.
+var ErrMaintenanceMode = errors.New("maintenance mode")
 
 // Classification represents the possible message types for the system.
 type Classification int

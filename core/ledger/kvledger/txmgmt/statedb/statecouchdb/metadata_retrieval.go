@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,7 +9,6 @@ package statecouchdb
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
@@ -21,14 +21,17 @@ type nsMetadataRetriever struct {
 	executionResult []*couchdb.DocMetadata
 }
 
-// subNsMetadataRetriever implements `batch` interface and wraps the function `couchdb.BatchRetrieveDocumentMetadata`
-// for allowing parallel execution of this function for different sets of keys within a namespace.
-// Different sets of keys is exeptected to be created based on configuration `ledgerconfig.GetMaxBatchUpdateSize()`
+// subNsMetadataRetriever implements `batch` interface and wraps the function
+// `couchdb.BatchRetrieveDocumentMetadata` for allowing parallel execution of
+// this function for different sets of keys within a namespace. Different sets
+// of keys are expected to be created based on the batch update size configured
+// for the database.
+
 type subNsMetadataRetriever nsMetadataRetriever
 
-// retrievedMetadata retrievs the metadata for a collection of `namespace-keys` combination
+// retrievedMetadata retrieves the metadata for a collection of `namespace-keys` combination
 func (vdb *VersionedDB) retrieveMetadata(nsKeysMap map[string][]string) (map[string][]*couchdb.DocMetadata, error) {
-	// consturct one batch per namespace
+	// construct one batch per namespace
 	nsMetadataRetrievers := []batch{}
 	for ns, keys := range nsKeysMap {
 		db, err := vdb.getNamespaceDBHandle(ns)
@@ -51,12 +54,12 @@ func (vdb *VersionedDB) retrieveMetadata(nsKeysMap map[string][]string) (map[str
 
 // retrieveNsMetadata retrieves metadata for a given namespace
 func retrieveNsMetadata(db *couchdb.CouchDatabase, keys []string) ([]*couchdb.DocMetadata, error) {
-	// consturct one batch per group of keys based on maxBacthSize
-	maxBacthSize := ledgerconfig.GetMaxBatchUpdateSize()
+	// construct one batch per group of keys based on maxBatchSize
+	maxBatchSize := db.CouchInstance.MaxBatchUpdateSize()
 	batches := []batch{}
 	remainingKeys := keys
 	for {
-		numKeys := minimum(maxBacthSize, len(remainingKeys))
+		numKeys := minimum(maxBatchSize, len(remainingKeys))
 		if numKeys == 0 {
 			break
 		}

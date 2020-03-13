@@ -2,9 +2,9 @@
 package fake
 
 import (
-	sync "sync"
+	"sync"
 
-	chaincode "github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode"
 )
 
 type LaunchRegistry struct {

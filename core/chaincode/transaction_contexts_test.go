@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/mock"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -39,7 +39,7 @@ var _ = Describe("TransactionContexts", func() {
 			fakeHistoryQueryExecutor = &mock.HistoryQueryExecutor{}
 
 			txParams = &ccprovider.TransactionParams{
-				ChannelID:            "chainID",
+				ChannelID:            "channelID",
 				TxID:                 "transactionID",
 				SignedProp:           signedProp,
 				Proposal:             proposal,
@@ -52,7 +52,7 @@ var _ = Describe("TransactionContexts", func() {
 			txContext, err := txContexts.Create(txParams)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(txContext.ChainID).To(Equal("chainID"))
+			Expect(txContext.ChannelID).To(Equal("channelID"))
 			Expect(txContext.SignedProp).To(Equal(signedProp))
 			Expect(txContext.Proposal).To(Equal(proposal))
 			Expect(txContext.ResponseNotifier).NotTo(BeNil())
@@ -65,7 +65,7 @@ var _ = Describe("TransactionContexts", func() {
 			txContext, err := txContexts.Create(txParams)
 			Expect(err).NotTo(HaveOccurred())
 
-			c := txContexts.Get("chainID", "transactionID")
+			c := txContexts.Get("channelID", "transactionID")
 			Expect(c).To(Equal(txContext))
 		})
 
@@ -77,7 +77,7 @@ var _ = Describe("TransactionContexts", func() {
 
 			It("returns a meaningful error", func() {
 				_, err := txContexts.Create(txParams)
-				Expect(err).To(MatchError("txid: transactionID(chainID) exists"))
+				Expect(err).To(MatchError("txid: transactionID(channelID) exists"))
 			})
 		})
 	})
@@ -88,14 +88,14 @@ var _ = Describe("TransactionContexts", func() {
 		BeforeEach(func() {
 			var err error
 			txParams1 := &ccprovider.TransactionParams{
-				ChannelID: "chainID1",
+				ChannelID: "channelID1",
 				TxID:      "transactionID1",
 			}
 			c1, err = txContexts.Create(txParams1)
 			Expect(err).NotTo(HaveOccurred())
 
 			txParams2 := &ccprovider.TransactionParams{
-				ChannelID: "chainID1",
+				ChannelID: "channelID1",
 				TxID:      "transactionID2",
 			}
 			c2, err = txContexts.Create(txParams2)
@@ -103,10 +103,10 @@ var _ = Describe("TransactionContexts", func() {
 		})
 
 		It("returns the correct transaction context", func() {
-			c := txContexts.Get("chainID1", "transactionID1")
+			c := txContexts.Get("channelID1", "transactionID1")
 			Expect(c).To(Equal(c1))
 
-			c = txContexts.Get("chainID1", "transactionID2")
+			c = txContexts.Get("channelID1", "transactionID2")
 			Expect(c).To(Equal(c2))
 
 			c = txContexts.Get("non-existent", "transactionID1")
@@ -117,19 +117,19 @@ var _ = Describe("TransactionContexts", func() {
 	Describe("Delete", func() {
 		BeforeEach(func() {
 			_, err := txContexts.Create(&ccprovider.TransactionParams{
-				ChannelID: "chainID2",
+				ChannelID: "channelID2",
 				TxID:      "transactionID1",
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("removes transaction context", func() {
-			c := txContexts.Get("chainID2", "transactionID1")
+			c := txContexts.Get("channelID2", "transactionID1")
 			Expect(c).NotTo(BeNil())
 
-			txContexts.Delete("chainID2", "transactionID1")
+			txContexts.Delete("channelID2", "transactionID1")
 
-			c = txContexts.Get("chainID2", "transactionID1")
+			c = txContexts.Get("channelID2", "transactionID1")
 			Expect(c).To(BeNil())
 		})
 
@@ -150,7 +150,7 @@ var _ = Describe("TransactionContexts", func() {
 			}
 
 			txContext, err := txContexts.Create(&ccprovider.TransactionParams{
-				ChannelID: "chainID",
+				ChannelID: "channelID",
 				TxID:      "transactionID",
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -159,7 +159,7 @@ var _ = Describe("TransactionContexts", func() {
 			txContext.InitializeQueryContext("key3", fakeIterators[2])
 
 			txContext2, err := txContexts.Create(&ccprovider.TransactionParams{
-				ChannelID: "chainID",
+				ChannelID: "channelID",
 				TxID:      "transactionID2",
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -191,7 +191,7 @@ var _ = Describe("TransactionContexts", func() {
 		Context("when there is a context with no query iterators", func() {
 			BeforeEach(func() {
 				_, err := txContexts.Create(&ccprovider.TransactionParams{
-					ChannelID: "chainID",
+					ChannelID: "channelID",
 					TxID:      "no-query-iterators",
 				})
 				Expect(err).NotTo(HaveOccurred())

@@ -10,8 +10,9 @@ import (
 type Big struct {
 	BytesStub        func() ([]byte, error)
 	bytesMutex       sync.RWMutex
-	bytesArgsForCall []struct{}
-	bytesReturns     struct {
+	bytesArgsForCall []struct {
+	}
+	bytesReturns struct {
 		result1 []byte
 		result2 error
 	}
@@ -26,7 +27,8 @@ type Big struct {
 func (fake *Big) Bytes() ([]byte, error) {
 	fake.bytesMutex.Lock()
 	ret, specificReturn := fake.bytesReturnsOnCall[len(fake.bytesArgsForCall)]
-	fake.bytesArgsForCall = append(fake.bytesArgsForCall, struct{}{})
+	fake.bytesArgsForCall = append(fake.bytesArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Bytes", []interface{}{})
 	fake.bytesMutex.Unlock()
 	if fake.BytesStub != nil {
@@ -35,7 +37,8 @@ func (fake *Big) Bytes() ([]byte, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.bytesReturns.result1, fake.bytesReturns.result2
+	fakeReturns := fake.bytesReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Big) BytesCallCount() int {
@@ -44,7 +47,15 @@ func (fake *Big) BytesCallCount() int {
 	return len(fake.bytesArgsForCall)
 }
 
+func (fake *Big) BytesCalls(stub func() ([]byte, error)) {
+	fake.bytesMutex.Lock()
+	defer fake.bytesMutex.Unlock()
+	fake.BytesStub = stub
+}
+
 func (fake *Big) BytesReturns(result1 []byte, result2 error) {
+	fake.bytesMutex.Lock()
+	defer fake.bytesMutex.Unlock()
 	fake.BytesStub = nil
 	fake.bytesReturns = struct {
 		result1 []byte
@@ -53,6 +64,8 @@ func (fake *Big) BytesReturns(result1 []byte, result2 error) {
 }
 
 func (fake *Big) BytesReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.bytesMutex.Lock()
+	defer fake.bytesMutex.Unlock()
 	fake.BytesStub = nil
 	if fake.bytesReturnsOnCall == nil {
 		fake.bytesReturnsOnCall = make(map[int]struct {

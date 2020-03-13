@@ -4,9 +4,9 @@ Operations Guides
 .. toctree::
    :maxdepth: 1
 
-   upgrade_to_newest_version
-   config_update
+   orderer_deploy
    msp
+   hsm.md
    configtx
    endorsement-policies
    pluggable_endorsement_and_validation
@@ -15,7 +15,11 @@ Operations Guides
    idemixgen
    operations_service
    metrics_reference
+   cc_launcher
+   cc_service
    error-handling
    logging-control
    enable_tls
+   raft_configuration.md
+   kafka_raft_migration.md
    kafka

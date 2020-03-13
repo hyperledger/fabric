@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package inquire
 
 import (
-	"reflect"
-
 	"github.com/hyperledger/fabric/common/policies"
 )
 
@@ -158,6 +156,25 @@ func (cps ComparablePrincipalSets) OfMapping(mapping map[int][]int, sets2 Compar
 // Reduce returns the ComparablePrincipalSets in a form such that no element contains another element.
 // Every element that contains some other element is omitted from the result.
 func (cps ComparablePrincipalSets) Reduce() ComparablePrincipalSets {
+	// Continuously try to reduce the ComparablePrincipalSets until
+	//  no progress is made.
+	current := cps
+	for {
+		currLen := len(current)
+		// Try to reduce the principal sets.
+		reduced := current.reduce()
+		newLen := len(reduced)
+		if currLen == newLen {
+			// If no improvement was made over
+			// the existing set, stop.
+			return reduced
+		}
+		// Else we made progress, so try to reduce once more.
+		current = reduced
+	}
+}
+
+func (cps ComparablePrincipalSets) reduce() ComparablePrincipalSets {
 	var res ComparablePrincipalSets
 	for i, s1 := range cps {
 		var isContaining bool
@@ -168,6 +185,12 @@ func (cps ComparablePrincipalSets) Reduce() ComparablePrincipalSets {
 			if s2.IsSubset(s1) {
 				isContaining = true
 			}
+			// If two subsets contain each other,
+			// then pick the one with the lower index.
+			if s1.IsSubset(s2) && i < j {
+				isContaining = false
+			}
+
 		}
 		if !isContaining {
 			res = append(res, s1)
@@ -250,7 +273,7 @@ func (cps ComparablePrincipalSet) IsSubset(sets ComparablePrincipalSet) bool {
 	for _, p1 := range cps {
 		var found bool
 		for _, p2 := range sets {
-			if reflect.DeepEqual(p1, p2) {
+			if p1.Equal(p2) {
 				found = true
 			}
 		}

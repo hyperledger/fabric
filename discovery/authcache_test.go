@@ -12,18 +12,18 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestSignedDataToKey(t *testing.T) {
-	key1, err1 := signedDataToKey(common.SignedData{
+	key1, err1 := signedDataToKey(protoutil.SignedData{
 		Data:      []byte{1, 2, 3, 4},
 		Identity:  []byte{5, 6, 7},
 		Signature: []byte{8, 9},
 	})
-	key2, err2 := signedDataToKey(common.SignedData{
+	key2, err2 := signedDataToKey(protoutil.SignedData{
 		Data:      []byte{1, 2, 3},
 		Identity:  []byte{4, 5, 6},
 		Signature: []byte{7, 8, 9},
@@ -37,7 +37,7 @@ type mockAcSupport struct {
 	mock.Mock
 }
 
-func (as *mockAcSupport) EligibleForService(channel string, data common.SignedData) error {
+func (as *mockAcSupport) EligibleForService(channel string, data protoutil.SignedData) error {
 	return as.Called(channel, data).Error(0)
 }
 
@@ -46,7 +46,7 @@ func (as *mockAcSupport) ConfigSequence(channel string) uint64 {
 }
 
 func TestCacheDisabled(t *testing.T) {
-	sd := common.SignedData{
+	sd := protoutil.SignedData{
 		Data:      []byte{1, 2, 3},
 		Identity:  []byte("authorizedIdentity"),
 		Signature: []byte{1, 2, 3},
@@ -69,19 +69,19 @@ func TestCacheUsage(t *testing.T) {
 	as.On("ConfigSequence", "bar").Return(uint64(0))
 	cache := newAuthCache(as, defaultConfig())
 
-	sd1 := common.SignedData{
+	sd1 := protoutil.SignedData{
 		Data:      []byte{1, 2, 3},
 		Identity:  []byte("authorizedIdentity"),
 		Signature: []byte{1, 2, 3},
 	}
 
-	sd2 := common.SignedData{
+	sd2 := protoutil.SignedData{
 		Data:      []byte{1, 2, 3},
 		Identity:  []byte("authorizedIdentity"),
 		Signature: []byte{1, 2, 3},
 	}
 
-	sd3 := common.SignedData{
+	sd3 := protoutil.SignedData{
 		Data:      []byte{1, 2, 3, 3},
 		Identity:  []byte("unAuthorizedIdentity"),
 		Signature: []byte{1, 2, 3},
@@ -90,7 +90,7 @@ func TestCacheUsage(t *testing.T) {
 	testCases := []struct {
 		channel     string
 		expectedErr error
-		sd          common.SignedData
+		sd          protoutil.SignedData
 	}{
 		{
 			sd:      sd1,
@@ -149,13 +149,13 @@ func TestCacheMarshalFailure(t *testing.T) {
 	defer func() {
 		asBytes = asn1.Marshal
 	}()
-	err := cache.EligibleForService("mychannel", common.SignedData{})
+	err := cache.EligibleForService("mychannel", protoutil.SignedData{})
 	assert.Contains(t, err.Error(), "failed marshaling ASN1")
 }
 
 func TestCacheConfigChange(t *testing.T) {
 	as := &mockAcSupport{}
-	sd := common.SignedData{
+	sd := protoutil.SignedData{
 		Data:      []byte{1, 2, 3},
 		Identity:  []byte("identity"),
 		Signature: []byte{1, 2, 3},
@@ -189,7 +189,7 @@ func TestCachePurgeCache(t *testing.T) {
 
 	// Warm up the cache - attempt to place 4 identities to fill it up
 	for _, id := range []string{"identity1", "identity2", "identity3", "identity4"} {
-		sd := common.SignedData{
+		sd := protoutil.SignedData{
 			Data:      []byte{1, 2, 3},
 			Identity:  []byte(id),
 			Signature: []byte{1, 2, 3},
@@ -203,7 +203,7 @@ func TestCachePurgeCache(t *testing.T) {
 	// Now, ensure that at least 1 of the identities was evicted from the cache, but not all
 	var evicted int
 	for _, id := range []string{"identity5", "identity1", "identity2"} {
-		sd := common.SignedData{
+		sd := protoutil.SignedData{
 			Data:      []byte{1, 2, 3},
 			Identity:  []byte(id),
 			Signature: []byte{1, 2, 3},
@@ -228,7 +228,7 @@ func TestCacheConcurrentConfigUpdate(t *testing.T) {
 	// of the first request although the first request's computation completes after the second request.
 
 	as := &mockAcSupport{}
-	sd := common.SignedData{
+	sd := protoutil.SignedData{
 		Data:      []byte{1, 2, 3},
 		Identity:  []byte{1, 2, 3},
 		Signature: []byte{1, 2, 3},

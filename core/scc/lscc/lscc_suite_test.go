@@ -9,7 +9,7 @@ package lscc_test
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -18,7 +18,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-//go:generate counterfeiter -o mock/sysccprovider.go --fake-name SystemChaincodeProvider . systemChaincodeProvider
+//go:generate counterfeiter -o mock/chaincode_builder.go --fake-name ChaincodeBuilder . chaincodeBuilder
+type chaincodeBuilder interface {
+	lscc.ChaincodeBuilder
+}
+
+//go:generate counterfeiter -o mock/system_chaincode_provider.go --fake-name SystemChaincodeProvider . systemChaincodeProvider
 type systemChaincodeProvider interface {
 	sysccprovider.SystemChaincodeProvider
 }

@@ -8,15 +8,21 @@ package comm
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"net"
 	"sync"
 	"testing"
 	"time"
 
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -34,20 +40,20 @@ func init() {
 	util.SetupTestLogging()
 }
 
-func createTestServer(t *testing.T, cert *tls.Certificate) *gossipTestServer {
+func createTestServer(t *testing.T, cert *tls.Certificate) (srv *gossipTestServer, ll net.Listener) {
 	tlsConf := &tls.Config{
 		Certificates:       []tls.Certificate{*cert},
 		ClientAuth:         tls.RequestClientCert,
 		InsecureSkipVerify: true,
 	}
 	s := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConf)))
-	ll, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
+	ll, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:0"))
 	assert.NoError(t, err, "%v", err)
 
-	srv := &gossipTestServer{s: s, ll: ll, selfCertHash: certHashFromRawCert(cert.Certificate[0])}
+	srv = &gossipTestServer{s: s, ll: ll, selfCertHash: certHashFromRawCert(cert.Certificate[0])}
 	proto.RegisterGossipServer(s, srv)
 	go s.Serve(ll)
-	return srv
+	return srv, ll
 }
 
 func (s *gossipTestServer) stop() {
@@ -74,7 +80,7 @@ func (s *gossipTestServer) Ping(context.Context, *proto.Empty) (*proto.Empty, er
 
 func TestCertificateExtraction(t *testing.T) {
 	cert := GenerateCertificatesOrPanic()
-	srv := createTestServer(t, &cert)
+	srv, ll := createTestServer(t, &cert)
 	defer srv.stop()
 
 	clientCert := GenerateCertificatesOrPanic()
@@ -85,7 +91,7 @@ func TestCertificateExtraction(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, "localhost:5611", grpc.WithTransportCredentials(ta), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, ll.Addr().String(), grpc.WithTransportCredentials(ta), grpc.WithBlock())
 	assert.NoError(t, err, "%v", err)
 
 	cl := proto.NewGossipClient(conn)
@@ -107,4 +113,37 @@ func TestCertificateExtraction(t *testing.T) {
 
 	assert.Equal(t, clientSideCertHash, srv.selfCertHash, "Server self hash isn't equal to client side hash")
 	assert.Equal(t, clientCertHash, srv.remoteCertHash, "Server side and client hash aren't equal")
+}
+
+// GenerateCertificatesOrPanic generates a a random pair of public and private keys
+// and return TLS certificate.
+func GenerateCertificatesOrPanic() tls.Certificate {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	sn, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		panic(err)
+	}
+	template := x509.Certificate{
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		SerialNumber: sn,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	rawBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		panic(err)
+	}
+	privBytes, err := x509.MarshalECPrivateKey(privateKey)
+	if err != nil {
+		panic(err)
+	}
+	encodedCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rawBytes})
+	encodedKey := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes})
+	cert, err := tls.X509KeyPair(encodedCert, encodedKey)
+	if err != nil {
+		panic(err)
+	}
+	return cert
 }

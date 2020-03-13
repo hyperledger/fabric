@@ -6,6 +6,12 @@ you have all the prerequisites below installed on the platform(s)
 on which you'll be developing blockchain applications and/or operating
 Hyperledger Fabric.
 
+Install Git
+-----------
+Download the latest version of `git
+<https://git-scm.com/downloads>`_ if it is not already installed,
+or if you have problems running the curl commands.
+
 Install cURL
 ------------
 
@@ -36,6 +42,26 @@ command from a terminal prompt:
 
   docker --version
 
+.. note:: The following applies to linux systems running systemd.
+
+Make sure the docker daemon is running.
+
+.. code:: bash
+
+  sudo systemctl start docker
+
+Optional: If you want the docker daemon to start when the system starts, use the following:
+
+.. code:: bash
+
+  sudo systemctl enable docker
+
+Add your user to the docker group.
+
+.. code:: bash
+
+  sudo usermod -a -G docker <username>
+
 .. note:: Installing Docker for Mac or Windows, or Docker Toolbox will also
           install Docker Compose. If you already had Docker installed, you
           should check that you have Docker Compose version 1.14.0 or greater
@@ -49,7 +75,7 @@ following command from a terminal prompt:
 
   docker-compose --version
 
-.. _Golang:
+.. _Go:
 
 Go Programming Language
 -----------------------
@@ -57,7 +83,7 @@ Go Programming Language
 Hyperledger Fabric uses the Go Programming Language for many of its
 components.
 
-  - `Go <https://golang.org/dl/>`__ version 1.11.x is required.
+  - `Go <https://golang.org/dl/>`__ version 1.13.x is required.
 
 Given that we will be writing chaincode programs in Go, there are two
 environment variables you will need to set properly; you can make these
@@ -97,12 +123,10 @@ Node.js Runtime and NPM
 -----------------------
 
 If you will be developing applications for Hyperledger Fabric leveraging the
-Hyperledger Fabric SDK for Node.js, you will need to have version 8.9.x of Node.js
-installed.
+Hyperledger Fabric SDK for Node.js, version 8 is supported from 8.9.4 and higher.
+Node.js version 10 is supported from 10.15.3 and higher.
 
-.. note:: Versions other than the 8.x series are not supported at this time.
-
-  - `Node.js <https://nodejs.org/en/download/>`__ - version 8.x
+  - `Node.js <https://nodejs.org/en/download/>`__ download
 
 .. note:: Installing Node.js will also install NPM, however it is recommended
           that you confirm the version of NPM installed. You can upgrade
@@ -137,15 +161,39 @@ Windows extras
 --------------
 
 If you are developing on Windows 7, you will want to work within the
-Docker Quickstart Terminal which uses `Git Bash
-<https://git-scm.com/downloads>`__ and provides a better alternative
-to the built-in Windows shell.
+Docker Quickstart Terminal. However, by default it uses an old `Git
+Bash <https://git-scm.com/downloads>`__ and experience has shown this
+to be a poor development environment with limited functionality. It is
+suitable to run Docker based scenarios, such as
+:doc:`getting_started`, but you will have difficulties with operations
+involving the ``make`` and ``docker`` commands.
 
-However experience has shown this to be a poor development environment
-with limited functionality. It is suitable to run Docker based
-scenarios, such as :doc:`getting_started`, but you may have
-difficulties with operations involving the ``make`` and ``docker``
-commands.
+Instead, it is recommended to use the MSYS2 environment and run make
+and docker from the MSYS2 command shell. To do so, `install
+MSYS2 <https://github.com/msys2/msys2/wiki/MSYS2-installation>`__
+(along with the base developer toolchain and gcc packages using
+pacman) and launch Docker Toolbox from the MSYS2 shell with the
+following command:
+
+::
+
+   /c/Program\ Files/Docker\ Toolbox/start.sh
+
+Alternatively, you can change the Docker Quickstart Terminal command
+to use MSYS2 bash by changing the target of the Windows shortcut from:
+
+::
+
+   "C:\Program Files\Git\bin\bash.exe" --login -i "C:\Program Files\Docker Toolbox\start.sh"
+
+to:
+
+::
+
+   "C:\msys64\usr\bin\bash.exe" --login -i "C:\Program Files\Docker Toolbox\start.sh"
+
+With the above change, you can now simply launch the Docker Quickstart
+Terminal and get a suitable environment.
 
 On Windows 10 you should use the native Docker distribution and you
 may use the Windows PowerShell. However, for the ``binaries``
@@ -171,8 +219,9 @@ These need to be ``false`` and ``true`` respectively.
 
 The ``curl`` command that comes with Git and Docker Toolbox is old and
 does not handle properly the redirect used in
-:doc:`getting_started`. Make sure you install and use a newer version
-from the `cURL downloads page <https://curl.haxx.se/download.html>`__
+:doc:`getting_started`. Make sure you have and use a newer version
+which can be downloaded from the `cURL downloads page
+<https://curl.haxx.se/download.html>`__
 
 For Node.js you also need the necessary Visual Studio C++ Build Tools
 which are freely available and can be installed with the following

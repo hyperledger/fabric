@@ -10,12 +10,12 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/core/scc/lscc/mock"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,25 +34,27 @@ func TestChaincodeInfo(t *testing.T) {
 	}
 
 	cc2 := &ledger.DeployedChaincodeInfo{
-		Name:                "cc2",
-		Version:             "cc2_version",
-		Hash:                []byte("cc2_hash"),
-		CollectionConfigPkg: prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}),
+		Name:                        "cc2",
+		Version:                     "cc2_version",
+		Hash:                        []byte("cc2_hash"),
+		ExplicitCollectionConfigPkg: prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}),
 	}
 
 	mockQE := prepareMockQE(t, []*ledger.DeployedChaincodeInfo{cc1, cc2})
 	ccInfoProvdier := &lscc.DeployedCCInfoProvider{}
 
-	ccInfo1, err := ccInfoProvdier.ChaincodeInfo("cc1", mockQE)
+	ccInfo1, err := ccInfoProvdier.ChaincodeInfo("", "cc1", mockQE)
 	assert.NoError(t, err)
-	assert.Equal(t, cc1, ccInfo1)
+	expectedCCInfo1 := cc1
+	expectedCCInfo1.IsLegacy = true
+	assert.Equal(t, expectedCCInfo1, ccInfo1)
 
-	ccInfo2, err := ccInfoProvdier.ChaincodeInfo("cc2", mockQE)
+	ccInfo2, err := ccInfoProvdier.ChaincodeInfo("", "cc2", mockQE)
 	assert.NoError(t, err)
 	assert.Equal(t, cc2.Name, ccInfo2.Name)
-	assert.True(t, proto.Equal(cc2.CollectionConfigPkg, ccInfo2.CollectionConfigPkg))
+	assert.True(t, proto.Equal(cc2.ExplicitCollectionConfigPkg, ccInfo2.ExplicitCollectionConfigPkg))
 
-	ccInfo3, err := ccInfoProvdier.ChaincodeInfo("cc3", mockQE)
+	ccInfo3, err := ccInfoProvdier.ChaincodeInfo("", "cc3", mockQE)
 	assert.NoError(t, err)
 	assert.Nil(t, ccInfo3)
 }
@@ -65,26 +67,34 @@ func TestCollectionInfo(t *testing.T) {
 	}
 
 	cc2 := &ledger.DeployedChaincodeInfo{
-		Name:                "cc2",
-		Version:             "cc2_version",
-		Hash:                []byte("cc2_hash"),
-		CollectionConfigPkg: prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}),
+		Name:                        "cc2",
+		Version:                     "cc2_version",
+		Hash:                        []byte("cc2_hash"),
+		ExplicitCollectionConfigPkg: prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}),
 	}
 
 	mockQE := prepareMockQE(t, []*ledger.DeployedChaincodeInfo{cc1, cc2})
 	ccInfoProvdier := &lscc.DeployedCCInfoProvider{}
 
-	collInfo1, err := ccInfoProvdier.CollectionInfo("cc1", "non-existing-coll-in-cc1", mockQE)
+	collInfo1, err := ccInfoProvdier.CollectionInfo("", "cc1", "non-existing-coll-in-cc1", mockQE)
 	assert.NoError(t, err)
 	assert.Nil(t, collInfo1)
 
-	collInfo2, err := ccInfoProvdier.CollectionInfo("cc2", "cc2_coll1", mockQE)
+	collInfo2, err := ccInfoProvdier.CollectionInfo("", "cc2", "cc2_coll1", mockQE)
 	assert.NoError(t, err)
 	assert.Equal(t, "cc2_coll1", collInfo2.Name)
 
-	collInfo3, err := ccInfoProvdier.CollectionInfo("cc2", "non-existing-coll-in-cc2", mockQE)
+	collInfo3, err := ccInfoProvdier.CollectionInfo("", "cc2", "non-existing-coll-in-cc2", mockQE)
 	assert.NoError(t, err)
 	assert.Nil(t, collInfo3)
+
+	ccPkg1, err := ccInfoProvdier.AllCollectionsConfigPkg("", "cc1", mockQE)
+	assert.NoError(t, err)
+	assert.Nil(t, ccPkg1)
+
+	ccPkg2, err := ccInfoProvdier.AllCollectionsConfigPkg("", "cc2", mockQE)
+	assert.NoError(t, err)
+	assert.Equal(t, prepapreCollectionConfigPkg([]string{"cc2_coll1", "cc2_coll2"}), ccPkg2)
 }
 
 func prepareMockQE(t *testing.T, deployedChaincodes []*ledger.DeployedChaincodeInfo) *mock.QueryExecutor {
@@ -96,8 +106,8 @@ func prepareMockQE(t *testing.T, deployedChaincodes []*ledger.DeployedChaincodeI
 		assert.NoError(t, err)
 		lsccTable[cc.Name] = chaincodeDataBytes
 
-		if cc.CollectionConfigPkg != nil {
-			collConfigPkgByte, err := proto.Marshal(cc.CollectionConfigPkg)
+		if cc.ExplicitCollectionConfigPkg != nil {
+			collConfigPkgByte, err := proto.Marshal(cc.ExplicitCollectionConfigPkg)
 			assert.NoError(t, err)
 			lsccTable[privdata.BuildCollectionKVSKey(cc.Name)] = collConfigPkgByte
 		}
@@ -109,15 +119,15 @@ func prepareMockQE(t *testing.T, deployedChaincodes []*ledger.DeployedChaincodeI
 	return mockQE
 }
 
-func prepapreCollectionConfigPkg(collNames []string) *common.CollectionConfigPackage {
-	pkg := &common.CollectionConfigPackage{}
+func prepapreCollectionConfigPkg(collNames []string) *peer.CollectionConfigPackage {
+	pkg := &peer.CollectionConfigPackage{}
 	for _, collName := range collNames {
-		sCollConfig := &common.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &common.StaticCollectionConfig{
+		sCollConfig := &peer.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &peer.StaticCollectionConfig{
 				Name: collName,
 			},
 		}
-		config := &common.CollectionConfig{Payload: sCollConfig}
+		config := &peer.CollectionConfig{Payload: sCollConfig}
 		pkg.Config = append(pkg.Config, config)
 	}
 	return pkg

@@ -12,23 +12,32 @@ set -e -u
 
 fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
 
-# find packages that contain "integration" in the import path
-integration_dirs() {
-    local packages="$1"
+cd "$fabric_dir"
 
-    go list -f {{.Dir}} "$packages" | grep -E '/integration($|/)' | sed "s,${fabric_dir},.,g"
-}
+dirs=()
+if [ "${#}" -eq 0 ]; then
+  specs=()
+  specs=("$(grep -Ril --exclude-dir=vendor --exclude-dir=scripts "RunSpecs" . | grep integration)")
+  for spec in ${specs[*]}; do
+    dirs+=("$(dirname "${spec}")")
+  done
+else
+  dirs=("$@")
+fi
 
-main() {
-    cd "$fabric_dir"
+totalAgents=${SYSTEM_TOTALJOBSINPHASE:-0}   # standard VSTS variables available using parallel execution; total number of parallel jobs running
+agentNumber=${SYSTEM_JOBPOSITIONINPHASE:-0} # current job position
+testCount=${#dirs[@]}
 
-    local -a dirs=("$@")
-    if [ "${#dirs[@]}" -eq 0 ]; then
-        dirs=($(integration_dirs "./..."))
-    fi
+# below conditions are used if parallel pipeline is not used. i.e. pipeline is running with single agent (no parallel configuration)
+if [ "$totalAgents" -eq 0 ]; then totalAgents=1; fi
+if [ "$agentNumber" -eq 0 ]; then agentNumber=1; fi
 
-    echo "Running integration tests..."
-    ginkgo -keepGoing --slowSpecThreshold 60 "${dirs[@]}"
-}
+declare -a files
+for ((i = "$agentNumber"; i <= "$testCount"; )); do
+  files+=("${dirs[$i - 1]}")
+  i=$((${i} + ${totalAgents}))
+done
 
-main "$@"
+echo "Running the following test suites: ${files[*]}"
+ginkgo -keepGoing --slowSpecThreshold 60 ${files[*]}

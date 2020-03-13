@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package internal
 
 import (
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
 func prepareTxOps(rwset *rwsetutil.TxRwSet, txht *version.Height,
@@ -54,7 +54,7 @@ func prepareTxOps(rwset *rwsetutil.TxRwSet, txht *version.Height,
 }
 
 // applyTxRwset records the upsertion/deletion of a kv and updatation/deletion
-// of asociated metadata present in a txrwset
+// of associated metadata present in a txrwset
 func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 	for _, nsRWSet := range rwset.NsRwSets {
 		ns := nsRWSet.NameSpace

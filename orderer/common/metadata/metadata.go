@@ -10,30 +10,19 @@ import (
 	"fmt"
 	"runtime"
 
-	common "github.com/hyperledger/fabric/common/metadata"
+	"github.com/hyperledger/fabric/common/metadata"
 )
 
-// package-scoped variables
-
-// Package version
-var Version string
-
-// package-scoped constants
-
-// Program name
 const ProgramName = "orderer"
 
-func GetVersionInfo() string {
-	Version = common.Version
-	if Version == "" {
-		Version = "development build"
-	}
+var Version = metadata.Version
 
+func GetVersionInfo() string {
 	return fmt.Sprintf(
 		"%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s\n",
 		ProgramName,
 		Version,
-		common.CommitSHA,
+		metadata.CommitSHA,
 		runtime.Version(),
 		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 	)

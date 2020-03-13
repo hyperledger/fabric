@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package ccpackage
@@ -22,14 +12,15 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric-protos-go/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/hyperledger/fabric/protos/common"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 func ownerCreateCCDepSpec(codepackage []byte, sigpolicy *common.SignaturePolicyEnvelope, owner msp.SigningIdentity) (*common.Envelope, error) {
@@ -41,13 +32,13 @@ func ownerCreateCCDepSpec(codepackage []byte, sigpolicy *common.SignaturePolicyE
 func createInstantiationPolicy(mspid string, role mspprotos.MSPRole_MSPRoleType) *common.SignaturePolicyEnvelope {
 	principals := []*mspprotos.MSPPrincipal{{
 		PrincipalClassification: mspprotos.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&mspprotos.MSPRole{Role: role, MspIdentifier: mspid})}}
-	sigspolicy := []*common.SignaturePolicy{cauthdsl.SignedBy(int32(0))}
+		Principal:               protoutil.MarshalOrPanic(&mspprotos.MSPRole{Role: role, MspIdentifier: mspid})}}
+	sigspolicy := []*common.SignaturePolicy{policydsl.SignedBy(int32(0))}
 
 	// create the policy: it requires exactly 1 signature from any of the principals
 	p := &common.SignaturePolicyEnvelope{
 		Version:    0,
-		Rule:       cauthdsl.NOutOf(1, sigspolicy),
+		Rule:       policydsl.NOutOf(1, sigspolicy),
 		Identities: principals,
 	}
 
@@ -163,6 +154,63 @@ func TestCreateSignedCCDepSpecForInstall(t *testing.T) {
 	}
 }
 
+func TestCreateSignedCCDepSpecForInstallWithEndorsements(t *testing.T) {
+	mspid, _ := localmsp.GetIdentifier()
+	sigpolicy := createInstantiationPolicy(mspid, mspprotos.MSPRole_ADMIN)
+	env1, err := ownerCreateCCDepSpec([]byte("codepackage"), sigpolicy, signer)
+	if err != nil || env1 == nil {
+		t.Fatalf("error owner creating package %s", err)
+		return
+	}
+
+	env2, err := ownerCreateCCDepSpec([]byte("codepackage"), sigpolicy, signer)
+	if err != nil || env2 == nil {
+		t.Fatalf("error owner creating package %s", err)
+		return
+	}
+
+	pack := []*common.Envelope{env1, env2}
+	env, err := CreateSignedCCDepSpecForInstall(pack)
+	if err != nil || env == nil {
+		t.Fatalf("error creating install package %s", err)
+		return
+	}
+
+	p := &common.Payload{}
+	if err = proto.Unmarshal(env.Payload, p); err != nil {
+		t.Fatalf("fatal error unmarshal payload")
+		return
+	}
+
+	cip2 := &peer.SignedChaincodeDeploymentSpec{}
+	if err = proto.Unmarshal(p.Data, cip2); err != nil {
+		t.Fatalf("fatal error unmarshal cip")
+		return
+	}
+
+	if len(cip2.OwnerEndorsements) != 2 {
+		t.Fatalf("invalid number of endorsements %d", len(cip2.OwnerEndorsements))
+		return
+	}
+
+	p = &common.Payload{}
+	if err = proto.Unmarshal(env1.Payload, p); err != nil {
+		t.Fatalf("fatal error unmarshal payload")
+		return
+	}
+
+	cip1 := &peer.SignedChaincodeDeploymentSpec{}
+	if err = proto.Unmarshal(p.Data, cip1); err != nil {
+		t.Fatalf("fatal error unmarshal cip")
+		return
+	}
+
+	if len(cip1.OwnerEndorsements) != 1 {
+		t.Fatalf("invalid number of endorsements %d", len(cip1.OwnerEndorsements))
+		return
+	}
+}
+
 func TestMismatchedCodePackages(t *testing.T) {
 	mspid, _ := localmsp.GetIdentifier()
 	sigpolicy := createInstantiationPolicy(mspid, mspprotos.MSPRole_ADMIN)
@@ -241,7 +289,14 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Could not initialize msp")
 		return
 	}
-	localmsp = mspmgmt.GetLocalMSP()
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", cryptoProvider)
+		os.Exit(-1)
+		return
+	}
+	localmsp = mspmgmt.GetLocalMSP(cryptoProvider)
 	if localmsp == nil {
 		os.Exit(-1)
 		fmt.Printf("Could not get msp")

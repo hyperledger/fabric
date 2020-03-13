@@ -14,7 +14,6 @@ The ``cryptogen`` command has five subcommands, as follows:
   * extend
   * version
 
-
 ## cryptogen help
 ```
 usage: cryptogen [<flags>] <command> [<args> ...]
@@ -39,8 +38,6 @@ Commands:
 
   extend [<flags>]
     Extend existing network
-
-
 ```
 
 
@@ -55,7 +52,6 @@ Flags:
                             and --help-man).
   --output="crypto-config"  The output directory in which to place artifacts
   --config=CONFIG           The configuration template to use
-
 ```
 
 
@@ -67,7 +63,6 @@ Show the default configuration template
 
 Flags:
   --help  Show context-sensitive help (also try --help-long and --help-man).
-
 ```
 
 
@@ -82,7 +77,6 @@ Flags:
                            --help-man).
   --input="crypto-config"  The input directory in which existing network place
   --config=CONFIG          The configuration template to use
-
 ```
 
 
@@ -94,7 +88,6 @@ Show version information
 
 Flags:
   --help  Show context-sensitive help (also try --help-long and --help-man).
-
 ```
 
 ## Usage

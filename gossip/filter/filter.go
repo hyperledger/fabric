@@ -14,6 +14,10 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 )
 
+func init() { // do we really need this?
+	rand.Seed(int64(util.RandomUInt64()))
+}
+
 // RoutingFilter defines a predicate on a NetworkMember
 // It is used to assert whether a given NetworkMember should be
 // selected for be given a message
@@ -41,10 +45,9 @@ func CombineRoutingFilters(filters ...RoutingFilter) RoutingFilter {
 	}
 }
 
-// SelectPeers returns a slice of peers that match the routing filter
+// SelectPeers returns a slice of at most k peers randomly chosen from peerPool that match routingFilter filter.
 func SelectPeers(k int, peerPool []discovery.NetworkMember, filter RoutingFilter) []*comm.RemotePeer {
 	var res []*comm.RemotePeer
-	rand.Seed(int64(util.RandomUInt64()))
 	// Iterate over the possible candidates in random order
 	for _, index := range rand.Perm(len(peerPool)) {
 		// If we collected K peers, we can stop the iteration.
@@ -53,11 +56,10 @@ func SelectPeers(k int, peerPool []discovery.NetworkMember, filter RoutingFilter
 		}
 		peer := peerPool[index]
 		// For each one, check if it is a worthy candidate to be selected
-		if !filter(peer) {
-			continue
+		if filter(peer) {
+			p := &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.PreferredEndpoint()}
+			res = append(res, p)
 		}
-		p := &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.PreferredEndpoint()}
-		res = append(res, p)
 	}
 	return res
 }

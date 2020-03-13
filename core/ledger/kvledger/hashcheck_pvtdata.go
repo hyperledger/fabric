@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,17 +9,17 @@ package kvledger
 import (
 	"bytes"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
-// ConstructValidAndInvalidPvtData computes the valid pvt data and hash mismatch list
+// constructValidAndInvalidPvtData computes the valid pvt data and hash mismatch list
 // from a received pvt data list of old blocks.
-func ConstructValidAndInvalidPvtData(blocksPvtData []*ledger.BlockPvtData, blockStore *ledgerstorage.Store) (
+func constructValidAndInvalidPvtData(reconciledPvtdata []*ledger.ReconciledPvtdata, blockStore *ledgerstorage.Store) (
 	map[uint64][]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
 	// for each block, for each transaction, retrieve the txEnvelope to
@@ -28,36 +29,36 @@ func ConstructValidAndInvalidPvtData(blocksPvtData []*ledger.BlockPvtData, block
 	validPvtData := make(map[uint64][]*ledger.TxPvtData)
 	var invalidPvtData []*ledger.PvtdataHashMismatch
 
-	for _, blockPvtData := range blocksPvtData {
-		validData, invalidData, err := findValidAndInvalidBlockPvtData(blockPvtData, blockStore)
+	for _, pvtdata := range reconciledPvtdata {
+		validData, invalidData, err := findValidAndInvalidPvtdata(pvtdata, blockStore)
 		if err != nil {
 			return nil, nil, err
 		}
 		if len(validData) > 0 {
-			validPvtData[blockPvtData.BlockNum] = validData
+			validPvtData[pvtdata.BlockNum] = validData
 		}
 		invalidPvtData = append(invalidPvtData, invalidData...)
 	} // for each block's pvtData
 	return validPvtData, invalidPvtData, nil
 }
 
-func findValidAndInvalidBlockPvtData(blockPvtData *ledger.BlockPvtData, blockStore *ledgerstorage.Store) (
+func findValidAndInvalidPvtdata(reconciledPvtdata *ledger.ReconciledPvtdata, blockStore *ledgerstorage.Store) (
 	[]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
 	var validPvtData []*ledger.TxPvtData
 	var invalidPvtData []*ledger.PvtdataHashMismatch
-	for _, txPvtData := range blockPvtData.WriteSets {
+	for _, txPvtData := range reconciledPvtdata.WriteSets {
 		// (1) retrieve the txrwset from the blockstore
-		logger.Debugf("Retrieving rwset of blockNum:[%d], txNum:[%d]", blockPvtData.BlockNum, txPvtData.SeqInBlock)
-		txRWSet, err := retrieveRwsetForTx(blockPvtData.BlockNum, txPvtData.SeqInBlock, blockStore)
+		logger.Debugf("Retrieving rwset of blockNum:[%d], txNum:[%d]", reconciledPvtdata.BlockNum, txPvtData.SeqInBlock)
+		txRWSet, err := retrieveRwsetForTx(reconciledPvtdata.BlockNum, txPvtData.SeqInBlock, blockStore)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		// (2) validate passed pvtData against the pvtData hash in the tx rwset.
 		logger.Debugf("Constructing valid and invalid pvtData using rwset of blockNum:[%d], txNum:[%d]",
-			blockPvtData.BlockNum, txPvtData.SeqInBlock)
-		validData, invalidData := findValidAndInvalidTxPvtData(txPvtData, txRWSet, blockPvtData.BlockNum)
+			reconciledPvtdata.BlockNum, txPvtData.SeqInBlock)
+		validData, invalidData := findValidAndInvalidTxPvtData(txPvtData, txRWSet, reconciledPvtdata.BlockNum)
 
 		// (3) append validData to validPvtDataPvt list of this block and
 		// invalidData to invalidPvtData list
@@ -77,7 +78,7 @@ func retrieveRwsetForTx(blkNum uint64, txNum uint64, blockStore *ledgerstorage.S
 		return nil, err
 	}
 	// retrieve pvtRWset hash from the txEnvelope
-	responsePayload, err := utils.GetActionFromEnvelopeMsg(txEnvelope)
+	responsePayload, err := protoutil.GetActionFromEnvelopeMsg(txEnvelope)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ func findValidAndInvalidTxPvtData(txPvtData *ledger.TxPvtData, txRWSet *rwsetuti
 		toDeleteNsColl = append(toDeleteNsColl, invalidNsColl...)
 	}
 	for _, nsColl := range toDeleteNsColl {
-		txPvtData.WriteSet.Remove(nsColl.ns, nsColl.coll)
+		removeCollFromTxPvtReadWriteSet(txPvtData.WriteSet, nsColl.ns, nsColl.coll)
 	}
 	if len(txPvtData.WriteSet.NsPvtRwset) == 0 {
 		// denotes that all namespaces had
@@ -110,6 +111,33 @@ func findValidAndInvalidTxPvtData(txPvtData *ledger.TxPvtData, txRWSet *rwsetuti
 		return nil, invalidPvtData
 	}
 	return txPvtData, invalidPvtData
+}
+
+// Remove removes the rwset for the given <ns, coll> tuple. If after this removal,
+// there are no more collection in the namespace <ns>, the whole namespace entry is removed
+func removeCollFromTxPvtReadWriteSet(p *rwset.TxPvtReadWriteSet, ns, coll string) {
+	for i := 0; i < len(p.NsPvtRwset); i++ {
+		n := p.NsPvtRwset[i]
+		if n.Namespace != ns {
+			continue
+		}
+		removeCollFromNsPvtWriteSet(n, coll)
+		if len(n.CollectionPvtRwset) == 0 {
+			p.NsPvtRwset = append(p.NsPvtRwset[:i], p.NsPvtRwset[i+1:]...)
+		}
+		return
+	}
+}
+
+func removeCollFromNsPvtWriteSet(n *rwset.NsPvtReadWriteSet, collName string) {
+	for i := 0; i < len(n.CollectionPvtRwset); i++ {
+		c := n.CollectionPvtRwset[i]
+		if c.CollectionName != collName {
+			continue
+		}
+		n.CollectionPvtRwset = append(n.CollectionPvtRwset[:i], n.CollectionPvtRwset[i+1:]...)
+		return
+	}
 }
 
 type nsColl struct {

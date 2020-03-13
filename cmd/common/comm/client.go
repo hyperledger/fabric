@@ -47,7 +47,7 @@ func NewClient(conf Config) (*Client, error) {
 // NewDialer creates a new dialer from the given endpoint
 func (c *Client) NewDialer(endpoint string) func() (*grpc.ClientConn, error) {
 	return func() (*grpc.ClientConn, error) {
-		conn, err := c.NewConnection(endpoint, "")
+		conn, err := c.NewConnection(endpoint)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

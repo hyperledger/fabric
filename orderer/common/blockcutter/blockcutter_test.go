@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter/mock"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 var _ = Describe("Blockcutter", func() {
@@ -181,6 +181,14 @@ var _ = Describe("Blockcutter", func() {
 			It("panics", func() {
 				Expect(func() { bc.Ordered(message) }).To(Panic())
 			})
+		})
+	})
+
+	Describe("Cut", func() {
+		It("cuts an empty batch", func() {
+			batch := bc.Cut()
+			Expect(batch).To(BeNil())
+			Expect(fakeBlockFillDuration.ObserveCallCount()).To(Equal(0))
 		})
 	})
 })

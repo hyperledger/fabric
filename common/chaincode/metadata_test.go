@@ -9,7 +9,7 @@ package chaincode
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/protos/gossip"
+	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,6 +48,7 @@ func TestMetadataMapping(t *testing.T) {
 	}
 	mm.Update(md2)
 	res, found = mm.Lookup("cc1")
+	assert.True(t, found)
 	assert.Equal(t, md2, res)
 
 	assert.Equal(t, MetadataSet{md2}, mm.Aggregate())

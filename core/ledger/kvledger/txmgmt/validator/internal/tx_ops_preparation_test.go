@@ -7,31 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package internal
 
 import (
-	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	tempDir, err := ioutil.TempDir("", "")
-	if err != nil {
-		fmt.Printf("could not create temp dir %s", err)
-		os.Exit(-1)
-		return
-	}
 	flogging.ActivateSpec("valinternal=debug")
-	viper.Set("peer.fileSystemPath", tempDir)
 	os.Exit(m.Run())
 }
 

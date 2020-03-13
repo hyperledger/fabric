@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package protolator
@@ -26,6 +16,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext"
 )
 
 // MostlyDeterministicMarshal is _NOT_ the function you are looking for.
@@ -311,7 +302,7 @@ func protoFields(msg proto.Message, uMsg proto.Message) ([]protoField, error) {
 
 	pmVal := reflect.ValueOf(uMsg)
 	if pmVal.Kind() != reflect.Ptr {
-		return nil, fmt.Errorf("expected proto.Message %T to be pointer kind", msg)
+		return nil, fmt.Errorf("expected proto.Message %T to be pointer kind", uMsg)
 	}
 
 	if pmVal.IsNil() {
@@ -369,9 +360,9 @@ func recursivelyCreateTreeFromMessage(msg proto.Message) (tree map[string]interf
 		}
 	}()
 
+	msg = protoext.Decorate(msg)
 	uMsg := msg
-	decorated, ok := msg.(DecoratedProto)
-	if ok {
+	if decorated, ok := msg.(DecoratedProto); ok {
 		uMsg = decorated.Underlying()
 	}
 
@@ -428,9 +419,9 @@ func recursivelyPopulateMessageFromTree(tree map[string]interface{}, msg proto.M
 		}
 	}()
 
+	msg = protoext.Decorate(msg)
 	uMsg := msg
-	decorated, ok := msg.(DecoratedProto)
-	if ok {
+	if decorated, ok := msg.(DecoratedProto); ok {
 		uMsg = decorated.Underlying()
 	}
 

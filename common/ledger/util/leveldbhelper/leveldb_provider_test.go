@@ -1,27 +1,26 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package leveldbhelper
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/dataformat"
+
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	flogging.ActivateSpec("leveldbhelper=debug")
+	os.Exit(m.Run())
+}
 
 func TestDBBasicWriteAndReads(t *testing.T) {
 	testDBBasicWriteAndReads(t, "db1", "db2", "")
@@ -88,6 +87,90 @@ func TestBatchedUpdates(t *testing.T) {
 		val3, _ := db.Get([]byte("key3"))
 		assert.Equal(t, "value3", string(val3))
 	}
+}
+
+func TestFormatCheck(t *testing.T) {
+	testCases := []struct {
+		dataFormat     string
+		dataExists     bool
+		expectedFormat string
+		expectedErr    *dataformat.ErrVersionMismatch
+	}{
+		{
+			dataFormat:     "",
+			dataExists:     true,
+			expectedFormat: "",
+			expectedErr:    nil,
+		},
+		{
+			dataFormat:     "",
+			dataExists:     false,
+			expectedFormat: "",
+			expectedErr:    nil,
+		},
+		{
+			dataFormat:     "",
+			dataExists:     false,
+			expectedFormat: "2.0",
+			expectedErr:    nil,
+		},
+		{
+			dataFormat:     "",
+			dataExists:     true,
+			expectedFormat: "2.0",
+			expectedErr:    &dataformat.ErrVersionMismatch{Version: "", ExpectedVersion: "2.0"},
+		},
+		{
+			dataFormat:     "2.0",
+			dataExists:     true,
+			expectedFormat: "2.0",
+			expectedErr:    nil,
+		},
+		{
+			dataFormat:     "2.0",
+			dataExists:     true,
+			expectedFormat: "3.0",
+			expectedErr:    &dataformat.ErrVersionMismatch{Version: "2.0", ExpectedVersion: "3.0"},
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(
+			fmt.Sprintf("testCase %d", i),
+			func(t *testing.T) {
+				testFormatCheck(t, testCase.dataFormat, testCase.expectedFormat, testCase.dataExists, testCase.expectedErr)
+			})
+	}
+}
+
+func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *dataformat.ErrVersionMismatch) {
+	assert.NoError(t, os.RemoveAll(testDBPath))
+	defer func() {
+		assert.NoError(t, os.RemoveAll(testDBPath))
+	}()
+
+	// setup test pre-conditions (create a db with dbformat)
+	p, err := NewProvider(&Conf{DBPath: testDBPath, ExpectedFormatVersion: dataFormat})
+	assert.NoError(t, err)
+	f, err := p.GetDataFormat()
+	assert.NoError(t, err)
+	assert.Equal(t, dataFormat, f)
+	if dataExists {
+		assert.NoError(t, p.GetDBHandle("testdb").Put([]byte("key"), []byte("value"), true))
+	}
+
+	// close and reopen with new conf
+	p.Close()
+	p, err = NewProvider(&Conf{DBPath: testDBPath, ExpectedFormatVersion: expectedFormat})
+	if expectedErr != nil {
+		expectedErr.DBInfo = fmt.Sprintf("leveldb at [%s]", testDBPath)
+		assert.Equal(t, err, expectedErr)
+		return
+	}
+	assert.NoError(t, err)
+	f, err = p.GetDataFormat()
+	assert.NoError(t, err)
+	assert.Equal(t, expectedFormat, f)
 }
 
 func testDBBasicWriteAndReads(t *testing.T, dbNames ...string) {

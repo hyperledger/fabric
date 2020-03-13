@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package policies
 
 import (
-	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // ConfigPolicy defines a common representation for different *cb.ConfigPolicy values.
@@ -39,7 +39,7 @@ func (scv *StandardConfigPolicy) Value() *cb.Policy {
 func makeImplicitMetaPolicy(subPolicyName string, rule cb.ImplicitMetaPolicy_Rule) *cb.Policy {
 	return &cb.Policy{
 		Type: int32(cb.Policy_IMPLICIT_META),
-		Value: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+		Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 			Rule:      rule,
 			SubPolicy: subPolicyName,
 		}),
@@ -70,13 +70,13 @@ func ImplicitMetaMajorityPolicy(policyName string) *StandardConfigPolicy {
 	}
 }
 
-// ImplicitMetaMajorityPolicy defines a policy with key policyName and the given signature policy.
+// SignaturePolicy defines a policy with key policyName and the given signature policy.
 func SignaturePolicy(policyName string, sigPolicy *cb.SignaturePolicyEnvelope) *StandardConfigPolicy {
 	return &StandardConfigPolicy{
 		key: policyName,
 		value: &cb.Policy{
 			Type:  int32(cb.Policy_SIGNATURE),
-			Value: utils.MarshalOrPanic(sigPolicy),
+			Value: protoutil.MarshalOrPanic(sigPolicy),
 		},
 	}
 }

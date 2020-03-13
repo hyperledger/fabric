@@ -144,11 +144,11 @@ func TestConcurrency(t *testing.T) {
 
 func TestExpiration(t *testing.T) {
 	t.Parallel()
-	expired := make([]int, 0)
+	expired := make(chan int, 50)
 	msgTTL := time.Second * 3
 
 	msgStore := NewMessageStoreExpirable(nonReplaceInts, Noop, msgTTL, nil, nil, func(m interface{}) {
-		expired = append(expired, m.(int))
+		expired <- m.(int)
 	})
 
 	for i := 0; i < 10; i++ {

@@ -16,7 +16,8 @@ import (
 
 func TestDataKeyEncoding(t *testing.T) {
 	dataKey1 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns1", coll: "coll1", blkNum: 2}, txNum: 5}
-	datakey2 := decodeDatakey(encodeDataKey(dataKey1))
+	datakey2, err := decodeDatakey(encodeDataKey(dataKey1))
+	assert.NoError(t, err)
 	assert.Equal(t, dataKey1, datakey2)
 }
 

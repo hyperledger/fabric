@@ -138,8 +138,6 @@ peer:
 
     # Peer port to accept connections on
     port:    21212
-    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
-    gomaxprocs: -1
     workers: 2
 
     # Sync related configuration
@@ -289,33 +287,38 @@ vm:
 chaincode:
 
     # The id is used by the Chaincode stub to register the executing Chaincode
-    # ID with the Peerand is generally supplied through ENV variables
-    # the Path form of ID is provided when deploying the chaincode. The name is
-    # used for all other requests. The name is really a hashcode
-    # returned by the system in response to the deploy transaction. In
-    # development mode where user runs the chaincode, the name can be any string
+    # ID with the Peer and is generally supplied through ENV variables
+    # the `path` form of ID is provided when installing the chaincode.
+    # The `name` is used for all other requests and can be any string.
     id:
         path:
         name:
 
     # Generic builder environment, suitable for most chaincode types
-    builder: $(DOCKER_NS)/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+    builder: $(DOCKER_NS)/fabric-ccenv:$(TWO_DIGIT_VERSION)
+
+    # Enables/disables force pulling of the base docker images (listed below)
+    # during user chaincode instantiation.
+    # Useful when using moving image tags (such as :latest)
+    pull: false
 
     golang:
         # golang will never need more than baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        runtime: $(DOCKER_NS)/fabric-baseos:$(TWO_DIGIT_VERSION)
 
-    car:
-        # car may need more facilities (JVM, etc) in the future as the catalog
-        # of platforms are expanded.  For now, we can just use baseos
-        runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
+        # whether or not golang chaincode should be linked dynamically
+        dynamicLink: false
 
     java:
         # This is an image based on java:openjdk-8 with addition compiler
         # tools added for java shim layer packaging.
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
-        runtime:  $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+        runtime: $(DOCKER_NS)/fabric-javaenv:$(TWO_DIGIT_VERSION)
+
+    node:
+        # This is an image based on node:$(NODE_VER)-alpine
+        runtime: $(DOCKER_NS)/fabric-nodeenv:$(TWO_DIGIT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests

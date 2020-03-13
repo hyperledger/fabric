@@ -14,15 +14,15 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -87,10 +87,11 @@ func (inspector InspectorFunc) Inspect(ctx context.Context, p proto.Message) err
 
 // Handler handles server requests.
 type Handler struct {
-	ChainManager     ChainManager
-	TimeWindow       time.Duration
-	BindingInspector Inspector
-	Metrics          *Metrics
+	ExpirationCheckFunc func(identityBytes []byte) time.Time
+	ChainManager        ChainManager
+	TimeWindow          time.Duration
+	BindingInspector    Inspector
+	Metrics             *Metrics
 }
 
 //go:generate counterfeiter -o mock/receiver.go -fake-name Receiver . Receiver
@@ -105,12 +106,17 @@ type Receiver interface {
 // ResponseSender defines the interface a handler must implement to send
 // responses.
 type ResponseSender interface {
+	// SendStatusResponse sends completion status to the client.
 	SendStatusResponse(status cb.Status) error
-	SendBlockResponse(block *cb.Block) error
+	// SendBlockResponse sends the block and optionally private data to the client.
+	SendBlockResponse(data *cb.Block, channelID string, chain Chain, signedData *protoutil.SignedData) error
+	// DataType returns the data type sent by the sender
+	DataType() string
 }
 
 // Filtered is a marker interface that indicates a response sender
 // is configured to send filtered blocks
+// Note: this is replaced by "data_type" label. Keep it for now until we decide how to take care of compatibility issue.
 type Filtered interface {
 	IsFiltered() bool
 }
@@ -133,12 +139,17 @@ func ExtractChannelHeaderCertHash(msg proto.Message) []byte {
 }
 
 // NewHandler creates an implementation of the Handler interface.
-func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metrics *Metrics) *Handler {
+func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metrics *Metrics, expirationCheckDisabled bool) *Handler {
+	expirationCheck := crypto.ExpiresAt
+	if expirationCheckDisabled {
+		expirationCheck = noExpiration
+	}
 	return &Handler{
-		ChainManager:     cm,
-		TimeWindow:       timeWindow,
-		BindingInspector: InspectorFunc(comm.NewBindingInspector(mutualTLS, ExtractChannelHeaderCertHash)),
-		Metrics:          metrics,
+		ChainManager:        cm,
+		TimeWindow:          timeWindow,
+		BindingInspector:    InspectorFunc(comm.NewBindingInspector(mutualTLS, ExtractChannelHeaderCertHash)),
+		Metrics:             metrics,
+		ExpirationCheckFunc: expirationCheck,
 	}
 }
 
@@ -187,26 +198,9 @@ func isFiltered(srv *Server) bool {
 
 func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.Envelope) (status cb.Status, err error) {
 	addr := util.ExtractRemoteAddress(ctx)
-	payload, err := utils.UnmarshalPayload(envelope.Payload)
+	payload, chdr, shdr, err := h.parseEnvelope(ctx, envelope)
 	if err != nil {
-		logger.Warningf("Received an envelope from %s with no payload: %s", addr, err)
-		return cb.Status_BAD_REQUEST, nil
-	}
-
-	if payload.Header == nil {
-		logger.Warningf("Malformed envelope received from %s with bad header", addr)
-		return cb.Status_BAD_REQUEST, nil
-	}
-
-	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
-	if err != nil {
-		logger.Warningf("Failed to unmarshal channel header from %s: %s", addr, err)
-		return cb.Status_BAD_REQUEST, nil
-	}
-
-	err = h.validateChannelHeader(ctx, chdr)
-	if err != nil {
-		logger.Warningf("Rejecting deliver for %s due to envelope validation error: %s", addr, err)
+		logger.Warningf("error parsing envelope from %s: %s", addr, err)
 		return cb.Status_BAD_REQUEST, nil
 	}
 
@@ -221,6 +215,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	labels := []string{
 		"channel", chdr.ChannelId,
 		"filtered", strconv.FormatBool(isFiltered(srv)),
+		"data_type", srv.DataType(),
 	}
 	h.Metrics.RequestsReceived.With(labels...).Add(1)
 	defer func() {
@@ -228,7 +223,18 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 		h.Metrics.RequestsCompleted.With(labels...).Add(1)
 	}()
 
+	seekInfo := &ab.SeekInfo{}
+	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
+		logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
+		return cb.Status_BAD_REQUEST, nil
+	}
+
 	erroredChan := chain.Errored()
+	if seekInfo.ErrorResponse == ab.SeekInfo_BEST_EFFORT {
+		// In a 'best effort' delivery of blocks, we should ignore consenter errors
+		// and continue to deliver blocks according to the client's request.
+		erroredChan = nil
+	}
 	select {
 	case <-erroredChan:
 		logger.Warningf("[channel: %s] Rejecting deliver request for %s because of consenter error", chdr.ChannelId, addr)
@@ -236,7 +242,7 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	default:
 	}
 
-	accessControl, err := NewSessionAC(chain, envelope, srv.PolicyChecker, chdr.ChannelId, crypto.ExpiresAt)
+	accessControl, err := NewSessionAC(chain, envelope, srv.PolicyChecker, chdr.ChannelId, h.ExpirationCheckFunc)
 	if err != nil {
 		logger.Warningf("[channel: %s] failed to create access control object due to %s", chdr.ChannelId, err)
 		return cb.Status_BAD_REQUEST, nil
@@ -245,12 +251,6 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	if err := accessControl.Evaluate(); err != nil {
 		logger.Warningf("[channel: %s] Client authorization revoked for deliver request from %s: %s", chdr.ChannelId, addr, err)
 		return cb.Status_FORBIDDEN, nil
-	}
-
-	seekInfo := &ab.SeekInfo{}
-	if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
-		logger.Warningf("[channel: %s] Received a signed deliver request from %s with malformed seekInfo payload: %s", chdr.ChannelId, addr, err)
-		return cb.Status_BAD_REQUEST, nil
 	}
 
 	if seekInfo.Start == nil || seekInfo.Stop == nil {
@@ -267,6 +267,14 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	case *ab.SeekPosition_Oldest:
 		stopNum = number
 	case *ab.SeekPosition_Newest:
+		// when seeking only the newest block (i.e. starting
+		// and stopping at newest), don't reevaluate the ledger
+		// height as this can lead to multiple blocks being
+		// sent when only one is expected
+		if proto.Equal(seekInfo.Start, seekInfo.Stop) {
+			stopNum = number
+			break
+		}
 		stopNum = chain.Reader().Height() - 1
 	case *ab.SeekPosition_Specified:
 		stopNum = stop.Specified.Number
@@ -297,7 +305,9 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 			logger.Debugf("Context canceled, aborting wait for next block")
 			return cb.Status_INTERNAL_SERVER_ERROR, errors.Wrapf(ctx.Err(), "context finished before block retrieved")
 		case <-erroredChan:
-			logger.Warningf("Aborting deliver for request because of background error")
+			// TODO, today, the only user of the errorChan is the orderer consensus implementations.  If the peer ever reports
+			// this error, we will need to update this error message, possibly finding a way to signal what error text to return.
+			logger.Warningf("Aborting deliver for request because the backing consensus implementation indicates an error")
 			return cb.Status_SERVICE_UNAVAILABLE, nil
 		case <-iterCh:
 			// Iterator has set the block and status vars
@@ -316,9 +326,10 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 			return cb.Status_FORBIDDEN, nil
 		}
 
-		logger.Debugf("[channel: %s] Delivering block for (%p) for %s", chdr.ChannelId, seekInfo, addr)
+		logger.Debugf("[channel: %s] Delivering block [%d] for (%p) for %s", chdr.ChannelId, block.Header.Number, seekInfo, addr)
 
-		if err := srv.SendBlockResponse(block); err != nil {
+		signedData := &protoutil.SignedData{Data: envelope.Payload, Identity: shdr.Creator, Signature: envelope.Signature}
+		if err := srv.SendBlockResponse(block, chdr.ChannelId, chain, signedData); err != nil {
 			logger.Warningf("[channel: %s] Error sending to %s: %s", chdr.ChannelId, addr, err)
 			return cb.Status_INTERNAL_SERVER_ERROR, err
 		}
@@ -333,6 +344,34 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	logger.Debugf("[channel: %s] Done delivering to %s for (%p)", chdr.ChannelId, addr, seekInfo)
 
 	return cb.Status_SUCCESS, nil
+}
+
+func (h *Handler) parseEnvelope(ctx context.Context, envelope *cb.Envelope) (*cb.Payload, *cb.ChannelHeader, *cb.SignatureHeader, error) {
+	payload, err := protoutil.UnmarshalPayload(envelope.Payload)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if payload.Header == nil {
+		return nil, nil, nil, errors.New("envelope has no header")
+	}
+
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	shdr, err := protoutil.UnmarshalSignatureHeader(payload.Header.SignatureHeader)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	err = h.validateChannelHeader(ctx, chdr)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return payload, chdr, shdr, nil
 }
 
 func (h *Handler) validateChannelHeader(ctx context.Context, chdr *cb.ChannelHeader) error {
@@ -355,4 +394,8 @@ func (h *Handler) validateChannelHeader(ctx context.Context, chdr *cb.ChannelHea
 	}
 
 	return nil
+}
+
+func noExpiration(_ []byte) time.Time {
+	return time.Time{}
 }

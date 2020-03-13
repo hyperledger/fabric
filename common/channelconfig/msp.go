@@ -10,9 +10,10 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 
@@ -25,16 +26,18 @@ type pendingMSPConfig struct {
 type MSPConfigHandler struct {
 	version msp.MSPVersion
 	idMap   map[string]*pendingMSPConfig
+	bccsp   bccsp.BCCSP
 }
 
-func NewMSPConfigHandler(mspVersion msp.MSPVersion) *MSPConfigHandler {
+func NewMSPConfigHandler(mspVersion msp.MSPVersion, bccsp bccsp.BCCSP) *MSPConfigHandler {
 	return &MSPConfigHandler{
 		version: mspVersion,
 		idMap:   make(map[string]*pendingMSPConfig),
+		bccsp:   bccsp,
 	}
 }
 
-// ProposeValue called when an org defines an MSP
+// ProposeMSP called when an org defines an MSP
 func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP, error) {
 	var theMsp msp.MSP
 	var err error
@@ -42,7 +45,10 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 	switch mspConfig.Type {
 	case int32(msp.FABRIC):
 		// create the bccsp msp instance
-		mspInst, err := msp.New(&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: bh.version}})
+		mspInst, err := msp.New(
+			&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: bh.version}},
+			bh.bccsp,
+		)
 		if err != nil {
 			return nil, errors.WithMessage(err, "creating the MSP manager failed")
 		}
@@ -54,9 +60,10 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 		}
 	case int32(msp.IDEMIX):
 		// create the idemix msp instance
-		theMsp, err = msp.New(&msp.IdemixNewOpts{
-			NewBaseOpts: msp.NewBaseOpts{Version: bh.version},
-		})
+		theMsp, err = msp.New(
+			&msp.IdemixNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: bh.version}},
+			bh.bccsp,
+		)
 		if err != nil {
 			return nil, errors.WithMessage(err, "creating the MSP manager failed")
 		}

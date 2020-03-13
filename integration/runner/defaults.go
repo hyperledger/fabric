@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/integration/helpers"
 )
 
-const DefaultStartTimeout = 30 * time.Second
+const DefaultStartTimeout = 45 * time.Second
 
 // DefaultNamer is the default naming function.
 var DefaultNamer NameFunc = helpers.UniqueName

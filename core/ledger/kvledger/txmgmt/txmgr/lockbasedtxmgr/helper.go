@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,6 +9,8 @@ package lockbasedtxmgr
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	ledger "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -15,11 +18,13 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/protos/ledger/queryresult"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/pkg/errors"
+)
+
+const (
+	queryReadsHashingEnabled   = true
+	maxDegreeQueryReadsHashing = uint32(50)
 )
 
 type queryHelper struct {
@@ -29,11 +34,16 @@ type queryHelper struct {
 	itrs              []*resultsItr
 	err               error
 	doneInvoked       bool
+	hasher            ledger.Hasher
 }
 
-func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder) *queryHelper {
-	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: rwsetBuilder}
-	validator := newCollNameValidator(txmgr.ccInfoProvider, &lockBasedQueryExecutor{helper: helper})
+func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool, hasher ledger.Hasher) *queryHelper {
+	helper := &queryHelper{
+		txmgr:        txmgr,
+		rwsetBuilder: rwsetBuilder,
+		hasher:       hasher,
+	}
+	validator := newCollNameValidator(txmgr.ledgerid, txmgr.ccInfoProvider, &lockBasedQueryExecutor{helper: helper}, !performCollCheck)
 	helper.collNameValidator = validator
 	return helper
 }
@@ -76,8 +86,17 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
-	itr, err := newResultsItr(namespace, startKey, endKey, nil, h.txmgr.db, h.rwsetBuilder,
-		ledgerconfig.IsQueryReadsHashingEnabled(), ledgerconfig.GetMaxDegreeQueryReadsHashing())
+	itr, err := newResultsItr(
+		namespace,
+		startKey,
+		endKey,
+		nil,
+		h.txmgr.db,
+		h.rwsetBuilder,
+		queryReadsHashingEnabled,
+		maxDegreeQueryReadsHashing,
+		h.hasher,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +108,17 @@ func (h *queryHelper) getStateRangeScanIteratorWithMetadata(namespace string, st
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
-	itr, err := newResultsItr(namespace, startKey, endKey, metadata, h.txmgr.db, h.rwsetBuilder,
-		ledgerconfig.IsQueryReadsHashingEnabled(), ledgerconfig.GetMaxDegreeQueryReadsHashing())
+	itr, err := newResultsItr(
+		namespace,
+		startKey,
+		endKey,
+		metadata,
+		h.txmgr.db,
+		h.rwsetBuilder,
+		queryReadsHashingEnabled,
+		maxDegreeQueryReadsHashing,
+		h.hasher,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +173,7 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 	}
 	if !version.AreSame(hashVersion, ver) {
 		return nil, &txmgr.ErrPvtdataNotAvailable{Msg: fmt.Sprintf(
-			"private data matching public hash version is not available. Public hash version = %#v, Private data version = %#v",
+			"private data matching public hash version is not available. Public hash version = %s, Private data version = %s",
 			hashVersion, ver)}
 	}
 	if h.rwsetBuilder != nil {
@@ -162,9 +190,7 @@ func (h *queryHelper) getPrivateDataValueHash(ns, coll, key string) (valueHash, 
 		return nil, nil, err
 	}
 	var versionedValue *statedb.VersionedValue
-
-	keyHash := util.ComputeStringHash(key)
-	if versionedValue, err = h.txmgr.db.GetValueHash(ns, coll, keyHash); err != nil {
+	if versionedValue, err = h.txmgr.db.GetPrivateDataHash(ns, coll, key); err != nil {
 		return nil, nil, err
 	}
 	valHash, metadata, ver := decomposeVersionedValue(versionedValue)
@@ -302,10 +328,10 @@ func (h *queryHelper) addRangeQueryInfo() {
 				return
 			}
 			if results != nil {
-				itr.rangeQueryInfo.SetRawReads(results)
+				rwsetutil.SetRawReads(itr.rangeQueryInfo, results)
 			}
 			if hash != nil {
-				itr.rangeQueryInfo.SetMerkelSummary(hash)
+				rwsetutil.SetMerkelSummary(itr.rangeQueryInfo, hash)
 			}
 			h.rwsetBuilder.AddToRangeQuerySet(itr.ns, itr.rangeQueryInfo)
 		}
@@ -337,7 +363,7 @@ type resultsItr struct {
 }
 
 func newResultsItr(ns string, startKey string, endKey string, metadata map[string]interface{},
-	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32) (*resultsItr, error) {
+	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32, hasher ledger.Hasher) (*resultsItr, error) {
 	var err error
 	var dbItr statedb.ResultsIterator
 	if metadata == nil {
@@ -355,7 +381,7 @@ func newResultsItr(ns string, startKey string, endKey string, metadata map[strin
 		itr.endKey = endKey
 		// just set the StartKey... set the EndKey later below in the Next() method.
 		itr.rangeQueryInfo = &kvrwset.RangeQueryInfo{StartKey: startKey}
-		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree)
+		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree, hasher)
 		if err != nil {
 			return nil, err
 		}

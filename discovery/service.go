@@ -12,13 +12,14 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/discovery/protoext"
 	common2 "github.com/hyperledger/fabric/gossip/common"
 	discovery2 "github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/discovery"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -37,8 +38,8 @@ type dispatcher func(q *discovery.Query) *discovery.QueryResult
 
 type service struct {
 	config             Config
-	channelDispatchers map[discovery.QueryType]dispatcher
-	localDispatchers   map[discovery.QueryType]dispatcher
+	channelDispatchers map[protoext.QueryType]dispatcher
+	localDispatchers   map[protoext.QueryType]dispatcher
 	auth               *authCache
 	Support
 }
@@ -72,13 +73,13 @@ func NewService(config Config, sup Support) *service {
 		}),
 		Support: sup,
 	}
-	s.channelDispatchers = map[discovery.QueryType]dispatcher{
-		discovery.ConfigQueryType:         s.configQuery,
-		discovery.ChaincodeQueryType:      s.chaincodeQuery,
-		discovery.PeerMembershipQueryType: s.channelMembershipResponse,
+	s.channelDispatchers = map[protoext.QueryType]dispatcher{
+		protoext.ConfigQueryType:         s.configQuery,
+		protoext.ChaincodeQueryType:      s.chaincodeQuery,
+		protoext.PeerMembershipQueryType: s.channelMembershipResponse,
 	}
-	s.localDispatchers = map[discovery.QueryType]dispatcher{
-		discovery.LocalMembershipQueryType: s.localMembershipResponse,
+	s.localDispatchers = map[protoext.QueryType]dispatcher{
+		protoext.LocalMembershipQueryType: s.localMembershipResponse,
 	}
 	logger.Info("Created with config", config)
 	return s
@@ -107,7 +108,7 @@ func (s *service) processQuery(query *discovery.Query, request *discovery.Signed
 		logger.Warning("got query for channel", query.Channel, "from", addr, "but it doesn't exist")
 		return accessDenied
 	}
-	if err := s.auth.EligibleForService(query.Channel, common.SignedData{
+	if err := s.auth.EligibleForService(query.Channel, protoutil.SignedData{
 		Data:      request.Payload,
 		Signature: request.Signature,
 		Identity:  identity,
@@ -124,7 +125,7 @@ func (s *service) dispatch(q *discovery.Query) *discovery.QueryResult {
 	if q.Channel == "" {
 		dispatchers = s.localDispatchers
 	}
-	dispatchQuery, exists := dispatchers[q.GetType()]
+	dispatchQuery, exists := dispatchers[protoext.GetQueryType(q)]
 	if !exists {
 		return wrapError(errors.New("unknown or missing request type"))
 	}
@@ -137,7 +138,7 @@ func (s *service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
 	}
 	var descriptors []*discovery.EndorsementDescriptor
 	for _, interest := range q.GetCcQuery().Interests {
-		desc, err := s.PeersForEndorsement(common2.ChainID(q.Channel), interest)
+		desc, err := s.PeersForEndorsement(common2.ChannelID(q.Channel), interest)
 		if err != nil {
 			logger.Errorf("Failed constructing descriptor for chaincode %s,: %v", interest, err)
 			return wrapError(errors.Errorf("failed constructing descriptor for %v", interest))
@@ -178,7 +179,7 @@ func wrapPeerResponse(peersByOrg map[string]*discovery.Peers) *discovery.QueryRe
 }
 
 func (s *service) channelMembershipResponse(q *discovery.Query) *discovery.QueryResult {
-	chanPeers, err := s.PeersAuthorizedByCriteria(common2.ChainID(q.Channel), q.GetPeerQuery().Filter)
+	chanPeers, err := s.PeersAuthorizedByCriteria(common2.ChannelID(q.Channel), q.GetPeerQuery().Filter)
 	if err != nil {
 		return wrapError(err)
 	}
@@ -237,7 +238,7 @@ func validateStructure(ctx context.Context, request *discovery.SignedRequest, tl
 	if request == nil {
 		return nil, errors.New("nil request")
 	}
-	req, err := request.ToRequest()
+	req, err := protoext.SignedRequestToRequest(request)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed parsing request")
 	}

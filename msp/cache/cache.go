@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package cache
 
 import (
+	pmsp "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
-	pmsp "github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 
@@ -83,7 +83,7 @@ func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity
 }
 
 func (c *cachedMSP) Setup(config *pmsp.MSPConfig) error {
-	c.cleanCash()
+	c.cleanCache()
 
 	return c.MSP.Setup(config)
 }
@@ -127,7 +127,7 @@ func (c *cachedMSP) SatisfiesPrincipal(id msp.Identity, principal *pmsp.MSPPrinc
 	return err
 }
 
-func (c *cachedMSP) cleanCash() error {
+func (c *cachedMSP) cleanCache() error {
 	c.deserializeIdentityCache = newSecondChanceCache(deserializeIdentityCacheSize)
 	c.satisfiesPrincipalCache = newSecondChanceCache(satisfiesPrincipalCacheSize)
 	c.validateIdentityCache = newSecondChanceCache(validateIdentityCacheSize)

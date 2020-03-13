@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cc
+package cclifecycle
 
 import (
 	"github.com/golang/protobuf/proto"
@@ -68,7 +68,12 @@ func DeployedChaincodes(q Query, filter ChaincodePredicate, loadCollections bool
 				Logger.Errorf("Failed querying lscc namespace for %s: %v", key, err)
 				return nil, errors.WithStack(err)
 			}
-			instCC.CollectionsConfig = collectionData
+			ccp, err := privdata.ParseCollectionConfig(collectionData)
+			if err != nil {
+				Logger.Errorf("failed to parse collection config, error %s", err.Error())
+				return nil, errors.Wrapf(err, "failed to parse collection config")
+			}
+			instCC.CollectionsConfig = ccp
 			Logger.Debug("Retrieved collection config for", cc, "from", key)
 		}
 

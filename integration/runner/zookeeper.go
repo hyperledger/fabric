@@ -20,7 +20,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-const ZooKeeperDefaultImage = "hyperledger/fabric-zookeeper:latest"
+const ZooKeeperDefaultImage = "confluentinc/cp-zookeeper:5.3.1"
 
 type ZooKeeper struct {
 	Client         *docker.Client
@@ -104,8 +104,9 @@ func (z *ZooKeeper) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 		Config: &docker.Config{
 			Image: z.Image,
 			Env: []string{
-				fmt.Sprintf("ZOO_MY_ID=%d", z.ZooMyID),
-				fmt.Sprintf("ZOO_SERVERS=%s", z.ZooServers),
+				fmt.Sprintf("ZOOKEEPER_MY_ID=%d", z.ZooMyID),
+				fmt.Sprintf("ZOOKEEPER_SERVERS=%s", z.ZooServers),
+				fmt.Sprintf("ZOOKEEPER_CLIENT_PORT=%s", z.ClientPort.Port()),
 			},
 		},
 	}

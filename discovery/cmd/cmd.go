@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/cmd/common"
-	"github.com/hyperledger/fabric/discovery/client"
+	discovery "github.com/hyperledger/fabric/discovery/client"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -74,10 +74,13 @@ func AddCommands(cli CommandRegistrar) {
 	endorsers := cli.Command(EndorsersCommand, "Discover chaincode endorsers", endorserCmd.Execute)
 	chaincodes := endorsers.Flag("chaincode", "Specifies the chaincode name(s)").Strings()
 	collections := endorsers.Flag("collection", "Specifies the collection name(s) as a mapping from chaincode to a comma separated list of collections").PlaceHolder("CC:C1,C2").StringMap()
+	noPrivReads := endorsers.Flag("noPrivateReads", "Specifies chaincodes that are not expected to be have private data read").PlaceHolder("CHAINCODE").Strings()
+
 	server = endorsers.Flag("server", "Sets the endpoint of the server to connect").String()
 	channel = endorsers.Flag("channel", "Sets the channel the query is intended to").String()
 	endorserCmd.SetChannel(channel)
 	endorserCmd.SetServer(server)
 	endorserCmd.SetChaincodes(chaincodes)
 	endorserCmd.SetCollections(collections)
+	endorserCmd.SetNoPrivateReads(noPrivReads)
 }

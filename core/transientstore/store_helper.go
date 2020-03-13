@@ -9,13 +9,11 @@ package transientstore
 import (
 	"bytes"
 	"errors"
-	"path/filepath"
 
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/ledger/rwset"
 )
 
 var (
@@ -78,21 +76,24 @@ func createCompositeKeyForPurgeIndexByHeight(blockHeight uint64, txid string, uu
 
 // splitCompositeKeyOfPvtRWSet splits the compositeKey (<prwsetPrefix>~txid~uuid~blockHeight)
 // into uuid and blockHeight.
-func splitCompositeKeyOfPvtRWSet(compositeKey []byte) (uuid string, blockHeight uint64) {
+func splitCompositeKeyOfPvtRWSet(compositeKey []byte) (uuid string, blockHeight uint64, err error) {
 	return splitCompositeKeyWithoutPrefixForTxid(compositeKey[2:])
 }
 
 // splitCompositeKeyOfPurgeIndexByTxid splits the compositeKey (<purgeIndexByTxidPrefix>~txid~uuid~blockHeight)
 // into uuid and blockHeight.
-func splitCompositeKeyOfPurgeIndexByTxid(compositeKey []byte) (uuid string, blockHeight uint64) {
+func splitCompositeKeyOfPurgeIndexByTxid(compositeKey []byte) (uuid string, blockHeight uint64, err error) {
 	return splitCompositeKeyWithoutPrefixForTxid(compositeKey[2:])
 }
 
 // splitCompositeKeyOfPurgeIndexByHeight splits the compositeKey (<purgeIndexByHeightPrefix>~blockHeight~txid~uuid)
 // into txid, uuid and blockHeight.
-func splitCompositeKeyOfPurgeIndexByHeight(compositeKey []byte) (txid string, uuid string, blockHeight uint64) {
+func splitCompositeKeyOfPurgeIndexByHeight(compositeKey []byte) (txid string, uuid string, blockHeight uint64, err error) {
 	var n int
-	blockHeight, n = util.DecodeOrderPreservingVarUint64(compositeKey[2:])
+	blockHeight, n, err = util.DecodeOrderPreservingVarUint64(compositeKey[2:])
+	if err != nil {
+		return
+	}
 	splits := bytes.Split(compositeKey[n+3:], []byte{compositeKeySep})
 	txid = string(splits[0])
 	uuid = string(splits[1])
@@ -101,12 +102,12 @@ func splitCompositeKeyOfPurgeIndexByHeight(compositeKey []byte) (txid string, uu
 
 // splitCompositeKeyWithoutPrefixForTxid splits the composite key txid~uuid~blockHeight into
 // uuid and blockHeight
-func splitCompositeKeyWithoutPrefixForTxid(compositeKey []byte) (uuid string, blockHeight uint64) {
+func splitCompositeKeyWithoutPrefixForTxid(compositeKey []byte) (uuid string, blockHeight uint64, err error) {
 	// skip txid as all functions which requires split of composite key already has it
 	firstSepIndex := bytes.IndexByte(compositeKey, compositeKeySep)
 	secondSepIndex := firstSepIndex + bytes.IndexByte(compositeKey[firstSepIndex+1:], compositeKeySep) + 1
 	uuid = string(compositeKey[firstSepIndex+1 : secondSepIndex])
-	blockHeight, _ = util.DecodeOrderPreservingVarUint64(compositeKey[secondSepIndex+1:])
+	blockHeight, _, err = util.DecodeOrderPreservingVarUint64(compositeKey[secondSepIndex+1:])
 	return
 }
 
@@ -178,12 +179,6 @@ func createPurgeIndexByTxidRangeEndKey(txid string) []byte {
 	return endKey
 }
 
-// GetTransientStorePath returns the filesystem path for temporarily storing the private rwset
-func GetTransientStorePath() string {
-	sysPath := config.GetPath("peer.fileSystemPath")
-	return filepath.Join(sysPath, "transientStore")
-}
-
 // trimPvtWSet returns a `TxPvtReadWriteSet` that retains only list of 'ns/collections' supplied in the filter
 // A nil filter does not filter any results and returns the original `pvtWSet` as is
 func trimPvtWSet(pvtWSet *rwset.TxPvtReadWriteSet, filter ledger.PvtNsCollFilter) *rwset.TxPvtReadWriteSet {
@@ -218,18 +213,18 @@ func trimPvtWSet(pvtWSet *rwset.TxPvtReadWriteSet, filter ledger.PvtNsCollFilter
 	return filteredTxPvtRwSet
 }
 
-func trimPvtCollectionConfigs(configs map[string]*common.CollectionConfigPackage,
-	filter ledger.PvtNsCollFilter) (map[string]*common.CollectionConfigPackage, error) {
+func trimPvtCollectionConfigs(configs map[string]*peer.CollectionConfigPackage,
+	filter ledger.PvtNsCollFilter) (map[string]*peer.CollectionConfigPackage, error) {
 	if filter == nil {
 		return configs, nil
 	}
-	result := make(map[string]*common.CollectionConfigPackage)
+	result := make(map[string]*peer.CollectionConfigPackage)
 
 	for ns, pkg := range configs {
-		result[ns] = &common.CollectionConfigPackage{}
+		result[ns] = &peer.CollectionConfigPackage{}
 		for _, colConf := range pkg.GetConfig() {
 			switch cconf := colConf.Payload.(type) {
-			case *common.CollectionConfig_StaticCollectionConfig:
+			case *peer.CollectionConfig_StaticCollectionConfig:
 				if filter.Has(ns, cconf.StaticCollectionConfig.Name) {
 					result[ns].Config = append(result[ns].Config, colConf)
 				}

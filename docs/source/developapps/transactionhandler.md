@@ -15,12 +15,12 @@ contract sample](./smartcontract.html):
 ![develop.transactionhandler](./develop.diagram.2.png)
 
 *Before, After and Unknown transaction handlers. In this example,
-`BeforeFunction()` is called before the **issue**, **buy** and **redeem**
-transactions. `AfterFunction()` is called after the **issue**, **buy** and
-**redeem** transactions. `UnknownFunction()` is only called if a request is made
-to invoke a transaction not defined in the smart contract.  (The diagram is
-simplified by not repeating `BeforeFunction` and `AfterFunction` boxes for each
-transaction.*
+`beforeTransaction()` is called before the **issue**, **buy** and **redeem**
+transactions. `afterTransaction()` is called after the **issue**, **buy** and
+**redeem** transactions. `unknownTransaction()` is only called if a request is
+made to invoke a transaction not defined in the smart contract.  (The diagram is
+simplified by not repeating `beforeTransaction` and `afterTransaction` boxes for
+each transaction.)*
 
 ## Types of handler
 
@@ -43,6 +43,9 @@ of the interaction between an application and a smart contract:
     the failure for subsequent processing by an administrator. The handler has
     full access to the Fabric APIs.
 
+Defining a transaction handler is optional; a smart contract will perform
+correctly without handlers being defined. A smart contract can define at most
+one handler of each type.
 
 ## Defining a handler
 
@@ -74,11 +77,13 @@ CommercialPaperContract extends Contract {
 
 The form of a transaction handler definition is the similar for all handler
 types, but notice how the `afterTransaction(ctx, result)` also receives any
-result returned by the transaction.
+result returned by the transaction. The [API
+documentation](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-contract-api.Contract.html)
+shows you the exact form of these handlers.
 
 ## Handler processing
 
-Once a handler has been added to the smart contract, it can be invoked during
+Once a handler has been added to the smart contract, it will be invoked during
 transaction processing. During processing, the handler receives `ctx`, the
 [transaction context](./transationcontext.md), performs some processing, and
 returns control as it completes. Processing continues as follows:
@@ -111,6 +116,9 @@ async beforeTransaction(ctx) {
     console.info(util.format(`Function arguments : %j ${stub.getArgs()} ``);
 }
 ```
+
+See how this handler uses the utility API `getFunctionAndParameters` via the
+[transaction context](./transactioncontext.html#stub).
 
 ## Multiple handlers
 

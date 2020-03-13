@@ -175,6 +175,7 @@ func TestEcdsaPublicKey(t *testing.T) {
 	bytes, err := k.Bytes()
 	assert.NoError(t, err)
 	bytes2, err := x509.MarshalPKIXPublicKey(k.pubKey)
+	assert.NoError(t, err)
 	assert.Equal(t, bytes2, bytes, "bytes are not computed in the right way.")
 
 	invalidCurve := &elliptic.CurveParams{Name: "P-Invalid"}

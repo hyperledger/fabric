@@ -4,9 +4,11 @@
 package localconfig
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -30,7 +32,6 @@ var logger = flogging.MustGetLogger("localconfig")
 type TopLevel struct {
 	General    General
 	FileLedger FileLedger
-	RAMLedger  RAMLedger
 	Kafka      Kafka
 	Debug      Debug
 	Consensus  interface{}
@@ -40,36 +41,41 @@ type TopLevel struct {
 
 // General contains config which should be common among all orderer types.
 type General struct {
-	LedgerType     string
-	ListenAddress  string
-	ListenPort     uint16
-	TLS            TLS
-	Cluster        Cluster
-	Keepalive      Keepalive
-	GenesisMethod  string
-	GenesisProfile string
-	SystemChannel  string
-	GenesisFile    string
-	Profile        Profile
-	LocalMSPDir    string
-	LocalMSPID     string
-	BCCSP          *bccsp.FactoryOpts
-	Authentication Authentication
+	ListenAddress     string
+	ListenPort        uint16
+	TLS               TLS
+	Cluster           Cluster
+	Keepalive         Keepalive
+	ConnectionTimeout time.Duration
+	GenesisMethod     string // For compatibility only, will be replaced by BootstrapMethod
+	GenesisFile       string // For compatibility only, will be replaced by BootstrapFile
+	BootstrapMethod   string
+	BootstrapFile     string
+	Profile           Profile
+	LocalMSPDir       string
+	LocalMSPID        string
+	BCCSP             *bccsp.FactoryOpts
+	Authentication    Authentication
 }
 
 type Cluster struct {
-	ListenAddress           string
-	ListenPort              uint16
-	ServerCertificate       string
-	ServerPrivateKey        string
-	ClientCertificate       string
-	ClientPrivateKey        string
-	RootCAs                 []string
-	DialTimeout             time.Duration
-	RPCTimeout              time.Duration
-	ReplicationBufferSize   int
-	ReplicationPullTimeout  time.Duration
-	ReplicationRetryTimeout time.Duration
+	ListenAddress                        string
+	ListenPort                           uint16
+	ServerCertificate                    string
+	ServerPrivateKey                     string
+	ClientCertificate                    string
+	ClientPrivateKey                     string
+	RootCAs                              []string
+	DialTimeout                          time.Duration
+	RPCTimeout                           time.Duration
+	ReplicationBufferSize                int
+	ReplicationPullTimeout               time.Duration
+	ReplicationRetryTimeout              time.Duration
+	ReplicationBackgroundRefreshInterval time.Duration
+	ReplicationMaxRetries                int
+	SendBufferSize                       int
+	CertExpirationWarningThreshold       time.Duration
+	TLSHandshakeTimeShift                time.Duration
 }
 
 // Keepalive contains configuration for gRPC servers.
@@ -99,7 +105,8 @@ type SASLPlain struct {
 // Authentication contains configuration parameters related to authenticating
 // client messages.
 type Authentication struct {
-	TimeWindow time.Duration
+	TimeWindow         time.Duration
+	NoExpirationChecks bool
 }
 
 // Profile contains configuration for Go pprof profiling.
@@ -112,11 +119,6 @@ type Profile struct {
 type FileLedger struct {
 	Location string
 	Prefix   string
-}
-
-// RAMLedger contains configuration for the RAM ledger.
-type RAMLedger struct {
-	HistorySize uint
 }
 
 // Kafka contains configuration for the Kafka-based orderer.
@@ -206,16 +208,24 @@ type Statsd struct {
 // Defaults carries the default orderer configuration values.
 var Defaults = TopLevel{
 	General: General{
-		LedgerType:     "file",
-		ListenAddress:  "127.0.0.1",
-		ListenPort:     7050,
-		GenesisMethod:  "provisional",
-		GenesisProfile: "SampleSingleMSPSolo",
-		SystemChannel:  "test-system-channel-name",
-		GenesisFile:    "genesisblock",
+		ListenAddress:   "127.0.0.1",
+		ListenPort:      7050,
+		BootstrapMethod: "file",
+		BootstrapFile:   "genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
+		},
+		Cluster: Cluster{
+			ReplicationMaxRetries:                12,
+			RPCTimeout:                           time.Second * 7,
+			DialTimeout:                          time.Second * 5,
+			ReplicationBufferSize:                20971520,
+			SendBufferSize:                       10,
+			ReplicationBackgroundRefreshInterval: time.Minute * 5,
+			ReplicationRetryTimeout:              time.Second * 5,
+			ReplicationPullTimeout:               time.Second * 5,
+			CertExpirationWarningThreshold:       time.Hour * 24 * 7,
 		},
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",
@@ -223,9 +233,6 @@ var Defaults = TopLevel{
 		Authentication: Authentication{
 			TimeWindow: time.Duration(15 * time.Minute),
 		},
-	},
-	RAMLedger: RAMLedger{
-		HistorySize: 10000,
 	},
 	FileLedger: FileLedger{
 		Location: "/var/hyperledger/production/orderer",
@@ -278,6 +285,23 @@ var Defaults = TopLevel{
 // Load parses the orderer YAML file and environment, producing
 // a struct suitable for config use, returning error on failure.
 func Load() (*TopLevel, error) {
+	return cache.load()
+}
+
+// configCache stores marshalled bytes of config structures that produced from
+// EnhancedExactUnmarshal. Cache key is the path of the configuration file that was used.
+type configCache struct {
+	mutex sync.Mutex
+	cache map[string][]byte
+}
+
+var cache = &configCache{}
+
+// Load will load the configuration and cache it on the first call; subsequent
+// calls will return a clone of the configuration that was previously loaded.
+func (c *configCache) load() (*TopLevel, error) {
+	var uconf TopLevel
+
 	config := viper.New()
 	coreconfig.InitViper(config, "orderer")
 	config.SetEnvPrefix(Prefix)
@@ -289,12 +313,32 @@ func Load() (*TopLevel, error) {
 		return nil, fmt.Errorf("Error reading configuration: %s", err)
 	}
 
-	var uconf TopLevel
-	if err := viperutil.EnhancedExactUnmarshal(config, &uconf); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	serializedConf, ok := c.cache[config.ConfigFileUsed()]
+	if !ok {
+		err := viperutil.EnhancedExactUnmarshal(config, &uconf)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+		}
+
+		serializedConf, err = json.Marshal(uconf)
+		if err != nil {
+			return nil, err
+		}
+
+		if c.cache == nil {
+			c.cache = map[string][]byte{}
+		}
+		c.cache[config.ConfigFileUsed()] = serializedConf
 	}
 
+	err := json.Unmarshal(serializedConf, &uconf)
+	if err != nil {
+		return nil, err
+	}
 	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
+
 	return &uconf, nil
 }
 
@@ -313,32 +357,54 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		c.General.TLS.ClientRootCAs = translateCAs(configDir, c.General.TLS.ClientRootCAs)
 		coreconfig.TranslatePathInPlace(configDir, &c.General.TLS.PrivateKey)
 		coreconfig.TranslatePathInPlace(configDir, &c.General.TLS.Certificate)
-		coreconfig.TranslatePathInPlace(configDir, &c.General.GenesisFile)
+		coreconfig.TranslatePathInPlace(configDir, &c.General.BootstrapFile)
 		coreconfig.TranslatePathInPlace(configDir, &c.General.LocalMSPDir)
+		// Translate file ledger location
+		coreconfig.TranslatePathInPlace(configDir, &c.FileLedger.Location)
 	}()
 
 	for {
 		switch {
-		case c.General.LedgerType == "":
-			logger.Infof("General.LedgerType unset, setting to %s", Defaults.General.LedgerType)
-			c.General.LedgerType = Defaults.General.LedgerType
-
 		case c.General.ListenAddress == "":
 			logger.Infof("General.ListenAddress unset, setting to %s", Defaults.General.ListenAddress)
 			c.General.ListenAddress = Defaults.General.ListenAddress
 		case c.General.ListenPort == 0:
 			logger.Infof("General.ListenPort unset, setting to %v", Defaults.General.ListenPort)
 			c.General.ListenPort = Defaults.General.ListenPort
-
-		case c.General.GenesisMethod == "":
-			c.General.GenesisMethod = Defaults.General.GenesisMethod
-		case c.General.GenesisFile == "":
-			c.General.GenesisFile = Defaults.General.GenesisFile
-		case c.General.GenesisProfile == "":
-			c.General.GenesisProfile = Defaults.General.GenesisProfile
-		case c.General.SystemChannel == "":
-			c.General.SystemChannel = Defaults.General.SystemChannel
-
+		case c.General.BootstrapMethod == "":
+			if c.General.GenesisMethod != "" {
+				// This is to keep the compatibility with old config file that uses genesismethod
+				logger.Warn("General.GenesisMethod should be replaced by General.BootstrapMethod")
+				c.General.BootstrapMethod = c.General.GenesisMethod
+			} else {
+				c.General.BootstrapMethod = Defaults.General.BootstrapMethod
+			}
+		case c.General.BootstrapFile == "":
+			if c.General.GenesisFile != "" {
+				// This is to keep the compatibility with old config file that uses genesisfile
+				logger.Warn("General.GenesisFile should be replaced by General.BootstrapFile")
+				c.General.BootstrapFile = c.General.GenesisFile
+			} else {
+				c.General.BootstrapFile = Defaults.General.BootstrapFile
+			}
+		case c.General.Cluster.RPCTimeout == 0:
+			c.General.Cluster.RPCTimeout = Defaults.General.Cluster.RPCTimeout
+		case c.General.Cluster.DialTimeout == 0:
+			c.General.Cluster.DialTimeout = Defaults.General.Cluster.DialTimeout
+		case c.General.Cluster.ReplicationMaxRetries == 0:
+			c.General.Cluster.ReplicationMaxRetries = Defaults.General.Cluster.ReplicationMaxRetries
+		case c.General.Cluster.SendBufferSize == 0:
+			c.General.Cluster.SendBufferSize = Defaults.General.Cluster.SendBufferSize
+		case c.General.Cluster.ReplicationBufferSize == 0:
+			c.General.Cluster.ReplicationBufferSize = Defaults.General.Cluster.ReplicationBufferSize
+		case c.General.Cluster.ReplicationPullTimeout == 0:
+			c.General.Cluster.ReplicationPullTimeout = Defaults.General.Cluster.ReplicationPullTimeout
+		case c.General.Cluster.ReplicationRetryTimeout == 0:
+			c.General.Cluster.ReplicationRetryTimeout = Defaults.General.Cluster.ReplicationRetryTimeout
+		case c.General.Cluster.ReplicationBackgroundRefreshInterval == 0:
+			c.General.Cluster.ReplicationBackgroundRefreshInterval = Defaults.General.Cluster.ReplicationBackgroundRefreshInterval
+		case c.General.Cluster.CertExpirationWarningThreshold == 0:
+			c.General.Cluster.CertExpirationWarningThreshold = Defaults.General.Cluster.CertExpirationWarningThreshold
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
 			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.PrivateKey == "":

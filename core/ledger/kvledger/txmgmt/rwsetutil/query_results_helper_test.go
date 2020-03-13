@@ -17,18 +17,21 @@ limitations under the License.
 package rwsetutil
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	bccspfactory "github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestQueryResultHelper_NoResults(t *testing.T) {
-	helper, _ := NewRangeQueryResultsHelper(true, 3)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	helper, _ := NewRangeQueryResultsHelper(true, 3, cryptoProvider)
 	r, h, err := helper.Done()
 	assert.NoError(t, err)
 	assert.Nil(t, h)
@@ -190,7 +193,9 @@ func TestQueryResultHelper_Hash_FirstLevelSkipNeededInDone(t *testing.T) {
 }
 
 func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads []*kvrwset.KVRead) ([]*kvrwset.KVRead, *kvrwset.QueryReadsMerkleSummary) {
-	helper, _ := NewRangeQueryResultsHelper(enableHashing, uint32(maxDegree))
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	helper, _ := NewRangeQueryResultsHelper(enableHashing, uint32(maxDegree), cryptoProvider)
 	for _, kvRead := range kvReads {
 		helper.AddResult(kvRead)
 	}
@@ -212,13 +217,17 @@ func computeTestHashKVReads(t *testing.T, kvReads []*kvrwset.KVRead) Hash {
 	queryReads.KvReads = kvReads
 	b, err := proto.Marshal(queryReads)
 	assert.NoError(t, err)
-	h, err := bccspfactory.GetDefault().Hash(b, hashOpts)
+	hash := sha256.New()
+	_, err = hash.Write(b)
 	assert.NoError(t, err)
+	h := hash.Sum(nil)
 	return h
 }
 
 func computeTestCombinedHash(t *testing.T, hashes ...Hash) Hash {
-	h, err := computeCombinedHash(hashes)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	h, err := computeCombinedHash(hashes, cryptoProvider)
 	assert.NoError(t, err)
 	return h
 }

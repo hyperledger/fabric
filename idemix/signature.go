@@ -12,11 +12,8 @@ import (
 
 	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
 )
-
-var idemixLogger = flogging.MustGetLogger("idemix")
 
 // signLabel is the label used in zero-knowledge proof (ZKP) to identify that this ZKP is a signature of knowledge
 const signLabel = "sign"
@@ -27,8 +24,8 @@ const signLabel = "sign"
 // the knowledge of the user secret (and possibly attributes) signed inside a credential
 // that was issued by a certain issuer (referred to with the issuer public key)
 // The signature is verified using the message being signed and the public key of the issuer
-// Some of the attributes from the credential can be selectvely disclosed or different statements can be proven about
-// credential atrributes without diclosing them in the clear
+// Some of the attributes from the credential can be selectively disclosed or different statements can be proven about
+// credential attributes without disclosing them in the clear
 // The difference between a standard signature using X.509 certificates and an Identity Mixer signature is
 // the advanced privacy features provided by Identity Mixer (due to zero-knowledge proofs):
 //  - Unlinkability of the signatures produced with the same credential
@@ -376,7 +373,7 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 
 	if *ProofC != *HashModOrder(proofData) {
 		// This debug line helps identify where the mismatch happened
-		idemixLogger.Debugf("Signature Verification : \n"+
+		logger.Printf("Signature Verification : \n"+
 			"	[t1:%v]\n,"+
 			"	[t2:%v]\n,"+
 			"	[t3:%v]\n,"+
@@ -398,7 +395,8 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 			nonRevokedProofBytes,
 			ipk.Hash,
 			Disclosure,
-			msg)
+			msg,
+		)
 		return errors.Errorf("signature invalid: zero-knowledge proof is invalid")
 	}
 

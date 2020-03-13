@@ -12,18 +12,35 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/mocks/config"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
+//go:generate counterfeiter -o mocks/config_resources.go --fake-name Resources . configResources
+
+type configResources interface {
+	channelconfig.Resources
+}
+
+//go:generate counterfeiter -o mocks/orderer_config.go --fake-name OrdererConfig . ordererConfig
+
+type ordererConfig interface {
+	channelconfig.Orderer
+}
+
+//go:generate counterfeiter -o mocks/orderer_capabilities.go --fake-name OrdererCapabilities . ordererCapabilities
+
+type ordererCapabilities interface {
+	channelconfig.OrdererCapabilities
+}
+
 func createEnvelope(t *testing.T, serializedIdentity []byte) *common.Envelope {
-	sHdr := utils.MakeSignatureHeader(serializedIdentity, nil)
-	hdr := utils.MakePayloadHeader(&common.ChannelHeader{}, sHdr)
+	sHdr := protoutil.MakeSignatureHeader(serializedIdentity, nil)
+	hdr := protoutil.MakePayloadHeader(&common.ChannelHeader{}, sHdr)
 	payload := &common.Payload{
 		Header: hdr,
 	}
@@ -62,67 +79,54 @@ func createIdemixIdentity(t *testing.T) []byte {
 	return idBytes
 }
 
-type resourcesMock struct {
-	mock.Mock
-}
-
-func (r *resourcesMock) OrdererConfig() (channelconfig.Orderer, bool) {
-	args := r.Called()
-	if args.Get(1).(bool) {
-		return args.Get(0).(channelconfig.Orderer), true
-	}
-	return nil, false
-}
-
 func TestExpirationRejectRule(t *testing.T) {
-	activeCapability := &config.Orderer{CapabilitiesVal: &config.OrdererCapabilities{
-		ExpirationVal: true,
-	}}
-	inActiveCapability := &config.Orderer{CapabilitiesVal: &config.OrdererCapabilities{
-		ExpirationVal: false,
-	}}
-	resources := &resourcesMock{}
-	setupMock := func() {
-		// Odd invocations return active capability
-		resources.On("OrdererConfig").Return(activeCapability, true).Once()
-		// Even invocations return inactive capability
-		resources.On("OrdererConfig").Return(inActiveCapability, true).Once()
-	}
+	mockResources := &mocks.Resources{}
+
 	t.Run("NoOrdererConfig", func(t *testing.T) {
-		resources.On("OrdererConfig").Return(nil, false).Once()
 		assert.Panics(t, func() {
-			NewExpirationRejectRule(resources).Apply(&common.Envelope{})
+			NewExpirationRejectRule(mockResources).Apply(&common.Envelope{})
 		})
 	})
+
+	mockOrderer := &mocks.OrdererConfig{}
+	mockResources.OrdererConfigReturns(mockOrderer, true)
+	mockCapabilities := &mocks.OrdererCapabilities{}
+	mockOrderer.CapabilitiesReturns(mockCapabilities)
+
 	t.Run("BadEnvelope", func(t *testing.T) {
-		setupMock()
-		err := NewExpirationRejectRule(resources).Apply(&common.Envelope{})
+		mockCapabilities.ExpirationCheckReturns(true)
+		err := NewExpirationRejectRule(mockResources).Apply(&common.Envelope{})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "could not convert message to signedData")
 
-		err = NewExpirationRejectRule(resources).Apply(&common.Envelope{})
+		mockCapabilities.ExpirationCheckReturns(false)
+		err = NewExpirationRejectRule(mockResources).Apply(&common.Envelope{})
 		assert.NoError(t, err)
 	})
+
 	t.Run("ExpiredX509Identity", func(t *testing.T) {
-		setupMock()
 		env := createEnvelope(t, createX509Identity(t, "expiredCert.pem"))
-		err := NewExpirationRejectRule(resources).Apply(env)
+		mockCapabilities.ExpirationCheckReturns(true)
+		err := NewExpirationRejectRule(mockResources).Apply(env)
 		assert.Error(t, err)
 		assert.Equal(t, err.Error(), "identity expired")
 
-		err = NewExpirationRejectRule(resources).Apply(env)
+		mockCapabilities.ExpirationCheckReturns(false)
+		err = NewExpirationRejectRule(mockResources).Apply(env)
 		assert.NoError(t, err)
 	})
 	t.Run("IdemixIdentity", func(t *testing.T) {
-		setupMock()
 		env := createEnvelope(t, createIdemixIdentity(t))
-		assert.Nil(t, NewExpirationRejectRule(resources).Apply(env))
-		assert.Nil(t, NewExpirationRejectRule(resources).Apply(env))
+		mockCapabilities.ExpirationCheckReturns(true)
+		assert.Nil(t, NewExpirationRejectRule(mockResources).Apply(env))
+		mockCapabilities.ExpirationCheckReturns(false)
+		assert.Nil(t, NewExpirationRejectRule(mockResources).Apply(env))
 	})
 	t.Run("NoneExpiredX509Identity", func(t *testing.T) {
-		setupMock()
 		env := createEnvelope(t, createX509Identity(t, "cert.pem"))
-		assert.Nil(t, NewExpirationRejectRule(resources).Apply(env))
-		assert.Nil(t, NewExpirationRejectRule(resources).Apply(env))
+		mockCapabilities.ExpirationCheckReturns(true)
+		assert.Nil(t, NewExpirationRejectRule(mockResources).Apply(env))
+		mockCapabilities.ExpirationCheckReturns(false)
+		assert.Nil(t, NewExpirationRejectRule(mockResources).Apply(env))
 	})
 }

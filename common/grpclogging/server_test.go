@@ -77,18 +77,16 @@ var _ = Describe("Server", func() {
 			return msg, nil
 		}
 		fakeEchoService.EchoStreamStub = func(stream testpb.EchoService_EchoStreamServer) error {
-			for {
-				msg, err := stream.Recv()
-				if err == io.EOF {
-					return nil
-				}
-				if err != nil {
-					return err
-				}
-
-				msg.Sequence++
-				return stream.Send(msg)
+			msg, err := stream.Recv()
+			if err == io.EOF {
+				return nil
 			}
+			if err != nil {
+				return err
+			}
+
+			msg.Sequence++
+			return stream.Send(msg)
 		}
 
 		serverTLSConfig := &tls.Config{
@@ -135,7 +133,6 @@ var _ = Describe("Server", func() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 
-			startTime := time.Now()
 			resp, err := echoServiceClient.Echo(ctx, &testpb.Message{Message: "hi"})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp).To(Equal(&testpb.Message{Message: "hi", Sequence: 1}))
@@ -149,7 +146,6 @@ var _ = Describe("Server", func() {
 				"sending unary response", // sending payload
 				"unary call completed",
 			))
-			endTime := time.Now()
 
 			for _, entry := range observed.AllUntimed() {
 				keyNames := map[string]struct{}{}
@@ -160,12 +156,12 @@ var _ = Describe("Server", func() {
 				switch entry.LoggerName {
 				case "test-logger":
 					Expect(entry.Level).To(Equal(zapcore.InfoLevel))
-					Expect(entry.Context).To(HaveLen(9))
-					Expect(keyNames).To(HaveLen(9))
+					Expect(entry.Context).To(HaveLen(8))
+					Expect(keyNames).To(HaveLen(8))
 				case "test-logger.payload":
 					Expect(entry.Level).To(Equal(zapcore.DebugLevel - 1))
-					Expect(entry.Context).To(HaveLen(7))
-					Expect(keyNames).To(HaveLen(7))
+					Expect(entry.Context).To(HaveLen(6))
+					Expect(keyNames).To(HaveLen(6))
 				default:
 					Fail("unexpected logger name: " + entry.LoggerName)
 				}
@@ -179,10 +175,6 @@ var _ = Describe("Server", func() {
 					case "grpc.call_duration":
 						Expect(field.Type).To(Equal(zapcore.DurationType))
 						Expect(field.Integer).NotTo(BeZero())
-					case "grpc.start_time":
-						Expect(field.Type).To(Equal(zapcore.TimeType))
-						Expect(field.Integer).NotTo(BeZero())
-						Expect(time.Unix(0, field.Integer)).To(BeTemporally("~", startTime, endTime.Sub(startTime)))
 					case "grpc.service":
 						Expect(field.Type).To(Equal(zapcore.StringType))
 						Expect(field.String).To(Equal("testpb.EchoService"))
@@ -229,7 +221,6 @@ var _ = Describe("Server", func() {
 				keyNames = append(keyNames, field.Key)
 			}
 			Expect(keyNames).To(ConsistOf(
-				"grpc.start_time",
 				"grpc.service",
 				"grpc.method",
 				"grpc.request_deadline",
@@ -336,7 +327,7 @@ var _ = Describe("Server", func() {
 
 			It("uses the levels returned by the levelers", func() {
 				Eventually(leveler.CallCount).Should(Equal(1))
-				Expect(observed.FilterMessage("unary call completed").AllUntimed()).To(HaveLen(1))
+				Eventually(observed.FilterMessage("unary call completed").AllUntimed, 2*time.Second).Should(HaveLen(1))
 				Expect(observed.FilterMessage("unary call completed").AllUntimed()[0].Level).To(Equal(zapcore.ErrorLevel))
 
 				Eventually(payloadLeveler.CallCount).Should(Equal(1))
@@ -367,7 +358,6 @@ var _ = Describe("Server", func() {
 			streamClient, err := echoServiceClient.EchoStream(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
-			startTime := time.Now()
 			err = streamClient.Send(&testpb.Message{Message: "hello"})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -388,7 +378,6 @@ var _ = Describe("Server", func() {
 				"sending stream message",  // sending payload
 				"streaming call completed",
 			))
-			endTime := time.Now()
 
 			for _, entry := range observed.AllUntimed() {
 				keyNames := map[string]struct{}{}
@@ -399,12 +388,12 @@ var _ = Describe("Server", func() {
 				switch entry.LoggerName {
 				case "test-logger":
 					Expect(entry.Level).To(Equal(zapcore.InfoLevel))
-					Expect(entry.Context).To(HaveLen(9))
-					Expect(keyNames).To(HaveLen(9))
+					Expect(entry.Context).To(HaveLen(8))
+					Expect(keyNames).To(HaveLen(8))
 				case "test-logger.payload":
 					Expect(entry.Level).To(Equal(zapcore.DebugLevel - 1))
-					Expect(entry.Context).To(HaveLen(7))
-					Expect(keyNames).To(HaveLen(7))
+					Expect(entry.Context).To(HaveLen(6))
+					Expect(keyNames).To(HaveLen(6))
 				default:
 					Fail("unexpected logger name: " + entry.LoggerName)
 				}
@@ -418,10 +407,6 @@ var _ = Describe("Server", func() {
 					case "grpc.call_duration":
 						Expect(field.Type).To(Equal(zapcore.DurationType))
 						Expect(field.Integer).NotTo(BeZero())
-					case "grpc.start_time":
-						Expect(field.Type).To(Equal(zapcore.TimeType))
-						Expect(field.Integer).NotTo(BeZero())
-						Expect(time.Unix(0, field.Integer)).To(BeTemporally("~", startTime, endTime.Sub(startTime)))
 					case "grpc.service":
 						Expect(field.Type).To(Equal(zapcore.StringType))
 						Expect(field.String).To(Equal("testpb.EchoService"))
@@ -478,7 +463,6 @@ var _ = Describe("Server", func() {
 				keyNames = append(keyNames, field.Key)
 			}
 			Expect(keyNames).To(ConsistOf(
-				"grpc.start_time",
 				"grpc.service",
 				"grpc.method",
 				"grpc.request_deadline",
@@ -534,7 +518,10 @@ var _ = Describe("Server", func() {
 
 			BeforeEach(func() {
 				expectedErr = errors.New("gah!")
-				fakeEchoService.EchoStreamReturns(expectedErr)
+				fakeEchoService.EchoStreamStub = func(stream testpb.EchoService_EchoStreamServer) error {
+					stream.Recv()
+					return expectedErr
+				}
 
 				streamClient, err := echoServiceClient.EchoStream(context.Background())
 				Expect(err).NotTo(HaveOccurred())
@@ -646,7 +633,7 @@ var _ = Describe("Server", func() {
 
 			It("uses the levels returned by the levelers", func() {
 				Eventually(leveler.CallCount).Should(Equal(1))
-				Expect(observed.FilterMessage("streaming call completed").AllUntimed()).To(HaveLen(1))
+				Eventually(observed.FilterMessage("streaming call completed").AllUntimed, 2*time.Second).Should(HaveLen(1))
 				Expect(observed.FilterMessage("streaming call completed").AllUntimed()[0].Level).To(Equal(zapcore.ErrorLevel))
 
 				Eventually(payloadLeveler.CallCount).Should(Equal(1))

@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 package graph
 
+import "math/big"
+
 type orderedSet struct {
 	elements []interface{}
 }
@@ -20,18 +22,19 @@ type indiceSet struct {
 
 type indiceSets []*indiceSet
 
-func factorial(n int) int {
-	m := 1
-	for i := 1; i <= n; i++ {
-		m *= i
+// CombinationsExceed computes the number of combinations
+// of choosing K elements from N elements, and returns
+// whether the number of combinations exceeds a given threshold.
+// If n < k then it returns false.
+func CombinationsExceed(n, k, threshold int) bool {
+	if n < k {
+		return false
 	}
-	return m
-}
-
-func nChooseK(n, k int) int {
-	a := factorial(n)
-	b := factorial(n-k) * factorial(k)
-	return a / b
+	combinations := &big.Int{}
+	combinations = combinations.Binomial(int64(n), int64(k))
+	t := &big.Int{}
+	t.SetInt64(int64(threshold))
+	return combinations.Cmp(t) > 0
 }
 
 func chooseKoutOfN(n, k int) indiceSets {

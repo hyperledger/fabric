@@ -68,9 +68,7 @@ func (r *Recorder) Entries() []string {
 	defer r.mutex.RUnlock()
 
 	entries := make([]string, len(r.entries), cap(r.entries))
-	for i, v := range r.entries {
-		entries[i] = v
-	}
+	copy(entries, r.entries)
 	return entries
 }
 
@@ -106,9 +104,7 @@ func (r *Recorder) Messages() []string {
 	defer r.mutex.RUnlock()
 
 	messages := make([]string, len(r.messages), cap(r.messages))
-	for i, v := range r.messages {
-		messages[i] = v
-	}
+	copy(messages, r.messages)
 	return messages
 }
 

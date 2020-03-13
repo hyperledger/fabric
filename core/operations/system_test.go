@@ -78,6 +78,17 @@ var _ = Describe("System", func() {
 		}
 	})
 
+	It("hosts an unsecured endpoint for the version information", func() {
+		err := system.Start()
+		Expect(err).NotTo(HaveOccurred())
+
+		versionURL := fmt.Sprintf("https://%s/version", system.Addr())
+		resp, err := client.Get(versionURL)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		resp.Body.Close()
+	})
+
 	It("hosts a secure endpoint for logging", func() {
 		err := system.Start()
 		Expect(err).NotTo(HaveOccurred())
@@ -121,8 +132,7 @@ var _ = Describe("System", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = unauthClient.Get(fmt.Sprintf("https://%s/healthz", system.Addr()))
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("remote error: tls: bad certificate"))
+			Expect(err).To(MatchError(ContainSubstring("remote error: tls: bad certificate")))
 		})
 	})
 
@@ -144,8 +154,7 @@ var _ = Describe("System", func() {
 
 		It("returns an error", func() {
 			err := system.Start()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("bind: address already in use"))
+			Expect(err).To(MatchError(ContainSubstring("bind: address already in use")))
 		})
 	})
 
@@ -353,8 +362,7 @@ var _ = Describe("System", func() {
 
 			It("returns an error", func() {
 				err := system.Start()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("bob-the-network"))
+				Expect(err).To(MatchError(ContainSubstring("bob-the-network")))
 			})
 		})
 	})

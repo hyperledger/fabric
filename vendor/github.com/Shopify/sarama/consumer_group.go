@@ -33,7 +33,7 @@ type ConsumerGroup interface {
 	//    to allow the user to perform any final tasks before a rebalance.
 	// 6. Finally, marked offsets are committed one last time before claims are released.
 	//
-	// Please note, that once a relance is triggered, sessions must be completed within
+	// Please note, that once a rebalance is triggered, sessions must be completed within
 	// Config.Consumer.Group.Rebalance.Timeout. This means that ConsumeClaim() functions must exit
 	// as quickly as possible to allow time for Cleanup() and the final offset commit. If the timeout
 	// is exceeded, the consumer will be removed from the group by Kafka, which will cause offset
@@ -83,7 +83,7 @@ func NewConsumerGroup(addrs []string, groupID string, config *Config) (ConsumerG
 	return c, nil
 }
 
-// NewConsumerFromClient creates a new consumer group using the given client. It is still
+// NewConsumerGroupFromClient creates a new consumer group using the given client. It is still
 // necessary to call Close() on the underlying client when shutting down this consumer.
 // PLEASE NOTE: consumer groups can only re-use but not share clients.
 func NewConsumerGroupFromClient(groupID string, client Client) (ConsumerGroup, error) {
@@ -267,7 +267,7 @@ func (c *consumerGroup) newSession(ctx context.Context, coordinator *Broker, top
 		}
 	}
 
-	return newConsumerGroupSession(c, ctx, claims, join.MemberId, join.GenerationId, handler)
+	return newConsumerGroupSession(ctx, c, claims, join.MemberId, join.GenerationId, handler)
 }
 
 func (c *consumerGroup) joinGroupRequest(coordinator *Broker, topics []string) (*JoinGroupResponse, error) {
@@ -456,7 +456,7 @@ type consumerGroupSession struct {
 	hbDying, hbDead chan none
 }
 
-func newConsumerGroupSession(parent *consumerGroup, ctx context.Context, claims map[string][]int32, memberID string, generationID int32, handler ConsumerGroupHandler) (*consumerGroupSession, error) {
+func newConsumerGroupSession(ctx context.Context, parent *consumerGroup, claims map[string][]int32, memberID string, generationID int32, handler ConsumerGroupHandler) (*consumerGroupSession, error) {
 	// init offset manager
 	offsets, err := newOffsetManagerFromClient(parent.groupID, memberID, generationID, parent.client)
 	if err != nil {
@@ -595,7 +595,7 @@ func (s *consumerGroupSession) consume(topic string, partition int32) {
 		s.parent.handleError(err, topic, partition)
 	}
 
-	// ensure consumer is clased & drained
+	// ensure consumer is closed & drained
 	claim.AsyncClose()
 	for _, err := range claim.waitClosed() {
 		s.parent.handleError(err, topic, partition)
@@ -691,7 +691,7 @@ type ConsumerGroupHandler interface {
 	// Setup is run at the beginning of a new session, before ConsumeClaim.
 	Setup(ConsumerGroupSession) error
 
-	// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exites
+	// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
 	// but before the offsets are committed for the very last time.
 	Cleanup(ConsumerGroupSession) error
 

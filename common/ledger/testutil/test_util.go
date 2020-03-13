@@ -1,28 +1,20 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package testutil
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"crypto/rand"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -68,11 +60,13 @@ func CreateTarBytesForTest(testFiles []*TarFileEntry) []byte {
 }
 
 // CopyDir creates a copy of a dir
-func CopyDir(srcroot, destroot string) error {
-	_, lastSegment := filepath.Split(srcroot)
-	destroot = filepath.Join(destroot, lastSegment)
+func CopyDir(srcroot, destroot string, copyOnlySubdirs bool) error {
+	if !copyOnlySubdirs {
+		_, lastSegment := filepath.Split(srcroot)
+		destroot = filepath.Join(destroot, lastSegment)
+	}
 
-	walkFunc := func(srcpath string, info os.FileInfo, err error) error {
+	walkFunc := func(srcpath string, info os.FileInfo, errDummy error) error {
 		srcsubpath, err := filepath.Rel(srcroot, srcpath)
 		if err != nil {
 			return err
@@ -113,6 +107,53 @@ func copyFile(srcpath, destpath string) error {
 	}
 	if err = destFile.Close(); err != nil {
 		return err
+	}
+	return nil
+}
+
+// Unzip will decompress the src zip file to the dest directory.
+// If createTopLevelDirInZip is true, it creates the top level dir when unzipped.
+// Otherwise, it trims off the top level dir when unzipped. For example, ledersData/historydb/abc will become historydb/abc.
+func Unzip(src string, dest string, createTopLevelDirInZip bool) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	// iterate all the dirs and files in the zip file
+	for _, file := range r.File {
+		filePath := file.Name
+		if !createTopLevelDirInZip {
+			// trim off the top level dir - for example, trim ledgersData/historydb/abc to historydb/abc
+			index := strings.Index(filePath, string(filepath.Separator))
+			filePath = filePath[index+1:]
+		}
+
+		fullPath := filepath.Join(dest, filePath)
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(fullPath, os.ModePerm)
+			continue
+		}
+		if err = os.MkdirAll(filepath.Dir(fullPath), os.ModePerm); err != nil {
+			return err
+		}
+		outFile, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(outFile, rc)
+
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

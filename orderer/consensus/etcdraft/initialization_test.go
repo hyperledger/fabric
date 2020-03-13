@@ -4,15 +4,19 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package etcdraft
+package etcdraft_test
 
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
+	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,11 +25,19 @@ func TestNewEtcdRaftConsenter(t *testing.T) {
 	assert.NoError(t, err)
 	defer srv.Stop()
 	dialer := &cluster.PredicateDialer{}
-	consenter := New(dialer, &localconfig.TopLevel{}, comm.ServerConfig{
-		SecOpts: &comm.SecureOptions{
-			Certificate: []byte{1, 2, 3},
-		},
-	}, srv, &multichannel.Registrar{})
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	consenter := etcdraft.New(dialer,
+		&localconfig.TopLevel{},
+		comm.ServerConfig{
+			SecOpts: comm.SecureOptions{
+				Certificate: []byte{1, 2, 3},
+			},
+		}, srv, &multichannel.Registrar{},
+		&mocks.InactiveChainRegistry{},
+		&disabled.Provider{},
+		cryptoProvider,
+	)
 
 	// Assert that the certificate from the gRPC server was passed to the consenter
 	assert.Equal(t, []byte{1, 2, 3}, consenter.Cert)

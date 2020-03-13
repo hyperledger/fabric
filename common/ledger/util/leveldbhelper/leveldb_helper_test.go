@@ -1,27 +1,19 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package leveldbhelper
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -57,6 +49,9 @@ func TestLevelDBHelper(t *testing.T) {
 	db.Open()
 	// second time open should not have any side effect
 	db.Open()
+	IsEmpty, err := db.IsEmpty()
+	assert.NoError(t, err)
+	assert.True(t, IsEmpty)
 	db.Put([]byte("key1"), []byte("value1"), false)
 	db.Put([]byte("key2"), []byte("value2"), true)
 	db.Put([]byte("key3"), []byte("value3"), true)
@@ -76,13 +71,21 @@ func TestLevelDBHelper(t *testing.T) {
 	assert.Equal(t, "", string(val2))
 
 	db.Close()
-	// second time open should not have any side effect
+	// second time Close should not have any side effect
 	db.Close()
+
+	_, err = db.IsEmpty()
+	require.Error(t, err)
 
 	val3, err3 := db.Get([]byte("key3"))
 	assert.Error(t, err3)
+	assert.Equal(t, "", string(val3))
 
 	db.Open()
+	IsEmpty, err = db.IsEmpty()
+	assert.NoError(t, err)
+	assert.False(t, IsEmpty)
+
 	batch := &leveldb.Batch{}
 	batch.Put([]byte("key1"), []byte("value1"))
 	batch.Put([]byte("key2"), []byte("value2"))
@@ -109,10 +112,56 @@ func TestLevelDBHelper(t *testing.T) {
 	assert.Equal(t, []string{"key1", "key2"}, keys)
 }
 
+func TestFileLock(t *testing.T) {
+	// create 1st fileLock manager
+	fileLockPath := testDBPath + "/fileLock"
+	fileLock1 := NewFileLock(fileLockPath)
+	assert.Nil(t, fileLock1.db)
+	assert.Equal(t, fileLock1.filePath, fileLockPath)
+
+	// acquire the file lock using the fileLock manager 1
+	err := fileLock1.Lock()
+	assert.NoError(t, err)
+	assert.NotNil(t, fileLock1.db)
+
+	// create 2nd fileLock manager
+	fileLock2 := NewFileLock(fileLockPath)
+	assert.Nil(t, fileLock2.db)
+	assert.Equal(t, fileLock2.filePath, fileLockPath)
+
+	// try to acquire the file lock again using the fileLock2
+	// would result in an error
+	err = fileLock2.Lock()
+	expectedErr := fmt.Sprintf("lock is already acquired on file %s", fileLockPath)
+	assert.EqualError(t, err, expectedErr)
+	assert.Nil(t, fileLock2.db)
+
+	// release the file lock acquired using fileLock1
+	fileLock1.Unlock()
+	assert.Nil(t, fileLock1.db)
+
+	// As the fileLock1 has released the lock,
+	// the fileLock2 can acquire the lock.
+	err = fileLock2.Lock()
+	assert.NoError(t, err)
+	assert.NotNil(t, fileLock2.db)
+
+	// release the file lock acquired using fileLock 2
+	fileLock2.Unlock()
+	assert.Nil(t, fileLock1.db)
+
+	// unlock can be called multiple times and it is safe
+	fileLock2.Unlock()
+	assert.Nil(t, fileLock1.db)
+
+	// cleanup
+	assert.NoError(t, os.RemoveAll(fileLockPath))
+}
+
 func TestCreateDBInEmptyDir(t *testing.T) {
 	assert.NoError(t, os.RemoveAll(testDBPath), "")
 	assert.NoError(t, os.MkdirAll(testDBPath, 0775), "")
-	db := CreateDB(&Conf{testDBPath})
+	db := CreateDB(&Conf{DBPath: testDBPath})
 	defer db.Close()
 	defer func() {
 		if r := recover(); r != nil {
@@ -128,7 +177,7 @@ func TestCreateDBInNonEmptyDir(t *testing.T) {
 	file, err := os.Create(filepath.Join(testDBPath, "dummyfile.txt"))
 	assert.NoError(t, err, "")
 	file.Close()
-	db := CreateDB(&Conf{testDBPath})
+	db := CreateDB(&Conf{DBPath: testDBPath})
 	defer db.Close()
 	defer func() {
 		if r := recover(); r == nil {

@@ -17,17 +17,17 @@ limitations under the License.
 package txmgr
 
 import (
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
 )
 
 // TxMgr - an interface that a transaction manager should implement
 type TxMgr interface {
 	NewQueryExecutor(txid string) (ledger.QueryExecutor, error)
 	NewTxSimulator(txid string) (ledger.TxSimulator, error)
-	ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) ([]*TxStatInfo, error)
+	ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) ([]*TxStatInfo, []byte, error)
 	RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error
 	GetLastSavepoint() (*version.Height, error)
 	ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error)
@@ -35,6 +35,7 @@ type TxMgr interface {
 	Commit() error
 	Rollback()
 	Shutdown()
+	Name() string
 }
 
 // TxStatInfo encapsulates information about a transaction
@@ -56,7 +57,7 @@ func (e *ErrUnsupportedTransaction) Error() string {
 
 // ErrPvtdataNotAvailable is to be thrown when an application seeks a private data item
 // during simulation and the simulator is not capable of returning the version of the
-// private data item consistent with the snapshopt exposed to the simulation
+// private data item consistent with the snapshot exposed to the simulation
 type ErrPvtdataNotAvailable struct {
 	Msg string
 }
@@ -64,3 +65,5 @@ type ErrPvtdataNotAvailable struct {
 func (e *ErrPvtdataNotAvailable) Error() string {
 	return e.Msg
 }
+
+//go:generate counterfeiter -o mock/tx_mgr.go -fake-name TxMgr . TxMgr

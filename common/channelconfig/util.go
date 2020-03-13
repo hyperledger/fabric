@@ -7,14 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
+	"fmt"
+	"io/ioutil"
 	"math"
 
 	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
-	cb "github.com/hyperledger/fabric/protos/common"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -188,6 +193,17 @@ func CapabilitiesValue(capabilities map[string]bool) *StandardConfigValue {
 	}
 }
 
+// EndpointsValue returns the config definition for the orderer addresses at an org scoped level.
+// It is a value for the /Channel/Orderer/<OrgName> group.
+func EndpointsValue(addresses []string) *StandardConfigValue {
+	return &StandardConfigValue{
+		key: EndpointsKey,
+		value: &cb.OrdererAddresses{
+			Addresses: addresses,
+		},
+	}
+}
+
 // AnchorPeersValue returns the config definition for an org's anchor peers.
 // It is a value for the /Channel/Application/*.
 func AnchorPeersValue(anchorPeers []*pb.AnchorPeer) *StandardConfigValue {
@@ -206,7 +222,7 @@ func ChannelCreationPolicyValue(policy *cb.Policy) *StandardConfigValue {
 	}
 }
 
-// ACLsValues returns the config definition for an applications resources based ACL definitions.
+// ACLValues returns the config definition for an applications resources based ACL definitions.
 // It is a value for the /Channel/Application/.
 func ACLValues(acls map[string]string) *StandardConfigValue {
 	a := &pb.ACLs{
@@ -221,4 +237,74 @@ func ACLValues(acls map[string]string) *StandardConfigValue {
 		key:   ACLsKey,
 		value: a,
 	}
+}
+
+// ValidateCapabilities validates whether the peer can meet the capabilities requirement in the given config block
+func ValidateCapabilities(block *cb.Block, bccsp bccsp.BCCSP) error {
+	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
+	if err != nil {
+		return errors.Errorf("failed to %s", err)
+	}
+
+	configEnv := &cb.ConfigEnvelope{}
+	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, cb.HeaderType_CONFIG, configEnv)
+	if err != nil {
+		return errors.Errorf("malformed configuration envelope: %s", err)
+	}
+
+	if configEnv.Config == nil {
+		return errors.New("nil config envelope Config")
+	}
+
+	if configEnv.Config.ChannelGroup == nil {
+		return errors.New("no channel configuration was found in the config block")
+	}
+
+	if configEnv.Config.ChannelGroup.Groups == nil {
+		return errors.New("no channel configuration groups are available")
+	}
+
+	_, exists := configEnv.Config.ChannelGroup.Groups[ApplicationGroupKey]
+	if !exists {
+		return errors.Errorf("invalid configuration block, missing %s "+
+			"configuration group", ApplicationGroupKey)
+	}
+
+	cc, err := NewChannelConfig(configEnv.Config.ChannelGroup, bccsp)
+	if err != nil {
+		return errors.Errorf("no valid channel configuration found due to %s", err)
+	}
+
+	// Check the channel top-level capabilities
+	if err := cc.Capabilities().Supported(); err != nil {
+		return err
+	}
+
+	// Check the application capabilities
+	if err := cc.ApplicationConfig().Capabilities().Supported(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// MarshalEtcdRaftMetadata serializes etcd RAFT metadata.
+func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
+	copyMd := proto.Clone(md).(*etcdraft.ConfigMetadata)
+	for _, c := range copyMd.Consenters {
+		// Expect the user to set the config value for client/server certs to the
+		// path where they are persisted locally, then load these files to memory.
+		clientCert, err := ioutil.ReadFile(string(c.GetClientTlsCert()))
+		if err != nil {
+			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+		}
+		c.ClientTlsCert = clientCert
+
+		serverCert, err := ioutil.ReadFile(string(c.GetServerTlsCert()))
+		if err != nil {
+			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+		}
+		c.ServerTlsCert = serverCert
+	}
+	return proto.Marshal(copyMd)
 }

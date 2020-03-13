@@ -1,5 +1,6 @@
 package sarama
 
+//ConsumerMetadataRequest is used for metadata requests
 type ConsumerMetadataRequest struct {
 	ConsumerGroup string
 }

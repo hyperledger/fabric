@@ -10,11 +10,11 @@ import (
 	"io"
 	"time"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/pkg/errors"
 )
 
@@ -213,6 +213,8 @@ func ClassifyError(err error) cb.Status {
 		return cb.Status_NOT_FOUND
 	case msgprocessor.ErrPermissionDenied:
 		return cb.Status_FORBIDDEN
+	case msgprocessor.ErrMaintenanceMode:
+		return cb.Status_SERVICE_UNAVAILABLE
 	default:
 		return cb.Status_BAD_REQUEST
 	}

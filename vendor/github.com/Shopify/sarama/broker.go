@@ -208,6 +208,17 @@ func (b *Broker) Addr() string {
 	return b.addr
 }
 
+// Rack returns the broker's rack as retrieved from Kafka's metadata or the
+// empty string if it is not known.  The returned value corresponds to the
+// broker's broker.rack configuration setting.  Requires protocol version to be
+// at least v0.10.0.0.
+func (b *Broker) Rack() string {
+	if b.rack == nil {
+		return ""
+	}
+	return *b.rack
+}
+
 func (b *Broker) GetMetadata(request *MetadataRequest) (*MetadataResponse, error) {
 	response := new(MetadataResponse)
 

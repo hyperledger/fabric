@@ -15,10 +15,11 @@ type Encoding int8
 const (
 	CONSOLE = iota
 	JSON
+	LOGFMT
 )
 
 // EncodingSelector is used to determine whether log records are
-// encoded as JSON or in a human readable CONSOLE format.
+// encoded as JSON or in human readable CONSOLE or LOGFMT formats.
 type EncodingSelector interface {
 	Encoding() Encoding
 }
@@ -49,6 +50,14 @@ type Core struct {
 	Encoders map[Encoding]zapcore.Encoder
 	Selector EncodingSelector
 	Output   zapcore.WriteSyncer
+	Observer Observer
+}
+
+//go:generate counterfeiter -o mock/observer.go -fake-name Observer . Observer
+
+type Observer interface {
+	Check(e zapcore.Entry, ce *zapcore.CheckedEntry)
+	WriteEntry(e zapcore.Entry, fields []zapcore.Field)
 }
 
 func (c *Core) With(fields []zapcore.Field) zapcore.Core {
@@ -65,10 +74,15 @@ func (c *Core) With(fields []zapcore.Field) zapcore.Core {
 		Encoders:     clones,
 		Selector:     c.Selector,
 		Output:       c.Output,
+		Observer:     c.Observer,
 	}
 }
 
 func (c *Core) Check(e zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if c.Observer != nil {
+		c.Observer.Check(e, ce)
+	}
+
 	if c.Enabled(e.Level) && c.Levels.Level(e.LoggerName).Enabled(e.Level) {
 		return ce.AddCore(e, c)
 	}
@@ -91,6 +105,10 @@ func (c *Core) Write(e zapcore.Entry, fields []zapcore.Field) error {
 
 	if e.Level >= zapcore.PanicLevel {
 		c.Sync()
+	}
+
+	if c.Observer != nil {
+		c.Observer.WriteEntry(e, fields)
 	}
 
 	return nil

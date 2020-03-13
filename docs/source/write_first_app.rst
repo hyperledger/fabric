@@ -34,9 +34,8 @@ We’ll go through three principle steps:
   .. image:: images/AppConceptsOverview.png
 
   **2. Learning about a sample smart contract, FabCar.**
-  We use a smart contract written in **JavaScript**. We’ll
-  inspect the smart contract to learn about the transactions within them, and
-  how they are used by applications to query and update the ledger.
+  We’ll inspect the smart contract to learn about the transactions within them,
+  and how they are used by applications to query and update the ledger.
 
   **3. Develop a sample application which uses FabCar.** Our application will
   use the FabCar smart contract to query and update car assets on the ledger.
@@ -92,9 +91,16 @@ Launch the network
 .. note:: This next section requires you to be in the ``fabcar``
           subdirectory within your local clone of the ``fabric-samples`` repo.
 
+          This tutorial demonstrates the JavaScript versions of the ``FabCar``
+          smart contract and application, but the ``fabric-samples`` repo also
+          contains Go, Java and TypeScript versions of this sample. To try the
+          Go, Java or TypeScript versions, change the ``javascript`` argument
+          for ``./startFabric.sh`` below to either ``go``, ``java`` or ``typescript``
+          and follow the instructions written to the terminal.
+
 Launch your network using the ``startFabric.sh`` shell script. This command will
 spin up a blockchain network comprising peers, orderers, certificate
-authorities and more.  It will also install and instantiate a javascript version
+authorities and more.  It will also install and instantiate a JavaScript version
 of the ``FabCar`` smart contract which will be used by our application to access
 the ledger. We'll learn more about these components as we go through the
 tutorial.
@@ -265,24 +271,23 @@ The application connects to the network using a gateway:
 This code creates a new gateway and then uses it to connect the application to
 the network. ``ccp`` describes the network that the gateway will access with the
 identity ``user1`` from ``wallet``. See how the ``ccp`` has been loaded from
-``../../basic-network/connection.json`` and parsed as a JSON file:
+``../../first-network/connection.json`` and parsed as a JSON file:
 
 .. code:: bash
 
-  const ccpPath = path.resolve(__dirname, '..', '..', 'basic-network', 'connection.json');
+  const ccpPath = path.resolve(__dirname, '..', '..', 'first-network', 'connection.json');
   const ccpJSON = fs.readFileSync(ccpPath, 'utf8');
   const ccp = JSON.parse(ccpJSON);
 
 If you'd like to understand more about the structure of a connection profile,
 and how it defines the network, check out
-`the connection profile topic <./developapps/connectionprofile.html>`_. 
+`the connection profile topic <./developapps/connectionprofile.html>`_.
 
 A network can be divided into multiple channels, and the next important line of
 code connects the application to a particular channel within the network,
 ``mychannel``:
 
 .. code:: bash
-  const network = await gateway.getNetwork('mychannel');
 
   const network = await gateway.getNetwork('mychannel');
 
@@ -354,7 +359,7 @@ Below is a representation of how an application would call different
 transactions in a smart contract. Each transaction uses a broad set of APIs such
 as ``getStateByRange`` to interact with the ledger. You can read more about
 these APIs in `detail
-<https://fabric-shim.github.io/master/index.html?redirect=true>`_.
+<https://hyperledger.github.io/fabric-chaincode-node/>`_.
 
 .. image:: images/RunningtheSample.png
 
@@ -467,6 +472,13 @@ collects and sequences transactions from every application into a block of
 transactions. It then distributes these blocks to every peer in the network,
 where every transaction is validated and committed. Finally, the SDK is
 notified, allowing it to return control to the application.
+
+.. note:: ``submitTransaction`` also includes a listener that checks to make
+          sure the transaction has been validated and committed to the ledger.
+          Applications should either utilize a commit listener, or
+          leverage an API like ``submitTransaction`` that does this for you.
+          Without doing this, your transaction may not have been successfully
+          orderered, validated, and committed to the ledger.
 
 ``submitTransaction`` does all this for the application! The process by which
 the application, smart contract, peers and ordering service work together to

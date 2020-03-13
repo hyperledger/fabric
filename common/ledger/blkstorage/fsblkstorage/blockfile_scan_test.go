@@ -20,9 +20,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,6 +49,7 @@ func TestBlockFileScanSmallTxOnly(t *testing.T) {
 	assert.Equal(t, fileSize, endOffsetLastBlock)
 
 	expectedLastBlockBytes, _, err := serializeBlock(blocks[len(blocks)-1])
+	assert.NoError(t, err)
 	assert.Equal(t, expectedLastBlockBytes, lastBlockBytes)
 }
 
@@ -70,8 +71,8 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 	assert.NoError(t, err)
 
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
-	defer file.Close()
 	assert.NoError(t, err)
+	defer file.Close()
 	err = file.Truncate(fileSize - 1)
 	assert.NoError(t, err)
 
@@ -80,5 +81,6 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 	assert.Equal(t, len(blocks)-1, numBlocks)
 
 	expectedLastBlockBytes, _, err := serializeBlock(blocks[len(blocks)-2])
+	assert.NoError(t, err)
 	assert.Equal(t, expectedLastBlockBytes, lastBlockBytes)
 }

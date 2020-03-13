@@ -9,8 +9,8 @@ package mocks
 import (
 	"time"
 
+	pmsp "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/msp"
-	pmsp "github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -109,7 +109,7 @@ func (*MockIdentity) GetOrganizationalUnits() []*msp.OUIdentifier {
 }
 
 func (*MockIdentity) Verify(msg []byte, sig []byte) error {
-	panic("implement me")
+	return nil
 }
 
 func (*MockIdentity) Serialize() ([]byte, error) {

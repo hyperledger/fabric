@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package cceventmgmt
 
 import (
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
 // KVLedgerLSCCStateListener listens for state changes for chaincode lifecycle
@@ -16,12 +16,17 @@ type KVLedgerLSCCStateListener struct {
 	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 }
 
+func (listener *KVLedgerLSCCStateListener) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+	// Noop
+	return nil
+}
+
 // HandleStateUpdates uses 'DeployedChaincodeInfoProvider' to findout deployment of a chaincode
 // and invokes `HandleChaincodeDeploy` function on chaincode event manager (which in turn is responsible for creation of statedb
 // artifacts for the chaincode statedata)
 func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	channelName, kvWrites, postCommitQE, deployCCInfoProvider :=
-		trigger.LedgerID, convertToKVWrites(trigger.StateUpdates), trigger.PostCommitQueryExecutor, listener.DeployedChaincodeInfoProvider
+		trigger.LedgerID, extractPublicUpdates(trigger.StateUpdates), trigger.PostCommitQueryExecutor, listener.DeployedChaincodeInfoProvider
 
 	logger.Debugf("Channel [%s]: Handling state updates in LSCC namespace - stateUpdates=%#v", channelName, kvWrites)
 	updatedChaincodes, err := deployCCInfoProvider.UpdatedChaincodes(kvWrites)
@@ -35,15 +40,20 @@ func (listener *KVLedgerLSCCStateListener) HandleStateUpdates(trigger *ledger.St
 			// TODO handle delete case when delete is implemented in lifecycle
 			continue
 		}
-		deployedCCInfo, err := deployCCInfoProvider.ChaincodeInfo(updatedChaincode.Name, postCommitQE)
+		deployedCCInfo, err := deployCCInfoProvider.ChaincodeInfo(channelName, updatedChaincode.Name, postCommitQE)
 		if err != nil {
 			return err
+		}
+		if !deployedCCInfo.IsLegacy {
+			// chaincode defined via new lifecycle, the legacy event mgr should not try to process that
+			// event by trying to match this with a legacy package installed. So, ignoring this event
+			continue
 		}
 		chaincodeDefs = append(chaincodeDefs, &ChaincodeDefinition{
 			Name:              deployedCCInfo.Name,
 			Hash:              deployedCCInfo.Hash,
 			Version:           deployedCCInfo.Version,
-			CollectionConfigs: deployedCCInfo.CollectionConfigPkg,
+			CollectionConfigs: deployedCCInfo.ExplicitCollectionConfigPkg,
 		})
 	}
 	return GetMgr().HandleChaincodeDeploy(channelName, chaincodeDefs)
@@ -59,10 +69,10 @@ func (listener *KVLedgerLSCCStateListener) StateCommitDone(channelName string) {
 	GetMgr().ChaincodeDeployDone(channelName)
 }
 
-func convertToKVWrites(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
+func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwset.KVWrite {
 	m := map[string][]*kvrwset.KVWrite{}
 	for ns, updates := range stateUpdates {
-		m[ns] = updates.([]*kvrwset.KVWrite)
+		m[ns] = updates.PublicUpdates
 	}
 	return m
 }

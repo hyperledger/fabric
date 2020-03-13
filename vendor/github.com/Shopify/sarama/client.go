@@ -67,6 +67,9 @@ type Client interface {
 	// in local cache. This function only works on Kafka 0.8.2 and higher.
 	RefreshCoordinator(consumerGroup string) error
 
+	// InitProducerID retrieves information required for Idempotent Producer
+	InitProducerID() (*InitProducerIDResponse, error)
+
 	// Close shuts down all broker connections managed by this client. It is required
 	// to call this function before a client object passes out of scope, as it will
 	// otherwise leak memory. You must close any Producers or Consumers using a client
@@ -176,11 +179,31 @@ func (client *client) Config() *Config {
 func (client *client) Brokers() []*Broker {
 	client.lock.RLock()
 	defer client.lock.RUnlock()
-	brokers := make([]*Broker, 0)
+	brokers := make([]*Broker, 0, len(client.brokers))
 	for _, broker := range client.brokers {
 		brokers = append(brokers, broker)
 	}
 	return brokers
+}
+
+func (client *client) InitProducerID() (*InitProducerIDResponse, error) {
+	var err error
+	for broker := client.any(); broker != nil; broker = client.any() {
+
+		req := &InitProducerIDRequest{}
+
+		response, err := broker.InitProducerID(req)
+		switch err.(type) {
+		case nil:
+			return response, nil
+		default:
+			// some error, remove that broker and try again
+			Logger.Printf("Client got error from broker %d when issuing InitProducerID : %v\n", broker.ID(), err)
+			_ = broker.Close()
+			client.deregisterBroker(broker)
+		}
+	}
+	return nil, err
 }
 
 func (client *client) Close() error {
@@ -723,7 +746,7 @@ func (client *client) tryRefreshMetadata(topics []string, attemptsRemaining int)
 			return err
 		default:
 			// some other error, remove that broker and try again
-			Logger.Println("client/metadata got error from broker while fetching metadata:", err)
+			Logger.Printf("client/metadata got error from broker %d while fetching metadata: %v\n", broker.ID(), err)
 			_ = broker.Close()
 			client.deregisterBroker(broker)
 		}

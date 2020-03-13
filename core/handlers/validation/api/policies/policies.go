@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package validation
 
 import (
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
-	"github.com/hyperledger/fabric/protos/common"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
+	"github.com/hyperledger/fabric/protoutil"
 )
 
 // PolicyEvaluator evaluates policies
@@ -17,7 +17,7 @@ type PolicyEvaluator interface {
 
 	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies
 	// the policy with the given bytes
-	Evaluate(policyBytes []byte, signatureSet []*common.SignedData) error
+	Evaluate(policyBytes []byte, signatureSet []*protoutil.SignedData) error
 }
 
 // SerializedPolicy defines a serialized policy

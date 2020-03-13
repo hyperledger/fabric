@@ -8,8 +8,6 @@ Unit test
 ~~~~~~~~~
 See `building Hyperledger Fabric <http://hyperledger-fabric.readthedocs.io/en/latest/dev-setup/build.html>` for unit testing instructions.
 
-See `Unit test coverage reports <https://jenkins.hyperledger.org/view/fabric/job/fabric-merge-x86_64/>`__
-
 To see coverage for a package and all sub-packages, execute the test with the ``-cover`` switch:
 
 ::
@@ -48,10 +46,6 @@ Once system integration tests complete successfully, a CR may be merged to a rep
 
 For more details on how to execute the integration tests, see the integration README.
 
-See `IT Daily Results <https://jenkins.hyperledger.org/view/Daily/>`__
-
-See `IT Weekly Results <https://jenkins.hyperledger.org/view/Weekly/>`__
-
 
 Interoperability test
 ~~~~~~~~~~~~~~~~~~~~~
@@ -82,15 +76,6 @@ System testing includes the following categories:
 * Chaos and Recovery
 
 * Functional (only for regression purposes)
-
-See `SVT Daily Results <https://jenkins.hyperledger.org/view/fabric-test/job/fabric-test-daily-results-x86_64/test_results_analyzer/>`__
-
-See `SVT Weekly Results <https://jenkins.hyperledger.org/view/fabric-test/job/fabric-test-weekly-results-x86_64/test_results_analyzer/>`__
-
-See `SVT Performance Test Results Graphs With Testviewer <https://testviewer.mybluemix.net>`__
-
-See `SVT Performance TestViewer Details <https://github.com/hyperledger/fabric-test/blob/master/tools/Testviewer/README.md>`__
-
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

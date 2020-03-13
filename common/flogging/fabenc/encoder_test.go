@@ -29,12 +29,12 @@ func TestEncodeEntry(t *testing.T) {
 		expected string
 	}{
 		{name: "empty spec and nil fields", spec: "", fields: nil, expected: "\n"},
-		{name: "empty spec with fields", spec: "", fields: []zapcore.Field{zap.String("key", "value")}, expected: `{"key": "value"}` + "\n"},
+		{name: "empty spec with fields", spec: "", fields: []zapcore.Field{zap.String("key", "value")}, expected: "key=value\n"},
 		{name: "simple spec and nil fields", spec: "simple-string", expected: "simple-string\n"},
 		{name: "simple spec and empty fields", spec: "simple-string", fields: []zapcore.Field{}, expected: "simple-string\n"},
-		{name: "simple spec with fields", spec: "simple-string", fields: []zapcore.Field{zap.String("key", "value")}, expected: `simple-string {"key": "value"}` + "\n"},
-		{name: "duration", spec: "", fields: []zapcore.Field{zap.Duration("duration", time.Second)}, expected: `{"duration": "1s"}` + "\n"},
-		{name: "time", spec: "", fields: []zapcore.Field{zap.Time("time", startTime)}, expected: fmt.Sprintf(`{"time": "%s"}`+"\n", startTime.Format("2006-01-02T15:04:05.999Z07:00"))},
+		{name: "simple spec with fields", spec: "simple-string", fields: []zapcore.Field{zap.String("key", "value")}, expected: "simple-string key=value\n"},
+		{name: "duration", spec: "", fields: []zapcore.Field{zap.Duration("duration", time.Second)}, expected: "duration=1s\n"},
+		{name: "time", spec: "", fields: []zapcore.Field{zap.Time("time", startTime)}, expected: fmt.Sprintf("time=%s\n", startTime.Format("2006-01-02T15:04:05.999Z07:00"))},
 	}
 
 	for _, tc := range tests {

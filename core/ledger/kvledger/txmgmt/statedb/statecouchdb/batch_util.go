@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -34,13 +35,15 @@ func executeBatches(batches []batch) error {
 			defer batchWG.Done()
 			if err := b.execute(); err != nil {
 				errsChan <- err
-				return
 			}
 		}(b)
 	}
 	batchWG.Wait()
-	if len(errsChan) > 0 {
-		return <-errsChan
+
+	select {
+	case err := <-errsChan:
+		return err
+	default:
+		return nil
 	}
-	return nil
 }

@@ -17,33 +17,31 @@ limitations under the License.
 package bookkeeping
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestEnv provides the bookkeeper provider env for testing
 type TestEnv struct {
 	t            testing.TB
 	TestProvider Provider
+	dbPath       string
 }
 
 // NewTestEnv construct a TestEnv for testing
 func NewTestEnv(t testing.TB) *TestEnv {
-	removePath(t)
-	provider := NewProvider()
-	return &TestEnv{t, provider}
+	dbPath, err := ioutil.TempDir("", "bookkeep")
+	require.NoError(t, err)
+	provider, err := NewProvider(dbPath)
+	require.NoError(t, err)
+	return &TestEnv{t, provider, dbPath}
 }
 
 // Cleanup cleansup the  store env after testing
-func (env *TestEnv) Cleanup() {
-	env.TestProvider.Close()
-	removePath(env.t)
-}
-
-func removePath(t testing.TB) {
-	dbPath := getInternalBookkeeperPath()
-	if err := os.RemoveAll(dbPath); err != nil {
-		t.Fatalf("Err: %s", err)
-		t.FailNow()
-	}
+func (te *TestEnv) Cleanup() {
+	te.TestProvider.Close()
+	os.RemoveAll(te.dbPath)
 }

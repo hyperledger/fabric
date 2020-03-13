@@ -2,6 +2,7 @@ package sarama
 
 import (
 	"encoding/binary"
+	"errors"
 	"time"
 )
 
@@ -61,9 +62,13 @@ func (ps *produceSet) add(msg *ProducerMessage) error {
 			batch := &RecordBatch{
 				FirstTimestamp:   timestamp,
 				Version:          2,
-				ProducerID:       -1, /* No producer id */
 				Codec:            ps.parent.conf.Producer.Compression,
 				CompressionLevel: ps.parent.conf.Producer.CompressionLevel,
+				ProducerID:       ps.parent.txnmgr.producerID,
+				ProducerEpoch:    ps.parent.txnmgr.producerEpoch,
+			}
+			if ps.parent.conf.Producer.Idempotent {
+				batch.FirstSequence = msg.sequenceNumber
 			}
 			set = &partitionSet{recordsToSend: newDefaultRecords(batch)}
 			size = recordBatchOverhead
@@ -72,9 +77,12 @@ func (ps *produceSet) add(msg *ProducerMessage) error {
 		}
 		partitions[msg.Partition] = set
 	}
-
 	set.msgs = append(set.msgs, msg)
+
 	if ps.parent.conf.Version.IsAtLeast(V0_11_0_0) {
+		if ps.parent.conf.Producer.Idempotent && msg.sequenceNumber < set.recordsToSend.RecordBatch.FirstSequence {
+			return errors.New("Assertion failed: Message out of sequence added to a batch")
+		}
 		// We are being conservative here to avoid having to prep encode the record
 		size += maximumRecordOverhead
 		rec := &Record{
@@ -120,8 +128,8 @@ func (ps *produceSet) buildRequest() *ProduceRequest {
 		req.Version = 3
 	}
 
-	for topic, partitionSet := range ps.msgs {
-		for partition, set := range partitionSet {
+	for topic, partitionSets := range ps.msgs {
+		for partition, set := range partitionSets {
 			if req.Version >= 3 {
 				// If the API version we're hitting is 3 or greater, we need to calculate
 				// offsets for each record in the batch relative to FirstOffset.
@@ -137,7 +145,6 @@ func (ps *produceSet) buildRequest() *ProduceRequest {
 						record.OffsetDelta = int64(i)
 					}
 				}
-
 				req.AddBatch(topic, partition, rb)
 				continue
 			}
@@ -183,10 +190,10 @@ func (ps *produceSet) buildRequest() *ProduceRequest {
 	return req
 }
 
-func (ps *produceSet) eachPartition(cb func(topic string, partition int32, msgs []*ProducerMessage)) {
+func (ps *produceSet) eachPartition(cb func(topic string, partition int32, pSet *partitionSet)) {
 	for topic, partitionSet := range ps.msgs {
 		for partition, set := range partitionSet {
-			cb(topic, partition, set.msgs)
+			cb(topic, partition, set)
 		}
 	}
 }
@@ -215,9 +222,8 @@ func (ps *produceSet) wouldOverflow(msg *ProducerMessage) bool {
 	// Would we overflow our maximum possible size-on-the-wire? 10KiB is arbitrary overhead for safety.
 	case ps.bufferBytes+msg.byteSize(version) >= int(MaxRequestSize-(10*1024)):
 		return true
-	// Would we overflow the size-limit of a compressed message-batch for this partition?
-	case ps.parent.conf.Producer.Compression != CompressionNone &&
-		ps.msgs[msg.Topic] != nil && ps.msgs[msg.Topic][msg.Partition] != nil &&
+	// Would we overflow the size-limit of a message-batch for this partition?
+	case ps.msgs[msg.Topic] != nil && ps.msgs[msg.Topic][msg.Partition] != nil &&
 		ps.msgs[msg.Topic][msg.Partition].bufferBytes+msg.byteSize(version) >= ps.parent.conf.Producer.MaxMessageBytes:
 		return true
 	// Would we overflow simply in number of messages?

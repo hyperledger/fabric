@@ -68,7 +68,7 @@ var _ = Describe("EndToEnd", func() {
 		client, err = docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
-		network = nwo.New(soloConfig, testDir, client, 33000, components)
+		network = nwo.New(soloConfig, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 
 		// modify config
@@ -79,24 +79,30 @@ var _ = Describe("EndToEnd", func() {
 
 		networkRunner := network.NetworkGroupRunner()
 		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready()).Should(BeClosed())
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 		chaincode = nwo.Chaincode{
-			Name:    "mycc",
-			Version: "0.0",
-			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
-			Ctor:    `{"Args":["init","a","100","b","200"]}`,
-			Policy:  `OR ('Org1MSP.member','Org2MSP.member')`,
+			Name:            "mycc",
+			Version:         "0.0",
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+			Lang:            "binary",
+			PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+			Ctor:            `{"Args":["init","a","100","b","200"]}`,
+			SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member')`,
+			Sequence:        "1",
+			InitRequired:    true,
+			Label:           "my_prebuilt_chaincode",
 		}
 		orderer := network.Orderer("orderer")
 		network.CreateAndJoinChannel(orderer, "testchannel")
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 	})
 
 	AfterEach(func() {
 		// stop the network
 		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait()).Should(Receive())
+		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 
 		// cleanup the network artifacts
 		network.Cleanup()
@@ -123,13 +129,16 @@ var _ = Describe("EndToEnd", func() {
 func compilePlugin(pluginType string) string {
 	pluginFilePath := filepath.Join("testdata", "plugins", pluginType, "plugin.so")
 	cmd := exec.Command(
-		"go", "build", "-buildmode=plugin",
+		"go", "build",
+		"-x", // print build commands while running
+		"-buildmode=plugin",
 		"-o", pluginFilePath,
 		fmt.Sprintf("github.com/hyperledger/fabric/integration/pluggable/testdata/plugins/%s", pluginType),
 	)
-	sess, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[build-plugin-%s] ", pluginType), GinkgoWriter)
+	sess, err := gexec.Start(cmd, pw, pw)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, 2*time.Minute).Should(gexec.Exit(0))
 
 	Expect(pluginFilePath).To(BeARegularFile())
 	return pluginFilePath

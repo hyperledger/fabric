@@ -9,7 +9,8 @@ package deliver
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
@@ -24,7 +25,7 @@ type ConfigSequencer interface {
 // NewSessionAC creates an instance of SessionAccessControl. This constructor will
 // return an error if a signature header cannot be extracted from the envelope.
 func NewSessionAC(chain ConfigSequencer, env *common.Envelope, policyChecker PolicyChecker, channelID string, expiresAt ExpiresAtFunc) (*SessionAccessControl, error) {
-	signedData, err := env.AsSignedData()
+	signedData, err := protoutil.EnvelopeAsSignedData(env)
 	if err != nil {
 		return nil, err
 	}

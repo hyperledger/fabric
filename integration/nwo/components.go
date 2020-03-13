@@ -8,68 +8,64 @@ package nwo
 
 import (
 	"fmt"
-	"os"
-	"runtime"
+	"io/ioutil"
+	"net/http"
 
-	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/runner"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
 )
 
 type Components struct {
-	Paths map[string]string
+	ServerAddress string `json:"server_address"`
 }
 
+func (c *Components) ConfigTxGen() string {
+	return c.Build("github.com/hyperledger/fabric/cmd/configtxgen")
+}
+
+func (c *Components) Cryptogen() string {
+	return c.Build("github.com/hyperledger/fabric/cmd/cryptogen")
+}
+
+func (c *Components) Discover() string {
+	return c.Build("github.com/hyperledger/fabric/cmd/discover")
+}
+
+func (c *Components) Idemixgen() string {
+	return c.Build("github.com/hyperledger/fabric/cmd/idemixgen")
+}
+
+func (c *Components) Orderer() string {
+	return c.Build("github.com/hyperledger/fabric/cmd/orderer")
+}
+
+func (c *Components) Peer() string {
+	return c.Build("github.com/hyperledger/fabric/cmd/peer")
+}
+
+func (c *Components) Cleanup() {}
+
+func (c *Components) Build(path string) string {
+	Expect(c.ServerAddress).NotTo(BeEmpty(), "build server address is empty")
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/%s", c.ServerAddress, path))
+	Expect(err).NotTo(HaveOccurred())
+
+	body, err := ioutil.ReadAll(resp.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	if resp.StatusCode != http.StatusOK {
+		Expect(resp.StatusCode).To(Equal(http.StatusOK), fmt.Sprintf("%s", body))
+	}
+
+	return string(body)
+}
+
+const CCEnvDefaultImage = "hyperledger/fabric-ccenv:latest"
+
 var RequiredImages = []string{
-	fmt.Sprintf("hyperledger/fabric-ccenv:%s-latest", runtime.GOARCH),
+	CCEnvDefaultImage,
 	runner.CouchDBDefaultImage,
 	runner.KafkaDefaultImage,
 	runner.ZooKeeperDefaultImage,
 }
-
-func (c *Components) Build(args ...string) {
-	helpers.AssertImagesExist(RequiredImages...)
-
-	if c.Paths == nil {
-		c.Paths = map[string]string{}
-	}
-	cryptogen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/cryptogen", args...)
-	Expect(err).NotTo(HaveOccurred())
-	c.Paths["cryptogen"] = cryptogen
-
-	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/idemixgen", args...)
-	Expect(err).NotTo(HaveOccurred())
-	c.Paths["idemixgen"] = idemixgen
-
-	configtxgen, err := gexec.Build("github.com/hyperledger/fabric/common/tools/configtxgen", args...)
-	Expect(err).NotTo(HaveOccurred())
-	c.Paths["configtxgen"] = configtxgen
-
-	orderer, err := gexec.Build("github.com/hyperledger/fabric/orderer", args...)
-	Expect(err).NotTo(HaveOccurred())
-	c.Paths["orderer"] = orderer
-
-	peer, err := gexec.Build("github.com/hyperledger/fabric/peer", args...)
-	Expect(err).NotTo(HaveOccurred())
-	c.Paths["peer"] = peer
-
-	discover, err := gexec.Build("github.com/hyperledger/fabric/cmd/discover", args...)
-	Expect(err).NotTo(HaveOccurred())
-	c.Paths["discover"] = discover
-}
-
-func (c *Components) Cleanup() {
-	for _, path := range c.Paths {
-		err := os.Remove(path)
-		Expect(err).NotTo(HaveOccurred())
-	}
-	gexec.CleanupBuildArtifacts()
-}
-
-func (c *Components) Cryptogen() string   { return c.Paths["cryptogen"] }
-func (c *Components) Idemixgen() string   { return c.Paths["idemixgen"] }
-func (c *Components) ConfigTxGen() string { return c.Paths["configtxgen"] }
-func (c *Components) Orderer() string     { return c.Paths["orderer"] }
-func (c *Components) Peer() string        { return c.Paths["peer"] }
-func (c *Components) Discover() string    { return c.Paths["discover"] }

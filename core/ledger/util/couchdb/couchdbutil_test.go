@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -16,13 +17,12 @@ import (
 
 //Unit test of couch db util functionality
 func TestCreateCouchDBConnectionAndDB(t *testing.T) {
-
+	startCouchDB()
 	database := "testcreatecouchdbconnectionanddb"
 	cleanup(database)
 	defer cleanup(database)
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
 	_, err = CreateCouchDatabase(couchInstance, database)
@@ -32,16 +32,15 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 
 //Unit test of couch db util functionality
 func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
-	value := couchDBDef.CreateGlobalChangesDB
-	couchDBDef.CreateGlobalChangesDB = false
-	defer resetCreateGlobalChangesDBValue(value)
+	startCouchDB()
+	config := testConfig()
+	config.CreateGlobalChangesDB = false
 	database := "_global_changes"
 	cleanup(database)
 	defer cleanup(database)
 
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(config, &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
 	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
@@ -51,20 +50,15 @@ func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 	assert.NotNil(t, errdb)
 }
 
-func resetCreateGlobalChangesDBValue(value bool) {
-	couchDBDef.CreateGlobalChangesDB = value
-}
-
 //Unit test of couch db util functionality
 func TestCreateCouchDBSystemDBs(t *testing.T) {
-
+	startCouchDB()
 	database := "testcreatecouchdbsystemdb"
 	cleanup(database)
 	defer cleanup(database)
 
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(couchDBDef.URL, couchDBDef.Username, couchDBDef.Password,
-		couchDBDef.MaxRetries, couchDBDef.MaxRetriesOnStartup, couchDBDef.RequestTimeout, couchDBDef.CreateGlobalChangesDB, &disabled.Provider{})
+	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
 
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 

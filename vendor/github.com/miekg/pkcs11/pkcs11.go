@@ -12,42 +12,72 @@ package pkcs11
 
 /*
 #cgo windows CFLAGS: -DPACKED_STRUCTURES
-#cgo windows LDFLAGS: -lltdl
-#cgo linux LDFLAGS: -lltdl -ldl
-#cgo darwin CFLAGS: -I/usr/local/share/libtool
-#cgo darwin LDFLAGS: -lltdl -L/usr/local/lib/
-#cgo openbsd CFLAGS: -I/usr/local/include/
-#cgo openbsd LDFLAGS: -lltdl -L/usr/local/lib/
-#cgo freebsd CFLAGS: -I/usr/local/include/
-#cgo freebsd LDFLAGS: -lltdl -L/usr/local/lib/
-#cgo LDFLAGS: -lltdl
+#cgo linux LDFLAGS: -ldl
+#cgo darwin LDFLAGS: -ldl
+#cgo openbsd LDFLAGS: -ldl
+#cgo freebsd LDFLAGS: -ldl
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ltdl.h>
 #include <unistd.h>
+
 #include "pkcs11go.h"
 
+#ifdef _WIN32
+#include <windows.h>
+
 struct ctx {
-	lt_dlhandle handle;
+	HMODULE handle;
 	CK_FUNCTION_LIST_PTR sym;
 };
 
 // New initializes a ctx and fills the symbol table.
 struct ctx *New(const char *module)
 {
-	if (lt_dlinit() != 0) {
-		return NULL;
-	}
 	CK_C_GetFunctionList list;
 	struct ctx *c = calloc(1, sizeof(struct ctx));
-	c->handle = lt_dlopen(module);
+	c->handle = LoadLibrary(module);
 	if (c->handle == NULL) {
 		free(c);
 		return NULL;
 	}
-	list = (CK_C_GetFunctionList) lt_dlsym(c->handle, "C_GetFunctionList");
+	list = (CK_C_GetFunctionList) GetProcAddress(c->handle, "C_GetFunctionList");
+	if (list == NULL) {
+		free(c);
+		return NULL;
+	}
+	list(&c->sym);
+	return c;
+}
+
+// Destroy cleans up a ctx.
+void Destroy(struct ctx *c)
+{
+	if (!c) {
+		return;
+	}
+	free(c);
+}
+#else
+#include <dlfcn.h>
+
+struct ctx {
+	void *handle;
+	CK_FUNCTION_LIST_PTR sym;
+};
+
+// New initializes a ctx and fills the symbol table.
+struct ctx *New(const char *module)
+{
+	CK_C_GetFunctionList list;
+	struct ctx *c = calloc(1, sizeof(struct ctx));
+	c->handle = dlopen(module, RTLD_LAZY);
+	if (c->handle == NULL) {
+		free(c);
+		return NULL;
+	}
+	list = (CK_C_GetFunctionList) dlsym(c->handle, "C_GetFunctionList");
 	if (list == NULL) {
 		free(c);
 		return NULL;
@@ -65,12 +95,12 @@ void Destroy(struct ctx *c)
 	if (c->handle == NULL) {
 		return;
 	}
-	if (lt_dlclose(c->handle) < 0) {
+	if (dlclose(c->handle) < 0) {
 		return;
 	}
-	lt_dlexit();
 	free(c);
 }
+#endif
 
 CK_RV Initialize(struct ctx * c)
 {
@@ -751,11 +781,6 @@ type Ctx struct {
 
 // New creates a new context and initializes the module/library for use.
 func New(module string) *Ctx {
-	// libtool-ltdl will return an assertion error if passed an empty string, so
-	// we check for it explicitly.
-	if module == "" {
-		return nil
-	}
 	c := new(Ctx)
 	mod := C.CString(module)
 	defer C.free(unsafe.Pointer(mod))
@@ -775,13 +800,13 @@ func (c *Ctx) Destroy() {
 	c.ctx = nil
 }
 
-// Initialize initializes the Cryptoki library. */
+// Initialize initializes the Cryptoki library.
 func (c *Ctx) Initialize() error {
 	e := C.Initialize(c.ctx)
 	return toError(e)
 }
 
-// Finalize indicates that an application is done with the Cryptoki library. */
+// Finalize indicates that an application is done with the Cryptoki library.
 func (c *Ctx) Finalize() error {
 	if c.ctx == nil {
 		return toError(CKR_CRYPTOKI_NOT_INITIALIZED)
@@ -790,7 +815,7 @@ func (c *Ctx) Finalize() error {
 	return toError(e)
 }
 
-// GetInfo returns general information about Cryptoki. */
+// GetInfo returns general information about Cryptoki.
 func (c *Ctx) GetInfo() (Info, error) {
 	var p C.ckInfo
 	e := C.GetInfo(c.ctx, &p)
@@ -804,7 +829,7 @@ func (c *Ctx) GetInfo() (Info, error) {
 	return i, toError(e)
 }
 
-// GetSlotList obtains a list of slots in the system. */
+// GetSlotList obtains a list of slots in the system.
 func (c *Ctx) GetSlotList(tokenPresent bool) ([]uint, error) {
 	var (
 		slotList C.CK_ULONG_PTR
@@ -818,7 +843,7 @@ func (c *Ctx) GetSlotList(tokenPresent bool) ([]uint, error) {
 	return l, nil
 }
 
-// GetSlotInfo obtains information about a particular slot in the system. */
+// GetSlotInfo obtains information about a particular slot in the system.
 func (c *Ctx) GetSlotInfo(slotID uint) (SlotInfo, error) {
 	var csi C.CK_SLOT_INFO
 	e := C.GetSlotInfo(c.ctx, C.CK_ULONG(slotID), &csi)
@@ -860,7 +885,7 @@ func (c *Ctx) GetTokenInfo(slotID uint) (TokenInfo, error) {
 	return s, toError(e)
 }
 
-// GetMechanismList obtains a list of mechanism types supported by a token. */
+// GetMechanismList obtains a list of mechanism types supported by a token.
 func (c *Ctx) GetMechanismList(slotID uint) ([]*Mechanism, error) {
 	var (
 		mech    C.CK_ULONG_PTR // in pkcs#11 we're all CK_ULONGs \o/
@@ -972,11 +997,11 @@ func (c *Ctx) GetOperationState(sh SessionHandle) ([]byte, error) {
 		statelen C.CK_ULONG
 	)
 	e := C.GetOperationState(c.ctx, C.CK_SESSION_HANDLE(sh), &state, &statelen)
+	defer C.free(unsafe.Pointer(state))
 	if toError(e) != nil {
 		return nil, toError(e)
 	}
 	b := C.GoBytes(unsafe.Pointer(state), C.int(statelen))
-	C.free(unsafe.Pointer(state))
 	return b, nil
 }
 

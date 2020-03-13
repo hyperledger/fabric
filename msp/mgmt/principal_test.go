@@ -20,19 +20,25 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewLocalMSPPrincipalGetter(t *testing.T) {
-	assert.NotNil(t, NewLocalMSPPrincipalGetter())
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	assert.NotNil(t, NewLocalMSPPrincipalGetter(cryptoProvider))
 }
 
 func TestLocalMSPPrincipalGetter_Get(t *testing.T) {
-	m := NewDeserializersManager()
-	g := NewLocalMSPPrincipalGetter()
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
 
-	_, err := g.Get("")
+	m := NewDeserializersManager(cryptoProvider)
+	g := NewLocalMSPPrincipalGetter(cryptoProvider)
+
+	_, err = g.Get("")
 	assert.Error(t, err)
 
 	p, err := g.Get(Admins)

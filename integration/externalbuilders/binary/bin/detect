@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+    >&2 echo "Expected 2 directories got $#"
+    exit 2
+fi
+
+# SRC="$1"
+META="$2"
+
+if [ "$(jq -r .type "$META/metadata.json")" == "binary" ]; then
+    exit 0
+fi
+
+>&2 echo "binary is the only supported type"
+exit 1

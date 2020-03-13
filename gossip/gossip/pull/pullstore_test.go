@@ -7,17 +7,21 @@ SPDX-License-Identifier: Apache-2.0
 package pull
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric-protos-go/gossip"
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,15 +30,12 @@ var timeoutInterval = 20 * time.Second
 
 func init() {
 	util.SetupTestLogging()
-	pullInterval = time.Duration(500) * time.Millisecond
-	algo.SetDigestWaitTime(pullInterval / 5)
-	algo.SetRequestWaitTime(pullInterval)
-	algo.SetResponseWaitTime(pullInterval)
+	pullInterval = 500 * time.Millisecond
 }
 
 type pullMsg struct {
 	respondChan chan *pullMsg
-	msg         *proto.SignedGossipMessage
+	msg         *protoext.SignedGossipMessage
 }
 
 // GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
@@ -44,18 +45,18 @@ func (pm *pullMsg) GetSourceEnvelope() *proto.Envelope {
 }
 
 func (pm *pullMsg) Respond(msg *proto.GossipMessage) {
-	sMsg, _ := msg.NoopSign()
+	sMsg, _ := protoext.NoopSign(msg)
 	pm.respondChan <- &pullMsg{
 		msg:         sMsg,
 		respondChan: pm.respondChan,
 	}
 }
 
-func (pm *pullMsg) GetGossipMessage() *proto.SignedGossipMessage {
+func (pm *pullMsg) GetGossipMessage() *protoext.SignedGossipMessage {
 	return pm.msg
 }
 
-func (pm *pullMsg) GetConnectionInfo() *proto.ConnectionInfo {
+func (pm *pullMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 	return nil
 }
 
@@ -75,7 +76,7 @@ type pullInstance struct {
 	config        Config
 }
 
-func (p *pullInstance) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
+func (p *pullInstance) Send(msg *protoext.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	for _, peer := range peers {
 		m := &pullMsg{
 			respondChan: p.msgChan,
@@ -88,6 +89,10 @@ func (p *pullInstance) Send(msg *proto.SignedGossipMessage, peers ...*comm.Remot
 func (p *pullInstance) GetMembership() []discovery.NetworkMember {
 	members := []discovery.NetworkMember{}
 	for _, peer := range p.peer2PullInst {
+		if bytes.Equal(peer.self.PKIid, p.self.PKIid) {
+			// peer instance itself should not be part of the membership
+			continue
+		}
 		members = append(members, peer.self)
 	}
 	return members
@@ -112,7 +117,7 @@ func (p *pullInstance) stop() {
 	p.stopChan <- struct{}{}
 }
 
-func (p *pullInstance) wrapPullMsg(msg *proto.SignedGossipMessage) proto.ReceivedMessage {
+func (p *pullInstance) wrapPullMsg(msg *protoext.SignedGossipMessage) protoext.ReceivedMessage {
 	return &pullMsg{
 		msg:         msg,
 		respondChan: p.msgChan,
@@ -141,8 +146,13 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 		PeerCountToSelect: 3,
 		PullInterval:      pullInterval,
 		Tag:               proto.GossipMessage_EMPTY,
+		PullEngineConfig: algo.PullEngineConfig{
+			DigestWaitTime:   time.Duration(100) * time.Millisecond,
+			RequestWaitTime:  time.Duration(200) * time.Millisecond,
+			ResponseWaitTime: time.Duration(300) * time.Millisecond,
+		},
 	}
-	seqNumFromMsg := func(msg *proto.SignedGossipMessage) string {
+	seqNumFromMsg := func(msg *protoext.SignedGossipMessage) string {
 		dataMsg := msg.GetDataMsg()
 		if dataMsg == nil {
 			return ""
@@ -152,7 +162,7 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 		}
 		return fmt.Sprintf("%d", dataMsg.Payload.SeqNum)
 	}
-	blockConsumer := func(msg *proto.SignedGossipMessage) {
+	blockConsumer := func(msg *protoext.SignedGossipMessage) {
 		inst.items.Add(msg.GetDataMsg().Payload.SeqNum)
 	}
 	inst.pullAdapter = &PullAdapter{
@@ -189,7 +199,7 @@ func TestRegisterMsgHook(t *testing.T) {
 
 	for _, msgType := range []MsgType{HelloMsgType, DigestMsgType, RequestMsgType, ResponseMsgType} {
 		mType := msgType
-		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*protoext.SignedGossipMessage, _ protoext.ReceivedMessage) {
 			receivedMsgTypes.Add(mType)
 		})
 	}
@@ -209,8 +219,8 @@ func TestFilter(t *testing.T) {
 	eq := func(a interface{}, b interface{}) bool {
 		return a == b
 	}
-	df := func(msg proto.ReceivedMessage) func(string) bool {
-		if msg.GetGossipMessage().IsDataReq() {
+	df := func(msg protoext.ReceivedMessage) func(string) bool {
+		if protoext.IsDataReq(msg.GetGossipMessage().GossipMessage) {
 			req := msg.GetGossipMessage().GetDataReq()
 			return func(item string) bool {
 				return util.IndexInSlice(util.BytesToStrings(req.Digests), item, eq) != -1
@@ -269,8 +279,41 @@ func TestAddAndRemove(t *testing.T) {
 	// Add a message to inst1
 	inst1.mediator.Add(dataMsg(10))
 
+	// Need to make sure that instance 2, will issue pull
+	// of missing data message with sequence number 10, i.e.
+	// 1. Instance 2 sending Hello to instance 1
+	// 2. Instance 1 answers with digest of current messages
+	// 3. Instance 2 will request missing message 10
+	// 4. Instance 1 provides missing item
+	// Eventually need to ensure message 10 persisted in the state
+	wg := sync.WaitGroup{}
+	wg.Add(4)
+
+	// Make sure there is a Hello message
+	inst1.mediator.RegisterMsgHook(HelloMsgType, func(_ []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage) {
+		wg.Done()
+	})
+
+	// Instance 1 answering with digest
+	inst2.mediator.RegisterMsgHook(DigestMsgType, func(_ []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage) {
+		wg.Done()
+	})
+
+	// Instance 2 requesting missing items
+	inst1.mediator.RegisterMsgHook(RequestMsgType, func(_ []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage) {
+		wg.Done()
+	})
+
+	// Instance 1 sends missing item
+	inst2.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage) {
+		wg.Done()
+	})
+
+	// Waiting for pull engine message exchanges
+	wg.Wait()
+
 	// Ensure instance 2 got new message
-	waitUntilOrFail(t, func() bool { return inst2.items.Exists(uint64(10)) })
+	assert.True(t, inst2.items.Exists(uint64(10)), "Instance 2 should have receive message 10 but didn't")
 
 	// Ensure instance 2 doesn't have message 0
 	assert.False(t, inst2.items.Exists(uint64(0)), "Instance 2 has message 0 but shouldn't have")
@@ -288,7 +331,7 @@ func TestDigestsFilters(t *testing.T) {
 	defer inst1.stop()
 	defer inst2.stop()
 
-	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*protoext.SignedGossipMessage, _ protoext.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) {
 			return
 		}
@@ -307,7 +350,7 @@ func TestDigestsFilters(t *testing.T) {
 	inst2.mediator.Add(dataMsg(3))
 
 	// inst1 sends hello to inst2
-	sMsg, _ := helloMsg().NoopSign()
+	sMsg, _ := protoext.NoopSign(helloMsg())
 	inst2.mediator.HandleMessage(inst1.wrapPullMsg(sMsg))
 
 	// inst2 is expected to send digest to inst1
@@ -317,6 +360,7 @@ func TestDigestsFilters(t *testing.T) {
 
 func TestHandleMessage(t *testing.T) {
 	t.Parallel()
+
 	inst1 := createPullInstance("localhost:5611", make(map[string]*pullInstance))
 	inst2 := createPullInstance("localhost:5612", make(map[string]*pullInstance))
 	inst1.start()
@@ -331,7 +375,7 @@ func TestHandleMessage(t *testing.T) {
 	inst1ReceivedDigest := int32(0)
 	inst1ReceivedResponse := int32(0)
 
-	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*protoext.SignedGossipMessage, _ protoext.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) {
 			return
 		}
@@ -339,7 +383,7 @@ func TestHandleMessage(t *testing.T) {
 		assert.True(t, len(itemIds) == 3)
 	})
 
-	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedResponse) == int32(1) {
 			return
 		}
@@ -348,14 +392,14 @@ func TestHandleMessage(t *testing.T) {
 	})
 
 	// inst1 sends hello to inst2
-	sMsg, _ := helloMsg().NoopSign()
+	sMsg, _ := protoext.NoopSign(helloMsg())
 	inst2.mediator.HandleMessage(inst1.wrapPullMsg(sMsg))
 
 	// inst2 is expected to send digest to inst1
 	waitUntilOrFail(t, func() bool { return atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) })
 
 	// inst1 sends request to inst2
-	sMsg, _ = reqMsg("0", "1", "2").NoopSign()
+	sMsg, _ = protoext.NoopSign(reqMsg("0", "1", "2"))
 	inst2.mediator.HandleMessage(inst1.wrapPullMsg(sMsg))
 
 	// inst2 is expected to send response to inst1
@@ -372,14 +416,14 @@ func waitUntilOrFail(t *testing.T, pred func() bool) {
 		if pred() {
 			return
 		}
-		time.Sleep(timeoutInterval / 60)
+		time.Sleep(timeoutInterval / 1000)
 	}
 	util.PrintStackTrace()
 	assert.Fail(t, "Timeout expired!")
 }
 
-func dataMsg(seqNum int) *proto.SignedGossipMessage {
-	sMsg, _ := (&proto.GossipMessage{
+func dataMsg(seqNum int) *protoext.SignedGossipMessage {
+	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Nonce: 0,
 		Tag:   proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataMsg{
@@ -390,7 +434,7 @@ func dataMsg(seqNum int) *proto.SignedGossipMessage {
 				},
 			},
 		},
-	}).NoopSign()
+	})
 	return sMsg
 }
 
@@ -438,5 +482,37 @@ func createDigestsFilter(level uint64) IngressDigestFilter {
 
 		}
 		return res
+	}
+}
+
+func TestFormattedDigests(t *testing.T) {
+	tests := []struct {
+		dataRequest *gossip.DataRequest
+		expected    []string
+	}{
+		{
+			dataRequest: &gossip.DataRequest{},
+			expected:    []string{},
+		},
+		{
+			dataRequest: &gossip.DataRequest{
+				MsgType: gossip.PullMsgType_UNDEFINED,
+				Digests: [][]byte{[]byte("undefined-1"), []byte("undefined-2")},
+			},
+			expected: []string{"undefined-1", "undefined-2"},
+		},
+		{
+			dataRequest: &gossip.DataRequest{
+				MsgType: gossip.PullMsgType_IDENTITY_MSG,
+				Digests: [][]byte{{0, 1, 2, 3}, {10, 11, 12, 13}},
+			},
+			expected: []string{"00010203", "0a0b0c0d"},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, tt.expected, formattedDigests(tt.dataRequest))
+		})
 	}
 }

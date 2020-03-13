@@ -1,17 +1,7 @@
 /*
 Copyright IBM Corp. 2017 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package ccprovider
@@ -21,10 +11,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/common/ccpackage"
-	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,9 +25,13 @@ func processSignedCDS(cds *pb.ChaincodeDeploymentSpec, policy *common.SignatureP
 		return nil, nil, nil, fmt.Errorf("could not create package %s", err)
 	}
 
-	b := utils.MarshalOrPanic(env)
+	b := protoutil.MarshalOrPanic(env)
 
-	ccpack := &SignedCDSPackage{}
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("could not create bootBCCSP %s", cryptoProvider)
+	}
+	ccpack := &SignedCDSPackage{GetHasher: cryptoProvider}
 	cd, err := ccpack.InitFromBuffer(b)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error owner creating package %s", err)
@@ -274,9 +269,12 @@ func TestSigCDSGetCCPackage(t *testing.T) {
 		return
 	}
 
-	b := utils.MarshalOrPanic(env)
+	b := protoutil.MarshalOrPanic(env)
 
-	ccpack, err := GetCCPackage(b)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	ccpack, err := GetCCPackage(b, cryptoProvider)
 	if err != nil {
 		t.Fatalf("failed to get CCPackage %s", err)
 		return
@@ -309,8 +307,10 @@ func TestSigCDSGetCCPackage(t *testing.T) {
 func TestInvalidSigCDSGetCCPackage(t *testing.T) {
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
 
-	b := utils.MarshalOrPanic(cds)
-	ccpack, err := GetCCPackage(b)
+	b := protoutil.MarshalOrPanic(cds)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	ccpack, err := GetCCPackage(b, cryptoProvider)
 	if err != nil {
 		t.Fatalf("failed to get CCPackage %s", err)
 	}

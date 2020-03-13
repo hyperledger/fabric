@@ -20,6 +20,6 @@ type SubChannelSelectionCriteria func(signature PeerSignature) bool
 // it can ascertain which peers should be aware of the data related to the
 // CollectionCriteria.
 type RoutingFilterFactory interface {
-	// Peers returns a RoutingFilter for given chainID and CollectionCriteria
-	Peers(common.ChainID, SubChannelSelectionCriteria) RoutingFilter
+	// Peers returns a RoutingFilter for given channelID and CollectionCriteria
+	Peers(common.ChannelID, SubChannelSelectionCriteria) RoutingFilter
 }

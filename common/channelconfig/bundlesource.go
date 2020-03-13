@@ -21,14 +21,17 @@ import (
 // type bugs.
 type BundleSource struct {
 	bundle    atomic.Value
-	callbacks []func(*Bundle)
+	callbacks []BundleActor
 }
+
+// BundleActor performs an operation based on the given bundle
+type BundleActor func(bundle *Bundle)
 
 // NewBundleSource creates a new BundleSource with an initial Bundle value
 // The callbacks will be invoked whenever the Update method is called for the
 // BundleSource.  Note, these callbacks are called immediately before this function
 // returns.
-func NewBundleSource(bundle *Bundle, callbacks ...func(*Bundle)) *BundleSource {
+func NewBundleSource(bundle *Bundle, callbacks ...BundleActor) *BundleSource {
 	bs := &BundleSource{
 		callbacks: callbacks,
 	}
@@ -58,12 +61,12 @@ func (bs *BundleSource) StableBundle() *Bundle {
 
 // PolicyManager returns the policy manager constructed for this config
 func (bs *BundleSource) PolicyManager() policies.Manager {
-	return bs.StableBundle().policyManager
+	return bs.StableBundle().PolicyManager()
 }
 
 // MSPManager returns the MSP manager constructed for this config
 func (bs *BundleSource) MSPManager() msp.MSPManager {
-	return bs.StableBundle().mspManager
+	return bs.StableBundle().MSPManager()
 }
 
 // ChannelConfig returns the config.Channel for the chain

@@ -4,24 +4,24 @@ package mock
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
-	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 type ChannelSupportRegistrar struct {
-	BroadcastChannelSupportStub        func(msg *cb.Envelope) (*cb.ChannelHeader, bool, broadcast.ChannelSupport, error)
+	BroadcastChannelSupportStub        func(*common.Envelope) (*common.ChannelHeader, bool, broadcast.ChannelSupport, error)
 	broadcastChannelSupportMutex       sync.RWMutex
 	broadcastChannelSupportArgsForCall []struct {
-		msg *cb.Envelope
+		arg1 *common.Envelope
 	}
 	broadcastChannelSupportReturns struct {
-		result1 *cb.ChannelHeader
+		result1 *common.ChannelHeader
 		result2 bool
 		result3 broadcast.ChannelSupport
 		result4 error
 	}
 	broadcastChannelSupportReturnsOnCall map[int]struct {
-		result1 *cb.ChannelHeader
+		result1 *common.ChannelHeader
 		result2 bool
 		result3 broadcast.ChannelSupport
 		result4 error
@@ -30,21 +30,22 @@ type ChannelSupportRegistrar struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChannelSupportRegistrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader, bool, broadcast.ChannelSupport, error) {
+func (fake *ChannelSupportRegistrar) BroadcastChannelSupport(arg1 *common.Envelope) (*common.ChannelHeader, bool, broadcast.ChannelSupport, error) {
 	fake.broadcastChannelSupportMutex.Lock()
 	ret, specificReturn := fake.broadcastChannelSupportReturnsOnCall[len(fake.broadcastChannelSupportArgsForCall)]
 	fake.broadcastChannelSupportArgsForCall = append(fake.broadcastChannelSupportArgsForCall, struct {
-		msg *cb.Envelope
-	}{msg})
-	fake.recordInvocation("BroadcastChannelSupport", []interface{}{msg})
+		arg1 *common.Envelope
+	}{arg1})
+	fake.recordInvocation("BroadcastChannelSupport", []interface{}{arg1})
 	fake.broadcastChannelSupportMutex.Unlock()
 	if fake.BroadcastChannelSupportStub != nil {
-		return fake.BroadcastChannelSupportStub(msg)
+		return fake.BroadcastChannelSupportStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3, ret.result4
 	}
-	return fake.broadcastChannelSupportReturns.result1, fake.broadcastChannelSupportReturns.result2, fake.broadcastChannelSupportReturns.result3, fake.broadcastChannelSupportReturns.result4
+	fakeReturns := fake.broadcastChannelSupportReturns
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3, fakeReturns.result4
 }
 
 func (fake *ChannelSupportRegistrar) BroadcastChannelSupportCallCount() int {
@@ -53,34 +54,45 @@ func (fake *ChannelSupportRegistrar) BroadcastChannelSupportCallCount() int {
 	return len(fake.broadcastChannelSupportArgsForCall)
 }
 
-func (fake *ChannelSupportRegistrar) BroadcastChannelSupportArgsForCall(i int) *cb.Envelope {
-	fake.broadcastChannelSupportMutex.RLock()
-	defer fake.broadcastChannelSupportMutex.RUnlock()
-	return fake.broadcastChannelSupportArgsForCall[i].msg
+func (fake *ChannelSupportRegistrar) BroadcastChannelSupportCalls(stub func(*common.Envelope) (*common.ChannelHeader, bool, broadcast.ChannelSupport, error)) {
+	fake.broadcastChannelSupportMutex.Lock()
+	defer fake.broadcastChannelSupportMutex.Unlock()
+	fake.BroadcastChannelSupportStub = stub
 }
 
-func (fake *ChannelSupportRegistrar) BroadcastChannelSupportReturns(result1 *cb.ChannelHeader, result2 bool, result3 broadcast.ChannelSupport, result4 error) {
+func (fake *ChannelSupportRegistrar) BroadcastChannelSupportArgsForCall(i int) *common.Envelope {
+	fake.broadcastChannelSupportMutex.RLock()
+	defer fake.broadcastChannelSupportMutex.RUnlock()
+	argsForCall := fake.broadcastChannelSupportArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *ChannelSupportRegistrar) BroadcastChannelSupportReturns(result1 *common.ChannelHeader, result2 bool, result3 broadcast.ChannelSupport, result4 error) {
+	fake.broadcastChannelSupportMutex.Lock()
+	defer fake.broadcastChannelSupportMutex.Unlock()
 	fake.BroadcastChannelSupportStub = nil
 	fake.broadcastChannelSupportReturns = struct {
-		result1 *cb.ChannelHeader
+		result1 *common.ChannelHeader
 		result2 bool
 		result3 broadcast.ChannelSupport
 		result4 error
 	}{result1, result2, result3, result4}
 }
 
-func (fake *ChannelSupportRegistrar) BroadcastChannelSupportReturnsOnCall(i int, result1 *cb.ChannelHeader, result2 bool, result3 broadcast.ChannelSupport, result4 error) {
+func (fake *ChannelSupportRegistrar) BroadcastChannelSupportReturnsOnCall(i int, result1 *common.ChannelHeader, result2 bool, result3 broadcast.ChannelSupport, result4 error) {
+	fake.broadcastChannelSupportMutex.Lock()
+	defer fake.broadcastChannelSupportMutex.Unlock()
 	fake.BroadcastChannelSupportStub = nil
 	if fake.broadcastChannelSupportReturnsOnCall == nil {
 		fake.broadcastChannelSupportReturnsOnCall = make(map[int]struct {
-			result1 *cb.ChannelHeader
+			result1 *common.ChannelHeader
 			result2 bool
 			result3 broadcast.ChannelSupport
 			result4 error
 		})
 	}
 	fake.broadcastChannelSupportReturnsOnCall[i] = struct {
-		result1 *cb.ChannelHeader
+		result1 *common.ChannelHeader
 		result2 bool
 		result3 broadcast.ChannelSupport
 		result4 error

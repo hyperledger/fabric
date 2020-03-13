@@ -46,7 +46,7 @@ var _ = Describe("ActiveTransactions", func() {
 		},
 		Entry("empty channel and tx", "", "", ""),
 		Entry("empty channel", "", "tx-1", "tx-1"),
-		Entry("empty tx", "chan-1", "tx-1", "chan-1tx-1"),
+		Entry("empty tx", "chan-1", "", "chan-1"),
 		Entry("channel and tx", "chan-1", "tx-1", "chan-1tx-1"),
 	)
 })

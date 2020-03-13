@@ -23,7 +23,7 @@ import (
 //   2. an optional colon that is ungrouped with '?:'
 //   3. an optional, non-greedy format directive
 //
-// The grouping simplifies the verb proccessing during spec parsing.
+// The grouping simplifies the verb proccssing during spec parsing.
 var formatRegexp = regexp.MustCompile(`%{(color|id|level|message|module|shortfunc|time)(?::(.*?))?}`)
 
 // ParseFormat parses a log format spec and returns a slice of formatters
@@ -190,11 +190,11 @@ func (c ColorFormatter) LevelColor(l zapcore.Level) Color {
 func (c ColorFormatter) Format(w io.Writer, entry zapcore.Entry, fields []zapcore.Field) {
 	switch {
 	case c.Reset:
-		fmt.Fprintf(w, ResetColor())
+		fmt.Fprint(w, ResetColor())
 	case c.Bold:
-		fmt.Fprintf(w, c.LevelColor(entry.Level).Bold())
+		fmt.Fprint(w, c.LevelColor(entry.Level).Bold())
 	default:
-		fmt.Fprintf(w, c.LevelColor(entry.Level).Normal())
+		fmt.Fprint(w, c.LevelColor(entry.Level).Normal())
 	}
 }
 

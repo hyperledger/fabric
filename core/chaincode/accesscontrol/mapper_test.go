@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,7 +26,12 @@ func TestPurge(t *testing.T) {
 	m := newCertMapper(ca.NewClientCertKeyPair)
 	k, err := m.genCert("A")
 	assert.NoError(t, err)
-	hash, _ := factory.GetDefault().Hash(k.TLSCert.Raw, &bccsp.SHA256Opts{})
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	hash, err := cryptoProvider.Hash(k.TLSCert.Raw, &bccsp.SHA256Opts{})
+	assert.NoError(t, err)
 	assert.Equal(t, "A", m.lookup(certHash(hash)))
 	time.Sleep(time.Second * 3)
 	assert.Empty(t, m.lookup(certHash(hash)))

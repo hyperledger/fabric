@@ -23,8 +23,8 @@ role an application plays.
 Components of the Fabcar Network
 --------------------------------
 
-Fabcar uses the "basic-network" sample as its limited development network. It
-consists of a single peer node configured to use CouchDB as the state database,
+Fabcar uses the "first-network" sample as its limited development network. It
+consists of four peer nodes configured to use CouchDB as the state database,
 a single "solo" ordering node, a certificate authority (CA) and a CLI container
 for executing commands.
 
@@ -53,7 +53,7 @@ where the name is ``fabcar``, the version is ``1.0``, and the peer it is running
 against is ``dev-peer0.org1.example.com``.
 
 APIs are accessible with an SDK. For purposes of this exercise, we're using the
-`Hyperledger Fabric Node SDK <https://fabric-sdk-node.github.io/>`__ though
+`Hyperledger Fabric Node SDK <https://hyperledger.github.io/fabric-sdk-node/>`__ though
 there is also a Java SDK and CLI that can be used to drive transactions.
 SDKs encapsulate all access to the ledger by allowing an application to
 communicate with smart contracts, run queries, or receive ledger updates. These APIs use
@@ -72,7 +72,7 @@ Query
 
 Queries are the simplest kind of invocation: a call and response.  The most common query
 will interrogate the state database for the current value associated
-with a key (``GetState``).  However, the `chaincode shim interface <https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim#ChaincodeStub>`__
+with a key (``GetState``).  However, the `chaincode shim interface <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
 also allows for different types of ``Get`` calls (e.g. ``GetHistoryForKey`` or ``GetCreator``).
 
 In our example, the peer holds a hash chain of all transactions and maintains
@@ -117,7 +117,7 @@ For more information on how endorsement policies work, check out
 :doc:`endorsement-policies`.
 
 For a deeper dive into the architecture of Hyperledger Fabric, check out
-:doc:`arch-deep-dive`.
+:doc:`architecture`.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

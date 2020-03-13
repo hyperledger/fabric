@@ -22,39 +22,45 @@ import (
 	"time"
 
 	protoG "github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/config/configtest"
+	proto "github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
+	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 )
 
 var timeout = time.Second * time.Duration(15)
 
+var aliveTimeInterval = time.Duration(time.Millisecond * 300)
+var defaultTestConfig = DiscoveryConfig{
+	AliveTimeInterval:            aliveTimeInterval,
+	AliveExpirationTimeout:       10 * aliveTimeInterval,
+	AliveExpirationCheckInterval: aliveTimeInterval,
+	ReconnectInterval:            10 * aliveTimeInterval,
+}
+
 func init() {
 	util.SetupTestLogging()
-	aliveTimeInterval := time.Duration(time.Millisecond * 300)
-	SetAliveTimeInterval(aliveTimeInterval)
-	SetAliveExpirationTimeout(10 * aliveTimeInterval)
-	SetAliveExpirationCheckInterval(aliveTimeInterval)
-	SetReconnectInterval(10 * aliveTimeInterval)
 	maxConnectionAttempts = 10000
 }
 
 type dummyReceivedMessage struct {
-	msg  *proto.SignedGossipMessage
-	info *proto.ConnectionInfo
+	msg  *protoext.SignedGossipMessage
+	info *protoext.ConnectionInfo
 }
 
 func (*dummyReceivedMessage) Respond(msg *proto.GossipMessage) {
 	panic("implement me")
 }
 
-func (rm *dummyReceivedMessage) GetGossipMessage() *proto.SignedGossipMessage {
+func (rm *dummyReceivedMessage) GetGossipMessage() *protoext.SignedGossipMessage {
 	return rm.msg
 }
 
@@ -62,7 +68,7 @@ func (*dummyReceivedMessage) GetSourceEnvelope() *proto.Envelope {
 	panic("implement me")
 }
 
-func (rm *dummyReceivedMessage) GetConnectionInfo() *proto.ConnectionInfo {
+func (rm *dummyReceivedMessage) GetConnectionInfo() *protoext.ConnectionInfo {
 	return rm.info
 }
 
@@ -71,23 +77,25 @@ func (*dummyReceivedMessage) Ack(err error) {
 }
 
 type dummyCommModule struct {
-	validatedMessages chan *proto.SignedGossipMessage
+	validatedMessages chan *protoext.SignedGossipMessage
 	msgsReceived      uint32
 	msgsSent          uint32
 	id                string
+	identitySwitch    chan common.PKIidType
 	presumeDead       chan common.PKIidType
 	detectedDead      chan string
 	streams           map[string]proto.Gossip_GossipStreamClient
 	conns             map[string]*grpc.ClientConn
 	lock              *sync.RWMutex
-	incMsgs           chan proto.ReceivedMessage
+	incMsgs           chan protoext.ReceivedMessage
 	lastSeqs          map[string]uint64
 	shouldGossip      bool
+	disableComm       bool
 	mock              *mock.Mock
 }
 
 type gossipInstance struct {
-	msgInterceptor func(*proto.SignedGossipMessage)
+	msgInterceptor func(*protoext.SignedGossipMessage)
 	comm           *dummyCommModule
 	Discovery
 	gRGCserv      *grpc.Server
@@ -98,7 +106,7 @@ type gossipInstance struct {
 	port          int
 }
 
-func (comm *dummyCommModule) ValidateAliveMsg(am *proto.SignedGossipMessage) bool {
+func (comm *dummyCommModule) ValidateAliveMsg(am *protoext.SignedGossipMessage) bool {
 	comm.lock.RLock()
 	c := comm.validatedMessages
 	comm.lock.RUnlock()
@@ -109,14 +117,18 @@ func (comm *dummyCommModule) ValidateAliveMsg(am *proto.SignedGossipMessage) boo
 	return true
 }
 
-func (comm *dummyCommModule) recordValidation(validatedMessages chan *proto.SignedGossipMessage) {
+func (comm *dummyCommModule) IdentitySwitch() <-chan common.PKIidType {
+	return comm.identitySwitch
+}
+
+func (comm *dummyCommModule) recordValidation(validatedMessages chan *protoext.SignedGossipMessage) {
 	comm.lock.Lock()
 	defer comm.lock.Unlock()
 	comm.validatedMessages = validatedMessages
 }
 
 func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage, internalEndpoint string) *proto.Envelope {
-	am.NoopSign()
+	protoext.NoopSign(am)
 
 	secret := &proto.Secret{
 		Content: &proto.Secret_InternalEndpoint{
@@ -126,14 +138,14 @@ func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage, internalEndpoi
 	signer := func(msg []byte) ([]byte, error) {
 		return nil, nil
 	}
-	s, _ := am.NoopSign()
+	s, _ := protoext.NoopSign(am)
 	env := s.Envelope
-	env.SignSecret(signer, secret)
+	protoext.SignSecret(env, signer, secret)
 	return env
 }
 
-func (comm *dummyCommModule) Gossip(msg *proto.SignedGossipMessage) {
-	if !comm.shouldGossip {
+func (comm *dummyCommModule) Gossip(msg *protoext.SignedGossipMessage) {
+	if !comm.shouldGossip || comm.disableComm {
 		return
 	}
 	comm.lock.Lock()
@@ -143,8 +155,8 @@ func (comm *dummyCommModule) Gossip(msg *proto.SignedGossipMessage) {
 	}
 }
 
-func (comm *dummyCommModule) Forward(msg proto.ReceivedMessage) {
-	if !comm.shouldGossip {
+func (comm *dummyCommModule) Forward(msg protoext.ReceivedMessage) {
+	if !comm.shouldGossip || comm.disableComm {
 		return
 	}
 	comm.lock.Lock()
@@ -154,7 +166,10 @@ func (comm *dummyCommModule) Forward(msg proto.ReceivedMessage) {
 	}
 }
 
-func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.SignedGossipMessage) {
+func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *protoext.SignedGossipMessage) {
+	if comm.disableComm {
+		return
+	}
 	comm.lock.RLock()
 	_, exists := comm.streams[peer.Endpoint]
 	mock := comm.mock
@@ -171,13 +186,16 @@ func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.SignedGo
 		}
 	}
 	comm.lock.Lock()
-	s, _ := msg.NoopSign()
+	s, _ := protoext.NoopSign(msg.GossipMessage)
 	comm.streams[peer.Endpoint].Send(s.Envelope)
 	comm.lock.Unlock()
 	atomic.AddUint32(&comm.msgsSent, 1)
 }
 
 func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
+	if comm.disableComm {
+		return false
+	}
 	comm.lock.Lock()
 	defer comm.lock.Unlock()
 
@@ -186,7 +204,8 @@ func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 	}
 
 	_, alreadyExists := comm.streams[peer.Endpoint]
-	if !alreadyExists {
+	conn := comm.conns[peer.Endpoint]
+	if !alreadyExists || conn.GetState() == connectivity.Shutdown {
 		newConn, err := grpc.Dial(peer.Endpoint, grpc.WithInsecure())
 		if err != nil {
 			return false
@@ -198,14 +217,13 @@ func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 		}
 		return false
 	}
-	conn := comm.conns[peer.Endpoint]
 	if _, err := proto.NewGossipClient(conn).Ping(context.Background(), &proto.Empty{}); err != nil {
 		return false
 	}
 	return true
 }
 
-func (comm *dummyCommModule) Accept() <-chan proto.ReceivedMessage {
+func (comm *dummyCommModule) Accept() <-chan protoext.ReceivedMessage {
 	return comm.incMsgs
 }
 
@@ -263,7 +281,7 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 			return err
 		}
 		lgr := g.Discovery.(*gossipDiscoveryImpl).logger
-		gMsg, err := envelope.ToGossipMessage()
+		gMsg, err := protoext.EnvelopeToGossipMessage(envelope)
 		if err != nil {
 			lgr.Warning("Failed deserializing GossipMessage from envelope:", err)
 			continue
@@ -273,7 +291,7 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 		lgr.Debug(g.Discovery.Self().Endpoint, "Got message:", gMsg)
 		g.comm.incMsgs <- &dummyReceivedMessage{
 			msg: gMsg,
-			info: &proto.ConnectionInfo{
+			info: &protoext.ConnectionInfo{
 				ID: common.PKIidType("testID"),
 			},
 		}
@@ -285,7 +303,7 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 	}
 }
 
-func (g *gossipInstance) tryForwardMessage(msg *proto.SignedGossipMessage) {
+func (g *gossipInstance) tryForwardMessage(msg *protoext.SignedGossipMessage) {
 	g.comm.lock.Lock()
 
 	aliveMsg := msg.GetAliveMsg()
@@ -332,40 +350,46 @@ func (g *gossipInstance) Ping(context.Context, *proto.Empty) (*proto.Empty, erro
 }
 
 var noopPolicy = func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
-	return func(msg *proto.SignedGossipMessage) bool {
+	return func(msg *protoext.SignedGossipMessage) bool {
 			return true
-		}, func(message *proto.SignedGossipMessage) *proto.Envelope {
+		}, func(message *protoext.SignedGossipMessage) *proto.Envelope {
 			return message.Envelope
 		}
 }
 
 func createDiscoveryInstance(port int, id string, bootstrapPeers []string) *gossipInstance {
-	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, true, noopPolicy)
+	return createDiscoveryInstanceCustomConfig(port, id, bootstrapPeers, defaultTestConfig)
+}
+
+func createDiscoveryInstanceCustomConfig(port int, id string, bootstrapPeers []string, config DiscoveryConfig) *gossipInstance {
+	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, true, noopPolicy, config)
 }
 
 func createDiscoveryInstanceWithNoGossip(port int, id string, bootstrapPeers []string) *gossipInstance {
-	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, false, noopPolicy)
+	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, false, noopPolicy, defaultTestConfig)
 }
 
 func createDiscoveryInstanceWithNoGossipWithDisclosurePolicy(port int, id string, bootstrapPeers []string, pol DisclosurePolicy) *gossipInstance {
-	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, false, pol)
+	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, false, pol, defaultTestConfig)
 }
 
-func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy) *gossipInstance {
-	return createDiscoveryInstanceThatGossipsWithInterceptors(port, id, bootstrapPeers, shouldGossip, pol, func(_ *proto.SignedGossipMessage) {})
+func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy, config DiscoveryConfig) *gossipInstance {
+	return createDiscoveryInstanceThatGossipsWithInterceptors(port, id, bootstrapPeers, shouldGossip, pol, func(_ *protoext.SignedGossipMessage) {}, config)
 }
 
-func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy, f func(*proto.SignedGossipMessage)) *gossipInstance {
+func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy, f func(*protoext.SignedGossipMessage), config DiscoveryConfig) *gossipInstance {
 	comm := &dummyCommModule{
-		conns:        make(map[string]*grpc.ClientConn),
-		streams:      make(map[string]proto.Gossip_GossipStreamClient),
-		incMsgs:      make(chan proto.ReceivedMessage, 1000),
-		presumeDead:  make(chan common.PKIidType, 10000),
-		id:           id,
-		detectedDead: make(chan string, 10000),
-		lock:         &sync.RWMutex{},
-		lastSeqs:     make(map[string]uint64),
-		shouldGossip: shouldGossip,
+		conns:          make(map[string]*grpc.ClientConn),
+		streams:        make(map[string]proto.Gossip_GossipStreamClient),
+		incMsgs:        make(chan protoext.ReceivedMessage, 1000),
+		presumeDead:    make(chan common.PKIidType, 10000),
+		id:             id,
+		detectedDead:   make(chan string, 10000),
+		identitySwitch: make(chan common.PKIidType),
+		lock:           &sync.RWMutex{},
+		lastSeqs:       make(map[string]uint64),
+		shouldGossip:   shouldGossip,
+		disableComm:    false,
 	}
 
 	endpoint := fmt.Sprintf("localhost:%d", port)
@@ -383,7 +407,8 @@ func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, boo
 	}
 	s := grpc.NewServer()
 
-	discSvc := NewDiscoveryService(self, comm, comm, pol)
+	config.BootstrapPeers = bootstrapPeers
+	discSvc := NewDiscoveryService(self, comm, comm, pol, config)
 	for _, bootPeer := range bootstrapPeers {
 		bp := bootPeer
 		discSvc.Connect(NetworkMember{Endpoint: bp, InternalEndpoint: bootPeer}, func() (*PeerIdentification, error) {
@@ -452,14 +477,14 @@ func TestNetworkMemberString(t *testing.T) {
 func TestBadInput(t *testing.T) {
 	inst := createDiscoveryInstance(2048, fmt.Sprintf("d%d", 0), []string{})
 	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm(nil)
-	s, _ := (&proto.GossipMessage{
+	s, _ := protoext.NoopSign(&proto.GossipMessage{
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{},
 		},
-	}).NoopSign()
+	})
 	inst.Discovery.(*gossipDiscoveryImpl).handleMsgFromComm(&dummyReceivedMessage{
 		msg: s,
-		info: &proto.ConnectionInfo{
+		info: &protoext.ConnectionInfo{
 			ID: common.PKIidType("testID"),
 		},
 	})
@@ -469,7 +494,7 @@ func TestConnect(t *testing.T) {
 	t.Parallel()
 	nodeNum := 10
 	instances := []*gossipInstance{}
-	firstSentMemReqMsgs := make(chan *proto.SignedGossipMessage, nodeNum)
+	firstSentMemReqMsgs := make(chan *protoext.SignedGossipMessage, nodeNum)
 	for i := 0; i < nodeNum; i++ {
 		inst := createDiscoveryInstance(7611+i, fmt.Sprintf("d%d", i), []string{})
 
@@ -477,9 +502,9 @@ func TestConnect(t *testing.T) {
 		inst.comm.mock = &mock.Mock{}
 		inst.comm.mock.On("SendToPeer", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
 			inst := inst
-			msg := arguments.Get(1).(*proto.SignedGossipMessage)
+			msg := arguments.Get(1).(*protoext.SignedGossipMessage)
 			if req := msg.GetMemReq(); req != nil {
-				selfMsg, _ := req.SelfInformation.ToGossipMessage()
+				selfMsg, _ := protoext.EnvelopeToGossipMessage(req.SelfInformation)
 				firstSentMemReqMsgs <- selfMsg
 				inst.comm.lock.Lock()
 				inst.comm.mock = nil
@@ -505,10 +530,10 @@ func TestConnect(t *testing.T) {
 
 	discInst := instances[rand.Intn(len(instances))].Discovery.(*gossipDiscoveryImpl)
 	mr, _ := discInst.createMembershipRequest(true)
-	am, _ := mr.GetMemReq().SelfInformation.ToGossipMessage()
+	am, _ := protoext.EnvelopeToGossipMessage(mr.GetMemReq().SelfInformation)
 	assert.NotNil(t, am.SecretEnvelope)
 	mr2, _ := discInst.createMembershipRequest(false)
-	am, _ = mr2.GetMemReq().SelfInformation.ToGossipMessage()
+	am, _ = protoext.EnvelopeToGossipMessage(mr2.GetMemReq().SelfInformation)
 	assert.Nil(t, am.SecretEnvelope)
 	stopInstances(t, instances)
 	assert.Len(t, firstSentMemReqMsgs, 10)
@@ -528,30 +553,30 @@ func TestValidation(t *testing.T) {
 	//   2.2) once alive messages enter the message store, reception of them via membership responses
 	//        doesn't trigger validation, but via membership requests - do.
 
-	wrapReceivedMessage := func(msg *proto.SignedGossipMessage) proto.ReceivedMessage {
+	wrapReceivedMessage := func(msg *protoext.SignedGossipMessage) protoext.ReceivedMessage {
 		return &dummyReceivedMessage{
 			msg: msg,
-			info: &proto.ConnectionInfo{
+			info: &protoext.ConnectionInfo{
 				ID: common.PKIidType("testID"),
 			},
 		}
 	}
 
-	requestMessagesReceived := make(chan *proto.SignedGossipMessage, 100)
-	responseMessagesReceived := make(chan *proto.SignedGossipMessage, 100)
-	aliveMessagesReceived := make(chan *proto.SignedGossipMessage, 5000)
+	requestMessagesReceived := make(chan *protoext.SignedGossipMessage, 100)
+	responseMessagesReceived := make(chan *protoext.SignedGossipMessage, 100)
+	aliveMessagesReceived := make(chan *protoext.SignedGossipMessage, 5000)
 
 	var membershipRequest atomic.Value
 	var membershipResponseWithAlivePeers atomic.Value
 	var membershipResponseWithDeadPeers atomic.Value
 
-	recordMembershipRequest := func(req *proto.SignedGossipMessage) {
-		msg, _ := req.GetMemReq().SelfInformation.ToGossipMessage()
+	recordMembershipRequest := func(req *protoext.SignedGossipMessage) {
+		msg, _ := protoext.EnvelopeToGossipMessage(req.GetMemReq().SelfInformation)
 		membershipRequest.Store(req)
 		requestMessagesReceived <- msg
 	}
 
-	recordMembershipResponse := func(res *proto.SignedGossipMessage) {
+	recordMembershipResponse := func(res *protoext.SignedGossipMessage) {
 		memRes := res.GetMemRes()
 		if len(memRes.GetAlive()) > 0 {
 			membershipResponseWithAlivePeers.Store(res)
@@ -562,7 +587,7 @@ func TestValidation(t *testing.T) {
 		responseMessagesReceived <- res
 	}
 
-	interceptor := func(msg *proto.SignedGossipMessage) {
+	interceptor := func(msg *protoext.SignedGossipMessage) {
 		if memReq := msg.GetMemReq(); memReq != nil {
 			recordMembershipRequest(msg)
 			return
@@ -580,7 +605,7 @@ func TestValidation(t *testing.T) {
 	// p1 sends a (membership) request to p3, and receives a (membership) response back.
 	// p2 sends a (membership) request to p1.
 	// Therefore, p1 receives both a membership request and a response.
-	p1 := createDiscoveryInstanceThatGossipsWithInterceptors(4675, "p1", []string{bootPeer(4677)}, true, noopPolicy, interceptor)
+	p1 := createDiscoveryInstanceThatGossipsWithInterceptors(4675, "p1", []string{bootPeer(4677)}, true, noopPolicy, interceptor, defaultTestConfig)
 	p2 := createDiscoveryInstance(4676, "p2", []string{bootPeer(4675)})
 	p3 := createDiscoveryInstance(4677, "p3", nil)
 	instances := []*gossipInstance{p1, p2, p3}
@@ -618,9 +643,9 @@ func TestValidation(t *testing.T) {
 		p4 := createDiscoveryInstance(4678, "p1", nil)
 		defer p4.Stop()
 		// Record messages validated
-		validatedMessages := make(chan *proto.SignedGossipMessage, 5000)
+		validatedMessages := make(chan *protoext.SignedGossipMessage, 5000)
 		p4.comm.recordValidation(validatedMessages)
-		tmpMsgs := make(chan *proto.SignedGossipMessage, 5000)
+		tmpMsgs := make(chan *protoext.SignedGossipMessage, 5000)
 		// Replay the messages sent to p1 into p4, and also save them into a temporary channel
 		for msg := range aliveMessagesReceived {
 			p4.comm.incMsgs <- wrapReceivedMessage(msg)
@@ -628,7 +653,7 @@ func TestValidation(t *testing.T) {
 		}
 
 		// Simulate the messages received by p4 into the message store
-		policy := proto.NewGossipMessageComparator(0)
+		policy := protoext.NewGossipMessageComparator(0)
 		msgStore := msgstore.NewMessageStore(policy, func(_ interface{}) {})
 		close(tmpMsgs)
 		for msg := range tmpMsgs {
@@ -642,8 +667,8 @@ func TestValidation(t *testing.T) {
 		assert.Empty(t, validatedMessages)
 	})
 
-	req := membershipRequest.Load().(*proto.SignedGossipMessage)
-	res := membershipResponseWithDeadPeers.Load().(*proto.SignedGossipMessage)
+	req := membershipRequest.Load().(*protoext.SignedGossipMessage)
+	res := membershipResponseWithDeadPeers.Load().(*protoext.SignedGossipMessage)
 	// Ensure the membership response contains both alive and dead peers
 	assert.Len(t, res.GetMemRes().GetAlive(), 2)
 	assert.Len(t, res.GetMemRes().GetDead(), 1)
@@ -652,7 +677,7 @@ func TestValidation(t *testing.T) {
 		name                  string
 		expectedAliveMessages int
 		port                  int
-		message               *proto.SignedGossipMessage
+		message               *protoext.SignedGossipMessage
 		shouldBeReValidated   bool
 	}{
 		{
@@ -675,7 +700,7 @@ func TestValidation(t *testing.T) {
 			p := createDiscoveryInstance(testCase.port, "p", nil)
 			defer p.Stop()
 			// Record messages validated
-			validatedMessages := make(chan *proto.SignedGossipMessage, testCase.expectedAliveMessages)
+			validatedMessages := make(chan *protoext.SignedGossipMessage, testCase.expectedAliveMessages)
 			p.comm.recordValidation(validatedMessages)
 
 			p.comm.incMsgs <- wrapReceivedMessage(testCase.message)
@@ -774,12 +799,12 @@ func TestInitiateSync(t *testing.T) {
 				if atomic.LoadInt32(&toDie) == int32(1) {
 					return
 				}
-				time.Sleep(getAliveExpirationTimeout() / 3)
+				time.Sleep(defaultTestConfig.AliveExpirationTimeout / 3)
 				inst.InitiateSync(9)
 			}
 		}()
 	}
-	time.Sleep(getAliveExpirationTimeout() * 4)
+	time.Sleep(defaultTestConfig.AliveExpirationTimeout * 4)
 	assertMembership(t, instances, nodeNum-1)
 	atomic.StoreInt32(&toDie, int32(1))
 	stopInstances(t, instances)
@@ -790,7 +815,7 @@ func TestSelf(t *testing.T) {
 	inst := createDiscoveryInstance(13463, "d1", []string{})
 	defer inst.Stop()
 	env := inst.Self().Envelope
-	sMsg, err := env.ToGossipMessage()
+	sMsg, err := protoext.EnvelopeToGossipMessage(env)
 	assert.NoError(t, err)
 	member := sMsg.GetAliveMsg().Membership
 	assert.Equal(t, "localhost:13463", member.Endpoint)
@@ -1040,7 +1065,7 @@ func createDisjointPeerGroupsWithNoGossip(bootPeerMap map[int]int) ([]*gossipIns
 			bootPeers := []string{bootPeer(bootPeerMap[port])}
 			pol := discPolForPeer(port)
 			inst := createDiscoveryInstanceWithNoGossipWithDisclosurePolicy(8610+group*5+i, id, bootPeers, pol)
-			inst.initiateSync(getAliveExpirationTimeout()/3, 10)
+			inst.initiateSync(defaultTestConfig.AliveExpirationTimeout/3, 10)
 			if group == 0 {
 				instances1 = append(instances1, inst)
 			} else {
@@ -1055,7 +1080,7 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 	return func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
 		targetPortStr := strings.Split(remotePeer.Endpoint, ":")[1]
 		targetPort, _ := strconv.ParseInt(targetPortStr, 10, 64)
-		return func(msg *proto.SignedGossipMessage) bool {
+		return func(msg *protoext.SignedGossipMessage) bool {
 				portOfAliveMsgStr := strings.Split(msg.GetAliveMsg().Membership.Endpoint, ":")[1]
 				portOfAliveMsg, _ := strconv.ParseInt(portOfAliveMsgStr, 10, 64)
 
@@ -1068,7 +1093,7 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 
 				// Else, expose peers with even ids to other peers with even ids
 				return portOfAliveMsg%2 == 0 && targetPort%2 == 0
-			}, func(msg *proto.SignedGossipMessage) *proto.Envelope {
+			}, func(msg *protoext.SignedGossipMessage) *proto.Envelope {
 				envelope := protoG.Clone(msg.Envelope).(*proto.Envelope)
 				if selfPort < 8615 && targetPort >= 8615 {
 					envelope.SecretEnvelope = nil
@@ -1083,42 +1108,71 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 	}
 }
 
-func TestConfigFromFile(t *testing.T) {
-	preAliveTimeInterval := getAliveTimeInterval()
-	preAliveExpirationTimeout := getAliveExpirationTimeout()
-	preAliveExpirationCheckInterval := getAliveExpirationCheckInterval()
-	preReconnectInterval := getReconnectInterval()
+func TestCertificateChange(t *testing.T) {
+	t.Parallel()
 
-	// Recover the config values in order to avoid impacting other tests
-	defer func() {
-		SetAliveTimeInterval(preAliveTimeInterval)
-		SetAliveExpirationTimeout(preAliveExpirationTimeout)
-		SetAliveExpirationCheckInterval(preAliveExpirationCheckInterval)
-		SetReconnectInterval(preReconnectInterval)
-	}()
+	bootPeers := []string{bootPeer(42611), bootPeer(42612), bootPeer(42613)}
+	p1 := createDiscoveryInstance(42611, "d1", bootPeers)
+	p2 := createDiscoveryInstance(42612, "d2", bootPeers)
+	p3 := createDiscoveryInstance(42613, "d3", bootPeers)
 
-	// Verify if using default values when config is missing
-	viper.Reset()
-	aliveExpirationCheckInterval = 0 * time.Second
-	assert.Equal(t, time.Duration(5)*time.Second, getAliveTimeInterval())
-	assert.Equal(t, time.Duration(25)*time.Second, getAliveExpirationTimeout())
-	assert.Equal(t, time.Duration(25)*time.Second/10, getAliveExpirationCheckInterval())
-	assert.Equal(t, time.Duration(25)*time.Second, getReconnectInterval())
+	// Wait for membership establishment
+	assertMembership(t, []*gossipInstance{p1, p2, p3}, 2)
 
-	//Verify reading the values from config file
-	viper.Reset()
-	aliveExpirationCheckInterval = 0 * time.Second
-	viper.SetConfigName("core")
-	viper.SetEnvPrefix("CORE")
-	configtest.AddDevConfigPath(nil)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
-	assert.NoError(t, err)
-	assert.Equal(t, time.Duration(5)*time.Second, getAliveTimeInterval())
-	assert.Equal(t, time.Duration(25)*time.Second, getAliveExpirationTimeout())
-	assert.Equal(t, time.Duration(25)*time.Second/10, getAliveExpirationCheckInterval())
-	assert.Equal(t, time.Duration(25)*time.Second, getReconnectInterval())
+	// Shutdown the second peer
+	waitUntilOrFailBlocking(t, p2.Stop)
+
+	var pingCountFrom1 uint32
+	var pingCountFrom3 uint32
+	// Program mocks to increment ping counters
+	p1.comm.lock.Lock()
+	p1.comm.mock = &mock.Mock{}
+	p1.comm.mock.On("SendToPeer", mock.Anything, mock.Anything)
+	p1.comm.mock.On("Ping").Run(func(arguments mock.Arguments) {
+		atomic.AddUint32(&pingCountFrom1, 1)
+	})
+	p1.comm.lock.Unlock()
+
+	p3.comm.lock.Lock()
+	p3.comm.mock = &mock.Mock{}
+	p3.comm.mock.On("SendToPeer", mock.Anything, mock.Anything)
+	p3.comm.mock.On("Ping").Run(func(arguments mock.Arguments) {
+		atomic.AddUint32(&pingCountFrom3, 1)
+	})
+	p3.comm.lock.Unlock()
+
+	pingCount1 := func() uint32 {
+		return atomic.LoadUint32(&pingCountFrom1)
+	}
+
+	pingCount3 := func() uint32 {
+		return atomic.LoadUint32(&pingCountFrom3)
+	}
+
+	c1 := pingCount1()
+	c3 := pingCount3()
+
+	// Ensure the first peer and third peer try to reconnect to it
+	waitUntilTimeoutOrFail(t, func() bool {
+		return pingCount1() > c1 && pingCount3() > c3
+	}, timeout)
+
+	// Tell the first peer that the second peer's PKI-ID has changed
+	// So that it will purge it from the membership entirely
+	p1.comm.identitySwitch <- common.PKIidType("localhost:42612")
+
+	c1 = pingCount1()
+	c3 = pingCount3()
+	// Ensure third peer tries to reconnect to it
+	waitUntilTimeoutOrFail(t, func() bool {
+		return pingCount3() > c3
+	}, timeout)
+
+	// Ensure the first peer ceases from trying
+	assert.Equal(t, c1, pingCount1())
+
+	waitUntilOrFailBlocking(t, p1.Stop)
+	waitUntilOrFailBlocking(t, p3.Stop)
 }
 
 func TestMsgStoreExpiration(t *testing.T) {
@@ -1175,7 +1229,7 @@ func TestMsgStoreExpiration(t *testing.T) {
 					return false
 				}
 				for _, am := range downCastInst.msgStore.Get() {
-					m := am.(*proto.SignedGossipMessage).GetAliveMsg()
+					m := am.(*protoext.SignedGossipMessage).GetAliveMsg()
 					if bytes.Equal(m.Membership.PkiId, downInst.discoveryImpl().self.PKIid) {
 						downCastInst.lock.RUnlock()
 						return false
@@ -1187,11 +1241,52 @@ func TestMsgStoreExpiration(t *testing.T) {
 		return true
 	}
 
-	waitUntilTimeoutOrFail(t, checkMessages, getAliveExpirationTimeout()*(msgExpirationFactor+5))
+	waitUntilTimeoutOrFail(t, checkMessages, defaultTestConfig.AliveExpirationTimeout*(msgExpirationFactor+5))
 
 	assertMembership(t, instances[:len(instances)-2], nodeNum-3)
 
 	stopInstances(t, instances[:len(instances)-2])
+}
+
+func TestExpirationNoSecretEnvelope(t *testing.T) {
+	t.Parallel()
+
+	l, err := zap.NewDevelopment()
+	assert.NoError(t, err)
+
+	removed := make(chan struct{})
+	logger := flogging.NewFabricLogger(l, zap.Hooks(func(entry zapcore.Entry) error {
+		if strings.Contains(entry.Message, "Removing member: Endpoint: foo") {
+			removed <- struct{}{}
+		}
+		return nil
+	}))
+
+	msgStore := newAliveMsgStore(&gossipDiscoveryImpl{
+		aliveExpirationTimeout: time.Millisecond,
+		lock:                   &sync.RWMutex{},
+		aliveMembership:        util.NewMembershipStore(),
+		deadMembership:         util.NewMembershipStore(),
+		logger:                 logger,
+	})
+
+	msg := &proto.GossipMessage{
+		Content: &proto.GossipMessage_AliveMsg{
+			AliveMsg: &proto.AliveMessage{Membership: &proto.Member{
+				Endpoint: "foo",
+			}},
+		},
+	}
+
+	sMsg, err := protoext.NoopSign(msg)
+	assert.NoError(t, err)
+
+	msgStore.Add(sMsg)
+	select {
+	case <-removed:
+	case <-time.After(time.Second * 10):
+		t.Fatalf("timed out")
+	}
 }
 
 func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
@@ -1211,21 +1306,22 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	bootPeers := []string{}
 	peersNum := 3
 	instances := []*gossipInstance{}
-	aliveMsgs := []*proto.SignedGossipMessage{}
-	newAliveMsgs := []*proto.SignedGossipMessage{}
-	memReqMsgs := []*proto.SignedGossipMessage{}
+	aliveMsgs := []*protoext.SignedGossipMessage{}
+	newAliveMsgs := []*protoext.SignedGossipMessage{}
+	memReqMsgs := []*protoext.SignedGossipMessage{}
 	memRespMsgs := make(map[int][]*proto.MembershipResponse)
 
 	for i := 0; i < peersNum; i++ {
 		id := fmt.Sprintf("d%d", i)
 		inst := createDiscoveryInstanceWithNoGossip(22610+i, id, bootPeers)
+		inst.comm.disableComm = true
 		instances = append(instances, inst)
 	}
 
 	// Creating MembershipRequest messages
 	for i := 0; i < peersNum; i++ {
 		memReqMsg, _ := instances[i].discoveryImpl().createMembershipRequest(true)
-		sMsg, _ := memReqMsg.NoopSign()
+		sMsg, _ := protoext.NoopSign(memReqMsg)
 		memReqMsgs = append(memReqMsgs, sMsg)
 	}
 	// Creating Alive messages
@@ -1248,14 +1344,14 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		for k := 0; k < peersNum; k++ {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: aliveMsgs[k],
-				info: &proto.ConnectionInfo{
+				info: &protoext.ConnectionInfo{
 					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 				},
 			})
 		}
 	}
 
-	checkExistence := func(instances []*gossipInstance, msgs []*proto.SignedGossipMessage, index int, i int, step string) {
+	checkExistence := func(instances []*gossipInstance, msgs []*protoext.SignedGossipMessage, index int, i int, step string) {
 		_, exist := instances[index].discoveryImpl().aliveLastTS[string(instances[i].discoveryImpl().self.PKIid)]
 		assert.True(t, exist, fmt.Sprint(step, " Data from alive msg ", i, " doesn't exist in aliveLastTS of discovery inst ", index))
 
@@ -1267,7 +1363,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		assert.Contains(t, instances[index].discoveryImpl().msgStore.Get(), msgs[i], fmt.Sprint(step, " Alive msg ", i, "not stored in store of discovery inst ", index))
 	}
 
-	checkAliveMsgExist := func(instances []*gossipInstance, msgs []*proto.SignedGossipMessage, index int, step string) {
+	checkAliveMsgExist := func(instances []*gossipInstance, msgs []*protoext.SignedGossipMessage, index int, step string) {
 		instances[index].discoveryImpl().lock.RLock()
 		defer instances[index].discoveryImpl().lock.RUnlock()
 		repeatForFiltered(peersNum,
@@ -1315,7 +1411,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		for k := 0; k < peersNum; k++ {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: newAliveMsgs[k],
-				info: &proto.ConnectionInfo{
+				info: &protoext.ConnectionInfo{
 					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 				},
 			})
@@ -1327,7 +1423,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		checkAliveMsgExist(instances, newAliveMsgs, i, "[Step 2 - proccesing aliveMsg]")
 	}
 
-	checkAliveMsgNotExist := func(instances []*gossipInstance, msgs []*proto.SignedGossipMessage, index int, step string) {
+	checkAliveMsgNotExist := func(instances []*gossipInstance, msgs []*protoext.SignedGossipMessage, index int, step string) {
 		instances[index].discoveryImpl().lock.RLock()
 		defer instances[index].discoveryImpl().lock.RUnlock()
 		assert.Empty(t, instances[index].discoveryImpl().aliveLastTS, fmt.Sprint(step, " Data from alive msg still exists in aliveLastTS of discovery inst ", index))
@@ -1339,11 +1435,11 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	}
 
 	// Sleep until expire
-	time.Sleep(getAliveExpirationTimeout() * (msgExpirationFactor + 5))
+	time.Sleep(defaultTestConfig.AliveExpirationTimeout * (msgExpirationFactor + 5))
 
 	// Checking Alive expired
 	for i := 0; i < peersNum; i++ {
-		checkAliveMsgNotExist(instances, newAliveMsgs, i, "[Step3 - expiration in msg store]")
+		checkAliveMsgNotExist(instances, newAliveMsgs, i, "[Step 3 - expiration in msg store]")
 	}
 
 	// Processing old MembershipRequest
@@ -1355,7 +1451,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 			func(k int) {
 				instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 					msg: memReqMsgs[k],
-					info: &proto.ConnectionInfo{
+					info: &protoext.ConnectionInfo{
 						ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 					},
 				})
@@ -1364,7 +1460,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 
 	// MembershipRequest processing didn't change anything
 	for i := 0; i < peersNum; i++ {
-		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step4 - memReq processing after expiration]")
+		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step 4 - memReq processing after expiration]")
 	}
 
 	// Processing old (later) Alive messages
@@ -1372,7 +1468,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 		for k := 0; k < peersNum; k++ {
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: aliveMsgs[k],
-				info: &proto.ConnectionInfo{
+				info: &protoext.ConnectionInfo{
 					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 				},
 			})
@@ -1381,24 +1477,24 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 
 	// Alive msg processing didn't change anything
 	for i := 0; i < peersNum; i++ {
-		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step5.1 - after lost old aliveMsg process]")
-		checkAliveMsgNotExist(instances, newAliveMsgs, i, "[Step5.2 - after lost new aliveMsg process]")
+		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step 5.1 - after lost old aliveMsg process]")
+		checkAliveMsgNotExist(instances, newAliveMsgs, i, "[Step 5.2 - after lost new aliveMsg process]")
 	}
 
 	// Handling old MembershipResponse messages
 	for i := 0; i < peersNum; i++ {
 		respForPeer := memRespMsgs[i]
 		for _, msg := range respForPeer {
-			sMsg, _ := (&proto.GossipMessage{
+			sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
 				Tag:   proto.GossipMessage_EMPTY,
 				Nonce: uint64(0),
 				Content: &proto.GossipMessage_MemRes{
 					MemRes: msg,
 				},
-			}).NoopSign()
+			})
 			instances[i].discoveryImpl().handleMsgFromComm(&dummyReceivedMessage{
 				msg: sMsg,
-				info: &proto.ConnectionInfo{
+				info: &protoext.ConnectionInfo{
 					ID: common.PKIidType(fmt.Sprintf("d%d", i)),
 				},
 			})
@@ -1407,7 +1503,7 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 
 	// MembershipResponse msg processing didn't change anything
 	for i := 0; i < peersNum; i++ {
-		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step6 - after lost MembershipResp process]")
+		checkAliveMsgNotExist(instances, aliveMsgs, i, "[Step 6 - after lost MembershipResp process]")
 	}
 
 	for i := 0; i < peersNum; i++ {
@@ -1422,8 +1518,8 @@ func TestAliveMsgStore(t *testing.T) {
 	bootPeers := []string{}
 	peersNum := 2
 	instances := []*gossipInstance{}
-	aliveMsgs := []*proto.SignedGossipMessage{}
-	memReqMsgs := []*proto.SignedGossipMessage{}
+	aliveMsgs := []*protoext.SignedGossipMessage{}
+	memReqMsgs := []*protoext.SignedGossipMessage{}
 
 	for i := 0; i < peersNum; i++ {
 		id := fmt.Sprintf("d%d", i)
@@ -1434,7 +1530,7 @@ func TestAliveMsgStore(t *testing.T) {
 	// Creating MembershipRequest messages
 	for i := 0; i < peersNum; i++ {
 		memReqMsg, _ := instances[i].discoveryImpl().createMembershipRequest(true)
-		sMsg, _ := memReqMsg.NoopSign()
+		sMsg, _ := protoext.NoopSign(memReqMsg)
 		memReqMsgs = append(memReqMsgs, sMsg)
 	}
 	// Creating Alive messages
@@ -1468,17 +1564,17 @@ func TestAliveMsgStore(t *testing.T) {
 func TestMemRespDisclosurePol(t *testing.T) {
 	t.Parallel()
 	pol := func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
-		return func(_ *proto.SignedGossipMessage) bool {
+		return func(_ *protoext.SignedGossipMessage) bool {
 				return remotePeer.Endpoint == "localhost:7880"
-			}, func(m *proto.SignedGossipMessage) *proto.Envelope {
+			}, func(m *protoext.SignedGossipMessage) *proto.Envelope {
 				return m.Envelope
 			}
 	}
-	d1 := createDiscoveryInstanceThatGossips(7878, "d1", []string{}, true, pol)
+	d1 := createDiscoveryInstanceThatGossips(7878, "d1", []string{}, true, pol, defaultTestConfig)
 	defer d1.Stop()
-	d2 := createDiscoveryInstanceThatGossips(7879, "d2", []string{"localhost:7878"}, true, noopPolicy)
+	d2 := createDiscoveryInstanceThatGossips(7879, "d2", []string{"localhost:7878"}, true, noopPolicy, defaultTestConfig)
 	defer d2.Stop()
-	d3 := createDiscoveryInstanceThatGossips(7880, "d3", []string{"localhost:7878"}, true, noopPolicy)
+	d3 := createDiscoveryInstanceThatGossips(7880, "d3", []string{"localhost:7878"}, true, noopPolicy, defaultTestConfig)
 	defer d3.Stop()
 	// Both d1 and d3 know each other, and also about d2
 	assertMembership(t, []*gossipInstance{d1, d3}, 2)
@@ -1548,6 +1644,48 @@ func TestMembersIntersect(t *testing.T) {
 		{PKIid: common.PKIidType("p2"), Endpoint: "p2"},
 	}
 	assert.Equal(t, Members{{PKIid: common.PKIidType("p1"), Endpoint: "p1"}}, members1.Intersect(members2))
+}
+
+func TestPeerIsolation(t *testing.T) {
+	t.Parallel()
+
+	// Scenario:
+	// Start 3 peers (peer0, peer1, peer2). Set peer1 as the bootstrap peer for all.
+	// Stop peer0 and peer1 for a while, start them again and test if peer2 still gets full membership
+
+	config := defaultTestConfig
+	// Use a smaller AliveExpirationTimeout than the default to reduce the running time of the test.
+	config.AliveExpirationTimeout = 2 * config.AliveTimeInterval
+
+	peersNum := 3
+	bootPeers := []string{bootPeer(7121)}
+	instances := []*gossipInstance{}
+	var inst *gossipInstance
+
+	// Start all peers and wait for full membership
+	for i := 0; i < peersNum; i++ {
+		id := fmt.Sprintf("d%d", i)
+		inst = createDiscoveryInstanceCustomConfig(7120+i, id, bootPeers, config)
+		instances = append(instances, inst)
+	}
+	assertMembership(t, instances, peersNum-1)
+
+	// Stop the first 2 peers so the third peer would stay alone
+	stopInstances(t, instances[:peersNum-1])
+	assertMembership(t, instances[peersNum-1:], 0)
+
+	// Sleep the same amount of time as it takes to remove a message from the aliveMsgStore (aliveMsgTTL)
+	// Add a second as buffer
+	time.Sleep(config.AliveExpirationTimeout*msgExpirationFactor + time.Second)
+
+	// Start again the first 2 peers and wait for all the peers to get full membership.
+	// Especially, we want to test that peer2 won't be isolated
+	for i := 0; i < peersNum-1; i++ {
+		id := fmt.Sprintf("d%d", i)
+		inst = createDiscoveryInstanceCustomConfig(7120+i, id, bootPeers, config)
+		instances[i] = inst
+	}
+	assertMembership(t, instances, peersNum-1)
 }
 
 func waitUntilOrFail(t *testing.T, pred func() bool) {

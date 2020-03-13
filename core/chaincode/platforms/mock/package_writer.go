@@ -2,8 +2,8 @@
 package mock
 
 import (
-	tar "archive/tar"
-	sync "sync"
+	"archive/tar"
+	"sync"
 )
 
 type PackageWriter struct {

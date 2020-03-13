@@ -9,10 +9,13 @@ package cluster
 import (
 	"context"
 	"io"
+	"time"
 
+	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/core/comm"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -20,48 +23,44 @@ import (
 
 // Dispatcher dispatches requests
 type Dispatcher interface {
-	DispatchSubmit(ctx context.Context, request *orderer.SubmitRequest) (*orderer.SubmitResponse, error)
-	DispatchStep(ctx context.Context, request *orderer.StepRequest) (*orderer.StepResponse, error)
+	DispatchSubmit(ctx context.Context, request *orderer.SubmitRequest) error
+	DispatchConsensus(ctx context.Context, request *orderer.ConsensusRequest) error
 }
 
-//go:generate mockery -dir . -name SubmitStream -case underscore -output ./mocks/
+//go:generate mockery -dir . -name StepStream -case underscore -output ./mocks/
 
-// SubmitStream defines the gRPC stream for sending
+// StepStream defines the gRPC stream for sending
 // transactions, and receiving corresponding responses
-type SubmitStream interface {
-	Send(response *orderer.SubmitResponse) error
-	Recv() (*orderer.SubmitRequest, error)
+type StepStream interface {
+	Send(response *orderer.StepResponse) error
+	Recv() (*orderer.StepRequest, error)
 	grpc.ServerStream
 }
 
 // Service defines the raft Service
 type Service struct {
-	Dispatcher Dispatcher
-	Logger     *flogging.FabricLogger
-	StepLogger *flogging.FabricLogger
+	StreamCountReporter              *StreamCountReporter
+	Dispatcher                       Dispatcher
+	Logger                           *flogging.FabricLogger
+	StepLogger                       *flogging.FabricLogger
+	MinimumExpirationWarningInterval time.Duration
+	CertExpWarningThreshold          time.Duration
 }
 
-// Step forwards a message to a raft FSM located in this server
-func (s *Service) Step(ctx context.Context, request *orderer.StepRequest) (*orderer.StepResponse, error) {
-	addr := util.ExtractRemoteAddress(ctx)
-	s.StepLogger.Debugf("Connection from %s", addr)
-	defer s.StepLogger.Debugf("Closing connection from %s", addr)
-	response, err := s.Dispatcher.DispatchStep(ctx, request)
-	if err != nil {
-		s.Logger.Warningf("Handling of Step() from %s failed: %+v", addr, err)
-	}
-	return response, err
-}
+// Step passes an implementation-specific message to another cluster member.
+func (s *Service) Step(stream orderer.Cluster_StepServer) error {
+	s.StreamCountReporter.Increment()
+	defer s.StreamCountReporter.Decrement()
 
-// Submit accepts transactions
-func (s *Service) Submit(stream orderer.Cluster_SubmitServer) error {
 	addr := util.ExtractRemoteAddress(stream.Context())
-	s.Logger.Debugf("Connection from %s", addr)
-	defer s.Logger.Debugf("Closing connection from %s", addr)
+	commonName := commonNameFromContext(stream.Context())
+	exp := s.initializeExpirationCheck(stream, addr, commonName)
+	s.Logger.Debugf("Connection from %s(%s)", commonName, addr)
+	defer s.Logger.Debugf("Closing connection from %s(%s)", commonName, addr)
 	for {
-		err := s.handleSubmit(stream, addr)
+		err := s.handleMessage(stream, addr, exp)
 		if err == io.EOF {
-			s.Logger.Debugf("%s disconnected", addr)
+			s.Logger.Debugf("%s(%s) disconnected", commonName, addr)
 			return nil
 		}
 		if err != nil {
@@ -71,7 +70,7 @@ func (s *Service) Submit(stream orderer.Cluster_SubmitServer) error {
 	}
 }
 
-func (s *Service) handleSubmit(stream SubmitStream, addr string) error {
+func (s *Service) handleMessage(stream StepStream, addr string, exp *certificateExpirationCheck) error {
 	request, err := stream.Recv()
 	if err == io.EOF {
 		return err
@@ -80,14 +79,62 @@ func (s *Service) handleSubmit(stream SubmitStream, addr string) error {
 		s.Logger.Warningf("Stream read from %s failed: %v", addr, err)
 		return err
 	}
-	response, err := s.Dispatcher.DispatchSubmit(stream.Context(), request)
+
+	exp.checkExpiration(time.Now(), extractChannel(request))
+
+	if s.StepLogger.IsEnabledFor(zap.DebugLevel) {
+		nodeName := commonNameFromContext(stream.Context())
+		s.StepLogger.Debugf("Received message from %s(%s): %v", nodeName, addr, requestAsString(request))
+	}
+
+	if submitReq := request.GetSubmitRequest(); submitReq != nil {
+		nodeName := commonNameFromContext(stream.Context())
+		s.Logger.Debugf("Received message from %s(%s): %v", nodeName, addr, requestAsString(request))
+		return s.handleSubmit(submitReq, stream, addr)
+	}
+
+	// Else, it's a consensus message.
+	return s.Dispatcher.DispatchConsensus(stream.Context(), request.GetConsensusRequest())
+}
+
+func (s *Service) handleSubmit(request *orderer.SubmitRequest, stream StepStream, addr string) error {
+	err := s.Dispatcher.DispatchSubmit(stream.Context(), request)
 	if err != nil {
-		s.Logger.Warningf("Handling of Propose() from %s failed: %+v", addr, err)
+		s.Logger.Warningf("Handling of Submit() from %s failed: %v", addr, err)
 		return err
 	}
-	err = stream.Send(response)
-	if err != nil {
-		s.Logger.Warningf("Send() failed: %v", err)
-	}
 	return err
+}
+
+func (s *Service) initializeExpirationCheck(stream orderer.Cluster_StepServer, endpoint, nodeName string) *certificateExpirationCheck {
+	return &certificateExpirationCheck{
+		minimumExpirationWarningInterval: s.MinimumExpirationWarningInterval,
+		expirationWarningThreshold:       s.CertExpWarningThreshold,
+		expiresAt:                        expiresAt(stream),
+		endpoint:                         endpoint,
+		nodeName:                         nodeName,
+		alert: func(template string, args ...interface{}) {
+			s.Logger.Warningf(template, args...)
+		},
+	}
+}
+
+func expiresAt(stream orderer.Cluster_StepServer) time.Time {
+	cert := comm.ExtractCertificateFromContext(stream.Context())
+	if cert == nil {
+		return time.Time{}
+	}
+	return cert.NotAfter
+}
+
+func extractChannel(msg *orderer.StepRequest) string {
+	if consReq := msg.GetConsensusRequest(); consReq != nil {
+		return consReq.Channel
+	}
+
+	if submitReq := msg.GetSubmitRequest(); submitReq != nil {
+		return submitReq.Channel
+	}
+
+	return ""
 }

@@ -33,7 +33,7 @@ You must have the following installed:
 Ensure that you have Docker for `Linux`_, `Mac`_ or `Windows`_ 1.12 or higher properly installed on
 your machine.
 
-.. _ginkgo: https://golang.org/
+.. _go: https://golang.org/
 .. _docker: https://www.docker.com/
 .. _docker-compose: https://docs.docker.com/compose/
 .. _Linux: https://docs.docker.com/engine/installation/#supported-platforms
@@ -111,15 +111,13 @@ description.
 
 Continuous Integration (CI) Execution
 -------------------------------------
-There is a target in the Hyperledger Fabric Makefile for executing `integration`_ tests.
-
-.. _integration: https://jenkins.hyperledger.org/view/fabric/job/fabric-verify-integration-tests-x86_64
+There is a target in the Hyperledger Fabric Makefile for executing integration tests.
 
 To execute the integration tests using the Makefile, execute the following:
 
 ::
 
-    make integration-tests
+    make integration-test
 
 
 ============

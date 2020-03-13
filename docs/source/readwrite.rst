@@ -9,10 +9,10 @@ Transaction simulation and read-write set
 
 During simulation of a transaction at an ``endorser``, a read-write set
 is prepared for the transaction. The ``read set`` contains a list of
-unique keys and their committed versions that the transaction reads
-during simulation. The ``write set`` contains a list of unique keys
-(though there can be overlap with the keys present in the read set) and
-their new values that the transaction writes. A delete marker is set (in
+unique keys and their committed version numbers (but not values) that
+the transaction reads during simulation. The ``write set`` contains a list
+of unique keys (though there can be overlap with the keys present in the read set)
+and their new values that the transaction writes. A delete marker is set (in
 the place of new value) for the key if the update performed by the
 transaction is to delete the key.
 
@@ -37,7 +37,7 @@ the height of a transaction is represented by a tuple (txNumber is the
 height of the transaction within the block). This scheme has many
 advantages over the incremental number scheme - primarily, it enables
 other components such as statedb, transaction simulation and validation
-for making efficient design choices.
+to make efficient design choices.
 
 Following is an illustration of an example read-write set prepared by
 simulation of a hypothetical transaction. For the sake of simplicity, in
@@ -53,9 +53,9 @@ versions.
           <read key="K2", version="1">
         </read-set>
         <write-set>
-          <write key="K1", value="V1"
-          <write key="K3", value="V2"
-          <write key="K4", isDelete="true"
+          <write key="K1", value="V1">
+          <write key="K3", value="V2">
+          <write key="K4", isDelete="true">
         </write-set>
       </NsReadWriteSet>
     <TxReadWriteSet>

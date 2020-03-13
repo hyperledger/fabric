@@ -1,0 +1,12 @@
+#!/bin/bash
+
+OUTPUT_JSON="$(jq -S . "$2/chaincode.json")"
+
+EXPECTED_JSON="$(echo '{"chaincode_id":"test-ccid","peer_address":"fake-peer-address","client_cert":"fake-client-cert","client_key":"fake-client-key","root_cert":"fake-root-cert","mspid":"mspid"}' | jq -S .)"
+	
+if [ "$OUTPUT_JSON" = "$EXPECTED_JSON" ] ; then
+    exit 0
+fi
+
+>&2 echo "got $OUTPUT_JSON; want $EXPECTED_JSON"
+exit 1

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package fsblkstorage
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -79,6 +80,32 @@ func TestConstructCheckpointInfoFromBlockFiles(t *testing.T) {
 	// Add the last block again after start and check cpinfo again
 	assert.NoError(t, blockfileMgr.addBlock(lastTestBlk))
 	checkCPInfoFromFile(t, blkStoreDir, blockfileMgr.cpInfo)
+}
+
+func TestBinarySearchBlockFileNum(t *testing.T) {
+	blockStoreRootDir := testPath()
+	blocks := testutil.ConstructTestBlocks(t, 100)
+	maxFileSie := int(0.1 * float64(testutilEstimateTotalSizeOnDisk(t, blocks)))
+	env := newTestEnv(t, NewConf(blockStoreRootDir, maxFileSie))
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	blkfileMgr := blkfileMgrWrapper.blockfileMgr
+
+	blkfileMgrWrapper.addBlocks(blocks)
+
+	ledgerDir := (&Conf{blockStorageDir: blockStoreRootDir}).getLedgerBlockDir("testLedger")
+	files, err := ioutil.ReadDir(ledgerDir)
+	assert.NoError(t, err)
+	assert.Len(t, files, 11)
+
+	for i := uint64(0); i < 100; i++ {
+		fileNum, err := binarySearchFileNumForBlock(ledgerDir, i)
+		assert.NoError(t, err)
+		locFromIndex, err := blkfileMgr.index.getBlockLocByBlockNum(i)
+		assert.NoError(t, err)
+		expectedFileNum := locFromIndex.fileSuffixNum
+		assert.Equal(t, expectedFileNum, fileNum)
+	}
 }
 
 func checkCPInfoFromFile(t *testing.T, blkStoreDir string, expectedCPInfo *checkpointInfo) {

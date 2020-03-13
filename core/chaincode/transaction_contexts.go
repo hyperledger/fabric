@@ -9,9 +9,9 @@ package chaincode
 import (
 	"sync"
 
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/pkg/errors"
 )
 
@@ -28,14 +28,14 @@ func NewTransactionContexts() *TransactionContexts {
 	}
 }
 
-// contextID creates a transaction identifier that is scoped to a chain.
-func contextID(chainID, txID string) string {
-	return chainID + txID
+// contextID creates a transaction identifier that is scoped to a channel.
+func contextID(channelID, txID string) string {
+	return channelID + txID
 }
 
-// Create creates a new TransactionContext for the specified chain and
+// Create creates a new TransactionContext for the specified channel and
 // transaction ID. An error is returned when a transaction context has already
-// been created for the specified chain and transaction ID.
+// been created for the specified channel and transaction ID.
 func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*TransactionContext, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -46,7 +46,8 @@ func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*T
 	}
 
 	txctx := &TransactionContext{
-		ChainID:              txParams.ChannelID,
+		NamespaceID:          txParams.NamespaceID,
+		ChannelID:            txParams.ChannelID,
 		SignedProp:           txParams.SignedProp,
 		Proposal:             txParams.Proposal,
 		ResponseNotifier:     make(chan *pb.ChaincodeMessage, 1),
@@ -57,28 +58,28 @@ func (c *TransactionContexts) Create(txParams *ccprovider.TransactionParams) (*T
 
 		queryIteratorMap:    map[string]commonledger.ResultsIterator{},
 		pendingQueryResults: map[string]*PendingQueryResult{},
-
-		AllowedCollectionAccess: make(map[string]bool),
 	}
+	txctx.InitializeCollectionACLCache()
+
 	c.contexts[ctxID] = txctx
 
 	return txctx, nil
 }
 
-// Get retrieves the transaction context associated with the chain and
+// Get retrieves the transaction context associated with the channel and
 // transaction ID.
-func (c *TransactionContexts) Get(chainID, txID string) *TransactionContext {
-	ctxID := contextID(chainID, txID)
+func (c *TransactionContexts) Get(channelID, txID string) *TransactionContext {
+	ctxID := contextID(channelID, txID)
 	c.mutex.Lock()
 	tc := c.contexts[ctxID]
 	c.mutex.Unlock()
 	return tc
 }
 
-// Delete removes the transaction context associated with the specified chain
+// Delete removes the transaction context associated with the specified channel
 // and transaction ID.
-func (c *TransactionContexts) Delete(chainID, txID string) {
-	ctxID := contextID(chainID, txID)
+func (c *TransactionContexts) Delete(channelID, txID string) {
+	ctxID := contextID(channelID, txID)
 	c.mutex.Lock()
 	delete(c.contexts, ctxID)
 	c.mutex.Unlock()

@@ -2,10 +2,10 @@
 package fake
 
 import (
-	sync "sync"
+	"sync"
 
-	chaincode "github.com/hyperledger/fabric/core/chaincode"
-	ccprovider "github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 )
 
 type ContextRegistry struct {

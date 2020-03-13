@@ -33,6 +33,15 @@ func ConnectsToOrderer(c Command) bool {
 	return false
 }
 
+func ClientAuthEnabled(c Command) bool {
+	for _, arg := range c.Args() {
+		if arg == "--clientauth" {
+			return true
+		}
+	}
+	return false
+}
+
 func NewCommand(path string, command Command) *exec.Cmd {
 	cmd := exec.Command(path, command.Args()...)
 	cmd.Env = os.Environ()

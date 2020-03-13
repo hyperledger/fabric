@@ -19,19 +19,32 @@ import (
 )
 
 func (msp *bccspmsp) validateIdentity(id *identity) error {
+	id.validationMutex.Lock()
+	defer id.validationMutex.Unlock()
+
+	// return cached validation value if already validated
+	if id.validated {
+		return id.validationErr
+	}
+
+	id.validated = true
+
 	validationChain, err := msp.getCertificationChainForBCCSPIdentity(id)
 	if err != nil {
-		return errors.WithMessage(err, "could not obtain certification chain")
+		id.validationErr = errors.WithMessage(err, "could not obtain certification chain")
+		return id.validationErr
 	}
 
 	err = msp.validateIdentityAgainstChain(id, validationChain)
 	if err != nil {
-		return errors.WithMessage(err, "could not validate identity against certification chain")
+		id.validationErr = errors.WithMessage(err, "could not validate identity against certification chain")
+		return id.validationErr
 	}
 
 	err = msp.internalValidateIdentityOusFunc(id)
 	if err != nil {
-		return errors.WithMessage(err, "could not validate identity's OUs")
+		id.validationErr = errors.WithMessage(err, "could not validate identity's OUs")
+		return id.validationErr
 	}
 
 	return nil
@@ -149,7 +162,7 @@ func (msp *bccspmsp) validateIdentityOUsV1(id *identity) error {
 			if len(id.GetOrganizationalUnits()) == 0 {
 				return errors.New("the identity certificate does not contain an Organizational Unit (OU)")
 			}
-			return errors.Errorf("none of the identity's organizational units [%v] are in MSP %s", id.GetOrganizationalUnits(), msp.name)
+			return errors.Errorf("none of the identity's organizational units %s are in MSP %s", OUIDs(id.GetOrganizationalUnits()), msp.name)
 		}
 	}
 
@@ -172,7 +185,7 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 	}
 
 	// Make sure that the identity has only one of the special OUs
-	// used to tell apart clients, peers and orderers.
+	// used to tell apart clients or peers.
 	counter := 0
 	for _, OU := range id.GetOrganizationalUnits() {
 		// Is OU.OrganizationalUnitIdentifier one of the special OUs?
@@ -189,7 +202,7 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 		// Yes. Then, enforce the certifiers identifier is this is specified.
 		// It is not specified, it means that any certification path is fine.
 		if len(nodeOU.CertifiersIdentifier) != 0 && !bytes.Equal(nodeOU.CertifiersIdentifier, OU.CertifiersIdentifier) {
-			return errors.Errorf("certifiersIdentifier does not match: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+			return errors.Errorf("certifiersIdentifier does not match: %v, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
 		}
 		counter++
 		if counter > 1 {
@@ -197,7 +210,61 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 		}
 	}
 	if counter != 1 {
-		return errors.Errorf("the identity must be a client, a peer or an orderer identity to be valid, not a combination of them. OUs: [%v], MSP: [%s]", id.GetOrganizationalUnits(), msp.name)
+		return errors.Errorf("the identity must be a client or a peer identity to be valid, not a combination of them. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
+	}
+
+	return nil
+}
+
+func (msp *bccspmsp) validateIdentityOUsV142(id *identity) error {
+	// Run the same checks as per V1
+	err := msp.validateIdentityOUsV1(id)
+	if err != nil {
+		return err
+	}
+
+	// -- Check for OU enforcement
+	if !msp.ouEnforcement {
+		// No enforcement required
+		return nil
+	}
+
+	// Make sure that the identity has only one of the special OUs
+	// used to tell apart clients, peers and admins.
+	counter := 0
+	validOUs := make(map[string]*OUIdentifier)
+	if msp.clientOU != nil {
+		validOUs[msp.clientOU.OrganizationalUnitIdentifier] = msp.clientOU
+	}
+	if msp.peerOU != nil {
+		validOUs[msp.peerOU.OrganizationalUnitIdentifier] = msp.peerOU
+	}
+	if msp.adminOU != nil {
+		validOUs[msp.adminOU.OrganizationalUnitIdentifier] = msp.adminOU
+	}
+	if msp.ordererOU != nil {
+		validOUs[msp.ordererOU.OrganizationalUnitIdentifier] = msp.ordererOU
+	}
+
+	for _, OU := range id.GetOrganizationalUnits() {
+		// Is OU.OrganizationalUnitIdentifier one of the special OUs?
+		nodeOU := validOUs[OU.OrganizationalUnitIdentifier]
+		if nodeOU == nil {
+			continue
+		}
+
+		// Yes. Then, enforce the certifiers identifier in this is specified.
+		// If is not specified, it means that any certification path is fine.
+		if len(nodeOU.CertifiersIdentifier) != 0 && !bytes.Equal(nodeOU.CertifiersIdentifier, OU.CertifiersIdentifier) {
+			return errors.Errorf("certifiersIdentifier does not match: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
+		}
+		counter++
+		if counter > 1 {
+			break
+		}
+	}
+	if counter != 1 {
+		return errors.Errorf("the identity must be a client, a peer, an orderer or an admin identity to be valid, not a combination of them. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
 	}
 
 	return nil

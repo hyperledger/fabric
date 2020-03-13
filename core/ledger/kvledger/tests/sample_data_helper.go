@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"testing"
 
+	protopeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
-	protopeer "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,7 +55,7 @@ func (d *sampleDataHelper) populateLedger(h *testhelper) {
 	// blk1 deploys 2 chaincodes
 	txdeploy1 := h.simulateDeployTx("cc1", nil)
 	txdeploy2 := h.simulateDeployTx("cc2", nil)
-	blk1 := h.cutBlockAndCommitWithPvtdata()
+	blk1 := h.cutBlockAndCommitLegacy()
 
 	// blk2 contains 2 public data txs
 	txdata1 := h.simulateDataTx("txid1", func(s *simulator) {
@@ -67,12 +67,12 @@ func (d *sampleDataHelper) populateLedger(h *testhelper) {
 		s.setState("cc2", "key1", d.sampleVal("value03", lgrid))
 		s.setState("cc2", "key2", d.sampleVal("value04", lgrid))
 	})
-	blk2 := h.cutBlockAndCommitWithPvtdata()
+	blk2 := h.cutBlockAndCommitLegacy()
 
 	// blk3 upgrades both chaincodes
 	txupgrade1 := h.simulateUpgradeTx("cc1", d.sampleCollConf1(lgrid, "cc1"))
 	txupgrade2 := h.simulateUpgradeTx("cc2", d.sampleCollConf1(lgrid, "cc2"))
-	blk3 := h.cutBlockAndCommitWithPvtdata()
+	blk3 := h.cutBlockAndCommitLegacy()
 
 	// blk4 contains 2 data txs with private data
 	txdata3 := h.simulateDataTx("txid3", func(s *simulator) {
@@ -83,12 +83,12 @@ func (d *sampleDataHelper) populateLedger(h *testhelper) {
 		s.setPvtdata("cc2", "coll1", "key3", d.sampleVal("value07", lgrid))
 		s.setPvtdata("cc2", "coll1", "key4", d.sampleVal("value08", lgrid))
 	})
-	blk4 := h.cutBlockAndCommitWithPvtdata()
+	blk4 := h.cutBlockAndCommitLegacy()
 
 	// blk5 upgrades both chaincodes
 	txupgrade3 := h.simulateUpgradeTx("cc1", d.sampleCollConf2(lgrid, "cc1"))
 	txupgrade4 := h.simulateDeployTx("cc2", d.sampleCollConf2(lgrid, "cc2"))
-	blk5 := h.cutBlockAndCommitWithPvtdata()
+	blk5 := h.cutBlockAndCommitLegacy()
 
 	// blk6 contains 2 data txs with private data
 	txdata5 := h.simulateDataTx("txid5", func(s *simulator) {
@@ -99,7 +99,7 @@ func (d *sampleDataHelper) populateLedger(h *testhelper) {
 		s.setPvtdata("cc2", "coll2", "key3", d.sampleVal("value11", lgrid))
 		s.setPvtdata("cc2", "coll2", "key4", d.sampleVal("value12", lgrid))
 	})
-	blk6 := h.cutBlockAndCommitWithPvtdata()
+	blk6 := h.cutBlockAndCommitLegacy()
 
 	// blk7 contains one data txs
 	txdata7 := h.simulateDataTx("txid7", func(s *simulator) {
@@ -115,8 +115,8 @@ func (d *sampleDataHelper) populateLedger(h *testhelper) {
 		s.getState("cc1", "key1")
 		s.setState("cc1", "key1", d.sampleVal("value15", lgrid))
 	})
-	blk7 := h.committer.cutBlockAndCommitWithPvtdata(txdata7)
-	blk8 := h.cutBlockAndCommitWithPvtdata()
+	blk7 := h.committer.cutBlockAndCommitLegacy([]*txAndPvtdata{txdata7}, nil)
+	blk8 := h.cutBlockAndCommitLegacy()
 
 	d.submittedData.recordSubmittedBlks(lgrid,
 		blk1, blk2, blk3, blk4, blk5, blk6, blk7, blk8)
@@ -130,6 +130,7 @@ func (d *sampleDataHelper) verifyLedgerContent(h *testhelper) {
 	d.verifyConfigHistory(h)
 	d.verifyBlockAndPvtdata(h)
 	d.verifyGetTransactionByID(h)
+	// TODO: add verifyHistory() -- FAB-15733
 
 	// the submitted data could not be available if the test ledger is loaded from disk in a fresh run
 	// (e.g., a backup of a test lesger from a previous fabric version)

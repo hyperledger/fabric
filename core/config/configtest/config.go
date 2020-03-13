@@ -7,29 +7,23 @@ SPDX-License-Identifier: Apache-2.0
 package configtest
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // AddDevConfigPath adds the DevConfigDir to the viper path.
-func AddDevConfigPath(v *viper.Viper) error {
-	devPath, err := GetDevConfigDir()
-	if err != nil {
-		return err
-	}
-
+func AddDevConfigPath(v *viper.Viper) {
+	devPath := GetDevConfigDir()
 	if v != nil {
 		v.AddConfigPath(devPath)
 	} else {
 		viper.AddConfigPath(devPath)
 	}
-
-	return nil
 }
 
 func dirExists(path string) bool {
@@ -43,46 +37,34 @@ func dirExists(path string) bool {
 // GetDevConfigDir gets the path to the default configuration that is
 // maintained with the source tree. This should only be used in a
 // test/development context.
-func GetDevConfigDir() (string, error) {
+func GetDevConfigDir() string {
 	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		return "", fmt.Errorf("GOPATH not set")
-	}
-
 	for _, p := range filepath.SplitList(gopath) {
 		devPath := filepath.Join(p, "src/github.com/hyperledger/fabric/sampleconfig")
-		if !dirExists(devPath) {
-			continue
+		if dirExists(devPath) {
+			return devPath
 		}
-
-		return devPath, nil
 	}
 
-	return "", fmt.Errorf("DevConfigDir not found in %s", gopath)
+	panic("unable to find sampleconfig directory on gopath")
 }
 
 // GetDevMspDir gets the path to the sampleconfig/msp tree that is maintained
 // with the source tree.  This should only be used in a test/development
 // context.
-func GetDevMspDir() (string, error) {
-	devDir, err := GetDevConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("Error obtaining DevConfigDir: %s", devDir)
-	}
-
-	return filepath.Join(devDir, "msp"), nil
+func GetDevMspDir() string {
+	devDir := GetDevConfigDir()
+	return filepath.Join(devDir, "msp")
 }
 
 func SetDevFabricConfigPath(t *testing.T) (cleanup func()) {
 	t.Helper()
 
 	oldFabricCfgPath, resetFabricCfgPath := os.LookupEnv("FABRIC_CFG_PATH")
-	devConfigDir, err := GetDevConfigDir()
-	if err != nil {
-		t.Fatalf("failed to get dev config dir: %s", err)
-	}
+	devConfigDir := GetDevConfigDir()
 
-	err = os.Setenv("FABRIC_CFG_PATH", devConfigDir)
+	err := os.Setenv("FABRIC_CFG_PATH", devConfigDir)
+	require.NoError(t, err, "failed to set FABRIC_CFG_PATH")
 	if resetFabricCfgPath {
 		return func() {
 			err := os.Setenv("FABRIC_CFG_PATH", oldFabricCfgPath)

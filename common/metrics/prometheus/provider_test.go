@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var _ = Describe("Provider", func() {
@@ -34,7 +35,7 @@ var _ = Describe("Provider", func() {
 		prom.DefaultRegisterer = registry
 		prom.DefaultGatherer = registry
 
-		server = httptest.NewServer(prom.UninstrumentedHandler())
+		server = httptest.NewServer(promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 		client = server.Client()
 
 		p = &prometheus.Provider{}
@@ -238,7 +239,7 @@ var _ = Describe("Provider", func() {
 					counter.With("alpha", "a", "beta", "b", "charlie", "c").Add(1)
 					return
 				}()
-				Expect(panicMessage).To(MatchError("inconsistent label cardinality"))
+				Expect(panicMessage).To(MatchError(MatchRegexp(`inconsistent label cardinality: expected 2 label values but got 3 in prometheus.Labels\{.*\}`)))
 			})
 		})
 
@@ -250,7 +251,7 @@ var _ = Describe("Provider", func() {
 					counter.Add(1)
 					return
 				}()
-				Expect(panicMessage).To(MatchError("inconsistent label cardinality"))
+				Expect(panicMessage).To(MatchError(`inconsistent label cardinality: expected 2 label values but got 0 in prometheus.Labels{}`))
 			})
 		})
 	})

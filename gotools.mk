@@ -3,9 +3,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = counterfeiter dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell mockery manifest-tool
-BUILD_DIR ?= .build
-GOTOOLS_GOPATH ?= $(BUILD_DIR)/gotools
+GOTOOLS = counterfeiter dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell mockery
+BUILD_DIR ?= build
+GOTOOLS_GOPATH ?= $(BUILD_DIR)/_gotools
 GOTOOLS_BINDIR ?= $(GOPATH)/bin
 
 # go tool->path mapping
@@ -14,7 +14,6 @@ go.fqp.gocov         := github.com/axw/gocov/gocov
 go.fqp.gocov-xml     := github.com/AlekSi/gocov-xml
 go.fqp.goimports     := golang.org/x/tools/cmd/goimports
 go.fqp.golint        := golang.org/x/lint/golint
-go.fqp.manifest-tool := github.com/estesp/manifest-tool
 go.fqp.misspell      := github.com/client9/misspell/cmd/misspell
 go.fqp.mockery       := github.com/vektra/mockery/cmd/mockery
 
@@ -23,7 +22,7 @@ gotools-install: $(patsubst %,$(GOTOOLS_BINDIR)/%, $(GOTOOLS))
 
 .PHONY: gotools-clean
 gotools-clean:
-	-@rm -rf $(BUILD_DIR)/gotools
+	-@rm -rf $(GOTOOLS_GOPATH)
 
 # Special override for protoc-gen-go since we want to use the version vendored with the project
 gotool.protoc-gen-go:
@@ -46,7 +45,7 @@ gotool.golint:
 	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/golang.org/x/lint/golint
 
 # Lock to a versioned dep
-gotool.dep: DEP_VERSION ?= "v0.5.0"
+gotool.dep: DEP_VERSION ?= "v0.5.3"
 gotool.dep:
 	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) go get -d -u github.com/golang/dep
 	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q $(DEP_VERSION)

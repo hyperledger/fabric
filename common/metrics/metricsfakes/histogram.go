@@ -8,10 +8,15 @@ import (
 )
 
 type Histogram struct {
-	WithStub        func(labelValues ...string) metrics.Histogram
+	ObserveStub        func(float64)
+	observeMutex       sync.RWMutex
+	observeArgsForCall []struct {
+		arg1 float64
+	}
+	WithStub        func(...string) metrics.Histogram
 	withMutex       sync.RWMutex
 	withArgsForCall []struct {
-		labelValues []string
+		arg1 []string
 	}
 	withReturns struct {
 		result1 metrics.Histogram
@@ -19,30 +24,57 @@ type Histogram struct {
 	withReturnsOnCall map[int]struct {
 		result1 metrics.Histogram
 	}
-	ObserveStub        func(value float64)
-	observeMutex       sync.RWMutex
-	observeArgsForCall []struct {
-		value float64
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Histogram) With(labelValues ...string) metrics.Histogram {
+func (fake *Histogram) Observe(arg1 float64) {
+	fake.observeMutex.Lock()
+	fake.observeArgsForCall = append(fake.observeArgsForCall, struct {
+		arg1 float64
+	}{arg1})
+	fake.recordInvocation("Observe", []interface{}{arg1})
+	fake.observeMutex.Unlock()
+	if fake.ObserveStub != nil {
+		fake.ObserveStub(arg1)
+	}
+}
+
+func (fake *Histogram) ObserveCallCount() int {
+	fake.observeMutex.RLock()
+	defer fake.observeMutex.RUnlock()
+	return len(fake.observeArgsForCall)
+}
+
+func (fake *Histogram) ObserveCalls(stub func(float64)) {
+	fake.observeMutex.Lock()
+	defer fake.observeMutex.Unlock()
+	fake.ObserveStub = stub
+}
+
+func (fake *Histogram) ObserveArgsForCall(i int) float64 {
+	fake.observeMutex.RLock()
+	defer fake.observeMutex.RUnlock()
+	argsForCall := fake.observeArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Histogram) With(arg1 ...string) metrics.Histogram {
 	fake.withMutex.Lock()
 	ret, specificReturn := fake.withReturnsOnCall[len(fake.withArgsForCall)]
 	fake.withArgsForCall = append(fake.withArgsForCall, struct {
-		labelValues []string
-	}{labelValues})
-	fake.recordInvocation("With", []interface{}{labelValues})
+		arg1 []string
+	}{arg1})
+	fake.recordInvocation("With", []interface{}{arg1})
 	fake.withMutex.Unlock()
 	if fake.WithStub != nil {
-		return fake.WithStub(labelValues...)
+		return fake.WithStub(arg1...)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.withReturns.result1
+	fakeReturns := fake.withReturns
+	return fakeReturns.result1
 }
 
 func (fake *Histogram) WithCallCount() int {
@@ -51,13 +83,22 @@ func (fake *Histogram) WithCallCount() int {
 	return len(fake.withArgsForCall)
 }
 
+func (fake *Histogram) WithCalls(stub func(...string) metrics.Histogram) {
+	fake.withMutex.Lock()
+	defer fake.withMutex.Unlock()
+	fake.WithStub = stub
+}
+
 func (fake *Histogram) WithArgsForCall(i int) []string {
 	fake.withMutex.RLock()
 	defer fake.withMutex.RUnlock()
-	return fake.withArgsForCall[i].labelValues
+	argsForCall := fake.withArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *Histogram) WithReturns(result1 metrics.Histogram) {
+	fake.withMutex.Lock()
+	defer fake.withMutex.Unlock()
 	fake.WithStub = nil
 	fake.withReturns = struct {
 		result1 metrics.Histogram
@@ -65,6 +106,8 @@ func (fake *Histogram) WithReturns(result1 metrics.Histogram) {
 }
 
 func (fake *Histogram) WithReturnsOnCall(i int, result1 metrics.Histogram) {
+	fake.withMutex.Lock()
+	defer fake.withMutex.Unlock()
 	fake.WithStub = nil
 	if fake.withReturnsOnCall == nil {
 		fake.withReturnsOnCall = make(map[int]struct {
@@ -76,37 +119,13 @@ func (fake *Histogram) WithReturnsOnCall(i int, result1 metrics.Histogram) {
 	}{result1}
 }
 
-func (fake *Histogram) Observe(value float64) {
-	fake.observeMutex.Lock()
-	fake.observeArgsForCall = append(fake.observeArgsForCall, struct {
-		value float64
-	}{value})
-	fake.recordInvocation("Observe", []interface{}{value})
-	fake.observeMutex.Unlock()
-	if fake.ObserveStub != nil {
-		fake.ObserveStub(value)
-	}
-}
-
-func (fake *Histogram) ObserveCallCount() int {
-	fake.observeMutex.RLock()
-	defer fake.observeMutex.RUnlock()
-	return len(fake.observeArgsForCall)
-}
-
-func (fake *Histogram) ObserveArgsForCall(i int) float64 {
-	fake.observeMutex.RLock()
-	defer fake.observeMutex.RUnlock()
-	return fake.observeArgsForCall[i].value
-}
-
 func (fake *Histogram) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.withMutex.RLock()
-	defer fake.withMutex.RUnlock()
 	fake.observeMutex.RLock()
 	defer fake.observeMutex.RUnlock()
+	fake.withMutex.RLock()
+	defer fake.withMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

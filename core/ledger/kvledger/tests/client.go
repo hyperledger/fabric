@@ -10,10 +10,12 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,12 +24,14 @@ import (
 // In a test, for each instantiated ledger, a single instance of a client is typically sufficient.
 type client struct {
 	lgr            ledger.PeerLedger
+	lgrID          string
 	simulatedTrans []*txAndPvtdata // accumulates the results of transactions simulations
+	missingPvtData ledger.TxMissingPvtDataMap
 	assert         *assert.Assertions
 }
 
-func newClient(lgr ledger.PeerLedger, t *testing.T) *client {
-	return &client{lgr, nil, assert.New(t)}
+func newClient(lgr ledger.PeerLedger, lgrID string, t *testing.T) *client {
+	return &client{lgr, lgrID, nil, make(ledger.TxMissingPvtDataMap), assert.New(t)}
 }
 
 // simulateDataTx takes a simulation logic and wraps it between
@@ -43,6 +47,27 @@ func (c *client) simulateDataTx(txid string, simulationLogic func(s *simulator))
 	sim := &simulator{ledgerSimulator, txid, c.assert}
 	simulationLogic(sim)
 	txAndPvtdata := sim.done()
+	c.simulatedTrans = append(c.simulatedTrans, txAndPvtdata)
+	return txAndPvtdata
+}
+
+func (c *client) addPostOrderTx(txid string, customTxType common.HeaderType) *txAndPvtdata {
+	if txid == "" {
+		txid = util.GenerateUUID()
+	}
+	channelHeader := protoutil.MakeChannelHeader(customTxType, 0, c.lgrID, 0)
+	channelHeader.TxId = txid
+	paylBytes := protoutil.MarshalOrPanic(
+		&common.Payload{
+			Header: protoutil.MakePayloadHeader(channelHeader, &common.SignatureHeader{}),
+			Data:   nil,
+		},
+	)
+	env := &common.Envelope{
+		Payload:   paylBytes,
+		Signature: nil,
+	}
+	txAndPvtdata := &txAndPvtdata{Txid: txid, Envelope: env}
 	c.simulatedTrans = append(c.simulatedTrans, txAndPvtdata)
 	return txAndPvtdata
 }
@@ -68,6 +93,16 @@ func (c *client) simulateDeployTx(ccName string, collConfs []*collConf) *txAndPv
 // simulateUpgradeTx see comments on function 'simulateDeployTx'
 func (c *client) simulateUpgradeTx(ccName string, collConfs []*collConf) *txAndPvtdata {
 	return c.simulateDeployTx(ccName, collConfs)
+}
+
+func (c *client) causeMissingPvtData(txIndex uint64) {
+	pvtws := c.simulatedTrans[txIndex].Pvtws
+	for _, nsPvtRwset := range pvtws.NsPvtRwset {
+		for _, collPvtRwset := range nsPvtRwset.CollectionPvtRwset {
+			c.missingPvtData.Add(txIndex, nsPvtRwset.Namespace, collPvtRwset.CollectionName, true)
+		}
+	}
+	c.simulatedTrans[txIndex].Pvtws = nil
 }
 
 ///////////////////////   simulator wrapper functions  ///////////////////////

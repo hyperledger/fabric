@@ -14,7 +14,7 @@ applications of PaperNet.
 
 As we've seen, there are two important concepts that concern us when dealing
 with commercial paper; **states** and **transactions**. Indeed, this is true for
-*all* blockchain use cases; there are conceptual objects of value, modelled as
+*all* blockchain use cases; there are conceptual objects of value, modeled as
 states, whose lifecycle transitions are described by transactions. An effective
 analysis of states and transactions is an essential starting point for a
 successful implementation.
@@ -28,7 +28,7 @@ diagram for commercial paper. Commercial papers transition between **issued**,
 **redeem** transactions.*
 
 See how the state diagram describes how commercial papers change over time, and
-how specific transactions govern the life cycle transitions. In Hypledger
+how specific transactions govern the life cycle transitions. In Hyperledger
 Fabric, smart contracts implement transaction logic that transition commercial
 papers between their different states. Commercial paper states are actually held
 in the ledger world state; so let's take a closer look at them.
@@ -102,6 +102,8 @@ that creates the state. This unique key is usually with some form of
 although less readable, is a standard practice. What's important is that every
 individual state object in a ledger must have a unique key.
 
+_Note: You should avoid using U+0000 (nil byte) in keys._
+
 ## Multiple states
 
 As we've seen, commercial papers in PaperNet are stored as state vectors in a
@@ -129,7 +131,7 @@ transactions. See how the list has a descriptive name: `org.papernet.papers`;
 it's a really good idea to use this kind of [DNS
 name](https://en.wikipedia.org/wiki/Domain_Name_System) because well-chosen
 names will make your blockchain designs intuitive to other people. This idea
-applies equally well to smart contract [namespaces](./namespace.html).
+applies equally well to smart contract [names](./contractname.html).
 
 ### Physical representation
 
@@ -153,7 +155,7 @@ unique **composite** key formed by the concatenation of `org.papernet.paper`,
 
 
   * Hyperlegder Fabric internally uses a concurrency control
-    [mechanism](../arch-deep-dive.html#the-endorsing-peer-simulates-a-transaction-and-produces-an-endorsement-signature)
+    mechanism <!-- Add more information to explain this topic-->
     to update a ledger, such that keeping papers in separate state vectors vastly
     reduces the opportunity for shared-state collisions. Such collisions require
     transaction re-submission, complicate application design, and decrease
@@ -162,6 +164,20 @@ unique **composite** key formed by the concatenation of `org.papernet.paper`,
 This second point is actually a key take-away for Hyperledger Fabric; the
 physical design of state vectors is **very important** to optimum performance
 and behaviour. Keep your states separate!
+
+## Trust relationships
+
+We have discussed how the different roles in a network, such as issuer, trader
+or rating agencies as well as different business interests determine who needs
+to sign off on a transaction. In Fabric, these rules are captured by so-called
+[**endorsement policies**](endorsementpolicies.html). The rules can be set on
+a chaincode granularity, as well as for individual state keys.
+
+This means that in PaperNet, we can set one rule for the whole namespace that
+determines which organizations can issue new papers. Later, rules can be set
+and updated for individual papers to capture the trust relationships of buy
+and redeem transactions.
+
 
 In the next topic, we will show you how to combine these design concepts to
 implement the PaperNet commercial paper smart contract, and then an application

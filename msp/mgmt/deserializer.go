@@ -18,8 +18,9 @@ package mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
+	mspproto "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/msp"
-	mspproto "github.com/hyperledger/fabric/protos/msp"
 	"github.com/pkg/errors"
 )
 
@@ -41,12 +42,16 @@ type DeserializersManager interface {
 	GetChannelDeserializers() map[string]msp.IdentityDeserializer
 }
 
-// DeserializersManager returns a new instance of DeserializersManager
-func NewDeserializersManager() DeserializersManager {
-	return &mspDeserializersManager{}
+// NewDeserializersManager returns a new instance of DeserializersManager
+func NewDeserializersManager(cryptoProvider bccsp.BCCSP) DeserializersManager {
+	return &mspDeserializersManager{
+		cryptoProvider: cryptoProvider,
+	}
 }
 
-type mspDeserializersManager struct{}
+type mspDeserializersManager struct {
+	cryptoProvider bccsp.BCCSP
+}
 
 func (m *mspDeserializersManager) Deserialize(raw []byte) (*mspproto.SerializedIdentity, error) {
 	sId := &mspproto.SerializedIdentity{}
@@ -58,12 +63,12 @@ func (m *mspDeserializersManager) Deserialize(raw []byte) (*mspproto.SerializedI
 }
 
 func (m *mspDeserializersManager) GetLocalMSPIdentifier() string {
-	id, _ := GetLocalMSP().GetIdentifier()
+	id, _ := GetLocalMSP(m.cryptoProvider).GetIdentifier()
 	return id
 }
 
 func (m *mspDeserializersManager) GetLocalDeserializer() msp.IdentityDeserializer {
-	return GetLocalMSP()
+	return GetLocalMSP(m.cryptoProvider)
 }
 
 func (m *mspDeserializersManager) GetChannelDeserializers() map[string]msp.IdentityDeserializer {

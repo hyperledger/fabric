@@ -94,7 +94,7 @@ func TestSign(t *testing.T) {
 		csp: &mocks.MockBCCSP{
 			SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts,
 			SignErr: errors.New("no signature")}}
-	signature, err = signer.Sign(nil, expectedDigest, expectedOpts)
+	_, err = signer.Sign(nil, expectedDigest, expectedOpts)
 	assert.Error(t, err)
 	assert.Equal(t, err.Error(), "no signature")
 

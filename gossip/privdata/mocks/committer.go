@@ -2,7 +2,7 @@
 
 package mocks
 
-import common "github.com/hyperledger/fabric/protos/common"
+import common "github.com/hyperledger/fabric-protos-go/common"
 import ledger "github.com/hyperledger/fabric/core/ledger"
 import mock "github.com/stretchr/testify/mock"
 
@@ -16,13 +16,27 @@ func (_m *Committer) Close() {
 	_m.Called()
 }
 
-// CommitPvtDataOfOldBlocks provides a mock function with given fields: blockPvtData
-func (_m *Committer) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtData) ([]*ledger.PvtdataHashMismatch, error) {
-	ret := _m.Called(blockPvtData)
+// CommitLegacy provides a mock function with given fields: blockAndPvtData, commitOpts
+func (_m *Committer) CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+	ret := _m.Called(blockAndPvtData, commitOpts)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*ledger.BlockAndPvtData, *ledger.CommitOptions) error); ok {
+		r0 = rf(blockAndPvtData, commitOpts)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CommitPvtDataOfOldBlocks provides a mock function with given fields: reconciledPvtdata
+func (_m *Committer) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
+	ret := _m.Called(reconciledPvtdata)
 
 	var r0 []*ledger.PvtdataHashMismatch
-	if rf, ok := ret.Get(0).(func([]*ledger.BlockPvtData) []*ledger.PvtdataHashMismatch); ok {
-		r0 = rf(blockPvtData)
+	if rf, ok := ret.Get(0).(func([]*ledger.ReconciledPvtdata) []*ledger.PvtdataHashMismatch); ok {
+		r0 = rf(reconciledPvtdata)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*ledger.PvtdataHashMismatch)
@@ -30,8 +44,8 @@ func (_m *Committer) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtDat
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*ledger.BlockPvtData) error); ok {
-		r1 = rf(blockPvtData)
+	if rf, ok := ret.Get(1).(func([]*ledger.ReconciledPvtdata) error); ok {
+		r1 = rf(reconciledPvtdata)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -39,18 +53,25 @@ func (_m *Committer) CommitPvtDataOfOldBlocks(blockPvtData []*ledger.BlockPvtDat
 	return r0, r1
 }
 
-// CommitWithPvtData provides a mock function with given fields: blockAndPvtData
-func (_m *Committer) CommitWithPvtData(blockAndPvtData *ledger.BlockAndPvtData) error {
-	ret := _m.Called(blockAndPvtData)
+// DoesPvtDataInfoExistInLedger provides a mock function with given fields: blockNum
+func (_m *Committer) DoesPvtDataInfoExistInLedger(blockNum uint64) (bool, error) {
+	ret := _m.Called(blockNum)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*ledger.BlockAndPvtData) error); ok {
-		r0 = rf(blockAndPvtData)
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(uint64) bool); ok {
+		r0 = rf(blockNum)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
+		r1 = rf(blockNum)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetBlocks provides a mock function with given fields: blockSeqs
