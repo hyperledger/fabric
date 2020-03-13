@@ -27,7 +27,7 @@ jobs:
         name: SetJobTriggers
 
   - job: DocBuild
-    pool: fabric-test-8cpu-32gb
+    pool: ubuntu-18.04
     container:
       image: n42org/tox:3.4.0
     steps:
@@ -42,6 +42,11 @@ jobs:
   - job: UnitTests
     pool: fabric-test-8cpu-32gb
     steps:
+      - task: DockerInstaller@0
+        displayName: Docker Installer
+        inputs:
+          dockerVersion: 17.09.0-ce
+          releaseType: stable
       - template: install_deps.yml
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
@@ -57,6 +62,11 @@ jobs:
       parallel: 5
     timeoutInMinutes: 90
     steps:
+      - task: DockerInstaller@0
+        displayName: Docker Installer
+        inputs:
+          dockerVersion: 17.09.0-ce
+          releaseType: stable
       - template: install_deps.yml
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
