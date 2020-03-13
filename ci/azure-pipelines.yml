@@ -27,7 +27,8 @@ jobs:
         name: SetJobTriggers
 
   - job: DocBuild
-    pool: ubuntu-18.04
+    pool:
+      vmImage: ubuntu-18.04
     container:
       image: n42org/tox:3.4.0
     steps:
