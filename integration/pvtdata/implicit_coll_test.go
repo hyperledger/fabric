@@ -51,7 +51,7 @@ var _ bool = Describe("Pvtdata dissemination for implicit collection", func() {
 				// set timeout to 10s to prevent test flake
 				core.Peer.Gossip.PvtData.PushAckTimeout = 10 * time.Second
 			} else {
-				// disable dessemination on non-org1 peers
+				// disable dissemination  on non-org1 peers
 				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.RequiredPeerCount = 0
 				core.Peer.Gossip.PvtData.ImplicitCollDisseminationPolicy.MaxPeerCount = 0
 			}
