@@ -161,7 +161,7 @@ func addPolicy(cg *cb.ConfigGroup, policy *standardConfigPolicy, modPolicy strin
 func signaturePolicy(policyName string, sigPolicy *cb.SignaturePolicyEnvelope) (*standardConfigPolicy, error) {
 	signaturePolicy, err := proto.Marshal(sigPolicy)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling signature policy: %v", err)
+		return nil, fmt.Errorf("marshaling signature policy: %v", err)
 	}
 
 	return &standardConfigPolicy{
