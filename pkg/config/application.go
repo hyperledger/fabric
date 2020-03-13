@@ -77,7 +77,7 @@ func AddAnchorPeer(config *cb.Config, orgName string, newAnchorPeer AnchorPeer) 
 		// Unmarshal existing anchor peers if the config value exists
 		err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshalling %s's anchor peer endpoints: %v", orgName, err)
+			return fmt.Errorf("failed unmarshaling %s's anchor peer endpoints: %v", orgName, err)
 		}
 	}
 
@@ -120,7 +120,7 @@ func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove Anch
 		// Unmarshal existing anchor peers if the config value exists
 		err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshalling %s's anchor peer endpoints: %v", orgName, err)
+			return fmt.Errorf("failed unmarshaling %s's anchor peer endpoints: %v", orgName, err)
 		}
 	}
 
@@ -158,7 +158,7 @@ func GetAnchorPeers(config *cb.Config, orgName string) ([]AnchorPeer, error) {
 	anchorPeersProto := &pb.AnchorPeers{}
 	err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
 	if err != nil {
-		return nil, fmt.Errorf("failed unmarshalling %s's anchor peer endpoints: %v", orgName, err)
+		return nil, fmt.Errorf("failed unmarshaling %s's anchor peer endpoints: %v", orgName, err)
 	}
 
 	anchorPeers := []AnchorPeer{}

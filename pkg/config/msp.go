@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	"crypto/ecdsa"
+	"crypto"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -95,9 +95,10 @@ type KeyInfo struct {
 	// the case of Software BCCSP as well as the HSM BCCSP would be
 	// the SKI of the key.
 	KeyIdentifier string
-	// KeyMaterial (optional) for the key to be imported; this is
-	// properly encoded key bytes, prefixed by the type of the key.
-	KeyMaterial *ecdsa.PrivateKey
+	// KeyMaterial (optional) for the key to be imported; this
+	// must be a supported PKCS#8 private key type of either
+	// *rsa.PrivateKey, *ecdsa.PrivateKey, or ed25519.PrivateKey.
+	KeyMaterial crypto.PrivateKey
 }
 
 // OUIdentifier represents an organizational unit and
@@ -196,7 +197,7 @@ func getMSPConfigForOrg(configGroup *cb.ConfigGroup, orgName string) (MSP, error
 	fabricMSPConfig := &mb.FabricMSPConfig{}
 	err = proto.Unmarshal(mspValueProto.Config, fabricMSPConfig)
 	if err != nil {
-		return MSP{}, fmt.Errorf("unmarshalling fabric msp config: %v", err)
+		return MSP{}, fmt.Errorf("unmarshaling fabric msp config: %v", err)
 	}
 
 	// ROOT CERTS
@@ -362,16 +363,16 @@ func parseCRL(crls [][]byte) ([]pkix.CertificateList, error) {
 	return certificateLists, nil
 }
 
-func parsePrivateKeyFromBytes(priv []byte) (*ecdsa.PrivateKey, error) {
+func parsePrivateKeyFromBytes(priv []byte) (crypto.PrivateKey, error) {
 	if len(priv) == 0 {
 		return nil, nil
 	}
 
 	pemBlock, _ := pem.Decode(priv)
 
-	privateKey, err := x509.ParseECPrivateKey(pemBlock.Bytes)
+	privateKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed parsing ec private key: %v", err)
+		return nil, fmt.Errorf("failed parsing PKCS#8 private key: %v", err)
 	}
 
 	return privateKey, nil
@@ -405,9 +406,9 @@ func (m *MSP) toProto() (*mb.FabricMSPConfig, error) {
 	// KeyMaterial is an optional EDCSA private key
 	keyMaterial := []byte{}
 	if m.SigningIdentity.PrivateSigner.KeyMaterial != nil {
-		keyMaterial, err = pemEncodeECDSAPrivateKey(m.SigningIdentity.PrivateSigner.KeyMaterial)
+		keyMaterial, err = pemEncodePKCS8PrivateKey(m.SigningIdentity.PrivateSigner.KeyMaterial)
 		if err != nil {
-			return nil, fmt.Errorf("pem encode ec private key: %v", err)
+			return nil, fmt.Errorf("pem encode PKCS#8 private key: %v", err)
 		}
 	}
 
@@ -485,7 +486,7 @@ func buildPemEncodedCRL(crls []pkix.CertificateList) ([][]byte, error) {
 	for _, crl := range crls {
 		asn1MarshalledBytes, err := asn1.Marshal(crl)
 		if err != nil {
-			return nil, fmt.Errorf("asn1 marshalling: %v", err)
+			return nil, err
 		}
 
 		pemEncodedCRL = append(pemEncodedCRL, pem.EncodeToMemory(&pem.Block{Type: "X509 CRL", Bytes: asn1MarshalledBytes}))
@@ -507,13 +508,13 @@ func pemEncodeX509Certificate(cert x509.Certificate) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 }
 
-func pemEncodeECDSAPrivateKey(priv *ecdsa.PrivateKey) ([]byte, error) {
-	privBytes, err := x509.MarshalECPrivateKey(priv)
+func pemEncodePKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling ec private key: %v", err)
+		return nil, fmt.Errorf("marshaling PKCS#8 private key: %v", err)
 	}
 
-	return pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}), nil
+	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}), nil
 }
 
 // unmarshalConfigValueAtKey unmarshals the value for the specified key in a config group
@@ -525,7 +526,7 @@ func unmarshalConfigValueAtKey(group *cb.ConfigGroup, key string, msg proto.Mess
 	}
 	err := proto.Unmarshal(valueAtKey.Value, msg)
 	if err != nil {
-		return fmt.Errorf("unmarshalling %s: %v", key, err)
+		return fmt.Errorf("unmarshaling %s: %v", key, err)
 	}
 	return nil
 }

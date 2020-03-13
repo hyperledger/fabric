@@ -161,7 +161,7 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 		}
 	case ConsensusTypeEtcdRaft:
 		if consensusMetadata, err = marshalEtcdRaftMetadata(o.EtcdRaft); err != nil {
-			return fmt.Errorf("marshalling etcdraft metadata for orderer type '%s': %v", ConsensusTypeEtcdRaft, err)
+			return fmt.Errorf("marshaling etcdraft metadata for orderer type '%s': %v", ConsensusTypeEtcdRaft, err)
 		}
 	default:
 		return fmt.Errorf("unknown orderer type '%s'", o.OrdererType)
@@ -254,7 +254,7 @@ func marshalEtcdRaftMetadata(md eb.ConfigMetadata) ([]byte, error) {
 
 	data, err := proto.Marshal(&md)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling config metadata: %v", err)
+		return nil, fmt.Errorf("marshaling config metadata: %v", err)
 	}
 
 	return data, nil

@@ -86,7 +86,7 @@ func NewCreateChannelTx(channelConfig Channel) (*cb.Envelope, error) {
 
 	configUpdate, err := proto.Marshal(newChannelConfigUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling new channel config update: %v", err)
+		return nil, fmt.Errorf("marshaling new channel config update: %v", err)
 	}
 
 	newConfigUpdateEnv := &cb.ConfigUpdateEnvelope{
@@ -111,7 +111,7 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity SigningIden
 
 	header, err := proto.Marshal(signatureHeader)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling signature header: %v", err)
+		return nil, fmt.Errorf("marshaling signature header: %v", err)
 	}
 
 	configSignature := &cb.ConfigSignature{
@@ -120,7 +120,7 @@ func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity SigningIden
 
 	configUpdateBytes, err := proto.Marshal(configUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling config update: %v", err)
+		return nil, fmt.Errorf("marshaling config update: %v", err)
 	}
 
 	configSignature.Signature, err = signingIdentity.Sign(
@@ -140,7 +140,7 @@ func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIden
 	signatures ...*cb.ConfigSignature) (*cb.Envelope, error) {
 	update, err := proto.Marshal(configUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling config update: %v", err)
+		return nil, fmt.Errorf("marshaling config update: %v", err)
 	}
 
 	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
@@ -167,7 +167,7 @@ func signatureHeader(signingIdentity SigningIdentity) (*cb.SignatureHeader, erro
 
 	idBytes, err := proto.Marshal(&mb.SerializedIdentity{Mspid: signingIdentity.MSPID, IdBytes: buffer.Bytes()})
 	if err != nil {
-		return nil, fmt.Errorf("marshalling serialized identity: %v", err)
+		return nil, fmt.Errorf("marshaling serialized identity: %v", err)
 	}
 
 	nonce, err := newNonce()
@@ -232,7 +232,7 @@ func newOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
 
 	conf, err := proto.Marshal(fabricMSPConfig)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling msp config: %v", err)
+		return nil, fmt.Errorf("marshaling msp config: %v", err)
 	}
 
 	// mspConfig defaults type to FABRIC which implements an X.509 based provider
@@ -300,7 +300,7 @@ func blockDataHashingStructureValue() *standardConfigValue {
 func addValue(cg *cb.ConfigGroup, value *standardConfigValue, modPolicy string) error {
 	v, err := proto.Marshal(value.value)
 	if err != nil {
-		return fmt.Errorf("marshalling standard config value '%s': %v", value.key, err)
+		return fmt.Errorf("marshaling standard config value '%s': %v", value.key, err)
 	}
 
 	cg.Values[value.key] = &cb.ConfigValue{
@@ -336,7 +336,7 @@ func addPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy stri
 
 			implicitMetaPolicy, err := proto.Marshal(imp)
 			if err != nil {
-				return fmt.Errorf("marshalling implicit meta policy: %v", err)
+				return fmt.Errorf("marshaling implicit meta policy: %v", err)
 			}
 
 			cg.Policies[policyName] = &cb.ConfigPolicy{
@@ -354,7 +354,7 @@ func addPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy stri
 
 			signaturePolicy, err := proto.Marshal(sp)
 			if err != nil {
-				return fmt.Errorf("marshalling signature policy: %v", err)
+				return fmt.Errorf("marshaling signature policy: %v", err)
 			}
 
 			cg.Policies[policyName] = &cb.ConfigPolicy{
@@ -475,7 +475,7 @@ func newChannelCreateConfigUpdate(channelID string, channelConfig Channel, templ
 		Name: channelConfig.Consortium,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("marshalling consortium: %v", err)
+		return nil, fmt.Errorf("marshaling consortium: %v", err)
 	}
 
 	// Add the consortium name to create the channel for into the write set as required
@@ -510,7 +510,7 @@ func newEnvelope(
 
 	data, err := proto.Marshal(dataMsg)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling envelope data: %v", err)
+		return nil, fmt.Errorf("marshaling envelope data: %v", err)
 	}
 
 	payloadHeader, err := payloadHeader(payloadChannelHeader, payloadSignatureHeader)
@@ -525,7 +525,7 @@ func newEnvelope(
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling payload: %v", err)
+		return nil, fmt.Errorf("marshaling payload: %v", err)
 	}
 
 	env := &cb.Envelope{
@@ -552,12 +552,12 @@ func channelHeader(headerType cb.HeaderType, version int32, channelID string, ep
 func payloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) (*cb.Header, error) {
 	channelHeader, err := proto.Marshal(ch)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling channel header: %v", err)
+		return nil, fmt.Errorf("marshaling channel header: %v", err)
 	}
 
 	signatureHeader, err := proto.Marshal(sh)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling signature header: %v", err)
+		return nil, fmt.Errorf("marshaling signature header: %v", err)
 	}
 
 	return &cb.Header{
@@ -618,17 +618,17 @@ func createSignedEnvelopeWithTLSBinding(
 
 	cHeader, err := proto.Marshal(channelHeader)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling channel header: %s", err)
+		return nil, fmt.Errorf("marshaling channel header: %s", err)
 	}
 
 	sHeader, err := proto.Marshal(signatureHeader)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling signature header: %s", err)
+		return nil, fmt.Errorf("marshaling signature header: %s", err)
 	}
 
 	data, err := proto.Marshal(envelope)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling config update envelope: %s", err)
+		return nil, fmt.Errorf("marshaling config update envelope: %s", err)
 	}
 
 	payload := &cb.Payload{
@@ -641,7 +641,7 @@ func createSignedEnvelopeWithTLSBinding(
 
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling payload: %s", err)
+		return nil, fmt.Errorf("marshaling payload: %s", err)
 	}
 
 	sig, err := signingIdentity.Sign(rand.Reader, payloadBytes, nil)
