@@ -177,12 +177,16 @@ func TestBlockFlags(t *testing.T) {
 }
 
 func TestPrintOrg(t *testing.T) {
-	factory.InitFactories(nil)
+	// Init the BCCSP
+	err := factory.InitFactories(nil)
+	if err != nil {
+		assert.Error(t, err, "Could not initialize BCCSP Factories")
+	}
 	config := genesisconfig.LoadTopLevel(configtest.GetDevConfigDir())
 
 	assert.NoError(t, doPrintOrg(config, genesisconfig.SampleOrgName), "Good org to print")
 
-	err := doPrintOrg(config, genesisconfig.SampleOrgName+".wrong")
+	err = doPrintOrg(config, genesisconfig.SampleOrgName+".wrong")
 	assert.Error(t, err, "Bad org name")
 	assert.Regexp(t, "organization [^ ]* not found", err.Error())
 

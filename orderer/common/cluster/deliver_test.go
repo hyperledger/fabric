@@ -44,7 +44,11 @@ import (
 var gRPCBalancerLock = sync.Mutex{}
 
 func init() {
-	factory.InitFactories(nil)
+	// Init the BCCSP
+	err := factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }
 
 //go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer

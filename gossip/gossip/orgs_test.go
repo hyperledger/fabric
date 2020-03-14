@@ -32,7 +32,11 @@ import (
 
 func init() {
 	util.SetupTestLogging()
-	factory.InitFactories(nil)
+	// Init the BCCSP
+	err := factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }
 
 type configurableCryptoService struct {

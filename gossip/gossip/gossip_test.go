@@ -42,7 +42,11 @@ func TestMain(m *testing.M) {
 	util.SetupTestLogging()
 	rand.Seed(int64(time.Now().Second()))
 	discovery.SetMaxConnAttempts(5)
-	factory.InitFactories(nil)
+	// Init the BCCSP
+	err := factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 	os.Exit(m.Run())
 }
 

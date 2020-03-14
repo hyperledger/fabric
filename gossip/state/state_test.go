@@ -71,7 +71,11 @@ type joinChanMsg struct {
 
 func init() {
 	gutil.SetupTestLogging()
-	factory.InitFactories(nil)
+	// Init the BCCSP
+	err := factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }
 
 // SequenceNumber returns the sequence number of the block that the message
