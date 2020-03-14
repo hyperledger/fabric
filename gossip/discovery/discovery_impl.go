@@ -703,7 +703,7 @@ func (d *gossipDiscoveryImpl) expireDeadMembers(dead []common.PKIidType) {
 	d.logger.Warning("Entering", dead)
 	defer d.logger.Warning("Exiting")
 
-	var deadMembers2Expire []*NetworkMember
+	var deadMembers2Expire []NetworkMember
 
 	d.lock.Lock()
 
@@ -711,7 +711,7 @@ func (d *gossipDiscoveryImpl) expireDeadMembers(dead []common.PKIidType) {
 		if _, isAlive := d.aliveLastTS[string(pkiID)]; !isAlive {
 			continue
 		}
-		deadMembers2Expire = append(deadMembers2Expire, d.id2Member[string(pkiID)])
+		deadMembers2Expire = append(deadMembers2Expire, d.id2Member[string(pkiID)].Clone())
 		// move lastTS from alive to dead
 		lastTS, hasLastTS := d.aliveLastTS[string(pkiID)]
 		if hasLastTS {
@@ -729,7 +729,7 @@ func (d *gossipDiscoveryImpl) expireDeadMembers(dead []common.PKIidType) {
 
 	for _, member2Expire := range deadMembers2Expire {
 		d.logger.Warning("Closing connection to", member2Expire)
-		d.comm.CloseConn(member2Expire)
+		d.comm.CloseConn(&member2Expire)
 	}
 }
 
