@@ -38,7 +38,7 @@ func fetchChannelConfig() *cb.Config {
 						"OrdererOrg": {
 							Groups: map[string]*cb.ConfigGroup{},
 							Values: map[string]*cb.ConfigValue{
-								config.OrdererAddressesKey: {
+								config.EndpointsKey: {
 									ModPolicy: config.AdminsPolicyKey,
 									Value: marshalOrPanic(&cb.OrdererAddresses{
 										Addresses: []string{"127.0.0.1:7050"},
