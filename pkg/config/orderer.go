@@ -296,3 +296,40 @@ func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPoli
 
 	return addPolicies(cg, policyMap, modPolicy)
 }
+
+// AddOrdererEndpoints adds an orderer's endpoint to an existing channel config transaction.
+// It must add the endpoint to an existing org and the endpoint must not already
+// exist in the org.
+func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint string) error {
+	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+	if !ok {
+		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
+	}
+
+	ordererAddrProto := &cb.OrdererAddresses{}
+
+	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
+		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
+		if err != nil {
+			return fmt.Errorf("failed unmarshalling orderer org %s's  endpoints: %v", orgName, err)
+		}
+	}
+
+	existingOrdererEndpoints := ordererAddrProto.Addresses
+	for _, e := range existingOrdererEndpoints {
+		if e == endpoint {
+			return fmt.Errorf("orderer org %s already contains endpoint %s",
+				orgName, endpoint)
+		}
+	}
+
+	existingOrdererEndpoints = append(existingOrdererEndpoints, endpoint)
+
+	// Add orderer endpoints config value back to orderer org
+	err := addValue(ordererOrgGroup, endpointsValue(existingOrdererEndpoints), AdminsPolicyKey)
+	if err != nil {
+		return fmt.Errorf("failed to add endpoint %v to orderer org %s: %v", endpoint, orgName, err)
+	}
+
+	return nil
+}
