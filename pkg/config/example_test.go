@@ -446,6 +446,11 @@ func Example_usage() {
 		panic(err)
 	}
 
+	err = config.AddOrdererEndpoint(updatedConfig, "OrdererOrg2", "127.0.0.1:8050")
+	if err != nil {
+		panic(err)
+	}
+
 	// Compute the delta
 	configUpdate, err := config.ComputeUpdate(baseConfig, updatedConfig, "testChannel")
 	if err != nil {
@@ -629,7 +634,8 @@ func Example_usage() {
 	// 									"mod_policy": "Admins",
 	// 									"value": {
 	// 										"addresses": [
-	// 											"127.0.0.1:7050"
+	// 											"127.0.0.1:7050",
+	// 											"127.0.0.1:8050"
 	// 										]
 	// 									},
 	// 									"version": "0"
