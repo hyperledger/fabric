@@ -428,6 +428,27 @@ func bootPeer(port int) string {
 	return fmt.Sprintf("localhost:%d", port)
 }
 
+func TestClone(t *testing.T) {
+	nm := &NetworkMember{
+		PKIid: common.PKIidType("abc"),
+		Properties: &proto.Properties{
+			LedgerHeight: 1,
+			LeftChannel:  true,
+		},
+		Envelope: &proto.Envelope{
+			Payload: []byte("payload"),
+		},
+		InternalEndpoint: "internal",
+		Metadata:         []byte{1, 2, 3},
+		Endpoint:         "endpoint",
+	}
+
+	nm2 := nm.Clone()
+	assert.Equal(t, *nm, nm2, "Clones are different")
+	assert.False(t, nm.Properties == nm2.Properties, "Cloning should be deep and not shallow")
+	assert.False(t, nm.Envelope == nm2.Envelope, "Cloning should be deep and not shallow")
+}
+
 func TestHasExternalEndpoints(t *testing.T) {
 	memberWithEndpoint := NetworkMember{Endpoint: "foo"}
 	memberWithoutEndpoint := NetworkMember{}
