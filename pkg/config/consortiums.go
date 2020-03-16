@@ -21,37 +21,6 @@ type Consortium struct {
 	Organizations []Organization
 }
 
-// newConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
-// the ordering system channel.
-// It sets the mod_policy for all elements to "/Channel/Orderer/Admins".
-func newConsortiumsGroup(consortiums []Consortium) (*cb.ConfigGroup, error) {
-	var err error
-
-	consortiumsGroup := newConfigGroup()
-	consortiumsGroup.ModPolicy = ordererAdminsPolicyName
-
-	// acceptAllPolicy always evaluates to true
-	acceptAllPolicy := envelope(nOutOf(0, []*cb.SignaturePolicy{}), [][]byte{})
-
-	// This policy is not referenced anywhere, it is only used as part of the implicit meta policy rule at the
-	// channel level, so this setting effectively degrades control of the ordering system channel to the ordering admins
-	signaturePolicy, err := signaturePolicy(AdminsPolicyKey, acceptAllPolicy)
-	if err != nil {
-		return nil, err
-	}
-
-	addPolicy(consortiumsGroup, signaturePolicy, ordererAdminsPolicyName)
-
-	for _, consortium := range consortiums {
-		consortiumsGroup.Groups[consortium.Name], err = newConsortiumGroup(consortium)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return consortiumsGroup, nil
-}
-
 // AddOrgToConsortium adds an org definition to a named consortium in a given
 // channel configuration.
 func AddOrgToConsortium(config *cb.Config, org Organization, consortium string) error {
@@ -74,6 +43,40 @@ func AddOrgToConsortium(config *cb.Config, org Organization, consortium string) 
 	}
 
 	return nil
+}
+
+// newConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
+// the ordering system channel.
+// It sets the mod_policy for all elements to "/Channel/Orderer/Admins".
+func newConsortiumsGroup(consortiums []Consortium) (*cb.ConfigGroup, error) {
+	var err error
+
+	consortiumsGroup := newConfigGroup()
+	consortiumsGroup.ModPolicy = ordererAdminsPolicyName
+
+	// acceptAllPolicy always evaluates to true
+	acceptAllPolicy := envelope(nOutOf(0, []*cb.SignaturePolicy{}), [][]byte{})
+
+	// This policy is not referenced anywhere, it is only used as part of the implicit meta policy rule at the
+	// channel level, so this setting effectively degrades control of the ordering system channel to the ordering admins
+	signaturePolicy, err := signaturePolicy(AdminsPolicyKey, acceptAllPolicy)
+	if err != nil {
+		return nil, err
+	}
+
+	consortiumsGroup.Policies[signaturePolicy.key] = &cb.ConfigPolicy{
+		Policy:    signaturePolicy.value,
+		ModPolicy: ordererAdminsPolicyName,
+	}
+
+	for _, consortium := range consortiums {
+		consortiumsGroup.Groups[consortium.Name], err = newConsortiumGroup(consortium)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return consortiumsGroup, nil
 }
 
 // newConsortiumGroup returns a consortiums component of the channel configuration.
@@ -146,14 +149,6 @@ func nOutOf(n int32, policies []*cb.SignaturePolicy) *cb.SignaturePolicy {
 				Rules: policies,
 			},
 		},
-	}
-}
-
-// addPolicy adds a *cb.ConfigPolicy to the passed *cb.ConfigGroup's Policies map.
-func addPolicy(cg *cb.ConfigGroup, policy *standardConfigPolicy, modPolicy string) {
-	cg.Policies[policy.key] = &cb.ConfigPolicy{
-		Policy:    policy.value,
-		ModPolicy: modPolicy,
 	}
 }
 

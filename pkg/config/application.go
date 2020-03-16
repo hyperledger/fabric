@@ -29,39 +29,6 @@ type AnchorPeer struct {
 	Port int
 }
 
-// newApplicationGroup returns the application component of the channel configuration.
-// By default, it sets the mod_policy of all elements to "Admins".
-func newApplicationGroup(application Application) (*cb.ConfigGroup, error) {
-	var err error
-
-	applicationGroup := newConfigGroup()
-	applicationGroup.ModPolicy = AdminsPolicyKey
-
-	if err = addPolicies(applicationGroup, application.Policies, AdminsPolicyKey); err != nil {
-		return nil, err
-	}
-
-	if len(application.ACLs) > 0 {
-		err = addValue(applicationGroup, aclValues(application.ACLs), AdminsPolicyKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(application.Capabilities) > 0 {
-		err = addValue(applicationGroup, capabilitiesValue(application.Capabilities), AdminsPolicyKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	for _, org := range application.Organizations {
-		applicationGroup.Groups[org.Name] = newConfigGroup()
-	}
-
-	return applicationGroup, nil
-}
-
 // AddAnchorPeer adds an anchor peer to an existing channel config transaction.
 // It must add the anchor peer to an existing org and the anchor peer must not already
 // exist in the org.
@@ -156,6 +123,7 @@ func GetAnchorPeers(config *cb.Config, orgName string) ([]AnchorPeer, error) {
 	}
 
 	anchorPeersProto := &pb.AnchorPeers{}
+
 	err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
 	if err != nil {
 		return nil, fmt.Errorf("failed unmarshaling %s's anchor peer endpoints: %v", orgName, err)
@@ -170,6 +138,39 @@ func GetAnchorPeers(config *cb.Config, orgName string) ([]AnchorPeer, error) {
 	}
 
 	return anchorPeers, nil
+}
+
+// newApplicationGroup returns the application component of the channel configuration.
+// By default, it sets the mod_policy of all elements to "Admins".
+func newApplicationGroup(application Application) (*cb.ConfigGroup, error) {
+	var err error
+
+	applicationGroup := newConfigGroup()
+	applicationGroup.ModPolicy = AdminsPolicyKey
+
+	if err = addPolicies(applicationGroup, application.Policies, AdminsPolicyKey); err != nil {
+		return nil, err
+	}
+
+	if len(application.ACLs) > 0 {
+		err = addValue(applicationGroup, aclValues(application.ACLs), AdminsPolicyKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(application.Capabilities) > 0 {
+		err = addValue(applicationGroup, capabilitiesValue(application.Capabilities), AdminsPolicyKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, org := range application.Organizations {
+		applicationGroup.Groups[org.Name] = newConfigGroup()
+	}
+
+	return applicationGroup, nil
 }
 
 // aclValues returns the config definition for an application's resources based ACL definitions.

@@ -21,7 +21,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/policydsl"
 )
 
 // Channel is a channel configuration.
@@ -284,67 +283,6 @@ func addValue(cg *cb.ConfigGroup, value *standardConfigValue, modPolicy string) 
 	cg.Values[value.key] = &cb.ConfigValue{
 		Value:     v,
 		ModPolicy: modPolicy,
-	}
-
-	return nil
-}
-
-// TODO: evaluate if modPolicy actually needs to be passed in if all callers pass AdminsPolicyKey.
-func addPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
-	if policyMap == nil {
-		return errors.New("no policies defined")
-	}
-	if _, ok := policyMap[AdminsPolicyKey]; !ok {
-		return errors.New("no Admins policy defined")
-	}
-	if _, ok := policyMap[ReadersPolicyKey]; !ok {
-		return errors.New("no Readers policy defined")
-	}
-	if _, ok := policyMap[WritersPolicyKey]; !ok {
-		return errors.New("no Writers policy defined")
-	}
-
-	for policyName, policy := range policyMap {
-		switch policy.Type {
-		case ImplicitMetaPolicyType:
-			imp, err := implicitMetaFromString(policy.Rule)
-			if err != nil {
-				return fmt.Errorf("invalid implicit meta policy rule: '%s': %v", policy.Rule, err)
-			}
-
-			implicitMetaPolicy, err := proto.Marshal(imp)
-			if err != nil {
-				return fmt.Errorf("marshaling implicit meta policy: %v", err)
-			}
-
-			cg.Policies[policyName] = &cb.ConfigPolicy{
-				ModPolicy: modPolicy,
-				Policy: &cb.Policy{
-					Type:  int32(cb.Policy_IMPLICIT_META),
-					Value: implicitMetaPolicy,
-				},
-			}
-		case SignaturePolicyType:
-			sp, err := policydsl.FromString(policy.Rule)
-			if err != nil {
-				return fmt.Errorf("invalid signature policy rule: '%s': %v", policy.Rule, err)
-			}
-
-			signaturePolicy, err := proto.Marshal(sp)
-			if err != nil {
-				return fmt.Errorf("marshaling signature policy: %v", err)
-			}
-
-			cg.Policies[policyName] = &cb.ConfigPolicy{
-				ModPolicy: modPolicy,
-				Policy: &cb.Policy{
-					Type:  int32(cb.Policy_SIGNATURE),
-					Value: signaturePolicy,
-				},
-			}
-		default:
-			return fmt.Errorf("unknown policy type: %s", policy.Type)
-		}
 	}
 
 	return nil
