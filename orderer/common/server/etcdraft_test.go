@@ -68,11 +68,11 @@ func TestSpawnEtcdRaft(t *testing.T) {
 		// tests in this suite actually launch process with success, hence we need to avoid
 		// conflicts in listening port, opening files.
 		t.Run("TLS disabled dual listener", func(t *testing.T) {
-			testEtcdRaftOSNNoTLSDualListener(gt, tempDir, orderer, fabricRootDir, configtxgen, cryptoPath)
+			testEtcdRaftOSNNoTLSDualListener(NewGomegaWithT(t), tempDir, orderer, fabricRootDir, configtxgen, cryptoPath)
 		})
 
 		t.Run("TLS enabled single listener", func(t *testing.T) {
-			testEtcdRaftOSNSuccess(gt, tempDir, configtxgen, orderer, fabricRootDir, cryptoPath)
+			testEtcdRaftOSNSuccess(NewGomegaWithT(t), tempDir, configtxgen, orderer, fabricRootDir, cryptoPath)
 		})
 	})
 }
