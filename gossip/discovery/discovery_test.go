@@ -403,7 +403,8 @@ func createDiscoveryInstanceThatGossipsWithInterceptors(port int, id string, boo
 	listenAddress := fmt.Sprintf("%s:%d", "", port)
 	ll, err := net.Listen("tcp", listenAddress)
 	if err != nil {
-		fmt.Printf("Error listening on %v, %v", listenAddress, err)
+		errMsg := fmt.Sprintf("Failed creating listener on address %v for gossip instance: %v", listenAddress, err)
+		panic(errMsg)
 	}
 	s := grpc.NewServer()
 
