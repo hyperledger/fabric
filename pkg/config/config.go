@@ -21,7 +21,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policydsl"
 )
 
@@ -45,7 +44,6 @@ type Policy struct {
 // Organization is an organization in the channel configuration.
 type Organization struct {
 	Name     string
-	ID       string
 	Policies map[string]Policy
 	MSP      MSP
 
@@ -214,65 +212,45 @@ func newChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 	return channelGroup, nil
 }
 
-// newOrgConfigGroup returns an config group for a organization.
-// It defines the crypto material for the organization (its MSP).
-// It sets the mod_policy of all elements to "Admins".
-func newOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
-	orgGroup := newConfigGroup()
-	orgGroup.ModPolicy = AdminsPolicyKey
+// newSystemChannelGroup defines the root of the system channel configuration.
+func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
+	var err error
 
-	if err := addPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
+	channelGroup := newConfigGroup()
+
+	err = addPolicies(channelGroup, channelConfig.Policies, AdminsPolicyKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add system channel policies: %v", err)
+	}
+
+	if len(channelConfig.Orderer.Addresses) <= 0 {
+		return nil, errors.New("orderer endpoints is not defined in channel config")
+	}
+	addValue(channelGroup, ordererAddressesValue(channelConfig.Orderer.Addresses), ordererAdminsPolicyName)
+
+	if channelConfig.Consortium == "" {
+		return nil, errors.New("consortium is not defined in channel config")
+	}
+	addValue(channelGroup, consortiumValue(channelConfig.Consortium), AdminsPolicyKey)
+
+	if len(channelConfig.Capabilities) <= 0 {
+		return nil, errors.New("capabilities is not defined in channel config")
+	}
+	addValue(channelGroup, capabilitiesValue(channelConfig.Capabilities), AdminsPolicyKey)
+
+	ordererGroup, err := newOrdererGroup(channelConfig.Orderer)
+	if err != nil {
 		return nil, err
 	}
+	channelGroup.Groups[OrdererGroupKey] = ordererGroup
 
-	fabricMSPConfig, err := org.MSP.toProto()
-	if err != nil {
-		return nil, fmt.Errorf("converting fabric msp config to proto: %v", err)
-	}
-
-	conf, err := proto.Marshal(fabricMSPConfig)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling msp config: %v", err)
-	}
-
-	// mspConfig defaults type to FABRIC which implements an X.509 based provider
-	mspConfig := &mb.MSPConfig{
-		Config: conf,
-	}
-
-	err = addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	consortiumsGroup, err := newConsortiumsGroup(channelConfig.Consortiums)
 	if err != nil {
 		return nil, err
 	}
+	channelGroup.Groups[ConsortiumsGroupKey] = consortiumsGroup
 
-	// OrdererEndpoints are orderer org specific and are only added when specified for orderer orgs
-	if len(org.OrdererEndpoints) > 0 {
-		err := addValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// AnchorPeers are application org specific and are only added when specified for application orgs
-	anchorProtos := []*pb.AnchorPeer{}
-	for _, anchorPeer := range org.AnchorPeers {
-		anchorProtos = append(anchorProtos, &pb.AnchorPeer{
-			Host: anchorPeer.Host,
-			Port: int32(anchorPeer.Port),
-		})
-	}
-
-	// Avoid adding an unnecessary anchor peers element when one is not required
-	// This helps prevent a delta from the orderer system channel when computing
-	// more complex channel creation transactions
-	if len(anchorProtos) > 0 {
-		err := addValue(orgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add anchor peers value: %v", err)
-		}
-	}
-
-	return orgGroup, nil
+	return channelGroup, nil
 }
 
 // hashingAlgorithmValue returns the only currently valid hashing algorithm, `SHA256`.

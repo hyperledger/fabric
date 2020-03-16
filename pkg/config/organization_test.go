@@ -8,284 +8,200 @@ package config
 
 import (
 	"bytes"
-	"errors"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	ob "github.com/hyperledger/fabric-protos-go/orderer"
-	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
 	. "github.com/onsi/gomega"
 )
 
-func TestNewOrdererGroup(t *testing.T) {
+func TestGetOrganization(t *testing.T) {
 	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	expectedOrg := baseApplicationOrg()
+	orgGroup, err := newOrgConfigGroup(expectedOrg)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	org, err := getOrganization(orgGroup, "Org1")
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(expectedOrg).To(Equal(org))
+}
+
+func TestGetApplicationOrg(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	channel := Channel{
+		ChannelID:  "testchannel",
+		Consortium: "SampleConsortium",
+		Application: Application{
+			Policies:      standardPolicies(),
+			Organizations: []Organization{baseApplicationOrg()},
+		},
+	}
+	channelGroup, err := newChannelGroup(channel)
+	gt.Expect(err).NotTo(HaveOccurred())
+	orgGroup, err := newOrgConfigGroup(channel.Application.Organizations[0])
+	gt.Expect(err).NotTo(HaveOccurred())
+	channelGroup.Groups[ApplicationGroupKey].Groups["Org1"] = orgGroup
+
+	config := cb.Config{
+		ChannelGroup: channelGroup,
+	}
+	expectedOrg := channel.Application.Organizations[0]
 
 	tests := []struct {
-		ordererType           string
-		numOrdererGroupValues int
+		name        string
+		orgName     string
+		expectedErr string
 	}{
-		{ordererType: ConsensusTypeSolo, numOrdererGroupValues: 5},
-		{ordererType: ConsensusTypeEtcdRaft, numOrdererGroupValues: 5},
-		{ordererType: ConsensusTypeKafka, numOrdererGroupValues: 6},
+		{
+			name:        "success",
+			orgName:     "Org1",
+			expectedErr: "",
+		},
+		{
+			name:        "organization does not exist",
+			orgName:     "bad-org",
+			expectedErr: "application org bad-org does not exist in channel config",
+		},
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.ordererType, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
 			gt := NewGomegaWithT(t)
 
-			ordererConf := baseOrderer()
-			ordererConf.OrdererType = tt.ordererType
-
-			ordererGroup, err := newOrdererGroup(ordererConf)
-			gt.Expect(err).NotTo(HaveOccurred())
-
-			// OrdererGroup checks
-			gt.Expect(len(ordererGroup.Groups)).To(Equal(1))
-			gt.Expect(ordererGroup.Groups["OrdererOrg"]).NotTo(BeNil())
-			gt.Expect(len(ordererGroup.Values)).To(Equal(tt.numOrdererGroupValues))
-			gt.Expect(ordererGroup.Values[BatchSizeKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Values[BatchTimeoutKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Values[ChannelRestrictionsKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Values[CapabilitiesKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Values[ConsensusTypeKey]).NotTo(BeNil())
-			var consensusType ob.ConsensusType
-			err = proto.Unmarshal(ordererGroup.Values[ConsensusTypeKey].Value, &consensusType)
-			gt.Expect(err).NotTo(HaveOccurred())
-			gt.Expect(consensusType.Type).To(Equal(tt.ordererType))
-			gt.Expect(len(ordererGroup.Policies)).To(Equal(4))
-			gt.Expect(ordererGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Policies[ReadersPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Policies[WritersPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Policies[BlockValidationPolicyKey]).NotTo(BeNil())
-
-			// OrdererOrgGroup checks
-			gt.Expect(len(ordererGroup.Groups["OrdererOrg"].Groups)).To(Equal(0))
-			gt.Expect(len(ordererGroup.Groups["OrdererOrg"].Values)).To(Equal(2))
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Values[MSPKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Values[EndpointsKey]).NotTo(BeNil())
-			gt.Expect(len(ordererGroup.Groups["OrdererOrg"].Policies)).To(Equal(4))
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Policies[WritersPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+			org, err := GetApplicationOrg(config, tc.orgName)
+			if tc.expectedErr != "" {
+				gt.Expect(Organization{}).To(Equal(org))
+				gt.Expect(err).To(MatchError(tc.expectedErr))
+			} else {
+				gt.Expect(err).ToNot(HaveOccurred())
+				gt.Expect(expectedOrg).To(Equal(org))
+			}
 		})
 	}
 }
 
-func TestNewOrdererGroupFailure(t *testing.T) {
+func TestGetOrdererOrg(t *testing.T) {
 	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	channel := baseSystemChannelProfile()
+	channelGroup, err := newSystemChannelGroup(channel)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := cb.Config{
+		ChannelGroup: channelGroup,
+	}
+	expectedOrg := channel.Orderer.Organizations[0]
 
 	tests := []struct {
-		testName   string
-		ordererMod func(*Orderer)
-		err        error
+		name        string
+		orgName     string
+		expectedErr string
 	}{
 		{
-			testName: "When orderer group policy is empty",
-			ordererMod: func(o *Orderer) {
-				o.Policies = nil
-			},
-			err: errors.New("no policies defined"),
+			name:        "success",
+			orgName:     "OrdererOrg",
+			expectedErr: "",
 		},
 		{
-			testName: "When marshaling etcdraft metadata for orderer group",
-			ordererMod: func(o *Orderer) {
-				o.OrdererType = ConsensusTypeEtcdRaft
-				o.EtcdRaft = eb.ConfigMetadata{
-					Consenters: []*eb.Consenter{
-						{
-							Host:          "node-1.example.com",
-							Port:          7050,
-							ClientTlsCert: []byte("testdata/tls-client-1.pem"),
-							ServerTlsCert: []byte("testdata/tls-server-1.pem"),
-						},
-						{
-							Host:          "node-2.example.com",
-							Port:          7050,
-							ClientTlsCert: []byte("testdata/tls-client-2.pem"),
-							ServerTlsCert: []byte("testdata/tls-server-2.pem"),
-						},
-						{
-							Host:          "node-3.example.com",
-							Port:          7050,
-							ClientTlsCert: []byte("testdata/tls-client-3.pem"),
-							ServerTlsCert: []byte("testdata/tls-server-3.pem"),
-						},
-					},
-				}
-			},
-			err: errors.New("marshaling etcdraft metadata for orderer type 'etcdraft': " +
-				"cannot load client cert for consenter node-1.example.com:7050: open testdata/tls-client-1.pem: " +
-				"no such file or directory"),
-		},
-		{
-			testName: "When orderer type is unknown",
-			ordererMod: func(o *Orderer) {
-				o.OrdererType = "ConsensusTypeGreen"
-			},
-			err: errors.New("unknown orderer type 'ConsensusTypeGreen'"),
-		},
-		{
-			testName: "When adding policies to orderer org group",
-			ordererMod: func(o *Orderer) {
-				o.Organizations[0].Policies = nil
-			},
-			err: errors.New("org group 'OrdererOrg': no policies defined"),
+			name:        "organization does not exist",
+			orgName:     "bad-org",
+			expectedErr: "orderer org bad-org does not exist in channel config",
 		},
 	}
 
-	for _, tt := range tests {
-		tt := tt // capture range variable
-		t.Run(tt.testName, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
 			gt := NewGomegaWithT(t)
 
-			ordererConf := baseOrderer()
-			tt.ordererMod(&ordererConf)
-
-			ordererGroup, err := newOrdererGroup(ordererConf)
-			gt.Expect(err).To(MatchError(tt.err))
-			gt.Expect(ordererGroup).To(BeNil())
+			org, err := GetOrdererOrg(config, tc.orgName)
+			if tc.expectedErr != "" {
+				gt.Expect(err).To(MatchError(tc.expectedErr))
+				gt.Expect(Organization{}).To(Equal(org))
+			} else {
+				gt.Expect(err).ToNot(HaveOccurred())
+				gt.Expect(expectedOrg).To(Equal(org))
+			}
 		})
 	}
 }
 
-func TestUpdateOrdererConfiguration(t *testing.T) {
+func TestGetConsortiumOrg(t *testing.T) {
 	t.Parallel()
-
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseOrderer()
-
-	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	channel := baseSystemChannelProfile()
+	channelGroup, err := newSystemChannelGroup(channel)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	originalOrdererAddresses, err := proto.Marshal(&cb.OrdererAddresses{
-		Addresses: baseOrdererConf.Addresses,
-	})
-	gt.Expect(err).NotTo(HaveOccurred())
+	config := cb.Config{
+		ChannelGroup: channelGroup,
+	}
+	expectedOrg := channel.Consortiums[0].Organizations[0]
 
-	imp, err := implicitMetaFromString(baseOrdererConf.Policies[AdminsPolicyKey].Rule)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	originalAdminsPolicy, err := proto.Marshal(imp)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	config := &cb.Config{
-		ChannelGroup: &cb.ConfigGroup{
-			Groups: map[string]*cb.ConfigGroup{
-				"Orderer": ordererGroup,
-			},
-			Values: map[string]*cb.ConfigValue{
-				OrdererAddressesKey: {
-					Value:     originalOrdererAddresses,
-					ModPolicy: AdminsPolicyKey,
-				},
-			},
-			Policies: map[string]*cb.ConfigPolicy{
-				AdminsPolicyKey: {
-					Policy: &cb.Policy{
-						Type:  int32(cb.Policy_IMPLICIT_META),
-						Value: originalAdminsPolicy,
-					},
-					ModPolicy: AdminsPolicyKey,
-				},
-			},
+	tests := []struct {
+		name           string
+		consortiumName string
+		orgName        string
+		expectedErr    string
+	}{
+		{
+			name:           "success",
+			consortiumName: "Consortium1",
+			orgName:        "Org1",
+			expectedErr:    "",
+		},
+		{
+			name:           "consortium not defined",
+			consortiumName: "bad-consortium",
+			orgName:        "Org1",
+			expectedErr:    "consortium bad-consortium does not exist in channel config",
+		},
+		{
+			name:           "organization not defined",
+			consortiumName: "Consortium1",
+			orgName:        "bad-org",
+			expectedErr:    "consortium org bad-org does not exist in channel config",
 		},
 	}
 
-	updatedOrdererConf := baseOrdererConf
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
 
-	// Modify MaxMessageCount, Addresses, and ConesnsusType to etcdraft
-	updatedOrdererConf.BatchSize.MaxMessageCount = 10000
-	updatedOrdererConf.Addresses = []string{"newhost:345"}
-	updatedOrdererConf.OrdererType = ConsensusTypeEtcdRaft
-
-	err = UpdateOrdererConfiguration(config, updatedOrdererConf)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	// Expected OrdererValues
-	expectedCapabilities, err := proto.Marshal(&cb.Capabilities{
-		Capabilities: map[string]*cb.Capability{
-			"V1_3": {},
-		},
-	})
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	expectedConsensusType, err := proto.Marshal(&ob.ConsensusType{
-		Type:     ConsensusTypeEtcdRaft,
-		Metadata: []byte{},
-	})
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	expectedBatchSize, err := proto.Marshal(&ob.BatchSize{
-		MaxMessageCount:   10000,
-		AbsoluteMaxBytes:  100,
-		PreferredMaxBytes: 100,
-	})
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	expectedBatchTimeout, err := proto.Marshal(&ob.BatchTimeout{
-		Timeout: "0s",
-	})
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	expectedChannelRestrictions, err := proto.Marshal(&ob.ChannelRestrictions{
-		MaxCount: 0,
-	})
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	expectedOrdererValues := map[string]*cb.ConfigValue{
-		CapabilitiesKey:        {Value: expectedCapabilities, ModPolicy: AdminsPolicyKey},
-		ConsensusTypeKey:       {Value: expectedConsensusType, ModPolicy: AdminsPolicyKey},
-		BatchSizeKey:           {Value: expectedBatchSize, ModPolicy: AdminsPolicyKey},
-		BatchTimeoutKey:        {Value: expectedBatchTimeout, ModPolicy: AdminsPolicyKey},
-		ChannelRestrictionsKey: {Value: expectedChannelRestrictions, ModPolicy: AdminsPolicyKey},
+			org, err := GetConsortiumOrg(config, tc.consortiumName, tc.orgName)
+			if tc.expectedErr != "" {
+				gt.Expect(Organization{}).To(Equal(org))
+				gt.Expect(err).To(MatchError(tc.expectedErr))
+			} else {
+				gt.Expect(err).ToNot(HaveOccurred())
+				gt.Expect(expectedOrg).To(Equal(org))
+			}
+		})
 	}
-
-	// Expected OrdererAddresses
-	expectedOrdererAddresses, err := proto.Marshal(&cb.OrdererAddresses{
-		Addresses: []string{"newhost:345"},
-	})
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	gt.Expect(config.ChannelGroup.Groups["Orderer"].Values).To(Equal(expectedOrdererValues))
-	gt.Expect(config.ChannelGroup.Values[OrdererAddressesKey].Value).To(Equal(expectedOrdererAddresses))
 }
 
-func TestAddOrdererOrg(t *testing.T) {
+func TestNewOrgConfigGroup(t *testing.T) {
 	t.Parallel()
 
-	gt := NewGomegaWithT(t)
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		gt := NewGomegaWithT(t)
 
-	ordererGroup, err := newOrdererGroup(baseOrderer())
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	config := &cb.Config{
-		ChannelGroup: &cb.ConfigGroup{
-			Groups: map[string]*cb.ConfigGroup{
-				"Orderer": ordererGroup,
-			},
-		},
-	}
-
-	org := Organization{
-		Name:     "OrdererOrg2",
-		Policies: orgStandardPolicies(),
-		OrdererEndpoints: []string{
-			"localhost:123",
-		},
-		MSP: baseMSP(),
-	}
-
-	expectedConfigJSON := `
+		// The organization is from network.BasicSolo Profile
+		// configtxgen -printOrg Org1
+		expectedPrintOrg := `
 {
 	"groups": {},
 	"mod_policy": "Admins",
@@ -413,63 +329,38 @@ func TestAddOrdererOrg(t *testing.T) {
 	"version": "0"
 }
 `
+		org := baseSystemChannelProfile().Orderer.Organizations[0]
+		configGroup, err := newOrgConfigGroup(org)
+		gt.Expect(err).NotTo(HaveOccurred())
 
-	err = AddOrdererOrg(config, org)
-	gt.Expect(err).NotTo(HaveOccurred())
+		buf := bytes.Buffer{}
+		err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: configGroup})
+		gt.Expect(err).NotTo(HaveOccurred())
 
-	actualOrdererConfigGroup := config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg2"]
-	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: actualOrdererConfigGroup})
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
+		gt.Expect(buf.String()).To(MatchJSON(expectedPrintOrg))
+	})
 }
 
-func TestAddOrdererOrgFailures(t *testing.T) {
+func TestNewOrgConfigGroupFailure(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
 
-	ordererGroup, err := newOrdererGroup(baseOrderer())
-	gt.Expect(err).NotTo(HaveOccurred())
+	baseOrg := baseSystemChannelProfile().Orderer.Organizations[0]
+	baseOrg.Policies = nil
 
-	config := &cb.Config{
-		ChannelGroup: &cb.ConfigGroup{
-			Groups: map[string]*cb.ConfigGroup{
-				"Orderer": ordererGroup,
-			},
-		},
-	}
-
-	org := Organization{
-		Name: "OrdererOrg2",
-	}
-
-	err = AddOrdererOrg(config, org)
-	gt.Expect(err).To(MatchError("failed to create orderer org 'OrdererOrg2': no policies defined"))
+	configGroup, err := newOrgConfigGroup(baseOrg)
+	gt.Expect(configGroup).To(BeNil())
+	gt.Expect(err).To(MatchError("no policies defined"))
 }
 
-func baseOrderer() Orderer {
-	return Orderer{
-		Policies:    ordererStandardPolicies(),
-		OrdererType: ConsensusTypeSolo,
-		Organizations: []Organization{
-			{
-				Name:     "OrdererOrg",
-				Policies: orgStandardPolicies(),
-				OrdererEndpoints: []string{
-					"localhost:123",
-				},
-				MSP: baseMSP(),
-			},
+func baseApplicationOrg() Organization {
+	return Organization{
+		Name:     "Org1",
+		Policies: standardPolicies(),
+		MSP:      baseMSP(),
+		AnchorPeers: []AnchorPeer{
+			{Host: "host3", Port: 123},
 		},
-		Capabilities: map[string]bool{
-			"V1_3": true,
-		},
-		BatchSize: BatchSize{
-			MaxMessageCount:   100,
-			AbsoluteMaxBytes:  100,
-			PreferredMaxBytes: 100,
-		},
-		Addresses: []string{"localhost:123"},
 	}
 }

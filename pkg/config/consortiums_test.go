@@ -93,7 +93,6 @@ func TestAddOrgToConsortium(t *testing.T) {
 
 	orgToAdd := Organization{
 		Name:     "Org1",
-		ID:       "Org1MSP",
 		Policies: orgStandardPolicies(),
 		MSP:      baseMSP(),
 	}
@@ -407,7 +406,6 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 
 	orgToAdd := Organization{
 		Name:     "test-org",
-		ID:       "test-org-msp-id",
 		Policies: orgStandardPolicies(),
 	}
 
@@ -434,7 +432,6 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			name: "When the config doesn't contain the consortium",
 			org: Organization{
 				Name:     "test-msp",
-				ID:       "test-org-msp-id",
 				Policies: map[string]Policy{},
 			},
 			consortium:  "Consortium1",
@@ -472,13 +469,11 @@ func baseConsortiums() []Consortium {
 			Organizations: []Organization{
 				{
 					Name:     "Org1",
-					ID:       "Org1MSP",
 					Policies: orgStandardPolicies(),
 					MSP:      baseMSP(),
 				},
 				{
 					Name:     "Org2",
-					ID:       "Org2MSP",
 					Policies: orgStandardPolicies(),
 					MSP:      baseMSP(),
 				},
