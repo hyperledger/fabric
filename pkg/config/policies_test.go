@@ -287,3 +287,154 @@ func TestRemoveApplicationPolicyFailures(t *testing.T) {
 		})
 	}
 }
+
+func TestAddConsortiumOrgPolicy(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums()
+
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+		},
+	}
+
+	err = AddConsortiumOrgPolicy(config, "Consortium1", "Org1", "TestPolicy", Policy{Type: ImplicitMetaPolicyType, Rule: "MAJORITY Endorsement"})
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies)).To(Equal(5))
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies["TestPolicy"]).NotTo(BeNil())
+}
+
+func TestAddConsortiumOrgPolicyFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums()
+
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+		},
+	}
+
+	for _, test := range []struct {
+		name        string
+		consortium  string
+		org         string
+		policy      Policy
+		expectedErr string
+	}{
+		{
+			name:        "When consortium does not exist in consortiums",
+			consortium:  "BadConsortium",
+			org:         "Org1",
+			policy:      Policy{},
+			expectedErr: "consortium 'BadConsortium' does not exist in channel config",
+		},
+		{
+			name:        "When org does not exist",
+			consortium:  "Consortium1",
+			org:         "bad-org",
+			policy:      Policy{},
+			expectedErr: "consortiums org 'bad-org' does not exist in channel config",
+		},
+		{
+			name:        "When adding empty policy fails",
+			consortium:  "Consortium1",
+			org:         "Org1",
+			policy:      Policy{},
+			expectedErr: "failed to add policy 'TestPolicy' to consortium org 'Org1': unknown policy type: ",
+		},
+	} {
+		err := AddConsortiumOrgPolicy(config, test.consortium, test.org, "TestPolicy", test.policy)
+		gt.Expect(err).To(MatchError(test.expectedErr))
+	}
+}
+
+func TestRemoveConsortiumOrgPolicy(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums()
+
+	consortiums[0].Organizations[0].Policies["TestPolicy"] = Policy{Type: ImplicitMetaPolicyType, Rule: "MAJORITY Endorsement"}
+
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+		},
+	}
+
+	err = RemoveConsortiumOrgPolicy(config, "Consortium1", "Org1", "TestPolicy")
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies)).To(Equal(4))
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+}
+
+func TestRemoveConsortiumOrgPolicyFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums()
+
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+		},
+	}
+
+	for _, test := range []struct {
+		name        string
+		consortium  string
+		org         string
+		expectedErr string
+	}{
+		{
+			name:        "When consortium does not exist in consortiums",
+			consortium:  "BadConsortium",
+			org:         "Org1",
+			expectedErr: "consortium 'BadConsortium' does not exist in channel config",
+		},
+		{
+			name:        "When org does not exist",
+			consortium:  "Consortium1",
+			org:         "bad-org",
+			expectedErr: "consortiums org 'bad-org' does not exist in channel config",
+		},
+	} {
+		err := RemoveConsortiumOrgPolicy(config, test.consortium, test.org, "TestPolicy")
+		gt.Expect(err).To(MatchError(test.expectedErr))
+	}
+}

@@ -133,6 +133,49 @@ func RemoveApplicationOrgPolicy(config *cb.Config, orgName, policyName string) e
 	return removePolicy(config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName], policyName, policies)
 }
 
+// AddConsortiumOrgPolicy modifies an existing organization in a consortiums configuration's policies.
+// When the policy exists it will overwrite the existing policy.
+func AddConsortiumOrgPolicy(config *cb.Config, consortiumName, orgName, policyName string, policy Policy) error {
+	groupKey := ConsortiumsGroupKey
+
+	consortiumGroup, ok := config.ChannelGroup.Groups[groupKey].Groups[consortiumName]
+	if !ok {
+		return fmt.Errorf("consortium '%s' does not exist in channel config", consortiumName)
+	}
+
+	orgGroup, ok := consortiumGroup.Groups[orgName]
+	if !ok {
+		return fmt.Errorf("%s org '%s' does not exist in channel config", strings.ToLower(groupKey), orgName)
+	}
+
+	err := addPolicy(orgGroup, AdminsPolicyKey, policyName, policy)
+	if err != nil {
+		return fmt.Errorf("failed to add policy '%s' to consortium org '%s': %v", policyName, orgName, err)
+	}
+
+	return nil
+}
+
+// RemoveConsortiumOrgPolicy removes an existing policy from an consortiums organization.
+// The removed policy must exist however will not error if it does not exist in configuration.
+func RemoveConsortiumOrgPolicy(config *cb.Config, consortiumName, orgName, policyName string) error {
+	groupKey := ConsortiumsGroupKey
+
+	consortiumGroup, ok := config.ChannelGroup.Groups[groupKey].Groups[consortiumName]
+	if !ok {
+		return fmt.Errorf("consortium '%s' does not exist in channel config", consortiumName)
+	}
+
+	orgGroup, ok := consortiumGroup.Groups[orgName]
+	if !ok {
+		return fmt.Errorf("%s org '%s' does not exist in channel config", strings.ToLower(groupKey), orgName)
+	}
+
+	delete(orgGroup.Policies, policyName)
+
+	return nil
+}
+
 // getPolicies returns a map of Policy from given map of ConfigPolicy in organization config group.
 func getPolicies(policies map[string]*cb.ConfigPolicy) (map[string]Policy, error) {
 	p := map[string]Policy{}
