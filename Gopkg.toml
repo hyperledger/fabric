@@ -133,7 +133,7 @@ noverify = [
 
 [[constraint]]
   name = "go.uber.org/zap"
-  version = "1.9.0"
+  version = "1.14"
 
 [[constraint]]
   branch = "master"
