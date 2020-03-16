@@ -418,7 +418,6 @@ func Example_usage() {
 
 	org := config.Organization{
 		Name:             "OrdererOrg2",
-		ID:               "OrdererOrg2MSP",
 		MSP:              config.MSP{},
 		OrdererEndpoints: []string{"127.0.0.1:7050"},
 		Policies: map[string]config.Policy{
