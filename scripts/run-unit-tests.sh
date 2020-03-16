@@ -66,10 +66,10 @@ changed_packages() {
     local -a changed
 
     # first check for uncommitted changes
-    while IFS= read -r pkg; do changed+=("$pkg"); done < <(packages_diff HEAD | grep -Ev '/vendor(/|$)' || true)
+    while IFS= read -r pkg; do changed+=("$pkg"); done < <(packages_diff HEAD)
     if [ "${#changed[@]}" -eq 0 ]; then
         # next check for changes in the latest commit
-        while IFS= read -r pkg; do changed+=("$pkg"); done < <(packages_diff HEAD^ | grep -Ev '/vendor(/|$)' || true)
+        while IFS= read -r pkg; do changed+=("$pkg"); done < <(packages_diff HEAD^)
     fi
 
     join_by $'\n' "${changed[@]}"
