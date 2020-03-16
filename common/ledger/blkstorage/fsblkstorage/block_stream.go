@@ -17,7 +17,7 @@ import (
 )
 
 // ErrUnexpectedEndOfBlockfile error used to indicate an unexpected end of a file segment
-// this can happen mainly if a crash occurs during appening a block and partial block contents
+// this can happen mainly if a crash occurs during appending a block and partial block contents
 // get written towards the end of the file
 var ErrUnexpectedEndOfBlockfile = errors.New("unexpected end of blockfile")
 
