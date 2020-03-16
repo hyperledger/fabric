@@ -176,6 +176,49 @@ func RemoveConsortiumOrgPolicy(config *cb.Config, consortiumName, orgName, polic
 	return nil
 }
 
+// AddOrdererPolicy modifies an existing orderer policy configuration.
+// When the policy exists it will overwrite the existing policy.
+func AddOrdererPolicy(config *cb.Config, modPolicy, policyName string, policy Policy) error {
+	err := addPolicy(config.ChannelGroup.Groups[OrdererGroupKey], modPolicy, policyName, policy)
+	if err != nil {
+		return fmt.Errorf("failed to add policy '%s': %v", policyName, err)
+	}
+
+	return nil
+}
+
+// RemoveOrdererPolicy removes an existing orderer policy configuration.
+// The policy must exist in the config.
+func RemoveOrdererPolicy(config *cb.Config, policyName string) error {
+	if policyName == BlockValidationPolicyKey {
+		return errors.New("BlockValidation policy must be defined")
+	}
+
+	policies, err := GetPoliciesForOrderer(*config)
+	if err != nil {
+		return err
+	}
+
+	return removePolicy(config.ChannelGroup.Groups[OrdererGroupKey], policyName, policies)
+}
+
+// AddOrdererOrgPolicy modifies an existing organization in a orderer configuration's policies.
+// When the policy exists it will overwrite the existing policy.
+func AddOrdererOrgPolicy(config *cb.Config, orgName, modPolicy, policyName string, policy Policy) error {
+	return addPolicy(config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName], modPolicy, policyName, policy)
+}
+
+// RemoveOrdererOrgPolicy removes an existing policy from an orderer organization.
+// The removed policy must exist however will not error if it does not exist in configuration.
+func RemoveOrdererOrgPolicy(config *cb.Config, orgName, policyName string) error {
+	policies, err := GetPoliciesForOrdererOrg(*config, orgName)
+	if err != nil {
+		return err
+	}
+
+	return removePolicy(config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName], policyName, policies)
+}
+
 // getPolicies returns a map of Policy from given map of ConfigPolicy in organization config group.
 func getPolicies(policies map[string]*cb.ConfigPolicy) (map[string]Policy, error) {
 	p := map[string]Policy{}
