@@ -289,6 +289,7 @@ func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPoli
 	if policyMap == nil {
 		return errors.New("no policies defined")
 	}
+
 	if _, ok := policyMap[BlockValidationPolicyKey]; !ok {
 		return errors.New("no BlockValidation policy defined")
 	}

@@ -438,3 +438,252 @@ func TestRemoveConsortiumOrgPolicyFailures(t *testing.T) {
 		gt.Expect(err).To(MatchError(test.expectedErr))
 	}
 }
+
+func TestAddOrdererPolicy(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseOrdererConf := baseOrderer()
+
+	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	err = AddOrdererPolicy(config, AdminsPolicyKey, "TestPolicy", Policy{Type: ImplicitMetaPolicyType, Rule: "ANY Endorsement"})
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(config.ChannelGroup.Groups[OrdererGroupKey].Policies)).To(Equal(5))
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies["TestPolicy"]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[BlockValidationPolicyKey]).NotTo(BeNil())
+}
+
+func TestAddOrdererPolicyFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseOrdererConf := baseOrderer()
+
+	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	err = AddOrdererPolicy(config, AdminsPolicyKey, "TestPolicy", Policy{})
+	gt.Expect(err).To(MatchError("failed to add policy 'TestPolicy': unknown policy type: "))
+}
+
+func TestRemoveOrdererPolicy(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseOrdererConf := baseOrderer()
+	baseOrdererConf.Policies["TestPolicy"] = baseOrdererConf.Policies[AdminsPolicyKey]
+
+	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	err = RemoveOrdererPolicy(config, "TestPolicy")
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies)).To(Equal(4))
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[BlockValidationPolicyKey]).NotTo(BeNil())
+}
+
+func TestRemoveOrdererPolicyFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseOrdererConf := baseOrderer()
+	baseOrdererConf.Policies["TestPolicy"] = baseOrdererConf.Policies[AdminsPolicyKey]
+
+	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				OrdererGroupKey: ordererGroup,
+			},
+		},
+	}
+
+	tests := []struct {
+		testName      string
+		ordererGrpMod func(cb.ConfigGroup) *cb.ConfigGroup
+		policyName    string
+		expectedErr   string
+	}{
+		{
+			testName: "when removing blockvalidation policy",
+			ordererGrpMod: func(og cb.ConfigGroup) *cb.ConfigGroup {
+				return &og
+			},
+			policyName:  BlockValidationPolicyKey,
+			expectedErr: "BlockValidation policy must be defined",
+		},
+		{
+			testName: "when orderer is missing",
+			ordererGrpMod: func(og cb.ConfigGroup) *cb.ConfigGroup {
+				return nil
+			},
+			policyName:  "TestPolicy",
+			expectedErr: "orderer missing from config",
+		},
+		{
+			testName: "when policy does not exist",
+			ordererGrpMod: func(og cb.ConfigGroup) *cb.ConfigGroup {
+				delete(og.Policies, "TestPolicy")
+				return &og
+			},
+			policyName:  "TestPolicy",
+			expectedErr: "could not find policy 'TestPolicy'",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			gt := NewGomegaWithT(t)
+
+			orderer := tt.ordererGrpMod(*ordererGroup)
+			if orderer == nil {
+				delete(config.ChannelGroup.Groups, OrdererGroupKey)
+			} else {
+				config.ChannelGroup.Groups[OrdererGroupKey] = orderer
+			}
+
+			err = RemoveOrdererPolicy(config, tt.policyName)
+			gt.Expect(err).To(MatchError(tt.expectedErr))
+		})
+	}
+}
+
+func TestAddOrdererOrgPolicy(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseOrdererConf := baseOrderer()
+
+	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	err = AddOrdererOrgPolicy(config, "OrdererOrg", AdminsPolicyKey, "TestPolicy", Policy{Type: ImplicitMetaPolicyType, Rule: "ANY Endorsement"})
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies)).To(Equal(5))
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies["TestPolicy"]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+}
+
+func TestAddOrdererOrgPolicyFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseOrdererConf := baseOrderer()
+
+	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	err = AddOrdererOrgPolicy(config, "OrdererOrg", AdminsPolicyKey, "TestPolicy", Policy{})
+	gt.Expect(err).To(MatchError("unknown policy type: "))
+}
+
+func TestRemoveOrdererOrgPolicy(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseOrdererConf := baseOrderer()
+	baseOrdererConf.Organizations[0].Policies["TestPolicy"] = baseOrdererConf.Organizations[0].Policies[AdminsPolicyKey]
+
+	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	err = RemoveOrdererOrgPolicy(config, "OrdererOrg", "TestPolicy")
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies)).To(Equal(4))
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+}
+
+func TestRemoveOrdererOrgPolicyFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseOrdererConf := baseOrderer()
+
+	ordererGroup, err := newOrdererGroup(baseOrdererConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Orderer": ordererGroup,
+			},
+		},
+	}
+
+	err = RemoveOrdererOrgPolicy(config, "bad-org", "TestPolicy")
+	gt.Expect(err).To(MatchError("orderer org bad-org does not exist in channel config"))
+}
