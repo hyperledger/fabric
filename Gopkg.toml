@@ -81,7 +81,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.2.2"
+  version = "1.5"
 
 [[constraint]]
   branch = "master"
@@ -125,7 +125,7 @@ noverify = [
 
 [[constraint]]
   name = "github.com/onsi/gomega"
-  version = "1.5.0"
+  version = "1.9"
 
 [[constraint]]
   name = "go.etcd.io/etcd"
