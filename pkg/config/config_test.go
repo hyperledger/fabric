@@ -496,7 +496,7 @@ func TestComputeUpdate(t *testing.T) {
 
 	value1Name := "foo"
 	value2Name := "bar"
-	base := cb.Config{
+	base := &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
 			Version: 7,
 			Values: map[string]*cb.ConfigValue{
@@ -511,7 +511,7 @@ func TestComputeUpdate(t *testing.T) {
 			},
 		},
 	}
-	updated := cb.Config{
+	updated := &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
 			Values: map[string]*cb.ConfigValue{
 				value1Name: base.ChannelGroup.Values[value1Name],
@@ -520,6 +520,11 @@ func TestComputeUpdate(t *testing.T) {
 				},
 			},
 		},
+	}
+
+	c := ConfigTx{
+		base:    base,
+		updated: updated,
 	}
 
 	channelID := "testChannel"
@@ -542,7 +547,7 @@ func TestComputeUpdate(t *testing.T) {
 		WriteSet:  expectedWriteSet,
 	}
 
-	configUpdate, err := ComputeUpdate(&base, &updated, channelID)
+	configUpdate, err := c.ComputeUpdate(channelID)
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(configUpdate).To(Equal(&expectedConfig))
 }
@@ -550,8 +555,13 @@ func TestComputeUpdate(t *testing.T) {
 func TestComputeUpdateFailures(t *testing.T) {
 	t.Parallel()
 
-	base := cb.Config{}
-	updated := cb.Config{}
+	base := &cb.Config{}
+	updated := &cb.Config{}
+
+	c := ConfigTx{
+		base:    base,
+		updated: updated,
+	}
 
 	for _, test := range []struct {
 		name        string
@@ -573,7 +583,7 @@ func TestComputeUpdateFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
-			configUpdate, err := ComputeUpdate(&base, &updated, test.channelID)
+			configUpdate, err := c.ComputeUpdate(test.channelID)
 			gt.Expect(err).To(MatchError(test.expectedErr))
 			gt.Expect(configUpdate).To(BeNil())
 		})

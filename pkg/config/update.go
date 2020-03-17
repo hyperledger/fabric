@@ -30,6 +30,8 @@ func computeConfigUpdate(original, updated *cb.Config) (*cb.ConfigUpdate, error)
 		return nil, fmt.Errorf("no differences detected between original and updated config")
 	}
 
+	updated.Sequence = original.Sequence + 1
+
 	return &cb.ConfigUpdate{
 		ReadSet:  readSet,
 		WriteSet: writeSet,
@@ -58,6 +60,7 @@ func computePoliciesMapUpdate(original, updated map[string]*cb.ConfigPolicy) (re
 			continue
 		}
 
+		updatedPolicy.Version = originalPolicy.Version + 1
 		writeSet[policyName] = &cb.ConfigPolicy{
 			Version:   originalPolicy.Version + 1,
 			ModPolicy: updatedPolicy.ModPolicy,
@@ -103,6 +106,7 @@ func computeValuesMapUpdate(original, updated map[string]*cb.ConfigValue) (readS
 			continue
 		}
 
+		updatedValue.Version = originalValue.Version + 1
 		writeSet[valueName] = &cb.ConfigValue{
 			Version:   originalValue.Version + 1,
 			ModPolicy: updatedValue.ModPolicy,
@@ -220,6 +224,8 @@ func computeGroupUpdate(original, updated *cb.ConfigGroup) (readSet, writeSet *c
 		readSetGroups[k] = sameGroup
 		writeSetGroups[k] = sameGroup
 	}
+
+	updated.Version = original.Version + 1
 
 	return &cb.ConfigGroup{
 			Version:  original.Version,

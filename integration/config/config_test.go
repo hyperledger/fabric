@@ -18,7 +18,6 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/pkg/config"
@@ -145,15 +144,16 @@ var _ = Describe("Config", func() {
 		for _, peer := range network.AnchorsForChannel("testchannel") {
 			By("getting the current channel config")
 			channelConfig := nwo.GetConfig(network, peer, orderer, "testchannel")
-			updatedChannelConfig := proto.Clone(channelConfig).(*cb.Config)
+
+			c := config.New(channelConfig)
 
 			By("adding the anchor peer for " + peer.Organization)
 			host, port := peerHostPort(network, peer)
-			err = config.AddAnchorPeer(updatedChannelConfig, peer.Organization, config.Address{Host: host, Port: port})
+			err = c.AddAnchorPeer(peer.Organization, config.Address{Host: host, Port: port})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("computing the config update")
-			configUpdate, err := config.ComputeUpdate(channelConfig, updatedChannelConfig, "testchannel")
+			configUpdate, err := c.ComputeUpdate("testchannel")
 			Expect(err).NotTo(HaveOccurred())
 
 			By("creating a detached signature")
@@ -167,6 +167,7 @@ var _ = Describe("Config", func() {
 
 			By("creating a signed config update envelope with the detached signature")
 			configUpdateEnvelope, err := config.CreateSignedConfigUpdateEnvelope(configUpdate, signingIdentity, signature)
+			Expect(err).NotTo(HaveOccurred())
 			configUpdateBytes, err := proto.Marshal(configUpdateEnvelope)
 			Expect(err).NotTo(HaveOccurred())
 			tempFile, err := ioutil.TempFile("", "add-anchor-peer")
@@ -194,9 +195,7 @@ var _ = Describe("Config", func() {
 
 			By("ensuring the active channel config matches the submitted config")
 			finalChannelConfig := nwo.GetConfig(network, peer, orderer, "testchannel")
-			configUpdate, err = config.ComputeUpdate(updatedChannelConfig, finalChannelConfig, "testchannel")
-			Expect(configUpdate).To(BeNil())
-			Expect(err).To(MatchError("failed to compute update: no differences detected between original and updated config"))
+			Expect(c.Updated()).To(Equal(finalChannelConfig))
 		}
 	})
 })

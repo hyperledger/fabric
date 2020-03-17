@@ -168,6 +168,11 @@ func TestAddAnchorPeer(t *testing.T) {
 		},
 	}
 
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	newOrg1AnchorPeer := Address{
 		Host: "host3",
 		Port: 123,
@@ -300,10 +305,10 @@ func TestAddAnchorPeer(t *testing.T) {
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
 	gt.Expect(err).ToNot(HaveOccurred())
 
-	err = AddAnchorPeer(config, "Org1", newOrg1AnchorPeer)
+	err = c.AddAnchorPeer("Org1", newOrg1AnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = AddAnchorPeer(config, "Org2", newOrg2AnchorPeer)
+	err = c.AddAnchorPeer("Org2", newOrg2AnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(config).To(Equal(expectedUpdatedConfig))
@@ -370,11 +375,16 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 				},
 			}
 
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
+
 			if tt.configMod != nil {
 				tt.configMod(gt, config)
 			}
 
-			err = AddAnchorPeer(config, tt.orgName, tt.newAnchorPeer)
+			err = c.AddAnchorPeer(tt.orgName, tt.newAnchorPeer)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
@@ -398,6 +408,11 @@ func TestRemoveAnchorPeer(t *testing.T) {
 			Values:   map[string]*cb.ConfigValue{},
 			Policies: map[string]*cb.ConfigPolicy{},
 		},
+	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
 	}
 
 	expectedUpdatedConfigJSON := `
@@ -497,14 +512,14 @@ func TestRemoveAnchorPeer(t *testing.T) {
 }
 	`
 	anchorPeer1 := Address{Host: "host1", Port: 123}
-	err = AddAnchorPeer(config, "Org1", anchorPeer1)
+	err = c.AddAnchorPeer("Org1", anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedUpdatedConfig := &cb.Config{}
 
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
 	gt.Expect(err).ToNot(HaveOccurred())
 
-	err = RemoveAnchorPeer(config, "Org1", anchorPeer1)
+	err = c.RemoveAnchorPeer("Org1", anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(config).To(Equal(expectedUpdatedConfig))
@@ -553,7 +568,12 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 				},
 			}
 
-			err = RemoveAnchorPeer(config, tt.orgName, tt.anchorPeerToRemove)
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
+
+			err = c.RemoveAnchorPeer(tt.orgName, tt.anchorPeerToRemove)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
@@ -575,11 +595,15 @@ func TestGetAnchorPeer(t *testing.T) {
 	}
 
 	expectedAnchorPeer := Address{Host: "host1", Port: 123}
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
 
-	err = AddAnchorPeer(config, "Org1", expectedAnchorPeer)
+	err = c.AddAnchorPeer("Org1", expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	anchorPeers, err := GetAnchorPeers(config, "Org1")
+	anchorPeers, err := c.GetAnchorPeers("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(len(anchorPeers)).To(Equal(1))
 	gt.Expect(anchorPeers[0]).To(Equal(expectedAnchorPeer))
@@ -609,6 +633,11 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	for _, test := range []struct {
 		name        string
 		orgName     string
@@ -629,7 +658,7 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
-			_, err := GetAnchorPeers(config, test.orgName)
+			_, err := c.GetAnchorPeers(test.orgName)
 			gt.Expect(err).To(MatchError(test.expectedErr))
 		})
 	}
@@ -673,6 +702,11 @@ func TestAddApplicationOrg(t *testing.T) {
 				"Application": appGroup,
 			},
 		},
+	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
 	}
 
 	org := Organization{
@@ -831,7 +865,7 @@ func TestAddApplicationOrg(t *testing.T) {
 }
 `, certBase64, crlBase64, pkBase64)
 
-	err = AddApplicationOrg(config, org)
+	err = c.AddApplicationOrg(org)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	actualApplicationConfigGroup := config.ChannelGroup.Groups[ApplicationGroupKey].Groups["Org3"]
@@ -857,10 +891,15 @@ func TestAddApplicationOrgFailures(t *testing.T) {
 		},
 	}
 
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	org := Organization{
 		Name: "Org3",
 	}
 
-	err = AddApplicationOrg(config, org)
+	err = c.AddApplicationOrg(org)
 	gt.Expect(err).To(MatchError("failed to create application org Org3: no policies defined"))
 }

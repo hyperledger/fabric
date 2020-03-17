@@ -94,6 +94,11 @@ func TestAddOrgToConsortium(t *testing.T) {
 		},
 	}
 
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	orgToAdd := Organization{
 		Name:     "Org3",
 		Policies: orgStandardPolicies(),
@@ -516,7 +521,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfigJSON), expectedConfigProto)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = AddOrgToConsortium(config, orgToAdd, "Consortium1")
+	err = c.AddOrgToConsortium(orgToAdd, "Consortium1")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(config).To(Equal(expectedConfigProto))
@@ -585,7 +590,12 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 				},
 			}
 
-			err = AddOrgToConsortium(config, test.org, test.consortium)
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
+
+			err = c.AddOrgToConsortium(test.org, test.consortium)
 			gt.Expect(err).To(MatchError(test.expectedErr))
 		})
 	}

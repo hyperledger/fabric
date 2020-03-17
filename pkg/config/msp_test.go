@@ -60,7 +60,12 @@ func TestGetMSPConfigurationForApplicationOrg(t *testing.T) {
 		},
 	}
 
-	msp, err := GetMSPConfigurationForApplicationOrg(config, "Org1")
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	msp, err := c.GetMSPConfigurationForApplicationOrg("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(msp).To(Equal(expectedMSP))
 }
@@ -84,7 +89,12 @@ func TestGetMSPConfigurationForOrdererOrg(t *testing.T) {
 		},
 	}
 
-	msp, err := GetMSPConfigurationForOrdererOrg(config, "OrdererOrg")
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	msp, err := c.GetMSPConfigurationForOrdererOrg("OrdererOrg")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(msp).To(Equal(expectedMSP))
 }
@@ -108,7 +118,12 @@ func TestGetMSPConfigurationForConsortiumOrg(t *testing.T) {
 		},
 	}
 
-	msp, err := GetMSPConfigurationForConsortiumOrg(config, "Consortium1", "Org1")
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	msp, err := c.GetMSPConfigurationForConsortiumOrg("Consortium1", "Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(msp).To(Equal(expectedMSP))
 }
@@ -279,12 +294,16 @@ func TestGetMSPConfigurationFailures(t *testing.T) {
 				},
 			}
 
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
 			if tt.mspMod != nil && tt.orgType != ConsortiumsGroupKey {
 				baseMSP := baseMSP(t)
 
 				tt.mspMod(&baseMSP)
 
-				orgGroup := config.ChannelGroup.Groups[tt.orgType].Groups[tt.orgName]
+				orgGroup := c.updated.ChannelGroup.Groups[tt.orgType].Groups[tt.orgName]
 				fabricMSPConfig, err := baseMSP.toProto()
 				gt.Expect(err).NotTo(HaveOccurred())
 
@@ -301,13 +320,13 @@ func TestGetMSPConfigurationFailures(t *testing.T) {
 
 			switch tt.orgType {
 			case ApplicationGroupKey:
-				_, err := GetMSPConfigurationForApplicationOrg(config, tt.orgName)
+				_, err := c.GetMSPConfigurationForApplicationOrg(tt.orgName)
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			case OrdererGroupKey:
-				_, err := GetMSPConfigurationForOrdererOrg(config, tt.orgName)
+				_, err := c.GetMSPConfigurationForOrdererOrg(tt.orgName)
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			case ConsortiumsGroupKey:
-				_, err := GetMSPConfigurationForConsortiumOrg(config, tt.consortiumName, tt.orgName)
+				_, err := c.GetMSPConfigurationForConsortiumOrg(tt.consortiumName, tt.orgName)
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			default:
 				t.Fatalf("invalid org type %s", tt.orgType)
@@ -440,7 +459,12 @@ func TestAddRootCAToMSP(t *testing.T) {
 	org2MSP := application.Organizations[1].MSP
 	org2CertBase64, org2PKBase64, org2CRLBase64 := certPrivKeyCRLBase64(org2MSP)
 
-	err = AddRootCAToMSP(config, cert, "Org1")
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	err = c.AddRootCAToMSP(cert, "Org1")
 	gt.Expect(err).ToNot(HaveOccurred())
 
 	expectedConfig := fmt.Sprintf(`
@@ -821,7 +845,11 @@ func TestAddRootCAToMSPFailure(t *testing.T) {
 				ChannelGroup: channelGroup,
 			}
 
-			err = AddRootCAToMSP(config, tc.cert, "Org1")
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
+			err = c.AddRootCAToMSP(tc.cert, "Org1")
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
 	}
@@ -851,7 +879,12 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 		},
 	}
 
-	org1MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org1")
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	org1MSP, err := c.GetMSPConfigurationForApplicationOrg("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(org1MSP.RevocationList).To(HaveLen(1))
 
@@ -859,10 +892,10 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 	caPrivKey := org1MSP.SigningIdentity.PrivateSigner.KeyMaterial.(*ecdsa.PrivateKey)
 	cert, _ := generateCertAndPrivateKeyFromCACert(t, "Org1", caCert, caPrivKey)
 
-	err = RevokeCertificateFromMSP(config, "Org1", caCert, caPrivKey, cert)
+	err = c.RevokeCertificateFromMSP("Org1", caCert, caPrivKey, cert)
 	gt.Expect(err).ToNot(HaveOccurred())
 
-	org1MSP, err = GetMSPConfigurationForApplicationOrg(config, "Org1")
+	org1MSP, err = c.GetMSPConfigurationForApplicationOrg("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(org1MSP.RevocationList).To(HaveLen(2))
 	fabricMSPConfig, err := org1MSP.toProto()
@@ -870,7 +903,7 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 	newCRL, err := x509.ParseCRL(fabricMSPConfig.RevocationList[1])
 	err = caCert.CheckCRLSignature(newCRL)
 	gt.Expect(err).NotTo(HaveOccurred())
-	org2MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org2")
+	org2MSP, err := c.GetMSPConfigurationForApplicationOrg("Org2")
 	gt.Expect(err).NotTo(HaveOccurred())
 	org1CertBase64, org1PKBase64, org1CRLBase64 := certPrivKeyCRLBase64(org1MSP)
 	org2CertBase64, org2PKBase64, org2CRLBase64 := certPrivKeyCRLBase64(org2MSP)
@@ -1254,12 +1287,16 @@ func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 				ChannelGroup: channelGroup,
 			}
 
-			org1MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org1")
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
+			org1MSP, err := c.GetMSPConfigurationForApplicationOrg("Org1")
 			gt.Expect(err).NotTo(HaveOccurred())
 			org1CACert := org1MSP.RootCerts[0]
 			org1CAPrivKey := org1MSP.SigningIdentity.PrivateSigner.KeyMaterial.(*ecdsa.PrivateKey)
 
-			err = RevokeCertificateFromMSP(config, tc.orgName, org1CACert, org1CAPrivKey, tc.cert)
+			err = c.RevokeCertificateFromMSP(tc.orgName, org1CACert, org1CAPrivKey, tc.cert)
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
 	}
@@ -1355,9 +1392,12 @@ func TestUpdateMSP(t *testing.T) {
 	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
-	org1MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org1")
+
+	c := New(config)
+
+	org1MSP, err := c.GetMSPConfigurationForApplicationOrg("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
-	org2MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org2")
+	org2MSP, err := c.GetMSPConfigurationForApplicationOrg("Org2")
 	gt.Expect(err).NotTo(HaveOccurred())
 	org1CertBase64, org1PKBase64, org1CRLBase64 := certPrivKeyCRLBase64(org1MSP)
 	org2CertBase64, org2PKBase64, org2CRLBase64 := certPrivKeyCRLBase64(org2MSP)
@@ -1370,7 +1410,7 @@ func TestUpdateMSP(t *testing.T) {
 
 	org1MSP.IntermediateCerts = append(org1MSP.IntermediateCerts, newIntermediateCert)
 
-	err = UpdateMSP(config, org1MSP, "Org1")
+	err = c.UpdateMSP(org1MSP, "Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	expectedConfigJSON := fmt.Sprintf(`
@@ -1706,11 +1746,12 @@ func TestUpdateMSP(t *testing.T) {
 	"sequence": "0"
 }
 `, org1CertBase64, newIntermediateCertBase64, org1CRLBase64, org1PKBase64, org2CertBase64, org2CRLBase64, org2PKBase64)
-	expectedConfigProto := &cb.Config{}
-	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfigJSON), expectedConfigProto)
+
+	buf := bytes.Buffer{}
+	err = protolator.DeepMarshalJSON(&buf, c.Updated())
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(config).To(Equal(expectedConfigProto))
+	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
 }
 
 func TestUpdateMSPFailure(t *testing.T) {
@@ -1824,11 +1865,14 @@ func TestUpdateMSPFailure(t *testing.T) {
 			config := &cb.Config{
 				ChannelGroup: channelGroup,
 			}
-			org1MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org1")
+
+			c := New(config)
+
+			org1MSP, err := c.GetMSPConfigurationForApplicationOrg("Org1")
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			org1MSP = tc.mspMod(org1MSP)
-			err = UpdateMSP(config, org1MSP, tc.orgName)
+			err = c.UpdateMSP(org1MSP, tc.orgName)
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
 	}

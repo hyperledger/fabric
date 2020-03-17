@@ -68,6 +68,33 @@ type standardConfigPolicy struct {
 	value *cb.Policy
 }
 
+// ConfigTx wraps a config transaction
+type ConfigTx struct {
+	// original state of the config
+	base *cb.Config
+	// modified state of the config
+	updated *cb.Config
+}
+
+// New returns an config.
+func New(config *cb.Config) ConfigTx {
+	return ConfigTx{
+		base: config,
+		// Clone the base config for processing updates
+		updated: proto.Clone(config).(*cb.Config),
+	}
+}
+
+// Base returns the base config
+func (c *ConfigTx) Base() *cb.Config {
+	return c.base
+}
+
+// Updated returns the updated config
+func (c *ConfigTx) Updated() *cb.Config {
+	return c.updated
+}
+
 // NewCreateChannelTx creates a create channel tx using the provided application channel
 // configuration and returns an unsigned envelope for an application channel creation transaction.
 func NewCreateChannelTx(channelConfig Channel) (*cb.Envelope, error) {
@@ -104,22 +131,6 @@ func NewCreateChannelTx(channelConfig Channel) (*cb.Envelope, error) {
 	}
 
 	return env, nil
-}
-
-// ComputeUpdate computes the ConfigUpdate from a base and modified config transaction.
-func ComputeUpdate(baseConfig, updatedConfig *cb.Config, channelID string) (*cb.ConfigUpdate, error) {
-	if channelID == "" {
-		return nil, errors.New("channel ID is required")
-	}
-
-	updt, err := computeConfigUpdate(baseConfig, updatedConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compute update: %v", err)
-	}
-
-	updt.ChannelId = channelID
-
-	return updt, nil
 }
 
 // SignConfigUpdate signs the given configuration update with a
@@ -176,6 +187,22 @@ func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIden
 	}
 
 	return signedEnvelope, nil
+}
+
+// ComputeUpdate computes the ConfigUpdate from a base and modified config transaction.
+func (c *ConfigTx) ComputeUpdate(channelID string) (*cb.ConfigUpdate, error) {
+	if channelID == "" {
+		return nil, errors.New("channel ID is required")
+	}
+
+	updt, err := computeConfigUpdate(c.base, c.updated)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute update: %v", err)
+	}
+
+	updt.ChannelId = channelID
+
+	return updt, nil
 }
 
 func signatureHeader(signingIdentity SigningIdentity) (*cb.SignatureHeader, error) {
