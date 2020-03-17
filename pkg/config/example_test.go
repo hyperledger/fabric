@@ -464,8 +464,7 @@ func baseMSP(t *testing.T) config.MSP {
 func Example_usage() {
 	// Retrieve the config for the channel
 	baseConfig := fetchChannelConfig()
-	// Clone the base config for processing updates
-	updatedConfig := proto.Clone(baseConfig).(*cb.Config)
+	c := config.New(baseConfig)
 
 	// Must retrieve the current orderer configuration from block and modify
 	// the desired values
@@ -506,7 +505,7 @@ func Example_usage() {
 		State:     "STATE_NORMAL",
 	}
 
-	err := config.UpdateOrdererConfiguration(updatedConfig, orderer)
+	err := c.UpdateOrdererConfiguration(orderer)
 	if err != nil {
 		panic(nil)
 	}
@@ -517,7 +516,7 @@ func Example_usage() {
 	}
 
 	//	Add a new anchor peer
-	err = config.AddAnchorPeer(updatedConfig, "Org1", newAnchorPeer)
+	err = c.AddAnchorPeer("Org1", newAnchorPeer)
 	if err != nil {
 		panic(err)
 	}
@@ -528,7 +527,7 @@ func Example_usage() {
 		Port: 7051,
 	}
 
-	err = config.RemoveAnchorPeer(updatedConfig, "Org1", oldAnchorPeer)
+	err = c.RemoveAnchorPeer("Org1", oldAnchorPeer)
 	if err != nil {
 		panic(err)
 	}
@@ -566,7 +565,7 @@ func Example_usage() {
 		},
 	}
 
-	err = config.AddApplicationOrg(updatedConfig, appOrg)
+	err = c.AddApplicationOrg(appOrg)
 	if err != nil {
 		panic(err)
 	}
@@ -595,23 +594,23 @@ func Example_usage() {
 		},
 	}
 
-	err = config.AddOrdererOrg(updatedConfig, org)
+	err = c.AddOrdererOrg(org)
 	if err != nil {
 		panic(err)
 	}
 
-	err = config.AddOrdererEndpoint(updatedConfig, "OrdererOrg2", config.Address{Host: "127.0.0.1", Port: 8050})
+	err = c.AddOrdererEndpoint("OrdererOrg2", config.Address{Host: "127.0.0.1", Port: 8050})
 	if err != nil {
 		panic(err)
 	}
 
-	err = config.RemoveOrdererEndpoint(updatedConfig, "OrdererOrg2", config.Address{Host: "127.0.0.1", Port: 9050})
+	err = c.RemoveOrdererEndpoint("OrdererOrg2", config.Address{Host: "127.0.0.1", Port: 9050})
 	if err != nil {
 		panic(err)
 	}
 
 	// Compute the delta
-	configUpdate, err := config.ComputeUpdate(baseConfig, updatedConfig, "testChannel")
+	configUpdate, err := c.ComputeUpdate("testchannel")
 	if err != nil {
 		panic(err)
 	}
@@ -645,6 +644,8 @@ func Example_usage() {
 		panic(err)
 	}
 
+	// The below logic outputs the signed envelope in JSON format
+
 	// The timestamps of the ChannelHeader varies so this comparison only considers the ConfigUpdateEnvelope JSON.
 	payload := &cb.Payload{}
 
@@ -660,7 +661,7 @@ func Example_usage() {
 		panic(err)
 	}
 
-	// Signature and nonce is different each run
+	// Signature and nonce is different on every example run
 	data.Signatures = nil
 
 	err = protolator.DeepMarshalJSON(os.Stdout, data)
@@ -671,7 +672,7 @@ func Example_usage() {
 	// Output:
 	// {
 	// 	"config_update": {
-	// 		"channel_id": "testChannel",
+	// 		"channel_id": "testchannel",
 	// 		"isolated_data": {},
 	// 		"read_set": {
 	// 			"groups": {

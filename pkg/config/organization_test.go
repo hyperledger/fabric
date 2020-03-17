@@ -51,6 +51,12 @@ func TestGetApplicationOrg(t *testing.T) {
 	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	expectedOrg := channel.Application.Organizations[0]
 
 	tests := []struct {
@@ -76,7 +82,7 @@ func TestGetApplicationOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := GetApplicationOrg(config, tc.orgName)
+			org, err := c.GetApplicationOrg(tc.orgName)
 			if tc.expectedErr != "" {
 				gt.Expect(Organization{}).To(Equal(org))
 				gt.Expect(err).To(MatchError(tc.expectedErr))
@@ -99,6 +105,12 @@ func TestGetOrdererOrg(t *testing.T) {
 	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	expectedOrg := channel.Orderer.Organizations[0]
 
 	tests := []struct {
@@ -124,7 +136,7 @@ func TestGetOrdererOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := GetOrdererOrg(config, tc.orgName)
+			org, err := c.GetOrdererOrg(tc.orgName)
 			if tc.expectedErr != "" {
 				gt.Expect(err).To(MatchError(tc.expectedErr))
 				gt.Expect(Organization{}).To(Equal(org))
@@ -147,6 +159,12 @@ func TestGetConsortiumOrg(t *testing.T) {
 	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	expectedOrg := channel.Consortiums[0].Organizations[0]
 
 	tests := []struct {
@@ -181,7 +199,7 @@ func TestGetConsortiumOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := GetConsortiumOrg(config, tc.consortiumName, tc.orgName)
+			org, err := c.GetConsortiumOrg(tc.consortiumName, tc.orgName)
 			if tc.expectedErr != "" {
 				gt.Expect(Organization{}).To(Equal(org))
 				gt.Expect(err).To(MatchError(tc.expectedErr))

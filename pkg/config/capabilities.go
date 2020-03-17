@@ -16,45 +16,45 @@ import (
 
 // GetChannelCapabilities returns a map of enabled channel capabilities
 // from a config transaction.
-func GetChannelCapabilities(config *cb.Config) (map[string]bool, error) {
-	capabilites, err := getCapabilities(config.ChannelGroup)
+func (c *ConfigTx) GetChannelCapabilities() (map[string]bool, error) {
+	capabilities, err := getCapabilities(c.base.ChannelGroup)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving channel capabilities: %v", err)
 	}
 
-	return capabilites, nil
+	return capabilities, nil
 }
 
 // GetOrdererCapabilities returns a map of enabled orderer capabilities
 // from a config transaction.
-func GetOrdererCapabilities(config *cb.Config) (map[string]bool, error) {
-	orderer, ok := config.ChannelGroup.Groups[OrdererGroupKey]
+func (c *ConfigTx) GetOrdererCapabilities() (map[string]bool, error) {
+	orderer, ok := c.base.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return nil, errors.New("orderer missing from config")
 	}
 
-	capabilites, err := getCapabilities(orderer)
+	capabilities, err := getCapabilities(orderer)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving orderer capabilities: %v", err)
 	}
 
-	return capabilites, nil
+	return capabilities, nil
 }
 
 // GetApplicationCapabilities returns a map of enabled application capabilities
 // from a config transaction.
-func GetApplicationCapabilities(config *cb.Config) (map[string]bool, error) {
-	application, ok := config.ChannelGroup.Groups[ApplicationGroupKey]
+func (c *ConfigTx) GetApplicationCapabilities() (map[string]bool, error) {
+	application, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey]
 	if !ok {
 		return nil, errors.New("application missing from config")
 	}
 
-	capabilites, err := getCapabilities(application)
+	capabilities, err := getCapabilities(application)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving application capabilities: %v", err)
 	}
 
-	return capabilites, nil
+	return capabilities, nil
 }
 
 func getCapabilities(configGroup *cb.ConfigGroup) (map[string]bool, error) {
@@ -65,6 +65,7 @@ func getCapabilities(configGroup *cb.ConfigGroup) (map[string]bool, error) {
 	}
 
 	capabilitiesProto := &cb.Capabilities{}
+
 	err := proto.Unmarshal(capabilitiesValue.Value, capabilitiesProto)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshalling capabilities: %v", err)

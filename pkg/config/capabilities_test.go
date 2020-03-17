@@ -25,16 +25,22 @@ func TestGetChannelCapabilities(t *testing.T) {
 			Values: map[string]*cb.ConfigValue{},
 		},
 	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	err := addValue(config.ChannelGroup, capabilitiesValue(expectedCapabilities), AdminsPolicyKey)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	channelCapabilities, err := GetChannelCapabilities(config)
+	channelCapabilities, err := c.GetChannelCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(channelCapabilities).To(Equal(expectedCapabilities))
 
 	// Delete the capabilities key and assert retrieval to return nil
 	delete(config.ChannelGroup.Values, CapabilitiesKey)
-	channelCapabilities, err = GetChannelCapabilities(config)
+	channelCapabilities, err = c.GetChannelCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(channelCapabilities).To(BeNil())
 }
@@ -56,13 +62,18 @@ func TestGetOrdererCapabilities(t *testing.T) {
 		},
 	}
 
-	ordererCapabilities, err := GetOrdererCapabilities(config)
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	ordererCapabilities, err := c.GetOrdererCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(ordererCapabilities).To(Equal(baseOrdererConf.Capabilities))
 
 	// Delete the capabilities key and assert retrieval to return nil
 	delete(config.ChannelGroup.Groups[OrdererGroupKey].Values, CapabilitiesKey)
-	ordererCapabilities, err = GetOrdererCapabilities(config)
+	ordererCapabilities, err = c.GetOrdererCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(ordererCapabilities).To(BeNil())
 }
@@ -78,7 +89,12 @@ func TestGetOrdererCapabilitiesFailure(t *testing.T) {
 		},
 	}
 
-	ordererCapabilities, err := GetOrdererCapabilities(config)
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	ordererCapabilities, err := c.GetOrdererCapabilities()
 	gt.Expect(err).To(MatchError("orderer missing from config"))
 	gt.Expect(ordererCapabilities).To(BeNil())
 }
@@ -100,13 +116,18 @@ func TestGetApplicationCapabilities(t *testing.T) {
 		},
 	}
 
-	applicationCapabilities, err := GetApplicationCapabilities(config)
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	applicationCapabilities, err := c.GetApplicationCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationCapabilities).To(Equal(baseApplicationConf.Capabilities))
 
 	// Delete the capabilities key and assert retrieval to return nil
 	delete(config.ChannelGroup.Groups[ApplicationGroupKey].Values, CapabilitiesKey)
-	applicationCapabilities, err = GetApplicationCapabilities(config)
+	applicationCapabilities, err = c.GetApplicationCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationCapabilities).To(BeNil())
 }
@@ -122,7 +143,12 @@ func TestGetApplicationCapabilitiesFailure(t *testing.T) {
 		},
 	}
 
-	applicationCapabilities, err := GetApplicationCapabilities(config)
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	applicationCapabilities, err := c.GetApplicationCapabilities()
 	gt.Expect(err).To(MatchError("application missing from config"))
 	gt.Expect(applicationCapabilities).To(BeNil())
 }

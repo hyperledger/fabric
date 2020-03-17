@@ -215,7 +215,7 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 	config := &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
 			Groups: map[string]*cb.ConfigGroup{
-				"Orderer": ordererGroup,
+				OrdererGroupKey: ordererGroup,
 			},
 			Values: map[string]*cb.ConfigValue{
 				OrdererAddressesKey: {
@@ -255,7 +255,11 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 		Options: EtcdRaftOptions{},
 	}
 
-	err = UpdateOrdererConfiguration(config, updatedOrdererConf)
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+	err = c.UpdateOrdererConfiguration(updatedOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	expectedConfigJSON := fmt.Sprintf(`
@@ -587,7 +591,12 @@ func TestGetOrdererConfiguration(t *testing.T) {
 				},
 			}
 
-			ordererConf, err := GetOrdererConfiguration(config)
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
+
+			ordererConf, err := c.GetOrdererConfiguration()
 			gt.Expect(err).NotTo(HaveOccurred())
 			gt.Expect(ordererConf).To(Equal(baseOrdererConf))
 		})
@@ -675,14 +684,20 @@ func TestGetOrdererConfigurationFailure(t *testing.T) {
 					Values: map[string]*cb.ConfigValue{},
 				},
 			}
-			err = addValue(config.ChannelGroup, ordererAddressesValue(baseOrdererConfig.Addresses), ordererAdminsPolicyName)
+
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
+
+			err = addValue(c.updated.ChannelGroup, ordererAddressesValue(baseOrdererConfig.Addresses), ordererAdminsPolicyName)
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			if tt.configMod != nil {
-				tt.configMod(config, gt)
+				tt.configMod(c.updated, gt)
 			}
 
-			_, err = GetOrdererConfiguration(config)
+			_, err = c.GetOrdererConfiguration()
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
@@ -699,9 +714,14 @@ func TestAddOrdererOrg(t *testing.T) {
 	config := &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
 			Groups: map[string]*cb.ConfigGroup{
-				"Orderer": ordererGroup,
+				OrdererGroupKey: ordererGroup,
 			},
 		},
+	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
 	}
 
 	org := Organization{
@@ -843,10 +863,10 @@ func TestAddOrdererOrg(t *testing.T) {
 }
 `, certBase64, crlBase64, pkBase64)
 
-	err = AddOrdererOrg(config, org)
+	err = c.AddOrdererOrg(org)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	actualOrdererConfigGroup := config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg2"]
+	actualOrdererConfigGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg2"]
 	buf := bytes.Buffer{}
 	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: actualOrdererConfigGroup})
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -864,16 +884,21 @@ func TestAddOrdererOrgFailures(t *testing.T) {
 	config := &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
 			Groups: map[string]*cb.ConfigGroup{
-				"Orderer": ordererGroup,
+				OrdererGroupKey: ordererGroup,
 			},
 		},
+	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
 	}
 
 	org := Organization{
 		Name: "OrdererOrg2",
 	}
 
-	err = AddOrdererOrg(config, org)
+	err = c.AddOrdererOrg(org)
 	gt.Expect(err).To(MatchError("failed to create orderer org 'OrdererOrg2': no policies defined"))
 }
 
@@ -909,6 +934,11 @@ func TestAddOrdererEndpoint(t *testing.T) {
 			Policies: map[string]*cb.ConfigPolicy{},
 		},
 		Sequence: 0,
+	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
 	}
 
 	expectedUpdatedConfigJSON := `
@@ -955,10 +985,10 @@ func TestAddOrdererEndpoint(t *testing.T) {
 	gt.Expect(err).ToNot(HaveOccurred())
 
 	newOrderer1OrgEndpoint := Address{Host: "127.0.0.1", Port: 9050}
-	err = AddOrdererEndpoint(config, "Orderer1Org", newOrderer1OrgEndpoint)
+	err = c.AddOrdererEndpoint("Orderer1Org", newOrderer1OrgEndpoint)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(config).To(Equal(expectedUpdatedConfig))
+	gt.Expect(c.updated).To(Equal(expectedUpdatedConfig))
 }
 
 func TestAddOrdererEndpointFailure(t *testing.T) {
@@ -993,6 +1023,11 @@ func TestAddOrdererEndpointFailure(t *testing.T) {
 		Sequence: 0,
 	}
 
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	tests := []struct {
 		testName    string
 		orgName     string
@@ -1020,7 +1055,7 @@ func TestAddOrdererEndpointFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			err := AddOrdererEndpoint(config, tt.orgName, tt.endpoint)
+			err := c.AddOrdererEndpoint(tt.orgName, tt.endpoint)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
@@ -1059,6 +1094,11 @@ func TestRemoveOrdererEndpoint(t *testing.T) {
 			Policies: map[string]*cb.ConfigPolicy{},
 		},
 		Sequence: 0,
+	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
 	}
 
 	expectedUpdatedConfigJSON := `
@@ -1104,10 +1144,10 @@ func TestRemoveOrdererEndpoint(t *testing.T) {
 	gt.Expect(err).ToNot(HaveOccurred())
 
 	removedEndpoint := Address{Host: "127.0.0.1", Port: 8050}
-	err = RemoveOrdererEndpoint(config, "OrdererOrg", removedEndpoint)
+	err = c.RemoveOrdererEndpoint("OrdererOrg", removedEndpoint)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(config).To(Equal(expectedUpdatedConfig))
+	gt.Expect(c.updated).To(Equal(expectedUpdatedConfig))
 }
 
 func TestRemoveOrdererEndpointFailure(t *testing.T) {
@@ -1142,6 +1182,11 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 		Sequence: 0,
 	}
 
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
 	tests := []struct {
 		testName    string
 		orgName     string
@@ -1169,7 +1214,7 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			err := RemoveOrdererEndpoint(config, tt.orgName, tt.endpoint)
+			err := c.RemoveOrdererEndpoint(tt.orgName, tt.endpoint)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}

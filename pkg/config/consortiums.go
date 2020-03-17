@@ -23,14 +23,14 @@ type Consortium struct {
 
 // AddOrgToConsortium adds an org definition to a named consortium in a given
 // channel configuration.
-func AddOrgToConsortium(config *cb.Config, org Organization, consortium string) error {
+func (c *ConfigTx) AddOrgToConsortium(org Organization, consortium string) error {
 	var err error
 
 	if consortium == "" {
 		return errors.New("consortium is required")
 	}
 
-	consortiumsGroup := config.ChannelGroup.Groups[ConsortiumsGroupKey]
+	consortiumsGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey]
 
 	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
 	if !ok {

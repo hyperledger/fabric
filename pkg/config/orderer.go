@@ -88,12 +88,12 @@ type EtcdRaftOptions struct {
 
 // UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
 // via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
-func UpdateOrdererConfiguration(config *cb.Config, o Orderer) error {
-	ordererGroup := config.ChannelGroup.Groups[OrdererGroupKey]
+func (c *ConfigTx) UpdateOrdererConfiguration(o Orderer) error {
+	ordererGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey]
 
 	// update orderer addresses
 	if len(o.Addresses) > 0 {
-		err := addValue(config.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
+		err := addValue(c.updated.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
 		if err != nil {
 			return err
 		}
@@ -111,8 +111,8 @@ func UpdateOrdererConfiguration(config *cb.Config, o Orderer) error {
 // GetOrdererConfiguration returns the existing orderer configuration values from a config
 // transaction as an Orderer type. This can be used to retrieve existing values for the orderer
 // prior to updating the orderer configuration.
-func GetOrdererConfiguration(config *cb.Config) (Orderer, error) {
-	ordererGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey]
+func (c *ConfigTx) GetOrdererConfiguration() (Orderer, error) {
+	ordererGroup, ok := c.base.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return Orderer{}, errors.New("config does not contain orderer group")
 	}
@@ -155,7 +155,7 @@ func GetOrdererConfiguration(config *cb.Config) (Orderer, error) {
 	}
 
 	// ORDERER ADDRESSES
-	ordererAddresses, err := getOrdererAddresses(config)
+	ordererAddresses, err := getOrdererAddresses(c.base)
 	if err != nil {
 		return Orderer{}, err
 	}
@@ -181,7 +181,7 @@ func GetOrdererConfiguration(config *cb.Config) (Orderer, error) {
 	// ORDERER ORGS
 	var ordererOrgs []Organization
 	for orgName := range ordererGroup.Groups {
-		orgConfig, err := GetOrdererOrg(config, orgName)
+		orgConfig, err := c.GetOrdererOrg(orgName)
 		if err != nil {
 			return Orderer{}, fmt.Errorf("retrieving orderer org %s: %v", orgName, err)
 		}
@@ -203,7 +203,7 @@ func GetOrdererConfiguration(config *cb.Config) (Orderer, error) {
 	}
 
 	// POLICIES
-	policies, err := GetPoliciesForOrderer(config)
+	policies, err := c.GetPoliciesForOrderer()
 	if err != nil {
 		return Orderer{}, fmt.Errorf("retrieving orderer policies: %v", err)
 	}
@@ -229,8 +229,8 @@ func GetOrdererConfiguration(config *cb.Config) (Orderer, error) {
 
 // AddOrdererOrg adds a organization to an existing config's Orderer configuration.
 // Will not error if organization already exists.
-func AddOrdererOrg(config *cb.Config, org Organization) error {
-	ordererGroup := config.ChannelGroup.Groups[OrdererGroupKey]
+func (c *ConfigTx) AddOrdererOrg(org Organization) error {
+	ordererGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey]
 
 	orgGroup, err := newOrgConfigGroup(org)
 	if err != nil {
@@ -245,8 +245,8 @@ func AddOrdererOrg(config *cb.Config, org Organization) error {
 // AddOrdererEndpoint adds an orderer's endpoint to an existing channel config transaction.
 // It must add the endpoint to an existing org and the endpoint must not already
 // exist in the org.
-func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint Address) error {
-	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+func (c *ConfigTx) AddOrdererEndpoint(orgName string, endpoint Address) error {
+	ordererOrgGroup, ok := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
 	}
@@ -283,8 +283,8 @@ func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint Address) err
 
 // RemoveOrdererEndpoint removes an orderer's endpoint from an existing channel config transaction.
 // The removed endpoint and org it belongs to must both already exist.
-func RemoveOrdererEndpoint(config *cb.Config, orgName string, endpoint Address) error {
-	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+func (c *ConfigTx) RemoveOrdererEndpoint(orgName string, endpoint Address) error {
+	ordererOrgGroup, ok := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
 	}

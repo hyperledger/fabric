@@ -41,8 +41,8 @@ func AddApplicationOrg(config *cb.Config, org Organization) error {
 // AddAnchorPeer adds an anchor peer to an existing channel config transaction.
 // It must add the anchor peer to an existing org and the anchor peer must not already
 // exist in the org.
-func AddAnchorPeer(config *cb.Config, orgName string, newAnchorPeer Address) error {
-	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+func (c *ConfigTx) AddAnchorPeer(orgName string, newAnchorPeer Address) error {
+	applicationOrgGroup, ok := c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return fmt.Errorf("application org %s does not exist in channel config", orgName)
 	}
@@ -84,8 +84,8 @@ func AddAnchorPeer(config *cb.Config, orgName string, newAnchorPeer Address) err
 
 // RemoveAnchorPeer removes an anchor peer from an existing channel config transaction.
 // The removed anchor peer and org it belongs to must both already exist.
-func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove Address) error {
-	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) error {
+	applicationOrgGroup, ok := c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return fmt.Errorf("application org %s does not exist in channel config", orgName)
 	}
@@ -129,8 +129,8 @@ func RemoveAnchorPeer(config *cb.Config, orgName string, anchorPeerToRemove Addr
 }
 
 // GetAnchorPeers retrieves existing anchor peers from a application organization.
-func GetAnchorPeers(config *cb.Config, orgName string) ([]Address, error) {
-	applicationOrgGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+func (c *ConfigTx) GetAnchorPeers(orgName string) ([]Address, error) {
+	applicationOrgGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)
 	}
@@ -156,6 +156,21 @@ func GetAnchorPeers(config *cb.Config, orgName string) ([]Address, error) {
 	}
 
 	return anchorPeers, nil
+}
+
+// AddApplicationOrg adds an organization to an existing config's Application configuration.
+// Will not error if organization already exists.
+func (c *ConfigTx) AddApplicationOrg(org Organization) error {
+	appGroup := c.updated.ChannelGroup.Groups[ApplicationGroupKey]
+
+	orgGroup, err := newOrgConfigGroup(org)
+	if err != nil {
+		return fmt.Errorf("failed to create application org %s: %v", org.Name, err)
+	}
+
+	appGroup.Groups[org.Name] = orgGroup
+
+	return nil
 }
 
 // newApplicationGroup returns the application component of the channel configuration.
@@ -225,5 +240,6 @@ func getApplicationOrg(config *cb.Config, orgName string) (*cb.ConfigGroup, erro
 	if !ok {
 		return nil, fmt.Errorf("application org with name '%s' not found", orgName)
 	}
+
 	return org, nil
 }
