@@ -9,7 +9,6 @@ package grpclogging_test
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -38,9 +37,6 @@ var _ = Describe("Server", func() {
 		fakeEchoService   *fakes.EchoServiceServer
 		echoServiceClient testpb.EchoServiceClient
 
-		caCertPool        *x509.CertPool
-		clientCertWithKey tls.Certificate
-
 		listener        net.Listener
 		serveCompleteCh chan error
 		server          *grpc.Server
@@ -58,18 +54,6 @@ var _ = Describe("Server", func() {
 
 		core, observed = observer.New(zap.LevelEnablerFunc(func(zapcore.Level) bool { return true }))
 		logger = zap.New(core, zap.AddCaller()).Named("test-logger")
-
-		caCert, caKey := generateCA("test-ca", "127.0.0.1")
-		clientCert, clientKey := issueCertificate(caCert, caKey, "client", "127.0.0.1")
-		clientCertWithKey, err = tls.X509KeyPair(clientCert, clientKey)
-		Expect(err).NotTo(HaveOccurred())
-		serverCert, serverKey := issueCertificate(caCert, caKey, "server", "127.0.0.1")
-		serverCertWithKey, err := tls.X509KeyPair(serverCert, serverKey)
-		Expect(err).NotTo(HaveOccurred())
-
-		caCertPool = x509.NewCertPool()
-		added := caCertPool.AppendCertsFromPEM(caCert)
-		Expect(added).To(BeTrue())
 
 		fakeEchoService = &fakes.EchoServiceServer{}
 		fakeEchoService.EchoStub = func(ctx context.Context, msg *testpb.Message) (*testpb.Message, error) {
@@ -113,6 +97,7 @@ var _ = Describe("Server", func() {
 		clientTLSConfig.BuildNameToCertificate()
 		dialOpts := []grpc.DialOption{
 			grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
+			grpc.WithBlock(),
 		}
 		clientConn, err = grpc.Dial(listener.Addr().String(), dialOpts...)
 		Expect(err).NotTo(HaveOccurred())
@@ -122,9 +107,8 @@ var _ = Describe("Server", func() {
 
 	AfterEach(func() {
 		clientConn.Close()
+		server.Stop()
 
-		err := listener.Close()
-		Expect(err).NotTo(HaveOccurred())
 		Eventually(serveCompleteCh).Should(Receive())
 	})
 
@@ -306,7 +290,7 @@ var _ = Describe("Server", func() {
 				serveCompleteCh = make(chan error, 1)
 				go func() { serveCompleteCh <- server.Serve(listener) }()
 
-				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithInsecure())
+				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithInsecure(), grpc.WithBlock())
 				Expect(err).NotTo(HaveOccurred())
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
 
@@ -319,18 +303,16 @@ var _ = Describe("Server", func() {
 
 			AfterEach(func() {
 				clientConn.Close()
+				server.Stop()
 
-				err := listener.Close()
-				Expect(err).NotTo(HaveOccurred())
 				Eventually(serveCompleteCh).Should(Receive())
 			})
 
 			It("uses the levels returned by the levelers", func() {
-				Eventually(leveler.CallCount).Should(Equal(1))
-				Eventually(observed.FilterMessage("unary call completed").AllUntimed, 2*time.Second).Should(HaveLen(1))
+				Expect(leveler.CallCount()).To(Equal(1))
 				Expect(observed.FilterMessage("unary call completed").AllUntimed()[0].Level).To(Equal(zapcore.ErrorLevel))
 
-				Eventually(payloadLeveler.CallCount).Should(Equal(1))
+				Expect(payloadLeveler.CallCount()).To(Equal(1))
 				Expect(observed.FilterMessage("received unary request").AllUntimed()).To(HaveLen(1))
 				Expect(observed.FilterMessage("received unary request").AllUntimed()[0].Level).To(Equal(zapcore.WarnLevel))
 				Expect(observed.FilterMessage("sending unary response").AllUntimed()).To(HaveLen(1))
@@ -338,12 +320,12 @@ var _ = Describe("Server", func() {
 			})
 
 			It("provides the decorated context and full method name to the levelers", func() {
-				Eventually(leveler.CallCount).Should(Equal(1))
+				Expect(leveler.CallCount()).To(Equal(1))
 				ctx, fullMethod := leveler.ArgsForCall(0)
 				Expect(grpclogging.ZapFields(ctx)).NotTo(BeEmpty())
 				Expect(fullMethod).To(Equal("/testpb.EchoService/Echo"))
 
-				Eventually(payloadLeveler.CallCount).Should(Equal(1))
+				Expect(payloadLeveler.CallCount()).To(Equal(1))
 				ctx, fullMethod = payloadLeveler.ArgsForCall(0)
 				Expect(grpclogging.ZapFields(ctx)).NotTo(BeEmpty())
 				Expect(fullMethod).To(Equal("/testpb.EchoService/Echo"))
@@ -367,8 +349,9 @@ var _ = Describe("Server", func() {
 
 			err = streamClient.CloseSend()
 			Expect(err).NotTo(HaveOccurred())
+			_, err = streamClient.Recv()
+			Expect(err).To(Equal(io.EOF))
 
-			Eventually(observed.AllUntimed).Should(HaveLen(3))
 			var logMessages []string
 			for _, entry := range observed.AllUntimed() {
 				logMessages = append(logMessages, entry.Message)
@@ -453,6 +436,8 @@ var _ = Describe("Server", func() {
 
 			err = streamClient.CloseSend()
 			Expect(err).NotTo(HaveOccurred())
+			_, err = streamClient.Recv()
+			Expect(err).To(Equal(io.EOF))
 
 			Expect(fakeEchoService.EchoStreamCallCount()).To(Equal(1))
 			echoStream := fakeEchoService.EchoStreamArgsForCall(0)
@@ -477,6 +462,7 @@ var _ = Describe("Server", func() {
 			BeforeEach(func() {
 				dialOpts := []grpc.DialOption{
 					grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(caCertPool, "")),
+					grpc.WithBlock(),
 				}
 				var err error
 				clientConn, err = grpc.Dial(listener.Addr().String(), dialOpts...)
@@ -502,6 +488,8 @@ var _ = Describe("Server", func() {
 
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())
+				_, err = streamClient.Recv()
+				Expect(err).To(Equal(io.EOF))
 
 				for _, entry := range observed.AllUntimed() {
 					keyNames := map[string]struct{}{}
@@ -548,7 +536,9 @@ var _ = Describe("Server", func() {
 
 			BeforeEach(func() {
 				errCh := make(chan error)
-				fakeEchoService.EchoStreamStub = func(svr testpb.EchoService_EchoStreamServer) error { return <-errCh }
+				fakeEchoService.EchoStreamStub = func(svr testpb.EchoService_EchoStreamServer) error {
+					return <-errCh
+				}
 
 				streamClient, err := echoServiceClient.EchoStream(context.Background())
 				Expect(err).NotTo(HaveOccurred())
@@ -607,7 +597,7 @@ var _ = Describe("Server", func() {
 				serveCompleteCh = make(chan error, 1)
 				go func() { serveCompleteCh <- server.Serve(listener) }()
 
-				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithInsecure())
+				clientConn, err = grpc.Dial(listener.Addr().String(), grpc.WithInsecure(), grpc.WithBlock())
 				Expect(err).NotTo(HaveOccurred())
 				echoServiceClient = testpb.NewEchoServiceClient(clientConn)
 
@@ -621,6 +611,8 @@ var _ = Describe("Server", func() {
 
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())
+				_, err = streamClient.Recv()
+				Expect(err).To(Equal(io.EOF))
 			})
 
 			AfterEach(func() {
@@ -632,11 +624,10 @@ var _ = Describe("Server", func() {
 			})
 
 			It("uses the levels returned by the levelers", func() {
-				Eventually(leveler.CallCount).Should(Equal(1))
-				Eventually(observed.FilterMessage("streaming call completed").AllUntimed, 2*time.Second).Should(HaveLen(1))
+				Expect(leveler.CallCount()).To(Equal(1))
 				Expect(observed.FilterMessage("streaming call completed").AllUntimed()[0].Level).To(Equal(zapcore.ErrorLevel))
 
-				Eventually(payloadLeveler.CallCount).Should(Equal(1))
+				Expect(payloadLeveler.CallCount()).To(Equal(1))
 				Expect(observed.FilterMessage("received stream message").AllUntimed()).To(HaveLen(1))
 				Expect(observed.FilterMessage("received stream message").AllUntimed()[0].Level).To(Equal(zapcore.WarnLevel))
 				Expect(observed.FilterMessage("sending stream message").AllUntimed()).To(HaveLen(1))
@@ -644,12 +635,12 @@ var _ = Describe("Server", func() {
 			})
 
 			It("provides the decorated context and full method name to the levelers", func() {
-				Eventually(leveler.CallCount).Should(Equal(1))
+				Expect(leveler.CallCount()).To(Equal(1))
 				ctx, fullMethod := leveler.ArgsForCall(0)
 				Expect(grpclogging.ZapFields(ctx)).NotTo(BeEmpty())
 				Expect(fullMethod).To(Equal("/testpb.EchoService/EchoStream"))
 
-				Eventually(payloadLeveler.CallCount).Should(Equal(1))
+				Expect(payloadLeveler.CallCount()).To(Equal(1))
 				ctx, fullMethod = payloadLeveler.ArgsForCall(0)
 				Expect(grpclogging.ZapFields(ctx)).NotTo(BeEmpty())
 				Expect(fullMethod).To(Equal("/testpb.EchoService/EchoStream"))
