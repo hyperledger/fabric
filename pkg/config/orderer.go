@@ -36,6 +36,11 @@ type Orderer struct {
 	// Capabilities is a map of the capabilities the orderer supports.
 	Capabilities map[string]bool
 	Policies     map[string]Policy
+	// State defines the orderer mode of operation.
+	// Normal is during normal operation
+	// Maintenance is during consensus type migration
+	// Options: `STATE_NORMAL` and `STATE_MAINTENANCE`
+	State string
 }
 
 // BatchSize is the configuration affecting the size of batches.
@@ -167,7 +172,12 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 		return fmt.Errorf("unknown orderer type '%s'", o.OrdererType)
 	}
 
-	err = addValue(ordererGroup, consensusTypeValue(o.OrdererType, consensusMetadata), AdminsPolicyKey)
+	consensusState, ok := ob.ConsensusType_State_value[o.State]
+	if !ok {
+		return fmt.Errorf("unknown consensus state '%s'", o.State)
+	}
+
+	err = addValue(ordererGroup, consensusTypeValue(o.OrdererType, consensusMetadata, consensusState), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
@@ -262,12 +272,13 @@ func marshalEtcdRaftMetadata(md eb.ConfigMetadata) ([]byte, error) {
 
 // consensusTypeValue returns the config definition for the orderer consensus type.
 // It is a value for the /Channel/Orderer group.
-func consensusTypeValue(consensusType string, consensusMetadata []byte) *standardConfigValue {
+func consensusTypeValue(consensusType string, consensusMetadata []byte, consensusState int32) *standardConfigValue {
 	return &standardConfigValue{
 		key: ConsensusTypeKey,
 		value: &ob.ConsensusType{
 			Type:     consensusType,
 			Metadata: consensusMetadata,
+			State:    ob.ConsensusType_State(consensusState),
 		},
 	}
 }

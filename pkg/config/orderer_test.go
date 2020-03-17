@@ -138,6 +138,13 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 			},
 			err: errors.New("org group 'OrdererOrg': no policies defined"),
 		},
+		{
+			testName: "When consensus state is invalid",
+			ordererMod: func(o *Orderer) {
+				o.State = "invalid state"
+			},
+			err: errors.New("unknown consensus state 'invalid state'"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -471,5 +478,6 @@ func baseOrderer() Orderer {
 			PreferredMaxBytes: 100,
 		},
 		Addresses: []string{"localhost:123"},
+		State:     ob.ConsensusType_State_name[0],
 	}
 }
