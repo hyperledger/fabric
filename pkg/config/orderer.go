@@ -18,6 +18,9 @@ import (
 	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 )
 
+// ConsensusState defines the orderer mode of operation.
+type ConsensusState string
+
 // Orderer configures the ordering service behavior for a channel.
 type Orderer struct {
 	// OrdererType is the type of orderer
@@ -36,11 +39,8 @@ type Orderer struct {
 	// Capabilities is a map of the capabilities the orderer supports.
 	Capabilities map[string]bool
 	Policies     map[string]Policy
-	// State defines the orderer mode of operation.
-	// Normal is during normal operation
-	// Maintenance is during consensus type migration
-	// Options: `STATE_NORMAL` and `STATE_MAINTENANCE`
-	State string
+	// Options: `ConsensusStateNormal` and `ConsensusStateMaintenance`
+	State ConsensusState
 }
 
 // BatchSize is the configuration affecting the size of batches.
@@ -172,7 +172,7 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 		return fmt.Errorf("unknown orderer type '%s'", o.OrdererType)
 	}
 
-	consensusState, ok := ob.ConsensusType_State_value[o.State]
+	consensusState, ok := ob.ConsensusType_State_value[string(o.State)]
 	if !ok {
 		return fmt.Errorf("unknown consensus state '%s'", o.State)
 	}
