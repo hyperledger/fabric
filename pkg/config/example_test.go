@@ -387,6 +387,7 @@ func Example_usage() {
 			PreferredMaxBytes: 100,
 		},
 		Addresses: []string{"127.0.0.1:7050"},
+		State:     "STATE_NORMAL",
 	}
 
 	err := config.UpdateOrdererConfiguration(updatedConfig, orderer)
