@@ -143,7 +143,7 @@ consistent across organizations:
   incremented to 2.
 - **Endorsement Policy:** Which organizations need to execute and validate the
   transaction output. The endorsement policy can be expressed as a string passed
-  to the CLI or the SDK, or it can reference a policy in the channel config. By
+  to the CLI, or it can reference a policy in the channel config. By
   default, the endorsement policy is set to ``Channel/Application/Endorsement``,
   which defaults to require that a majority of organizations in the channel
   endorse a transaction.
