@@ -613,7 +613,7 @@ func TestDBRequestTimeout(t *testing.T) {
 	defer cleanup(database)
 
 	//create an impossibly short timeout
-	impossibleTimeout := time.Microsecond * 1
+	impossibleTimeout := time.Nanosecond
 
 	//create a new instance and database object with a timeout that will fail
 	//Also use a maxRetriesOnStartup=3 to reduce the number of retries
