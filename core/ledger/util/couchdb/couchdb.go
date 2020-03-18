@@ -420,7 +420,7 @@ func (couchInstance *CouchInstance) VerifyCouchConfig() (*ConnectionInfo, *DBRet
 	}
 
 	// trace the database info response
-	logger.Debugw("VerifyConnection() dbResponseJSON: %s", dbResponse)
+	logger.Debugw("VerifyConnection()", "dbResponseJSON", dbResponse)
 
 	//check to see if the system databases exist
 	//Verifying the existence of the system database accomplishes two steps
