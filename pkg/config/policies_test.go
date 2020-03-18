@@ -232,7 +232,7 @@ func TestRemoveApplicationPolicy(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	actualPolicies := config.ChannelGroup.Groups[ApplicationGroupKey].Policies
-	gt.Expect(len(actualPolicies)).To(Equal(3))
+	gt.Expect(actualPolicies).To(HaveLen(3))
 	gt.Expect(applicationGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
 	gt.Expect(applicationGroup.Policies[ReadersPolicyKey]).NotTo(BeNil())
 	gt.Expect(applicationGroup.Policies[WritersPolicyKey]).NotTo(BeNil())
@@ -306,14 +306,16 @@ func TestAddConsortiumOrgPolicy(t *testing.T) {
 		},
 	}
 
+	consortium1Org1 := config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]
+
 	err = AddConsortiumOrgPolicy(config, "Consortium1", "Org1", "TestPolicy", Policy{Type: ImplicitMetaPolicyType, Rule: "MAJORITY Endorsement"})
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(len(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies)).To(Equal(5))
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[WritersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies["TestPolicy"]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies).To(HaveLen(5))
+	gt.Expect(consortium1Org1.Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies[EndorsementPolicyKey]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies["TestPolicy"]).NotTo(BeNil())
 }
 
 func TestAddConsortiumOrgPolicyFailures(t *testing.T) {
@@ -388,13 +390,15 @@ func TestRemoveConsortiumOrgPolicy(t *testing.T) {
 		},
 	}
 
+	consortium1Org1 := config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]
+
 	err = RemoveConsortiumOrgPolicy(config, "Consortium1", "Org1", "TestPolicy")
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(len(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies)).To(Equal(4))
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[WritersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies).To(HaveLen(4))
+	gt.Expect(consortium1Org1.Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(consortium1Org1.Policies[EndorsementPolicyKey]).NotTo(BeNil())
 }
 
 func TestRemoveConsortiumOrgPolicyFailures(t *testing.T) {
@@ -457,14 +461,16 @@ func TestAddOrdererPolicy(t *testing.T) {
 		},
 	}
 
+	ordererConfigGroup := config.ChannelGroup.Groups[OrdererGroupKey]
+
 	err = AddOrdererPolicy(config, AdminsPolicyKey, "TestPolicy", Policy{Type: ImplicitMetaPolicyType, Rule: "ANY Endorsement"})
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(len(config.ChannelGroup.Groups[OrdererGroupKey].Policies)).To(Equal(5))
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[WritersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies["TestPolicy"]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[BlockValidationPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies).To(HaveLen(5))
+	gt.Expect(ordererConfigGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies["TestPolicy"]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies[BlockValidationPolicyKey]).NotTo(BeNil())
 }
 
 func TestAddOrdererPolicyFailures(t *testing.T) {
@@ -508,14 +514,15 @@ func TestRemoveOrdererPolicy(t *testing.T) {
 		},
 	}
 
+	ordererConfigGroup := config.ChannelGroup.Groups[OrdererGroupKey]
+
 	err = RemoveOrdererPolicy(config, "TestPolicy")
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(len(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies)).To(Equal(4))
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[WritersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Policies[BlockValidationPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies).To(HaveLen(4))
+	gt.Expect(ordererConfigGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererConfigGroup.Policies[BlockValidationPolicyKey]).NotTo(BeNil())
 }
 
 func TestRemoveOrdererPolicyFailures(t *testing.T) {
@@ -606,14 +613,16 @@ func TestAddOrdererOrgPolicy(t *testing.T) {
 		},
 	}
 
+	ordererOrgConfigGroup := config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"]
+
 	err = AddOrdererOrgPolicy(config, "OrdererOrg", AdminsPolicyKey, "TestPolicy", Policy{Type: ImplicitMetaPolicyType, Rule: "ANY Endorsement"})
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(len(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies)).To(Equal(5))
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[WritersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies["TestPolicy"]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies).To(HaveLen(5))
+	gt.Expect(ordererOrgConfigGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies["TestPolicy"]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies[EndorsementPolicyKey]).NotTo(BeNil())
 }
 
 func TestAddOrdererOrgPolicyFailures(t *testing.T) {
@@ -657,13 +666,15 @@ func TestRemoveOrdererOrgPolicy(t *testing.T) {
 		},
 	}
 
+	ordererOrgConfigGroup := config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"]
+
 	err = RemoveOrdererOrgPolicy(config, "OrdererOrg", "TestPolicy")
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(len(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies)).To(Equal(4))
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[WritersPolicyKey]).NotTo(BeNil())
-	gt.Expect(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies).To(HaveLen(4))
+	gt.Expect(ordererOrgConfigGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies[ReadersPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies[WritersPolicyKey]).NotTo(BeNil())
+	gt.Expect(ordererOrgConfigGroup.Policies[EndorsementPolicyKey]).NotTo(BeNil())
 }
 
 func TestRemoveOrdererOrgPolicyFailures(t *testing.T) {
