@@ -71,7 +71,7 @@ func (b *EventBroker) ProcessInstallEvent(localChaincode *LocalChaincode) {
 			// the install will proceed and finally will, give a call back whether the install
 			// is succeeded.
 			// The purpose of splitting this in two phases was to essentially not miss on an install
-			// event in the case of a system crash immediatly after install and before the listeners
+			// event in the case of a system crash immediately after install and before the listeners
 			// gets a chance.
 			// However, in the current install model, the lifecycle cache receives the event only after
 			// the install is complete. So, for now, call the done on the listeners with a hard-wired 'true'
@@ -83,7 +83,7 @@ func (b *EventBroker) ProcessInstallEvent(localChaincode *LocalChaincode) {
 
 // ProcessApproveOrDefineEvent gets invoked by an event that makes approve and define to be true
 // This should be OK even if this function gets invoked on defined and approved events separately because
-// the first check in this fucntion evaluates the final condition. However, the current cache implementation
+// the first check in this function evaluates the final condition. However, the current cache implementation
 // invokes this function when approve and define both become true.
 func (b *EventBroker) ProcessApproveOrDefineEvent(channelID string, chaincodeName string, cachedChaincode *CachedChaincodeDefinition) {
 	logger.Debugw("processApproveOrDefineEvent()", "channelID", channelID, "chaincodeName", chaincodeName, "cachedChaincode", cachedChaincode)
@@ -107,7 +107,7 @@ func (b *EventBroker) ProcessApproveOrDefineEvent(channelID string, chaincodeNam
 	return
 }
 
-// ApproveOrDefineCommitted gets invoked after the commit of state updates that triggered the invocaiton of
+// ApproveOrDefineCommitted gets invoked after the commit of state updates that triggered the invocation of
 // "ProcessApproveOrDefineEvent" function
 func (b *EventBroker) ApproveOrDefineCommitted(channelID string) {
 	_, ok := b.defineCallbackStatus.Load(channelID)
