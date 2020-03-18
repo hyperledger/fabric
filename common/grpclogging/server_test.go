@@ -8,7 +8,6 @@ package grpclogging_test
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -73,13 +72,6 @@ var _ = Describe("Server", func() {
 			return stream.Send(msg)
 		}
 
-		serverTLSConfig := &tls.Config{
-			Certificates: []tls.Certificate{serverCertWithKey},
-			ClientAuth:   tls.VerifyClientCertIfGiven,
-			ClientCAs:    caCertPool,
-			RootCAs:      caCertPool,
-		}
-		serverTLSConfig.BuildNameToCertificate()
 		server = grpc.NewServer(
 			grpc.Creds(credentials.NewTLS(serverTLSConfig)),
 			grpc.StreamInterceptor(grpclogging.StreamServerInterceptor(logger)),
@@ -90,11 +82,6 @@ var _ = Describe("Server", func() {
 		serveCompleteCh = make(chan error, 1)
 		go func() { serveCompleteCh <- server.Serve(listener) }()
 
-		clientTLSConfig := &tls.Config{
-			Certificates: []tls.Certificate{clientCertWithKey},
-			RootCAs:      caCertPool,
-		}
-		clientTLSConfig.BuildNameToCertificate()
 		dialOpts := []grpc.DialOption{
 			grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
 			grpc.WithBlock(),
