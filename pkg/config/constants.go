@@ -110,4 +110,10 @@ const (
 
 	// SignaturePolicyType is the 'Type' string for signature policies.
 	SignaturePolicyType = "Signature"
+
+	// ConsensusStateNormal indicates normal orderer operation.
+	ConsensusStateNormal ConsensusState = "STATE_NORMAL"
+
+	// ConsensusStateMaintenance indicates the orderer is in consensus type migration.
+	ConsensusStateMaintenance ConsensusState = "STATE_MAINTENANCE"
 )

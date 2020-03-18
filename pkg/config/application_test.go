@@ -594,7 +594,6 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 
 	orgNoAnchor := Organization{
 		Name:     "Org1",
-		ID:       "Org1MSP",
 		Policies: applicationOrgStandardPolicies(),
 		MSP:      baseMSP(),
 	}

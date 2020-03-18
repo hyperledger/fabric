@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package signer
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
@@ -85,11 +86,33 @@ func loadPrivateKey(file string) (*ecdsa.PrivateKey, error) {
 	if bl == nil {
 		return nil, errors.Errorf("failed to decode PEM block from %s", file)
 	}
-	key, err := x509.ParsePKCS8PrivateKey(bl.Bytes)
+	key, err := parsePrivateKey(bl.Bytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse private key from %s", file)
+		return nil, err
 	}
 	return key.(*ecdsa.PrivateKey), nil
+}
+
+// Based on crypto/tls/tls.go but modified for Fabric:
+func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
+	// OpenSSL 1.0.0 generates PKCS#8 keys.
+	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
+		switch key := key.(type) {
+		// Fabric only supports ECDSA at the moment.
+		case *ecdsa.PrivateKey:
+			return key, nil
+		default:
+			return nil, errors.Errorf("found unknown private key type (%T) in PKCS#8 wrapping", key)
+		}
+	}
+
+	// OpenSSL ecparam generates SEC1 EC private keys for ECDSA.
+	key, err := x509.ParseECPrivateKey(der)
+	if err != nil {
+		return nil, errors.Errorf("failed to parse private key: %v", err)
+	}
+
+	return key, nil
 }
 
 func signECDSA(k *ecdsa.PrivateKey, digest []byte) (signature []byte, err error) {

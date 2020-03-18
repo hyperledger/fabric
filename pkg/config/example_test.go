@@ -38,7 +38,7 @@ func fetchChannelConfig() *cb.Config {
 						"OrdererOrg": {
 							Groups: map[string]*cb.ConfigGroup{},
 							Values: map[string]*cb.ConfigValue{
-								config.OrdererAddressesKey: {
+								config.EndpointsKey: {
 									ModPolicy: config.AdminsPolicyKey,
 									Value: marshalOrPanic(&cb.OrdererAddresses{
 										Addresses: []string{"127.0.0.1:7050"},
@@ -387,6 +387,7 @@ func Example_usage() {
 			PreferredMaxBytes: 100,
 		},
 		Addresses: []string{"127.0.0.1:7050"},
+		State:     "STATE_NORMAL",
 	}
 
 	err := config.UpdateOrdererConfiguration(updatedConfig, orderer)
@@ -418,7 +419,6 @@ func Example_usage() {
 
 	org := config.Organization{
 		Name:             "OrdererOrg2",
-		ID:               "OrdererOrg2MSP",
 		MSP:              config.MSP{},
 		OrdererEndpoints: []string{"127.0.0.1:7050"},
 		Policies: map[string]config.Policy{

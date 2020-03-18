@@ -622,7 +622,7 @@ func TestConfigureClusterListener(t *testing.T) {
 	unUsedPort := allocatePort()
 
 	backupLogger := logger
-	logger = logger.With(zap.Hooks(func(entry zapcore.Entry) error {
+	logger = logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 		logEntries <- entry.Message
 		return nil
 	}))
@@ -692,7 +692,7 @@ func TestConfigureClusterListener(t *testing.T) {
 			},
 			expectedPanic:      "Failed to load cluster server key from 'bad' (I/O error)",
 			generalSrv:         &comm.GRPCServer{},
-			expectedLogEntries: []string{"Failed to load cluster server certificate from 'bad' (I/O error)"},
+			expectedLogEntries: []string{"Failed to load cluster server key from 'bad' (I/O error)"},
 		},
 		{
 			name:        "invalid ca cert",
@@ -768,7 +768,7 @@ func TestConfigureClusterListener(t *testing.T) {
 				logEntry := <-logEntries
 				loggedMessages = append(loggedMessages, logEntry)
 			}
-			assert.Subset(t, testCase.expectedLogEntries, loggedMessages)
+			assert.Subset(t, loggedMessages, testCase.expectedLogEntries)
 		})
 	}
 }
