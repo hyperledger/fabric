@@ -25,3 +25,4 @@ TESTS*.xml
 .tox/
 .vagrant/
 .vscode
+vendor/

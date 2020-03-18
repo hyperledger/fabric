@@ -232,7 +232,7 @@ func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, err
 			continue
 		}
 		if key == "GOPROXY" {
-			env = append(env, "GOPROXY=https://proxy.golang.org")
+			env = append(env, "GOPROXY=https://goproxy.cn")
 		}
 	}
 	ldFlagOpts := getLDFlagsOpts()

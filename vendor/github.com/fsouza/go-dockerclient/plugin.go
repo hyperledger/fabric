@@ -40,10 +40,10 @@ func (c *Client) InstallPlugins(opts InstallPluginOptions) error {
 		data:    opts.Plugins,
 		context: opts.Context,
 	})
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
 	return nil
 }
 
@@ -288,6 +288,7 @@ type EnablePluginOptions struct {
 func (c *Client) EnablePlugin(opts EnablePluginOptions) error {
 	path := "/plugins/" + opts.Name + "/enable?" + queryString(opts)
 	resp, err := c.do("POST", path, doOptions{context: opts.Context})
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
@@ -311,6 +312,7 @@ type DisablePluginOptions struct {
 func (c *Client) DisablePlugin(opts DisablePluginOptions) error {
 	path := "/plugins/" + opts.Name + "/disable"
 	resp, err := c.do("POST", path, doOptions{context: opts.Context})
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
@@ -337,12 +339,11 @@ func (c *Client) CreatePlugin(opts CreatePluginOptions) (string, error) {
 	path := "/plugins/create?" + queryString(opts)
 	resp, err := c.do("POST", path, doOptions{
 		data:    opts.Path,
-		context: opts.Context,
-	})
+		context: opts.Context})
+	defer resp.Body.Close()
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 	containerNameBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
@@ -366,10 +367,10 @@ type PushPluginOptions struct {
 func (c *Client) PushPlugin(opts PushPluginOptions) error {
 	path := "/plugins/" + opts.Name + "/push"
 	resp, err := c.do("POST", path, doOptions{context: opts.Context})
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
 	return nil
 }
 
@@ -393,13 +394,13 @@ func (c *Client) ConfigurePlugin(opts ConfigurePluginOptions) error {
 		data:    opts.Envs,
 		context: opts.Context,
 	})
+	defer resp.Body.Close()
 	if err != nil {
 		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
 			return &NoSuchPlugin{ID: opts.Name}
 		}
 		return err
 	}
-	resp.Body.Close()
 	return nil
 }
 

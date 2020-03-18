@@ -69,8 +69,6 @@ type MountStats interface {
 type MountStatsNFS struct {
 	// The version of statistics provided.
 	StatVersion string
-	// The mount options of the NFS mount.
-	Opts map[string]string
 	// The age of the NFS mount.
 	Age time.Duration
 	// Statistics related to byte counters for various operations.
@@ -181,11 +179,11 @@ type NFSOperationStats struct {
 	// Number of bytes received for this operation, including RPC headers and payload.
 	BytesReceived uint64
 	// Duration all requests spent queued for transmission before they were sent.
-	CumulativeQueueMilliseconds uint64
+	CumulativeQueueTime time.Duration
 	// Duration it took to get a reply back after the request was transmitted.
-	CumulativeTotalResponseMilliseconds uint64
+	CumulativeTotalResponseTime time.Duration
 	// Duration from when a request was enqueued to when it was completely handled.
-	CumulativeTotalRequestMilliseconds uint64
+	CumulativeTotalRequestTime time.Duration
 }
 
 // A NFSTransportStats contains statistics for the NFS mount RPC requests and
@@ -204,7 +202,7 @@ type NFSTransportStats struct {
 	// spent waiting for connections to the server to be established.
 	ConnectIdleTime uint64
 	// Duration since the NFS mount last saw any RPC traffic.
-	IdleTimeSeconds uint64
+	IdleTime time.Duration
 	// Number of RPC requests for this mount sent to the NFS server.
 	Sends uint64
 	// Number of RPC responses for this mount received from the NFS server.
@@ -319,7 +317,6 @@ func parseMount(ss []string) (*Mount, error) {
 func parseMountStatsNFS(s *bufio.Scanner, statVersion string) (*MountStatsNFS, error) {
 	// Field indicators for parsing specific types of data
 	const (
-		fieldOpts       = "opts:"
 		fieldAge        = "age:"
 		fieldBytes      = "bytes:"
 		fieldEvents     = "events:"
@@ -341,18 +338,6 @@ func parseMountStatsNFS(s *bufio.Scanner, statVersion string) (*MountStatsNFS, e
 		}
 
 		switch ss[0] {
-		case fieldOpts:
-			if stats.Opts == nil {
-				stats.Opts = map[string]string{}
-			}
-			for _, opt := range strings.Split(ss[1], ",") {
-				split := strings.Split(opt, "=")
-				if len(split) == 2 {
-					stats.Opts[split[0]] = split[1]
-				} else {
-					stats.Opts[opt] = ""
-				}
-			}
 		case fieldAge:
 			// Age integer is in seconds
 			d, err := time.ParseDuration(ss[1] + "s")
@@ -524,15 +509,15 @@ func parseNFSOperationStats(s *bufio.Scanner) ([]NFSOperationStats, error) {
 		}
 
 		ops = append(ops, NFSOperationStats{
-			Operation:                           strings.TrimSuffix(ss[0], ":"),
-			Requests:                            ns[0],
-			Transmissions:                       ns[1],
-			MajorTimeouts:                       ns[2],
-			BytesSent:                           ns[3],
-			BytesReceived:                       ns[4],
-			CumulativeQueueMilliseconds:         ns[5],
-			CumulativeTotalResponseMilliseconds: ns[6],
-			CumulativeTotalRequestMilliseconds:  ns[7],
+			Operation:                   strings.TrimSuffix(ss[0], ":"),
+			Requests:                    ns[0],
+			Transmissions:               ns[1],
+			MajorTimeouts:               ns[2],
+			BytesSent:                   ns[3],
+			BytesReceived:               ns[4],
+			CumulativeQueueTime:         time.Duration(ns[5]) * time.Millisecond,
+			CumulativeTotalResponseTime: time.Duration(ns[6]) * time.Millisecond,
+			CumulativeTotalRequestTime:  time.Duration(ns[7]) * time.Millisecond,
 		})
 	}
 
@@ -608,7 +593,7 @@ func parseNFSTransportStats(ss []string, statVersion string) (*NFSTransportStats
 		Bind:                     ns[1],
 		Connect:                  ns[2],
 		ConnectIdleTime:          ns[3],
-		IdleTimeSeconds:          ns[4],
+		IdleTime:                 time.Duration(ns[4]) * time.Second,
 		Sends:                    ns[5],
 		Receives:                 ns[6],
 		BadTransactionIDs:        ns[7],

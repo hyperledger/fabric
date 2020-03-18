@@ -1,41 +1,8 @@
 package sarama
 
-import (
-	"fmt"
-	"time"
-)
-
-type ConfigSource int8
-
-func (s ConfigSource) String() string {
-	switch s {
-	case SourceUnknown:
-		return "Unknown"
-	case SourceTopic:
-		return "Topic"
-	case SourceDynamicBroker:
-		return "DynamicBroker"
-	case SourceDynamicDefaultBroker:
-		return "DynamicDefaultBroker"
-	case SourceStaticBroker:
-		return "StaticBroker"
-	case SourceDefault:
-		return "Default"
-	}
-	return fmt.Sprintf("Source Invalid: %d", int(s))
-}
-
-const (
-	SourceUnknown              ConfigSource = 0
-	SourceTopic                ConfigSource = 1
-	SourceDynamicBroker        ConfigSource = 2
-	SourceDynamicDefaultBroker ConfigSource = 3
-	SourceStaticBroker         ConfigSource = 4
-	SourceDefault              ConfigSource = 5
-)
+import "time"
 
 type DescribeConfigsResponse struct {
-	Version      int16
 	ThrottleTime time.Duration
 	Resources    []*ResourceResponse
 }
@@ -53,15 +20,7 @@ type ConfigEntry struct {
 	Value     string
 	ReadOnly  bool
 	Default   bool
-	Source    ConfigSource
 	Sensitive bool
-	Synonyms  []*ConfigSynonym
-}
-
-type ConfigSynonym struct {
-	ConfigName  string
-	ConfigValue string
-	Source      ConfigSource
 }
 
 func (r *DescribeConfigsResponse) encode(pe packetEncoder) (err error) {
@@ -71,16 +30,14 @@ func (r *DescribeConfigsResponse) encode(pe packetEncoder) (err error) {
 	}
 
 	for _, c := range r.Resources {
-		if err = c.encode(pe, r.Version); err != nil {
+		if err = c.encode(pe); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
 func (r *DescribeConfigsResponse) decode(pd packetDecoder, version int16) (err error) {
-	r.Version = version
 	throttleTime, err := pd.getInt32()
 	if err != nil {
 		return err
@@ -109,21 +66,14 @@ func (r *DescribeConfigsResponse) key() int16 {
 }
 
 func (r *DescribeConfigsResponse) version() int16 {
-	return r.Version
+	return 0
 }
 
 func (r *DescribeConfigsResponse) requiredVersion() KafkaVersion {
-	switch r.Version {
-	case 1:
-		return V1_0_0_0
-	case 2:
-		return V2_0_0_0
-	default:
-		return V0_11_0_0
-	}
+	return V0_11_0_0
 }
 
-func (r *ResourceResponse) encode(pe packetEncoder, version int16) (err error) {
+func (r *ResourceResponse) encode(pe packetEncoder) (err error) {
 	pe.putInt16(r.ErrorCode)
 
 	if err = pe.putString(r.ErrorMsg); err != nil {
@@ -141,7 +91,7 @@ func (r *ResourceResponse) encode(pe packetEncoder, version int16) (err error) {
 	}
 
 	for _, c := range r.Configs {
-		if err = c.encode(pe, version); err != nil {
+		if err = c.encode(pe); err != nil {
 			return err
 		}
 	}
@@ -189,7 +139,7 @@ func (r *ResourceResponse) decode(pd packetDecoder, version int16) (err error) {
 	return nil
 }
 
-func (r *ConfigEntry) encode(pe packetEncoder, version int16) (err error) {
+func (r *ConfigEntry) encode(pe packetEncoder) (err error) {
 	if err = pe.putString(r.Name); err != nil {
 		return err
 	}
@@ -199,32 +149,12 @@ func (r *ConfigEntry) encode(pe packetEncoder, version int16) (err error) {
 	}
 
 	pe.putBool(r.ReadOnly)
-
-	if version <= 0 {
-		pe.putBool(r.Default)
-		pe.putBool(r.Sensitive)
-	} else {
-		pe.putInt8(int8(r.Source))
-		pe.putBool(r.Sensitive)
-
-		if err := pe.putArrayLength(len(r.Synonyms)); err != nil {
-			return err
-		}
-		for _, c := range r.Synonyms {
-			if err = c.encode(pe, version); err != nil {
-				return err
-			}
-		}
-	}
-
+	pe.putBool(r.Default)
+	pe.putBool(r.Sensitive)
 	return nil
 }
 
-//https://cwiki.apache.org/confluence/display/KAFKA/KIP-226+-+Dynamic+Broker+Configuration
 func (r *ConfigEntry) decode(pd packetDecoder, version int16) (err error) {
-	if version == 0 {
-		r.Source = SourceUnknown
-	}
 	name, err := pd.getString()
 	if err != nil {
 		return err
@@ -243,78 +173,16 @@ func (r *ConfigEntry) decode(pd packetDecoder, version int16) (err error) {
 	}
 	r.ReadOnly = read
 
-	if version == 0 {
-		defaultB, err := pd.getBool()
-		if err != nil {
-			return err
-		}
-		r.Default = defaultB
-	} else {
-		source, err := pd.getInt8()
-		if err != nil {
-			return err
-		}
-		r.Source = ConfigSource(source)
+	de, err := pd.getBool()
+	if err != nil {
+		return err
 	}
+	r.Default = de
 
 	sensitive, err := pd.getBool()
 	if err != nil {
 		return err
 	}
 	r.Sensitive = sensitive
-
-	if version > 0 {
-		n, err := pd.getArrayLength()
-		if err != nil {
-			return err
-		}
-		r.Synonyms = make([]*ConfigSynonym, n)
-
-		for i := 0; i < n; i++ {
-			s := &ConfigSynonym{}
-			if err := s.decode(pd, version); err != nil {
-				return err
-			}
-			r.Synonyms[i] = s
-		}
-
-	}
-	return nil
-}
-
-func (c *ConfigSynonym) encode(pe packetEncoder, version int16) (err error) {
-	err = pe.putString(c.ConfigName)
-	if err != nil {
-		return err
-	}
-
-	err = pe.putString(c.ConfigValue)
-	if err != nil {
-		return err
-	}
-
-	pe.putInt8(int8(c.Source))
-
-	return nil
-}
-
-func (c *ConfigSynonym) decode(pd packetDecoder, version int16) error {
-	name, err := pd.getString()
-	if err != nil {
-		return nil
-	}
-	c.ConfigName = name
-
-	value, err := pd.getString()
-	if err != nil {
-		return nil
-	}
-	c.ConfigValue = value
-
-	source, err := pd.getInt8()
-	if err != nil {
-		return nil
-	}
-	c.Source = ConfigSource(source)
 	return nil
 }

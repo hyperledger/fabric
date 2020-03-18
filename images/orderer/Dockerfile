@@ -5,10 +5,10 @@
 ARG GO_VER
 ARG ALPINE_VER
 FROM alpine:${ALPINE_VER} as base
-RUN apk add --no-cache tzdata
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories   && apk add --no-cache tzdata
 
 FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
-RUN apk add --no-cache \
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories   && apk add --no-cache \
 	gcc \
 	musl-dev \
 	git \
@@ -18,11 +18,13 @@ ADD . $GOPATH/src/github.com/hyperledger/fabric
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 
 FROM golang as orderer
+ENV GOPROXY=https://goproxy.cn
 ARG GO_TAGS
 RUN make orderer GO_TAGS=${GO_TAGS}
 
 FROM base
 ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
+ENV GOPROXY=https://goproxy.cn
 VOLUME /etc/hyperledger/fabric
 VOLUME /var/hyperledger
 COPY --from=orderer /go/src/github.com/hyperledger/fabric/build/bin /usr/local/bin

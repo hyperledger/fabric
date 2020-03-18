@@ -37,22 +37,9 @@ const reservedLabelPrefix = "__"
 
 var errInconsistentCardinality = errors.New("inconsistent label cardinality")
 
-func makeInconsistentCardinalityError(fqName string, labels, labelValues []string) error {
-	return fmt.Errorf(
-		"%s: %q has %d variable labels named %q but %d values %q were provided",
-		errInconsistentCardinality, fqName,
-		len(labels), labels,
-		len(labelValues), labelValues,
-	)
-}
-
 func validateValuesInLabels(labels Labels, expectedNumberOfValues int) error {
 	if len(labels) != expectedNumberOfValues {
-		return fmt.Errorf(
-			"%s: expected %d label values but got %d in %#v",
-			errInconsistentCardinality, expectedNumberOfValues,
-			len(labels), labels,
-		)
+		return errInconsistentCardinality
 	}
 
 	for name, val := range labels {
@@ -66,11 +53,7 @@ func validateValuesInLabels(labels Labels, expectedNumberOfValues int) error {
 
 func validateLabelValues(vals []string, expectedNumberOfValues int) error {
 	if len(vals) != expectedNumberOfValues {
-		return fmt.Errorf(
-			"%s: expected %d label values but got %d in %#v",
-			errInconsistentCardinality, expectedNumberOfValues,
-			len(vals), vals,
-		)
+		return errInconsistentCardinality
 	}
 
 	for _, val := range vals {

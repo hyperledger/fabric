@@ -13,7 +13,7 @@ import (
 )
 
 // Current version
-const Version = "1.0.28"
+const Version = "1.0.25"
 
 const (
 	// Default refresh rate - 200ms
@@ -159,16 +159,12 @@ func (pb *ProgressBar) Add64(add int64) int64 {
 
 // Set prefix string
 func (pb *ProgressBar) Prefix(prefix string) *ProgressBar {
-	pb.mu.Lock()
-	defer pb.mu.Unlock()
 	pb.prefix = prefix
 	return pb
 }
 
 // Set postfix string
 func (pb *ProgressBar) Postfix(postfix string) *ProgressBar {
-	pb.mu.Lock()
-	defer pb.mu.Unlock()
 	pb.postfix = postfix
 	return pb
 }
@@ -277,8 +273,6 @@ func (pb *ProgressBar) NewProxyReader(r io.Reader) *Reader {
 }
 
 func (pb *ProgressBar) write(total, current int64) {
-	pb.mu.Lock()
-	defer pb.mu.Unlock()
 	width := pb.GetWidth()
 
 	var percentBox, countersBox, timeLeftBox, timeSpentBox, speedBox, barBox, end, out string
@@ -306,10 +300,12 @@ func (pb *ProgressBar) write(total, current int64) {
 	}
 
 	// time left
+	pb.mu.Lock()
 	currentFromStart := current - pb.startValue
 	fromStart := time.Now().Sub(pb.startTime)
 	lastChangeTime := pb.changeTime
 	fromChange := lastChangeTime.Sub(pb.startTime)
+	pb.mu.Unlock()
 
 	if pb.ShowElapsedTime {
 		timeSpentBox = fmt.Sprintf(" %s ", (fromStart/time.Second)*time.Second)
@@ -327,8 +323,11 @@ func (pb *ProgressBar) write(total, current int64) {
 			perEntry := fromChange / time.Duration(currentFromStart)
 			var left time.Duration
 			if total > 0 {
-				left = time.Duration(total-current) * perEntry
+				left = time.Duration(total-currentFromStart) * perEntry
 				left -= time.Since(lastChangeTime)
+				left = (left / time.Second) * time.Second
+			} else {
+				left = time.Duration(currentFromStart) * perEntry
 				left = (left / time.Second) * time.Second
 			}
 			if left > 0 {
@@ -395,12 +394,13 @@ func (pb *ProgressBar) write(total, current int64) {
 
 	// check len
 	out = pb.prefix + timeSpentBox + countersBox + barBox + percentBox + speedBox + timeLeftBox + pb.postfix
-
 	if cl := escapeAwareRuneCountInString(out); cl < width {
 		end = strings.Repeat(" ", width-cl)
 	}
 
 	// and print!
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
 	pb.lastPrint = out + end
 	isFinish := pb.isFinish
 

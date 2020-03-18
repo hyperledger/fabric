@@ -33,7 +33,7 @@ type FetchResponseBlock struct {
 	HighWaterMarkOffset int64
 	LastStableOffset    int64
 	AbortedTransactions []*AbortedTransaction
-	Records             *Records // deprecated: use FetchResponseBlock.RecordsSet
+	Records             *Records // deprecated: use FetchResponseBlock.Records
 	RecordsSet          []*Records
 	Partial             bool
 }

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	units "github.com/docker/go-units"
+	"github.com/Nvveen/Gotty"
+	"github.com/docker/go-units"
 	"github.com/fsouza/go-dockerclient/internal/term"
-	gotty "github.com/ijc/Gotty"
 )
 
 // RFC3339NanoFixed is time.RFC3339Nano with nanoseconds padded using zeros to
@@ -144,13 +144,13 @@ type JSONMessage struct {
 	Stream          string        `json:"stream,omitempty"`
 	Status          string        `json:"status,omitempty"`
 	Progress        *JSONProgress `json:"progressDetail,omitempty"`
-	ProgressMessage string        `json:"progress,omitempty"` // deprecated
+	ProgressMessage string        `json:"progress,omitempty"` //deprecated
 	ID              string        `json:"id,omitempty"`
 	From            string        `json:"from,omitempty"`
 	Time            int64         `json:"time,omitempty"`
 	TimeNano        int64         `json:"timeNano,omitempty"`
 	Error           *JSONError    `json:"errorDetail,omitempty"`
-	ErrorMessage    string        `json:"error,omitempty"` // deprecated
+	ErrorMessage    string        `json:"error,omitempty"` //deprecated
 	// Aux contains out-of-band data, such as digests for push signing and image id after building.
 	Aux *json.RawMessage `json:"aux,omitempty"`
 }
@@ -166,72 +166,43 @@ func (ti *noTermInfo) Parse(attr string, params ...interface{}) (string, error) 
 	return "", fmt.Errorf("noTermInfo")
 }
 
-func clearLine(out io.Writer, ti termInfo) error {
+func clearLine(out io.Writer, ti termInfo) {
 	// el2 (clear whole line) is not exposed by terminfo.
 
 	// First clear line from beginning to cursor
 	if attr, err := ti.Parse("el1"); err == nil {
-		_, err = fmt.Fprintf(out, "%s", attr)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s", attr)
 	} else {
-		_, err := fmt.Fprintf(out, "\x1b[1K")
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "\x1b[1K")
 	}
 	// Then clear line from cursor to end
 	if attr, err := ti.Parse("el"); err == nil {
-		_, err = fmt.Fprintf(out, "%s", attr)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s", attr)
 	} else {
-		_, err := fmt.Fprintf(out, "\x1b[K")
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "\x1b[K")
 	}
-
-	return nil
 }
 
-func cursorUp(out io.Writer, ti termInfo, l int) error {
+func cursorUp(out io.Writer, ti termInfo, l int) {
 	if l == 0 { // Should never be the case, but be tolerant
-		return nil
+		return
 	}
 	if attr, err := ti.Parse("cuu", l); err == nil {
-		_, err = fmt.Fprintf(out, "%s", attr)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s", attr)
 	} else {
-		_, err := fmt.Fprintf(out, "\x1b[%dA", l)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "\x1b[%dA", l)
 	}
-	return nil
 }
 
-func cursorDown(out io.Writer, ti termInfo, l int) error {
+func cursorDown(out io.Writer, ti termInfo, l int) {
 	if l == 0 { // Should never be the case, but be tolerant
-		return nil
+		return
 	}
 	if attr, err := ti.Parse("cud", l); err == nil {
-		_, err = fmt.Fprintf(out, "%s", attr)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s", attr)
 	} else {
-		_, err := fmt.Fprintf(out, "\x1b[%dB", l)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "\x1b[%dB", l)
 	}
-
-	return nil
 }
 
 // Display displays the JSONMessage to `out`. `termInfo` is non-nil if `out`
@@ -248,56 +219,29 @@ func (jm *JSONMessage) Display(out io.Writer, termInfo termInfo) error {
 	if termInfo != nil && jm.Stream == "" && jm.Progress != nil {
 		clearLine(out, termInfo)
 		endl = "\r"
-		_, err := fmt.Fprint(out, endl)
-		if err != nil {
-			return err
-		}
-	} else if jm.Progress != nil && jm.Progress.String() != "" { // disable progressbar in non-terminal
+		fmt.Fprintf(out, endl)
+	} else if jm.Progress != nil && jm.Progress.String() != "" { //disable progressbar in non-terminal
 		return nil
 	}
 	if jm.TimeNano != 0 {
-		_, err := fmt.Fprintf(out, "%s ", time.Unix(0, jm.TimeNano).Format(RFC3339NanoFixed))
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s ", time.Unix(0, jm.TimeNano).Format(RFC3339NanoFixed))
 	} else if jm.Time != 0 {
-		_, err := fmt.Fprintf(out, "%s ", time.Unix(jm.Time, 0).Format(RFC3339NanoFixed))
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s ", time.Unix(jm.Time, 0).Format(RFC3339NanoFixed))
 	}
 	if jm.ID != "" {
-		_, err := fmt.Fprintf(out, "%s: ", jm.ID)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s: ", jm.ID)
 	}
 	if jm.From != "" {
-		_, err := fmt.Fprintf(out, "(from %s) ", jm.From)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "(from %s) ", jm.From)
 	}
 	if jm.Progress != nil && termInfo != nil {
-		_, err := fmt.Fprintf(out, "%s %s%s", jm.Status, jm.Progress.String(), endl)
-		if err != nil {
-			return err
-		}
-	} else if jm.ProgressMessage != "" { // deprecated
-		_, err := fmt.Fprintf(out, "%s %s%s", jm.Status, jm.ProgressMessage, endl)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s %s%s", jm.Status, jm.Progress.String(), endl)
+	} else if jm.ProgressMessage != "" { //deprecated
+		fmt.Fprintf(out, "%s %s%s", jm.Status, jm.ProgressMessage, endl)
 	} else if jm.Stream != "" {
-		_, err := fmt.Fprintf(out, "%s%s", jm.Stream, endl)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s%s", jm.Stream, endl)
 	} else {
-		_, err := fmt.Fprintf(out, "%s%s\n", jm.Status, endl)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(out, "%s%s\n", jm.Status, endl)
 	}
 	return nil
 }
@@ -357,17 +301,12 @@ func DisplayJSONMessagesStream(in io.Reader, out io.Writer, terminalFd uintptr, 
 				line = len(ids)
 				ids[jm.ID] = line
 				if termInfo != nil {
-					_, err := fmt.Fprintf(out, "\n")
-					if err != nil {
-						return err
-					}
+					fmt.Fprintf(out, "\n")
 				}
 			}
 			diff = len(ids) - line
 			if termInfo != nil {
-				if err := cursorUp(out, termInfo, diff); err != nil {
-					return err
-				}
+				cursorUp(out, termInfo, diff)
 			}
 		} else {
 			// When outputting something that isn't progress
@@ -379,9 +318,7 @@ func DisplayJSONMessagesStream(in io.Reader, out io.Writer, terminalFd uintptr, 
 		}
 		err := jm.Display(out, termInfo)
 		if jm.ID != "" && termInfo != nil {
-			if err := cursorDown(out, termInfo, diff); err != nil {
-				return err
-			}
+			cursorDown(out, termInfo, diff)
 		}
 		if err != nil {
 			return err

@@ -49,9 +49,7 @@ func (overlayWhiteoutConverter) ConvertWrite(hdr *tar.Header, path string, fi os
 			return nil, err
 		}
 		if len(opaque) == 1 && opaque[0] == 'y' {
-			//lint:ignore SA1019 this is vendored/copied code
 			if hdr.Xattrs != nil {
-				//lint:ignore SA1019 this is vendored/copied code
 				delete(hdr.Xattrs, "trusted.overlay.opaque")
 			}
 

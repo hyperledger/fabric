@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -444,10 +445,15 @@ func (c *Client) ImportImage(opts ImportImageOptions) error {
 // For more details about the Docker building process, see
 // https://goo.gl/4nYHwV.
 type BuildImageOptions struct {
-	Context             context.Context
 	Name                string             `qs:"t"`
 	Dockerfile          string             `qs:"dockerfile"`
+	NoCache             bool               `qs:"nocache"`
 	CacheFrom           []string           `qs:"-"`
+	SuppressOutput      bool               `qs:"q"`
+	Pull                bool               `qs:"pull"`
+	RmTmpContainer      bool               `qs:"rm"`
+	ForceRmTmpContainer bool               `qs:"forcerm"`
+	RawJSONStream       bool               `qs:"-"`
 	Memory              int64              `qs:"memory"`
 	Memswap             int64              `qs:"memswap"`
 	CPUShares           int64              `qs:"cpushares"`
@@ -468,12 +474,7 @@ type BuildImageOptions struct {
 	CgroupParent        string             `qs:"cgroupparent"`
 	SecurityOpt         []string           `qs:"securityopt"`
 	Target              string             `gs:"target"`
-	NoCache             bool               `qs:"nocache"`
-	SuppressOutput      bool               `qs:"q"`
-	Pull                bool               `qs:"pull"`
-	RmTmpContainer      bool               `qs:"rm"`
-	ForceRmTmpContainer bool               `qs:"forcerm"`
-	RawJSONStream       bool               `qs:"-"`
+	Context             context.Context
 }
 
 // BuildArg represents arguments that can be passed to the image when building
@@ -557,7 +558,7 @@ func (c *Client) BuildImage(opts BuildImageOptions) error {
 	})
 }
 
-func (c *Client) versionedAuthConfigs(authConfigs AuthConfigurations) registryAuth {
+func (c *Client) versionedAuthConfigs(authConfigs AuthConfigurations) interface{} {
 	if c.serverAPIVersion == nil {
 		c.checkAPIVersion()
 	}
@@ -587,6 +588,7 @@ func (c *Client) TagImage(name string, opts TagImageOptions) error {
 	resp, err := c.do("POST", "/images/"+name+"/tag?"+queryString(&opts), doOptions{
 		context: opts.Context,
 	})
+
 	if err != nil {
 		return err
 	}
@@ -608,18 +610,24 @@ func isURL(u string) bool {
 	return p.Scheme == "http" || p.Scheme == "https"
 }
 
-func headersWithAuth(auths ...registryAuth) (map[string]string, error) {
+func headersWithAuth(auths ...interface{}) (map[string]string, error) {
 	var headers = make(map[string]string)
 
 	for _, auth := range auths {
-		if auth.isEmpty() {
-			continue
+		switch auth.(type) {
+		case AuthConfiguration:
+			var buf bytes.Buffer
+			if err := json.NewEncoder(&buf).Encode(auth); err != nil {
+				return nil, err
+			}
+			headers["X-Registry-Auth"] = base64.URLEncoding.EncodeToString(buf.Bytes())
+		case AuthConfigurations, AuthConfigurations119:
+			var buf bytes.Buffer
+			if err := json.NewEncoder(&buf).Encode(auth); err != nil {
+				return nil, err
+			}
+			headers["X-Registry-Config"] = base64.URLEncoding.EncodeToString(buf.Bytes())
 		}
-		data, err := json.Marshal(auth)
-		if err != nil {
-			return nil, err
-		}
-		headers[auth.headerKey()] = base64.URLEncoding.EncodeToString(data)
 	}
 
 	return headers, nil

@@ -6,8 +6,7 @@
 package grpc_middleware
 
 import (
-	"context"
-
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -19,19 +18,35 @@ import (
 func ChainUnaryServer(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
 	n := len(interceptors)
 
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		chainer := func(currentInter grpc.UnaryServerInterceptor, currentHandler grpc.UnaryHandler) grpc.UnaryHandler {
-			return func(currentCtx context.Context, currentReq interface{}) (interface{}, error) {
-				return currentInter(currentCtx, currentReq, info, currentHandler)
+	if n > 1 {
+		lastI := n - 1
+		return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+			var (
+				chainHandler grpc.UnaryHandler
+				curI         int
+			)
+
+			chainHandler = func(currentCtx context.Context, currentReq interface{}) (interface{}, error) {
+				if curI == lastI {
+					return handler(currentCtx, currentReq)
+				}
+				curI++
+				resp, err := interceptors[curI](currentCtx, currentReq, info, chainHandler)
+				curI--
+				return resp, err
 			}
-		}
 
-		chainedHandler := handler
-		for i := n - 1; i >= 0; i-- {
-			chainedHandler = chainer(interceptors[i], chainedHandler)
+			return interceptors[0](ctx, req, info, chainHandler)
 		}
+	}
 
-		return chainedHandler(ctx, req)
+	if n == 1 {
+		return interceptors[0]
+	}
+
+	// n == 0; Dummy interceptor maintained for backward compatibility to avoid returning nil.
+	return func(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		return handler(ctx, req)
 	}
 }
 
@@ -43,19 +58,35 @@ func ChainUnaryServer(interceptors ...grpc.UnaryServerInterceptor) grpc.UnarySer
 func ChainStreamServer(interceptors ...grpc.StreamServerInterceptor) grpc.StreamServerInterceptor {
 	n := len(interceptors)
 
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		chainer := func(currentInter grpc.StreamServerInterceptor, currentHandler grpc.StreamHandler) grpc.StreamHandler {
-			return func(currentSrv interface{}, currentStream grpc.ServerStream) error {
-				return currentInter(currentSrv, currentStream, info, currentHandler)
+	if n > 1 {
+		lastI := n - 1
+		return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+			var (
+				chainHandler grpc.StreamHandler
+				curI         int
+			)
+
+			chainHandler = func(currentSrv interface{}, currentStream grpc.ServerStream) error {
+				if curI == lastI {
+					return handler(currentSrv, currentStream)
+				}
+				curI++
+				err := interceptors[curI](currentSrv, currentStream, info, chainHandler)
+				curI--
+				return err
 			}
-		}
 
-		chainedHandler := handler
-		for i := n - 1; i >= 0; i-- {
-			chainedHandler = chainer(interceptors[i], chainedHandler)
+			return interceptors[0](srv, stream, info, chainHandler)
 		}
+	}
 
-		return chainedHandler(srv, ss)
+	if n == 1 {
+		return interceptors[0]
+	}
+
+	// n == 0; Dummy interceptor maintained for backward compatibility to avoid returning nil.
+	return func(srv interface{}, stream grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		return handler(srv, stream)
 	}
 }
 
@@ -66,19 +97,35 @@ func ChainStreamServer(interceptors ...grpc.StreamServerInterceptor) grpc.Stream
 func ChainUnaryClient(interceptors ...grpc.UnaryClientInterceptor) grpc.UnaryClientInterceptor {
 	n := len(interceptors)
 
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		chainer := func(currentInter grpc.UnaryClientInterceptor, currentInvoker grpc.UnaryInvoker) grpc.UnaryInvoker {
-			return func(currentCtx context.Context, currentMethod string, currentReq, currentRepl interface{}, currentConn *grpc.ClientConn, currentOpts ...grpc.CallOption) error {
-				return currentInter(currentCtx, currentMethod, currentReq, currentRepl, currentConn, currentInvoker, currentOpts...)
+	if n > 1 {
+		lastI := n - 1
+		return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+			var (
+				chainHandler grpc.UnaryInvoker
+				curI         int
+			)
+
+			chainHandler = func(currentCtx context.Context, currentMethod string, currentReq, currentRepl interface{}, currentConn *grpc.ClientConn, currentOpts ...grpc.CallOption) error {
+				if curI == lastI {
+					return invoker(currentCtx, currentMethod, currentReq, currentRepl, currentConn, currentOpts...)
+				}
+				curI++
+				err := interceptors[curI](currentCtx, currentMethod, currentReq, currentRepl, currentConn, chainHandler, currentOpts...)
+				curI--
+				return err
 			}
-		}
 
-		chainedInvoker := invoker
-		for i := n - 1; i >= 0; i-- {
-			chainedInvoker = chainer(interceptors[i], chainedInvoker)
+			return interceptors[0](ctx, method, req, reply, cc, chainHandler, opts...)
 		}
+	}
 
-		return chainedInvoker(ctx, method, req, reply, cc, opts...)
+	if n == 1 {
+		return interceptors[0]
+	}
+
+	// n == 0; Dummy interceptor maintained for backward compatibility to avoid returning nil.
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 }
 
@@ -89,19 +136,35 @@ func ChainUnaryClient(interceptors ...grpc.UnaryClientInterceptor) grpc.UnaryCli
 func ChainStreamClient(interceptors ...grpc.StreamClientInterceptor) grpc.StreamClientInterceptor {
 	n := len(interceptors)
 
-	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		chainer := func(currentInter grpc.StreamClientInterceptor, currentStreamer grpc.Streamer) grpc.Streamer {
-			return func(currentCtx context.Context, currentDesc *grpc.StreamDesc, currentConn *grpc.ClientConn, currentMethod string, currentOpts ...grpc.CallOption) (grpc.ClientStream, error) {
-				return currentInter(currentCtx, currentDesc, currentConn, currentMethod, currentStreamer, currentOpts...)
+	if n > 1 {
+		lastI := n - 1
+		return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+			var (
+				chainHandler grpc.Streamer
+				curI         int
+			)
+
+			chainHandler = func(currentCtx context.Context, currentDesc *grpc.StreamDesc, currentConn *grpc.ClientConn, currentMethod string, currentOpts ...grpc.CallOption) (grpc.ClientStream, error) {
+				if curI == lastI {
+					return streamer(currentCtx, currentDesc, currentConn, currentMethod, currentOpts...)
+				}
+				curI++
+				stream, err := interceptors[curI](currentCtx, currentDesc, currentConn, currentMethod, chainHandler, currentOpts...)
+				curI--
+				return stream, err
 			}
-		}
 
-		chainedStreamer := streamer
-		for i := n - 1; i >= 0; i-- {
-			chainedStreamer = chainer(interceptors[i], chainedStreamer)
+			return interceptors[0](ctx, desc, cc, method, chainHandler, opts...)
 		}
+	}
 
-		return chainedStreamer(ctx, desc, cc, method, opts...)
+	if n == 1 {
+		return interceptors[0]
+	}
+
+	// n == 0; Dummy interceptor maintained for backward compatibility to avoid returning nil.
+	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		return streamer(ctx, desc, cc, method, opts...)
 	}
 }
 

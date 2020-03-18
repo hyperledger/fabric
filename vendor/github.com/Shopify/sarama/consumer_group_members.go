@@ -1,6 +1,5 @@
 package sarama
 
-//ConsumerGroupMemberMetadata holds the metadata for consumer group
 type ConsumerGroupMemberMetadata struct {
 	Version  int16
 	Topics   []string
@@ -37,7 +36,6 @@ func (m *ConsumerGroupMemberMetadata) decode(pd packetDecoder) (err error) {
 	return nil
 }
 
-//ConsumerGroupMemberAssignment holds the member assignment for a consume group
 type ConsumerGroupMemberAssignment struct {
 	Version  int16
 	Topics   map[string][]int32
