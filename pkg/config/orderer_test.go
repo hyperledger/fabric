@@ -647,3 +647,152 @@ func TestAddOrdererEndpointFailure(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveOrdererEndpoint(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				OrdererGroupKey: {
+					Version: 0,
+					Groups: map[string]*cb.ConfigGroup{
+						"OrdererOrg": {
+							Groups: map[string]*cb.ConfigGroup{},
+							Values: map[string]*cb.ConfigValue{
+								EndpointsKey: {
+									ModPolicy: AdminsPolicyKey,
+									Value: marshalOrPanic(&cb.OrdererAddresses{
+										Addresses: []string{"127.0.0.1:7050",
+											"127.0.0.1:8050"},
+									}),
+								},
+							},
+							Policies: map[string]*cb.ConfigPolicy{},
+						},
+					},
+					Values:   map[string]*cb.ConfigValue{},
+					Policies: map[string]*cb.ConfigPolicy{},
+				},
+			},
+			Values:   map[string]*cb.ConfigValue{},
+			Policies: map[string]*cb.ConfigPolicy{},
+		},
+		Sequence: 0,
+	}
+
+	expectedUpdatedConfigJSON := `
+{
+	"channel_group": {
+		"groups": {
+			"Orderer": {
+				"groups": {
+                    "OrdererOrg": {
+						"groups": {},
+						"mod_policy": "",
+						"policies": {},
+						"values": {
+							"Endpoints": {
+								"mod_policy": "Admins",
+								"value": {
+									"addresses": [
+										"127.0.0.1:7050"
+									]
+								},
+								"version": "0"
+							}
+						},
+						"version": "0"
+					}
+				},
+                "mod_policy": "",
+		        "policies": {},
+		        "values": {},
+				"version": "0"
+			}
+		},
+		"mod_policy": "",
+		"policies": {},
+		"values": {},
+		"version": "0"
+	},
+	"sequence": "0"
+}
+	`
+	expectedUpdatedConfig := &cb.Config{}
+	err := protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
+	gt.Expect(err).ToNot(HaveOccurred())
+
+	removedEndpoint := "127.0.0.1:8050"
+	err = RemoveOrdererEndpoint(config, "OrdererOrg", removedEndpoint)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	gt.Expect(config).To(Equal(expectedUpdatedConfig))
+}
+
+func TestRemoveOrdererEndpointFailure(t *testing.T) {
+	t.Parallel()
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				OrdererGroupKey: {
+					Version: 0,
+					Groups: map[string]*cb.ConfigGroup{
+						"OrdererOrg": {
+							Groups: map[string]*cb.ConfigGroup{},
+							Values: map[string]*cb.ConfigValue{
+								EndpointsKey: {
+									ModPolicy: AdminsPolicyKey,
+									Value: marshalOrPanic(&cb.OrdererAddresses{
+										Addresses: []string{"127.0.0.1:7050"},
+									}),
+								},
+							},
+							Policies: map[string]*cb.ConfigPolicy{},
+						},
+					},
+					Values:   map[string]*cb.ConfigValue{},
+					Policies: map[string]*cb.ConfigPolicy{},
+				},
+			},
+			Values:   map[string]*cb.ConfigValue{},
+			Policies: map[string]*cb.ConfigPolicy{},
+		},
+		Sequence: 0,
+	}
+
+	tests := []struct {
+		testName    string
+		orgName     string
+		endpoint    string
+		expectedErr string
+	}{
+		{
+			testName:    "When the org for the orderer does not exist",
+			orgName:     "BadOrg",
+			endpoint:    "127.0.0.1:8050",
+			expectedErr: "orderer org BadOrg does not exist in channel config",
+		},
+		{
+			testName:    "When the endpoint being removed does not exist in the org",
+			orgName:     "OrdererOrg",
+			endpoint:    "127.0.0.1:8050",
+			expectedErr: "could not find endpoint 127.0.0.1:8050 in orderer org OrdererOrg",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+
+			gt := NewGomegaWithT(t)
+
+			err := RemoveOrdererEndpoint(config, tt.orgName, tt.endpoint)
+			gt.Expect(err).To(MatchError(tt.expectedErr))
+		})
+	}
+}
