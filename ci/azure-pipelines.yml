@@ -15,9 +15,14 @@ variables:
 
 jobs:
   - job: VerifyBuild
-    pool: fabric-test-8cpu-32gb
+    pool: fabric
     steps:
       - template: install_deps.yml
+      - task: DockerInstaller@0
+        displayName: Docker Installer
+        inputs:
+          dockerVersion: 17.09.0-ce
+          releaseType: stable
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
@@ -41,7 +46,7 @@ jobs:
         displayName: Publish Documentation Artifacts
 
   - job: UnitTests
-    pool: fabric-test-8cpu-32gb
+    pool: fabric
     steps:
       - task: DockerInstaller@0
         displayName: Docker Installer
@@ -58,7 +63,7 @@ jobs:
         displayName: Run Unit Tests
 
   - job: IntegrationTests
-    pool: fabric-test-8cpu-32gb
+    pool: fabric
     strategy:
       parallel: 5
     timeoutInMinutes: 90
