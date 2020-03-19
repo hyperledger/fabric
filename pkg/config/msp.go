@@ -624,6 +624,9 @@ func getOrgMSPValue(org *cb.ConfigGroup) (*cb.ConfigValue, error) {
 	return configValue, nil
 }
 
+// YEAR is a time duration for a standard 365 day year.
+const YEAR = 365 * 24 * time.Hour
+
 // RevokeCertificateFromMSP takes a variadic list of x509 certificates, creates
 // a new CRL signed by the specified ca certificate and private key, and appends
 // it to the revocation list for the specified application org MSP.
@@ -640,7 +643,7 @@ func RevokeCertificateFromMSP(config *cb.Config, orgName string, caCert *x509.Ce
 
 	// TODO validate that this certificate was issued by this MSP
 
-	revokeTime := time.Now()
+	revokeTime := time.Now().UTC()
 	revokedCertificates := make([]pkix.RevokedCertificate, len(certs))
 	for i, cert := range certs {
 		revokedCertificates[i] = pkix.RevokedCertificate{
@@ -649,7 +652,7 @@ func RevokeCertificateFromMSP(config *cb.Config, orgName string, caCert *x509.Ce
 		}
 	}
 
-	crlBytes, err := caCert.CreateCRL(rand.Reader, caPrivKey, revokedCertificates, revokeTime, revokeTime.Add(365*24*time.Hour))
+	crlBytes, err := caCert.CreateCRL(rand.Reader, caPrivKey, revokedCertificates, revokeTime, revokeTime.Add(YEAR))
 	if err != nil {
 		return err
 	}
