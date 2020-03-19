@@ -14,7 +14,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -869,13 +868,6 @@ func TestAddRootCAToMSP(t *testing.T) {
 
 func TestAddRootCAToMSPFailure(t *testing.T) {
 	t.Parallel()
-	gt := NewGomegaWithT(t)
-
-	channelGroup, err := baseApplicationChannelGroup()
-	gt.Expect(err).ToNot(HaveOccurred())
-	config := &cb.Config{
-		ChannelGroup: channelGroup,
-	}
 
 	tests := []struct {
 		spec        string
@@ -904,6 +896,13 @@ func TestAddRootCAToMSPFailure(t *testing.T) {
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
+
+			channelGroup, err := baseApplicationChannelGroup()
+			gt.Expect(err).ToNot(HaveOccurred())
+			config := &cb.Config{
+				ChannelGroup: channelGroup,
+			}
+
 			err = AddRootCAToMSP(config, tc.cert, "Org1")
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
@@ -928,8 +927,6 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 
 	err = RevokeCertificateFromMSP(config, "Org1", caCert, caPrivKey, cert)
 	gt.Expect(err).ToNot(HaveOccurred())
-
-	protolator.DeepMarshalJSON(os.Stdout, config)
 
 	org1MSP, err = GetMSPConfigurationForApplicationOrg(config, "Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -1284,29 +1281,18 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 
 func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 	t.Parallel()
-	gt := NewGomegaWithT(t)
-
-	channelGroup, err := baseApplicationChannelGroup()
-	gt.Expect(err).ToNot(HaveOccurred())
-	config := &cb.Config{
-		ChannelGroup: channelGroup,
-	}
 
 	caCert, caPrivKey := generateCACertAndPrivateKey("org1.example.com")
 	cert, _ := generateCertAndPrivateKeyFromCACert("Org1", caCert, caPrivKey)
 
 	tests := []struct {
-		spec          string
-		orgName       string
-		configModFunc func() *cb.Config
-		expectedErr   string
+		spec        string
+		orgName     string
+		expectedErr string
 	}{
 		{
-			spec:    "org not defined in config",
-			orgName: "not-an-org",
-			configModFunc: func() *cb.Config {
-				return config
-			},
+			spec:        "org not defined in config",
+			orgName:     "not-an-org",
 			expectedErr: "application org with name 'not-an-org' not found",
 		},
 	}
@@ -1316,8 +1302,14 @@ func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
-			config := tc.configModFunc()
-			err := RevokeCertificateFromMSP(config, tc.orgName, caCert, caPrivKey, cert)
+
+			channelGroup, err := baseApplicationChannelGroup()
+			gt.Expect(err).ToNot(HaveOccurred())
+			config := &cb.Config{
+				ChannelGroup: channelGroup,
+			}
+
+			err = RevokeCertificateFromMSP(config, tc.orgName, caCert, caPrivKey, cert)
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
 	}
