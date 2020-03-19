@@ -79,4 +79,3 @@ jobs:
         displayName: Checkout Fabric Code
       - script: make integration-test
         displayName: Run Integration Tests
-
