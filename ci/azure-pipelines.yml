@@ -18,12 +18,7 @@ jobs:
   - job: VerifyBuild
     pool: fabric
     steps:
-      - script: whoami
       - template: install_deps.yml
-      - script: |
-          sudo curl -fsSL https://get.docker.com -o get-docker.sh
-          sudo sh get-docker.sh
-        displayName: Install Docker
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
@@ -50,10 +45,6 @@ jobs:
     pool: fabric
     steps:
       - template: install_deps.yml
-      - script: |
-          sudo curl -fsSL https://get.docker.com -o get-docker.sh
-          sudo sh get-docker.sh
-        displayName: Install Docker
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
@@ -69,10 +60,6 @@ jobs:
     timeoutInMinutes: 90
     steps:
       - template: install_deps.yml
-      - script: |
-          sudo curl -fsSL https://get.docker.com -o get-docker.sh
-          sudo sh get-docker.sh
-        displayName: Install Docker
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
