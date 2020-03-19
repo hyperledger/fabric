@@ -17,6 +17,7 @@ jobs:
   - job: VerifyBuild
     pool: fabric
     steps:
+      - script: whoami
       - template: install_deps.yml
       - task: DockerInstaller@0
         displayName: Docker Installer
