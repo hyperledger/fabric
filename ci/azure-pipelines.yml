@@ -12,6 +12,7 @@ variables:
   GOPATH: $(Agent.BuildDirectory)/go
   PATH: $(Agent.BuildDirectory)/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
   GOVER: 1.13.8
+  GOCACHE: /tmp/gocache
 
 jobs:
   - job: VerifyBuild
@@ -19,11 +20,10 @@ jobs:
     steps:
       - script: whoami
       - template: install_deps.yml
-      - task: DockerInstaller@0
-        displayName: Docker Installer
-        inputs:
-          dockerVersion: 17.09.0-ce
-          releaseType: stable
+      - script: |
+          sudo curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
+        displayName: Install Docker
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
@@ -49,12 +49,11 @@ jobs:
   - job: UnitTests
     pool: fabric
     steps:
-      - task: DockerInstaller@0
-        displayName: Docker Installer
-        inputs:
-          dockerVersion: 17.09.0-ce
-          releaseType: stable
       - template: install_deps.yml
+      - script: |
+          sudo curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
+        displayName: Install Docker
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
@@ -69,12 +68,11 @@ jobs:
       parallel: 5
     timeoutInMinutes: 90
     steps:
-      - task: DockerInstaller@0
-        displayName: Docker Installer
-        inputs:
-          dockerVersion: 17.09.0-ce
-          releaseType: stable
       - template: install_deps.yml
+      - script: |
+          sudo curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
+        displayName: Install Docker
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
