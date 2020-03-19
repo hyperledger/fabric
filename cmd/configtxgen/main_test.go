@@ -179,9 +179,7 @@ func TestBlockFlags(t *testing.T) {
 func TestPrintOrg(t *testing.T) {
 	// Init the BCCSP
 	err := factory.InitFactories(nil)
-	if err != nil {
-		assert.Error(t, err, "Could not initialize BCCSP Factories")
-	}
+	assert.NoError(t, err, "Expected the InitFactories call to return without errors")
 	config := genesisconfig.LoadTopLevel(configtest.GetDevConfigDir())
 
 	assert.NoError(t, doPrintOrg(config, genesisconfig.SampleOrgName), "Good org to print")
