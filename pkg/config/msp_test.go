@@ -15,6 +15,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"math/big"
 	"testing"
 	"time"
 
@@ -1343,4 +1344,492 @@ func certPrivKeyCRLBase64(msp MSP) (string, string, string) {
 	crlBase64 := base64.StdEncoding.EncodeToString(pemCRLBytes[0])
 
 	return certBase64, pkBase64, crlBase64
+}
+
+func TestUpdateMSP(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	channelGroup, err := baseApplicationChannelGroup(t)
+	gt.Expect(err).ToNot(HaveOccurred())
+	config := &cb.Config{
+		ChannelGroup: channelGroup,
+	}
+	org1MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org1")
+	gt.Expect(err).NotTo(HaveOccurred())
+	org2MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org2")
+	gt.Expect(err).NotTo(HaveOccurred())
+	org1CertBase64, org1PKBase64, org1CRLBase64 := certPrivKeyCRLBase64(org1MSP)
+	org2CertBase64, org2PKBase64, org2CRLBase64 := certPrivKeyCRLBase64(org2MSP)
+
+	newIntermediateCert := &x509.Certificate{
+		KeyUsage: x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		IsCA:     true,
+	}
+	newIntermediateCertBase64 := base64.StdEncoding.EncodeToString(pemEncodeX509Certificate(newIntermediateCert))
+
+	org1MSP.IntermediateCerts = append(org1MSP.IntermediateCerts, newIntermediateCert)
+
+	err = UpdateMSP(config, org1MSP, "Org1")
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	expectedConfigJSON := fmt.Sprintf(`
+{
+	"channel_group": {
+		"groups": {
+			"Application": {
+				"groups": {
+					"Org1": {
+						"groups": {},
+						"mod_policy": "Admins",
+						"policies": {
+							"Admins": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "MAJORITY",
+										"sub_policy": "Admins"
+									}
+								},
+								"version": "0"
+							},
+							"Endorsement": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "MAJORITY",
+										"sub_policy": "Endorsement"
+									}
+								},
+								"version": "0"
+							},
+							"LifecycleEndorsement": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "MAJORITY",
+										"sub_policy": "Endorsement"
+									}
+								},
+								"version": "0"
+							},
+							"Readers": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "ANY",
+										"sub_policy": "Readers"
+									}
+								},
+								"version": "0"
+							},
+							"Writers": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "ANY",
+										"sub_policy": "Writers"
+									}
+								},
+								"version": "0"
+							}
+						},
+						"values": {
+							"MSP": {
+								"mod_policy": "Admins",
+								"value": {
+									"config": {
+										"admins": [
+											"%[1]s"
+										],
+										"crypto_config": {
+											"identity_identifier_hash_function": "SHA256",
+											"signature_hash_family": "SHA3"
+										},
+										"fabric_node_ous": {
+											"admin_ou_identifier": {
+												"certificate": "%[1]s",
+												"organizational_unit_identifier": "OUID"
+											},
+											"client_ou_identifier": {
+												"certificate": "%[1]s",
+												"organizational_unit_identifier": "OUID"
+											},
+											"enable": false,
+											"orderer_ou_identifier": {
+												"certificate": "%[1]s",
+												"organizational_unit_identifier": "OUID"
+											},
+											"peer_ou_identifier": {
+												"certificate": "%[1]s",
+												"organizational_unit_identifier": "OUID"
+											}
+										},
+										"intermediate_certs": [
+											"%[1]s",
+											"%[2]s"
+										],
+										"name": "MSPID",
+										"organizational_unit_identifiers": [
+											{
+												"certificate": "%[1]s",
+												"organizational_unit_identifier": "OUID"
+											}
+										],
+										"revocation_list": [
+											"%[3]s"
+										],
+										"root_certs": [
+											"%[1]s"
+										],
+										"signing_identity": {
+											"private_signer": {
+												"key_identifier": "SKI-1",
+												"key_material": "%[4]s"
+											},
+											"public_signer": "%[1]s"
+										},
+										"tls_intermediate_certs": [
+											"%[1]s"
+										],
+										"tls_root_certs": [
+											"%[1]s"
+										]
+									},
+									"type": 0
+								},
+								"version": "0"
+							}
+						},
+						"version": "0"
+					},
+					"Org2": {
+						"groups": {},
+						"mod_policy": "Admins",
+						"policies": {
+							"Admins": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "MAJORITY",
+										"sub_policy": "Admins"
+									}
+								},
+								"version": "0"
+							},
+							"Endorsement": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "MAJORITY",
+										"sub_policy": "Endorsement"
+									}
+								},
+								"version": "0"
+							},
+							"LifecycleEndorsement": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "MAJORITY",
+										"sub_policy": "Endorsement"
+									}
+								},
+								"version": "0"
+							},
+							"Readers": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "ANY",
+										"sub_policy": "Readers"
+									}
+								},
+								"version": "0"
+							},
+							"Writers": {
+								"mod_policy": "Admins",
+								"policy": {
+									"type": 3,
+									"value": {
+										"rule": "ANY",
+										"sub_policy": "Writers"
+									}
+								},
+								"version": "0"
+							}
+						},
+						"values": {
+							"MSP": {
+								"mod_policy": "Admins",
+								"value": {
+									"config": {
+										"admins": [
+											"%[5]s"
+										],
+										"crypto_config": {
+											"identity_identifier_hash_function": "SHA256",
+											"signature_hash_family": "SHA3"
+										},
+										"fabric_node_ous": {
+											"admin_ou_identifier": {
+												"certificate": "%[5]s",
+												"organizational_unit_identifier": "OUID"
+											},
+											"client_ou_identifier": {
+												"certificate": "%[5]s",
+												"organizational_unit_identifier": "OUID"
+											},
+											"enable": false,
+											"orderer_ou_identifier": {
+												"certificate": "%[5]s",
+												"organizational_unit_identifier": "OUID"
+											},
+											"peer_ou_identifier": {
+												"certificate": "%[5]s",
+												"organizational_unit_identifier": "OUID"
+											}
+										},
+										"intermediate_certs": [
+											"%[5]s"
+										],
+										"name": "MSPID",
+										"organizational_unit_identifiers": [
+											{
+												"certificate": "%[5]s",
+												"organizational_unit_identifier": "OUID"
+											}
+										],
+										"revocation_list": [
+											"%[6]s"
+										],
+										"root_certs": [
+											"%[5]s"
+										],
+										"signing_identity": {
+											"private_signer": {
+												"key_identifier": "SKI-1",
+												"key_material": "%[7]s"
+											},
+											"public_signer": "%[5]s"
+										},
+										"tls_intermediate_certs": [
+											"%[5]s"
+										],
+										"tls_root_certs": [
+											"%[5]s"
+										]
+									},
+									"type": 0
+								},
+								"version": "0"
+							}
+						},
+						"version": "0"
+					}
+				},
+				"mod_policy": "Admins",
+				"policies": {
+					"Admins": {
+						"mod_policy": "Admins",
+						"policy": {
+							"type": 3,
+							"value": {
+								"rule": "MAJORITY",
+								"sub_policy": "Admins"
+							}
+						},
+						"version": "0"
+					},
+					"Readers": {
+						"mod_policy": "Admins",
+						"policy": {
+							"type": 3,
+							"value": {
+								"rule": "ANY",
+								"sub_policy": "Readers"
+							}
+						},
+						"version": "0"
+					},
+					"Writers": {
+						"mod_policy": "Admins",
+						"policy": {
+							"type": 3,
+							"value": {
+								"rule": "ANY",
+								"sub_policy": "Writers"
+							}
+						},
+						"version": "0"
+					}
+				},
+				"values": {
+					"ACLs": {
+						"mod_policy": "Admins",
+						"value": {
+							"acls": {
+								"acl1": {
+									"policy_ref": "hi"
+								}
+							}
+						},
+						"version": "0"
+					},
+					"Capabilities": {
+						"mod_policy": "Admins",
+						"value": {
+							"capabilities": {
+								"V1_3": {}
+							}
+						},
+						"version": "0"
+					}
+				},
+				"version": "0"
+			}
+		},
+		"mod_policy": "",
+		"policies": {},
+		"values": {},
+		"version": "0"
+	},
+	"sequence": "0"
+}
+`, org1CertBase64, newIntermediateCertBase64, org1CRLBase64, org1PKBase64, org2CertBase64, org2CRLBase64, org2PKBase64)
+	expectedConfigProto := &cb.Config{}
+	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfigJSON), expectedConfigProto)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	gt.Expect(config).To(Equal(expectedConfigProto))
+}
+
+func TestUpdateMSPFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		spec        string
+		mspMod      func(MSP) MSP
+		orgName     string
+		expectedErr string
+	}{
+		{
+			spec: "application org msp not defined",
+			mspMod: func(msp MSP) MSP {
+				return msp
+			},
+			orgName:     "undefined-org",
+			expectedErr: "retrieving msp: application org undefined-org does not exist in config",
+		},
+		{
+			spec: "updating msp name",
+			mspMod: func(msp MSP) MSP {
+				msp.Name = "thiscantbegood"
+				return msp
+			},
+			orgName:     "Org1",
+			expectedErr: "MSP name cannot be changed",
+		},
+		{
+			spec: "invalid root ca cert keyusage",
+			mspMod: func(msp MSP) MSP {
+				msp.RootCerts = []*x509.Certificate{
+					{
+						SerialNumber: big.NewInt(7),
+						KeyUsage:     x509.KeyUsageKeyAgreement,
+					},
+				}
+				return msp
+			},
+			orgName:     "Org1",
+			expectedErr: "invalid root cert: KeyUsage must be x509.KeyUsageCertSign. serial number: 7",
+		},
+		{
+			spec: "root ca cert is not a ca",
+			mspMod: func(msp MSP) MSP {
+				msp.RootCerts = []*x509.Certificate{
+					{
+						SerialNumber: big.NewInt(7),
+						KeyUsage:     x509.KeyUsageCertSign,
+						IsCA:         false,
+					},
+				}
+				return msp
+			},
+			orgName:     "Org1",
+			expectedErr: "invalid root cert: must be a CA certificate. serial number: 7",
+		},
+		{
+			spec: "invalid intermediate ca keyusage",
+			mspMod: func(msp MSP) MSP {
+				msp.IntermediateCerts = []*x509.Certificate{
+					{
+						SerialNumber: big.NewInt(7),
+						KeyUsage:     x509.KeyUsageKeyAgreement,
+					},
+				}
+				return msp
+			},
+			orgName:     "Org1",
+			expectedErr: "invalid intermediate cert: KeyUsage must be x509.KeyUsageCertSign. serial number: 7",
+		},
+		{
+			spec: "tls root ca cert is not a ca",
+			mspMod: func(msp MSP) MSP {
+				msp.TLSRootCerts = []*x509.Certificate{
+					{
+						SerialNumber: big.NewInt(7),
+						KeyUsage:     x509.KeyUsageCertSign,
+						IsCA:         false,
+					},
+				}
+				return msp
+			},
+			orgName:     "Org1",
+			expectedErr: "invalid tls root cert: must be a CA certificate. serial number: 7",
+		},
+		{
+			spec: "tls intemediate ca cert is not a ca",
+			mspMod: func(msp MSP) MSP {
+				msp.TLSIntermediateCerts = []*x509.Certificate{
+					{
+						SerialNumber: big.NewInt(7),
+						KeyUsage:     x509.KeyUsageCertSign,
+						IsCA:         false,
+					},
+				}
+				return msp
+			},
+			orgName:     "Org1",
+			expectedErr: "invalid tls intermediate cert: must be a CA certificate. serial number: 7",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+			channelGroup, err := baseApplicationChannelGroup(t)
+			gt.Expect(err).ToNot(HaveOccurred())
+			config := &cb.Config{
+				ChannelGroup: channelGroup,
+			}
+			org1MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org1")
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			org1MSP = tc.mspMod(org1MSP)
+			err = UpdateMSP(config, org1MSP, tc.orgName)
+			gt.Expect(err).To(MatchError(tc.expectedErr))
+		})
+	}
 }
