@@ -8,3 +8,5 @@ steps:
       version: $(GOVER)
       goPath:  $(GOPATH)
     displayName: Install GoLang
+  - script: sudo apt-get update && sudo apt install jq -y
+    displayName: Install JQ
