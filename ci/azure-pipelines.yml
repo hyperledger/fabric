@@ -16,7 +16,7 @@ variables:
 
 jobs:
   - job: VerifyBuild
-    pool: fabric
+    pool: azp
     steps:
       - template: install_deps.yml
       - checkout: self
@@ -42,7 +42,7 @@ jobs:
         displayName: Publish Documentation Artifacts
 
   - job: UnitTests
-    pool: fabric
+    pool: azp
     steps:
       - template: install_deps.yml
       - checkout: self
@@ -54,7 +54,7 @@ jobs:
         displayName: Run Unit Tests
 
   - job: IntegrationTests
-    pool: fabric
+    pool: azp
     strategy:
       parallel: 5
     timeoutInMinutes: 90
