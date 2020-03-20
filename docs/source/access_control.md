@@ -7,8 +7,7 @@ administration level. To learn about access control within a chaincode, check ou
 our [chaincode for developers tutorial](./chaincode4ade.html#Chaincode_API).*
 
 Fabric uses access control lists (ACLs) to manage access to resources by associating
-a **policy** --- which specifies a rule that evaluates to true or false, given a set
-of identities --- with the resource. Fabric contains a number of default ACLs. In this
+a [Policy](policies/policies.html) with a resource. Fabric contains a number of default ACLs. In this
 document, we'll talk about how they're formatted and how the defaults can be overridden.
 
 But before we can do that, it's necessary to understand a little about resources
