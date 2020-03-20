@@ -297,7 +297,7 @@ func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPoli
 	return addPolicies(cg, policyMap, modPolicy)
 }
 
-// AddOrdererEndpoints adds an orderer's endpoint to an existing channel config transaction.
+// AddOrdererEndpoint adds an orderer's endpoint to an existing channel config transaction.
 // It must add the endpoint to an existing org and the endpoint must not already
 // exist in the org.
 func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint string) error {
@@ -311,7 +311,7 @@ func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint string) erro
 	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
 		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshalling orderer org %s's  endpoints: %v", orgName, err)
+			return fmt.Errorf("failed unmarshalling orderer org %s's endpoints: %v", orgName, err)
 		}
 	}
 
