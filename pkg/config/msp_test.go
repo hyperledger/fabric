@@ -162,7 +162,7 @@ func TestGetMSPConfigurationForConsortiumOrg(t *testing.T) {
 func TestGetMSPConfigurationFailures(t *testing.T) {
 	t.Parallel()
 
-	badCert := x509.Certificate{}
+	badCert := &x509.Certificate{}
 
 	tests := []struct {
 		name           string
@@ -202,7 +202,7 @@ func TestGetMSPConfigurationFailures(t *testing.T) {
 			orgType: OrdererGroupKey,
 			orgName: "OrdererOrg",
 			mspMod: func(msp *MSP) {
-				badCert := x509.Certificate{}
+				badCert := &x509.Certificate{}
 				msp.RootCerts = append(msp.RootCerts, badCert)
 			},
 			expectedErr: "parsing root certs: asn1: syntax error: sequence truncated",
@@ -1271,12 +1271,12 @@ func baseMSP() MSP {
 
 	return MSP{
 		Name:              "MSPID",
-		RootCerts:         []x509.Certificate{*cert},
-		IntermediateCerts: []x509.Certificate{*cert},
-		Admins:            []x509.Certificate{*cert},
-		RevocationList:    []pkix.CertificateList{*crl},
+		RootCerts:         []*x509.Certificate{cert},
+		IntermediateCerts: []*x509.Certificate{cert},
+		Admins:            []*x509.Certificate{cert},
+		RevocationList:    []*pkix.CertificateList{crl},
 		SigningIdentity: SigningIdentityInfo{
-			PublicSigner: *cert,
+			PublicSigner: cert,
 			PrivateSigner: KeyInfo{
 				KeyIdentifier: "SKI-1",
 				KeyMaterial:   privKey.(*ecdsa.PrivateKey),
@@ -1284,7 +1284,7 @@ func baseMSP() MSP {
 		},
 		OrganizationalUnitIdentifiers: []OUIdentifier{
 			{
-				Certificate:                  *cert,
+				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
 		},
@@ -1292,23 +1292,23 @@ func baseMSP() MSP {
 			SignatureHashFamily:            "SHA3",
 			IdentityIdentifierHashFunction: "SHA256",
 		},
-		TLSRootCerts:         []x509.Certificate{*cert},
-		TLSIntermediateCerts: []x509.Certificate{*cert},
+		TLSRootCerts:         []*x509.Certificate{cert},
+		TLSIntermediateCerts: []*x509.Certificate{cert},
 		NodeOus: NodeOUs{
 			ClientOUIdentifier: OUIdentifier{
-				Certificate:                  *cert,
+				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
 			PeerOUIdentifier: OUIdentifier{
-				Certificate:                  *cert,
+				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
 			AdminOUIdentifier: OUIdentifier{
-				Certificate:                  *cert,
+				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
 			OrdererOUIdentifier: OUIdentifier{
-				Certificate:                  *cert,
+				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
 		},

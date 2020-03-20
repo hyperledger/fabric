@@ -41,7 +41,7 @@ type MSP struct {
 	// List of root certificates trusted by this MSP
 	// they are used upon certificate validation (see
 	// comment for IntermediateCerts below).
-	RootCerts []x509.Certificate
+	RootCerts []*x509.Certificate
 	// List of intermediate certificates trusted by this MSP;
 	// they are used upon certificate validation as follows:
 	// validation attempts to build a path from the certificate
@@ -50,11 +50,11 @@ type MSP struct {
 	// the other end of the path). If the path is longer than
 	// 2, certificates in the middle are searched within the
 	// IntermediateCerts pool.
-	IntermediateCerts []x509.Certificate
+	IntermediateCerts []*x509.Certificate
 	// Identity denoting the administrator of this MSP.
-	Admins []x509.Certificate
+	Admins []*x509.Certificate
 	// Identity revocation list.
-	RevocationList []pkix.CertificateList
+	RevocationList []*pkix.CertificateList
 	// SigningIdentity holds information on the signing identity
 	// this peer is to use, and which is to be imported by the
 	// MSP defined before.
@@ -68,10 +68,10 @@ type MSP struct {
 	CryptoConfig CryptoConfig
 	// List of TLS root certificates trusted by this MSP.
 	// They are returned by GetTLSRootCerts.
-	TLSRootCerts []x509.Certificate
+	TLSRootCerts []*x509.Certificate
 	// List of TLS intermediate certificates trusted by this MSP;
 	// They are returned by GetTLSIntermediateCerts.
-	TLSIntermediateCerts []x509.Certificate
+	TLSIntermediateCerts []*x509.Certificate
 	// fabric_node_ous contains the configuration to distinguish clients from peers from orderers
 	// based on the OUs.
 	NodeOus NodeOUs
@@ -84,7 +84,7 @@ type SigningIdentityInfo struct {
 	// PublicSigner carries the public information of the signing
 	// identity. For an X.509 provider this would be represented by
 	// an X.509 certificate.
-	PublicSigner x509.Certificate
+	PublicSigner *x509.Certificate
 	// PrivateSigner denotes a reference to the private key of the
 	// peer's signing identity.
 	PrivateSigner KeyInfo
@@ -115,7 +115,7 @@ type OUIdentifier struct {
 	// recognized by the MSP this message belongs to.
 	// Starting from this certificate, a certification chain is computed
 	// and bound to the OrganizationUnitIdentifier specified.
-	Certificate x509.Certificate
+	Certificate *x509.Certificate
 	// OrganizationUnitIdentifier defines the organizational unit under the
 	// MSP identified with MSPIdentifier.
 	OrganizationalUnitIdentifier string
@@ -324,8 +324,8 @@ func getMSPConfigForOrg(configGroup *cb.ConfigGroup, orgName string) (MSP, error
 	}, nil
 }
 
-func parseCertificateListFromBytes(certs [][]byte) ([]x509.Certificate, error) {
-	certificateList := []x509.Certificate{}
+func parseCertificateListFromBytes(certs [][]byte) ([]*x509.Certificate, error) {
+	certificateList := []*x509.Certificate{}
 
 	for _, cert := range certs {
 		certificate, err := parseCertificateFromBytes(cert)
@@ -339,19 +339,19 @@ func parseCertificateListFromBytes(certs [][]byte) ([]x509.Certificate, error) {
 	return certificateList, nil
 }
 
-func parseCertificateFromBytes(cert []byte) (x509.Certificate, error) {
+func parseCertificateFromBytes(cert []byte) (*x509.Certificate, error) {
 	pemBlock, _ := pem.Decode(cert)
 
 	certificate, err := x509.ParseCertificate(pemBlock.Bytes)
 	if err != nil {
-		return x509.Certificate{}, err
+		return &x509.Certificate{}, err
 	}
 
-	return *certificate, nil
+	return certificate, nil
 }
 
-func parseCRL(crls [][]byte) ([]pkix.CertificateList, error) {
-	certificateLists := []pkix.CertificateList{}
+func parseCRL(crls [][]byte) ([]*pkix.CertificateList, error) {
+	certificateLists := []*pkix.CertificateList{}
 
 	for _, crl := range crls {
 		pemBlock, _ := pem.Decode(crl)
@@ -361,7 +361,7 @@ func parseCRL(crls [][]byte) ([]pkix.CertificateList, error) {
 			return certificateLists, fmt.Errorf("parsing crl: %v", err)
 		}
 
-		certificateLists = append(certificateLists, *certificateList)
+		certificateLists = append(certificateLists, certificateList)
 	}
 
 	return certificateLists, nil
@@ -484,11 +484,11 @@ func buildOUIdentifiers(identifiers []OUIdentifier) []*mb.FabricOUIdentifier {
 	return fabricIdentifiers
 }
 
-func buildPemEncodedCRL(crls []pkix.CertificateList) ([][]byte, error) {
+func buildPemEncodedCRL(crls []*pkix.CertificateList) ([][]byte, error) {
 	pemEncodedCRL := [][]byte{}
 
 	for _, crl := range crls {
-		asn1MarshalledBytes, err := asn1.Marshal(crl)
+		asn1MarshalledBytes, err := asn1.Marshal(*crl)
 		if err != nil {
 			return nil, err
 		}
@@ -499,7 +499,7 @@ func buildPemEncodedCRL(crls []pkix.CertificateList) ([][]byte, error) {
 	return pemEncodedCRL, nil
 }
 
-func buildPemEncodedCertListFromX509(certList []x509.Certificate) [][]byte {
+func buildPemEncodedCertListFromX509(certList []*x509.Certificate) [][]byte {
 	certs := [][]byte{}
 	for _, cert := range certList {
 		certs = append(certs, pemEncodeX509Certificate(cert))
@@ -508,7 +508,7 @@ func buildPemEncodedCertListFromX509(certList []x509.Certificate) [][]byte {
 	return certs
 }
 
-func pemEncodeX509Certificate(cert x509.Certificate) []byte {
+func pemEncodeX509Certificate(cert *x509.Certificate) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 }
 
