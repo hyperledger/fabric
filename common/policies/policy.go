@@ -285,6 +285,7 @@ func (pl *PolicyLogger) EvaluateSignedData(signatureSet []*protoutil.SignedData)
 
 	err := pl.Policy.EvaluateSignedData(signatureSet)
 	if err != nil {
+		err = errors.WithMessagef(err, "signature set did not satisfy policy %s", pl.policyName)
 		logger.Debugf("Signature set did not satisfy policy %s", pl.policyName)
 	} else {
 		logger.Debugf("Signature set satisfies policy %s", pl.policyName)
@@ -300,6 +301,7 @@ func (pl *PolicyLogger) EvaluateIdentities(identities []mspi.Identity) error {
 
 	err := pl.Policy.EvaluateIdentities(identities)
 	if err != nil {
+		err = errors.WithMessagef(err, "signature set did not satisfy policy %s", pl.policyName)
 		logger.Debugf("Signature set did not satisfy policy %s", pl.policyName)
 	} else {
 		logger.Debugf("Signature set satisfies policy %s", pl.policyName)

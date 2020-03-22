@@ -73,7 +73,7 @@ func (imp *ImplicitMetaPolicy) EvaluateSignedData(signatureSet []*protoutil.Sign
 	defer func() {
 		if remaining != 0 {
 			// This log message may be large and expensive to construct, so worth checking the log level
-			if logger.IsEnabledFor(zapcore.DebugLevel) {
+			if logger.IsEnabledFor(zapcore.WarnLevel) {
 				var b bytes.Buffer
 				b.WriteString(fmt.Sprintf("Evaluation Failed: Only %d policies were satisfied, but needed %d of [ ", imp.Threshold-remaining, imp.Threshold))
 				for m := range imp.managers {
@@ -83,7 +83,7 @@ func (imp *ImplicitMetaPolicy) EvaluateSignedData(signatureSet []*protoutil.Sign
 					b.WriteString(" ")
 				}
 				b.WriteString("]")
-				logger.Debugf(b.String())
+				logger.Warnf(b.String())
 			}
 		}
 	}()
@@ -113,7 +113,7 @@ func (imp *ImplicitMetaPolicy) EvaluateIdentities(identities []msp.Identity) err
 		if remaining == 0 {
 			return
 		}
-		if !logger.IsEnabledFor(zapcore.DebugLevel) {
+		if !logger.IsEnabledFor(zapcore.WarnLevel) {
 			return
 		}
 
@@ -126,7 +126,7 @@ func (imp *ImplicitMetaPolicy) EvaluateIdentities(identities []msp.Identity) err
 			b.WriteString(" ")
 		}
 		b.WriteString("]")
-		logger.Debugf(b.String())
+		logger.Warnf(b.String())
 	}()
 
 	for _, policy := range imp.SubPolicies {
