@@ -76,7 +76,7 @@ func compile(policy *cb.SignaturePolicy, identities []*mb.MSPPrincipal) (func([]
 				}
 				err := sd.SatisfiesPrincipal(signedByID)
 				if err != nil {
-					cauthdslLogger.Debugf("%p identity %d does not satisfy principal: %s", signedData, i, err)
+					cauthdslLogger.Warnf("%p identity %d does not satisfy principal: %s", signedData, i, err)
 					continue
 				}
 				cauthdslLogger.Debugf("%p principal evaluation succeeds for identity %d", signedData, i)
