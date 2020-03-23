@@ -68,16 +68,16 @@ var _ bool = Describe("PrivateData", func() {
 		testCleanup(network, process)
 	})
 
-	Describe("Dissemination when pulling is disabled", func() {
+	Describe("Dissemination when pulling and reconciliation are disabled", func() {
 		BeforeEach(func() {
 			By("setting up the network")
 			network = initThreeOrgsSetup(true)
 
-			By("setting the pull retry threshold to 0 on all peers")
-			// set pull retry threshold to 0
+			By("setting the pull retry threshold to 0 and disabling reconciliation on all peers")
 			for _, p := range network.Peers {
 				core := network.ReadPeerConfig(p)
 				core.Peer.Gossip.PvtData.PullRetryThreshold = 0
+				core.Peer.Gossip.PvtData.ReconciliationEnabled = false
 				network.WritePeerConfig(p, core)
 			}
 
