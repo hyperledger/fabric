@@ -326,7 +326,7 @@ func TestMSPToProto(t *testing.T) {
 	expectedFabricMSPConfigProtoJSON := fmt.Sprintf(`
 {
 	"admins": [
-		"%s"
+		"%[1]s"
 	],
 	"crypto_config": {
 		"identity_identifier_hash_function": "SHA256",
@@ -334,54 +334,54 @@ func TestMSPToProto(t *testing.T) {
 	},
 	"fabric_node_ous": {
 		"admin_ou_identifier": {
-			"certificate": "%s",
+			"certificate": "%[1]s",
 			"organizational_unit_identifier": "OUID"
 		},
 		"client_ou_identifier": {
-			"certificate": "%s",
+			"certificate": "%[1]s",
 			"organizational_unit_identifier": "OUID"
 		},
 		"enable": false,
 		"orderer_ou_identifier": {
-			"certificate": "%s",
+			"certificate": "%[1]s",
 			"organizational_unit_identifier": "OUID"
 		},
 		"peer_ou_identifier": {
-			"certificate": "%s",
+			"certificate": "%[1]s",
 			"organizational_unit_identifier": "OUID"
 		}
 	},
 	"intermediate_certs": [
-		"%s"
+		"%[1]s"
 	],
 	"name": "MSPID",
 	"organizational_unit_identifiers": [
 		{
-			"certificate": "%s",
+			"certificate": "%[1]s",
 			"organizational_unit_identifier": "OUID"
 		}
 	],
 	"revocation_list": [
-		"%s"
+		"%[2]s"
 	],
 	"root_certs": [
-		"%s"
+		"%[1]s"
 	],
 	"signing_identity": {
 		"private_signer": {
 			"key_identifier": "SKI-1",
-			"key_material": "%s"
+			"key_material": "%[3]s"
 		},
-		"public_signer": "%s"
+		"public_signer": "%[1]s"
 	},
 	"tls_intermediate_certs": [
-		"%s"
+		"%[1]s"
 	],
 	"tls_root_certs": [
-		"%s"
+		"%[1]s"
 	]
 }
-`, certBase64, certBase64, certBase64, certBase64, certBase64, certBase64, certBase64, crlBase64, certBase64, pkBase64, certBase64, certBase64, certBase64)
+`, certBase64, crlBase64, pkBase64)
 	expectedFabricMSPConfigProto := &mb.FabricMSPConfig{}
 	err := protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedFabricMSPConfigProtoJSON), expectedFabricMSPConfigProto)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -514,7 +514,7 @@ func TestAddRootCAToMSP(t *testing.T) {
 								"value": {
 									"config": {
 										"admins": [
-											"%s"
+											"%[1]s"
 										],
 										"crypto_config": {
 											"identity_identifier_hash_function": "SHA256",
@@ -522,52 +522,52 @@ func TestAddRootCAToMSP(t *testing.T) {
 										},
 										"fabric_node_ous": {
 											"admin_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"client_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"enable": false,
 											"orderer_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"peer_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											}
 										},
 										"intermediate_certs": [
-											"%s"
+											"%[1]s"
 										],
 										"name": "MSPID",
 										"organizational_unit_identifiers": [
 											{
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											}
 										],
 										"revocation_list": [
-											"%s"
+											"%[2]s"
 										],
 										"root_certs": [
-											"%s",
-											"%s"
+											"%[1]s",
+											"%[3]s"
 										],
 										"signing_identity": {
 											"private_signer": {
 												"key_identifier": "SKI-1",
-												"key_material": "%s"
+												"key_material": "%[4]s"
 											},
-											"public_signer": "%s"
+											"public_signer": "%[1]s"
 										},
 										"tls_intermediate_certs": [
-											"%s"
+											"%[1]s"
 										],
 										"tls_root_certs": [
-											"%s"
+											"%[1]s"
 										]
 									},
 									"type": 0
@@ -643,7 +643,7 @@ func TestAddRootCAToMSP(t *testing.T) {
 								"value": {
 									"config": {
 										"admins": [
-											"%s"
+											"%[5]s"
 										],
 										"crypto_config": {
 											"identity_identifier_hash_function": "SHA256",
@@ -651,51 +651,51 @@ func TestAddRootCAToMSP(t *testing.T) {
 										},
 										"fabric_node_ous": {
 											"admin_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"client_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"enable": false,
 											"orderer_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"peer_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											}
 										},
 										"intermediate_certs": [
-											"%s"
+											"%[5]s"
 										],
 										"name": "MSPID",
 										"organizational_unit_identifiers": [
 											{
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											}
 										],
 										"revocation_list": [
-											"%s"
+											"%[6]s"
 										],
 										"root_certs": [
-											"%s"
+											"%[5]s"
 										],
 										"signing_identity": {
 											"private_signer": {
 												"key_identifier": "SKI-1",
-												"key_material": "%s"
+												"key_material": "%[7]s"
 											},
-											"public_signer": "%s"
+											"public_signer": "%[5]s"
 										},
 										"tls_intermediate_certs": [
-											"%s"
+											"%[5]s"
 										],
 										"tls_root_certs": [
-											"%s"
+											"%[5]s"
 										]
 									},
 									"type": 0
@@ -774,7 +774,7 @@ func TestAddRootCAToMSP(t *testing.T) {
 	},
 	"sequence": "0"
 }
-`, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CRLBase64, org1CertBase64, certBase64, org1PKBase64, org1CertBase64, org1CertBase64, org1CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CRLBase64, org2CertBase64, org2PKBase64, org2CertBase64, org2CertBase64, org2CertBase64)
+`, org1CertBase64, org1CRLBase64, certBase64, org1PKBase64, org2CertBase64, org2CRLBase64, org2PKBase64)
 
 	expectedConfigProto := &cb.Config{}
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfig), expectedConfigProto)
@@ -946,7 +946,7 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 								"value": {
 									"config": {
 										"admins": [
-											"%s"
+											"%[1]s"
 										],
 										"crypto_config": {
 											"identity_identifier_hash_function": "SHA256",
@@ -954,52 +954,52 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 										},
 										"fabric_node_ous": {
 											"admin_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"client_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"enable": false,
 											"orderer_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"peer_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											}
 										},
 										"intermediate_certs": [
-											"%s"
+											"%[1]s"
 										],
 										"name": "MSPID",
 										"organizational_unit_identifiers": [
 											{
-												"certificate": "%s",
+												"certificate": "%[1]s",
 												"organizational_unit_identifier": "OUID"
 											}
 										],
 										"revocation_list": [
-											"%s",
-											"%s"
+											"%[2]s",
+											"%[3]s"
 										],
 										"root_certs": [
-											"%s"
+											"%[1]s"
 										],
 										"signing_identity": {
 											"private_signer": {
 												"key_identifier": "SKI-1",
-												"key_material": "%s"
+												"key_material": "%[4]s"
 											},
-											"public_signer": "%s"
+											"public_signer": "%[1]s"
 										},
 										"tls_intermediate_certs": [
-											"%s"
+											"%[1]s"
 										],
 										"tls_root_certs": [
-											"%s"
+											"%[1]s"
 										]
 									},
 									"type": 0
@@ -1075,7 +1075,7 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 								"value": {
 									"config": {
 										"admins": [
-											"%s"
+											"%[5]s"
 										],
 										"crypto_config": {
 											"identity_identifier_hash_function": "SHA256",
@@ -1083,51 +1083,51 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 										},
 										"fabric_node_ous": {
 											"admin_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"client_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"enable": false,
 											"orderer_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											},
 											"peer_ou_identifier": {
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											}
 										},
 										"intermediate_certs": [
-											"%s"
+											"%[5]s"
 										],
 										"name": "MSPID",
 										"organizational_unit_identifiers": [
 											{
-												"certificate": "%s",
+												"certificate": "%[5]s",
 												"organizational_unit_identifier": "OUID"
 											}
 										],
 										"revocation_list": [
-											"%s"
+											"%[6]s"
 										],
 										"root_certs": [
-											"%s"
+											"%[5]s"
 										],
 										"signing_identity": {
 											"private_signer": {
 												"key_identifier": "SKI-1",
-												"key_material": "%s"
+												"key_material": "%[7]s"
 											},
-											"public_signer": "%s"
+											"public_signer": "%[5]s"
 										},
 										"tls_intermediate_certs": [
-											"%s"
+											"%[5]s"
 										],
 										"tls_root_certs": [
-											"%s"
+											"%[5]s"
 										]
 									},
 									"type": 0
@@ -1206,7 +1206,7 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 	},
 	"sequence": "0"
 }
-`, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CRLBase64, newCRLBase64, org1CertBase64, org1PKBase64, org1CertBase64, org1CertBase64, org1CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CRLBase64, org2CertBase64, org2PKBase64, org2CertBase64, org2CertBase64, org2CertBase64)
+`, org1CertBase64, org1CRLBase64, newCRLBase64, org1PKBase64, org2CertBase64, org2CRLBase64, org2PKBase64)
 
 	expectedConfigProto := &cb.Config{}
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfig), expectedConfigProto)

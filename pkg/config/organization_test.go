@@ -273,7 +273,7 @@ func TestNewOrgConfigGroup(t *testing.T) {
 			"value": {
 				"config": {
 					"admins": [
-						"%s"
+						"%[1]s"
 					],
 					"crypto_config": {
 						"identity_identifier_hash_function": "SHA256",
@@ -281,51 +281,51 @@ func TestNewOrgConfigGroup(t *testing.T) {
 					},
 					"fabric_node_ous": {
 						"admin_ou_identifier": {
-							"certificate": "%s",
+							"certificate": "%[1]s",
 							"organizational_unit_identifier": "OUID"
 						},
 						"client_ou_identifier": {
-							"certificate": "%s",
+							"certificate": "%[1]s",
 							"organizational_unit_identifier": "OUID"
 						},
 						"enable": false,
 						"orderer_ou_identifier": {
-							"certificate": "%s",
+							"certificate": "%[1]s",
 							"organizational_unit_identifier": "OUID"
 						},
 						"peer_ou_identifier": {
-							"certificate": "%s",
+							"certificate": "%[1]s",
 							"organizational_unit_identifier": "OUID"
 						}
 					},
 					"intermediate_certs": [
-						"%s"
+						"%[1]s"
 					],
 					"name": "MSPID",
 					"organizational_unit_identifiers": [
 						{
-							"certificate": "%s",
+							"certificate": "%[1]s",
 							"organizational_unit_identifier": "OUID"
 						}
 					],
 					"revocation_list": [
-						"%s"
+						"%[2]s"
 					],
 					"root_certs": [
-						"%s"
+						"%[1]s"
 					],
 					"signing_identity": {
 						"private_signer": {
 							"key_identifier": "SKI-1",
-							"key_material": "%s"
+							"key_material": "%[3]s"
 						},
-						"public_signer": "%s"
+						"public_signer": "%[1]s"
 					},
 					"tls_intermediate_certs": [
-						"%s"
+						"%[1]s"
 					],
 					"tls_root_certs": [
-						"%s"
+						"%[1]s"
 					]
 				},
 				"type": 0
@@ -335,7 +335,7 @@ func TestNewOrgConfigGroup(t *testing.T) {
 	},
 	"version": "0"
 }
-`, certBase64, certBase64, certBase64, certBase64, certBase64, certBase64, certBase64, crlBase64, certBase64, pkBase64, certBase64, certBase64, certBase64)
+`, certBase64, crlBase64, pkBase64)
 
 		buf := bytes.Buffer{}
 		err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: configGroup})

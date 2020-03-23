@@ -164,7 +164,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 										"value": {
 											"config": {
 												"admins": [
-													"%s"
+													"%[1]s"
 												],
 												"crypto_config": {
 													"identity_identifier_hash_function": "SHA256",
@@ -172,51 +172,51 @@ func TestAddOrgToConsortium(t *testing.T) {
 												},
 												"fabric_node_ous": {
 													"admin_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[1]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"client_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[1]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"enable": false,
 													"orderer_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[1]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"peer_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[1]s",
 														"organizational_unit_identifier": "OUID"
 													}
 												},
 												"intermediate_certs": [
-													"%s"
+													"%[1]s"
 												],
 												"name": "MSPID",
 												"organizational_unit_identifiers": [
 													{
-														"certificate": "%s",
+														"certificate": "%[1]s",
 														"organizational_unit_identifier": "OUID"
 													}
 												],
 												"revocation_list": [
-													"%s"
+													"%[2]s"
 												],
 												"root_certs": [
-													"%s"
+													"%[1]s"
 												],
 												"signing_identity": {
 													"private_signer": {
 														"key_identifier": "SKI-1",
-														"key_material": "%s"
+														"key_material": "%[3]s"
 													},
-													"public_signer": "%s"
+													"public_signer": "%[1]s"
 												},
 												"tls_intermediate_certs": [
-													"%s"
+													"%[1]s"
 												],
 												"tls_root_certs": [
-													"%s"
+													"%[1]s"
 												]
 											},
 											"type": 0
@@ -281,7 +281,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 										"value": {
 											"config": {
 												"admins": [
-													"%s"
+													"%[4]s"
 												],
 												"crypto_config": {
 													"identity_identifier_hash_function": "SHA256",
@@ -289,51 +289,51 @@ func TestAddOrgToConsortium(t *testing.T) {
 												},
 												"fabric_node_ous": {
 													"admin_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[4]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"client_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[4]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"enable": false,
 													"orderer_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[4]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"peer_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[4]s",
 														"organizational_unit_identifier": "OUID"
 													}
 												},
 												"intermediate_certs": [
-													"%s"
+													"%[4]s"
 												],
 												"name": "MSPID",
 												"organizational_unit_identifiers": [
 													{
-														"certificate": "%s",
+														"certificate": "%[4]s",
 														"organizational_unit_identifier": "OUID"
 													}
 												],
 												"revocation_list": [
-													"%s"
+													"%[5]s"
 												],
 												"root_certs": [
-													"%s"
+													"%[4]s"
 												],
 												"signing_identity": {
 													"private_signer": {
 														"key_identifier": "SKI-1",
-														"key_material": "%s"
+														"key_material": "%[6]s"
 													},
-													"public_signer": "%s"
+													"public_signer": "%[4]s"
 												},
 												"tls_intermediate_certs": [
-													"%s"
+													"%[4]s"
 												],
 												"tls_root_certs": [
-													"%s"
+													"%[4]s"
 												]
 											},
 											"type": 0
@@ -398,7 +398,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 										"value": {
 											"config": {
 												"admins": [
-													"%s"
+													"%[7]s"
 												],
 												"crypto_config": {
 													"identity_identifier_hash_function": "SHA256",
@@ -406,51 +406,51 @@ func TestAddOrgToConsortium(t *testing.T) {
 												},
 												"fabric_node_ous": {
 													"admin_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[7]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"client_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[7]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"enable": false,
 													"orderer_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[7]s",
 														"organizational_unit_identifier": "OUID"
 													},
 													"peer_ou_identifier": {
-														"certificate": "%s",
+														"certificate": "%[7]s",
 														"organizational_unit_identifier": "OUID"
 													}
 												},
 												"intermediate_certs": [
-													"%s"
+													"%[7]s"
 												],
 												"name": "MSPID",
 												"organizational_unit_identifiers": [
 													{
-														"certificate": "%s",
+														"certificate": "%[7]s",
 														"organizational_unit_identifier": "OUID"
 													}
 												],
 												"revocation_list": [
-													"%s"
+													"%[8]s"
 												],
 												"root_certs": [
-													"%s"
+													"%[7]s"
 												],
 												"signing_identity": {
 													"private_signer": {
 														"key_identifier": "SKI-1",
-														"key_material": "%s"
+														"key_material": "%[9]s"
 													},
-													"public_signer": "%s"
+													"public_signer": "%[7]s"
 												},
 												"tls_intermediate_certs": [
-													"%s"
+													"%[7]s"
 												],
 												"tls_root_certs": [
-													"%s"
+													"%[7]s"
 												]
 											},
 											"type": 0
@@ -510,7 +510,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 	},
 	"sequence": "0"
 }
-`, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CertBase64, org1CRLBase64, org1CertBase64, org1PKBase64, org1CertBase64, org1CertBase64, org1CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CertBase64, org2CRLBase64, org2CertBase64, org2PKBase64, org2CertBase64, org2CertBase64, org2CertBase64, org3CertBase64, org3CertBase64, org3CertBase64, org3CertBase64, org3CertBase64, org3CertBase64, org3CertBase64, org3CRLBase64, org3CertBase64, org3PKBase64, org3CertBase64, org3CertBase64, org3CertBase64)
+`, org1CertBase64, org1CRLBase64, org1PKBase64, org2CertBase64, org2CRLBase64, org2PKBase64, org3CertBase64, org3CRLBase64, org3PKBase64)
 
 	expectedConfigProto := &cb.Config{}
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfigJSON), expectedConfigProto)
