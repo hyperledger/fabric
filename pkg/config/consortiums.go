@@ -37,6 +37,10 @@ func AddOrgToConsortium(config *cb.Config, org Organization, consortium string) 
 		return fmt.Errorf("consortium '%s' does not exist", consortium)
 	}
 
+	if _, ok := consortiumGroup.Groups[org.Name]; ok {
+		return fmt.Errorf("org '%s' already defined in consortium '%s'", org.Name, consortium)
+	}
+
 	consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org)
 	if err != nil {
 		return fmt.Errorf("failed to create consortium org: %v", err)
