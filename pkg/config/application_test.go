@@ -25,7 +25,7 @@ func TestNewApplicationGroup(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	application := baseApplication()
+	application := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -138,7 +138,7 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			application := baseApplication()
+			application := baseApplication(t)
 			tt.applicationMod(&application)
 
 			configGrp, err := newApplicationGroup(application)
@@ -153,7 +153,7 @@ func TestAddAnchorPeer(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseApplicationConf := baseApplication()
+	baseApplicationConf := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(baseApplicationConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -357,7 +357,7 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			baseApplicationConf := baseApplication()
+			baseApplicationConf := baseApplication(t)
 
 			applicationGroup, err := newApplicationGroup(baseApplicationConf)
 			gt.Expect(err).NotTo(HaveOccurred())
@@ -385,7 +385,7 @@ func TestRemoveAnchorPeer(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseApplicationConf := baseApplication()
+	baseApplicationConf := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(baseApplicationConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -540,7 +540,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			baseApplicationConf := baseApplication()
+			baseApplicationConf := baseApplication(t)
 
 			applicationGroup, err := newApplicationGroup(baseApplicationConf)
 			gt.Expect(err).NotTo(HaveOccurred())
@@ -566,7 +566,7 @@ func TestGetAnchorPeer(t *testing.T) {
 
 	channelGroup := newConfigGroup()
 
-	applicationGroup, err := newApplicationGroup(baseApplication())
+	applicationGroup, err := newApplicationGroup(baseApplication(t))
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
@@ -592,13 +592,13 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 
 	channelGroup := newConfigGroup()
 
-	applicationGroup, err := newApplicationGroup(baseApplication())
+	applicationGroup, err := newApplicationGroup(baseApplication(t))
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	orgNoAnchor := Organization{
 		Name:     "Org1",
 		Policies: applicationOrgStandardPolicies(),
-		MSP:      baseMSP(),
+		MSP:      baseMSP(t),
 	}
 	orgGroup, err := newOrgConfigGroup(orgNoAnchor)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -635,19 +635,19 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 	}
 }
 
-func baseApplication() Application {
+func baseApplication(t *testing.T) Application {
 	return Application{
 		Policies: standardPolicies(),
 		Organizations: []Organization{
 			{
 				Name:     "Org1",
 				Policies: applicationOrgStandardPolicies(),
-				MSP:      baseMSP(),
+				MSP:      baseMSP(t),
 			},
 			{
 				Name:     "Org2",
 				Policies: applicationOrgStandardPolicies(),
-				MSP:      baseMSP(),
+				MSP:      baseMSP(t),
 			},
 		},
 		Capabilities: map[string]bool{
@@ -664,7 +664,7 @@ func TestAddApplicationOrg(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	appGroup, err := newApplicationGroup(baseApplication())
+	appGroup, err := newApplicationGroup(baseApplication(t))
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{
@@ -678,7 +678,7 @@ func TestAddApplicationOrg(t *testing.T) {
 	org := Organization{
 		Name:     "Org3",
 		Policies: applicationOrgStandardPolicies(),
-		MSP:      baseMSP(),
+		MSP:      baseMSP(t),
 		AnchorPeers: []AnchorPeer{
 			{
 				Host: "127.0.0.1",
@@ -846,7 +846,7 @@ func TestAddApplicationOrgFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	appGroup, err := newApplicationGroup(baseApplication())
+	appGroup, err := newApplicationGroup(baseApplication(t))
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{

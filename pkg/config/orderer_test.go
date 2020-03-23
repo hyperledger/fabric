@@ -39,7 +39,7 @@ func TestNewOrdererGroup(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			ordererConf := baseOrdererOfType(tt.ordererType)
+			ordererConf := baseOrdererOfType(t, tt.ordererType)
 
 			ordererGroup, err := newOrdererGroup(ordererConf)
 			gt.Expect(err).NotTo(HaveOccurred())
@@ -172,7 +172,7 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			ordererConf := baseSoloOrderer()
+			ordererConf := baseSoloOrderer(t)
 			tt.ordererMod(&ordererConf)
 
 			ordererGroup, err := newOrdererGroup(ordererConf)
@@ -187,7 +187,7 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(baseOrdererConf.Organizations[0].MSP)
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
@@ -552,7 +552,7 @@ func TestGetOrdererConfiguration(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			baseOrdererConf := baseOrdererOfType(tt.ordererType)
+			baseOrdererConf := baseOrdererOfType(t, tt.ordererType)
 
 			ordererGroup, err := newOrdererGroup(baseOrdererConf)
 			gt.Expect(err).NotTo(HaveOccurred())
@@ -649,7 +649,7 @@ func TestGetOrdererConfigurationFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			baseOrdererConfig := baseOrdererOfType(tt.ordererType)
+			baseOrdererConfig := baseOrdererOfType(t, tt.ordererType)
 			ordererGroup, err := newOrdererGroup(baseOrdererConfig)
 			gt.Expect(err).NotTo(HaveOccurred())
 
@@ -679,7 +679,7 @@ func TestAddOrdererOrg(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	ordererGroup, err := newOrdererGroup(baseSoloOrderer())
+	ordererGroup, err := newOrdererGroup(baseSoloOrderer(t))
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{
@@ -696,7 +696,7 @@ func TestAddOrdererOrg(t *testing.T) {
 		OrdererEndpoints: []string{
 			"localhost:123",
 		},
-		MSP: baseMSP(),
+		MSP: baseMSP(t),
 	}
 	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(org.MSP)
 
@@ -844,7 +844,7 @@ func TestAddOrdererOrgFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	ordererGroup, err := newOrdererGroup(baseSoloOrderer())
+	ordererGroup, err := newOrdererGroup(baseSoloOrderer(t))
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{
@@ -1161,18 +1161,18 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 	}
 }
 
-func baseOrdererOfType(ordererType string) Orderer {
+func baseOrdererOfType(t *testing.T, ordererType string) Orderer {
 	switch ordererType {
 	case ConsensusTypeKafka:
-		return baseKafkaOrderer()
+		return baseKafkaOrderer(t)
 	case ConsensusTypeEtcdRaft:
-		return baseEtcdRaftOrderer()
+		return baseEtcdRaftOrderer(t)
 	default:
-		return baseSoloOrderer()
+		return baseSoloOrderer(t)
 	}
 }
 
-func baseSoloOrderer() Orderer {
+func baseSoloOrderer(t *testing.T) Orderer {
 	return Orderer{
 		Policies:    ordererStandardPolicies(),
 		OrdererType: ConsensusTypeSolo,
@@ -1183,7 +1183,7 @@ func baseSoloOrderer() Orderer {
 				OrdererEndpoints: []string{
 					"localhost:123",
 				},
-				MSP: baseMSP(),
+				MSP: baseMSP(t),
 			},
 		},
 		Capabilities: map[string]bool{
@@ -1199,8 +1199,8 @@ func baseSoloOrderer() Orderer {
 	}
 }
 
-func baseKafkaOrderer() Orderer {
-	orderer := baseSoloOrderer()
+func baseKafkaOrderer(t *testing.T) Orderer {
+	orderer := baseSoloOrderer(t)
 	orderer.OrdererType = ConsensusTypeKafka
 	orderer.Kafka = Kafka{
 		Brokers: []string{"broker1", "broker2"},
@@ -1209,11 +1209,11 @@ func baseKafkaOrderer() Orderer {
 	return orderer
 }
 
-func baseEtcdRaftOrderer() Orderer {
-	caCert, caPrivKey := generateCACertAndPrivateKey("orderer-org")
-	cert, _ := generateCertAndPrivateKeyFromCACert("orderer-org", caCert, caPrivKey)
+func baseEtcdRaftOrderer(t *testing.T) Orderer {
+	caCert, caPrivKey := generateCACertAndPrivateKey(t, "orderer-org")
+	cert, _ := generateCertAndPrivateKeyFromCACert(t, "orderer-org", caCert, caPrivKey)
 
-	orderer := baseSoloOrderer()
+	orderer := baseSoloOrderer(t)
 	orderer.OrdererType = ConsensusTypeEtcdRaft
 	orderer.EtcdRaft = EtcdRaft{
 		Consenters: []Consenter{

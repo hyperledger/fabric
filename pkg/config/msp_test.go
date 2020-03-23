@@ -30,9 +30,9 @@ func TestGetMSPConfigurationForApplicationOrg(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	expectedMSP := baseMSP()
+	expectedMSP := baseMSP(t)
 
-	applicationGroup, err := newApplicationGroup(baseApplication())
+	applicationGroup, err := newApplicationGroup(baseApplication(t))
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// We need to add the base MSP config to the base application since
@@ -69,7 +69,7 @@ func TestGetMSPConfigurationForOrdererOrg(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	soloOrderer := baseSoloOrderer()
+	soloOrderer := baseSoloOrderer(t)
 	expectedMSP := soloOrderer.Organizations[0].MSP
 
 	ordererGroup, err := newOrdererGroup(soloOrderer)
@@ -93,7 +93,7 @@ func TestGetMSPConfigurationForConsortiumOrg(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	consortiums := baseConsortiums()
+	consortiums := baseConsortiums(t)
 	expectedMSP := consortiums[0].Organizations[0].MSP
 
 	consortiumsGroup, err := newConsortiumsGroup(consortiums)
@@ -259,13 +259,13 @@ func TestGetMSPConfigurationFailures(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			consortiumsGroup, err := newConsortiumsGroup(baseConsortiums())
+			consortiumsGroup, err := newConsortiumsGroup(baseConsortiums(t))
 			gt.Expect(err).NotTo(HaveOccurred())
 
-			ordererGroup, err := newOrdererGroup(baseSoloOrderer())
+			ordererGroup, err := newOrdererGroup(baseSoloOrderer(t))
 			gt.Expect(err).NotTo(HaveOccurred())
 
-			applicationGroup, err := newApplicationGroup(baseApplication())
+			applicationGroup, err := newApplicationGroup(baseApplication(t))
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			config := &cb.Config{
@@ -279,7 +279,7 @@ func TestGetMSPConfigurationFailures(t *testing.T) {
 			}
 
 			if tt.mspMod != nil && tt.orgType != ConsortiumsGroupKey {
-				baseMSP := baseMSP()
+				baseMSP := baseMSP(t)
 
 				tt.mspMod(&baseMSP)
 
@@ -320,7 +320,7 @@ func TestMSPToProto(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	msp := baseMSP()
+	msp := baseMSP(t)
 	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(msp)
 
 	expectedFabricMSPConfigProtoJSON := fmt.Sprintf(`
@@ -396,7 +396,7 @@ func TestMSPToProtoFailure(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	fabricMSPConfig := baseMSP()
+	fabricMSPConfig := baseMSP(t)
 	fabricMSPConfig.SigningIdentity.PrivateSigner.KeyMaterial = &ecdsa.PrivateKey{}
 
 	fabricMSPConfigProto, err := fabricMSPConfig.toProto()
@@ -414,7 +414,7 @@ func TestAddRootCAToMSP(t *testing.T) {
 	}
 	certBase64 := base64.StdEncoding.EncodeToString(pemEncodeX509Certificate(cert))
 
-	application := baseApplication()
+	application := baseApplication(t)
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -814,7 +814,7 @@ func TestAddRootCAToMSPFailure(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			channelGroup, err := baseApplicationChannelGroup()
+			channelGroup, err := baseApplicationChannelGroup(t)
 			gt.Expect(err).ToNot(HaveOccurred())
 			config := &cb.Config{
 				ChannelGroup: channelGroup,
@@ -830,7 +830,7 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
-	application := baseApplication()
+	application := baseApplication(t)
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -854,8 +854,8 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(org1MSP.RevocationList).To(HaveLen(1))
 
-	caCert, caPrivKey := generateCACertAndPrivateKey("org1.example.com")
-	cert, _ := generateCertAndPrivateKeyFromCACert("Org1", caCert, caPrivKey)
+	caCert, caPrivKey := generateCACertAndPrivateKey(t, "org1.example.com")
+	cert, _ := generateCertAndPrivateKeyFromCACert(t, "Org1", caCert, caPrivKey)
 
 	err = RevokeCertificateFromMSP(config, "Org1", caCert, caPrivKey, cert)
 	gt.Expect(err).ToNot(HaveOccurred())
@@ -1218,8 +1218,8 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 	t.Parallel()
 
-	caCert, caPrivKey := generateCACertAndPrivateKey("org1.example.com")
-	cert, _ := generateCertAndPrivateKeyFromCACert("Org1", caCert, caPrivKey)
+	caCert, caPrivKey := generateCACertAndPrivateKey(t, "org1.example.com")
+	cert, _ := generateCertAndPrivateKeyFromCACert(t, "Org1", caCert, caPrivKey)
 
 	tests := []struct {
 		spec        string
@@ -1239,7 +1239,7 @@ func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			channelGroup, err := baseApplicationChannelGroup()
+			channelGroup, err := baseApplicationChannelGroup(t)
 			gt.Expect(err).ToNot(HaveOccurred())
 			config := &cb.Config{
 				ChannelGroup: channelGroup,
@@ -1251,16 +1251,15 @@ func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 	}
 }
 
-func baseMSP() MSP {
-	cert, privKey := generateCACertAndPrivateKey("org1.example.com")
+func baseMSP(t *testing.T) MSP {
+	gt := NewGomegaWithT(t)
+
+	cert, privKey := generateCACertAndPrivateKey(t, "org1.example.com")
 	crlBytes, err := cert.CreateCRL(rand.Reader, privKey, nil, time.Now(), time.Now().Add(YEAR))
-	if err != nil {
-		log.Fatalf("Failed to create CRL: %s", err)
-	}
+	gt.Expect(err).NotTo(HaveOccurred())
+
 	crl, err := x509.ParseCRL(crlBytes)
-	if err != nil {
-		log.Fatalf("Failed to parse CRL: %s", err)
-	}
+	gt.Expect(err).NotTo(HaveOccurred())
 
 	return MSP{
 		Name:              "MSPID",
