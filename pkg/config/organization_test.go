@@ -21,7 +21,7 @@ func TestGetOrganization(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
-	expectedOrg := baseApplicationOrg()
+	expectedOrg := baseApplicationOrg(t)
 	orgGroup, err := newOrgConfigGroup(expectedOrg)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -39,7 +39,7 @@ func TestGetApplicationOrg(t *testing.T) {
 		Consortium: "SampleConsortium",
 		Application: Application{
 			Policies:      standardPolicies(),
-			Organizations: []Organization{baseApplicationOrg()},
+			Organizations: []Organization{baseApplicationOrg(t)},
 		},
 	}
 	channelGroup, err := newChannelGroup(channel)
@@ -92,7 +92,7 @@ func TestGetOrdererOrg(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
-	channel := baseSystemChannelProfile()
+	channel := baseSystemChannelProfile(t)
 	channelGroup, err := newSystemChannelGroup(channel)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -140,7 +140,7 @@ func TestGetConsortiumOrg(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
-	channel := baseSystemChannelProfile()
+	channel := baseSystemChannelProfile(t)
 	channelGroup, err := newSystemChannelGroup(channel)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -200,7 +200,7 @@ func TestNewOrgConfigGroup(t *testing.T) {
 		t.Parallel()
 		gt := NewGomegaWithT(t)
 
-		org := baseSystemChannelProfile().Orderer.Organizations[0]
+		org := baseSystemChannelProfile(t).Orderer.Organizations[0]
 		configGroup, err := newOrgConfigGroup(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 
@@ -350,7 +350,7 @@ func TestNewOrgConfigGroupFailure(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrg := baseSystemChannelProfile().Orderer.Organizations[0]
+	baseOrg := baseSystemChannelProfile(t).Orderer.Organizations[0]
 	baseOrg.Policies = nil
 
 	configGroup, err := newOrgConfigGroup(baseOrg)
@@ -358,11 +358,11 @@ func TestNewOrgConfigGroupFailure(t *testing.T) {
 	gt.Expect(err).To(MatchError("no policies defined"))
 }
 
-func baseApplicationOrg() Organization {
+func baseApplicationOrg(t *testing.T) Organization {
 	return Organization{
 		Name:     "Org1",
 		Policies: standardPolicies(),
-		MSP:      baseMSP(),
+		MSP:      baseMSP(t),
 		AnchorPeers: []AnchorPeer{
 			{Host: "host3", Port: 123},
 		},

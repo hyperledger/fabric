@@ -44,7 +44,7 @@ func TestGetOrdererCapabilities(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -88,7 +88,7 @@ func TestGetApplicationCapabilities(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseApplicationConf := baseApplication()
+	baseApplicationConf := baseApplication(t)
 	applicationGroup, err := newApplicationGroup(baseApplicationConf)
 	gt.Expect(err).NotTo(HaveOccurred())
 

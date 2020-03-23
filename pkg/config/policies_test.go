@@ -55,7 +55,7 @@ func TestRemoveApplicationOrgPolicy(t *testing.T) {
 	channelGroup := newConfigGroup()
 	applicationGroup := newConfigGroup()
 
-	application := baseApplication()
+	application := baseApplication(t)
 
 	for _, org := range application.Organizations {
 		org.Policies = applicationOrgStandardPolicies()
@@ -92,7 +92,7 @@ func TestRemoveApplicationOrgPolicyFailures(t *testing.T) {
 	channelGroup := newConfigGroup()
 	applicationGroup := newConfigGroup()
 
-	application := baseApplication()
+	application := baseApplication(t)
 	for _, org := range application.Organizations {
 		org.Policies = applicationOrgStandardPolicies()
 		orgGroup, err := newOrgConfigGroup(org)
@@ -115,7 +115,7 @@ func TestAddApplicationOrgPolicy(t *testing.T) {
 	channelGroup := newConfigGroup()
 	applicationGroup := newConfigGroup()
 
-	application := baseApplication()
+	application := baseApplication(t)
 
 	for _, org := range application.Organizations {
 		org.Policies = applicationOrgStandardPolicies()
@@ -149,7 +149,7 @@ func TestAddApplicationOrgPolicyFailures(t *testing.T) {
 	channelGroup := newConfigGroup()
 	applicationGroup := newConfigGroup()
 
-	application := baseApplication()
+	application := baseApplication(t)
 	for _, org := range application.Organizations {
 		org.Policies = applicationOrgStandardPolicies()
 
@@ -172,7 +172,7 @@ func TestAddApplicationPolicy(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	channelGroup := newConfigGroup()
-	application := baseApplication()
+	application := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -195,7 +195,7 @@ func TestAddApplicationPolicyFailures(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	channelGroup := newConfigGroup()
-	application := baseApplication()
+	application := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -217,7 +217,7 @@ func TestRemoveApplicationPolicy(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	channelGroup := newConfigGroup()
-	application := baseApplication()
+	application := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -243,7 +243,7 @@ func TestRemoveApplicationPolicyFailures(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	channelGroup := newConfigGroup()
-	application := baseApplication()
+	application := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -293,7 +293,7 @@ func TestAddConsortiumOrgPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	consortiums := baseConsortiums()
+	consortiums := baseConsortiums(t)
 
 	consortiumsGroup, err := newConsortiumsGroup(consortiums)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -323,7 +323,7 @@ func TestAddConsortiumOrgPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	consortiums := baseConsortiums()
+	consortiums := baseConsortiums(t)
 
 	consortiumsGroup, err := newConsortiumsGroup(consortiums)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -375,7 +375,7 @@ func TestRemoveConsortiumOrgPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	consortiums := baseConsortiums()
+	consortiums := baseConsortiums(t)
 
 	consortiums[0].Organizations[0].Policies["TestPolicy"] = Policy{Type: ImplicitMetaPolicyType, Rule: "MAJORITY Endorsement"}
 
@@ -406,7 +406,7 @@ func TestRemoveConsortiumOrgPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	consortiums := baseConsortiums()
+	consortiums := baseConsortiums(t)
 
 	consortiumsGroup, err := newConsortiumsGroup(consortiums)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -448,7 +448,7 @@ func TestAddOrdererPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -478,7 +478,7 @@ func TestAddOrdererPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -500,7 +500,7 @@ func TestRemoveOrdererPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 	baseOrdererConf.Policies["TestPolicy"] = baseOrdererConf.Policies[AdminsPolicyKey]
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
@@ -530,7 +530,7 @@ func TestRemoveOrdererPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 	baseOrdererConf.Policies["TestPolicy"] = baseOrdererConf.Policies[AdminsPolicyKey]
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
@@ -600,7 +600,7 @@ func TestAddOrdererOrgPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -630,7 +630,7 @@ func TestAddOrdererOrgPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -652,7 +652,7 @@ func TestRemoveOrdererOrgPolicy(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 	baseOrdererConf.Organizations[0].Policies["TestPolicy"] = baseOrdererConf.Organizations[0].Policies[AdminsPolicyKey]
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
@@ -682,7 +682,7 @@ func TestRemoveOrdererOrgPolicyFailures(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseOrdererConf := baseSoloOrderer()
+	baseOrdererConf := baseSoloOrderer(t)
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())

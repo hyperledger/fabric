@@ -17,6 +17,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -26,6 +27,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/pkg/config"
+	. "github.com/onsi/gomega"
 )
 
 // fetchChannelConfig mocks retrieving the config transaction from the most recent configuration block.
@@ -398,15 +400,20 @@ fUNCdMGmr8FVF6IzTNYGmCuk/C4=
 )
 
 // baseMSP creates a basic MSP struct for organization.
-func baseMSP() config.MSP {
+func baseMSP(t *testing.T) config.MSP {
+	gt := NewGomegaWithT(t)
+
 	certBlock, _ := pem.Decode([]byte(dummyCert))
-	cert, _ := x509.ParseCertificate(certBlock.Bytes)
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	gt.Expect(err).NotTo(HaveOccurred())
 
 	privKeyBlock, _ := pem.Decode([]byte(dummyPrivateKey))
-	privKey, _ := x509.ParsePKCS8PrivateKey(privKeyBlock.Bytes)
+	privKey, err := x509.ParsePKCS8PrivateKey(privKeyBlock.Bytes)
+	gt.Expect(err).NotTo(HaveOccurred())
 
 	crlBlock, _ := pem.Decode([]byte(dummyCRL))
-	crl, _ := x509.ParseCRL(crlBlock.Bytes)
+	crl, err := x509.ParseCRL(crlBlock.Bytes)
+	gt.Expect(err).NotTo(HaveOccurred())
 
 	return config.MSP{
 		Name:              "MSPID",
@@ -528,7 +535,7 @@ func Example_usage() {
 
 	appOrg := config.Organization{
 		Name: "Org2",
-		MSP:  baseMSP(),
+		MSP:  baseMSP(&testing.T{}),
 		Policies: map[string]config.Policy{
 			config.AdminsPolicyKey: {
 				Type: config.ImplicitMetaPolicyType,
@@ -566,7 +573,7 @@ func Example_usage() {
 
 	org := config.Organization{
 		Name:             "OrdererOrg2",
-		MSP:              baseMSP(),
+		MSP:              baseMSP(&testing.T{}),
 		OrdererEndpoints: []string{"127.0.0.1:7050", "127.0.0.1:9050"},
 		Policies: map[string]config.Policy{
 			config.AdminsPolicyKey: {
