@@ -209,3 +209,18 @@ func getApplicationOrg(config *cb.Config, orgName string) (*cb.ConfigGroup, erro
 	}
 	return org, nil
 }
+
+// AddApplicationOrg adds an organization to an existing config's Application configuration.
+// Will not error if organization already exists.
+func AddApplicationOrg(config *cb.Config, org Organization) error {
+	appGroup := config.ChannelGroup.Groups[ApplicationGroupKey]
+
+	orgGroup, err := newOrgConfigGroup(org)
+	if err != nil {
+		return fmt.Errorf("failed to create application org %s: %v", org.Name, err)
+	}
+
+	appGroup.Groups[org.Name] = orgGroup
+
+	return nil
+}
