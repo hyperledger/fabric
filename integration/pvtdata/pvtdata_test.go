@@ -161,11 +161,13 @@ var _ bool = Describe("PrivateData", func() {
 				}
 				deployChaincode(network, orderer, testChaincode)
 				peer := network.Peer("Org1", "peer0")
+				By("adding marble1")
 				addMarble(network, orderer, testChaincode.Name,
 					`{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`,
 					peer,
 				)
 
+				By("asserting pvtdata in each collection for config7")
 				assertPvtdataPresencePerCollectionConfig7(network, testChaincode.Name, "marble1", peer)
 			})
 		})
@@ -508,10 +510,6 @@ var _ bool = Describe("PrivateData", func() {
 				})
 			}
 
-			When("chaincode in legacy lifecycle", func() {
-				assertReconcileBehavior()
-			})
-
 			When("chaincode is migrated from legacy to new lifecycle with same collection config", func() {
 				BeforeEach(func() {
 					testChaincode = chaincode{
@@ -535,7 +533,18 @@ var _ bool = Describe("PrivateData", func() {
 				}
 			})
 
-			assertBlockToLiveBehavior := func() {
+			It("purges private data after BTL and causes new peer not to pull the purged private data", func() {
+				By("deploying new lifecycle chaincode and adding marble1")
+				testChaincode = chaincode{
+					Chaincode: newLifecycleChaincode,
+					isLegacy:  false,
+				}
+				nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
+
+				testChaincode.CollectionsConfig = collectionConfig("short_btl_config.json")
+				deployChaincode(network, orderer, testChaincode)
+				addMarble(network, orderer, testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("Org2", "peer0"))
+
 				eligiblePeer := network.Peer("Org2", "peer0")
 				ccName := testChaincode.Name
 				By("adding three blocks")
@@ -561,39 +570,6 @@ var _ bool = Describe("PrivateData", func() {
 				network.VerifyMembership(network.Peers, channelID, ccName)
 				assertPresentInCollectionM(network, ccName, "marble1", org2Peer1)
 				assertDoesNotExistInCollectionMPD(network, ccName, "marble1", org2Peer1)
-			}
-
-			When("chaincode in legacy lifecycle", func() {
-				It("purges private data after BTL and causes new peer not to pull the purged private data", func() {
-					By("deploying legacy chaincode and adding marble1")
-					testChaincode = chaincode{
-						Chaincode: legacyChaincode,
-						isLegacy:  true,
-					}
-
-					testChaincode.CollectionsConfig = collectionConfig("short_btl_config.json")
-					deployChaincode(network, orderer, testChaincode)
-					addMarble(network, orderer, testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("Org2", "peer0"))
-
-					assertBlockToLiveBehavior()
-				})
-			})
-
-			When("chaincode in new lifecycle", func() {
-				It("purges private data after BTL and causes new peer not to pull the purged private data", func() {
-					By("deploying new lifecycle chaincode and adding marble1")
-					testChaincode = chaincode{
-						Chaincode: newLifecycleChaincode,
-						isLegacy:  false,
-					}
-					nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
-
-					testChaincode.CollectionsConfig = collectionConfig("short_btl_config.json")
-					deployChaincode(network, orderer, testChaincode)
-					addMarble(network, orderer, testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("Org2", "peer0"))
-
-					assertBlockToLiveBehavior()
-				})
 			})
 		})
 
@@ -610,37 +586,19 @@ var _ bool = Describe("PrivateData", func() {
 				assertPvtdataPresencePerCollectionConfig1(network, testChaincode.Name, "marble2")
 			}
 
-			When("chaincode in legacy lifecycle", func() {
-				It("causes removed org not to get new data", func() {
-					By("deploying legacy chaincode and adding marble1")
-					testChaincode = chaincode{
-						Chaincode: legacyChaincode,
-						isLegacy:  true,
-					}
-					testChaincode.CollectionsConfig = collectionConfig("collections_config2.json")
-					deployChaincode(network, orderer, testChaincode)
-					addMarble(network, orderer, testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("Org2", "peer0"))
-					assertPvtdataPresencePerCollectionConfig2(network, testChaincode.Name, "marble1")
+			It("causes removed org not to get new data", func() {
+				By("deploying new lifecycle chaincode and adding marble1")
+				testChaincode = chaincode{
+					Chaincode: newLifecycleChaincode,
+					isLegacy:  false,
+				}
+				nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
+				testChaincode.CollectionsConfig = collectionConfig("collections_config2.json")
+				deployChaincode(network, orderer, testChaincode)
+				addMarble(network, orderer, testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("Org2", "peer0"))
+				assertPvtdataPresencePerCollectionConfig2(network, testChaincode.Name, "marble1")
 
-					assertOrgRemovalBehavior()
-				})
-			})
-
-			When("chaincode in new lifecycle", func() {
-				It("causes removed org not to get new data", func() {
-					By("deploying new lifecycle chaincode and adding marble1")
-					testChaincode = chaincode{
-						Chaincode: newLifecycleChaincode,
-						isLegacy:  false,
-					}
-					nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
-					testChaincode.CollectionsConfig = collectionConfig("collections_config2.json")
-					deployChaincode(network, orderer, testChaincode)
-					addMarble(network, orderer, testChaincode.Name, `{"name":"marble1", "color":"blue", "size":35, "owner":"tom", "price":99}`, network.Peer("Org2", "peer0"))
-					assertPvtdataPresencePerCollectionConfig2(network, testChaincode.Name, "marble1")
-
-					assertOrgRemovalBehavior()
-				})
+				assertOrgRemovalBehavior()
 			})
 		})
 
@@ -779,67 +737,34 @@ var _ bool = Describe("PrivateData", func() {
 				assertPrivateDataAsExpected(event.BlockAndPvtData.PrivateDataMap, expectedKVWritesMap)
 			}
 
-			When("chaincode in legacy lifecycle", func() {
-				It("calls marbles APIs and delivers private data", func() {
-					By("deploying legacy chaincode")
-					testChaincode = chaincode{
-						Chaincode: legacyChaincode,
-						isLegacy:  true,
-					}
-					testChaincode.CollectionsConfig = collectionConfig("collections_config3.json")
-					deployChaincode(network, orderer, testChaincode)
+			It("calls marbles APIs and delivers private data", func() {
+				By("deploying new lifecycle chaincode")
+				testChaincode = chaincode{
+					Chaincode: newLifecycleChaincode,
+					isLegacy:  false,
+				}
+				nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
+				testChaincode.CollectionsConfig = collectionConfig("collections_config3.json")
+				deployChaincode(network, orderer, testChaincode)
 
-					By("attempting to invoke chaincode from a user (org1) not in any collection member orgs (org2 and org3)")
-					peer2 := network.Peer("Org2", "peer0")
-					marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"memberonly-marble", "color":"blue", "size":35, "owner":"tom", "price":99}`))
-					command := commands.ChaincodeInvoke{
-						ChannelID:     channelID,
-						Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
-						Name:          "marblesp",
-						Ctor:          fmt.Sprintf(`{"Args":["initMarble"]}`),
-						Transient:     fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
-						PeerAddresses: []string{network.PeerAddress(peer2, nwo.ListenPort)},
-						WaitForEvent:  true,
-					}
-					peer1 := network.Peer("Org1", "peer0")
-					expectedErrMsg := "tx creator does not have write access permission"
-					invokeChaincodeExpectErr(network, peer1, command, expectedErrMsg)
+				By("attempting to invoke chaincode from a user (org1) not in any collection member orgs (org2 and org3)")
+				peer2 := network.Peer("Org2", "peer0")
+				marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"memberonly-marble", "color":"blue", "size":35, "owner":"tom", "price":99}`))
+				command := commands.ChaincodeInvoke{
+					ChannelID:     channelID,
+					Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
+					Name:          "marblesp",
+					Ctor:          fmt.Sprintf(`{"Args":["initMarble"]}`),
+					Transient:     fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
+					PeerAddresses: []string{network.PeerAddress(peer2, nwo.ListenPort)},
+					WaitForEvent:  true,
+				}
+				peer1 := network.Peer("Org1", "peer0")
+				expectedErrMsg := "tx creator does not have write access permission"
+				invokeChaincodeExpectErr(network, peer1, command, expectedErrMsg)
 
-					assertMarbleAPIs()
-					assertDeliverWithPrivateDataACLBehavior()
-				})
-			})
-
-			When("chaincode in new lifecycle", func() {
-				It("calls marbles APIs and delivers private data", func() {
-					By("deploying new lifecycle chaincode")
-					testChaincode = chaincode{
-						Chaincode: newLifecycleChaincode,
-						isLegacy:  false,
-					}
-					nwo.EnableCapabilities(network, channelID, "Application", "V2_0", orderer, network.Peers...)
-					testChaincode.CollectionsConfig = collectionConfig("collections_config3.json")
-					deployChaincode(network, orderer, testChaincode)
-
-					By("attempting to invoke chaincode from a user (org1) not in any collection member orgs (org2 and org3)")
-					peer2 := network.Peer("Org2", "peer0")
-					marbleDetailsBase64 := base64.StdEncoding.EncodeToString([]byte(`{"name":"memberonly-marble", "color":"blue", "size":35, "owner":"tom", "price":99}`))
-					command := commands.ChaincodeInvoke{
-						ChannelID:     channelID,
-						Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
-						Name:          "marblesp",
-						Ctor:          fmt.Sprintf(`{"Args":["initMarble"]}`),
-						Transient:     fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
-						PeerAddresses: []string{network.PeerAddress(peer2, nwo.ListenPort)},
-						WaitForEvent:  true,
-					}
-					peer1 := network.Peer("Org1", "peer0")
-					expectedErrMsg := "tx creator does not have write access permission"
-					invokeChaincodeExpectErr(network, peer1, command, expectedErrMsg)
-
-					assertMarbleAPIs()
-					assertDeliverWithPrivateDataACLBehavior()
-				})
+				assertMarbleAPIs()
+				assertDeliverWithPrivateDataACLBehavior()
 			})
 		})
 
@@ -1283,7 +1208,6 @@ func assertPvtdataPresencePerCollectionConfig7(n *nwo.Network, chaincodeName, ma
 			case "Org2":
 				collectionMPresence += checkPresentInCollectionM(n, chaincodeName, marbleName, peer)
 				collectionMPDPresence += checkPresentInCollectionMPD(n, chaincodeName, marbleName, peer)
-
 			case "Org3":
 				assertNotPresentInCollectionM(n, chaincodeName, marbleName, peer)
 				collectionMPDPresence += checkPresentInCollectionMPD(n, chaincodeName, marbleName, peer)
