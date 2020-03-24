@@ -150,7 +150,7 @@ func getOrganization(orgGroup *cb.ConfigGroup, orgName string) (Organization, er
 		return Organization{}, err
 	}
 
-	var anchorPeers []AnchorPeer
+	var anchorPeers []Address
 	_, ok := orgGroup.Values[AnchorPeersKey]
 	if ok {
 		anchorProtos := &pb.AnchorPeers{}
@@ -159,7 +159,7 @@ func getOrganization(orgGroup *cb.ConfigGroup, orgName string) (Organization, er
 			return Organization{}, err
 		}
 		for _, anchorProto := range anchorProtos.AnchorPeers {
-			anchorPeers = append(anchorPeers, AnchorPeer{
+			anchorPeers = append(anchorPeers, Address{
 				Host: anchorProto.Host,
 				Port: int(anchorProto.Port),
 			})

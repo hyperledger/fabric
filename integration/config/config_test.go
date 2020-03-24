@@ -149,7 +149,7 @@ var _ = Describe("Config", func() {
 
 			By("adding the anchor peer for " + peer.Organization)
 			host, port := peerHostPort(network, peer)
-			err = config.AddAnchorPeer(updatedChannelConfig, peer.Organization, config.AnchorPeer{Host: host, Port: port})
+			err = config.AddAnchorPeer(updatedChannelConfig, peer.Organization, config.Address{Host: host, Port: port})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("computing the config update")

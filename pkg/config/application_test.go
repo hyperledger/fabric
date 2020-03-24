@@ -168,12 +168,12 @@ func TestAddAnchorPeer(t *testing.T) {
 		},
 	}
 
-	newOrg1AnchorPeer := AnchorPeer{
+	newOrg1AnchorPeer := Address{
 		Host: "host3",
 		Port: 123,
 	}
 
-	newOrg2AnchorPeer := AnchorPeer{
+	newOrg2AnchorPeer := Address{
 		Host: "host4",
 		Port: 123,
 	}
@@ -316,14 +316,14 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 		testName      string
 		orgName       string
 		configMod     func(*GomegaWithT, *cb.Config)
-		newAnchorPeer AnchorPeer
+		newAnchorPeer Address
 		expectedErr   string
 	}{
 		{
 			testName:      "When the org for the application does not exist",
 			orgName:       "BadOrg",
 			configMod:     nil,
-			newAnchorPeer: AnchorPeer{Host: "host3", Port: 123},
+			newAnchorPeer: Address{Host: "host3", Port: 123},
 			expectedErr:   "application org BadOrg does not exist in channel config",
 		},
 		{
@@ -345,7 +345,7 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 					Value: v,
 				}
 			},
-			newAnchorPeer: AnchorPeer{Host: "host1", Port: 123},
+			newAnchorPeer: Address{Host: "host1", Port: 123},
 			expectedErr:   "application org Org1 already contains anchor peer endpoint host1:123",
 		},
 	}
@@ -496,7 +496,7 @@ func TestRemoveAnchorPeer(t *testing.T) {
 	"sequence": "0"
 }
 	`
-	anchorPeer1 := AnchorPeer{Host: "host1", Port: 123}
+	anchorPeer1 := Address{Host: "host1", Port: 123}
 	err = AddAnchorPeer(config, "Org1", anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedUpdatedConfig := &cb.Config{}
@@ -516,20 +516,20 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 	tests := []struct {
 		testName           string
 		orgName            string
-		anchorPeerToRemove AnchorPeer
+		anchorPeerToRemove Address
 		expectedErr        string
 	}{
 		{
 			testName:           "When the org for the application does not exist",
 			orgName:            "BadOrg",
-			anchorPeerToRemove: AnchorPeer{Host: "host1", Port: 123},
+			anchorPeerToRemove: Address{Host: "host1", Port: 123},
 			expectedErr:        "application org BadOrg does not exist in channel config",
 		},
 		{
 			testName:           "When the anchor peer being removed doesn't exist in the org",
 			orgName:            "Org1",
-			anchorPeerToRemove: AnchorPeer{Host: "host2", Port: 123},
-			expectedErr:        "could not find anchor peer host2:123 in Org1's anchor peer endpoints",
+			anchorPeerToRemove: Address{Host: "host2", Port: 123},
+			expectedErr:        "could not find anchor peer host2:123 in application org Org1",
 		},
 	}
 
@@ -574,7 +574,7 @@ func TestGetAnchorPeer(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	expectedAnchorPeer := AnchorPeer{Host: "host1", Port: 123}
+	expectedAnchorPeer := Address{Host: "host1", Port: 123}
 
 	err = AddAnchorPeer(config, "Org1", expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -679,7 +679,7 @@ func TestAddApplicationOrg(t *testing.T) {
 		Name:     "Org3",
 		Policies: applicationOrgStandardPolicies(),
 		MSP:      baseMSP(t),
-		AnchorPeers: []AnchorPeer{
+		AnchorPeers: []Address{
 			{
 				Host: "127.0.0.1",
 				Port: 7051,

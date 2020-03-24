@@ -363,7 +363,7 @@ func baseApplicationOrg(t *testing.T) Organization {
 		Name:     "Org1",
 		Policies: standardPolicies(),
 		MSP:      baseMSP(t),
-		AnchorPeers: []AnchorPeer{
+		AnchorPeers: []Address{
 			{Host: "host3", Port: 123},
 		},
 	}
