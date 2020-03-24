@@ -502,7 +502,7 @@ func Example_usage() {
 			AbsoluteMaxBytes:  100,
 			PreferredMaxBytes: 100,
 		},
-		Addresses: []string{"127.0.0.1:7050"},
+		Addresses: []config.Address{{Host: "127.0.0.1", Port: 7050}},
 		State:     "STATE_NORMAL",
 	}
 
@@ -511,7 +511,7 @@ func Example_usage() {
 		panic(nil)
 	}
 
-	newAnchorPeer := config.AnchorPeer{
+	newAnchorPeer := config.Address{
 		Host: "127.0.0.2",
 		Port: 7051,
 	}
@@ -523,7 +523,7 @@ func Example_usage() {
 	}
 
 	// Remove an old anchor peer from Org1
-	oldAnchorPeer := config.AnchorPeer{
+	oldAnchorPeer := config.Address{
 		Host: "127.0.0.2",
 		Port: 7051,
 	}
@@ -558,7 +558,7 @@ func Example_usage() {
 				Rule: "ANY Writers",
 			},
 		},
-		AnchorPeers: []config.AnchorPeer{
+		AnchorPeers: []config.Address{
 			{
 				Host: "127.0.0.1",
 				Port: 7051,
@@ -600,12 +600,12 @@ func Example_usage() {
 		panic(err)
 	}
 
-	err = config.AddOrdererEndpoint(updatedConfig, "OrdererOrg2", "127.0.0.1:8050")
+	err = config.AddOrdererEndpoint(updatedConfig, "OrdererOrg2", config.Address{Host: "127.0.0.1", Port: 8050})
 	if err != nil {
 		panic(err)
 	}
 
-	err = config.RemoveOrdererEndpoint(updatedConfig, "OrdererOrg2", "127.0.0.1:9050")
+	err = config.RemoveOrdererEndpoint(updatedConfig, "OrdererOrg2", config.Address{Host: "127.0.0.1", Port: 9050})
 	if err != nil {
 		panic(err)
 	}

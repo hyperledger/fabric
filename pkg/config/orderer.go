@@ -28,7 +28,7 @@ type Orderer struct {
 	// Options: `Solo`, `Kafka` or `Raft`
 	OrdererType string
 	// Addresses is the list of orderer addresses.
-	Addresses []string
+	Addresses []Address
 	// BatchTimeout is the wait time between transactions.
 	BatchTimeout  time.Duration
 	BatchSize     BatchSize
@@ -70,8 +70,7 @@ type EtcdRaft struct {
 
 // Consenter represents a consenting node (i.e. replica).
 type Consenter struct {
-	Host          string
-	Port          uint32
+	Address       Address
 	ClientTLSCert *x509.Certificate
 	ServerTLSCert *x509.Certificate
 }
@@ -156,8 +155,7 @@ func GetOrdererConfiguration(config *cb.Config) (Orderer, error) {
 	}
 
 	// ORDERER ADDRESSES
-	ordererAddresses := &cb.OrdererAddresses{}
-	err = unmarshalConfigValueAtKey(config.ChannelGroup, OrdererAddressesKey, ordererAddresses)
+	ordererAddresses, err := getOrdererAddresses(config)
 	if err != nil {
 		return Orderer{}, err
 	}
@@ -212,7 +210,7 @@ func GetOrdererConfiguration(config *cb.Config) (Orderer, error) {
 
 	return Orderer{
 		OrdererType:  ordererType,
-		Addresses:    ordererAddresses.Addresses,
+		Addresses:    ordererAddresses,
 		BatchTimeout: batchTimeout,
 		BatchSize: BatchSize{
 			MaxMessageCount:   batchSize.MaxMessageCount,
@@ -247,7 +245,7 @@ func AddOrdererOrg(config *cb.Config, org Organization) error {
 // AddOrdererEndpoint adds an orderer's endpoint to an existing channel config transaction.
 // It must add the endpoint to an existing org and the endpoint must not already
 // exist in the org.
-func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint string) error {
+func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint Address) error {
 	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
@@ -262,15 +260,17 @@ func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint string) erro
 		}
 	}
 
+	endpointToAdd := fmt.Sprintf("%s:%d", endpoint.Host, endpoint.Port)
+
 	existingOrdererEndpoints := ordererAddrProto.Addresses
 	for _, e := range existingOrdererEndpoints {
-		if e == endpoint {
+		if e == endpointToAdd {
 			return fmt.Errorf("orderer org %s already contains endpoint %s",
-				orgName, endpoint)
+				orgName, endpointToAdd)
 		}
 	}
 
-	existingOrdererEndpoints = append(existingOrdererEndpoints, endpoint)
+	existingOrdererEndpoints = append(existingOrdererEndpoints, endpointToAdd)
 
 	// Add orderer endpoints config value back to orderer org
 	err := addValue(ordererOrgGroup, endpointsValue(existingOrdererEndpoints), AdminsPolicyKey)
@@ -283,7 +283,7 @@ func AddOrdererEndpoint(config *cb.Config, orgName string, endpoint string) erro
 
 // RemoveOrdererEndpoint removes an orderer's endpoint from an existing channel config transaction.
 // The removed endpoint and org it belongs to must both already exist.
-func RemoveOrdererEndpoint(config *cb.Config, orgName string, endpoint string) error {
+func RemoveOrdererEndpoint(config *cb.Config, orgName string, endpoint Address) error {
 	ordererOrgGroup, ok := config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
@@ -298,22 +298,27 @@ func RemoveOrdererEndpoint(config *cb.Config, orgName string, endpoint string) e
 		}
 	}
 
-	existingEndpoints := ordererAddrProto.Addresses
-	for i, e := range existingEndpoints {
-		if e == endpoint {
-			existingEndpoints = append(existingEndpoints[:i], existingEndpoints[i+1:]...)
+	endpointToRemove := fmt.Sprintf("%s:%d", endpoint.Host, endpoint.Port)
 
-			// Add orderer endpoints config value back to orderer org
-			err := addValue(ordererOrgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
-			if err != nil {
-				return fmt.Errorf("failed to remove endpoint %v from orderer org %s: %v", endpoint, orgName, err)
-			}
-
-			return nil
+	existingEndpoints := ordererAddrProto.Addresses[:0]
+	for _, e := range ordererAddrProto.Addresses {
+		if e != endpointToRemove {
+			existingEndpoints = append(existingEndpoints, e)
 		}
 	}
 
-	return fmt.Errorf("could not find endpoint %s in orderer org %s", endpoint, orgName)
+	if len(existingEndpoints) == len(ordererAddrProto.Addresses) {
+		return fmt.Errorf("could not find endpoint %s in orderer org %s", endpointToRemove, orgName)
+	}
+
+	// Add orderer endpoints config value back to orderer org
+	err := addValue(ordererOrgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
+	if err != nil {
+		return fmt.Errorf("failed to remove endpoint %v from orderer org %s: %v", endpoint, orgName, err)
+	}
+
+	return nil
+
 }
 
 // newOrdererGroup returns the orderer component of the channel configuration.
@@ -489,24 +494,27 @@ func consensusTypeValue(consensusType string, consensusMetadata []byte, consensu
 
 // marshalEtcdRaftMetadata serializes etcd RAFT metadata.
 func marshalEtcdRaftMetadata(md EtcdRaft) ([]byte, error) {
-	consenters := []*eb.Consenter{}
+	var consenters []*eb.Consenter
 
 	if len(md.Consenters) == 0 {
 		return nil, errors.New("consenters are required")
 	}
 
 	for _, c := range md.Consenters {
+		host := c.Address.Host
+		port := c.Address.Port
+
 		if c.ClientTLSCert == nil {
-			return nil, fmt.Errorf("client tls cert for consenter %s:%d is required", c.Host, c.Port)
+			return nil, fmt.Errorf("client tls cert for consenter %s:%d is required", host, port)
 		}
 
 		if c.ServerTLSCert == nil {
-			return nil, fmt.Errorf("server tls cert for consenter %s:%d is required", c.Host, c.Port)
+			return nil, fmt.Errorf("server tls cert for consenter %s:%d is required", host, port)
 		}
 
 		consenter := &eb.Consenter{
-			Host: c.Host,
-			Port: c.Port,
+			Host: host,
+			Port: uint32(port),
 			ClientTlsCert: pem.EncodeToMemory(&pem.Block{
 				Type:  "CERTIFICATE",
 				Bytes: c.ClientTLSCert.Raw,
@@ -562,8 +570,10 @@ func unmarshalEtcdRaftMetadata(mdBytes []byte) (EtcdRaft, error) {
 		}
 
 		consenter := Consenter{
-			Host:          c.Host,
-			Port:          c.Port,
+			Address: Address{
+				Host: c.Host,
+				Port: int(c.Port),
+			},
 			ClientTLSCert: clientTLSCert,
 			ServerTLSCert: serverTLSCert,
 		}
@@ -585,4 +595,25 @@ func unmarshalEtcdRaftMetadata(mdBytes []byte) (EtcdRaft, error) {
 			SnapshotIntervalSize: etcdRaftMetadata.Options.SnapshotIntervalSize,
 		},
 	}, nil
+}
+
+func getOrdererAddresses(config *cb.Config) ([]Address, error) {
+	ordererAddressesProto := &cb.OrdererAddresses{}
+	err := unmarshalConfigValueAtKey(config.ChannelGroup, OrdererAddressesKey, ordererAddressesProto)
+	if err != nil {
+		return nil, err
+	}
+
+	var addresses []Address
+
+	for _, a := range ordererAddressesProto.Addresses {
+		host, port, err := parseAddress(a)
+		if err != nil {
+			return nil, err
+		}
+
+		addresses = append(addresses, Address{Host: host, Port: port})
+	}
+
+	return addresses, nil
 }

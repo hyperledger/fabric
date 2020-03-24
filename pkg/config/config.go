@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,8 +47,15 @@ type Organization struct {
 	Policies map[string]Policy
 	MSP      MSP
 
-	AnchorPeers      []AnchorPeer
+	// AnchorPeers contains the endpoints of anchor peers for each application organization.
+	AnchorPeers      []Address
 	OrdererEndpoints []string
+}
+
+// Address contains the hostname and port for an endpoint.
+type Address struct {
+	Host string
+	Port int
 }
 
 type standardConfigValue struct {
@@ -96,6 +104,22 @@ func NewCreateChannelTx(channelConfig Channel) (*cb.Envelope, error) {
 	}
 
 	return env, nil
+}
+
+// ComputeUpdate computes the ConfigUpdate from a base and modified config transaction.
+func ComputeUpdate(baseConfig, updatedConfig *cb.Config, channelID string) (*cb.ConfigUpdate, error) {
+	if channelID == "" {
+		return nil, errors.New("channel ID is required")
+	}
+
+	updt, err := computeConfigUpdate(baseConfig, updatedConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute update: %v", err)
+	}
+
+	updt.ChannelId = channelID
+
+	return updt, nil
 }
 
 // SignConfigUpdate signs the given configuration update with a
@@ -327,11 +351,16 @@ func implicitMetaFromString(input string) (*cb.ImplicitMetaPolicy, error) {
 
 // ordererAddressesValue returns the a config definition for the orderer addresses.
 // It is a value for the /Channel group.
-func ordererAddressesValue(addresses []string) *standardConfigValue {
+func ordererAddressesValue(addresses []Address) *standardConfigValue {
+	var addrs []string
+	for _, a := range addresses {
+		addrs = append(addrs, fmt.Sprintf("%s:%d", a.Host, a.Port))
+	}
+
 	return &standardConfigValue{
 		key: OrdererAddressesKey,
 		value: &cb.OrdererAddresses{
-			Addresses: addresses,
+			Addresses: addrs,
 		},
 	}
 }
@@ -494,22 +523,6 @@ func payloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) (*cb.Header, er
 	}, nil
 }
 
-// ComputeUpdate computes the ConfigUpdate from a base and modified config transaction.
-func ComputeUpdate(baseConfig, updatedConfig *cb.Config, channelID string) (*cb.ConfigUpdate, error) {
-	if channelID == "" {
-		return nil, errors.New("channel ID is required")
-	}
-
-	updt, err := computeConfigUpdate(baseConfig, updatedConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compute update: %v", err)
-	}
-
-	updt.ChannelId = channelID
-
-	return updt, nil
-}
-
 // concatenateBytes combines multiple arrays of bytes, for signatures or digests
 // over multiple fields.
 func concatenateBytes(data ...[]byte) []byte {
@@ -599,4 +612,21 @@ func unmarshalConfigValueAtKey(group *cb.ConfigGroup, key string, msg proto.Mess
 	}
 
 	return nil
+}
+
+func parseAddress(address string) (string, int, error) {
+	hostport := strings.Split(address, ":")
+	if len(hostport) != 2 {
+		return "", 0, fmt.Errorf("unable to parse host and port from %s", address)
+	}
+
+	host := hostport[0]
+	port := hostport[1]
+
+	portNum, err := strconv.Atoi(port)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return host, portNum, nil
 }

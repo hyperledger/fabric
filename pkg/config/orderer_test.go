@@ -123,8 +123,10 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 				o.EtcdRaft = EtcdRaft{
 					Consenters: []Consenter{
 						{
-							Host:          "host1",
-							Port:          123,
+							Address: Address{
+								Host: "host1",
+								Port: 123,
+							},
 							ClientTLSCert: nil,
 						},
 					},
@@ -139,8 +141,10 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 				o.EtcdRaft = EtcdRaft{
 					Consenters: []Consenter{
 						{
-							Host:          "host1",
-							Port:          123,
+							Address: Address{
+								Host: "host1",
+								Port: 123,
+							},
 							ClientTLSCert: &x509.Certificate{},
 							ServerTLSCert: nil,
 						},
@@ -193,8 +197,12 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
 
+	var addresses []string
+	for _, a := range baseOrdererConf.Addresses {
+		addresses = append(addresses, fmt.Sprintf("%s:%d", a.Host, a.Port))
+	}
 	originalOrdererAddresses, err := proto.Marshal(&cb.OrdererAddresses{
-		Addresses: baseOrdererConf.Addresses,
+		Addresses: addresses,
 	})
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -231,13 +239,15 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 
 	// Modify MaxMessageCount, Addresses, and ConesnsusType to etcdraft
 	updatedOrdererConf.BatchSize.MaxMessageCount = 10000
-	updatedOrdererConf.Addresses = []string{"newhost:345"}
+	updatedOrdererConf.Addresses = []Address{{Host: "newhost", Port: 345}}
 	updatedOrdererConf.OrdererType = ConsensusTypeEtcdRaft
 	updatedOrdererConf.EtcdRaft = EtcdRaft{
 		Consenters: []Consenter{
 			{
-				Host:          "host1",
-				Port:          123,
+				Address: Address{
+					Host: "host1",
+					Port: 123,
+				},
 				ClientTLSCert: &x509.Certificate{},
 				ServerTLSCert: &x509.Certificate{},
 			},
@@ -557,7 +567,11 @@ func TestGetOrdererConfiguration(t *testing.T) {
 			ordererGroup, err := newOrdererGroup(baseOrdererConf)
 			gt.Expect(err).NotTo(HaveOccurred())
 
-			ordererAddresses, err := proto.Marshal(&cb.OrdererAddresses{Addresses: baseOrdererConf.Addresses})
+			var addresses []string
+			for _, a := range baseOrdererConf.Addresses {
+				addresses = append(addresses, fmt.Sprintf("%s:%d", a.Host, a.Port))
+			}
+			ordererAddresses, err := proto.Marshal(&cb.OrdererAddresses{Addresses: addresses})
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			config := &cb.Config{
@@ -940,7 +954,7 @@ func TestAddOrdererEndpoint(t *testing.T) {
 	err := protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
 	gt.Expect(err).ToNot(HaveOccurred())
 
-	newOrderer1OrgEndpoint := "127.0.0.1:9050"
+	newOrderer1OrgEndpoint := Address{Host: "127.0.0.1", Port: 9050}
 	err = AddOrdererEndpoint(config, "Orderer1Org", newOrderer1OrgEndpoint)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -982,19 +996,19 @@ func TestAddOrdererEndpointFailure(t *testing.T) {
 	tests := []struct {
 		testName    string
 		orgName     string
-		endpoint    string
+		endpoint    Address
 		expectedErr string
 	}{
 		{
 			testName:    "When the org for the orderer does not exist",
 			orgName:     "BadOrg",
-			endpoint:    "127.0.0.1:7050",
+			endpoint:    Address{Host: "127.0.0.1", Port: 7050},
 			expectedErr: "orderer org BadOrg does not exist in channel config",
 		},
 		{
 			testName:    "When the orderer endpoint being added already exists in the org",
 			orgName:     "OrdererOrg",
-			endpoint:    "127.0.0.1:7050",
+			endpoint:    Address{Host: "127.0.0.1", Port: 7050},
 			expectedErr: "orderer org OrdererOrg already contains endpoint 127.0.0.1:7050",
 		},
 	}
@@ -1089,7 +1103,7 @@ func TestRemoveOrdererEndpoint(t *testing.T) {
 	err := protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
 	gt.Expect(err).ToNot(HaveOccurred())
 
-	removedEndpoint := "127.0.0.1:8050"
+	removedEndpoint := Address{Host: "127.0.0.1", Port: 8050}
 	err = RemoveOrdererEndpoint(config, "OrdererOrg", removedEndpoint)
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -1131,19 +1145,19 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 	tests := []struct {
 		testName    string
 		orgName     string
-		endpoint    string
+		endpoint    Address
 		expectedErr string
 	}{
 		{
 			testName:    "When the org for the orderer does not exist",
 			orgName:     "BadOrg",
-			endpoint:    "127.0.0.1:8050",
+			endpoint:    Address{Host: "127.0.0.1", Port: 8050},
 			expectedErr: "orderer org BadOrg does not exist in channel config",
 		},
 		{
 			testName:    "When the endpoint being removed does not exist in the org",
 			orgName:     "OrdererOrg",
-			endpoint:    "127.0.0.1:8050",
+			endpoint:    Address{Host: "127.0.0.1", Port: 8050},
 			expectedErr: "could not find endpoint 127.0.0.1:8050 in orderer org OrdererOrg",
 		},
 	}
@@ -1194,8 +1208,13 @@ func baseSoloOrderer(t *testing.T) Orderer {
 			AbsoluteMaxBytes:  100,
 			PreferredMaxBytes: 100,
 		},
-		Addresses: []string{"localhost:123"},
-		State:     ConsensusStateNormal,
+		Addresses: []Address{
+			{
+				Host: "localhost",
+				Port: 123,
+			},
+		},
+		State: ConsensusStateNormal,
 	}
 }
 
@@ -1218,20 +1237,26 @@ func baseEtcdRaftOrderer(t *testing.T) Orderer {
 	orderer.EtcdRaft = EtcdRaft{
 		Consenters: []Consenter{
 			{
-				Host:          "node-1.example.com",
-				Port:          7050,
+				Address: Address{
+					Host: "node-1.example.com",
+					Port: 7050,
+				},
 				ClientTLSCert: cert,
 				ServerTLSCert: cert,
 			},
 			{
-				Host:          "node-2.example.com",
-				Port:          7050,
+				Address: Address{
+					Host: "node-2.example.com",
+					Port: 7050,
+				},
 				ClientTLSCert: cert,
 				ServerTLSCert: cert,
 			},
 			{
-				Host:          "node-3.example.com",
-				Port:          7050,
+				Address: Address{
+					Host: "node-3.example.com",
+					Port: 7050,
+				},
 				ClientTLSCert: cert,
 				ServerTLSCert: cert,
 			},
