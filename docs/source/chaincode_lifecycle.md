@@ -454,5 +454,11 @@ For information about migrating to the new lifecycle, check out [Considerations 
 
 If you need to update your channel configurations to enable the new lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
 
+## More information
+
+You can watch video below to learn more about the motivation of the new Fabric chaincode lifecycle and how it is implemented.
+
+<iframe class="embed-responsive-item" id="youtubeplayer2" title="Starter Plan videos" type="text/html" width="560" height="315" src="https://www.youtube.com/embed/XvEMDScFU2M" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen> </iframe>
+
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
