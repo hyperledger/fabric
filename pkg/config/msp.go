@@ -627,7 +627,12 @@ func RevokeCertificateFromMSP(config *cb.Config, orgName string, caCert *x509.Ce
 		return fmt.Errorf("getting msp config: %v", err)
 	}
 
-	// TODO validate that this certificate was issued by this MSP
+	for _, cert := range certs {
+		err = validateCert(cert, fabricMSPConfig)
+		if err != nil {
+			return fmt.Errorf("validating cert: %v", err)
+		}
+	}
 
 	revokeTime := time.Now().UTC()
 	revokedCertificates := make([]pkix.RevokedCertificate, len(certs))
@@ -656,4 +661,44 @@ func RevokeCertificateFromMSP(config *cb.Config, orgName string, caCert *x509.Ce
 	}
 
 	return nil
+}
+
+// validateCerts check if a cert was issued by a given MSP based
+// on the root and intermediate CA certs.
+func validateCert(cert *x509.Certificate, fabricMSPConfig *mb.FabricMSPConfig) error {
+	caCerts := []*x509.Certificate{}
+
+	for _, rcBytes := range fabricMSPConfig.RootCerts {
+		pemBlock, _ := pem.Decode(rcBytes)
+		if pemBlock == nil {
+			return errors.New("decoding pem block")
+		}
+		rootCert, err := x509.ParseCertificate(pemBlock.Bytes)
+		if err != nil {
+			return err
+		}
+
+		caCerts = append(caCerts, rootCert)
+	}
+
+	for _, icBytes := range fabricMSPConfig.IntermediateCerts {
+		pemBlock, _ := pem.Decode(icBytes)
+		if pemBlock == nil {
+			return errors.New("decoding pem block")
+		}
+		intermediateCert, err := x509.ParseCertificate(pemBlock.Bytes)
+		if err != nil {
+			return err
+		}
+
+		caCerts = append(caCerts, intermediateCert)
+	}
+
+	for _, caCert := range caCerts {
+		if err := cert.CheckSignatureFrom(caCert); err == nil {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("certificate not issued by this MSP. serial number: %d", cert.SerialNumber)
 }
