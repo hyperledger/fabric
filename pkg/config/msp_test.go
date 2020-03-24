@@ -854,7 +854,8 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(org1MSP.RevocationList).To(HaveLen(1))
 
-	caCert, caPrivKey := generateCACertAndPrivateKey(t, "org1.example.com")
+	caCert := org1MSP.RootCerts[0]
+	caPrivKey := org1MSP.SigningIdentity.PrivateSigner.KeyMaterial.(*ecdsa.PrivateKey)
 	cert, _ := generateCertAndPrivateKeyFromCACert(t, "Org1", caCert, caPrivKey)
 
 	err = RevokeCertificateFromMSP(config, "Org1", caCert, caPrivKey, cert)
@@ -1218,18 +1219,25 @@ func TestRevokeCertificateFromMSP(t *testing.T) {
 func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 	t.Parallel()
 
-	caCert, caPrivKey := generateCACertAndPrivateKey(t, "org1.example.com")
-	cert, _ := generateCertAndPrivateKeyFromCACert(t, "Org1", caCert, caPrivKey)
+	unknownOrgCACert, unknownOrgCAPrivKey := generateCACertAndPrivateKey(t, "unknown-org")
+	unknownOrgCert, _ := generateCertAndPrivateKeyFromCACert(t, "unknown-org", unknownOrgCACert, unknownOrgCAPrivKey)
 
 	tests := []struct {
 		spec        string
 		orgName     string
+		cert        *x509.Certificate
 		expectedErr string
 	}{
 		{
 			spec:        "org not defined in config",
 			orgName:     "not-an-org",
 			expectedErr: "application org with name 'not-an-org' not found",
+		},
+		{
+			spec:        "cert not issued by rootCA certs",
+			orgName:     "Org1",
+			cert:        unknownOrgCert,
+			expectedErr: fmt.Sprintf("validating cert: certificate not issued by this MSP. serial number: %d", unknownOrgCert.SerialNumber),
 		},
 	}
 
@@ -1245,7 +1253,12 @@ func TestRevokeCertificateFromMSPFailure(t *testing.T) {
 				ChannelGroup: channelGroup,
 			}
 
-			err = RevokeCertificateFromMSP(config, tc.orgName, caCert, caPrivKey, cert)
+			org1MSP, err := GetMSPConfigurationForApplicationOrg(config, "Org1")
+			gt.Expect(err).NotTo(HaveOccurred())
+			org1CACert := org1MSP.RootCerts[0]
+			org1CAPrivKey := org1MSP.SigningIdentity.PrivateSigner.KeyMaterial.(*ecdsa.PrivateKey)
+
+			err = RevokeCertificateFromMSP(config, tc.orgName, org1CACert, org1CAPrivKey, tc.cert)
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
 	}
