@@ -30,7 +30,7 @@ type Channel struct {
 	Application  Application
 	Orderer      Orderer
 	Consortiums  []Consortium
-	Capabilities map[string]bool
+	Capabilities []string
 	Policies     map[string]Policy
 	ChannelID    string
 }
@@ -315,28 +315,6 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 	return channelGroup, nil
 }
 
-// hashingAlgorithmValue returns the only currently valid hashing algorithm, `SHA256`.
-// It is a value for the /Channel group.
-func hashingAlgorithmValue() *standardConfigValue {
-	return &standardConfigValue{
-		key: HashingAlgorithmKey,
-		value: &cb.HashingAlgorithm{
-			Name: defaultHashingAlgorithm,
-		},
-	}
-}
-
-// blockDataHashingStructureValue returns the only currently valid block data hashing structure.
-// It is a value for the /Channel group.
-func blockDataHashingStructureValue() *standardConfigValue {
-	return &standardConfigValue{
-		key: BlockDataHashingStructureKey,
-		value: &cb.BlockDataHashingStructure{
-			Width: defaultBlockDataHashingStructureWidth,
-		},
-	}
-}
-
 func addValue(cg *cb.ConfigGroup, value *standardConfigValue, modPolicy string) error {
 	v, err := proto.Marshal(value.value)
 	if err != nil {
@@ -389,27 +367,6 @@ func ordererAddressesValue(addresses []Address) *standardConfigValue {
 		value: &cb.OrdererAddresses{
 			Addresses: addrs,
 		},
-	}
-}
-
-// capabilitiesValue returns the config definition for a a set of capabilities.
-// It is a value for the /Channel/Orderer, Channel/Application/, and /Channel groups.
-func capabilitiesValue(capabilities map[string]bool) *standardConfigValue {
-	c := &cb.Capabilities{
-		Capabilities: make(map[string]*cb.Capability),
-	}
-
-	for capability, required := range capabilities {
-		if !required {
-			continue
-		}
-
-		c.Capabilities[capability] = &cb.Capability{}
-	}
-
-	return &standardConfigValue{
-		key:   CapabilitiesKey,
-		value: c,
 	}
 }
 

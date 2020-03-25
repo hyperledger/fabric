@@ -88,7 +88,7 @@ var _ = Describe("Config", func() {
 						Name: "Org2",
 					},
 				},
-				Capabilities: map[string]bool{"V1_3": true},
+				Capabilities: []string{"V1_3"},
 				ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
 				Policies: map[string]config.Policy{
 					config.ReadersPolicyKey: {
