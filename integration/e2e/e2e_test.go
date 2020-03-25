@@ -8,10 +8,12 @@ package e2e
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -25,7 +27,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -231,18 +232,13 @@ var _ = Describe("EndToEnd", func() {
 			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
 			By("listing the containers after committing the chaincode definition")
-			getPackageID := func(c nwo.Chaincode) string {
-				fileBytes, err := ioutil.ReadFile(c.PackageFile)
-				Expect(err).NotTo(HaveOccurred())
-				hashStr := fmt.Sprintf("%x", util.ComputeSHA256(fileBytes))
-				return hashStr
+			initialContainerFilter := map[string][]string{
+				"name": {
+					chaincodeContainerNameFilter(network, chaincode),
+					chaincodeContainerNameFilter(network, gopathChaincode),
+				},
 			}
 
-			modulePkgID := getPackageID(chaincode)
-			gopathPkgID := getPackageID(gopathChaincode)
-			initialContainerFilter := map[string][]string{
-				"name": {modulePkgID, gopathPkgID},
-			}
 			containers, err := client.ListContainers(docker.ListContainersOptions{Filters: initialContainerFilter})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(HaveLen(2))
@@ -275,10 +271,11 @@ var _ = Describe("EndToEnd", func() {
 			containers, err = client.ListContainers(docker.ListContainersOptions{Filters: initialContainerFilter})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(containers).To(HaveLen(0))
-			updatedModulePkgID := getPackageID(chaincode)
-			updatedGopathPkgID := getPackageID(gopathChaincode)
 			updatedContainerFilter := map[string][]string{
-				"name": {updatedModulePkgID, updatedGopathPkgID},
+				"name": {
+					chaincodeContainerNameFilter(network, chaincode),
+					chaincodeContainerNameFilter(network, gopathChaincode),
+				},
 			}
 			containers, err = client.ListContainers(docker.ListContainersOptions{Filters: updatedContainerFilter})
 			Expect(err).NotTo(HaveOccurred())
@@ -491,7 +488,7 @@ var _ = Describe("EndToEnd", func() {
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
-		It("kills chaincode containers as unexpected", func() {
+		It("recreates terminated chaincode containers", func() {
 			chaincode := nwo.Chaincode{
 				Name:            "mycc",
 				Version:         "0.0",
@@ -520,22 +517,26 @@ var _ = Describe("EndToEnd", func() {
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
 			By("removing chaincode containers from all peers")
+			listChaincodeContainers := docker.ListContainersOptions{
+				Filters: map[string][]string{
+					"name": {chaincodeContainerNameFilter(network, chaincode)},
+				},
+			}
 			ctx := context.Background()
-			containers, err := client.ListContainers(docker.ListContainersOptions{})
+			containers, err := client.ListContainers(listChaincodeContainers)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).NotTo(BeEmpty())
 
-			originalContainerIDs := []string{}
+			var originalContainerIDs []string
 			for _, container := range containers {
-				if strings.Contains(container.Command, "chaincode") {
-					originalContainerIDs = append(originalContainerIDs, container.ID)
-					err = client.RemoveContainer(docker.RemoveContainerOptions{
-						ID:            container.ID,
-						RemoveVolumes: true,
-						Force:         true,
-						Context:       ctx,
-					})
-					Expect(err).NotTo(HaveOccurred())
-				}
+				originalContainerIDs = append(originalContainerIDs, container.ID)
+				err = client.RemoveContainer(docker.RemoveContainerOptions{
+					ID:            container.ID,
+					RemoveVolumes: true,
+					Force:         true,
+					Context:       ctx,
+				})
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			By("invoking chaincode against all peers in test channel")
@@ -556,9 +557,9 @@ var _ = Describe("EndToEnd", func() {
 			}
 
 			By("checking successful removals of all old chaincode containers")
-			newContainers, err := client.ListContainers(docker.ListContainersOptions{})
+			newContainers, err := client.ListContainers(listChaincodeContainers)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(newContainers)).To(BeEquivalentTo(len(containers)))
+			Expect(newContainers).To(HaveLen(len(containers)))
 
 			for _, container := range newContainers {
 				Expect(originalContainerIDs).NotTo(ContainElement(container.ID))
@@ -849,4 +850,20 @@ func packageInstallApproveChaincode(network *nwo.Network, channel string, ordere
 	nwo.PackageChaincode(network, chaincode, peers[0])
 	nwo.InstallChaincode(network, chaincode, peers...)
 	nwo.ApproveChaincodeForMyOrg(network, channel, orderer, chaincode, peers...)
+}
+
+func hashFile(file string) string {
+	f, err := os.Open(file)
+	Expect(err).NotTo(HaveOccurred())
+	defer f.Close()
+
+	h := sha256.New()
+	_, err = io.Copy(h, f)
+	Expect(err).NotTo(HaveOccurred())
+
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func chaincodeContainerNameFilter(n *nwo.Network, chaincode nwo.Chaincode) string {
+	return fmt.Sprintf("^/%s-.*-%s-%s$", n.NetworkID, chaincode.Label, hashFile(chaincode.PackageFile))
 }
