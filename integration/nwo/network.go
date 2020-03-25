@@ -136,6 +136,7 @@ type Profile struct {
 
 // Network holds information about a fabric network.
 type Network struct {
+	SilenceCLI         bool
 	RootDir            string
 	StartPort          uint16
 	Components         *Components
@@ -1552,8 +1553,12 @@ func (n *Network) nextColor() string {
 // command line tools that are expected to run to completion.
 func (n *Network) StartSession(cmd *exec.Cmd, name string) (*gexec.Session, error) {
 	ansiColorCode := n.nextColor()
+	out := ginkgo.GinkgoWriter
+	if n.SilenceCLI {
+		out = ioutil.Discard
+	}
 	fmt.Fprintf(
-		ginkgo.GinkgoWriter,
+		out,
 		"\x1b[33m[d]\x1b[%s[%s]\x1b[0m starting %s %s\n",
 		ansiColorCode,
 		name,
@@ -1564,11 +1569,11 @@ func (n *Network) StartSession(cmd *exec.Cmd, name string) (*gexec.Session, erro
 		cmd,
 		gexec.NewPrefixedWriter(
 			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", ansiColorCode, name),
-			ginkgo.GinkgoWriter,
+			out,
 		),
 		gexec.NewPrefixedWriter(
 			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", ansiColorCode, name),
-			ginkgo.GinkgoWriter,
+			out,
 		),
 	)
 }
