@@ -11,12 +11,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/tools/protolator"
-	"github.com/hyperledger/fabric/common/tools/protolator/protoext/peerext"
-
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/tools/protolator"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/peerext"
 	. "github.com/onsi/gomega"
 )
 
@@ -1015,6 +1014,147 @@ func TestAddApplicationOrgFailures(t *testing.T) {
 
 	err = c.AddApplicationOrg(org)
 	gt.Expect(err).To(MatchError("failed to create application org Org3: no policies defined"))
+}
+
+func TestGetApplicationConfiguration(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	baseApplicationConf := baseApplication(t)
+	applicationGroup, err := newApplicationGroup(baseApplicationConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ApplicationGroupKey: applicationGroup,
+			},
+		},
+	}
+
+	c := &ConfigTx{
+		base:    config,
+		updated: config,
+	}
+	for _, org := range baseApplicationConf.Organizations {
+		err = c.AddApplicationOrg(org)
+		gt.Expect(err).NotTo(HaveOccurred())
+	}
+
+	applicationConfig, err := c.GetApplicationConfiguration()
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(applicationConfig.ACLs).To(Equal(baseApplicationConf.ACLs))
+	gt.Expect(applicationConfig.Capabilities).To(Equal(baseApplicationConf.Capabilities))
+	gt.Expect(applicationConfig.Policies).To(Equal(baseApplicationConf.Policies))
+	gt.Expect(applicationConfig.Organizations).To(ContainElements(baseApplicationConf.Organizations))
+}
+
+func TestGetApplicationConfigurationFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		testName    string
+		configMod   func(*ConfigTx, Application, *GomegaWithT)
+		expectedErr string
+	}{
+		{
+			testName: "When the application group does not exist",
+			configMod: func(ct *ConfigTx, appOrg Application, gt *GomegaWithT) {
+				delete(ct.base.ChannelGroup.Groups, ApplicationGroupKey)
+			},
+			expectedErr: "config does not contain application group",
+		},
+		{
+			testName: "Retrieving application org failed",
+			configMod: func(ct *ConfigTx, appOrg Application, gt *GomegaWithT) {
+				for _, org := range appOrg.Organizations {
+					if org.Name == "Org2" {
+						err := ct.AddApplicationOrg(org)
+						gt.Expect(err).NotTo(HaveOccurred())
+					}
+				}
+			},
+			expectedErr: "retrieving application org Org1: config does not contain value for MSP",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+
+			gt := NewGomegaWithT(t)
+
+			baseApplicationConf := baseApplication(t)
+			applicationGroup, err := newApplicationGroup(baseApplicationConf)
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			config := &cb.Config{
+				ChannelGroup: &cb.ConfigGroup{
+					Groups: map[string]*cb.ConfigGroup{
+						ApplicationGroupKey: applicationGroup,
+					},
+				},
+			}
+
+			c := &ConfigTx{
+				base:    config,
+				updated: config,
+			}
+			if tt.configMod != nil {
+				tt.configMod(c, baseApplicationConf, gt)
+			}
+
+			_, err = c.GetApplicationConfiguration()
+			gt.Expect(err).To(MatchError(tt.expectedErr))
+		})
+	}
+}
+
+func TestGetApplicationACLs(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	baseApplicationConf := baseApplication(t)
+	applicationGroup, err := newApplicationGroup(baseApplicationConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ApplicationGroupKey: applicationGroup,
+			},
+		},
+	}
+
+	c := &ConfigTx{
+		base: config,
+	}
+
+	applicationACLs, err := c.GetApplicationACLs()
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(applicationACLs).To(Equal(baseApplicationConf.ACLs))
+}
+
+func TestGetApplicationACLsFailure(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{},
+		},
+	}
+
+	c := &ConfigTx{
+		base: config,
+	}
+
+	applicationACLs, err := c.GetApplicationACLs()
+	gt.Expect(err).To(MatchError("application does not exist in channel config"))
+	gt.Expect(applicationACLs).To(BeNil())
 }
 
 func baseApplication(t *testing.T) Application {
