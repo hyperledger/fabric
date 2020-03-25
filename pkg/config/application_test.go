@@ -664,27 +664,140 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 	}
 }
 
-func baseApplication(t *testing.T) Application {
-	return Application{
-		Policies: standardPolicies(),
-		Organizations: []Organization{
-			{
-				Name:     "Org1",
-				Policies: applicationOrgStandardPolicies(),
-				MSP:      baseMSP(t),
+func TestAddACL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		testName    string
+		configMod   func(*cb.Config)
+		newACL      map[string]string
+		expectedACL map[string]string
+		expectedErr string
+	}{
+		{
+			testName: "success",
+			newACL:   map[string]string{"acl2": "newACL"},
+			expectedACL: map[string]string{
+				"acl1": "hi",
+				"acl2": "newACL",
 			},
-			{
-				Name:     "Org2",
-				Policies: applicationOrgStandardPolicies(),
-				MSP:      baseMSP(t),
+			expectedErr: "",
+		},
+		{
+			testName: "configuration missing application config group",
+			configMod: func(config *cb.Config) {
+				delete(config.ChannelGroup.Groups, ApplicationGroupKey)
 			},
+			expectedErr: "application does not exist in channel config",
 		},
-		Capabilities: map[string]bool{
-			"V1_3": true,
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+
+			channelGroup := newConfigGroup()
+			baseApplication := baseApplication(t)
+			applicationGroup, err := newApplicationGroup(baseApplication)
+
+			channelGroup.Groups[ApplicationGroupKey] = applicationGroup
+			config := &cb.Config{
+				ChannelGroup: channelGroup,
+			}
+			if tt.configMod != nil {
+				tt.configMod(config)
+			}
+			c := ConfigTx{
+				base:    config,
+				updated: config,
+			}
+
+			err = c.AddACLs(tt.newACL)
+			if tt.expectedErr != "" {
+				gt.Expect(err).To(MatchError(tt.expectedErr))
+			} else {
+				gt.Expect(err).NotTo(HaveOccurred())
+				acls, err := getACLs(config)
+				gt.Expect(err).NotTo(HaveOccurred())
+				gt.Expect(acls).To(Equal(tt.expectedACL))
+			}
+		})
+	}
+}
+
+func TestRemoveACL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		testName    string
+		configMod   func(*cb.Config)
+		removeACL   []string
+		expectedACL map[string]string
+		expectedErr string
+	}{
+		{
+			testName:  "success",
+			removeACL: []string{"acl1", "acl2"},
+			expectedACL: map[string]string{
+				"acl3": "acl3Value",
+			},
+			expectedErr: "",
 		},
-		ACLs: map[string]string{
-			"acl1": "hi",
+		{
+			testName:  "remove non-existing acls",
+			removeACL: []string{"bad-acl1", "bad-acl2"},
+			expectedACL: map[string]string{
+				"acl1": "hi",
+				"acl2": "acl2Value",
+				"acl3": "acl3Value",
+			},
+			expectedErr: "",
 		},
+		{
+			testName: "configuration missing application config group",
+			configMod: func(config *cb.Config) {
+				delete(config.ChannelGroup.Groups, ApplicationGroupKey)
+			},
+			expectedErr: "application does not exist in channel config",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+
+			channelGroup := newConfigGroup()
+			baseApplication := baseApplication(t)
+			baseApplication.ACLs["acl2"] = "acl2Value"
+			baseApplication.ACLs["acl3"] = "acl3Value"
+			applicationGroup, err := newApplicationGroup(baseApplication)
+
+			channelGroup.Groups[ApplicationGroupKey] = applicationGroup
+			config := &cb.Config{
+				ChannelGroup: channelGroup,
+			}
+			if tt.configMod != nil {
+				tt.configMod(config)
+			}
+			c := &ConfigTx{
+				base:    config,
+				updated: config,
+			}
+
+			err = c.RemoveACLs(tt.removeACL)
+			if tt.expectedErr != "" {
+				gt.Expect(err).To(MatchError(tt.expectedErr))
+			} else {
+				gt.Expect(err).NotTo(HaveOccurred())
+				acls, err := getACLs(config)
+				gt.Expect(err).NotTo(HaveOccurred())
+				gt.Expect(acls).To(Equal(tt.expectedACL))
+			}
+		})
 	}
 }
 
@@ -902,4 +1015,28 @@ func TestAddApplicationOrgFailures(t *testing.T) {
 
 	err = c.AddApplicationOrg(org)
 	gt.Expect(err).To(MatchError("failed to create application org Org3: no policies defined"))
+}
+
+func baseApplication(t *testing.T) Application {
+	return Application{
+		Policies: standardPolicies(),
+		Organizations: []Organization{
+			{
+				Name:     "Org1",
+				Policies: applicationOrgStandardPolicies(),
+				MSP:      baseMSP(t),
+			},
+			{
+				Name:     "Org2",
+				Policies: applicationOrgStandardPolicies(),
+				MSP:      baseMSP(t),
+			},
+		},
+		Capabilities: map[string]bool{
+			"V1_3": true,
+		},
+		ACLs: map[string]string{
+			"acl1": "hi",
+		},
+	}
 }

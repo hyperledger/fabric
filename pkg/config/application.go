@@ -128,6 +128,65 @@ func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) 
 	return nil
 }
 
+// AddACLs adds ACLS to an existing channel config application.
+func (c *ConfigTx) AddACLs(acls map[string]string) error {
+	configACLs, err := getACLs(c.updated)
+	if err != nil {
+		return err
+	}
+
+	for apiResource, policyRef := range configACLs {
+		acls[apiResource] = policyRef
+	}
+
+	err = addValue(c.updated.ChannelGroup.Groups[ApplicationGroupKey], aclValues(acls), AdminsPolicyKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RemoveACLs a list of ACLs from given channel config application.
+func (c *ConfigTx) RemoveACLs(acls []string) error {
+	configACLs, err := getACLs(c.updated)
+	if err != nil {
+		return err
+	}
+
+	for _, acl := range acls {
+		delete(configACLs, acl)
+	}
+
+	err = addValue(c.updated.ChannelGroup.Groups[ApplicationGroupKey], aclValues(configACLs), AdminsPolicyKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getACLs returns a map of ACLS for given config application.
+func getACLs(config *cb.Config) (map[string]string, error) {
+	applicationGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey]
+	if !ok {
+		return nil, fmt.Errorf("application does not exist in channel config")
+	}
+
+	ACLProtos := &pb.ACLs{}
+
+	err := unmarshalConfigValueAtKey(applicationGroup, ACLsKey, ACLProtos)
+	if err != nil {
+		return nil, err
+	}
+
+	retACLs := map[string]string{}
+	for apiResource, policyRef := range ACLProtos.Acls {
+		retACLs[apiResource] = policyRef.PolicyRef
+	}
+	return retACLs, nil
+}
+
 // GetAnchorPeers retrieves existing anchor peers from a application organization.
 func (c *ConfigTx) GetAnchorPeers(orgName string) ([]Address, error) {
 	applicationOrgGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
