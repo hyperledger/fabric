@@ -595,7 +595,7 @@ func baseProfile(t *testing.T) Channel {
 		ChannelID:    "testchannel",
 		Consortium:   "SampleConsortium",
 		Application:  baseApplication(t),
-		Capabilities: map[string]bool{"V2_0": true},
+		Capabilities: []string{"V2_0"},
 	}
 }
 
@@ -604,7 +604,7 @@ func baseSystemChannelProfile(t *testing.T) Channel {
 		ChannelID:    "testsystemchannel",
 		Consortiums:  baseConsortiums(t),
 		Orderer:      baseSoloOrderer(t),
-		Capabilities: map[string]bool{"V2_0": true},
+		Capabilities: []string{"V2_0"},
 		Policies:     standardPolicies(),
 		Consortium:   "testconsortium",
 	}

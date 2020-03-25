@@ -16,7 +16,7 @@ import (
 
 // GetChannelCapabilities returns a map of enabled channel capabilities
 // from a config transaction.
-func (c *ConfigTx) GetChannelCapabilities() (map[string]bool, error) {
+func (c *ConfigTx) GetChannelCapabilities() ([]string, error) {
 	capabilities, err := getCapabilities(c.base.ChannelGroup)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving channel capabilities: %v", err)
@@ -27,7 +27,7 @@ func (c *ConfigTx) GetChannelCapabilities() (map[string]bool, error) {
 
 // GetOrdererCapabilities returns a map of enabled orderer capabilities
 // from a config transaction.
-func (c *ConfigTx) GetOrdererCapabilities() (map[string]bool, error) {
+func (c *ConfigTx) GetOrdererCapabilities() ([]string, error) {
 	orderer, ok := c.base.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return nil, errors.New("orderer missing from config")
@@ -43,7 +43,7 @@ func (c *ConfigTx) GetOrdererCapabilities() (map[string]bool, error) {
 
 // GetApplicationCapabilities returns a map of enabled application capabilities
 // from a config transaction.
-func (c *ConfigTx) GetApplicationCapabilities() (map[string]bool, error) {
+func (c *ConfigTx) GetApplicationCapabilities() ([]string, error) {
 	application, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey]
 	if !ok {
 		return nil, errors.New("application missing from config")
@@ -57,7 +57,150 @@ func (c *ConfigTx) GetApplicationCapabilities() (map[string]bool, error) {
 	return capabilities, nil
 }
 
-func getCapabilities(configGroup *cb.ConfigGroup) (map[string]bool, error) {
+// AddChannelCapability adds capability to the provided channel config.
+func (c *ConfigTx) AddChannelCapability(capability string) error {
+	capabilities, err := c.GetChannelCapabilities()
+	if err != nil {
+		return err
+	}
+
+	err = addCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddOrdererCapability adds capability to the provided channel config.
+func (c *ConfigTx) AddOrdererCapability(capability string) error {
+	capabilities, err := c.GetOrdererCapabilities()
+	if err != nil {
+		return err
+	}
+
+	err = addCapability(c.updated.ChannelGroup.Groups[OrdererGroupKey], capabilities, AdminsPolicyKey, capability)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddApplicationCapability adds capability to the provided channel config.
+func (c *ConfigTx) AddApplicationCapability(capability string) error {
+	capabilities, err := c.GetApplicationCapabilities()
+	if err != nil {
+		return err
+	}
+
+	err = addCapability(c.updated.ChannelGroup.Groups[ApplicationGroupKey], capabilities, AdminsPolicyKey, capability)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RemoveChannelCapability removes capability to the provided channel config.
+func (c *ConfigTx) RemoveChannelCapability(capability string) error {
+	capabilities, err := c.GetChannelCapabilities()
+	if err != nil {
+		return err
+	}
+
+	err = removeCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RemoveOrdererCapability removes capability to the provided channel config.
+func (c *ConfigTx) RemoveOrdererCapability(capability string) error {
+	capabilities, err := c.GetOrdererCapabilities()
+	if err != nil {
+		return err
+	}
+
+	err = removeCapability(c.updated.ChannelGroup.Groups[OrdererGroupKey], capabilities, AdminsPolicyKey, capability)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RemoveApplicationCapability removes capability to the provided channel config.
+func (c *ConfigTx) RemoveApplicationCapability(capability string) error {
+	capabilities, err := c.GetApplicationCapabilities()
+	if err != nil {
+		return err
+	}
+
+	err = removeCapability(c.updated.ChannelGroup.Groups[ApplicationGroupKey], capabilities, AdminsPolicyKey, capability)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// capabilitiesValue returns the config definition for a a set of capabilities.
+// It is a value for the /Channel/Orderer, Channel/Application/, and /Channel groups.
+func capabilitiesValue(capabilities []string) *standardConfigValue {
+	c := &cb.Capabilities{
+		Capabilities: make(map[string]*cb.Capability),
+	}
+
+	for _, capability := range capabilities {
+		c.Capabilities[capability] = &cb.Capability{}
+	}
+
+	return &standardConfigValue{
+		key:   CapabilitiesKey,
+		value: c,
+	}
+}
+
+func addCapability(configGroup *cb.ConfigGroup, capabilities []string, modPolicy string, capability string) error {
+	for _, c := range capabilities {
+		if c == capability {
+			return errors.New("capability already exists")
+		}
+	}
+
+	err := addValue(configGroup, capabilitiesValue([]string{capability}), modPolicy)
+	if err != nil {
+		return fmt.Errorf("adding capability: %v", err)
+	}
+
+	return nil
+}
+
+func removeCapability(configGroup *cb.ConfigGroup, capabilities []string, modPolicy string, capability string) error {
+	var updatedCapabilities []string
+
+	for _, c := range capabilities {
+		if c != capability {
+			updatedCapabilities = append(updatedCapabilities, c)
+		}
+	}
+
+	if len(updatedCapabilities) == len(capabilities) {
+		return errors.New("capability not set")
+	}
+
+	err := addValue(configGroup, capabilitiesValue(updatedCapabilities), modPolicy)
+	if err != nil {
+		return fmt.Errorf("removing capability: %v", err)
+	}
+
+	return nil
+}
+
+func getCapabilities(configGroup *cb.ConfigGroup) ([]string, error) {
 	capabilitiesValue, ok := configGroup.Values[CapabilitiesKey]
 	if !ok {
 		// no capabilities defined/enabled
@@ -71,10 +214,10 @@ func getCapabilities(configGroup *cb.ConfigGroup) (map[string]bool, error) {
 		return nil, fmt.Errorf("unmarshalling capabilities: %v", err)
 	}
 
-	capabilities := map[string]bool{}
+	capabilities := []string{}
 
 	for capability := range capabilitiesProto.Capabilities {
-		capabilities[capability] = true
+		capabilities = append(capabilities, capability)
 	}
 
 	return capabilities, nil

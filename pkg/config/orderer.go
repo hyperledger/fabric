@@ -38,7 +38,7 @@ type Orderer struct {
 	// MaxChannels is the maximum count of channels an orderer supports.
 	MaxChannels uint64
 	// Capabilities is a map of the capabilities the orderer supports.
-	Capabilities map[string]bool
+	Capabilities []string
 	Policies     map[string]Policy
 	// Options: `ConsensusStateNormal` and `ConsensusStateMaintenance`
 	State ConsensusState

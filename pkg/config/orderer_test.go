@@ -1245,9 +1245,7 @@ func baseSoloOrderer(t *testing.T) Orderer {
 				MSP: baseMSP(t),
 			},
 		},
-		Capabilities: map[string]bool{
-			"V1_3": true,
-		},
+		Capabilities: []string{"V1_3"},
 		BatchSize: BatchSize{
 			MaxMessageCount:   100,
 			AbsoluteMaxBytes:  100,

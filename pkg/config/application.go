@@ -18,7 +18,7 @@ import (
 // list in the organization definition.
 type Application struct {
 	Organizations []Organization
-	Capabilities  map[string]bool
+	Capabilities  []string
 	Policies      map[string]Policy
 	ACLs          map[string]string
 }

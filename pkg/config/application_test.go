@@ -1032,8 +1032,8 @@ func baseApplication(t *testing.T) Application {
 				MSP:      baseMSP(t),
 			},
 		},
-		Capabilities: map[string]bool{
-			"V1_3": true,
+		Capabilities: []string{
+			"V1_3",
 		},
 		ACLs: map[string]string{
 			"acl1": "hi",

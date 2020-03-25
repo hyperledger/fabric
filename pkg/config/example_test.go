@@ -1205,7 +1205,7 @@ func ExampleNewCreateChannelTx() {
 					Name: "Org2",
 				},
 			},
-			Capabilities: map[string]bool{"V1_3": true},
+			Capabilities: []string{"V1_3"},
 			ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
 			Policies: map[string]config.Policy{
 				config.ReadersPolicyKey: {
@@ -1416,4 +1416,400 @@ func ExampleNewCreateChannelTx() {
 	// 	},
 	// 	"signatures": []
 	// }
+}
+
+func ExampleNew() {
+	baseConfig := fetchChannelConfig()
+	_ = config.New(baseConfig)
+}
+
+func ExampleConfigTx_AddChannelCapability() {
+	baseConfig := fetchChannelConfig()
+	c := config.New(baseConfig)
+
+	err := c.AddChannelCapability("V1_3")
+	if err != nil {
+		panic(err)
+	}
+
+	err = protolator.DeepMarshalJSON(os.Stdout, c.Updated())
+	if err != nil {
+		panic(err)
+	}
+
+	// Output:
+	// {
+	// 	"channel_group": {
+	// 		"groups": {
+	// 			"Application": {
+	// 				"groups": {
+	// 					"Org1": {
+	// 						"groups": {},
+	// 						"mod_policy": "",
+	// 						"policies": {},
+	// 						"values": {
+	// 							"AnchorPeers": {
+	// 								"mod_policy": "Admins",
+	// 								"value": {
+	// 									"anchor_peers": [
+	// 										{
+	// 											"host": "127.0.0.1",
+	// 											"port": 7050
+	// 										}
+	// 									]
+	// 								},
+	// 								"version": "0"
+	// 							},
+	// 							"MSP": {
+	// 								"mod_policy": "Admins",
+	// 								"value": null,
+	// 								"version": "0"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					}
+	// 				},
+	// 				"mod_policy": "",
+	// 				"policies": {
+	// 					"Admins": {
+	// 						"mod_policy": "Admins",
+	// 						"policy": {
+	// 							"type": 3,
+	// 							"value": {
+	// 								"rule": "MAJORITY",
+	// 								"sub_policy": "Admins"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"LifecycleEndorsement": {
+	// 						"mod_policy": "Admins",
+	// 						"policy": {
+	// 							"type": 3,
+	// 							"value": {
+	// 								"rule": "MAJORITY",
+	// 								"sub_policy": "Admins"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"Readers": {
+	// 						"mod_policy": "Admins",
+	// 						"policy": {
+	// 							"type": 3,
+	// 							"value": {
+	// 								"rule": "ANY",
+	// 								"sub_policy": "Readers"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"Writers": {
+	// 						"mod_policy": "Admins",
+	// 						"policy": {
+	// 							"type": 3,
+	// 							"value": {
+	// 								"rule": "ANY",
+	// 								"sub_policy": "Writers"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					}
+	// 				},
+	// 				"values": {
+	// 					"ACLs": {
+	// 						"mod_policy": "Admins",
+	// 						"value": {
+	// 							"acls": {
+	// 								"event/block": {
+	// 									"policy_ref": "/Channel/Application/Readers"
+	// 								}
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"Capabilities": {
+	// 						"mod_policy": "Admins",
+	// 						"value": {
+	// 							"capabilities": {
+	// 								"V1_3": {}
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					}
+	// 				},
+	// 				"version": "0"
+	// 			},
+	// 			"Orderer": {
+	// 				"groups": {
+	// 					"OrdererOrg": {
+	// 						"groups": {},
+	// 						"mod_policy": "Admins",
+	// 						"policies": {
+	// 							"Admins": {
+	// 								"mod_policy": "Admins",
+	// 								"policy": {
+	// 									"type": 3,
+	// 									"value": {
+	// 										"rule": "MAJORITY",
+	// 										"sub_policy": "Admins"
+	// 									}
+	// 								},
+	// 								"version": "0"
+	// 							},
+	// 							"Readers": {
+	// 								"mod_policy": "Admins",
+	// 								"policy": {
+	// 									"type": 3,
+	// 									"value": {
+	// 										"rule": "ANY",
+	// 										"sub_policy": "Readers"
+	// 									}
+	// 								},
+	// 								"version": "0"
+	// 							},
+	// 							"Writers": {
+	// 								"mod_policy": "Admins",
+	// 								"policy": {
+	// 									"type": 3,
+	// 									"value": {
+	// 										"rule": "ANY",
+	// 										"sub_policy": "Writers"
+	// 									}
+	// 								},
+	// 								"version": "0"
+	// 							}
+	// 						},
+	// 						"values": {
+	// 							"Endpoints": {
+	// 								"mod_policy": "Admins",
+	// 								"value": {
+	// 									"addresses": [
+	// 										"127.0.0.1:7050"
+	// 									]
+	// 								},
+	// 								"version": "0"
+	// 							},
+	// 							"MSP": {
+	// 								"mod_policy": "Admins",
+	// 								"value": null,
+	// 								"version": "0"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					}
+	// 				},
+	// 				"mod_policy": "",
+	// 				"policies": {
+	// 					"Admins": {
+	// 						"mod_policy": "Admins",
+	// 						"policy": {
+	// 							"type": 3,
+	// 							"value": {
+	// 								"rule": "MAJORITY",
+	// 								"sub_policy": "Admins"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"BlockValidation": {
+	// 						"mod_policy": "Admins",
+	// 						"policy": {
+	// 							"type": 3,
+	// 							"value": {
+	// 								"rule": "ANY",
+	// 								"sub_policy": "Writers"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"Readers": {
+	// 						"mod_policy": "Admins",
+	// 						"policy": {
+	// 							"type": 3,
+	// 							"value": {
+	// 								"rule": "ANY",
+	// 								"sub_policy": "Readers"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"Writers": {
+	// 						"mod_policy": "Admins",
+	// 						"policy": {
+	// 							"type": 3,
+	// 							"value": {
+	// 								"rule": "ANY",
+	// 								"sub_policy": "Writers"
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					}
+	// 				},
+	// 				"values": {
+	// 					"BatchSize": {
+	// 						"mod_policy": "",
+	// 						"value": {
+	// 							"absolute_max_bytes": 100,
+	// 							"max_message_count": 100,
+	// 							"preferred_max_bytes": 100
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"BatchTimeout": {
+	// 						"mod_policy": "",
+	// 						"value": {
+	// 							"timeout": "15s"
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"Capabilities": {
+	// 						"mod_policy": "Admins",
+	// 						"value": {
+	// 							"capabilities": {
+	// 								"V1_3": {}
+	// 							}
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"ChannelRestrictions": {
+	// 						"mod_policy": "Admins",
+	// 						"value": {
+	// 							"max_count": "1"
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"ConsensusType": {
+	// 						"mod_policy": "Admins",
+	// 						"value": {
+	// 							"metadata": null,
+	// 							"state": "STATE_NORMAL",
+	// 							"type": "kafka"
+	// 						},
+	// 						"version": "0"
+	// 					},
+	// 					"KafkaBrokers": {
+	// 						"mod_policy": "Admins",
+	// 						"value": {
+	// 							"brokers": [
+	// 								"kafka0:9092",
+	// 								"kafka1:9092"
+	// 							]
+	// 						},
+	// 						"version": "0"
+	// 					}
+	// 				},
+	// 				"version": "1"
+	// 			}
+	// 		},
+	// 		"mod_policy": "",
+	// 		"policies": {
+	// 			"Admins": {
+	// 				"mod_policy": "Admins",
+	// 				"policy": {
+	// 					"type": 3,
+	// 					"value": {
+	// 						"rule": "MAJORITY",
+	// 						"sub_policy": "Admins"
+	// 					}
+	// 				},
+	// 				"version": "0"
+	// 			},
+	// 			"Readers": {
+	// 				"mod_policy": "Admins",
+	// 				"policy": {
+	// 					"type": 3,
+	// 					"value": {
+	// 						"rule": "ANY",
+	// 						"sub_policy": "Readers"
+	// 					}
+	// 				},
+	// 				"version": "0"
+	// 			},
+	// 			"Writers": {
+	// 				"mod_policy": "Admins",
+	// 				"policy": {
+	// 					"type": 3,
+	// 					"value": {
+	// 						"rule": "ANY",
+	// 						"sub_policy": "Writers"
+	// 					}
+	// 				},
+	// 				"version": "0"
+	// 			}
+	// 		},
+	// 		"values": {
+	// 			"Capabilities": {
+	// 				"mod_policy": "Admins",
+	// 				"value": {
+	// 					"capabilities": {
+	// 						"V1_3": {}
+	// 					}
+	// 				},
+	// 				"version": "0"
+	// 			},
+	// 			"OrdererAddresses": {
+	// 				"mod_policy": "Admins",
+	// 				"value": {
+	// 					"addresses": [
+	// 						"127.0.0.1:7050"
+	// 					]
+	// 				},
+	// 				"version": "0"
+	// 			}
+	// 		},
+	// 		"version": "0"
+	// 	},
+	// 	"sequence": "0"
+	// }
+}
+
+func ExampleConfigTx_AddOrdererCapability() {
+	baseConfig := fetchChannelConfig()
+	c := config.New(baseConfig)
+
+	err := c.AddOrdererCapability("V1_4")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ExampleConfigTx_AddApplicationCapability() {
+	baseConfig := fetchChannelConfig()
+	c := config.New(baseConfig)
+
+	err := c.AddChannelCapability("V1_3")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ExampleConfigTx_RemoveChannelCapability() {
+	baseConfig := fetchChannelConfig()
+	c := config.New(baseConfig)
+
+	err := c.RemoveChannelCapability("V1_3")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ExampleConfigTx_RemoveOrdererCapability() {
+	baseConfig := fetchChannelConfig()
+	c := config.New(baseConfig)
+
+	err := c.RemoveOrdererCapability("V1_4")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ExampleConfigTx_RemoveApplicationCapability() {
+	baseConfig := fetchChannelConfig()
+	c := config.New(baseConfig)
+
+	err := c.RemoveChannelCapability("V1_3")
+	if err != nil {
+		panic(err)
+	}
 }
