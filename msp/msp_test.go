@@ -106,7 +106,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err := proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err := newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	newmsp, err := newBccspMsp(MSPv1_0, factory.GetDefault())
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -119,7 +119,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err = proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	newmsp, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -131,7 +131,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err = proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	newmsp, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -1111,25 +1111,25 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	localMsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	localMsp, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspBad, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	localMspBad, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspV13, err = newBccspMsp(MSPv1_3, factory.DefaultBCCSP)
+	localMspV13, err = newBccspMsp(MSPv1_3, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for V1.3 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspV11, err = newBccspMsp(MSPv1_1, factory.DefaultBCCSP)
+	localMspV11, err = newBccspMsp(MSPv1_1, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for V1.1 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)

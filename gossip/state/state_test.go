@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -49,9 +48,12 @@ import (
 	gossiputil "github.com/hyperledger/fabric/gossip/util"
 	gutil "github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -209,7 +211,11 @@ func (mc *mockCommitter) CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, c
 }
 
 func (mc *mockCommitter) GetPvtDataAndBlockByNum(seqNum uint64) (*ledger.BlockAndPvtData, error) {
-	args := mc.Called(seqNum)
+	mc.Lock()
+	m := mc.Mock
+	mc.Unlock()
+
+	args := m.Called(seqNum)
 	return args.Get(0).(*ledger.BlockAndPvtData), args.Error(1)
 }
 
@@ -225,15 +231,22 @@ func (mc *mockCommitter) LedgerHeight() (uint64, error) {
 }
 
 func (mc *mockCommitter) DoesPvtDataInfoExistInLedger(blkNum uint64) (bool, error) {
-	args := mc.Called(blkNum)
+	mc.Lock()
+	m := mc.Mock
+	mc.Unlock()
+	args := m.Called(blkNum)
 	return args.Get(0).(bool), args.Error(1)
 }
 
 func (mc *mockCommitter) GetBlocks(blockSeqs []uint64) []*pcomm.Block {
-	if mc.Called(blockSeqs).Get(0) == nil {
+	mc.Lock()
+	m := mc.Mock
+	mc.Unlock()
+
+	if m.Called(blockSeqs).Get(0) == nil {
 		return nil
 	}
-	return mc.Called(blockSeqs).Get(0).([]*pcomm.Block)
+	return m.Called(blockSeqs).Get(0).([]*pcomm.Block)
 }
 
 func (*mockCommitter) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
@@ -333,11 +346,12 @@ func newCommitter() committer.Committer {
 
 func newPeerNodeWithGossip(id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, bootPorts ...int) *peerNode {
-	return newPeerNodeWithGossipWithValidator(id, committer, acceptor, g, &validator.MockValidator{}, bootPorts...)
+	logger := flogging.MustGetLogger(gutil.StateLogger)
+	return newPeerNodeWithGossipWithValidator(logger, id, committer, acceptor, g, &validator.MockValidator{}, bootPorts...)
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
-func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.Committer,
+func newPeerNodeWithGossipWithValidatorWithMetrics(logger gutil.Logger, id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator,
 	gossipMetrics *metrics.GossipMetrics, bootPorts ...int) (node *peerNode, port int) {
 	cs := &cryptoServiceMock{acceptor: acceptor}
@@ -415,7 +429,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 		StateChannelSize:     DefStateChannelSize,
 		StateEnabled:         DefStateEnabled,
 	}
-	sp := NewGossipStateProvider("testchannelid", servicesAdapater, coord, gossipMetrics.StateMetrics, blocking, stateConfig)
+	sp := NewGossipStateProvider(logger, "testchannelid", servicesAdapater, coord, gossipMetrics.StateMetrics, blocking, stateConfig)
 	if sp == nil {
 		gRPCServer.Stop()
 		return nil, port
@@ -435,16 +449,17 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(id int, committer committer.C
 // add metrics provider for metrics testing
 func newPeerNodeWithGossipWithMetrics(id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, gossipMetrics *metrics.GossipMetrics) *peerNode {
-	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(id, committer, acceptor, g,
+	logger := flogging.MustGetLogger(gutil.StateLogger)
+	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(logger, id, committer, acceptor, g,
 		&validator.MockValidator{}, gossipMetrics)
 	return node
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
-func newPeerNodeWithGossipWithValidator(id int, committer committer.Committer,
+func newPeerNodeWithGossipWithValidator(logger gutil.Logger, id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator, bootPorts ...int) *peerNode {
 	gossipMetrics := metrics.NewGossipMetrics(&disabled.Provider{})
-	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(id, committer, acceptor, g, v, gossipMetrics, bootPorts...)
+	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(logger, id, committer, acceptor, g, v, gossipMetrics, bootPorts...)
 	return node
 }
 
@@ -457,7 +472,8 @@ func newPeerNode(id int, committer committer.Committer, acceptor peerIdentityAcc
 func newBootNode(id int, committer committer.Committer, acceptor peerIdentityAcceptor) (node *peerNode, port int) {
 	v := &validator.MockValidator{}
 	gossipMetrics := metrics.NewGossipMetrics(&disabled.Provider{})
-	return newPeerNodeWithGossipWithValidatorWithMetrics(id, committer, acceptor, nil, v, gossipMetrics)
+	logger := flogging.MustGetLogger(gutil.StateLogger)
+	return newPeerNodeWithGossipWithValidatorWithMetrics(logger, id, committer, acceptor, nil, v, gossipMetrics)
 }
 
 func TestNilDirectMsg(t *testing.T) {
@@ -761,17 +777,6 @@ func TestHaltChainProcessing(t *testing.T) {
 		}
 	}
 
-	buf := gbytes.NewBuffer()
-	logging, err := flogging.New(flogging.Config{
-		LogSpec: "debug",
-		Writer:  buf,
-	})
-	assert.NoError(t, err, "failed to create logging")
-
-	defer func(l gossiputil.Logger) { logger = l }(logger)
-	l := logging.Logger("state_test")
-	logger = l
-
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	mc.On("CommitLegacy", mock.Anything)
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(1), nil)
@@ -786,13 +791,21 @@ func TestHaltChainProcessing(t *testing.T) {
 	v.On("Validate").Return(&errors2.VSCCExecutionFailureError{
 		Err: errors.New("foobar"),
 	}).Once()
-	peerNode := newPeerNodeWithGossipWithValidator(0, mc, noopPeerIdentityAcceptor, g, v)
+
+	buf := gbytes.NewBuffer()
+
+	logger := flogging.MustGetLogger(gutil.StateLogger).WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		buf.Write([]byte(entry.Message))
+		buf.Write([]byte("\n"))
+		return nil
+	}))
+	peerNode := newPeerNodeWithGossipWithValidator(logger, 0, mc, noopPeerIdentityAcceptor, g, v)
 	defer peerNode.shutdown()
 	gossipMsgs <- newBlockMsg(1)
 
-	assertLogged(t, buf, "Got error while committing")
-	assertLogged(t, buf, "Aborting chain processing")
-	assertLogged(t, buf, "foobar")
+	gom := gomega.NewGomegaWithT(t)
+	gom.Eventually(buf, time.Minute).Should(gbytes.Say("Failed executing VSCC due to foobar"))
+	gom.Eventually(buf, time.Minute).Should(gbytes.Say("Aborting chain processing"))
 }
 
 func TestFailures(t *testing.T) {
@@ -893,12 +906,11 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 
 	t.Parallel()
 	// Returns whether the given networkMember was selected or not
-	wasNetworkMemberSelected := func(t *testing.T, networkMember discovery.NetworkMember, wg *sync.WaitGroup) bool {
+	wasNetworkMemberSelected := func(t *testing.T, networkMember discovery.NetworkMember) bool {
 		var wasGivenNetworkMemberSelected int32
 		finChan := make(chan struct{})
 		g := &mocks.GossipMock{}
 		g.On("Send", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
-			defer wg.Done()
 			msg := arguments.Get(0).(*proto.GossipMessage)
 			assert.NotNil(t, msg.GetStateRequest())
 			peer := arguments.Get(1).([]*comm.RemotePeer)[0]
@@ -953,14 +965,9 @@ func TestLedgerHeightFromProperties(t *testing.T) {
 		{member: peerWithoutProperties, shouldGivenBeSelected: false},
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(tests))
 	for _, tst := range tests {
-		go func(shouldGivenBeSelected bool, member discovery.NetworkMember) {
-			assert.Equal(t, shouldGivenBeSelected, wasNetworkMemberSelected(t, member, &wg))
-		}(tst.shouldGivenBeSelected, tst.member)
+		assert.Equal(t, tst.shouldGivenBeSelected, wasNetworkMemberSelected(t, tst.member))
 	}
-	wg.Wait()
 }
 
 func TestAccessControl(t *testing.T) {
@@ -1400,7 +1407,8 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 		StateChannelSize:     DefStateChannelSize,
 		StateEnabled:         DefStateEnabled,
 	}
-	st := NewGossipStateProvider(chainID, servicesAdapater, coord1, stateMetrics, blocking, stateConfig)
+	logger := flogging.MustGetLogger(gutil.StateLogger)
+	st := NewGossipStateProvider(logger, chainID, servicesAdapater, coord1, stateMetrics, blocking, stateConfig)
 	defer st.Stop()
 
 	// Mocked state request message
@@ -1646,11 +1654,13 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		StateChannelSize:     DefStateChannelSize,
 		StateEnabled:         DefStateEnabled,
 	}
-	peer1State := NewGossipStateProvider(chainID, mediator, peers["peer1"].coord, stateMetrics, blocking, stateConfig)
+	logger := flogging.MustGetLogger(gutil.StateLogger)
+	peer1State := NewGossipStateProvider(logger, chainID, mediator, peers["peer1"].coord, stateMetrics, blocking, stateConfig)
 	defer peer1State.Stop()
 
 	mediator = &ServicesMediator{GossipAdapter: peers["peer2"], MCSAdapter: cryptoService}
-	peer2State := NewGossipStateProvider(chainID, mediator, peers["peer2"].coord, stateMetrics, blocking, stateConfig)
+	logger = flogging.MustGetLogger(gutil.StateLogger)
+	peer2State := NewGossipStateProvider(logger, chainID, mediator, peers["peer2"].coord, stateMetrics, blocking, stateConfig)
 	defer peer2State.Stop()
 
 	// Make sure state was replicated
@@ -1719,9 +1729,4 @@ func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Du
 		break
 	}
 	t.Log("Stop waiting until timeout or true")
-}
-
-func assertLogged(t *testing.T, buf *gbytes.Buffer, msg string) {
-	observed := func() bool { return strings.Contains(string(buf.Contents()), msg) }
-	waitUntilTrueOrTimeout(t, observed, 30*time.Second)
 }

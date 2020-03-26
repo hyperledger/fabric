@@ -47,7 +47,7 @@ func TestBadConfigOUCert(t *testing.T) {
 	conf, err := GetLocalMspConfig("testdata/badconfigoucert", nil, "SampleOrg")
 	assert.NoError(t, err)
 
-	thisMSP, err := newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	thisMSP, err := newBccspMsp(MSPv1_0, factory.GetDefault())
 	assert.NoError(t, err)
 
 	err = thisMSP.Setup(conf)

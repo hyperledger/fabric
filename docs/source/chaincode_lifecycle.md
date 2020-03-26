@@ -1,4 +1,4 @@
-# Chaincode for Operators
+# Fabric chaincode lifecycle
 
 ## What is Chaincode?
 
@@ -15,26 +15,29 @@ directly by another chaincode. However, within the same network, given the
 appropriate permission a chaincode may invoke another chaincode to access
 its state.
 
-In the following sections, we will explore chaincode through the eyes of a
+In this concept topic, we will explore chaincode through the eyes of a
 blockchain network operator rather than an application developer. Chaincode
-operators can use this tutorial to learn how to use the Fabric chainode
+operators can use this topic as a guide to how to use the Fabric chainode
 lifecycle to deploy and manage chaincode on their network.
 
-## Chaincode lifecycle
+## Deploying a chaincode
 
 The Fabric chaincode lifecycle is a process that allows multiple organizations
 to agree on how a chaincode will be operated before it can be used on a channel.
-The tutorial will discuss how a chaincode operator would use the Fabric
-lifecycle to perform the following tasks:
+A network operator would use the Fabric lifecycle to perform the following tasks:
 
 - [Install and define a chaincode](#install-and-define-a-chaincode)
 - [Upgrade a chaincode](#upgrade-a-chaincode)
 - [Deployment Scenarios](#deployment-scenarios)
 - [Migrate to the new Fabric lifecycle](#migrate-to-the-new-fabric-lifecycle)
 
-If you are upgrading from a v1.4.x network and need to edit your channel
-configurations to enable the new lifecycle, check out
-[Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
+You can use the Fabric chaincode lifecycle by creating a new channel and setting
+the channel capabilities to V2_0. You will not be able to use the old lifecycle
+to install, instantiate, or update a chaincode on channels with V2_0 capabilities
+enabled. However, you can still invoke chaincode installed using the previous
+lifecycle model after you enable V2_0 capabilities. If you are upgrading from a
+v1.4.x network and need to edit your channel configurations to enable the new
+lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
 
 ## Install and define a chaincode
 
@@ -59,7 +62,7 @@ every organization on a channel needs to complete each step.
   endorsements from enough peers of the organizations that have approved, and
   then submits the transaction to commit the chaincode definition.
 
-This tutorial provides a detailed overview of the operations of the Fabric
+This topic provides a detailed overview of the operations of the Fabric
 chaincode lifecycle rather than the specific commands. To learn more about how
 to use the Fabric lifecycle using the Peer CLI, see the
 [Deploying a smart contract to a channel tutorial](deploy_chaincode.html)
@@ -139,7 +142,7 @@ consistent across organizations:
   incremented to 2.
 - **Endorsement Policy:** Which organizations need to execute and validate the
   transaction output. The endorsement policy can be expressed as a string passed
-  to the CLI or the SDK, or it can reference a policy in the channel config. By
+  to the CLI, or it can reference a policy in the channel config. By
   default, the endorsement policy is set to ``Channel/Application/Endorsement``,
   which defaults to require that a majority of organizations in the channel
   endorse a transaction.
@@ -449,6 +452,12 @@ while MYCC2 has an endorsement policy of 2 out of 2.*
 For information about migrating to the new lifecycle, check out [Considerations for getting to v2.0](./upgrade_to_newest_version.html#chaincode-lifecycle).
 
 If you need to update your channel configurations to enable the new lifecycle, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
+
+## More information
+
+You can watch video below to learn more about the motivation of the new Fabric chaincode lifecycle and how it is implemented.
+
+<iframe class="embed-responsive-item" id="youtubeplayer2" title="Starter Plan videos" type="text/html" width="560" height="315" src="https://www.youtube.com/embed/XvEMDScFU2M" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen> </iframe>
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->

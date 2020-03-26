@@ -18,13 +18,41 @@ import (
 // Consortium is a group of non-orderer organizations used in channel transactions.
 type Consortium struct {
 	Name          string
-	Organizations []*Organization
+	Organizations []Organization
+}
+
+// AddOrgToConsortium adds an org definition to a named consortium in a given
+// channel configuration.
+func AddOrgToConsortium(config *cb.Config, org Organization, consortium string) error {
+	var err error
+
+	if consortium == "" {
+		return errors.New("consortium is required")
+	}
+
+	consortiumsGroup := config.ChannelGroup.Groups[ConsortiumsGroupKey]
+
+	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
+	if !ok {
+		return fmt.Errorf("consortium '%s' does not exist", consortium)
+	}
+
+	if _, ok := consortiumGroup.Groups[org.Name]; ok {
+		return fmt.Errorf("org '%s' already defined in consortium '%s'", org.Name, consortium)
+	}
+
+	consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org)
+	if err != nil {
+		return fmt.Errorf("failed to create consortium org: %v", err)
+	}
+
+	return nil
 }
 
 // newConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
 // the ordering system channel.
 // It sets the mod_policy for all elements to "/Channel/Orderer/Admins".
-func newConsortiumsGroup(consortiums []*Consortium) (*cb.ConfigGroup, error) {
+func newConsortiumsGroup(consortiums []Consortium) (*cb.ConfigGroup, error) {
 	var err error
 
 	consortiumsGroup := newConfigGroup()
@@ -40,7 +68,10 @@ func newConsortiumsGroup(consortiums []*Consortium) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 
-	addPolicy(consortiumsGroup, signaturePolicy, ordererAdminsPolicyName)
+	consortiumsGroup.Policies[signaturePolicy.key] = &cb.ConfigPolicy{
+		Policy:    signaturePolicy.value,
+		ModPolicy: ordererAdminsPolicyName,
+	}
 
 	for _, consortium := range consortiums {
 		consortiumsGroup.Groups[consortium.Name], err = newConsortiumGroup(consortium)
@@ -52,36 +83,8 @@ func newConsortiumsGroup(consortiums []*Consortium) (*cb.ConfigGroup, error) {
 	return consortiumsGroup, nil
 }
 
-// AddOrgToConsortium adds an org definition to a named consortium in a given
-// channel configuration.
-func AddOrgToConsortium(config *cb.Config, org *Organization, consortium string) error {
-	var err error
-
-	if org == nil {
-		return errors.New("organization is required")
-	}
-
-	if consortium == "" {
-		return errors.New("consortium is required")
-	}
-
-	consortiumsGroup := config.ChannelGroup.Groups[ConsortiumsGroupKey]
-
-	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
-	if !ok {
-		return fmt.Errorf("consortium '%s' does not exist", consortium)
-	}
-
-	consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org)
-	if err != nil {
-		return fmt.Errorf("failed to create consortium org: %v", err)
-	}
-
-	return nil
-}
-
 // newConsortiumGroup returns a consortiums component of the channel configuration.
-func newConsortiumGroup(consortium *Consortium) (*cb.ConfigGroup, error) {
+func newConsortiumGroup(consortium Consortium) (*cb.ConfigGroup, error) {
 	var err error
 
 	consortiumGroup := newConfigGroup()
@@ -153,19 +156,11 @@ func nOutOf(n int32, policies []*cb.SignaturePolicy) *cb.SignaturePolicy {
 	}
 }
 
-// addPolicy adds a *cb.ConfigPolicy to the passed *cb.ConfigGroup's Policies map.
-func addPolicy(cg *cb.ConfigGroup, policy *standardConfigPolicy, modPolicy string) {
-	cg.Policies[policy.key] = &cb.ConfigPolicy{
-		Policy:    policy.value,
-		ModPolicy: modPolicy,
-	}
-}
-
 // signaturePolicy defines a policy with key policyName and the given signature policy.
 func signaturePolicy(policyName string, sigPolicy *cb.SignaturePolicyEnvelope) (*standardConfigPolicy, error) {
 	signaturePolicy, err := proto.Marshal(sigPolicy)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling signature policy: %v", err)
+		return nil, fmt.Errorf("marshaling signature policy: %v", err)
 	}
 
 	return &standardConfigPolicy{

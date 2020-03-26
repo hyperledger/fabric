@@ -17,8 +17,8 @@ There are two tutorials for updating a channel: :doc:`config_update` and
 :doc:`updating_capabilities`, while :doc:`upgrading_your_components` shows how
 to upgrade components like peers, ordering nodes, SDKs, and more.
 
-Finally, we offer two chaincode tutorials. One oriented to developers,
-:doc:`chaincode4ade`, and the other oriented to operators, :doc:`chaincode4noah`.
+Finally, we provide an introduction to how to write a basic smart contract,
+:doc:`chaincode4ade`.
 
 .. note:: If you have questions not addressed by this documentation, or run into
           issues with any of the tutorials, please visit the :doc:`questions`
@@ -31,14 +31,12 @@ Finally, we offer two chaincode tutorials. One oriented to developers,
    deploy_chaincode.md
    write_first_app
    tutorial/commercial_paper
-   build_network
-   config_update.md
-   channel_update_tutorial
    private_data_tutorial
-   chaincode
-   chaincode4ade
-   chaincode4noah
    couchdb_tutorial
+   channel_update_tutorial
+   config_update.md
+   chaincode4ade
+   build_network
    videos
 
 .. Licensed under Creative Commons Attribution 4.0 International License

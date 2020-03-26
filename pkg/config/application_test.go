@@ -8,13 +8,15 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
+
+	"github.com/hyperledger/fabric/common/tools/protolator"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/peerext"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	mb "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/tools/protolator"
 	. "github.com/onsi/gomega"
 )
 
@@ -23,7 +25,7 @@ func TestNewApplicationGroup(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	application := baseApplication()
+	application := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -88,7 +90,10 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 		{
 			testName: "When ImplicitMetaPolicy rules' subpolicy is missing",
 			applicationMod: func(application *Application) {
-				application.Policies[ReadersPolicyKey].Rule = "ALL"
+				application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ALL",
+					Type: ImplicitMetaPolicyType,
+				}
 			},
 			expectedErr: "invalid implicit meta policy rule: 'ALL': expected two space separated " +
 				"tokens, but got 1",
@@ -96,7 +101,10 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 		{
 			testName: "When ImplicitMetaPolicy rule is invalid",
 			applicationMod: func(application *Application) {
-				application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ANYY Readers",
+					Type: ImplicitMetaPolicyType,
+				}
 			},
 			expectedErr: "invalid implicit meta policy rule: 'ANYY Readers': unknown rule type " +
 				"'ANYY', expected ALL, ANY, or MAJORITY",
@@ -104,8 +112,10 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 		{
 			testName: "When SignatureTypePolicy rule is invalid",
 			applicationMod: func(application *Application) {
-				application.Policies[ReadersPolicyKey].Type = SignaturePolicyType
-				application.Policies[ReadersPolicyKey].Rule = "ANYY Readers"
+				application.Policies[ReadersPolicyKey] = Policy{
+					Rule: "ANYY Readers",
+					Type: SignaturePolicyType,
+				}
 			},
 			expectedErr: "invalid signature policy rule: 'ANYY Readers': Cannot transition " +
 				"token types from VARIABLE [ANYY] to VARIABLE [Readers]",
@@ -113,7 +123,9 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 		{
 			testName: "When ImplicitMetaPolicy type is unknown policy type",
 			applicationMod: func(application *Application) {
-				application.Policies[ReadersPolicyKey].Type = "GreenPolicy"
+				application.Policies[ReadersPolicyKey] = Policy{
+					Type: "GreenPolicy",
+				}
 			},
 			expectedErr: "unknown policy type: GreenPolicy",
 		},
@@ -126,8 +138,8 @@ func TestNewApplicationGroupFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			application := baseApplication()
-			tt.applicationMod(application)
+			application := baseApplication(t)
+			tt.applicationMod(&application)
 
 			configGrp, err := newApplicationGroup(application)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
@@ -141,7 +153,7 @@ func TestAddAnchorPeer(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseApplicationConf := baseApplication()
+	baseApplicationConf := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(baseApplicationConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -156,12 +168,12 @@ func TestAddAnchorPeer(t *testing.T) {
 		},
 	}
 
-	newOrg1AnchorPeer := &AnchorPeer{
+	newOrg1AnchorPeer := Address{
 		Host: "host3",
 		Port: 123,
 	}
 
-	newOrg2AnchorPeer := &AnchorPeer{
+	newOrg2AnchorPeer := Address{
 		Host: "host4",
 		Port: 123,
 	}
@@ -304,14 +316,14 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 		testName      string
 		orgName       string
 		configMod     func(*GomegaWithT, *cb.Config)
-		newAnchorPeer *AnchorPeer
+		newAnchorPeer Address
 		expectedErr   string
 	}{
 		{
 			testName:      "When the org for the application does not exist",
 			orgName:       "BadOrg",
 			configMod:     nil,
-			newAnchorPeer: &AnchorPeer{Host: "host3", Port: 123},
+			newAnchorPeer: Address{Host: "host3", Port: 123},
 			expectedErr:   "application org BadOrg does not exist in channel config",
 		},
 		{
@@ -333,7 +345,7 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 					Value: v,
 				}
 			},
-			newAnchorPeer: &AnchorPeer{Host: "host1", Port: 123},
+			newAnchorPeer: Address{Host: "host1", Port: 123},
 			expectedErr:   "application org Org1 already contains anchor peer endpoint host1:123",
 		},
 	}
@@ -345,7 +357,7 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			baseApplicationConf := baseApplication()
+			baseApplicationConf := baseApplication(t)
 
 			applicationGroup, err := newApplicationGroup(baseApplicationConf)
 			gt.Expect(err).NotTo(HaveOccurred())
@@ -373,7 +385,7 @@ func TestRemoveAnchorPeer(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
-	baseApplicationConf := baseApplication()
+	baseApplicationConf := baseApplication(t)
 
 	applicationGroup, err := newApplicationGroup(baseApplicationConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -484,7 +496,7 @@ func TestRemoveAnchorPeer(t *testing.T) {
 	"sequence": "0"
 }
 	`
-	anchorPeer1 := &AnchorPeer{Host: "host1", Port: 123}
+	anchorPeer1 := Address{Host: "host1", Port: 123}
 	err = AddAnchorPeer(config, "Org1", anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedUpdatedConfig := &cb.Config{}
@@ -504,20 +516,20 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 	tests := []struct {
 		testName           string
 		orgName            string
-		anchorPeerToRemove *AnchorPeer
+		anchorPeerToRemove Address
 		expectedErr        string
 	}{
 		{
 			testName:           "When the org for the application does not exist",
 			orgName:            "BadOrg",
-			anchorPeerToRemove: &AnchorPeer{Host: "host1", Port: 123},
+			anchorPeerToRemove: Address{Host: "host1", Port: 123},
 			expectedErr:        "application org BadOrg does not exist in channel config",
 		},
 		{
 			testName:           "When the anchor peer being removed doesn't exist in the org",
 			orgName:            "Org1",
-			anchorPeerToRemove: &AnchorPeer{Host: "host2", Port: 123},
-			expectedErr:        "could not find anchor peer host2:123 in Org1's anchor peer endpoints",
+			anchorPeerToRemove: Address{Host: "host2", Port: 123},
+			expectedErr:        "could not find anchor peer host2:123 in application org Org1",
 		},
 	}
 
@@ -528,7 +540,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			baseApplicationConf := baseApplication()
+			baseApplicationConf := baseApplication(t)
 
 			applicationGroup, err := newApplicationGroup(baseApplicationConf)
 			gt.Expect(err).NotTo(HaveOccurred())
@@ -549,43 +561,44 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 
 func TestGetAnchorPeer(t *testing.T) {
 	t.Parallel()
+
 	gt := NewGomegaWithT(t)
 
 	channelGroup := newConfigGroup()
-	applicationGroup := newConfigGroup()
 
-	application := baseApplication()
-	for _, org := range application.Organizations {
-		orgGroup, err := newOrgConfigGroup(org)
-		gt.Expect(err).NotTo(HaveOccurred())
-		applicationGroup.Groups[org.Name] = orgGroup
-	}
+	applicationGroup, err := newApplicationGroup(baseApplication(t))
+	gt.Expect(err).NotTo(HaveOccurred())
+
 	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
 	config := &cb.Config{
 		ChannelGroup: channelGroup,
 	}
 
-	expectedAnchorPeer := &AnchorPeer{Host: "host1", Port: 123}
+	expectedAnchorPeer := Address{Host: "host1", Port: 123}
 
-	anchorPeers, err := GetAnchorPeer(config, "Org1")
+	err = AddAnchorPeer(config, "Org1", expectedAnchorPeer)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	anchorPeers, err := GetAnchorPeers(config, "Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(len(anchorPeers)).To(Equal(1))
 	gt.Expect(anchorPeers[0]).To(Equal(expectedAnchorPeer))
-
 }
 
 func TestGetAnchorPeerFailures(t *testing.T) {
 	t.Parallel()
+
 	gt := NewGomegaWithT(t)
 
 	channelGroup := newConfigGroup()
-	applicationGroup := newConfigGroup()
 
-	orgNoAnchor := &Organization{
-		Name:      "Org1",
-		ID:        "Org1MSP",
-		Policies:  applicationOrgStandardPolicies(),
-		MSPConfig: &mb.FabricMSPConfig{},
+	applicationGroup, err := newApplicationGroup(baseApplication(t))
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	orgNoAnchor := Organization{
+		Name:     "Org1",
+		Policies: applicationOrgStandardPolicies(),
+		MSP:      baseMSP(t),
 	}
 	orgGroup, err := newOrgConfigGroup(orgNoAnchor)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -598,54 +611,43 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 
 	for _, test := range []struct {
 		name        string
-		config      *cb.Config
 		orgName     string
 		expectedErr string
 	}{
 		{
 			name:        "When org does not exist in application channel",
-			config:      config,
 			orgName:     "bad-org",
 			expectedErr: "application org bad-org does not exist in channel config",
 		},
 		{
-			name:        "When org does not have an anchor peer",
-			config:      config,
+			name:        "When org config group does not have an anchor peers value",
 			orgName:     "Org1",
-			expectedErr: "application org Org1 does not have anchor peer",
+			expectedErr: "application org Org1 does not have anchor peers",
 		},
 	} {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
-			_, err := GetAnchorPeer(test.config, test.orgName)
+			_, err := GetAnchorPeers(config, test.orgName)
 			gt.Expect(err).To(MatchError(test.expectedErr))
 		})
 	}
 }
 
-func baseApplication() *Application {
-	return &Application{
+func baseApplication(t *testing.T) Application {
+	return Application{
 		Policies: standardPolicies(),
-		Organizations: []*Organization{
+		Organizations: []Organization{
 			{
 				Name:     "Org1",
-				ID:       "Org1MSP",
 				Policies: applicationOrgStandardPolicies(),
-				AnchorPeers: []*AnchorPeer{
-					{Host: "host1", Port: 123},
-				},
-				MSPConfig: &mb.FabricMSPConfig{},
+				MSP:      baseMSP(t),
 			},
 			{
 				Name:     "Org2",
-				ID:       "Org2MSP",
 				Policies: applicationOrgStandardPolicies(),
-				AnchorPeers: []*AnchorPeer{
-					{Host: "host2", Port: 123},
-				},
-				MSPConfig: &mb.FabricMSPConfig{},
+				MSP:      baseMSP(t),
 			},
 		},
 		Capabilities: map[string]bool{
@@ -655,4 +657,210 @@ func baseApplication() *Application {
 			"acl1": "hi",
 		},
 	}
+}
+
+func TestAddApplicationOrg(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	appGroup, err := newApplicationGroup(baseApplication(t))
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Application": appGroup,
+			},
+		},
+	}
+
+	org := Organization{
+		Name:     "Org3",
+		Policies: applicationOrgStandardPolicies(),
+		MSP:      baseMSP(t),
+		AnchorPeers: []Address{
+			{
+				Host: "127.0.0.1",
+				Port: 7051,
+			},
+		},
+	}
+
+	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(org.MSP)
+	expectedConfigJSON := fmt.Sprintf(`
+{
+	"groups": {},
+	"mod_policy": "Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Admins"
+				}
+			},
+			"version": "0"
+		},
+		"Endorsement": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Endorsement"
+				}
+			},
+			"version": "0"
+		},
+		"LifecycleEndorsement": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Endorsement"
+				}
+			},
+			"version": "0"
+		},
+		"Readers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Readers"
+				}
+			},
+			"version": "0"
+		},
+		"Writers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {
+		"AnchorPeers": {
+			"mod_policy": "Admins",
+			"value": {
+				"anchor_peers": [
+					{
+						"host": "127.0.0.1",
+						"port": 7051
+					}
+				]
+			},
+			"version": "0"
+		},
+		"MSP": {
+			"mod_policy": "Admins",
+			"value": {
+				"config": {
+					"admins": [
+						"%[1]s"
+					],
+					"crypto_config": {
+						"identity_identifier_hash_function": "SHA256",
+						"signature_hash_family": "SHA3"
+					},
+					"fabric_node_ous": {
+						"admin_ou_identifier": {
+							"certificate": "%[1]s",
+							"organizational_unit_identifier": "OUID"
+						},
+						"client_ou_identifier": {
+							"certificate": "%[1]s",
+							"organizational_unit_identifier": "OUID"
+						},
+						"enable": false,
+						"orderer_ou_identifier": {
+							"certificate": "%[1]s",
+							"organizational_unit_identifier": "OUID"
+						},
+						"peer_ou_identifier": {
+							"certificate": "%[1]s",
+							"organizational_unit_identifier": "OUID"
+						}
+					},
+					"intermediate_certs": [
+						"%[1]s"
+					],
+					"name": "MSPID",
+					"organizational_unit_identifiers": [
+						{
+							"certificate": "%[1]s",
+							"organizational_unit_identifier": "OUID"
+						}
+					],
+					"revocation_list": [
+						"%[2]s"
+					],
+					"root_certs": [
+						"%[1]s"
+					],
+					"signing_identity": {
+						"private_signer": {
+							"key_identifier": "SKI-1",
+							"key_material": "%[3]s"
+						},
+						"public_signer": "%[1]s"
+					},
+					"tls_intermediate_certs": [
+						"%[1]s"
+					],
+					"tls_root_certs": [
+						"%[1]s"
+					]
+				},
+				"type": 0
+			},
+			"version": "0"
+		}
+	},
+	"version": "0"
+}
+`, certBase64, crlBase64, pkBase64)
+
+	err = AddApplicationOrg(config, org)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	actualApplicationConfigGroup := config.ChannelGroup.Groups[ApplicationGroupKey].Groups["Org3"]
+	buf := bytes.Buffer{}
+	err = protolator.DeepMarshalJSON(&buf, &peerext.DynamicApplicationOrgGroup{ConfigGroup: actualApplicationConfigGroup})
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
+}
+
+func TestAddApplicationOrgFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	appGroup, err := newApplicationGroup(baseApplication(t))
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Application": appGroup,
+			},
+		},
+	}
+
+	org := Organization{
+		Name: "Org3",
+	}
+
+	err = AddApplicationOrg(config, org)
+	gt.Expect(err).To(MatchError("failed to create application org Org3: no policies defined"))
 }

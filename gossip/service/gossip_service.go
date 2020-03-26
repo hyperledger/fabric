@@ -11,6 +11,7 @@ import (
 
 	gproto "github.com/hyperledger/fabric-protos-go/gossip"
 	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
+	"github.com/hyperledger/fabric/common/flogging"
 	corecomm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -344,6 +345,7 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 	blockingMode := !g.serviceConfig.NonBlockingCommitMode
 	stateConfig := state.GlobalConfig()
 	g.chains[channelID] = state.NewGossipStateProvider(
+		flogging.MustGetLogger(util.StateLogger),
 		channelID,
 		servicesAdapter,
 		coordinator,

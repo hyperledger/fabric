@@ -538,7 +538,7 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:9f353a779b8b118229dfc1541e41d72d1a3a6f2d13756f5fe66daeb0f52191ab"
+  digest = "1:5c9d22f555c67f95dd405c7fcba6878eb221012582389411e5fcfcf194695a30"
   name = "github.com/onsi/gomega"
   packages = [
     ".",
@@ -559,8 +559,8 @@
     "types",
   ]
   pruneopts = "NT"
-  revision = "90e289841c1ed79b7a598a7cd9959750cb5e89e2"
-  version = "v1.5.0"
+  revision = "6be6c439588487cd908a3a700795660c2a16dfec"
+  version = "v1.9.0"
 
 [[projects]]
   digest = "1:e0cc8395ea893c898ff5eb0850f4d9851c1f57c78c232304a026379a47a552d0"
@@ -723,7 +723,7 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:137e260ddedd6466e5705fd8eb76ce9c3401dd0f44bc096550e1f9c5dc3eea09"
+  digest = "1:9fbf4839780ad22707466b383b27241ef4aa31fc5f6ff295826071ffbd30c482"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
@@ -731,8 +731,8 @@
     "require",
   ]
   pruneopts = "NUT"
-  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
-  version = "v1.3.0"
+  revision = "3ebf1ddaeb260c4b1ae502a01c7844fa8c1fa0e9"
+  version = "v1.5.1"
 
 [[projects]]
   branch = "master"
@@ -818,7 +818,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:90a7f94b0c38c53364c997d2d03c442c7b1de6d42e968b220fe8cf51e9af6b52"
+  digest = "1:ee4488b9f3d51381242c4ab4cb1cc8d822f8a89d240c7e79e0f506db0b14acc1"
   name = "go.uber.org/zap"
   packages = [
     ".",
@@ -831,8 +831,8 @@
     "zaptest/observer",
   ]
   pruneopts = "NUT"
-  revision = "27376062155ad36be76b0f12cf1572a221d3a48c"
-  version = "v1.10.0"
+  revision = "2aa9fa25da83bdfff756c36a91442edc9a84576c"
+  version = "v1.14.1"
 
 [[projects]]
   branch = "master"
@@ -939,6 +939,17 @@
   ]
   pruneopts = "NUT"
   revision = "65e3620a7ae7ac25e8494a60f0e5ef4e4fba03b3"
+
+[[projects]]
+  branch = "master"
+  digest = "1:325a1b73817aa79fc85f10376ed41ea607f7dd7f6c6bfa46df6a28ef2857941f"
+  name = "golang.org/x/xerrors"
+  packages = [
+    ".",
+    "internal",
+  ]
+  pruneopts = "NUT"
+  revision = "9bdfabe68543c54f90421aeb9a60ef8061b5b544"
 
 [[projects]]
   branch = "master"

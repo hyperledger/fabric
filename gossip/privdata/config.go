@@ -28,11 +28,11 @@ type PrivdataConfig struct {
 	ReconcileBatchSize int
 	// ReconciliationEnabled is a flag that indicates whether private data reconciliation is enabled or not.
 	ReconciliationEnabled bool
-	// ImplicitCollectionDisseminationPolicy specifies the dessemination policy for the peer's own implicit collection.
+	// ImplicitCollectionDisseminationPolicy specifies the dissemination  policy for the peer's own implicit collection.
 	ImplicitCollDisseminationPolicy ImplicitCollectionDisseminationPolicy
 }
 
-// ImplicitCollectionDisseminationPolicy specifies the dessemination policy for the peer's own implicit collection.
+// ImplicitCollectionDisseminationPolicy specifies the dissemination  policy for the peer's own implicit collection.
 // It is not applicable to private data for other organizations' implicit collections.
 type ImplicitCollectionDisseminationPolicy struct {
 	// RequiredPeerCount defines the minimum number of eligible peers to which each endorsing peer must successfully

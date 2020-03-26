@@ -255,7 +255,7 @@ to see what's happening from a single window. This can be really helpful for
 administrators when installing smart contracts or for developers when invoking
 smart contracts, for example.
 
-In the MagnetoCorp directory, run the the following command to run the
+In the MagnetoCorp directory, run the following command to run the
 `monitordocker.sh`  script and start the `logspout` tool for the containers
 associated with PaperNet running on `net_test`:
 ```
@@ -362,7 +362,7 @@ designed in the smart contract [topic](../developapps/smartcontract.html).
 
 Before `papercontract` can be invoked by applications, it must be installed onto
 the appropriate peer nodes of the test network and then defined on the channel
-using the [Fabric chaincode lifecycle](../chaincode4noah.html#chaincode-lifecycle). The Fabric chaincode
+using the [Fabric chaincode lifecycle](../chaincode_lifecycle.html#chaincode-lifecycle). The Fabric chaincode
 lifecycle allows multiple organizations to agree to the parameters of a chaincode
 before the chainocde is deployed to a channel. As a result, we need to install
 and approve the chaincode as administrators of both MagnetoCorp and DigiBank.
@@ -521,7 +521,7 @@ to commit the chaincode definition of `papercontract` to `mychannel`:
 (magnetocorp admin)$ peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --peerAddresses localhost:7051 --tlsRootCertFiles ${PEER0_ORG1_CA} --peerAddresses localhost:9051 --tlsRootCertFiles ${PEER0_ORG2_CA} --channelID mychannel --name papercontract -v 0 --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 ```
 The chaincode container will start after the chaincode definition has been
-committed to the channel. You can use the the `docker ps` command to see
+committed to the channel. You can use the `docker ps` command to see
 `papercontract` container starting on both peers.
 
 ```
