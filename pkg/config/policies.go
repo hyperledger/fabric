@@ -92,7 +92,7 @@ func (c *ConfigTx) GetPoliciesForApplicationOrg(orgName string) (map[string]Poli
 // AddApplicationPolicy modifies an existing application policy configuration.
 // When the policy exists it will overwrite the existing policy.
 func (c *ConfigTx) AddApplicationPolicy(modPolicy, policyName string, policy Policy) error {
-	err := addPolicy(c.base.ChannelGroup.Groups[ApplicationGroupKey], modPolicy, policyName, policy)
+	err := addPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey], modPolicy, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to add policy '%s': %v", policyName, err)
 	}
@@ -138,7 +138,7 @@ func (c *ConfigTx) RemoveApplicationOrgPolicy(orgName, policyName string) error 
 func (c *ConfigTx) AddConsortiumOrgPolicy(consortiumName, orgName, policyName string, policy Policy) error {
 	groupKey := ConsortiumsGroupKey
 
-	consortiumGroup, ok := c.base.ChannelGroup.Groups[groupKey].Groups[consortiumName]
+	consortiumGroup, ok := c.updated.ChannelGroup.Groups[groupKey].Groups[consortiumName]
 	if !ok {
 		return fmt.Errorf("consortium '%s' does not exist in channel config", consortiumName)
 	}
@@ -161,7 +161,7 @@ func (c *ConfigTx) AddConsortiumOrgPolicy(consortiumName, orgName, policyName st
 func (c *ConfigTx) RemoveConsortiumOrgPolicy(consortiumName, orgName, policyName string) error {
 	groupKey := ConsortiumsGroupKey
 
-	consortiumGroup, ok := c.base.ChannelGroup.Groups[groupKey].Groups[consortiumName]
+	consortiumGroup, ok := c.updated.ChannelGroup.Groups[groupKey].Groups[consortiumName]
 	if !ok {
 		return fmt.Errorf("consortium '%s' does not exist in channel config", consortiumName)
 	}
