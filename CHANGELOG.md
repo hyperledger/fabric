@@ -4459,7 +4459,7 @@ Wed Nov  1 09:53:53 EDT 2017
 * [361d6094](https://github.com/hyperledger/fabric/commit/361d6094) [FAB-6080](https://jira.hyperledger.org/browse/FAB-6080) Fix unset mod_policy in channel create
 * [a50bd081](https://github.com/hyperledger/fabric/commit/a50bd081) [FAB-6426](https://jira.hyperledger.org/browse/FAB-6426) Remove Capability msg 'required' field
 * [b09911b4](https://github.com/hyperledger/fabric/commit/b09911b4) [FAB-6327](https://jira.hyperledger.org/browse/FAB-6327) Fetch pvt data from ledger
-* [a77389d1](https://github.com/hyperledger/fabric/commit/a77389d1) [FAB-6087](https://jira.hyperledger.org/browse/FAB-6087) Add configtxgen capabilties support
+* [a77389d1](https://github.com/hyperledger/fabric/commit/a77389d1) [FAB-6087](https://jira.hyperledger.org/browse/FAB-6087) Add configtxgen capabilities support
 * [95266bd0](https://github.com/hyperledger/fabric/commit/95266bd0) [FAB-6407](https://jira.hyperledger.org/browse/FAB-6407) Clarify devmode doesnt work with TLS
 * [218a9bd4](https://github.com/hyperledger/fabric/commit/218a9bd4) [FAB-6089](https://jira.hyperledger.org/browse/FAB-6089) ABAC chaincode library
 * [358ba1f6](https://github.com/hyperledger/fabric/commit/358ba1f6) [FAB-6384](https://jira.hyperledger.org/browse/FAB-6384) node.js CC build missing hidden files
