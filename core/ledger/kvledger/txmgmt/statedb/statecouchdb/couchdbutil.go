@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package couchdb
+package statecouchdb
 
 import (
 	"bytes"
@@ -19,6 +19,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
 
@@ -34,7 +35,7 @@ var chainNameAllowedLength = 50
 var namespaceNameAllowedLength = 50
 var collectionNameAllowedLength = 50
 
-func CreateCouchInstance(config *Config, metricsProvider metrics.Provider) (*CouchInstance, error) {
+func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.Provider) (*couchInstance, error) {
 	// make sure the address is valid
 	connectURL := &url.URL{
 		Host:   config.Address,
@@ -72,12 +73,12 @@ func CreateCouchInstance(config *Config, metricsProvider metrics.Provider) (*Cou
 	client.Transport = transport
 
 	//Create the CouchDB instance
-	couchInstance := &CouchInstance{
+	couchInstance := &couchInstance{
 		conf:   config,
 		client: client,
 		stats:  newStats(metricsProvider),
 	}
-	connectInfo, retVal, verifyErr := couchInstance.VerifyCouchConfig()
+	connectInfo, retVal, verifyErr := couchInstance.verifyCouchConfig()
 	if verifyErr != nil {
 		return nil, verifyErr
 	}
@@ -111,8 +112,8 @@ func checkCouchDBVersion(version string) error {
 	return nil
 }
 
-//CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
-func CreateCouchDatabase(couchInstance *CouchInstance, dbName string) (*CouchDatabase, error) {
+//createCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
+func createCouchDatabase(couchInstance *couchInstance, dbName string) (*couchDatabase, error) {
 
 	databaseName, err := mapAndValidateDatabaseName(dbName)
 	if err != nil {
@@ -120,10 +121,10 @@ func CreateCouchDatabase(couchInstance *CouchInstance, dbName string) (*CouchDat
 		return nil, err
 	}
 
-	couchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: databaseName, IndexWarmCounter: 1}
+	couchDBDatabase := couchDatabase{couchInstance: couchInstance, dbName: databaseName, indexWarmCounter: 1}
 
 	// Create CouchDB database upon ledger startup, if it doesn't already exist
-	err = couchDBDatabase.CreateDatabaseIfNotExist()
+	err = couchDBDatabase.createDatabaseIfNotExist()
 	if err != nil {
 		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for dbName: %s, error: %s", dbName, err)
 		return nil, err
@@ -132,30 +133,30 @@ func CreateCouchDatabase(couchInstance *CouchInstance, dbName string) (*CouchDat
 	return &couchDBDatabase, nil
 }
 
-//CreateSystemDatabasesIfNotExist - creates the system databases if they do not exist
-func CreateSystemDatabasesIfNotExist(couchInstance *CouchInstance) error {
+//createSystemDatabasesIfNotExist - creates the system databases if they do not exist
+func createSystemDatabasesIfNotExist(couchInstance *couchInstance) error {
 
 	dbName := "_users"
-	systemCouchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
-	err := systemCouchDBDatabase.CreateDatabaseIfNotExist()
+	systemCouchDBDatabase := couchDatabase{couchInstance: couchInstance, dbName: dbName, indexWarmCounter: 1}
+	err := systemCouchDBDatabase.createDatabaseIfNotExist()
 	if err != nil {
-		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
+		logger.Errorf("Error calling CouchDB createDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
 		return err
 	}
 
 	dbName = "_replicator"
-	systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
-	err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
+	systemCouchDBDatabase = couchDatabase{couchInstance: couchInstance, dbName: dbName, indexWarmCounter: 1}
+	err = systemCouchDBDatabase.createDatabaseIfNotExist()
 	if err != nil {
-		logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
+		logger.Errorf("Error calling CouchDB createDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
 		return err
 	}
 	if couchInstance.conf.CreateGlobalChangesDB {
 		dbName = "_global_changes"
-		systemCouchDBDatabase = CouchDatabase{CouchInstance: couchInstance, DBName: dbName, IndexWarmCounter: 1}
-		err = systemCouchDBDatabase.CreateDatabaseIfNotExist()
+		systemCouchDBDatabase = couchDatabase{couchInstance: couchInstance, dbName: dbName, indexWarmCounter: 1}
+		err = systemCouchDBDatabase.createDatabaseIfNotExist()
 		if err != nil {
-			logger.Errorf("Error calling CouchDB CreateDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
+			logger.Errorf("Error calling CouchDB createDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
 			return err
 		}
 	}
@@ -179,9 +180,9 @@ func constructCouchDBUrl(connectURL *url.URL, dbName string, pathElements ...str
 	return &url.URL{Opaque: buffer.String()}
 }
 
-// ConstructMetadataDBName truncates the db name to couchdb allowed length to
+// constructMetadataDBName truncates the db name to couchdb allowed length to
 // construct the metadataDBName
-func ConstructMetadataDBName(dbName string) string {
+func constructMetadataDBName(dbName string) string {
 	if len(dbName) > maxLength {
 		untruncatedDBName := dbName
 		// Truncate the name if the length violates the allowed limit
@@ -195,12 +196,12 @@ func ConstructMetadataDBName(dbName string) string {
 	return dbName + "_"
 }
 
-// ConstructNamespaceDBName truncates db name to couchdb allowed length to construct the final namespaceDBName
+// constructNamespaceDBName truncates db name to couchdb allowed length to construct the final namespaceDBName
 // The passed namespace will be in one of the following formats:
 // <chaincode>                 - for namespaces containing regular public data
 // <chaincode>$$p<collection>  - for namespaces containing private data collections
 // <chaincode>$$h<collection>  - for namespaces containing hashes of private data collections
-func ConstructNamespaceDBName(chainName, namespace string) string {
+func constructNamespaceDBName(chainName, namespace string) string {
 	// replace upper-case in namespace with a escape sequence '$' and the respective lower-case letter
 	escapedNamespace := escapeUpperCase(namespace)
 	namespaceDBName := chainName + "_" + escapedNamespace

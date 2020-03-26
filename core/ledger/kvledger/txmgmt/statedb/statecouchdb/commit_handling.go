@@ -12,12 +12,11 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/pkg/errors"
 )
 
 type committer struct {
-	db             *couchdb.CouchDatabase
+	db             *couchDatabase
 	batchUpdateMap map[string]*batchableDocument
 	namespace      string
 	cacheKVs       cacheKVs
@@ -105,7 +104,7 @@ func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*st
 		return nil, err
 	}
 	// for each namespace, build mutiple committers based on the maxBatchSize
-	maxBatchSize := db.CouchInstance.MaxBatchUpdateSize()
+	maxBatchSize := db.couchInstance.maxBatchUpdateSize()
 	numCommitters := 1
 	if maxBatchSize > 0 {
 		numCommitters = int(math.Ceil(float64(len(nsUpdates)) / float64(maxBatchSize)))
@@ -173,13 +172,13 @@ func (vdb *VersionedDB) executeCommitter(committers []*committer) error {
 
 // commitUpdates commits the given updates to couchdb
 func (c *committer) commitUpdates() error {
-	docs := []*couchdb.CouchDoc{}
+	docs := []*couchDoc{}
 	for _, update := range c.batchUpdateMap {
 		docs = append(docs, &update.CouchDoc)
 	}
 
 	// Do the bulk update into couchdb. Note that this will do retries if the entire bulk update fails or times out
-	responses, err := c.db.BatchUpdateDocuments(docs)
+	responses, err := c.db.batchUpdateDocuments(docs)
 	if err != nil {
 		return err
 	}
@@ -198,8 +197,8 @@ func (c *committer) commitUpdates() error {
 		//Remove the "_rev" from the JSON before saving
 		//this will allow the CouchDB retry logic to retry revisions without encountering
 		//a mismatch between the "If-Match" and the "_rev" tag in the JSON
-		if doc.CouchDoc.JSONValue != nil {
-			err = removeJSONRevision(&doc.CouchDoc.JSONValue)
+		if doc.CouchDoc.jsonValue != nil {
+			err = removeJSONRevision(&doc.CouchDoc.jsonValue)
 			if err != nil {
 				return err
 			}
@@ -210,13 +209,13 @@ func (c *committer) commitUpdates() error {
 			// If this is a deleted document, then retry the delete
 			// If the delete fails due to a document not being found (404 error),
 			// the document has already been deleted and the DeleteDoc will not return an error
-			err = c.db.DeleteDoc(resp.ID, "")
+			err = c.db.deleteDoc(resp.ID, "")
 		} else {
 			logger.Warningf("CouchDB batch document update encountered an problem. Reason:%s, Retrying update for document ID:%s", resp.Reason, resp.ID)
 			// Save the individual document to couchdb
 			// Note that this will do retries as needed
 			var revision string
-			revision, err = c.db.SaveDoc(resp.ID, "", &doc.CouchDoc)
+			revision, err = c.db.saveDoc(resp.ID, "", &doc.CouchDoc)
 			c.updateRevisionInCacheUpdate(resp.ID, revision)
 		}
 
@@ -293,7 +292,7 @@ func (vdb *VersionedDB) addMissingRevisionsFromDB(ns string, missingKeys []strin
 		return err
 	}
 
-	logger.Debugf("Pulling revisions for the [%d] keys for namsespace [%s] that were not part of the readset", len(missingKeys), db.DBName)
+	logger.Debugf("Pulling revisions for the [%d] keys for namsespace [%s] that were not part of the readset", len(missingKeys), db.dbName)
 	retrievedMetadata, err := retrieveNsMetadata(db, missingKeys)
 	if err != nil {
 		return err
@@ -307,6 +306,6 @@ func (vdb *VersionedDB) addMissingRevisionsFromDB(ns string, missingKeys []strin
 
 //batchableDocument defines a document for a batch
 type batchableDocument struct {
-	CouchDoc couchdb.CouchDoc
+	CouchDoc couchDoc
 	Deleted  bool
 }

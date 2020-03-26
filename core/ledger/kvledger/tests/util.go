@@ -17,13 +17,12 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policydsl"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/tests/fakes"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/require"
 )
 
 var logger = flogging.MustGetLogger("test2")
@@ -231,18 +230,6 @@ func setBlockFlagsToValid(block *common.Block) {
 		txflags.NewWithValues(len(block.Data.Data), protopeer.TxValidationCode_VALID)
 }
 
-func dropCouchDBs(t *testing.T, couchdbConfig *couchdb.Config) {
-	couchInstance, err := couchdb.CreateCouchInstance(couchdbConfig, &disabled.Provider{})
-	require.NoError(t, err)
-	dbNames, err := couchInstance.RetrieveApplicationDBNames()
-	require.NoError(t, err)
-	for _, dbName := range dbNames {
-		db := &couchdb.CouchDatabase{
-			CouchInstance: couchInstance,
-			DBName:        dbName,
-		}
-		response, err := db.DropDatabase()
-		require.NoError(t, err)
-		require.True(t, response.Ok)
-	}
+func dropCouchDBs(t *testing.T, couchdbConfig *ledger.CouchDBConfig) {
+	statecouchdb.DeleteApplicationDBs(t, couchdbConfig)
 }

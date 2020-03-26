@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,7 +32,7 @@ func TestLedgerConfig(t *testing.T) {
 				RootFSPath: "/peerfs/ledgersData",
 				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "goleveldb",
-					CouchDB:       &couchdb.Config{},
+					CouchDB:       &ledger.CouchDBConfig{},
 				},
 				PrivateDataConfig: &ledger.PrivateDataConfig{
 					MaxBatchSize:    5000,
@@ -63,7 +62,7 @@ func TestLedgerConfig(t *testing.T) {
 				RootFSPath: "/peerfs/ledgersData",
 				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "CouchDB",
-					CouchDB: &couchdb.Config{
+					CouchDB: &ledger.CouchDBConfig{
 						Address:                 "localhost:5984",
 						Username:                "username",
 						Password:                "password",
@@ -113,7 +112,7 @@ func TestLedgerConfig(t *testing.T) {
 				RootFSPath: "/peerfs/ledgersData",
 				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "CouchDB",
-					CouchDB: &couchdb.Config{
+					CouchDB: &ledger.CouchDBConfig{
 						Address:                 "localhost:5984",
 						Username:                "username",
 						Password:                "password",
