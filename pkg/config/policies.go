@@ -114,6 +114,11 @@ func (c *ConfigTx) GetPoliciesForApplicationOrg(orgName string) (map[string]Poli
 	return getPolicies(orgGroup.Policies)
 }
 
+// GetPoliciesForChannel returns a map of policies for channel configuration.
+func (c *ConfigTx) GetPoliciesForChannel() (map[string]Policy, error) {
+	return getPolicies(c.base.ChannelGroup.Policies)
+}
+
 // AddApplicationPolicy modifies an existing application policy configuration.
 // When the policy exists it will overwrite the existing policy.
 func (c *ConfigTx) AddApplicationPolicy(modPolicy, policyName string, policy Policy) error {
@@ -242,6 +247,23 @@ func (c *ConfigTx) RemoveOrdererOrgPolicy(orgName, policyName string) error {
 	}
 
 	return removePolicy(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName], policyName, policies)
+}
+
+// AddChannelPolicy adds a channel level policy.
+// When the policy exists it will overwrite the existing policy.
+func (c *ConfigTx) AddChannelPolicy(modPolicy, policyName string, policy Policy) error {
+	return addPolicy(c.updated.ChannelGroup, modPolicy, policyName, policy)
+}
+
+// RemoveChannelPolicy removes an existing channel level policy.
+// The policy must exist in the config.
+func (c *ConfigTx) RemoveChannelPolicy(policyName string) error {
+	policies, err := c.GetPoliciesForChannel()
+	if err != nil {
+		return err
+	}
+
+	return removePolicy(c.updated.ChannelGroup, policyName, policies)
 }
 
 // getPolicies returns a map of Policy from given map of ConfigPolicy in organization config group.
@@ -439,6 +461,10 @@ func addPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy stri
 }
 
 func addPolicy(cg *cb.ConfigGroup, modPolicy, policyName string, policy Policy) error {
+	if cg.Policies == nil {
+		cg.Policies = make(map[string]*cb.ConfigPolicy)
+	}
+
 	switch policy.Type {
 	case ImplicitMetaPolicyType:
 		imp, err := implicitMetaFromString(policy.Rule)
