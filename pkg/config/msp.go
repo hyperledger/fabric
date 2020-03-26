@@ -176,7 +176,7 @@ func (c *ConfigTx) GetMSPConfigurationForOrdererOrg(orgName string) (MSP, error)
 // GetMSPConfigurationForConsortiumOrg returns the MSP configuration for an existing consortium
 // org in a config transaction.
 func (c *ConfigTx) GetMSPConfigurationForConsortiumOrg(consortiumName, orgName string) (MSP, error) {
-	consortiumGroup, ok := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
+	consortiumGroup, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 	if !ok {
 		return MSP{}, fmt.Errorf("consortium %s does not exist in config", consortiumName)
 	}
