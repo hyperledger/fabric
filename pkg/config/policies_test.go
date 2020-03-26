@@ -891,3 +891,54 @@ func TestUpdateConsortiumChannelCreationPolicyFailures(t *testing.T) {
 		})
 	}
 }
+
+func TestAddChannelPolicy(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	channel, err := baseApplicationChannelGroup(t)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: channel,
+	}
+	c := New(config)
+
+	expectedPolicy := Policy{Type: ImplicitMetaPolicyType, Rule: "ANY Readers"}
+
+	err = c.AddChannelPolicy(AdminsPolicyKey, "TestPolicy", expectedPolicy)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	updatedChannel := c.updated.ChannelGroup
+	baseChannel := c.base.ChannelGroup
+	gt.Expect(updatedChannel.Policies).To(HaveLen(1))
+	gt.Expect(updatedChannel.Policies["TestPolicy"]).NotTo(BeNil())
+	gt.Expect(baseChannel.Policies).To(HaveLen(0))
+	gt.Expect(baseChannel.Policies["TestPolicy"]).To(BeNil())
+}
+
+func TestRemoveChannelPolicy(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	channel, err := baseApplicationChannelGroup(t)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: channel,
+	}
+	policies := standardPolicies()
+	addPolicies(channel, policies, AdminsPolicyKey)
+	gt.Expect(err).NotTo(HaveOccurred())
+	c := New(config)
+
+	err = c.RemoveChannelPolicy(ReadersPolicyKey)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	updatedChannel := c.updated.ChannelGroup
+	baseChannel := c.base.ChannelGroup
+	gt.Expect(updatedChannel.Policies).To(HaveLen(2))
+	gt.Expect(updatedChannel.Policies[ReadersPolicyKey]).To(BeNil())
+	gt.Expect(baseChannel.Policies).To(HaveLen(3))
+	gt.Expect(baseChannel.Policies[ReadersPolicyKey]).ToNot(BeNil())
+}
