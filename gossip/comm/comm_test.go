@@ -218,7 +218,7 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 		mac := hmac.New(sha256.New, hmacKey)
 		mac.Write(msg)
 		return mac.Sum(nil), nil
-	})
+	}, false)
 	// Mutate connection message to test negative paths
 	msg = connMutator(msg)
 	// Send your own connection message
@@ -555,7 +555,7 @@ func TestCloseConn(t *testing.T) {
 		mac := hmac.New(sha256.New, hmacKey)
 		mac.Write(msg)
 		return mac.Sum(nil), nil
-	})
+	}, false)
 	assert.NoError(t, stream.Send(connMsg.Envelope))
 	stream.Send(createGossipMsg().Envelope)
 	select {
