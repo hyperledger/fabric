@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package util
+package txflags
 
 import (
 	"testing"
@@ -14,7 +14,7 @@ import (
 )
 
 func TestTransactionValidationFlags(t *testing.T) {
-	txFlags := NewTxValidationFlagsSetValue(10, peer.TxValidationCode_VALID)
+	txFlags := NewWithValues(10, peer.TxValidationCode_VALID)
 	assert.Equal(t, 10, len(txFlags))
 
 	txFlags.SetFlag(0, peer.TxValidationCode_VALID)

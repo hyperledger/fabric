@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -108,7 +109,7 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 	b := &internal.Block{Num: block.Header.Number}
 	txsStatInfo := []*txmgr.TxStatInfo{}
 	// Committer validator has already set validation flags based on well formed tran checks
-	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for txIndex, envBytes := range block.Data.Data {
 		var env *common.Envelope
 		var chdr *common.ChannelHeader
@@ -235,7 +236,7 @@ func validateWriteset(txRWSet *rwsetutil.TxRwSet, validateKVFunc func(key string
 
 // postprocessProtoBlock updates the proto block's validation flags (in metadata) by the results of validation process
 func postprocessProtoBlock(block *common.Block, validatedBlock *internal.Block) {
-	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for _, tx := range validatedBlock.Txs {
 		txsFilter.SetFlag(tx.IndexInBlock, tx.ValidationCode)
 	}

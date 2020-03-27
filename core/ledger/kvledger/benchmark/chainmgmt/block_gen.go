@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -85,7 +85,7 @@ func (bg *blkGenerator) nextBlock() *common.Block {
 	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 	block.Header.Number = bg.blockNum
 	block.Header.PreviousHash = bg.previousBlockHash
-	txsfltr := util.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
+	txsfltr := txflags.NewWithValues(len(block.Data.Data), peer.TxValidationCode_VALID)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
 	bg.blockNum++
