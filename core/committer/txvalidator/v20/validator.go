@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
-	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -186,7 +186,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 	logger.Debugf("[%s] START Block Validation for block [%d]", v.ChannelID, block.Header.Number)
 
 	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
-	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
+	txsfltr := txflags.New(len(block.Data.Data))
 	// array of txids
 	txidArray := make([]string, len(block.Data.Data))
 
@@ -267,7 +267,7 @@ func (v *TxValidator) Validate(block *common.Block) error {
 
 // allValidated returns error if some of the validation flags have not been set
 // during validation
-func (v *TxValidator) allValidated(txsfltr ledgerUtil.TxValidationFlags, block *common.Block) error {
+func (v *TxValidator) allValidated(txsfltr txflags.ValidationFlags, block *common.Block) error {
 	for id, f := range txsfltr {
 		if peer.TxValidationCode(f) == peer.TxValidationCode_NOT_VALIDATED {
 			return errors.Errorf("transaction %d in block %d has skipped validation", id, block.Header.Number)
@@ -277,7 +277,7 @@ func (v *TxValidator) allValidated(txsfltr ledgerUtil.TxValidationFlags, block *
 	return nil
 }
 
-func markTXIdDuplicates(txids []string, txsfltr ledgerUtil.TxValidationFlags) {
+func markTXIdDuplicates(txids []string, txsfltr txflags.ValidationFlags) {
 	txidMap := make(map[string]struct{})
 
 	for id, txid := range txids {
