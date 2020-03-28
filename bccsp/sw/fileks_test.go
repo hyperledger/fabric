@@ -30,7 +30,7 @@ func TestInvalidStoreKey(t *testing.T) {
 
 	ks, err := NewFileBasedKeyStore(nil, filepath.Join(tempDir, "bccspks"), false)
 	if err != nil {
-		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
+		fmt.Printf("Failed initiliazing KeyStore [%s]\n", err)
 		os.Exit(-1)
 	}
 
@@ -89,7 +89,7 @@ func TestBigKeyFile(t *testing.T) {
 
 	_, err = ks.GetKey(ski)
 	assert.Error(t, err)
-	expected := fmt.Sprintf("Key with SKI %s not found in %s", hex.EncodeToString(ski), ksPath)
+	expected := fmt.Sprintf("key with SKI %s not found in %s", hex.EncodeToString(ski), ksPath)
 	assert.EqualError(t, err, expected)
 
 	// 1k, so that the key would be found
@@ -109,5 +109,35 @@ func TestReInitKeyStore(t *testing.T) {
 	fbKs, isFileBased := ks.(*fileBasedKeyStore)
 	assert.True(t, isFileBased)
 	err = fbKs.Init(nil, ksPath, false)
-	assert.EqualError(t, err, "KeyStore already initilized.")
+	assert.EqualError(t, err, "keystore is already initialized")
+}
+func TestDirExists(t *testing.T) {
+	r, err := dirExists("")
+	assert.False(t, r)
+	assert.NoError(t, err)
+
+	r, err = dirExists(os.TempDir())
+	assert.NoError(t, err)
+	assert.Equal(t, true, r)
+
+	r, err = dirExists(filepath.Join(os.TempDir(), "7rhf90239vhev90"))
+	assert.NoError(t, err)
+	assert.Equal(t, false, r)
+}
+
+func TestDirEmpty(t *testing.T) {
+	_, err := dirEmpty("")
+	assert.Error(t, err)
+
+	path := filepath.Join(os.TempDir(), "7rhf90239vhev90")
+	defer os.Remove(path)
+	os.Mkdir(path, os.ModePerm)
+
+	r, err := dirEmpty(path)
+	assert.NoError(t, err)
+	assert.Equal(t, true, r)
+
+	r, err = dirEmpty(os.TempDir())
+	assert.NoError(t, err)
+	assert.Equal(t, false, r)
 }
