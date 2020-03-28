@@ -697,7 +697,7 @@ func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
 	}
 
-	pub, err := utils.DERToPublicKey(pkRaw)
+	pub, err := derToPublicKey(pkRaw)
 	if err != nil {
 		t.Fatalf("Failed converting raw to ecdsa.PublicKey [%s]", err)
 	}
@@ -745,7 +745,7 @@ func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 	}
 
 	// Import the ecdsa.PrivateKey
-	priv, err := utils.PrivateKeyToDER(key)
+	priv, err := privateKeyToDER(key)
 	if err != nil {
 		t.Fatalf("Failed converting raw to ecdsa.PrivateKey [%s]", err)
 	}
@@ -759,7 +759,7 @@ func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 	}
 
 	// Import the ecdsa.PublicKey
-	pub, err := utils.PublicKeyToDER(&key.PublicKey)
+	pub, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
 	if err != nil {
 		t.Fatalf("Failed converting raw to ecdsa.PublicKey [%s]", err)
 	}
@@ -879,7 +879,7 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
 	}
 
-	pub, err := utils.DERToPublicKey(pkRaw)
+	pub, err := derToPublicKey(pkRaw)
 	if err != nil {
 		t.Fatalf("Failed converting raw to ECDSA.PublicKey [%s]", err)
 	}

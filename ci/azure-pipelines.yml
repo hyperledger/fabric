@@ -22,6 +22,8 @@ jobs:
       - checkout: self
         path: 'go/src/github.com/hyperledger/fabric'
         displayName: Checkout Fabric Code
+      - script: cat bccsp/sw/fileks.go | head -n 25
+      - script: git log -n 5
       - script: make basic-checks native
         displayName: Run Basic Checks
       - script: ./ci/scripts/evaluate_commits.sh
