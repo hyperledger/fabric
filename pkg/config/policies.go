@@ -18,6 +18,31 @@ import (
 	"github.com/hyperledger/fabric/common/policydsl"
 )
 
+// UpdateConsortiumChannelCreationPolicy update a consortium group's channel creation policy value
+func (c *ConfigTx) UpdateConsortiumChannelCreationPolicy(consortiumName string, policy Policy) error {
+	consortium, ok := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
+	if !ok {
+		return fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
+	}
+
+	imp, err := implicitMetaFromString(policy.Rule)
+	if err != nil {
+		return fmt.Errorf("invalid implicit meta policy rule '%s': %v", policy.Rule, err)
+	}
+
+	implicitMetaPolicy, err := implicitMetaPolicy(imp.SubPolicy, imp.Rule)
+	if err != nil {
+		return fmt.Errorf("failed to make implicit meta policy: %v", err)
+	}
+
+	// update channel creation policy value back to consortium
+	if err = addValue(consortium, channelCreationPolicyValue(implicitMetaPolicy), ordererAdminsPolicyName); err != nil {
+		return fmt.Errorf("failed to update channel creation policy to consortium %s: %v", consortiumName, err)
+	}
+
+	return nil
+}
+
 // GetPoliciesForConsortiums returns a map of policies for channel consortiums.
 func (c *ConfigTx) GetPoliciesForConsortiums() (map[string]Policy, error) {
 	consortiums, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey]
