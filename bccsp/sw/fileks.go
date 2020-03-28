@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -65,32 +66,44 @@ func (ks *fileBasedKeyStore) Init(pwd []byte, path string, readOnly bool) error 
 	// pwd can be nil
 
 	if len(path) == 0 {
-		return errors.New("An invalid KeyStore path provided. Path cannot be an empty string.")
+		return errors.New("an invalid KeyStore path provided. Path cannot be an empty string")
 	}
 
 	ks.m.Lock()
 	defer ks.m.Unlock()
 
 	if ks.isOpen {
-		return errors.New("KeyStore already initilized.")
+		return errors.New("keystore is already initialized")
 	}
 
 	ks.path = path
 	ks.pwd = utils.Clone(pwd)
-
-	err := ks.createKeyStoreIfNotExists()
-	if err != nil {
-		return err
-	}
-
-	err = ks.openKeyStore()
-	if err != nil {
-		return err
-	}
-
 	ks.readOnly = readOnly
 
-	return nil
+	exists, err := dirExists(path)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		err = ks.createKeyStore()
+		if err != nil {
+			return err
+		}
+		return ks.openKeyStore()
+	}
+
+	empty, err := dirEmpty(path)
+	if err != nil {
+		return err
+	}
+	if empty {
+		err = ks.createKeyStore()
+		if err != nil {
+			return err
+		}
+	}
+
+	return ks.openKeyStore()
 }
 
 // ReadOnly returns true if this KeyStore is read only, false otherwise.
@@ -103,7 +116,7 @@ func (ks *fileBasedKeyStore) ReadOnly() bool {
 func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 	// Validate arguments
 	if len(ski) == 0 {
-		return nil, errors.New("Invalid SKI. Cannot be of zero length.")
+		return nil, errors.New("invalid SKI. Cannot be of zero length")
 	}
 
 	suffix := ks.getSuffix(hex.EncodeToString(ski))
@@ -113,7 +126,7 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		// Load the key
 		key, err := ks.loadKey(hex.EncodeToString(ski))
 		if err != nil {
-			return nil, fmt.Errorf("Failed loading key [%x] [%s]", ski, err)
+			return nil, fmt.Errorf("failed loading key [%x] [%s]", ski, err)
 		}
 
 		return &aesPrivateKey{key, false}, nil
@@ -121,27 +134,27 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		// Load the private key
 		key, err := ks.loadPrivateKey(hex.EncodeToString(ski))
 		if err != nil {
-			return nil, fmt.Errorf("Failed loading secret key [%x] [%s]", ski, err)
+			return nil, fmt.Errorf("failed loading secret key [%x] [%s]", ski, err)
 		}
 
 		switch k := key.(type) {
 		case *ecdsa.PrivateKey:
 			return &ecdsaPrivateKey{k}, nil
 		default:
-			return nil, errors.New("Secret key type not recognized")
+			return nil, errors.New("secret key type not recognized")
 		}
 	case "pk":
 		// Load the public key
 		key, err := ks.loadPublicKey(hex.EncodeToString(ski))
 		if err != nil {
-			return nil, fmt.Errorf("Failed loading public key [%x] [%s]", ski, err)
+			return nil, fmt.Errorf("failed loading public key [%x] [%s]", ski, err)
 		}
 
 		switch k := key.(type) {
 		case *ecdsa.PublicKey:
 			return &ecdsaPublicKey{k}, nil
 		default:
-			return nil, errors.New("Public key type not recognized")
+			return nil, errors.New("public key type not recognized")
 		}
 	default:
 		return ks.searchKeystoreForSKI(ski)
@@ -152,33 +165,33 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 // If this KeyStore is read only then the method will fail.
 func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	if ks.readOnly {
-		return errors.New("Read only KeyStore.")
+		return errors.New("read only KeyStore")
 	}
 
 	if k == nil {
-		return errors.New("Invalid key. It must be different from nil.")
+		return errors.New("invalid key. It must be different from nil")
 	}
 	switch kk := k.(type) {
 	case *ecdsaPrivateKey:
 		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
 		if err != nil {
-			return fmt.Errorf("Failed storing ECDSA private key [%s]", err)
+			return fmt.Errorf("failed storing ECDSA private key [%s]", err)
 		}
 
 	case *ecdsaPublicKey:
 		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
 		if err != nil {
-			return fmt.Errorf("Failed storing ECDSA public key [%s]", err)
+			return fmt.Errorf("failed storing ECDSA public key [%s]", err)
 		}
 
 	case *aesPrivateKey:
 		err = ks.storeKey(hex.EncodeToString(k.SKI()), kk.privKey)
 		if err != nil {
-			return fmt.Errorf("Failed storing AES key [%s]", err)
+			return fmt.Errorf("failed storing AES key [%s]", err)
 		}
 
 	default:
-		return fmt.Errorf("Key type not reconigned [%s]", k)
+		return fmt.Errorf("key type not reconigned [%s]", k)
 	}
 
 	return
@@ -219,7 +232,7 @@ func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err 
 
 		return k, nil
 	}
-	return nil, fmt.Errorf("Key with SKI %s not found in %s", hex.EncodeToString(ski), ks.path)
+	return nil, fmt.Errorf("key with SKI %s not found in %s", hex.EncodeToString(ski), ks.path)
 }
 
 func (ks *fileBasedKeyStore) getSuffix(alias string) string {
@@ -352,30 +365,15 @@ func (ks *fileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 	return key, nil
 }
 
-func (ks *fileBasedKeyStore) createKeyStoreIfNotExists() error {
-	// Check keystore directory
-	ksPath := ks.path
-	missing, err := utils.DirMissingOrEmpty(ksPath)
-
-	if missing {
-		logger.Debugf("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
-
-		err := ks.createKeyStore()
-		if err != nil {
-			logger.Errorf("Failed creating KeyStore At [%s]: [%s]", ksPath, err.Error())
-			return nil
-		}
-	}
-
-	return nil
-}
-
 func (ks *fileBasedKeyStore) createKeyStore() error {
 	// Create keystore directory root if it doesn't exist yet
 	ksPath := ks.path
 	logger.Debugf("Creating KeyStore at [%s]...", ksPath)
 
-	os.MkdirAll(ksPath, 0755)
+	err := os.MkdirAll(ksPath, 0755)
+	if err != nil {
+		return err
+	}
 
 	logger.Debugf("KeyStore created at [%s].", ksPath)
 	return nil
@@ -393,4 +391,29 @@ func (ks *fileBasedKeyStore) openKeyStore() error {
 
 func (ks *fileBasedKeyStore) getPathForAlias(alias, suffix string) string {
 	return filepath.Join(ks.path, alias+"_"+suffix)
+}
+
+func dirExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func dirEmpty(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
 }
