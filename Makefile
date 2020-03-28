@@ -42,7 +42,7 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
-ALPINE_VER ?= 3.10
+ALPINE_VER ?= 3.11
 BASE_VERSION = 2.1.0
 
 # 3rd party image version
@@ -73,7 +73,7 @@ METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 
-GO_VER = 1.13.8
+GO_VER = 1.14.1
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
