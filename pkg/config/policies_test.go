@@ -9,6 +9,7 @@ package config
 import (
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	. "github.com/onsi/gomega"
 )
@@ -798,4 +799,95 @@ func TestRemoveOrdererOrgPolicyFailures(t *testing.T) {
 
 	err = c.RemoveOrdererOrgPolicy("bad-org", "TestPolicy")
 	gt.Expect(err).To(MatchError("orderer org bad-org does not exist in channel config"))
+}
+
+func TestUpdateConsortiumChannelCreationPolicy(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums(t)
+
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+		},
+	}
+	c := &ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	updatedPolicy := Policy{Type: ImplicitMetaPolicyType, Rule: "MAJORITY Admins"}
+
+	err = c.UpdateConsortiumChannelCreationPolicy("Consortium1", updatedPolicy)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	consortium := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"]
+	creationPolicy := consortium.Values[ChannelCreationPolicyKey]
+	policy := &cb.Policy{}
+	err = proto.Unmarshal(creationPolicy.Value, policy)
+	gt.Expect(err).NotTo(HaveOccurred())
+	imp := &cb.ImplicitMetaPolicy{}
+	err = proto.Unmarshal(policy.Value, imp)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(imp.Rule).To(Equal(cb.ImplicitMetaPolicy_MAJORITY))
+	gt.Expect(imp.SubPolicy).To(Equal("Admins"))
+}
+
+func TestUpdateConsortiumChannelCreationPolicyFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums(t)
+
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+		},
+	}
+	c := &ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	tests := []struct {
+		name           string
+		consortiumName string
+		updatedpolicy  Policy
+		expectedErr    string
+	}{
+		{
+			name:           "when consortium does not exist in channel config",
+			consortiumName: "badConsortium",
+			updatedpolicy:  Policy{Type: ImplicitMetaPolicyType, Rule: "MAJORITY Admins"},
+			expectedErr:    "consortium badConsortium does not exist in channel config",
+		},
+		{
+			name:           "when policy is invalid",
+			consortiumName: "Consortium1",
+			updatedpolicy:  Policy{Type: ImplicitMetaPolicyType, Rule: "Bad Admins"},
+			expectedErr:    "invalid implicit meta policy rule 'Bad Admins': unknown rule type 'Bad', expected ALL, ANY, or MAJORITY",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			gt := NewGomegaWithT(t)
+			err := c.UpdateConsortiumChannelCreationPolicy(tt.consortiumName, tt.updatedpolicy)
+			gt.Expect(err).To(MatchError(tt.expectedErr))
+		})
+	}
 }

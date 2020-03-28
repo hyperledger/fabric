@@ -30,6 +30,36 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+func fetchSystemChannelConfig() *cb.Config {
+	return &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				config.ConsortiumsGroupKey: {
+					Groups: map[string]*cb.ConfigGroup{
+						"SampleConsortium": {
+							Groups: map[string]*cb.ConfigGroup{},
+							Values: map[string]*cb.ConfigValue{
+								config.ChannelCreationPolicyKey: {
+									ModPolicy: "/Channel/Orderer/Admins",
+									Value: marshalOrPanic(&cb.Policy{
+										Type: 3,
+										Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
+											Rule:      cb.ImplicitMetaPolicy_ANY,
+											SubPolicy: config.AdminsPolicyKey,
+										}),
+									}),
+								},
+							},
+						},
+					},
+					Values:   map[string]*cb.ConfigValue{},
+					Policies: map[string]*cb.ConfigPolicy{},
+				},
+			},
+		},
+	}
+}
+
 // fetchChannelConfig mocks retrieving the config transaction from the most recent configuration block.
 func fetchChannelConfig() *cb.Config {
 	return &cb.Config{
@@ -459,6 +489,144 @@ func baseMSP(t *testing.T) config.MSP {
 			},
 		},
 	}
+}
+
+func Example_systemChannel() {
+	baseConfig := fetchSystemChannelConfig()
+	c := config.New(baseConfig)
+
+	err := c.UpdateConsortiumChannelCreationPolicy("SampleConsortium",
+		config.Policy{Type: config.ImplicitMetaPolicyType, Rule: "MAJORITY Admins"})
+	if err != nil {
+		panic(err)
+	}
+
+	// Compute the delta
+	configUpdate, err := c.ComputeUpdate("testsyschannel")
+	if err != nil {
+		panic(err)
+	}
+
+	// Collect the necessary signatures
+	// The example respresents a 2 peer 1 org channel, to meet the policies defined
+	// the transaction will be signed by both peers
+	configSignatures := []*cb.ConfigSignature{}
+
+	peer1SigningIdentity := createSigningIdentity()
+	peer2SigningIdentity := createSigningIdentity()
+
+	signingIdentities := []config.SigningIdentity{
+		peer1SigningIdentity,
+		peer2SigningIdentity,
+	}
+
+	for _, si := range signingIdentities {
+		// Sign the config update with the specified signer identity
+		configSignature, err := config.SignConfigUpdate(configUpdate, si)
+		if err != nil {
+			panic(err)
+		}
+
+		configSignatures = append(configSignatures, configSignature)
+	}
+
+	// Sign the envelope with the list of signatures
+	envelope, err := config.CreateSignedConfigUpdateEnvelope(configUpdate, peer1SigningIdentity, configSignatures...)
+	if err != nil {
+		panic(err)
+	}
+
+	// The below logic outputs the signed envelope in JSON format
+
+	// The timestamps of the ChannelHeader varies so this comparison only considers the ConfigUpdateEnvelope JSON.
+	payload := &cb.Payload{}
+
+	err = proto.Unmarshal(envelope.Payload, payload)
+	if err != nil {
+		panic(err)
+	}
+
+	data := &cb.ConfigUpdateEnvelope{}
+
+	err = proto.Unmarshal(payload.Data, data)
+	if err != nil {
+		panic(err)
+	}
+
+	// Signature and nonce is different on every example run
+	data.Signatures = nil
+
+	err = protolator.DeepMarshalJSON(os.Stdout, data)
+	if err != nil {
+		panic(err)
+	}
+
+	// Output:
+	// {
+	//	"config_update": {
+	//		"channel_id": "testsyschannel",
+	//		"isolated_data": {},
+	//		"read_set": {
+	//			"groups": {
+	//				"Consortiums": {
+	//					"groups": {
+	//						"SampleConsortium": {
+	//							"groups": {},
+	//							"mod_policy": "",
+	//							"policies": {},
+	//							"values": {},
+	//							"version": "0"
+	//						}
+	//					},
+	//					"mod_policy": "",
+	//					"policies": {},
+	//					"values": {},
+	//					"version": "0"
+	//				}
+	//			},
+	//			"mod_policy": "",
+	//			"policies": {},
+	//			"values": {},
+	//			"version": "0"
+	//		},
+	//		"write_set": {
+	//			"groups": {
+	//				"Consortiums": {
+	//					"groups": {
+	//						"SampleConsortium": {
+	//							"groups": {},
+	//							"mod_policy": "",
+	//							"policies": {},
+	//							"values": {
+	//								"ChannelCreationPolicy": {
+	//									"mod_policy": "/Channel/Orderer/Admins",
+	//									"value": {
+	//										"type": 3,
+	//										"value": {
+	//											"rule": "MAJORITY",
+	//											"sub_policy": "Admins"
+	//										}
+	//									},
+	//									"version": "1"
+	//								}
+	//							},
+	//							"version": "0"
+	//						}
+	//					},
+	//					"mod_policy": "",
+	//					"policies": {},
+	//					"values": {},
+	//					"version": "0"
+	//				}
+	//			},
+	//			"mod_policy": "",
+	//			"policies": {},
+	//			"values": {},
+	//			"version": "0"
+	//		}
+	//	},
+	//	"signatures": []
+	// }
 }
 
 func Example_usage() {
