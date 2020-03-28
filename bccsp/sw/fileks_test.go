@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,11 +73,11 @@ func TestBigKeyFile(t *testing.T) {
 
 	cspKey := &ecdsaPrivateKey{privKey}
 	ski := cspKey.SKI()
-	rawKey, err := utils.PrivateKeyToPEM(privKey, nil)
+	rawKey, err := privateKeyToPEM(privKey, nil)
 	assert.NoError(t, err)
 
 	// Large padding array, of some values PEM parser will NOOP
-	bigBuff := make([]byte, (1 << 17))
+	bigBuff := make([]byte, 1<<17)
 	for i := range bigBuff {
 		bigBuff[i] = '\n'
 	}
