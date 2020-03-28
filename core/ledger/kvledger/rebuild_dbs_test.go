@@ -18,7 +18,7 @@ import (
 func TestRebuildDBs(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, false)
 
 	numLedgers := 3
 	for i := 0; i < numLedgers; i++ {

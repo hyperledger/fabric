@@ -13,11 +13,17 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,7 +51,7 @@ func TestKVLedgerNilHistoryDBProvider(t *testing.T) {
 func TestKVLedgerBlockStorage(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, false)
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -131,7 +137,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 func TestAddCommitHash(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, false)
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -185,7 +191,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	t.Skip()
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, false)
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -295,7 +301,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	_, _, err = ledger1.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true)
 	assert.NoError(t, err)
-	assert.NoError(t, ledger1.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata2))
+	assert.NoError(t, ledger1.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata2))
 
 	// block storage should be as of block-2 but the state and history db should be as of block-1
 	checkBCSummaryForTest(t, ledger1,
@@ -351,7 +357,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	)
 	_, _, err = ledger2.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true)
 	assert.NoError(t, err)
-	assert.NoError(t, ledger2.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata3))
+	assert.NoError(t, ledger2.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata3))
 	// committing the transaction to state DB
 	assert.NoError(t, ledger2.(*kvLedger).txtmgmt.Commit())
 
@@ -411,7 +417,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	_, _, err = ledger3.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true)
 	assert.NoError(t, err)
-	assert.NoError(t, ledger3.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtdata4))
+	assert.NoError(t, ledger3.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata4))
 	assert.NoError(t, ledger3.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
 
 	checkBCSummaryForTest(t, ledger3,
@@ -460,7 +466,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, false)
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
@@ -565,6 +571,363 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 		assert.Equal(t, expectedValue, retrievedValue)
 
 	}
+}
+
+func TestPvtDataAPIs(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t, false)
+	defer provider.Close()
+
+	ledgerID := "testLedger"
+	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	lgr, err := provider.Create(gb)
+	assert.NoError(t, err)
+	defer lgr.Close()
+	lgr.(*kvLedger).setBLTPolicyForPvtStore(btlPolicyForSampleData())
+
+	bcInfo, _ := lgr.GetBlockchainInfo()
+	assert.Equal(t, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
+	}, bcInfo)
+
+	kvlgr := lgr.(*kvLedger)
+
+	sampleData := sampleDataWithPvtdataForSelectiveTx(t, bg)
+	for _, sampleDatum := range sampleData {
+		assert.NoError(t, kvlgr.commitToPvtAndBlockStore(sampleDatum))
+	}
+
+	// block 2 has no pvt data
+	pvtdata, err := lgr.GetPvtDataByNum(2, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, pvtdata)
+
+	// block 5 has no pvt data
+	pvtdata, err = lgr.GetPvtDataByNum(5, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(pvtdata))
+
+	// block 3 has pvt data for tx 3, 5 and 6. Though the tx 6
+	// is marked as invalid in the block, the pvtData should
+	// have been stored
+	pvtdata, err = lgr.GetPvtDataByNum(3, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(pvtdata))
+	assert.Equal(t, uint64(3), pvtdata[0].SeqInBlock)
+	assert.Equal(t, uint64(5), pvtdata[1].SeqInBlock)
+	assert.Equal(t, uint64(6), pvtdata[2].SeqInBlock)
+
+	// block 4 has pvt data for tx 4 and 6 only
+	pvtdata, err = lgr.GetPvtDataByNum(4, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(pvtdata))
+	assert.Equal(t, uint64(4), pvtdata[0].SeqInBlock)
+	assert.Equal(t, uint64(6), pvtdata[1].SeqInBlock)
+
+	blockAndPvtdata, err := lgr.GetPvtDataAndBlockByNum(3, nil)
+	assert.NoError(t, err)
+	assert.True(t, proto.Equal(sampleData[2].Block, blockAndPvtdata.Block))
+
+	blockAndPvtdata, err = lgr.GetPvtDataAndBlockByNum(4, nil)
+	assert.NoError(t, err)
+	assert.True(t, proto.Equal(sampleData[3].Block, blockAndPvtdata.Block))
+
+	// pvt data retrieval for block 3 with filter should return filtered pvtdata
+	filter := ledger.NewPvtNsCollFilter()
+	filter.Add("ns-1", "coll-1")
+	blockAndPvtdata, err = lgr.GetPvtDataAndBlockByNum(4, filter)
+	assert.NoError(t, err)
+	assert.Equal(t, sampleData[3].Block, blockAndPvtdata.Block)
+	// two transactions should be present
+	assert.Equal(t, 2, len(blockAndPvtdata.PvtData))
+	// both tran number 4 and 6 should have only one collection because of filter
+	assert.Equal(t, 1, len(blockAndPvtdata.PvtData[4].WriteSet.NsPvtRwset))
+	assert.Equal(t, 1, len(blockAndPvtdata.PvtData[6].WriteSet.NsPvtRwset))
+	// any other transaction entry should be nil
+	assert.Nil(t, blockAndPvtdata.PvtData[2])
+
+	// test missing data retrieval in the presence of invalid tx. Block 6 had
+	// missing data (for tx4 and tx5). Though tx5 was marked as invalid tx,
+	// both tx4 and tx5 missing data should be returned
+	expectedMissingDataInfo := make(ledger.MissingPvtDataInfo)
+	expectedMissingDataInfo.Add(6, 4, "ns-4", "coll-4")
+	expectedMissingDataInfo.Add(6, 5, "ns-5", "coll-5")
+	missingDataInfo, err := lgr.(*kvLedger).GetMissingPvtDataInfoForMostRecentBlocks(1)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedMissingDataInfo, missingDataInfo)
+}
+
+func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t, true)
+	defer provider.Close()
+
+	ledgerID := "testLedger"
+	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	lgr, err := provider.Create(gb)
+	assert.NoError(t, err)
+	defer lgr.Close()
+
+	bcInfo, _ := lgr.GetBlockchainInfo()
+	assert.Equal(t, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
+	}, bcInfo)
+
+	sampleData := sampleDataWithPvtdataForAllTxs(t, bg)
+	dataBeforeCrash := sampleData[0:3]
+	dataAtCrash := sampleData[3]
+
+	for _, sampleDatum := range dataBeforeCrash {
+		assert.NoError(t, lgr.(*kvLedger).commitToPvtAndBlockStore(sampleDatum))
+	}
+	blockNumAtCrash := dataAtCrash.Block.Header.Number
+	var pvtdataAtCrash []*ledger.TxPvtData
+	for _, p := range dataAtCrash.PvtData {
+		pvtdataAtCrash = append(pvtdataAtCrash, p)
+	}
+	// call Commit on pvt data store and mimic a crash before committing the block to block store
+	lgr.(*kvLedger).pvtdataStore.Commit(blockNumAtCrash, pvtdataAtCrash, nil)
+
+	// Now, assume that peer fails here before committing the transaction to the statedb and historydb
+	lgr.Close()
+	provider.Close()
+
+	// mimic peer restart
+	provider1 := testutilNewProvider(conf, t, true)
+	defer provider1.Close()
+	lgr1, err := provider1.Open(ledgerID)
+	assert.NoError(t, err)
+	defer lgr1.Close()
+
+	isPvtStoreAhead, err := lgr1.(*kvLedger).isPvtDataStoreAheadOfBlockStore()
+	assert.NoError(t, err)
+	assert.True(t, isPvtStoreAhead)
+
+	// When starting the storage after a crash, we should be able to fetch the pvtData from pvtStore
+	testVerifyPvtData(t, lgr1, blockNumAtCrash, dataAtCrash.PvtData)
+	bcInfo, err = lgr.GetBlockchainInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, blockNumAtCrash, bcInfo.Height)
+
+	// we should be able to write the last block again
+	// to ensure that the pvtdataStore is not updated, we send a different pvtData for
+	// the same block such that we can retrieve the pvtData and compare.
+	expectedPvtData := dataAtCrash.PvtData
+	dataAtCrash.PvtData = make(ledger.TxPvtDataMap)
+	dataAtCrash.PvtData[0] = &ledger.TxPvtData{
+		SeqInBlock: 0,
+		WriteSet: &rwset.TxPvtReadWriteSet{
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+				{
+					Namespace: "ns-1",
+					CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+						{
+							CollectionName: "coll-1",
+							Rwset:          []byte("pvtdata"),
+						},
+					},
+				},
+			},
+		},
+	}
+	assert.NoError(t, lgr1.(*kvLedger).commitToPvtAndBlockStore(dataAtCrash))
+	testVerifyPvtData(t, lgr1, blockNumAtCrash, expectedPvtData)
+	bcInfo, err = lgr1.GetBlockchainInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, blockNumAtCrash+1, bcInfo.Height)
+
+	isPvtStoreAhead, err = lgr1.(*kvLedger).isPvtDataStoreAheadOfBlockStore()
+	assert.NoError(t, err)
+	assert.False(t, isPvtStoreAhead)
+}
+
+func testVerifyPvtData(t *testing.T, ledger ledger.PeerLedger, blockNum uint64, expectedPvtData lgr.TxPvtDataMap) {
+	pvtdata, err := ledger.GetPvtDataByNum(blockNum, nil)
+	assert.NoError(t, err)
+	constructed := constructPvtdataMap(pvtdata)
+	assert.Equal(t, len(expectedPvtData), len(constructed))
+	for k, v := range expectedPvtData {
+		ov, ok := constructed[k]
+		assert.True(t, ok)
+		assert.Equal(t, v.SeqInBlock, ov.SeqInBlock)
+		assert.True(t, proto.Equal(v.WriteSet, ov.WriteSet))
+	}
+}
+
+func TestPvtStoreAheadOfBlockStore(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t, true)
+	defer provider.Close()
+
+	ledgerID := "testLedger"
+	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	lgr, err := provider.Create(gb)
+	assert.NoError(t, err)
+	defer lgr.Close()
+
+	bcInfo, _ := lgr.GetBlockchainInfo()
+	assert.Equal(t, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
+	}, bcInfo)
+
+	// when both stores contain genesis block only, isPvtstoreAheadOfBlockstore should be false
+	kvlgr := lgr.(*kvLedger)
+	isPvtStoreAhead, err := kvlgr.isPvtDataStoreAheadOfBlockStore()
+	assert.NoError(t, err)
+	assert.False(t, isPvtStoreAhead)
+
+	sampleData := sampleDataWithPvtdataForSelectiveTx(t, bg)
+	for _, d := range sampleData[0:9] { // commit block number 0 to 8
+		assert.NoError(t, kvlgr.commitToPvtAndBlockStore(d))
+	}
+
+	isPvtStoreAhead, err = kvlgr.isPvtDataStoreAheadOfBlockStore()
+	assert.NoError(t, err)
+	assert.False(t, isPvtStoreAhead)
+
+	// close and reopen. It mimics peer crash.
+	lgr.Close()
+	provider.Close()
+
+	provider1 := testutilNewProvider(conf, t, true)
+	defer provider1.Close()
+	lgr1, err := provider1.Open(ledgerID)
+	assert.NoError(t, err)
+	defer lgr1.Close()
+	kvlgr = lgr1.(*kvLedger)
+
+	// as both stores are at the same block height, isPvtstoreAheadOfBlockstore should be false
+	info, err := lgr1.GetBlockchainInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(10), info.Height)
+	pvtStoreHt, err := kvlgr.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(10), pvtStoreHt)
+	isPvtStoreAhead, err = kvlgr.isPvtDataStoreAheadOfBlockStore()
+	assert.NoError(t, err)
+	assert.False(t, isPvtStoreAhead)
+
+	lastBlkAndPvtData := sampleData[9]
+	// Add the last block directly to the pvtdataStore but not to blockstore. This would make
+	// the pvtdatastore height greater than the block store height.
+	validTxPvtData, validTxMissingPvtData := constructPvtDataAndMissingData(lastBlkAndPvtData)
+	err = kvlgr.pvtdataStore.Commit(lastBlkAndPvtData.Block.Header.Number, validTxPvtData, validTxMissingPvtData)
+	assert.NoError(t, err)
+
+	// close and reopen. It mimics peer crash.
+	lgr1.Close()
+	provider1.Close()
+
+	provider2 := testutilNewProvider(conf, t, false)
+	defer provider2.Close()
+	lgr2, err := provider2.Open(ledgerID)
+	assert.NoError(t, err)
+	defer lgr2.Close()
+	kvlgr = lgr2.(*kvLedger)
+
+	// pvtdataStore should be ahead of blockstore
+	info, err = lgr2.GetBlockchainInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(10), info.Height)
+	pvtStoreHt, err = kvlgr.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(11), pvtStoreHt)
+	isPvtStoreAhead, err = kvlgr.isPvtDataStoreAheadOfBlockStore()
+	assert.NoError(t, err)
+	assert.True(t, isPvtStoreAhead)
+
+	// bring the height of BlockStore equal to pvtdataStore
+	assert.NoError(t, kvlgr.commitToPvtAndBlockStore(lastBlkAndPvtData))
+	info, err = lgr2.GetBlockchainInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(11), info.Height)
+	pvtStoreHt, err = kvlgr.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(11), pvtStoreHt)
+	isPvtStoreAhead, err = kvlgr.isPvtDataStoreAheadOfBlockStore()
+	assert.NoError(t, err)
+	assert.False(t, isPvtStoreAhead)
+}
+
+func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerator) []*ledger.BlockAndPvtData {
+	var blockAndpvtdata []*ledger.BlockAndPvtData
+	blocks := bg.NextTestBlocks(10)
+	for i := 0; i < 10; i++ {
+		blockAndpvtdata = append(blockAndpvtdata, &ledger.BlockAndPvtData{Block: blocks[i]})
+	}
+
+	// txNum 3, 5, 6 in block 2 has pvtdata but txNum 6 is invalid
+	blockAndpvtdata[2].PvtData = samplePvtData(t, []uint64{3, 5, 6})
+	txFilter := txflags.ValidationFlags(blockAndpvtdata[2].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txFilter.SetFlag(6, pb.TxValidationCode_INVALID_WRITESET)
+	blockAndpvtdata[2].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
+
+	// txNum 4, 6 in block 3 has pvtdata
+	blockAndpvtdata[3].PvtData = samplePvtData(t, []uint64{4, 6})
+
+	// txNum 4, 5 in block 5 has missing pvt data but txNum 5 is invalid
+	missingData := make(ledger.TxMissingPvtDataMap)
+	missingData.Add(4, "ns-4", "coll-4", true)
+	missingData.Add(5, "ns-5", "coll-5", true)
+	blockAndpvtdata[5].MissingPvtData = missingData
+	txFilter = txflags.ValidationFlags(blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txFilter.SetFlag(5, pb.TxValidationCode_INVALID_WRITESET)
+	blockAndpvtdata[5].Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txFilter
+
+	return blockAndpvtdata
+}
+
+func sampleDataWithPvtdataForAllTxs(t *testing.T, bg *testutil.BlockGenerator) []*ledger.BlockAndPvtData {
+	var blockAndpvtdata []*ledger.BlockAndPvtData
+	blocks := bg.NextTestBlocks(10)
+	for i := 0; i < 10; i++ {
+		blockAndpvtdata = append(blockAndpvtdata,
+			&ledger.BlockAndPvtData{
+				Block:   blocks[i],
+				PvtData: samplePvtData(t, []uint64{uint64(i), uint64(i + 1)}),
+			},
+		)
+	}
+	return blockAndpvtdata
+}
+
+func samplePvtData(t *testing.T, txNums []uint64) map[uint64]*ledger.TxPvtData {
+	pvtWriteSet := &rwset.TxPvtReadWriteSet{DataModel: rwset.TxReadWriteSet_KV}
+	pvtWriteSet.NsPvtRwset = []*rwset.NsPvtReadWriteSet{
+		{
+			Namespace: "ns-1",
+			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+				{
+					CollectionName: "coll-1",
+					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll1"),
+				},
+				{
+					CollectionName: "coll-2",
+					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll2"),
+				},
+			},
+		},
+	}
+	var pvtData []*ledger.TxPvtData
+	for _, txNum := range txNums {
+		pvtData = append(pvtData, &ledger.TxPvtData{SeqInBlock: txNum, WriteSet: pvtWriteSet})
+	}
+	return constructPvtdataMap(pvtData)
+}
+
+func btlPolicyForSampleData() pvtdatapolicy.BTLPolicy {
+	return btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns-1", "coll-1"}: 0,
+			{"ns-1", "coll-2"}: 0,
+		},
+	)
 }
 
 func prepareNextBlockWithMissingPvtDataForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockGenerator,

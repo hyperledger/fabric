@@ -9,6 +9,7 @@ package kvledger
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -16,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
@@ -25,8 +27,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
-	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -37,20 +39,31 @@ var logger = flogging.MustGetLogger("kvledger")
 // kvLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
-	ledgerID               string
-	blockStore             *ledgerstorage.Store
-	txtmgmt                txmgr.TxMgr
-	historyDB              *history.DB
-	configHistoryRetriever ledger.ConfigHistoryRetriever
-	blockAPIsRWLock        *sync.RWMutex
-	stats                  *ledgerStats
-	commitHash             []byte
+	ledgerID                  string
+	blockStore                blkstorage.BlockStore
+	pvtdataStore              pvtdatastorage.Store
+	txtmgmt                   txmgr.TxMgr
+	historyDB                 *history.DB
+	configHistoryRetriever    ledger.ConfigHistoryRetriever
+	blockAPIsRWLock           *sync.RWMutex
+	stats                     *ledgerStats
+	commitHash                []byte
+	isPvtstoreAheadOfBlkstore atomic.Value
+	// as the value is read during missing pvtData reconciliation
+	// and may be updated during a regular block commit, we use
+	// atomic value to ensure consistent read.
 }
 
-// newKVLedger constructs new `KVLedger`
+// TODO: we have used terms like blkstorage, blockstorage, blockstore. We need to use
+// a single term consistently. While typing code, it is getting harder to memorize what
+// term to be used when referring to the package or struct or a variable name - FAB-17683.
+
+// TODO: We have way more function arguments and it makes the code look ugly.
+// Need to reduce it - FAB-17683.
 func newKVLedger(
 	ledgerID string,
-	blockStore *ledgerstorage.Store,
+	blockStore blkstorage.BlockStore,
+	pvtdataStore pvtdatastorage.Store,
 	versionedDB privacyenabledstate.DB,
 	historyDB *history.DB,
 	configHistoryMgr confighistory.Mgr,
@@ -63,11 +76,16 @@ func newKVLedger(
 	hasher ledger.Hasher,
 ) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
-	// Create a kvLedger for this chain/ledger, which encapsulates the underlying
-	// id store, blockstore, txmgr (state database), history database
-	l := &kvLedger{ledgerID: ledgerID, blockStore: blockStore, historyDB: historyDB, blockAPIsRWLock: &sync.RWMutex{}}
+	l := &kvLedger{
+		ledgerID:        ledgerID,
+		blockStore:      blockStore,
+		pvtdataStore:    pvtdataStore,
+		historyDB:       historyDB,
+		blockAPIsRWLock: &sync.RWMutex{},
+	}
 
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, ccInfoProvider})
+	l.setBLTPolicyForPvtStore(btlPolicy)
 
 	if err := l.initTxMgr(
 		versionedDB,
@@ -81,14 +99,17 @@ func newKVLedger(
 		return nil, err
 	}
 
-	l.initBlockStore(btlPolicy)
-
-	// Retrieves the current commit hash from the blockstore
 	var err error
 	l.commitHash, err = l.lastPersistedCommitHash()
 	if err != nil {
 		return nil, err
 	}
+
+	isAhead, err := l.isPvtDataStoreAheadOfBlockStore()
+	if err != nil {
+		return nil, err
+	}
+	l.isPvtstoreAheadOfBlkstore.Store(isAhead)
 
 	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
 	// this functionality of registering for events to ledgermgmt package so that this
@@ -149,8 +170,8 @@ func (l *kvLedger) initTxMgr(
 	return err
 }
 
-func (l *kvLedger) initBlockStore(btlPolicy pvtdatapolicy.BTLPolicy) {
-	l.blockStore.Init(btlPolicy)
+func (l *kvLedger) setBLTPolicyForPvtStore(btlPolicy pvtdatapolicy.BTLPolicy) {
+	l.pvtdataStore.Init(btlPolicy)
 }
 
 func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
@@ -182,14 +203,24 @@ func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
 	return commitHash.Value, nil
 }
 
-//Recover the state database and history database (if exist)
-//by recommitting last valid blocks
+func (l *kvLedger) isPvtDataStoreAheadOfBlockStore() (bool, error) {
+	blockStoreInfo, err := l.blockStore.GetBlockchainInfo()
+	if err != nil {
+		return false, err
+	}
+	pvtstoreHeight, err := l.pvtdataStore.LastCommittedBlockHeight()
+	if err != nil {
+		return false, err
+	}
+	return pvtstoreHeight > blockStoreInfo.Height, nil
+}
+
 func (l *kvLedger) recoverDBs() error {
 	logger.Debugf("Entering recoverDB()")
 	if err := l.syncStateAndHistoryDBWithBlockstore(); err != nil {
 		return err
 	}
-	if err := l.syncStateDBWithPvtdatastore(); err != nil {
+	if err := l.syncStateDBWithOldBlkPvtdata(); err != nil {
 		return err
 	}
 	return nil
@@ -256,24 +287,22 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 		recoverers[0].recoverable, recoverers[1].recoverable)
 }
 
-func (l *kvLedger) syncStateDBWithPvtdatastore() error {
-	// TODO: So far, the design philosophy was that the scope of block storage is
-	// limited to storing and retrieving blocks data with certain guarantees and statedb is
-	// for the state management. The higher layer, 'kvledger', coordinates the acts between
-	// the two. However, with maintaining the state of the consumption of blocks (i.e,
-	// lastUpdatedOldBlockList for pvtstore reconciliation) within private data block storage
-	// breaks that assumption. The knowledge of what blocks have been consumed for the purpose
-	// of state update should not lie with the source (i.e., pvtdatastorage). A potential fix
-	// is mentioned in FAB-12731
+func (l *kvLedger) syncStateDBWithOldBlkPvtdata() error {
+	// TODO: syncStateDBWithOldBlkPvtdata, GetLastUpdatedOldBlocksPvtData(),
+	// and ResetLastUpdatedOldBlocksList() can be removed in > v2 LTS.
+	// From v2.0 onwards, we do not store the last updatedBlksList.
+	// Only to support the rolling upgrade from v14 LTS to v2 LTS, we
+	// retain these three functions in v2.0 - FAB-16294.
 
-	blocksPvtData, err := l.blockStore.GetLastUpdatedOldBlocksPvtData()
+	blocksPvtData, err := l.pvtdataStore.GetLastUpdatedOldBlocksPvtData()
 	if err != nil {
 		return err
 	}
 
-	// as the pvtdataStore can contain pvtData of yet to be committed blocks,
-	// we need to filter them before passing it to the transaction manager for
-	// stateDB updates.
+	// Assume that the peer has restarted after a rollback or a reset.
+	// As the pvtdataStore can contain pvtData of yet to be committed blocks,
+	// we need to filter them before passing it to the transaction manager
+	// for stateDB updates.
 	if err := l.filterYetToCommitBlocks(blocksPvtData); err != nil {
 		return err
 	}
@@ -282,7 +311,7 @@ func (l *kvLedger) syncStateDBWithPvtdatastore() error {
 		return err
 	}
 
-	l.blockStore.ResetLastUpdatedOldBlocksList()
+	l.pvtdataStore.ResetLastUpdatedOldBlocksList()
 
 	return nil
 }
@@ -431,7 +460,7 @@ func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitO
 		// and no longer available in pvtdataStore, eventually these
 		// pvtdata would get expired in the stateDB as well (though it
 		// would miss the pvtData until then)
-		txPvtData, err := l.blockStore.GetPvtDataByNum(blockNo, nil)
+		txPvtData, err := l.pvtdataStore.GetPvtDataByBlockNum(blockNo, nil)
 		if err != nil {
 			return err
 		}
@@ -454,10 +483,10 @@ func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitO
 		l.addBlockCommitHash(pvtdataAndBlock.Block, updateBatchBytes)
 	}
 
-	logger.Debugf("[%s] Committing block [%d] to storage", l.ledgerID, blockNo)
+	logger.Debugf("[%s] Committing pvtdata and block [%d] to storage", l.ledgerID, blockNo)
 	l.blockAPIsRWLock.Lock()
 	defer l.blockAPIsRWLock.Unlock()
-	if err = l.blockStore.CommitWithPvtData(pvtdataAndBlock); err != nil {
+	if err = l.commitToPvtAndBlockStore(pvtdataAndBlock); err != nil {
 		return err
 	}
 	elapsedBlockstorageAndPvtdataCommit := time.Since(startBlockstorageAndPvtdataCommit)
@@ -496,6 +525,47 @@ func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitO
 	return nil
 }
 
+func (l *kvLedger) commitToPvtAndBlockStore(blockAndPvtdata *ledger.BlockAndPvtData) error {
+	pvtdataStoreHt, err := l.pvtdataStore.LastCommittedBlockHeight()
+	if err != nil {
+		return err
+	}
+	blockNum := blockAndPvtdata.Block.Header.Number
+
+	if !l.isPvtstoreAheadOfBlkstore.Load().(bool) {
+		logger.Debugf("Writing block [%d] to pvt data store", blockNum)
+		// If a state fork occurs during a regular block commit,
+		// we have a mechanism to drop all blocks followed by refetching of blocks
+		// and re-processing them. In the current way of doing this, we only drop
+		// the block files (and related artifacts) but we do not drop/overwrite the
+		// pvtdatastorage as it might leads to data loss.
+		// During block reprocessing, as there is a possibility of an invalid pvtdata
+		// transaction to become valid, we store the pvtdata of invalid transactions
+		// too in the pvtdataStore as we do for the publicdata in the case of blockStore.
+		// Hence, we pass all pvtData present in the block to the pvtdataStore committer.
+		pvtData, missingPvtData := constructPvtDataAndMissingData(blockAndPvtdata)
+		if err := l.pvtdataStore.Commit(blockNum, pvtData, missingPvtData); err != nil {
+			return err
+		}
+	} else {
+		logger.Debugf("Skipping writing pvtData to pvt block store as it ahead of the block store")
+	}
+
+	if err := l.blockStore.AddBlock(blockAndPvtdata.Block); err != nil {
+		return err
+	}
+
+	if pvtdataStoreHt == blockNum+1 {
+		// Only when the pvtdataStore was ahead of blockStore
+		// during the ledger initialization time, we reach here.
+		// The pvtdataStore would be ahead of blockstore when
+		// the peer restarts after a reset of rollback.
+		l.isPvtstoreAheadOfBlkstore.Store(false)
+	}
+
+	return nil
+}
+
 func convertTxPvtDataArrayToMap(txPvtData []*ledger.TxPvtData) ledger.TxPvtDataMap {
 	txPvtDataMap := make(ledger.TxPvtDataMap)
 	for _, pvtData := range txPvtData {
@@ -520,13 +590,17 @@ func (l *kvLedger) updateBlockStats(
 // most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
 func (l *kvLedger) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	// the missing pvtData info in the pvtdataStore could belong to a block which is yet
-	// to be processed and committed to the blockStore and stateDB.
-	// In such cases, we cannot return missing pvtData info. Otherwise, we would end up in
-	// an inconsistent state database.
-	if l.blockStore.IsPvtStoreAheadOfBlockStore() {
+	// to be processed and committed to the blockStore and stateDB (such a scenario is possible
+	// after a peer rollback). In such cases, we cannot return missing pvtData info. Otherwise,
+	// we would end up in an inconsistent state database.
+	if l.isPvtstoreAheadOfBlkstore.Load().(bool) {
 		return nil, nil
 	}
-	return l.blockStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
+	// it is safe to not acquire a read lock on l.blockAPIsRWLock. Without a lock, the value of
+	// lastCommittedBlock can change due to a new block commit. As a result, we may not
+	// be able to fetch the missing data info of truly the most recent blocks. This
+	// decision was made to ensure that the regular block commit rate is not affected.
+	return l.pvtdataStore.GetMissingPvtDataInfoForMostRecentBlocks(maxBlock)
 }
 
 func (l *kvLedger) addBlockCommitHash(block *common.Block, updateBatchBytes []byte) {
@@ -545,28 +619,51 @@ func (l *kvLedger) addBlockCommitHash(block *common.Block, updateBatchBytes []by
 // GetPvtDataAndBlockByNum returns the block and the corresponding pvt data.
 // The pvt data is filtered by the list of 'collections' supplied
 func (l *kvLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsCollFilter) (*ledger.BlockAndPvtData, error) {
-	blockAndPvtdata, err := l.blockStore.GetPvtDataAndBlockByNum(blockNum, filter)
 	l.blockAPIsRWLock.RLock()
-	l.blockAPIsRWLock.RUnlock()
-	return blockAndPvtdata, err
+	defer l.blockAPIsRWLock.RUnlock()
+
+	var block *common.Block
+	var pvtdata []*ledger.TxPvtData
+	var err error
+
+	// TODO: Among retrieve, fetch, and get, we need to use a single
+	// term consistently - FAB-17684
+	if block, err = l.blockStore.RetrieveBlockByNumber(blockNum); err != nil {
+		return nil, err
+	}
+
+	if pvtdata, err = l.pvtdataStore.GetPvtDataByBlockNum(blockNum, filter); err != nil {
+		return nil, err
+	}
+
+	return &ledger.BlockAndPvtData{Block: block, PvtData: constructPvtdataMap(pvtdata)}, nil
 }
 
 // GetPvtDataByNum returns only the pvt data  corresponding to the given block number
 // The pvt data is filtered by the list of 'collections' supplied
 func (l *kvLedger) GetPvtDataByNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
-	pvtdata, err := l.blockStore.GetPvtDataByNum(blockNum, filter)
 	l.blockAPIsRWLock.RLock()
-	l.blockAPIsRWLock.RUnlock()
-	return pvtdata, err
+	defer l.blockAPIsRWLock.RUnlock()
+	var pvtdata []*ledger.TxPvtData
+	var err error
+	if pvtdata, err = l.pvtdataStore.GetPvtDataByBlockNum(blockNum, filter); err != nil {
+		return nil, err
+	}
+	return pvtdata, nil
 }
 
 // DoesPvtDataInfoExist returns true when
 // (1) the ledger has pvtdata associated with the given block number (or)
 // (2) a few or all pvtdata associated with the given block number is missing but the
 //     missing info is recorded in the ledger (or)
-// (3) the block is committed does not contain any pvtData.
+// (3) the block is committed but it does not contain even a single
+//     transaction with pvtData.
 func (l *kvLedger) DoesPvtDataInfoExist(blockNum uint64) (bool, error) {
-	return l.blockStore.DoesPvtDataInfoExist(blockNum)
+	pvtStoreHt, err := l.pvtdataStore.LastCommittedBlockHeight()
+	if err != nil {
+		return false, err
+	}
+	return blockNum+1 <= pvtStoreHt, nil
 }
 
 func (l *kvLedger) GetConfigHistoryRetriever() (ledger.ConfigHistoryRetriever, error) {
@@ -588,7 +685,8 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.Reconcil
 	}
 
 	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the pvtdatastore", l.ledgerID, len(reconciledPvtdata))
-	err = l.blockStore.CommitPvtDataOfOldBlocks(hashVerifiedPvtData)
+
+	err = l.pvtdataStore.CommitPvtDataOfOldBlocks(hashVerifiedPvtData)
 	if err != nil {
 		return nil, err
 	}
@@ -679,13 +777,13 @@ func (a *ccEventListenerAdaptor) ChaincodeDeployDone(succeeded bool) {
 	a.legacyEventListener.ChaincodeDeployDone(succeeded)
 }
 
-func filterPvtDataOfInvalidTx(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData, blockStore *ledgerstorage.Store) (map[uint64][]*ledger.TxPvtData, error) {
+func filterPvtDataOfInvalidTx(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData, blockStore blkstorage.BlockStore) (map[uint64][]*ledger.TxPvtData, error) {
 	committedPvtData := make(map[uint64][]*ledger.TxPvtData)
 	for blkNum, txsPvtData := range hashVerifiedPvtData {
 
 		// TODO: Instead of retrieving the whole block, we need to retrieve only
 		// the TxValidationFlags from the block metadata. For that, we would need
-		// to add a new index for the block metadata. FAB- FAB-15808
+		// to add a new index for the block metadata - FAB-15808
 		block, err := blockStore.RetrieveBlockByNumber(blkNum)
 		if err != nil {
 			return nil, err
@@ -701,4 +799,38 @@ func filterPvtDataOfInvalidTx(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData
 		committedPvtData[blkNum] = blksPvtData
 	}
 	return committedPvtData, nil
+}
+
+func constructPvtdataMap(pvtdata []*ledger.TxPvtData) ledger.TxPvtDataMap {
+	if pvtdata == nil {
+		return nil
+	}
+	m := make(map[uint64]*ledger.TxPvtData)
+	for _, pvtdatum := range pvtdata {
+		m[pvtdatum.SeqInBlock] = pvtdatum
+	}
+	return m
+}
+
+func constructPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]*ledger.TxPvtData,
+	ledger.TxMissingPvtDataMap) {
+
+	var pvtData []*ledger.TxPvtData
+	missingPvtData := make(ledger.TxMissingPvtDataMap)
+
+	numTxs := uint64(len(blockAndPvtData.Block.Data.Data))
+
+	for txNum := uint64(0); txNum < numTxs; txNum++ {
+		if pvtdata, ok := blockAndPvtData.PvtData[txNum]; ok {
+			pvtData = append(pvtData, pvtdata)
+		}
+
+		if missingData, ok := blockAndPvtData.MissingPvtData[txNum]; ok {
+			for _, missing := range missingData {
+				missingPvtData.Add(txNum, missing.Namespace,
+					missing.Collection, missing.IsEligible)
+			}
+		}
+	}
+	return pvtData, missingPvtData
 }

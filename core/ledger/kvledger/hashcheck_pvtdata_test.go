@@ -23,7 +23,7 @@ import (
 func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, false)
 	defer provider.Close()
 
 	_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -82,7 +82,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		Block:          blk1,
 		PvtData:        pvtDataBlk1,
 		MissingPvtData: missingData}
-	assert.NoError(t, lg.(*kvLedger).blockStore.CommitWithPvtData(blockAndPvtData1))
+	assert.NoError(t, lg.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtData1))
 
 	// construct pvtData from missing data in tx3, tx6, and tx7
 	pvtdata := []*ledger.ReconciledPvtdata{

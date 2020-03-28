@@ -41,6 +41,16 @@ type StateListener struct {
 	interestedInNamespacesReturnsOnCall map[int]struct {
 		result1 []string
 	}
+	NameStub        func() string
+	nameMutex       sync.RWMutex
+	nameArgsForCall []struct {
+	}
+	nameReturns struct {
+		result1 string
+	}
+	nameReturnsOnCall map[int]struct {
+		result1 string
+	}
 	StateCommitDoneStub        func(string)
 	stateCommitDoneMutex       sync.RWMutex
 	stateCommitDoneArgsForCall []struct {
@@ -223,6 +233,58 @@ func (fake *StateListener) InterestedInNamespacesReturnsOnCall(i int, result1 []
 	}{result1}
 }
 
+func (fake *StateListener) Name() string {
+	fake.nameMutex.Lock()
+	ret, specificReturn := fake.nameReturnsOnCall[len(fake.nameArgsForCall)]
+	fake.nameArgsForCall = append(fake.nameArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Name", []interface{}{})
+	fake.nameMutex.Unlock()
+	if fake.NameStub != nil {
+		return fake.NameStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.nameReturns
+	return fakeReturns.result1
+}
+
+func (fake *StateListener) NameCallCount() int {
+	fake.nameMutex.RLock()
+	defer fake.nameMutex.RUnlock()
+	return len(fake.nameArgsForCall)
+}
+
+func (fake *StateListener) NameCalls(stub func() string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = stub
+}
+
+func (fake *StateListener) NameReturns(result1 string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = nil
+	fake.nameReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *StateListener) NameReturnsOnCall(i int, result1 string) {
+	fake.nameMutex.Lock()
+	defer fake.nameMutex.Unlock()
+	fake.NameStub = nil
+	if fake.nameReturnsOnCall == nil {
+		fake.nameReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.nameReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
 func (fake *StateListener) StateCommitDone(arg1 string) {
 	fake.stateCommitDoneMutex.Lock()
 	fake.stateCommitDoneArgsForCall = append(fake.stateCommitDoneArgsForCall, struct {
@@ -263,6 +325,8 @@ func (fake *StateListener) Invocations() map[string][][]interface{} {
 	defer fake.initializeMutex.RUnlock()
 	fake.interestedInNamespacesMutex.RLock()
 	defer fake.interestedInNamespacesMutex.RUnlock()
+	fake.nameMutex.RLock()
+	defer fake.nameMutex.RUnlock()
 	fake.stateCommitDoneMutex.RLock()
 	defer fake.stateCommitDoneMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

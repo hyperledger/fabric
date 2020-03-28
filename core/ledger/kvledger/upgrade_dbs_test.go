@@ -21,7 +21,7 @@ import (
 func TestUpgradeDBs(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, false)
 
 	// upgrade should fail when provider is still open
 	err := UpgradeDBs(conf.RootFSPath)
@@ -69,7 +69,7 @@ func TestUpgradeIDStoreWrongFormat(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, false)
 
 	// change format to a wrong value
 	err := provider.idStore.db.Put(formatKey, []byte("x.0"), true)

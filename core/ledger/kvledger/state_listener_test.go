@@ -147,6 +147,10 @@ type mockStateListener struct {
 	queryResultsInInitializeFunc []*queryresult.KV
 }
 
+func (l *mockStateListener) Name() string {
+	return "mock state listener"
+}
+
 func (l *mockStateListener) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
 	_, err := qe.GetPrivateDataHash(l.namespace, "random-coll", "random-key")
 	if err != nil {
