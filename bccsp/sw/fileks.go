@@ -77,7 +77,10 @@ func (ks *fileBasedKeyStore) Init(pwd []byte, path string, readOnly bool) error 
 	}
 
 	ks.path = path
-	ks.pwd = utils.Clone(pwd)
+
+	clone := make([]byte, len(pwd))
+	copy(ks.pwd, pwd)
+	ks.pwd = clone
 	ks.readOnly = readOnly
 
 	exists, err := dirExists(path)
