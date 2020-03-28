@@ -33,7 +33,7 @@ func (*aes256ImportKeyOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.Key
 		return nil, fmt.Errorf("Invalid Key Length [%d]. Must be 32 bytes", len(aesRaw))
 	}
 
-	return &aesPrivateKey{utils.Clone(aesRaw), false}, nil
+	return &aesPrivateKey{aesRaw, false}, nil
 }
 
 type hmacImportKeyOptsKeyImporter struct{}
@@ -48,7 +48,7 @@ func (*hmacImportKeyOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyIm
 		return nil, errors.New("Invalid raw material. It must not be nil.")
 	}
 
-	return &aesPrivateKey{utils.Clone(aesRaw), false}, nil
+	return &aesPrivateKey{aesRaw, false}, nil
 }
 
 type ecdsaPKIXPublicKeyImportOptsKeyImporter struct{}
