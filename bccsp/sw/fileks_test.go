@@ -10,7 +10,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,8 +29,7 @@ func TestInvalidStoreKey(t *testing.T) {
 
 	ks, err := NewFileBasedKeyStore(nil, filepath.Join(tempDir, "bccspks"), false)
 	if err != nil {
-		fmt.Printf("Failed initiliazing KeyStore [%s]\n", err)
-		os.Exit(-1)
+		t.Fatalf("Failed initiliazing KeyStore [%s]", err)
 	}
 
 	err = ks.StoreKey(nil)
@@ -89,7 +87,7 @@ func TestBigKeyFile(t *testing.T) {
 
 	_, err = ks.GetKey(ski)
 	assert.Error(t, err)
-	expected := fmt.Sprintf("key with SKI %s not found in %s", hex.EncodeToString(ski), ksPath)
+	expected := fmt.Sprintf("key with SKI %x not found in %s", ski, ksPath)
 	assert.EqualError(t, err, expected)
 
 	// 1k, so that the key would be found
