@@ -22,8 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
@@ -34,16 +33,16 @@ var logger = flogging.MustGetLogger("lockbasedtxmgr")
 // LockBasedTxMgr a simple implementation of interface `txmgmt.TxMgr`.
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type LockBasedTxMgr struct {
-	ledgerid        string
-	db              privacyenabledstate.DB
-	pvtdataPurgeMgr *pvtdataPurgeMgr
-	validator       validator.Validator
-	stateListeners  []ledger.StateListener
-	ccInfoProvider  ledger.DeployedChaincodeInfoProvider
-	commitRWLock    sync.RWMutex
-	oldBlockCommit  sync.Mutex
-	current         *current
-	hasher          ledger.Hasher
+	ledgerid            string
+	db                  privacyenabledstate.DB
+	pvtdataPurgeMgr     *pvtdataPurgeMgr
+	commitBatchPreparer *validation.CommitBatchPreparer
+	stateListeners      []ledger.StateListener
+	ccInfoProvider      ledger.DeployedChaincodeInfoProvider
+	commitRWLock        sync.RWMutex
+	oldBlockCommit      sync.Mutex
+	current             *current
+	hasher              ledger.Hasher
 }
 
 type current struct {
@@ -89,7 +88,7 @@ func NewLockBasedTxMgr(
 		return nil, err
 	}
 	txmgr.pvtdataPurgeMgr = &pvtdataPurgeMgr{pvtstatePurgeMgr, false}
-	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db, customTxProcessors, hasher)
+	txmgr.commitBatchPreparer = validation.NewCommitBatchPreparer(txmgr, db, customTxProcessors, hasher)
 	return txmgr, nil
 }
 
@@ -106,7 +105,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor
 	return qe, nil
 }
 
-// NewQueryExecutorWithNoCollChecks is a workaround to make the initilization of lifecycle cache
+// NewQueryExecutorNoCollChecks is a workaround to make the initilization of lifecycle cache
 // work. The issue is that in the current lifecycle code the cache is initialized via Initialize
 // function of a statelistener which gets invoked during ledger opening. This invovation eventually
 // leads to a call to DeployedChaincodeInfoProvider which inturn needs the channel config in order
@@ -155,7 +154,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 
 	block := blockAndPvtdata.Block
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
-	batch, txstatsInfo, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
+	batch, txstatsInfo, err := txmgr.commitBatchPreparer.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
 		txmgr.reset()
 		return nil, nil, err

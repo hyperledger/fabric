@@ -4,14 +4,12 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package internal
+package validation
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -19,11 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestMain(m *testing.M) {
-	flogging.ActivateSpec("valinternal=debug")
-	os.Exit(m.Run())
-}
 
 func TestTxOps(t *testing.T) {
 	assert := assert.New(t)

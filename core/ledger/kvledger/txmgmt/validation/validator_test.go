@@ -1,20 +1,10 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
-package statebasedval
+package validation
 
 import (
 	"fmt"
@@ -29,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/assert"
 )
@@ -73,7 +62,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 
-	validator := &Validator{DB: db, Hasher: cryptoProvider}
+	testValidator := &validator{DB: db, Hasher: cryptoProvider}
 
 	//populate db with initial data
 	batch := privacyenabledstate.NewUpdateBatch()
@@ -113,9 +102,9 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 
 	// Construct internal block
 	transRWSets := getTestPubSimulationRWSet(t, rwsetBuilder1, rwsetBuilder2)
-	var trans []*internal.Transaction
+	var trans []*Transaction
 	for i, tranRWSet := range transRWSets {
-		tx := &internal.Transaction{
+		tx := &Transaction{
 			ID:             fmt.Sprintf("txid-%d", i),
 			IndexInBlock:   i,
 			ValidationCode: peer.TxValidationCode_VALID,
@@ -123,17 +112,17 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 		}
 		trans = append(trans, tx)
 	}
-	block := &internal.Block{Num: 1, Txs: trans}
+	block := &Block{Num: 1, Txs: trans}
 
-	if validator.DB.IsBulkOptimizable() {
+	if testValidator.DB.IsBulkOptimizable() {
 
-		commonStorageDB := validator.DB.(*privacyenabledstate.CommonStorageDB)
+		commonStorageDB := testValidator.DB.(*privacyenabledstate.CommonStorageDB)
 		bulkOptimizable, _ := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
 
 		// Clear cache loaded during ApplyPrivacyAwareUpdates()
-		validator.DB.ClearCachedVersions()
+		testValidator.DB.ClearCachedVersions()
 
-		validator.preLoadCommittedVersionOfRSet(block)
+		testValidator.preLoadCommittedVersionOfRSet(block)
 
 		// pubKV1 should be found in cache
 		version, keyFound := bulkOptimizable.GetCachedVersion(pubKV1.namespace, pubKV1.key)
@@ -157,30 +146,30 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 		assert.Nil(t, version)
 
 		// hashedKV1 should be found in cache
-		version, keyFound = validator.DB.GetCachedKeyHashVersion(hashedKV1.namespace,
+		version, keyFound = testValidator.DB.GetCachedKeyHashVersion(hashedKV1.namespace,
 			hashedKV1.collection, hashedKV1.keyHash)
 		assert.True(t, keyFound)
 		assert.Equal(t, hashedKV1.version, version)
 
 		// hashedKV2 should be found in cache
-		version, keyFound = validator.DB.GetCachedKeyHashVersion(hashedKV2.namespace,
+		version, keyFound = testValidator.DB.GetCachedKeyHashVersion(hashedKV2.namespace,
 			hashedKV2.collection, hashedKV2.keyHash)
 		assert.True(t, keyFound)
 		assert.Equal(t, hashedKV2.version, version)
 
 		// [ns3, col1, hashedPvtKey1] should be found in cache as it was in the readset of transaction 2 though it is
 		// not in the state db
-		version, keyFound = validator.DB.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
+		version, keyFound = testValidator.DB.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
 		assert.True(t, keyFound)
 		assert.Nil(t, version)
 
 		// [ns4, col, key1] should not be found in cache as it was not loaded
-		version, keyFound = validator.DB.GetCachedKeyHashVersion("ns4", "col1", util.ComputeStringHash("key1"))
+		version, keyFound = testValidator.DB.GetCachedKeyHashVersion("ns4", "col1", util.ComputeStringHash("key1"))
 		assert.False(t, keyFound)
 		assert.Nil(t, version)
 
 		// Clear cache
-		validator.DB.ClearCachedVersions()
+		testValidator.DB.ClearCachedVersions()
 
 		// pubKV1 should not be found in cache as cahce got emptied
 		version, keyFound = bulkOptimizable.GetCachedVersion(pubKV1.namespace, pubKV1.key)
@@ -188,7 +177,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 		assert.Nil(t, version)
 
 		// [ns3, col1, key1] should not be found in cache as cahce got emptied
-		version, keyFound = validator.DB.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
+		version, keyFound = testValidator.DB.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
 		assert.False(t, keyFound)
 		assert.Nil(t, version)
 	}
@@ -211,23 +200,23 @@ func TestValidator(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	validator := &Validator{DB: db, Hasher: cryptoProvider}
+	testValidator := &validator{DB: db, Hasher: cryptoProvider}
 
 	//rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder1.AddToReadSet("ns1", "key1", version.NewHeight(1, 0))
 	rwsetBuilder1.AddToReadSet("ns2", "key2", nil)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
 
 	//rwset2 should not be valid
 	rwsetBuilder2 := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder2.AddToReadSet("ns1", "key1", version.NewHeight(1, 1))
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
 
 	//rwset3 should not be valid
 	rwsetBuilder3 := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder3.AddToReadSet("ns1", "key1", nil)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder3), []int{0})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder3), []int{0})
 
 	// rwset4 and rwset5 within same block - rwset4 should be valid and makes rwset5 as invalid
 	rwsetBuilder4 := rwsetutil.NewRWSetBuilder()
@@ -236,7 +225,7 @@ func TestValidator(t *testing.T) {
 
 	rwsetBuilder5 := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder5.AddToReadSet("ns1", "key1", version.NewHeight(1, 0))
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder4, rwsetBuilder5), []int{1})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder4, rwsetBuilder5), []int{1})
 }
 
 func TestPhantomValidation(t *testing.T) {
@@ -256,7 +245,7 @@ func TestPhantomValidation(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	validator := &Validator{DB: db, Hasher: cryptoProvider}
+	testValidator := &validator{DB: db, Hasher: cryptoProvider}
 
 	//rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
@@ -265,7 +254,7 @@ func TestPhantomValidation(t *testing.T) {
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2))})
 	rwsetBuilder1.AddToRangeQuerySet("ns1", rqi1)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
 
 	//rwset2 should not be valid - Version of key4 changed
 	rwsetBuilder2 := rwsetutil.NewRWSetBuilder()
@@ -275,7 +264,7 @@ func TestPhantomValidation(t *testing.T) {
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
 		rwsetutil.NewKVRead("key4", version.NewHeight(1, 2))})
 	rwsetBuilder2.AddToRangeQuerySet("ns1", rqi2)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
 
 	//rwset3 should not be valid - simulate key3 got committed to db
 	rwsetBuilder3 := rwsetutil.NewRWSetBuilder()
@@ -284,7 +273,7 @@ func TestPhantomValidation(t *testing.T) {
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
 	rwsetBuilder3.AddToRangeQuerySet("ns1", rqi3)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder3), []int{0})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder3), []int{0})
 
 	// //Remove a key in rwset4 and rwset5 should become invalid
 	rwsetBuilder4 := rwsetutil.NewRWSetBuilder()
@@ -296,7 +285,7 @@ func TestPhantomValidation(t *testing.T) {
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
 		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
 	rwsetBuilder5.AddToRangeQuerySet("ns1", rqi5)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder4, rwsetBuilder5), []int{1})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder4, rwsetBuilder5), []int{1})
 
 	//Add a key in rwset6 and rwset7 should become invalid
 	rwsetBuilder6 := rwsetutil.NewRWSetBuilder()
@@ -309,7 +298,7 @@ func TestPhantomValidation(t *testing.T) {
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
 		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
 	rwsetBuilder7.AddToRangeQuerySet("ns1", rqi7)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder6, rwsetBuilder7), []int{1})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder6, rwsetBuilder7), []int{1})
 }
 
 func TestPhantomHashBasedValidation(t *testing.T) {
@@ -333,7 +322,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	validator := &Validator{DB: db, Hasher: cryptoProvider}
+	testValidator := &validator{DB: db, Hasher: cryptoProvider}
 
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key9", ItrExhausted: true}
@@ -348,7 +337,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 	}
 	rwsetutil.SetMerkelSummary(rqi1, buildTestHashResults(t, 2, kvReadsDuringSimulation1))
 	rwsetBuilder1.AddToRangeQuerySet("ns1", rqi1)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
 
 	rwsetBuilder2 := rwsetutil.NewRWSetBuilder()
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "key1", EndKey: "key9", ItrExhausted: false}
@@ -365,13 +354,13 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 	}
 	rwsetutil.SetMerkelSummary(rqi2, buildTestHashResults(t, 2, kvReadsDuringSimulation2))
 	rwsetBuilder2.AddToRangeQuerySet("ns1", rqi2)
-	checkValidation(t, validator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
+	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
 }
 
-func checkValidation(t *testing.T, val *Validator, transRWSets []*rwsetutil.TxRwSet, expectedInvalidTxIndexes []int) {
-	var trans []*internal.Transaction
+func checkValidation(t *testing.T, val *validator, transRWSets []*rwsetutil.TxRwSet, expectedInvalidTxIndexes []int) {
+	var trans []*Transaction
 	for i, tranRWSet := range transRWSets {
-		tx := &internal.Transaction{
+		tx := &Transaction{
 			ID:             fmt.Sprintf("txid-%d", i),
 			IndexInBlock:   i,
 			ValidationCode: peer.TxValidationCode_VALID,
@@ -379,7 +368,7 @@ func checkValidation(t *testing.T, val *Validator, transRWSets []*rwsetutil.TxRw
 		}
 		trans = append(trans, tx)
 	}
-	block := &internal.Block{Num: 1, Txs: trans}
+	block := &Block{Num: 1, Txs: trans}
 	_, err := val.ValidateAndPrepareBatch(block, true)
 	assert.NoError(t, err)
 	t.Logf("block.Txs[0].ValidationCode = %d", block.Txs[0].ValidationCode)

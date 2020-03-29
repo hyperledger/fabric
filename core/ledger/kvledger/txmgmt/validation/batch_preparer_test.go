@@ -4,11 +4,10 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package valimpl
+package validation
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -18,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -27,19 +25,13 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl/mock"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation/mock"
 	mocklgr "github.com/hyperledger/fabric/core/ledger/mock"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestMain(m *testing.M) {
-	flogging.ActivateSpec("valimpl,statebasedval,internal=debug")
-	os.Exit(m.Run())
-}
 
 func TestValidateAndPreparePvtBatch(t *testing.T) {
 	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
@@ -98,18 +90,18 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	block := testutil.ConstructBlockWithTxid(t, 10, testutil.ConstructRandomBytes(t, 32), pubSimulationResults, txids, false)
 
 	// Construct the expected preprocessed block from preprocessProtoBlock()
-	expectedPerProcessedBlock := &internal.Block{Num: 10}
+	expectedPerProcessedBlock := &Block{Num: 10}
 	tx1TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx1SimulationResults.PubSimulationResults)
 	assert.NoError(t, err)
-	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &internal.Transaction{IndexInBlock: 0, ID: "tx1", RWSet: tx1TxRWSet})
+	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &Transaction{IndexInBlock: 0, ID: "tx1", RWSet: tx1TxRWSet})
 
 	tx2TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx2SimulationResults.PubSimulationResults)
 	assert.NoError(t, err)
-	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &internal.Transaction{IndexInBlock: 1, ID: "tx2", RWSet: tx2TxRWSet})
+	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &Transaction{IndexInBlock: 1, ID: "tx2", RWSet: tx2TxRWSet})
 
 	tx3TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx3SimulationResults.PubSimulationResults)
 	assert.NoError(t, err)
-	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &internal.Transaction{IndexInBlock: 2, ID: "tx3", RWSet: tx3TxRWSet})
+	expectedPerProcessedBlock.Txs = append(expectedPerProcessedBlock.Txs, &Transaction{IndexInBlock: 2, ID: "tx3", RWSet: tx3TxRWSet})
 	alwaysValidKVFunc := func(key string, value []byte) error {
 		return nil
 	}
@@ -272,7 +264,7 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 		lutils.ComputeStringHash("value2"), []byte("metadata2_set_by_tx4"), version.NewHeight(2, 4)) // only metadata set by tx4
 	hashUpdates.PutValHashAndMetadata("ns", "coll3", lutils.ComputeStringHash("key3"),
 		lutils.ComputeStringHash("value3_set_by_tx6"), []byte("metadata3"), version.NewHeight(2, 6)) // only value set by tx6
-	pubAndHashedUpdatesBatch := &internal.PubAndHashUpdates{HashUpdates: hashUpdates}
+	pubAndHashedUpdatesBatch := &PubAndHashUpdates{HashUpdates: hashUpdates}
 
 	// for the current block, mimic the resultant pvt updates (without metadata taking into account). Assume that Tx6 pvt data is missing
 	pvtUpdateBatch := privacyenabledstate.NewPvtUpdateBatch()
@@ -309,7 +301,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	v := NewStatebasedValidator(nil, testDB, nil, cryptoProvider)
+	v := NewCommitBatchPreparer(nil, testDB, nil, cryptoProvider)
 
 	gb := testutil.ConstructTestBlocks(t, 1)[0]
 	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
@@ -324,7 +316,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 	assert.Equal(t, expectedTxStatInfo, txStatsInfo)
 }
 
-func TestContainsPostOrderWrites(t *testing.T) {
+func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
@@ -340,7 +332,7 @@ func TestContainsPostOrderWrites(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	v := NewStatebasedValidator(mockTxmgr, testDB, customTxProcessors, cryptoProvider)
+	v := NewCommitBatchPreparer(mockTxmgr, testDB, customTxProcessors, cryptoProvider)
 	blocks := testutil.ConstructTestBlocks(t, 2)
 
 	// block with config tx that produces post order writes
@@ -381,7 +373,7 @@ func TestTxStatsInfo(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	v := NewStatebasedValidator(nil, testDB, nil, cryptoProvider)
+	v := NewCommitBatchPreparer(nil, testDB, nil, cryptoProvider)
 
 	// create a block with 4 endorser transactions
 	tx1SimulationResults, _ := testutilGenerateTxSimulationResultsAsBytes(t,
@@ -637,7 +629,7 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	internalBlock, txsStatInfo, err2 := preprocessProtoBlock(txmgr_, alwaysValidKVFunc, block, false, customTxProcessors)
 
 	// Prepare expected value
-	expectedPreprocessedBlock := &internal.Block{
+	expectedPreprocessedBlock := &Block{
 		Num: 10,
 	}
 	value1 := []byte{0xde, 0xad, 0xbe, 0xef}
@@ -658,7 +650,7 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	}
 	expectedPreprocessedBlock.Txs = append(
 		expectedPreprocessedBlock.Txs,
-		&internal.Transaction{
+		&Transaction{
 			IndexInBlock:            0,
 			ID:                      "tx1",
 			RWSet:                   expTxRwSet,
