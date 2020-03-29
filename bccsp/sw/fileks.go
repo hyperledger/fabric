@@ -235,7 +235,7 @@ func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err 
 
 		return k, nil
 	}
-	return nil, fmt.Errorf("key with SKI %s not found in %s", hex.EncodeToString(ski), ks.path)
+	return nil, fmt.Errorf("key with SKI %x not found in %s", ski, ks.path)
 }
 
 func (ks *fileBasedKeyStore) getSuffix(alias string) string {
