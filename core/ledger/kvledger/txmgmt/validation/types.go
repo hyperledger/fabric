@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package internal
+package validation
 
 import (
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -14,13 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 )
 
-var logger = flogging.MustGetLogger("valinternal")
-
-// Validator is supposed to validate the transactions based on public data and hashes present in a block
-// and returns a batch that should be used to update the state
-type Validator interface {
-	ValidateAndPrepareBatch(block *Block, doMVCCValidation bool) (*PubAndHashUpdates, error)
-}
+var logger = flogging.MustGetLogger("validation")
 
 // Block is used to used to hold the information from its proto format to a structure
 // that is more suitable/friendly for validation
@@ -44,6 +38,16 @@ type Transaction struct {
 type PubAndHashUpdates struct {
 	PubUpdates  *privacyenabledstate.PubUpdateBatch
 	HashUpdates *privacyenabledstate.HashedUpdateBatch
+}
+
+// ErrPvtdataHashMissmatch is to be thrown if the hash of a collection present in the public read-write set
+// does not match with the corresponding pvt data  supplied with the block for validation
+type ErrPvtdataHashMissmatch struct {
+	Msg string
+}
+
+func (e *ErrPvtdataHashMissmatch) Error() string {
+	return e.Msg
 }
 
 // NewPubAndHashUpdates constructs an empty PubAndHashUpdates

@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package internal
+package validation
 
 import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"

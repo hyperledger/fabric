@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package valimpl
+package validation
 
 import (
 	"bytes"
@@ -19,20 +19,95 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
+// CommitBatchPreparer performs validation and prepares the final batch that is to be committed to the statedb
+type CommitBatchPreparer struct {
+	txmgr              txmgr.TxMgr
+	db                 privacyenabledstate.DB
+	validator          *validator
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor
+}
+
+// NewCommitBatchPreparer constructs a validator that internally manages statebased validator and in addition
+// handles the tasks that are agnostic to a particular validation scheme such as parsing the block and handling the pvt data
+func NewCommitBatchPreparer(
+	txmgr txmgr.TxMgr,
+	db privacyenabledstate.DB,
+	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
+	hasher ledger.Hasher,
+) *CommitBatchPreparer {
+	return &CommitBatchPreparer{
+		txmgr,
+		db,
+		&validator{
+			DB:     db,
+			Hasher: hasher,
+		},
+		customTxProcessors,
+	}
+}
+
+// ValidateAndPrepareBatch implements the function in interface validator.Validator
+func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAndPvtData,
+	doMVCCValidation bool) (*privacyenabledstate.UpdateBatch, []*txmgr.TxStatInfo, error) {
+	block := blockAndPvtdata.Block
+	logger.Debugf("ValidateAndPrepareBatch() for block number = [%d]", block.Header.Number)
+	var internalBlock *Block
+	var txsStatInfo []*txmgr.TxStatInfo
+	var pubAndHashUpdates *PubAndHashUpdates
+	var pvtUpdates *privacyenabledstate.PvtUpdateBatch
+	var err error
+
+	logger.Debug("preprocessing ProtoBlock...")
+	if internalBlock, txsStatInfo, err = preprocessProtoBlock(
+		p.txmgr,
+		p.db.ValidateKeyValue,
+		block,
+		doMVCCValidation,
+		p.customTxProcessors,
+	); err != nil {
+		return nil, nil, err
+	}
+
+	if pubAndHashUpdates, err = p.validator.ValidateAndPrepareBatch(internalBlock, doMVCCValidation); err != nil {
+		return nil, nil, err
+	}
+	logger.Debug("validating rwset...")
+	if pvtUpdates, err = validateAndPreparePvtBatch(
+		internalBlock,
+		p.db,
+		pubAndHashUpdates,
+		blockAndPvtdata.PvtData,
+		p.customTxProcessors,
+	); err != nil {
+		return nil, nil, err
+	}
+	logger.Debug("postprocessing ProtoBlock...")
+	postprocessProtoBlock(block, internalBlock)
+	logger.Debug("ValidateAndPrepareBatch() complete")
+
+	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	for i := range txsFilter {
+		txsStatInfo[i].ValidationCode = txsFilter.Flag(i)
+	}
+	return &privacyenabledstate.UpdateBatch{
+		PubUpdates:  pubAndHashUpdates.PubUpdates,
+		HashUpdates: pubAndHashUpdates.HashUpdates,
+		PvtUpdates:  pvtUpdates,
+	}, txsStatInfo, nil
+}
+
 // validateAndPreparePvtBatch pulls out the private write-set for the transactions that are marked as valid
 // by the internal public data validator. Finally, it validates (if not already self-endorsed) the pvt rwset against the
 // corresponding hash present in the public rwset
 func validateAndPreparePvtBatch(
-	block *internal.Block,
+	block *Block,
 	db privacyenabledstate.DB,
-	pubAndHashUpdates *internal.PubAndHashUpdates,
+	pubAndHashUpdates *PubAndHashUpdates,
 	pvtdata map[uint64]*ledger.TxPvtData,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 ) (*privacyenabledstate.PvtUpdateBatch, error) {
@@ -79,7 +154,7 @@ func requiresPvtdataValidation(tx *ledger.TxPvtData) bool {
 
 // validPvtdata returns true if hashes of all the collections writeset present in the pvt data
 // match with the corresponding hashes present in the public read-write set
-func validatePvtdata(tx *internal.Transaction, pvtdata *ledger.TxPvtData) error {
+func validatePvtdata(tx *Transaction, pvtdata *ledger.TxPvtData) error {
 	if pvtdata.WriteSet == nil {
 		return nil
 	}
@@ -89,7 +164,7 @@ func validatePvtdata(tx *internal.Transaction, pvtdata *ledger.TxPvtData) error 
 			collPvtdataHash := util.ComputeHash(collPvtdata.Rwset)
 			hashInPubdata := tx.RetrieveHash(nsPvtdata.Namespace, collPvtdata.CollectionName)
 			if !bytes.Equal(collPvtdataHash, hashInPubdata) {
-				return &validator.ErrPvtdataHashMissmatch{
+				return &ErrPvtdataHashMissmatch{
 					Msg: fmt.Sprintf(`Hash of pvt data for collection [%s:%s] does not match with the corresponding hash in the public data.
 					public hash = [%#v], pvt data hash = [%#v]`, nsPvtdata.Namespace, collPvtdata.CollectionName, hashInPubdata, collPvtdataHash),
 				}
@@ -105,8 +180,8 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 	validateKVFunc func(key string, value []byte) error,
 	block *common.Block, doMVCCValidation bool,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
-) (*internal.Block, []*txmgr.TxStatInfo, error) {
-	b := &internal.Block{Num: block.Header.Number}
+) (*Block, []*txmgr.TxStatInfo, error) {
+	b := &Block{Num: block.Header.Number}
 	txsStatInfo := []*txmgr.TxStatInfo{}
 	// Committer validator has already set validation flags based on well formed tran checks
 	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
@@ -177,7 +252,7 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_WRITESET)
 				continue
 			}
-			b.Txs = append(b.Txs, &internal.Transaction{
+			b.Txs = append(b.Txs, &Transaction{
 				IndexInBlock:            txIndex,
 				ID:                      chdr.TxId,
 				RWSet:                   txRWSet,
@@ -235,7 +310,7 @@ func validateWriteset(txRWSet *rwsetutil.TxRwSet, validateKVFunc func(key string
 }
 
 // postprocessProtoBlock updates the proto block's validation flags (in metadata) by the results of validation process
-func postprocessProtoBlock(block *common.Block, validatedBlock *internal.Block) {
+func postprocessProtoBlock(block *common.Block, validatedBlock *Block) {
 	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for _, tx := range validatedBlock.Txs {
 		txsFilter.SetFlag(tx.IndexInBlock, tx.ValidationCode)
@@ -265,7 +340,7 @@ func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch 
 func incrementPvtdataVersionIfNeeded(
 	metadataUpdates metadataUpdates,
 	pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
-	pubAndHashUpdates *internal.PubAndHashUpdates,
+	pubAndHashUpdates *PubAndHashUpdates,
 	db privacyenabledstate.DB) error {
 
 	for collKey := range metadataUpdates {
