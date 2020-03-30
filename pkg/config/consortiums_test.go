@@ -78,8 +78,8 @@ func TestAddOrgToConsortium(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	consortiums := baseConsortiums(t)
-	org1CertBase64, org1PKBase64, org1CRLBase64 := certPrivKeyCRLBase64(consortiums[0].Organizations[0].MSP)
-	org2CertBase64, org2PKBase64, org2CRLBase64 := certPrivKeyCRLBase64(consortiums[0].Organizations[1].MSP)
+	org1CertBase64, org1PKBase64, org1CRLBase64 := certPrivKeyCRLBase64(t, consortiums[0].Organizations[0].MSP)
+	org2CertBase64, org2PKBase64, org2CRLBase64 := certPrivKeyCRLBase64(t, consortiums[0].Organizations[1].MSP)
 
 	consortiumsGroup, err := newConsortiumsGroup(consortiums)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -104,7 +104,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 		Policies: orgStandardPolicies(),
 		MSP:      baseMSP(t),
 	}
-	org3CertBase64, org3PKBase64, org3CRLBase64 := certPrivKeyCRLBase64(orgToAdd.MSP)
+	org3CertBase64, org3PKBase64, org3CRLBase64 := certPrivKeyCRLBase64(t, orgToAdd.MSP)
 
 	expectedConfigJSON := fmt.Sprintf(`
 {

@@ -280,7 +280,7 @@ func TestAddOrdererCapability(t *testing.T) {
 	c := New(config)
 
 	ordererOrgMSP := baseOrdererConf.Organizations[0].MSP
-	orgCertBase64, orgPKBase64, orgCRLBase64 := certPrivKeyCRLBase64(ordererOrgMSP)
+	orgCertBase64, orgPKBase64, orgCRLBase64 := certPrivKeyCRLBase64(t, ordererOrgMSP)
 
 	expectedConfigGroupJSON := fmt.Sprintf(`{
 	"groups": {
@@ -850,7 +850,7 @@ func TestRemoveOrdererCapability(t *testing.T) {
 	c := New(config)
 
 	ordererOrgMSP := baseOrdererConf.Organizations[0].MSP
-	orgCertBase64, orgPKBase64, orgCRLBase64 := certPrivKeyCRLBase64(ordererOrgMSP)
+	orgCertBase64, orgPKBase64, orgCRLBase64 := certPrivKeyCRLBase64(t, ordererOrgMSP)
 
 	expectedConfigGroupJSON := fmt.Sprintf(`{
 	"groups": {

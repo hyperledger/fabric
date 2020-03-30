@@ -222,7 +222,7 @@ func TestNewOrgConfigGroup(t *testing.T) {
 		configGroup, err := newOrgConfigGroup(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 
-		certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(org.MSP)
+		certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(t, org.MSP)
 
 		// The organization is from network.BasicSolo Profile
 		// configtxgen -printOrg Org1
