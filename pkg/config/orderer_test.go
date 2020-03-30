@@ -192,7 +192,7 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	baseOrdererConf := baseSoloOrderer(t)
-	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(baseOrdererConf.Organizations[0].MSP)
+	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(t, baseOrdererConf.Organizations[0].MSP)
 
 	ordererGroup, err := newOrdererGroup(baseOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -732,7 +732,7 @@ func TestAddOrdererOrg(t *testing.T) {
 		},
 		MSP: baseMSP(t),
 	}
-	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(org.MSP)
+	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(t, org.MSP)
 
 	expectedConfigJSON := fmt.Sprintf(`
 {

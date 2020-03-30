@@ -1006,11 +1006,11 @@ func ExampleConfigTx_RemoveOrdererCapability() {
 	}
 }
 
-func ExampleConfigTx_UpdateMSP() {
+func ExampleConfigTx_UpdateApplicationMSP() {
 	baseConfig := fetchChannelConfig()
 	c := config.New(baseConfig)
 
-	msp, err := c.GetMSPConfigurationForApplicationOrg("Org1")
+	msp, err := c.ApplicationMSP("Org1")
 	if err != nil {
 		panic(err)
 	}
@@ -1022,7 +1022,7 @@ func ExampleConfigTx_UpdateMSP() {
 
 	msp.IntermediateCerts = append(msp.IntermediateCerts, newIntermediateCert)
 
-	err = c.UpdateMSP(msp, "Org1")
+	err = c.UpdateApplicationMSP(msp, "Org1")
 	if err != nil {
 		panic(err)
 	}

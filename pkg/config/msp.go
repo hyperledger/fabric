@@ -8,7 +8,6 @@ package config
 
 import (
 	"crypto"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -23,8 +22,7 @@ import (
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
 
-// MSP is the configuration information for
-// a Fabric MSP.
+// MSP is the configuration information for a Fabric MSP.
 // Here we assume a default certificate validation policy, where
 // any certificate signed by any of the listed rootCA certs would
 // be considered as valid under this MSP.
@@ -151,9 +149,9 @@ type NodeOUs struct {
 	OrdererOUIdentifier OUIdentifier
 }
 
-// GetMSPConfigurationForApplicationOrg returns the MSP configuration for an existing application
+// ApplicationMSP returns the MSP configuration for an existing application
 // org in a config transaction.
-func (c *ConfigTx) GetMSPConfigurationForApplicationOrg(orgName string) (MSP, error) {
+func (c *ConfigTx) ApplicationMSP(orgName string) (MSP, error) {
 	applicationOrgGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return MSP{}, fmt.Errorf("application org %s does not exist in config", orgName)
@@ -162,9 +160,9 @@ func (c *ConfigTx) GetMSPConfigurationForApplicationOrg(orgName string) (MSP, er
 	return getMSPConfig(applicationOrgGroup)
 }
 
-// GetMSPConfigurationForOrdererOrg returns the MSP configuration for an existing orderer org
+// OrdererMSP returns the MSP configuration for an existing orderer org
 // in a config transaction.
-func (c *ConfigTx) GetMSPConfigurationForOrdererOrg(orgName string) (MSP, error) {
+func (c *ConfigTx) OrdererMSP(orgName string) (MSP, error) {
 	ordererOrgGroup, ok := c.base.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return MSP{}, fmt.Errorf("orderer org %s does not exist in config", orgName)
@@ -173,9 +171,9 @@ func (c *ConfigTx) GetMSPConfigurationForOrdererOrg(orgName string) (MSP, error)
 	return getMSPConfig(ordererOrgGroup)
 }
 
-// GetMSPConfigurationForConsortiumOrg returns the MSP configuration for an existing consortium
+// ConsortiumMSP returns the MSP configuration for an existing consortium
 // org in a config transaction.
-func (c *ConfigTx) GetMSPConfigurationForConsortiumOrg(consortiumName, orgName string) (MSP, error) {
+func (c *ConfigTx) ConsortiumMSP(consortiumName, orgName string) (MSP, error) {
 	consortiumGroup, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 	if !ok {
 		return MSP{}, fmt.Errorf("consortium %s does not exist in config", consortiumName)
@@ -189,61 +187,23 @@ func (c *ConfigTx) GetMSPConfigurationForConsortiumOrg(consortiumName, orgName s
 	return getMSPConfig(consortiumOrgGroup)
 }
 
-// AddRootCAToMSP takes a root CA x509 certificate and adds it to the
-// list of rootCerts for the specified application org MSP.
-func (c *ConfigTx) AddRootCAToMSP(rootCA *x509.Certificate, orgName string) error {
-	if (rootCA.KeyUsage & x509.KeyUsageCertSign) == 0 {
-		return errors.New("certificate KeyUsage must be x509.KeyUsageCertSign")
-	}
-
-	if !rootCA.IsCA {
-		return errors.New("certificate must be a CA certificate")
-	}
-
-	org, err := getApplicationOrg(c.updated, orgName)
-	if err != nil {
-		return err
-	}
-
-	fabricMSPConfig, err := getFabricMSPConfig(org)
-	if err != nil {
-		return fmt.Errorf("getting msp config: %v", err)
-	}
-
-	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootCA.Raw})
-
-	fabricMSPConfig.RootCerts = append(fabricMSPConfig.RootCerts, certBytes)
-
-	err = addMSPConfigToOrg(org, fabricMSPConfig)
-	if err != nil {
-		return fmt.Errorf("adding msp config to org: %v", err)
-	}
-
-	return nil
-}
-
 // YEAR is a time duration for a standard 365 day year.
 const YEAR = 365 * 24 * time.Hour
 
-// RevokeCertificateFromMSP takes a variadic list of x509 certificates, creates
-// a new CRL signed by the specified ca certificate and private key, and appends
-// it to the revocation list for the specified application org MSP.
-func (c *ConfigTx) RevokeCertificateFromMSP(orgName string, caCert *x509.Certificate, caPrivKey *ecdsa.PrivateKey, certs ...*x509.Certificate) error {
-	org, err := getApplicationOrg(c.updated, orgName)
+// CreateApplicationMSPCRL creates a CRL that revokes the provided certificates
+// for the specified application org signed by the provided SigningIdentity. It
+// returns the CRL as the PEM-encoded bytes. If any of the provided certs were
+// not signed by any of the root/intermediate CA cets in the MSP configuration,
+// it will return an error.
+func (c *ConfigTx) CreateApplicationMSPCRL(orgName string, signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
+	msp, err := c.ApplicationMSP(orgName)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("retrieving application msp: %s", err)
 	}
 
-	fabricMSPConfig, err := getFabricMSPConfig(org)
+	err = msp.validateCertificates(signingIdentity.Certificate, certs...)
 	if err != nil {
-		return fmt.Errorf("getting msp config: %v", err)
-	}
-
-	for _, cert := range certs {
-		err = validateCert(cert, fabricMSPConfig)
-		if err != nil {
-			return fmt.Errorf("validating cert: %v", err)
-		}
+		return nil, err
 	}
 
 	revokeTime := time.Now().UTC()
@@ -256,21 +216,50 @@ func (c *ConfigTx) RevokeCertificateFromMSP(orgName string, caCert *x509.Certifi
 		}
 	}
 
-	crlBytes, err := caCert.CreateCRL(rand.Reader, caPrivKey, revokedCertificates, revokeTime, revokeTime.Add(YEAR))
+	crlBytes, err := signingIdentity.Certificate.CreateCRL(rand.Reader, signingIdentity.PrivateKey, revokedCertificates, revokeTime, revokeTime.Add(YEAR))
+	if err != nil {
+		return nil, err
+	}
+
+	crl, err := x509.ParseCRL(crlBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return crl, nil
+}
+
+// validateCertificates first validates that the signing certificate is either
+// a root or intermediate CA certificate for the specified application org. It
+// then validates that the certificates to add to the CRL were signed by that
+// signing certificate.
+func (m *MSP) validateCertificates(signingCert *x509.Certificate, certs ...*x509.Certificate) error {
+	err := m.isCACert(signingCert)
 	if err != nil {
 		return err
 	}
-
-	pemCRLBytes := pem.EncodeToMemory(&pem.Block{Type: "X509 CRL", Bytes: crlBytes})
-
-	fabricMSPConfig.RevocationList = append(fabricMSPConfig.RevocationList, pemCRLBytes)
-
-	err = addMSPConfigToOrg(org, fabricMSPConfig)
-	if err != nil {
-		return fmt.Errorf("adding msp config to org: %v", err)
+	for _, cert := range certs {
+		if err := cert.CheckSignatureFrom(signingCert); err != nil {
+			return fmt.Errorf("certificate not issued by this MSP. serial number: %d", cert.SerialNumber)
+		}
 	}
 
 	return nil
+}
+
+func (m *MSP) isCACert(signingCert *x509.Certificate) error {
+	for _, rootCert := range m.RootCerts {
+		if signingCert.Equal(rootCert) {
+			return nil
+		}
+	}
+
+	for _, intermediateCert := range m.IntermediateCerts {
+		if signingCert.Equal(intermediateCert) {
+			return nil
+		}
+	}
+	return fmt.Errorf("signing cert is not a root/intermediate cert for this MSP: %s", m.Name)
 }
 
 // getMSPConfig parses the MSP value in a config group returns
@@ -502,9 +491,9 @@ func (m *MSP) toProto() (*mb.FabricMSPConfig, error) {
 		}
 	}
 
-	crl, err := buildPemEncodedCRL(m.RevocationList)
+	revocationList, err := buildPemEncodedRevocationList(m.RevocationList)
 	if err != nil {
-		return nil, fmt.Errorf("building pem encoded crl: %v", err)
+		return nil, fmt.Errorf("building pem encoded revocation list: %v", err)
 	}
 
 	signingIdentity := &mb.SigningIdentityInfo{
@@ -542,7 +531,7 @@ func (m *MSP) toProto() (*mb.FabricMSPConfig, error) {
 		RootCerts:                     buildPemEncodedCertListFromX509(m.RootCerts),
 		IntermediateCerts:             buildPemEncodedCertListFromX509(m.IntermediateCerts),
 		Admins:                        buildPemEncodedCertListFromX509(m.Admins),
-		RevocationList:                crl,
+		RevocationList:                revocationList,
 		SigningIdentity:               signingIdentity,
 		OrganizationalUnitIdentifiers: ouIdentifiers,
 		CryptoConfig: &mb.FabricCryptoConfig{
@@ -570,19 +559,30 @@ func buildOUIdentifiers(identifiers []OUIdentifier) []*mb.FabricOUIdentifier {
 	return fabricIdentifiers
 }
 
-func buildPemEncodedCRL(crls []*pkix.CertificateList) ([][]byte, error) {
-	pemEncodedCRL := [][]byte{}
+// buildPemEncodedRevocationList returns a byte slice of the pem-encoded
+// CRLs for a revocation list.
+func buildPemEncodedRevocationList(crls []*pkix.CertificateList) ([][]byte, error) {
+	pemEncodedRevocationList := [][]byte{}
 
 	for _, crl := range crls {
-		asn1MarshalledBytes, err := asn1.Marshal(*crl)
+		// asn1MarshalledBytes, err := asn1.Marshal(*crl)
+		pemCRL, err := pemEncodeCRL(crl)
 		if err != nil {
 			return nil, err
 		}
 
-		pemEncodedCRL = append(pemEncodedCRL, pem.EncodeToMemory(&pem.Block{Type: "X509 CRL", Bytes: asn1MarshalledBytes}))
+		pemEncodedRevocationList = append(pemEncodedRevocationList, pemCRL)
 	}
 
-	return pemEncodedCRL, nil
+	return pemEncodedRevocationList, nil
+}
+
+func pemEncodeCRL(crl *pkix.CertificateList) ([]byte, error) {
+	asn1MarshalledBytes, err := asn1.Marshal(*crl)
+	if err != nil {
+		return nil, err
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "X509 CRL", Bytes: asn1MarshalledBytes}), nil
 }
 
 func buildPemEncodedCertListFromX509(certList []*x509.Certificate) [][]byte {
@@ -607,9 +607,10 @@ func pemEncodePKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}), nil
 }
 
-// UpdateMSP updates the MSP for the provided config application org group.
-func (c *ConfigTx) UpdateMSP(updatedMSP MSP, orgName string) error {
-	currentMSP, err := c.GetMSPConfigurationForApplicationOrg(orgName)
+// UpdateApplicationMSP updates the MSP config for the specified application
+// org group.
+func (c *ConfigTx) UpdateApplicationMSP(updatedMSP MSP, orgName string) error {
+	currentMSP, err := c.ApplicationMSP(orgName)
 	if err != nil {
 		return fmt.Errorf("retrieving msp: %v", err)
 	}
@@ -618,7 +619,7 @@ func (c *ConfigTx) UpdateMSP(updatedMSP MSP, orgName string) error {
 		return errors.New("MSP name cannot be changed")
 	}
 
-	err = validateMSPCACerts(updatedMSP)
+	err = updatedMSP.validateCACerts()
 	if err != nil {
 		return err
 	}
@@ -659,23 +660,23 @@ func setMSPConfigForOrg(config *cb.Config, updatedMSP MSP, orgName string) error
 	return nil
 }
 
-func validateMSPCACerts(msp MSP) error {
-	err := validateCACerts(msp.RootCerts)
+func (m *MSP) validateCACerts() error {
+	err := validateCACerts(m.RootCerts)
 	if err != nil {
 		return fmt.Errorf("invalid root cert: %v", err)
 	}
 
-	err = validateCACerts(msp.IntermediateCerts)
+	err = validateCACerts(m.IntermediateCerts)
 	if err != nil {
 		return fmt.Errorf("invalid intermediate cert: %v", err)
 	}
 
-	err = validateCACerts(msp.TLSRootCerts)
+	err = validateCACerts(m.TLSRootCerts)
 	if err != nil {
 		return fmt.Errorf("invalid tls root cert: %v", err)
 	}
 
-	err = validateCACerts(msp.TLSIntermediateCerts)
+	err = validateCACerts(m.TLSIntermediateCerts)
 	if err != nil {
 		return fmt.Errorf("invalid tls intermediate cert: %v", err)
 	}
@@ -695,27 +696,6 @@ func validateCACerts(caCerts []*x509.Certificate) error {
 	}
 
 	return nil
-}
-
-func getFabricMSPConfig(org *cb.ConfigGroup) (*mb.FabricMSPConfig, error) {
-	configValue, err := getOrgMSPValue(org)
-	if err != nil {
-		return nil, err
-	}
-
-	mspConfig := &mb.MSPConfig{}
-	err = proto.Unmarshal(configValue.Value, mspConfig)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshalling mspConfig: %v", err)
-	}
-
-	fabricMSPConfig := &mb.FabricMSPConfig{}
-	err = proto.Unmarshal(mspConfig.Config, fabricMSPConfig)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshalling mspConfig: %v", err)
-	}
-
-	return fabricMSPConfig, nil
 }
 
 func addMSPConfigToOrg(org *cb.ConfigGroup, fabricMSPConfig *mb.FabricMSPConfig) error {
@@ -751,44 +731,4 @@ func getOrgMSPValue(org *cb.ConfigGroup) (*cb.ConfigValue, error) {
 		return nil, errors.New("org doesn't have MSP value")
 	}
 	return configValue, nil
-}
-
-// validateCert checks if a cert was issued by a given MSP based
-// on the root and intermediate CA certs.
-func validateCert(cert *x509.Certificate, fabricMSPConfig *mb.FabricMSPConfig) error {
-	caCerts := []*x509.Certificate{}
-
-	for _, rcBytes := range fabricMSPConfig.RootCerts {
-		pemBlock, _ := pem.Decode(rcBytes)
-		if pemBlock == nil {
-			return errors.New("decoding pem block")
-		}
-		rootCert, err := x509.ParseCertificate(pemBlock.Bytes)
-		if err != nil {
-			return err
-		}
-
-		caCerts = append(caCerts, rootCert)
-	}
-
-	for _, icBytes := range fabricMSPConfig.IntermediateCerts {
-		pemBlock, _ := pem.Decode(icBytes)
-		if pemBlock == nil {
-			return errors.New("decoding pem block")
-		}
-		intermediateCert, err := x509.ParseCertificate(pemBlock.Bytes)
-		if err != nil {
-			return err
-		}
-
-		caCerts = append(caCerts, intermediateCert)
-	}
-
-	for _, caCert := range caCerts {
-		if err := cert.CheckSignatureFrom(caCert); err == nil {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("certificate not issued by this MSP. serial number: %d", cert.SerialNumber)
 }

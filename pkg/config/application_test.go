@@ -833,7 +833,7 @@ func TestAddApplicationOrg(t *testing.T) {
 		},
 	}
 
-	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(org.MSP)
+	certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(t, org.MSP)
 	expectedConfigJSON := fmt.Sprintf(`
 {
 	"groups": {},
