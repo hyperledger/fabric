@@ -37,7 +37,7 @@ func TestGetChannelCapabilities(t *testing.T) {
 		updated: config,
 	}
 
-	err := addValue(config.ChannelGroup, capabilitiesValue(expectedCapabilities), AdminsPolicyKey)
+	err := setValue(config.ChannelGroup, capabilitiesValue(expectedCapabilities), AdminsPolicyKey)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	channelCapabilities, err := c.GetChannelCapabilities()

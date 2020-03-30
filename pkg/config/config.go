@@ -248,7 +248,7 @@ func newChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 	channelGroup := newConfigGroup()
 
 	if channelConfig.Consortium != "" {
-		err = addValue(channelGroup, consortiumValue(channelConfig.Consortium), "")
+		err = setValue(channelGroup, consortiumValue(channelConfig.Consortium), "")
 		if err != nil {
 			return nil, err
 		}
@@ -277,7 +277,7 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 		return nil, errors.New("orderer endpoints is not defined in channel config")
 	}
 
-	err = addValue(channelGroup, ordererAddressesValue(channelConfig.Orderer.Addresses), ordererAdminsPolicyName)
+	err = setValue(channelGroup, ordererAddressesValue(channelConfig.Orderer.Addresses), ordererAdminsPolicyName)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 		return nil, errors.New("consortium is not defined in channel config")
 	}
 
-	err = addValue(channelGroup, consortiumValue(channelConfig.Consortium), AdminsPolicyKey)
+	err = setValue(channelGroup, consortiumValue(channelConfig.Consortium), AdminsPolicyKey)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 		return nil, errors.New("capabilities is not defined in channel config")
 	}
 
-	err = addValue(channelGroup, capabilitiesValue(channelConfig.Capabilities), AdminsPolicyKey)
+	err = setValue(channelGroup, capabilitiesValue(channelConfig.Capabilities), AdminsPolicyKey)
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +315,8 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 	return channelGroup, nil
 }
 
-func addValue(cg *cb.ConfigGroup, value *standardConfigValue, modPolicy string) error {
+// setValue sets the value as ConfigValue in the ConfigGroup.
+func setValue(cg *cb.ConfigGroup, value *standardConfigValue, modPolicy string) error {
 	v, err := proto.Marshal(value.value)
 	if err != nil {
 		return fmt.Errorf("marshaling standard config value '%s': %v", value.key, err)

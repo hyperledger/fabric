@@ -102,7 +102,7 @@ func newConsortiumGroup(consortium Consortium) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 
-	err = addValue(consortiumGroup, channelCreationPolicyValue(implicitMetaAnyPolicy.value), ordererAdminsPolicyName)
+	err = setValue(consortiumGroup, channelCreationPolicyValue(implicitMetaAnyPolicy.value), ordererAdminsPolicyName)
 	if err != nil {
 		return nil, err
 	}

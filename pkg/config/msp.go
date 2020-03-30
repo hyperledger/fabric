@@ -651,7 +651,7 @@ func setMSPConfigForOrg(config *cb.Config, updatedMSP MSP, orgName string) error
 		return err
 	}
 
-	err = addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	err = setValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
@@ -737,7 +737,7 @@ func addMSPConfigToOrg(org *cb.ConfigGroup, fabricMSPConfig *mb.FabricMSPConfig)
 
 	mspConfig.Config = serializedMSPConfig
 
-	err = addValue(org, mspValue(mspConfig), AdminsPolicyKey)
+	err = setValue(org, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
