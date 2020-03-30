@@ -42,11 +42,11 @@ type VersionedDBProvider struct {
 	mux                sync.Mutex
 	openCounts         uint64
 	redoLoggerProvider *redoLoggerProvider
-	cache              *statedb.Cache
+	cache              *cache
 }
 
 // NewVersionedDBProvider instantiates VersionedDBProvider
-func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Provider, cache *statedb.Cache) (*VersionedDBProvider, error) {
+func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Provider, sysNamespaces []string) (*VersionedDBProvider, error) {
 	logger.Debugf("constructing CouchDB VersionedDBProvider")
 	couchInstance, err := couchdb.CreateCouchInstance(config, metricsProvider)
 	if err != nil {
@@ -59,6 +59,8 @@ func NewVersionedDBProvider(config *couchdb.Config, metricsProvider metrics.Prov
 	if err != nil {
 		return nil, err
 	}
+
+	cache := newCache(config.UserCacheSizeMBs, sysNamespaces)
 	return &VersionedDBProvider{
 			couchInstance:      couchInstance,
 			databases:          make(map[string]*VersionedDB),
@@ -173,11 +175,11 @@ type VersionedDB struct {
 	verCacheLock       sync.RWMutex
 	mux                sync.RWMutex
 	redoLogger         *redoLogger
-	cache              *statedb.Cache
+	cache              *cache
 }
 
 // newVersionedDB constructs an instance of VersionedDB
-func newVersionedDB(couchInstance *couchdb.CouchInstance, redoLogger *redoLogger, dbName string, cache *statedb.Cache) (*VersionedDB, error) {
+func newVersionedDB(couchInstance *couchdb.CouchInstance, redoLogger *redoLogger, dbName string, cache *cache) (*VersionedDB, error) {
 	// CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
 	chainName := dbName
 	dbName = couchdb.ConstructMetadataDBName(dbName)
@@ -283,11 +285,11 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 		committedDataCache.setVerAndRev(ns, key, nil, "")
 		logger.Debugf("Load into version cache: %s~%s", ns, key)
 
-		if !vdb.cache.Enabled(ns) {
+		if !vdb.cache.enabled(ns) {
 			missingKeys[ns] = append(missingKeys[ns], key)
 			continue
 		}
-		cv, err := vdb.cache.GetState(vdb.chainName, ns, key)
+		cv, err := vdb.cache.getState(vdb.chainName, ns, key)
 		if err != nil {
 			return err
 		}
@@ -369,9 +371,9 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
 
 	// (1) read the KV from the cache if available
-	cacheEnabled := vdb.cache.Enabled(namespace)
+	cacheEnabled := vdb.cache.enabled(namespace)
 	if cacheEnabled {
-		cv, err := vdb.cache.GetState(vdb.chainName, namespace, key)
+		cv, err := vdb.cache.getState(vdb.chainName, namespace, key)
 		if err != nil {
 			return nil, err
 		}
@@ -396,7 +398,7 @@ func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.Version
 	// (3) if the value is not nil, store in the cache
 	if cacheEnabled {
 		cacheValue := constructCacheValue(kv.VersionedValue, kv.revision)
-		if err := vdb.cache.PutState(vdb.chainName, namespace, key, cacheValue); err != nil {
+		if err := vdb.cache.putState(vdb.chainName, namespace, key, cacheValue); err != nil {
 			return nil, err
 		}
 	}
@@ -673,12 +675,12 @@ func (vdb *VersionedDB) postCommitProcessing(committers []*committer, namespaces
 	go func() {
 		defer wg.Done()
 
-		cacheUpdates := make(statedb.CacheUpdates)
+		cacheUpdates := make(cacheUpdates)
 		for _, c := range committers {
 			if !c.cacheEnabled {
 				continue
 			}
-			cacheUpdates.Add(c.namespace, c.cacheKVs)
+			cacheUpdates.add(c.namespace, c.cacheKVs)
 		}
 
 		if len(cacheUpdates) == 0 {
@@ -947,8 +949,8 @@ func (scanner *queryScanner) GetBookmarkAndClose() string {
 	return retval
 }
 
-func constructCacheValue(v *statedb.VersionedValue, rev string) *statedb.CacheValue {
-	return &statedb.CacheValue{
+func constructCacheValue(v *statedb.VersionedValue, rev string) *CacheValue {
+	return &CacheValue{
 		VersionBytes:   v.Version.ToBytes(),
 		Value:          v.Value,
 		Metadata:       v.Metadata,
@@ -956,7 +958,7 @@ func constructCacheValue(v *statedb.VersionedValue, rev string) *statedb.CacheVa
 	}
 }
 
-func constructVersionedValue(cv *statedb.CacheValue) (*statedb.VersionedValue, error) {
+func constructVersionedValue(cv *CacheValue) (*statedb.VersionedValue, error) {
 	height, _, err := version.NewHeightFromBytes(cv.VersionBytes)
 	if err != nil {
 		return nil, err

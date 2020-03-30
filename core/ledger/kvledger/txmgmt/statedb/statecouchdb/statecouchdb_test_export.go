@@ -26,9 +26,11 @@ type testVDBEnv struct {
 	DBProvider     statedb.VersionedDBProvider
 	config         *couchdb.Config
 	cleanupCouchDB func()
+	cache          *cache
+	sysNamespaces  []string
 }
 
-func (env *testVDBEnv) init(t testing.TB, cache *statedb.Cache) {
+func (env *testVDBEnv) init(t testing.TB, sysNamespaces []string) {
 	t.Logf("Initializing TestVDBEnv")
 	redoPath, err := ioutil.TempDir("", "cvdbenv")
 	if err != nil {
@@ -47,8 +49,9 @@ func (env *testVDBEnv) init(t testing.TB, cache *statedb.Cache) {
 		MaxRetriesOnStartup: 20,
 		RequestTimeout:      35 * time.Second,
 		RedoLogPath:         redoPath,
+		UserCacheSizeMBs:    8,
 	}
-	dbProvider, err := NewVersionedDBProvider(config, &disabled.Provider{}, cache)
+	dbProvider, err := NewVersionedDBProvider(config, &disabled.Provider{}, sysNamespaces)
 	if err != nil {
 		t.Fatalf("Error creating CouchDB Provider: %s", err)
 	}
@@ -56,6 +59,8 @@ func (env *testVDBEnv) init(t testing.TB, cache *statedb.Cache) {
 	env.t = t
 	env.DBProvider = dbProvider
 	env.config = config
+	env.cache = dbProvider.cache
+	env.sysNamespaces = sysNamespaces
 }
 
 // startExternalResource sstarts external couchDB resources for testVDBEnv.
@@ -74,8 +79,9 @@ func (env *testVDBEnv) stopExternalResource() {
 
 func (env *testVDBEnv) closeAndReopen() {
 	env.DBProvider.Close()
-	dbProvider, _ := NewVersionedDBProvider(env.config, &disabled.Provider{}, &statedb.Cache{})
+	dbProvider, _ := NewVersionedDBProvider(env.config, &disabled.Provider{}, env.sysNamespaces)
 	env.DBProvider = dbProvider
+	env.cache = dbProvider.cache
 }
 
 // Cleanup drops the test couch databases and closes the db provider

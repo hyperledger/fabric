@@ -20,7 +20,7 @@ type committer struct {
 	db             *couchdb.CouchDatabase
 	batchUpdateMap map[string]*batchableDocument
 	namespace      string
-	cacheKVs       statedb.CacheKVs
+	cacheKVs       cacheKVs
 	cacheEnabled   bool
 }
 
@@ -35,7 +35,7 @@ func (c *committer) addToCacheUpdate(kv *keyValue) {
 		return
 	}
 
-	c.cacheKVs[kv.key] = &statedb.CacheValue{
+	c.cacheKVs[kv.key] = &CacheValue{
 		VersionBytes:   kv.Version.ToBytes(),
 		Value:          kv.Value,
 		Metadata:       kv.Metadata,
@@ -112,14 +112,14 @@ func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*st
 	}
 	committers := make([]*committer, numCommitters)
 
-	cacheEnabled := vdb.cache.Enabled(ns)
+	cacheEnabled := vdb.cache.enabled(ns)
 
 	for i := 0; i < numCommitters; i++ {
 		committers[i] = &committer{
 			db:             db,
 			batchUpdateMap: make(map[string]*batchableDocument),
 			namespace:      ns,
-			cacheKVs:       make(statedb.CacheKVs),
+			cacheKVs:       make(cacheKVs),
 			cacheEnabled:   cacheEnabled,
 		}
 	}
@@ -268,13 +268,13 @@ func (vdb *VersionedDB) getRevisions(ns string, nsUpdates map[string]*statedb.Ve
 }
 
 func (vdb *VersionedDB) addMissingRevisionsFromCache(ns string, keys []string, revs map[string]string) ([]string, error) {
-	if !vdb.cache.Enabled(ns) {
+	if !vdb.cache.enabled(ns) {
 		return keys, nil
 	}
 
 	var missingKeys []string
 	for _, k := range keys {
-		cv, err := vdb.cache.GetState(vdb.chainName, ns, k)
+		cv, err := vdb.cache.getState(vdb.chainName, ns, k)
 		if err != nil {
 			return nil, err
 		}

@@ -64,8 +64,7 @@ func NewCommonStorageDBProvider(
 	var err error
 
 	if stateDBConf != nil && stateDBConf.StateDatabase == couchDB {
-		cache := statedb.NewCache(stateDBConf.CouchDB.UserCacheSizeMBs, sysNamespaces)
-		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, cache); err != nil {
+		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, sysNamespaces); err != nil {
 			return nil, err
 		}
 	} else {
