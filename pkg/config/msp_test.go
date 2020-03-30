@@ -48,7 +48,7 @@ func TestApplicationMSP(t *testing.T) {
 		Config: conf,
 	}
 
-	err = addValue(applicationOrgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	err = setValue(applicationOrgGroup, mspValue(mspConfig), AdminsPolicyKey)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	config := &cb.Config{
@@ -313,7 +313,7 @@ func TestGetMSPConfigurationFailures(t *testing.T) {
 					Config: conf,
 				}
 
-				err = addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+				err = setValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
 				gt.Expect(err).NotTo(HaveOccurred())
 			}
 

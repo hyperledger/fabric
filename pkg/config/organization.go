@@ -103,14 +103,14 @@ func newOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
 		Config: conf,
 	}
 
-	err = addValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	err = setValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// OrdererEndpoints are orderer org specific and are only added when specified for orderer orgs
 	if len(org.OrdererEndpoints) > 0 {
-		err := addValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
+		err := setValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +129,7 @@ func newOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
 	// This helps prevent a delta from the orderer system channel when computing
 	// more complex channel creation transactions
 	if len(anchorProtos) > 0 {
-		err := addValue(orgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
+		err := setValue(orgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add anchor peers value: %v", err)
 		}

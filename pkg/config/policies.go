@@ -36,7 +36,7 @@ func (c *ConfigTx) UpdateConsortiumChannelCreationPolicy(consortiumName string, 
 	}
 
 	// update channel creation policy value back to consortium
-	if err = addValue(consortium, channelCreationPolicyValue(implicitMetaPolicy), ordererAdminsPolicyName); err != nil {
+	if err = setValue(consortium, channelCreationPolicyValue(implicitMetaPolicy), ordererAdminsPolicyName); err != nil {
 		return fmt.Errorf("failed to update channel creation policy to consortium %s: %v", consortiumName, err)
 	}
 

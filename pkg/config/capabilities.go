@@ -171,7 +171,7 @@ func addCapability(configGroup *cb.ConfigGroup, capabilities []string, modPolicy
 		}
 	}
 
-	err := addValue(configGroup, capabilitiesValue([]string{capability}), modPolicy)
+	err := setValue(configGroup, capabilitiesValue([]string{capability}), modPolicy)
 	if err != nil {
 		return fmt.Errorf("adding capability: %v", err)
 	}
@@ -192,7 +192,7 @@ func removeCapability(configGroup *cb.ConfigGroup, capabilities []string, modPol
 		return errors.New("capability not set")
 	}
 
-	err := addValue(configGroup, capabilitiesValue(updatedCapabilities), modPolicy)
+	err := setValue(configGroup, capabilitiesValue(updatedCapabilities), modPolicy)
 	if err != nil {
 		return fmt.Errorf("removing capability: %v", err)
 	}

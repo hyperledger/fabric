@@ -102,7 +102,7 @@ func (c *ConfigTx) AddAnchorPeer(orgName string, newAnchorPeer Address) error {
 	})
 
 	// Add anchor peers config value back to application org
-	err := addValue(applicationOrgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
+	err := setValue(applicationOrgGroup, anchorPeersValue(anchorProtos), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) 
 			existingAnchorPeers = append(existingAnchorPeers, anchorPeer)
 
 			// Add anchor peers config value back to application org
-			err := addValue(applicationOrgGroup, anchorPeersValue(existingAnchorPeers), AdminsPolicyKey)
+			err := setValue(applicationOrgGroup, anchorPeersValue(existingAnchorPeers), AdminsPolicyKey)
 			if err != nil {
 				return fmt.Errorf("failed to remove anchor peer %v from org %s: %v", anchorPeerToRemove, orgName, err)
 			}
@@ -148,7 +148,7 @@ func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) 
 	}
 
 	// Add anchor peers config value back to application org
-	err := addValue(applicationOrgGroup, anchorPeersValue(existingAnchorPeers), AdminsPolicyKey)
+	err := setValue(applicationOrgGroup, anchorPeersValue(existingAnchorPeers), AdminsPolicyKey)
 	if err != nil {
 		return fmt.Errorf("failed to remove anchor peer %v from org %s: %v", anchorPeerToRemove, orgName, err)
 	}
@@ -167,7 +167,7 @@ func (c *ConfigTx) AddACLs(acls map[string]string) error {
 		acls[apiResource] = policyRef
 	}
 
-	err = addValue(c.updated.ChannelGroup.Groups[ApplicationGroupKey], aclValues(acls), AdminsPolicyKey)
+	err = setValue(c.updated.ChannelGroup.Groups[ApplicationGroupKey], aclValues(acls), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func (c *ConfigTx) RemoveACLs(acls []string) error {
 		delete(configACLs, acl)
 	}
 
-	err = addValue(c.updated.ChannelGroup.Groups[ApplicationGroupKey], aclValues(configACLs), AdminsPolicyKey)
+	err = setValue(c.updated.ChannelGroup.Groups[ApplicationGroupKey], aclValues(configACLs), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
@@ -278,14 +278,14 @@ func newApplicationGroup(application Application) (*cb.ConfigGroup, error) {
 	}
 
 	if len(application.ACLs) > 0 {
-		err = addValue(applicationGroup, aclValues(application.ACLs), AdminsPolicyKey)
+		err = setValue(applicationGroup, aclValues(application.ACLs), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if len(application.Capabilities) > 0 {
-		err = addValue(applicationGroup, capabilitiesValue(application.Capabilities), AdminsPolicyKey)
+		err = setValue(applicationGroup, capabilitiesValue(application.Capabilities), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}

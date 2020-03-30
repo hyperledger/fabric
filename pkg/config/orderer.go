@@ -93,7 +93,7 @@ func (c *ConfigTx) UpdateOrdererConfiguration(o Orderer) error {
 
 	// update orderer addresses
 	if len(o.Addresses) > 0 {
-		err := addValue(c.updated.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
+		err := setValue(c.updated.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
 		if err != nil {
 			return err
 		}
@@ -273,7 +273,7 @@ func (c *ConfigTx) AddOrdererEndpoint(orgName string, endpoint Address) error {
 	existingOrdererEndpoints = append(existingOrdererEndpoints, endpointToAdd)
 
 	// Add orderer endpoints config value back to orderer org
-	err := addValue(ordererOrgGroup, endpointsValue(existingOrdererEndpoints), AdminsPolicyKey)
+	err := setValue(ordererOrgGroup, endpointsValue(existingOrdererEndpoints), AdminsPolicyKey)
 	if err != nil {
 		return fmt.Errorf("failed to add endpoint %v to orderer org %s: %v", endpoint, orgName, err)
 	}
@@ -312,7 +312,7 @@ func (c *ConfigTx) RemoveOrdererEndpoint(orgName string, endpoint Address) error
 	}
 
 	// Add orderer endpoints config value back to orderer org
-	err := addValue(ordererOrgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
+	err := setValue(ordererOrgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
 	if err != nil {
 		return fmt.Errorf("failed to remove endpoint %v from orderer org %s: %v", endpoint, orgName, err)
 	}
@@ -353,7 +353,7 @@ func newOrdererGroup(orderer Orderer) (*cb.ConfigGroup, error) {
 
 // addOrdererValues adds configuration specified in *Orderer to an orderer *cb.ConfigGroup's Values map.
 func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
-	err := addValue(ordererGroup, batchSizeValue(
+	err := setValue(ordererGroup, batchSizeValue(
 		o.BatchSize.MaxMessageCount,
 		o.BatchSize.AbsoluteMaxBytes,
 		o.BatchSize.PreferredMaxBytes,
@@ -362,18 +362,18 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 		return err
 	}
 
-	err = addValue(ordererGroup, batchTimeoutValue(o.BatchTimeout.String()), AdminsPolicyKey)
+	err = setValue(ordererGroup, batchTimeoutValue(o.BatchTimeout.String()), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
 
-	err = addValue(ordererGroup, channelRestrictionsValue(o.MaxChannels), AdminsPolicyKey)
+	err = setValue(ordererGroup, channelRestrictionsValue(o.MaxChannels), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
 
 	if len(o.Capabilities) > 0 {
-		err = addValue(ordererGroup, capabilitiesValue(o.Capabilities), AdminsPolicyKey)
+		err = setValue(ordererGroup, capabilitiesValue(o.Capabilities), AdminsPolicyKey)
 		if err != nil {
 			return err
 		}
@@ -384,7 +384,7 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 	switch o.OrdererType {
 	case ConsensusTypeSolo:
 	case ConsensusTypeKafka:
-		err = addValue(ordererGroup, kafkaBrokersValue(o.Kafka.Brokers), AdminsPolicyKey)
+		err = setValue(ordererGroup, kafkaBrokersValue(o.Kafka.Brokers), AdminsPolicyKey)
 		if err != nil {
 			return err
 		}
@@ -401,7 +401,7 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 		return fmt.Errorf("unknown consensus state '%s'", o.State)
 	}
 
-	err = addValue(ordererGroup, consensusTypeValue(o.OrdererType, consensusMetadata, consensusState), AdminsPolicyKey)
+	err = setValue(ordererGroup, consensusTypeValue(o.OrdererType, consensusMetadata, consensusState), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
