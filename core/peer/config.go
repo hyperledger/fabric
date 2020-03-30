@@ -28,8 +28,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )

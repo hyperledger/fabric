@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

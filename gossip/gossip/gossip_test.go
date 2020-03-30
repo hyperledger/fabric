@@ -22,7 +22,6 @@ import (
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	corecomm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -33,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	corecomm "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/assert"
 )
 
