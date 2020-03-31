@@ -17,7 +17,6 @@ limitations under the License.
 package util
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,36 +51,4 @@ func TestGetValuesBySortedKeys(t *testing.T) {
 		[]*name{{"None", "none"}, {"Two", "two"}, {"Three", "three"}, {"Five", "five"}},
 		sortedRes,
 	)
-}
-
-func TestBasicEncodingDecoding(t *testing.T) {
-	for i := 0; i < 10000; i++ {
-		value := EncodeReverseOrderVarUint64(uint64(i))
-		nextValue := EncodeReverseOrderVarUint64(uint64(i + 1))
-		if !(bytes.Compare(value, nextValue) > 0) {
-			t.Fatalf("A smaller integer should result into greater bytes. Encoded bytes for [%d] is [%x] and for [%d] is [%x]",
-				i, i+1, value, nextValue)
-		}
-		decodedValue, _ := DecodeReverseOrderVarUint64(value)
-		if decodedValue != uint64(i) {
-			t.Fatalf("Value not same after decoding. Original value = [%d], decode value = [%d]", i, decodedValue)
-		}
-	}
-}
-
-func TestDecodingAppendedValues(t *testing.T) {
-	appendedValues := []byte{}
-	for i := 0; i < 1000; i++ {
-		appendedValues = append(appendedValues, EncodeReverseOrderVarUint64(uint64(i))...)
-	}
-
-	len := 0
-	value := uint64(0)
-	for i := 0; i < 1000; i++ {
-		appendedValues = appendedValues[len:]
-		value, len = DecodeReverseOrderVarUint64(appendedValues)
-		if value != uint64(i) {
-			t.Fatalf("expected value = [%d], decode value = [%d]", i, value)
-		}
-	}
 }
