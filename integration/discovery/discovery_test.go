@@ -400,12 +400,12 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc-lifecycle"`))
 
 		By("deploying chaincode using org1 and org2")
-		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
+		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
 		chaincode = nwo.Chaincode{
 			Name:                "mycc-lifecycle",
 			Version:             "1.0",
 			Lang:                "binary",
-			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
+			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
 			Path:                chaincodePath,
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
@@ -526,7 +526,7 @@ var _ = Describe("DiscoveryService", func() {
 			Name:              "mycc",
 			Version:           "2.0",
 			Lang:              "binary",
-			PackageFile:       filepath.Join(testDir, "modulecc.tar.gz"),
+			PackageFile:       filepath.Join(testDir, "simplecc.tar.gz"),
 			Path:              chaincodePath,
 			SignaturePolicy:   `AND ('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`,
 			Sequence:          "1",
