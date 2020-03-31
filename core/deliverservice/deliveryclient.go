@@ -29,7 +29,7 @@ var logger = flogging.MustGetLogger("deliveryClient")
 const (
 	defaultReConnectTotalTimeThreshold = time.Second * 60 * 60
 	defaultConnectionTimeout           = time.Second * 3
-	defaultReConnectBackoffThreshold   = float64(time.Hour)
+	defaultReConnectBackoffThreshold   = time.Hour
 )
 
 func getReConnectTotalTimeThreshold() time.Duration {
@@ -40,8 +40,8 @@ func getConnectionTimeout() time.Duration {
 	return util.GetDurationOrDefault("peer.deliveryclient.connTimeout", defaultConnectionTimeout)
 }
 
-func getReConnectBackoffThreshold() float64 {
-	return util.GetFloat64OrDefault("peer.deliveryclient.reConnectBackoffThreshold", defaultReConnectBackoffThreshold)
+func getReConnectBackoffThreshold() time.Duration {
+	return util.GetDurationOrDefault("peer.deliveryclient.reConnectBackoffThreshold", defaultReConnectBackoffThreshold)
 }
 
 func staticRootsEnabled() bool {
@@ -300,7 +300,7 @@ func (d *deliverServiceImpl) newClient(chainID string, ledgerInfoProvider blocks
 		}
 		sleepIncrement := float64(time.Millisecond * 500)
 		attempt := float64(attemptNum)
-		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, reconnectBackoffThreshold)), true
+		return time.Duration(math.Min(math.Pow(2, attempt)*sleepIncrement, float64(reconnectBackoffThreshold))), true
 	}
 	connProd := comm.NewConnectionProducer(d.conf.ConnFactory(chainID, d.connConfig.OrdererEndpointOverrides), d.connConfig.toEndpointCriteria())
 	bClient := NewBroadcastClient(connProd, d.conf.ABCFactory, broadcastSetup, backoffPolicy)
