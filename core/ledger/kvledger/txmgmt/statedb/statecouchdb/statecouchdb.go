@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
@@ -252,17 +251,15 @@ func (vdb *VersionedDB) getNamespaceDBHandle(namespace string) (*couchdb.CouchDa
 }
 
 // ProcessIndexesForChaincodeDeploy creates indexes for a specified namespace
-func (vdb *VersionedDB) ProcessIndexesForChaincodeDeploy(namespace string, fileEntries []*ccprovider.TarFileEntry) error {
+func (vdb *VersionedDB) ProcessIndexesForChaincodeDeploy(namespace string, indexFilesData map[string][]byte) error {
 	db, err := vdb.getNamespaceDBHandle(namespace)
 	if err != nil {
 		return err
 	}
-	for _, fileEntry := range fileEntries {
-		indexData := fileEntry.FileContent
-		filename := fileEntry.FileHeader.Name
+	for indexFileName, indexData := range indexFilesData {
 		_, err = db.CreateIndex(string(indexData))
 		if err != nil {
-			return errors.WithMessagef(err, "error creating index from file [%s] for channel [%s]", filename, namespace)
+			return errors.WithMessagef(err, "error creating index from file [%s] for channel [%s]", indexFileName, namespace)
 		}
 	}
 	return nil

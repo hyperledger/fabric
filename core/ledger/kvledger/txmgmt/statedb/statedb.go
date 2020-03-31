@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
@@ -85,7 +84,7 @@ type BulkOptimizable interface {
 //databases capable of index operations
 type IndexCapable interface {
 	GetDBType() string
-	ProcessIndexesForChaincodeDeploy(namespace string, fileEntries []*ccprovider.TarFileEntry) error
+	ProcessIndexesForChaincodeDeploy(namespace string, indexFilesData map[string][]byte) error
 }
 
 // CompositeKey encloses Namespace and Key components
