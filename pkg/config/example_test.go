@@ -91,6 +91,11 @@ func Example_systemChannel() {
 		panic(err)
 	}
 
+	err = c.RemoveConsortium("SampleConsortium2")
+	if err != nil {
+		panic(err)
+	}
+
 	// Compute the delta
 	configUpdate, err := c.ComputeUpdate("testsyschannel")
 	if err != nil {
@@ -206,7 +211,7 @@ func Example_systemChannel() {
 	//					"mod_policy": "",
 	//					"policies": {},
 	//					"values": {},
-	//					"version": "0"
+	//					"version": "1"
 	//				}
 	//			},
 	//			"mod_policy": "",
@@ -1363,6 +1368,21 @@ func fetchSystemChannelConfig() *cb.Config {
 				config.ConsortiumsGroupKey: {
 					Groups: map[string]*cb.ConfigGroup{
 						"SampleConsortium": {
+							Groups: map[string]*cb.ConfigGroup{},
+							Values: map[string]*cb.ConfigValue{
+								config.ChannelCreationPolicyKey: {
+									ModPolicy: "/Channel/Orderer/Admins",
+									Value: marshalOrPanic(&cb.Policy{
+										Type: 3,
+										Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
+											Rule:      cb.ImplicitMetaPolicy_ANY,
+											SubPolicy: config.AdminsPolicyKey,
+										}),
+									}),
+								},
+							},
+						},
+						"SampleConsortium2": {
 							Groups: map[string]*cb.ConfigGroup{},
 							Values: map[string]*cb.ConfigValue{
 								config.ChannelCreationPolicyKey: {

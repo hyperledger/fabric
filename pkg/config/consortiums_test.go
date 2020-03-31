@@ -601,6 +601,65 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 	}
 }
 
+func TestRemoveConsortium(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums(t)
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+			Values:   map[string]*cb.ConfigValue{},
+			Policies: map[string]*cb.ConfigPolicy{},
+		},
+	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	err = c.RemoveConsortium("Consortium1")
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	updatedConsortiumsGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey]
+	gt.Expect(updatedConsortiumsGroup.Groups["Consortium1"]).To(BeNil())
+}
+
+func TestRemoveConsortiumFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums(t)
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+			Values:   map[string]*cb.ConfigValue{},
+			Policies: map[string]*cb.ConfigPolicy{},
+		},
+	}
+
+	c := ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	err = c.RemoveConsortium("BadConsortium")
+	gt.Expect(err).To(MatchError("consortium BadConsortium does not exist in channel config"))
+}
+
 func baseConsortiums(t *testing.T) []Consortium {
 	return []Consortium{
 		{
