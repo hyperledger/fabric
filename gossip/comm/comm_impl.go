@@ -602,10 +602,12 @@ func (c *commImpl) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
 }
 
 func (c *commImpl) disconnect(pkiID common.PKIidType) {
-	if c.isStopping() {
+	select {
+	case c.deadEndpoints <- pkiID:
+	case <-c.exitChan:
 		return
 	}
-	c.deadEndpoints <- pkiID
+
 	c.connStore.closeConnByPKIid(pkiID)
 }
 
