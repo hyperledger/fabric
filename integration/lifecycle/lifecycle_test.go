@@ -123,13 +123,13 @@ var _ = Describe("Lifecycle", func() {
 		testPeers := network.PeersWithChannel("testchannel")
 		org1peer0 := network.Peer("Org1", "peer0")
 
-		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
+		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
 		chaincode := nwo.Chaincode{
 			Name:                "My_1st-Chaincode",
 			Version:             "Version-0.0",
 			Path:                chaincodePath,
 			Lang:                "binary",
-			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
+			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
@@ -213,7 +213,7 @@ var _ = Describe("Lifecycle", func() {
 		previousLabel := chaincode.Label
 		previousPackageID := chaincode.PackageID
 		chaincode.Label = "my_simple_chaincode_updated"
-		chaincode.PackageFile = filepath.Join(testDir, "modulecc-updated.tar.gz")
+		chaincode.PackageFile = filepath.Join(testDir, "simplecc-updated.tar.gz")
 		chaincode.Sequence = "2"
 		nwo.PackageChaincodeBinary(chaincode)
 		chaincode.SetPackageIDFromPackageFile()
@@ -252,7 +252,7 @@ var _ = Describe("Lifecycle", func() {
 			Version:             "Version+0_0",
 			Path:                chaincodePath,
 			Lang:                "binary",
-			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
+			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
 			Sequence:            "1",
