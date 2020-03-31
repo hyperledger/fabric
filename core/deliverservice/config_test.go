@@ -84,7 +84,7 @@ func TestGlobalConfig(t *testing.T) {
 	defer viper.Reset()
 
 	viper.Set("peer.tls.enabled", true)
-	viper.Set("peer.deliveryclient.reConnectBackoffThreshold", 25.5)
+	viper.Set("peer.deliveryclient.reConnectBackoffThreshold", "25s")
 	viper.Set("peer.deliveryclient.reconnectTotalTimeThreshold", "20s")
 	viper.Set("peer.deliveryclient.connTimeout", "10s")
 	viper.Set("peer.keepalive.deliveryClient.interval", "5s")
@@ -94,7 +94,7 @@ func TestGlobalConfig(t *testing.T) {
 
 	expectedConfig := &deliverservice.DeliverServiceConfig{
 		PeerTLSEnabled:              true,
-		ReConnectBackoffThreshold:   25.5,
+		ReConnectBackoffThreshold:   25 * time.Second,
 		ReconnectTotalTimeThreshold: 20 * time.Second,
 		ConnectionTimeout:           10 * time.Second,
 		KeepaliveOptions: comm.KeepaliveOptions{
