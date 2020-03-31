@@ -35,7 +35,6 @@ func TestGetApplicationOrg(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	channel := Channel{
-		ChannelID:  "testchannel",
 		Consortium: "SampleConsortium",
 		Application: Application{
 			Policies:      standardPolicies(),

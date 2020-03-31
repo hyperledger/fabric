@@ -77,7 +77,6 @@ var _ = Describe("Config", func() {
 
 		By("setting up the channel")
 		channel := config.Channel{
-			ChannelID:  "testchannel",
 			Consortium: "SampleConsortium",
 			Application: config.Application{
 				Organizations: []config.Organization{
@@ -115,7 +114,8 @@ var _ = Describe("Config", func() {
 			},
 		}
 
-		envelope, err := config.NewCreateChannelTx(channel)
+		channelID := "testchannel"
+		envelope, err := config.NewCreateChannelTx(channel, channelID)
 		Expect(err).NotTo(HaveOccurred())
 		envBytes, err := proto.Marshal(envelope)
 		Expect(err).NotTo(HaveOccurred())

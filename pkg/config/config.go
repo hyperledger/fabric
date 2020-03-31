@@ -32,7 +32,6 @@ type Channel struct {
 	Consortiums  []Consortium
 	Capabilities []string
 	Policies     map[string]Policy
-	ChannelID    string
 }
 
 // Policy is an expression used to define rules for access to channels, chaincodes, etc.
@@ -95,12 +94,90 @@ func (c *ConfigTx) Updated() *cb.Config {
 	return c.updated
 }
 
+// ComputeUpdate computes the ConfigUpdate from a base and modified config transaction.
+func (c *ConfigTx) ComputeUpdate(channelID string) (*cb.ConfigUpdate, error) {
+	if channelID == "" {
+		return nil, errors.New("channel ID is required")
+	}
+
+	updt, err := computeConfigUpdate(c.base, c.updated)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute update: %v", err)
+	}
+
+	updt.ChannelId = channelID
+
+	return updt, nil
+}
+
+// ChannelConfiguration returns a channel configuration value from a config transaction.
+func (c *ConfigTx) ChannelConfiguration() (Channel, error) {
+	channelGroup := c.base.ChannelGroup
+	var (
+		err          error
+		consortium   string
+		application  Application
+		orderer      Orderer
+		consortiums  []Consortium
+		capabilities []string
+	)
+
+	if _, ok := channelGroup.Values[ConsortiumKey]; ok {
+		consortiumProto := &cb.Consortium{}
+		err := unmarshalConfigValueAtKey(channelGroup, ConsortiumKey, consortiumProto)
+		if err != nil {
+			return Channel{}, err
+		}
+		consortium = consortiumProto.Name
+	}
+
+	if _, ok := channelGroup.Groups[ApplicationGroupKey]; ok {
+		application, err = c.GetApplicationConfiguration()
+		if err != nil {
+			return Channel{}, err
+		}
+	}
+
+	if _, ok := channelGroup.Groups[OrdererGroupKey]; ok {
+		orderer, err = c.GetOrdererConfiguration()
+		if err != nil {
+			return Channel{}, err
+		}
+	}
+
+	if _, ok := channelGroup.Groups[ConsortiumsGroupKey]; ok {
+		consortiums, err = c.Consortiums()
+		if err != nil {
+			return Channel{}, err
+		}
+	}
+
+	if _, ok := channelGroup.Values[CapabilitiesKey]; ok {
+		capabilities, err = c.GetChannelCapabilities()
+		if err != nil {
+			return Channel{}, err
+		}
+	}
+
+	policies, err := c.GetPoliciesForChannel()
+	if err != nil {
+		return Channel{}, err
+	}
+
+	return Channel{
+		Consortium:   consortium,
+		Application:  application,
+		Orderer:      orderer,
+		Consortiums:  consortiums,
+		Capabilities: capabilities,
+		Policies:     policies,
+	}, nil
+}
+
 // NewCreateChannelTx creates a create channel tx using the provided application channel
 // configuration and returns an unsigned envelope for an application channel creation transaction.
-func NewCreateChannelTx(channelConfig Channel) (*cb.Envelope, error) {
+func NewCreateChannelTx(channelConfig Channel, channelID string) (*cb.Envelope, error) {
 	var err error
-
-	channelID := channelConfig.ChannelID
 
 	if channelID == "" {
 		return nil, errors.New("profile's channel ID is required")
@@ -189,22 +266,6 @@ func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIden
 	return signedEnvelope, nil
 }
 
-// ComputeUpdate computes the ConfigUpdate from a base and modified config transaction.
-func (c *ConfigTx) ComputeUpdate(channelID string) (*cb.ConfigUpdate, error) {
-	if channelID == "" {
-		return nil, errors.New("channel ID is required")
-	}
-
-	updt, err := computeConfigUpdate(c.base, c.updated)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compute update: %v", err)
-	}
-
-	updt.ChannelId = channelID
-
-	return updt, nil
-}
-
 func signatureHeader(signingIdentity SigningIdentity) (*cb.SignatureHeader, error) {
 	buffer := bytes.NewBuffer(nil)
 
@@ -273,7 +334,7 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 		return nil, fmt.Errorf("failed to add system channel policies: %v", err)
 	}
 
-	if len(channelConfig.Orderer.Addresses) <= 0 {
+	if len(channelConfig.Orderer.Addresses) == 0 {
 		return nil, errors.New("orderer endpoints is not defined in channel config")
 	}
 
@@ -291,7 +352,7 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 
-	if len(channelConfig.Capabilities) <= 0 {
+	if len(channelConfig.Capabilities) == 0 {
 		return nil, errors.New("capabilities is not defined in channel config")
 	}
 
