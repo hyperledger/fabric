@@ -4,5 +4,4 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-dep version
-dep check
+echo "Dependency checking implementation is TBD..."

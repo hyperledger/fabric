@@ -3,7 +3,6 @@
 package cobra
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -15,12 +14,7 @@ var preExecHookFn = preExecHook
 func preExecHook(c *Command) {
 	if MousetrapHelpText != "" && mousetrap.StartedByExplorer() {
 		c.Print(MousetrapHelpText)
-		if MousetrapDisplayDuration > 0 {
-			time.Sleep(MousetrapDisplayDuration)
-		} else {
-			c.Println("Press return to continue...")
-			fmt.Scanln()
-		}
+		time.Sleep(5 * time.Second)
 		os.Exit(1)
 	}
 }
