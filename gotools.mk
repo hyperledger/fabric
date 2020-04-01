@@ -3,46 +3,27 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = counterfeiter dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell mockery
+GOTOOLS = counterfeiter dep ginkgo gocov gocov-xml goimports golint misspell mockery protoc-gen-go
 BUILD_DIR ?= build
 GOTOOLS_GOPATH ?= $(BUILD_DIR)/_gotools
-GOTOOLS_BINDIR ?= $(GOPATH)/bin
+GOTOOLS_BINDIR ?= $(shell go env GOPATH)/bin
 
 # go tool->path mapping
-go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter
+go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter/v6
+go.fqp.ginkgo        := github.com/onsi/ginkgo/ginkgo
 go.fqp.gocov         := github.com/axw/gocov/gocov
 go.fqp.gocov-xml     := github.com/AlekSi/gocov-xml
 go.fqp.goimports     := golang.org/x/tools/cmd/goimports
 go.fqp.golint        := golang.org/x/lint/golint
 go.fqp.misspell      := github.com/client9/misspell/cmd/misspell
 go.fqp.mockery       := github.com/vektra/mockery/cmd/mockery
+go.fqp.protoc-gen-go := github.com/golang/protobuf/protoc-gen-go
 
 .PHONY: gotools-install
 gotools-install: $(patsubst %,$(GOTOOLS_BINDIR)/%, $(GOTOOLS))
 
 .PHONY: gotools-clean
 gotools-clean:
-	-@rm -rf $(GOTOOLS_GOPATH)
-
-# Special override for protoc-gen-go since we want to use the version vendored with the project
-gotool.protoc-gen-go:
-	@echo "Building github.com/golang/protobuf/protoc-gen-go -> protoc-gen-go"
-	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/github.com/golang/protobuf/protoc-gen-go
-
-# Special override for ginkgo since we want to use the version vendored with the project
-gotool.ginkgo:
-	@echo "Building github.com/onsi/ginkgo/ginkgo -> ginkgo"
-	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/github.com/onsi/ginkgo/ginkgo
-
-# Special override for goimports since we want to use the version vendored with the project
-gotool.goimports:
-	@echo "Building golang.org/x/tools/cmd/goimports -> goimports"
-	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/golang.org/x/tools/cmd/goimports
-
-# Special override for golint since we want to use the version vendored with the project
-gotool.golint:
-	@echo "Building golang.org/x/lint/golint -> golint"
-	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/golang.org/x/lint/golint
 
 # Lock to a versioned dep
 gotool.dep: DEP_VERSION ?= "v0.5.3"
@@ -57,7 +38,7 @@ gotool.dep:
 gotool.%:
 	$(eval TOOL = ${subst gotool.,,${@}})
 	@echo "Building ${go.fqp.${TOOL}} -> $(TOOL)"
-	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go get ${go.fqp.${TOOL}}
+	@cd tools && GO111MODULE=on GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ${go.fqp.${TOOL}}
 
 $(GOTOOLS_BINDIR)/%:
 	$(eval TOOL = ${subst $(GOTOOLS_BINDIR)/,,${@}})
