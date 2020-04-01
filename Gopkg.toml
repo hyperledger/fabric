@@ -2,13 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-required = [
-    "golang.org/x/lint/golint",
-    "golang.org/x/tools/cmd/goimports",
-    "github.com/golang/protobuf/protoc-gen-go",
-]
-
 ignored = [
+    "github.com/hyperledger/fabric/tools",
 ]
 
 noverify = [
@@ -90,10 +85,6 @@ noverify = [
 [[constraint]]
   branch = "master"
   name = "golang.org/x/crypto"
-
-[[constraint]]
-  name = "golang.org/x/lint"
-  revision = "959b441ac422379a43da2230f62be024250818b0"
 
 [[constraint]]
   name = "golang.org/x/tools"
