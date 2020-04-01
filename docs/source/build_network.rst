@@ -1388,7 +1388,7 @@ Troubleshooting
 
    .. code:: bash
 
-       docker rmi -f $(docker images | grep peer[0-9]-peer[0-9] | awk '{print $3}')
+       docker rmi -f $(docker images | grep dev-peer[0-9] | awk '{print $3}')
 
 -  If you see something similar to the following:
 
