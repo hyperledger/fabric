@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package encoder_test
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -15,8 +16,8 @@ import (
 )
 
 func TestEncoder(t *testing.T) {
-	factory.InitFactories(nil)
-
+	err := factory.InitFactories(nil)
+	assert.NoError(t, err, "Could not initialize BCCSP Factories")
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Encoder Suite")
 }

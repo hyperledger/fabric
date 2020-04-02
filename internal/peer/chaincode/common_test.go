@@ -159,7 +159,8 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockchain := "mockchain"
-	factory.InitFactories(nil)
+	err = factory.InitFactories(nil)
+	assert.NoError(t, err, "Could not initialize BCCSP Factories")
 	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	pgen := encoder.New(config)
 	genesisBlock := pgen.GenesisBlockForChannel(mockchain)
@@ -184,8 +185,8 @@ func TestGetOrdererEndpointFail(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockchain := "mockchain"
-	factory.InitFactories(nil)
-
+	err = factory.InitFactories(nil)
+	assert.NoError(t, err, "Could not initialize BCCSP Factories")
 	mockResponse := &pb.ProposalResponse{
 		Response:    &pb.Response{Status: 404, Payload: []byte{}},
 		Endorsement: &pb.Endorsement{},

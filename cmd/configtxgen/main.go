@@ -255,7 +255,10 @@ func main() {
 	}()
 
 	logger.Info("Loading configuration")
-	factory.InitFactories(nil)
+	err := factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 	var profileConfig *genesisconfig.Profile
 	if outputBlock != "" || outputChannelCreateTx != "" || outputAnchorPeersUpdate != "" {
 		if profile == "" {

@@ -55,7 +55,10 @@ const (
 )
 
 func init() {
-	factory.InitFactories(nil)
+	err := factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }
 
 func mockOrderer(batchTimeout time.Duration, metadata []byte) *mocks.OrdererConfig {

@@ -8,6 +8,7 @@ package discovery
 
 import (
 	"crypto/rand"
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -19,7 +20,10 @@ import (
 )
 
 func init() {
-	factory.InitFactories(nil)
+	err := factory.InitFactories(nil)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }
 
 func TestSameMessage(t *testing.T) {
