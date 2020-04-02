@@ -132,14 +132,14 @@ func (c *ConfigTx) ChannelConfiguration() (Channel, error) {
 	}
 
 	if _, ok := channelGroup.Groups[ApplicationGroupKey]; ok {
-		application, err = c.GetApplicationConfiguration()
+		application, err = c.ApplicationConfiguration()
 		if err != nil {
 			return Channel{}, err
 		}
 	}
 
 	if _, ok := channelGroup.Groups[OrdererGroupKey]; ok {
-		orderer, err = c.GetOrdererConfiguration()
+		orderer, err = c.OrdererConfiguration()
 		if err != nil {
 			return Channel{}, err
 		}
@@ -153,13 +153,13 @@ func (c *ConfigTx) ChannelConfiguration() (Channel, error) {
 	}
 
 	if _, ok := channelGroup.Values[CapabilitiesKey]; ok {
-		capabilities, err = c.GetChannelCapabilities()
+		capabilities, err = c.ChannelCapabilities()
 		if err != nil {
 			return Channel{}, err
 		}
 	}
 
-	policies, err := c.GetPoliciesForChannel()
+	policies, err := c.ChannelPolicies()
 	if err != nil {
 		return Channel{}, err
 	}

@@ -578,7 +578,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 	}
 }
 
-func TestGetAnchorPeer(t *testing.T) {
+func TestAnchorPeer(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -602,13 +602,13 @@ func TestGetAnchorPeer(t *testing.T) {
 	err = c.AddAnchorPeer("Org1", expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	anchorPeers, err := c.GetAnchorPeers("Org1")
+	anchorPeers, err := c.AnchorPeers("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(len(anchorPeers)).To(Equal(1))
 	gt.Expect(anchorPeers[0]).To(Equal(expectedAnchorPeer))
 }
 
-func TestGetAnchorPeerFailures(t *testing.T) {
+func TestAnchorPeerFailures(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -657,7 +657,7 @@ func TestGetAnchorPeerFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
-			_, err := c.GetAnchorPeers(test.orgName)
+			_, err := c.AnchorPeers(test.orgName)
 			gt.Expect(err).To(MatchError(test.expectedErr))
 		})
 	}
@@ -1016,7 +1016,7 @@ func TestAddApplicationOrgFailures(t *testing.T) {
 	gt.Expect(err).To(MatchError("failed to create application org Org3: no policies defined"))
 }
 
-func TestGetApplicationConfiguration(t *testing.T) {
+func TestApplicationConfiguration(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
@@ -1041,7 +1041,7 @@ func TestGetApplicationConfiguration(t *testing.T) {
 		gt.Expect(err).NotTo(HaveOccurred())
 	}
 
-	applicationConfig, err := c.GetApplicationConfiguration()
+	applicationConfig, err := c.ApplicationConfiguration()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationConfig.ACLs).To(Equal(baseApplicationConf.ACLs))
 	gt.Expect(applicationConfig.Capabilities).To(Equal(baseApplicationConf.Capabilities))
@@ -1049,7 +1049,7 @@ func TestGetApplicationConfiguration(t *testing.T) {
 	gt.Expect(applicationConfig.Organizations).To(ContainElements(baseApplicationConf.Organizations))
 }
 
-func TestGetApplicationConfigurationFailure(t *testing.T) {
+func TestApplicationConfigurationFailure(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -1105,13 +1105,13 @@ func TestGetApplicationConfigurationFailure(t *testing.T) {
 				tt.configMod(c, baseApplicationConf, gt)
 			}
 
-			_, err = c.GetApplicationConfiguration()
+			_, err = c.ApplicationConfiguration()
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
 }
 
-func TestGetApplicationACLs(t *testing.T) {
+func TestApplicationACLs(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -1132,12 +1132,12 @@ func TestGetApplicationACLs(t *testing.T) {
 		base: config,
 	}
 
-	applicationACLs, err := c.GetApplicationACLs()
+	applicationACLs, err := c.ApplicationACLs()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationACLs).To(Equal(baseApplicationConf.ACLs))
 }
 
-func TestGetApplicationACLsFailure(t *testing.T) {
+func TestApplicationACLsFailure(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -1152,7 +1152,7 @@ func TestGetApplicationACLsFailure(t *testing.T) {
 		base: config,
 	}
 
-	applicationACLs, err := c.GetApplicationACLs()
+	applicationACLs, err := c.ApplicationACLs()
 	gt.Expect(err).To(MatchError("application does not exist in channel config"))
 	gt.Expect(applicationACLs).To(BeNil())
 }

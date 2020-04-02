@@ -24,10 +24,10 @@ type Application struct {
 	ACLs          map[string]string
 }
 
-// GetApplicationConfiguration returns the existing application configuration values from a config
+// ApplicationConfiguration returns the existing application configuration values from a config
 // transaction as an Application type. This can be used to retrieve existing values for the application
 // prior to updating the application configuration.
-func (c *ConfigTx) GetApplicationConfiguration() (Application, error) {
+func (c *ConfigTx) ApplicationConfiguration() (Application, error) {
 	applicationGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey]
 	if !ok {
 		return Application{}, errors.New("config does not contain application group")
@@ -35,7 +35,7 @@ func (c *ConfigTx) GetApplicationConfiguration() (Application, error) {
 
 	var applicationOrgs []Organization
 	for orgName := range applicationGroup.Groups {
-		orgConfig, err := c.GetApplicationOrg(orgName)
+		orgConfig, err := c.ApplicationOrg(orgName)
 		if err != nil {
 			return Application{}, fmt.Errorf("retrieving application org %s: %v", orgName, err)
 		}
@@ -43,17 +43,17 @@ func (c *ConfigTx) GetApplicationConfiguration() (Application, error) {
 		applicationOrgs = append(applicationOrgs, orgConfig)
 	}
 
-	capabilities, err := c.GetApplicationCapabilities()
+	capabilities, err := c.ApplicationCapabilities()
 	if err != nil {
 		return Application{}, fmt.Errorf("retrieving application capabilities: %v", err)
 	}
 
-	policies, err := c.GetPoliciesForApplication()
+	policies, err := c.ApplicationPolicies()
 	if err != nil {
 		return Application{}, fmt.Errorf("retrieving application policies: %v", err)
 	}
 
-	acls, err := c.GetApplicationACLs()
+	acls, err := c.ApplicationACLs()
 	if err != nil {
 		return Application{}, fmt.Errorf("retrieving application acls: %v", err)
 	}
@@ -194,8 +194,8 @@ func (c *ConfigTx) RemoveACLs(acls []string) error {
 	return nil
 }
 
-// GetApplicationACLs returns a map of application acls from a config transaction.
-func (c *ConfigTx) GetApplicationACLs() (map[string]string, error) {
+// ApplicationACLs returns a map of application acls from a config transaction.
+func (c *ConfigTx) ApplicationACLs() (map[string]string, error) {
 	return getACLs(c.base)
 }
 
@@ -220,8 +220,8 @@ func getACLs(config *cb.Config) (map[string]string, error) {
 	return retACLs, nil
 }
 
-// GetAnchorPeers retrieves existing anchor peers from a application organization.
-func (c *ConfigTx) GetAnchorPeers(orgName string) ([]Address, error) {
+// AnchorPeers retrieves existing anchor peers from a application organization.
+func (c *ConfigTx) AnchorPeers(orgName string) ([]Address, error) {
 	applicationOrgGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)

@@ -230,7 +230,7 @@ func Example_orderer() {
 
 	// Must retrieve the current orderer configuration from block and modify
 	// the desired values
-	orderer, err := c.GetOrdererConfiguration()
+	orderer, err := c.OrdererConfiguration()
 	if err != nil {
 		panic(err)
 	}

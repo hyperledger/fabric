@@ -542,7 +542,7 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
 }
 
-func TestGetOrdererConfiguration(t *testing.T) {
+func TestOrdererConfiguration(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -596,14 +596,14 @@ func TestGetOrdererConfiguration(t *testing.T) {
 				updated: config,
 			}
 
-			ordererConf, err := c.GetOrdererConfiguration()
+			ordererConf, err := c.OrdererConfiguration()
 			gt.Expect(err).NotTo(HaveOccurred())
 			gt.Expect(ordererConf).To(Equal(baseOrdererConf))
 		})
 	}
 }
 
-func TestGetOrdererConfigurationFailure(t *testing.T) {
+func TestOrdererConfigurationFailure(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -697,7 +697,7 @@ func TestGetOrdererConfigurationFailure(t *testing.T) {
 				tt.configMod(c.updated, gt)
 			}
 
-			_, err = c.GetOrdererConfiguration()
+			_, err = c.OrdererConfiguration()
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}

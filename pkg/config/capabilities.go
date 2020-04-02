@@ -14,9 +14,9 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 )
 
-// GetChannelCapabilities returns a map of enabled channel capabilities
+// ChannelCapabilities returns a map of enabled channel capabilities
 // from a config transaction.
-func (c *ConfigTx) GetChannelCapabilities() ([]string, error) {
+func (c *ConfigTx) ChannelCapabilities() ([]string, error) {
 	capabilities, err := getCapabilities(c.base.ChannelGroup)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving channel capabilities: %v", err)
@@ -25,9 +25,9 @@ func (c *ConfigTx) GetChannelCapabilities() ([]string, error) {
 	return capabilities, nil
 }
 
-// GetOrdererCapabilities returns a map of enabled orderer capabilities
+// OrdererCapabilities returns a map of enabled orderer capabilities
 // from a config transaction.
-func (c *ConfigTx) GetOrdererCapabilities() ([]string, error) {
+func (c *ConfigTx) OrdererCapabilities() ([]string, error) {
 	orderer, ok := c.base.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return nil, errors.New("orderer missing from config")
@@ -41,9 +41,9 @@ func (c *ConfigTx) GetOrdererCapabilities() ([]string, error) {
 	return capabilities, nil
 }
 
-// GetApplicationCapabilities returns a map of enabled application capabilities
+// ApplicationCapabilities returns a map of enabled application capabilities
 // from a config transaction.
-func (c *ConfigTx) GetApplicationCapabilities() ([]string, error) {
+func (c *ConfigTx) ApplicationCapabilities() ([]string, error) {
 	application, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey]
 	if !ok {
 		return nil, errors.New("application missing from config")
@@ -59,7 +59,7 @@ func (c *ConfigTx) GetApplicationCapabilities() ([]string, error) {
 
 // AddChannelCapability adds capability to the provided channel config.
 func (c *ConfigTx) AddChannelCapability(capability string) error {
-	capabilities, err := c.GetChannelCapabilities()
+	capabilities, err := c.ChannelCapabilities()
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (c *ConfigTx) AddChannelCapability(capability string) error {
 
 // AddOrdererCapability adds capability to the provided channel config.
 func (c *ConfigTx) AddOrdererCapability(capability string) error {
-	capabilities, err := c.GetOrdererCapabilities()
+	capabilities, err := c.OrdererCapabilities()
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (c *ConfigTx) AddOrdererCapability(capability string) error {
 
 // AddApplicationCapability adds capability to the provided channel config.
 func (c *ConfigTx) AddApplicationCapability(capability string) error {
-	capabilities, err := c.GetApplicationCapabilities()
+	capabilities, err := c.ApplicationCapabilities()
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (c *ConfigTx) AddApplicationCapability(capability string) error {
 
 // RemoveChannelCapability removes capability to the provided channel config.
 func (c *ConfigTx) RemoveChannelCapability(capability string) error {
-	capabilities, err := c.GetChannelCapabilities()
+	capabilities, err := c.ChannelCapabilities()
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (c *ConfigTx) RemoveChannelCapability(capability string) error {
 
 // RemoveOrdererCapability removes capability to the provided channel config.
 func (c *ConfigTx) RemoveOrdererCapability(capability string) error {
-	capabilities, err := c.GetOrdererCapabilities()
+	capabilities, err := c.OrdererCapabilities()
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (c *ConfigTx) RemoveOrdererCapability(capability string) error {
 
 // RemoveApplicationCapability removes capability to the provided channel config.
 func (c *ConfigTx) RemoveApplicationCapability(capability string) error {
-	capabilities, err := c.GetApplicationCapabilities()
+	capabilities, err := c.ApplicationCapabilities()
 	if err != nil {
 		return err
 	}
