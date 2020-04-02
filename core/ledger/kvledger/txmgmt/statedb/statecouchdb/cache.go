@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package statedb
+package statecouchdb
 
 import (
 	"github.com/VictoriaMetrics/fastcache"
@@ -15,22 +15,22 @@ var (
 	keySep = []byte{0x00}
 )
 
-// Cache holds both the system and user cache
-type Cache struct {
+// cache holds both the system and user cache
+type cache struct {
 	sysCache      *fastcache.Cache
 	usrCache      *fastcache.Cache
 	sysNamespaces []string
 }
 
-// NewCache creates a Cache. The cache consists of both system state cache (for lscc, _lifecycle)
+// newCache creates a Cache. The cache consists of both system state cache (for lscc, _lifecycle)
 // and user state cache (for all user deployed chaincodes). The size of the
 // system state cache is 64 MB, by default. The size of the user state cache, in terms of MB, is
 // specified via usrCacheSize parameter. Note that the maximum memory consumption of fastcache
 // would be in the multiples of 32 MB (due to 512 buckets & an equal number of 64 KB chunks per bucket).
 // If the usrCacheSizeMBs is not a multiple of 32 MB, the fastcache would round the size
 // to the next multiple of 32 MB.
-func NewCache(usrCacheSizeMBs int, sysNamespaces []string) *Cache {
-	cache := &Cache{}
+func newCache(usrCacheSizeMBs int, sysNamespaces []string) *cache {
+	cache := &cache{}
 	// By default, 64 MB is allocated for the system cache
 	cache.sysCache = fastcache.New(64 * 1024 * 1024)
 	cache.sysNamespaces = sysNamespaces
@@ -43,10 +43,10 @@ func NewCache(usrCacheSizeMBs int, sysNamespaces []string) *Cache {
 	return cache
 }
 
-// Enabled returns true if the cache is enabled for a given namespace.
+// enabled returns true if the cache is enabled for a given namespace.
 // Namespace can be of two types: system namespace (such as lscc) and user
 // namespace (all user's chaincode states).
-func (c *Cache) Enabled(namespace string) bool {
+func (c *cache) enabled(namespace string) bool {
 	for _, ns := range c.sysNamespaces {
 		if namespace == ns {
 			return true
@@ -55,9 +55,9 @@ func (c *Cache) Enabled(namespace string) bool {
 	return c.usrCache != nil
 }
 
-// GetState returns the value for a given namespace and key from
+// getState returns the value for a given namespace and key from
 // a cache associated with the chainID.
-func (c *Cache) GetState(chainID, namespace, key string) (*CacheValue, error) {
+func (c *cache) getState(chainID, namespace, key string) (*CacheValue, error) {
 	cache := c.getCache(namespace)
 	if cache == nil {
 		return nil, nil
@@ -77,7 +77,7 @@ func (c *Cache) GetState(chainID, namespace, key string) (*CacheValue, error) {
 }
 
 // PutState stores a given value in a cache associated with the chainID.
-func (c *Cache) PutState(chainID, namespace, key string, cacheValue *CacheValue) error {
+func (c *cache) putState(chainID, namespace, key string, cacheValue *CacheValue) error {
 	cache := c.getCache(namespace)
 	if cache == nil {
 		return nil
@@ -93,16 +93,16 @@ func (c *Cache) PutState(chainID, namespace, key string, cacheValue *CacheValue)
 }
 
 // CacheUpdates is a map from a namespace to a set of cache KV updates
-type CacheUpdates map[string]CacheKVs
+type cacheUpdates map[string]cacheKVs
 
 // CacheKVs is a map from a key to a cache value
-type CacheKVs map[string]*CacheValue
+type cacheKVs map[string]*CacheValue
 
 // Add adds the given cacheKVs to the CacheUpdates
-func (u CacheUpdates) Add(namespace string, ckvs CacheKVs) {
+func (u cacheUpdates) add(namespace string, ckvs cacheKVs) {
 	nsu, ok := u[namespace]
 	if !ok {
-		nsu = CacheKVs{}
+		nsu = cacheKVs{}
 		u[namespace] = nsu
 	}
 
@@ -113,7 +113,7 @@ func (u CacheUpdates) Add(namespace string, ckvs CacheKVs) {
 
 // UpdateStates updates only the existing entries in the cache associated with
 // the chainID.
-func (c *Cache) UpdateStates(chainID string, updates CacheUpdates) error {
+func (c *cache) UpdateStates(chainID string, updates cacheUpdates) error {
 	for ns, kvs := range updates {
 		cache := c.getCache(ns)
 		if cache == nil {
@@ -139,14 +139,14 @@ func (c *Cache) UpdateStates(chainID string, updates CacheUpdates) error {
 }
 
 // Reset removes all the items from the cache.
-func (c *Cache) Reset() {
+func (c *cache) Reset() {
 	c.sysCache.Reset()
 	if c.usrCache != nil {
 		c.usrCache.Reset()
 	}
 }
 
-func (c *Cache) getCache(namespace string) *fastcache.Cache {
+func (c *cache) getCache(namespace string) *fastcache.Cache {
 	for _, ns := range c.sysNamespaces {
 		if namespace == ns {
 			return c.sysCache

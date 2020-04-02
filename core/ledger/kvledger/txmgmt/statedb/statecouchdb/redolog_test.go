@@ -63,7 +63,7 @@ func TestRedoLogger(t *testing.T) {
 }
 
 func TestCouchdbRedoLogger(t *testing.T) {
-	testEnv.init(t, &statedb.Cache{})
+	testEnv.init(t, nil)
 	defer testEnv.cleanup()
 
 	// commitToRedologAndRestart - a helper function that commits directly to redologs and restart the statedb

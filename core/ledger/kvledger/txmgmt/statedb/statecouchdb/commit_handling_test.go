@@ -17,7 +17,7 @@ import (
 
 func TestGetRevision(t *testing.T) {
 	env := testEnv
-	env.init(t, &statedb.Cache{})
+	env.init(t, nil)
 	defer env.cleanup()
 
 	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-get-revisions")
@@ -84,7 +84,7 @@ func TestGetRevision(t *testing.T) {
 
 func TestBuildCommittersForNs(t *testing.T) {
 	env := testEnv
-	env.init(t, &statedb.Cache{})
+	env.init(t, nil)
 	defer env.cleanup()
 
 	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-build-committers-for-ns")
@@ -119,7 +119,7 @@ func TestBuildCommittersForNs(t *testing.T) {
 
 func TestBuildCommitters(t *testing.T) {
 	env := testEnv
-	env.init(t, &statedb.Cache{})
+	env.init(t, nil)
 	defer env.cleanup()
 
 	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-build-committers")
@@ -153,7 +153,7 @@ func TestBuildCommitters(t *testing.T) {
 
 func TestExecuteCommitter(t *testing.T) {
 	env := testEnv
-	env.init(t, &statedb.Cache{})
+	env.init(t, nil)
 	defer env.cleanup()
 
 	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-execute-committer")
@@ -180,14 +180,14 @@ func TestExecuteCommitter(t *testing.T) {
 			db:             committerDB,
 			batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDocKey1}},
 			namespace:      "ns",
-			cacheKVs:       make(statedb.CacheKVs),
+			cacheKVs:       make(cacheKVs),
 			cacheEnabled:   true,
 		},
 		{
 			db:             committerDB,
 			batchUpdateMap: map[string]*batchableDocument{"key2": {CouchDoc: *couchDocKey2}},
 			namespace:      "ns",
-			cacheKVs:       make(statedb.CacheKVs),
+			cacheKVs:       make(cacheKVs),
 			cacheEnabled:   true,
 		},
 	}
@@ -204,7 +204,7 @@ func TestExecuteCommitter(t *testing.T) {
 			db:             committerDB,
 			batchUpdateMap: map[string]*batchableDocument{},
 			namespace:      "ns",
-			cacheKVs:       make(statedb.CacheKVs),
+			cacheKVs:       make(cacheKVs),
 			cacheEnabled:   true,
 		},
 	}
@@ -214,7 +214,7 @@ func TestExecuteCommitter(t *testing.T) {
 
 func TestCommitUpdates(t *testing.T) {
 	env := testEnv
-	env.init(t, &statedb.Cache{})
+	env.init(t, nil)
 	defer env.cleanup()
 
 	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-commitupdates")
@@ -248,7 +248,7 @@ func TestCommitUpdates(t *testing.T) {
 				db:             committerDB,
 				batchUpdateMap: map[string]*batchableDocument{},
 				namespace:      "ns",
-				cacheKVs:       make(statedb.CacheKVs),
+				cacheKVs:       make(cacheKVs),
 				cacheEnabled:   true,
 			},
 			expectedErr: "error handling CouchDB request. Error:bad_request,  Status Code:400,  Reason:`docs` parameter must be an array.",
@@ -258,7 +258,7 @@ func TestCommitUpdates(t *testing.T) {
 				db:             committerDB,
 				batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDoc}},
 				namespace:      "ns",
-				cacheKVs:       make(statedb.CacheKVs),
+				cacheKVs:       make(cacheKVs),
 				cacheEnabled:   true,
 			},
 			expectedErr: "",
@@ -268,7 +268,7 @@ func TestCommitUpdates(t *testing.T) {
 				db:             committerDB,
 				batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDoc}},
 				namespace:      "ns",
-				cacheKVs:       make(statedb.CacheKVs),
+				cacheKVs:       make(cacheKVs),
 				cacheEnabled:   true,
 			},
 			expectedErr: "error saving document ID: key1. Error: conflict,  Reason: Document update conflict.: error handling CouchDB request. Error:conflict,  Status Code:409,  Reason:Document update conflict.",
@@ -291,7 +291,7 @@ func TestCommitUpdates(t *testing.T) {
 		db:             committerDB,
 		batchUpdateMap: map[string]*batchableDocument{"key2": {CouchDoc: *couchDoc}},
 		namespace:      "ns",
-		cacheKVs:       statedb.CacheKVs{"key2": &statedb.CacheValue{}},
+		cacheKVs:       cacheKVs{"key2": &CacheValue{}},
 		cacheEnabled:   true,
 	}
 
