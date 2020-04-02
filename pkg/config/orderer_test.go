@@ -9,12 +9,12 @@ package config
 import (
 	"bytes"
 	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	ob "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
 	. "github.com/onsi/gomega"
@@ -26,10 +26,735 @@ func TestNewOrdererGroup(t *testing.T) {
 	tests := []struct {
 		ordererType           string
 		numOrdererGroupValues int
+		expectedConfigJSONGen func(Orderer) string
 	}{
-		{ordererType: ConsensusTypeSolo, numOrdererGroupValues: 5},
-		{ordererType: ConsensusTypeEtcdRaft, numOrdererGroupValues: 5},
-		{ordererType: ConsensusTypeKafka, numOrdererGroupValues: 6},
+		{
+			ordererType:           ConsensusTypeSolo,
+			numOrdererGroupValues: 5,
+			expectedConfigJSONGen: func(o Orderer) string {
+				certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(t, o.Organizations[0].MSP)
+				return fmt.Sprintf(`{
+	"groups": {
+		"OrdererOrg": {
+			"groups": {},
+			"mod_policy": "Admins",
+			"policies": {
+				"Admins": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "MAJORITY",
+							"sub_policy": "Admins"
+						}
+					},
+					"version": "0"
+				},
+				"Endorsement": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "MAJORITY",
+							"sub_policy": "Endorsement"
+						}
+					},
+					"version": "0"
+				},
+				"Readers": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "ANY",
+							"sub_policy": "Readers"
+						}
+					},
+					"version": "0"
+				},
+				"Writers": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "ANY",
+							"sub_policy": "Writers"
+						}
+					},
+					"version": "0"
+				}
+			},
+			"values": {
+				"Endpoints": {
+					"mod_policy": "Admins",
+					"value": {
+						"addresses": [
+							"localhost:123"
+						]
+					},
+					"version": "0"
+				},
+				"MSP": {
+					"mod_policy": "Admins",
+					"value": {
+						"config": {
+							"admins": [
+								"%[1]s"
+							],
+							"crypto_config": {
+								"identity_identifier_hash_function": "SHA256",
+								"signature_hash_family": "SHA3"
+							},
+							"fabric_node_ous": {
+								"admin_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"client_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"enable": false,
+								"orderer_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"peer_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								}
+							},
+							"intermediate_certs": [
+								"%[1]s"
+							],
+							"name": "MSPID",
+							"organizational_unit_identifiers": [
+								{
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								}
+							],
+							"revocation_list": [
+								"%[2]s"
+							],
+							"root_certs": [
+								"%[1]s"
+							],
+							"signing_identity": {
+								"private_signer": {
+									"key_identifier": "SKI-1",
+									"key_material": "%[3]s"
+								},
+								"public_signer": "%[1]s"
+							},
+							"tls_intermediate_certs": [
+								"%[1]s"
+							],
+							"tls_root_certs": [
+								"%[1]s"
+							]
+						},
+						"type": 0
+					},
+					"version": "0"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"mod_policy": "Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Admins"
+				}
+			},
+			"version": "0"
+		},
+		"BlockValidation": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		},
+		"Readers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Readers"
+				}
+			},
+			"version": "0"
+		},
+		"Writers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {
+		"BatchSize": {
+			"mod_policy": "Admins",
+			"value": {
+				"absolute_max_bytes": 100,
+				"max_message_count": 100,
+				"preferred_max_bytes": 100
+			},
+			"version": "0"
+		},
+		"BatchTimeout": {
+			"mod_policy": "Admins",
+			"value": {
+				"timeout": "0s"
+			},
+			"version": "0"
+		},
+		"Capabilities": {
+			"mod_policy": "Admins",
+			"value": {
+				"capabilities": {
+					"V1_3": {}
+				}
+			},
+			"version": "0"
+		},
+		"ChannelRestrictions": {
+			"mod_policy": "Admins",
+			"value": {
+				"max_count": "0"
+			},
+			"version": "0"
+		},
+		"ConsensusType": {
+			"mod_policy": "Admins",
+			"value": {
+				"metadata": null,
+				"state": "STATE_NORMAL",
+				"type": "solo"
+			},
+			"version": "0"
+		}
+	},
+	"version": "0"
+}
+`, certBase64, crlBase64, pkBase64)
+			},
+		},
+		{
+			ordererType:           ConsensusTypeEtcdRaft,
+			numOrdererGroupValues: 5,
+			expectedConfigJSONGen: func(o Orderer) string {
+				certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(t, o.Organizations[0].MSP)
+				etcdRaftCert := o.EtcdRaft.Consenters[0].ClientTLSCert
+				etcdRaftCertBase64 := base64.StdEncoding.EncodeToString(pemEncodeX509Certificate(etcdRaftCert))
+				return fmt.Sprintf(`{
+	"groups": {
+		"OrdererOrg": {
+			"groups": {},
+			"mod_policy": "Admins",
+			"policies": {
+				"Admins": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "MAJORITY",
+							"sub_policy": "Admins"
+						}
+					},
+					"version": "0"
+				},
+				"Endorsement": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "MAJORITY",
+							"sub_policy": "Endorsement"
+						}
+					},
+					"version": "0"
+				},
+				"Readers": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "ANY",
+							"sub_policy": "Readers"
+						}
+					},
+					"version": "0"
+				},
+				"Writers": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "ANY",
+							"sub_policy": "Writers"
+						}
+					},
+					"version": "0"
+				}
+			},
+			"values": {
+				"Endpoints": {
+					"mod_policy": "Admins",
+					"value": {
+						"addresses": [
+							"localhost:123"
+						]
+					},
+					"version": "0"
+				},
+				"MSP": {
+					"mod_policy": "Admins",
+					"value": {
+						"config": {
+							"admins": [
+								"%[1]s"
+							],
+							"crypto_config": {
+								"identity_identifier_hash_function": "SHA256",
+								"signature_hash_family": "SHA3"
+							},
+							"fabric_node_ous": {
+								"admin_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"client_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"enable": false,
+								"orderer_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"peer_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								}
+							},
+							"intermediate_certs": [
+								"%[1]s"
+							],
+							"name": "MSPID",
+							"organizational_unit_identifiers": [
+								{
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								}
+							],
+							"revocation_list": [
+								"%[2]s"
+							],
+							"root_certs": [
+								"%[1]s"
+							],
+							"signing_identity": {
+								"private_signer": {
+									"key_identifier": "SKI-1",
+									"key_material": "%[3]s"
+								},
+								"public_signer": "%[1]s"
+							},
+							"tls_intermediate_certs": [
+								"%[1]s"
+							],
+							"tls_root_certs": [
+								"%[1]s"
+							]
+						},
+						"type": 0
+					},
+					"version": "0"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"mod_policy": "Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Admins"
+				}
+			},
+			"version": "0"
+		},
+		"BlockValidation": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		},
+		"Readers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Readers"
+				}
+			},
+			"version": "0"
+		},
+		"Writers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {
+		"BatchSize": {
+			"mod_policy": "Admins",
+			"value": {
+				"absolute_max_bytes": 100,
+				"max_message_count": 100,
+				"preferred_max_bytes": 100
+			},
+			"version": "0"
+		},
+		"BatchTimeout": {
+			"mod_policy": "Admins",
+			"value": {
+				"timeout": "0s"
+			},
+			"version": "0"
+		},
+		"Capabilities": {
+			"mod_policy": "Admins",
+			"value": {
+				"capabilities": {
+					"V1_3": {}
+				}
+			},
+			"version": "0"
+		},
+		"ChannelRestrictions": {
+			"mod_policy": "Admins",
+			"value": {
+				"max_count": "0"
+			},
+			"version": "0"
+		},
+		"ConsensusType": {
+			"mod_policy": "Admins",
+			"value": {
+				"metadata": {
+					"consenters": [
+						{
+							"client_tls_cert": "%[4]s",
+							"host": "node-1.example.com",
+							"port": 7050,
+							"server_tls_cert": "%[4]s"
+						},
+						{
+							"client_tls_cert": "%[4]s",
+							"host": "node-2.example.com",
+							"port": 7050,
+							"server_tls_cert": "%[4]s"
+						},
+						{
+							"client_tls_cert": "%[4]s",
+							"host": "node-3.example.com",
+							"port": 7050,
+							"server_tls_cert": "%[4]s"
+						}
+					],
+					"options": {
+						"election_tick": 0,
+						"heartbeat_tick": 0,
+						"max_inflight_blocks": 0,
+						"snapshot_interval_size": 0,
+						"tick_interval": ""
+					}
+				},
+				"state": "STATE_NORMAL",
+				"type": "etcdraft"
+			},
+			"version": "0"
+		}
+	},
+	"version": "0"
+}
+`, certBase64, crlBase64, pkBase64, etcdRaftCertBase64)
+			},
+		},
+		{
+			ordererType:           ConsensusTypeKafka,
+			numOrdererGroupValues: 6,
+			expectedConfigJSONGen: func(o Orderer) string {
+				certBase64, pkBase64, crlBase64 := certPrivKeyCRLBase64(t, o.Organizations[0].MSP)
+				return fmt.Sprintf(`{
+	"groups": {
+		"OrdererOrg": {
+			"groups": {},
+			"mod_policy": "Admins",
+			"policies": {
+				"Admins": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "MAJORITY",
+							"sub_policy": "Admins"
+						}
+					},
+					"version": "0"
+				},
+				"Endorsement": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "MAJORITY",
+							"sub_policy": "Endorsement"
+						}
+					},
+					"version": "0"
+				},
+				"Readers": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "ANY",
+							"sub_policy": "Readers"
+						}
+					},
+					"version": "0"
+				},
+				"Writers": {
+					"mod_policy": "Admins",
+					"policy": {
+						"type": 3,
+						"value": {
+							"rule": "ANY",
+							"sub_policy": "Writers"
+						}
+					},
+					"version": "0"
+				}
+			},
+			"values": {
+				"Endpoints": {
+					"mod_policy": "Admins",
+					"value": {
+						"addresses": [
+							"localhost:123"
+						]
+					},
+					"version": "0"
+				},
+				"MSP": {
+					"mod_policy": "Admins",
+					"value": {
+						"config": {
+							"admins": [
+								"%[1]s"
+							],
+							"crypto_config": {
+								"identity_identifier_hash_function": "SHA256",
+								"signature_hash_family": "SHA3"
+							},
+							"fabric_node_ous": {
+								"admin_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"client_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"enable": false,
+								"orderer_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								},
+								"peer_ou_identifier": {
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								}
+							},
+							"intermediate_certs": [
+								"%[1]s"
+							],
+							"name": "MSPID",
+							"organizational_unit_identifiers": [
+								{
+									"certificate": "%[1]s",
+									"organizational_unit_identifier": "OUID"
+								}
+							],
+							"revocation_list": [
+								"%[2]s"
+							],
+							"root_certs": [
+								"%[1]s"
+							],
+							"signing_identity": {
+								"private_signer": {
+									"key_identifier": "SKI-1",
+									"key_material": "%[3]s"
+								},
+								"public_signer": "%[1]s"
+							},
+							"tls_intermediate_certs": [
+								"%[1]s"
+							],
+							"tls_root_certs": [
+								"%[1]s"
+							]
+						},
+						"type": 0
+					},
+					"version": "0"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"mod_policy": "Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Admins"
+				}
+			},
+			"version": "0"
+		},
+		"BlockValidation": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		},
+		"Readers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Readers"
+				}
+			},
+			"version": "0"
+		},
+		"Writers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {
+		"BatchSize": {
+			"mod_policy": "Admins",
+			"value": {
+				"absolute_max_bytes": 100,
+				"max_message_count": 100,
+				"preferred_max_bytes": 100
+			},
+			"version": "0"
+		},
+		"BatchTimeout": {
+			"mod_policy": "Admins",
+			"value": {
+				"timeout": "0s"
+			},
+			"version": "0"
+		},
+		"Capabilities": {
+			"mod_policy": "Admins",
+			"value": {
+				"capabilities": {
+					"V1_3": {}
+				}
+			},
+			"version": "0"
+		},
+		"ChannelRestrictions": {
+			"mod_policy": "Admins",
+			"value": {
+				"max_count": "0"
+			},
+			"version": "0"
+		},
+		"ConsensusType": {
+			"mod_policy": "Admins",
+			"value": {
+				"metadata": null,
+				"state": "STATE_NORMAL",
+				"type": "kafka"
+			},
+			"version": "0"
+		},
+		"KafkaBrokers": {
+			"mod_policy": "Admins",
+			"value": {
+				"brokers": [
+					"broker1",
+					"broker2"
+				]
+			},
+			"version": "0"
+		}
+	},
+	"version": "0"
+}
+`, certBase64, crlBase64, pkBase64)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -43,36 +768,12 @@ func TestNewOrdererGroup(t *testing.T) {
 
 			ordererGroup, err := newOrdererGroup(ordererConf)
 			gt.Expect(err).NotTo(HaveOccurred())
+			expectedConfigJSON := tt.expectedConfigJSONGen(ordererConf)
 
-			// OrdererGroup checks
-			gt.Expect(len(ordererGroup.Groups)).To(Equal(1))
-			gt.Expect(ordererGroup.Groups["OrdererOrg"]).NotTo(BeNil())
-			gt.Expect(len(ordererGroup.Values)).To(Equal(tt.numOrdererGroupValues))
-			gt.Expect(ordererGroup.Values[BatchSizeKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Values[BatchTimeoutKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Values[ChannelRestrictionsKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Values[CapabilitiesKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Values[ConsensusTypeKey]).NotTo(BeNil())
-			var consensusType ob.ConsensusType
-			err = proto.Unmarshal(ordererGroup.Values[ConsensusTypeKey].Value, &consensusType)
+			buf := bytes.Buffer{}
+			err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: ordererGroup})
 			gt.Expect(err).NotTo(HaveOccurred())
-			gt.Expect(consensusType.Type).To(Equal(tt.ordererType))
-			gt.Expect(len(ordererGroup.Policies)).To(Equal(4))
-			gt.Expect(ordererGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Policies[ReadersPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Policies[WritersPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Policies[BlockValidationPolicyKey]).NotTo(BeNil())
-
-			// OrdererOrgGroup checks
-			gt.Expect(len(ordererGroup.Groups["OrdererOrg"].Groups)).To(Equal(0))
-			gt.Expect(len(ordererGroup.Groups["OrdererOrg"].Values)).To(Equal(2))
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Values[MSPKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Values[EndpointsKey]).NotTo(BeNil())
-			gt.Expect(len(ordererGroup.Groups["OrdererOrg"].Policies)).To(Equal(4))
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Policies[WritersPolicyKey]).NotTo(BeNil())
-			gt.Expect(ordererGroup.Groups["OrdererOrg"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+			gt.Expect(buf.String()).To(Equal(expectedConfigJSON))
 		})
 	}
 }

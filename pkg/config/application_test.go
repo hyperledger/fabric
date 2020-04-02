@@ -26,28 +26,82 @@ func TestNewApplicationGroup(t *testing.T) {
 
 	application := baseApplication(t)
 
+	expectedApplicationGroup := `
+{
+	"groups": {
+		"Org1": {
+			"groups": {},
+			"mod_policy": "",
+			"policies": {},
+			"values": {},
+			"version": "0"
+		},
+		"Org2": {
+			"groups": {},
+			"mod_policy": "",
+			"policies": {},
+			"values": {},
+			"version": "0"
+		}
+	},
+	"mod_policy": "Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Admins"
+				}
+			},
+			"version": "0"
+		},
+		"Readers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Readers"
+				}
+			},
+			"version": "0"
+		},
+		"Writers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {
+		"ACLs": {
+			"mod_policy": "Admins",
+			"value": "CgwKBGFjbDESBAoCaGk=",
+			"version": "0"
+		},
+		"Capabilities": {
+			"mod_policy": "Admins",
+			"value": "CggKBFYxXzMSAA==",
+			"version": "0"
+		}
+	},
+	"version": "0"
+}`
+
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	// ApplicationGroup checks
-	gt.Expect(len(applicationGroup.Groups)).To(Equal(2))
-	gt.Expect(applicationGroup.Groups["Org1"]).NotTo(BeNil())
-	gt.Expect(applicationGroup.Groups["Org2"]).NotTo(BeNil())
-	gt.Expect(len(applicationGroup.Values)).To(Equal(2))
-	gt.Expect(applicationGroup.Values[ACLsKey]).NotTo(BeNil())
-	gt.Expect(applicationGroup.Values[CapabilitiesKey]).NotTo(BeNil())
-	gt.Expect(len(applicationGroup.Policies)).To(Equal(3))
-	gt.Expect(applicationGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(applicationGroup.Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(applicationGroup.Policies[WritersPolicyKey]).NotTo(BeNil())
-
-	// ApplicationOrgGroup checks
-	gt.Expect(len(applicationGroup.Groups["Org1"].Groups)).To(Equal(0))
-	gt.Expect(len(applicationGroup.Groups["Org1"].Values)).To(Equal(0))
-	gt.Expect(len(applicationGroup.Groups["Org1"].Policies)).To(Equal(0))
-	gt.Expect(len(applicationGroup.Groups["Org2"].Groups)).To(Equal(0))
-	gt.Expect(len(applicationGroup.Groups["Org2"].Values)).To(Equal(0))
-	gt.Expect(len(applicationGroup.Groups["Org2"].Policies)).To(Equal(0))
+	expectedApplication := &cb.ConfigGroup{}
+	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedApplicationGroup), expectedApplication)
+	gt.Expect(err).ToNot(HaveOccurred())
+	gt.Expect(applicationGroup).To(Equal(expectedApplication))
 }
 
 func TestNewApplicationGroupFailure(t *testing.T) {
