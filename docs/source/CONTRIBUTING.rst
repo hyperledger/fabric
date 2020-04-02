@@ -144,20 +144,16 @@ Getting the support of three or more of the Hyperledger Fabric maintainers for
 the new feature will greatly enhance the probability that the feature's related
 PRs will be included in a subsequent release.
 
-Maintainers meeting
+Contributor meeting
 ~~~~~~~~~~~~~~~~~~~
 
-The maintainers hold a bi-weekly meeting every other Wednesday at 9 am ET
-on `Zoom <https://zoom.us/my/hyperledger.community>`__. Please see the
-`community calendar <https://wiki.hyperledger.org/community/calendar-public-meetings>`__
-for details.
-
-The purpose of the maintainers meeting is to plan for and review the progress of
-releases, and to discuss the technical and operational direction of the project
+The maintainers hold regular contributors meetings.
+The purpose of the contributors meeting is to plan for and review the progress of
+releases and contributions, and to discuss the technical and operational direction of the project
 and sub-projects.
 
 Please see the
-`wiki <https://wiki.hyperledger.org/display/fabric/Maintainer+Meetings>`__
+`wiki <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__
 for maintainer meeting details.
 
 New feature/enhancement proposals as described above should be presented to a
@@ -218,7 +214,7 @@ the defect fixed.
           `security bug reporting process <https://wiki.hyperledger.org/display/HYP/Defect+Response>`__.
 
 If it has not been previously reported, you may either submit a PR with a
-well documented commit message describing the defect and the fix, or you 
+well documented commit message describing the defect and the fix, or you
 may create a new JIRA. Please try to provide
 sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
