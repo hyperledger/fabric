@@ -170,7 +170,7 @@ releases, and to discuss the technical and operational direction of the project
 and sub-projects.
 
 Please see the
-`wiki <https://wiki.hyperledger.org/display/fabric/Maintainer+Meetings>`__
+`wiki <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__
 for maintainer meeting details.
 
 New feature/enhancement proposals as described above should be presented to a
