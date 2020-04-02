@@ -152,16 +152,16 @@ Getting the support of three or more of the Hyperledger Fabric maintainers for
 the new feature will greatly enhance the probability that the feature's related
 PRs will be included in a subsequent release.
 
-Maintainers meeting
+Contributor meeting
 ~~~~~~~~~~~~~~~~~~~
 
-The maintainers hold regular maintainers meetings.
-The purpose of the maintainers meeting is to plan for and review the progress of
-releases, and to discuss the technical and operational direction of the project
+The maintainers hold regular contributors meetings.
+The purpose of the contributors meeting is to plan for and review the progress of
+releases and contributions, and to discuss the technical and operational direction of the project
 and sub-projects.
 
 Please see the
-`wiki <https://wiki.hyperledger.org/display/fabric/Maintainer+Meetings>`__
+`wiki <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__
 for maintainer meeting details.
 
 New feature/enhancement proposals as described above should be presented to a
