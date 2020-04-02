@@ -21,6 +21,19 @@ type Consortium struct {
 	Organizations []Organization
 }
 
+// RemoveConsortium remove a consortium from a channel configuration
+func (c *ConfigTx) RemoveConsortium(consortiumName string) error {
+	consortiumGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups
+	_, ok := consortiumGroup[consortiumName]
+	if !ok {
+		return fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
+	}
+
+	delete(consortiumGroup, consortiumName)
+
+	return nil
+}
+
 // AddOrgToConsortium adds an org definition to a named consortium in a given
 // channel configuration.
 func (c *ConfigTx) AddOrgToConsortium(org Organization, consortium string) error {
