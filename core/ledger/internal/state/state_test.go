@@ -4,15 +4,146 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package statedb
+package state
 
 import (
+	"fmt"
+	"os"
 	"sort"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	exitCode := m.Run()
+	os.Exit(exitCode)
+}
+
+func TestNewPubHashPvtUpdateBatch(t *testing.T) {
+	updates := NewPubHashPvtUpdateBatch()
+	require.NotNil(t, updates.PubUpdates)
+	require.NotNil(t, updates.HashUpdates)
+	require.NotNil(t, updates.PvtUpdates)
+}
+
+func TestBatch(t *testing.T) {
+	batch := NsCollUpdates(make(map[string]NsBatch))
+	v := version.NewHeight(1, 1)
+	for i := 0; i < 5; i++ {
+		for j := 0; j < 5; j++ {
+			for k := 0; k < 5; k++ {
+				batch.Put(fmt.Sprintf("ns-%d", i), fmt.Sprintf("collection-%d", j), fmt.Sprintf("key-%d", k),
+					[]byte(fmt.Sprintf("value-%d-%d-%d", i, j, k)), v)
+			}
+		}
+	}
+	for i := 0; i < 5; i++ {
+		for j := 0; j < 5; j++ {
+			for k := 0; k < 5; k++ {
+				vv := batch.Get(fmt.Sprintf("ns-%d", i), fmt.Sprintf("collection-%d", j), fmt.Sprintf("key-%d", k))
+				require.NotNil(t, vv)
+				require.Equal(t,
+					&VersionedValue{Value: []byte(fmt.Sprintf("value-%d-%d-%d", i, j, k)), Version: v},
+					vv)
+			}
+		}
+	}
+	require.Nil(t, batch.Get("ns-1", "collection-1", "key-5"))
+	require.Nil(t, batch.Get("ns-1", "collection-5", "key-1"))
+	require.Nil(t, batch.Get("ns-5", "collection-1", "key-1"))
+
+}
+
+func TestHashBatchContains(t *testing.T) {
+	batch := NewHashedUpdateBatch()
+	batch.Put("ns1", "coll1", []byte("key1"), []byte("val1"), version.NewHeight(1, 1))
+	require.True(t, batch.Contains("ns1", "coll1", []byte("key1")))
+	require.False(t, batch.Contains("ns1", "coll1", []byte("key2")))
+	require.False(t, batch.Contains("ns1", "coll2", []byte("key1")))
+	require.False(t, batch.Contains("ns2", "coll1", []byte("key1")))
+
+	batch.Delete("ns1", "coll1", []byte("deleteKey"), version.NewHeight(1, 1))
+	require.True(t, batch.Contains("ns1", "coll1", []byte("deleteKey")))
+	require.False(t, batch.Contains("ns1", "coll1", []byte("deleteKey1")))
+	require.False(t, batch.Contains("ns1", "coll2", []byte("deleteKey")))
+	require.False(t, batch.Contains("ns2", "coll1", []byte("deleteKey")))
+
+	batch.Put("ns2", "coll2", []byte("key1"), []byte("val1"), version.NewHeight(1, 1))
+	batch.Put("ns2", "coll3", []byte("key1"), []byte("val1"), version.NewHeight(1, 1))
+	updatedNamespace := batch.NsCollUpdates["ns2"].GetUpdatedCollections()
+	expectedNamespaces := []string{"coll2", "coll3"}
+	require.ElementsMatch(t, expectedNamespaces, updatedNamespace)
+}
+
+func TestGetUpdatedNsColls(t *testing.T) {
+	batch := NewHashedUpdateBatch()
+	batch.Put("ns1", "coll2", []byte("key1"), []byte("val1"), version.NewHeight(1, 1))
+	batch.Put("ns2", "coll2", []byte("key1"), []byte("val1"), version.NewHeight(1, 1))
+	batch.Put("ns2", "coll3", []byte("key1"), []byte("val1"), version.NewHeight(1, 1))
+
+	updatedNs := batch.NsCollUpdates.GetUpdatedNamespaces()
+	expectedNs := []string{"ns1", "ns2"}
+	require.ElementsMatch(t, expectedNs, updatedNs)
+
+	updatedNs2Colls := batch.NsCollUpdates["ns2"].GetUpdatedCollections()
+	expectedNs2Colls := []string{"coll2", "coll3"}
+	require.ElementsMatch(t, expectedNs2Colls, updatedNs2Colls)
+
+	updatedNs2Coll2Updates := batch.NsCollUpdates["ns2"].GetCollectionUpdates("coll2")
+	expectedNs2Coll2Updates := map[string]*VersionedValue{
+		"key1": {
+			Value:   []byte("val1"),
+			Version: version.NewHeight(1, 1),
+		},
+	}
+	require.Equal(t, expectedNs2Coll2Updates, updatedNs2Coll2Updates)
+}
+
+func TestCompositeKeyMap(t *testing.T) {
+	b := NewPvtUpdateBatch()
+	b.Put("ns1", "coll1", "key1", []byte("testVal1"), nil)
+	b.Delete("ns1", "coll2", "key2", nil)
+	b.Put("ns2", "coll1", "key1", []byte("testVal3"), nil)
+	b.Put("ns2", "coll2", "key2", []byte("testVal4"), nil)
+	m := b.ToCompositeKeyMap()
+	require.Len(t, m, 4)
+	vv, ok := m[PvtdataCompositeKey{"ns1", "coll1", "key1"}]
+	require.True(t, ok)
+	require.Equal(t, []byte("testVal1"), vv.Value)
+	vv, ok = m[PvtdataCompositeKey{"ns1", "coll2", "key2"}]
+	require.Nil(t, vv.Value)
+	require.True(t, ok)
+	_, ok = m[PvtdataCompositeKey{"ns2", "coll1", "key1"}]
+	require.True(t, ok)
+	_, ok = m[PvtdataCompositeKey{"ns2", "coll2", "key2"}]
+	require.True(t, ok)
+	_, ok = m[PvtdataCompositeKey{"ns2", "coll1", "key8888"}]
+	require.False(t, ok)
+}
+
+func TestHashToCompositeKeyMap(t *testing.T) {
+	b := NewHashedUpdateBatch()
+	b.Put("ns1", "coll1", []byte("key1"), []byte("testVal1"), nil)
+	b.Delete("ns1", "coll2", []byte("key2"), nil)
+	b.Put("ns2", "coll1", []byte("key1"), []byte("testVal3"), nil)
+	b.Put("ns2", "coll2", []byte("key2"), []byte("testVal4"), nil)
+	m := b.ToCompositeKeyMap()
+	require.Len(t, m, 4)
+	vv, ok := m[HashedCompositeKey{"ns1", "coll1", "key1"}]
+	require.True(t, ok)
+	require.Equal(t, []byte("testVal1"), vv.Value)
+	vv, ok = m[HashedCompositeKey{"ns1", "coll2", "key2"}]
+	require.Nil(t, vv.Value)
+	require.True(t, ok)
+	_, ok = m[HashedCompositeKey{"ns2", "coll1", "key1"}]
+	require.True(t, ok)
+	_, ok = m[HashedCompositeKey{"ns2", "coll2", "key2"}]
+	require.True(t, ok)
+	_, ok = m[HashedCompositeKey{"ns2", "coll1", "key8888"}]
+	require.False(t, ok)
+}
 
 func TestPanic(t *testing.T) {
 	defer func() {
@@ -33,29 +164,29 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 
 	//Get() should return above inserted <k,v> pair
 	actualVersionedValue := batch.Get("ns1", "key1")
-	assert.Equal(t, &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, actualVersionedValue)
+	require.Equal(t, &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, actualVersionedValue)
 	//Exists() should return false as key2 does not exist
 	actualResult := batch.Exists("ns1", "key2")
 	expectedResult := false
-	assert.Equal(t, expectedResult, actualResult)
+	require.Equal(t, expectedResult, actualResult)
 
 	//Exists() should return false as ns3 does not exist
 	actualResult = batch.Exists("ns3", "key2")
 	expectedResult = false
-	assert.Equal(t, expectedResult, actualResult)
+	require.Equal(t, expectedResult, actualResult)
 
 	//Get() should return nil as key2 does not exist
 	actualVersionedValue = batch.Get("ns1", "key2")
-	assert.Nil(t, actualVersionedValue)
+	require.Nil(t, actualVersionedValue)
 	//Get() should return nil as ns3 does not exist
 	actualVersionedValue = batch.Get("ns3", "key2")
-	assert.Nil(t, actualVersionedValue)
+	require.Nil(t, actualVersionedValue)
 
 	batch.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
 	//Exists() should return true as key2 exists
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
-	assert.Equal(t, expectedResult, actualResult)
+	require.Equal(t, expectedResult, actualResult)
 
 	//GetUpdatedNamespaces should return 3 namespaces
 	batch.Put("ns2", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -63,17 +194,17 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	actualNamespaces := batch.GetUpdatedNamespaces()
 	sort.Strings(actualNamespaces)
 	expectedNamespaces := []string{"ns1", "ns2", "ns3"}
-	assert.Equal(t, expectedNamespaces, actualNamespaces)
+	require.Equal(t, expectedNamespaces, actualNamespaces)
 
 	//GetUpdates should return two VersionedValues for the namespace ns1
 	expectedUpdates := make(map[string]*VersionedValue)
 	expectedUpdates["key1"] = &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
 	expectedUpdates["key2"] = &VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
 	actualUpdates := batch.GetUpdates("ns1")
-	assert.Equal(t, expectedUpdates, actualUpdates)
+	require.Equal(t, expectedUpdates, actualUpdates)
 
 	actualUpdates = batch.GetUpdates("ns4")
-	assert.Nil(t, actualUpdates)
+	require.Nil(t, actualUpdates)
 
 	//Delete the above inserted <k,v> pair
 	batch.Delete("ns1", "key2", version.NewHeight(1, 2))
@@ -81,7 +212,7 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	//Exists() should return true iff the key has action(Put/Delete) in this batch
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
-	assert.Equal(t, expectedResult, actualResult)
+	require.Equal(t, expectedResult, actualResult)
 
 }
 
@@ -117,11 +248,11 @@ func TestUpdateBatchIterator(t *testing.T) {
 func checkItrResults(t *testing.T, itr QueryResultsIterator, expectedResults []*VersionedKV) {
 	for i := 0; i < len(expectedResults); i++ {
 		res, _ := itr.Next()
-		assert.Equal(t, expectedResults[i], res)
+		require.Equal(t, expectedResults[i], res)
 	}
 	lastRes, err := itr.Next()
-	assert.NoError(t, err)
-	assert.Nil(t, lastRes)
+	require.NoError(t, err)
+	require.Nil(t, lastRes)
 	itr.Close()
 }
 
@@ -152,5 +283,10 @@ func TestMergeUpdateBatch(t *testing.T) {
 	expectedBatch.Put("ns1", "key4", []byte("batch2_value4"), version.NewHeight(6, 6))
 	expectedBatch.Delete("ns1", "key5", version.NewHeight(7, 7))
 	expectedBatch.Put("ns2", "key6", []byte("batch2_value6"), version.NewHeight(8, 8))
-	assert.Equal(t, expectedBatch, batch1)
+	require.Equal(t, expectedBatch, batch1)
+}
+
+func TestVersionedValueDelete(t *testing.T) {
+	vv := &VersionedValue{}
+	require.True(t, vv.IsDelete())
 }

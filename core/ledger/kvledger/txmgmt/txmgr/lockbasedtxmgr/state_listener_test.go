@@ -13,8 +13,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protoutil"
@@ -40,7 +40,7 @@ func TestStateListener(t *testing.T) {
 
 	// Mimic commit of block 1 with updates in namespaces ns1, ns2, and ns3
 	// This should cause callback to ml1 and ml2 but not to ml3
-	sampleBatch := privacyenabledstate.NewUpdateBatch()
+	sampleBatch := state.NewPubHashPvtUpdateBatch()
 	sampleBatch.PubUpdates.Put("ns1", "key1_1", []byte("value1_1"), version.NewHeight(1, 1))
 	sampleBatch.PubUpdates.Put("ns1", "key1_2", []byte("value1_2"), version.NewHeight(1, 2))
 	sampleBatch.PubUpdates.Put("ns2", "key2_1", []byte("value2_1"), version.NewHeight(1, 3))
@@ -91,7 +91,7 @@ func TestStateListener(t *testing.T) {
 
 	// Mimic commit of block 2 with updates only in ns4 namespace
 	// This should cause callback only to ml3
-	sampleBatch = privacyenabledstate.NewUpdateBatch()
+	sampleBatch = state.NewPubHashPvtUpdateBatch()
 	sampleBatch.PubUpdates.Put("ns4", "key4_1", []byte("value4_1"), version.NewHeight(2, 1))
 	sampleBatch.HashUpdates.Put("ns4", "coll1", []byte("key-hash-1"), []byte("value-hash-1"), version.NewHeight(2, 2))
 	sampleBatch.HashUpdates.Put("ns4", "coll1", []byte("key-hash-2"), []byte("value-hash-2"), version.NewHeight(2, 2))

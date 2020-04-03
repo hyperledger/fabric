@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/internal/rangequery"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/pkg/errors"
@@ -90,7 +91,7 @@ func (vdb *versionedDB) BytesKeySupported() bool {
 }
 
 // GetState implements method in VersionedDB interface
-func (vdb *versionedDB) GetState(namespace string, key string) (*statedb.VersionedValue, error) {
+func (vdb *versionedDB) GetState(namespace string, key string) (*state.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
 	dbVal, err := vdb.db.Get(encodeDataKey(namespace, key))
 	if err != nil {
@@ -115,8 +116,8 @@ func (vdb *versionedDB) GetVersion(namespace string, key string) (*version.Heigh
 }
 
 // GetStateMultipleKeys implements method in VersionedDB interface
-func (vdb *versionedDB) GetStateMultipleKeys(namespace string, keys []string) ([]*statedb.VersionedValue, error) {
-	vals := make([]*statedb.VersionedValue, len(keys))
+func (vdb *versionedDB) GetStateMultipleKeys(namespace string, keys []string) ([]*state.VersionedValue, error) {
+	vals := make([]*state.VersionedValue, len(keys))
 	for i, key := range keys {
 		val, err := vdb.GetState(namespace, key)
 		if err != nil {
@@ -130,13 +131,13 @@ func (vdb *versionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // GetStateRangeScanIterator implements method in VersionedDB interface
 // startKey is inclusive
 // endKey is exclusive
-func (vdb *versionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
+func (vdb *versionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (state.ResultsIterator, error) {
 	return vdb.GetStateRangeScanIteratorWithOptions(namespace, startKey, endKey, nil)
 }
 
 // GetStateRangeScanIteratorWithOptions implements method in VersionedDB interface
 func (vdb *versionedDB) GetStateRangeScanIteratorWithOptions(namespace string, startKey string, endKey string,
-	options map[string]interface{}) (statedb.QueryResultsIterator, error) {
+	options map[string]interface{}) (state.QueryResultsIterator, error) {
 
 	requestedLimit := int32(0)
 	if options != nil {
@@ -160,17 +161,17 @@ func (vdb *versionedDB) GetStateRangeScanIteratorWithOptions(namespace string, s
 }
 
 // ExecuteQuery implements method in VersionedDB interface
-func (vdb *versionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIterator, error) {
+func (vdb *versionedDB) ExecuteQuery(namespace, query string) (state.ResultsIterator, error) {
 	return nil, errors.New("ExecuteQuery not supported for leveldb")
 }
 
 // ExecuteQueryWithMetadata implements method in VersionedDB interface
-func (vdb *versionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
+func (vdb *versionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (state.QueryResultsIterator, error) {
 	return nil, errors.New("ExecuteQueryWithMetadata not supported for leveldb")
 }
 
 // ApplyUpdates implements method in VersionedDB interface
-func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
+func (vdb *versionedDB) ApplyUpdates(batch *state.UpdateBatch, height *version.Height) error {
 	dbBatch := leveldbhelper.NewUpdateBatch()
 	namespaces := batch.GetUpdatedNamespaces()
 	for _, ns := range namespaces {
@@ -242,7 +243,7 @@ func newKVScanner(namespace string, dbItr iterator.Iterator, requestedLimit int3
 	return &kvScanner{namespace, dbItr, requestedLimit, 0}
 }
 
-func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
+func (scanner *kvScanner) Next() (state.QueryResult, error) {
 	if scanner.requestedLimit > 0 && scanner.totalRecordsReturned >= scanner.requestedLimit {
 		return nil, nil
 	}
@@ -261,10 +262,10 @@ func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
 	}
 
 	scanner.totalRecordsReturned++
-	return &statedb.VersionedKV{
-		CompositeKey: statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
+	return &state.VersionedKV{
+		CompositeKey: state.CompositeKey{Namespace: scanner.namespace, Key: key},
 		// TODO remove dereferrencing below by changing the type of the field
-		// `VersionedValue` in `statedb.VersionedKV` to a pointer
+		// `VersionedValue` in `state.VersionedKV` to a pointer
 		VersionedValue: *vv}, nil
 }
 

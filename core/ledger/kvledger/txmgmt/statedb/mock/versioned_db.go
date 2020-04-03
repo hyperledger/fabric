@@ -4,15 +4,16 @@ package mock
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 )
 
 type VersionedDB struct {
-	ApplyUpdatesStub        func(*statedb.UpdateBatch, *version.Height) error
+	ApplyUpdatesStub        func(*state.UpdateBatch, *version.Height) error
 	applyUpdatesMutex       sync.RWMutex
 	applyUpdatesArgsForCall []struct {
-		arg1 *statedb.UpdateBatch
+		arg1 *state.UpdateBatch
 		arg2 *version.Height
 	}
 	applyUpdatesReturns struct {
@@ -35,21 +36,21 @@ type VersionedDB struct {
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
 	}
-	ExecuteQueryStub        func(string, string) (statedb.ResultsIterator, error)
+	ExecuteQueryStub        func(string, string) (state.ResultsIterator, error)
 	executeQueryMutex       sync.RWMutex
 	executeQueryArgsForCall []struct {
 		arg1 string
 		arg2 string
 	}
 	executeQueryReturns struct {
-		result1 statedb.ResultsIterator
+		result1 state.ResultsIterator
 		result2 error
 	}
 	executeQueryReturnsOnCall map[int]struct {
-		result1 statedb.ResultsIterator
+		result1 state.ResultsIterator
 		result2 error
 	}
-	ExecuteQueryWithMetadataStub        func(string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)
+	ExecuteQueryWithMetadataStub        func(string, string, map[string]interface{}) (state.QueryResultsIterator, error)
 	executeQueryWithMetadataMutex       sync.RWMutex
 	executeQueryWithMetadataArgsForCall []struct {
 		arg1 string
@@ -57,11 +58,11 @@ type VersionedDB struct {
 		arg3 map[string]interface{}
 	}
 	executeQueryWithMetadataReturns struct {
-		result1 statedb.QueryResultsIterator
+		result1 state.QueryResultsIterator
 		result2 error
 	}
 	executeQueryWithMetadataReturnsOnCall map[int]struct {
-		result1 statedb.QueryResultsIterator
+		result1 state.QueryResultsIterator
 		result2 error
 	}
 	GetLatestSavePointStub        func() (*version.Height, error)
@@ -76,35 +77,35 @@ type VersionedDB struct {
 		result1 *version.Height
 		result2 error
 	}
-	GetStateStub        func(string, string) (*statedb.VersionedValue, error)
+	GetStateStub        func(string, string) (*state.VersionedValue, error)
 	getStateMutex       sync.RWMutex
 	getStateArgsForCall []struct {
 		arg1 string
 		arg2 string
 	}
 	getStateReturns struct {
-		result1 *statedb.VersionedValue
+		result1 *state.VersionedValue
 		result2 error
 	}
 	getStateReturnsOnCall map[int]struct {
-		result1 *statedb.VersionedValue
+		result1 *state.VersionedValue
 		result2 error
 	}
-	GetStateMultipleKeysStub        func(string, []string) ([]*statedb.VersionedValue, error)
+	GetStateMultipleKeysStub        func(string, []string) ([]*state.VersionedValue, error)
 	getStateMultipleKeysMutex       sync.RWMutex
 	getStateMultipleKeysArgsForCall []struct {
 		arg1 string
 		arg2 []string
 	}
 	getStateMultipleKeysReturns struct {
-		result1 []*statedb.VersionedValue
+		result1 []*state.VersionedValue
 		result2 error
 	}
 	getStateMultipleKeysReturnsOnCall map[int]struct {
-		result1 []*statedb.VersionedValue
+		result1 []*state.VersionedValue
 		result2 error
 	}
-	GetStateRangeScanIteratorStub        func(string, string, string) (statedb.ResultsIterator, error)
+	GetStateRangeScanIteratorStub        func(string, string, string) (state.ResultsIterator, error)
 	getStateRangeScanIteratorMutex       sync.RWMutex
 	getStateRangeScanIteratorArgsForCall []struct {
 		arg1 string
@@ -112,14 +113,14 @@ type VersionedDB struct {
 		arg3 string
 	}
 	getStateRangeScanIteratorReturns struct {
-		result1 statedb.ResultsIterator
+		result1 state.ResultsIterator
 		result2 error
 	}
 	getStateRangeScanIteratorReturnsOnCall map[int]struct {
-		result1 statedb.ResultsIterator
+		result1 state.ResultsIterator
 		result2 error
 	}
-	GetStateRangeScanIteratorWithOptionsStub        func(string, string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)
+	GetStateRangeScanIteratorWithOptionsStub        func(string, string, string, map[string]interface{}) (state.QueryResultsIterator, error)
 	getStateRangeScanIteratorWithOptionsMutex       sync.RWMutex
 	getStateRangeScanIteratorWithOptionsArgsForCall []struct {
 		arg1 string
@@ -128,11 +129,11 @@ type VersionedDB struct {
 		arg4 map[string]interface{}
 	}
 	getStateRangeScanIteratorWithOptionsReturns struct {
-		result1 statedb.QueryResultsIterator
+		result1 state.QueryResultsIterator
 		result2 error
 	}
 	getStateRangeScanIteratorWithOptionsReturnsOnCall map[int]struct {
-		result1 statedb.QueryResultsIterator
+		result1 state.QueryResultsIterator
 		result2 error
 	}
 	GetVersionStub        func(string, string) (*version.Height, error)
@@ -175,11 +176,11 @@ type VersionedDB struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *VersionedDB) ApplyUpdates(arg1 *statedb.UpdateBatch, arg2 *version.Height) error {
+func (fake *VersionedDB) ApplyUpdates(arg1 *state.UpdateBatch, arg2 *version.Height) error {
 	fake.applyUpdatesMutex.Lock()
 	ret, specificReturn := fake.applyUpdatesReturnsOnCall[len(fake.applyUpdatesArgsForCall)]
 	fake.applyUpdatesArgsForCall = append(fake.applyUpdatesArgsForCall, struct {
-		arg1 *statedb.UpdateBatch
+		arg1 *state.UpdateBatch
 		arg2 *version.Height
 	}{arg1, arg2})
 	fake.recordInvocation("ApplyUpdates", []interface{}{arg1, arg2})
@@ -200,13 +201,13 @@ func (fake *VersionedDB) ApplyUpdatesCallCount() int {
 	return len(fake.applyUpdatesArgsForCall)
 }
 
-func (fake *VersionedDB) ApplyUpdatesCalls(stub func(*statedb.UpdateBatch, *version.Height) error) {
+func (fake *VersionedDB) ApplyUpdatesCalls(stub func(*state.UpdateBatch, *version.Height) error) {
 	fake.applyUpdatesMutex.Lock()
 	defer fake.applyUpdatesMutex.Unlock()
 	fake.ApplyUpdatesStub = stub
 }
 
-func (fake *VersionedDB) ApplyUpdatesArgsForCall(i int) (*statedb.UpdateBatch, *version.Height) {
+func (fake *VersionedDB) ApplyUpdatesArgsForCall(i int) (*state.UpdateBatch, *version.Height) {
 	fake.applyUpdatesMutex.RLock()
 	defer fake.applyUpdatesMutex.RUnlock()
 	argsForCall := fake.applyUpdatesArgsForCall[i]
@@ -311,7 +312,7 @@ func (fake *VersionedDB) CloseCalls(stub func()) {
 	fake.CloseStub = stub
 }
 
-func (fake *VersionedDB) ExecuteQuery(arg1 string, arg2 string) (statedb.ResultsIterator, error) {
+func (fake *VersionedDB) ExecuteQuery(arg1 string, arg2 string) (state.ResultsIterator, error) {
 	fake.executeQueryMutex.Lock()
 	ret, specificReturn := fake.executeQueryReturnsOnCall[len(fake.executeQueryArgsForCall)]
 	fake.executeQueryArgsForCall = append(fake.executeQueryArgsForCall, struct {
@@ -336,7 +337,7 @@ func (fake *VersionedDB) ExecuteQueryCallCount() int {
 	return len(fake.executeQueryArgsForCall)
 }
 
-func (fake *VersionedDB) ExecuteQueryCalls(stub func(string, string) (statedb.ResultsIterator, error)) {
+func (fake *VersionedDB) ExecuteQueryCalls(stub func(string, string) (state.ResultsIterator, error)) {
 	fake.executeQueryMutex.Lock()
 	defer fake.executeQueryMutex.Unlock()
 	fake.ExecuteQueryStub = stub
@@ -349,33 +350,33 @@ func (fake *VersionedDB) ExecuteQueryArgsForCall(i int) (string, string) {
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *VersionedDB) ExecuteQueryReturns(result1 statedb.ResultsIterator, result2 error) {
+func (fake *VersionedDB) ExecuteQueryReturns(result1 state.ResultsIterator, result2 error) {
 	fake.executeQueryMutex.Lock()
 	defer fake.executeQueryMutex.Unlock()
 	fake.ExecuteQueryStub = nil
 	fake.executeQueryReturns = struct {
-		result1 statedb.ResultsIterator
+		result1 state.ResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) ExecuteQueryReturnsOnCall(i int, result1 statedb.ResultsIterator, result2 error) {
+func (fake *VersionedDB) ExecuteQueryReturnsOnCall(i int, result1 state.ResultsIterator, result2 error) {
 	fake.executeQueryMutex.Lock()
 	defer fake.executeQueryMutex.Unlock()
 	fake.ExecuteQueryStub = nil
 	if fake.executeQueryReturnsOnCall == nil {
 		fake.executeQueryReturnsOnCall = make(map[int]struct {
-			result1 statedb.ResultsIterator
+			result1 state.ResultsIterator
 			result2 error
 		})
 	}
 	fake.executeQueryReturnsOnCall[i] = struct {
-		result1 statedb.ResultsIterator
+		result1 state.ResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadata(arg1 string, arg2 string, arg3 map[string]interface{}) (statedb.QueryResultsIterator, error) {
+func (fake *VersionedDB) ExecuteQueryWithMetadata(arg1 string, arg2 string, arg3 map[string]interface{}) (state.QueryResultsIterator, error) {
 	fake.executeQueryWithMetadataMutex.Lock()
 	ret, specificReturn := fake.executeQueryWithMetadataReturnsOnCall[len(fake.executeQueryWithMetadataArgsForCall)]
 	fake.executeQueryWithMetadataArgsForCall = append(fake.executeQueryWithMetadataArgsForCall, struct {
@@ -401,7 +402,7 @@ func (fake *VersionedDB) ExecuteQueryWithMetadataCallCount() int {
 	return len(fake.executeQueryWithMetadataArgsForCall)
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataCalls(stub func(string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)) {
+func (fake *VersionedDB) ExecuteQueryWithMetadataCalls(stub func(string, string, map[string]interface{}) (state.QueryResultsIterator, error)) {
 	fake.executeQueryWithMetadataMutex.Lock()
 	defer fake.executeQueryWithMetadataMutex.Unlock()
 	fake.ExecuteQueryWithMetadataStub = stub
@@ -414,28 +415,28 @@ func (fake *VersionedDB) ExecuteQueryWithMetadataArgsForCall(i int) (string, str
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataReturns(result1 statedb.QueryResultsIterator, result2 error) {
+func (fake *VersionedDB) ExecuteQueryWithMetadataReturns(result1 state.QueryResultsIterator, result2 error) {
 	fake.executeQueryWithMetadataMutex.Lock()
 	defer fake.executeQueryWithMetadataMutex.Unlock()
 	fake.ExecuteQueryWithMetadataStub = nil
 	fake.executeQueryWithMetadataReturns = struct {
-		result1 statedb.QueryResultsIterator
+		result1 state.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
+func (fake *VersionedDB) ExecuteQueryWithMetadataReturnsOnCall(i int, result1 state.QueryResultsIterator, result2 error) {
 	fake.executeQueryWithMetadataMutex.Lock()
 	defer fake.executeQueryWithMetadataMutex.Unlock()
 	fake.ExecuteQueryWithMetadataStub = nil
 	if fake.executeQueryWithMetadataReturnsOnCall == nil {
 		fake.executeQueryWithMetadataReturnsOnCall = make(map[int]struct {
-			result1 statedb.QueryResultsIterator
+			result1 state.QueryResultsIterator
 			result2 error
 		})
 	}
 	fake.executeQueryWithMetadataReturnsOnCall[i] = struct {
-		result1 statedb.QueryResultsIterator
+		result1 state.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
@@ -495,7 +496,7 @@ func (fake *VersionedDB) GetLatestSavePointReturnsOnCall(i int, result1 *version
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetState(arg1 string, arg2 string) (*statedb.VersionedValue, error) {
+func (fake *VersionedDB) GetState(arg1 string, arg2 string) (*state.VersionedValue, error) {
 	fake.getStateMutex.Lock()
 	ret, specificReturn := fake.getStateReturnsOnCall[len(fake.getStateArgsForCall)]
 	fake.getStateArgsForCall = append(fake.getStateArgsForCall, struct {
@@ -520,7 +521,7 @@ func (fake *VersionedDB) GetStateCallCount() int {
 	return len(fake.getStateArgsForCall)
 }
 
-func (fake *VersionedDB) GetStateCalls(stub func(string, string) (*statedb.VersionedValue, error)) {
+func (fake *VersionedDB) GetStateCalls(stub func(string, string) (*state.VersionedValue, error)) {
 	fake.getStateMutex.Lock()
 	defer fake.getStateMutex.Unlock()
 	fake.GetStateStub = stub
@@ -533,33 +534,33 @@ func (fake *VersionedDB) GetStateArgsForCall(i int) (string, string) {
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *VersionedDB) GetStateReturns(result1 *statedb.VersionedValue, result2 error) {
+func (fake *VersionedDB) GetStateReturns(result1 *state.VersionedValue, result2 error) {
 	fake.getStateMutex.Lock()
 	defer fake.getStateMutex.Unlock()
 	fake.GetStateStub = nil
 	fake.getStateReturns = struct {
-		result1 *statedb.VersionedValue
+		result1 *state.VersionedValue
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateReturnsOnCall(i int, result1 *statedb.VersionedValue, result2 error) {
+func (fake *VersionedDB) GetStateReturnsOnCall(i int, result1 *state.VersionedValue, result2 error) {
 	fake.getStateMutex.Lock()
 	defer fake.getStateMutex.Unlock()
 	fake.GetStateStub = nil
 	if fake.getStateReturnsOnCall == nil {
 		fake.getStateReturnsOnCall = make(map[int]struct {
-			result1 *statedb.VersionedValue
+			result1 *state.VersionedValue
 			result2 error
 		})
 	}
 	fake.getStateReturnsOnCall[i] = struct {
-		result1 *statedb.VersionedValue
+		result1 *state.VersionedValue
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateMultipleKeys(arg1 string, arg2 []string) ([]*statedb.VersionedValue, error) {
+func (fake *VersionedDB) GetStateMultipleKeys(arg1 string, arg2 []string) ([]*state.VersionedValue, error) {
 	var arg2Copy []string
 	if arg2 != nil {
 		arg2Copy = make([]string, len(arg2))
@@ -589,7 +590,7 @@ func (fake *VersionedDB) GetStateMultipleKeysCallCount() int {
 	return len(fake.getStateMultipleKeysArgsForCall)
 }
 
-func (fake *VersionedDB) GetStateMultipleKeysCalls(stub func(string, []string) ([]*statedb.VersionedValue, error)) {
+func (fake *VersionedDB) GetStateMultipleKeysCalls(stub func(string, []string) ([]*state.VersionedValue, error)) {
 	fake.getStateMultipleKeysMutex.Lock()
 	defer fake.getStateMultipleKeysMutex.Unlock()
 	fake.GetStateMultipleKeysStub = stub
@@ -602,33 +603,33 @@ func (fake *VersionedDB) GetStateMultipleKeysArgsForCall(i int) (string, []strin
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *VersionedDB) GetStateMultipleKeysReturns(result1 []*statedb.VersionedValue, result2 error) {
+func (fake *VersionedDB) GetStateMultipleKeysReturns(result1 []*state.VersionedValue, result2 error) {
 	fake.getStateMultipleKeysMutex.Lock()
 	defer fake.getStateMultipleKeysMutex.Unlock()
 	fake.GetStateMultipleKeysStub = nil
 	fake.getStateMultipleKeysReturns = struct {
-		result1 []*statedb.VersionedValue
+		result1 []*state.VersionedValue
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateMultipleKeysReturnsOnCall(i int, result1 []*statedb.VersionedValue, result2 error) {
+func (fake *VersionedDB) GetStateMultipleKeysReturnsOnCall(i int, result1 []*state.VersionedValue, result2 error) {
 	fake.getStateMultipleKeysMutex.Lock()
 	defer fake.getStateMultipleKeysMutex.Unlock()
 	fake.GetStateMultipleKeysStub = nil
 	if fake.getStateMultipleKeysReturnsOnCall == nil {
 		fake.getStateMultipleKeysReturnsOnCall = make(map[int]struct {
-			result1 []*statedb.VersionedValue
+			result1 []*state.VersionedValue
 			result2 error
 		})
 	}
 	fake.getStateMultipleKeysReturnsOnCall[i] = struct {
-		result1 []*statedb.VersionedValue
+		result1 []*state.VersionedValue
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateRangeScanIterator(arg1 string, arg2 string, arg3 string) (statedb.ResultsIterator, error) {
+func (fake *VersionedDB) GetStateRangeScanIterator(arg1 string, arg2 string, arg3 string) (state.ResultsIterator, error) {
 	fake.getStateRangeScanIteratorMutex.Lock()
 	ret, specificReturn := fake.getStateRangeScanIteratorReturnsOnCall[len(fake.getStateRangeScanIteratorArgsForCall)]
 	fake.getStateRangeScanIteratorArgsForCall = append(fake.getStateRangeScanIteratorArgsForCall, struct {
@@ -654,7 +655,7 @@ func (fake *VersionedDB) GetStateRangeScanIteratorCallCount() int {
 	return len(fake.getStateRangeScanIteratorArgsForCall)
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorCalls(stub func(string, string, string) (statedb.ResultsIterator, error)) {
+func (fake *VersionedDB) GetStateRangeScanIteratorCalls(stub func(string, string, string) (state.ResultsIterator, error)) {
 	fake.getStateRangeScanIteratorMutex.Lock()
 	defer fake.getStateRangeScanIteratorMutex.Unlock()
 	fake.GetStateRangeScanIteratorStub = stub
@@ -667,33 +668,33 @@ func (fake *VersionedDB) GetStateRangeScanIteratorArgsForCall(i int) (string, st
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorReturns(result1 statedb.ResultsIterator, result2 error) {
+func (fake *VersionedDB) GetStateRangeScanIteratorReturns(result1 state.ResultsIterator, result2 error) {
 	fake.getStateRangeScanIteratorMutex.Lock()
 	defer fake.getStateRangeScanIteratorMutex.Unlock()
 	fake.GetStateRangeScanIteratorStub = nil
 	fake.getStateRangeScanIteratorReturns = struct {
-		result1 statedb.ResultsIterator
+		result1 state.ResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorReturnsOnCall(i int, result1 statedb.ResultsIterator, result2 error) {
+func (fake *VersionedDB) GetStateRangeScanIteratorReturnsOnCall(i int, result1 state.ResultsIterator, result2 error) {
 	fake.getStateRangeScanIteratorMutex.Lock()
 	defer fake.getStateRangeScanIteratorMutex.Unlock()
 	fake.GetStateRangeScanIteratorStub = nil
 	if fake.getStateRangeScanIteratorReturnsOnCall == nil {
 		fake.getStateRangeScanIteratorReturnsOnCall = make(map[int]struct {
-			result1 statedb.ResultsIterator
+			result1 state.ResultsIterator
 			result2 error
 		})
 	}
 	fake.getStateRangeScanIteratorReturnsOnCall[i] = struct {
-		result1 statedb.ResultsIterator
+		result1 state.ResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithOptions(arg1 string, arg2 string, arg3 string, arg4 map[string]interface{}) (statedb.QueryResultsIterator, error) {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithOptions(arg1 string, arg2 string, arg3 string, arg4 map[string]interface{}) (state.QueryResultsIterator, error) {
 	fake.getStateRangeScanIteratorWithOptionsMutex.Lock()
 	ret, specificReturn := fake.getStateRangeScanIteratorWithOptionsReturnsOnCall[len(fake.getStateRangeScanIteratorWithOptionsArgsForCall)]
 	fake.getStateRangeScanIteratorWithOptionsArgsForCall = append(fake.getStateRangeScanIteratorWithOptionsArgsForCall, struct {
@@ -720,7 +721,7 @@ func (fake *VersionedDB) GetStateRangeScanIteratorWithOptionsCallCount() int {
 	return len(fake.getStateRangeScanIteratorWithOptionsArgsForCall)
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithOptionsCalls(stub func(string, string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)) {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithOptionsCalls(stub func(string, string, string, map[string]interface{}) (state.QueryResultsIterator, error)) {
 	fake.getStateRangeScanIteratorWithOptionsMutex.Lock()
 	defer fake.getStateRangeScanIteratorWithOptionsMutex.Unlock()
 	fake.GetStateRangeScanIteratorWithOptionsStub = stub
@@ -733,28 +734,28 @@ func (fake *VersionedDB) GetStateRangeScanIteratorWithOptionsArgsForCall(i int) 
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithOptionsReturns(result1 statedb.QueryResultsIterator, result2 error) {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithOptionsReturns(result1 state.QueryResultsIterator, result2 error) {
 	fake.getStateRangeScanIteratorWithOptionsMutex.Lock()
 	defer fake.getStateRangeScanIteratorWithOptionsMutex.Unlock()
 	fake.GetStateRangeScanIteratorWithOptionsStub = nil
 	fake.getStateRangeScanIteratorWithOptionsReturns = struct {
-		result1 statedb.QueryResultsIterator
+		result1 state.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithOptionsReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithOptionsReturnsOnCall(i int, result1 state.QueryResultsIterator, result2 error) {
 	fake.getStateRangeScanIteratorWithOptionsMutex.Lock()
 	defer fake.getStateRangeScanIteratorWithOptionsMutex.Unlock()
 	fake.GetStateRangeScanIteratorWithOptionsStub = nil
 	if fake.getStateRangeScanIteratorWithOptionsReturnsOnCall == nil {
 		fake.getStateRangeScanIteratorWithOptionsReturnsOnCall = make(map[int]struct {
-			result1 statedb.QueryResultsIterator
+			result1 state.QueryResultsIterator
 			result2 error
 		})
 	}
 	fake.getStateRangeScanIteratorWithOptionsReturnsOnCall[i] = struct {
-		result1 statedb.QueryResultsIterator
+		result1 state.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }

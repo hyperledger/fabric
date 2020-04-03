@@ -9,8 +9,7 @@ package pvtstatepurgemgmt
 import (
 	math "math"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
@@ -24,7 +23,7 @@ func newExpiryScheduleBuilder(btlPolicy pvtdatapolicy.BTLPolicy) *expirySchedule
 	return &expiryScheduleBuilder{btlPolicy, make(map[expiryInfoKey]*PvtdataKeys)}
 }
 
-func (builder *expiryScheduleBuilder) add(ns, coll, key string, keyHash []byte, versionedValue *statedb.VersionedValue) error {
+func (builder *expiryScheduleBuilder) add(ns, coll, key string, keyHash []byte, versionedValue *state.VersionedValue) error {
 	committingBlk := versionedValue.Version.BlockNum
 	expiryBlk, err := builder.btlPolicy.GetExpiringBlock(ns, coll, committingBlk)
 	if err != nil {
@@ -43,7 +42,7 @@ func (builder *expiryScheduleBuilder) add(ns, coll, key string, keyHash []byte, 
 	return nil
 }
 
-func isDelete(versionedValue *statedb.VersionedValue) bool {
+func isDelete(versionedValue *state.VersionedValue) bool {
 	return versionedValue.Value == nil
 }
 
@@ -62,8 +61,8 @@ func (builder *expiryScheduleBuilder) getExpiryInfo() []*expiryInfo {
 
 func buildExpirySchedule(
 	btlPolicy pvtdatapolicy.BTLPolicy,
-	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-	hashedUpdates *privacyenabledstate.HashedUpdateBatch) ([]*expiryInfo, error) {
+	pvtUpdates *state.PvtUpdateBatch,
+	hashedUpdates *state.HashedUpdateBatch) ([]*expiryInfo, error) {
 
 	hashedUpdateKeys := hashedUpdates.ToCompositeKeyMap()
 	expiryScheduleBuilder := newExpiryScheduleBuilder(btlPolicy)
@@ -77,7 +76,7 @@ func buildExpirySchedule(
 	// or because we allow proceeding with the missing private data data
 	for pvtUpdateKey, vv := range pvtUpdates.ToCompositeKeyMap() {
 		keyHash := util.ComputeStringHash(pvtUpdateKey.Key)
-		hashedCompisiteKey := privacyenabledstate.HashedCompositeKey{
+		hashedCompisiteKey := state.HashedCompositeKey{
 			Namespace:      pvtUpdateKey.Namespace,
 			CollectionName: pvtUpdateKey.CollectionName,
 			KeyHash:        string(keyHash),

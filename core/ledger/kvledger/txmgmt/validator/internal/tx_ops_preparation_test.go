@@ -12,6 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -64,7 +65,7 @@ func TestTxOpsPreparationValueUpdate(t *testing.T) {
 		compositeKey{ns: "ns1", key: "key2"},
 		compositeKey{ns: "ns1", key: "key3"}
 
-	updateBatch := privacyenabledstate.NewUpdateBatch()
+	updateBatch := state.NewPubHashPvtUpdateBatch()
 	updateBatch.PubUpdates.Put(ck1.ns, ck1.key, []byte("value1"), version.NewHeight(1, 1)) // write key1 with only value
 	updateBatch.PubUpdates.PutValAndMetadata(                                              // write key2 with value and metadata
 		ck2.ns, ck2.key,
@@ -121,7 +122,7 @@ func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
 		compositeKey{ns: "ns1", key: "key2"},
 		compositeKey{ns: "ns1", key: "key3"}
 
-	updateBatch := privacyenabledstate.NewUpdateBatch()
+	updateBatch := state.NewPubHashPvtUpdateBatch()
 	updateBatch.PubUpdates.Put(ck1.ns, ck1.key, []byte("value1"), version.NewHeight(1, 1)) // write key1 with only value
 	updateBatch.PubUpdates.PutValAndMetadata(                                              // write key2 with value and metadata
 		ck2.ns, ck2.key,
@@ -173,7 +174,7 @@ func TestTxOpsPreparationMetadataDelete(t *testing.T) {
 		compositeKey{ns: "ns1", key: "key2"},
 		compositeKey{ns: "ns1", key: "key3"}
 
-	updateBatch := privacyenabledstate.NewUpdateBatch()
+	updateBatch := state.NewPubHashPvtUpdateBatch()
 	updateBatch.PubUpdates.Put(ck1.ns, ck1.key, []byte("value1"), version.NewHeight(1, 1)) // write key1 with only value
 	updateBatch.PubUpdates.PutValAndMetadata(                                              // write key2 with value and metadata
 		ck2.ns, ck2.key,
@@ -224,7 +225,7 @@ func TestTxOpsPreparationMixedUpdates(t *testing.T) {
 		compositeKey{ns: "ns1", key: "key3"},
 		compositeKey{ns: "ns1", key: "key4"}
 
-	updateBatch := privacyenabledstate.NewUpdateBatch()
+	updateBatch := state.NewPubHashPvtUpdateBatch()
 	updateBatch.PubUpdates.Put(ck1.ns, ck1.key, []byte("value1"), version.NewHeight(1, 1)) // write key1 with only value
 	updateBatch.PubUpdates.Put(ck2.ns, ck2.key, []byte("value2"), version.NewHeight(1, 2)) // write key2 with only value
 	updateBatch.PubUpdates.PutValAndMetadata(                                              // write key3 with value and metadata
@@ -306,7 +307,7 @@ func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
 		compositeKey{ns: "ns1", coll: "coll1", key: string(util.ComputeStringHash("key3"))},
 		compositeKey{ns: "ns1", coll: "coll1", key: string(util.ComputeStringHash("key4"))}
 
-	updateBatch := privacyenabledstate.NewUpdateBatch()
+	updateBatch := state.NewPubHashPvtUpdateBatch()
 
 	updateBatch.HashUpdates.Put(ck1.ns, ck1.coll, util.ComputeStringHash(ck1.key),
 		util.ComputeStringHash("value1"), version.NewHeight(1, 1)) // write key1 with only value

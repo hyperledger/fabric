@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -76,7 +77,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 	validator := &Validator{DB: db, Hasher: cryptoProvider}
 
 	//populate db with initial data
-	batch := privacyenabledstate.NewUpdateBatch()
+	batch := state.NewPubHashPvtUpdateBatch()
 
 	// Create two public KV pairs
 	pubKV1 := keyValue{namespace: "ns1", key: "key1", value: []byte("value1"), version: version.NewHeight(1, 0)}
@@ -201,7 +202,7 @@ func TestValidator(t *testing.T) {
 	db := testDBEnv.GetDBHandle("TestDB")
 
 	//populate db with initial data
-	batch := privacyenabledstate.NewUpdateBatch()
+	batch := state.NewPubHashPvtUpdateBatch()
 	batch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 0))
 	batch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 1))
 	batch.PubUpdates.Put("ns1", "key3", []byte("value3"), version.NewHeight(1, 2))
@@ -246,7 +247,7 @@ func TestPhantomValidation(t *testing.T) {
 	db := testDBEnv.GetDBHandle("TestDB")
 
 	//populate db with initial data
-	batch := privacyenabledstate.NewUpdateBatch()
+	batch := state.NewPubHashPvtUpdateBatch()
 	batch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 0))
 	batch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 1))
 	batch.PubUpdates.Put("ns1", "key3", []byte("value3"), version.NewHeight(1, 2))
@@ -319,7 +320,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 	db := testDBEnv.GetDBHandle("TestDB")
 
 	//populate db with initial data
-	batch := privacyenabledstate.NewUpdateBatch()
+	batch := state.NewPubHashPvtUpdateBatch()
 	batch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 0))
 	batch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 1))
 	batch.PubUpdates.Put("ns1", "key3", []byte("value3"), version.NewHeight(1, 2))

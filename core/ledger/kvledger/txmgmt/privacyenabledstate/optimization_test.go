@@ -9,6 +9,7 @@ package privacyenabledstate
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/mock"
@@ -23,7 +24,7 @@ func TestMetadataHintCorrectness(t *testing.T) {
 	metadataHint := newMetadataHint(bookkeeper)
 	assert.False(t, metadataHint.metadataEverUsedFor("ns1"))
 
-	updates := NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 	updates.PubUpdates.PutValAndMetadata("ns1", "key", []byte("value"), []byte("metadata"), version.NewHeight(1, 1))
 	updates.PubUpdates.PutValAndMetadata("ns2", "key", []byte("value"), []byte("metadata"), version.NewHeight(1, 2))
 	updates.PubUpdates.PutValAndMetadata("ns3", "key", []byte("value"), nil, version.NewHeight(1, 3))
@@ -60,7 +61,7 @@ func TestMetadataHintOptimizationSkippingGoingToDB(t *testing.T) {
 	mockVersionedDB := &mock.VersionedDB{}
 	db, err := NewCommonStorageDB(mockVersionedDB, "testledger", newMetadataHint(bookkeeper))
 	assert.NoError(t, err)
-	updates := NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 	updates.PubUpdates.PutValAndMetadata("ns1", "key", []byte("value"), []byte("metadata"), version.NewHeight(1, 1))
 	updates.PubUpdates.PutValAndMetadata("ns2", "key", []byte("value"), nil, version.NewHeight(1, 2))
 	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(1, 3))

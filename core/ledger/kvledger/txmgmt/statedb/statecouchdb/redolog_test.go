@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,7 +40,7 @@ func TestRedoLogger(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Nil(t, rec)
 		loggers = append(loggers, logger)
-		batch := statedb.NewUpdateBatch()
+		batch := state.NewUpdateBatch()
 		blkNum := uint64(i)
 		batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(blkNum, 1))
 		batch.Put("ns2", string([]byte{0x00, 0xff}), []byte("value3"), version.NewHeight(blkNum, 3))
@@ -56,7 +56,7 @@ func TestRedoLogger(t *testing.T) {
 
 	verifyLogRecords()
 	// overwrite logrecord for one channel
-	records[5].UpdateBatch = statedb.NewUpdateBatch()
+	records[5].UpdateBatch = state.NewUpdateBatch()
 	records[5].Version = version.NewHeight(5, 5)
 	assert.NoError(t, loggers[5].persist(records[5]))
 	verifyLogRecords()
@@ -68,7 +68,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 
 	// commitToRedologAndRestart - a helper function that commits directly to redologs and restart the statedb
 	commitToRedologAndRestart := func(newVal string, version *version.Height) {
-		batch := statedb.NewUpdateBatch()
+		batch := state.NewUpdateBatch()
 		batch.Put("ns1", "key1", []byte(newVal), version)
 		db, err := testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
 		assert.NoError(t, err)
@@ -102,7 +102,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 		t.Fatalf("Failed to get database handle: %s", err)
 	}
 	vdb := db.(*VersionedDB)
-	batch1 := statedb.NewUpdateBatch()
+	batch1 := state.NewUpdateBatch()
 	batch1.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	vdb.ApplyUpdates(batch1, version.NewHeight(1, 1))
 
@@ -189,7 +189,7 @@ func TestReadExistingRedoRecord(t *testing.T) {
 }
 
 func constructSampleRedoRecord() *redoRecord {
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	batch.Put("ns2", string([]byte{0x00, 0xff}), []byte("value3"), version.NewHeight(3, 3))
 	batch.PutValAndMetadata("ns2", string([]byte{0x00, 0xff}), []byte("value3"), []byte("metadata"), version.NewHeight(4, 4))

@@ -11,7 +11,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/pkg/errors"
 )
@@ -57,7 +57,7 @@ func (c *committer) updateRevisionInCacheUpdate(key, rev string) {
 
 // buildCommitters builds committers per namespace. Each committer transforms the
 // given batch in the form of underlying db and keep it in memory.
-func (vdb *VersionedDB) buildCommitters(updates *statedb.UpdateBatch) ([]*committer, error) {
+func (vdb *VersionedDB) buildCommitters(updates *state.UpdateBatch) ([]*committer, error) {
 	namespaces := updates.GetUpdatedNamespaces()
 
 	// for each namespace, we build multiple committers (based on maxBatchSize per namespace)
@@ -99,7 +99,7 @@ func (vdb *VersionedDB) buildCommitters(updates *statedb.UpdateBatch) ([]*commit
 	return allCommitters, nil
 }
 
-func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*statedb.VersionedValue) ([]*committer, error) {
+func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*state.VersionedValue) ([]*committer, error) {
 	db, err := vdb.getNamespaceDBHandle(ns)
 	if err != nil {
 		return nil, err
@@ -232,7 +232,7 @@ func (c *committer) commitUpdates() error {
 	return nil
 }
 
-func (vdb *VersionedDB) getRevisions(ns string, nsUpdates map[string]*statedb.VersionedValue) (map[string]string, error) {
+func (vdb *VersionedDB) getRevisions(ns string, nsUpdates map[string]*state.VersionedValue) (map[string]string, error) {
 	revisions := make(map[string]string)
 	nsRevs := vdb.committedDataCache.revs[ns]
 

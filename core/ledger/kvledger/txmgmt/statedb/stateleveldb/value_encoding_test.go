@@ -10,13 +10,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeDecodeVersionedValues(t *testing.T) {
-	testdata := []*statedb.VersionedValue{
+	testdata := []*state.VersionedValue{
 		{
 			Value:   []byte("value0"),
 			Version: version.NewHeight(0, 0),
@@ -44,7 +44,7 @@ func TestEncodeDecodeVersionedValues(t *testing.T) {
 	}
 }
 
-func testEncodeDecodeVersionedValues(t *testing.T, v *statedb.VersionedValue) {
+func testEncodeDecodeVersionedValues(t *testing.T, v *state.VersionedValue) {
 	encodedVal, err := encodeValue(v)
 	assert.NoError(t, err)
 	decodedVal, err := decodeValue(encodedVal)

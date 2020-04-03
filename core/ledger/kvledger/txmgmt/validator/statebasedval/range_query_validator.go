@@ -11,22 +11,22 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 )
 
 type rangeQueryValidator interface {
-	init(rqInfo *kvrwset.RangeQueryInfo, itr statedb.ResultsIterator) error
+	init(rqInfo *kvrwset.RangeQueryInfo, itr state.ResultsIterator) error
 	validate() (bool, error)
 }
 
 type rangeQueryResultsValidator struct {
 	rqInfo *kvrwset.RangeQueryInfo
-	itr    statedb.ResultsIterator
+	itr    state.ResultsIterator
 }
 
-func (v *rangeQueryResultsValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr statedb.ResultsIterator) error {
+func (v *rangeQueryResultsValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr state.ResultsIterator) error {
 	v.rqInfo = rqInfo
 	v.itr = itr
 	return nil
@@ -38,7 +38,7 @@ func (v *rangeQueryResultsValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr st
 func (v *rangeQueryResultsValidator) validate() (bool, error) {
 	rqResults := v.rqInfo.GetRawReads().GetKvReads()
 	itr := v.itr
-	var result statedb.QueryResult
+	var result state.QueryResult
 	var err error
 	if result, err = itr.Next(); err != nil {
 		return false, err
@@ -53,7 +53,7 @@ func (v *rangeQueryResultsValidator) validate() (bool, error) {
 			logger.Debugf("Query response nil. Key [%s] got deleted", kvRead.Key)
 			return false, nil
 		}
-		versionedKV := result.(*statedb.VersionedKV)
+		versionedKV := result.(*state.VersionedKV)
 		if versionedKV.Key != kvRead.Key {
 			logger.Debugf("key name mismatch: Key in rwset = [%s], key in query results = [%s]", kvRead.Key, versionedKV.Key)
 			return false, nil
@@ -77,12 +77,12 @@ func (v *rangeQueryResultsValidator) validate() (bool, error) {
 
 type rangeQueryHashValidator struct {
 	rqInfo        *kvrwset.RangeQueryInfo
-	itr           statedb.ResultsIterator
+	itr           state.ResultsIterator
 	resultsHelper *rwsetutil.RangeQueryResultsHelper
 	hasher        ledger.Hasher
 }
 
-func (v *rangeQueryHashValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr statedb.ResultsIterator) error {
+func (v *rangeQueryHashValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr state.ResultsIterator) error {
 	v.rqInfo = rqInfo
 	v.itr = itr
 	var err error
@@ -105,7 +105,7 @@ func (v *rangeQueryHashValidator) validate() (bool, error) {
 	var merkle *kvrwset.QueryReadsMerkleSummary
 	logger.Debugf("inMerkle: %#v", inMerkle)
 	for {
-		var result statedb.QueryResult
+		var result state.QueryResult
 		var err error
 		if result, err = itr.Next(); err != nil {
 			return false, err
@@ -119,7 +119,7 @@ func (v *rangeQueryHashValidator) validate() (bool, error) {
 			logger.Debugf("Combined iterator exhausted. merkle=%#v, equals=%t", merkle, equals)
 			return equals, nil
 		}
-		versionedKV := result.(*statedb.VersionedKV)
+		versionedKV := result.(*state.VersionedKV)
 		v.resultsHelper.AddResult(rwsetutil.NewKVRead(versionedKV.Key, versionedKV.Version))
 		merkle := v.resultsHelper.GetMerkleSummary()
 

@@ -20,15 +20,15 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRangeQueryBoundaryConditions(t *testing.T) {
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 0))
 	batch.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 1))
 	batch.Put("ns1", "key3", []byte("value3"), version.NewHeight(1, 2))
@@ -62,7 +62,7 @@ func TestRangeQueryBoundaryConditions(t *testing.T) {
 	testRangeQuery(t, testcase4, batch, version.NewHeight(1, 4), "ns1", rqi4, false)
 }
 
-func testRangeQuery(t *testing.T, testcase string, stateData *statedb.UpdateBatch, savepoint *version.Height,
+func testRangeQuery(t *testing.T, testcase string, stateData *state.UpdateBatch, savepoint *version.Height,
 	ns string, rqi *kvrwset.RangeQueryInfo, expectedResult bool) {
 	t.Run(testcase, func(t *testing.T) {
 		testDBEnv := stateleveldb.NewTestVDBEnv(t)

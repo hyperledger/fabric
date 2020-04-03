@@ -22,10 +22,10 @@ import (
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	mocktxmgr "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
@@ -129,7 +129,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	mvccValidatedBlock.Txs[2].ValidationCode = peer.TxValidationCode_INVALID_OTHER_REASON
 
 	// Construct the expected private updates
-	expectedPvtUpdates := privacyenabledstate.NewPvtUpdateBatch()
+	expectedPvtUpdates := state.NewPvtUpdateBatch()
 	tx1TxPvtRWSet, err := rwsetutil.TxPvtRwSetFromProtoMsg(tx1SimulationResults.PvtSimulationResults)
 	assert.NoError(t, err)
 	addPvtRWSetToPvtUpdateBatch(tx1TxPvtRWSet, expectedPvtUpdates, version.NewHeight(uint64(10), uint64(0)))
@@ -257,7 +257,7 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("testdb")
-	updateBatch := privacyenabledstate.NewUpdateBatch()
+	updateBatch := state.NewPubHashPvtUpdateBatch()
 	// populate db with some pvt data
 	updateBatch.PvtUpdates.Put("ns", "coll1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	updateBatch.PvtUpdates.Put("ns", "coll2", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -266,7 +266,7 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 	testDB.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 4))
 
 	// for the current block, mimic the resultant hashed updates
-	hashUpdates := privacyenabledstate.NewHashedUpdateBatch()
+	hashUpdates := state.NewHashedUpdateBatch()
 	hashUpdates.PutValHashAndMetadata("ns", "coll1", lutils.ComputeStringHash("key1"),
 		lutils.ComputeStringHash("value1_set_by_tx1"), []byte("metadata1_set_by_tx2"), version.NewHeight(2, 2)) // mimics the situation - value set by tx1 and metadata by tx2
 	hashUpdates.PutValHashAndMetadata("ns", "coll2", lutils.ComputeStringHash("key2"),
@@ -276,7 +276,7 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 	pubAndHashedUpdatesBatch := &internal.PubAndHashUpdates{HashUpdates: hashUpdates}
 
 	// for the current block, mimic the resultant pvt updates (without metadata taking into account). Assume that Tx6 pvt data is missing
-	pvtUpdateBatch := privacyenabledstate.NewPvtUpdateBatch()
+	pvtUpdateBatch := state.NewPvtUpdateBatch()
 	pvtUpdateBatch.Put("ns", "coll1", "key1", []byte("value1_set_by_tx1"), version.NewHeight(2, 1))
 	pvtUpdateBatch.Put("ns", "coll3", "key3", []byte("value3_set_by_tx5"), version.NewHeight(2, 5))
 	// metadata updated for key1 and key3
@@ -287,17 +287,17 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t,
-		&statedb.VersionedValue{Value: []byte("value1_set_by_tx1"), Version: version.NewHeight(2, 2)}, // key1 value should be same and version should be upgraded to (2,2)
+		&state.VersionedValue{Value: []byte("value1_set_by_tx1"), Version: version.NewHeight(2, 2)}, // key1 value should be same and version should be upgraded to (2,2)
 		pvtUpdateBatch.Get("ns", "coll1", "key1"),
 	)
 
 	assert.Equal(t,
-		&statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(2, 4)}, // key2 entry should get added with value in the db and version (2,4)
+		&state.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(2, 4)}, // key2 entry should get added with value in the db and version (2,4)
 		pvtUpdateBatch.Get("ns", "coll2", "key2"),
 	)
 
 	assert.Equal(t,
-		&statedb.VersionedValue{Value: []byte("value3_set_by_tx5"), Version: version.NewHeight(2, 5)}, // key3 should be unaffected because the tx6 was missing from pvt data
+		&state.VersionedValue{Value: []byte("value3_set_by_tx5"), Version: version.NewHeight(2, 5)}, // key3 should be unaffected because the tx6 was missing from pvt data
 		pvtUpdateBatch.Get("ns", "coll3", "key3"),
 	)
 }

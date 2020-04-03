@@ -10,7 +10,7 @@ import (
 	"sort"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
 )
@@ -28,12 +28,12 @@ type UpdatesBytesBuilder struct {
 // If an entry has the same namespace as its preceding entry, the namespace field is skipped.
 // A Similar treatment is given to the repetitive entries for a collection within a namespace.
 // For illustration, see the corresponding unit tests
-func (bb *UpdatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateBatch) ([]byte, error) {
+func (bb *UpdatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *state.PubHashPvtUpdateBatch) ([]byte, error) {
 	pubUpdates := u.PubUpdates
-	hashUpdates := u.HashUpdates.UpdateMap
+	hashUpdates := u.HashUpdates.NsCollUpdates
 	namespaces := dedupAndSort(
 		pubUpdates.GetUpdatedNamespaces(),
-		hashUpdates.getUpdatedNamespaces(),
+		hashUpdates.GetUpdatedNamespaces(),
 	)
 
 	kvWritesProto := []*KVWriteProto{}
@@ -60,12 +60,12 @@ func (bb *UpdatesBytesBuilder) DeterministicBytesForPubAndHashUpdates(u *UpdateB
 	return batchBytes, errors.Wrap(err, "error constructing deterministic bytes from update batch")
 }
 
-func (bb *UpdatesBytesBuilder) buildForColls(colls nsBatch) []*KVWriteProto {
+func (bb *UpdatesBytesBuilder) buildForColls(colls state.NsBatch) []*KVWriteProto {
 	collNames := colls.GetCollectionNames()
 	sort.Strings(collNames)
 	collsProto := []*KVWriteProto{}
 	for _, collName := range collNames {
-		collUpdates := colls.getCollectionUpdates(collName)
+		collUpdates := colls.GetCollectionUpdates(collName)
 		p := bb.buildForKeys(collUpdates)
 		p[0].Collection = collName
 		collsProto = append(collsProto, p...)
@@ -73,7 +73,7 @@ func (bb *UpdatesBytesBuilder) buildForColls(colls nsBatch) []*KVWriteProto {
 	return collsProto
 }
 
-func (bb *UpdatesBytesBuilder) buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWriteProto {
+func (bb *UpdatesBytesBuilder) buildForKeys(kv map[string]*state.VersionedValue) []*KVWriteProto {
 	keys := util.GetSortedKeys(kv)
 	p := []*KVWriteProto{}
 	for _, key := range keys {

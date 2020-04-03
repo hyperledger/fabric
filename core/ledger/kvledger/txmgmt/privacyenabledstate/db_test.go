@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -30,48 +31,6 @@ func TestMain(m *testing.M) {
 		testEnv.StopExternalResource()
 	}
 	os.Exit(exitCode)
-}
-
-func TestBatch(t *testing.T) {
-	batch := UpdateMap(make(map[string]nsBatch))
-	v := version.NewHeight(1, 1)
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
-			for k := 0; k < 5; k++ {
-				batch.Put(fmt.Sprintf("ns-%d", i), fmt.Sprintf("collection-%d", j), fmt.Sprintf("key-%d", k),
-					[]byte(fmt.Sprintf("value-%d-%d-%d", i, j, k)), v)
-			}
-		}
-	}
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
-			for k := 0; k < 5; k++ {
-				vv := batch.Get(fmt.Sprintf("ns-%d", i), fmt.Sprintf("collection-%d", j), fmt.Sprintf("key-%d", k))
-				assert.NotNil(t, vv)
-				assert.Equal(t,
-					&statedb.VersionedValue{Value: []byte(fmt.Sprintf("value-%d-%d-%d", i, j, k)), Version: v},
-					vv)
-			}
-		}
-	}
-	assert.Nil(t, batch.Get("ns-1", "collection-1", "key-5"))
-	assert.Nil(t, batch.Get("ns-1", "collection-5", "key-1"))
-	assert.Nil(t, batch.Get("ns-5", "collection-1", "key-1"))
-}
-
-func TestHashBatchContains(t *testing.T) {
-	batch := NewHashedUpdateBatch()
-	batch.Put("ns1", "coll1", []byte("key1"), []byte("val1"), version.NewHeight(1, 1))
-	assert.True(t, batch.Contains("ns1", "coll1", []byte("key1")))
-	assert.False(t, batch.Contains("ns1", "coll1", []byte("key2")))
-	assert.False(t, batch.Contains("ns1", "coll2", []byte("key1")))
-	assert.False(t, batch.Contains("ns2", "coll1", []byte("key1")))
-
-	batch.Delete("ns1", "coll1", []byte("deleteKey"), version.NewHeight(1, 1))
-	assert.True(t, batch.Contains("ns1", "coll1", []byte("deleteKey")))
-	assert.False(t, batch.Contains("ns1", "coll1", []byte("deleteKey1")))
-	assert.False(t, batch.Contains("ns1", "coll2", []byte("deleteKey")))
-	assert.False(t, batch.Contains("ns2", "coll1", []byte("deleteKey")))
 }
 
 func TestDB(t *testing.T) {
@@ -87,7 +46,7 @@ func testDB(t *testing.T, env TestEnv) {
 	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 
-	updates := NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 
 	updates.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	updates.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -105,25 +64,25 @@ func testDB(t *testing.T, env TestEnv) {
 
 	vv, err := db.GetState("ns1", "key1")
 	assert.NoError(t, err)
-	assert.Equal(t, &statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, vv)
+	assert.Equal(t, &state.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, vv)
 
 	vv, err = db.GetPrivateData("ns1", "coll1", "key1")
 	assert.NoError(t, err)
-	assert.Equal(t, &statedb.VersionedValue{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
+	assert.Equal(t, &state.VersionedValue{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
 
 	vv, err = db.GetPrivateDataHash("ns1", "coll1", "key1")
 	assert.NoError(t, err)
-	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
+	assert.Equal(t, &state.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
 
 	vv, err = db.GetValueHash("ns1", "coll1", util.ComputeStringHash("key1"))
 	assert.NoError(t, err)
-	assert.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
+	assert.Equal(t, &state.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 4)}, vv)
 
 	committedVersion, err := db.GetKeyHashVersion("ns1", "coll1", util.ComputeStringHash("key1"))
 	assert.NoError(t, err)
 	assert.Equal(t, version.NewHeight(1, 4), committedVersion)
 
-	updates = NewUpdateBatch()
+	updates = state.NewPubHashPvtUpdateBatch()
 	updates.PubUpdates.Delete("ns1", "key1", version.NewHeight(2, 7))
 	deletePvtUpdates(t, updates, "ns1", "coll1", "key1", version.NewHeight(2, 7))
 	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 7))
@@ -153,7 +112,7 @@ func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 
-	updates := NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 
 	updates.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	updates.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -167,7 +126,7 @@ func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 	versionedVals, err := db.GetStateMultipleKeys("ns1", []string{"key1", "key3"})
 	assert.NoError(t, err)
 	assert.Equal(t,
-		[]*statedb.VersionedValue{
+		[]*state.VersionedValue{
 			{Value: []byte("value1"), Version: version.NewHeight(1, 1)},
 			{Value: []byte("value3"), Version: version.NewHeight(1, 3)},
 		},
@@ -176,7 +135,7 @@ func testGetStateMultipleKeys(t *testing.T, env TestEnv) {
 	pvtVersionedVals, err := db.GetPrivateDataMultipleKeys("ns1", "coll1", []string{"key1", "key3"})
 	assert.NoError(t, err)
 	assert.Equal(t,
-		[]*statedb.VersionedValue{
+		[]*state.VersionedValue{
 			{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 4)},
 			{Value: []byte("pvt_value3"), Version: version.NewHeight(1, 6)},
 		},
@@ -196,7 +155,7 @@ func testGetStateRangeScanIterator(t *testing.T, env TestEnv) {
 	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 
-	updates := NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 
 	updates.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	updates.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -256,7 +215,7 @@ func testQueryOnCouchDB(t *testing.T, env TestEnv) {
 	env.Init(t)
 	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
-	updates := NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 
 	jsonValues := []string{
 		`{"asset_name": "marble1", "color": "blue", "size": 1, "owner": "tom"}`,
@@ -341,7 +300,7 @@ func testLongDBNameOnCouchDB(t *testing.T, env TestEnv) {
 	// Allowed pattern for chainName: [a-z][a-z0-9.-]
 	db := env.GetDBHandle("w1coaii9ck3l8red6a5cf3rwbe1b4wvbzcrrfl7samu7px8b9gf-4hft7wrgdmzzjj9ure4cbffucaj78nbj9ej.kvl3bus1iq1qir9xlhb8a1wipuksgs3g621elzy1prr658087exwrhp-y4j55o9cld242v--oeh3br1g7m8d6l8jobn.y42cgjt1.u1ik8qxnv4ohh9kr2w2zc8hqir5u4ev23s7jygrg....s7.ohp-5bcxari8nji")
 
-	updates := NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 
 	// Allowed pattern for namespace and collection: [a-zA-Z0-9_-]
 	ns := "wMCnSXiV9YoIqNQyNvFVTdM8XnUtvrOFFIWsKelmP5NEszmNLl8YhtOKbFu3P_NgwgsYF8PsfwjYCD8f1XRpANQLoErDHwLlweryqXeJ6vzT2x0pS_GwSx0m6tBI0zOmHQOq_2De8A87x6zUOPwufC2T6dkidFxiuq8Sey2-5vUo_iNKCij3WTeCnKx78PUIg_U1gp4_0KTvYVtRBRvH0kz5usizBxPaiFu3TPhB9XLviScvdUVSbSYJ0Z"
@@ -355,18 +314,18 @@ func testLongDBNameOnCouchDB(t *testing.T, env TestEnv) {
 
 	vv, err := db.GetState(ns, "key1")
 	assert.NoError(t, err)
-	assert.Equal(t, &statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, vv)
+	assert.Equal(t, &state.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, vv)
 
 	vv, err = db.GetPrivateData(ns, coll, "key1")
 	assert.NoError(t, err)
-	assert.Equal(t, &statedb.VersionedValue{Value: []byte("pvt_value"), Version: version.NewHeight(1, 2)}, vv)
+	assert.Equal(t, &state.VersionedValue{Value: []byte("pvt_value"), Version: version.NewHeight(1, 2)}, vv)
 }
 
-func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
+func testItr(t *testing.T, itr state.ResultsIterator, expectedKeys []string) {
 	defer itr.Close()
 	for _, expectedKey := range expectedKeys {
 		queryResult, _ := itr.Next()
-		vkv := queryResult.(*statedb.VersionedKV)
+		vkv := queryResult.(*state.VersionedKV)
 		key := vkv.Key
 		assert.Equal(t, expectedKey, key)
 	}
@@ -375,11 +334,11 @@ func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
 	assert.Nil(t, last)
 }
 
-func testQueryItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string, expectedValStrs ...[]string) {
+func testQueryItr(t *testing.T, itr state.ResultsIterator, expectedKeys []string, expectedValStrs ...[]string) {
 	defer itr.Close()
 	for i, expectedKey := range expectedKeys {
 		queryResult, _ := itr.Next()
-		vkv := queryResult.(*statedb.VersionedKV)
+		vkv := queryResult.(*state.VersionedKV)
 		key := vkv.Key
 		valStr := string(vkv.Value)
 		assert.Equal(t, expectedKey, key)
@@ -397,24 +356,24 @@ func testKey(i int) string {
 }
 
 func TestCompositeKeyMap(t *testing.T) {
-	b := NewPvtUpdateBatch()
+	b := state.NewPvtUpdateBatch()
 	b.Put("ns1", "coll1", "key1", []byte("testVal1"), nil)
 	b.Delete("ns1", "coll2", "key2", nil)
 	b.Put("ns2", "coll1", "key1", []byte("testVal3"), nil)
 	b.Put("ns2", "coll2", "key2", []byte("testVal4"), nil)
 	m := b.ToCompositeKeyMap()
 	assert.Len(t, m, 4)
-	vv, ok := m[PvtdataCompositeKey{"ns1", "coll1", "key1"}]
+	vv, ok := m[state.PvtdataCompositeKey{Namespace: "ns1", CollectionName: "coll1", Key: "key1"}]
 	assert.True(t, ok)
 	assert.Equal(t, []byte("testVal1"), vv.Value)
-	vv, ok = m[PvtdataCompositeKey{"ns1", "coll2", "key2"}]
+	vv, ok = m[state.PvtdataCompositeKey{Namespace: "ns1", CollectionName: "coll2", Key: "key2"}]
 	assert.Nil(t, vv.Value)
 	assert.True(t, ok)
-	_, ok = m[PvtdataCompositeKey{"ns2", "coll1", "key1"}]
+	vv, ok = m[state.PvtdataCompositeKey{Namespace: "ns2", CollectionName: "coll1", Key: "key1"}]
 	assert.True(t, ok)
-	_, ok = m[PvtdataCompositeKey{"ns2", "coll2", "key2"}]
+	vv, ok = m[state.PvtdataCompositeKey{Namespace: "ns2", CollectionName: "coll2", Key: "key2"}]
 	assert.True(t, ok)
-	_, ok = m[PvtdataCompositeKey{"ns2", "coll1", "key8888"}]
+	vv, ok = m[state.PvtdataCompositeKey{Namespace: "ns2", CollectionName: "coll1", Key: "key8888"}]
 	assert.False(t, ok)
 }
 
@@ -554,7 +513,7 @@ func testMetadataRetrieval(t *testing.T, env TestEnv) {
 	defer env.Cleanup()
 	db := env.GetDBHandle(generateLedgerID(t))
 
-	updates := NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 	updates.PubUpdates.PutValAndMetadata("ns1", "key1", []byte("value1"), []byte("metadata1"), version.NewHeight(1, 1))
 	updates.PubUpdates.PutValAndMetadata("ns1", "key2", []byte("value2"), nil, version.NewHeight(1, 2))
 	updates.PubUpdates.PutValAndMetadata("ns2", "key3", []byte("value3"), nil, version.NewHeight(1, 3))
@@ -579,17 +538,17 @@ func testMetadataRetrieval(t *testing.T, env TestEnv) {
 	assert.Nil(t, vm)
 }
 
-func putPvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
+func putPvtUpdates(t *testing.T, updates *state.PubHashPvtUpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	updates.PvtUpdates.Put(ns, coll, key, value, ver)
 	updates.HashUpdates.Put(ns, coll, util.ComputeStringHash(key), util.ComputeHash(value), ver)
 }
 
-func putPvtUpdatesWithMetadata(t *testing.T, updates *UpdateBatch, ns, coll, key string, value []byte, metadata []byte, ver *version.Height) {
+func putPvtUpdatesWithMetadata(t *testing.T, updates *state.PubHashPvtUpdateBatch, ns, coll, key string, value []byte, metadata []byte, ver *version.Height) {
 	updates.PvtUpdates.Put(ns, coll, key, value, ver)
 	updates.HashUpdates.PutValHashAndMetadata(ns, coll, util.ComputeStringHash(key), util.ComputeHash(value), metadata, ver)
 }
 
-func deletePvtUpdates(t *testing.T, updates *UpdateBatch, ns, coll, key string, ver *version.Height) {
+func deletePvtUpdates(t *testing.T, updates *state.PubHashPvtUpdateBatch, ns, coll, key string, ver *version.Height) {
 	updates.PvtUpdates.Delete(ns, coll, key, ver)
 	updates.HashUpdates.Delete(ns, coll, util.ComputeStringHash(key), ver)
 }

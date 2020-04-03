@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	ledger "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -158,7 +159,7 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 
 	var err error
 	var hashVersion *version.Height
-	var versionedValue *statedb.VersionedValue
+	var versionedValue *state.VersionedValue
 
 	if versionedValue, err = h.txmgr.db.GetPrivateData(ns, coll, key); err != nil {
 		return nil, err
@@ -189,7 +190,7 @@ func (h *queryHelper) getPrivateDataValueHash(ns, coll, key string) (valueHash, 
 	if err := h.checkDone(); err != nil {
 		return nil, nil, err
 	}
-	var versionedValue *statedb.VersionedValue
+	var versionedValue *state.VersionedValue
 	if versionedValue, err = h.txmgr.db.GetPrivateDataHash(ns, coll, key); err != nil {
 		return nil, nil, err
 	}
@@ -356,7 +357,7 @@ func (h *queryHelper) validateCollName(ns, coll string) error {
 type resultsItr struct {
 	ns                      string
 	endKey                  string
-	dbItr                   statedb.ResultsIterator
+	dbItr                   state.ResultsIterator
 	rwSetBuilder            *rwsetutil.RWSetBuilder
 	rangeQueryInfo          *kvrwset.RangeQueryInfo
 	rangeQueryResultsHelper *rwsetutil.RangeQueryResultsHelper
@@ -365,7 +366,7 @@ type resultsItr struct {
 func newResultsItr(ns string, startKey string, endKey string, options map[string]interface{},
 	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32, hasher ledger.Hasher) (*resultsItr, error) {
 	var err error
-	var dbItr statedb.ResultsIterator
+	var dbItr state.ResultsIterator
 	if options == nil {
 		dbItr, err = db.GetStateRangeScanIterator(ns, startKey, endKey)
 	} else {
@@ -406,14 +407,14 @@ func (itr *resultsItr) Next() (commonledger.QueryResult, error) {
 	if queryResult == nil {
 		return nil, nil
 	}
-	versionedKV := queryResult.(*statedb.VersionedKV)
+	versionedKV := queryResult.(*state.VersionedKV)
 	return &queryresult.KV{Namespace: versionedKV.Namespace, Key: versionedKV.Key, Value: versionedKV.Value}, nil
 }
 
 // GetBookmarkAndClose implements method in interface ledger.ResultsIterator
 func (itr *resultsItr) GetBookmarkAndClose() string {
 	returnBookmark := ""
-	if queryResultIterator, ok := itr.dbItr.(statedb.QueryResultsIterator); ok {
+	if queryResultIterator, ok := itr.dbItr.(state.QueryResultsIterator); ok {
 		returnBookmark = queryResultIterator.GetBookmarkAndClose()
 	}
 	return returnBookmark
@@ -424,7 +425,7 @@ func (itr *resultsItr) GetBookmarkAndClose() string {
 //                                  because, we do not know if the caller is again going to invoke Next() or not.
 //                            or b) the last key that was supplied in the original query (if the iterator is exhausted)
 // 2) The ItrExhausted - set to true if the iterator is going to return nil as a result of the Next() call
-func (itr *resultsItr) updateRangeQueryInfo(queryResult statedb.QueryResult) {
+func (itr *resultsItr) updateRangeQueryInfo(queryResult state.QueryResult) {
 	if itr.rwSetBuilder == nil {
 		return
 	}
@@ -436,7 +437,7 @@ func (itr *resultsItr) updateRangeQueryInfo(queryResult statedb.QueryResult) {
 		itr.rangeQueryInfo.EndKey = itr.endKey
 		return
 	}
-	versionedKV := queryResult.(*statedb.VersionedKV)
+	versionedKV := queryResult.(*state.VersionedKV)
 	itr.rangeQueryResultsHelper.AddResult(rwsetutil.NewKVRead(versionedKV.Key, versionedKV.Version))
 	// Set the end key to the latest key retrieved by the caller.
 	// Because, the caller may actually not invoke the Next() function again
@@ -449,7 +450,7 @@ func (itr *resultsItr) Close() {
 }
 
 type queryResultsItr struct {
-	DBItr        statedb.ResultsIterator
+	DBItr        state.ResultsIterator
 	RWSetBuilder *rwsetutil.RWSetBuilder
 }
 
@@ -463,7 +464,7 @@ func (itr *queryResultsItr) Next() (commonledger.QueryResult, error) {
 	if queryResult == nil {
 		return nil, nil
 	}
-	versionedQueryRecord := queryResult.(*statedb.VersionedKV)
+	versionedQueryRecord := queryResult.(*state.VersionedKV)
 	logger.Debugf("queryResultsItr.Next() returned a record:%s", string(versionedQueryRecord.Value))
 
 	if itr.RWSetBuilder != nil {
@@ -479,13 +480,13 @@ func (itr *queryResultsItr) Close() {
 
 func (itr *queryResultsItr) GetBookmarkAndClose() string {
 	returnBookmark := ""
-	if queryResultIterator, ok := itr.DBItr.(statedb.QueryResultsIterator); ok {
+	if queryResultIterator, ok := itr.DBItr.(state.QueryResultsIterator); ok {
 		returnBookmark = queryResultIterator.GetBookmarkAndClose()
 	}
 	return returnBookmark
 }
 
-func decomposeVersionedValue(versionedValue *statedb.VersionedValue) ([]byte, []byte, *version.Height) {
+func decomposeVersionedValue(versionedValue *state.VersionedValue) ([]byte, []byte, *version.Height) {
 	var value []byte
 	var metadata []byte
 	var ver *version.Height
@@ -501,7 +502,7 @@ func decomposeVersionedValue(versionedValue *statedb.VersionedValue) ([]byte, []
 type pvtdataResultsItr struct {
 	ns    string
 	coll  string
-	dbItr statedb.ResultsIterator
+	dbItr state.ResultsIterator
 }
 
 // Next implements method in interface ledger.ResultsIterator
@@ -513,7 +514,7 @@ func (itr *pvtdataResultsItr) Next() (commonledger.QueryResult, error) {
 	if queryResult == nil {
 		return nil, nil
 	}
-	versionedQueryRecord := queryResult.(*statedb.VersionedKV)
+	versionedQueryRecord := queryResult.(*state.VersionedKV)
 	return &queryresult.KV{
 		Namespace: itr.ns,
 		Key:       versionedQueryRecord.Key,

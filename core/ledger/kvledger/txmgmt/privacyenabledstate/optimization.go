@@ -8,6 +8,7 @@ package privacyenabledstate
 
 import (
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 )
 
 type metadataHint struct {
@@ -30,7 +31,7 @@ func (h *metadataHint) metadataEverUsedFor(namespace string) bool {
 	return h.cache[namespace]
 }
 
-func (h *metadataHint) setMetadataUsedFlag(updates *UpdateBatch) {
+func (h *metadataHint) setMetadataUsedFlag(updates *state.PubHashPvtUpdateBatch) {
 	batch := leveldbhelper.NewUpdateBatch()
 	for ns := range filterNamespacesThatHasMetadata(updates) {
 		if h.cache[ns] {
@@ -42,7 +43,7 @@ func (h *metadataHint) setMetadataUsedFlag(updates *UpdateBatch) {
 	h.bookkeeper.WriteBatch(batch, true)
 }
 
-func filterNamespacesThatHasMetadata(updates *UpdateBatch) map[string]bool {
+func filterNamespacesThatHasMetadata(updates *state.PubHashPvtUpdateBatch) map[string]bool {
 	namespaces := map[string]bool{}
 	pubUpdates, hashUpdates := updates.PubUpdates, updates.HashUpdates
 	// add ns for public data
@@ -55,7 +56,7 @@ func filterNamespacesThatHasMetadata(updates *UpdateBatch) map[string]bool {
 		}
 	}
 	// add ns for private hashes
-	for ns, nsBatch := range hashUpdates.UpdateMap {
+	for ns, nsBatch := range hashUpdates.NsCollUpdates {
 		for _, coll := range nsBatch.GetCollectionNames() {
 			for _, vv := range nsBatch.GetUpdates(coll) {
 				if vv.Metadata == nil {

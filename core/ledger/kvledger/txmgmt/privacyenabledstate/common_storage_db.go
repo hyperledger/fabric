@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -127,8 +128,8 @@ func (s *CommonStorageDB) IsBulkOptimizable() bool {
 }
 
 // LoadCommittedVersionsOfPubAndHashedKeys implements corresponding function in interface DB
-func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*statedb.CompositeKey,
-	hashedKeys []*HashedCompositeKey) error {
+func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*state.CompositeKey,
+	hashedKeys []*state.HashedCompositeKey) error {
 
 	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
 	if !ok {
@@ -144,7 +145,7 @@ func (s *CommonStorageDB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*sta
 		} else {
 			keyHashStr = key.KeyHash
 		}
-		pubKeys = append(pubKeys, &statedb.CompositeKey{
+		pubKeys = append(pubKeys, &state.CompositeKey{
 			Namespace: ns,
 			Key:       keyHashStr,
 		})
@@ -176,17 +177,17 @@ func (s *CommonStorageDB) GetChaincodeEventListener() cceventmgmt.ChaincodeLifec
 }
 
 // GetPrivateData implements corresponding function in interface DB
-func (s *CommonStorageDB) GetPrivateData(namespace, collection, key string) (*statedb.VersionedValue, error) {
+func (s *CommonStorageDB) GetPrivateData(namespace, collection, key string) (*state.VersionedValue, error) {
 	return s.GetState(derivePvtDataNs(namespace, collection), key)
 }
 
 // GetPrivateDataHash implements corresponding function in interface DB
-func (s *CommonStorageDB) GetPrivateDataHash(namespace, collection, key string) (*statedb.VersionedValue, error) {
+func (s *CommonStorageDB) GetPrivateDataHash(namespace, collection, key string) (*state.VersionedValue, error) {
 	return s.GetValueHash(namespace, collection, util.ComputeStringHash(key))
 }
 
 // GetValueHash implements corresponding function in interface DB
-func (s *CommonStorageDB) GetValueHash(namespace, collection string, keyHash []byte) (*statedb.VersionedValue, error) {
+func (s *CommonStorageDB) GetValueHash(namespace, collection string, keyHash []byte) (*state.VersionedValue, error) {
 	keyHashStr := string(keyHash)
 	if !s.BytesKeySupported() {
 		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
@@ -218,28 +219,28 @@ func (s *CommonStorageDB) GetCachedKeyHashVersion(namespace, collection string, 
 }
 
 // GetPrivateDataMultipleKeys implements corresponding function in interface DB
-func (s *CommonStorageDB) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([]*statedb.VersionedValue, error) {
+func (s *CommonStorageDB) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([]*state.VersionedValue, error) {
 	return s.GetStateMultipleKeys(derivePvtDataNs(namespace, collection), keys)
 }
 
 // GetPrivateDataRangeScanIterator implements corresponding function in interface DB
-func (s *CommonStorageDB) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (statedb.ResultsIterator, error) {
+func (s *CommonStorageDB) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (state.ResultsIterator, error) {
 	return s.GetStateRangeScanIterator(derivePvtDataNs(namespace, collection), startKey, endKey)
 }
 
 // ExecuteQueryOnPrivateData implements corresponding function in interface DB
-func (s CommonStorageDB) ExecuteQueryOnPrivateData(namespace, collection, query string) (statedb.ResultsIterator, error) {
+func (s CommonStorageDB) ExecuteQueryOnPrivateData(namespace, collection, query string) (state.ResultsIterator, error) {
 	return s.ExecuteQuery(derivePvtDataNs(namespace, collection), query)
 }
 
 // ApplyUpdates overrides the function in statedb.VersionedDB and throws appropriate error message
 // Otherwise, somewhere in the code, usage of this function could lead to updating only public data.
-func (s *CommonStorageDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
+func (s *CommonStorageDB) ApplyUpdates(batch *state.UpdateBatch, height *version.Height) error {
 	return errors.New("this function should not be invoked on this type. Please invoke function ApplyPrivacyAwareUpdates")
 }
 
 // ApplyPrivacyAwareUpdates implements corresponding function in interface DB
-func (s *CommonStorageDB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height *version.Height) error {
+func (s *CommonStorageDB) ApplyPrivacyAwareUpdates(updates *state.PubHashPvtUpdateBatch, height *version.Height) error {
 	// combinedUpdates includes both updates to public db and private db, which are partitioned by a separate namespace
 	combinedUpdates := updates.PubUpdates
 	addPvtUpdates(combinedUpdates, updates.PvtUpdates)
@@ -351,8 +352,8 @@ func deriveHashedDataNs(namespace, collection string) string {
 	return namespace + nsJoiner + hashDataPrefix + collection
 }
 
-func addPvtUpdates(pubUpdateBatch *PubUpdateBatch, pvtUpdateBatch *PvtUpdateBatch) {
-	for ns, nsBatch := range pvtUpdateBatch.UpdateMap {
+func addPvtUpdates(pubUpdateBatch *state.PubUpdateBatch, pvtUpdateBatch *state.PvtUpdateBatch) {
+	for ns, nsBatch := range pvtUpdateBatch.NsCollUpdates {
 		for _, coll := range nsBatch.GetCollectionNames() {
 			for key, vv := range nsBatch.GetUpdates(coll) {
 				pubUpdateBatch.Update(derivePvtDataNs(ns, coll), key, vv)
@@ -361,8 +362,8 @@ func addPvtUpdates(pubUpdateBatch *PubUpdateBatch, pvtUpdateBatch *PvtUpdateBatc
 	}
 }
 
-func addHashedUpdates(pubUpdateBatch *PubUpdateBatch, hashedUpdateBatch *HashedUpdateBatch, base64Key bool) {
-	for ns, nsBatch := range hashedUpdateBatch.UpdateMap {
+func addHashedUpdates(pubUpdateBatch *state.PubUpdateBatch, hashedUpdateBatch *state.HashedUpdateBatch, base64Key bool) {
+	for ns, nsBatch := range hashedUpdateBatch.NsCollUpdates {
 		for _, coll := range nsBatch.GetCollectionNames() {
 			for key, vv := range nsBatch.GetUpdates(coll) {
 				if base64Key {
