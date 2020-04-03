@@ -8,9 +8,9 @@ package stateleveldb
 
 import (
 	proto "github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger/internal/pkg/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb/msgs"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 )
 
 // encodeValue encodes the value, version, and metadata
