@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +26,7 @@ func TestBuildExpirySchedule(t *testing.T) {
 			{"ns3", "coll4"}: 0,
 		},
 	)
-	updates := privacyenabledstate.NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 	updates.PubUpdates.Put("ns1", "pubkey1", []byte("pubvalue1"), version.NewHeight(1, 1))
 	putPvtAndHashUpdates(t, updates, "ns1", "coll1", "pvtkey1", []byte("pvtvalue1"), version.NewHeight(1, 1))
 	putPvtAndHashUpdates(t, updates, "ns1", "coll2", "pvtkey2", []byte("pvtvalue2"), version.NewHeight(2, 1))
@@ -67,7 +67,7 @@ func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
 		},
 	)
 
-	updates := privacyenabledstate.NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 
 	// This update should appear in the expiry schedule with both the key and the hash
 	putPvtAndHashUpdates(t, updates, "ns1", "coll1", "pvtkey1", []byte("pvtvalue1"), version.NewHeight(50, 1))
@@ -106,24 +106,24 @@ func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
 	assert.ElementsMatch(t, expectedListExpInfo, listExpinfo)
 }
 
-func putPvtAndHashUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
+func putPvtAndHashUpdates(t *testing.T, updates *state.PubHashPvtUpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	putPvtUpdates(updates, ns, coll, key, value, ver)
 	putHashUpdates(updates, ns, coll, key, value, ver)
 }
 
-func deletePvtAndHashUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, ver *version.Height) {
+func deletePvtAndHashUpdates(t *testing.T, updates *state.PubHashPvtUpdateBatch, ns, coll, key string, ver *version.Height) {
 	updates.PvtUpdates.Delete(ns, coll, key, ver)
 	deleteHashUpdates(updates, ns, coll, key, ver)
 }
 
-func putHashUpdates(updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
+func putHashUpdates(updates *state.PubHashPvtUpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	updates.HashUpdates.Put(ns, coll, util.ComputeStringHash(key), util.ComputeHash(value), ver)
 }
 
-func putPvtUpdates(updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
+func putPvtUpdates(updates *state.PubHashPvtUpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	updates.PvtUpdates.Put(ns, coll, key, value, ver)
 }
 
-func deleteHashUpdates(updates *privacyenabledstate.UpdateBatch, ns, coll, key string, ver *version.Height) {
+func deleteHashUpdates(updates *state.PubHashPvtUpdateBatch, ns, coll, key string, ver *version.Height) {
 	updates.HashUpdates.Delete(ns, coll, util.ComputeStringHash(key), ver)
 }

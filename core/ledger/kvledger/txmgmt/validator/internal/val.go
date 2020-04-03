@@ -9,6 +9,7 @@ package internal
 import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -42,15 +43,15 @@ type Transaction struct {
 // PubAndHashUpdates encapsulates public and hash updates. The intended use of this to hold the updates
 // that are to be applied to the statedb  as a result of the block commit
 type PubAndHashUpdates struct {
-	PubUpdates  *privacyenabledstate.PubUpdateBatch
-	HashUpdates *privacyenabledstate.HashedUpdateBatch
+	PubUpdates  *state.PubUpdateBatch
+	HashUpdates *state.HashedUpdateBatch
 }
 
 // NewPubAndHashUpdates constructs an empty PubAndHashUpdates
 func NewPubAndHashUpdates() *PubAndHashUpdates {
 	return &PubAndHashUpdates{
-		privacyenabledstate.NewPubUpdateBatch(),
-		privacyenabledstate.NewHashedUpdateBatch(),
+		state.NewPubUpdateBatch(),
+		state.NewHashedUpdateBatch(),
 	}
 }
 

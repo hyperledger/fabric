@@ -14,8 +14,8 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -40,7 +40,7 @@ func TestPvtdataResultsItr(t *testing.T) {
 		version.NewHeight(1, 0),
 	)
 
-	updates := privacyenabledstate.NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 	putPvtUpdates(t, updates, "ns1", "coll1", "key1", []byte("pvt_value1"), version.NewHeight(1, 1))
 	putPvtUpdates(t, updates, "ns1", "coll1", "key2", []byte("pvt_value2"), version.NewHeight(1, 2))
 	putPvtUpdates(t, updates, "ns1", "coll1", "key3", []byte("pvt_value3"), version.NewHeight(1, 3))
@@ -144,7 +144,7 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 	txMgr := env.getTxMgr().(*LockBasedTxMgr)
 	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
-	batch := privacyenabledstate.NewUpdateBatch()
+	batch := state.NewPubHashPvtUpdateBatch()
 	batch.HashUpdates.Put(
 		"ns", "coll",
 		util.ComputeStringHash("existing-key"),
@@ -197,7 +197,7 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 	assert.Equal(t, expectedRwSet, txrwset)
 }
 
-func putPvtUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
+func putPvtUpdates(t *testing.T, updates *state.PubHashPvtUpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	updates.PvtUpdates.Put(ns, coll, key, value, ver)
 	updates.HashUpdates.Put(ns, coll, util.ComputeStringHash(key), util.ComputeHash(value), ver)
 }

@@ -9,8 +9,8 @@ package stateleveldb
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/stretchr/testify/assert"
 )
@@ -60,7 +60,7 @@ func TestQueryOnLevelDB(t *testing.T) {
 	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
 

@@ -19,6 +19,7 @@ package statebasedval
 import (
 	"strings"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 )
 
@@ -38,29 +39,29 @@ type combinedIterator struct {
 	// input
 	ns            string
 	db            statedb.VersionedDB
-	updates       *statedb.UpdateBatch
+	updates       *state.UpdateBatch
 	endKey        string
 	includeEndKey bool
 
 	// internal state
-	dbItr        statedb.ResultsIterator
-	updatesItr   statedb.ResultsIterator
-	dbItem       statedb.QueryResult
-	updatesItem  statedb.QueryResult
+	dbItr        state.ResultsIterator
+	updatesItr   state.ResultsIterator
+	dbItem       state.QueryResult
+	updatesItem  state.QueryResult
 	endKeyServed bool
 }
 
-func newCombinedIterator(db statedb.VersionedDB, updates *statedb.UpdateBatch,
+func newCombinedIterator(db statedb.VersionedDB, updates *state.UpdateBatch,
 	ns string, startKey string, endKey string, includeEndKey bool) (*combinedIterator, error) {
 
-	var dbItr statedb.ResultsIterator
-	var updatesItr statedb.ResultsIterator
+	var dbItr state.ResultsIterator
+	var updatesItr state.ResultsIterator
 	var err error
 	if dbItr, err = db.GetStateRangeScanIterator(ns, startKey, endKey); err != nil {
 		return nil, err
 	}
 	updatesItr = updates.GetRangeScanIterator(ns, startKey, endKey)
-	var dbItem, updatesItem statedb.QueryResult
+	var dbItem, updatesItem state.QueryResult
 	if dbItem, err = dbItr.Next(); err != nil {
 		return nil, err
 	}
@@ -74,14 +75,14 @@ func newCombinedIterator(db statedb.VersionedDB, updates *statedb.UpdateBatch,
 
 // Next returns the KV from either dbItr or updatesItr that gives the next smaller key
 // If both gives the same keys, then it returns the KV from updatesItr.
-func (itr *combinedIterator) Next() (statedb.QueryResult, error) {
+func (itr *combinedIterator) Next() (state.QueryResult, error) {
 	if itr.dbItem == nil && itr.updatesItem == nil {
 		logger.Debugf("dbItem and updatesItem both are nil.")
 		return itr.serveEndKeyIfNeeded()
 	}
 	var moveDBItr bool
 	var moveUpdatesItr bool
-	var selectedItem statedb.QueryResult
+	var selectedItem state.QueryResult
 	compResult := compareKeys(itr.dbItem, itr.updatesItem)
 	logger.Debugf("compResult=%d", compResult)
 	switch compResult {
@@ -129,14 +130,14 @@ func (itr *combinedIterator) GetBookmarkAndClose() string {
 
 // serveEndKeyIfNeeded returns the endKey only once and only if includeEndKey was set to true
 // in the constructor of combinedIterator.
-func (itr *combinedIterator) serveEndKeyIfNeeded() (statedb.QueryResult, error) {
+func (itr *combinedIterator) serveEndKeyIfNeeded() (state.QueryResult, error) {
 	if !itr.includeEndKey || itr.endKeyServed {
 		logger.Debugf("Endkey not to be served. Returning nil... [toInclude=%t, alreadyServed=%t]",
 			itr.includeEndKey, itr.endKeyServed)
 		return nil, nil
 	}
 	logger.Debug("Serving the endKey")
-	var vv *statedb.VersionedValue
+	var vv *state.VersionedValue
 	var err error
 	vv = itr.updates.Get(itr.ns, itr.endKey)
 	logger.Debugf("endKey value from updates:%s", vv)
@@ -150,9 +151,9 @@ func (itr *combinedIterator) serveEndKeyIfNeeded() (statedb.QueryResult, error) 
 	if vv == nil {
 		return nil, nil
 	}
-	vkv := &statedb.VersionedKV{
-		CompositeKey:   statedb.CompositeKey{Namespace: itr.ns, Key: itr.endKey},
-		VersionedValue: statedb.VersionedValue{Value: vv.Value, Version: vv.Version}}
+	vkv := &state.VersionedKV{
+		CompositeKey:   state.CompositeKey{Namespace: itr.ns, Key: itr.endKey},
+		VersionedValue: state.VersionedValue{Value: vv.Value, Version: vv.Version}}
 
 	if isDelete(vkv) {
 		return nil, nil
@@ -160,7 +161,7 @@ func (itr *combinedIterator) serveEndKeyIfNeeded() (statedb.QueryResult, error) 
 	return vkv, nil
 }
 
-func compareKeys(item1 statedb.QueryResult, item2 statedb.QueryResult) int {
+func compareKeys(item1 state.QueryResult, item2 state.QueryResult) int {
 	if item1 == nil {
 		if item2 == nil {
 			return 0
@@ -171,9 +172,9 @@ func compareKeys(item1 statedb.QueryResult, item2 statedb.QueryResult) int {
 		return -1
 	}
 	// at this stage both items are not nil
-	return strings.Compare(item1.(*statedb.VersionedKV).Key, item2.(*statedb.VersionedKV).Key)
+	return strings.Compare(item1.(*state.VersionedKV).Key, item2.(*state.VersionedKV).Key)
 }
 
-func isDelete(item statedb.QueryResult) bool {
-	return item.(*statedb.VersionedKV).Value == nil
+func isDelete(item state.QueryResult) bool {
+	return item.(*state.VersionedKV).Value == nil
 }

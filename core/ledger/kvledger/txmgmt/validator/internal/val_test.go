@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -18,8 +19,8 @@ import (
 
 func TestNewPubAndHashUpdates(t *testing.T) {
 	expected := &PubAndHashUpdates{
-		privacyenabledstate.NewPubUpdateBatch(),
-		privacyenabledstate.NewHashedUpdateBatch(),
+		state.NewPubUpdateBatch(),
+		state.NewHashedUpdateBatch(),
 	}
 
 	actual := NewPubAndHashUpdates()

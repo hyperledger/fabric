@@ -8,13 +8,11 @@ package statedb
 
 import (
 	"fmt"
-	"sort"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
-//go:generate counterfeiter -o mock/results_iterator.go -fake-name ResultsIterator . ResultsIterator
 //go:generate counterfeiter -o mock/versioned_db.go -fake-name VersionedDB . VersionedDB
 
 // VersionedDBProvider provides an instance of an versioned DB
@@ -28,32 +26,32 @@ type VersionedDBProvider interface {
 // VersionedDB lists methods that a db is supposed to implement
 type VersionedDB interface {
 	// GetState gets the value for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
-	GetState(namespace string, key string) (*VersionedValue, error)
+	GetState(namespace string, key string) (*state.VersionedValue, error)
 	// GetVersion gets the version for given namespace and key. For a chaincode, the namespace corresponds to the chaincodeId
 	GetVersion(namespace string, key string) (*version.Height, error)
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
-	GetStateMultipleKeys(namespace string, keys []string) ([]*VersionedValue, error)
+	GetStateMultipleKeys(namespace string, keys []string) ([]*state.VersionedValue, error)
 	// GetStateRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
 	// startKey is inclusive
 	// endKey is exclusive
 	// The returned ResultsIterator contains results of type *VersionedKV
-	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
+	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (state.ResultsIterator, error)
 	// GetStateRangeScanIteratorWithMetadata returns an iterator that contains all the key-values between given key ranges.
 	// startKey is inclusive
 	// endKey is exclusive
 	// metadata is a map of additional query parameters
 	// The returned ResultsIterator contains results of type *VersionedKV
-	GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (QueryResultsIterator, error)
+	GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (state.QueryResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type *VersionedKV.
-	ExecuteQuery(namespace, query string) (ResultsIterator, error)
+	ExecuteQuery(namespace, query string) (state.ResultsIterator, error)
 	// ExecuteQueryWithMetadata executes the given query with associated query options and
 	// returns an iterator that contains results of type *VersionedKV.
 	// metadata is a map of additional query parameters
-	ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (QueryResultsIterator, error)
+	ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (state.QueryResultsIterator, error)
 	// ApplyUpdates applies the batch to the underlying db.
 	// height is the height of the highest transaction in the Batch that
 	// a state db implementation is expected to ues as a save point
-	ApplyUpdates(batch *UpdateBatch, height *version.Height) error
+	ApplyUpdates(batch *state.UpdateBatch, height *version.Height) error
 	// GetLatestSavePoint returns the height of the highest transaction upto which
 	// the state db is consistent
 	GetLatestSavePoint() (*version.Height, error)
@@ -75,7 +73,7 @@ type VersionedDB interface {
 //BulkOptimizable interface provides additional functions for
 //databases capable of batch operations
 type BulkOptimizable interface {
-	LoadCommittedVersions(keys []*CompositeKey) error
+	LoadCommittedVersions(keys []*state.CompositeKey) error
 	GetCachedVersion(namespace, key string) (*version.Height, bool)
 	ClearCachedVersions()
 }
@@ -85,212 +83,6 @@ type BulkOptimizable interface {
 type IndexCapable interface {
 	GetDBType() string
 	ProcessIndexesForChaincodeDeploy(namespace string, indexFilesData map[string][]byte) error
-}
-
-// CompositeKey encloses Namespace and Key components
-type CompositeKey struct {
-	Namespace string
-	Key       string
-}
-
-// VersionedValue encloses value and corresponding version
-type VersionedValue struct {
-	Value    []byte
-	Metadata []byte
-	Version  *version.Height
-}
-
-// IsDelete returns true if this update indicates delete of a key
-func (vv *VersionedValue) IsDelete() bool {
-	return vv.Value == nil
-}
-
-// VersionedKV encloses key and corresponding VersionedValue
-type VersionedKV struct {
-	CompositeKey
-	VersionedValue
-}
-
-// ResultsIterator iterates over query results
-type ResultsIterator interface {
-	Next() (QueryResult, error)
-	Close()
-}
-
-// QueryResultsIterator adds GetBookmarkAndClose method
-type QueryResultsIterator interface {
-	ResultsIterator
-	GetBookmarkAndClose() string
-}
-
-// QueryResult - a general interface for supporting different types of query results. Actual types differ for different queries
-type QueryResult interface{}
-
-type nsUpdates struct {
-	M map[string]*VersionedValue
-}
-
-func newNsUpdates() *nsUpdates {
-	return &nsUpdates{make(map[string]*VersionedValue)}
-}
-
-// UpdateBatch encloses the details of multiple `updates`
-type UpdateBatch struct {
-	ContainsPostOrderWrites bool
-	Updates                 map[string]*nsUpdates
-}
-
-// NewUpdateBatch constructs an instance of a Batch
-func NewUpdateBatch() *UpdateBatch {
-	return &UpdateBatch{false, make(map[string]*nsUpdates)}
-}
-
-// Get returns the VersionedValue for the given namespace and key
-func (batch *UpdateBatch) Get(ns string, key string) *VersionedValue {
-	nsUpdates, ok := batch.Updates[ns]
-	if !ok {
-		return nil
-	}
-	vv, ok := nsUpdates.M[key]
-	if !ok {
-		return nil
-	}
-	return vv
-}
-
-// Put adds a key with value only. The metadata is assumed to be nil
-func (batch *UpdateBatch) Put(ns string, key string, value []byte, version *version.Height) {
-	batch.PutValAndMetadata(ns, key, value, nil, version)
-}
-
-// PutValAndMetadata adds a key with value and metadata
-// TODO introducing a new function to limit the refactoring. Later in a separate CR, the 'Put' function above should be removed
-func (batch *UpdateBatch) PutValAndMetadata(ns string, key string, value []byte, metadata []byte, version *version.Height) {
-	if value == nil {
-		panic("Nil value not allowed. Instead call 'Delete' function")
-	}
-	batch.Update(ns, key, &VersionedValue{value, metadata, version})
-}
-
-// Delete deletes a Key and associated value
-func (batch *UpdateBatch) Delete(ns string, key string, version *version.Height) {
-	batch.Update(ns, key, &VersionedValue{nil, nil, version})
-}
-
-// Exists checks whether the given key exists in the batch
-func (batch *UpdateBatch) Exists(ns string, key string) bool {
-	nsUpdates, ok := batch.Updates[ns]
-	if !ok {
-		return false
-	}
-	_, ok = nsUpdates.M[key]
-	return ok
-}
-
-// GetUpdatedNamespaces returns the names of the namespaces that are updated
-func (batch *UpdateBatch) GetUpdatedNamespaces() []string {
-	namespaces := make([]string, len(batch.Updates))
-	i := 0
-	for ns := range batch.Updates {
-		namespaces[i] = ns
-		i++
-	}
-	return namespaces
-}
-
-// Update updates the batch with a latest entry for a namespace and a key
-func (batch *UpdateBatch) Update(ns string, key string, vv *VersionedValue) {
-	batch.getOrCreateNsUpdates(ns).M[key] = vv
-}
-
-// GetUpdates returns all the updates for a namespace
-func (batch *UpdateBatch) GetUpdates(ns string) map[string]*VersionedValue {
-	nsUpdates, ok := batch.Updates[ns]
-	if !ok {
-		return nil
-	}
-	return nsUpdates.M
-}
-
-// GetRangeScanIterator returns an iterator that iterates over keys of a specific namespace in sorted order
-// In other word this gives the same functionality over the contents in the `UpdateBatch` as
-// `VersionedDB.GetStateRangeScanIterator()` method gives over the contents in the statedb
-// This function can be used for querying the contents in the updateBatch before they are committed to the statedb.
-// For instance, a validator implementation can used this to verify the validity of a range query of a transaction
-// where the UpdateBatch represents the union of the modifications performed by the preceding valid transactions in the same block
-// (Assuming Group commit approach where we commit all the updates caused by a block together).
-func (batch *UpdateBatch) GetRangeScanIterator(ns string, startKey string, endKey string) QueryResultsIterator {
-	return newNsIterator(ns, startKey, endKey, batch)
-}
-
-// Merge merges another updates batch with this updates batch
-func (batch *UpdateBatch) Merge(toMerge *UpdateBatch) {
-	batch.ContainsPostOrderWrites = batch.ContainsPostOrderWrites || toMerge.ContainsPostOrderWrites
-	for ns, nsUpdates := range toMerge.Updates {
-		for key, vv := range nsUpdates.M {
-			batch.Update(ns, key, vv)
-		}
-	}
-}
-
-func (batch *UpdateBatch) getOrCreateNsUpdates(ns string) *nsUpdates {
-	nsUpdates := batch.Updates[ns]
-	if nsUpdates == nil {
-		nsUpdates = newNsUpdates()
-		batch.Updates[ns] = nsUpdates
-	}
-	return nsUpdates
-}
-
-type nsIterator struct {
-	ns         string
-	nsUpdates  *nsUpdates
-	sortedKeys []string
-	nextIndex  int
-	lastIndex  int
-}
-
-func newNsIterator(ns string, startKey string, endKey string, batch *UpdateBatch) *nsIterator {
-	nsUpdates, ok := batch.Updates[ns]
-	if !ok {
-		return &nsIterator{}
-	}
-	sortedKeys := util.GetSortedKeys(nsUpdates.M)
-	var nextIndex int
-	var lastIndex int
-	if startKey == "" {
-		nextIndex = 0
-	} else {
-		nextIndex = sort.SearchStrings(sortedKeys, startKey)
-	}
-	if endKey == "" {
-		lastIndex = len(sortedKeys)
-	} else {
-		lastIndex = sort.SearchStrings(sortedKeys, endKey)
-	}
-	return &nsIterator{ns, nsUpdates, sortedKeys, nextIndex, lastIndex}
-}
-
-// Next gives next key and versioned value. It returns a nil when exhausted
-func (itr *nsIterator) Next() (QueryResult, error) {
-	if itr.nextIndex >= itr.lastIndex {
-		return nil, nil
-	}
-	key := itr.sortedKeys[itr.nextIndex]
-	vv := itr.nsUpdates.M[key]
-	itr.nextIndex++
-	return &VersionedKV{CompositeKey{itr.ns, key}, VersionedValue{vv.Value, vv.Metadata, vv.Version}}, nil
-}
-
-// Close implements the method from QueryResult interface
-func (itr *nsIterator) Close() {
-	// do nothing
-}
-
-// GetBookmarkAndClose implements the method from QueryResult interface
-func (itr *nsIterator) GetBookmarkAndClose() string {
-	// do nothing
-	return ""
 }
 
 const optionLimit = "limit"

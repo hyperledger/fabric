@@ -11,10 +11,10 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 )
 
@@ -32,21 +32,21 @@ type Validator struct {
 func (v *Validator) preLoadCommittedVersionOfRSet(block *internal.Block) error {
 
 	// Collect both public and hashed keys in read sets of all transactions in a given block
-	var pubKeys []*statedb.CompositeKey
-	var hashedKeys []*privacyenabledstate.HashedCompositeKey
+	var pubKeys []*state.CompositeKey
+	var hashedKeys []*state.HashedCompositeKey
 
 	// pubKeysMap and hashedKeysMap are used to avoid duplicate entries in the
 	// pubKeys and hashedKeys. Though map alone can be used to collect keys in
 	// read sets and pass as an argument in LoadCommittedVersionOfPubAndHashedKeys(),
 	// array is used for better code readability. On the negative side, this approach
 	// might use some extra memory.
-	pubKeysMap := make(map[statedb.CompositeKey]interface{})
-	hashedKeysMap := make(map[privacyenabledstate.HashedCompositeKey]interface{})
+	pubKeysMap := make(map[state.CompositeKey]interface{})
+	hashedKeysMap := make(map[state.HashedCompositeKey]interface{})
 
 	for _, tx := range block.Txs {
 		for _, nsRWSet := range tx.RWSet.NsRwSets {
 			for _, kvRead := range nsRWSet.KvRwSet.Reads {
-				compositeKey := statedb.CompositeKey{
+				compositeKey := state.CompositeKey{
 					Namespace: nsRWSet.NameSpace,
 					Key:       kvRead.Key,
 				}
@@ -58,7 +58,7 @@ func (v *Validator) preLoadCommittedVersionOfRSet(block *internal.Block) error {
 			}
 			for _, colHashedRwSet := range nsRWSet.CollHashedRwSets {
 				for _, kvHashedRead := range colHashedRwSet.HashedRwSet.HashedReads {
-					hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
+					hashedCompositeKey := state.HashedCompositeKey{
 						Namespace:      nsRWSet.NameSpace,
 						CollectionName: colHashedRwSet.CollectionName,
 						KeyHash:        string(kvHashedRead.KeyHash),
@@ -164,7 +164,7 @@ func (v *Validator) validateTx(txRWSet *rwsetutil.TxRwSet, updates *internal.Pub
 ////////////////////////////////////////////////////////////////////////////////
 /////                 Validation of public read-set
 ////////////////////////////////////////////////////////////////////////////////
-func (v *Validator) validateReadSet(ns string, kvReads []*kvrwset.KVRead, updates *privacyenabledstate.PubUpdateBatch) (bool, error) {
+func (v *Validator) validateReadSet(ns string, kvReads []*kvrwset.KVRead, updates *state.PubUpdateBatch) (bool, error) {
 	for _, kvRead := range kvReads {
 		if valid, err := v.validateKVRead(ns, kvRead, updates); !valid || err != nil {
 			return valid, err
@@ -176,7 +176,7 @@ func (v *Validator) validateReadSet(ns string, kvReads []*kvrwset.KVRead, update
 // validateKVRead performs mvcc check for a key read during transaction simulation.
 // i.e., it checks whether a key/version combination is already updated in the statedb (by an already committed block)
 // or in the updates (by a preceding valid transaction in the current block)
-func (v *Validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *privacyenabledstate.PubUpdateBatch) (bool, error) {
+func (v *Validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *state.PubUpdateBatch) (bool, error) {
 	if updates.Exists(ns, kvRead.Key) {
 		return false, nil
 	}
@@ -198,7 +198,7 @@ func (v *Validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *p
 ////////////////////////////////////////////////////////////////////////////////
 /////                 Validation of range queries
 ////////////////////////////////////////////////////////////////////////////////
-func (v *Validator) validateRangeQueries(ns string, rangeQueriesInfo []*kvrwset.RangeQueryInfo, updates *privacyenabledstate.PubUpdateBatch) (bool, error) {
+func (v *Validator) validateRangeQueries(ns string, rangeQueriesInfo []*kvrwset.RangeQueryInfo, updates *state.PubUpdateBatch) (bool, error) {
 	for _, rqi := range rangeQueriesInfo {
 		if valid, err := v.validateRangeQuery(ns, rqi, updates); !valid || err != nil {
 			return valid, err
@@ -211,7 +211,7 @@ func (v *Validator) validateRangeQueries(ns string, rangeQueriesInfo []*kvrwset.
 // checks whether the results of the range query are still the same when executed on the
 // statedb (latest state as of last committed block) + updates (prepared by the writes of preceding valid transactions
 // in the current block and yet to be committed as part of group commit at the end of the validation of the block)
-func (v *Validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQueryInfo, updates *privacyenabledstate.PubUpdateBatch) (bool, error) {
+func (v *Validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQueryInfo, updates *state.PubUpdateBatch) (bool, error) {
 	logger.Debugf("validateRangeQuery: ns=%s, rangeQueryInfo=%s", ns, rangeQueryInfo)
 
 	// If during simulation, the caller had not exhausted the iterator so
@@ -241,7 +241,7 @@ func (v *Validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 /////                 Validation of hashed read-set
 ////////////////////////////////////////////////////////////////////////////////
 func (v *Validator) validateNsHashedReadSets(ns string, collHashedRWSets []*rwsetutil.CollHashedRwSet,
-	updates *privacyenabledstate.HashedUpdateBatch) (bool, error) {
+	updates *state.HashedUpdateBatch) (bool, error) {
 	for _, collHashedRWSet := range collHashedRWSets {
 		if valid, err := v.validateCollHashedReadSet(ns, collHashedRWSet.CollectionName, collHashedRWSet.HashedRwSet.HashedReads, updates); !valid || err != nil {
 			return valid, err
@@ -251,7 +251,7 @@ func (v *Validator) validateNsHashedReadSets(ns string, collHashedRWSets []*rwse
 }
 
 func (v *Validator) validateCollHashedReadSet(ns, coll string, kvReadHashes []*kvrwset.KVReadHash,
-	updates *privacyenabledstate.HashedUpdateBatch) (bool, error) {
+	updates *state.HashedUpdateBatch) (bool, error) {
 	for _, kvReadHash := range kvReadHashes {
 		if valid, err := v.validateKVReadHash(ns, coll, kvReadHash, updates); !valid || err != nil {
 			return valid, err
@@ -264,7 +264,7 @@ func (v *Validator) validateCollHashedReadSet(ns, coll string, kvReadHashes []*k
 // i.e., it checks whether a key/version combination is already updated in the statedb (by an already committed block)
 // or in the updates (by a preceding valid transaction in the current block)
 func (v *Validator) validateKVReadHash(ns, coll string, kvReadHash *kvrwset.KVReadHash,
-	updates *privacyenabledstate.HashedUpdateBatch) (bool, error) {
+	updates *state.HashedUpdateBatch) (bool, error) {
 	if updates.Contains(ns, coll, kvReadHash.KeyHash) {
 		return false, nil
 	}

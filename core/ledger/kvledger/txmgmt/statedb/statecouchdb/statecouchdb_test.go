@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
@@ -88,8 +89,8 @@ func TestGetStateFromCache(t *testing.T) {
 	// be updated accordingly.
 
 	// store an entry in the db
-	batch := statedb.NewUpdateBatch()
-	vv2 := &statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
+	batch := state.NewUpdateBatch()
+	vv2 := &state.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
 	batch.PutValAndMetadata("lscc", "key1", vv2.Value, vv2.Metadata, vv2.Version)
 	savePoint := version.NewHeight(1, 2)
 	db.ApplyUpdates(batch, savePoint)
@@ -151,8 +152,8 @@ func TestGetVersionFromCache(t *testing.T) {
 	// be updated accordingly.
 
 	// store an entry in the db
-	batch := statedb.NewUpdateBatch()
-	vv2 := &statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
+	batch := state.NewUpdateBatch()
+	vv2 := &state.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
 	batch.PutValAndMetadata("lscc", "key1", vv2.Value, vv2.Metadata, vv2.Version)
 	savePoint := version.NewHeight(1, 2)
 	db.ApplyUpdates(batch, savePoint)
@@ -205,10 +206,10 @@ func TestGetMultipleStatesFromCache(t *testing.T) {
 	require.NoError(t, env.cache.putState(chainID, "ns", "key2", cacheValue2))
 
 	// key3 and key4 exist only in the db
-	batch := statedb.NewUpdateBatch()
-	vv3 := &statedb.VersionedValue{Value: []byte("value3"), Metadata: []byte("meta3"), Version: version.NewHeight(1, 1)}
+	batch := state.NewUpdateBatch()
+	vv3 := &state.VersionedValue{Value: []byte("value3"), Metadata: []byte("meta3"), Version: version.NewHeight(1, 1)}
 	batch.PutValAndMetadata("ns", "key3", vv3.Value, vv3.Metadata, vv3.Version)
-	vv4 := &statedb.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 1)}
+	vv4 := &state.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 1)}
 	batch.PutValAndMetadata("ns", "key4", vv4.Value, vv4.Metadata, vv4.Version)
 	savePoint := version.NewHeight(1, 2)
 	db.ApplyUpdates(batch, savePoint)
@@ -223,7 +224,7 @@ func TestGetMultipleStatesFromCache(t *testing.T) {
 	require.NoError(t, err)
 	vv2, err := constructVersionedValue(cacheValue2)
 	require.NoError(t, err)
-	require.Equal(t, []*statedb.VersionedValue{vv1, vv2, vv3, vv4, nil}, vvalues)
+	require.Equal(t, []*state.VersionedValue{vv1, vv2, vv3, vv4, nil}, vvalues)
 
 	// cache should have been updated with key3 and key4
 	nsdb, err := db.(*VersionedDB).getNamespaceDBHandle("ns")
@@ -250,11 +251,11 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 	// in the cache and the new key should not be present in the cache.
 
 	// store 4 keys in the db
-	batch := statedb.NewUpdateBatch()
-	vv1 := &statedb.VersionedValue{Value: []byte("value1"), Metadata: []byte("meta1"), Version: version.NewHeight(1, 2)}
-	vv2 := &statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
-	vv3 := &statedb.VersionedValue{Value: []byte("value3"), Metadata: []byte("meta3"), Version: version.NewHeight(1, 2)}
-	vv4 := &statedb.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 2)}
+	batch := state.NewUpdateBatch()
+	vv1 := &state.VersionedValue{Value: []byte("value1"), Metadata: []byte("meta1"), Version: version.NewHeight(1, 2)}
+	vv2 := &state.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
+	vv3 := &state.VersionedValue{Value: []byte("value3"), Metadata: []byte("meta3"), Version: version.NewHeight(1, 2)}
+	vv4 := &state.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 2)}
 
 	batch.PutValAndMetadata("ns1", "key1", vv1.Value, vv1.Metadata, vv1.Version)
 	batch.PutValAndMetadata("ns1", "key2", vv2.Value, vv2.Metadata, vv2.Version)
@@ -289,12 +290,12 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 	ns1key2rev := string(v.AdditionalInfo)
 
 	// update key1 and key2 in ns1. delete key1 and key2 in ns2. add a new key3 in ns2.
-	batch = statedb.NewUpdateBatch()
-	vv1Update := &statedb.VersionedValue{Value: []byte("new-value1"), Metadata: []byte("meta1"), Version: version.NewHeight(2, 2)}
-	vv2Update := &statedb.VersionedValue{Value: []byte("new-value2"), Metadata: []byte("meta2"), Version: version.NewHeight(2, 2)}
-	vv3Update := &statedb.VersionedValue{Version: version.NewHeight(2, 4)}
-	vv4Update := &statedb.VersionedValue{Version: version.NewHeight(2, 5)}
-	vv5 := &statedb.VersionedValue{Value: []byte("value5"), Metadata: []byte("meta5"), Version: version.NewHeight(1, 2)}
+	batch = state.NewUpdateBatch()
+	vv1Update := &state.VersionedValue{Value: []byte("new-value1"), Metadata: []byte("meta1"), Version: version.NewHeight(2, 2)}
+	vv2Update := &state.VersionedValue{Value: []byte("new-value2"), Metadata: []byte("meta2"), Version: version.NewHeight(2, 2)}
+	vv3Update := &state.VersionedValue{Version: version.NewHeight(2, 4)}
+	vv4Update := &state.VersionedValue{Version: version.NewHeight(2, 5)}
+	vv5 := &state.VersionedValue{Value: []byte("value5"), Metadata: []byte("meta5"), Version: version.NewHeight(1, 2)}
 
 	batch.PutValAndMetadata("ns1", "key1", vv1Update.Value, vv1Update.Metadata, vv1Update.Version)
 	batch.PutValAndMetadata("ns1", "key2", vv2Update.Value, vv2Update.Metadata, vv2Update.Version)
@@ -478,7 +479,7 @@ func TestInvalidJSONFields(t *testing.T) {
 	db.Open()
 	defer db.Close()
 
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	jsonValue1 := `{"_id":"key1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
 
@@ -486,7 +487,7 @@ func TestInvalidJSONFields(t *testing.T) {
 	err = db.ApplyUpdates(batch, savePoint)
 	assert.Error(t, err, "Invalid field _id should have thrown an error")
 
-	batch = statedb.NewUpdateBatch()
+	batch = state.NewUpdateBatch()
 	jsonValue1 = `{"_rev":"rev1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
 
@@ -494,7 +495,7 @@ func TestInvalidJSONFields(t *testing.T) {
 	err = db.ApplyUpdates(batch, savePoint)
 	assert.Error(t, err, "Invalid field _rev should have thrown an error")
 
-	batch = statedb.NewUpdateBatch()
+	batch = state.NewUpdateBatch()
 	jsonValue1 = `{"_deleted":"true","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
 
@@ -502,7 +503,7 @@ func TestInvalidJSONFields(t *testing.T) {
 	err = db.ApplyUpdates(batch, savePoint)
 	assert.Error(t, err, "Invalid field _deleted should have thrown an error")
 
-	batch = statedb.NewUpdateBatch()
+	batch = state.NewUpdateBatch()
 	jsonValue1 = `{"~version":"v1","asset_name":"marble1","color":"blue","size":1,"owner":"tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
 
@@ -515,11 +516,11 @@ func TestDebugFunctions(t *testing.T) {
 
 	//Test printCompositeKeys
 	// initialize a key list
-	loadKeys := []*statedb.CompositeKey{}
+	loadKeys := []*state.CompositeKey{}
 	//create a composite key and add to the key list
-	compositeKey3 := statedb.CompositeKey{Namespace: "ns", Key: "key3"}
+	compositeKey3 := state.CompositeKey{Namespace: "ns", Key: "key3"}
 	loadKeys = append(loadKeys, &compositeKey3)
-	compositeKey4 := statedb.CompositeKey{Namespace: "ns", Key: "key4"}
+	compositeKey4 := state.CompositeKey{Namespace: "ns", Key: "key4"}
 	loadKeys = append(loadKeys, &compositeKey4)
 	assert.Equal(t, "[ns,key3],[ns,key4]", printCompositeKeys(loadKeys))
 
@@ -534,7 +535,7 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 
 	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
@@ -637,7 +638,7 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	db.Open()
 	defer db.Close()
 
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte(`{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`), version.NewHeight(1, 1))
 	batch.Put("ns1", "key2", []byte(`{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`), version.NewHeight(1, 2))
 
@@ -669,7 +670,7 @@ func TestIsBulkOptimizable(t *testing.T) {
 	}
 }
 
-func printCompositeKeys(keys []*statedb.CompositeKey) string {
+func printCompositeKeys(keys []*state.CompositeKey) string {
 
 	compositeKeyString := []string{}
 	for _, key := range keys {
@@ -689,7 +690,7 @@ func TestPaginatedQuery(t *testing.T) {
 	db.Open()
 	defer db.Close()
 
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
 	jsonValue2 := `{"asset_name": "marble2","color": "red","size": 2,"owner": "jerry"}`
@@ -854,7 +855,7 @@ func TestPaginatedQuery(t *testing.T) {
 
 func executeQuery(t *testing.T, db statedb.VersionedDB, namespace, query, bookmark string, limit int32, returnKeys []string) (string, error) {
 
-	var itr statedb.ResultsIterator
+	var itr state.ResultsIterator
 	var err error
 
 	if limit == int32(0) && bookmark == "" {
@@ -881,7 +882,7 @@ func executeQuery(t *testing.T, db statedb.VersionedDB, namespace, query, bookma
 	commontests.TestItrWithoutClose(t, itr, returnKeys)
 
 	returnBookmark := ""
-	if queryResultItr, ok := itr.(statedb.QueryResultsIterator); ok {
+	if queryResultItr, ok := itr.(state.QueryResultsIterator); ok {
 		returnBookmark = queryResultItr.GetBookmarkAndClose()
 	}
 
@@ -966,7 +967,7 @@ func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
 		}`)
 	assert.NoError(t, err)
 
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	for i := 1; i <= 3; i++ {
 		keySmallerThanDesignDoc := fmt.Sprintf("Key-%d", i)
 		keyGreaterThanDesignDoc := fmt.Sprintf("key-%d", i)
@@ -1091,7 +1092,7 @@ func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedE
 	if dataExists {
 		db, err := dbProvider.GetDBHandle("testns")
 		require.NoError(t, err)
-		batch := statedb.NewUpdateBatch()
+		batch := state.NewUpdateBatch()
 		batch.Put("testns", "testkey", []byte("testVal"), version.NewHeight(1, 1))
 		require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 	}
@@ -1126,7 +1127,7 @@ func testDoesNotExistInCache(t *testing.T, cache *cache, chainID, ns, key string
 	require.Nil(t, cacheValue)
 }
 
-func testExistInCache(t *testing.T, db *couchdb.CouchDatabase, cache *cache, chainID, ns, key string, expectedVV *statedb.VersionedValue) {
+func testExistInCache(t *testing.T, db *couchdb.CouchDatabase, cache *cache, chainID, ns, key string, expectedVV *state.VersionedValue) {
 	cacheValue, err := cache.getState(chainID, ns, key)
 	require.NoError(t, err)
 	vv, err := constructVersionedValue(cacheValue)
@@ -1179,8 +1180,8 @@ func TestLoadCommittedVersion(t *testing.T) {
 	require.NoError(t, env.cache.putState(chainID, "ns2", "key1", cacheValue))
 
 	// store (ns2, key2) in the db
-	batch := statedb.NewUpdateBatch()
-	vv := &statedb.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 4)}
+	batch := state.NewUpdateBatch()
+	vv := &state.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 4)}
 	batch.PutValAndMetadata("ns2", "key2", vv.Value, vv.Metadata, vv.Version)
 	savePoint := version.NewHeight(2, 2)
 	db.ApplyUpdates(batch, savePoint)
@@ -1199,7 +1200,7 @@ func TestLoadCommittedVersion(t *testing.T) {
 	require.Nil(t, ver)
 	require.False(t, ok)
 
-	keys := []*statedb.CompositeKey{
+	keys := []*state.CompositeKey{
 		{
 			Namespace: "ns1",
 			Key:       "key1",
@@ -1243,10 +1244,10 @@ func TestMissingRevisionRetrievalFromDB(t *testing.T) {
 	require.NoError(t, err)
 
 	// store key1, key2, key3 to the DB
-	batch := statedb.NewUpdateBatch()
-	vv1 := statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
-	vv2 := statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
-	vv3 := statedb.VersionedValue{Value: []byte("value3"), Version: version.NewHeight(1, 3)}
+	batch := state.NewUpdateBatch()
+	vv1 := state.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
+	vv2 := state.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
+	vv3 := state.VersionedValue{Value: []byte("value3"), Version: version.NewHeight(1, 3)}
 	batch.Put("ns1", "key1", vv1.Value, vv1.Version)
 	batch.Put("ns1", "key2", vv2.Value, vv2.Version)
 	batch.Put("ns1", "key3", vv3.Value, vv3.Version)
@@ -1259,9 +1260,9 @@ func TestMissingRevisionRetrievalFromDB(t *testing.T) {
 	require.Equal(t, 3, len(revisions))
 
 	// update key1 and key2 but not key3
-	batch = statedb.NewUpdateBatch()
-	vv4 := statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
-	vv5 := statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
+	batch = state.NewUpdateBatch()
+	vv4 := state.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
+	vv5 := state.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
 	batch.Put("ns1", "key1", vv4.Value, vv4.Version)
 	batch.Put("ns1", "key2", vv5.Value, vv5.Version)
 	savePoint = version.NewHeight(3, 5)

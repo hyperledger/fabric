@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -63,7 +63,7 @@ func testPurgeMgr(t *testing.T, dbEnv privacyenabledstate.TestEnv) {
 	testHelper.init(t, ledgerid, btlPolicy, dbEnv)
 	defer testHelper.cleanup()
 
-	block1Updates := privacyenabledstate.NewUpdateBatch()
+	block1Updates := state.NewPubHashPvtUpdateBatch()
 	block1Updates.PubUpdates.Put("ns1", "pubkey1", []byte("pubvalue1-1"), version.NewHeight(1, 1))
 	putPvtAndHashUpdates(t, block1Updates, "ns1", "coll1", "pvtkey1", []byte("pvtvalue1-1"), version.NewHeight(1, 1))
 	putPvtAndHashUpdates(t, block1Updates, "ns1", "coll2", "pvtkey2", []byte("pvtvalue2-1"), version.NewHeight(1, 1))
@@ -75,7 +75,7 @@ func testPurgeMgr(t *testing.T, dbEnv privacyenabledstate.TestEnv) {
 	testHelper.checkPvtdataExists("ns2", "coll3", "pvtkey3", []byte("pvtvalue3-1"))
 	testHelper.checkPvtdataExists("ns2", "coll4", "pvtkey4", []byte("pvtvalue4-1"))
 
-	block2Updates := privacyenabledstate.NewUpdateBatch()
+	block2Updates := state.NewPubHashPvtUpdateBatch()
 	putPvtAndHashUpdates(t, block2Updates, "ns1", "coll2", "pvtkey2", []byte("pvtvalue2-2"), version.NewHeight(2, 1))
 	deletePvtAndHashUpdates(t, block2Updates, "ns2", "coll4", "pvtkey4", version.NewHeight(2, 1))
 	testHelper.commitUpdatesForTesting(2, block2Updates)
@@ -84,7 +84,7 @@ func testPurgeMgr(t *testing.T, dbEnv privacyenabledstate.TestEnv) {
 	testHelper.checkPvtdataExists("ns2", "coll3", "pvtkey3", []byte("pvtvalue3-1"))
 	testHelper.checkPvtdataDoesNotExist("ns1", "coll4", "pvtkey4")
 
-	noPvtdataUpdates := privacyenabledstate.NewUpdateBatch()
+	noPvtdataUpdates := state.NewPubHashPvtUpdateBatch()
 	testHelper.commitUpdatesForTesting(3, noPvtdataUpdates)
 	testHelper.checkPvtdataDoesNotExist("ns1", "coll1", "pvtkey1")
 	testHelper.checkPvtdataExists("ns1", "coll2", "pvtkey2", []byte("pvtvalue2-2"))
@@ -129,7 +129,7 @@ func testPurgeMgrForCommittingPvtDataOfOldBlocks(t *testing.T, dbEnv privacyenab
 	defer testHelper.cleanup()
 
 	// committing block 1
-	block1Updates := privacyenabledstate.NewUpdateBatch()
+	block1Updates := state.NewPubHashPvtUpdateBatch()
 	// pvt data pvtkey1 is missing but the pvtkey2 is present.
 	// pvtkey1 and pvtkey2 both would get expired and purged while committing block 3
 	putHashUpdates(block1Updates, "ns1", "coll1", "pvtkey1", []byte("pvtvalue1-1"), version.NewHeight(1, 1))
@@ -141,12 +141,12 @@ func testPurgeMgrForCommittingPvtDataOfOldBlocks(t *testing.T, dbEnv privacyenab
 	testHelper.checkPvtdataExists("ns1", "coll1", "pvtkey2", []byte("pvtvalue1-2"))
 
 	// committing block 2
-	block2Updates := privacyenabledstate.NewUpdateBatch()
+	block2Updates := state.NewPubHashPvtUpdateBatch()
 	testHelper.commitUpdatesForTesting(2, block2Updates)
 
 	// Commit pvtkey1 via commit of missing data and this should be added to toPurge list as it
 	// should be removed while committing block 3
-	block1PvtData := privacyenabledstate.NewUpdateBatch()
+	block1PvtData := state.NewPubHashPvtUpdateBatch()
 	putPvtUpdates(block1PvtData, "ns1", "coll1", "pvtkey1", []byte("pvtvalue1-1"), version.NewHeight(1, 1))
 	testHelper.commitPvtDataOfOldBlocksForTesting(block1PvtData)
 
@@ -155,7 +155,7 @@ func testPurgeMgrForCommittingPvtDataOfOldBlocks(t *testing.T, dbEnv privacyenab
 	testHelper.checkPvtdataExists("ns1", "coll1", "pvtkey2", []byte("pvtvalue1-2"))
 
 	// committing block 3
-	block3Updates := privacyenabledstate.NewUpdateBatch()
+	block3Updates := state.NewPubHashPvtUpdateBatch()
 	testHelper.commitUpdatesForTesting(3, block3Updates)
 
 	// both pvtkey1 and pvtkey1 should not exist
@@ -176,28 +176,28 @@ func TestKeyUpdateBeforeExpiryBlock(t *testing.T) {
 	defer helper.cleanup()
 
 	// block-1 updates: Update only hash of the pvt key
-	block1Updates := privacyenabledstate.NewUpdateBatch()
+	block1Updates := state.NewPubHashPvtUpdateBatch()
 	putHashUpdates(block1Updates, "ns", "coll", "pvtkey", []byte("pvtvalue-1"), version.NewHeight(1, 1))
 	helper.commitUpdatesForTesting(1, block1Updates)
 	expInfo, _ := helper.purgeMgr.(*purgeMgr).expKeeper.retrieve(3)
 	assert.Len(t, expInfo, 1)
 
 	// block-2 update: Update both hash and pvt data
-	block2Updates := privacyenabledstate.NewUpdateBatch()
+	block2Updates := state.NewPubHashPvtUpdateBatch()
 	putPvtAndHashUpdates(t, block2Updates, "ns", "coll", "pvtkey", []byte("pvtvalue-2"), version.NewHeight(2, 1))
 	helper.commitUpdatesForTesting(2, block2Updates)
 	helper.checkExpiryEntryExistsForBlockNum(3, 1)
 	helper.checkExpiryEntryExistsForBlockNum(4, 1)
 
 	// block-3 update: no Updates
-	noPvtdataUpdates := privacyenabledstate.NewUpdateBatch()
+	noPvtdataUpdates := state.NewPubHashPvtUpdateBatch()
 	helper.commitUpdatesForTesting(3, noPvtdataUpdates)
 	helper.checkPvtdataExists("ns", "coll", "pvtkey", []byte("pvtvalue-2"))
 	helper.checkNoExpiryEntryExistsForBlockNum(3)
 	helper.checkExpiryEntryExistsForBlockNum(4, 1)
 
 	// block-4 update: no Updates
-	noPvtdataUpdates = privacyenabledstate.NewUpdateBatch()
+	noPvtdataUpdates = state.NewPubHashPvtUpdateBatch()
 	helper.commitUpdatesForTesting(4, noPvtdataUpdates)
 	helper.checkPvtdataDoesNotExist("ns", "coll", "pvtkey")
 	helper.checkNoExpiryEntryExistsForBlockNum(4)
@@ -216,21 +216,21 @@ func TestOnlyHashUpdateInExpiryBlock(t *testing.T) {
 	defer helper.cleanup()
 
 	// block-1 updates: Add pvt data
-	block1Updates := privacyenabledstate.NewUpdateBatch()
+	block1Updates := state.NewPubHashPvtUpdateBatch()
 	putPvtAndHashUpdates(t, block1Updates,
 		"ns", "coll", "pvtkey", []byte("pvtvalue-1"), version.NewHeight(1, 1))
 	helper.commitUpdatesForTesting(1, block1Updates)
 	helper.checkExpiryEntryExistsForBlockNum(3, 1)
 
 	// block-2 update: No Updates
-	noPvtdataUpdates := privacyenabledstate.NewUpdateBatch()
+	noPvtdataUpdates := state.NewPubHashPvtUpdateBatch()
 	helper.commitUpdatesForTesting(2, noPvtdataUpdates)
 	helper.checkPvtdataExists(
 		"ns", "coll", "pvtkey", []byte("pvtvalue-1"))
 	helper.checkExpiryEntryExistsForBlockNum(3, 1)
 
 	// block-3 update: Update hash only
-	block3Updates := privacyenabledstate.NewUpdateBatch()
+	block3Updates := state.NewPubHashPvtUpdateBatch()
 	putHashUpdates(block3Updates,
 		"ns", "coll", "pvtkey", []byte("pvtvalue-3"), version.NewHeight(3, 1))
 	helper.commitUpdatesForTesting(3, block3Updates)
@@ -239,12 +239,12 @@ func TestOnlyHashUpdateInExpiryBlock(t *testing.T) {
 	helper.checkExpiryEntryExistsForBlockNum(5, 1)
 
 	// block-4 update: no Updates
-	noPvtdataUpdates = privacyenabledstate.NewUpdateBatch()
+	noPvtdataUpdates = state.NewPubHashPvtUpdateBatch()
 	helper.commitUpdatesForTesting(4, noPvtdataUpdates)
 	helper.checkExpiryEntryExistsForBlockNum(5, 1)
 
 	// block-5 update: no Updates
-	noPvtdataUpdates = privacyenabledstate.NewUpdateBatch()
+	noPvtdataUpdates = state.NewPubHashPvtUpdateBatch()
 	helper.commitUpdatesForTesting(5, noPvtdataUpdates)
 	helper.checkPvtdataDoesNotExist("ns", "coll", "pvtkey")
 	helper.checkNoExpiryEntryExistsForBlockNum(5)
@@ -263,19 +263,19 @@ func TestOnlyHashDeleteBeforeExpiryBlock(t *testing.T) {
 	defer testHelper.cleanup()
 
 	// block-1 updates: add pvt key
-	block1Updates := privacyenabledstate.NewUpdateBatch()
+	block1Updates := state.NewPubHashPvtUpdateBatch()
 	putPvtAndHashUpdates(t, block1Updates,
 		"ns", "coll", "pvtkey", []byte("pvtvalue-1"), version.NewHeight(1, 1))
 	testHelper.commitUpdatesForTesting(1, block1Updates)
 
 	// block-2 update: delete Hash only
-	block2Updates := privacyenabledstate.NewUpdateBatch()
+	block2Updates := state.NewPubHashPvtUpdateBatch()
 	deleteHashUpdates(block2Updates, "ns", "coll", "pvtkey", version.NewHeight(2, 1))
 	testHelper.commitUpdatesForTesting(2, block2Updates)
 	testHelper.checkOnlyPvtKeyExists("ns", "coll", "pvtkey", []byte("pvtvalue-1"))
 
 	// block-3 update: no updates
-	noPvtdataUpdates := privacyenabledstate.NewUpdateBatch()
+	noPvtdataUpdates := state.NewPubHashPvtUpdateBatch()
 	testHelper.commitUpdatesForTesting(3, noPvtdataUpdates)
 	testHelper.checkPvtdataDoesNotExist("ns", "coll", "pvtkey")
 }
@@ -306,7 +306,7 @@ func (h *testHelper) cleanup() {
 	h.dbEnv.Cleanup()
 }
 
-func (h *testHelper) commitUpdatesForTesting(blkNum uint64, updates *privacyenabledstate.UpdateBatch) {
+func (h *testHelper) commitUpdatesForTesting(blkNum uint64, updates *state.PubHashPvtUpdateBatch) {
 	h.purgeMgr.PrepareForExpiringKeys(blkNum)
 	assert.NoError(h.t, h.purgeMgr.DeleteExpiredAndUpdateBookkeeping(updates.PvtUpdates, updates.HashUpdates))
 	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(blkNum, 1)))
@@ -314,7 +314,7 @@ func (h *testHelper) commitUpdatesForTesting(blkNum uint64, updates *privacyenab
 	h.purgeMgr.BlockCommitDone()
 }
 
-func (h *testHelper) commitPvtDataOfOldBlocksForTesting(updates *privacyenabledstate.UpdateBatch) {
+func (h *testHelper) commitPvtDataOfOldBlocksForTesting(updates *state.PubHashPvtUpdateBatch) {
 	assert.NoError(h.t, h.purgeMgr.UpdateBookkeepingForPvtDataOfOldBlocks(updates.PvtUpdates))
 	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, nil))
 }
@@ -352,7 +352,7 @@ func (h *testHelper) checkOnlyKeyHashExists(ns, coll, key string) {
 	assert.NotNil(h.t, hashVersion)
 }
 
-func (h *testHelper) fetchPvtdataFronDB(ns, coll, key string) (kv *statedb.VersionedValue, hashVersion *version.Height) {
+func (h *testHelper) fetchPvtdataFronDB(ns, coll, key string) (kv *state.VersionedValue, hashVersion *version.Height) {
 	var err error
 	kv, err = h.db.GetPrivateData(ns, coll, key)
 	assert.NoError(h.t, err)

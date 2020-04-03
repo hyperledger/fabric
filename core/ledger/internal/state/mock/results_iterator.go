@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 )
 
 type ResultsIterator struct {
@@ -12,16 +12,16 @@ type ResultsIterator struct {
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
 	}
-	NextStub        func() (statedb.QueryResult, error)
+	NextStub        func() (state.QueryResult, error)
 	nextMutex       sync.RWMutex
 	nextArgsForCall []struct {
 	}
 	nextReturns struct {
-		result1 statedb.QueryResult
+		result1 state.QueryResult
 		result2 error
 	}
 	nextReturnsOnCall map[int]struct {
-		result1 statedb.QueryResult
+		result1 state.QueryResult
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -51,7 +51,7 @@ func (fake *ResultsIterator) CloseCalls(stub func()) {
 	fake.CloseStub = stub
 }
 
-func (fake *ResultsIterator) Next() (statedb.QueryResult, error) {
+func (fake *ResultsIterator) Next() (state.QueryResult, error) {
 	fake.nextMutex.Lock()
 	ret, specificReturn := fake.nextReturnsOnCall[len(fake.nextArgsForCall)]
 	fake.nextArgsForCall = append(fake.nextArgsForCall, struct {
@@ -74,34 +74,34 @@ func (fake *ResultsIterator) NextCallCount() int {
 	return len(fake.nextArgsForCall)
 }
 
-func (fake *ResultsIterator) NextCalls(stub func() (statedb.QueryResult, error)) {
+func (fake *ResultsIterator) NextCalls(stub func() (state.QueryResult, error)) {
 	fake.nextMutex.Lock()
 	defer fake.nextMutex.Unlock()
 	fake.NextStub = stub
 }
 
-func (fake *ResultsIterator) NextReturns(result1 statedb.QueryResult, result2 error) {
+func (fake *ResultsIterator) NextReturns(result1 state.QueryResult, result2 error) {
 	fake.nextMutex.Lock()
 	defer fake.nextMutex.Unlock()
 	fake.NextStub = nil
 	fake.nextReturns = struct {
-		result1 statedb.QueryResult
+		result1 state.QueryResult
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *ResultsIterator) NextReturnsOnCall(i int, result1 statedb.QueryResult, result2 error) {
+func (fake *ResultsIterator) NextReturnsOnCall(i int, result1 state.QueryResult, result2 error) {
 	fake.nextMutex.Lock()
 	defer fake.nextMutex.Unlock()
 	fake.NextStub = nil
 	if fake.nextReturnsOnCall == nil {
 		fake.nextReturnsOnCall = make(map[int]struct {
-			result1 statedb.QueryResult
+			result1 state.QueryResult
 			result2 error
 		})
 	}
 	fake.nextReturnsOnCall[i] = struct {
-		result1 statedb.QueryResult
+		result1 state.QueryResult
 		result2 error
 	}{result1, result2}
 }
@@ -132,4 +132,4 @@ func (fake *ResultsIterator) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ statedb.ResultsIterator = new(ResultsIterator)
+var _ state.ResultsIterator = new(ResultsIterator)

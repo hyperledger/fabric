@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
@@ -274,7 +275,7 @@ func (vdb *VersionedDB) GetDBType() string {
 // A bulk retrieve from couchdb is used to populate the cache.
 // committedVersions cache will be used for state validation of readsets
 // revisionNumbers cache will be used during commit phase for couchdb bulk updates
-func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) error {
+func (vdb *VersionedDB) LoadCommittedVersions(keys []*state.CompositeKey) error {
 	missingKeys := map[string][]string{}
 	committedDataCache := newVersionCache()
 	for _, compositeKey := range keys {
@@ -364,7 +365,7 @@ func (vdb *VersionedDB) BytesKeySupported() bool {
 }
 
 // GetState implements method in VersionedDB interface
-func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.VersionedValue, error) {
+func (vdb *VersionedDB) GetState(namespace string, key string) (*state.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
 
 	// (1) read the KV from the cache if available
@@ -423,8 +424,8 @@ func (vdb *VersionedDB) readFromDB(namespace, key string) (*keyValue, error) {
 }
 
 // GetStateMultipleKeys implements method in VersionedDB interface
-func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([]*statedb.VersionedValue, error) {
-	vals := make([]*statedb.VersionedValue, len(keys))
+func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([]*state.VersionedValue, error) {
+	vals := make([]*state.VersionedValue, len(keys))
 	for i, key := range keys {
 		val, err := vdb.GetState(namespace, key)
 		if err != nil {
@@ -438,7 +439,7 @@ func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // GetStateRangeScanIterator implements method in VersionedDB interface
 // startKey is inclusive
 // endKey is exclusive
-func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
+func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (state.ResultsIterator, error) {
 	return vdb.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, nil)
 }
 
@@ -449,7 +450,7 @@ const optionLimit = "limit"
 // startKey is inclusive
 // endKey is exclusive
 // metadata contains a map of additional query options
-func (vdb *VersionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
+func (vdb *VersionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (state.QueryResultsIterator, error) {
 	logger.Debugf("Entering GetStateRangeScanIteratorWithMetadata  namespace: %s  startKey: %s  endKey: %s  metadata: %v", namespace, startKey, endKey, metadata)
 	// Get the internalQueryLimit from core.yaml
 	internalQueryLimit := vdb.couchInstance.InternalQueryLimit()
@@ -533,7 +534,7 @@ func isCouchInternalKey(key string) bool {
 }
 
 // ExecuteQuery implements method in VersionedDB interface
-func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIterator, error) {
+func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (state.ResultsIterator, error) {
 	queryResult, err := vdb.ExecuteQueryWithMetadata(namespace, query, nil)
 	if err != nil {
 		return nil, err
@@ -542,7 +543,7 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 }
 
 // ExecuteQueryWithMetadata implements method in VersionedDB interface
-func (vdb *VersionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
+func (vdb *VersionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (state.QueryResultsIterator, error) {
 	logger.Debugf("Entering ExecuteQueryWithMetadata  namespace: %s,  query: %s,  metadata: %v", namespace, query, metadata)
 	// Get the querylimit from core.yaml
 	internalQueryLimit := vdb.couchInstance.InternalQueryLimit()
@@ -624,7 +625,7 @@ func validateQueryMetadata(metadata map[string]interface{}) error {
 }
 
 // ApplyUpdates implements method in VersionedDB interface
-func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *version.Height) error {
+func (vdb *VersionedDB) ApplyUpdates(updates *state.UpdateBatch, height *version.Height) error {
 	if height != nil && updates.ContainsPostOrderWrites {
 		// height is passed nil when committing missing private data for previously committed blocks
 		r := &redoRecord{
@@ -638,7 +639,7 @@ func (vdb *VersionedDB) ApplyUpdates(updates *statedb.UpdateBatch, height *versi
 	return vdb.applyUpdates(updates, height)
 }
 
-func (vdb *VersionedDB) applyUpdates(updates *statedb.UpdateBatch, height *version.Height) error {
+func (vdb *VersionedDB) applyUpdates(updates *state.UpdateBatch, height *version.Height) error {
 	// TODO a note about https://jira.hyperledger.org/browse/FAB-8622
 	// The write lock is needed only for the stage 2.
 
@@ -889,7 +890,7 @@ func newQueryScanner(namespace string, db *couchdb.CouchDatabase, query string, 
 	return scanner, nil
 }
 
-func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
+func (scanner *queryScanner) Next() (state.QueryResult, error) {
 	//test for no results case
 	if len(scanner.resultsInfo.results) == 0 {
 		return nil, nil
@@ -926,8 +927,8 @@ func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
 		return nil, err
 	}
 	scanner.resultsInfo.totalRecordsReturned++
-	return &statedb.VersionedKV{
-		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
+	return &state.VersionedKV{
+		CompositeKey:   state.CompositeKey{Namespace: scanner.namespace, Key: key},
 		VersionedValue: *kv.VersionedValue}, nil
 }
 
@@ -946,7 +947,7 @@ func (scanner *queryScanner) GetBookmarkAndClose() string {
 	return retval
 }
 
-func constructCacheValue(v *statedb.VersionedValue, rev string) *CacheValue {
+func constructCacheValue(v *state.VersionedValue, rev string) *CacheValue {
 	return &CacheValue{
 		Version:        v.Version.ToBytes(),
 		Value:          v.Value,
@@ -955,13 +956,13 @@ func constructCacheValue(v *statedb.VersionedValue, rev string) *CacheValue {
 	}
 }
 
-func constructVersionedValue(cv *CacheValue) (*statedb.VersionedValue, error) {
+func constructVersionedValue(cv *CacheValue) (*state.VersionedValue, error) {
 	height, _, err := version.NewHeightFromBytes(cv.Version)
 	if err != nil {
 		return nil, err
 	}
 
-	return &statedb.VersionedValue{
+	return &state.VersionedValue{
 		Value:    cv.Value,
 		Version:  height,
 		Metadata: cv.Metadata,

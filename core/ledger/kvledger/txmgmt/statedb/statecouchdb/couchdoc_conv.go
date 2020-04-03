@@ -12,8 +12,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/pkg/errors"
 )
@@ -29,7 +29,7 @@ const (
 type keyValue struct {
 	key      string
 	revision string
-	*statedb.VersionedValue
+	*state.VersionedValue
 }
 
 type jsonValue map[string]interface{}
@@ -114,7 +114,7 @@ func couchDocToKeyValue(doc *couchdb.CouchDoc) (*keyValue, error) {
 	}
 	return &keyValue{
 		key, revision,
-		&statedb.VersionedValue{
+		&state.VersionedValue{
 			Value:    returnValue,
 			Metadata: returnMetadata,
 			Version:  returnVersion},

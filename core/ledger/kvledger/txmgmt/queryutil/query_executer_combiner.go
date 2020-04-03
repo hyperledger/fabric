@@ -9,8 +9,7 @@ package queryutil
 import (
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
@@ -20,9 +19,9 @@ var logger = flogging.MustGetLogger("util")
 
 // QueryExecuter encapsulates query functions
 type QueryExecuter interface {
-	GetState(namespace, key string) (*statedb.VersionedValue, error)
-	GetStateRangeScanIterator(namespace, startKey, endKey string) (statedb.ResultsIterator, error)
-	GetPrivateDataHash(namespace, collection, key string) (*statedb.VersionedValue, error)
+	GetState(namespace, key string) (*state.VersionedValue, error)
+	GetStateRangeScanIterator(namespace, startKey, endKey string) (state.ResultsIterator, error)
+	GetPrivateDataHash(namespace, collection, key string) (*state.VersionedValue, error)
 }
 
 // QECombiner combines the query results from one or more underlying 'queryExecuters'
@@ -34,7 +33,7 @@ type QECombiner struct {
 
 // GetState implements function in the interface ledger.SimpleQueryExecutor
 func (c *QECombiner) GetState(namespace string, key string) ([]byte, error) {
-	var vv *statedb.VersionedValue
+	var vv *state.VersionedValue
 	var val []byte
 	var err error
 	for _, qe := range c.QueryExecuters {
@@ -53,7 +52,7 @@ func (c *QECombiner) GetState(namespace string, key string) ([]byte, error) {
 
 // GetStateRangeScanIterator implements function in the interface ledger.SimpleQueryExecutor
 func (c *QECombiner) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
-	var itrs []statedb.ResultsIterator
+	var itrs []state.ResultsIterator
 	for _, qe := range c.QueryExecuters {
 		itr, err := qe.GetStateRangeScanIterator(namespace, startKey, endKey)
 		if err != nil {
@@ -72,7 +71,7 @@ func (c *QECombiner) GetStateRangeScanIterator(namespace string, startKey string
 }
 
 func (c *QECombiner) GetPrivateDataHash(namespace, collection, key string) ([]byte, error) {
-	var vv *statedb.VersionedValue
+	var vv *state.VersionedValue
 	var val []byte
 	var err error
 	for _, qe := range c.QueryExecuters {
@@ -92,21 +91,21 @@ func (c *QECombiner) GetPrivateDataHash(namespace, collection, key string) ([]by
 
 // UpdateBatchBackedQueryExecuter wraps an update batch for providing functions in the interface 'queryExecuter'
 type UpdateBatchBackedQueryExecuter struct {
-	UpdateBatch      *statedb.UpdateBatch
-	HashUpdatesBatch *privacyenabledstate.HashedUpdateBatch
+	UpdateBatch      *state.UpdateBatch
+	HashUpdatesBatch *state.HashedUpdateBatch
 }
 
 // GetState implements function in interface 'queryExecuter'
-func (qe *UpdateBatchBackedQueryExecuter) GetState(ns, key string) (*statedb.VersionedValue, error) {
+func (qe *UpdateBatchBackedQueryExecuter) GetState(ns, key string) (*state.VersionedValue, error) {
 	return qe.UpdateBatch.Get(ns, key), nil
 }
 
 // GetStateRangeScanIterator implements function in interface 'queryExecuter'
-func (qe *UpdateBatchBackedQueryExecuter) GetStateRangeScanIterator(namespace, startKey, endKey string) (statedb.ResultsIterator, error) {
+func (qe *UpdateBatchBackedQueryExecuter) GetStateRangeScanIterator(namespace, startKey, endKey string) (state.ResultsIterator, error) {
 	return qe.UpdateBatch.GetRangeScanIterator(namespace, startKey, endKey), nil
 }
 
-func (qe *UpdateBatchBackedQueryExecuter) GetPrivateDataHash(ns, coll, key string) (*statedb.VersionedValue, error) {
+func (qe *UpdateBatchBackedQueryExecuter) GetPrivateDataHash(ns, coll, key string) (*state.VersionedValue, error) {
 	keyHash := util.ComputeStringHash(key)
 	return qe.HashUpdatesBatch.Get(ns, coll, string(keyHash)), nil
 }

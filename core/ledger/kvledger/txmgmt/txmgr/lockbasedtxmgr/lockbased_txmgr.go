@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -48,7 +49,7 @@ type LockBasedTxMgr struct {
 
 type current struct {
 	block     *common.Block
-	batch     *privacyenabledstate.UpdateBatch
+	batch     *state.PubHashPvtUpdateBatch
 	listeners []ledger.StateListener
 }
 
@@ -239,7 +240,7 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(reconciledPv
 	return nil
 }
 
-type uniquePvtDataMap map[privacyenabledstate.HashedCompositeKey]*privacyenabledstate.PvtKVWrite
+type uniquePvtDataMap map[state.HashedCompositeKey]*state.PvtKVWrite
 
 func constructUniquePvtData(reconciledPvtdata map[uint64][]*ledger.TxPvtData) (uniquePvtDataMap, error) {
 	uniquePvtData := make(uniquePvtDataMap)
@@ -287,7 +288,7 @@ func (uniquePvtData uniquePvtDataMap) updateUsingCollPvtData(collPvtData *rwset.
 		return err
 	}
 
-	hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
+	hashedCompositeKey := state.HashedCompositeKey{
 		Namespace:      ns,
 		CollectionName: collPvtData.CollectionName,
 	}
@@ -301,12 +302,12 @@ func (uniquePvtData uniquePvtDataMap) updateUsingCollPvtData(collPvtData *rwset.
 }
 
 func (uniquePvtData uniquePvtDataMap) updateUsingPvtWrite(pvtWrite *kvrwset.KVWrite,
-	hashedCompositeKey privacyenabledstate.HashedCompositeKey, ver *version.Height) {
+	hashedCompositeKey state.HashedCompositeKey, ver *version.Height) {
 
 	pvtData, ok := uniquePvtData[hashedCompositeKey]
 	if !ok || pvtData.Version.Compare(ver) < 0 {
 		uniquePvtData[hashedCompositeKey] =
-			&privacyenabledstate.PvtKVWrite{
+			&state.PvtKVWrite{
 				Key:      pvtWrite.Key,
 				IsDelete: pvtWrite.IsDelete,
 				Value:    pvtWrite.Value,
@@ -338,7 +339,7 @@ func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db privacyen
 	// Note that ClearCachedVersions would not be called till we validate and commit these
 	// pvt data of old blocks. This is because only during the exclusive lock duration, we
 	// clear the cache and we have already acquired one before reaching here.
-	var hashedCompositeKeys []*privacyenabledstate.HashedCompositeKey
+	var hashedCompositeKeys []*state.HashedCompositeKey
 	for hashedCompositeKey := range uniquePvtData {
 		// tempKey ensures a different pointer is added to the slice for each key
 		tempKey := hashedCompositeKey
@@ -352,8 +353,8 @@ func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db privacyen
 	return nil
 }
 
-func checkIfPvtWriteIsStale(hashedKey *privacyenabledstate.HashedCompositeKey,
-	kvWrite *privacyenabledstate.PvtKVWrite, db privacyenabledstate.DB) (bool, error) {
+func checkIfPvtWriteIsStale(hashedKey *state.HashedCompositeKey,
+	kvWrite *state.PvtKVWrite, db privacyenabledstate.DB) (bool, error) {
 
 	ns := hashedKey.Namespace
 	coll := hashedKey.CollectionName
@@ -410,8 +411,8 @@ func checkIfPvtWriteIsStale(hashedKey *privacyenabledstate.HashedCompositeKey,
 	return true, nil
 }
 
-func (uniquePvtData uniquePvtDataMap) transformToUpdateBatch() *privacyenabledstate.UpdateBatch {
-	batch := privacyenabledstate.NewUpdateBatch()
+func (uniquePvtData uniquePvtDataMap) transformToUpdateBatch() *state.PubHashPvtUpdateBatch {
+	batch := state.NewPubHashPvtUpdateBatch()
 	for hashedCompositeKey, pvtWrite := range uniquePvtData {
 		ns := hashedCompositeKey.Namespace
 		coll := hashedCompositeKey.CollectionName
@@ -552,7 +553,7 @@ func (txmgr *LockBasedTxMgr) ShouldRecover(lastAvailableBlock uint64) (bool, uin
 	return savepoint.BlockNum != lastAvailableBlock, savepoint.BlockNum + 1, nil
 }
 
-// Name returns the name of the database that manages all active states.
+// Name returns the name of the database that manages all active state.
 func (txmgr *LockBasedTxMgr) Name() string {
 	return "state"
 }
@@ -575,7 +576,7 @@ func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvt
 	return txmgr.Commit()
 }
 
-func extractStateUpdates(batch *privacyenabledstate.UpdateBatch, namespaces []string) ledger.StateUpdates {
+func extractStateUpdates(batch *state.PubHashPvtUpdateBatch, namespaces []string) ledger.StateUpdates {
 	su := make(ledger.StateUpdates)
 	for _, namespace := range namespaces {
 		nsu := &ledger.KVStateUpdates{}
@@ -590,7 +591,7 @@ func extractStateUpdates(batch *privacyenabledstate.UpdateBatch, namespaces []st
 			)
 		}
 		// include colls hashes updates
-		if hashUpdates, ok := batch.HashUpdates.UpdateMap[namespace]; ok {
+		if hashUpdates, ok := batch.HashUpdates.NsCollUpdates[namespace]; ok {
 			nsu.CollHashUpdates = make(map[string][]*kvrwset.KVWriteHash)
 			for _, collName := range hashUpdates.GetCollectionNames() {
 				for key, vv := range hashUpdates.GetUpdates(collName) {

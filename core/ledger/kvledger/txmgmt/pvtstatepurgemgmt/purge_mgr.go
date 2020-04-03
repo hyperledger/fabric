@@ -10,10 +10,10 @@ import (
 	"math"
 	"sync"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
@@ -26,10 +26,10 @@ type PurgeMgr interface {
 	WaitForPrepareToFinish()
 	// DeleteExpiredAndUpdateBookkeeping updates the bookkeeping and modifies the update batch by adding the deletes for the expired pvtdata
 	DeleteExpiredAndUpdateBookkeeping(
-		pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-		hashedUpdates *privacyenabledstate.HashedUpdateBatch) error
+		pvtUpdates *state.PvtUpdateBatch,
+		hashedUpdates *state.HashedUpdateBatch) error
 	// UpdateBookkeepingForPvtDataOfOldBlocks updates the existing expiry entries in the bookkeeper with the given pvtUpdates
-	UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyenabledstate.PvtUpdateBatch) error
+	UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *state.PvtUpdateBatch) error
 	// BlockCommitDone is a callback to the PurgeMgr when the block is committed to the ledger
 	BlockCommitDone() error
 }
@@ -40,7 +40,7 @@ type keyAndVersion struct {
 	purgeKeyOnly    bool
 }
 
-type expiryInfoMap map[privacyenabledstate.HashedCompositeKey]*keyAndVersion
+type expiryInfoMap map[state.HashedCompositeKey]*keyAndVersion
 
 type workingset struct {
 	toPurge             expiryInfoMap
@@ -89,7 +89,7 @@ func (p *purgeMgr) WaitForPrepareToFinish() {
 	p.lock.Unlock()
 }
 
-func (p *purgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyenabledstate.PvtUpdateBatch) error {
+func (p *purgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *state.PvtUpdateBatch) error {
 	builder := newExpiryScheduleBuilder(p.btlPolicy)
 	pvtUpdateCompositeKeyMap := pvtUpdates.ToCompositeKeyMap()
 	for k, vv := range pvtUpdateCompositeKeyMap {
@@ -119,13 +119,13 @@ func (p *purgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyena
 	return p.expKeeper.updateBookkeeping(updatedList, nil)
 }
 
-func (p *purgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.PvtdataCompositeKeyMap) {
+func (p *purgeMgr) addMissingPvtDataToWorkingSet(pvtKeys state.PvtdataCompositeKeyMap) {
 	if p.workingset == nil || len(p.workingset.toPurge) == 0 {
 		return
 	}
 
 	for k := range pvtKeys {
-		hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
+		hashedCompositeKey := state.HashedCompositeKey{
 			Namespace:      k.Namespace,
 			CollectionName: k.CollectionName,
 			KeyHash:        string(util.ComputeStringHash(k.Key))}
@@ -154,8 +154,8 @@ func (p *purgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.Pvt
 
 // DeleteExpiredAndUpdateBookkeeping implements function in the interface 'PurgeMgr'
 func (p *purgeMgr) DeleteExpiredAndUpdateBookkeeping(
-	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {
+	pvtUpdates *state.PvtUpdateBatch,
+	hashedUpdates *state.HashedUpdateBatch) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	if p.workingset.err != nil {
@@ -280,7 +280,7 @@ func (p *purgeMgr) preloadCommittedVersionsInCache(expInfoMap expiryInfoMap) {
 	if !p.db.IsBulkOptimizable() {
 		return
 	}
-	var hashedKeys []*privacyenabledstate.HashedCompositeKey
+	var hashedKeys []*state.HashedCompositeKey
 	for k := range expInfoMap {
 		hashedKeys = append(hashedKeys, &k)
 	}
@@ -293,7 +293,7 @@ func transformToExpiryInfoMap(expiryInfo []*expiryInfo) expiryInfoMap {
 		for ns, colls := range expinfo.pvtdataKeys.Map {
 			for coll, keysAndHashes := range colls.Map {
 				for _, keyAndHash := range keysAndHashes.List {
-					compositeKey := privacyenabledstate.HashedCompositeKey{Namespace: ns, CollectionName: coll, KeyHash: string(keyAndHash.Hash)}
+					compositeKey := state.HashedCompositeKey{Namespace: ns, CollectionName: coll, KeyHash: string(keyAndHash.Hash)}
 					expinfoMap[compositeKey] = &keyAndVersion{key: keyAndHash.Key, committingBlock: expinfo.expiryInfoKey.committingBlk}
 				}
 			}
@@ -306,6 +306,6 @@ func sameVersion(version *version.Height, blockNum uint64) bool {
 	return version != nil && version.BlockNum == blockNum
 }
 
-func sameVersionFromVal(vv *statedb.VersionedValue, blockNum uint64) bool {
+func sameVersionFromVal(vv *state.VersionedValue, blockNum uint64) bool {
 	return vv != nil && sameVersion(vv.Version, blockNum)
 }

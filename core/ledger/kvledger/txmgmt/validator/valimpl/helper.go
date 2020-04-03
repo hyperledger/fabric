@@ -14,10 +14,10 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
@@ -35,9 +35,9 @@ func validateAndPreparePvtBatch(
 	pubAndHashUpdates *internal.PubAndHashUpdates,
 	pvtdata map[uint64]*ledger.TxPvtData,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
-) (*privacyenabledstate.PvtUpdateBatch, error) {
+) (*state.PvtUpdateBatch, error) {
 
-	pvtUpdates := privacyenabledstate.NewPvtUpdateBatch()
+	pvtUpdates := state.NewPvtUpdateBatch()
 	metadataUpdates := metadataUpdates{}
 	for _, tx := range block.Txs {
 		if tx.ValidationCode != peer.TxValidationCode_VALID {
@@ -243,7 +243,7 @@ func postprocessProtoBlock(block *common.Block, validatedBlock *internal.Block) 
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 }
 
-func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch, ver *version.Height) {
+func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch *state.PvtUpdateBatch, ver *version.Height) {
 	for _, ns := range pvtRWSet.NsPvtRwSet {
 		for _, coll := range ns.CollPvtRwSets {
 			for _, kvwrite := range coll.KvRwSet.Writes {
@@ -264,7 +264,7 @@ func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch 
 // gets left as stale and will cause simulation failure because of wrongly assuming that we have stale value
 func incrementPvtdataVersionIfNeeded(
 	metadataUpdates metadataUpdates,
-	pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
+	pvtUpdateBatch *state.PvtUpdateBatch,
 	pubAndHashUpdates *internal.PubAndHashUpdates,
 	db privacyenabledstate.DB) error {
 
@@ -314,8 +314,8 @@ func addEntriesToMetadataUpdates(metadataUpdates metadataUpdates, pvtRWSet *rwse
 	}
 }
 
-func retrieveLatestVal(ns, coll, key string, pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
-	db privacyenabledstate.DB) (val *statedb.VersionedValue, err error) {
+func retrieveLatestVal(ns, coll, key string, pvtUpdateBatch *state.PvtUpdateBatch,
+	db privacyenabledstate.DB) (val *state.VersionedValue, err error) {
 	val = pvtUpdateBatch.Get(ns, coll, key)
 	if val == nil {
 		val, err = db.GetPrivateData(ns, coll, key)

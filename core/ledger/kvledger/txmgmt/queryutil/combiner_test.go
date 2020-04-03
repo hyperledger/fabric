@@ -11,16 +11,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/util"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
+	statemock "github.com/hyperledger/fabric/core/ledger/internal/state/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil/mock"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	statedbmock "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/mock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,17 +29,17 @@ func TestMain(m *testing.M) {
 }
 
 func TestCombinerGetState(t *testing.T) {
-	batch1 := statedb.NewUpdateBatch()
+	batch1 := state.NewUpdateBatch()
 	batch1.Put("ns1", "key1", []byte("b1_value1"), nil)
 	batch1.Delete("ns1", "key2", nil)
 	batch1.Put("ns1", "key3", []byte("b1_value3"), nil)
 
-	batch2 := statedb.NewUpdateBatch()
+	batch2 := state.NewUpdateBatch()
 	batch2.Put("ns1", "key1", []byte("b2_value1"), nil)
 	batch2.Put("ns1", "key2", []byte("b2_value2"), nil)
 	batch2.Put("ns1", "key3", []byte("b2_value3"), nil)
 
-	batch3 := statedb.NewUpdateBatch()
+	batch3 := state.NewUpdateBatch()
 	batch3.Put("ns1", "key1", []byte("b3_value1"), nil)
 	batch3.Put("ns1", "key2", []byte("b3_value2"), nil)
 	batch3.Delete("ns1", "key3", nil)
@@ -84,18 +83,18 @@ func TestCombinerGetState(t *testing.T) {
 }
 
 func TestCombinerRangeScan(t *testing.T) {
-	batch1 := statedb.NewUpdateBatch()
+	batch1 := state.NewUpdateBatch()
 	batch1.Put("ns1", "key1", []byte("batch1_value1"), nil)
 	batch1.Delete("ns1", "key2", nil)
 	batch1.Put("ns1", "key3", []byte("batch1_value3"), nil)
 
-	batch2 := statedb.NewUpdateBatch()
+	batch2 := state.NewUpdateBatch()
 	batch2.Put("ns1", "key1", []byte("batch2_value1"), nil)
 	batch2.Put("ns1", "key2", []byte("batch2_value2"), nil)
 	batch2.Delete("ns1", "key3", nil)
 	batch2.Put("ns1", "key4", []byte("batch2_value4"), nil)
 
-	batch3 := statedb.NewUpdateBatch()
+	batch3 := state.NewUpdateBatch()
 	batch3.Put("ns1", "key0", []byte("batch3_value0"), nil)
 	batch3.Put("ns1", "key1", []byte("batch3_value1"), nil)
 	batch3.Put("ns1", "key2", []byte("batch3_value2"), nil)
@@ -152,7 +151,7 @@ func TestCombinerRangeScan(t *testing.T) {
 
 func TestGetStateError(t *testing.T) {
 	qe1 := &mock.QueryExecuter{}
-	qe1.GetStateReturns(&statedb.VersionedValue{Value: []byte("testValue")}, nil)
+	qe1.GetStateReturns(&state.VersionedValue{Value: []byte("testValue")}, nil)
 	qe2 := &mock.QueryExecuter{}
 	qe2.GetStateReturns(nil, errors.New("Error for testing"))
 	combiner1 := &queryutil.QECombiner{
@@ -173,11 +172,11 @@ func TestGetStateError(t *testing.T) {
 }
 
 func TestGetRangeScanError(t *testing.T) {
-	itr1 := &statedbmock.ResultsIterator{}
+	itr1 := &statemock.ResultsIterator{}
 	itr1.NextReturns(
-		&statedb.VersionedKV{
-			CompositeKey:   statedb.CompositeKey{Namespace: "ns", Key: "dummyKey"},
-			VersionedValue: statedb.VersionedValue{Value: []byte("dummyVal")},
+		&state.VersionedKV{
+			CompositeKey:   state.CompositeKey{Namespace: "ns", Key: "dummyKey"},
+			VersionedValue: state.VersionedValue{Value: []byte("dummyVal")},
 		},
 		nil,
 	)
@@ -196,16 +195,16 @@ func TestGetRangeScanError(t *testing.T) {
 }
 
 func TestGetRangeScanUnderlyingIteratorReturnsError(t *testing.T) {
-	itr1 := &statedbmock.ResultsIterator{}
+	itr1 := &statemock.ResultsIterator{}
 	itr1.NextReturns(
-		&statedb.VersionedKV{
-			CompositeKey:   statedb.CompositeKey{Namespace: "ns", Key: "dummyKey"},
-			VersionedValue: statedb.VersionedValue{Value: []byte("dummyVal")},
+		&state.VersionedKV{
+			CompositeKey:   state.CompositeKey{Namespace: "ns", Key: "dummyKey"},
+			VersionedValue: state.VersionedValue{Value: []byte("dummyVal")},
 		},
 		nil,
 	)
 
-	itr2 := &statedbmock.ResultsIterator{}
+	itr2 := &statemock.ResultsIterator{}
 	itr2.NextReturns(
 		nil,
 		errors.New("dummyErrorOnIteratorNext"),
@@ -225,7 +224,7 @@ func TestGetRangeScanUnderlyingIteratorReturnsError(t *testing.T) {
 }
 
 func TestGetPrivateDataHash(t *testing.T) {
-	batch1 := privacyenabledstate.NewHashedUpdateBatch()
+	batch1 := state.NewHashedUpdateBatch()
 	key1Hash := util.ComputeStringHash("key1")
 	key2Hash := util.ComputeStringHash("key2")
 	key3Hash := util.ComputeStringHash("key3")
@@ -234,12 +233,12 @@ func TestGetPrivateDataHash(t *testing.T) {
 	batch1.Delete("ns1", "coll1", key2Hash, nil)
 	batch1.Put("ns1", "coll1", key3Hash, []byte("b1_value3"), nil)
 
-	batch2 := privacyenabledstate.NewHashedUpdateBatch()
+	batch2 := state.NewHashedUpdateBatch()
 	batch2.Put("ns1", "coll1", key1Hash, []byte("b2_value1"), nil)
 	batch2.Put("ns1", "coll1", key2Hash, []byte("b2_value2"), nil)
 	batch2.Put("ns1", "coll1", key3Hash, []byte("b2_value3"), nil)
 
-	batch3 := privacyenabledstate.NewHashedUpdateBatch()
+	batch3 := state.NewHashedUpdateBatch()
 	batch3.Put("ns1", "coll1", key1Hash, []byte("b3_value1"), nil)
 	batch3.Put("ns1", "coll1", key2Hash, []byte("b3_value2"), nil)
 
@@ -283,7 +282,7 @@ func TestGetPrivateDataHash(t *testing.T) {
 
 func TestGetPrivateDataHashError(t *testing.T) {
 	qe1 := &mock.QueryExecuter{}
-	qe1.GetPrivateDataHashReturns(&statedb.VersionedValue{Value: []byte("testValue")}, nil)
+	qe1.GetPrivateDataHashReturns(&state.VersionedValue{Value: []byte("testValue")}, nil)
 	qe2 := &mock.QueryExecuter{}
 	qe2.GetPrivateDataHashReturns(nil, errors.New("Error for testing"))
 	combiner1 := &queryutil.QECombiner{

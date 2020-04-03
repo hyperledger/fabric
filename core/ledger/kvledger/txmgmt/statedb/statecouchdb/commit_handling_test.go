@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,14 +25,14 @@ func TestGetRevision(t *testing.T) {
 	db := versionedDB.(*VersionedDB)
 
 	// initializing data in couchdb
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	batch.Put("ns", "key-in-db", []byte("value1"), version.NewHeight(1, 1))
 	batch.Put("ns", "key-in-both-db-cache", []byte("value2"), version.NewHeight(1, 2))
 	savePoint := version.NewHeight(1, 2)
 	assert.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	// load revision cache with couchDB revision number.
-	keys := []*statedb.CompositeKey{
+	keys := []*state.CompositeKey{
 		{
 			Namespace: "ns",
 			Key:       "key-in-both-db-cache",
@@ -45,7 +45,7 @@ func TestGetRevision(t *testing.T) {
 	// Set test revision number only in cache, but not in db.
 	db.committedDataCache.setVerAndRev("ns", "key-in-cache", version.NewHeight(1, 1), "revision-cache-number")
 
-	nsUpdates := map[string]*statedb.VersionedValue{
+	nsUpdates := map[string]*state.VersionedValue{
 		"key-in-cache": {
 			Value:    []byte("test-value"),
 			Metadata: nil,
@@ -91,18 +91,18 @@ func TestBuildCommittersForNs(t *testing.T) {
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
-	nsUpdates := map[string]*statedb.VersionedValue{
+	nsUpdates := map[string]*state.VersionedValue{
 		"bad-key": {},
 	}
 
 	_, err = db.buildCommittersForNs("ns", nsUpdates)
 	assert.EqualError(t, err, "nil version not supported")
 
-	nsUpdates = make(map[string]*statedb.VersionedValue)
+	nsUpdates = make(map[string]*state.VersionedValue)
 	// populate updates with maxBatchSize + 1.
 	dummyHeight := version.NewHeight(1, 1)
 	for i := 0; i <= env.config.MaxBatchUpdateSize; i++ {
-		nsUpdates[strconv.Itoa(i)] = &statedb.VersionedValue{
+		nsUpdates[strconv.Itoa(i)] = &state.VersionedValue{
 			Value:    nil,
 			Metadata: nil,
 			Version:  dummyHeight,
@@ -127,7 +127,7 @@ func TestBuildCommitters(t *testing.T) {
 	db := versionedDB.(*VersionedDB)
 
 	dummyHeight := version.NewHeight(1, 1)
-	batch := statedb.NewUpdateBatch()
+	batch := state.NewUpdateBatch()
 	batch.Put("ns-1", "key1", []byte("value1"), dummyHeight)
 	batch.Put("ns-2", "key1", []byte("value2"), dummyHeight)
 	for i := 0; i <= env.config.MaxBatchUpdateSize; i++ {
@@ -144,7 +144,7 @@ func TestBuildCommitters(t *testing.T) {
 		assert.True(t, namespaceSet[commit.namespace])
 	}
 
-	badBatch := statedb.NewUpdateBatch()
+	badBatch := state.NewUpdateBatch()
 	badBatch.Put("bad-ns", "bad-key", []byte("bad-value"), nil)
 
 	committer, err = db.buildCommitters(badBatch)
@@ -165,13 +165,13 @@ func TestExecuteCommitter(t *testing.T) {
 	couchDocKey1, err := keyValToCouchDoc(&keyValue{
 		key:            "key1",
 		revision:       "",
-		VersionedValue: &statedb.VersionedValue{Value: []byte("value1"), Metadata: nil, Version: version.NewHeight(1, 1)},
+		VersionedValue: &state.VersionedValue{Value: []byte("value1"), Metadata: nil, Version: version.NewHeight(1, 1)},
 	})
 	assert.NoError(t, err)
 	couchDocKey2, err := keyValToCouchDoc(&keyValue{
 		key:            "key2",
 		revision:       "",
-		VersionedValue: &statedb.VersionedValue{Value: nil, Metadata: nil, Version: version.NewHeight(1, 1)},
+		VersionedValue: &state.VersionedValue{Value: nil, Metadata: nil, Version: version.NewHeight(1, 1)},
 	})
 	assert.NoError(t, err)
 
@@ -221,7 +221,7 @@ func TestCommitUpdates(t *testing.T) {
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
-	nsUpdates := map[string]*statedb.VersionedValue{
+	nsUpdates := map[string]*state.VersionedValue{
 		"key1": {
 			Value:    nil,
 			Metadata: nil,

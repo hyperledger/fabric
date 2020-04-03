@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
@@ -52,13 +53,13 @@ func NewStatebasedValidator(
 
 // ValidateAndPrepareBatch implements the function in interface validator.Validator
 func (impl *DefaultImpl) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAndPvtData,
-	doMVCCValidation bool) (*privacyenabledstate.UpdateBatch, []*txmgr.TxStatInfo, error) {
+	doMVCCValidation bool) (*state.PubHashPvtUpdateBatch, []*txmgr.TxStatInfo, error) {
 	block := blockAndPvtdata.Block
 	logger.Debugf("ValidateAndPrepareBatch() for block number = [%d]", block.Header.Number)
 	var internalBlock *internal.Block
 	var txsStatInfo []*txmgr.TxStatInfo
 	var pubAndHashUpdates *internal.PubAndHashUpdates
-	var pvtUpdates *privacyenabledstate.PvtUpdateBatch
+	var pvtUpdates *state.PvtUpdateBatch
 	var err error
 
 	logger.Debug("preprocessing ProtoBlock...")
@@ -93,7 +94,7 @@ func (impl *DefaultImpl) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAn
 	for i := range txsFilter {
 		txsStatInfo[i].ValidationCode = txsFilter.Flag(i)
 	}
-	return &privacyenabledstate.UpdateBatch{
+	return &state.PubHashPvtUpdateBatch{
 		PubUpdates:  pubAndHashUpdates.PubUpdates,
 		HashUpdates: pubAndHashUpdates.HashUpdates,
 		PvtUpdates:  pvtUpdates,

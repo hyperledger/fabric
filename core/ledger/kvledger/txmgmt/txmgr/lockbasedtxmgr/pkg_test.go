@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -209,7 +210,7 @@ func testutilPopulateDB(
 	data []*queryresult.KV, pvtdataHashes []*testutilPvtdata,
 	version *version.Height,
 ) {
-	updates := privacyenabledstate.NewUpdateBatch()
+	updates := state.NewPubHashPvtUpdateBatch()
 	for _, kv := range data {
 		updates.PubUpdates.Put(ns, kv.Key, kv.Value, version)
 	}

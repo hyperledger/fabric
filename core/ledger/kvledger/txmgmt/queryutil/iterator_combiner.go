@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/internal/state"
 )
 
 type itrCombiner struct {
@@ -19,7 +19,7 @@ type itrCombiner struct {
 	holders   []*itrHolder
 }
 
-func newItrCombiner(namespace string, baseIterators []statedb.ResultsIterator) (*itrCombiner, error) {
+func newItrCombiner(namespace string, baseIterators []state.ResultsIterator) (*itrCombiner, error) {
 	var holders []*itrHolder
 	for _, itr := range baseIterators {
 		res, err := itr.Next()
@@ -30,7 +30,7 @@ func newItrCombiner(namespace string, baseIterators []statedb.ResultsIterator) (
 			return nil, err
 		}
 		if res != nil {
-			holders = append(holders, &itrHolder{itr, res.(*statedb.VersionedKV)})
+			holders = append(holders, &itrHolder{itr, res.(*state.VersionedKV)})
 		}
 	}
 	return &itrCombiner{namespace, holders}, nil
@@ -93,7 +93,7 @@ func (combiner *itrCombiner) moveItrAndRemoveIfExhausted(i int) (removed bool, e
 }
 
 // kvAt returns the kv available from iterator at index i
-func (combiner *itrCombiner) kvAt(i int) *statedb.VersionedKV {
+func (combiner *itrCombiner) kvAt(i int) *state.VersionedKV {
 	return combiner.holders[i].kv
 }
 
@@ -111,18 +111,18 @@ func (combiner *itrCombiner) Close() {
 
 // itrHolder encloses an iterator and keeps the next item available from the iterator in the buffer
 type itrHolder struct {
-	itr statedb.ResultsIterator
-	kv  *statedb.VersionedKV
+	itr state.ResultsIterator
+	kv  *state.VersionedKV
 }
 
 // moveToNext fetches the next item to keep in buffer and returns true if the iterator is exhausted
 func (holder *itrHolder) moveToNext() (exhausted bool, err error) {
-	var res statedb.QueryResult
+	var res state.QueryResult
 	if res, err = holder.itr.Next(); err != nil {
 		return false, err
 	}
 	if res != nil {
-		holder.kv = res.(*statedb.VersionedKV)
+		holder.kv = res.(*state.VersionedKV)
 	}
 	return res == nil, nil
 }
