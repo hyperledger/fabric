@@ -660,6 +660,32 @@ func TestRemoveConsortiumFailures(t *testing.T) {
 	gt.Expect(err).To(MatchError("consortium BadConsortium does not exist in channel config"))
 }
 
+func TestGetConsortiums(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	baseConsortiums := baseConsortiums(t)
+	baseOrderer := baseSoloOrderer(t)
+	policies := standardPolicies()
+
+	channel := Channel{
+		Consortiums:  baseConsortiums,
+		Orderer:      baseOrderer,
+		Capabilities: []string{"V2_0"},
+		Policies:     policies,
+		Consortium:   "testconsortium",
+	}
+	channelGroup, err := newSystemChannelGroup(channel)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{ChannelGroup: channelGroup}
+	c := New(config)
+
+	consortiums, err := c.Consortiums()
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(len(baseConsortiums)).To(Equal(len(consortiums)))
+}
+
 func baseConsortiums(t *testing.T) []Consortium {
 	return []Consortium{
 		{

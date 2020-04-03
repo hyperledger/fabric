@@ -206,7 +206,7 @@ func TestNewCreateChannelTx(t *testing.T) {
 	profile := baseProfile(t)
 
 	// creating a create channel transaction
-	envelope, err := NewCreateChannelTx(profile)
+	envelope, err := NewCreateChannelTx(profile, "testchannel")
 	gt.Expect(err).ToNot(HaveOccurred())
 	gt.Expect(envelope).ToNot(BeNil())
 
@@ -276,6 +276,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 	tests := []struct {
 		testName   string
 		profileMod func() Channel
+		channelID  string
 		err        error
 	}{
 		{
@@ -285,6 +286,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				delete(profile.Application.Policies, AdminsPolicyKey)
 				return profile
 			},
+			channelID: "testchannel",
 			err: errors.New("creating default config template: failed to create application group: " +
 				"no Admins policy defined"),
 		},
@@ -295,6 +297,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				delete(profile.Application.Policies, ReadersPolicyKey)
 				return profile
 			},
+			channelID: "testchannel",
 			err: errors.New("creating default config template: failed to create application group: " +
 				"no Readers policy defined"),
 		},
@@ -305,6 +308,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				delete(profile.Application.Policies, WritersPolicyKey)
 				return profile
 			},
+			channelID: "testchannel",
 			err: errors.New("creating default config template: failed to create application group: " +
 				"no Writers policy defined"),
 		},
@@ -318,6 +322,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				}
 				return profile
 			},
+			channelID: "testchannel",
 			err: errors.New("creating default config template: failed to create application group: " +
 				"invalid implicit meta policy rule: 'ALL': expected two space separated " +
 				"tokens, but got 1"),
@@ -332,6 +337,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				}
 				return profile
 			},
+			channelID: "testchannel",
 			err: errors.New("creating default config template: failed to create application group: " +
 				"invalid implicit meta policy rule: 'ANYY Readers': unknown rule type " +
 				"'ANYY', expected ALL, ANY, or MAJORITY"),
@@ -346,6 +352,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				}
 				return profile
 			},
+			channelID: "testchannel",
 			err: errors.New("creating default config template: failed to create application group: " +
 				"invalid signature policy rule: 'ANYY Readers': Cannot transition " +
 				"token types from VARIABLE [ANYY] to VARIABLE [Readers]"),
@@ -360,6 +367,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				}
 				return profile
 			},
+			channelID: "testchannel",
 			err: errors.New("creating default config template: failed to create application group: " +
 				"unknown policy type: GreenPolicy"),
 		},
@@ -367,10 +375,10 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 			testName: "When channel ID is not specified in config",
 			profileMod: func() Channel {
 				profile := baseProfile(t)
-				profile.ChannelID = ""
 				return profile
 			},
-			err: errors.New("profile's channel ID is required"),
+			channelID: "",
+			err:       errors.New("profile's channel ID is required"),
 		},
 		{
 			testName: "When creating the application group fails",
@@ -379,6 +387,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 				profile.Application.Policies = nil
 				return profile
 			},
+			channelID: "testchannel",
 			err: errors.New("creating default config template: " +
 				"failed to create application group: no policies defined"),
 		},
@@ -393,7 +402,7 @@ func TestNewCreateChannelTxFailure(t *testing.T) {
 
 			profile := tt.profileMod()
 
-			env, err := NewCreateChannelTx(profile)
+			env, err := NewCreateChannelTx(profile, tt.channelID)
 			gt.Expect(env).To(BeNil())
 			gt.Expect(err).To(MatchError(tt.err))
 		})
@@ -590,9 +599,97 @@ func TestComputeUpdateFailures(t *testing.T) {
 	}
 }
 
+func TestChannelConfiguration(t *testing.T) {
+	t.Parallel()
+
+	baseApplication := baseApplication(t)
+	baseConsortiums := baseConsortiums(t)
+	baseOrderer := baseSoloOrderer(t)
+	policies := standardPolicies()
+
+	tests := []struct {
+		name            string
+		configMod       func(gt *GomegaWithT) *cb.Config
+		expectedChannel Channel
+	}{
+		{
+			name: "retrieve application channel",
+			configMod: func(gt *GomegaWithT) *cb.Config {
+				channelGroup := newConfigGroup()
+
+				applicationGroup, err := newApplicationGroup(baseApplication)
+				gt.Expect(err).NotTo(HaveOccurred())
+				for _, org := range baseApplication.Organizations {
+					orgGroup, err := newOrgConfigGroup(org)
+					gt.Expect(err).NotTo(HaveOccurred())
+					applicationGroup.Groups[org.Name] = orgGroup
+				}
+				channelGroup.Groups[ApplicationGroupKey] = applicationGroup
+				err = addPolicies(channelGroup, standardPolicies(), AdminsPolicyKey)
+				gt.Expect(err).NotTo(HaveOccurred())
+
+				return &cb.Config{
+					ChannelGroup: channelGroup,
+				}
+			},
+			expectedChannel: Channel{
+				Application: baseApplication,
+				Policies:    standardPolicies(),
+			},
+		},
+		{
+			name: "retrieve system channel",
+			configMod: func(gt *GomegaWithT) *cb.Config {
+				channel := Channel{
+					Consortiums:  baseConsortiums,
+					Orderer:      baseOrderer,
+					Capabilities: []string{"V2_0"},
+					Policies:     policies,
+					Consortium:   "testconsortium",
+				}
+				channelGroup, err := newSystemChannelGroup(channel)
+				gt.Expect(err).NotTo(HaveOccurred())
+
+				return &cb.Config{
+					ChannelGroup: channelGroup,
+				}
+			},
+			expectedChannel: Channel{
+				Consortiums:  baseConsortiums,
+				Orderer:      baseOrderer,
+				Capabilities: []string{"V2_0"},
+				Policies:     policies,
+				Consortium:   "testconsortium",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+
+			config := tt.configMod(gt)
+			c := New(config)
+
+			channel, err := c.ChannelConfiguration()
+			gt.Expect(err).NotTo(HaveOccurred())
+			gt.Expect(channel.Consortium).To(Equal(tt.expectedChannel.Consortium))
+			gt.Expect(channel.Application.Organizations).To(ContainElements(tt.expectedChannel.Application.Organizations))
+			gt.Expect(channel.Application.Capabilities).To(Equal(tt.expectedChannel.Application.Capabilities))
+			gt.Expect(channel.Application.Policies).To(Equal(tt.expectedChannel.Application.Policies))
+			gt.Expect(channel.Application.ACLs).To(Equal(tt.expectedChannel.Application.ACLs))
+			gt.Expect(channel.Orderer).To(Equal(tt.expectedChannel.Orderer))
+			gt.Expect(len(channel.Consortiums)).To(Equal(len(tt.expectedChannel.Consortiums)))
+			gt.Expect(channel.Capabilities).To(Equal(tt.expectedChannel.Capabilities))
+			gt.Expect(channel.Policies).To(Equal(tt.expectedChannel.Policies))
+		})
+	}
+}
+
 func baseProfile(t *testing.T) Channel {
 	return Channel{
-		ChannelID:    "testchannel",
 		Consortium:   "SampleConsortium",
 		Application:  baseApplication(t),
 		Capabilities: []string{"V2_0"},
@@ -601,7 +698,6 @@ func baseProfile(t *testing.T) Channel {
 
 func baseSystemChannelProfile(t *testing.T) Channel {
 	return Channel{
-		ChannelID:    "testsystemchannel",
 		Consortiums:  baseConsortiums(t),
 		Orderer:      baseSoloOrderer(t),
 		Capabilities: []string{"V2_0"},

@@ -62,6 +62,42 @@ func (c *ConfigTx) AddOrgToConsortium(org Organization, consortium string) error
 	return nil
 }
 
+// Consortiums returns a list of consortiums for the channel configuration.
+// Consortiums is only defined for the ordering system channel.
+func (c *ConfigTx) Consortiums() ([]Consortium, error) {
+	consortiumsGroup, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey]
+	if !ok {
+		return nil, errors.New("channel configuration does not have consortiums")
+	}
+
+	consortiums := []Consortium{}
+	for consortiumName, consortiumGroup := range consortiumsGroup.Groups {
+		consortium, err := consortium(consortiumGroup, consortiumName)
+		if err != nil {
+			return nil, err
+		}
+		consortiums = append(consortiums, consortium)
+	}
+
+	return consortiums, nil
+}
+
+// consortium returns a value of consortium from the given consortium configGroup
+func consortium(consortiumGroup *cb.ConfigGroup, consortiumName string) (Consortium, error) {
+	orgs := []Organization{}
+	for orgName, orgGroup := range consortiumGroup.Groups {
+		org, err := getOrganization(orgGroup, orgName)
+		if err != nil {
+			return Consortium{}, fmt.Errorf("failed to retrieve organization %s from consortium %s: ", orgName, consortiumName)
+		}
+		orgs = append(orgs, org)
+	}
+	return Consortium{
+		Name:          consortiumName,
+		Organizations: orgs,
+	}, nil
+}
+
 // newConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for
 // the ordering system channel.
 // It sets the mod_policy for all elements to "/Channel/Orderer/Admins".

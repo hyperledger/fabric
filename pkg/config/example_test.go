@@ -401,7 +401,6 @@ func Example_organization() {
 
 func ExampleNewCreateChannelTx() {
 	channel := config.Channel{
-		ChannelID:  "testchannel",
 		Consortium: "SampleConsortium",
 		Application: config.Application{
 			Organizations: []config.Organization{
@@ -438,8 +437,8 @@ func ExampleNewCreateChannelTx() {
 			},
 		},
 	}
-
-	envelope, err := config.NewCreateChannelTx(channel)
+	channelID := "testchannel"
+	envelope, err := config.NewCreateChannelTx(channel, channelID)
 	if err != nil {
 		panic(err)
 	}
