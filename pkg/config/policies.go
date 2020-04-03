@@ -43,29 +43,13 @@ func (c *ConfigTx) UpdateConsortiumChannelCreationPolicy(consortiumName string, 
 	return nil
 }
 
-// GetPoliciesForConsortiums returns a map of policies for channel consortiums.
-func (c *ConfigTx) GetPoliciesForConsortiums() (map[string]Policy, error) {
-	consortiums, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey]
-	if !ok {
-		return nil, errors.New("consortiums missing from config")
-	}
-
-	return getPolicies(consortiums.Policies)
-}
-
-// GetPoliciesForConsortium returns a map of policies for a specific consortium.
-func (c *ConfigTx) GetPoliciesForConsortium(consortiumName string) (map[string]Policy, error) {
+// GetPoliciesForConsortiumOrg returns a map of policies for a specific consortium org.
+func (c *ConfigTx) GetPoliciesForConsortiumOrg(consortiumName, orgName string) (map[string]Policy, error) {
 	consortium, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 	if !ok {
 		return nil, fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
 	}
-
-	return getPolicies(consortium.Policies)
-}
-
-// GetPoliciesForConsortiumOrg returns a map of policies for a specific consortium org.
-func (c *ConfigTx) GetPoliciesForConsortiumOrg(consortiumName, orgName string) (map[string]Policy, error) {
-	org, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName].Groups[orgName]
+	org, ok := consortium.Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("consortium org %s does not exist in channel config", orgName)
 	}

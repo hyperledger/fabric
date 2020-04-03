@@ -942,3 +942,100 @@ func TestRemoveChannelPolicy(t *testing.T) {
 	gt.Expect(baseChannel.Policies).To(HaveLen(3))
 	gt.Expect(baseChannel.Policies[ReadersPolicyKey]).ToNot(BeNil())
 }
+
+func TestGetPoliciesForConsortiumOrg(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums(t)
+
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+		},
+	}
+	c := &ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	expectedPolicies := map[string]Policy{
+		ReadersPolicyKey: {
+			Type: ImplicitMetaPolicyType,
+			Rule: "ANY Readers",
+		},
+		WritersPolicyKey: {
+			Type: ImplicitMetaPolicyType,
+			Rule: "ANY Writers",
+		},
+		AdminsPolicyKey: {
+			Type: ImplicitMetaPolicyType,
+			Rule: "MAJORITY Admins",
+		},
+		EndorsementPolicyKey: {
+			Type: ImplicitMetaPolicyType,
+			Rule: "MAJORITY Endorsement",
+		},
+	}
+
+	policies, err := c.GetPoliciesForConsortiumOrg("Consortium1", "Org1")
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(policies).To(Equal(expectedPolicies))
+}
+
+func TestGetPoliciesForConsortiumOrgFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums(t)
+
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				ConsortiumsGroupKey: consortiumsGroup,
+			},
+		},
+	}
+	c := &ConfigTx{
+		base:    config,
+		updated: config,
+	}
+
+	tests := []struct {
+		testName       string
+		consortiumName string
+		orgName        string
+		expectedErr    string
+	}{
+		{
+			testName:       "when consortium does not exist",
+			consortiumName: "BadConsortium",
+			orgName:        "Org1",
+			expectedErr:    "consortium BadConsortium does not exist in channel config",
+		},
+		{
+			testName:       "when org does not exist",
+			consortiumName: "Consortium1",
+			orgName:        "BadOrg",
+			expectedErr:    "consortium org BadOrg does not exist in channel config",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			_, err = c.GetPoliciesForConsortiumOrg(tt.consortiumName, tt.orgName)
+			gt.Expect(err).To(MatchError(tt.expectedErr))
+		})
+	}
+}
