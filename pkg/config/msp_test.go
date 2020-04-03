@@ -127,7 +127,7 @@ func TestConsortiumMSP(t *testing.T) {
 	gt.Expect(msp).To(Equal(expectedMSP))
 }
 
-func TestGetMSPConfigurationFailures(t *testing.T) {
+func TestMSPConfigurationFailures(t *testing.T) {
 	t.Parallel()
 
 	badCert := &x509.Certificate{}

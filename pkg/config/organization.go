@@ -15,8 +15,8 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
-// GetApplicationOrg retrieves an existing org from an application organization config group.
-func (c *ConfigTx) GetApplicationOrg(orgName string) (Organization, error) {
+// ApplicationOrg retrieves an existing org from an application organization config group.
+func (c *ConfigTx) ApplicationOrg(orgName string) (Organization, error) {
 	orgGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return Organization{}, fmt.Errorf("application org %s does not exist in channel config", orgName)
@@ -25,8 +25,8 @@ func (c *ConfigTx) GetApplicationOrg(orgName string) (Organization, error) {
 	return getOrganization(orgGroup, orgName)
 }
 
-// GetOrdererOrg retrieves an existing org from an orderer organization config group.
-func (c *ConfigTx) GetOrdererOrg(orgName string) (Organization, error) {
+// OrdererOrg retrieves an existing org from an orderer organization config group.
+func (c *ConfigTx) OrdererOrg(orgName string) (Organization, error) {
 	orgGroup, ok := c.base.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return Organization{}, fmt.Errorf("orderer org %s does not exist in channel config", orgName)
@@ -55,8 +55,8 @@ func (c *ConfigTx) GetOrdererOrg(orgName string) (Organization, error) {
 	return org, err
 }
 
-// GetConsortiumOrg retrieves an existing org from a consortium organization config group.
-func (c *ConfigTx) GetConsortiumOrg(consortiumName, orgName string) (Organization, error) {
+// ConsortiumOrg retrieves an existing org from a consortium organization config group.
+func (c *ConfigTx) ConsortiumOrg(consortiumName, orgName string) (Organization, error) {
 	consortium, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 	if !ok {
 		return Organization{}, fmt.Errorf("consortium %s does not exist in channel config", consortiumName)

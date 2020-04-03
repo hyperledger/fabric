@@ -108,10 +108,10 @@ func (c *ConfigTx) UpdateOrdererConfiguration(o Orderer) error {
 	return nil
 }
 
-// GetOrdererConfiguration returns the existing orderer configuration values from a config
+// OrdererConfiguration returns the existing orderer configuration values from a config
 // transaction as an Orderer type. This can be used to retrieve existing values for the orderer
 // prior to updating the orderer configuration.
-func (c *ConfigTx) GetOrdererConfiguration() (Orderer, error) {
+func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 	ordererGroup, ok := c.base.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return Orderer{}, errors.New("config does not contain orderer group")
@@ -181,7 +181,7 @@ func (c *ConfigTx) GetOrdererConfiguration() (Orderer, error) {
 	// ORDERER ORGS
 	var ordererOrgs []Organization
 	for orgName := range ordererGroup.Groups {
-		orgConfig, err := c.GetOrdererOrg(orgName)
+		orgConfig, err := c.OrdererOrg(orgName)
 		if err != nil {
 			return Orderer{}, fmt.Errorf("retrieving orderer org %s: %v", orgName, err)
 		}
@@ -203,7 +203,7 @@ func (c *ConfigTx) GetOrdererConfiguration() (Orderer, error) {
 	}
 
 	// POLICIES
-	policies, err := c.GetPoliciesForOrderer()
+	policies, err := c.OrdererPolicies()
 	if err != nil {
 		return Orderer{}, fmt.Errorf("retrieving orderer policies: %v", err)
 	}

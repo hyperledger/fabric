@@ -43,12 +43,13 @@ func (c *ConfigTx) UpdateConsortiumChannelCreationPolicy(consortiumName string, 
 	return nil
 }
 
-// GetPoliciesForConsortiumOrg returns a map of policies for a specific consortium org.
-func (c *ConfigTx) GetPoliciesForConsortiumOrg(consortiumName, orgName string) (map[string]Policy, error) {
+// ConsortiumOrgPolicies returns a map of policies for a specific consortium org.
+func (c *ConfigTx) ConsortiumOrgPolicies(consortiumName, orgName string) (map[string]Policy, error) {
 	consortium, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 	if !ok {
 		return nil, fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
 	}
+
 	org, ok := consortium.Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("consortium org %s does not exist in channel config", orgName)
@@ -57,8 +58,8 @@ func (c *ConfigTx) GetPoliciesForConsortiumOrg(consortiumName, orgName string) (
 	return getPolicies(org.Policies)
 }
 
-// GetPoliciesForOrderer returns a map of policies for channel orderer.
-func (c *ConfigTx) GetPoliciesForOrderer() (map[string]Policy, error) {
+// OrdererPolicies returns a map of policies for channel orderer.
+func (c *ConfigTx) OrdererPolicies() (map[string]Policy, error) {
 	orderer, ok := c.base.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return nil, errors.New("orderer missing from config")
@@ -67,8 +68,8 @@ func (c *ConfigTx) GetPoliciesForOrderer() (map[string]Policy, error) {
 	return getPolicies(orderer.Policies)
 }
 
-// GetPoliciesForOrdererOrg returns a map of policies for a specific org.
-func (c *ConfigTx) GetPoliciesForOrdererOrg(orgName string) (map[string]Policy, error) {
+// OrdererOrgPolicies returns a map of policies for a specific org.
+func (c *ConfigTx) OrdererOrgPolicies(orgName string) (map[string]Policy, error) {
 	org, ok := c.base.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("orderer org %s does not exist in channel config", orgName)
@@ -77,8 +78,8 @@ func (c *ConfigTx) GetPoliciesForOrdererOrg(orgName string) (map[string]Policy, 
 	return getPolicies(org.Policies)
 }
 
-// GetPoliciesForApplication returns a map of policies for application config group.
-func (c *ConfigTx) GetPoliciesForApplication() (map[string]Policy, error) {
+// ApplicationPolicies returns a map of policies for application config group.
+func (c *ConfigTx) ApplicationPolicies() (map[string]Policy, error) {
 	application, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey]
 	if !ok {
 		return nil, errors.New("application missing from config")
@@ -87,9 +88,9 @@ func (c *ConfigTx) GetPoliciesForApplication() (map[string]Policy, error) {
 	return getPolicies(application.Policies)
 }
 
-// GetPoliciesForApplicationOrg returns a map of policies for specific application
+// ApplicationOrgPolicies returns a map of policies for specific application
 // organization.
-func (c *ConfigTx) GetPoliciesForApplicationOrg(orgName string) (map[string]Policy, error) {
+func (c *ConfigTx) ApplicationOrgPolicies(orgName string) (map[string]Policy, error) {
 	orgGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)
@@ -98,8 +99,8 @@ func (c *ConfigTx) GetPoliciesForApplicationOrg(orgName string) (map[string]Poli
 	return getPolicies(orgGroup.Policies)
 }
 
-// GetPoliciesForChannel returns a map of policies for channel configuration.
-func (c *ConfigTx) GetPoliciesForChannel() (map[string]Policy, error) {
+// ChannelPolicies returns a map of policies for channel configuration.
+func (c *ConfigTx) ChannelPolicies() (map[string]Policy, error) {
 	return getPolicies(c.base.ChannelGroup.Policies)
 }
 
@@ -117,7 +118,7 @@ func (c *ConfigTx) AddApplicationPolicy(modPolicy, policyName string, policy Pol
 // RemoveApplicationPolicy removes an existing application policy configuration.
 // The policy must exist in the config.
 func (c *ConfigTx) RemoveApplicationPolicy(policyName string) error {
-	policies, err := c.GetPoliciesForApplication()
+	policies, err := c.ApplicationPolicies()
 	if err != nil {
 		return err
 	}
@@ -139,7 +140,7 @@ func (c *ConfigTx) AddApplicationOrgPolicy(orgName, modPolicy, policyName string
 // RemoveApplicationOrgPolicy removes an existing policy from an application organization.
 // The removed policy must exist.
 func (c *ConfigTx) RemoveApplicationOrgPolicy(orgName, policyName string) error {
-	policies, err := c.GetPoliciesForApplicationOrg(orgName)
+	policies, err := c.ApplicationOrgPolicies(orgName)
 	if err != nil {
 		return err
 	}
@@ -208,7 +209,7 @@ func (c *ConfigTx) RemoveOrdererPolicy(policyName string) error {
 		return errors.New("BlockValidation policy must be defined")
 	}
 
-	policies, err := c.GetPoliciesForOrderer()
+	policies, err := c.OrdererPolicies()
 	if err != nil {
 		return err
 	}
@@ -225,7 +226,7 @@ func (c *ConfigTx) AddOrdererOrgPolicy(orgName, modPolicy, policyName string, po
 // RemoveOrdererOrgPolicy removes an existing policy from an orderer organization.
 // The removed policy must exist however will not error if it does not exist in configuration.
 func (c *ConfigTx) RemoveOrdererOrgPolicy(orgName, policyName string) error {
-	policies, err := c.GetPoliciesForOrdererOrg(orgName)
+	policies, err := c.OrdererOrgPolicies(orgName)
 	if err != nil {
 		return err
 	}
@@ -242,7 +243,7 @@ func (c *ConfigTx) AddChannelPolicy(modPolicy, policyName string, policy Policy)
 // RemoveChannelPolicy removes an existing channel level policy.
 // The policy must exist in the config.
 func (c *ConfigTx) RemoveChannelPolicy(policyName string) error {
-	policies, err := c.GetPoliciesForChannel()
+	policies, err := c.ChannelPolicies()
 	if err != nil {
 		return err
 	}

@@ -19,7 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGetChannelCapabilities(t *testing.T) {
+func TestChannelCapabilities(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -40,18 +40,18 @@ func TestGetChannelCapabilities(t *testing.T) {
 	err := setValue(config.ChannelGroup, capabilitiesValue(expectedCapabilities), AdminsPolicyKey)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	channelCapabilities, err := c.GetChannelCapabilities()
+	channelCapabilities, err := c.ChannelCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(channelCapabilities).To(Equal(expectedCapabilities))
 
 	// Delete the capabilities key and assert retrieval to return nil
 	delete(config.ChannelGroup.Values, CapabilitiesKey)
-	channelCapabilities, err = c.GetChannelCapabilities()
+	channelCapabilities, err = c.ChannelCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(channelCapabilities).To(BeNil())
 }
 
-func TestGetOrdererCapabilities(t *testing.T) {
+func TestOrdererCapabilities(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -73,18 +73,18 @@ func TestGetOrdererCapabilities(t *testing.T) {
 		updated: config,
 	}
 
-	ordererCapabilities, err := c.GetOrdererCapabilities()
+	ordererCapabilities, err := c.OrdererCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(ordererCapabilities).To(Equal(baseOrdererConf.Capabilities))
 
 	// Delete the capabilities key and assert retrieval to return nil
 	delete(config.ChannelGroup.Groups[OrdererGroupKey].Values, CapabilitiesKey)
-	ordererCapabilities, err = c.GetOrdererCapabilities()
+	ordererCapabilities, err = c.OrdererCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(ordererCapabilities).To(BeNil())
 }
 
-func TestGetOrdererCapabilitiesFailure(t *testing.T) {
+func TestOrdererCapabilitiesFailure(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -100,12 +100,12 @@ func TestGetOrdererCapabilitiesFailure(t *testing.T) {
 		updated: config,
 	}
 
-	ordererCapabilities, err := c.GetOrdererCapabilities()
+	ordererCapabilities, err := c.OrdererCapabilities()
 	gt.Expect(err).To(MatchError("orderer missing from config"))
 	gt.Expect(ordererCapabilities).To(BeNil())
 }
 
-func TestGetApplicationCapabilities(t *testing.T) {
+func TestApplicationCapabilities(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -127,18 +127,18 @@ func TestGetApplicationCapabilities(t *testing.T) {
 		updated: config,
 	}
 
-	applicationCapabilities, err := c.GetApplicationCapabilities()
+	applicationCapabilities, err := c.ApplicationCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationCapabilities).To(Equal(baseApplicationConf.Capabilities))
 
 	// Delete the capabilities key and assert retrieval to return nil
 	delete(config.ChannelGroup.Groups[ApplicationGroupKey].Values, CapabilitiesKey)
-	applicationCapabilities, err = c.GetApplicationCapabilities()
+	applicationCapabilities, err = c.ApplicationCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationCapabilities).To(BeNil())
 }
 
-func TestGetApplicationCapabilitiesFailure(t *testing.T) {
+func TestApplicationCapabilitiesFailure(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -154,7 +154,7 @@ func TestGetApplicationCapabilitiesFailure(t *testing.T) {
 		updated: config,
 	}
 
-	applicationCapabilities, err := c.GetApplicationCapabilities()
+	applicationCapabilities, err := c.ApplicationCapabilities()
 	gt.Expect(err).To(MatchError("application missing from config"))
 	gt.Expect(applicationCapabilities).To(BeNil())
 }

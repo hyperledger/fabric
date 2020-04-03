@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGetOrganization(t *testing.T) {
+func TestOrganization(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
@@ -30,7 +30,7 @@ func TestGetOrganization(t *testing.T) {
 	gt.Expect(expectedOrg).To(Equal(org))
 }
 
-func TestGetApplicationOrg(t *testing.T) {
+func TestApplicationOrg(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
@@ -81,7 +81,7 @@ func TestGetApplicationOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := c.GetApplicationOrg(tc.orgName)
+			org, err := c.ApplicationOrg(tc.orgName)
 			if tc.expectedErr != "" {
 				gt.Expect(Organization{}).To(Equal(org))
 				gt.Expect(err).To(MatchError(tc.expectedErr))
@@ -93,7 +93,7 @@ func TestGetApplicationOrg(t *testing.T) {
 	}
 }
 
-func TestGetOrdererOrg(t *testing.T) {
+func TestOrdererOrg(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
@@ -135,7 +135,7 @@ func TestGetOrdererOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := c.GetOrdererOrg(tc.orgName)
+			org, err := c.OrdererOrg(tc.orgName)
 			if tc.expectedErr != "" {
 				gt.Expect(err).To(MatchError(tc.expectedErr))
 				gt.Expect(Organization{}).To(Equal(org))
@@ -147,7 +147,7 @@ func TestGetOrdererOrg(t *testing.T) {
 	}
 }
 
-func TestGetConsortiumOrg(t *testing.T) {
+func TestConsortiumOrg(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
@@ -198,7 +198,7 @@ func TestGetConsortiumOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := c.GetConsortiumOrg(tc.consortiumName, tc.orgName)
+			org, err := c.ConsortiumOrg(tc.consortiumName, tc.orgName)
 			if tc.expectedErr != "" {
 				gt.Expect(Organization{}).To(Equal(org))
 				gt.Expect(err).To(MatchError(tc.expectedErr))

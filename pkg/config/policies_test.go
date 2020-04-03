@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGetPolicies(t *testing.T) {
+func TestPolicies(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
@@ -943,7 +943,7 @@ func TestRemoveChannelPolicy(t *testing.T) {
 	gt.Expect(baseChannel.Policies[ReadersPolicyKey]).ToNot(BeNil())
 }
 
-func TestGetPoliciesForConsortiumOrg(t *testing.T) {
+func TestConsortiumOrgPolicies(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -984,12 +984,12 @@ func TestGetPoliciesForConsortiumOrg(t *testing.T) {
 		},
 	}
 
-	policies, err := c.GetPoliciesForConsortiumOrg("Consortium1", "Org1")
+	policies, err := c.ConsortiumOrgPolicies("Consortium1", "Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(policies).To(Equal(expectedPolicies))
 }
 
-func TestGetPoliciesForConsortiumOrgFailures(t *testing.T) {
+func TestConsortiumOrgPoliciesFailures(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -1034,7 +1034,7 @@ func TestGetPoliciesForConsortiumOrgFailures(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
-			_, err = c.GetPoliciesForConsortiumOrg(tt.consortiumName, tt.orgName)
+			_, err = c.ConsortiumOrgPolicies(tt.consortiumName, tt.orgName)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
