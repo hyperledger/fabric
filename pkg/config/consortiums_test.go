@@ -13,6 +13,7 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/tools/protolator"
+	"github.com/hyperledger/fabric/common/tools/protolator/protoext/commonext"
 	. "github.com/onsi/gomega"
 )
 
@@ -22,41 +23,299 @@ func TestNewConsortiumsGroup(t *testing.T) {
 	gt := NewGomegaWithT(t)
 
 	consortiums := baseConsortiums(t)
-
 	consortiumsGroup, err := newConsortiumsGroup(consortiums)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	// ConsortiumsGroup checks
-	gt.Expect(len(consortiumsGroup.Groups)).To(Equal(1))
-	gt.Expect(consortiumsGroup.Groups["Consortium1"]).NotTo(BeNil())
-	gt.Expect(len(consortiumsGroup.Values)).To(Equal(0))
-	gt.Expect(len(consortiumsGroup.Policies)).To(Equal(1))
-	gt.Expect(consortiumsGroup.Policies[AdminsPolicyKey]).NotTo(BeNil())
+	org1CertBase64, org1PKBase64, org1CRLBase64 := certPrivKeyCRLBase64(t, consortiums[0].Organizations[0].MSP)
+	org2CertBase64, org2PKBase64, org2CRLBase64 := certPrivKeyCRLBase64(t, consortiums[0].Organizations[1].MSP)
 
-	// ConsortiumGroup checks
-	gt.Expect(len(consortiumsGroup.Groups["Consortium1"].Groups)).To(Equal(2))
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"]).NotTo(BeNil())
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org2"]).NotTo(BeNil())
-	gt.Expect(len(consortiumsGroup.Groups["Consortium1"].Values)).To(Equal(1))
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Values[ChannelCreationPolicyKey]).NotTo(BeNil())
-	gt.Expect(len(consortiumsGroup.Groups["Consortium1"].Policies)).To(Equal(0))
+	expectedConsortiumsGroup := fmt.Sprintf(`{
+	"groups": {
+		"Consortium1": {
+			"groups": {
+				"Org1": {
+					"groups": {},
+					"mod_policy": "Admins",
+					"policies": {
+						"Admins": {
+							"mod_policy": "Admins",
+							"policy": {
+								"type": 3,
+								"value": {
+									"rule": "MAJORITY",
+									"sub_policy": "Admins"
+								}
+							},
+							"version": "0"
+						},
+						"Endorsement": {
+							"mod_policy": "Admins",
+							"policy": {
+								"type": 3,
+								"value": {
+									"rule": "MAJORITY",
+									"sub_policy": "Endorsement"
+								}
+							},
+							"version": "0"
+						},
+						"Readers": {
+							"mod_policy": "Admins",
+							"policy": {
+								"type": 3,
+								"value": {
+									"rule": "ANY",
+									"sub_policy": "Readers"
+								}
+							},
+							"version": "0"
+						},
+						"Writers": {
+							"mod_policy": "Admins",
+							"policy": {
+								"type": 3,
+								"value": {
+									"rule": "ANY",
+									"sub_policy": "Writers"
+								}
+							},
+							"version": "0"
+						}
+					},
+					"values": {
+						"MSP": {
+							"mod_policy": "Admins",
+							"value": {
+								"config": {
+									"admins": [
+										"%[1]s"
+									],
+									"crypto_config": {
+										"identity_identifier_hash_function": "SHA256",
+										"signature_hash_family": "SHA3"
+									},
+									"fabric_node_ous": {
+										"admin_ou_identifier": {
+											"certificate": "%[1]s",
+											"organizational_unit_identifier": "OUID"
+										},
+										"client_ou_identifier": {
+											"certificate": "%[1]s",
+											"organizational_unit_identifier": "OUID"
+										},
+										"enable": false,
+										"orderer_ou_identifier": {
+											"certificate": "%[1]s",
+											"organizational_unit_identifier": "OUID"
+										},
+										"peer_ou_identifier": {
+											"certificate": "%[1]s",
+											"organizational_unit_identifier": "OUID"
+										}
+									},
+									"intermediate_certs": [
+										"%[1]s"
+									],
+									"name": "MSPID",
+									"organizational_unit_identifiers": [
+										{
+											"certificate": "%[1]s",
+											"organizational_unit_identifier": "OUID"
+										}
+									],
+									"revocation_list": [
+										"%[2]s"
+									],
+									"root_certs": [
+										"%[1]s"
+									],
+									"signing_identity": {
+										"private_signer": {
+											"key_identifier": "SKI-1",
+											"key_material": "%[3]s"
+										},
+										"public_signer": "%[1]s"
+									},
+									"tls_intermediate_certs": [
+										"%[1]s"
+									],
+									"tls_root_certs": [
+										"%[1]s"
+									]
+								},
+								"type": 0
+							},
+							"version": "0"
+						}
+					},
+					"version": "0"
+				},
+				"Org2": {
+					"groups": {},
+					"mod_policy": "Admins",
+					"policies": {
+						"Admins": {
+							"mod_policy": "Admins",
+							"policy": {
+								"type": 3,
+								"value": {
+									"rule": "MAJORITY",
+									"sub_policy": "Admins"
+								}
+							},
+							"version": "0"
+						},
+						"Endorsement": {
+							"mod_policy": "Admins",
+							"policy": {
+								"type": 3,
+								"value": {
+									"rule": "MAJORITY",
+									"sub_policy": "Endorsement"
+								}
+							},
+							"version": "0"
+						},
+						"Readers": {
+							"mod_policy": "Admins",
+							"policy": {
+								"type": 3,
+								"value": {
+									"rule": "ANY",
+									"sub_policy": "Readers"
+								}
+							},
+							"version": "0"
+						},
+						"Writers": {
+							"mod_policy": "Admins",
+							"policy": {
+								"type": 3,
+								"value": {
+									"rule": "ANY",
+									"sub_policy": "Writers"
+								}
+							},
+							"version": "0"
+						}
+					},
+					"values": {
+						"MSP": {
+							"mod_policy": "Admins",
+							"value": {
+								"config": {
+									"admins": [
+										"%[4]s"
+									],
+									"crypto_config": {
+										"identity_identifier_hash_function": "SHA256",
+										"signature_hash_family": "SHA3"
+									},
+									"fabric_node_ous": {
+										"admin_ou_identifier": {
+											"certificate": "%[4]s",
+											"organizational_unit_identifier": "OUID"
+										},
+										"client_ou_identifier": {
+											"certificate": "%[4]s",
+											"organizational_unit_identifier": "OUID"
+										},
+										"enable": false,
+										"orderer_ou_identifier": {
+											"certificate": "%[4]s",
+											"organizational_unit_identifier": "OUID"
+										},
+										"peer_ou_identifier": {
+											"certificate": "%[4]s",
+											"organizational_unit_identifier": "OUID"
+										}
+									},
+									"intermediate_certs": [
+										"%[4]s"
+									],
+									"name": "MSPID",
+									"organizational_unit_identifiers": [
+										{
+											"certificate": "%[4]s",
+											"organizational_unit_identifier": "OUID"
+										}
+									],
+									"revocation_list": [
+										"%[5]s"
+									],
+									"root_certs": [
+										"%[4]s"
+									],
+									"signing_identity": {
+										"private_signer": {
+											"key_identifier": "SKI-1",
+											"key_material": "%[6]s"
+										},
+										"public_signer": "%[4]s"
+									},
+									"tls_intermediate_certs": [
+										"%[4]s"
+									],
+									"tls_root_certs": [
+										"%[4]s"
+									]
+								},
+								"type": 0
+							},
+							"version": "0"
+						}
+					},
+					"version": "0"
+				}
+			},
+			"mod_policy": "/Channel/Orderer/Admins",
+			"policies": {},
+			"values": {
+				"ChannelCreationPolicy": {
+					"mod_policy": "/Channel/Orderer/Admins",
+					"value": {
+						"type": 3,
+						"value": {
+							"rule": "ANY",
+							"sub_policy": "Admins"
+						}
+					},
+					"version": "0"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"mod_policy": "/Channel/Orderer/Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "/Channel/Orderer/Admins",
+			"policy": {
+				"type": 1,
+				"value": {
+					"identities": [],
+					"rule": {
+						"n_out_of": {
+							"n": 0,
+							"rules": []
+						}
+					},
+					"version": 0
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {},
+	"version": "0"
+}
+`, org1CertBase64, org1CRLBase64, org1PKBase64, org2CertBase64, org2CRLBase64, org2PKBase64)
 
-	// ConsortiumOrgGroup checks
-	gt.Expect(len(consortiumsGroup.Groups["Consortium1"].Groups["Org1"].Groups)).To(Equal(0))
-	gt.Expect(len(consortiumsGroup.Groups["Consortium1"].Groups["Org1"].Values)).To(Equal(1))
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"].Values[MSPKey]).NotTo(BeNil())
-	gt.Expect(len(consortiumsGroup.Groups["Consortium1"].Groups["Org1"].Policies)).To(Equal(4))
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"].Policies[WritersPolicyKey]).NotTo(BeNil())
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org1"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
-	gt.Expect(len(consortiumsGroup.Groups["Consortium1"].Groups["Org2"].Groups)).To(Equal(0))
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org2"].Values[MSPKey]).NotTo(BeNil())
-	gt.Expect(len(consortiumsGroup.Groups["Consortium1"].Groups["Org2"].Policies)).To(Equal(4))
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org2"].Policies[ReadersPolicyKey]).NotTo(BeNil())
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org2"].Policies[WritersPolicyKey]).NotTo(BeNil())
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org2"].Policies[AdminsPolicyKey]).NotTo(BeNil())
-	gt.Expect(consortiumsGroup.Groups["Consortium1"].Groups["Org2"].Policies[EndorsementPolicyKey]).NotTo(BeNil())
+	buf := bytes.Buffer{}
+	err = protolator.DeepMarshalJSON(&buf, &commonext.DynamicConsortiumsGroup{ConfigGroup: consortiumsGroup})
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	gt.Expect(buf.String()).To(Equal(expectedConsortiumsGroup))
 }
 
 func TestNewConsortiumsGroupFailure(t *testing.T) {
