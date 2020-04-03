@@ -96,6 +96,39 @@ func Example_systemChannel() {
 		panic(err)
 	}
 
+	orgToAdd := config.Organization{
+		Name: "Org3",
+		Policies: map[string]config.Policy{
+			config.AdminsPolicyKey: {
+				Type: config.ImplicitMetaPolicyType,
+				Rule: "MAJORITY Admins",
+			},
+			config.EndorsementPolicyKey: {
+				Type: config.ImplicitMetaPolicyType,
+				Rule: "MAJORITY Endorsement",
+			},
+			config.ReadersPolicyKey: {
+				Type: config.ImplicitMetaPolicyType,
+				Rule: "ANY Readers",
+			},
+			config.WritersPolicyKey: {
+				Type: config.ImplicitMetaPolicyType,
+				Rule: "ANY Writers",
+			},
+		},
+		MSP: baseMSP(&testing.T{}),
+	}
+
+	err = c.AddOrgToConsortium(orgToAdd, "SampleConsortium")
+	if err != nil {
+		panic(err)
+	}
+
+	err = c.RemoveConsortiumOrg("SampleConsortium", "Org3")
+	if err != nil {
+		panic(err)
+	}
+
 	// Compute the delta
 	configUpdate, err := c.ComputeUpdate("testsyschannel")
 	if err != nil {
@@ -352,6 +385,11 @@ func Example_organization() {
 		panic(err)
 	}
 
+	err = c.RemoveApplicationOrg("Org2")
+	if err != nil {
+		panic(err)
+	}
+
 	err = c.AddApplicationOrgPolicy("Org1", config.AdminsPolicyKey, "TestPolicy", config.Policy{
 		Type: config.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
@@ -371,6 +409,11 @@ func Example_organization() {
 	ordererOrg.AnchorPeers = nil
 
 	err = c.AddOrdererOrg(ordererOrg)
+	if err != nil {
+		panic(err)
+	}
+
+	err = c.RemoveOrdererOrg("OrdererOrg2")
 	if err != nil {
 		panic(err)
 	}
@@ -1367,7 +1410,22 @@ func fetchSystemChannelConfig() *cb.Config {
 				config.ConsortiumsGroupKey: {
 					Groups: map[string]*cb.ConfigGroup{
 						"SampleConsortium": {
-							Groups: map[string]*cb.ConfigGroup{},
+							Groups: map[string]*cb.ConfigGroup{
+								"Org1": {
+									Groups:    map[string]*cb.ConfigGroup{},
+									Policies:  map[string]*cb.ConfigPolicy{},
+									Values:    map[string]*cb.ConfigValue{},
+									ModPolicy: "Admins",
+									Version:   0,
+								},
+								"Org2": {
+									Groups:    map[string]*cb.ConfigGroup{},
+									Policies:  map[string]*cb.ConfigPolicy{},
+									Values:    map[string]*cb.ConfigValue{},
+									ModPolicy: "Admins",
+									Version:   0,
+								},
+							},
 							Values: map[string]*cb.ConfigValue{
 								config.ChannelCreationPolicyKey: {
 									ModPolicy: "/Channel/Orderer/Admins",
