@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/pkg/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/stretchr/testify/assert"
 )
 

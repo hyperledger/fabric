@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -321,8 +320,8 @@ func TestCCEPValidation(t *testing.T) {
 	rwsbu := rwsetutil.NewRWSetBuilder()
 	rwsbu.AddToWriteSet("cc", "key", []byte("value"))
 	rwsbu.AddToWriteSet("cc", "key1", []byte("value"))
-	rwsbu.AddToReadSet("cc", "readkey", &version.Height{})
-	rwsbu.AddToHashedReadSet("cc", "coll", "readpvtkey", &version.Height{})
+	rwsbu.AddToReadSet("cc", "readkey", nil)
+	rwsbu.AddToHashedReadSet("cc", "coll", "readpvtkey", nil)
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
 	assert.NoError(t, err)
@@ -359,7 +358,7 @@ func TestCCEPValidationReads(t *testing.T) {
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsbu := rwsetutil.NewRWSetBuilder()
-	rwsbu.AddToReadSet("cc", "readkey", &version.Height{})
+	rwsbu.AddToReadSet("cc", "readkey", nil)
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
 	assert.NoError(t, err)
@@ -441,7 +440,7 @@ func TestCCEPValidationPvtReads(t *testing.T) {
 	validator := NewKeyLevelValidator(NewV13Evaluator(pe, pm), pm)
 
 	rwsbu := rwsetutil.NewRWSetBuilder()
-	rwsbu.AddToHashedReadSet("cc", "coll", "readpvtkey", &version.Height{})
+	rwsbu.AddToHashedReadSet("cc", "coll", "readpvtkey", nil)
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
 	assert.NoError(t, err)
