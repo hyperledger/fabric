@@ -10,7 +10,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger/internal/pkg/version"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
