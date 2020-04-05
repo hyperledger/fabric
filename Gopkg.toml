@@ -123,7 +123,7 @@ noverify = [
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  version = "=1.15.0"
+  version = "=1.28.0"
 
 [[constraint]]
   name = "gopkg.in/alecthomas/kingpin.v2"

@@ -1,8 +1,8 @@
-// +build go1.9,!appengine
+// +build go1.13
 
 /*
  *
- * Copyright 2018 gRPC authors.
+ * Copyright 2019 gRPC authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,16 @@
  *
  */
 
-package credentials
+package dns
 
-import (
-	"errors"
-	"syscall"
-)
+import "net"
 
-// implements the syscall.Conn interface
-func (c tlsConn) SyscallConn() (syscall.RawConn, error) {
-	conn, ok := c.rawConn.(syscall.Conn)
-	if !ok {
-		return nil, errors.New("RawConn does not implement syscall.Conn")
+func init() {
+	filterError = func(err error) error {
+		if dnsErr, ok := err.(*net.DNSError); ok && dnsErr.IsNotFound {
+			// The name does not exist; not an error.
+			return nil
+		}
+		return err
 	}
-	return conn.SyscallConn()
 }
