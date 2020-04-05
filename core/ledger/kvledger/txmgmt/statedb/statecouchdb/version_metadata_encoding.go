@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb/msgs"
 	"github.com/pkg/errors"
 )
 
@@ -19,9 +18,9 @@ func encodeVersionAndMetadata(version *version.Height, metadata []byte) (string,
 	if version == nil {
 		return "", errors.New("nil version not supported")
 	}
-	msg := &msgs.VersionFieldProto{
-		VersionBytes: version.ToBytes(),
-		Metadata:     metadata,
+	msg := &VersionAndMetadata{
+		Version:  version.ToBytes(),
+		Metadata: metadata,
 	}
 	msgBytes, err := proto.Marshal(msg)
 	if err != nil {
@@ -31,17 +30,17 @@ func encodeVersionAndMetadata(version *version.Height, metadata []byte) (string,
 }
 
 func decodeVersionAndMetadata(encodedstr string) (*version.Height, []byte, error) {
-	versionFieldBytes, err := base64.StdEncoding.DecodeString(encodedstr)
+	persistedVersionAndMetadata, err := base64.StdEncoding.DecodeString(encodedstr)
 	if err != nil {
 		return nil, nil, err
 	}
-	versionFieldMsg := &msgs.VersionFieldProto{}
-	if err = proto.Unmarshal(versionFieldBytes, versionFieldMsg); err != nil {
+	versionAndMetadata := &VersionAndMetadata{}
+	if err = proto.Unmarshal(persistedVersionAndMetadata, versionAndMetadata); err != nil {
 		return nil, nil, err
 	}
-	ver, _, err := version.NewHeightFromBytes(versionFieldMsg.VersionBytes)
+	ver, _, err := version.NewHeightFromBytes(versionAndMetadata.Version)
 	if err != nil {
 		return nil, nil, err
 	}
-	return ver, versionFieldMsg.Metadata, nil
+	return ver, versionAndMetadata.Metadata, nil
 }
