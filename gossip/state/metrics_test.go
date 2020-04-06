@@ -22,7 +22,6 @@ import (
 )
 
 func TestMetrics(t *testing.T) {
-	t.Parallel()
 	mc := &mockCommitter{Mock: &mock.Mock{}}
 	mc.On("CommitLegacy", mock.Anything).Return(nil)
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(100), nil).Twice()

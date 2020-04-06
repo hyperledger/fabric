@@ -61,8 +61,6 @@ func TestInterceptAcks(t *testing.T) {
 }
 
 func TestAck(t *testing.T) {
-	t.Parallel()
-
 	comm1, _ := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
 	defer comm2.Stop()

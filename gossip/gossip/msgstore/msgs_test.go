@@ -107,7 +107,6 @@ func TestNewMessagesInvalidated(t *testing.T) {
 }
 
 func TestConcurrency(t *testing.T) {
-	t.Parallel()
 	stopFlag := int32(0)
 	msgStore := NewMessageStore(compareInts, Noop)
 	looper := func(f func()) func() {
@@ -143,7 +142,6 @@ func TestConcurrency(t *testing.T) {
 }
 
 func TestExpiration(t *testing.T) {
-	t.Parallel()
 	expired := make(chan int, 50)
 	msgTTL := time.Second * 3
 
@@ -196,7 +194,6 @@ func TestExpiration(t *testing.T) {
 }
 
 func TestExpirationConcurrency(t *testing.T) {
-	t.Parallel()
 	expired := make([]int, 0)
 	msgTTL := time.Second * 3
 	lock := &sync.RWMutex{}
@@ -246,7 +243,6 @@ func TestExpirationConcurrency(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	t.Parallel()
 	expired := make([]int, 0)
 	msgTTL := time.Second * 3
 
@@ -271,7 +267,6 @@ func TestStop(t *testing.T) {
 }
 
 func TestPurge(t *testing.T) {
-	t.Parallel()
 	purged := make(chan int, 5)
 	msgStore := NewMessageStore(alwaysNoAction, func(o interface{}) {
 		purged <- o.(int)

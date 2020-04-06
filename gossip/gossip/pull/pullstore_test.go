@@ -179,14 +179,12 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 }
 
 func TestCreateAndStop(t *testing.T) {
-	t.Parallel()
 	pullInst := createPullInstance("localhost:2000", make(map[string]*pullInstance))
 	pullInst.start()
 	pullInst.stop()
 }
 
 func TestRegisterMsgHook(t *testing.T) {
-	t.Parallel()
 	peer2pullInst := make(map[string]*pullInstance)
 	inst1 := createPullInstance("localhost:5611", peer2pullInst)
 	inst2 := createPullInstance("localhost:5612", peer2pullInst)
@@ -213,7 +211,6 @@ func TestRegisterMsgHook(t *testing.T) {
 }
 
 func TestFilter(t *testing.T) {
-	t.Parallel()
 	peer2pullInst := make(map[string]*pullInstance)
 
 	eq := func(a interface{}, b interface{}) bool {
@@ -250,7 +247,6 @@ func TestFilter(t *testing.T) {
 }
 
 func TestAddAndRemove(t *testing.T) {
-	t.Parallel()
 	peer2pullInst := make(map[string]*pullInstance)
 	inst1 := createPullInstance("localhost:5611", peer2pullInst)
 	inst2 := createPullInstance("localhost:5612", peer2pullInst)
@@ -320,7 +316,6 @@ func TestAddAndRemove(t *testing.T) {
 }
 
 func TestDigestsFilters(t *testing.T) {
-	t.Parallel()
 	df1 := createDigestsFilter(2)
 	inst1 := createPullInstanceWithFilters("localhost:5611", make(map[string]*pullInstance), nil, df1)
 	inst2 := createPullInstance("localhost:5612", make(map[string]*pullInstance))
@@ -359,8 +354,6 @@ func TestDigestsFilters(t *testing.T) {
 }
 
 func TestHandleMessage(t *testing.T) {
-	t.Parallel()
-
 	inst1 := createPullInstance("localhost:5611", make(map[string]*pullInstance))
 	inst2 := createPullInstance("localhost:5612", make(map[string]*pullInstance))
 	inst1.start()

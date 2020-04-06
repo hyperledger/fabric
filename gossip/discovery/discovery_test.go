@@ -513,7 +513,6 @@ func TestBadInput(t *testing.T) {
 }
 
 func TestConnect(t *testing.T) {
-	t.Parallel()
 	nodeNum := 10
 	instances := []*gossipInstance{}
 	firstSentMemReqMsgs := make(chan *protoext.SignedGossipMessage, nodeNum)
@@ -566,8 +565,6 @@ func TestConnect(t *testing.T) {
 }
 
 func TestValidation(t *testing.T) {
-	t.Parallel()
-
 	// Scenarios: This test contains the following sub-tests:
 	// 1) alive message validation: a message is validated <==> it entered the message store
 	// 2) request/response message validation:
@@ -660,7 +657,6 @@ func TestValidation(t *testing.T) {
 	assert.NotNil(t, membershipRequest.Load())
 
 	t.Run("alive message", func(t *testing.T) {
-		t.Parallel()
 		// Spawn a new peer - p4
 		p4 := createDiscoveryInstance(4678, "p1", nil)
 		defer p4.Stop()
@@ -718,7 +714,6 @@ func TestValidation(t *testing.T) {
 	} {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-			t.Parallel()
 			p := createDiscoveryInstance(testCase.port, "p", nil)
 			defer p.Stop()
 			// Record messages validated
@@ -756,7 +751,6 @@ func TestValidation(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	t.Parallel()
 	nodeNum := 5
 	bootPeers := []string{bootPeer(6611), bootPeer(6612)}
 	instances := []*gossipInstance{}
@@ -806,7 +800,6 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestInitiateSync(t *testing.T) {
-	t.Parallel()
 	nodeNum := 10
 	bootPeers := []string{bootPeer(3611), bootPeer(3612)}
 	instances := []*gossipInstance{}
@@ -833,7 +826,6 @@ func TestInitiateSync(t *testing.T) {
 }
 
 func TestSelf(t *testing.T) {
-	t.Parallel()
 	inst := createDiscoveryInstance(13463, "d1", []string{})
 	defer inst.Stop()
 	env := inst.Self().Envelope
@@ -848,7 +840,6 @@ func TestSelf(t *testing.T) {
 }
 
 func TestExpiration(t *testing.T) {
-	t.Parallel()
 	nodeNum := 5
 	bootPeers := []string{bootPeer(2611), bootPeer(2612)}
 	instances := []*gossipInstance{}
@@ -888,7 +879,6 @@ func TestExpiration(t *testing.T) {
 }
 
 func TestGetFullMembership(t *testing.T) {
-	t.Parallel()
 	nodeNum := 15
 	bootPeers := []string{bootPeer(5511), bootPeer(5512)}
 	instances := []*gossipInstance{}
@@ -930,14 +920,12 @@ func TestGetFullMembership(t *testing.T) {
 }
 
 func TestGossipDiscoveryStopping(t *testing.T) {
-	t.Parallel()
 	inst := createDiscoveryInstance(9611, "d1", []string{bootPeer(9611)})
 	time.Sleep(time.Second)
 	waitUntilOrFailBlocking(t, inst.Stop)
 }
 
 func TestGossipDiscoverySkipConnectingToLocalhostBootstrap(t *testing.T) {
-	t.Parallel()
 	inst := createDiscoveryInstance(11611, "d1", []string{"localhost:11611", "127.0.0.1:11611"})
 	inst.comm.lock.Lock()
 	inst.comm.mock = &mock.Mock{}
@@ -953,7 +941,6 @@ func TestGossipDiscoverySkipConnectingToLocalhostBootstrap(t *testing.T) {
 }
 
 func TestConvergence(t *testing.T) {
-	t.Parallel()
 	// scenario:
 	// {boot peer: [peer list]}
 	// {d1: d2, d3, d4}
@@ -986,7 +973,6 @@ func TestConvergence(t *testing.T) {
 }
 
 func TestDisclosurePolicyWithPull(t *testing.T) {
-	t.Parallel()
 	// Scenario: run 2 groups of peers that simulate 2 organizations:
 	// {p0, p1, p2, p3, p4}
 	// {p5, p6, p7, p8, p9}
@@ -1131,8 +1117,6 @@ func discPolForPeer(selfPort int) DisclosurePolicy {
 }
 
 func TestCertificateChange(t *testing.T) {
-	t.Parallel()
-
 	bootPeers := []string{bootPeer(42611), bootPeer(42612), bootPeer(42613)}
 	p1 := createDiscoveryInstance(42611, "d1", bootPeers)
 	p2 := createDiscoveryInstance(42612, "d2", bootPeers)
@@ -1201,7 +1185,6 @@ func TestMsgStoreExpiration(t *testing.T) {
 	// Starts 4 instances, wait for membership to build, stop 2 instances
 	// Check that membership in 2 running instances become 2
 	// Wait for expiration and check that alive messages and related entities in maps are removed in running instances
-	t.Parallel()
 	nodeNum := 4
 	bootPeers := []string{bootPeer(12611), bootPeer(12612)}
 	instances := []*gossipInstance{}
@@ -1271,8 +1254,6 @@ func TestMsgStoreExpiration(t *testing.T) {
 }
 
 func TestExpirationNoSecretEnvelope(t *testing.T) {
-	t.Parallel()
-
 	l, err := zap.NewDevelopment()
 	assert.NoError(t, err)
 
@@ -1323,8 +1304,6 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	// Waits for expiration and checks msgStore and related maps
 	// Processes stored MembershipRequest msg and checks msgStore and related maps
 	// Processes stored MembershipResponse msg and checks msgStore and related maps
-
-	t.Parallel()
 	bootPeers := []string{}
 	peersNum := 3
 	instances := []*gossipInstance{}
@@ -1535,8 +1514,6 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 }
 
 func TestAliveMsgStore(t *testing.T) {
-	t.Parallel()
-
 	bootPeers := []string{}
 	peersNum := 2
 	instances := []*gossipInstance{}
@@ -1584,7 +1561,6 @@ func TestAliveMsgStore(t *testing.T) {
 }
 
 func TestMemRespDisclosurePol(t *testing.T) {
-	t.Parallel()
 	pol := func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
 		return func(_ *protoext.SignedGossipMessage) bool {
 				return remotePeer.Endpoint == "localhost:7880"
@@ -1669,8 +1645,6 @@ func TestMembersIntersect(t *testing.T) {
 }
 
 func TestPeerIsolation(t *testing.T) {
-	t.Parallel()
-
 	// Scenario:
 	// Start 3 peers (peer0, peer1, peer2). Set peer1 as the bootstrap peer for all.
 	// Stop peer0 and peer1 for a while, start them again and test if peer2 still gets full membership

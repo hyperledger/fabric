@@ -340,7 +340,6 @@ func (g *gossipGRPC) Stop() {
 }
 
 func TestLeaveChannel(t *testing.T) {
-	t.Parallel()
 	// Scenario: Have 3 peers in a channel and make one of them leave it.
 	// Ensure the peers don't recognize the other peer when it left the channel
 
@@ -386,7 +385,6 @@ func TestLeaveChannel(t *testing.T) {
 }
 
 func TestPull(t *testing.T) {
-	t.Parallel()
 	t1 := time.Now()
 	// Scenario: Turn off forwarding and use only pull-based gossip.
 	// First phase: Ensure full membership view for all nodes
@@ -477,7 +475,6 @@ func TestPull(t *testing.T) {
 }
 
 func TestConnectToAnchorPeers(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn 10 peers, and have them join a channel
 	// of 3 anchor peers that don't exist yet.
 	// Wait 5 seconds, and then spawn a random anchor peer out of the 3.
@@ -554,7 +551,6 @@ func TestConnectToAnchorPeers(t *testing.T) {
 }
 
 func TestMembership(t *testing.T) {
-	t.Parallel()
 	t1 := time.Now()
 	// Scenario: spawn 20 nodes and a single bootstrap node and then:
 	// 1) Check full membership views for all nodes but the bootstrap node.
@@ -642,8 +638,6 @@ func TestMembership(t *testing.T) {
 }
 
 func TestNoMessagesSelfLoop(t *testing.T) {
-	t.Parallel()
-
 	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
 	boot := newGossipInstanceWithGRPC(0, port0, grpc0, certs0, secDialOpts0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
@@ -703,7 +697,6 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 }
 
 func TestDissemination(t *testing.T) {
-	t.Parallel()
 	t1 := time.Now()
 	// Scenario: 20 nodes and a bootstrap node.
 	// The bootstrap node sends 10 messages and we count
@@ -835,7 +828,6 @@ func TestDissemination(t *testing.T) {
 }
 
 func TestMembershipConvergence(t *testing.T) {
-	t.Parallel()
 	// Scenario: Spawn 12 nodes and 3 bootstrap peers
 	// but assign each node to its bootstrap peer group modulo 3.
 	// Then:
@@ -940,7 +932,6 @@ func TestMembershipConvergence(t *testing.T) {
 }
 
 func TestMembershipRequestSpoofing(t *testing.T) {
-	t.Parallel()
 	// Scenario: g1, g2, g3 are peers, and g2 is malicious, and wants
 	// to impersonate g3 when sending a membership request to g1.
 	// Expected output: g1 should *NOT* respond to g2,
@@ -1015,7 +1006,6 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 }
 
 func TestDataLeakage(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn some nodes and let them all
 	// establish full membership.
 	// Then, have half be in channel A and half be in channel B.
@@ -1153,12 +1143,12 @@ func TestDataLeakage(t *testing.T) {
 }
 
 func TestDisseminateAll2All(t *testing.T) {
+	t.Skip()
+
 	// Scenario: spawn some nodes, have each node
 	// disseminate a block to all nodes.
 	// Ensure all blocks are received
 
-	t.Skip()
-	t.Parallel()
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
 
@@ -1235,8 +1225,6 @@ func TestDisseminateAll2All(t *testing.T) {
 }
 
 func TestSendByCriteria(t *testing.T) {
-	t.Parallel()
-
 	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
 	g1 := newGossipInstanceWithGRPC(0, port0, grpc0, certs0, secDialOpts0, 100)
 	port1, grpc1, certs1, secDialOpts1, _ := util.CreateGRPCLayer()
@@ -1393,7 +1381,6 @@ func TestSendByCriteria(t *testing.T) {
 }
 
 func TestIdentityExpiration(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn 5 peers and make the MessageCryptoService revoke one of the first 4.
 	// The last peer's certificate expires after a few seconds.
 	// Eventually, the rest of the peers should not be able to communicate with
@@ -1600,8 +1587,6 @@ func checkPeersMembership(t *testing.T, peers []*gossipGRPC, n int) func() bool 
 }
 
 func TestMembershipMetrics(t *testing.T) {
-	t.Parallel()
-
 	wg0 := sync.WaitGroup{}
 	wg0.Add(1)
 	once0 := sync.Once{}
@@ -1662,5 +1647,4 @@ func TestMembershipMetrics(t *testing.T) {
 	pI1.Stop()
 	waitUntilOrFail(t, waitForMembership(0), "waiting for metrics membership of 0")
 	pI0.Stop()
-
 }
