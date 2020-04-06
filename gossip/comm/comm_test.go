@@ -241,8 +241,6 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 }
 
 func TestMutualParallelSendWithAck(t *testing.T) {
-	t.Parallel()
-
 	// This test tests concurrent and parallel sending of many (1000) messages
 	// from 2 instances to one another at the same time.
 
@@ -297,7 +295,6 @@ func getAvailablePort(t *testing.T) (port int, endpoint string, ll net.Listener)
 }
 
 func TestHandshake(t *testing.T) {
-	t.Parallel()
 	signer := func(msg []byte) ([]byte, error) {
 		mac := hmac.New(sha256.New, hmacKey)
 		mac.Write(msg)
@@ -443,7 +440,6 @@ func TestHandshake(t *testing.T) {
 }
 
 func TestConnectUnexpectedPeer(t *testing.T) {
-	t.Parallel()
 	// Scenarios: In both scenarios, comm1 connects to comm2 or comm3.
 	// and expects to see a PKI-ID which is equal to comm4's PKI-ID.
 	// The connection attempt would succeed or fail based on whether comm2 or comm3
@@ -512,7 +508,6 @@ func TestConnectUnexpectedPeer(t *testing.T) {
 }
 
 func TestGetConnectionInfo(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, _ := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
@@ -529,7 +524,6 @@ func TestGetConnectionInfo(t *testing.T) {
 }
 
 func TestCloseConn(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
 	acceptChan := comm1.Accept(acceptAll)
@@ -586,7 +580,6 @@ func TestCloseConn(t *testing.T) {
 // case assumes some will fail, but that eventually enough messages will get
 // through that the test will end.
 func TestCommSend(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
@@ -684,7 +677,6 @@ func (bp *nonResponsivePeer) stop() {
 }
 
 func TestNonResponsivePing(t *testing.T) {
-	t.Parallel()
 	c, _ := newCommInstance(t, naiveSec)
 	defer c.Stop()
 	nonRespPeer := newNonResponsivePeer(t)
@@ -703,7 +695,6 @@ func TestNonResponsivePing(t *testing.T) {
 }
 
 func TestResponses(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, _ := newCommInstance(t, naiveSec)
 
@@ -744,7 +735,6 @@ func TestResponses(t *testing.T) {
 // TestAccept makes sure that accept filters work. The probability of the parity
 // of all nonces being 0 or 1 is very low.
 func TestAccept(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, _ := newCommInstance(t, naiveSec)
 
@@ -817,7 +807,6 @@ func TestAccept(t *testing.T) {
 }
 
 func TestReConnections(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
 
@@ -855,7 +844,6 @@ func TestReConnections(t *testing.T) {
 }
 
 func TestProbe(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
 	comm2, port2 := newCommInstance(t, naiveSec)
@@ -899,7 +887,6 @@ func TestProbe(t *testing.T) {
 }
 
 func TestPresumedDead(t *testing.T) {
-	t.Parallel()
 	comm1, _ := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
 
@@ -974,7 +961,6 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 }
 
 func TestConcurrentCloseSend(t *testing.T) {
-	t.Parallel()
 	var stopping int32
 
 	comm1, _ := newCommInstance(t, naiveSec)
