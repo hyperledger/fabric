@@ -951,7 +951,7 @@ func (scanner *queryScanner) GetBookmarkAndClose() string {
 
 func constructCacheValue(v *statedb.VersionedValue, rev string) *CacheValue {
 	return &CacheValue{
-		VersionBytes:   v.Version.ToBytes(),
+		Version:        v.Version.ToBytes(),
 		Value:          v.Value,
 		Metadata:       v.Metadata,
 		AdditionalInfo: []byte(rev),
@@ -959,7 +959,7 @@ func constructCacheValue(v *statedb.VersionedValue, rev string) *CacheValue {
 }
 
 func constructVersionedValue(cv *CacheValue) (*statedb.VersionedValue, error) {
-	height, _, err := version.NewHeightFromBytes(cv.VersionBytes)
+	height, _, err := version.NewHeightFromBytes(cv.Version)
 	if err != nil {
 		return nil, err
 	}
