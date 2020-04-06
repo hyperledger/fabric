@@ -4,8 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-set -e
-set -o pipefail
+set -eo pipefail
 
 base_dir="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -16,7 +15,6 @@ excluded_packages=(
 
 # packages that must be run serially
 serial_packages=(
-    "github.com/hyperledger/fabric/gossip/..."
 )
 
 # packages which need to be tested with build tag pkcs11
@@ -129,8 +127,6 @@ serial_test_packages() {
     filter=$(package_filter "${serial_packages[@]}")
     if [ -n "$filter" ]; then
         join_by $'\n' "$@" | grep -E "$filter" || true
-    else
-        join_by $'\n' "$@"
     fi
 }
 
