@@ -377,23 +377,18 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 
 	run := filepath.Join(b.Location, "bin", "run")
 	cmd := b.NewCommand(run, bldDir, launchDir)
-	sess, err := Start(b.Logger, cmd)
+	sess, err := Start(b.Logger, cmd, launchDir)
 	if err != nil {
 		os.RemoveAll(launchDir)
 		return nil, errors.Wrapf(err, "builder '%s' run failed to start", b.Name)
 	}
-
-	go func() {
-		defer os.RemoveAll(launchDir)
-		sess.Wait()
-	}()
 
 	return sess, nil
 }
 
 // runCommand runs a command and waits for it to complete.
 func (b *Builder) runCommand(cmd *exec.Cmd) error {
-	sess, err := Start(b.Logger, cmd)
+	sess, err := Start(b.Logger, cmd, "")
 	if err != nil {
 		return err
 	}

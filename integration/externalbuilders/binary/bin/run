@@ -14,6 +14,12 @@ fi
 OUTPUT=$1
 ARTIFACTS=$2
 
+# when set, keep track of the artifacts directories to verify
+# proper cleanup in integration test
+if [ -n "${RUN_ARTIFACTS_FILE+1}" ]; then
+    echo $ARTIFACTS >> $RUN_ARTIFACTS_FILE
+fi
+
 # shellcheck disable=SC2155
 export CORE_CHAINCODE_ID_NAME="$(jq -r .chaincode_id "$ARTIFACTS/chaincode.json")"
 export CORE_PEER_TLS_ENABLED="true"
