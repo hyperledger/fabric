@@ -828,8 +828,8 @@ func serve(args []string) error {
 	}
 
 	handleSignals(addPlatformSignals(map[os.Signal]func(){
-		syscall.SIGINT:  func() { serve <- nil },
-		syscall.SIGTERM: func() { serve <- nil },
+		syscall.SIGINT:  func() { containerRouter.Shutdown(5 * time.Second); serve <- nil },
+		syscall.SIGTERM: func() { containerRouter.Shutdown(5 * time.Second); serve <- nil },
 	}))
 
 	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)

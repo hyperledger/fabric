@@ -9,6 +9,7 @@ package container
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
@@ -151,4 +152,28 @@ func (r *Router) Stop(ccid string) error {
 
 func (r *Router) Wait(ccid string) (int, error) {
 	return r.getInstance(ccid).Wait()
+}
+
+func (r *Router) Shutdown(timeout time.Duration) {
+	done := make(chan struct{})
+	go func() {
+		var wg sync.WaitGroup
+		wg.Add(len(r.containers))
+		for ccid := range r.containers {
+			go func(ccid string) {
+				if err := r.Stop(ccid); err != nil {
+					vmLogger.Warningf("failed to stop ccid: %s err: %s", ccid, err)
+				}
+				wg.Done()
+			}(ccid)
+		}
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-time.After(timeout):
+		vmLogger.Warning("timeout while stopping external chaincodes")
+	case <-done:
+	}
 }
