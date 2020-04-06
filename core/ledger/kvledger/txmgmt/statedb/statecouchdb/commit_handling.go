@@ -36,7 +36,7 @@ func (c *committer) addToCacheUpdate(kv *keyValue) {
 	}
 
 	c.cacheKVs[kv.key] = &CacheValue{
-		VersionBytes:   kv.Version.ToBytes(),
+		Version:        kv.Version.ToBytes(),
 		Value:          kv.Value,
 		Metadata:       kv.Metadata,
 		AdditionalInfo: []byte(kv.revision),

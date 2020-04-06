@@ -73,7 +73,7 @@ func TestGetStateFromCache(t *testing.T) {
 	cacheValue := &CacheValue{
 		Value:          []byte("value1"),
 		Metadata:       []byte("meta1"),
-		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev1"),
 	}
 	require.NoError(t, env.cache.putState(chainID, "ns", "key1", cacheValue))
@@ -136,13 +136,13 @@ func TestGetVersionFromCache(t *testing.T) {
 	cacheValue := &CacheValue{
 		Value:          []byte("value1"),
 		Metadata:       []byte("meta1"),
-		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev1"),
 	}
 	require.NoError(t, env.cache.putState(chainID, "ns", "key1", cacheValue))
 
 	ver, err = db.GetVersion("ns", "key1")
-	expectedVer, _, err := version.NewHeightFromBytes(cacheValue.VersionBytes)
+	expectedVer, _, err := version.NewHeightFromBytes(cacheValue.Version)
 	require.NoError(t, err)
 	require.Equal(t, expectedVer, ver)
 
@@ -194,14 +194,14 @@ func TestGetMultipleStatesFromCache(t *testing.T) {
 	cacheValue1 := &CacheValue{
 		Value:          []byte("value1"),
 		Metadata:       []byte("meta1"),
-		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev1"),
 	}
 	require.NoError(t, env.cache.putState(chainID, "ns", "key1", cacheValue1))
 	cacheValue2 := &CacheValue{
 		Value:          []byte("value2"),
 		Metadata:       []byte("meta2"),
-		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev2"),
 	}
 	require.NoError(t, env.cache.putState(chainID, "ns", "key2", cacheValue2))
@@ -1177,7 +1177,7 @@ func TestLoadCommittedVersion(t *testing.T) {
 	cacheValue := &CacheValue{
 		Value:          []byte("value1"),
 		Metadata:       []byte("meta1"),
-		VersionBytes:   version.NewHeight(1, 1).ToBytes(),
+		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev1"),
 	}
 	require.NoError(t, env.cache.putState(chainID, "ns1", "key1", cacheValue))
@@ -1185,7 +1185,7 @@ func TestLoadCommittedVersion(t *testing.T) {
 	cacheValue = &CacheValue{
 		Value:          []byte("value2"),
 		Metadata:       []byte("meta2"),
-		VersionBytes:   version.NewHeight(1, 2).ToBytes(),
+		Version:        version.NewHeight(1, 2).ToBytes(),
 		AdditionalInfo: []byte("rev2"),
 	}
 	require.NoError(t, env.cache.putState(chainID, "ns1", "key2", cacheValue))
@@ -1193,7 +1193,7 @@ func TestLoadCommittedVersion(t *testing.T) {
 	cacheValue = &CacheValue{
 		Value:          []byte("value3"),
 		Metadata:       []byte("meta3"),
-		VersionBytes:   version.NewHeight(1, 3).ToBytes(),
+		Version:        version.NewHeight(1, 3).ToBytes(),
 		AdditionalInfo: []byte("rev3"),
 	}
 	require.NoError(t, env.cache.putState(chainID, "ns2", "key1", cacheValue))
