@@ -57,7 +57,7 @@ Towards the top of `issue.js`, you'll see two Fabric classes are brought
 into scope:
 
 ```JavaScript
-const { FileSystemWallet, Gateway } = require('fabric-network');
+const { Wallets, Gateway } = require('fabric-network');
 ```
 
 You can read about the `fabric-network` classes in the
@@ -66,7 +66,7 @@ now, let's see how they are used to connect MagnetoCorp's application to
 PaperNet. The application uses the Fabric **Wallet** class as follows:
 
 ```JavaScript
-const wallet = new FileSystemWallet('../identity/user/isabella/wallet');
+const wallet = await Wallets.newFileSystemWallet('../identity/user/isabella/wallet');
 ```
 
 See how `wallet` locates a [wallet](./wallet.html) in the local filesystem. The
@@ -172,9 +172,10 @@ Let's now turn our attention to the `connectionOptions` object:
 
 ```JavaScript
 let connectionOptions = {
-  identity: userName,
-  wallet: wallet
-}
+    identity: userName,
+    wallet: wallet,
+    discovery: { enabled:true, asLocalhost: true }
+};
 ```
 
 See how it specifies that identity, `userName`, and wallet, `wallet`, should be
