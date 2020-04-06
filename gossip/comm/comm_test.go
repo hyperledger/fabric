@@ -617,35 +617,37 @@ func TestCommSend(t *testing.T) {
 		}
 	}()
 
-	c1recieved := 0
-	c2recieved := 0
+	c1received := 0
+	c2received := 0
 	// hopefully in some runs we'll fill both send and receive buffers and
 	// drop overflowing messages, but still finish, because the endless
 	// stream of messages inexorably gets through unless something is very
 	// broken.
-	totalMessagesRecieved := (DefSendBuffSize + DefRecvBuffSize) * 2
+	totalMessagesReceived := (DefSendBuffSize + DefRecvBuffSize) * 2
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 RECV:
 	for {
 		select {
 		case <-ch1:
-			c1recieved++
-			if c1recieved == totalMessagesRecieved {
+			c1received++
+			if c1received == totalMessagesReceived {
 				close(stopch2)
 			}
 		case <-ch2:
-			c2recieved++
-			if c2recieved == totalMessagesRecieved {
+			c2received++
+			if c2received == totalMessagesReceived {
 				close(stopch1)
 			}
-		case <-time.After(30 * time.Second):
-			t.Fatalf("timed out waiting for messages to be recieved.\nc1 got %d messages\nc2 got %d messages", c1recieved, c2recieved)
+		case <-ticker.C:
+			t.Fatalf("timed out waiting for messages to be received.\nc1 got %d messages\nc2 got %d messages", c1received, c2received)
 		default:
-			if c1recieved > totalMessagesRecieved && c2recieved > totalMessagesRecieved {
+			if c1received >= totalMessagesReceived && c2received >= totalMessagesReceived {
 				break RECV
 			}
 		}
 	}
-	t.Logf("c1 got %d messages\nc2 got %d messages", c1recieved, c2recieved)
+	t.Logf("c1 got %d messages\nc2 got %d messages", c1received, c2received)
 }
 
 type nonResponsivePeer struct {
