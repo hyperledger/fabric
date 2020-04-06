@@ -154,7 +154,7 @@ run_tests() {
         local -a serial
         while IFS= read -r pkg; do serial+=("$pkg"); done < <(serial_test_packages "$@")
         if [ "${#serial[@]}" -ne 0 ]; then
-            go test "${flags[@]}" -tags "$GO_TAGS" "${serial[@]}" -short -p 1 -timeout=20m
+            go test "${flags[@]}" "${race_flags[@]}" -tags "$GO_TAGS" "${serial[@]}" -short -p 1 -timeout=20m
         fi
 
         local -a parallel
