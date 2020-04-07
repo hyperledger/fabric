@@ -56,7 +56,7 @@ func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, f
 		CryptoProvider:       ri.cryptoProvider,
 	}
 
-	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
+	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}

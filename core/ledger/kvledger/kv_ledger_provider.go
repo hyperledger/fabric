@@ -233,7 +233,7 @@ func (p *Provider) initLedgerStatistics() {
 // created ledgers list (atomically). If a crash happens in between, the 'recoverUnderConstructionLedger'
 // function is invoked before declaring the provider to be usable
 func (p *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error) {
-	ledgerID, err := protoutil.GetChainIDFromBlock(genesisBlock)
+	ledgerID, err := protoutil.GetChannelIDFromBlock(genesisBlock)
 	if err != nil {
 		return nil, err
 	}

@@ -59,8 +59,8 @@ type TransactionRegistry interface {
 // A ContextRegistry is responsible for managing transaction contexts.
 type ContextRegistry interface {
 	Create(txParams *ccprovider.TransactionParams) (*TransactionContext, error)
-	Get(chainID, txID string) *TransactionContext
-	Delete(chainID, txID string)
+	Get(channelID, txID string) *TransactionContext
+	Delete(channelID, txID string)
 	Close()
 }
 
@@ -1004,7 +1004,7 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 		return h.isValidTxSim("", txid, "could not get valid transaction")
 	}
 
-	// Calling SCC without a ChainID, then the assumption this is an external SCC called by the client (special case) and no UCC involved,
+	// Calling SCC without a ChannelID, then the assumption this is an external SCC called by the client (special case) and no UCC involved,
 	// so no Transaction Simulator validation needed as there are no commits to the ledger, get the txContext directly if it is not nil
 	txContext := h.TXContexts.Get(channelID, txid)
 	if txContext == nil {

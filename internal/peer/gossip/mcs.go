@@ -132,7 +132,7 @@ func (s *MSPMessageCryptoService) VerifyBlock(chainID common.ChannelID, seqNum u
 	}
 
 	// - Extract channelID and compare with chainID
-	channelID, err := protoutil.GetChainIDFromBlock(block)
+	channelID, err := protoutil.GetChannelIDFromBlock(block)
 	if err != nil {
 		return fmt.Errorf("Failed getting channel id from block with id [%d] on channel [%s]: [%s]", block.Header.Number, chainID, err)
 	}
