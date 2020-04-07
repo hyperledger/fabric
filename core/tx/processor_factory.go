@@ -106,7 +106,7 @@ func validateProtoAndConstructTxEnv(txEnvelopeBytes []byte) (*tx.Envelope, error
 	//other checks over shdr.Nonce, shdr.Creator can be added if universally applicable
 
 	//what TODO in legacy validation:
-	//   validate cHdr.ChannelID ?
+	//   validate cHdr.ChannelId ?
 	//   validate epoch in cHdr.Epoch?
 
 	return &tx.Envelope{
