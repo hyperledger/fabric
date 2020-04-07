@@ -18,11 +18,14 @@ For more information about capabilities, check out :doc:`capabilities_concept`.
 For a look at how these upgrade processes are accomplished, please consult these
 tutorials:
 
-1. :doc:`upgrading_your_components`. Components should be upgraded to the latest
+1. :doc:`upgrade_to_newest_version`. This topic discusses the important considerations
+   for getting to the latest release from the previous release as well as from
+   the most recent long term support (LTS) release.
+2. :doc:`upgrading_your_components`. Components should be upgraded to the latest
    version before updating any capabilities.
-2. :doc:`updating_capabilities`. Completed after updating the versions of all nodes.
-3. :doc:`enable_cc_lifecycle`. Necessary to add organization specific endorsement
-   policies central to the new chaincode lifecycle for Fabric v2.0.
+3. :doc:`updating_capabilities`. Completed after updating the versions of all nodes.
+4. :doc:`enable_cc_lifecycle`. Necessary to add organization specific endorsement
+   policies central to the new chaincode lifecycle for Fabric v2.x.
 
 As the upgrading of nodes and increasing the capability levels of channels is by
 now considered a standard Fabric process, we will not show the specific commands
