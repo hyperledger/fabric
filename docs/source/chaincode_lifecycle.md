@@ -408,20 +408,7 @@ definition. This allows channel members to install different chaincode binaries
 that use the same endorsement policy and read and write to data in the same
 chaincode namespace.
 
-Channel members can use this capability to install chaincode written in
-different languages and work with the language they are most comfortable. As
-long as the chaincode generates the same read-write sets, channel members using
-chaincode in different languages will be able to endorse transactions and commit
-them to the ledger. However, organizations should test that their chaincode
-is consistent and that they are able to generate valid endorsements before
-defining it on a channel in production.
-
-  ![Using different chaincode languages](lifecycle/Lifecycle-languages.png)
-
-*Org1 installs a package of the MYCC chaincode written in Golang, while Org2
-installs MYCC written in Java.*
-
-Organizations can also use this capability to install smart contracts that
+Organizations can use this capability to install smart contracts that
 contain business logic that is specific to their organization. Each
 organization's smart contract could contain additional validation that the
 organization requires before their peers endorse a transaction. Each organization
