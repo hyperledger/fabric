@@ -23,7 +23,7 @@ var putilsLogger = flogging.MustGetLogger("protoutils")
 // given a creator, a message and a signature,
 // this function returns nil if the creator
 // is a valid cert and the signature is valid
-func checkSignatureFromCreator(creatorBytes, sig, msg []byte, ChainID string, cryptoProvider bccsp.BCCSP) error {
+func checkSignatureFromCreator(creatorBytes, sig, msg []byte, ChannelID string, cryptoProvider bccsp.BCCSP) error {
 	putilsLogger.Debugf("begin")
 
 	// check for nil argument
@@ -31,9 +31,9 @@ func checkSignatureFromCreator(creatorBytes, sig, msg []byte, ChainID string, cr
 		return errors.New("nil arguments")
 	}
 
-	mspObj := mspmgmt.GetIdentityDeserializer(ChainID, cryptoProvider)
+	mspObj := mspmgmt.GetIdentityDeserializer(ChannelID, cryptoProvider)
 	if mspObj == nil {
-		return errors.Errorf("could not get msp for channel [%s]", ChainID)
+		return errors.Errorf("could not get msp for channel [%s]", ChannelID)
 	}
 
 	// get the identity of the creator
@@ -101,7 +101,7 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 
 	putilsLogger.Debugf("validateChannelHeader info: header type %d", common.HeaderType(cHdr.Type))
 
-	// TODO: validate chainID in cHdr.ChainID
+	// TODO: validate channelID in cHdr.ChannelID
 
 	// Validate epoch in cHdr.Epoch
 	// Currently we enforce that Epoch is 0.

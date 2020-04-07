@@ -71,39 +71,39 @@ func TestGoodBlockHeaderBytes(t *testing.T) {
 	_ = protoutil.BlockHeaderBytes(goodBlockHeaderMaxNumber) // Should not panic
 }
 
-func TestGetChainIDFromBlockBytes(t *testing.T) {
+func TestGetChannelIDFromBlockBytes(t *testing.T) {
 	gb, err := configtxtest.MakeGenesisBlock(testChannelID)
 	assert.NoError(t, err, "Failed to create test configuration block")
 	bytes, err := proto.Marshal(gb)
-	cid, err := protoutil.GetChainIDFromBlockBytes(bytes)
+	cid, err := protoutil.GetChannelIDFromBlockBytes(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
 
 	// bad block bytes
-	_, err = protoutil.GetChainIDFromBlockBytes([]byte("bad block"))
+	_, err = protoutil.GetChannelIDFromBlockBytes([]byte("bad block"))
 	assert.Error(t, err, "Expected error with malformed block bytes")
 }
 
-func TestGetChainIDFromBlock(t *testing.T) {
+func TestGetChannelIDFromBlock(t *testing.T) {
 	var err error
 	var gb *common.Block
 	var cid string
 
 	// nil block
-	_, err = protoutil.GetChainIDFromBlock(gb)
+	_, err = protoutil.GetChannelIDFromBlock(gb)
 	assert.Error(t, err, "Expected error getting channel id from nil block")
 
 	gb, err = configtxtest.MakeGenesisBlock(testChannelID)
 	assert.NoError(t, err, "Failed to create test configuration block")
 
-	cid, err = protoutil.GetChainIDFromBlock(gb)
+	cid, err = protoutil.GetChannelIDFromBlock(gb)
 	assert.NoError(t, err, "Failed to get chain ID from block")
 	assert.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
 
 	// missing data
 	badBlock := gb
 	badBlock.Data = nil
-	_, err = protoutil.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChannelIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error with missing block data")
 
 	// no envelope
@@ -112,7 +112,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 			Data: [][]byte{[]byte("bad envelope")},
 		},
 	}
-	_, err = protoutil.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChannelIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error with no envelope in data")
 
 	// bad payload
@@ -124,7 +124,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 			Data: [][]byte{env},
 		},
 	}
-	_, err = protoutil.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChannelIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error - malformed payload")
 
 	// bad channel header
@@ -141,7 +141,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 			Data: [][]byte{env},
 		},
 	}
-	_, err = protoutil.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChannelIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error with malformed channel header")
 
 	// nil payload header
@@ -154,7 +154,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 			Data: [][]byte{env},
 		},
 	}
-	_, err = protoutil.GetChainIDFromBlock(badBlock)
+	_, err = protoutil.GetChannelIDFromBlock(badBlock)
 	assert.Error(t, err, "Expected error when payload header is nil")
 }
 

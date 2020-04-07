@@ -67,19 +67,19 @@ func BlockDataHash(b *cb.BlockData) []byte {
 	return sum[:]
 }
 
-// GetChainIDFromBlockBytes returns chain ID given byte array which represents
+// GetChannelIDFromBlockBytes returns channel ID given byte array which represents
 // the block
-func GetChainIDFromBlockBytes(bytes []byte) (string, error) {
+func GetChannelIDFromBlockBytes(bytes []byte) (string, error) {
 	block, err := UnmarshalBlock(bytes)
 	if err != nil {
 		return "", err
 	}
 
-	return GetChainIDFromBlock(block)
+	return GetChannelIDFromBlock(block)
 }
 
-// GetChainIDFromBlock returns chain ID in the block
-func GetChainIDFromBlock(block *cb.Block) (string, error) {
+// GetChannelIDFromBlock returns channel ID in the block
+func GetChannelIDFromBlock(block *cb.Block) (string, error) {
 	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
 		return "", errors.New("failed to retrieve channel id - block is empty")
 	}
