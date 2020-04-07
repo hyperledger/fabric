@@ -8,6 +8,8 @@ package statecouchdb
 
 import (
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 // batch is executed in a separate goroutine.
@@ -42,7 +44,7 @@ func executeBatches(batches []batch) error {
 
 	select {
 	case err := <-errsChan:
-		return err
+		return errors.WithStack(err)
 	default:
 		return nil
 	}
