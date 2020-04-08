@@ -132,12 +132,12 @@ func (s *lockBasedTxSimulator) ExecuteQueryOnPrivateData(namespace, collection, 
 	return s.lockBasedQueryExecutor.ExecuteQueryOnPrivateData(namespace, collection, query)
 }
 
-// GetStateRangeScanIteratorWithMetadata implements method in interface `ledger.QueryExecutor`
-func (s *lockBasedTxSimulator) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+// GetStateRangeScanIteratorWithOptions implements method in interface `ledger.QueryExecutor`
+func (s *lockBasedTxSimulator) GetStateRangeScanIteratorWithOptions(namespace string, startKey string, endKey string, options map[string]interface{}) (ledger.QueryResultsIterator, error) {
 	if err := s.checkBeforePaginatedQueries(); err != nil {
 		return nil, err
 	}
-	return s.lockBasedQueryExecutor.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, metadata)
+	return s.lockBasedQueryExecutor.GetStateRangeScanIteratorWithOptions(namespace, startKey, endKey, options)
 }
 
 // ExecuteQueryWithMetadata implements method in interface `ledger.QueryExecutor`

@@ -170,13 +170,13 @@ type QueryExecutor interface {
 	GetStateMetadata(namespace, key string) (map[string][]byte, error)
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
 	GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error)
-	// GetStateRangeScanIteratorWithMetadata returns an iterator that contains all the key-values between given key ranges.
+	// GetStateRangeScanIteratorWithOptions returns an iterator that contains all the key-values between given key ranges.
 	// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 	// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
 	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
-	// metadata is a map of additional query parameters
+	// options is a map of additional query parameters
 	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.
-	GetStateRangeScanIteratorWithMetadata(namespace string, startKey, endKey string, metadata map[string]interface{}) (QueryResultsIterator, error)
+	GetStateRangeScanIteratorWithOptions(namespace string, startKey, endKey string, options map[string]interface{}) (QueryResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	// Only used for state databases that support query
 	// For a chaincode, the namespace corresponds to the chaincodeId

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/rangequery"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/assert"
@@ -934,9 +935,9 @@ func executeRangeQuery(t *testing.T, db statedb.VersionedDB, namespace, startKey
 
 		queryOptions := make(map[string]interface{})
 		if limit != 0 {
-			queryOptions["limit"] = limit
+			queryOptions[rangequery.LimitOpt] = limit
 		}
-		itr, err = db.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, queryOptions)
+		itr, err = db.GetStateRangeScanIteratorWithOptions(namespace, startKey, endKey, queryOptions)
 		if err != nil {
 			return "", err
 		}

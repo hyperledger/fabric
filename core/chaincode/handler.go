@@ -743,7 +743,7 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 				startKey = metadata.Bookmark
 			}
 		}
-		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithMetadata(namespaceID,
+		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithOptions(namespaceID,
 			startKey, getStateByRange.EndKey, paginationInfo)
 	} else {
 		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)

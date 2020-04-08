@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package statedb
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -41,9 +40,9 @@ type VersionedDB interface {
 	// GetStateRangeScanIteratorWithMetadata returns an iterator that contains all the key-values between given key ranges.
 	// startKey is inclusive
 	// endKey is exclusive
-	// metadata is a map of additional query parameters
+	// options is a map of additional query parameters
 	// The returned ResultsIterator contains results of type *VersionedKV
-	GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (QueryResultsIterator, error)
+	GetStateRangeScanIteratorWithOptions(namespace string, startKey string, endKey string, options map[string]interface{}) (QueryResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type *VersionedKV.
 	ExecuteQuery(namespace, query string) (ResultsIterator, error)
 	// ExecuteQueryWithMetadata executes the given query with associated query options and
@@ -291,25 +290,4 @@ func (itr *nsIterator) Close() {
 func (itr *nsIterator) GetBookmarkAndClose() string {
 	// do nothing
 	return ""
-}
-
-const optionLimit = "limit"
-
-// ValidateRangeMetadata validates the JSON containing attributes for the range query
-func ValidateRangeMetadata(metadata map[string]interface{}) error {
-	for key, keyVal := range metadata {
-		switch key {
-
-		case optionLimit:
-			//Verify the pageSize is an integer
-			if _, ok := keyVal.(int32); ok {
-				continue
-			}
-			return fmt.Errorf("Invalid entry, \"limit\" must be a int32")
-
-		default:
-			return fmt.Errorf("Invalid entry, option %s not recognized", key)
-		}
-	}
-	return nil
 }

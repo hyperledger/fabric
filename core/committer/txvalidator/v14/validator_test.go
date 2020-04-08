@@ -1552,8 +1552,8 @@ func (exec *mockQueryExecutor) GetStateRangeScanIterator(namespace string, start
 	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
 }
 
-func (exec *mockQueryExecutor) GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
-	args := exec.Called(namespace, startKey, endKey, metadata)
+func (exec *mockQueryExecutor) GetStateRangeScanIteratorWithOptions(namespace, startKey, endKey string, options map[string]interface{}) (ledger.QueryResultsIterator, error) {
+	args := exec.Called(namespace, startKey, endKey, options)
 	return args.Get(0).(ledger.QueryResultsIterator), args.Error(1)
 }
 

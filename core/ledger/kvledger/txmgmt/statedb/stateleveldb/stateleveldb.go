@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/core/ledger/internal/rangequery"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/pkg/errors"
@@ -130,24 +131,21 @@ func (vdb *versionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // startKey is inclusive
 // endKey is exclusive
 func (vdb *versionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
-	return vdb.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, nil)
+	return vdb.GetStateRangeScanIteratorWithOptions(namespace, startKey, endKey, nil)
 }
 
-const optionLimit = "limit"
-
-// GetStateRangeScanIteratorWithMetadata implements method in VersionedDB interface
-func (vdb *versionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
+// GetStateRangeScanIteratorWithOptions implements method in VersionedDB interface
+func (vdb *versionedDB) GetStateRangeScanIteratorWithOptions(namespace string, startKey string, endKey string,
+	options map[string]interface{}) (statedb.QueryResultsIterator, error) {
 
 	requestedLimit := int32(0)
-	// if metadata is provided, validate and apply options
-	if metadata != nil {
-		//validate the metadata
-		err := statedb.ValidateRangeMetadata(metadata)
+	if options != nil {
+		err := rangequery.ValidateOptions(options)
 		if err != nil {
 			return nil, err
 		}
-		if limitOption, ok := metadata[optionLimit]; ok {
-			requestedLimit = limitOption.(int32)
+		if limit, ok := options[rangequery.LimitOpt]; ok {
+			requestedLimit = limit.(int32)
 		}
 	}
 

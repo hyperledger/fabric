@@ -104,7 +104,7 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 	return itr, nil
 }
 
-func (h *queryHelper) getStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+func (h *queryHelper) getStateRangeScanIteratorWithOptions(namespace string, startKey string, endKey string, options map[string]interface{}) (ledger.QueryResultsIterator, error) {
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (h *queryHelper) getStateRangeScanIteratorWithMetadata(namespace string, st
 		namespace,
 		startKey,
 		endKey,
-		metadata,
+		options,
 		h.txmgr.db,
 		h.rwsetBuilder,
 		queryReadsHashingEnabled,
@@ -362,14 +362,14 @@ type resultsItr struct {
 	rangeQueryResultsHelper *rwsetutil.RangeQueryResultsHelper
 }
 
-func newResultsItr(ns string, startKey string, endKey string, metadata map[string]interface{},
+func newResultsItr(ns string, startKey string, endKey string, options map[string]interface{},
 	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32, hasher ledger.Hasher) (*resultsItr, error) {
 	var err error
 	var dbItr statedb.ResultsIterator
-	if metadata == nil {
+	if options == nil {
 		dbItr, err = db.GetStateRangeScanIterator(ns, startKey, endKey)
 	} else {
-		dbItr, err = db.GetStateRangeScanIteratorWithMetadata(ns, startKey, endKey, metadata)
+		dbItr, err = db.GetStateRangeScanIteratorWithOptions(ns, startKey, endKey, options)
 	}
 	if err != nil {
 		return nil, err

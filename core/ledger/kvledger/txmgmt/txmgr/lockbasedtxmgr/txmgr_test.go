@@ -456,7 +456,7 @@ func testIteratorPaging(t *testing.T, env testEnv, numKeys int, startKey, endKey
 	}
 
 	queryExecuter, _ := txMgr.NewQueryExecutor("test_tx2")
-	itr, _ := queryExecuter.GetStateRangeScanIteratorWithMetadata(cID, startKey, endKey, queryOptions)
+	itr, _ := queryExecuter.GetStateRangeScanIteratorWithOptions(cID, startKey, endKey, queryOptions)
 
 	// Verify the keys returned
 	testItrWithoutClose(t, itr, expectedKeys)
@@ -874,12 +874,12 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	simulator, _ = txMgr.NewTxSimulator("txid3")
 	err = simulator.SetState("ns", "key", []byte("value"))
 	assert.NoError(t, err)
-	_, err = simulator.GetStateRangeScanIteratorWithMetadata("ns1", "startKey", "endKey", queryOptions)
+	_, err = simulator.GetStateRangeScanIteratorWithOptions("ns1", "startKey", "endKey", queryOptions)
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
 	assert.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid4")
-	_, err = simulator.GetStateRangeScanIteratorWithMetadata("ns1", "startKey", "endKey", queryOptions)
+	_, err = simulator.GetStateRangeScanIteratorWithOptions("ns1", "startKey", "endKey", queryOptions)
 	assert.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)

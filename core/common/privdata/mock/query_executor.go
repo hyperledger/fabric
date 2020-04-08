@@ -205,19 +205,19 @@ type QueryExecutor struct {
 		result1 ledger.ResultsIterator
 		result2 error
 	}
-	GetStateRangeScanIteratorWithMetadataStub        func(string, string, string, map[string]interface{}) (ledgera.QueryResultsIterator, error)
-	getStateRangeScanIteratorWithMetadataMutex       sync.RWMutex
-	getStateRangeScanIteratorWithMetadataArgsForCall []struct {
+	GetStateRangeScanIteratorWithOptionsStub        func(string, string, string, map[string]interface{}) (ledgera.QueryResultsIterator, error)
+	getStateRangeScanIteratorWithOptionsMutex       sync.RWMutex
+	getStateRangeScanIteratorWithOptionsArgsForCall []struct {
 		arg1 string
 		arg2 string
 		arg3 string
 		arg4 map[string]interface{}
 	}
-	getStateRangeScanIteratorWithMetadataReturns struct {
+	getStateRangeScanIteratorWithOptionsReturns struct {
 		result1 ledgera.QueryResultsIterator
 		result2 error
 	}
-	getStateRangeScanIteratorWithMetadataReturnsOnCall map[int]struct {
+	getStateRangeScanIteratorWithOptionsReturnsOnCall map[int]struct {
 		result1 ledgera.QueryResultsIterator
 		result2 error
 	}
@@ -1105,67 +1105,67 @@ func (fake *QueryExecutor) GetStateRangeScanIteratorReturnsOnCall(i int, result1
 	}{result1, result2}
 }
 
-func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadata(arg1 string, arg2 string, arg3 string, arg4 map[string]interface{}) (ledgera.QueryResultsIterator, error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	ret, specificReturn := fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)]
-	fake.getStateRangeScanIteratorWithMetadataArgsForCall = append(fake.getStateRangeScanIteratorWithMetadataArgsForCall, struct {
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithOptions(arg1 string, arg2 string, arg3 string, arg4 map[string]interface{}) (ledgera.QueryResultsIterator, error) {
+	fake.getStateRangeScanIteratorWithOptionsMutex.Lock()
+	ret, specificReturn := fake.getStateRangeScanIteratorWithOptionsReturnsOnCall[len(fake.getStateRangeScanIteratorWithOptionsArgsForCall)]
+	fake.getStateRangeScanIteratorWithOptionsArgsForCall = append(fake.getStateRangeScanIteratorWithOptionsArgsForCall, struct {
 		arg1 string
 		arg2 string
 		arg3 string
 		arg4 map[string]interface{}
 	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("GetStateRangeScanIteratorWithMetadata", []interface{}{arg1, arg2, arg3, arg4})
-	fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	if fake.GetStateRangeScanIteratorWithMetadataStub != nil {
-		return fake.GetStateRangeScanIteratorWithMetadataStub(arg1, arg2, arg3, arg4)
+	fake.recordInvocation("GetStateRangeScanIteratorWithOptions", []interface{}{arg1, arg2, arg3, arg4})
+	fake.getStateRangeScanIteratorWithOptionsMutex.Unlock()
+	if fake.GetStateRangeScanIteratorWithOptionsStub != nil {
+		return fake.GetStateRangeScanIteratorWithOptionsStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getStateRangeScanIteratorWithMetadataReturns
+	fakeReturns := fake.getStateRangeScanIteratorWithOptionsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataCallCount() int {
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
-	return len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithOptionsCallCount() int {
+	fake.getStateRangeScanIteratorWithOptionsMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithOptionsMutex.RUnlock()
+	return len(fake.getStateRangeScanIteratorWithOptionsArgsForCall)
 }
 
-func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataCalls(stub func(string, string, string, map[string]interface{}) (ledgera.QueryResultsIterator, error)) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = stub
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithOptionsCalls(stub func(string, string, string, map[string]interface{}) (ledgera.QueryResultsIterator, error)) {
+	fake.getStateRangeScanIteratorWithOptionsMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithOptionsMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithOptionsStub = stub
 }
 
-func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataArgsForCall(i int) (string, string, string, map[string]interface{}) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
-	argsForCall := fake.getStateRangeScanIteratorWithMetadataArgsForCall[i]
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithOptionsArgsForCall(i int) (string, string, string, map[string]interface{}) {
+	fake.getStateRangeScanIteratorWithOptionsMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithOptionsMutex.RUnlock()
+	argsForCall := fake.getStateRangeScanIteratorWithOptionsArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataReturns(result1 ledgera.QueryResultsIterator, result2 error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = nil
-	fake.getStateRangeScanIteratorWithMetadataReturns = struct {
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithOptionsReturns(result1 ledgera.QueryResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorWithOptionsMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithOptionsMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithOptionsStub = nil
+	fake.getStateRangeScanIteratorWithOptionsReturns = struct {
 		result1 ledgera.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *QueryExecutor) GetStateRangeScanIteratorWithMetadataReturnsOnCall(i int, result1 ledgera.QueryResultsIterator, result2 error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = nil
-	if fake.getStateRangeScanIteratorWithMetadataReturnsOnCall == nil {
-		fake.getStateRangeScanIteratorWithMetadataReturnsOnCall = make(map[int]struct {
+func (fake *QueryExecutor) GetStateRangeScanIteratorWithOptionsReturnsOnCall(i int, result1 ledgera.QueryResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorWithOptionsMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithOptionsMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithOptionsStub = nil
+	if fake.getStateRangeScanIteratorWithOptionsReturnsOnCall == nil {
+		fake.getStateRangeScanIteratorWithOptionsReturnsOnCall = make(map[int]struct {
 			result1 ledgera.QueryResultsIterator
 			result2 error
 		})
 	}
-	fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[i] = struct {
+	fake.getStateRangeScanIteratorWithOptionsReturnsOnCall[i] = struct {
 		result1 ledgera.QueryResultsIterator
 		result2 error
 	}{result1, result2}
@@ -1202,8 +1202,8 @@ func (fake *QueryExecutor) Invocations() map[string][][]interface{} {
 	defer fake.getStateMultipleKeysMutex.RUnlock()
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
+	fake.getStateRangeScanIteratorWithOptionsMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithOptionsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

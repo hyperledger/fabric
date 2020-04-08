@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/core/ledger/internal/rangequery"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
@@ -439,30 +440,27 @@ func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // startKey is inclusive
 // endKey is exclusive
 func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
-	return vdb.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, nil)
+	return vdb.GetStateRangeScanIteratorWithOptions(namespace, startKey, endKey, nil)
 }
 
 const optionBookmark = "bookmark"
 const optionLimit = "limit"
 
-// GetStateRangeScanIteratorWithMetadata implements method in VersionedDB interface
+// GetStateRangeScanIteratorWithOptions implements method in VersionedDB interface
 // startKey is inclusive
 // endKey is exclusive
-// metadata contains a map of additional query options
-func (vdb *VersionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
-	logger.Debugf("Entering GetStateRangeScanIteratorWithMetadata  namespace: %s  startKey: %s  endKey: %s  metadata: %v", namespace, startKey, endKey, metadata)
-	// Get the internalQueryLimit from core.yaml
+// options contains a map of additional query options
+func (vdb *VersionedDB) GetStateRangeScanIteratorWithOptions(namespace string, startKey string, endKey string, options map[string]interface{}) (statedb.QueryResultsIterator, error) {
+	logger.Debugf("Entering GetStateRangeScanIteratorWithOptions namespace: %s  startKey: %s  endKey: %s  options: %v", namespace, startKey, endKey, options)
 	internalQueryLimit := vdb.couchInstance.InternalQueryLimit()
 	requestedLimit := int32(0)
-	// if metadata is provided, validate and apply options
-	if metadata != nil {
-		//validate the metadata
-		err := statedb.ValidateRangeMetadata(metadata)
+	if options != nil {
+		err := rangequery.ValidateOptions(options)
 		if err != nil {
 			return nil, err
 		}
-		if limitOption, ok := metadata[optionLimit]; ok {
-			requestedLimit = limitOption.(int32)
+		if limit, ok := options[rangequery.LimitOpt]; ok {
+			requestedLimit = limit.(int32)
 		}
 	}
 	db, err := vdb.getNamespaceDBHandle(namespace)
