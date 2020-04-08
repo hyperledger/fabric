@@ -29,8 +29,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const TimeThreshold = 100 * time.Millisecond
-
 var _ = Describe("Server", func() {
 	var (
 		fakeEchoService   *fakes.EchoServiceServer
@@ -153,11 +151,12 @@ var _ = Describe("Server", func() {
 						Expect(field.Type).To(Equal(zapcore.StringType))
 						Expect(field.String).To(Equal("Echo"))
 					case "grpc.request_deadline":
+						ctx, _ := fakeEchoService.EchoArgsForCall(0)
 						deadline, ok := ctx.Deadline()
 						Expect(ok).To(BeTrue())
 						Expect(field.Type).To(Equal(zapcore.TimeType))
 						Expect(field.Integer).NotTo(BeZero())
-						Expect(time.Unix(0, field.Integer)).To(BeTemporally("~", deadline, TimeThreshold))
+						Expect(time.Unix(0, field.Integer)).To(BeTemporally("==", deadline))
 					case "grpc.peer_address":
 						Expect(field.Type).To(Equal(zapcore.StringType))
 						Expect(field.String).To(HavePrefix("127.0.0.1"))
@@ -384,11 +383,12 @@ var _ = Describe("Server", func() {
 						Expect(field.Type).To(Equal(zapcore.StringType))
 						Expect(field.String).To(Equal("EchoStream"))
 					case "grpc.request_deadline":
-						deadline, ok := ctx.Deadline()
+						stream := fakeEchoService.EchoStreamArgsForCall(0)
+						deadline, ok := stream.Context().Deadline()
 						Expect(ok).To(BeTrue())
 						Expect(field.Type).To(Equal(zapcore.TimeType))
 						Expect(field.Integer).NotTo(BeZero())
-						Expect(time.Unix(0, field.Integer)).To(BeTemporally("~", deadline, TimeThreshold))
+						Expect(time.Unix(0, field.Integer)).To(BeTemporally("==", deadline))
 					case "grpc.peer_address":
 						Expect(field.Type).To(Equal(zapcore.StringType))
 						Expect(field.String).To(HavePrefix("127.0.0.1"))
