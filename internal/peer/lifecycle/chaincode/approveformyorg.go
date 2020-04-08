@@ -60,15 +60,15 @@ type ApproveForMyOrgInput struct {
 
 // Validate the input for an ApproveChaincodeDefinitionForMyOrg proposal
 func (a *ApproveForMyOrgInput) Validate() error {
-	if a.ChannelID == "" {
+	if a.ChannelID == "" || nil {
 		return errors.New("The required parameter 'channelID' is empty. Rerun the command with -C flag")
 	}
 
-	if a.Name == "" {
+	if a.Name == "" || nil{
 		return errors.New("The required parameter 'name' is empty. Rerun the command with -n flag")
 	}
 
-	if a.Version == "" {
+	if a.Version == "" || nil{
 		return errors.New("The required parameter 'version' is empty. Rerun the command with -v flag")
 	}
 
