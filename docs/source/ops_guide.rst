@@ -8,6 +8,7 @@ Operations Guides
    orderer_deploy
    config_update
    msp
+   hsm.md
    configtx
    capability_requirements
    endorsement-policies
