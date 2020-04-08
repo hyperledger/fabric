@@ -593,61 +593,54 @@ func TestCommSend(t *testing.T) {
 	stopch1 := make(chan struct{})
 	stopch2 := make(chan struct{})
 
-	go func() {
+	sender := func(stopCh chan struct{}, sender Comm, receiverPeerPort int) {
 		for {
 			emptyMsg := createGossipMsg()
 			select {
-			case <-stopch1:
+			case <-stopCh:
 				return
 			default:
-				comm1.Send(emptyMsg, remotePeer(port2))
+				sender.Send(emptyMsg, remotePeer(receiverPeerPort))
 			}
 		}
-	}()
+	}
 
-	go func() {
-		for {
-			emptyMsg := createGossipMsg()
-			select {
-			case <-stopch2:
-				return
-			default:
-				comm2.Send(emptyMsg, remotePeer(port1))
-			}
-		}
-	}()
+	go sender(stopch1, comm1, port2)
+	go sender(stopch2, comm2, port1)
 
-	c1received := 0
-	c2received := 0
 	// hopefully in some runs we'll fill both send and receive buffers and
 	// drop overflowing messages, but still finish, because the endless
 	// stream of messages inexorably gets through unless something is very
 	// broken.
 	totalMessagesReceived := (DefSendBuffSize + DefRecvBuffSize) * 2
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-RECV:
-	for {
-		select {
-		case <-ch1:
-			c1received++
-			if c1received == totalMessagesReceived {
-				close(stopch2)
-			}
-		case <-ch2:
-			c2received++
-			if c2received == totalMessagesReceived {
-				close(stopch1)
-			}
-		case <-ticker.C:
-			t.Fatalf("timed out waiting for messages to be received.\nc1 got %d messages\nc2 got %d messages", c1received, c2received)
-		default:
-			if c1received >= totalMessagesReceived && c2received >= totalMessagesReceived {
-				break RECV
+
+	wg := sync.WaitGroup{}
+	receiver := func(ch <-chan protoext.ReceivedMessage, stopch chan<- struct{}) {
+		var received int
+		for {
+			<-ch
+			received++
+			if received == totalMessagesReceived {
+				close(stopch)
+				wg.Done()
+				return
 			}
 		}
 	}
-	t.Logf("c1 got %d messages\nc2 got %d messages", c1received, c2received)
+
+	wg.Add(2)
+	go receiver(ch1, stopch2)
+	go receiver(ch2, stopch1)
+
+	ticker := time.NewTicker(30 * time.Second)
+	go func() {
+		select {
+		case <-ticker.C:
+			t.Fatalf("timed out waiting for messages to be received.")
+		}
+	}()
+	wg.Wait()
+	ticker.Stop()
 }
 
 type nonResponsivePeer struct {
