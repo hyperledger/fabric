@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statemetadata"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
@@ -266,7 +266,7 @@ func (h *queryHelper) getStateMetadata(ns string, key string) (map[string][]byte
 			return nil, err
 		}
 	}
-	return storageutil.DeserializeMetadata(metadataBytes)
+	return statemetadata.Deserialize(metadataBytes)
 }
 
 func (h *queryHelper) getPrivateDataMetadata(ns, coll, key string) (map[string][]byte, error) {
@@ -284,7 +284,7 @@ func (h *queryHelper) getPrivateDataMetadata(ns, coll, key string) (map[string][
 	if err != nil {
 		return nil, err
 	}
-	return storageutil.DeserializeMetadata(metadataBytes)
+	return statemetadata.Deserialize(metadataBytes)
 }
 
 func (h *queryHelper) getPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
@@ -302,7 +302,7 @@ func (h *queryHelper) getPrivateDataMetadataByHash(ns, coll string, keyhash []by
 	if err != nil {
 		return nil, err
 	}
-	return storageutil.DeserializeMetadata(metadataBytes)
+	return statemetadata.Deserialize(metadataBytes)
 }
 
 func (h *queryHelper) done() {
