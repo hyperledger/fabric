@@ -313,7 +313,7 @@ func TestIsEmpty(t *testing.T) {
 	couchInstance.conf.MaxRetries = 0
 	isEmpty, err = couchInstance.IsEmpty(ignore)
 	require.Error(t, err)
-	require.Regexp(t, `unable to connect to CouchDB, check the hostname and port: Get "?http://junk/_all_dbs"?`, err.Error())
+	require.Regexp(t, `unable to connect to CouchDB, check the hostname and port: http error calling couchdb: Get "?http://junk/_all_dbs"?`, err.Error())
 }
 
 func TestDBBadDatabaseName(t *testing.T) {
