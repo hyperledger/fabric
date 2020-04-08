@@ -54,18 +54,8 @@ func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, 
 		return nil, slot, nil, fmt.Errorf("Could not find token with label %s", label)
 	}
 
-	var session pkcs11.SessionHandle
-	for i := 0; i < 10; i++ {
-		session, err = ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
-		if err != nil {
-			logger.Warningf("OpenSession failed, retrying [%s]\n", err)
-		} else {
-			break
-		}
-	}
-	if err != nil {
-		logger.Fatalf("OpenSession [%s]\n", err)
-	}
+	session := createSession(ctx, slot, pin)
+
 	logger.Debugf("Created new pkcs11 session %+v on slot %d\n", session, slot)
 
 	if pin == "" {
@@ -84,25 +74,44 @@ func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, 
 func (csp *impl) getSession() (session pkcs11.SessionHandle) {
 	select {
 	case session = <-csp.sessions:
-		logger.Debugf("Reusing existing pkcs11 session %+v on slot %d\n", session, csp.slot)
+		_, err := csp.ctx.GetSessionInfo(session)
+		if err != nil {
+			logger.Warningf("Get session info failed [%s], closing existing session and getting a new session\n", err)
+			csp.ctx.CloseSession(session)
+			session = createSession(csp.ctx, csp.slot, csp.pin)
+		} else {
+			logger.Debugf("Reusing existing pkcs11 session %+v on slot %d\n", session, csp.slot)
+		}
 
 	default:
 		// cache is empty (or completely in use), create a new session
-		var s pkcs11.SessionHandle
-		var err error
-		for i := 0; i < 10; i++ {
-			s, err = csp.ctx.OpenSession(csp.slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
-			if err != nil {
-				logger.Warningf("OpenSession failed, retrying [%s]\n", err)
-			} else {
-				break
-			}
-		}
+		session = createSession(csp.ctx, csp.slot, csp.pin)
+	}
+	return session
+}
+
+func createSession(ctx *pkcs11.Ctx, slot uint, pin string) pkcs11.SessionHandle {
+	var s pkcs11.SessionHandle
+	var err error
+	for i := 0; i < 10; i++ {
+		s, err = ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 		if err != nil {
-			panic(fmt.Errorf("OpenSession failed [%s]", err))
+			logger.Warningf("OpenSession failed, retrying [%s]\n", err)
+		} else {
+			break
 		}
-		logger.Debugf("Created new pkcs11 session %+v on slot %d\n", s, csp.slot)
-		session = s
+	}
+	if err != nil {
+		logger.Fatalf("OpenSession failed [%s]", err)
+	}
+	logger.Debugf("Created new pkcs11 session %+v on slot %d\n", s, slot)
+	session := s
+
+	err = ctx.Login(session, pkcs11.CKU_USER, pin)
+	if err != nil {
+		if err != pkcs11.Error(pkcs11.CKR_USER_ALREADY_LOGGED_IN) {
+			logger.Errorf("Login failed [%s]", err)
+		}
 	}
 	return session
 }
