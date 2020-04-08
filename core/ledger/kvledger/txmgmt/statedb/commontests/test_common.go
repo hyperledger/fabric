@@ -18,10 +18,7 @@ import (
 )
 
 // TestGetStateMultipleKeys tests read for given multiple keys
-func TestGetStateMultipleKeys(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testgetmultiplekeys")
-	assert.NoError(t, err)
-
+func TestGetStateMultipleKeys(t *testing.T, db statedb.VersionedDB) {
 	// Test that savepoint is nil for a new state db
 	sp, err := db.GetLatestSavePoint()
 	assert.NoError(t, err, "Error upon GetLatestSavePoint()")
@@ -47,10 +44,7 @@ func TestGetStateMultipleKeys(t *testing.T, dbProvider statedb.VersionedDBProvid
 }
 
 // TestBasicRW tests basic read-write
-func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testbasicrw")
-	assert.NoError(t, err)
-
+func TestBasicRW(t *testing.T, db statedb.VersionedDB) {
 	// Test that savepoint is nil for a new state db
 	sp, err := db.GetLatestSavePoint()
 	assert.NoError(t, err, "Error upon GetLatestSavePoint()")
@@ -92,13 +86,7 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 }
 
 // TestMultiDBBasicRW tests basic read-write on multiple dbs
-func TestMultiDBBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db1, err := dbProvider.GetDBHandle("testmultidbbasicrw")
-	assert.NoError(t, err)
-
-	db2, err := dbProvider.GetDBHandle("testmultidbbasicrw2")
-	assert.NoError(t, err)
-
+func TestMultiDBBasicRW(t *testing.T, db1 statedb.VersionedDB, db2 statedb.VersionedDB) {
 	batch1 := state.NewUpdateBatch()
 	vv1 := state.VersionedValue{Value: []byte("value1_db1"), Version: version.NewHeight(1, 1)}
 	vv2 := state.VersionedValue{Value: []byte("value2_db1"), Version: version.NewHeight(1, 2)}
@@ -131,10 +119,7 @@ func TestMultiDBBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 }
 
 // TestDeletes tests deletes
-func TestDeletes(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testdeletes")
-	assert.NoError(t, err)
-
+func TestDeletes(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
 	vv1 := state.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
 	vv2 := state.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
@@ -147,7 +132,7 @@ func TestDeletes(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	batch.Put("ns", "key4", vv2.Value, vv4.Version)
 	batch.Delete("ns", "key3", version.NewHeight(1, 5))
 	savePoint := version.NewHeight(1, 5)
-	err = db.ApplyUpdates(batch, savePoint)
+	err := db.ApplyUpdates(batch, savePoint)
 	assert.NoError(t, err)
 	vv, _ := db.GetState("ns", "key2")
 	assert.Equal(t, &vv2, vv)
@@ -166,11 +151,7 @@ func TestDeletes(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 }
 
 // TestIterator tests the iterator
-func TestIterator(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testiterator")
-	assert.NoError(t, err)
-	db.Open()
-	defer db.Close()
+func TestIterator(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	batch.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -208,11 +189,7 @@ func testItr(t *testing.T, itr state.ResultsIterator, expectedKeys []string) {
 }
 
 // TestQuery tests queries
-func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testquery")
-	assert.NoError(t, err)
-	db.Open()
-	defer db.Close()
+func TestQuery(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
 	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
@@ -487,11 +464,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 }
 
 // TestGetVersion tests retrieving the version by namespace and key
-func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-
-	db, err := dbProvider.GetDBHandle("testgetversion")
-	assert.NoError(t, err)
-
+func TestGetVersion(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
 	vv1 := state.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
 	vv2 := state.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
@@ -503,7 +476,7 @@ func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	batch.Put("ns", "key3", vv2.Value, vv3.Version)
 	batch.Put("ns", "key4", vv2.Value, vv4.Version)
 	savePoint := version.NewHeight(1, 5)
-	err = db.ApplyUpdates(batch, savePoint)
+	err := db.ApplyUpdates(batch, savePoint)
 	assert.NoError(t, err)
 
 	//check to see if the bulk optimizable interface is supported (couchdb)
@@ -545,11 +518,7 @@ func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 }
 
 // TestSmallBatchSize tests multiple update batches
-func TestSmallBatchSize(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testsmallbatchsize")
-	assert.NoError(t, err)
-	db.Open()
-	defer db.Close()
+func TestSmallBatchSize(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
 	jsonValue1 := []byte(`{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`)
 	batch.Put("ns1", "key1", jsonValue1, version.NewHeight(1, 1))
@@ -614,11 +583,7 @@ func TestSmallBatchSize(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 }
 
 // TestBatchWithIndividualRetry tests a single failure in a batch
-func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-
-	db, err := dbProvider.GetDBHandle("testbatchretry")
-	assert.NoError(t, err)
-
+func TestBatchWithIndividualRetry(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
 	vv1 := state.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
 	vv2 := state.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
@@ -630,7 +595,7 @@ func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBPr
 	batch.Put("ns", "key3", vv3.Value, vv3.Version)
 	batch.Put("ns", "key4", vv4.Value, vv4.Version)
 	savePoint := version.NewHeight(1, 5)
-	err = db.ApplyUpdates(batch, savePoint)
+	err := db.ApplyUpdates(batch, savePoint)
 	assert.NoError(t, err)
 
 	// Clear the cache for the next batch, in place of simulation
@@ -723,11 +688,8 @@ func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBPr
 }
 
 // TestValueAndMetadataWrites tests statedb for value and metadata read-writes
-func TestValueAndMetadataWrites(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testvalueandmetadata")
-	assert.NoError(t, err)
+func TestValueAndMetadataWrites(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
-
 	vv1 := state.VersionedValue{Value: []byte("value1"), Metadata: []byte("metadata1"), Version: version.NewHeight(1, 1)}
 	vv2 := state.VersionedValue{Value: []byte("value2"), Metadata: []byte("metadata2"), Version: version.NewHeight(1, 2)}
 	vv3 := state.VersionedValue{Value: []byte("value3"), Version: version.NewHeight(1, 3)}
@@ -753,11 +715,7 @@ func TestValueAndMetadataWrites(t *testing.T, dbProvider statedb.VersionedDBProv
 }
 
 // TestPaginatedRangeQuery tests range queries with pagination
-func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testpaginatedrangequery")
-	assert.NoError(t, err)
-	db.Open()
-	defer db.Close()
+func TestPaginatedRangeQuery(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
 	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
@@ -848,7 +806,7 @@ func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvide
 
 	//Test range query with no pagination
 	returnKeys := []string{}
-	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(0), returnKeys)
+	_, err := executeRangeQuery(t, db, "ns1", "key1", "key15", int32(0), returnKeys)
 	assert.NoError(t, err)
 
 	//Test range query with large page size (single page return)
@@ -880,12 +838,7 @@ func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvide
 }
 
 // TestRangeQuerySpecialCharacters tests range queries for keys with special characters and/or non-English characters
-func TestRangeQuerySpecialCharacters(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("testrangequeryspecialcharacters")
-	assert.NoError(t, err)
-	db.Open()
-	defer db.Close()
-
+func TestRangeQuerySpecialCharacters(t *testing.T, db statedb.VersionedDB) {
 	batch := state.NewUpdateBatch()
 	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
@@ -916,7 +869,7 @@ func TestRangeQuerySpecialCharacters(t *testing.T, dbProvider statedb.VersionedD
 	//Test range query for the keys with special or non-English characters
 	returnKeys := []string{"key1", "key1%=", "key1&%-", "key1-a", "key10", "key1español", "key1z", "key1中文", "key1한국어"}
 	// returnKeys := []string{"key1", "key1%=", "key1&%-", "key1-a", "key10", "key1español", "key1z"}
-	_, err = executeRangeQuery(t, db, "ns1", "key1", "key2", int32(10), returnKeys)
+	_, err := executeRangeQuery(t, db, "ns1", "key1", "key2", int32(10), returnKeys)
 	assert.NoError(t, err)
 }
 
@@ -974,10 +927,7 @@ func TestItrWithoutClose(t *testing.T, itr state.ResultsIterator, expectedKeys [
 	assert.Nil(t, queryResult)
 }
 
-func TestApplyUpdatesWithNilHeight(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("test-apply-updates-with-nil-height")
-	assert.NoError(t, err)
-
+func TestApplyUpdatesWithNilHeight(t *testing.T, db statedb.VersionedDB) {
 	batch1 := state.NewUpdateBatch()
 	batch1.Put("ns", "key1", []byte("value1"), version.NewHeight(1, 4))
 	savePoint := version.NewHeight(1, 5)

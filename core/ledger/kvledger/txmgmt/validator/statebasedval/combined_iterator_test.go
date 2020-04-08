@@ -21,6 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,8 +30,9 @@ func TestCombinedIterator(t *testing.T) {
 	testDBEnv := stateleveldb.NewTestVDBEnv(t)
 	defer testDBEnv.Cleanup()
 
-	db, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	vdb, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
 	assert.NoError(t, err)
+	db := vdb.(statedb.VersionedDB)
 
 	// populate db with initial data
 	batch := state.NewUpdateBatch()

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdbtest"
 	"github.com/stretchr/testify/require"
@@ -23,7 +22,7 @@ import (
 type testVDBEnv struct {
 	t              testing.TB
 	couchAddress   string
-	DBProvider     statedb.VersionedDBProvider
+	DBProvider     *VersionedDBProvider
 	config         *couchdb.Config
 	cleanupCouchDB func()
 	cache          *cache
@@ -87,14 +86,14 @@ func (env *testVDBEnv) closeAndReopen() {
 // Cleanup drops the test couch databases and closes the db provider
 func (env *testVDBEnv) cleanup() {
 	env.t.Logf("Cleaningup TestVDBEnv")
-	cleanupDB(env.t, env.DBProvider.(*VersionedDBProvider).couchInstance)
+	cleanupDB(env.t, env.DBProvider.couchInstance)
 	env.DBProvider.Close()
 	os.RemoveAll(env.config.RedoLogPath)
 }
 
 // CleanupDB deletes all the databases other than fabric internal database
-func CleanupDB(t testing.TB, dbProvider statedb.VersionedDBProvider) {
-	cleanupDB(t, dbProvider.(*VersionedDBProvider).couchInstance)
+func CleanupDB(t testing.TB, vdbProvider *VersionedDBProvider) {
+	cleanupDB(t, vdbProvider.couchInstance)
 }
 
 func cleanupDB(t testing.TB, couchInstance *couchdb.CouchInstance) {

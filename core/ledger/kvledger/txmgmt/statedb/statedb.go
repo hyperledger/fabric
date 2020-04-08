@@ -16,7 +16,7 @@ import (
 // VersionedDBProvider provides an instance of an versioned DB
 type VersionedDBProvider interface {
 	// GetDBHandle returns a handle to a VersionedDB
-	GetDBHandle(id string) (VersionedDB, error)
+	GetDBHandle(id string) (interface{}, error)
 	// Close closes all the VersionedDB instances and releases any resources held by VersionedDBProvider
 	Close()
 }

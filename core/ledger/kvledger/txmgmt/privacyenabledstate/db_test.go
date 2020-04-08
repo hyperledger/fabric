@@ -538,6 +538,29 @@ func testMetadataRetrieval(t *testing.T, env TestEnv) {
 	assert.Nil(t, vm)
 }
 
+func TestCouchDBInterfaceImplementation(t *testing.T) {
+	for _, env := range testEnvs {
+		_, ok := env.(*CouchDBCommonStorageTestEnv)
+		if !ok {
+			continue
+		}
+		env.Init(t)
+		defer env.Cleanup()
+		db := env.GetDBHandle(generateLedgerID(t))
+
+		commonStorageDB := db.(*CommonStorageDB)
+		_, ok = commonStorageDB.VersionedDB.(statedb.IndexCapable)
+		if !ok {
+			t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
+		}
+
+		_, ok = commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
+		if !ok {
+			t.Fatal("state couch db is expected to implement interface statedb.BulkOptimizable")
+		}
+	}
+}
+
 func putPvtUpdates(t *testing.T, updates *state.PubHashPvtUpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {
 	updates.PvtUpdates.Put(ns, coll, key, value, ver)
 	updates.HashUpdates.Put(ns, coll, util.ComputeStringHash(key), util.ComputeHash(value), ver)

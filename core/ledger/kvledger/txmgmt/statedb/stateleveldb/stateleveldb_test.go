@@ -18,25 +18,39 @@ import (
 func TestBasicRW(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestBasicRW(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("testbasicrw")
+	assert.NoError(t, err)
+	commontests.TestBasicRW(t, db.(*VersionedDB))
 }
 
 func TestMultiDBBasicRW(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestMultiDBBasicRW(t, env.DBProvider)
+
+	db1, err := env.DBProvider.GetDBHandle("testmultidbbasicrw")
+	assert.NoError(t, err)
+	db2, err := env.DBProvider.GetDBHandle("testmultidbbasicrw2")
+	assert.NoError(t, err)
+	commontests.TestMultiDBBasicRW(t, db1.(*VersionedDB), db2.(*VersionedDB))
 }
 
 func TestDeletes(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestDeletes(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("testdeletes")
+	assert.NoError(t, err)
+	commontests.TestDeletes(t, db.(*VersionedDB))
 }
 
 func TestIterator(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestIterator(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("testiterator")
+	assert.NoError(t, err)
+	commontests.TestIterator(t, db.(*VersionedDB))
 }
 
 func TestDataKeyEncoding(t *testing.T) {
@@ -56,8 +70,9 @@ func testDataKeyEncoding(t *testing.T, dbName string, ns string, key string) {
 func TestQueryOnLevelDB(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	db, err := env.DBProvider.GetDBHandle("testquery")
+	vdb, err := env.DBProvider.GetDBHandle("testquery")
 	assert.NoError(t, err)
+	db := vdb.(*VersionedDB)
 	db.Open()
 	defer db.Close()
 	batch := state.NewUpdateBatch()
@@ -78,21 +93,28 @@ func TestQueryOnLevelDB(t *testing.T) {
 func TestGetStateMultipleKeys(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestGetStateMultipleKeys(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("testgetmultiplekeys")
+	assert.NoError(t, err)
+	commontests.TestGetStateMultipleKeys(t, db.(*VersionedDB))
 }
 
 func TestGetVersion(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestGetVersion(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("testgetversion")
+	assert.NoError(t, err)
+	commontests.TestGetVersion(t, db.(*VersionedDB))
 }
 
 func TestUtilityFunctions(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
 
-	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
+	vdb, err := env.DBProvider.GetDBHandle("testutilityfunctions")
 	assert.NoError(t, err)
+	db := vdb.(*VersionedDB)
 
 	// BytesKeySupported should be true for goleveldb
 	byteKeySupported := db.BytesKeySupported()
@@ -105,23 +127,35 @@ func TestUtilityFunctions(t *testing.T) {
 func TestValueAndMetadataWrites(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestValueAndMetadataWrites(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("testvalueandmetadata")
+	assert.NoError(t, err)
+	commontests.TestValueAndMetadataWrites(t, db.(*VersionedDB))
 }
 
 func TestPaginatedRangeQuery(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestPaginatedRangeQuery(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("testpaginatedrangequery")
+	assert.NoError(t, err)
+	commontests.TestPaginatedRangeQuery(t, db.(*VersionedDB))
 }
 
 func TestRangeQuerySpecialCharacters(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestRangeQuerySpecialCharacters(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("testrangequeryspecialcharacters")
+	assert.NoError(t, err)
+	commontests.TestRangeQuerySpecialCharacters(t, db.(*VersionedDB))
 }
 
 func TestApplyUpdatesWithNilHeight(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestApplyUpdatesWithNilHeight(t, env.DBProvider)
+
+	db, err := env.DBProvider.GetDBHandle("test-apply-updates-with-nil-height")
+	assert.NoError(t, err)
+	commontests.TestApplyUpdatesWithNilHeight(t, db.(*VersionedDB))
 }

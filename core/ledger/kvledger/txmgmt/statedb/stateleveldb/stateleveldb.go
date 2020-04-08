@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/rangequery"
 	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
@@ -49,7 +48,7 @@ func NewVersionedDBProvider(dbPath string) (*VersionedDBProvider, error) {
 }
 
 // GetDBHandle gets the handle to a named database
-func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.VersionedDB, error) {
+func (provider *VersionedDBProvider) GetDBHandle(dbName string) (interface{}, error) {
 	return newVersionedDB(provider.dbProvider.GetDBHandle(dbName), dbName), nil
 }
 
@@ -59,39 +58,39 @@ func (provider *VersionedDBProvider) Close() {
 }
 
 // VersionedDB implements VersionedDB interface
-type versionedDB struct {
+type VersionedDB struct {
 	db     *leveldbhelper.DBHandle
 	dbName string
 }
 
 // newVersionedDB constructs an instance of VersionedDB
-func newVersionedDB(db *leveldbhelper.DBHandle, dbName string) *versionedDB {
-	return &versionedDB{db, dbName}
+func newVersionedDB(db *leveldbhelper.DBHandle, dbName string) *VersionedDB {
+	return &VersionedDB{db, dbName}
 }
 
 // Open implements method in VersionedDB interface
-func (vdb *versionedDB) Open() error {
+func (vdb *VersionedDB) Open() error {
 	// do nothing because shared db is used
 	return nil
 }
 
 // Close implements method in VersionedDB interface
-func (vdb *versionedDB) Close() {
+func (vdb *VersionedDB) Close() {
 	// do nothing because shared db is used
 }
 
 // ValidateKeyValue implements method in VersionedDB interface
-func (vdb *versionedDB) ValidateKeyValue(key string, value []byte) error {
+func (vdb *VersionedDB) ValidateKeyValue(key string, value []byte) error {
 	return nil
 }
 
 // BytesKeySupported implements method in VersionedDB interface
-func (vdb *versionedDB) BytesKeySupported() bool {
+func (vdb *VersionedDB) BytesKeySupported() bool {
 	return true
 }
 
 // GetState implements method in VersionedDB interface
-func (vdb *versionedDB) GetState(namespace string, key string) (*state.VersionedValue, error) {
+func (vdb *VersionedDB) GetState(namespace string, key string) (*state.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
 	dbVal, err := vdb.db.Get(encodeDataKey(namespace, key))
 	if err != nil {
@@ -104,7 +103,7 @@ func (vdb *versionedDB) GetState(namespace string, key string) (*state.Versioned
 }
 
 // GetVersion implements method in VersionedDB interface
-func (vdb *versionedDB) GetVersion(namespace string, key string) (*version.Height, error) {
+func (vdb *VersionedDB) GetVersion(namespace string, key string) (*version.Height, error) {
 	versionedValue, err := vdb.GetState(namespace, key)
 	if err != nil {
 		return nil, err
@@ -116,7 +115,7 @@ func (vdb *versionedDB) GetVersion(namespace string, key string) (*version.Heigh
 }
 
 // GetStateMultipleKeys implements method in VersionedDB interface
-func (vdb *versionedDB) GetStateMultipleKeys(namespace string, keys []string) ([]*state.VersionedValue, error) {
+func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([]*state.VersionedValue, error) {
 	vals := make([]*state.VersionedValue, len(keys))
 	for i, key := range keys {
 		val, err := vdb.GetState(namespace, key)
@@ -131,12 +130,12 @@ func (vdb *versionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // GetStateRangeScanIterator implements method in VersionedDB interface
 // startKey is inclusive
 // endKey is exclusive
-func (vdb *versionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (state.ResultsIterator, error) {
+func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (state.ResultsIterator, error) {
 	return vdb.GetStateRangeScanIteratorWithOptions(namespace, startKey, endKey, nil)
 }
 
 // GetStateRangeScanIteratorWithOptions implements method in VersionedDB interface
-func (vdb *versionedDB) GetStateRangeScanIteratorWithOptions(namespace string, startKey string, endKey string,
+func (vdb *VersionedDB) GetStateRangeScanIteratorWithOptions(namespace string, startKey string, endKey string,
 	options map[string]interface{}) (state.QueryResultsIterator, error) {
 
 	requestedLimit := int32(0)
@@ -161,17 +160,17 @@ func (vdb *versionedDB) GetStateRangeScanIteratorWithOptions(namespace string, s
 }
 
 // ExecuteQuery implements method in VersionedDB interface
-func (vdb *versionedDB) ExecuteQuery(namespace, query string) (state.ResultsIterator, error) {
+func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (state.ResultsIterator, error) {
 	return nil, errors.New("ExecuteQuery not supported for leveldb")
 }
 
 // ExecuteQueryWithMetadata implements method in VersionedDB interface
-func (vdb *versionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (state.QueryResultsIterator, error) {
+func (vdb *VersionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (state.QueryResultsIterator, error) {
 	return nil, errors.New("ExecuteQueryWithMetadata not supported for leveldb")
 }
 
 // ApplyUpdates implements method in VersionedDB interface
-func (vdb *versionedDB) ApplyUpdates(batch *state.UpdateBatch, height *version.Height) error {
+func (vdb *VersionedDB) ApplyUpdates(batch *state.UpdateBatch, height *version.Height) error {
 	dbBatch := leveldbhelper.NewUpdateBatch()
 	namespaces := batch.GetUpdatedNamespaces()
 	for _, ns := range namespaces {
@@ -206,7 +205,7 @@ func (vdb *versionedDB) ApplyUpdates(batch *state.UpdateBatch, height *version.H
 }
 
 // GetLatestSavePoint implements method in VersionedDB interface
-func (vdb *versionedDB) GetLatestSavePoint() (*version.Height, error) {
+func (vdb *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
 	versionBytes, err := vdb.db.Get(savePointKey)
 	if err != nil {
 		return nil, err

@@ -100,7 +100,7 @@ func (p *CommonStorageDBProvider) GetDBHandle(id string) (DB, error) {
 	}
 	bookkeeper := p.bookkeepingProvider.GetDBHandle(id, bookkeeping.MetadataPresenceIndicator)
 	metadataHint := newMetadataHint(bookkeeper)
-	return NewCommonStorageDB(vdb, id, metadataHint)
+	return NewCommonStorageDB(vdb.(statedb.VersionedDB), id, metadataHint)
 }
 
 // Close implements function from interface DBProvider

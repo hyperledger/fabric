@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/state"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,8 +68,9 @@ func testRangeQuery(t *testing.T, testcase string, stateData *state.UpdateBatch,
 	t.Run(testcase, func(t *testing.T) {
 		testDBEnv := stateleveldb.NewTestVDBEnv(t)
 		defer testDBEnv.Cleanup()
-		db, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+		vdb, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
 		assert.NoError(t, err)
+		db := vdb.(statedb.VersionedDB)
 		if stateData != nil {
 			db.ApplyUpdates(stateData, savepoint)
 		}
