@@ -743,8 +743,9 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 				startKey = metadata.Bookmark
 			}
 		}
-		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithMetadata(namespaceID,
-			startKey, getStateByRange.EndKey, paginationInfo)
+		limit := paginationInfo["limit"].(int32)
+		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithLimit(namespaceID,
+			startKey, getStateByRange.EndKey, limit)
 	} else {
 		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)
 	}
@@ -858,8 +859,10 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 			return nil, err
 		}
 		isPaginated = true
-		executeIter, err = txContext.TXSimulator.ExecuteQueryWithMetadata(namespaceID,
-			getQueryResult.Query, paginationInfo)
+		bookmark := paginationInfo["bookmark"].(string)
+		limit := paginationInfo["limit"].(int32)
+		executeIter, err = txContext.TXSimulator.ExecuteQueryWithBookmarkAndLimit(namespaceID,
+			getQueryResult.Query, bookmark, limit)
 
 	} else {
 		executeIter, err = txContext.TXSimulator.ExecuteQuery(namespaceID, getQueryResult.Query)

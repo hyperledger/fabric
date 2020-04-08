@@ -863,15 +863,7 @@ func executeQuery(t *testing.T, db statedb.VersionedDB, namespace, query, bookma
 			return "", err
 		}
 	} else {
-		queryOptions := make(map[string]interface{})
-		if bookmark != "" {
-			queryOptions["bookmark"] = bookmark
-		}
-		if limit != 0 {
-			queryOptions["limit"] = limit
-		}
-
-		itr, err = db.ExecuteQueryWithMetadata(namespace, query, queryOptions)
+		itr, err = db.ExecuteQueryWithBookmarkAndLimit(namespace, query, bookmark, limit)
 		if err != nil {
 			return "", err
 		}
@@ -886,51 +878,6 @@ func executeQuery(t *testing.T, db statedb.VersionedDB, namespace, query, bookma
 	}
 
 	return returnBookmark, nil
-}
-
-// TestPaginatedQueryValidation tests queries with pagination
-func TestPaginatedQueryValidation(t *testing.T) {
-
-	queryOptions := make(map[string]interface{})
-	queryOptions["bookmark"] = "Test1"
-	queryOptions["limit"] = int32(10)
-
-	err := validateQueryMetadata(queryOptions)
-	assert.NoError(t, err, "An error was thrown for a valid options")
-	queryOptions = make(map[string]interface{})
-	queryOptions["bookmark"] = "Test1"
-	queryOptions["limit"] = float64(10.2)
-
-	err = validateQueryMetadata(queryOptions)
-	assert.Error(t, err, "An should have been thrown for an invalid options")
-
-	queryOptions = make(map[string]interface{})
-	queryOptions["bookmark"] = "Test1"
-	queryOptions["limit"] = "10"
-
-	err = validateQueryMetadata(queryOptions)
-	assert.Error(t, err, "An should have been thrown for an invalid options")
-
-	queryOptions = make(map[string]interface{})
-	queryOptions["bookmark"] = int32(10)
-	queryOptions["limit"] = "10"
-
-	err = validateQueryMetadata(queryOptions)
-	assert.Error(t, err, "An should have been thrown for an invalid options")
-
-	queryOptions = make(map[string]interface{})
-	queryOptions["bookmark"] = "Test1"
-	queryOptions["limit1"] = int32(10)
-
-	err = validateQueryMetadata(queryOptions)
-	assert.Error(t, err, "An should have been thrown for an invalid options")
-
-	queryOptions = make(map[string]interface{})
-	queryOptions["bookmark1"] = "Test1"
-	queryOptions["limit1"] = int32(10)
-
-	err = validateQueryMetadata(queryOptions)
-	assert.Error(t, err, "An should have been thrown for an invalid options")
 }
 
 func TestApplyUpdatesWithNilHeight(t *testing.T) {

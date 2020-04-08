@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package statedb
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -38,18 +37,18 @@ type VersionedDB interface {
 	// endKey is exclusive
 	// The returned ResultsIterator contains results of type *VersionedKV
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
-	// GetStateRangeScanIteratorWithMetadata returns an iterator that contains all the key-values between given key ranges.
+	// GetStateRangeScanIteratorWithLimit returns an iterator that contains all the key-values between given key ranges.
 	// startKey is inclusive
 	// endKey is exclusive
-	// metadata is a map of additional query parameters
+	// limit parameter limits the number of returned results
 	// The returned ResultsIterator contains results of type *VersionedKV
-	GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (QueryResultsIterator, error)
+	GetStateRangeScanIteratorWithLimit(namespace string, startKey string, endKey string, limit int32) (QueryResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type *VersionedKV.
 	ExecuteQuery(namespace, query string) (ResultsIterator, error)
-	// ExecuteQueryWithMetadata executes the given query with associated query options and
+	// ExecuteQueryWithBookmarkAndLimit executes the given query with associated query options and
 	// returns an iterator that contains results of type *VersionedKV.
-	// metadata is a map of additional query parameters
-	ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (QueryResultsIterator, error)
+	// The bookmark and limit parameters are associated with the pagination query.
+	ExecuteQueryWithBookmarkAndLimit(namespace, query, bookmark string, limit int32) (QueryResultsIterator, error)
 	// ApplyUpdates applies the batch to the underlying db.
 	// height is the height of the highest transaction in the Batch that
 	// a state db implementation is expected to ues as a save point
@@ -291,25 +290,4 @@ func (itr *nsIterator) Close() {
 func (itr *nsIterator) GetBookmarkAndClose() string {
 	// do nothing
 	return ""
-}
-
-const optionLimit = "limit"
-
-// ValidateRangeMetadata validates the JSON containing attributes for the range query
-func ValidateRangeMetadata(metadata map[string]interface{}) error {
-	for key, keyVal := range metadata {
-		switch key {
-
-		case optionLimit:
-			//Verify the pageSize is an integer
-			if _, ok := keyVal.(int32); ok {
-				continue
-			}
-			return fmt.Errorf("Invalid entry, \"limit\" must be a int32")
-
-		default:
-			return fmt.Errorf("Invalid entry, option %s not recognized", key)
-		}
-	}
-	return nil
 }

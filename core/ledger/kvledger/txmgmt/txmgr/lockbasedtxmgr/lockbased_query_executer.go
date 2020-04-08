@@ -47,13 +47,13 @@ func (q *lockBasedQueryExecutor) GetStateRangeScanIterator(namespace string, sta
 	return q.helper.getStateRangeScanIterator(namespace, startKey, endKey)
 }
 
-// GetStateRangeScanIteratorWithMetadata implements method in interface `ledger.QueryExecutor`
+// GetStateRangeScanIteratorWithLimit implements method in interface `ledger.QueryExecutor`
 // startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 // and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
 // can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
-// metadata is a map of additional query parameters
-func (q *lockBasedQueryExecutor) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
-	return q.helper.getStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, metadata)
+// The limit parameters limits the number of returned results.
+func (q *lockBasedQueryExecutor) GetStateRangeScanIteratorWithLimit(namespace string, startKey string, endKey string, limit int32) (ledger.QueryResultsIterator, error) {
+	return q.helper.getStateRangeScanIteratorWithLimit(namespace, startKey, endKey, limit)
 }
 
 // ExecuteQuery implements method in interface `ledger.QueryExecutor`
@@ -61,9 +61,9 @@ func (q *lockBasedQueryExecutor) ExecuteQuery(namespace, query string) (commonle
 	return q.helper.executeQuery(namespace, query)
 }
 
-// ExecuteQueryWithMetadata implements method in interface `ledger.QueryExecutor`
-func (q *lockBasedQueryExecutor) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
-	return q.helper.executeQueryWithMetadata(namespace, query, metadata)
+// ExecuteQueryWithBookmarkAndLimit implements method in interface `ledger.QueryExecutor`
+func (q *lockBasedQueryExecutor) ExecuteQueryWithBookmarkAndLimit(namespace, query, bookmark string, limit int32) (ledger.QueryResultsIterator, error) {
+	return q.helper.executeQueryWithMetadata(namespace, query, bookmark, limit)
 }
 
 // GetPrivateData implements method in interface `ledger.QueryExecutor`

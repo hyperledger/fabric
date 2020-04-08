@@ -919,33 +919,24 @@ func TestRangeQuerySpecialCharacters(t *testing.T, dbProvider statedb.VersionedD
 }
 
 func executeRangeQuery(t *testing.T, db statedb.VersionedDB, namespace, startKey, endKey string, limit int32, returnKeys []string) (string, error) {
-
 	var itr statedb.ResultsIterator
 	var err error
 
 	if limit == 0 {
-
 		itr, err = db.GetStateRangeScanIterator(namespace, startKey, endKey)
 		if err != nil {
 			return "", err
 		}
 
 	} else {
-
-		queryOptions := make(map[string]interface{})
-		if limit != 0 {
-			queryOptions["limit"] = limit
-		}
-		itr, err = db.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, queryOptions)
+		itr, err = db.GetStateRangeScanIteratorWithLimit(namespace, startKey, endKey, limit)
 		if err != nil {
 			return "", err
 		}
 
-		// Verify the keys returned
 		if limit > 0 {
 			TestItrWithoutClose(t, itr, returnKeys)
 		}
-
 	}
 
 	returnBookmark := ""
@@ -954,7 +945,6 @@ func executeRangeQuery(t *testing.T, db statedb.VersionedDB, namespace, startKey
 			returnBookmark = queryResultItr.GetBookmarkAndClose()
 		}
 	}
-
 	return returnBookmark, nil
 }
 

@@ -49,18 +49,19 @@ type VersionedDB struct {
 		result1 statedb.ResultsIterator
 		result2 error
 	}
-	ExecuteQueryWithMetadataStub        func(string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)
-	executeQueryWithMetadataMutex       sync.RWMutex
-	executeQueryWithMetadataArgsForCall []struct {
+	ExecuteQueryWithBookmarkAndLimitStub        func(string, string, string, int32) (statedb.QueryResultsIterator, error)
+	executeQueryWithBookmarkAndLimitMutex       sync.RWMutex
+	executeQueryWithBookmarkAndLimitArgsForCall []struct {
 		arg1 string
 		arg2 string
-		arg3 map[string]interface{}
+		arg3 string
+		arg4 int32
 	}
-	executeQueryWithMetadataReturns struct {
+	executeQueryWithBookmarkAndLimitReturns struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
-	executeQueryWithMetadataReturnsOnCall map[int]struct {
+	executeQueryWithBookmarkAndLimitReturnsOnCall map[int]struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
@@ -119,19 +120,19 @@ type VersionedDB struct {
 		result1 statedb.ResultsIterator
 		result2 error
 	}
-	GetStateRangeScanIteratorWithMetadataStub        func(string, string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)
-	getStateRangeScanIteratorWithMetadataMutex       sync.RWMutex
-	getStateRangeScanIteratorWithMetadataArgsForCall []struct {
+	GetStateRangeScanIteratorWithLimitStub        func(string, string, string, int32) (statedb.QueryResultsIterator, error)
+	getStateRangeScanIteratorWithLimitMutex       sync.RWMutex
+	getStateRangeScanIteratorWithLimitArgsForCall []struct {
 		arg1 string
 		arg2 string
 		arg3 string
-		arg4 map[string]interface{}
+		arg4 int32
 	}
-	getStateRangeScanIteratorWithMetadataReturns struct {
+	getStateRangeScanIteratorWithLimitReturns struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
-	getStateRangeScanIteratorWithMetadataReturnsOnCall map[int]struct {
+	getStateRangeScanIteratorWithLimitReturnsOnCall map[int]struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
@@ -375,66 +376,67 @@ func (fake *VersionedDB) ExecuteQueryReturnsOnCall(i int, result1 statedb.Result
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadata(arg1 string, arg2 string, arg3 map[string]interface{}) (statedb.QueryResultsIterator, error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	ret, specificReturn := fake.executeQueryWithMetadataReturnsOnCall[len(fake.executeQueryWithMetadataArgsForCall)]
-	fake.executeQueryWithMetadataArgsForCall = append(fake.executeQueryWithMetadataArgsForCall, struct {
+func (fake *VersionedDB) ExecuteQueryWithBookmarkAndLimit(arg1 string, arg2 string, arg3 string, arg4 int32) (statedb.QueryResultsIterator, error) {
+	fake.executeQueryWithBookmarkAndLimitMutex.Lock()
+	ret, specificReturn := fake.executeQueryWithBookmarkAndLimitReturnsOnCall[len(fake.executeQueryWithBookmarkAndLimitArgsForCall)]
+	fake.executeQueryWithBookmarkAndLimitArgsForCall = append(fake.executeQueryWithBookmarkAndLimitArgsForCall, struct {
 		arg1 string
 		arg2 string
-		arg3 map[string]interface{}
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("ExecuteQueryWithMetadata", []interface{}{arg1, arg2, arg3})
-	fake.executeQueryWithMetadataMutex.Unlock()
-	if fake.ExecuteQueryWithMetadataStub != nil {
-		return fake.ExecuteQueryWithMetadataStub(arg1, arg2, arg3)
+		arg3 string
+		arg4 int32
+	}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("ExecuteQueryWithBookmarkAndLimit", []interface{}{arg1, arg2, arg3, arg4})
+	fake.executeQueryWithBookmarkAndLimitMutex.Unlock()
+	if fake.ExecuteQueryWithBookmarkAndLimitStub != nil {
+		return fake.ExecuteQueryWithBookmarkAndLimitStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.executeQueryWithMetadataReturns
+	fakeReturns := fake.executeQueryWithBookmarkAndLimitReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataCallCount() int {
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
-	return len(fake.executeQueryWithMetadataArgsForCall)
+func (fake *VersionedDB) ExecuteQueryWithBookmarkAndLimitCallCount() int {
+	fake.executeQueryWithBookmarkAndLimitMutex.RLock()
+	defer fake.executeQueryWithBookmarkAndLimitMutex.RUnlock()
+	return len(fake.executeQueryWithBookmarkAndLimitArgsForCall)
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataCalls(stub func(string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = stub
+func (fake *VersionedDB) ExecuteQueryWithBookmarkAndLimitCalls(stub func(string, string, string, int32) (statedb.QueryResultsIterator, error)) {
+	fake.executeQueryWithBookmarkAndLimitMutex.Lock()
+	defer fake.executeQueryWithBookmarkAndLimitMutex.Unlock()
+	fake.ExecuteQueryWithBookmarkAndLimitStub = stub
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataArgsForCall(i int) (string, string, map[string]interface{}) {
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
-	argsForCall := fake.executeQueryWithMetadataArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+func (fake *VersionedDB) ExecuteQueryWithBookmarkAndLimitArgsForCall(i int) (string, string, string, int32) {
+	fake.executeQueryWithBookmarkAndLimitMutex.RLock()
+	defer fake.executeQueryWithBookmarkAndLimitMutex.RUnlock()
+	argsForCall := fake.executeQueryWithBookmarkAndLimitArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataReturns(result1 statedb.QueryResultsIterator, result2 error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = nil
-	fake.executeQueryWithMetadataReturns = struct {
+func (fake *VersionedDB) ExecuteQueryWithBookmarkAndLimitReturns(result1 statedb.QueryResultsIterator, result2 error) {
+	fake.executeQueryWithBookmarkAndLimitMutex.Lock()
+	defer fake.executeQueryWithBookmarkAndLimitMutex.Unlock()
+	fake.ExecuteQueryWithBookmarkAndLimitStub = nil
+	fake.executeQueryWithBookmarkAndLimitReturns = struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = nil
-	if fake.executeQueryWithMetadataReturnsOnCall == nil {
-		fake.executeQueryWithMetadataReturnsOnCall = make(map[int]struct {
+func (fake *VersionedDB) ExecuteQueryWithBookmarkAndLimitReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
+	fake.executeQueryWithBookmarkAndLimitMutex.Lock()
+	defer fake.executeQueryWithBookmarkAndLimitMutex.Unlock()
+	fake.ExecuteQueryWithBookmarkAndLimitStub = nil
+	if fake.executeQueryWithBookmarkAndLimitReturnsOnCall == nil {
+		fake.executeQueryWithBookmarkAndLimitReturnsOnCall = make(map[int]struct {
 			result1 statedb.QueryResultsIterator
 			result2 error
 		})
 	}
-	fake.executeQueryWithMetadataReturnsOnCall[i] = struct {
+	fake.executeQueryWithBookmarkAndLimitReturnsOnCall[i] = struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
@@ -693,67 +695,67 @@ func (fake *VersionedDB) GetStateRangeScanIteratorReturnsOnCall(i int, result1 s
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadata(arg1 string, arg2 string, arg3 string, arg4 map[string]interface{}) (statedb.QueryResultsIterator, error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	ret, specificReturn := fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)]
-	fake.getStateRangeScanIteratorWithMetadataArgsForCall = append(fake.getStateRangeScanIteratorWithMetadataArgsForCall, struct {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithLimit(arg1 string, arg2 string, arg3 string, arg4 int32) (statedb.QueryResultsIterator, error) {
+	fake.getStateRangeScanIteratorWithLimitMutex.Lock()
+	ret, specificReturn := fake.getStateRangeScanIteratorWithLimitReturnsOnCall[len(fake.getStateRangeScanIteratorWithLimitArgsForCall)]
+	fake.getStateRangeScanIteratorWithLimitArgsForCall = append(fake.getStateRangeScanIteratorWithLimitArgsForCall, struct {
 		arg1 string
 		arg2 string
 		arg3 string
-		arg4 map[string]interface{}
+		arg4 int32
 	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("GetStateRangeScanIteratorWithMetadata", []interface{}{arg1, arg2, arg3, arg4})
-	fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	if fake.GetStateRangeScanIteratorWithMetadataStub != nil {
-		return fake.GetStateRangeScanIteratorWithMetadataStub(arg1, arg2, arg3, arg4)
+	fake.recordInvocation("GetStateRangeScanIteratorWithLimit", []interface{}{arg1, arg2, arg3, arg4})
+	fake.getStateRangeScanIteratorWithLimitMutex.Unlock()
+	if fake.GetStateRangeScanIteratorWithLimitStub != nil {
+		return fake.GetStateRangeScanIteratorWithLimitStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getStateRangeScanIteratorWithMetadataReturns
+	fakeReturns := fake.getStateRangeScanIteratorWithLimitReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataCallCount() int {
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
-	return len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)
+func (fake *VersionedDB) GetStateRangeScanIteratorWithLimitCallCount() int {
+	fake.getStateRangeScanIteratorWithLimitMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithLimitMutex.RUnlock()
+	return len(fake.getStateRangeScanIteratorWithLimitArgsForCall)
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataCalls(stub func(string, string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = stub
+func (fake *VersionedDB) GetStateRangeScanIteratorWithLimitCalls(stub func(string, string, string, int32) (statedb.QueryResultsIterator, error)) {
+	fake.getStateRangeScanIteratorWithLimitMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithLimitMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithLimitStub = stub
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataArgsForCall(i int) (string, string, string, map[string]interface{}) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
-	argsForCall := fake.getStateRangeScanIteratorWithMetadataArgsForCall[i]
+func (fake *VersionedDB) GetStateRangeScanIteratorWithLimitArgsForCall(i int) (string, string, string, int32) {
+	fake.getStateRangeScanIteratorWithLimitMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithLimitMutex.RUnlock()
+	argsForCall := fake.getStateRangeScanIteratorWithLimitArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataReturns(result1 statedb.QueryResultsIterator, result2 error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = nil
-	fake.getStateRangeScanIteratorWithMetadataReturns = struct {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithLimitReturns(result1 statedb.QueryResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorWithLimitMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithLimitMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithLimitStub = nil
+	fake.getStateRangeScanIteratorWithLimitReturns = struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = nil
-	if fake.getStateRangeScanIteratorWithMetadataReturnsOnCall == nil {
-		fake.getStateRangeScanIteratorWithMetadataReturnsOnCall = make(map[int]struct {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithLimitReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorWithLimitMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithLimitMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithLimitStub = nil
+	if fake.getStateRangeScanIteratorWithLimitReturnsOnCall == nil {
+		fake.getStateRangeScanIteratorWithLimitReturnsOnCall = make(map[int]struct {
 			result1 statedb.QueryResultsIterator
 			result2 error
 		})
 	}
-	fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[i] = struct {
+	fake.getStateRangeScanIteratorWithLimitReturnsOnCall[i] = struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
@@ -952,8 +954,8 @@ func (fake *VersionedDB) Invocations() map[string][][]interface{} {
 	defer fake.closeMutex.RUnlock()
 	fake.executeQueryMutex.RLock()
 	defer fake.executeQueryMutex.RUnlock()
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
+	fake.executeQueryWithBookmarkAndLimitMutex.RLock()
+	defer fake.executeQueryWithBookmarkAndLimitMutex.RUnlock()
 	fake.getLatestSavePointMutex.RLock()
 	defer fake.getLatestSavePointMutex.RUnlock()
 	fake.getStateMutex.RLock()
@@ -962,8 +964,8 @@ func (fake *VersionedDB) Invocations() map[string][][]interface{} {
 	defer fake.getStateMultipleKeysMutex.RUnlock()
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
+	fake.getStateRangeScanIteratorWithLimitMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithLimitMutex.RUnlock()
 	fake.getVersionMutex.RLock()
 	defer fake.getVersionMutex.RUnlock()
 	fake.openMutex.RLock()

@@ -450,13 +450,8 @@ func testIteratorPaging(t *testing.T, env testEnv, numKeys int, startKey, endKey
 	cID := "cid"
 	txMgr := env.getTxMgr()
 
-	queryOptions := make(map[string]interface{})
-	if limit != 0 {
-		queryOptions["limit"] = limit
-	}
-
 	queryExecuter, _ := txMgr.NewQueryExecutor("test_tx2")
-	itr, _ := queryExecuter.GetStateRangeScanIteratorWithMetadata(cID, startKey, endKey, queryOptions)
+	itr, _ := queryExecuter.GetStateRangeScanIteratorWithLimit(cID, startKey, endKey, limit)
 
 	// Verify the keys returned
 	testItrWithoutClose(t, itr, expectedKeys)
@@ -769,11 +764,7 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 	queryExecuter, _ := txMgr.NewQueryExecutor("test_tx2")
 	queryString := `{"selector":{"owner":{"$eq":"bob"}}}`
 
-	queryOptions := map[string]interface{}{
-		"limit": int32(2),
-	}
-
-	itr, err := queryExecuter.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	itr, err := queryExecuter.ExecuteQueryWithBookmarkAndLimit("ns1", queryString, "", 2)
 	assert.NoError(t, err, "Error upon ExecuteQueryWithMetadata()")
 	counter := 0
 	for {
@@ -793,14 +784,7 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 
 	bookmark := itr.GetBookmarkAndClose()
 
-	queryOptions = map[string]interface{}{
-		"limit": int32(2),
-	}
-	if bookmark != "" {
-		queryOptions["bookmark"] = bookmark
-	}
-
-	itr, err = queryExecuter.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	itr, err = queryExecuter.ExecuteQueryWithBookmarkAndLimit("ns1", queryString, bookmark, 2)
 	assert.NoError(t, err, "Error upon ExecuteQuery()")
 	counter = 0
 	for {
@@ -867,19 +851,15 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
 	assert.True(t, ok)
 
-	queryOptions := map[string]interface{}{
-		"limit": int32(2),
-	}
-
 	simulator, _ = txMgr.NewTxSimulator("txid3")
 	err = simulator.SetState("ns", "key", []byte("value"))
 	assert.NoError(t, err)
-	_, err = simulator.GetStateRangeScanIteratorWithMetadata("ns1", "startKey", "endKey", queryOptions)
+	_, err = simulator.GetStateRangeScanIteratorWithLimit("ns1", "startKey", "endKey", 2)
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
 	assert.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid4")
-	_, err = simulator.GetStateRangeScanIteratorWithMetadata("ns1", "startKey", "endKey", queryOptions)
+	_, err = simulator.GetStateRangeScanIteratorWithLimit("ns1", "startKey", "endKey", 2)
 	assert.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
@@ -916,19 +896,16 @@ func testTxSimulatorQueryUnsupportedTx(t *testing.T, env testEnv) {
 	txMgrHelper.validateAndCommitRWSet(txRWSet.PubSimulationResults)
 
 	queryString := `{"selector":{"owner":{"$eq":"bob"}}}`
-	queryOptions := map[string]interface{}{
-		"limit": int32(2),
-	}
 
 	simulator, _ := txMgr.NewTxSimulator("txid1")
 	err := simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
 	assert.NoError(t, err)
-	_, err = simulator.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	_, err = simulator.ExecuteQueryWithBookmarkAndLimit("ns1", queryString, "", 2)
 	_, ok := err.(*txmgr.ErrUnsupportedTransaction)
 	assert.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid2")
-	_, err = simulator.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	_, err = simulator.ExecuteQueryWithBookmarkAndLimit("ns1", queryString, "", 2)
 	assert.NoError(t, err)
 	err = simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)

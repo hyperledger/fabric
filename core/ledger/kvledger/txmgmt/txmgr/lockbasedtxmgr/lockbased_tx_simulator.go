@@ -132,20 +132,20 @@ func (s *lockBasedTxSimulator) ExecuteQueryOnPrivateData(namespace, collection, 
 	return s.lockBasedQueryExecutor.ExecuteQueryOnPrivateData(namespace, collection, query)
 }
 
-// GetStateRangeScanIteratorWithMetadata implements method in interface `ledger.QueryExecutor`
-func (s *lockBasedTxSimulator) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+// GetStateRangeScanIteratorWithLimit implements method in interface `ledger.QueryExecutor`
+func (s *lockBasedTxSimulator) GetStateRangeScanIteratorWithLimit(namespace string, startKey string, endKey string, limit int32) (ledger.QueryResultsIterator, error) {
 	if err := s.checkBeforePaginatedQueries(); err != nil {
 		return nil, err
 	}
-	return s.lockBasedQueryExecutor.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, metadata)
+	return s.lockBasedQueryExecutor.GetStateRangeScanIteratorWithLimit(namespace, startKey, endKey, limit)
 }
 
-// ExecuteQueryWithMetadata implements method in interface `ledger.QueryExecutor`
-func (s *lockBasedTxSimulator) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+// ExecuteQueryWithBookmarkAndLimit implements method in interface `ledger.QueryExecutor`
+func (s *lockBasedTxSimulator) ExecuteQueryWithBookmarkAndLimit(namespace, query, bookmark string, limit int32) (ledger.QueryResultsIterator, error) {
 	if err := s.checkBeforePaginatedQueries(); err != nil {
 		return nil, err
 	}
-	return s.lockBasedQueryExecutor.ExecuteQueryWithMetadata(namespace, query, metadata)
+	return s.lockBasedQueryExecutor.ExecuteQueryWithBookmarkAndLimit(namespace, query, bookmark, limit)
 }
 
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
