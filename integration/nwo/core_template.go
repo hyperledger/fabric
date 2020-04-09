@@ -140,7 +140,7 @@ peer:
   limits:
     concurrency:
       endorserService: 100
-      deliverService: 1
+      deliverService: 100
 
 vm:
   endpoint: unix:///var/run/docker.sock
