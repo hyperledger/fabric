@@ -320,6 +320,7 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 			if err != nil {
 				errChan <- err
 				conn.logger.Warningf("Got error, aborting: %v", err)
+				return
 			}
 			select {
 			case <-conn.stopChan:
@@ -332,4 +333,10 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *protoex
 type msgSending struct {
 	envelope *proto.Envelope
 	onErr    func(error)
+}
+
+//go:generate mockery -dir . -name MockStream -case underscore -output mocks/
+
+type MockStream interface {
+	proto.Gossip_GossipStreamClient
 }
