@@ -133,6 +133,8 @@ func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 	header.Mode = 0100644
 	header.Uid = 500
 	header.Gid = 500
+	header.Uname = ""
+	header.Gname = ""
 
 	err = tw.WriteHeader(header)
 	if err != nil {
