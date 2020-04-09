@@ -290,7 +290,7 @@ func DescribeCode(path string) (*CodeDescriptor, error) {
 func describeGopath(importPath string) (*CodeDescriptor, error) {
 	output, err := exec.Command("go", "list", "-f", "{{.Dir}}", importPath).Output()
 	if err != nil {
-		return nil, err
+		return nil, wrapExitErr(err, "'go list' failed")
 	}
 	sourcePath := filepath.Clean(strings.TrimSpace(string(output)))
 
@@ -336,7 +336,7 @@ func moduleInfo(path string) (*ModuleInfo, error) {
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to determine module root")
+		return nil, wrapExitErr(err, "failed to determine module root")
 	}
 
 	modExists, err := regularFileExists(strings.TrimSpace(string(output)))
@@ -445,6 +445,10 @@ func findSource(cd *CodeDescriptor) (SourceMap, error) {
 		case cd.Module:
 			name = filepath.Join("src", name)
 		default:
+			// skip top level go.mod and go.sum when not in module mode
+			if name == "go.mod" || name == "go.sum" {
+				return nil
+			}
 			name = filepath.Join("src", cd.Path, name)
 		}
 
