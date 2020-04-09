@@ -21,7 +21,7 @@ ifneq ($(NO_PROXY),)
 DOCKER_BUILD_FLAGS+=--build-arg 'NO_PROXY=$(NO_PROXY)'
 endif
 
-DBUILD = docker build --force-rm $(DOCKER_BUILD_FLAGS)
+DBUILD = docker buildx build --force-rm --output type=docker $(DOCKER_BUILD_FLAGS)
 
 DOCKER_NS ?= hyperledger
 DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
@@ -53,4 +53,4 @@ BASE_DOCKER_LABEL=org.hyperledger.fabric
 # As an aside, also note that we incorporate the version number in the .dummy
 # file to differentiate different tags to fix FAB-1145
 #
-DUMMY = .dummy-$(DOCKER_TAG)
+DUMMY = .dummy-$(PROJECT_VERSION)

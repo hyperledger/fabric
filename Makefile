@@ -79,7 +79,8 @@ GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
 RELEASE_IMAGES = baseos ccenv orderer peer tools
-RELEASE_PLATFORMS = darwin-amd64 linux-amd64 linux-ppc64le linux-s390x windows-amd64
+RELEASE_PLATFORMS = darwin-amd64 linux-amd64 linux-arm64 linux-ppc64le linux-s390x windows-amd64
+DOCKER_ARCHES = arm64 ppc64le s390x amd64
 TOOLS_EXES = configtxgen configtxlator cryptogen discover idemixgen peer
 
 pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
@@ -207,25 +208,35 @@ $(BUILD_DIR)/bin/%:
 .PHONY: docker
 docker: $(RELEASE_IMAGES:%=%-docker)
 
-.PHONY: $(RELEASE_IMAGES:%=%-docker)
-$(RELEASE_IMAGES:%=%-docker): %-docker: $(BUILD_DIR)/images/%/$(DUMMY)
+ALL_IMAGES=$(foreach image,$(RELEASE_IMAGES),$(foreach platform,$(DOCKER_ARCHES),$(image)-$(platform)))
+.PHONY: $(ALL_IMAGES:%=%-docker)
+$(ALL_IMAGES:%=%-docker): %-docker: $(BUILD_DIR)/images/%/$(DUMMY)
 
-$(BUILD_DIR)/images/ccenv/$(DUMMY):   BUILD_CONTEXT=images/ccenv
-$(BUILD_DIR)/images/baseos/$(DUMMY):  BUILD_CONTEXT=images/baseos
-$(BUILD_DIR)/images/peer/$(DUMMY):    BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
-$(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
+.PHONY: $(RELEASE_IMAGES:%=%-docker)
+$(RELEASE_IMAGES:%=%-docker): %-docker: $(foreach platform,$(DOCKER_ARCHES),%-$(platform)-docker)
+
+$(BUILD_DIR)/images/ccenv-%/$(DUMMY):   BUILD_CONTEXT=images/ccenv
+$(BUILD_DIR)/images/baseos-%/$(DUMMY):  BUILD_CONTEXT=images/baseos
+$(BUILD_DIR)/images/peer-%/$(DUMMY):    BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
+$(BUILD_DIR)/images/orderer-%/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
-	@echo "Building Docker image $(DOCKER_NS)/fabric-$*"
+	$(eval exe_variant = $(subst -, ,$*))
+	$(eval exe = $(word 1, $(exe_variant)))
+	$(eval arch = $(word 2, $(exe_variant)))
+
+	@echo "Building Docker image $(DOCKER_NS)/fabric-$(exe):$(arch)"
 	@mkdir -p $(@D)
-	$(DBUILD) -f images/$*/Dockerfile \
+	@docker version
+	$(DBUILD) -f images/$(exe)/Dockerfile \
+		--platform linux/$(arch) \
 		--build-arg GO_VER=$(GO_VER) \
 		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		$(BUILD_ARGS) \
-		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
-	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(BASE_VERSION)
-	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(TWO_DIGIT_VERSION)
-	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)
+		-t $(DOCKER_NS)/fabric-$(exe) ./$(BUILD_CONTEXT)
+	docker tag $(DOCKER_NS)/fabric-$(exe) $(DOCKER_NS)/fabric-$(exe):$(BASE_VERSION)
+	docker tag $(DOCKER_NS)/fabric-$(exe) $(DOCKER_NS)/fabric-$(exe):$(TWO_DIGIT_VERSION)
+	docker tag $(DOCKER_NS)/fabric-$(exe) $(DOCKER_NS)/fabric-$(exe):$(arch)-$(PROJECT_VERSION)
 	@touch $@
 
 # builds release packages for the host platform
@@ -267,10 +278,10 @@ docker-list: $(RELEASE_IMAGES:%=%-docker-list)
 .PHONY: docker-clean
 docker-clean: $(RELEASE_IMAGES:%=%-docker-clean)
 %-docker-clean:
-	-@for image in "$$(docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)')"; do \
+	-@for image in "$$(docker images --quiet --filter=reference='$(DOCKER_NS)/fabric-$*')"; do \
 		[ -z "$$image" ] || docker rmi -f $$image; \
 	done
-	-@rm -rf $(BUILD_DIR)/images/$* || true
+	-@rm -rf $(BUILD_DIR)/images/$** || true
 
 .PHONY: docker-tag-latest
 docker-tag-latest: $(RELEASE_IMAGES:%=%-docker-tag-latest)
@@ -286,7 +297,9 @@ docker-tag-stable: $(RELEASE_IMAGES:%=%-docker-tag-stable)
 publish-images: $(RELEASE_IMAGES:%=%-publish-images)
 %-publish-images:
 	@docker login $(DOCKER_HUB_USERNAME) $(DOCKER_HUB_PASSWORD)
-	@docker push $(DOCKER_NS)/fabric-$*:$(PROJECT_VERSION)
+	@echo $(foreach platform,$(DOCKER_ARCHES),$(DOCKER_NS)/fabric-$*:$(platform)-$(PROJECT_VERSION)) | xargs -n 1 docker push
+	@echo $(foreach platform,$(DOCKER_ARCHES),$(DOCKER_NS)/fabric-$*:$(platform)-$(PROJECT_VERSION)) | xargs docker manifest create $(DOCKER_NS)/fabric-$*:$(PROJECT_VERSION) 
+	docker manifest push $(DOCKER_NS)/fabric-$*:$(PROJECT_VERSION)
 
 .PHONY: clean
 clean: docker-clean unit-test-clean release-clean
