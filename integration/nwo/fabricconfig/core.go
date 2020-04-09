@@ -50,6 +50,7 @@ type Peer struct {
 	Handlers               *Handlers       `yaml:"handlers,omitempty"`
 	ValidatorPoolSize      int             `yaml:"validatorPoolSize,omitempty"`
 	Discovery              *Discovery      `yaml:"discovery,omitempty"`
+	Limits                 *Limits         `yaml:"limits,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
@@ -210,6 +211,15 @@ type Discovery struct {
 	AuthCacheMaxSize             int     `yaml:"authCacheMaxSize,omitempty"`
 	AuthCachePurgeRetentionRatio float64 `yaml:"authCachePurgeRetentionRatio"`
 	OrgMembersAllowedAccess      bool    `yaml:"orgMembersAllowedAccess"`
+}
+
+type Limits struct {
+	Concurrency *Concurrency `yaml:"concurrency,omitempty"`
+}
+
+type Concurrency struct {
+	EndorserService int `yaml:"endorserService,omitempty"`
+	DeliverService  int `yaml:"deliverService,omitempty"`
 }
 
 type VM struct {
