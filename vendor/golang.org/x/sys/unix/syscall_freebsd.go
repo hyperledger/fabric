@@ -142,42 +142,7 @@ func setattrlistTimes(path string, times []Timespec, flags int) error {
 
 //sys   ioctl(fd int, req uint, arg uintptr) (err error)
 
-// ioctl itself should not be exposed directly, but additional get/set
-// functions for specific types are permissible.
-
-// IoctlSetInt performs an ioctl operation which sets an integer value
-// on fd, using the specified request number.
-func IoctlSetInt(fd int, req uint, value int) error {
-	return ioctl(fd, req, uintptr(value))
-}
-
-func ioctlSetWinsize(fd int, req uint, value *Winsize) error {
-	return ioctl(fd, req, uintptr(unsafe.Pointer(value)))
-}
-
-func ioctlSetTermios(fd int, req uint, value *Termios) error {
-	return ioctl(fd, req, uintptr(unsafe.Pointer(value)))
-}
-
-// IoctlGetInt performs an ioctl operation which gets an integer value
-// from fd, using the specified request number.
-func IoctlGetInt(fd int, req uint) (int, error) {
-	var value int
-	err := ioctl(fd, req, uintptr(unsafe.Pointer(&value)))
-	return value, err
-}
-
-func IoctlGetWinsize(fd int, req uint) (*Winsize, error) {
-	var value Winsize
-	err := ioctl(fd, req, uintptr(unsafe.Pointer(&value)))
-	return &value, err
-}
-
-func IoctlGetTermios(fd int, req uint) (*Termios, error) {
-	var value Termios
-	err := ioctl(fd, req, uintptr(unsafe.Pointer(&value)))
-	return &value, err
-}
+//sys   sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr) (err error) = SYS___SYSCTL
 
 func Uname(uname *Utsname) error {
 	mib := []_C_int{CTL_KERN, KERN_OSTYPE}
@@ -223,6 +188,314 @@ func Uname(uname *Utsname) error {
 	}
 
 	return nil
+}
+
+func Stat(path string, st *Stat_t) (err error) {
+	var oldStat stat_freebsd11_t
+	if supportsABI(_ino64First) {
+		return fstatat_freebsd12(AT_FDCWD, path, st, 0)
+	}
+	err = stat(path, &oldStat)
+	if err != nil {
+		return err
+	}
+
+	st.convertFrom(&oldStat)
+	return nil
+}
+
+func Lstat(path string, st *Stat_t) (err error) {
+	var oldStat stat_freebsd11_t
+	if supportsABI(_ino64First) {
+		return fstatat_freebsd12(AT_FDCWD, path, st, AT_SYMLINK_NOFOLLOW)
+	}
+	err = lstat(path, &oldStat)
+	if err != nil {
+		return err
+	}
+
+	st.convertFrom(&oldStat)
+	return nil
+}
+
+func Fstat(fd int, st *Stat_t) (err error) {
+	var oldStat stat_freebsd11_t
+	if supportsABI(_ino64First) {
+		return fstat_freebsd12(fd, st)
+	}
+	err = fstat(fd, &oldStat)
+	if err != nil {
+		return err
+	}
+
+	st.convertFrom(&oldStat)
+	return nil
+}
+
+func Fstatat(fd int, path string, st *Stat_t, flags int) (err error) {
+	var oldStat stat_freebsd11_t
+	if supportsABI(_ino64First) {
+		return fstatat_freebsd12(fd, path, st, flags)
+	}
+	err = fstatat(fd, path, &oldStat, flags)
+	if err != nil {
+		return err
+	}
+
+	st.convertFrom(&oldStat)
+	return nil
+}
+
+func Statfs(path string, st *Statfs_t) (err error) {
+	var oldStatfs statfs_freebsd11_t
+	if supportsABI(_ino64First) {
+		return statfs_freebsd12(path, st)
+	}
+	err = statfs(path, &oldStatfs)
+	if err != nil {
+		return err
+	}
+
+	st.convertFrom(&oldStatfs)
+	return nil
+}
+
+func Fstatfs(fd int, st *Statfs_t) (err error) {
+	var oldStatfs statfs_freebsd11_t
+	if supportsABI(_ino64First) {
+		return fstatfs_freebsd12(fd, st)
+	}
+	err = fstatfs(fd, &oldStatfs)
+	if err != nil {
+		return err
+	}
+
+	st.convertFrom(&oldStatfs)
+	return nil
+}
+
+func Getdents(fd int, buf []byte) (n int, err error) {
+	return Getdirentries(fd, buf, nil)
+}
+
+func Getdirentries(fd int, buf []byte, basep *uintptr) (n int, err error) {
+	if supportsABI(_ino64First) {
+		if basep == nil || unsafe.Sizeof(*basep) == 8 {
+			return getdirentries_freebsd12(fd, buf, (*uint64)(unsafe.Pointer(basep)))
+		}
+		// The freebsd12 syscall needs a 64-bit base. On 32-bit machines
+		// we can't just use the basep passed in. See #32498.
+		var base uint64 = uint64(*basep)
+		n, err = getdirentries_freebsd12(fd, buf, &base)
+		*basep = uintptr(base)
+		if base>>32 != 0 {
+			// We can't stuff the base back into a uintptr, so any
+			// future calls would be suspect. Generate an error.
+			// EIO is allowed by getdirentries.
+			err = EIO
+		}
+		return
+	}
+
+	// The old syscall entries are smaller than the new. Use 1/4 of the original
+	// buffer size rounded up to DIRBLKSIZ (see /usr/src/lib/libc/sys/getdirentries.c).
+	oldBufLen := roundup(len(buf)/4, _dirblksiz)
+	oldBuf := make([]byte, oldBufLen)
+	n, err = getdirentries(fd, oldBuf, basep)
+	if err == nil && n > 0 {
+		n = convertFromDirents11(buf, oldBuf[:n])
+	}
+	return
+}
+
+func Mknod(path string, mode uint32, dev uint64) (err error) {
+	var oldDev int
+	if supportsABI(_ino64First) {
+		return mknodat_freebsd12(AT_FDCWD, path, mode, dev)
+	}
+	oldDev = int(dev)
+	return mknod(path, mode, oldDev)
+}
+
+func Mknodat(fd int, path string, mode uint32, dev uint64) (err error) {
+	var oldDev int
+	if supportsABI(_ino64First) {
+		return mknodat_freebsd12(fd, path, mode, dev)
+	}
+	oldDev = int(dev)
+	return mknodat(fd, path, mode, oldDev)
+}
+
+// round x to the nearest multiple of y, larger or equal to x.
+//
+// from /usr/include/sys/param.h Macros for counting and rounding.
+// #define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))
+func roundup(x, y int) int {
+	return ((x + y - 1) / y) * y
+}
+
+func (s *Stat_t) convertFrom(old *stat_freebsd11_t) {
+	*s = Stat_t{
+		Dev:     uint64(old.Dev),
+		Ino:     uint64(old.Ino),
+		Nlink:   uint64(old.Nlink),
+		Mode:    old.Mode,
+		Uid:     old.Uid,
+		Gid:     old.Gid,
+		Rdev:    uint64(old.Rdev),
+		Atim:    old.Atim,
+		Mtim:    old.Mtim,
+		Ctim:    old.Ctim,
+		Btim:    old.Btim,
+		Size:    old.Size,
+		Blocks:  old.Blocks,
+		Blksize: old.Blksize,
+		Flags:   old.Flags,
+		Gen:     uint64(old.Gen),
+	}
+}
+
+func (s *Statfs_t) convertFrom(old *statfs_freebsd11_t) {
+	*s = Statfs_t{
+		Version:     _statfsVersion,
+		Type:        old.Type,
+		Flags:       old.Flags,
+		Bsize:       old.Bsize,
+		Iosize:      old.Iosize,
+		Blocks:      old.Blocks,
+		Bfree:       old.Bfree,
+		Bavail:      old.Bavail,
+		Files:       old.Files,
+		Ffree:       old.Ffree,
+		Syncwrites:  old.Syncwrites,
+		Asyncwrites: old.Asyncwrites,
+		Syncreads:   old.Syncreads,
+		Asyncreads:  old.Asyncreads,
+		// Spare
+		Namemax: old.Namemax,
+		Owner:   old.Owner,
+		Fsid:    old.Fsid,
+		// Charspare
+		// Fstypename
+		// Mntfromname
+		// Mntonname
+	}
+
+	sl := old.Fstypename[:]
+	n := clen(*(*[]byte)(unsafe.Pointer(&sl)))
+	copy(s.Fstypename[:], old.Fstypename[:n])
+
+	sl = old.Mntfromname[:]
+	n = clen(*(*[]byte)(unsafe.Pointer(&sl)))
+	copy(s.Mntfromname[:], old.Mntfromname[:n])
+
+	sl = old.Mntonname[:]
+	n = clen(*(*[]byte)(unsafe.Pointer(&sl)))
+	copy(s.Mntonname[:], old.Mntonname[:n])
+}
+
+func convertFromDirents11(buf []byte, old []byte) int {
+	const (
+		fixedSize    = int(unsafe.Offsetof(Dirent{}.Name))
+		oldFixedSize = int(unsafe.Offsetof(dirent_freebsd11{}.Name))
+	)
+
+	dstPos := 0
+	srcPos := 0
+	for dstPos+fixedSize < len(buf) && srcPos+oldFixedSize < len(old) {
+		var dstDirent Dirent
+		var srcDirent dirent_freebsd11
+
+		// If multiple direntries are written, sometimes when we reach the final one,
+		// we may have cap of old less than size of dirent_freebsd11.
+		copy((*[unsafe.Sizeof(srcDirent)]byte)(unsafe.Pointer(&srcDirent))[:], old[srcPos:])
+
+		reclen := roundup(fixedSize+int(srcDirent.Namlen)+1, 8)
+		if dstPos+reclen > len(buf) {
+			break
+		}
+
+		dstDirent.Fileno = uint64(srcDirent.Fileno)
+		dstDirent.Off = 0
+		dstDirent.Reclen = uint16(reclen)
+		dstDirent.Type = srcDirent.Type
+		dstDirent.Pad0 = 0
+		dstDirent.Namlen = uint16(srcDirent.Namlen)
+		dstDirent.Pad1 = 0
+
+		copy(dstDirent.Name[:], srcDirent.Name[:srcDirent.Namlen])
+		copy(buf[dstPos:], (*[unsafe.Sizeof(dstDirent)]byte)(unsafe.Pointer(&dstDirent))[:])
+		padding := buf[dstPos+fixedSize+int(dstDirent.Namlen) : dstPos+reclen]
+		for i := range padding {
+			padding[i] = 0
+		}
+
+		dstPos += int(dstDirent.Reclen)
+		srcPos += int(srcDirent.Reclen)
+	}
+
+	return dstPos
+}
+
+func Sendfile(outfd int, infd int, offset *int64, count int) (written int, err error) {
+	if raceenabled {
+		raceReleaseMerge(unsafe.Pointer(&ioSync))
+	}
+	return sendfile(outfd, infd, offset, count)
+}
+
+//sys	ptrace(request int, pid int, addr uintptr, data int) (err error)
+
+func PtraceAttach(pid int) (err error) {
+	return ptrace(PTRACE_ATTACH, pid, 0, 0)
+}
+
+func PtraceCont(pid int, signal int) (err error) {
+	return ptrace(PTRACE_CONT, pid, 1, signal)
+}
+
+func PtraceDetach(pid int) (err error) {
+	return ptrace(PTRACE_DETACH, pid, 1, 0)
+}
+
+func PtraceGetFpRegs(pid int, fpregsout *FpReg) (err error) {
+	return ptrace(PTRACE_GETFPREGS, pid, uintptr(unsafe.Pointer(fpregsout)), 0)
+}
+
+func PtraceGetRegs(pid int, regsout *Reg) (err error) {
+	return ptrace(PTRACE_GETREGS, pid, uintptr(unsafe.Pointer(regsout)), 0)
+}
+
+func PtraceLwpEvents(pid int, enable int) (err error) {
+	return ptrace(PTRACE_LWPEVENTS, pid, 0, enable)
+}
+
+func PtraceLwpInfo(pid int, info uintptr) (err error) {
+	return ptrace(PTRACE_LWPINFO, pid, info, int(unsafe.Sizeof(PtraceLwpInfoStruct{})))
+}
+
+func PtracePeekData(pid int, addr uintptr, out []byte) (count int, err error) {
+	return PtraceIO(PIOD_READ_D, pid, addr, out, SizeofLong)
+}
+
+func PtracePeekText(pid int, addr uintptr, out []byte) (count int, err error) {
+	return PtraceIO(PIOD_READ_I, pid, addr, out, SizeofLong)
+}
+
+func PtracePokeData(pid int, addr uintptr, data []byte) (count int, err error) {
+	return PtraceIO(PIOD_WRITE_D, pid, addr, data, SizeofLong)
+}
+
+func PtracePokeText(pid int, addr uintptr, data []byte) (count int, err error) {
+	return PtraceIO(PIOD_WRITE_I, pid, addr, data, SizeofLong)
+}
+
+func PtraceSetRegs(pid int, regs *Reg) (err error) {
+	return ptrace(PTRACE_SETREGS, pid, uintptr(unsafe.Pointer(regs)), 0)
+}
+
+func PtraceSingleStep(pid int) (err error) {
+	return ptrace(PTRACE_SINGLESTEP, pid, 1, 0)
 }
 
 /*
@@ -311,7 +584,7 @@ func Uname(uname *Utsname) error {
 //sys	Revoke(path string) (err error)
 //sys	Rmdir(path string) (err error)
 //sys	Seek(fd int, offset int64, whence int) (newoffset int64, err error) = SYS_LSEEK
-//sys	Select(n int, r *FdSet, w *FdSet, e *FdSet, timeout *Timeval) (err error)
+//sys	Select(nfd int, r *FdSet, w *FdSet, e *FdSet, timeout *Timeval) (n int, err error)
 //sysnb	Setegid(egid int) (err error)
 //sysnb	Seteuid(euid int) (err error)
 //sysnb	Setgid(gid int) (err error)

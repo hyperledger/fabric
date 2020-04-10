@@ -3,10 +3,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = counterfeiter dep golint goimports protoc-gen-go ginkgo gocov gocov-xml misspell mockery manifest-tool
-BUILD_DIR ?= .build
-GOTOOLS_GOPATH ?= $(BUILD_DIR)/gotools
-GOTOOLS_BINDIR ?= $(GOPATH)/bin
+GOTOOLS = counterfeiter ginkgo gocov gocov-xml goimports golint misspell mockery protoc-gen-go
+BUILD_DIR ?= build
+GOTOOLS_BINDIR ?= $(shell go env GOPATH)/bin
 
 # go tool->path mapping
 go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter
@@ -44,15 +43,6 @@ gotool.goimports:
 gotool.golint:
 	@echo "Building golang.org/x/lint/golint -> golint"
 	GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install ./vendor/golang.org/x/lint/golint
-
-# Lock to a versioned dep
-gotool.dep: DEP_VERSION ?= "v0.5.1"
-gotool.dep:
-	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) go get -d -u github.com/golang/dep
-	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q $(DEP_VERSION)
-	@echo "Building github.com/golang/dep $(DEP_VERSION) -> dep"
-	@GOPATH=$(abspath $(GOTOOLS_GOPATH)) GOBIN=$(abspath $(GOTOOLS_BINDIR)) go install -ldflags="-X main.version=$(DEP_VERSION) -X main.buildDate=$$(date '+%Y-%m-%d')" github.com/golang/dep/cmd/dep
-	@git -C $(abspath $(GOTOOLS_GOPATH))/src/github.com/golang/dep checkout -q master
 
 # Default rule for gotools uses the name->path map for a generic 'go get' style build
 gotool.%:

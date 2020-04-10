@@ -74,6 +74,19 @@ func SignalName(s syscall.Signal) string {
 	return ""
 }
 
+// SignalNum returns the syscall.Signal for signal named s,
+// or 0 if a signal with such name is not found.
+// The signal name should start with "SIG".
+func SignalNum(s string) syscall.Signal {
+	signalNameMapOnce.Do(func() {
+		signalNameMap = make(map[string]syscall.Signal, len(signalList))
+		for _, signal := range signalList {
+			signalNameMap[signal.name] = signal.num
+		}
+	})
+	return signalNameMap[s]
+}
+
 // clen returns the index of the first NULL byte in n or len(n) if n contains no NULL byte.
 func clen(n []byte) int {
 	i := bytes.IndexByte(n, 0)

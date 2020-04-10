@@ -208,7 +208,8 @@ linter: check-deps buildenv
 	@echo "LINT: Running code checks.."
 	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
 
-check-deps: buildenv
+.PHONY: check-deps
+check-deps:
 	@echo "DEP: Checking for dependency issues.."
 	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/check_deps.sh
 

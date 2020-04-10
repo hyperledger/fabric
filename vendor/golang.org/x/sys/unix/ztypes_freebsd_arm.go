@@ -264,6 +264,60 @@ const (
 	PTRACE_KILL    = 0x8
 )
 
+const (
+	TRAP_BRKPT = 0x1
+	TRAP_TRACE = 0x2
+)
+
+type PtraceLwpInfoStruct struct {
+	Lwpid        int32
+	Event        int32
+	Flags        int32
+	Sigmask      Sigset_t
+	Siglist      Sigset_t
+	Siginfo      __Siginfo
+	Tdname       [20]int8
+	Child_pid    int32
+	Syscall_code uint32
+	Syscall_narg uint32
+}
+
+type __Siginfo struct {
+	Signo    int32
+	Errno    int32
+	Code     int32
+	Pid      int32
+	Uid      uint32
+	Status   int32
+	Addr     *byte
+	Value    [4]byte
+	X_reason [32]byte
+}
+
+type Sigset_t struct {
+	Val [4]uint32
+}
+
+type Reg struct {
+	R      [13]uint32
+	R_sp   uint32
+	R_lr   uint32
+	R_pc   uint32
+	R_cpsr uint32
+}
+
+type FpReg struct {
+	Fpr_fpsr uint32
+	Fpr      [8][3]uint32
+}
+
+type PtraceIoDesc struct {
+	Op   int32
+	Offs *byte
+	Addr *byte
+	Len  uint32
+}
+
 type Kevent_t struct {
 	Ident  uint32
 	Filter int16
@@ -536,4 +590,14 @@ type Utsname struct {
 	Release  [256]byte
 	Version  [256]byte
 	Machine  [256]byte
+}
+
+const SizeofClockinfo = 0x14
+
+type Clockinfo struct {
+	Hz     int32
+	Tick   int32
+	Spare  int32
+	Stathz int32
+	Profhz int32
 }

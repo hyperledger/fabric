@@ -96,9 +96,34 @@ type Statfs_t struct {
 	Owner       uint32
 	Fsid        Fsid
 	Charspare   [80]int8
-	Fstypename  [16]int8
-	Mntfromname [88]int8
-	Mntonname   [88]int8
+	Fstypename  [16]byte
+	Mntfromname [1024]byte
+	Mntonname   [1024]byte
+}
+
+type statfs_freebsd11_t struct {
+	Version     uint32
+	Type        uint32
+	Flags       uint64
+	Bsize       uint64
+	Iosize      uint64
+	Blocks      uint64
+	Bfree       uint64
+	Bavail      int64
+	Files       uint64
+	Ffree       int64
+	Syncwrites  uint64
+	Asyncwrites uint64
+	Syncreads   uint64
+	Asyncreads  uint64
+	Spare       [10]uint64
+	Namemax     uint32
+	Owner       uint32
+	Fsid        Fsid
+	Charspare   [80]int8
+	Fstypename  [16]byte
+	Mntfromname [88]byte
+	Mntonname   [88]byte
 }
 
 type Flock_t struct {
@@ -212,10 +237,8 @@ type IPv6Mreq struct {
 type Msghdr struct {
 	Name       *byte
 	Namelen    uint32
-	Pad_cgo_0  [4]byte
 	Iov        *Iovec
 	Iovlen     int32
-	Pad_cgo_1  [4]byte
 	Control    *byte
 	Controllen uint32
 	Flags      int32
@@ -264,6 +287,78 @@ const (
 	PTRACE_KILL    = 0x8
 )
 
+type PtraceLwpInfoStruct struct {
+	Lwpid        int32
+	Event        int32
+	Flags        int32
+	Sigmask      Sigset_t
+	Siglist      Sigset_t
+	Siginfo      __Siginfo
+	Tdname       [20]int8
+	Child_pid    int32
+	Syscall_code uint32
+	Syscall_narg uint32
+}
+
+type __Siginfo struct {
+	Signo  int32
+	Errno  int32
+	Code   int32
+	Pid    int32
+	Uid    uint32
+	Status int32
+	Addr   *byte
+	Value  [8]byte
+	_      [40]byte
+}
+
+type Sigset_t struct {
+	Val [4]uint32
+}
+
+type Reg struct {
+	R15    int64
+	R14    int64
+	R13    int64
+	R12    int64
+	R11    int64
+	R10    int64
+	R9     int64
+	R8     int64
+	Rdi    int64
+	Rsi    int64
+	Rbp    int64
+	Rbx    int64
+	Rdx    int64
+	Rcx    int64
+	Rax    int64
+	Trapno uint32
+	Fs     uint16
+	Gs     uint16
+	Err    uint32
+	Es     uint16
+	Ds     uint16
+	Rip    int64
+	Cs     int64
+	Rflags int64
+	Rsp    int64
+	Ss     int64
+}
+
+type FpReg struct {
+	Env   [4]uint64
+	Acc   [8][16]uint8
+	Xacc  [16][16]uint8
+	Spare [12]uint64
+}
+
+type PtraceIoDesc struct {
+	Op   int32
+	Offs *byte
+	Addr *byte
+	Len  uint64
+}
+
 type Kevent_t struct {
 	Ident  uint64
 	Filter int16
@@ -290,25 +385,24 @@ const (
 )
 
 type ifMsghdr struct {
-	Msglen    uint16
-	Version   uint8
-	Type      uint8
-	Addrs     int32
-	Flags     int32
-	Index     uint16
-	Pad_cgo_0 [2]byte
-	Data      ifData
+	Msglen  uint16
+	Version uint8
+	Type    uint8
+	Addrs   int32
+	Flags   int32
+	Index   uint16
+	_       uint16
+	Data    ifData
 }
 
 type IfMsghdr struct {
-	Msglen    uint16
-	Version   uint8
-	Type      uint8
-	Addrs     int32
-	Flags     int32
-	Index     uint16
-	Pad_cgo_0 [2]byte
-	Data      IfData
+	Msglen  uint16
+	Version uint8
+	Type    uint8
+	Addrs   int32
+	Flags   int32
+	Index   uint16
+	Data    IfData
 }
 
 type ifData struct {
@@ -368,24 +462,24 @@ type IfData struct {
 }
 
 type IfaMsghdr struct {
-	Msglen    uint16
-	Version   uint8
-	Type      uint8
-	Addrs     int32
-	Flags     int32
-	Index     uint16
-	Pad_cgo_0 [2]byte
-	Metric    int32
+	Msglen  uint16
+	Version uint8
+	Type    uint8
+	Addrs   int32
+	Flags   int32
+	Index   uint16
+	_       uint16
+	Metric  int32
 }
 
 type IfmaMsghdr struct {
-	Msglen    uint16
-	Version   uint8
-	Type      uint8
-	Addrs     int32
-	Flags     int32
-	Index     uint16
-	Pad_cgo_0 [2]byte
+	Msglen  uint16
+	Version uint8
+	Type    uint8
+	Addrs   int32
+	Flags   int32
+	Index   uint16
+	_       uint16
 }
 
 type IfAnnounceMsghdr struct {
@@ -398,19 +492,19 @@ type IfAnnounceMsghdr struct {
 }
 
 type RtMsghdr struct {
-	Msglen    uint16
-	Version   uint8
-	Type      uint8
-	Index     uint16
-	Pad_cgo_0 [2]byte
-	Flags     int32
-	Addrs     int32
-	Pid       int32
-	Seq       int32
-	Errno     int32
-	Fmask     int32
-	Inits     uint64
-	Rmx       RtMetrics
+	Msglen  uint16
+	Version uint8
+	Type    uint8
+	Index   uint16
+	_       uint16
+	Flags   int32
+	Addrs   int32
+	Pid     int32
+	Seq     int32
+	Errno   int32
+	Fmask   int32
+	Inits   uint64
+	Rmx     RtMetrics
 }
 
 type RtMetrics struct {
@@ -455,9 +549,8 @@ type BpfZbuf struct {
 }
 
 type BpfProgram struct {
-	Len       uint32
-	Pad_cgo_0 [4]byte
-	Insns     *BpfInsn
+	Len   uint32
+	Insns *BpfInsn
 }
 
 type BpfInsn struct {
@@ -536,4 +629,14 @@ type Utsname struct {
 	Release  [256]byte
 	Version  [256]byte
 	Machine  [256]byte
+}
+
+const SizeofClockinfo = 0x14
+
+type Clockinfo struct {
+	Hz     int32
+	Tick   int32
+	Spare  int32
+	Stathz int32
+	Profhz int32
 }
