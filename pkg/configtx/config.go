@@ -8,6 +8,9 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -206,23 +209,49 @@ func NewCreateChannelTx(channelConfig Channel, channelID string) (*cb.Envelope, 
 	return env, nil
 }
 
+// NewSystemChannelGenesisBlock creates a genesis block using the provided consortiums and orderer
+// configuration and returns a block.
+func NewSystemChannelGenesisBlock(channelConfig Channel, channelID string) (*cb.Block, error) {
+	var err error
+
+	if channelID == "" {
+		return nil, errors.New("system channel ID is required")
+	}
+
+	systemChannelGroup, err := newSystemChannelGroup(channelConfig)
+	if err != nil {
+		return nil, fmt.Errorf("creating system channel group: %v", err)
+	}
+
+	block, err := newSystemChannelBlock(systemChannelGroup, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("creating system channel genesis block: %v", err)
+	}
+
+	return block, nil
+}
+
 // newChannelGroup defines the root of the channel configuration.
 func newChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 	var err error
 
 	channelGroup := newConfigGroup()
 
-	if channelConfig.Consortium != "" {
-		err = setValue(channelGroup, consortiumValue(channelConfig.Consortium), "")
-		if err != nil {
-			return nil, err
-		}
+	if channelConfig.Consortium == "" {
+		return nil, errors.New("consortium is not defined in channel config")
+	}
+
+	err = setValue(channelGroup, consortiumValue(channelConfig.Consortium), "")
+	if err != nil {
+		return nil, err
 	}
 
 	channelGroup.Groups[ApplicationGroupKey], err = newApplicationGroup(channelConfig.Application)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create application group: %v", err)
 	}
+
+	channelGroup.ModPolicy = AdminsPolicyKey
 
 	return channelGroup, nil
 }
@@ -247,15 +276,6 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 
-	if channelConfig.Consortium == "" {
-		return nil, errors.New("consortium is not defined in channel config")
-	}
-
-	err = setValue(channelGroup, consortiumValue(channelConfig.Consortium), AdminsPolicyKey)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(channelConfig.Capabilities) == 0 {
 		return nil, errors.New("capabilities is not defined in channel config")
 	}
@@ -276,6 +296,8 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 	channelGroup.Groups[ConsortiumsGroupKey] = consortiumsGroup
+
+	channelGroup.ModPolicy = AdminsPolicyKey
 
 	return channelGroup, nil
 }
@@ -362,6 +384,64 @@ func defaultConfigTemplate(channelConfig Channel) (*cb.ConfigGroup, error) {
 	channelGroup.Groups[ApplicationGroupKey].Policies = nil
 
 	return channelGroup, nil
+}
+
+// newSystemChannelBlock generates a genesis block by the config group and system channel ID
+// the block num is always zero
+func newSystemChannelBlock(cg *cb.ConfigGroup, channelID string) (*cb.Block, error) {
+	payloadChannelHeader := channelHeader(cb.HeaderType_CONFIG, msgVersion, channelID, epoch)
+	nonce, err := newNonce()
+	if err != nil {
+		return nil, fmt.Errorf("try to get nonce: %v", err)
+	}
+	payloadSignatureHeader := &cb.SignatureHeader{Creator: nil, Nonce: nonce}
+	payloadChannelHeader.TxId = computeTxID(payloadSignatureHeader.Nonce, payloadSignatureHeader.Creator)
+	payloadHeader, err := payloadHeader(payloadChannelHeader, payloadSignatureHeader)
+	if err != nil {
+		return nil, fmt.Errorf("construct payload header: %v", err)
+	}
+	payloadData, err := proto.Marshal(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: cg}})
+	if err != nil {
+		return nil, fmt.Errorf("marshaling payload data: %v", err)
+	}
+	payload := &cb.Payload{Header: payloadHeader, Data: payloadData}
+	envelopePayload, err := proto.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling envelope payload: %v", err)
+	}
+	envelope := &cb.Envelope{Payload: envelopePayload, Signature: nil}
+	blockData, err := proto.Marshal(envelope)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling envelope: %v", err)
+	}
+
+	block := newBlock(0, nil)
+	block.Data = &cb.BlockData{Data: [][]byte{blockData}}
+	block.Header.DataHash = blockDataHash(block.Data)
+
+	lastConfigValue, err := proto.Marshal(&cb.LastConfig{Index: 0})
+	if err != nil {
+		return nil, fmt.Errorf("marshaling metadata last config value: %v", err)
+	}
+	lastConfigMetadata, err := proto.Marshal(&cb.Metadata{Value: lastConfigValue})
+	if err != nil {
+		return nil, fmt.Errorf("marshaling metadata last config: %v", err)
+	}
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = lastConfigMetadata
+
+	signatureValue, err := proto.Marshal(&cb.OrdererBlockMetadata{
+		LastConfig: &cb.LastConfig{Index: 0},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshaling metadata signature value: %v", err)
+	}
+	signatureMetadata, err := proto.Marshal(&cb.Metadata{Value: signatureValue})
+	if err != nil {
+		return nil, fmt.Errorf("marshaling metadata signature: %v", err)
+	}
+	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = signatureMetadata
+
+	return block, nil
 }
 
 // newChannelCreateConfigUpdate generates a ConfigUpdate which can be sent to the orderer to create a new channel.
@@ -515,4 +595,37 @@ func parseAddress(address string) (string, int, error) {
 	}
 
 	return host, portNum, nil
+}
+
+// newBlock constructs a block with no data and no metadata.
+func newBlock(seqNum uint64, previousHash []byte) *cb.Block {
+	block := &cb.Block{}
+	block.Header = &cb.BlockHeader{}
+	block.Header.Number = seqNum
+	block.Header.PreviousHash = previousHash
+	block.Header.DataHash = []byte{}
+	block.Data = &cb.BlockData{}
+
+	var metadataContents [][]byte
+	for i := 0; i < len(cb.BlockMetadataIndex_name); i++ {
+		metadataContents = append(metadataContents, []byte{})
+	}
+	block.Metadata = &cb.BlockMetadata{Metadata: metadataContents}
+
+	return block
+}
+
+// computeTxID computes TxID as the Hash computed
+// over the concatenation of nonce and creator.
+func computeTxID(nonce, creator []byte) string {
+	hasher := sha256.New()
+	hasher.Write(nonce)
+	hasher.Write(creator)
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// blockDataHash computes block data as the Hash
+func blockDataHash(b *cb.BlockData) []byte {
+	sum := sha256.Sum256(bytes.Join(b.Data, nil))
+	return sum[:]
 }
