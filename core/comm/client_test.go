@@ -359,7 +359,8 @@ func TestNewConnection(t *testing.T) {
 				assert.NotNil(t, conn)
 			} else {
 				t.Log(errors.WithStack(err))
-				assert.Contains(t, err.Error(), test.errorMsg)
+				assert.Error(t, err)
+				assert.Regexp(t, test.errorMsg, err)
 			}
 		})
 	}
