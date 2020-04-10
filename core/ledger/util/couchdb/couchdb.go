@@ -1821,7 +1821,7 @@ func (couchInstance *CouchInstance) handleRequest(ctx context.Context, method, d
 
 	//if a golang http error is still present after retries are exhausted, return the error
 	if errResp != nil {
-		return nil, couchDBReturn, errResp
+		return nil, couchDBReturn, errors.Wrap(errResp, "http error calling couchdb")
 	}
 
 	//This situation should not occur according to the golang spec.
