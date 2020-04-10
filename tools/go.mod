@@ -13,5 +13,5 @@ require (
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f
-	golang.org/x/tools v0.0.0-20191227053925-7b8e75db28f4
+	golang.org/x/tools v0.0.0-20200131233409-575de47986ce
 )

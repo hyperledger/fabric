@@ -904,8 +904,8 @@
   version = "v0.3.2"
 
 [[projects]]
-  branch = "release-branch.go1.13"
-  digest = "1:b3e64b43fe77039813b4f33100e4ef2e17960309f3c6c9ab120f5c55de747992"
+  branch = "release-branch.go1.14"
+  digest = "1:e48760fc099273347f411f9def6122238a06afe0f5b5d242db0e66cf0de94948"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -917,9 +917,10 @@
     "internal/fastwalk",
     "internal/gopathwalk",
     "internal/semver",
+    "internal/span",
   ]
   pruneopts = "NUT"
-  revision = "65e3620a7ae7ac25e8494a60f0e5ef4e4fba03b3"
+  revision = "575de47986ce07f39826bf8d5e365d5ebf51ee63"
 
 [[projects]]
   branch = "master"
