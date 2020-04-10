@@ -947,24 +947,72 @@ func TestCreateApplicationMSPCRL(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := New(config)
+	originalConfigTx := New(config)
 
-	org1MSP, err := c.ApplicationMSP("Org1")
+	org1MSP, err := originalConfigTx.ApplicationMSP("Org1")
+	gt.Expect(err).NotTo(HaveOccurred())
+	org1RootCert, org1PrivKey, _ := certPrivKeyCRL(org1MSP)
+
+	// update org2MSP to include an intemediate cert that is different
+	// from the root cert
+	org2MSP, err := originalConfigTx.ApplicationMSP("Org2")
+	gt.Expect(err).NotTo(HaveOccurred())
+	org2Cert, org2PrivKey, _ := certPrivKeyCRL(org2MSP)
+	org2IntermediateCert, org2IntermediatePrivKey := generateIntermediateCACertAndPrivateKey(t, "org2.example.com", org2Cert, org2PrivKey)
+	org2MSP.IntermediateCerts = append(org2MSP.IntermediateCerts, org2IntermediateCert)
+	err = originalConfigTx.UpdateApplicationMSP(org2MSP, "Org2")
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	cert, privKey, _ := certPrivKeyCRL(org1MSP)
-	certToRevoke, _ := generateCertAndPrivateKeyFromCACert(t, "org1.example.com", cert, privKey)
-	signingIdentity := &SigningIdentity{
-		Certificate: cert,
-		PrivateKey:  privKey,
-		MSPID:       "MSPID",
+	// create a new ConfigTx with our updated config as the base
+	c := New(originalConfigTx.Updated())
+
+	tests := []struct {
+		spec             string
+		orgName          string
+		caCert           *x509.Certificate
+		caPrivKey        *ecdsa.PrivateKey
+		numCertsToRevoke int
+	}{
+		{
+			spec:             "create CRL using a root cert",
+			orgName:          "Org1",
+			caCert:           org1RootCert,
+			caPrivKey:        org1PrivKey,
+			numCertsToRevoke: 2,
+		},
+		{
+			spec:             "create CRL using an intermediate cert",
+			orgName:          "Org2",
+			caCert:           org2IntermediateCert,
+			caPrivKey:        org2IntermediatePrivKey,
+			numCertsToRevoke: 1,
+		},
 	}
-	newCRL, err := c.CreateApplicationMSPCRL("Org1", signingIdentity, certToRevoke)
-	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(newCRL.TBSCertList.RevokedCertificates).To(HaveLen(1))
-	gt.Expect(newCRL.TBSCertList.RevokedCertificates[0].SerialNumber).To(Equal(certToRevoke.SerialNumber))
-
-	// TODO create a CRL using an intermediate cert
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
+			certsToRevoke := make([]*x509.Certificate, tc.numCertsToRevoke)
+			for i := 0; i < tc.numCertsToRevoke; i++ {
+				certToRevoke, _ := generateCertAndPrivateKeyFromCACert(t, tc.orgName, tc.caCert, tc.caPrivKey)
+				certsToRevoke[i] = certToRevoke
+			}
+			signingIdentity := &SigningIdentity{
+				Certificate: tc.caCert,
+				PrivateKey:  tc.caPrivKey,
+				MSPID:       "MSPID",
+			}
+			crl, err := c.CreateApplicationMSPCRL(tc.orgName, signingIdentity, certsToRevoke...)
+			gt.Expect(err).NotTo(HaveOccurred())
+			err = tc.caCert.CheckCRLSignature(crl)
+			gt.Expect(err).NotTo(HaveOccurred())
+			gt.Expect(crl.TBSCertList.RevokedCertificates).To(HaveLen(tc.numCertsToRevoke))
+			for i := 0; i < tc.numCertsToRevoke; i++ {
+				gt.Expect(crl.TBSCertList.RevokedCertificates[i].SerialNumber).To(Equal(certsToRevoke[i].SerialNumber))
+			}
+		})
+	}
 }
 
 func TestCreateApplicationMSPCRLFailure(t *testing.T) {

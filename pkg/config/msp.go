@@ -697,38 +697,3 @@ func validateCACerts(caCerts []*x509.Certificate) error {
 
 	return nil
 }
-
-func addMSPConfigToOrg(org *cb.ConfigGroup, fabricMSPConfig *mb.FabricMSPConfig) error {
-	configValue, err := getOrgMSPValue(org)
-	if err != nil {
-		return err
-	}
-
-	mspConfig := &mb.MSPConfig{}
-	err = proto.Unmarshal(configValue.Value, mspConfig)
-	if err != nil {
-		return fmt.Errorf("unmarshalling mspConfig: %v", err)
-	}
-
-	serializedMSPConfig, err := proto.Marshal(fabricMSPConfig)
-	if err != nil {
-		return fmt.Errorf("marshalling updated mspConfig: %v", err)
-	}
-
-	mspConfig.Config = serializedMSPConfig
-
-	err = setValue(org, mspValue(mspConfig), AdminsPolicyKey)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func getOrgMSPValue(org *cb.ConfigGroup) (*cb.ConfigValue, error) {
-	configValue, ok := org.Values[MSPKey]
-	if !ok {
-		return nil, errors.New("org doesn't have MSP value")
-	}
-	return configValue, nil
-}

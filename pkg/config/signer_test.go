@@ -166,6 +166,24 @@ func generateCACertAndPrivateKey(t *testing.T, orgName string) (*x509.Certificat
 	return generateCertAndPrivateKey(t, template, template, nil)
 }
 
+func generateIntermediateCACertAndPrivateKey(t *testing.T, orgName string, rootCACert *x509.Certificate, rootPrivKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey) {
+	serialNumber := generateSerialNumber(t)
+	template := &x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			CommonName:   "intermediateca." + orgName,
+			Organization: []string{orgName},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+	return generateCertAndPrivateKey(t, template, rootCACert, rootPrivKey)
+}
+
 // generateCertAndPrivateKeyFromCACert returns a cert and private key signed by the given CACert.
 func generateCertAndPrivateKeyFromCACert(t *testing.T, orgName string, caCert *x509.Certificate, privateKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey) {
 	serialNumber := generateSerialNumber(t)
