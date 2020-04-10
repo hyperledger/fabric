@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statemetadata"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/assert"
 )
@@ -402,7 +402,7 @@ func testutilSerializedMetadata(t *testing.T, metadataMap map[string][]byte) []b
 	for metadataK, metadataV := range metadataMap {
 		metadataEntries = append(metadataEntries, &kvrwset.KVMetadataEntry{Name: metadataK, Value: metadataV})
 	}
-	metadataBytes, err := storageutil.SerializeMetadata(metadataEntries)
+	metadataBytes, err := statemetadata.Serialize(metadataEntries)
 	assert.NoError(t, err)
 	return metadataBytes
 }
