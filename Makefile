@@ -169,7 +169,7 @@ linter: check-deps gotool.goimports
 	./scripts/golinter.sh
 
 .PHONY: check-deps
-check-deps: gotool.dep
+check-deps:
 	@echo "DEP: Checking for dependency issues.."
 	./scripts/check_deps.sh
 
