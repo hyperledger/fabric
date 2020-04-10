@@ -111,7 +111,7 @@ help-docs: native
 	@scripts/generateHelpDocs.sh
 
 .PHONY: spelling
-spelling:
+spelling: gotools
 	@scripts/check_spelling.sh
 
 .PHONY: references
