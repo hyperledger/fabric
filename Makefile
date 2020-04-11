@@ -135,7 +135,7 @@ check-go-version:
 	@scripts/check_go_version.sh $(GO_VER)
 
 .PHONY: integration-test
-integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
+integration-test: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty
 	./scripts/run-integration-tests.sh
 
 .PHONY: unit-test
