@@ -139,7 +139,7 @@ integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
 	./scripts/run-integration-tests.sh
 
 .PHONY: unit-test
-unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker
+unit-test: unit-test-clean docker-thirdparty-couchdb
 	./scripts/run-unit-tests.sh
 
 .PHONY: unit-tests
@@ -149,11 +149,14 @@ unit-tests: unit-test
 # Also pull ccenv-1.4 for compatibility test to ensure pre-2.0 installed chaincodes
 # can be built by a peer configured to use the ccenv-1.4 as the builder image.
 .PHONY: docker-thirdparty
-docker-thirdparty:
-	docker pull couchdb:${COUCHDB_VER}
+docker-thirdparty: docker-thirdparty-couchdb
 	docker pull confluentinc/cp-zookeeper:${ZOOKEEPER_VER}
 	docker pull confluentinc/cp-kafka:${KAFKA_VER}
 	docker pull hyperledger/fabric-ccenv:1.4
+
+.PHONY: docker-thirdparty-couchdb
+docker-thirdparty-couchdb:
+	docker pull couchdb:${COUCHDB_VER}
 
 .PHONY: verify
 verify: export JOB_TYPE=VERIFY
