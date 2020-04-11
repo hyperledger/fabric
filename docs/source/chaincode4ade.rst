@@ -75,21 +75,22 @@ Choosing a Location for the Code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you haven't been doing programming in Go, you may want to make sure that
-you have :ref:`Go` installed and your system properly configured.
+you have :ref:`Go` installed and your system properly configured. We assume
+you are using a version that supports modules.
 
-Now, you will want to create a directory for your chaincode application as a
-child directory of ``$GOPATH/src/``.
+Now, you will want to create a directory for your chaincode application.
 
 To keep things simple, let's use the following command:
 
 .. code:: bash
 
-  mkdir -p $GOPATH/src/sacc && cd $GOPATH/src/sacc
+  mkdir sacc && cd sacc
 
-Now, let's create the source file that we'll fill in with code:
+Now, let's create the module and the source file that we'll fill in with code:
 
 .. code:: bash
 
+  go mod init sacc
   touch sacc.go
 
 Housekeeping
@@ -416,24 +417,19 @@ To add the client identity shim extension to your chaincode as a dependency, see
 
 Managing external dependencies for chaincode written in Go
 ----------------------------------------------------------
-Your Go chaincode requires packages (like the chaincode shim) that are not part
-of the Go standard library. These packages must be included in your chaincode
-package.
-
-There are `many tools available <https://github.com/golang/go/wiki/PackageManagementTools>`__
-for managing (or "vendoring") these dependencies.  The following demonstrates how to use
-``govendor``:
+Your Go chaincode depends on Go packages (like the chaincode shim) that are not
+part of the standard library. The source to these packages must be included in
+your chaincode package when it is installed to a peer. If you have scructured
+your chaincode as a module, the easiest way to do this is to "vendor" the
+dependencies with ``go mod vendor`` before packaging your chaincode.
 
 .. code:: bash
 
-  govendor init
-  govendor add +external  // Add all external package, or
-  govendor add github.com/external/pkg // Add specific external package
+  go mod tidy
+  go mod vendor
 
-This imports the external dependencies into a local ``vendor`` directory.
-If you are vendoring the Fabric shim or shim extensions, clone the
-Fabric repository to your $GOPATH/src/github.com/hyperledger directory,
-before executing the govendor commands.
+This places the external dependencies for your chaincode into a local ``vendor``
+directory.
 
 Once dependencies are vendored in your chaincode directory, ``peer chaincode package``
 and ``peer chaincode install`` operations will then include code associated with the

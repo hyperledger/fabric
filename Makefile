@@ -37,6 +37,7 @@
 #   - dist-clean - clean release packages for all target platforms
 #   - unit-test-clean - cleans unit test state (particularly from docker)
 #   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
+#   - docker-test-prereqs - pulls or builds images required for tests
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
@@ -134,12 +135,15 @@ gotools: gotools-install
 check-go-version:
 	@scripts/check_go_version.sh $(GO_VER)
 
+.PHONY: docker-test-prereqs
+docker-test-prereqs: baseos-docker ccenv-docker docker-thirdparty
+
 .PHONY: integration-test
-integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
+integration-test: gotool.ginkgo docker-test-prereqs
 	./scripts/run-integration-tests.sh
 
 .PHONY: unit-test
-unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker
+unit-test: unit-test-clean docker-test-prereqs
 	./scripts/run-unit-tests.sh
 
 .PHONY: unit-tests
