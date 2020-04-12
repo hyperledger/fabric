@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -439,37 +438,21 @@ func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // startKey is inclusive
 // endKey is exclusive
 func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
-	return vdb.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, nil)
+	return vdb.GetStateRangeScanIteratorWithPagination(namespace, startKey, endKey, 0)
 }
 
-const optionBookmark = "bookmark"
-const optionLimit = "limit"
-
-// GetStateRangeScanIteratorWithMetadata implements method in VersionedDB interface
+// GetStateRangeScanIteratorWithPagination implements method in VersionedDB interface
 // startKey is inclusive
 // endKey is exclusive
-// metadata contains a map of additional query options
-func (vdb *VersionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
-	logger.Debugf("Entering GetStateRangeScanIteratorWithMetadata  namespace: %s  startKey: %s  endKey: %s  metadata: %v", namespace, startKey, endKey, metadata)
-	// Get the internalQueryLimit from core.yaml
+// pageSize limits the number of results returned
+func (vdb *VersionedDB) GetStateRangeScanIteratorWithPagination(namespace string, startKey string, endKey string, pageSize int32) (statedb.QueryResultsIterator, error) {
+	logger.Debugf("Entering GetStateRangeScanIteratorWithPagination namespace: %s  startKey: %s  endKey: %s  pageSize: %d", namespace, startKey, endKey, pageSize)
 	internalQueryLimit := vdb.couchInstance.internalQueryLimit()
-	requestedLimit := int32(0)
-	// if metadata is provided, validate and apply options
-	if metadata != nil {
-		//validate the metadata
-		err := statedb.ValidateRangeMetadata(metadata)
-		if err != nil {
-			return nil, err
-		}
-		if limitOption, ok := metadata[optionLimit]; ok {
-			requestedLimit = limitOption.(int32)
-		}
-	}
 	db, err := vdb.getNamespaceDBHandle(namespace)
 	if err != nil {
 		return nil, err
 	}
-	return newQueryScanner(namespace, db, "", internalQueryLimit, requestedLimit, "", startKey, endKey)
+	return newQueryScanner(namespace, db, "", internalQueryLimit, pageSize, "", startKey, endKey)
 }
 
 func (scanner *queryScanner) getNextStateRangeScanResults() error {
@@ -534,33 +517,17 @@ func isCouchInternalKey(key string) bool {
 
 // ExecuteQuery implements method in VersionedDB interface
 func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIterator, error) {
-	queryResult, err := vdb.ExecuteQueryWithMetadata(namespace, query, nil)
+	queryResult, err := vdb.ExecuteQueryWithPagination(namespace, query, "", 0)
 	if err != nil {
 		return nil, err
 	}
 	return queryResult, nil
 }
 
-// ExecuteQueryWithMetadata implements method in VersionedDB interface
-func (vdb *VersionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
-	logger.Debugf("Entering ExecuteQueryWithMetadata  namespace: %s,  query: %s,  metadata: %v", namespace, query, metadata)
-	// Get the querylimit from core.yaml
+// ExecuteQueryWithPagination implements method in VersionedDB interface
+func (vdb *VersionedDB) ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (statedb.QueryResultsIterator, error) {
+	logger.Debugf("Entering ExecuteQueryWithPagination namespace: %s,  query: %s,  bookmark: %s, pageSize: %d", namespace, query, bookmark, pageSize)
 	internalQueryLimit := vdb.couchInstance.internalQueryLimit()
-	bookmark := ""
-	requestedLimit := int32(0)
-	// if metadata is provided, then validate and set provided options
-	if metadata != nil {
-		err := validateQueryMetadata(metadata)
-		if err != nil {
-			return nil, err
-		}
-		if limitOption, ok := metadata[optionLimit]; ok {
-			requestedLimit = limitOption.(int32)
-		}
-		if bookmarkOption, ok := metadata[optionBookmark]; ok {
-			bookmark = bookmarkOption.(string)
-		}
-	}
 	queryString, err := applyAdditionalQueryOptions(query, internalQueryLimit, bookmark)
 	if err != nil {
 		logger.Errorf("Error calling applyAdditionalQueryOptions(): %s", err.Error())
@@ -570,7 +537,7 @@ func (vdb *VersionedDB) ExecuteQueryWithMetadata(namespace, query string, metada
 	if err != nil {
 		return nil, err
 	}
-	return newQueryScanner(namespace, db, queryString, internalQueryLimit, requestedLimit, bookmark, "", "")
+	return newQueryScanner(namespace, db, queryString, internalQueryLimit, pageSize, bookmark, "", "")
 }
 
 // executeQueryWithBookmark executes a "paging" query with a bookmark, this method allows a
@@ -596,30 +563,6 @@ func (scanner *queryScanner) executeQueryWithBookmark() error {
 	scanner.resultsInfo.results = queryResult
 	scanner.paginationInfo.bookmark = bookmark
 	scanner.paginationInfo.cursor = 0
-	return nil
-}
-
-func validateQueryMetadata(metadata map[string]interface{}) error {
-	for key, keyVal := range metadata {
-		switch key {
-		case optionBookmark:
-			//Verify the bookmark is a string
-			if _, ok := keyVal.(string); ok {
-				continue
-			}
-			return fmt.Errorf("Invalid entry, \"bookmark\" must be a string")
-
-		case optionLimit:
-			//Verify the limit is an integer
-			if _, ok := keyVal.(int32); ok {
-				continue
-			}
-			return fmt.Errorf("Invalid entry, \"limit\" must be an int32")
-
-		default:
-			return fmt.Errorf("Invalid entry, option %s not recognized", key)
-		}
-	}
 	return nil
 }
 

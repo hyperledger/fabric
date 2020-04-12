@@ -1552,8 +1552,8 @@ func (exec *mockQueryExecutor) GetStateRangeScanIterator(namespace string, start
 	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
 }
 
-func (exec *mockQueryExecutor) GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
-	args := exec.Called(namespace, startKey, endKey, metadata)
+func (exec *mockQueryExecutor) GetStateRangeScanIteratorWithPagination(namespace, startKey, endKey string, pageSize int32) (ledger.QueryResultsIterator, error) {
+	args := exec.Called(namespace, startKey, endKey, pageSize)
 	return args.Get(0).(ledger.QueryResultsIterator), args.Error(1)
 }
 
@@ -1562,8 +1562,8 @@ func (exec *mockQueryExecutor) ExecuteQuery(namespace, query string) (ledger2.Re
 	return args.Get(0).(ledger2.ResultsIterator), args.Error(1)
 }
 
-func (exec *mockQueryExecutor) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
-	args := exec.Called(namespace, query, metadata)
+func (exec *mockQueryExecutor) ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (ledger.QueryResultsIterator, error) {
+	args := exec.Called(namespace, query, bookmark, pageSize)
 	return args.Get(0).(ledger.QueryResultsIterator), args.Error(1)
 }
 
