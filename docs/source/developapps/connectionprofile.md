@@ -272,7 +272,7 @@ details of the network topology.
 ## Sample
 
 This file is reproduced inline from the GitHub commercial paper
-[sample](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml).
+[sample](https://github.com/hyperledger/fabric-samples/blob/master/commercial-paper/organization/magnetocorp/).
 
 ```yaml
 1: ---
