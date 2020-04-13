@@ -46,15 +46,19 @@ for channel reconfiguration workflows, such as adding a member).
 configtxgen -printOrg Org1
 ```
 
-### Output anchor peer tx
+### Output anchor peer tx (deprecated)
 
-Output a configuration update transaction to `anchor_peer_tx.pb` which sets the
-anchor peers for organization Org1 as defined in profile
-SampleSingleMSPChannelV1_1 based on `configtx.yaml`.
-
+Output a channel configuration update transaction `anchor_peer_tx.pb`  based on
+the anchor peers defined for Org1 and channel profile SampleSingleMSPChannelV1_1
+in `configtx.yaml`. Transaction will set anchor peers for Org1 if no anchor peers
+have been set on the channel.
 ```
 configtxgen -outputAnchorPeersUpdate anchor_peer_tx.pb -profile SampleSingleMSPChannelV1_1 -asOrg Org1
 ```
+
+The `-outputAnchorPeersUpdate` output flag has been deprecated. To set anchor
+peers on the channel, use [configtxlator](configtxlator.html) to update the
+channel configuration.
 
 ## Configuration
 
