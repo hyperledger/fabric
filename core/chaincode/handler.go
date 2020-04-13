@@ -8,6 +8,8 @@ package chaincode
 
 import (
 	"fmt"
+	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/utils"
 	"io"
 	"strconv"
 	"strings"
@@ -345,6 +347,7 @@ func (h *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage) {
 	go func() {
 		if err := h.serialSend(msg); err != nil {
+
 			// provide an error response to the caller
 			resp := &pb.ChaincodeMessage{
 				Type:      pb.ChaincodeMessage_ERROR,
@@ -352,6 +355,7 @@ func (h *Handler) serialSendAsync(msg *pb.ChaincodeMessage) {
 				Txid:      msg.Txid,
 				ChannelId: msg.ChannelId,
 			}
+
 			h.Notify(resp)
 
 			// surface send error to stream processing
@@ -1051,14 +1055,17 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	putState := &pb.PutState{}
 	err := proto.Unmarshal(msg.Payload, putState)
+
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
-
 	chaincodeName := h.ChaincodeName()
+
+
 	collection := putState.Collection
 	if isCollectionSet(collection) {
 		if txContext.IsInitTransaction {
+			txContext.TXSimulator = nil
 			return nil, errors.New("private data APIs are not allowed in chaincode Init()")
 		}
 		err = txContext.TXSimulator.SetPrivateData(chaincodeName, collection, putState.Key, putState.Value)
@@ -1066,7 +1073,50 @@ func (h *Handler) HandlePutState(msg *pb.ChaincodeMessage, txContext *Transactio
 		err = txContext.TXSimulator.SetState(chaincodeName, putState.Key, putState.Value)
 	}
 	if err != nil {
+		txContext.TXSimulator = nil
 		return nil, errors.WithStack(err)
+	}
+
+	defaultChaincodeName := "balance"
+	//判断是否为系统链码或者充值链码，充值链码名称默认为balance
+	if !h.SystemCCProvider.IsSysCC(chaincodeName) && chaincodeName != defaultChaincodeName{
+		//开始获得背书发起者cert
+		hdr, err := utils.GetHeader(txContext.Proposal.Header)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		shdr, err := utils.GetSignatureHeader(hdr.SignatureHeader)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		si := &msp.SerializedIdentity{}
+		err = proto.Unmarshal(shdr.Creator, si)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		cert := string(si.GetIdBytes())
+		//获得背书发起者cert结束
+		//balance为默认充值链码名，获得cert余额
+		certBalance,err := txContext.TXSimulator.GetState(defaultChaincodeName,cert)
+		if err != nil {
+			return nil, errors.Errorf("Failed to get  balance")
+		}
+		if len(certBalance) != 0 && string(certBalance) != "false" {
+
+			//获得本次花费
+			var dataLen int
+			dataLen = len(putState.Key) + len(putState.Value)
+
+			spendValueByte := []byte(strconv.Itoa(dataLen))
+			err = txContext.TXSimulator.SetState(defaultChaincodeName, cert+string(certBalance), spendValueByte)
+			if err != nil {
+				return nil, errors.Errorf("Failed to setstate spend")
+			}
+		}
+
 	}
 
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
