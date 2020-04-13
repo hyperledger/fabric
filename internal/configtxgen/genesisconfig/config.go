@@ -219,6 +219,7 @@ func LoadTopLevel(configPaths ...string) *TopLevel {
 	if err != nil {
 		logger.Panicf("failed to load configCache: %s", err)
 	}
+	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 	logger.Infof("Loaded configuration: %s", config.ConfigFileUsed())
 
 	return uconf
@@ -442,6 +443,7 @@ func (c *configCache) load(config *viper.Viper, configPath string) (*TopLevel, e
 
 	conf := &TopLevel{}
 	serializedConf, ok := c.cache[configPath]
+	logger.Debug("Loading configuration from cache :%v", ok)
 	if !ok {
 		err := viperutil.EnhancedExactUnmarshal(config, conf)
 		if err != nil {
@@ -459,7 +461,5 @@ func (c *configCache) load(config *viper.Viper, configPath string) (*TopLevel, e
 	if err != nil {
 		return nil, err
 	}
-
-	conf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 	return conf, nil
 }
