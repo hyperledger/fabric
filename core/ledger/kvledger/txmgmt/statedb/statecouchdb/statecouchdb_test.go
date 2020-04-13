@@ -600,14 +600,15 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	}
 
 	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData)
-	//Sleep to allow time for index creation
-	time.Sleep(100 * time.Millisecond)
-	//Create a query with a sort
 	queryString = `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
-
-	//Query should complete without error
-	_, err = db.ExecuteQuery("ns1", queryString)
-	assert.NoError(t, err)
+	queryUsingIndex := func() bool {
+		_, err = db.ExecuteQuery("ns1", queryString)
+		if err != nil {
+			return false
+		}
+		return true
+	}
+	assert.Eventually(t, queryUsingIndex, 2*time.Second, 100*time.Millisecond, "error executing query with sort")
 
 	//Query namespace "ns2", index is only created in "ns1".  This should return an error.
 	_, err = db.ExecuteQuery("ns2", queryString)
@@ -651,14 +652,17 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	if !ok {
 		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
 	}
-
 	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData)
 
-	//Sleep to allow time for index creation
-	time.Sleep(100 * time.Millisecond)
-	//Query should complete without error
-	_, err = db.ExecuteQuery("ns1", `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`)
-	assert.NoError(t, err)
+	queryString := `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
+	queryUsingIndex := func() bool {
+		_, err = db.ExecuteQuery("ns1", queryString)
+		if err != nil {
+			return false
+		}
+		return true
+	}
+	assert.Eventually(t, queryUsingIndex, 2*time.Second, 100*time.Millisecond, "error executing query with sort")
 }
 
 func TestIsBulkOptimizable(t *testing.T) {
