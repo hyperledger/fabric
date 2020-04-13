@@ -67,6 +67,7 @@ var _ = Describe("EndToEnd", func() {
 			InitRequired:    true,
 			Label:           "my_prebuilt_chaincode",
 		}
+		SetDefaultEventuallyTimeout(time.Second)
 	})
 
 	AfterEach(func() {
@@ -84,6 +85,7 @@ var _ = Describe("EndToEnd", func() {
 		var datagramReader *DatagramReader
 
 		BeforeEach(func() {
+			SetDefaultEventuallyTimeout(time.Second)
 			datagramReader = NewDatagramReader()
 			go datagramReader.Start()
 
@@ -173,6 +175,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic kafka network with 2 orgs", func() {
 		BeforeEach(func() {
+			SetDefaultEventuallyTimeout(time.Second)
 			network = nwo.New(nwo.BasicKafka(), testDir, client, StartPort(), components)
 			network.MetricsProvider = "prometheus"
 			network.GenerateConfigTree()
@@ -303,6 +306,7 @@ var _ = Describe("EndToEnd", func() {
 		)
 
 		BeforeEach(func() {
+			SetDefaultEventuallyTimeout(time.Second)
 			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			for _, peer := range network.Peers {
@@ -397,6 +401,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("single node etcdraft network with remapped orderer endpoints", func() {
 		BeforeEach(func() {
+			SetDefaultEventuallyTimeout(time.Second)
 			network = nwo.New(nwo.MinimalRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 
@@ -438,6 +443,7 @@ var _ = Describe("EndToEnd", func() {
 	Describe("basic solo network without a system channel", func() {
 		var ordererProcess ifrit.Process
 		BeforeEach(func() {
+			SetDefaultEventuallyTimeout(time.Second)
 			soloConfig := nwo.BasicSolo()
 			network = nwo.New(soloConfig, testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
@@ -478,6 +484,7 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic solo network with containers being interrupted", func() {
 		BeforeEach(func() {
+			SetDefaultEventuallyTimeout(time.Second)
 			network = nwo.New(nwo.FullSolo(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
