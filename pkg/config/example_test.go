@@ -150,7 +150,7 @@ func Example_systemChannel() {
 
 	for _, si := range signingIdentities {
 		// Sign the config update with the specified signer identity
-		configSignature, err := config.SignConfigUpdate(configUpdate, si)
+		configSignature, err := si.SignConfigUpdate(configUpdate)
 		if err != nil {
 			panic(err)
 		}
@@ -159,7 +159,7 @@ func Example_systemChannel() {
 	}
 
 	// Sign the envelope with the list of signatures
-	envelope, err := config.CreateSignedConfigUpdateEnvelope(configUpdate, peer1SigningIdentity, configSignatures...)
+	envelope, err := peer1SigningIdentity.SignConfigUpdateEnvelope(configUpdate, configSignatures...)
 	if err != nil {
 		panic(err)
 	}

@@ -9,11 +9,17 @@ package config
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"math/big"
+
+	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	mb "github.com/hyperledger/fabric-protos-go/msp"
 )
 
 // SigningIdentity is an MSP Identity that can be used to sign configuration
@@ -75,4 +81,146 @@ func toLowS(key ecdsa.PublicKey, sig ecdsaSignature) ecdsaSignature {
 	}
 
 	return sig
+}
+
+// SignConfigUpdate signs the given configuration update with a
+// specified signing identity and returns a config signature.
+func (s *SigningIdentity) SignConfigUpdate(configUpdate *cb.ConfigUpdate) (*cb.ConfigSignature, error) {
+	signatureHeader, err := s.signatureHeader()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signature header: %v", err)
+	}
+
+	header, err := proto.Marshal(signatureHeader)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling signature header: %v", err)
+	}
+
+	configSignature := &cb.ConfigSignature{
+		SignatureHeader: header,
+	}
+
+	configUpdateBytes, err := proto.Marshal(configUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling config update: %v", err)
+	}
+
+	configSignature.Signature, err = s.Sign(
+		rand.Reader,
+		concatenateBytes(configSignature.SignatureHeader, configUpdateBytes),
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign config update: %v", err)
+	}
+
+	return configSignature, nil
+}
+
+// SignConfigUpdateEnvelope creates a configuration update envelope and
+// signs it using the SigningIdentity.
+func (s *SigningIdentity) SignConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signatures ...*cb.ConfigSignature) (*cb.Envelope, error) {
+	update, err := proto.Marshal(configUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling config update: %v", err)
+	}
+
+	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: update,
+		Signatures:   signatures,
+	}
+
+	signedEnvelope, err := s.createSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, configUpdate.ChannelId, configUpdateEnvelope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signed config update envelope: %v", err)
+	}
+
+	return signedEnvelope, nil
+}
+
+// createSignedEnvelope creates a signed envelope of the desired type and signs it.
+func (s *SigningIdentity) createSignedEnvelope(txType cb.HeaderType, channelID string, envelope proto.Message) (*cb.Envelope, error) {
+	channelHeader := channelHeader(txType, msgVersion, channelID, epoch)
+
+	signatureHeader, err := s.signatureHeader()
+	if err != nil {
+		return nil, fmt.Errorf("creating signature header: %v", err)
+	}
+
+	cHeader, err := proto.Marshal(channelHeader)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling channel header: %s", err)
+	}
+
+	sHeader, err := proto.Marshal(signatureHeader)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling signature header: %s", err)
+	}
+
+	data, err := proto.Marshal(envelope)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling config update envelope: %s", err)
+	}
+
+	payload := &cb.Payload{
+		Header: &cb.Header{
+			ChannelHeader:   cHeader,
+			SignatureHeader: sHeader,
+		},
+		Data: data,
+	}
+
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling payload: %s", err)
+	}
+
+	sig, err := s.Sign(rand.Reader, payloadBytes, nil)
+	if err != nil {
+		return nil, fmt.Errorf("signing envelope's payload: %v", err)
+	}
+
+	env := &cb.Envelope{
+		Payload:   payloadBytes,
+		Signature: sig,
+	}
+
+	return env, nil
+}
+
+func (s *SigningIdentity) signatureHeader() (*cb.SignatureHeader, error) {
+	pemBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: s.Certificate.Raw,
+	})
+
+	idBytes, err := proto.Marshal(&mb.SerializedIdentity{
+		Mspid:   s.MSPID,
+		IdBytes: pemBytes,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshaling serialized identity: %v", err)
+	}
+
+	nonce, err := newNonce()
+	if err != nil {
+		return nil, err
+	}
+
+	return &cb.SignatureHeader{
+		Creator: idBytes,
+		Nonce:   nonce,
+	}, nil
+}
+
+// newNonce generates a 24-byte nonce using the crypto/rand package.
+func newNonce() ([]byte, error) {
+	nonce := make([]byte, 24)
+
+	_, err := rand.Read(nonce)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get random bytes: %v", err)
+	}
+
+	return nonce, nil
 }

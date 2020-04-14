@@ -162,11 +162,11 @@ var _ = Describe("Config", func() {
 				PrivateKey:  parsePeerPrivateKey(network, peer, "Admin"),
 				MSPID:       network.Organization(peer.Organization).MSPID,
 			}
-			signature, err := config.SignConfigUpdate(configUpdate, signingIdentity)
+			signature, err := signingIdentity.SignConfigUpdate(configUpdate)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("creating a signed config update envelope with the detached signature")
-			configUpdateEnvelope, err := config.CreateSignedConfigUpdateEnvelope(configUpdate, signingIdentity, signature)
+			configUpdateEnvelope, err := signingIdentity.SignConfigUpdateEnvelope(configUpdate, signature)
 			Expect(err).NotTo(HaveOccurred())
 			configUpdateBytes, err := proto.Marshal(configUpdateEnvelope)
 			Expect(err).NotTo(HaveOccurred())

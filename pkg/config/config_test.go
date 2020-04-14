@@ -29,10 +29,10 @@ func TestSignConfigUpdate(t *testing.T) {
 		MSPID:       "test-msp",
 	}
 
-	configSignature, err := SignConfigUpdate(&cb.ConfigUpdate{}, signingIdentity)
+	configSignature, err := signingIdentity.SignConfigUpdate(&cb.ConfigUpdate{})
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	sh, err := signatureHeader(signingIdentity)
+	sh, err := signingIdentity.signatureHeader()
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedCreator := sh.Creator
 	signatureHeader := &cb.SignatureHeader{}
@@ -425,11 +425,11 @@ func TestCreateSignedConfigUpdateEnvelope(t *testing.T) {
 	configUpdate := &cb.ConfigUpdate{
 		ChannelId: "testchannel",
 	}
-	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
+	configSignature, err := signingIdentity.SignConfigUpdate(configUpdate)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// create signed config envelope
-	signedEnv, err := CreateSignedConfigUpdateEnvelope(configUpdate, signingIdentity, configSignature)
+	signedEnv, err := signingIdentity.SignConfigUpdateEnvelope(configUpdate, configSignature)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	payload := &cb.Payload{}
@@ -466,7 +466,7 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 	configUpdate := &cb.ConfigUpdate{
 		ChannelId: "testchannel",
 	}
-	configSignature, err := SignConfigUpdate(configUpdate, signingIdentity)
+	configSignature, err := signingIdentity.SignConfigUpdate(configUpdate)
 
 	gt.Expect(err).NotTo(HaveOccurred())
 
@@ -493,7 +493,7 @@ func TestCreateSignedConfigUpdateEnvelopeFailures(t *testing.T) {
 			gt := NewGomegaWithT(t)
 
 			// create signed config envelope
-			signedEnv, err := CreateSignedConfigUpdateEnvelope(tc.configUpdate, tc.signingIdentity, tc.configSignature...)
+			signedEnv, err := tc.signingIdentity.SignConfigUpdateEnvelope(tc.configUpdate, tc.configSignature...)
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 			gt.Expect(signedEnv).To(BeNil())
 		})
