@@ -24,7 +24,7 @@ Here are a few examples::
        |
       id
 
-The default MPS implementation accepts as valid identities X.509 certificates
+The default MSP implementation accepts as valid identities X.509 certificates
 signed by the appropriate authorities. In the diagram above,
 only certificates signed by iCA11, iCA12, iCA2, iCA3, and rCA3
 will be considered valid. Certificates signed by internal nodes will be rejected.
