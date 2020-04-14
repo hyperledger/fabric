@@ -398,11 +398,7 @@ func (ks *fileBasedKeyStore) createKeyStoreIfNotExists() error {
 	if missing {
 		logger.Debugf("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
 
-		err := ks.createKeyStore()
-		if err != nil {
-			logger.Errorf("Failed creating KeyStore At [%s]: [%s]", ksPath, err.Error())
-			return nil
-		}
+		return ks.createKeyStore()
 	}
 
 	return nil
@@ -411,12 +407,16 @@ func (ks *fileBasedKeyStore) createKeyStoreIfNotExists() error {
 func (ks *fileBasedKeyStore) createKeyStore() error {
 	// Create keystore directory root if it doesn't exist yet
 	ksPath := ks.path
-	logger.Debugf("Creating KeyStore at [%s]...", ksPath)
+	logger.Debugf("Creating KeyStore at [%s]", ksPath)
 
-	os.MkdirAll(ksPath, 0755)
+	err := os.MkdirAll(ksPath, 0755)
+	if err == nil {
+		logger.Debugf("KeyStore created at [%s]", ksPath)
+	} else {
+		logger.Errorf("Failed creating KeyStore at [%s]: [%s]", ksPath, err.Error())
+	}
 
-	logger.Debugf("KeyStore created at [%s].", ksPath)
-	return nil
+	return err
 }
 
 func (ks *fileBasedKeyStore) openKeyStore() error {
@@ -424,7 +424,7 @@ func (ks *fileBasedKeyStore) openKeyStore() error {
 		return nil
 	}
 	ks.isOpen = true
-	logger.Debugf("KeyStore opened at [%s]...done", ks.path)
+	logger.Debugf("KeyStore opened at [%s]", ks.path)
 
 	return nil
 }
