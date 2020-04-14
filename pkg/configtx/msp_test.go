@@ -442,14 +442,11 @@ func TestUpdateApplicationMSP(t *testing.T) {
 	org1CertBase64, org1PKBase64, org1CRLBase64 := certPrivKeyCRLBase64(t, org1MSP)
 	org2CertBase64, org2PKBase64, org2CRLBase64 := certPrivKeyCRLBase64(t, org2MSP)
 
-	newRootCert, _ := generateCACertAndPrivateKey(t, "anotherca-org1.example.com")
+	newRootCert, newRootPrivKey := generateCACertAndPrivateKey(t, "anotherca-org1.example.com")
 	newRootCertBase64 := base64.StdEncoding.EncodeToString(pemEncodeX509Certificate(newRootCert))
 	org1MSP.RootCerts = append(org1MSP.RootCerts, newRootCert)
 
-	newIntermediateCert := &x509.Certificate{
-		KeyUsage: x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		IsCA:     true,
-	}
+	newIntermediateCert, _ := generateIntermediateCACertAndPrivateKey(t, "anotherca-org1.example.com", newRootCert, newRootPrivKey)
 	newIntermediateCertBase64 := base64.StdEncoding.EncodeToString(pemEncodeX509Certificate(newIntermediateCert))
 	org1MSP.IntermediateCerts = append(org1MSP.IntermediateCerts, newIntermediateCert)
 
@@ -881,6 +878,17 @@ func TestUpdateApplicationMSPFailure(t *testing.T) {
 			},
 			orgName:     "Org1",
 			expectedErr: "invalid intermediate cert: KeyUsage must be x509.KeyUsageCertSign. serial number: 7",
+		},
+		{
+			spec: "invalid intermediate cert -- not signed by root cert",
+			mspMod: func(msp MSP) MSP {
+				cert, _ := generateCACertAndPrivateKey(t, "org1.example.com")
+				cert.SerialNumber = big.NewInt(7)
+				msp.IntermediateCerts = []*x509.Certificate{cert}
+				return msp
+			},
+			orgName:     "Org1",
+			expectedErr: "intermediate cert not signed by any root certs of this MSP. serial number: 7",
 		},
 		{
 			spec: "tls root ca cert is not a ca",

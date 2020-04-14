@@ -670,6 +670,20 @@ func (m *MSP) validateCACerts() error {
 	if err != nil {
 		return fmt.Errorf("invalid intermediate cert: %v", err)
 	}
+	//TODO: follow the workaround that msp code use to incorporate cert.Verify()
+	for _, ic := range m.IntermediateCerts {
+		validIntermediateCert := false
+		for _, rc := range m.RootCerts {
+			err := ic.CheckSignatureFrom(rc)
+			if err == nil {
+				validIntermediateCert = true
+				break
+			}
+		}
+		if !validIntermediateCert {
+			return fmt.Errorf("intermediate cert not signed by any root certs of this MSP. serial number: %d", ic.SerialNumber)
+		}
+	}
 
 	err = validateCACerts(m.TLSRootCerts)
 	if err != nil {
