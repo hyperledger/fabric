@@ -815,6 +815,7 @@ func CheckLogspecOperations(client *http.Client, logspecURL string) {
 	resp, err = client.Do(updateReq)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+	resp.Body.Close()
 
 	resp, err = client.Get(logspecURL)
 	Expect(err).NotTo(HaveOccurred())
@@ -823,6 +824,14 @@ func CheckLogspecOperations(client *http.Client, logspecURL string) {
 	resp.Body.Close()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(string(bodyBytes)).To(MatchJSON(`{"spec":"debug"}`))
+
+	By("resetting the logspec")
+	updateReq, err = http.NewRequest(http.MethodPut, logspecURL, strings.NewReader(`{"spec":"info"}`))
+	Expect(err).NotTo(HaveOccurred())
+	resp, err = client.Do(updateReq)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+	resp.Body.Close()
 }
 
 func CheckHealthEndpoint(client *http.Client, url string) {
