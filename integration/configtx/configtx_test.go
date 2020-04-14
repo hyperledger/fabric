@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config
+package configtx
 
 import (
 	"crypto"
@@ -20,7 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
-	"github.com/hyperledger/fabric/pkg/config"
+	"github.com/hyperledger/fabric/pkg/configtx"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -76,10 +76,10 @@ var _ = Describe("Config", func() {
 		org1peer0 := network.Peer("Org1", "peer0")
 
 		By("setting up the channel")
-		channel := config.Channel{
+		channel := configtx.Channel{
 			Consortium: "SampleConsortium",
-			Application: config.Application{
-				Organizations: []config.Organization{
+			Application: configtx.Application{
+				Organizations: []configtx.Organization{
 					{
 						Name: "Org1",
 					},
@@ -89,25 +89,25 @@ var _ = Describe("Config", func() {
 				},
 				Capabilities: []string{"V1_3"},
 				ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
-				Policies: map[string]config.Policy{
-					config.ReadersPolicyKey: {
-						Type: config.ImplicitMetaPolicyType,
+				Policies: map[string]configtx.Policy{
+					configtx.ReadersPolicyKey: {
+						Type: configtx.ImplicitMetaPolicyType,
 						Rule: "ANY Readers",
 					},
-					config.WritersPolicyKey: {
-						Type: config.ImplicitMetaPolicyType,
+					configtx.WritersPolicyKey: {
+						Type: configtx.ImplicitMetaPolicyType,
 						Rule: "ANY Writers",
 					},
-					config.AdminsPolicyKey: {
-						Type: config.ImplicitMetaPolicyType,
+					configtx.AdminsPolicyKey: {
+						Type: configtx.ImplicitMetaPolicyType,
 						Rule: "MAJORITY Admins",
 					},
-					config.EndorsementPolicyKey: {
-						Type: config.ImplicitMetaPolicyType,
+					configtx.EndorsementPolicyKey: {
+						Type: configtx.ImplicitMetaPolicyType,
 						Rule: "MAJORITY Endorsement",
 					},
-					config.LifecycleEndorsementPolicyKey: {
-						Type: config.ImplicitMetaPolicyType,
+					configtx.LifecycleEndorsementPolicyKey: {
+						Type: configtx.ImplicitMetaPolicyType,
 						Rule: "MAJORITY Endorsement",
 					},
 				},
@@ -115,7 +115,7 @@ var _ = Describe("Config", func() {
 		}
 
 		channelID := "testchannel"
-		envelope, err := config.NewCreateChannelTx(channel, channelID)
+		envelope, err := configtx.NewCreateChannelTx(channel, channelID)
 		Expect(err).NotTo(HaveOccurred())
 		envBytes, err := proto.Marshal(envelope)
 		Expect(err).NotTo(HaveOccurred())
@@ -145,11 +145,11 @@ var _ = Describe("Config", func() {
 			By("getting the current channel config")
 			channelConfig := nwo.GetConfig(network, peer, orderer, "testchannel")
 
-			c := config.New(channelConfig)
+			c := configtx.New(channelConfig)
 
 			By("adding the anchor peer for " + peer.Organization)
 			host, port := peerHostPort(network, peer)
-			err = c.AddAnchorPeer(peer.Organization, config.Address{Host: host, Port: port})
+			err = c.AddAnchorPeer(peer.Organization, configtx.Address{Host: host, Port: port})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("computing the config update")
@@ -157,7 +157,7 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("creating a detached signature")
-			signingIdentity := config.SigningIdentity{
+			signingIdentity := configtx.SigningIdentity{
 				Certificate: parsePeerX509Certificate(network, peer),
 				PrivateKey:  parsePeerPrivateKey(network, peer, "Admin"),
 				MSPID:       network.Organization(peer.Organization).MSPID,

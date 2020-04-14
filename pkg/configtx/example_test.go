@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package config_test
+package configtx_test
 
 import (
 	"crypto/ecdsa"
@@ -26,7 +26,7 @@ import (
 	ob "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/tools/protolator"
-	"github.com/hyperledger/fabric/pkg/config"
+	"github.com/hyperledger/fabric/pkg/configtx"
 	. "github.com/onsi/gomega"
 )
 
@@ -83,10 +83,10 @@ fUNCdMGmr8FVF6IzTNYGmCuk/C4=
 
 func Example_systemChannel() {
 	baseConfig := fetchSystemChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	err := c.UpdateConsortiumChannelCreationPolicy("SampleConsortium",
-		config.Policy{Type: config.ImplicitMetaPolicyType, Rule: "MAJORITY Admins"})
+		configtx.Policy{Type: configtx.ImplicitMetaPolicyType, Rule: "MAJORITY Admins"})
 	if err != nil {
 		panic(err)
 	}
@@ -96,23 +96,23 @@ func Example_systemChannel() {
 		panic(err)
 	}
 
-	orgToAdd := config.Organization{
+	orgToAdd := configtx.Organization{
 		Name: "Org3",
-		Policies: map[string]config.Policy{
-			config.AdminsPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+		Policies: map[string]configtx.Policy{
+			configtx.AdminsPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "MAJORITY Admins",
 			},
-			config.EndorsementPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+			configtx.EndorsementPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "MAJORITY Endorsement",
 			},
-			config.ReadersPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+			configtx.ReadersPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "ANY Readers",
 			},
-			config.WritersPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+			configtx.WritersPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "ANY Writers",
 			},
 		},
@@ -143,7 +143,7 @@ func Example_systemChannel() {
 	peer1SigningIdentity := createSigningIdentity()
 	peer2SigningIdentity := createSigningIdentity()
 
-	signingIdentities := []config.SigningIdentity{
+	signingIdentities := []configtx.SigningIdentity{
 		peer1SigningIdentity,
 		peer2SigningIdentity,
 	}
@@ -259,7 +259,7 @@ func Example_systemChannel() {
 
 func Example_orderer() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	// Must retrieve the current orderer configuration from block and modify
 	// the desired values
@@ -276,13 +276,13 @@ func Example_orderer() {
 		panic(nil)
 	}
 
-	err = c.RemoveOrdererPolicy(config.WritersPolicyKey)
+	err = c.RemoveOrdererPolicy(configtx.WritersPolicyKey)
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.AddOrdererPolicy(config.AdminsPolicyKey, "TestPolicy", config.Policy{
-		Type: config.ImplicitMetaPolicyType,
+	err = c.AddOrdererPolicy(configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
 	if err != nil {
@@ -293,7 +293,7 @@ func Example_orderer() {
 
 func Example_application() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	acls := map[string]string{
 		"peer/Propose": "/Channel/Application/Writers",
@@ -311,8 +311,8 @@ func Example_application() {
 		panic(err)
 	}
 
-	err = c.AddApplicationPolicy(config.AdminsPolicyKey, "TestPolicy", config.Policy{
-		Type: config.ImplicitMetaPolicyType,
+	err = c.AddApplicationPolicy(configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
 	if err != nil {
@@ -322,10 +322,10 @@ func Example_application() {
 
 func Example_organization() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	// Application Organization
-	newAnchorPeer := config.Address{
+	newAnchorPeer := configtx.Address{
 		Host: "127.0.0.2",
 		Port: 7051,
 	}
@@ -336,7 +336,7 @@ func Example_organization() {
 		panic(err)
 	}
 
-	oldAnchorPeer := config.Address{
+	oldAnchorPeer := configtx.Address{
 		Host: "127.0.0.1",
 		Port: 7051,
 	}
@@ -347,32 +347,32 @@ func Example_organization() {
 		panic(err)
 	}
 
-	appOrg := config.Organization{
+	appOrg := configtx.Organization{
 		Name: "Org2",
 		MSP:  baseMSP(&testing.T{}),
-		Policies: map[string]config.Policy{
-			config.AdminsPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+		Policies: map[string]configtx.Policy{
+			configtx.AdminsPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "MAJORITY Admins",
 			},
-			config.EndorsementPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+			configtx.EndorsementPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "MAJORITY Endorsement",
 			},
-			config.LifecycleEndorsementPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+			configtx.LifecycleEndorsementPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "MAJORITY Endorsement",
 			},
-			config.ReadersPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+			configtx.ReadersPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "ANY Readers",
 			},
-			config.WritersPolicyKey: {
-				Type: config.ImplicitMetaPolicyType,
+			configtx.WritersPolicyKey: {
+				Type: configtx.ImplicitMetaPolicyType,
 				Rule: "ANY Writers",
 			},
 		},
-		AnchorPeers: []config.Address{
+		AnchorPeers: []configtx.Address{
 			{
 				Host: "127.0.0.1",
 				Port: 7051,
@@ -390,15 +390,15 @@ func Example_organization() {
 		panic(err)
 	}
 
-	err = c.AddApplicationOrgPolicy("Org1", config.AdminsPolicyKey, "TestPolicy", config.Policy{
-		Type: config.ImplicitMetaPolicyType,
+	err = c.AddApplicationOrgPolicy("Org1", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.RemoveApplicationOrgPolicy("Org1", config.WritersPolicyKey)
+	err = c.RemoveApplicationOrgPolicy("Org1", configtx.WritersPolicyKey)
 	if err != nil {
 		panic(err)
 	}
@@ -418,35 +418,35 @@ func Example_organization() {
 		panic(err)
 	}
 
-	err = c.RemoveOrdererOrgPolicy("OrdererOrg", config.WritersPolicyKey)
+	err = c.RemoveOrdererOrgPolicy("OrdererOrg", configtx.WritersPolicyKey)
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.AddOrdererOrgPolicy("OrdererOrg", config.AdminsPolicyKey, "TestPolicy", config.Policy{
-		Type: config.ImplicitMetaPolicyType,
+	err = c.AddOrdererOrgPolicy("OrdererOrg", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.AddOrdererEndpoint("OrdererOrg", config.Address{Host: "127.0.0.3", Port: 8050})
+	err = c.AddOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.3", Port: 8050})
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.RemoveOrdererEndpoint("OrdererOrg", config.Address{Host: "127.0.0.1", Port: 9050})
+	err = c.RemoveOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.1", Port: 9050})
 	if err != nil {
 		panic(err)
 	}
 }
 
 func ExampleNewCreateChannelTx() {
-	channel := config.Channel{
+	channel := configtx.Channel{
 		Consortium: "SampleConsortium",
-		Application: config.Application{
-			Organizations: []config.Organization{
+		Application: configtx.Application{
+			Organizations: []configtx.Organization{
 				{
 					Name: "Org1",
 				},
@@ -456,32 +456,32 @@ func ExampleNewCreateChannelTx() {
 			},
 			Capabilities: []string{"V1_3"},
 			ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
-			Policies: map[string]config.Policy{
-				config.ReadersPolicyKey: {
-					Type: config.ImplicitMetaPolicyType,
+			Policies: map[string]configtx.Policy{
+				configtx.ReadersPolicyKey: {
+					Type: configtx.ImplicitMetaPolicyType,
 					Rule: "ANY Readers",
 				},
-				config.WritersPolicyKey: {
-					Type: config.ImplicitMetaPolicyType,
+				configtx.WritersPolicyKey: {
+					Type: configtx.ImplicitMetaPolicyType,
 					Rule: "ANY Writers",
 				},
-				config.AdminsPolicyKey: {
-					Type: config.ImplicitMetaPolicyType,
+				configtx.AdminsPolicyKey: {
+					Type: configtx.ImplicitMetaPolicyType,
 					Rule: "MAJORITY Admins",
 				},
-				config.EndorsementPolicyKey: {
-					Type: config.ImplicitMetaPolicyType,
+				configtx.EndorsementPolicyKey: {
+					Type: configtx.ImplicitMetaPolicyType,
 					Rule: "MAJORITY Endorsement",
 				},
-				config.LifecycleEndorsementPolicyKey: {
-					Type: config.ImplicitMetaPolicyType,
+				configtx.LifecycleEndorsementPolicyKey: {
+					Type: configtx.ImplicitMetaPolicyType,
 					Rule: "MAJORITY Endorsement",
 				},
 			},
 		},
 	}
 	channelID := "testchannel"
-	envelope, err := config.NewCreateChannelTx(channel, channelID)
+	envelope, err := configtx.NewCreateChannelTx(channel, channelID)
 	if err != nil {
 		panic(err)
 	}
@@ -669,12 +669,12 @@ func ExampleNewCreateChannelTx() {
 
 func ExampleNew() {
 	baseConfig := fetchChannelConfig()
-	_ = config.New(baseConfig)
+	_ = configtx.New(baseConfig)
 }
 
 func ExampleConfigTx_AddChannelCapability() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	err := c.AddChannelCapability("V1_3")
 	if err != nil {
@@ -1015,7 +1015,7 @@ func ExampleConfigTx_AddChannelCapability() {
 
 func ExampleConfigTx_AddOrdererCapability() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	err := c.AddOrdererCapability("V1_4")
 	if err != nil {
@@ -1025,7 +1025,7 @@ func ExampleConfigTx_AddOrdererCapability() {
 
 func ExampleConfigTx_AddApplicationCapability() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	err := c.AddChannelCapability("V1_3")
 	if err != nil {
@@ -1035,7 +1035,7 @@ func ExampleConfigTx_AddApplicationCapability() {
 
 func ExampleConfigTx_RemoveChannelCapability() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	err := c.RemoveChannelCapability("V1_3")
 	if err != nil {
@@ -1045,7 +1045,7 @@ func ExampleConfigTx_RemoveChannelCapability() {
 
 func ExampleConfigTx_RemoveOrdererCapability() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	err := c.RemoveOrdererCapability("V1_4")
 	if err != nil {
@@ -1055,7 +1055,7 @@ func ExampleConfigTx_RemoveOrdererCapability() {
 
 func ExampleConfigTx_UpdateApplicationMSP() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	msp, err := c.ApplicationMSP("Org1")
 	if err != nil {
@@ -1077,7 +1077,7 @@ func ExampleConfigTx_UpdateApplicationMSP() {
 
 func ExampleConfigTx_RemoveApplicationCapability() {
 	baseConfig := fetchChannelConfig()
-	c := config.New(baseConfig)
+	c := configtx.New(baseConfig)
 
 	err := c.RemoveChannelCapability("V1_3")
 	if err != nil {
@@ -1090,93 +1090,93 @@ func fetchChannelConfig() *cb.Config {
 	return &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
 			Groups: map[string]*cb.ConfigGroup{
-				config.OrdererGroupKey: {
+				configtx.OrdererGroupKey: {
 					Version: 1,
 					Groups: map[string]*cb.ConfigGroup{
 						"OrdererOrg": {
 							Groups: map[string]*cb.ConfigGroup{},
 							Values: map[string]*cb.ConfigValue{
-								config.EndpointsKey: {
-									ModPolicy: config.AdminsPolicyKey,
+								configtx.EndpointsKey: {
+									ModPolicy: configtx.AdminsPolicyKey,
 									Value: marshalOrPanic(&cb.OrdererAddresses{
 										Addresses: []string{"127.0.0.1:7050"},
 									}),
 								},
-								config.MSPKey: {
-									ModPolicy: config.AdminsPolicyKey,
+								configtx.MSPKey: {
+									ModPolicy: configtx.AdminsPolicyKey,
 									Value: marshalOrPanic(&mb.MSPConfig{
 										Config: []byte{},
 									}),
 								},
 							},
 							Policies: map[string]*cb.ConfigPolicy{
-								config.AdminsPolicyKey: {
-									ModPolicy: config.AdminsPolicyKey,
+								configtx.AdminsPolicyKey: {
+									ModPolicy: configtx.AdminsPolicyKey,
 									Policy: &cb.Policy{
 										Type: 3,
 										Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 											Rule:      cb.ImplicitMetaPolicy_MAJORITY,
-											SubPolicy: config.AdminsPolicyKey,
+											SubPolicy: configtx.AdminsPolicyKey,
 										}),
 									},
 								},
-								config.ReadersPolicyKey: {
-									ModPolicy: config.AdminsPolicyKey,
+								configtx.ReadersPolicyKey: {
+									ModPolicy: configtx.AdminsPolicyKey,
 									Policy: &cb.Policy{
 										Type: 3,
 										Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 											Rule:      cb.ImplicitMetaPolicy_ANY,
-											SubPolicy: config.ReadersPolicyKey,
+											SubPolicy: configtx.ReadersPolicyKey,
 										}),
 									},
 								},
-								config.WritersPolicyKey: {
-									ModPolicy: config.AdminsPolicyKey,
+								configtx.WritersPolicyKey: {
+									ModPolicy: configtx.AdminsPolicyKey,
 									Policy: &cb.Policy{
 										Type: 3,
 										Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 											Rule:      cb.ImplicitMetaPolicy_ANY,
-											SubPolicy: config.WritersPolicyKey,
+											SubPolicy: configtx.WritersPolicyKey,
 										}),
 									},
 								},
 							},
-							ModPolicy: config.AdminsPolicyKey,
+							ModPolicy: configtx.AdminsPolicyKey,
 						},
 					},
 					Values: map[string]*cb.ConfigValue{
-						config.ConsensusTypeKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.ConsensusTypeKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&ob.ConsensusType{
-								Type: config.ConsensusTypeKafka,
+								Type: configtx.ConsensusTypeKafka,
 							}),
 						},
-						config.ChannelRestrictionsKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.ChannelRestrictionsKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&ob.ChannelRestrictions{
 								MaxCount: 1,
 							}),
 						},
-						config.CapabilitiesKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.CapabilitiesKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&cb.Capabilities{
 								Capabilities: map[string]*cb.Capability{
 									"V1_3": {},
 								},
 							}),
 						},
-						config.KafkaBrokersKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.KafkaBrokersKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&ob.KafkaBrokers{
 								Brokers: []string{"kafka0:9092", "kafka1:9092"},
 							}),
 						},
-						config.BatchTimeoutKey: {
+						configtx.BatchTimeoutKey: {
 							Value: marshalOrPanic(&ob.BatchTimeout{
 								Timeout: "15s",
 							}),
 						},
-						config.BatchSizeKey: {
+						configtx.BatchSizeKey: {
 							Value: marshalOrPanic(&ob.BatchSize{
 								MaxMessageCount:   100,
 								AbsoluteMaxBytes:  100,
@@ -1185,63 +1185,63 @@ func fetchChannelConfig() *cb.Config {
 						},
 					},
 					Policies: map[string]*cb.ConfigPolicy{
-						config.AdminsPolicyKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.AdminsPolicyKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Policy: &cb.Policy{
 								Type: 3,
 								Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 									Rule:      cb.ImplicitMetaPolicy_MAJORITY,
-									SubPolicy: config.AdminsPolicyKey,
+									SubPolicy: configtx.AdminsPolicyKey,
 								}),
 							},
 						},
-						config.ReadersPolicyKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.ReadersPolicyKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Policy: &cb.Policy{
 								Type: 3,
 								Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 									Rule:      cb.ImplicitMetaPolicy_ANY,
-									SubPolicy: config.ReadersPolicyKey,
+									SubPolicy: configtx.ReadersPolicyKey,
 								}),
 							},
 						},
-						config.WritersPolicyKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.WritersPolicyKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Policy: &cb.Policy{
 								Type: 3,
 								Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 									Rule:      cb.ImplicitMetaPolicy_ANY,
-									SubPolicy: config.WritersPolicyKey,
+									SubPolicy: configtx.WritersPolicyKey,
 								}),
 							},
 						},
-						config.BlockValidationPolicyKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.BlockValidationPolicyKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Policy: &cb.Policy{
 								Type: 3,
 								Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 									Rule:      cb.ImplicitMetaPolicy_ANY,
-									SubPolicy: config.WritersPolicyKey,
+									SubPolicy: configtx.WritersPolicyKey,
 								}),
 							},
 						},
 					},
 				},
-				config.ApplicationGroupKey: {
+				configtx.ApplicationGroupKey: {
 					Groups: map[string]*cb.ConfigGroup{
 						"Org1": {
 							Groups: map[string]*cb.ConfigGroup{},
 							Values: map[string]*cb.ConfigValue{
-								config.AnchorPeersKey: {
-									ModPolicy: config.AdminsPolicyKey,
+								configtx.AnchorPeersKey: {
+									ModPolicy: configtx.AdminsPolicyKey,
 									Value: marshalOrPanic(&pb.AnchorPeers{
 										AnchorPeers: []*pb.AnchorPeer{
 											{Host: "127.0.0.1", Port: 7050},
 										},
 									}),
 								},
-								config.MSPKey: {
-									ModPolicy: config.AdminsPolicyKey,
+								configtx.MSPKey: {
+									ModPolicy: configtx.AdminsPolicyKey,
 									Value: marshalOrPanic(&mb.MSPConfig{
 										Config: []byte{},
 									}),
@@ -1250,16 +1250,16 @@ func fetchChannelConfig() *cb.Config {
 						},
 					},
 					Values: map[string]*cb.ConfigValue{
-						config.ACLsKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.ACLsKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&pb.ACLs{
 								Acls: map[string]*pb.APIResource{
 									"event/block": {PolicyRef: "/Channel/Application/Readers"},
 								},
 							}),
 						},
-						config.CapabilitiesKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.CapabilitiesKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&cb.Capabilities{
 								Capabilities: map[string]*cb.Capability{
 									"V1_3": {},
@@ -1268,43 +1268,43 @@ func fetchChannelConfig() *cb.Config {
 						},
 					},
 					Policies: map[string]*cb.ConfigPolicy{
-						config.LifecycleEndorsementPolicyKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.LifecycleEndorsementPolicyKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Policy: &cb.Policy{
 								Type: 3,
 								Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 									Rule:      cb.ImplicitMetaPolicy_MAJORITY,
-									SubPolicy: config.AdminsPolicyKey,
+									SubPolicy: configtx.AdminsPolicyKey,
 								}),
 							},
 						},
-						config.AdminsPolicyKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.AdminsPolicyKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Policy: &cb.Policy{
 								Type: 3,
 								Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 									Rule:      cb.ImplicitMetaPolicy_MAJORITY,
-									SubPolicy: config.AdminsPolicyKey,
+									SubPolicy: configtx.AdminsPolicyKey,
 								}),
 							},
 						},
-						config.ReadersPolicyKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.ReadersPolicyKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Policy: &cb.Policy{
 								Type: 3,
 								Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 									Rule:      cb.ImplicitMetaPolicy_ANY,
-									SubPolicy: config.ReadersPolicyKey,
+									SubPolicy: configtx.ReadersPolicyKey,
 								}),
 							},
 						},
-						config.WritersPolicyKey: {
-							ModPolicy: config.AdminsPolicyKey,
+						configtx.WritersPolicyKey: {
+							ModPolicy: configtx.AdminsPolicyKey,
 							Policy: &cb.Policy{
 								Type: 3,
 								Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 									Rule:      cb.ImplicitMetaPolicy_ANY,
-									SubPolicy: config.WritersPolicyKey,
+									SubPolicy: configtx.WritersPolicyKey,
 								}),
 							},
 						},
@@ -1312,41 +1312,41 @@ func fetchChannelConfig() *cb.Config {
 				},
 			},
 			Values: map[string]*cb.ConfigValue{
-				config.OrdererAddressesKey: {
+				configtx.OrdererAddressesKey: {
 					Value: marshalOrPanic(&cb.OrdererAddresses{
 						Addresses: []string{"127.0.0.1:7050"},
 					}),
-					ModPolicy: config.AdminsPolicyKey,
+					ModPolicy: configtx.AdminsPolicyKey,
 				},
 			},
 			Policies: map[string]*cb.ConfigPolicy{
-				config.AdminsPolicyKey: {
-					ModPolicy: config.AdminsPolicyKey,
+				configtx.AdminsPolicyKey: {
+					ModPolicy: configtx.AdminsPolicyKey,
 					Policy: &cb.Policy{
 						Type: 3,
 						Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 							Rule:      cb.ImplicitMetaPolicy_MAJORITY,
-							SubPolicy: config.AdminsPolicyKey,
+							SubPolicy: configtx.AdminsPolicyKey,
 						}),
 					},
 				},
-				config.ReadersPolicyKey: {
-					ModPolicy: config.AdminsPolicyKey,
+				configtx.ReadersPolicyKey: {
+					ModPolicy: configtx.AdminsPolicyKey,
 					Policy: &cb.Policy{
 						Type: 3,
 						Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 							Rule:      cb.ImplicitMetaPolicy_ANY,
-							SubPolicy: config.ReadersPolicyKey,
+							SubPolicy: configtx.ReadersPolicyKey,
 						}),
 					},
 				},
-				config.WritersPolicyKey: {
-					ModPolicy: config.AdminsPolicyKey,
+				configtx.WritersPolicyKey: {
+					ModPolicy: configtx.AdminsPolicyKey,
 					Policy: &cb.Policy{
 						Type: 3,
 						Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 							Rule:      cb.ImplicitMetaPolicy_ANY,
-							SubPolicy: config.WritersPolicyKey,
+							SubPolicy: configtx.WritersPolicyKey,
 						}),
 					},
 				},
@@ -1367,13 +1367,13 @@ func marshalOrPanic(pb proto.Message) []byte {
 
 // createSigningIdentity returns a identity that can be used for signing transactions.
 // Signing identity can be retrieved from MSP configuration for each peer.
-func createSigningIdentity() config.SigningIdentity {
+func createSigningIdentity() configtx.SigningIdentity {
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to generate private key: %v", err))
 	}
 
-	return config.SigningIdentity{
+	return configtx.SigningIdentity{
 		Certificate: generateCert(),
 		PrivateKey:  privKey,
 		MSPID:       "Org1MSP",
@@ -1407,7 +1407,7 @@ func fetchSystemChannelConfig() *cb.Config {
 	return &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
 			Groups: map[string]*cb.ConfigGroup{
-				config.ConsortiumsGroupKey: {
+				configtx.ConsortiumsGroupKey: {
 					Groups: map[string]*cb.ConfigGroup{
 						"SampleConsortium": {
 							Groups: map[string]*cb.ConfigGroup{
@@ -1427,13 +1427,13 @@ func fetchSystemChannelConfig() *cb.Config {
 								},
 							},
 							Values: map[string]*cb.ConfigValue{
-								config.ChannelCreationPolicyKey: {
+								configtx.ChannelCreationPolicyKey: {
 									ModPolicy: "/Channel/Orderer/Admins",
 									Value: marshalOrPanic(&cb.Policy{
 										Type: 3,
 										Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 											Rule:      cb.ImplicitMetaPolicy_ANY,
-											SubPolicy: config.AdminsPolicyKey,
+											SubPolicy: configtx.AdminsPolicyKey,
 										}),
 									}),
 								},
@@ -1442,13 +1442,13 @@ func fetchSystemChannelConfig() *cb.Config {
 						"SampleConsortium2": {
 							Groups: map[string]*cb.ConfigGroup{},
 							Values: map[string]*cb.ConfigValue{
-								config.ChannelCreationPolicyKey: {
+								configtx.ChannelCreationPolicyKey: {
 									ModPolicy: "/Channel/Orderer/Admins",
 									Value: marshalOrPanic(&cb.Policy{
 										Type: 3,
 										Value: marshalOrPanic(&cb.ImplicitMetaPolicy{
 											Rule:      cb.ImplicitMetaPolicy_ANY,
-											SubPolicy: config.AdminsPolicyKey,
+											SubPolicy: configtx.AdminsPolicyKey,
 										}),
 									}),
 								},
@@ -1464,7 +1464,7 @@ func fetchSystemChannelConfig() *cb.Config {
 }
 
 // baseMSP creates a basic MSP struct for organization.
-func baseMSP(t *testing.T) config.MSP {
+func baseMSP(t *testing.T) configtx.MSP {
 	gt := NewGomegaWithT(t)
 
 	certBlock, _ := pem.Decode([]byte(dummyCert))
@@ -1479,45 +1479,45 @@ func baseMSP(t *testing.T) config.MSP {
 	crl, err := x509.ParseCRL(crlBlock.Bytes)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	return config.MSP{
+	return configtx.MSP{
 		Name:              "MSPID",
 		RootCerts:         []*x509.Certificate{cert},
 		IntermediateCerts: []*x509.Certificate{cert},
 		Admins:            []*x509.Certificate{cert},
 		RevocationList:    []*pkix.CertificateList{crl},
-		SigningIdentity: config.SigningIdentityInfo{
+		SigningIdentity: configtx.SigningIdentityInfo{
 			PublicSigner: cert,
-			PrivateSigner: config.KeyInfo{
+			PrivateSigner: configtx.KeyInfo{
 				KeyIdentifier: "SKI-1",
 				KeyMaterial:   privKey.(*ecdsa.PrivateKey),
 			},
 		},
-		OrganizationalUnitIdentifiers: []config.OUIdentifier{
+		OrganizationalUnitIdentifiers: []configtx.OUIdentifier{
 			{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
 		},
-		CryptoConfig: config.CryptoConfig{
+		CryptoConfig: configtx.CryptoConfig{
 			SignatureHashFamily:            "SHA3",
 			IdentityIdentifierHashFunction: "SHA256",
 		},
 		TLSRootCerts:         []*x509.Certificate{cert},
 		TLSIntermediateCerts: []*x509.Certificate{cert},
-		NodeOus: config.NodeOUs{
-			ClientOUIdentifier: config.OUIdentifier{
+		NodeOus: configtx.NodeOUs{
+			ClientOUIdentifier: configtx.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			PeerOUIdentifier: config.OUIdentifier{
+			PeerOUIdentifier: configtx.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			AdminOUIdentifier: config.OUIdentifier{
+			AdminOUIdentifier: configtx.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			OrdererOUIdentifier: config.OUIdentifier{
+			OrdererOUIdentifier: configtx.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
