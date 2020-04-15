@@ -25,22 +25,33 @@ var logger = flogging.MustGetLogger("valimpl")
 // and for actual validation of the public rwset, it encloses an internal validator (that implements interface
 // internal.InternalValidator) such as statebased validator
 type DefaultImpl struct {
-	txmgr              txmgr.TxMgr
+	txSimProvider      txSimulatorProvider
 	db                 privacyenabledstate.DB
 	internalValidator  internal.Validator
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor
 }
 
+// TODO: We pass lockbasedtxmgr to the validator so that the validator
+// can use it to get a tx simulator to execute the post-order transaction.
+// As this is a side-effect, we need to run the post-order tx execution
+// within the lockbasedtxmgr and only use validator to perform the
+// serializability check. Note that channel config tx is the only
+// post-order tx execution. When we remove the side-effect, we can remove
+// txSimulatorProvider interface -- FAB-17758
+type txSimulatorProvider interface {
+	NewTxSimulator(txid string) (ledger.TxSimulator, error)
+}
+
 // NewStatebasedValidator constructs a validator that internally manages statebased validator and in addition
 // handles the tasks that are agnostic to a particular validation scheme such as parsing the block and handling the pvt data
 func NewStatebasedValidator(
-	txmgr txmgr.TxMgr,
+	txSimProvider txSimulatorProvider,
 	db privacyenabledstate.DB,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 	hasher ledger.Hasher,
 ) validator.Validator {
 	return &DefaultImpl{
-		txmgr,
+		txSimProvider,
 		db,
 		&statebasedval.Validator{
 			DB:     db,
@@ -63,7 +74,7 @@ func (impl *DefaultImpl) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAn
 
 	logger.Debug("preprocessing ProtoBlock...")
 	if internalBlock, txsStatInfo, err = preprocessProtoBlock(
-		impl.txmgr,
+		impl.txSimProvider,
 		impl.db.ValidateKeyValue,
 		block,
 		doMVCCValidation,

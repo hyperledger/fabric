@@ -101,7 +101,7 @@ func validatePvtdata(tx *internal.Transaction, pvtdata *ledger.TxPvtData) error 
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
 // The returned 'Block' structure contains only transactions that are endorser transactions and are not already marked as invalid
-func preprocessProtoBlock(txMgr txmgr.TxMgr,
+func preprocessProtoBlock(txSimProvider txSimulatorProvider,
 	validateKVFunc func(key string, value []byte) error,
 	block *common.Block, doMVCCValidation bool,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
@@ -153,7 +153,7 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 				continue
 			}
 		} else {
-			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txMgr, !doMVCCValidation, customTxProcessors)
+			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txSimProvider, !doMVCCValidation, customTxProcessors)
 			if _, ok := err.(*ledger.InvalidTxError); ok {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
@@ -192,7 +192,7 @@ func processNonEndorserTx(
 	txEnv *common.Envelope,
 	txid string,
 	txType common.HeaderType,
-	txmgr txmgr.TxMgr,
+	txSimProvider txSimulatorProvider,
 	synchingState bool,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 ) (*rwset.TxReadWriteSet, error) {
@@ -206,7 +206,7 @@ func processNonEndorserTx(
 	var err error
 	var sim ledger.TxSimulator
 	var simRes *ledger.TxSimulationResults
-	if sim, err = txmgr.NewTxSimulator(txid); err != nil {
+	if sim, err = txSimProvider.NewTxSimulator(txid); err != nil {
 		return nil, err
 	}
 	defer sim.Done()

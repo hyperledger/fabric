@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	mocktxmgr "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl/mock"
 	mocklgr "github.com/hyperledger/fabric/core/ledger/mock"
@@ -331,8 +330,8 @@ func TestContainsPostOrderWrites(t *testing.T) {
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
 	mockSimulator := &mocklgr.TxSimulator{}
-	mockTxmgr := &mocktxmgr.TxMgr{}
-	mockTxmgr.NewTxSimulatorReturns(mockSimulator, nil)
+	mockTxSimProvider := &mock.TxSimulatorProvider{}
+	mockTxSimProvider.NewTxSimulatorReturns(mockSimulator, nil)
 
 	fakeTxProcessor := &mock.Processor{}
 	customTxProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
@@ -341,7 +340,7 @@ func TestContainsPostOrderWrites(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	v := NewStatebasedValidator(mockTxmgr, testDB, customTxProcessors, cryptoProvider)
+	v := NewStatebasedValidator(mockTxSimProvider, testDB, customTxProcessors, cryptoProvider)
 	blocks := testutil.ConstructTestBlocks(t, 2)
 
 	// block with config tx that produces post order writes
@@ -572,10 +571,7 @@ type processor interface {
 	ledger.CustomTxProcessor
 }
 
-//go:generate counterfeiter -o mock/txmgr.go --fake-name TxMgr . txMgr
-type txMgr interface {
-	txmgr.TxMgr
-}
+//go:generate counterfeiter -o mock/tx_simulator_provider.go --fake-name TxSimulatorProvider . txSimulatorProvider
 
 // Test for txType != common.HeaderType_ENDORSER_TRANSACTION
 func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
@@ -604,7 +600,7 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	}
 	txsim_ := new(mock.TxSimulator)
 	txsim_.GetTxSimulationResultsReturns(txsimres, nil)
-	txmgr_ := new(mock.TxMgr)
+	txmgr_ := new(mock.TxSimulatorProvider)
 	txmgr_.NewTxSimulatorReturns(txsim_, nil)
 
 	// Prepare param2: validateKVFunc
