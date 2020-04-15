@@ -8,14 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	"bytes"
-	"crypto/rand"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -208,98 +204,6 @@ func NewCreateChannelTx(channelConfig Channel, channelID string) (*cb.Envelope, 
 	}
 
 	return env, nil
-}
-
-// SignConfigUpdate signs the given configuration update with a
-// specified signing identity and returns a config signature.
-func SignConfigUpdate(configUpdate *cb.ConfigUpdate, signingIdentity SigningIdentity) (*cb.ConfigSignature, error) {
-	signatureHeader, err := signatureHeader(signingIdentity)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create signature header: %v", err)
-	}
-
-	header, err := proto.Marshal(signatureHeader)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling signature header: %v", err)
-	}
-
-	configSignature := &cb.ConfigSignature{
-		SignatureHeader: header,
-	}
-
-	configUpdateBytes, err := proto.Marshal(configUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling config update: %v", err)
-	}
-
-	configSignature.Signature, err = signingIdentity.Sign(
-		rand.Reader,
-		concatenateBytes(configSignature.SignatureHeader, configUpdateBytes),
-		nil,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign config update: %v", err)
-	}
-
-	return configSignature, nil
-}
-
-// CreateSignedConfigUpdateEnvelope creates a signed configuration update envelope.
-func CreateSignedConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate, signingIdentity SigningIdentity,
-	signatures ...*cb.ConfigSignature) (*cb.Envelope, error) {
-	update, err := proto.Marshal(configUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling config update: %v", err)
-	}
-
-	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: update,
-		Signatures:   signatures,
-	}
-
-	signedEnvelope, err := createSignedEnvelopeWithTLSBinding(cb.HeaderType_CONFIG_UPDATE, configUpdate.ChannelId,
-		signingIdentity, configUpdateEnvelope)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create signed config update envelope: %v", err)
-	}
-
-	return signedEnvelope, nil
-}
-
-func signatureHeader(signingIdentity SigningIdentity) (*cb.SignatureHeader, error) {
-	buffer := bytes.NewBuffer(nil)
-
-	err := pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: signingIdentity.Certificate.Raw})
-	if err != nil {
-		return nil, fmt.Errorf("pem encode: %v", err)
-	}
-
-	idBytes, err := proto.Marshal(&mb.SerializedIdentity{Mspid: signingIdentity.MSPID, IdBytes: buffer.Bytes()})
-	if err != nil {
-		return nil, fmt.Errorf("marshaling serialized identity: %v", err)
-	}
-
-	nonce, err := newNonce()
-	if err != nil {
-		return nil, err
-	}
-
-	return &cb.SignatureHeader{
-		Creator: idBytes,
-		Nonce:   nonce,
-	}, nil
-}
-
-// newNonce generates a 24-byte nonce using the crypto/rand package.
-func newNonce() ([]byte, error) {
-	nonce := make([]byte, 24)
-
-	_, err := rand.Read(nonce)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get random bytes: %v", err)
-	}
-
-	return nonce, nil
 }
 
 // newChannelGroup defines the root of the channel configuration.
@@ -538,7 +442,7 @@ func newEnvelope(
 	return env, nil
 }
 
-// makeChannelHeader creates a ChannelHeader.
+// channelHeader creates a ChannelHeader.
 func channelHeader(headerType cb.HeaderType, version int32, channelID string, epoch uint64) *cb.ChannelHeader {
 	return &cb.ChannelHeader{
 		Type:    int32(headerType),
@@ -578,70 +482,6 @@ func concatenateBytes(data ...[]byte) []byte {
 	}
 
 	return res
-}
-
-// createSignedEnvelopeWithTLSBinding creates a signed envelope of the desired
-// type, with marshaled dataMsg and signs it. It also includes a TLS cert hash
-// into the channel header
-func createSignedEnvelopeWithTLSBinding(
-	txType cb.HeaderType,
-	channelID string,
-	signingIdentity SigningIdentity,
-	envelope proto.Message,
-) (*cb.Envelope, error) {
-	channelHeader := &cb.ChannelHeader{
-		Type: int32(txType),
-		Timestamp: &timestamp.Timestamp{
-			Seconds: time.Now().Unix(),
-			Nanos:   0,
-		},
-		ChannelId: channelID,
-	}
-
-	signatureHeader, err := signatureHeader(signingIdentity)
-	if err != nil {
-		return nil, fmt.Errorf("creating signature header: %v", err)
-	}
-
-	cHeader, err := proto.Marshal(channelHeader)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling channel header: %s", err)
-	}
-
-	sHeader, err := proto.Marshal(signatureHeader)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling signature header: %s", err)
-	}
-
-	data, err := proto.Marshal(envelope)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling config update envelope: %s", err)
-	}
-
-	payload := &cb.Payload{
-		Header: &cb.Header{
-			ChannelHeader:   cHeader,
-			SignatureHeader: sHeader,
-		},
-		Data: data,
-	}
-
-	payloadBytes, err := proto.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling payload: %s", err)
-	}
-
-	sig, err := signingIdentity.Sign(rand.Reader, payloadBytes, nil)
-	if err != nil {
-		return nil, fmt.Errorf("signing envelope's payload: %v", err)
-	}
-
-	env := &cb.Envelope{
-		Payload:   payloadBytes,
-		Signature: sig,
-	}
-
-	return env, nil
 }
 
 // unmarshalConfigValueAtKey unmarshals the value for the specified key in a config group
