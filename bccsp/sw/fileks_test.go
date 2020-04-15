@@ -130,3 +130,29 @@ func TestReInitKeyStore(t *testing.T) {
 	err = fbKs.Init(nil, ksPath, false)
 	assert.EqualError(t, err, "KeyStore already initilized.")
 }
+
+func TestCreateKeyStoreFailed(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "bccspks")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	validpath := filepath.Join(tempDir, "keystore")
+
+	cs := []struct {
+		valid bool
+		path  string
+	}{
+		{false, "/invalid/keystore"},
+		{true, validpath},
+	}
+
+	for i, c := range cs {
+		cid := fmt.Sprintf("case %d", i)
+
+		_, err := NewFileBasedKeyStore(nil, c.path, false)
+		if c.valid {
+			assert.NoError(t, err, cid)
+		} else {
+			assert.Error(t, err, cid)
+		}
+	}
+}
