@@ -62,7 +62,7 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	testEnv.init(t, "testLedger", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+	populateCollConfigForTest(t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll3"},
@@ -844,7 +844,7 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	testEnv.init(t, "testtxsimulatorunsupportedtx", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+	populateCollConfigForTest(t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -1090,7 +1090,7 @@ func testValidationAndCommitOfOldPvtData(t *testing.T, env testEnv) {
 	env.init(t, ledgerid, btlPolicy)
 	defer env.cleanup()
 	txMgr := env.getTxMgr()
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+	populateCollConfigForTest(t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -1184,7 +1184,7 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+	populateCollConfigForTest(t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -1230,7 +1230,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+	populateCollConfigForTest(t, txMgr,
 		[]collConfigkey{
 			{"ns", "coll"},
 		},
@@ -1312,7 +1312,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	assert.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey2", nil))
 }
 
-func testPvtKeyExist(t *testing.T, txMgr txmgr.TxMgr, ns, coll, key string) bool {
+func testPvtKeyExist(t *testing.T, txMgr *LockBasedTxMgr, ns, coll, key string) bool {
 	simulator, _ := txMgr.NewTxSimulator("tx-tmp")
 	defer simulator.Done()
 	_, err := simulator.GetPrivateData(ns, coll, key)
@@ -1320,7 +1320,7 @@ func testPvtKeyExist(t *testing.T, txMgr txmgr.TxMgr, ns, coll, key string) bool
 	return !ok
 }
 
-func testPvtValueEqual(t *testing.T, txMgr txmgr.TxMgr, ns, coll, key string, value []byte) bool {
+func testPvtValueEqual(t *testing.T, txMgr *LockBasedTxMgr, ns, coll, key string, value []byte) bool {
 	simulator, _ := txMgr.NewTxSimulator("tx-tmp")
 	defer simulator.Done()
 	pvtValue, err := simulator.GetPrivateData(ns, coll, key)
@@ -1391,7 +1391,7 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	defer testEnv.cleanup()
 
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr), []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
 
@@ -1494,7 +1494,7 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 	txMgr := env.getTxMgr()
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
 
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr), []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
 	// Simulate and commit tx1 - set val and metadata for key1 and key2. Set only metadata for key3
 	s1, _ := txMgr.NewTxSimulator("test_tx1")
@@ -1539,7 +1539,7 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 	qe.Done()
 }
 
-func prepareNextBlockForTest(t *testing.T, txMgr txmgr.TxMgr, bg *testutil.BlockGenerator,
+func prepareNextBlockForTest(t *testing.T, txMgr *LockBasedTxMgr, bg *testutil.BlockGenerator,
 	txid string, pubKVs map[string]string, pvtKVs map[string]string, isMissing bool) *ledger.BlockAndPvtData {
 	simulator, _ := txMgr.NewTxSimulator(txid)
 	//simulating transaction

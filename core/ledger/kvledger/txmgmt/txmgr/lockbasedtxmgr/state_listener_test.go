@@ -35,7 +35,7 @@ func TestStateListener(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, testLedgerid, nil)
 	defer testEnv.cleanup()
-	txmgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txmgr := testEnv.getTxMgr()
 	txmgr.stateListeners = []ledger.StateListener{ml1, ml2, ml3}
 
 	// Mimic commit of block 1 with updates in namespaces ns1, ns2, and ns3
@@ -137,7 +137,7 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "testLedger", nil)
 	defer testEnv.cleanup()
-	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txMgr := testEnv.getTxMgr()
 
 	namespace := "ns"
 	populateCollConfigForTest(t, txMgr,

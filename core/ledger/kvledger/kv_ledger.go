@@ -39,7 +39,7 @@ var logger = flogging.MustGetLogger("kvledger")
 type kvLedger struct {
 	ledgerID               string
 	blockStore             *ledgerstorage.Store
-	txtmgmt                txmgr.TxMgr
+	txtmgmt                *lockbasedtxmgr.LockBasedTxMgr
 	historyDB              *history.DB
 	configHistoryRetriever ledger.ConfigHistoryRetriever
 	blockAPIsRWLock        *sync.RWMutex
@@ -135,7 +135,7 @@ func (l *kvLedger) initTxMgr(
 	}
 	l.txtmgmt = txmgr
 	// This is a workaround for populating lifecycle cache.
-	// See comments on this function for deatils
+	// See comments on this function for details
 	qe, err := txmgr.NewQueryExecutorNoCollChecks()
 	if err != nil {
 		return err

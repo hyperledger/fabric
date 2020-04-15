@@ -19,24 +19,10 @@ package txmgr
 import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/internal/version"
 )
 
-// TxMgr - an interface that a transaction manager should implement
-type TxMgr interface {
-	NewQueryExecutor(txid string) (ledger.QueryExecutor, error)
-	NewTxSimulator(txid string) (ledger.TxSimulator, error)
-	ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) ([]*TxStatInfo, []byte, error)
-	RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error
-	GetLastSavepoint() (*version.Height, error)
-	ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error)
-	CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error
-	Commit() error
-	Rollback()
-	Shutdown()
-	Name() string
-}
+// TODO: Need to move these struct out of txmgr package once we decide on
+// a suitable location to place them -- FAB-17757
 
 // TxStatInfo encapsulates information about a transaction
 type TxStatInfo struct {

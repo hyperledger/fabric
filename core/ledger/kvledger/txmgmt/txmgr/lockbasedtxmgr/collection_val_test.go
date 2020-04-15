@@ -20,7 +20,7 @@ func TestCollectionValidation(t *testing.T) {
 	testEnv.init(t, "testLedger", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+	populateCollConfigForTest(t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -57,7 +57,7 @@ func TestPvtGetNoCollection(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-get-no-collection", nil)
 	defer testEnv.cleanup()
-	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txMgr := testEnv.getTxMgr()
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 	queryHelper := newQueryHelper(txMgr, nil, true, cryptoProvider)
@@ -71,7 +71,7 @@ func TestPvtPutNoCollection(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-put-no-collection", nil)
 	defer testEnv.cleanup()
-	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txMgr := testEnv.getTxMgr()
 	txsim, err := txMgr.NewTxSimulator("txid")
 	assert.NoError(t, err)
 	err = txsim.SetPrivateDataMetadata("cc", "coll", "key", map[string][]byte{})
@@ -83,7 +83,7 @@ func TestNoCollectionValidationCheck(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-no-collection-validation-check", nil)
 	defer testEnv.cleanup()
-	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txMgr := testEnv.getTxMgr()
 	qe, err := txMgr.NewQueryExecutorNoCollChecks()
 	assert.NoError(t, err)
 	valueHash, err := qe.GetPrivateDataHash("cc", "coll", "key")

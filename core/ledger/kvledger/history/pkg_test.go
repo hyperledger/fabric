@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +29,7 @@ type levelDBLockBasedHistoryEnv struct {
 	testBlockStorageEnv   *testBlockStoreEnv
 	testDBEnv             privacyenabledstate.TestEnv
 	testBookkeepingEnv    *bookkeeping.TestEnv
-	txmgr                 txmgr.TxMgr
+	txmgr                 *lockbasedtxmgr.LockBasedTxMgr
 	testHistoryDBProvider *DBProvider
 	testHistoryDB         *DB
 	testHistoryDBPath     string
