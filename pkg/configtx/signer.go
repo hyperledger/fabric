@@ -130,7 +130,7 @@ func (s *SigningIdentity) SignConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate
 		Signatures:   signatures,
 	}
 
-	signedEnvelope, err := s.createSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, configUpdate.ChannelId, configUpdateEnvelope)
+	signedEnvelope, err := s.newSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, configUpdate.ChannelId, configUpdateEnvelope)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signed config update envelope: %v", err)
 	}
@@ -138,41 +138,33 @@ func (s *SigningIdentity) SignConfigUpdateEnvelope(configUpdate *cb.ConfigUpdate
 	return signedEnvelope, nil
 }
 
-// createSignedEnvelope creates a signed envelope of the desired type and signs it.
-func (s *SigningIdentity) createSignedEnvelope(txType cb.HeaderType, channelID string, envelope proto.Message) (*cb.Envelope, error) {
-	channelHeader := channelHeader(txType, msgVersion, channelID, epoch)
+// newSignedEnvelope creates a signed envelope of the desired type and signs it.
+func (s *SigningIdentity) newSignedEnvelope(txType cb.HeaderType, channelID string, dataMsg proto.Message) (*cb.Envelope, error) {
+	env, err := newEnvelope(txType, channelID, dataMsg)
+	if err != nil {
+		return nil, fmt.Errorf("creating envelope: %v", err)
+	}
 
 	signatureHeader, err := s.signatureHeader()
 	if err != nil {
 		return nil, fmt.Errorf("creating signature header: %v", err)
 	}
 
-	cHeader, err := proto.Marshal(channelHeader)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling channel header: %s", err)
-	}
-
 	sHeader, err := proto.Marshal(signatureHeader)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling signature header: %s", err)
+		return nil, fmt.Errorf("marshaling signature header: %v", err)
 	}
 
-	data, err := proto.Marshal(envelope)
+	payload := &cb.Payload{}
+	err = proto.Unmarshal(env.Payload, payload)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling config update envelope: %s", err)
+		return nil, fmt.Errorf("unmarshaling envelope payload: %v", err)
 	}
-
-	payload := &cb.Payload{
-		Header: &cb.Header{
-			ChannelHeader:   cHeader,
-			SignatureHeader: sHeader,
-		},
-		Data: data,
-	}
+	payload.Header.SignatureHeader = sHeader
 
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling payload: %s", err)
+		return nil, fmt.Errorf("marshaling payload: %v", err)
 	}
 
 	sig, err := s.Sign(rand.Reader, payloadBytes, nil)
@@ -180,10 +172,8 @@ func (s *SigningIdentity) createSignedEnvelope(txType cb.HeaderType, channelID s
 		return nil, fmt.Errorf("signing envelope's payload: %v", err)
 	}
 
-	env := &cb.Envelope{
-		Payload:   payloadBytes,
-		Signature: sig,
-	}
+	env.Payload = payloadBytes
+	env.Signature = sig
 
 	return env, nil
 }
