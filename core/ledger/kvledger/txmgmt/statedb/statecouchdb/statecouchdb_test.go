@@ -17,43 +17,139 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// couchDB backed versioned DB test environment.
-var testEnv = &testVDBEnv{}
+// testVDBEnv provides a couch db backed versioned db for testing
+type testVDBEnv struct {
+	t             *testing.T
+	DBProvider    statedb.VersionedDBProvider
+	config        *ledger.CouchDBConfig
+	cache         *cache
+	sysNamespaces []string
+	couchDBEnv    *testCouchDBEnv
+}
+
+func (env *testVDBEnv) init(t *testing.T, sysNamespaces []string) {
+	t.Logf("Initializing TestVDBEnv")
+
+	if env.couchDBEnv == nil {
+		couchDBEnv := &testCouchDBEnv{}
+		couchDBEnv.startCouchDB(t)
+		env.couchDBEnv = couchDBEnv
+	}
+
+	redoPath, err := ioutil.TempDir("", "cvdbenv")
+	if err != nil {
+		t.Fatalf("Failed to create redo log directory: %s", err)
+	}
+	config := &ledger.CouchDBConfig{
+		Address:             env.couchDBEnv.couchAddress,
+		Username:            "",
+		Password:            "",
+		InternalQueryLimit:  1000,
+		MaxBatchUpdateSize:  1000,
+		MaxRetries:          3,
+		MaxRetriesOnStartup: 20,
+		RequestTimeout:      35 * time.Second,
+		RedoLogPath:         redoPath,
+		UserCacheSizeMBs:    8,
+	}
+
+	dbProvider, err := NewVersionedDBProvider(config, &disabled.Provider{}, sysNamespaces)
+	if err != nil {
+		t.Fatalf("Error creating CouchDB Provider: %s", err)
+	}
+
+	env.t = t
+	env.config = config
+	env.DBProvider = dbProvider
+	env.config = config
+	env.cache = dbProvider.cache
+	env.sysNamespaces = sysNamespaces
+}
+
+func (env *testVDBEnv) closeAndReopen() {
+	env.DBProvider.Close()
+	dbProvider, _ := NewVersionedDBProvider(env.config, &disabled.Provider{}, env.sysNamespaces)
+	env.DBProvider = dbProvider
+	env.cache = dbProvider.cache
+}
+
+// Cleanup drops the test couch databases and closes the db provider
+func (env *testVDBEnv) cleanup() {
+	env.t.Logf("Cleaningup TestVDBEnv")
+	if env.DBProvider != nil {
+		env.DBProvider.Close()
+	}
+	env.couchDBEnv.cleanup(env.config)
+	os.RemoveAll(env.config.RedoLogPath)
+}
+
+// testVDBEnv provides a couch db for testing
+type testCouchDBEnv struct {
+	t              *testing.T
+	couchAddress   string
+	cleanupCouchDB func()
+}
+
+// startCouchDB starts external couchDB resources for testCouchDBEnv.
+func (env *testCouchDBEnv) startCouchDB(t *testing.T) {
+	if env.couchAddress != "" {
+		return
+	}
+	env.t = t
+	env.couchAddress, env.cleanupCouchDB = StartCouchDB(t, nil)
+}
+
+// stopCouchDB stops external couchDB resources.
+func (env *testCouchDBEnv) stopCouchDB() {
+	if env.couchAddress != "" {
+		env.cleanupCouchDB()
+	}
+}
+
+func (env *testCouchDBEnv) cleanup(config *ledger.CouchDBConfig) {
+	DeleteApplicationDBs(env.t, config)
+}
+
+// we create two CouchDB instances/containers---one is used to test the
+// functionality of the versionedDB and another for testing the CouchDB
+// util functions.
+var vdbEnv = &testVDBEnv{}
+var couchDBEnv = &testCouchDBEnv{}
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("statecouchdb=debug")
 
 	rc := m.Run()
-	testEnv.stopExternalResource()
+	if vdbEnv.couchDBEnv != nil {
+		vdbEnv.couchDBEnv.stopCouchDB()
+	}
+	couchDBEnv.stopCouchDB()
 	os.Exit(rc)
 }
 
 func TestBasicRW(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	defer env.cleanup()
-	commontests.TestBasicRW(t, env.DBProvider)
-
+	commontests.TestBasicRW(t, vdbEnv.DBProvider)
 }
 
 // TestGetStateFromCache checks cache hits, cache misses, and cache
 // updates during GetState call.
 func TestGetStateFromCache(t *testing.T) {
-	env := testEnv
-	env.init(t, []string{"lscc", "_lifecycle"})
-	defer env.cleanup()
+	vdbEnv.init(t, []string{"lscc", "_lifecycle"})
+	defer vdbEnv.cleanup()
 
 	chainID := "testgetstatefromcache"
-	db, err := env.DBProvider.GetDBHandle(chainID)
+	db, err := vdbEnv.DBProvider.GetDBHandle(chainID)
 	require.NoError(t, err)
 
 	// scenario 1: get state would receives a
@@ -64,7 +160,7 @@ func TestGetStateFromCache(t *testing.T) {
 	vv, err := db.GetState("ns", "key1")
 	require.NoError(t, err)
 	require.Nil(t, vv)
-	testDoesNotExistInCache(t, env.cache, chainID, "ns", "key1")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns", "key1")
 
 	// scenario 2: get state would receive a cache hit.
 	// directly store an entry in the cache
@@ -74,7 +170,7 @@ func TestGetStateFromCache(t *testing.T) {
 		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev1"),
 	}
-	require.NoError(t, env.cache.putState(chainID, "ns", "key1", cacheValue))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns", "key1", cacheValue))
 
 	vv, err = db.GetState("ns", "key1")
 	expectedVV, err := constructVersionedValue(cacheValue)
@@ -95,7 +191,7 @@ func TestGetStateFromCache(t *testing.T) {
 	db.ApplyUpdates(batch, savePoint)
 	// Note that the ApplyUpdates() updates only the existing entry in the cache. Currently, the
 	// cache has only ns, key1 but we are storing lscc, key1. Hence, no changes would happen in the cache.
-	testDoesNotExistInCache(t, env.cache, chainID, "lscc", "key1")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "lscc", "key1")
 
 	// calling GetState() would update the cache
 	vv, err = db.GetState("lscc", "key1")
@@ -105,18 +201,17 @@ func TestGetStateFromCache(t *testing.T) {
 	// cache should have been updated with lscc, key1
 	nsdb, err := db.(*VersionedDB).getNamespaceDBHandle("lscc")
 	require.NoError(t, err)
-	testExistInCache(t, nsdb, env.cache, chainID, "lscc", "key1", vv2)
+	testExistInCache(t, nsdb, vdbEnv.cache, chainID, "lscc", "key1", vv2)
 }
 
 // TestGetVersionFromCache checks cache hits, cache misses, and
 // updates during GetVersion call.
 func TestGetVersionFromCache(t *testing.T) {
-	env := testEnv
-	env.init(t, []string{"lscc", "_lifecycle"})
-	defer env.cleanup()
+	vdbEnv.init(t, []string{"lscc", "_lifecycle"})
+	defer vdbEnv.cleanup()
 
 	chainID := "testgetstatefromcache"
-	db, err := env.DBProvider.GetDBHandle(chainID)
+	db, err := vdbEnv.DBProvider.GetDBHandle(chainID)
 	require.NoError(t, err)
 
 	// scenario 1: get version would receives a
@@ -127,7 +222,7 @@ func TestGetVersionFromCache(t *testing.T) {
 	ver, err := db.GetVersion("ns", "key1")
 	require.Nil(t, err)
 	require.Nil(t, ver)
-	testDoesNotExistInCache(t, env.cache, chainID, "ns", "key1")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns", "key1")
 
 	// scenario 2: get version would receive a cache hit.
 	// directly store an entry in the cache
@@ -137,7 +232,7 @@ func TestGetVersionFromCache(t *testing.T) {
 		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev1"),
 	}
-	require.NoError(t, env.cache.putState(chainID, "ns", "key1", cacheValue))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns", "key1", cacheValue))
 
 	ver, err = db.GetVersion("ns", "key1")
 	expectedVer, _, err := version.NewHeightFromBytes(cacheValue.Version)
@@ -158,7 +253,7 @@ func TestGetVersionFromCache(t *testing.T) {
 	db.ApplyUpdates(batch, savePoint)
 	// Note that the ApplyUpdates() updates only the existing entry in the cache. Currently, the
 	// cache has only ns, key1 but we are storing lscc, key1. Hence, no changes would happen in the cache.
-	testDoesNotExistInCache(t, env.cache, chainID, "lscc", "key1")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "lscc", "key1")
 
 	// calling GetVersion() would update the cache
 	ver, err = db.GetVersion("lscc", "key1")
@@ -168,18 +263,17 @@ func TestGetVersionFromCache(t *testing.T) {
 	// cache should have been updated with lscc, key1
 	nsdb, err := db.(*VersionedDB).getNamespaceDBHandle("lscc")
 	require.NoError(t, err)
-	testExistInCache(t, nsdb, env.cache, chainID, "lscc", "key1", vv2)
+	testExistInCache(t, nsdb, vdbEnv.cache, chainID, "lscc", "key1", vv2)
 }
 
 // TestGetMultipleStatesFromCache checks cache hits, cache misses,
 // and updates during GetStateMultipleKeys call.
 func TestGetMultipleStatesFromCache(t *testing.T) {
-	env := testEnv
-	env.init(t, []string{"lscc", "_lifecycle"})
-	defer env.cleanup()
+	vdbEnv.init(t, []string{"lscc", "_lifecycle"})
+	defer vdbEnv.cleanup()
 
 	chainID := "testgetmultiplestatesfromcache"
-	db, err := env.DBProvider.GetDBHandle(chainID)
+	db, err := vdbEnv.DBProvider.GetDBHandle(chainID)
 	require.NoError(t, err)
 
 	// scenario: given 5 keys, get multiple states find
@@ -195,14 +289,14 @@ func TestGetMultipleStatesFromCache(t *testing.T) {
 		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev1"),
 	}
-	require.NoError(t, env.cache.putState(chainID, "ns", "key1", cacheValue1))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns", "key1", cacheValue1))
 	cacheValue2 := &CacheValue{
 		Value:          []byte("value2"),
 		Metadata:       []byte("meta2"),
 		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev2"),
 	}
-	require.NoError(t, env.cache.putState(chainID, "ns", "key2", cacheValue2))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns", "key2", cacheValue2))
 
 	// key3 and key4 exist only in the db
 	batch := statedb.NewUpdateBatch()
@@ -213,8 +307,8 @@ func TestGetMultipleStatesFromCache(t *testing.T) {
 	savePoint := version.NewHeight(1, 2)
 	db.ApplyUpdates(batch, savePoint)
 
-	testDoesNotExistInCache(t, env.cache, chainID, "ns", "key3")
-	testDoesNotExistInCache(t, env.cache, chainID, "ns", "key4")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns", "key3")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns", "key4")
 
 	// key5 does not exist at all while key3 and key4 does not exist in the cache
 	vvalues, err := db.GetStateMultipleKeys("ns", []string{"key1", "key2", "key3", "key4", "key5"})
@@ -228,19 +322,18 @@ func TestGetMultipleStatesFromCache(t *testing.T) {
 	// cache should have been updated with key3 and key4
 	nsdb, err := db.(*VersionedDB).getNamespaceDBHandle("ns")
 	require.NoError(t, err)
-	testExistInCache(t, nsdb, env.cache, chainID, "ns", "key3", vv3)
-	testExistInCache(t, nsdb, env.cache, chainID, "ns", "key4", vv4)
+	testExistInCache(t, nsdb, vdbEnv.cache, chainID, "ns", "key3", vv3)
+	testExistInCache(t, nsdb, vdbEnv.cache, chainID, "ns", "key4", vv4)
 }
 
 // TestCacheUpdatesAfterCommit checks whether the cache is updated
 // after a commit of a update batch.
 func TestCacheUpdatesAfterCommit(t *testing.T) {
-	env := testEnv
-	env.init(t, []string{"lscc", "_lifecycle"})
-	defer env.cleanup()
+	vdbEnv.init(t, []string{"lscc", "_lifecycle"})
+	defer vdbEnv.cleanup()
 
 	chainID := "testcacheupdatesaftercommit"
-	db, err := env.DBProvider.GetDBHandle(chainID)
+	db, err := vdbEnv.DBProvider.GetDBHandle(chainID)
 	require.NoError(t, err)
 
 	// scenario: cache has 4 keys while the commit operation
@@ -264,10 +357,10 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 	db.ApplyUpdates(batch, savePoint)
 
 	// key1, key2 in ns1 and ns2 would not be in cache
-	testDoesNotExistInCache(t, env.cache, chainID, "ns1", "key1")
-	testDoesNotExistInCache(t, env.cache, chainID, "ns1", "key2")
-	testDoesNotExistInCache(t, env.cache, chainID, "ns2", "key1")
-	testDoesNotExistInCache(t, env.cache, chainID, "ns2", "key2")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns1", "key1")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns1", "key2")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns2", "key1")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns2", "key2")
 
 	// add key1 and key2 from ns1 to the cache
 	_, err = db.GetState("ns1", "key1")
@@ -280,11 +373,11 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 	_, err = db.GetState("ns2", "key2")
 	require.NoError(t, err)
 
-	v, err := env.cache.getState(chainID, "ns1", "key1")
+	v, err := vdbEnv.cache.getState(chainID, "ns1", "key1")
 	require.NoError(t, err)
 	ns1key1rev := string(v.AdditionalInfo)
 
-	v, err = env.cache.getState(chainID, "ns1", "key2")
+	v, err = vdbEnv.cache.getState(chainID, "ns1", "key2")
 	require.NoError(t, err)
 	ns1key2rev := string(v.AdditionalInfo)
 
@@ -305,123 +398,111 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 	db.ApplyUpdates(batch, savePoint)
 
 	// cache should have only the update key1 and key2 in ns1
-	cacheValue, err := env.cache.getState(chainID, "ns1", "key1")
+	cacheValue, err := vdbEnv.cache.getState(chainID, "ns1", "key1")
 	require.NoError(t, err)
 	vv, err := constructVersionedValue(cacheValue)
 	require.NoError(t, err)
 	require.Equal(t, vv1Update, vv)
 	require.NotEqual(t, ns1key1rev, string(cacheValue.AdditionalInfo))
 
-	cacheValue, err = env.cache.getState(chainID, "ns1", "key2")
+	cacheValue, err = vdbEnv.cache.getState(chainID, "ns1", "key2")
 	require.NoError(t, err)
 	vv, err = constructVersionedValue(cacheValue)
 	require.NoError(t, err)
 	require.Equal(t, vv2Update, vv)
 	require.NotEqual(t, ns1key2rev, string(cacheValue.AdditionalInfo))
 
-	testDoesNotExistInCache(t, env.cache, chainID, "ns2", "key1")
-	testDoesNotExistInCache(t, env.cache, chainID, "ns2", "key2")
-	testDoesNotExistInCache(t, env.cache, chainID, "ns2", "key3")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns2", "key1")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns2", "key2")
+	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns2", "key3")
 }
 
 func TestMultiDBBasicRW(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestMultiDBBasicRW(t, env.DBProvider)
+	commontests.TestMultiDBBasicRW(t, vdbEnv.DBProvider)
 
 }
 
 func TestDeletes(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestDeletes(t, env.DBProvider)
+	commontests.TestDeletes(t, vdbEnv.DBProvider)
 }
 
 func TestIterator(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestIterator(t, env.DBProvider)
+	commontests.TestIterator(t, vdbEnv.DBProvider)
 }
 
 // The following tests are unique to couchdb, they are not used in leveldb
 //  query test
 func TestQuery(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestQuery(t, env.DBProvider)
+	commontests.TestQuery(t, vdbEnv.DBProvider)
 }
 
 func TestGetStateMultipleKeys(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestGetStateMultipleKeys(t, env.DBProvider)
+	commontests.TestGetStateMultipleKeys(t, vdbEnv.DBProvider)
 }
 
 func TestGetVersion(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestGetVersion(t, env.DBProvider)
+	commontests.TestGetVersion(t, vdbEnv.DBProvider)
 }
 
 func TestSmallBatchSize(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestSmallBatchSize(t, env.DBProvider)
+	commontests.TestSmallBatchSize(t, vdbEnv.DBProvider)
 }
 
 func TestBatchRetry(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestBatchWithIndividualRetry(t, env.DBProvider)
+	commontests.TestBatchWithIndividualRetry(t, vdbEnv.DBProvider)
 }
 
 func TestValueAndMetadataWrites(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestValueAndMetadataWrites(t, env.DBProvider)
+	commontests.TestValueAndMetadataWrites(t, vdbEnv.DBProvider)
 }
 
 func TestPaginatedRangeQuery(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestPaginatedRangeQuery(t, env.DBProvider)
+	commontests.TestPaginatedRangeQuery(t, vdbEnv.DBProvider)
 }
 
 func TestRangeQuerySpecialCharacters(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	commontests.TestRangeQuerySpecialCharacters(t, env.DBProvider)
+	commontests.TestRangeQuerySpecialCharacters(t, vdbEnv.DBProvider)
 }
 
 // TestUtilityFunctions tests utility functions
 func TestUtilityFunctions(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
+	db, err := vdbEnv.DBProvider.GetDBHandle("testutilityfunctions")
 	assert.NoError(t, err)
 
 	// BytesKeySupported should be false for CouchDB
@@ -468,11 +549,10 @@ func TestUtilityFunctions(t *testing.T) {
 
 // TestInvalidJSONFields tests for invalid JSON fields
 func TestInvalidJSONFields(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	db, err := env.DBProvider.GetDBHandle("testinvalidfields")
+	db, err := vdbEnv.DBProvider.GetDBHandle("testinvalidfields")
 	assert.NoError(t, err)
 
 	db.Open()
@@ -512,7 +592,6 @@ func TestInvalidJSONFields(t *testing.T) {
 }
 
 func TestDebugFunctions(t *testing.T) {
-
 	//Test printCompositeKeys
 	// initialize a key list
 	loadKeys := []*statedb.CompositeKey{}
@@ -526,11 +605,10 @@ func TestDebugFunctions(t *testing.T) {
 }
 
 func TestHandleChaincodeDeploy(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	db, err := env.DBProvider.GetDBHandle("testinit")
+	db, err := vdbEnv.DBProvider.GetDBHandle("testinit")
 	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
@@ -594,12 +672,11 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	assert.Error(t, err, "Error should have been thrown for a missing index")
 
 	indexCapable, ok := db.(statedb.IndexCapable)
-
 	if !ok {
 		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
 	}
+	assert.NoError(t, indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData))
 
-	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData)
 	queryString = `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
 	queryUsingIndex := func() bool {
 		_, err = db.ExecuteQuery("ns1", queryString)
@@ -630,10 +707,9 @@ func TestTryCastingToJSON(t *testing.T) {
 
 func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	channelName := "ch1"
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
-	db, err := env.DBProvider.GetDBHandle(channelName)
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+	db, err := vdbEnv.DBProvider.GetDBHandle(channelName)
 	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
@@ -652,7 +728,7 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	if !ok {
 		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
 	}
-	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData)
+	assert.Error(t, indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData))
 
 	queryString := `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
 	queryUsingIndex := func() bool {
@@ -674,7 +750,6 @@ func TestIsBulkOptimizable(t *testing.T) {
 }
 
 func printCompositeKeys(keys []*statedb.CompositeKey) string {
-
 	compositeKeyString := []string{}
 	for _, key := range keys {
 		compositeKeyString = append(compositeKeyString, "["+key.Namespace+","+key.Key+"]")
@@ -684,11 +759,10 @@ func printCompositeKeys(keys []*statedb.CompositeKey) string {
 
 // TestPaginatedQuery tests queries with pagination
 func TestPaginatedQuery(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	db, err := env.DBProvider.GetDBHandle("testpaginatedquery")
+	db, err := vdbEnv.DBProvider.GetDBHandle("testpaginatedquery")
 	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
@@ -857,7 +931,6 @@ func TestPaginatedQuery(t *testing.T) {
 }
 
 func executeQuery(t *testing.T, db statedb.VersionedDB, namespace, query, bookmark string, limit int32, returnKeys []string) (string, error) {
-
 	var itr statedb.ResultsIterator
 	var err error
 
@@ -894,7 +967,6 @@ func executeQuery(t *testing.T, db statedb.VersionedDB, namespace, query, bookma
 
 // TestPaginatedQueryValidation tests queries with pagination
 func TestPaginatedQueryValidation(t *testing.T) {
-
 	queryOptions := make(map[string]interface{})
 	queryOptions["bookmark"] = "Test1"
 	queryOptions["limit"] = int32(10)
@@ -938,23 +1010,21 @@ func TestPaginatedQueryValidation(t *testing.T) {
 }
 
 func TestApplyUpdatesWithNilHeight(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
-	commontests.TestApplyUpdatesWithNilHeight(t, env.DBProvider)
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+	commontests.TestApplyUpdatesWithNilHeight(t, vdbEnv.DBProvider)
 }
 
 func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
-	db, err := env.DBProvider.GetDBHandle("testrangescanfiltercouchinternaldocs")
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+	db, err := vdbEnv.DBProvider.GetDBHandle("testrangescanfiltercouchinternaldocs")
 	assert.NoError(t, err)
 	couchDatabse, err := db.(*VersionedDB).getNamespaceDBHandle("ns")
 	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
-	_, err = couchDatabse.CreateIndex(`{
+	_, err = couchDatabse.createIndex(`{
 		"index" : {"fields" : ["asset_name"]},
 			"ddoc" : "indexAssetName",
 			"name" : "indexAssetName",
@@ -962,7 +1032,7 @@ func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
 		}`)
 	assert.NoError(t, err)
 
-	_, err = couchDatabse.CreateIndex(`{
+	_, err = couchDatabse.createIndex(`{
 		"index" : {"fields" : ["assetValue"]},
 			"ddoc" : "indexAssetValue",
 			"name" : "indexAssetValue",
@@ -1008,10 +1078,10 @@ func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
 	assert.Equal(t, "key-3", s.queryDefinition.startKey)
 }
 
-func assertQueryResults(t *testing.T, results []*couchdb.QueryResult, expectedIds []string) {
+func assertQueryResults(t *testing.T, results []*queryResult, expectedIds []string) {
 	var actualIds []string
 	for _, res := range results {
-		actualIds = append(actualIds, res.ID)
+		actualIds = append(actualIds, res.id)
 	}
 	assert.Equal(t, expectedIds, actualIds)
 }
@@ -1067,22 +1137,22 @@ func TestFormatCheck(t *testing.T) {
 		},
 	}
 
-	testEnv.init(t, nil)
+	vdbEnv.init(t, nil)
 	for i, testCase := range testCases {
 		t.Run(
 			fmt.Sprintf("testCase %d", i),
 			func(t *testing.T) {
-				testFormatCheck(t, testCase.dataFormat, testCase.dataExists, testCase.expectedErr, testCase.expectedFormat, testEnv.couchAddress)
+				testFormatCheck(t, testCase.dataFormat, testCase.dataExists, testCase.expectedErr, testCase.expectedFormat, vdbEnv)
 			})
 	}
 }
 
-func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedErr *dataformat.ErrVersionMismatch, expectedFormat, couchAddress string) {
+func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedErr *dataformat.ErrVersionMismatch, expectedFormat string, vdbEnv *testVDBEnv) {
 	redoPath, err := ioutil.TempDir("", "redoPath")
 	require.NoError(t, err)
 	defer os.RemoveAll(redoPath)
-	config := &couchdb.Config{
-		Address:             couchAddress,
+	config := &ledger.CouchDBConfig{
+		Address:             vdbEnv.couchDBEnv.couchAddress,
 		MaxRetries:          3,
 		MaxRetriesOnStartup: 20,
 		RequestTimeout:      35 * time.Second,
@@ -1100,12 +1170,12 @@ func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedE
 		require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 	}
 	if dataFormat == "" {
-		testutilDropDB(t, dbProvider.couchInstance, fabricInternalDBName)
+		dropDB(t, dbProvider.couchInstance, fabricInternalDBName)
 	} else {
 		require.NoError(t, writeDataFormatVersion(dbProvider.couchInstance, dataFormat))
 	}
 	dbProvider.Close()
-	defer cleanupDB(t, dbProvider.couchInstance)
+	defer DeleteApplicationDBs(t, vdbEnv.config)
 
 	// close and reopen with preconditions set and check the expected behavior
 	dbProvider, err = NewVersionedDBProvider(config, &disabled.Provider{}, nil)
@@ -1130,7 +1200,7 @@ func testDoesNotExistInCache(t *testing.T, cache *cache, chainID, ns, key string
 	require.Nil(t, cacheValue)
 }
 
-func testExistInCache(t *testing.T, db *couchdb.CouchDatabase, cache *cache, chainID, ns, key string, expectedVV *statedb.VersionedValue) {
+func testExistInCache(t *testing.T, db *couchDatabase, cache *cache, chainID, ns, key string, expectedVV *statedb.VersionedValue) {
 	cacheValue, err := cache.getState(chainID, ns, key)
 	require.NoError(t, err)
 	vv, err := constructVersionedValue(cacheValue)
@@ -1142,12 +1212,11 @@ func testExistInCache(t *testing.T, db *couchdb.CouchDatabase, cache *cache, cha
 }
 
 func TestLoadCommittedVersion(t *testing.T) {
-	env := testEnv
-	env.init(t, []string{"lscc", "_lifecycle"})
-	defer env.cleanup()
+	vdbEnv.init(t, []string{"lscc", "_lifecycle"})
+	defer vdbEnv.cleanup()
 
 	chainID := "testloadcommittedversion"
-	db, err := env.DBProvider.GetDBHandle(chainID)
+	db, err := vdbEnv.DBProvider.GetDBHandle(chainID)
 	require.NoError(t, err)
 
 	// scenario: state cache has (ns1, key1), (ns1, key2),
@@ -1164,7 +1233,7 @@ func TestLoadCommittedVersion(t *testing.T) {
 		Version:        version.NewHeight(1, 1).ToBytes(),
 		AdditionalInfo: []byte("rev1"),
 	}
-	require.NoError(t, env.cache.putState(chainID, "ns1", "key1", cacheValue))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns1", "key1", cacheValue))
 
 	cacheValue = &CacheValue{
 		Value:          []byte("value2"),
@@ -1172,7 +1241,7 @@ func TestLoadCommittedVersion(t *testing.T) {
 		Version:        version.NewHeight(1, 2).ToBytes(),
 		AdditionalInfo: []byte("rev2"),
 	}
-	require.NoError(t, env.cache.putState(chainID, "ns1", "key2", cacheValue))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns1", "key2", cacheValue))
 
 	cacheValue = &CacheValue{
 		Value:          []byte("value3"),
@@ -1180,7 +1249,7 @@ func TestLoadCommittedVersion(t *testing.T) {
 		Version:        version.NewHeight(1, 3).ToBytes(),
 		AdditionalInfo: []byte("rev3"),
 	}
-	require.NoError(t, env.cache.putState(chainID, "ns2", "key1", cacheValue))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns2", "key1", cacheValue))
 
 	// store (ns2, key2) in the db
 	batch := statedb.NewUpdateBatch()
@@ -1239,11 +1308,10 @@ func TestLoadCommittedVersion(t *testing.T) {
 }
 
 func TestMissingRevisionRetrievalFromDB(t *testing.T) {
-	env := testEnv
-	env.init(t, nil)
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 	chainID := "testmissingrevisionfromdb"
-	db, err := env.DBProvider.GetDBHandle(chainID)
+	db, err := vdbEnv.DBProvider.GetDBHandle(chainID)
 	require.NoError(t, err)
 
 	// store key1, key2, key3 to the DB
@@ -1281,12 +1349,11 @@ func TestMissingRevisionRetrievalFromDB(t *testing.T) {
 }
 
 func TestMissingRevisionRetrievalFromCache(t *testing.T) {
-	env := testEnv
-	env.init(t, []string{"lscc", "_lifecycle"})
-	defer env.cleanup()
+	vdbEnv.init(t, []string{"lscc", "_lifecycle"})
+	defer vdbEnv.cleanup()
 
 	chainID := "testmissingrevisionfromcache"
-	db, err := env.DBProvider.GetDBHandle(chainID)
+	db, err := vdbEnv.DBProvider.GetDBHandle(chainID)
 	require.NoError(t, err)
 
 	// scenario 1: missing from cache.
@@ -1297,7 +1364,7 @@ func TestMissingRevisionRetrievalFromCache(t *testing.T) {
 	require.Empty(t, revisions)
 
 	// scenario 2: key1 is available in the cache
-	require.NoError(t, env.cache.putState(chainID, "ns1", "key1", &CacheValue{AdditionalInfo: []byte("rev1")}))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns1", "key1", &CacheValue{AdditionalInfo: []byte("rev1")}))
 	revisions = make(map[string]string)
 	stillMissingKeys, err = db.(*VersionedDB).addMissingRevisionsFromCache("ns1", []string{"key1", "key2"}, revisions)
 	require.NoError(t, err)
@@ -1305,7 +1372,7 @@ func TestMissingRevisionRetrievalFromCache(t *testing.T) {
 	require.Equal(t, "rev1", revisions["key1"])
 
 	// scenario 3: both key1 and key2 are available in the cache
-	require.NoError(t, env.cache.putState(chainID, "ns1", "key2", &CacheValue{AdditionalInfo: []byte("rev2")}))
+	require.NoError(t, vdbEnv.cache.putState(chainID, "ns1", "key2", &CacheValue{AdditionalInfo: []byte("rev2")}))
 	revisions = make(map[string]string)
 	stillMissingKeys, err = db.(*VersionedDB).addMissingRevisionsFromCache("ns1", []string{"key1", "key2"}, revisions)
 	require.NoError(t, err)

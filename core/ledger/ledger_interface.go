@@ -8,6 +8,7 @@ package ledger
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
@@ -18,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
 // Initializer encapsulates dependencies for PeerLedgerProvider
@@ -53,7 +53,45 @@ type StateDBConfig struct {
 	StateDatabase string
 	// CouchDB is the configuration for CouchDB.  It is used when StateDatabase
 	// is set to "CouchDB".
-	CouchDB *couchdb.Config
+	CouchDB *CouchDBConfig
+}
+
+// CouchDBConfig is a structure used to configure a CouchInstance.
+type CouchDBConfig struct {
+	// Address is the hostname:port of the CouchDB database instance.
+	Address string
+	// Username is the username used to authenticate with CouchDB.  This username
+	// must have read and write access permissions.
+	Username string
+	// Password is the password for Username.
+	Password string
+	// MaxRetries is the maximum number of times to retry CouchDB operations on
+	// failure.
+	MaxRetries int
+	// MaxRetriesOnStartup is the maximum number of times to retry CouchDB operations on
+	// failure when initializing the ledger.
+	MaxRetriesOnStartup int
+	// RequestTimeout is the timeout used for CouchDB operations.
+	RequestTimeout time.Duration
+	// InternalQueryLimit is the maximum number of records to return internally
+	// when querying CouchDB.
+	InternalQueryLimit int
+	// MaxBatchUpdateSize is the maximum number of records to included in CouchDB
+	// bulk update operations.
+	MaxBatchUpdateSize int
+	// WarmIndexesAfterNBlocks is the number of blocks after which to warm any
+	// CouchDB indexes.
+	WarmIndexesAfterNBlocks int
+	// CreateGlobalChangesDB determines whether or not to create the "_global_changes"
+	// system database.
+	CreateGlobalChangesDB bool
+	// RedoLogPath is the directory where the CouchDB redo log files are stored.
+	RedoLogPath string
+	// UserCacheSizeMBs denotes the user specified maximum mega bytes (MB) to be allocated
+	// for the user state cache (i.e., all chaincodes deployed by the user). Note that
+	// UserCacheSizeMBs needs to be a multiple of 32 MB. If it is not a multiple of 32 MB,
+	// the peer would round the size to the next multiple of 32 MB.
+	UserCacheSizeMBs int
 }
 
 // PrivateDataConfig is a structure used to configure a private data storage provider.

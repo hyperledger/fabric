@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package couchdb
+package statecouchdb
 
 import (
 	"context"
@@ -24,8 +24,12 @@ func TestAPIProcessTimeMetric(t *testing.T) {
 
 	// create a new couch instance
 	config := testConfig()
+	couchDBEnv.startCouchDB(t)
+	config.Address = couchDBEnv.couchAddress
+	defer couchDBEnv.cleanup(config)
+	defaultMaxRetries := config.MaxRetries
 	config.MaxRetries = 0
-	couchInstance, err := CreateCouchInstance(config, &disabled.Provider{})
+	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 	gt.Expect(err).NotTo(HaveOccurred(), "Error when trying to create couch instance")
 
 	couchInstance.stats = &stats{
@@ -43,4 +47,5 @@ func TestAPIProcessTimeMetric(t *testing.T) {
 		"function_name", "function_name",
 		"result", "0",
 	}))
+	config.MaxRetries = defaultMaxRetries
 }

@@ -63,14 +63,14 @@ func TestRedoLogger(t *testing.T) {
 }
 
 func TestCouchdbRedoLogger(t *testing.T) {
-	testEnv.init(t, nil)
-	defer testEnv.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
 	// commitToRedologAndRestart - a helper function that commits directly to redologs and restart the statedb
 	commitToRedologAndRestart := func(newVal string, version *version.Height) {
 		batch := statedb.NewUpdateBatch()
 		batch.Put("ns1", "key1", []byte(newVal), version)
-		db, err := testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+		db, err := vdbEnv.DBProvider.GetDBHandle("testcouchdbredologger")
 		assert.NoError(t, err)
 		vdb := db.(*VersionedDB)
 		assert.NoError(t,
@@ -81,11 +81,11 @@ func TestCouchdbRedoLogger(t *testing.T) {
 				},
 			),
 		)
-		testEnv.closeAndReopen()
+		vdbEnv.closeAndReopen()
 	}
 	// verifyExpectedVal - a helper function that verifies the statedb contents
 	verifyExpectedVal := func(expectedVal string, expectedSavepoint *version.Height) {
-		db, err := testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+		db, err := vdbEnv.DBProvider.GetDBHandle("testcouchdbredologger")
 		assert.NoError(t, err)
 		vdb := db.(*VersionedDB)
 		vv, err := vdb.GetState("ns1", "key1")
@@ -97,7 +97,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	}
 
 	// initialize statedb with initial set of writes
-	db, err := testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+	db, err := vdbEnv.DBProvider.GetDBHandle("testcouchdbredologger")
 	if err != nil {
 		t.Fatalf("Failed to get database handle: %s", err)
 	}
@@ -119,7 +119,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	verifyExpectedVal("value2", version.NewHeight(2, 1))
 
 	// A nil height should cause skipping the writing of redo-record
-	db, _ = testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+	db, _ = vdbEnv.DBProvider.GetDBHandle("testcouchdbredologger")
 	vdb = db.(*VersionedDB)
 	vdb.ApplyUpdates(batch1, nil)
 	record, err := vdb.redoLogger.load()
@@ -128,7 +128,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	assert.Equal(t, []byte("value3"), record.UpdateBatch.Get("ns1", "key1").Value)
 
 	// A batch that does not contain PostOrderWrites should cause skipping the writing of redo-record
-	db, _ = testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+	db, _ = vdbEnv.DBProvider.GetDBHandle("testcouchdbredologger")
 	vdb = db.(*VersionedDB)
 	batchWithNoGeneratedWrites := batch1
 	batchWithNoGeneratedWrites.ContainsPostOrderWrites = false
@@ -139,7 +139,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	assert.Equal(t, []byte("value3"), record.UpdateBatch.Get("ns1", "key1").Value)
 
 	// A batch that contains PostOrderWrites should cause writing of redo-record
-	db, _ = testEnv.DBProvider.GetDBHandle("testcouchdbredologger")
+	db, _ = vdbEnv.DBProvider.GetDBHandle("testcouchdbredologger")
 	vdb = db.(*VersionedDB)
 	batchWithGeneratedWrites := batch1
 	batchWithGeneratedWrites.ContainsPostOrderWrites = true

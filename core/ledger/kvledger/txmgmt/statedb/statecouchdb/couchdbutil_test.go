@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package couchdb
+package statecouchdb
 
 import (
 	"encoding/hex"
@@ -17,72 +17,74 @@ import (
 
 //Unit test of couch db util functionality
 func TestCreateCouchDBConnectionAndDB(t *testing.T) {
-	startCouchDB()
+	config := testConfig()
+	couchDBEnv.startCouchDB(t)
+	config.Address = couchDBEnv.couchAddress
+	defer couchDBEnv.cleanup(config)
 	database := "testcreatecouchdbconnectionanddb"
-	cleanup(database)
-	defer cleanup(database)
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
+	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
-	_, err = CreateCouchDatabase(couchInstance, database)
+	_, err = createCouchDatabase(couchInstance, database)
 	assert.NoError(t, err, "Error when trying to CreateCouchDatabase")
 
 }
 
 //Unit test of couch db util functionality
 func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
-	startCouchDB()
 	config := testConfig()
+	couchDBEnv.startCouchDB(t)
+	config.Address = couchDBEnv.couchAddress
+	defer couchDBEnv.cleanup(config)
 	config.CreateGlobalChangesDB = false
 	database := "_global_changes"
-	cleanup(database)
-	defer cleanup(database)
 
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(config, &disabled.Provider{})
+	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
-	db := CouchDatabase{CouchInstance: couchInstance, DBName: database}
+	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//Retrieve the info for the new database and make sure the name matches
-	_, _, errdb := db.GetDatabaseInfo()
+	_, _, errdb := db.getDatabaseInfo()
 	assert.NotNil(t, errdb)
 }
 
 //Unit test of couch db util functionality
 func TestCreateCouchDBSystemDBs(t *testing.T) {
-	startCouchDB()
-	database := "testcreatecouchdbsystemdb"
-	cleanup(database)
-	defer cleanup(database)
+	config := testConfig()
+	couchDBEnv.startCouchDB(t)
+	config.Address = couchDBEnv.couchAddress
+	defer couchDBEnv.cleanup(config)
+	config.CreateGlobalChangesDB = true
 
 	//create a new connection
-	couchInstance, err := CreateCouchInstance(testConfig(), &disabled.Provider{})
+	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 
 	assert.NoError(t, err, "Error when trying to CreateCouchInstance")
 
-	err = CreateSystemDatabasesIfNotExist(couchInstance)
+	err = createSystemDatabasesIfNotExist(couchInstance)
 	assert.NoError(t, err, "Error when trying to create system databases")
 
-	db := CouchDatabase{CouchInstance: couchInstance, DBName: "_users"}
+	db := couchDatabase{couchInstance: couchInstance, dbName: "_users"}
 
 	//Retrieve the info for the new database and make sure the name matches
-	dbResp, _, errdb := db.GetDatabaseInfo()
+	dbResp, _, errdb := db.getDatabaseInfo()
 	assert.NoError(t, errdb, "Error when trying to retrieve _users database information")
 	assert.Equal(t, "_users", dbResp.DbName)
 
-	db = CouchDatabase{CouchInstance: couchInstance, DBName: "_replicator"}
+	db = couchDatabase{couchInstance: couchInstance, dbName: "_replicator"}
 
 	//Retrieve the info for the new database and make sure the name matches
-	dbResp, _, errdb = db.GetDatabaseInfo()
+	dbResp, _, errdb = db.getDatabaseInfo()
 	assert.NoError(t, errdb, "Error when trying to retrieve _replicator database information")
 	assert.Equal(t, "_replicator", dbResp.DbName)
 
-	db = CouchDatabase{CouchInstance: couchInstance, DBName: "_global_changes"}
+	db = couchDatabase{couchInstance: couchInstance, dbName: "_global_changes"}
 
 	//Retrieve the info for the new database and make sure the name matches
-	dbResp, _, errdb = db.GetDatabaseInfo()
+	dbResp, _, errdb = db.getDatabaseInfo()
 	assert.NoError(t, errdb, "Error when trying to retrieve _global_changes database information")
 	assert.Equal(t, "_global_changes", dbResp.DbName)
 
@@ -129,7 +131,7 @@ func TestConstructMetadataDBName(t *testing.T) {
 	expectedDBName := truncatedChainName + "(" + hash + ")" + "_"
 	expectedDBNameLength := 117
 
-	constructedDBName := ConstructMetadataDBName(chainName)
+	constructedDBName := constructMetadataDBName(chainName)
 	assert.Equal(t, expectedDBNameLength, len(constructedDBName))
 	assert.Equal(t, expectedDBName, constructedDBName)
 }
@@ -163,7 +165,7 @@ func TestConstructedNamespaceDBName(t *testing.T) {
 	expectedDBNameLength := 219
 
 	namespace := ns + "$$" + coll
-	constructedDBName := ConstructNamespaceDBName(chainName, namespace)
+	constructedDBName := constructNamespaceDBName(chainName, namespace)
 	assert.Equal(t, expectedDBNameLength, len(constructedDBName))
 	assert.Equal(t, expectedDBName, constructedDBName)
 
@@ -178,7 +180,7 @@ func TestConstructedNamespaceDBName(t *testing.T) {
 	expectedDBNameLength = 167
 
 	namespace = ns
-	constructedDBName = ConstructNamespaceDBName(chainName, namespace)
+	constructedDBName = constructNamespaceDBName(chainName, namespace)
 	assert.Equal(t, expectedDBNameLength, len(constructedDBName))
 	assert.Equal(t, expectedDBName, constructedDBName)
 }
