@@ -1414,7 +1414,7 @@ func ExampleConfigTx_AddChannelCapability() {
 		panic(err)
 	}
 
-	err = protolator.DeepMarshalJSON(os.Stdout, c.Updated())
+	err = protolator.DeepMarshalJSON(os.Stdout, c.UpdatedConfig())
 	if err != nil {
 		panic(err)
 	}

@@ -28,7 +28,7 @@ type Application struct {
 // transaction as an Application type. This can be used to retrieve existing values for the application
 // prior to updating the application configuration.
 func (c *ConfigTx) ApplicationConfiguration() (Application, error) {
-	applicationGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey]
+	applicationGroup, ok := c.original.ChannelGroup.Groups[ApplicationGroupKey]
 	if !ok {
 		return Application{}, errors.New("config does not contain application group")
 	}
@@ -196,7 +196,7 @@ func (c *ConfigTx) RemoveACLs(acls []string) error {
 
 // ApplicationACLs returns a map of application acls from a config transaction.
 func (c *ConfigTx) ApplicationACLs() (map[string]string, error) {
-	return getACLs(c.base)
+	return getACLs(c.original)
 }
 
 // getACLs returns a map of ACLS for given config application.
@@ -222,7 +222,7 @@ func getACLs(config *cb.Config) (map[string]string, error) {
 
 // AnchorPeers retrieves existing anchor peers from a application organization.
 func (c *ConfigTx) AnchorPeers(orgName string) ([]Address, error) {
-	applicationOrgGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+	applicationOrgGroup, ok := c.original.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return nil, fmt.Errorf("application org %s does not exist in channel config", orgName)
 	}

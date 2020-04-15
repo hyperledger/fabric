@@ -957,8 +957,8 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 	err = c.UpdateOrdererConfiguration(updatedOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -1293,8 +1293,8 @@ func TestOrdererConfiguration(t *testing.T) {
 			}
 
 			c := ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 
 			ordererConf, err := c.OrdererConfiguration()
@@ -1387,8 +1387,8 @@ func TestOrdererConfigurationFailure(t *testing.T) {
 			}
 
 			c := ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 
 			err = setValue(c.updated.ChannelGroup, ordererAddressesValue(baseOrdererConfig.Addresses), ordererAdminsPolicyName)
@@ -1421,8 +1421,8 @@ func TestAddOrdererOrg(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	org := Organization{
@@ -1591,8 +1591,8 @@ func TestAddOrdererOrgFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	org := Organization{
@@ -1638,8 +1638,8 @@ func TestAddOrdererEndpoint(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedUpdatedConfigJSON := `
@@ -1725,8 +1725,8 @@ func TestAddOrdererEndpointFailure(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	tests := []struct {
@@ -1798,8 +1798,8 @@ func TestRemoveOrdererEndpoint(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedUpdatedConfigJSON := `
@@ -1884,8 +1884,8 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	tests := []struct {

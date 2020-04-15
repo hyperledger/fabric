@@ -65,7 +65,7 @@ func (c *ConfigTx) AddOrgToConsortium(org Organization, consortium string) error
 // Consortiums returns a list of consortiums for the channel configuration.
 // Consortiums is only defined for the ordering system channel.
 func (c *ConfigTx) Consortiums() ([]Consortium, error) {
-	consortiumsGroup, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey]
+	consortiumsGroup, ok := c.original.ChannelGroup.Groups[ConsortiumsGroupKey]
 	if !ok {
 		return nil, errors.New("channel configuration does not have consortiums")
 	}

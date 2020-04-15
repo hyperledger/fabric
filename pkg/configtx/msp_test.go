@@ -60,8 +60,8 @@ func TestApplicationMSP(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	msp, err := c.ApplicationMSP("Org1")
@@ -89,8 +89,8 @@ func TestOrdererMSP(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	msp, err := c.OrdererMSP("OrdererOrg")
@@ -118,8 +118,8 @@ func TestConsortiumMSP(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	msp, err := c.ConsortiumMSP("Consortium1", "Org1")
@@ -294,8 +294,8 @@ func TestMSPConfigurationFailures(t *testing.T) {
 			}
 
 			c := ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 			if tt.mspMod != nil && tt.orgType != ConsortiumsGroupKey {
 				baseMSP := baseMSP(t)
@@ -807,7 +807,7 @@ func TestUpdateApplicationMSP(t *testing.T) {
 `, org1CertBase64, newIntermediateCertBase64, org1CRLBase64, newCRLBase64, newRootCertBase64, org1PKBase64, org2CertBase64, org2CRLBase64, org2PKBase64)
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, c.Updated())
+	err = protolator.DeepMarshalJSON(&buf, c.UpdatedConfig())
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
@@ -964,7 +964,7 @@ func TestCreateApplicationMSPCRL(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// create a new ConfigTx with our updated config as the base
-	c := New(originalConfigTx.Updated())
+	c := New(originalConfigTx.UpdatedConfig())
 
 	tests := []struct {
 		spec             string

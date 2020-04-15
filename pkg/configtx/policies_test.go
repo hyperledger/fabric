@@ -76,8 +76,8 @@ func TestRemoveApplicationOrgPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	application.Organizations[0].Policies = applicationOrgStandardPolicies()
@@ -111,8 +111,8 @@ func TestRemoveApplicationOrgPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err := c.RemoveApplicationOrgPolicy("bad-org", "")
@@ -142,8 +142,8 @@ func TestAddApplicationOrgPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	application.Organizations[0].Policies = applicationOrgStandardPolicies()
@@ -180,8 +180,8 @@ func TestAddApplicationOrgPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err := c.AddApplicationOrgPolicy("Org1", AdminsPolicyKey, "TestPolicy", Policy{})
@@ -204,8 +204,8 @@ func TestAddApplicationPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := map[string]Policy{
@@ -251,8 +251,8 @@ func TestAddApplicationPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := application.Policies
@@ -279,8 +279,8 @@ func TestRemoveApplicationPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := map[string]Policy{
@@ -323,8 +323,8 @@ func TestRemoveApplicationPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	tests := []struct {
@@ -381,8 +381,8 @@ func TestAddConsortiumOrgPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := map[string]Policy{
@@ -436,8 +436,8 @@ func TestAddConsortiumOrgPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	for _, test := range []struct {
@@ -495,8 +495,8 @@ func TestRemoveConsortiumOrgPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := map[string]Policy{
@@ -546,8 +546,8 @@ func TestRemoveConsortiumOrgPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	for _, test := range []struct {
@@ -593,8 +593,8 @@ func TestAddOrdererPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 	expectedPolicies := map[string]Policy{
 		ReadersPolicyKey: {
@@ -647,8 +647,8 @@ func TestAddOrdererPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.AddOrdererPolicy(AdminsPolicyKey, "TestPolicy", Policy{})
@@ -675,8 +675,8 @@ func TestRemoveOrdererPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := map[string]Policy{
@@ -727,8 +727,8 @@ func TestRemoveOrdererPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	tests := []struct {
@@ -801,8 +801,8 @@ func TestAddOrdererOrgPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := map[string]Policy{
@@ -856,8 +856,8 @@ func TestAddOrdererOrgPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.AddOrdererOrgPolicy("OrdererOrg", AdminsPolicyKey, "TestPolicy", Policy{})
@@ -884,8 +884,8 @@ func TestRemoveOrdererOrgPolicy(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := map[string]Policy{
@@ -935,8 +935,8 @@ func TestRemoveOrdererOrgPolicyFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.RemoveOrdererOrgPolicy("bad-org", "TestPolicy")
@@ -961,8 +961,8 @@ func TestUpdateConsortiumChannelCreationPolicy(t *testing.T) {
 		},
 	}
 	c := &ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	updatedPolicy := Policy{Type: ImplicitMetaPolicyType, Rule: "MAJORITY Admins"}
@@ -1000,8 +1000,8 @@ func TestUpdateConsortiumChannelCreationPolicyFailures(t *testing.T) {
 		},
 	}
 	c := &ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	tests := []struct {
@@ -1057,7 +1057,7 @@ func TestAddChannelPolicy(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(updatedChannelPolicy).To(Equal(expectedPolicies))
 
-	baseChannel := c.base.ChannelGroup
+	baseChannel := c.original.ChannelGroup
 	gt.Expect(baseChannel.Policies).To(HaveLen(0))
 	gt.Expect(baseChannel.Policies["TestPolicy"]).To(BeNil())
 }
@@ -1095,7 +1095,7 @@ func TestRemoveChannelPolicy(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(updatedChannelPolicy).To(Equal(expectedPolicies))
 
-	baseChannel := c.base.ChannelGroup
+	baseChannel := c.original.ChannelGroup
 	gt.Expect(baseChannel.Policies).To(HaveLen(3))
 	gt.Expect(baseChannel.Policies[ReadersPolicyKey]).ToNot(BeNil())
 }
@@ -1118,8 +1118,8 @@ func TestConsortiumOrgPolicies(t *testing.T) {
 		},
 	}
 	c := &ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedPolicies := map[string]Policy{
@@ -1164,8 +1164,8 @@ func TestConsortiumOrgPoliciesFailures(t *testing.T) {
 		},
 	}
 	c := &ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	tests := []struct {

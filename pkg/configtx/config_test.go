@@ -1278,8 +1278,8 @@ func TestComputeUpdate(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    base,
-		updated: updated,
+		original: base,
+		updated:  updated,
 	}
 
 	channelID := "testChannel"
@@ -1314,8 +1314,8 @@ func TestComputeUpdateFailures(t *testing.T) {
 	updated := &cb.Config{}
 
 	c := ConfigTx{
-		base:    base,
-		updated: updated,
+		original: base,
+		updated:  updated,
 	}
 
 	for _, test := range []struct {

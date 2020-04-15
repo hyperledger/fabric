@@ -52,8 +52,8 @@ func TestApplicationOrg(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedOrg := channel.Application.Organizations[0]
@@ -115,8 +115,8 @@ func TestRemoveApplicationOrg(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.RemoveApplicationOrg("Org1")
@@ -146,8 +146,8 @@ func TestRemoveApplicationOrgFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.RemoveApplicationOrg("BadOrg")
@@ -168,8 +168,8 @@ func TestOrdererOrg(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedOrg := channel.Orderer.Organizations[0]
@@ -222,8 +222,8 @@ func TestRemoveOrdererOrg(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.RemoveOrdererOrg("OrdererOrg")
@@ -244,8 +244,8 @@ func TestRemoveOrdererOrgFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.RemoveOrdererOrg("BadOrg")
@@ -266,8 +266,8 @@ func TestConsortiumOrg(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedOrg := channel.Consortiums[0].Organizations[0]
@@ -329,8 +329,8 @@ func TestRemoveConsortiumOrg(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.RemoveConsortiumOrg("Consortium1", "Org1")
@@ -351,8 +351,8 @@ func TestRemoveConsortiumOrgFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	tests := []struct {
