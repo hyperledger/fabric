@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
-	ledger "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -27,63 +27,100 @@ const (
 	maxDegreeQueryReadsHashing = uint32(50)
 )
 
-type queryHelper struct {
+// QueryExecutor is a query executor used in `LockBasedTxMgr`
+type QueryExecutor struct {
 	txmgr             *LockBasedTxMgr
 	collNameValidator *collNameValidator
+	collectReadset    bool
 	rwsetBuilder      *rwsetutil.RWSetBuilder
 	itrs              []*resultsItr
 	err               error
 	doneInvoked       bool
 	hasher            ledger.Hasher
+	txid              string
 }
 
-func newQueryHelper(txmgr *LockBasedTxMgr, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool, hasher ledger.Hasher) *queryHelper {
-	helper := &queryHelper{
-		txmgr:        txmgr,
-		rwsetBuilder: rwsetBuilder,
-		hasher:       hasher,
+func newQueryExecutor(txmgr *LockBasedTxMgr, txid string, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool, hasher ledger.Hasher) *QueryExecutor {
+	logger.Debugf("constructing new query executor txid = [%s]", txid)
+	qe := &QueryExecutor{}
+	qe.txid = txid
+	qe.txmgr = txmgr
+	if rwsetBuilder != nil {
+		qe.collectReadset = true
+		qe.rwsetBuilder = rwsetBuilder
 	}
-	validator := newCollNameValidator(txmgr.ledgerid, txmgr.ccInfoProvider, &lockBasedQueryExecutor{helper: helper}, !performCollCheck)
-	helper.collNameValidator = validator
-	return helper
+	qe.hasher = hasher
+	validator := newCollNameValidator(txmgr.ledgerid, txmgr.ccInfoProvider, qe, !performCollCheck)
+	qe.collNameValidator = validator
+	return qe
 }
 
-func (h *queryHelper) getState(ns string, key string) ([]byte, []byte, error) {
-	if err := h.checkDone(); err != nil {
+// GetState implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) GetState(ns, key string) ([]byte, error) {
+	val, _, err := q.getState(ns, key)
+	return val, err
+}
+
+func (q *QueryExecutor) getState(ns, key string) ([]byte, []byte, error) {
+	if err := q.checkDone(); err != nil {
 		return nil, nil, err
 	}
-	versionedValue, err := h.txmgr.db.GetState(ns, key)
+	versionedValue, err := q.txmgr.db.GetState(ns, key)
 	if err != nil {
 		return nil, nil, err
 	}
 	val, metadata, ver := decomposeVersionedValue(versionedValue)
-	if h.rwsetBuilder != nil {
-		h.rwsetBuilder.AddToReadSet(ns, key, ver)
+	if q.collectReadset {
+		q.rwsetBuilder.AddToReadSet(ns, key, ver)
 	}
 	return val, metadata, nil
 }
 
-func (h *queryHelper) getStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
-	if err := h.checkDone(); err != nil {
+// GetStateMetadata implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) GetStateMetadata(ns, key string) (map[string][]byte, error) {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
-	versionedValues, err := h.txmgr.db.GetStateMultipleKeys(namespace, keys)
+	var metadata []byte
+	var err error
+	if !q.collectReadset {
+		if metadata, err = q.txmgr.db.GetStateMetadata(ns, key); err != nil {
+			return nil, err
+		}
+	} else {
+		if _, metadata, err = q.getState(ns, key); err != nil {
+			return nil, err
+		}
+	}
+	return statemetadata.Deserialize(metadata)
+}
+
+// GetStateMultipleKeys implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) GetStateMultipleKeys(ns string, keys []string) ([][]byte, error) {
+	if err := q.checkDone(); err != nil {
+		return nil, err
+	}
+	versionedValues, err := q.txmgr.db.GetStateMultipleKeys(ns, keys)
 	if err != nil {
 		return nil, nil
 	}
 	values := make([][]byte, len(versionedValues))
 	for i, versionedValue := range versionedValues {
 		val, _, ver := decomposeVersionedValue(versionedValue)
-		if h.rwsetBuilder != nil {
-			h.rwsetBuilder.AddToReadSet(namespace, keys[i], ver)
+		if q.collectReadset {
+			q.rwsetBuilder.AddToReadSet(ns, keys[i], ver)
 		}
 		values[i] = val
 	}
 	return values, nil
 }
 
-func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.QueryResultsIterator, error) {
-	if err := h.checkDone(); err != nil {
+// GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
+// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
+// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
+// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
+func (q *QueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
 	itr, err := newResultsItr(
@@ -91,21 +128,21 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 		startKey,
 		endKey,
 		0,
-		h.txmgr.db,
-		h.rwsetBuilder,
+		q.txmgr.db,
+		q.rwsetBuilder,
 		queryReadsHashingEnabled,
 		maxDegreeQueryReadsHashing,
-		h.hasher,
+		q.hasher,
 	)
 	if err != nil {
 		return nil, err
 	}
-	h.itrs = append(h.itrs, itr)
+	q.itrs = append(q.itrs, itr)
 	return itr, nil
 }
 
-func (h *queryHelper) getStateRangeScanIteratorWithPagination(namespace string, startKey string, endKey string, pageSize int32) (ledger.QueryResultsIterator, error) {
-	if err := h.checkDone(); err != nil {
+func (q *QueryExecutor) GetStateRangeScanIteratorWithPagination(namespace string, startKey string, endKey string, pageSize int32) (ledger.QueryResultsIterator, error) {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
 	itr, err := newResultsItr(
@@ -113,46 +150,48 @@ func (h *queryHelper) getStateRangeScanIteratorWithPagination(namespace string, 
 		startKey,
 		endKey,
 		pageSize,
-		h.txmgr.db,
-		h.rwsetBuilder,
+		q.txmgr.db,
+		q.rwsetBuilder,
 		queryReadsHashingEnabled,
 		maxDegreeQueryReadsHashing,
-		h.hasher,
+		q.hasher,
 	)
 	if err != nil {
 		return nil, err
 	}
-	h.itrs = append(h.itrs, itr)
+	q.itrs = append(q.itrs, itr)
 	return itr, nil
 }
 
-func (h *queryHelper) executeQuery(namespace, query string) (commonledger.ResultsIterator, error) {
-	if err := h.checkDone(); err != nil {
+// ExecuteQuery implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error) {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
-	dbItr, err := h.txmgr.db.ExecuteQuery(namespace, query)
+	dbItr, err := q.txmgr.db.ExecuteQuery(namespace, query)
 	if err != nil {
 		return nil, err
 	}
-	return &queryResultsItr{DBItr: dbItr, RWSetBuilder: h.rwsetBuilder}, nil
+	return &queryResultsItr{DBItr: dbItr, RWSetBuilder: q.rwsetBuilder}, nil
 }
 
-func (h *queryHelper) executeQueryWithPagination(namespace, query, bookmark string, pageSize int32) (ledger.QueryResultsIterator, error) {
-	if err := h.checkDone(); err != nil {
+func (q *QueryExecutor) ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (ledger.QueryResultsIterator, error) {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
-	dbItr, err := h.txmgr.db.ExecuteQueryWithPagination(namespace, query, bookmark, pageSize)
+	dbItr, err := q.txmgr.db.ExecuteQueryWithPagination(namespace, query, bookmark, pageSize)
 	if err != nil {
 		return nil, err
 	}
-	return &queryResultsItr{DBItr: dbItr, RWSetBuilder: h.rwsetBuilder}, nil
+	return &queryResultsItr{DBItr: dbItr, RWSetBuilder: q.rwsetBuilder}, nil
 }
 
-func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
-	if err := h.validateCollName(ns, coll); err != nil {
+// GetPrivateData implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) GetPrivateData(ns, coll, key string) ([]byte, error) {
+	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
-	if err := h.checkDone(); err != nil {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
 
@@ -160,7 +199,7 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 	var hashVersion *version.Height
 	var versionedValue *statedb.VersionedValue
 
-	if versionedValue, err = h.txmgr.db.GetPrivateData(ns, coll, key); err != nil {
+	if versionedValue, err = q.txmgr.db.GetPrivateData(ns, coll, key); err != nil {
 		return nil, err
 	}
 
@@ -168,7 +207,7 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 	val, _, ver := decomposeVersionedValue(versionedValue)
 
 	keyHash := util.ComputeStringHash(key)
-	if hashVersion, err = h.txmgr.db.GetKeyHashVersion(ns, coll, keyHash); err != nil {
+	if hashVersion, err = q.txmgr.db.GetKeyHashVersion(ns, coll, keyHash); err != nil {
 		return nil, err
 	}
 	if !version.AreSame(hashVersion, ver) {
@@ -176,177 +215,169 @@ func (h *queryHelper) getPrivateData(ns, coll, key string) ([]byte, error) {
 			"private data matching public hash version is not available. Public hash version = %s, Private data version = %s",
 			hashVersion, ver)}
 	}
-	if h.rwsetBuilder != nil {
-		h.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+	if q.collectReadset {
+		q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
 	}
 	return val, nil
 }
 
-func (h *queryHelper) getPrivateDataValueHash(ns, coll, key string) (valueHash, metadataBytes []byte, err error) {
-	if err := h.validateCollName(ns, coll); err != nil {
+func (q *QueryExecutor) GetPrivateDataHash(ns, coll, key string) ([]byte, error) {
+	if err := q.validateCollName(ns, coll); err != nil {
+		return nil, err
+	}
+	if err := q.checkDone(); err != nil {
+		return nil, err
+	}
+	var versionedValue *statedb.VersionedValue
+	var err error
+	if versionedValue, err = q.txmgr.db.GetPrivateDataHash(ns, coll, key); err != nil {
+		return nil, err
+	}
+	valHash, _, ver := decomposeVersionedValue(versionedValue)
+	if q.collectReadset {
+		q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+	}
+	return valHash, nil
+}
+
+// GetPrivateDataMetadata implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) GetPrivateDataMetadata(ns, coll, key string) (map[string][]byte, error) {
+	if !q.collectReadset {
+		// reads versions are not getting recorded, retrieve metadata value via optimized path
+		return q.getPrivateDataMetadataByHash(ns, coll, util.ComputeStringHash(key))
+	}
+	if err := q.validateCollName(ns, coll); err != nil {
+		return nil, err
+	}
+	if err := q.checkDone(); err != nil {
+		return nil, err
+	}
+	_, metadataBytes, err := q.getPrivateDataValueHash(ns, coll, key)
+	if err != nil {
+		return nil, err
+	}
+	return statemetadata.Deserialize(metadataBytes)
+}
+
+func (q *QueryExecutor) getPrivateDataValueHash(ns, coll, key string) (valueHash, metadataBytes []byte, err error) {
+	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, nil, err
 	}
-	if err := h.checkDone(); err != nil {
+	if err := q.checkDone(); err != nil {
 		return nil, nil, err
 	}
 	var versionedValue *statedb.VersionedValue
-	if versionedValue, err = h.txmgr.db.GetPrivateDataHash(ns, coll, key); err != nil {
+	if versionedValue, err = q.txmgr.db.GetPrivateDataHash(ns, coll, key); err != nil {
 		return nil, nil, err
 	}
 	valHash, metadata, ver := decomposeVersionedValue(versionedValue)
-	if h.rwsetBuilder != nil {
-		h.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+	if q.collectReadset {
+		q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
 	}
 	return valHash, metadata, nil
 }
 
-func (h *queryHelper) getPrivateDataMultipleKeys(ns, coll string, keys []string) ([][]byte, error) {
-	if err := h.validateCollName(ns, coll); err != nil {
+// GetPrivateDataMetadataByHash implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) GetPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
+	return q.getPrivateDataMetadataByHash(ns, coll, keyhash)
+}
+
+func (q *QueryExecutor) getPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
+	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
-	if err := h.checkDone(); err != nil {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
-	versionedValues, err := h.txmgr.db.GetPrivateDataMultipleKeys(ns, coll, keys)
+	if q.collectReadset {
+		// this requires to improve rwset builder to accept a keyhash
+		return nil, errors.New("retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
+	}
+	metadataBytes, err := q.txmgr.db.GetPrivateDataMetadataByHash(ns, coll, keyhash)
+	if err != nil {
+		return nil, err
+	}
+	return statemetadata.Deserialize(metadataBytes)
+}
+
+// GetPrivateDataMultipleKeys implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) GetPrivateDataMultipleKeys(ns, coll string, keys []string) ([][]byte, error) {
+	if err := q.validateCollName(ns, coll); err != nil {
+		return nil, err
+	}
+	if err := q.checkDone(); err != nil {
+		return nil, err
+	}
+	versionedValues, err := q.txmgr.db.GetPrivateDataMultipleKeys(ns, coll, keys)
 	if err != nil {
 		return nil, nil
 	}
 	values := make([][]byte, len(versionedValues))
 	for i, versionedValue := range versionedValues {
 		val, _, ver := decomposeVersionedValue(versionedValue)
-		if h.rwsetBuilder != nil {
-			h.rwsetBuilder.AddToHashedReadSet(ns, coll, keys[i], ver)
+		if q.collectReadset {
+			q.rwsetBuilder.AddToHashedReadSet(ns, coll, keys[i], ver)
 		}
 		values[i] = val
 	}
 	return values, nil
 }
 
-func (h *queryHelper) getPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
-	if err := h.validateCollName(namespace, collection); err != nil {
+// GetPrivateDataRangeScanIterator implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) GetPrivateDataRangeScanIterator(ns, coll, startKey, endKey string) (commonledger.ResultsIterator, error) {
+	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
-	if err := h.checkDone(); err != nil {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
-	dbItr, err := h.txmgr.db.GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey)
+	dbItr, err := q.txmgr.db.GetPrivateDataRangeScanIterator(ns, coll, startKey, endKey)
 	if err != nil {
 		return nil, err
 	}
-	return &pvtdataResultsItr{namespace, collection, dbItr}, nil
+	return &pvtdataResultsItr{ns, coll, dbItr}, nil
 }
 
-func (h *queryHelper) executeQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
-	if err := h.validateCollName(namespace, collection); err != nil {
+// ExecuteQueryOnPrivateData implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) ExecuteQueryOnPrivateData(ns, coll, query string) (commonledger.ResultsIterator, error) {
+	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
-	if err := h.checkDone(); err != nil {
+	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
-	dbItr, err := h.txmgr.db.ExecuteQueryOnPrivateData(namespace, collection, query)
+	dbItr, err := q.txmgr.db.ExecuteQueryOnPrivateData(ns, coll, query)
 	if err != nil {
 		return nil, err
 	}
-	return &pvtdataResultsItr{namespace, collection, dbItr}, nil
+	return &pvtdataResultsItr{ns, coll, dbItr}, nil
 }
 
-func (h *queryHelper) getStateMetadata(ns string, key string) (map[string][]byte, error) {
-	if err := h.checkDone(); err != nil {
-		return nil, err
-	}
-	var metadataBytes []byte
-	var err error
-	if h.rwsetBuilder == nil {
-		// reads versions are not getting recorded, retrieve metadata value via optimized path
-		if metadataBytes, err = h.txmgr.db.GetStateMetadata(ns, key); err != nil {
-			return nil, err
-		}
-	} else {
-		if _, metadataBytes, err = h.getState(ns, key); err != nil {
-			return nil, err
-		}
-	}
-	return statemetadata.Deserialize(metadataBytes)
-}
-
-func (h *queryHelper) getPrivateDataMetadata(ns, coll, key string) (map[string][]byte, error) {
-	if h.rwsetBuilder == nil {
-		// reads versions are not getting recorded, retrieve metadata value via optimized path
-		return h.getPrivateDataMetadataByHash(ns, coll, util.ComputeStringHash(key))
-	}
-	if err := h.validateCollName(ns, coll); err != nil {
-		return nil, err
-	}
-	if err := h.checkDone(); err != nil {
-		return nil, err
-	}
-	_, metadataBytes, err := h.getPrivateDataValueHash(ns, coll, key)
-	if err != nil {
-		return nil, err
-	}
-	return statemetadata.Deserialize(metadataBytes)
-}
-
-func (h *queryHelper) getPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
-	if err := h.validateCollName(ns, coll); err != nil {
-		return nil, err
-	}
-	if err := h.checkDone(); err != nil {
-		return nil, err
-	}
-	if h.rwsetBuilder != nil {
-		// this requires to improve rwset builder to accept a keyhash
-		return nil, errors.New("retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
-	}
-	metadataBytes, err := h.txmgr.db.GetPrivateDataMetadataByHash(ns, coll, keyhash)
-	if err != nil {
-		return nil, err
-	}
-	return statemetadata.Deserialize(metadataBytes)
-}
-
-func (h *queryHelper) done() {
-	if h.doneInvoked {
+// Done implements method in interface `ledger.QueryExecutor`
+func (q *QueryExecutor) Done() {
+	logger.Debugf("Done with transaction simulation / query execution [%s]", q.txid)
+	if q.doneInvoked {
 		return
 	}
 
 	defer func() {
-		h.txmgr.commitRWLock.RUnlock()
-		h.doneInvoked = true
-		for _, itr := range h.itrs {
+		q.txmgr.commitRWLock.RUnlock()
+		q.doneInvoked = true
+		for _, itr := range q.itrs {
 			itr.Close()
 		}
 	}()
 }
 
-func (h *queryHelper) addRangeQueryInfo() {
-	for _, itr := range h.itrs {
-		if h.rwsetBuilder != nil {
-			results, hash, err := itr.rangeQueryResultsHelper.Done()
-			if err != nil {
-				h.err = err
-				return
-			}
-			if results != nil {
-				rwsetutil.SetRawReads(itr.rangeQueryInfo, results)
-			}
-			if hash != nil {
-				rwsetutil.SetMerkelSummary(itr.rangeQueryInfo, hash)
-			}
-			h.rwsetBuilder.AddToRangeQuerySet(itr.ns, itr.rangeQueryInfo)
-		}
-	}
-}
-
-func (h *queryHelper) checkDone() error {
-	if h.doneInvoked {
+func (q *QueryExecutor) checkDone() error {
+	if q.doneInvoked {
 		return errors.New("this instance should not be used after calling Done()")
 	}
 	return nil
 }
 
-func (h *queryHelper) validateCollName(ns, coll string) error {
-	return h.collNameValidator.validateCollName(ns, coll)
+func (q *QueryExecutor) validateCollName(ns, coll string) error {
+	return q.collNameValidator.validateCollName(ns, coll)
 }
 
 // resultsItr implements interface ledger.ResultsIterator
@@ -524,4 +555,24 @@ func (itr *pvtdataResultsItr) Next() (commonledger.QueryResult, error) {
 // Close implements method in interface ledger.ResultsIterator
 func (itr *pvtdataResultsItr) Close() {
 	itr.dbItr.Close()
+}
+
+func (q *QueryExecutor) addRangeQueryInfo() {
+	if !q.collectReadset {
+		return
+	}
+	for _, itr := range q.itrs {
+		results, hash, err := itr.rangeQueryResultsHelper.Done()
+		if err != nil {
+			q.err = err
+			return
+		}
+		if results != nil {
+			rwsetutil.SetRawReads(itr.rangeQueryInfo, results)
+		}
+		if hash != nil {
+			rwsetutil.SetMerkelSummary(itr.rangeQueryInfo, hash)
+		}
+		q.rwsetBuilder.AddToRangeQuerySet(itr.ns, itr.rangeQueryInfo)
+	}
 }

@@ -51,13 +51,13 @@ func TestPvtdataResultsItr(t *testing.T) {
 	txMgr.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 7))
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	queryHelper := newQueryHelper(txMgr, nil, true, cryptoProvider)
+	qe := newQueryExecutor(txMgr, "", nil, true, cryptoProvider)
 
-	resItr, err := queryHelper.getPrivateDataRangeScanIterator("ns1", "coll1", "key1", "key3")
+	resItr, err := qe.GetPrivateDataRangeScanIterator("ns1", "coll1", "key1", "key3")
 	assert.NoError(t, err)
 	testItr(t, resItr, "ns1", "coll1", []string{"key1", "key2"})
 
-	resItr, err = queryHelper.getPrivateDataRangeScanIterator("ns4", "coll1", "key1", "key3")
+	resItr, err = qe.GetPrivateDataRangeScanIterator("ns4", "coll1", "key1", "key3")
 	assert.NoError(t, err)
 	testItr(t, resItr, "ns4", "coll1", []string{})
 }
@@ -111,8 +111,8 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	t.Run("query-helper-for-queryexecutor", func(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		assert.NoError(t, err)
-		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), nil, true, cryptoProvider)
-		metadataRetrieved, err := queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
+		qe := newQueryExecutor(txMgr.(*LockBasedTxMgr), "", nil, true, cryptoProvider)
+		metadataRetrieved, err := qe.GetPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.NoError(t, err)
 		assert.Equal(t, metadata1, metadataRetrieved)
 	})
@@ -120,8 +120,8 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	t.Run("query-helper-for-txsimulator", func(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		assert.NoError(t, err)
-		queryHelper := newQueryHelper(txMgr.(*LockBasedTxMgr), rwsetutil.NewRWSetBuilder(), true, cryptoProvider)
-		_, err = queryHelper.getPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
+		qe := newQueryExecutor(txMgr.(*LockBasedTxMgr), "txid-1", rwsetutil.NewRWSetBuilder(), true, cryptoProvider)
+		_, err = qe.GetPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.EqualError(t, err, "retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
 	})
 }
@@ -154,7 +154,7 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 	assert.NoError(t, txMgr.db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 5)))
 
 	s, _ := txMgr.NewTxSimulator("test_tx1")
-	simulator := s.(*lockBasedTxSimulator)
+	simulator := s.(*TxSimulator)
 	hash, err := simulator.GetPrivateDataHash("ns", "coll", "non-existing-key")
 	assert.NoError(t, err)
 	assert.Nil(t, hash)
