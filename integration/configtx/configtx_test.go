@@ -195,7 +195,7 @@ var _ = Describe("Config", func() {
 
 			By("ensuring the active channel config matches the submitted config")
 			finalChannelConfig := nwo.GetConfig(network, peer, orderer, "testchannel")
-			Expect(c.Updated()).To(Equal(finalChannelConfig))
+			Expect(c.UpdatedConfig()).To(Equal(finalChannelConfig))
 		}
 	})
 })

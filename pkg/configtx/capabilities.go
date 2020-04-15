@@ -17,7 +17,7 @@ import (
 // ChannelCapabilities returns a map of enabled channel capabilities
 // from a config transaction.
 func (c *ConfigTx) ChannelCapabilities() ([]string, error) {
-	capabilities, err := getCapabilities(c.base.ChannelGroup)
+	capabilities, err := getCapabilities(c.original.ChannelGroup)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving channel capabilities: %v", err)
 	}
@@ -28,7 +28,7 @@ func (c *ConfigTx) ChannelCapabilities() ([]string, error) {
 // OrdererCapabilities returns a map of enabled orderer capabilities
 // from a config transaction.
 func (c *ConfigTx) OrdererCapabilities() ([]string, error) {
-	orderer, ok := c.base.ChannelGroup.Groups[OrdererGroupKey]
+	orderer, ok := c.original.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return nil, errors.New("orderer missing from config")
 	}
@@ -44,7 +44,7 @@ func (c *ConfigTx) OrdererCapabilities() ([]string, error) {
 // ApplicationCapabilities returns a map of enabled application capabilities
 // from a config transaction.
 func (c *ConfigTx) ApplicationCapabilities() ([]string, error) {
-	application, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey]
+	application, ok := c.original.ChannelGroup.Groups[ApplicationGroupKey]
 	if !ok {
 		return nil, errors.New("application missing from config")
 	}

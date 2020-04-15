@@ -222,8 +222,8 @@ func TestAddAnchorPeer(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	newOrg1AnchorPeer := Address{
@@ -429,8 +429,8 @@ func TestAddAnchorPeerFailure(t *testing.T) {
 			}
 
 			c := ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 
 			if tt.configMod != nil {
@@ -464,8 +464,8 @@ func TestRemoveAnchorPeer(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	expectedUpdatedConfigJSON := `
@@ -622,8 +622,8 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 			}
 
 			c := ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 
 			err = c.RemoveAnchorPeer(tt.orgName, tt.anchorPeerToRemove)
@@ -649,8 +649,8 @@ func TestAnchorPeer(t *testing.T) {
 
 	expectedAnchorPeer := Address{Host: "host1", Port: 123}
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.AddAnchorPeer("Org1", expectedAnchorPeer)
@@ -687,8 +687,8 @@ func TestAnchorPeerFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	for _, test := range []struct {
@@ -763,8 +763,8 @@ func TestAddACL(t *testing.T) {
 				tt.configMod(config)
 			}
 			c := ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 
 			err = c.AddACLs(tt.newACL)
@@ -837,8 +837,8 @@ func TestRemoveACL(t *testing.T) {
 				tt.configMod(config)
 			}
 			c := &ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 
 			err = c.RemoveACLs(tt.removeACL)
@@ -871,8 +871,8 @@ func TestAddApplicationOrg(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	org := Organization{
@@ -1058,8 +1058,8 @@ func TestAddApplicationOrgFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	org := Organization{
@@ -1087,8 +1087,8 @@ func TestApplicationConfiguration(t *testing.T) {
 	}
 
 	c := &ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 	for _, org := range baseApplicationConf.Organizations {
 		err = c.AddApplicationOrg(org)
@@ -1114,7 +1114,7 @@ func TestApplicationConfigurationFailure(t *testing.T) {
 		{
 			testName: "When the application group does not exist",
 			configMod: func(ct *ConfigTx, appOrg Application, gt *GomegaWithT) {
-				delete(ct.base.ChannelGroup.Groups, ApplicationGroupKey)
+				delete(ct.original.ChannelGroup.Groups, ApplicationGroupKey)
 			},
 			expectedErr: "config does not contain application group",
 		},
@@ -1152,8 +1152,8 @@ func TestApplicationConfigurationFailure(t *testing.T) {
 			}
 
 			c := &ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 			if tt.configMod != nil {
 				tt.configMod(c, baseApplicationConf, gt)
@@ -1183,7 +1183,7 @@ func TestApplicationACLs(t *testing.T) {
 	}
 
 	c := &ConfigTx{
-		base: config,
+		original: config,
 	}
 
 	applicationACLs, err := c.ApplicationACLs()
@@ -1203,7 +1203,7 @@ func TestApplicationACLsFailure(t *testing.T) {
 	}
 
 	c := &ConfigTx{
-		base: config,
+		original: config,
 	}
 
 	applicationACLs, err := c.ApplicationACLs()

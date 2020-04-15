@@ -66,10 +66,10 @@ type standardConfigPolicy struct {
 	value *cb.Policy
 }
 
-// ConfigTx wraps a config transaction
+// ConfigTx wraps a config transaction.
 type ConfigTx struct {
 	// original state of the config
-	base *cb.Config
+	original *cb.Config
 	// modified state of the config
 	updated *cb.Config
 }
@@ -77,19 +77,19 @@ type ConfigTx struct {
 // New returns an config.
 func New(config *cb.Config) ConfigTx {
 	return ConfigTx{
-		base: config,
+		original: config,
 		// Clone the base config for processing updates
 		updated: proto.Clone(config).(*cb.Config),
 	}
 }
 
-// Base returns the base config
-func (c *ConfigTx) Base() *cb.Config {
-	return c.base
+// OriginalConfig returns the original unedited config.
+func (c *ConfigTx) OriginalConfig() *cb.Config {
+	return c.original
 }
 
-// Updated returns the updated config
-func (c *ConfigTx) Updated() *cb.Config {
+// UpdatedConfig returns the modified config.
+func (c *ConfigTx) UpdatedConfig() *cb.Config {
 	return c.updated
 }
 
@@ -99,7 +99,7 @@ func (c *ConfigTx) ComputeUpdate(channelID string) (*cb.ConfigUpdate, error) {
 		return nil, errors.New("channel ID is required")
 	}
 
-	updt, err := computeConfigUpdate(c.base, c.updated)
+	updt, err := computeConfigUpdate(c.original, c.updated)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute update: %v", err)
 	}
@@ -111,7 +111,7 @@ func (c *ConfigTx) ComputeUpdate(channelID string) (*cb.ConfigUpdate, error) {
 
 // ChannelConfiguration returns a channel configuration value from a config transaction.
 func (c *ConfigTx) ChannelConfiguration() (Channel, error) {
-	channelGroup := c.base.ChannelGroup
+	channelGroup := c.original.ChannelGroup
 	var (
 		err          error
 		consortium   string

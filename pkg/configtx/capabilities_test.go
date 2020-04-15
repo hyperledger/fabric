@@ -33,8 +33,8 @@ func TestChannelCapabilities(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err := setValue(config.ChannelGroup, capabilitiesValue(expectedCapabilities), AdminsPolicyKey)
@@ -69,8 +69,8 @@ func TestOrdererCapabilities(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	ordererCapabilities, err := c.OrdererCapabilities()
@@ -96,8 +96,8 @@ func TestOrdererCapabilitiesFailure(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	ordererCapabilities, err := c.OrdererCapabilities()
@@ -123,8 +123,8 @@ func TestApplicationCapabilities(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	applicationCapabilities, err := c.ApplicationCapabilities()
@@ -150,8 +150,8 @@ func TestApplicationCapabilitiesFailure(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	applicationCapabilities, err := c.ApplicationCapabilities()

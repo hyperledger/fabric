@@ -112,7 +112,7 @@ func (c *ConfigTx) UpdateOrdererConfiguration(o Orderer) error {
 // transaction as an Orderer type. This can be used to retrieve existing values for the orderer
 // prior to updating the orderer configuration.
 func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
-	ordererGroup, ok := c.base.ChannelGroup.Groups[OrdererGroupKey]
+	ordererGroup, ok := c.original.ChannelGroup.Groups[OrdererGroupKey]
 	if !ok {
 		return Orderer{}, errors.New("config does not contain orderer group")
 	}
@@ -155,7 +155,7 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 	}
 
 	// ORDERER ADDRESSES
-	ordererAddresses, err := getOrdererAddresses(c.base)
+	ordererAddresses, err := getOrdererAddresses(c.original)
 	if err != nil {
 		return Orderer{}, err
 	}

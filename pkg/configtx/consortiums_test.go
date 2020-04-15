@@ -354,8 +354,8 @@ func TestAddOrgToConsortium(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	orgToAdd := Organization{
@@ -850,8 +850,8 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			}
 
 			c := ConfigTx{
-				base:    config,
-				updated: config,
+				original: config,
+				updated:  config,
 			}
 
 			err = c.AddOrgToConsortium(test.org, test.consortium)
@@ -880,8 +880,8 @@ func TestRemoveConsortium(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.RemoveConsortium("Consortium1")
@@ -911,8 +911,8 @@ func TestRemoveConsortiumFailures(t *testing.T) {
 	}
 
 	c := ConfigTx{
-		base:    config,
-		updated: config,
+		original: config,
+		updated:  config,
 	}
 
 	err = c.RemoveConsortium("BadConsortium")

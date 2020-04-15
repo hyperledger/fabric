@@ -152,7 +152,7 @@ type NodeOUs struct {
 // ApplicationMSP returns the MSP configuration for an existing application
 // org in a config transaction.
 func (c *ConfigTx) ApplicationMSP(orgName string) (MSP, error) {
-	applicationOrgGroup, ok := c.base.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
+	applicationOrgGroup, ok := c.original.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 	if !ok {
 		return MSP{}, fmt.Errorf("application org %s does not exist in config", orgName)
 	}
@@ -163,7 +163,7 @@ func (c *ConfigTx) ApplicationMSP(orgName string) (MSP, error) {
 // OrdererMSP returns the MSP configuration for an existing orderer org
 // in a config transaction.
 func (c *ConfigTx) OrdererMSP(orgName string) (MSP, error) {
-	ordererOrgGroup, ok := c.base.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+	ordererOrgGroup, ok := c.original.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 	if !ok {
 		return MSP{}, fmt.Errorf("orderer org %s does not exist in config", orgName)
 	}
@@ -174,7 +174,7 @@ func (c *ConfigTx) OrdererMSP(orgName string) (MSP, error) {
 // ConsortiumMSP returns the MSP configuration for an existing consortium
 // org in a config transaction.
 func (c *ConfigTx) ConsortiumMSP(consortiumName, orgName string) (MSP, error) {
-	consortiumGroup, ok := c.base.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
+	consortiumGroup, ok := c.original.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 	if !ok {
 		return MSP{}, fmt.Errorf("consortium %s does not exist in config", consortiumName)
 	}
@@ -624,7 +624,7 @@ func (c *ConfigTx) UpdateApplicationMSP(updatedMSP MSP, orgName string) error {
 		return err
 	}
 
-	err = setMSPConfigForOrg(c.Updated(), updatedMSP, orgName)
+	err = setMSPConfigForOrg(c.UpdatedConfig(), updatedMSP, orgName)
 	if err != nil {
 		return err
 	}
