@@ -685,7 +685,7 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 		}
 		return true
 	}
-	assert.Eventually(t, queryUsingIndex, 2*time.Second, 100*time.Millisecond, "error executing query with sort")
+	assert.Eventually(t, queryUsingIndex, 6*time.Second, 1*time.Second, "error executing query with sort")
 
 	//Query namespace "ns2", index is only created in "ns1".  This should return an error.
 	_, err = db.ExecuteQuery("ns2", queryString)
@@ -738,7 +738,7 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 		}
 		return true
 	}
-	assert.Eventually(t, queryUsingIndex, 2*time.Second, 100*time.Millisecond, "error executing query with sort")
+	assert.Eventually(t, queryUsingIndex, 6*time.Second, 1*time.Second, "error executing query with sort")
 }
 
 func TestIsBulkOptimizable(t *testing.T) {
