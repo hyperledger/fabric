@@ -409,14 +409,13 @@ func (ks *fileBasedKeyStore) createKeyStore() error {
 	ksPath := ks.path
 	logger.Debugf("Creating KeyStore at [%s]", ksPath)
 
-	err := os.MkdirAll(ksPath, 0755)
-	if err == nil {
-		logger.Debugf("KeyStore created at [%s]", ksPath)
-	} else {
+	if err := os.MkdirAll(ksPath, 0755); err != nil {
 		logger.Errorf("Failed creating KeyStore at [%s]: [%s]", ksPath, err.Error())
+		return err
 	}
 
-	return err
+	logger.Debugf("KeyStore created at [%s]", ksPath)
+	return nil
 }
 
 func (ks *fileBasedKeyStore) openKeyStore() error {
