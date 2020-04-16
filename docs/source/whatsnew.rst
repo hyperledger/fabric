@@ -1,4 +1,4 @@
-What's new in Hyperledger Fabric v2.0
+What's new in Hyperledger Fabric v2.x
 =====================================
 
 The first Hyperledger Fabric major release since v1.0, Fabric v2.0
@@ -6,9 +6,8 @@ delivers important new features and changes for users and operators alike,
 including support for new application and privacy patterns, enhanced
 governance around smart contracts, and new options for operating nodes.
 
-What has stayed the same is the ability to upgrade network components on
-your own terms, with support for rolling upgrades from v1.4.x, and the ability
-to enable the new capabilities only when member organizations are ready.
+Each v2.x minor release builds on the v2.0 release with minor features,
+improvements, and bug fixes.
 
 Let's take a look at some of the highlights of the Fabric v2.0 release...
 
@@ -194,7 +193,7 @@ in addition to cryptogen.
 
 For more information about this network, check out :doc:`test_network`.
 
-Upgrading to Fabric v2.0
+Upgrading to Fabric v2.x
 ------------------------
 
 A major new release brings some additional upgrade considerations. Rest assured
@@ -211,9 +210,11 @@ Release notes
 
 The release notes provide more details for users moving to the new release.
 Specifically, take a look at the changes and deprecations that are being
-announced with the new Fabric v2.0 release.
+announced with the new Fabric v2.0 release, and the changes introduced in v2.1.
 
 * `Fabric v2.0.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.0>`_.
+* `Fabric v2.0.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.0.1>`_.
+* `Fabric v2.1.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.1.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
