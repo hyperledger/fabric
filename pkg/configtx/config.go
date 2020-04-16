@@ -485,8 +485,8 @@ func newConfigGroup() *cb.ConfigGroup {
 	}
 }
 
-// newEnvelope creates an unsigned envelope of type txType using with the marshalled
-// cb.ConfigGroupEnvelope proto message.
+// newEnvelope creates an unsigned envelope of the desired type containing
+// a payload Header and the marshaled proto message as the payload Data.
 func newEnvelope(
 	txType cb.HeaderType,
 	channelID string,
