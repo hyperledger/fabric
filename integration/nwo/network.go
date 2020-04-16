@@ -136,16 +136,17 @@ type Profile struct {
 
 // Network holds information about a fabric network.
 type Network struct {
-	RootDir            string
-	StartPort          uint16
-	Components         *Components
-	DockerClient       *docker.Client
-	ExternalBuilders   []fabricconfig.ExternalBuilder
-	NetworkID          string
-	EventuallyTimeout  time.Duration
-	MetricsProvider    string
-	StatsdEndpoint     string
-	ClientAuthRequired bool
+	RootDir               string
+	StartPort             uint16
+	Components            *Components
+	DockerClient          *docker.Client
+	ExternalBuilders      []fabricconfig.ExternalBuilder
+	NetworkID             string
+	EventuallyTimeout     time.Duration
+	SessionCreateInterval time.Duration
+	MetricsProvider       string
+	StatsdEndpoint        string
+	ClientAuthRequired    bool
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -160,7 +161,8 @@ type Network struct {
 	Consortiums      []*Consortium
 	Templates        *Templates
 
-	colorIndex uint
+	colorIndex       uint
+	sessLastExecuted map[string]time.Time
 }
 
 // New creates a Network from a simple configuration. All generated or managed
@@ -189,6 +191,8 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 		Profiles:      c.Profiles,
 		Consortiums:   c.Consortiums,
 		Templates:     c.Templates,
+
+		sessLastExecuted: make(map[string]time.Time),
 	}
 
 	cwd, err := os.Getwd()
@@ -201,6 +205,9 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 
 	if network.Templates == nil {
 		network.Templates = &Templates{}
+	}
+	if network.SessionCreateInterval == 0 {
+		network.SessionCreateInterval = time.Second
 	}
 
 	for i := 0; i < network.Consensus.Brokers; i++ {
@@ -1548,9 +1555,53 @@ func (n *Network) nextColor() string {
 	return fmt.Sprintf("%dm", color)
 }
 
+func commandHash(cmd *exec.Cmd) string {
+	buf := bytes.NewBuffer(nil)
+	_, err := buf.WriteString(cmd.Dir)
+	Expect(err).NotTo(HaveOccurred())
+	_, err = buf.WriteString(cmd.Path)
+	Expect(err).NotTo(HaveOccurred())
+
+	// sort the environment since it's not positional
+	env := append([]string(nil), cmd.Env...)
+	sort.Strings(env)
+	for _, e := range env {
+		_, err := buf.WriteString(e)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	// grab the args but ignore references to temporary files
+	for _, arg := range cmd.Args {
+		if strings.HasPrefix(arg, os.TempDir()) {
+			continue
+		}
+		_, err := buf.WriteString(arg)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	return buf.String()
+}
+
+func (n *Network) sessionThrottleDuration(cmd *exec.Cmd) time.Duration {
+	h := commandHash(cmd)
+	now := time.Now()
+	last := n.sessLastExecuted[h]
+	n.sessLastExecuted[h] = now
+
+	if diff := last.Add(n.SessionCreateInterval).Sub(now); diff > 0 {
+		return diff
+	}
+
+	return 0
+}
+
 // StartSession executes a command session. This should be used to launch
 // command line tools that are expected to run to completion.
 func (n *Network) StartSession(cmd *exec.Cmd, name string) (*gexec.Session, error) {
+	if d := n.sessionThrottleDuration(cmd); d > 0 {
+		time.Sleep(d)
+	}
+
 	ansiColorCode := n.nextColor()
 	fmt.Fprintf(
 		ginkgo.GinkgoWriter,
