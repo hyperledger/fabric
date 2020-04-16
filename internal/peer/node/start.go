@@ -101,7 +101,6 @@ import (
 )
 
 const (
-	chaincodeAddrKey       = "peer.chaincodeAddress"
 	chaincodeListenAddrKey = "peer.chaincodeListenAddress"
 	defaultChaincodePort   = 7052
 )
