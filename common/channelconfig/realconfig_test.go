@@ -34,6 +34,12 @@ func TestWithRealConfigtx(t *testing.T) {
 			Port: 7,
 		},
 	}
+	conf.Application.Policies = map[string]*genesisconfig.Policy{
+		"SamplePolicy": {
+			Type: "ImplicitMeta",
+			Rule: "ANY Admins",
+		},
+	}
 	gb := encoder.New(conf).GenesisBlockForChannel("foo")
 	env := utils.ExtractEnvelopeOrPanic(gb, 0)
 	_, err := channelconfig.NewBundleFromEnvelope(env)
