@@ -91,10 +91,7 @@ func Example_systemChannel() {
 		panic(err)
 	}
 
-	err = c.RemoveConsortium("SampleConsortium2")
-	if err != nil {
-		panic(err)
-	}
+	c.RemoveConsortium("SampleConsortium2")
 
 	orgToAdd := configtx.Organization{
 		Name: "Org3",
@@ -124,10 +121,7 @@ func Example_systemChannel() {
 		panic(err)
 	}
 
-	err = c.RemoveConsortiumOrg("SampleConsortium", "Org3")
-	if err != nil {
-		panic(err)
-	}
+	c.RemoveConsortiumOrg("SampleConsortium", "Org3")
 
 	// Compute the delta
 	configUpdate, err := c.ComputeUpdate("testsyschannel")
@@ -385,10 +379,7 @@ func Example_organization() {
 		panic(err)
 	}
 
-	err = c.RemoveApplicationOrg("Org2")
-	if err != nil {
-		panic(err)
-	}
+	c.RemoveApplicationOrg("Org2")
 
 	err = c.AddApplicationOrgPolicy("Org1", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
 		Type: configtx.ImplicitMetaPolicyType,
@@ -413,10 +404,7 @@ func Example_organization() {
 		panic(err)
 	}
 
-	err = c.RemoveOrdererOrg("OrdererOrg2")
-	if err != nil {
-		panic(err)
-	}
+	c.RemoveOrdererOrg("OrdererOrg2")
 
 	err = c.RemoveOrdererOrgPolicy("OrdererOrg", configtx.WritersPolicyKey)
 	if err != nil {

@@ -111,12 +111,11 @@ func (c *ConfigTx) AddAnchorPeer(orgName string, newAnchorPeer Address) error {
 }
 
 // RemoveAnchorPeer removes an anchor peer from an existing channel config transaction.
-// The removed anchor peer and org it belongs to must both already exist.
+// Specifying an anchor peer or organization name that does not exist in the application
+// ConfigGroup of the channel config will not return an error.
+// Removal will panic if application group or application org group does not exist.
 func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) error {
-	applicationOrgGroup, ok := c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
-	if !ok {
-		return fmt.Errorf("application org %s does not exist in channel config", orgName)
-	}
+	applicationOrgGroup := c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 
 	anchorPeersProto := &pb.AnchorPeers{}
 
@@ -129,6 +128,7 @@ func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) 
 	}
 
 	existingAnchorPeers := anchorPeersProto.AnchorPeers[:0]
+
 	for _, anchorPeer := range anchorPeersProto.AnchorPeers {
 		if anchorPeer.Host != anchorPeerToRemove.Host || anchorPeer.Port != int32(anchorPeerToRemove.Port) {
 			existingAnchorPeers = append(existingAnchorPeers, anchorPeer)
@@ -143,10 +143,6 @@ func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) 
 		}
 	}
 
-	if len(existingAnchorPeers) == len(anchorPeersProto.AnchorPeers) {
-		return fmt.Errorf("could not find anchor peer %s:%d in application org %s", anchorPeerToRemove.Host, anchorPeerToRemove.Port, orgName)
-	}
-
 	// Add anchor peers config value back to application org
 	err := setValue(applicationOrgGroup, anchorPeersValue(existingAnchorPeers), AdminsPolicyKey)
 	if err != nil {
@@ -157,6 +153,7 @@ func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) 
 }
 
 // AddACLs adds ACLS to an existing channel config application.
+// Addition will panic if application group does not exist.
 func (c *ConfigTx) AddACLs(acls map[string]string) error {
 	configACLs, err := getACLs(c.updated)
 	if err != nil {
@@ -176,6 +173,8 @@ func (c *ConfigTx) AddACLs(acls map[string]string) error {
 }
 
 // RemoveACLs a list of ACLs from given channel config application.
+// Specifying acls that do not exist in the application ConfigGroup of the channel config will not return a error.
+// Removal will panic if application group does not exist.
 func (c *ConfigTx) RemoveACLs(acls []string) error {
 	configACLs, err := getACLs(c.updated)
 	if err != nil {
@@ -195,16 +194,14 @@ func (c *ConfigTx) RemoveACLs(acls []string) error {
 }
 
 // ApplicationACLs returns a map of application acls from a config transaction.
+// Retrieval will panic if application group does not exist.
 func (c *ConfigTx) ApplicationACLs() (map[string]string, error) {
 	return getACLs(c.original)
 }
 
 // getACLs returns a map of ACLS for given config application.
 func getACLs(config *cb.Config) (map[string]string, error) {
-	applicationGroup, ok := config.ChannelGroup.Groups[ApplicationGroupKey]
-	if !ok {
-		return nil, fmt.Errorf("application does not exist in channel config")
-	}
+	applicationGroup := config.ChannelGroup.Groups[ApplicationGroupKey]
 
 	ACLProtos := &pb.ACLs{}
 
@@ -217,6 +214,7 @@ func getACLs(config *cb.Config) (map[string]string, error) {
 	for apiResource, policyRef := range ACLProtos.Acls {
 		retACLs[apiResource] = policyRef.PolicyRef
 	}
+
 	return retACLs, nil
 }
 

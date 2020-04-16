@@ -582,7 +582,7 @@ func unmarshalConfigValueAtKey(group *cb.ConfigGroup, key string, msg proto.Mess
 
 	err := proto.Unmarshal(valueAtKey.Value, msg)
 	if err != nil {
-		return fmt.Errorf("unmarshalling %s: %v", key, err)
+		return fmt.Errorf("unmarshaling %s: %v", key, err)
 	}
 
 	return nil

@@ -282,19 +282,16 @@ func (c *ConfigTx) AddOrdererEndpoint(orgName string, endpoint Address) error {
 }
 
 // RemoveOrdererEndpoint removes an orderer's endpoint from an existing channel config transaction.
-// The removed endpoint and org it belongs to must both already exist.
+// Removal will panic if either the orderer group or orderer org group does not exist.
 func (c *ConfigTx) RemoveOrdererEndpoint(orgName string, endpoint Address) error {
-	ordererOrgGroup, ok := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
-	if !ok {
-		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
-	}
+	ordererOrgGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 
 	ordererAddrProto := &cb.OrdererAddresses{}
 
 	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
 		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshalling orderer org %s's endpoints: %v", orgName, err)
+			return fmt.Errorf("failed unmarshaling orderer org %s's endpoints: %v", orgName, err)
 		}
 	}
 
@@ -307,10 +304,6 @@ func (c *ConfigTx) RemoveOrdererEndpoint(orgName string, endpoint Address) error
 		}
 	}
 
-	if len(existingEndpoints) == len(ordererAddrProto.Addresses) {
-		return fmt.Errorf("could not find endpoint %s in orderer org %s", endpointToRemove, orgName)
-	}
-
 	// Add orderer endpoints config value back to orderer org
 	err := setValue(ordererOrgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
 	if err != nil {
@@ -318,7 +311,6 @@ func (c *ConfigTx) RemoveOrdererEndpoint(orgName string, endpoint Address) error
 	}
 
 	return nil
-
 }
 
 // newOrdererGroup returns the orderer component of the channel configuration.
