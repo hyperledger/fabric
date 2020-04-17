@@ -4,7 +4,15 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-// Package configtx allows the creation, retrieval, and modification of channel configtx.
+// Package config provides utilities to create and modify a channel configuration transaction.
+// Channel transactions contain the configuration data defining members and policies for a
+// system or application channel and can be used to either create or modify existing channels.
+// Both the creation of a new channel or modification of an existing channel outputs an unsigned
+// transaction represented in a protobuf binary format that must be signed by the requisite number
+// of members such that the transaction fulfills the channel's modification policy.
+//
+// See https://hyperledger-fabric.readthedocs.io/en/master/configtx.html#anatomy-of-a-configuration
+// for an in-depth description of channel configuration's anatomy.
 package configtx
 
 import (
