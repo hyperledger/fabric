@@ -67,13 +67,9 @@ func (c *ConfigTx) ApplicationConfiguration() (Application, error) {
 }
 
 // AddAnchorPeer adds an anchor peer to an existing channel config transaction.
-// It must add the anchor peer to an existing org and the anchor peer must not already
-// exist in the org.
+// If anchor peer endpoints already exist in configuration, this action will be a no-op.
 func (c *ConfigTx) AddAnchorPeer(orgName string, newAnchorPeer Address) error {
-	applicationOrgGroup, ok := c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
-	if !ok {
-		return fmt.Errorf("application org %s does not exist in channel config", orgName)
-	}
+	applicationOrgGroup := c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 
 	anchorPeersProto := &pb.AnchorPeers{}
 
@@ -90,8 +86,7 @@ func (c *ConfigTx) AddAnchorPeer(orgName string, newAnchorPeer Address) error {
 
 	for _, anchorPeer := range anchorProtos {
 		if anchorPeer.Host == newAnchorPeer.Host && anchorPeer.Port == int32(newAnchorPeer.Port) {
-			return fmt.Errorf("application org %s already contains anchor peer endpoint %s:%d",
-				orgName, newAnchorPeer.Host, newAnchorPeer.Port)
+			return nil
 		}
 	}
 
@@ -152,19 +147,10 @@ func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) 
 	return nil
 }
 
-// AddACLs adds ACLS to an existing channel config application.
-// Addition will panic if application group does not exist.
-func (c *ConfigTx) AddACLs(acls map[string]string) error {
-	configACLs, err := getACLs(c.updated)
-	if err != nil {
-		return err
-	}
-
-	for apiResource, policyRef := range configACLs {
-		acls[apiResource] = policyRef
-	}
-
-	err = setValue(c.updated.ChannelGroup.Groups[ApplicationGroupKey], aclValues(acls), AdminsPolicyKey)
+// SetACLs sets ACLS to an existing channel config application.
+// If an ACL already exist in current configuration, it will be replaced with new ACL.
+func (c *ConfigTx) SetACLs(acls map[string]string) error {
+	err := setValue(c.updated.ChannelGroup.Groups[ApplicationGroupKey], aclValues(acls), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}

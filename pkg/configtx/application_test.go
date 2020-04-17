@@ -11,9 +11,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/common/tools/protolator/protoext/peerext"
 	. "github.com/onsi/gomega"
@@ -367,82 +365,6 @@ func TestAddAnchorPeer(t *testing.T) {
 	gt.Expect(config).To(Equal(expectedUpdatedConfig))
 }
 
-func TestAddAnchorPeerFailure(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		testName      string
-		orgName       string
-		configMod     func(*GomegaWithT, *cb.Config)
-		newAnchorPeer Address
-		expectedErr   string
-	}{
-		{
-			testName:      "When the org for the application does not exist",
-			orgName:       "BadOrg",
-			configMod:     nil,
-			newAnchorPeer: Address{Host: "host3", Port: 123},
-			expectedErr:   "application org BadOrg does not exist in channel config",
-		},
-		{
-			testName: "When the anchor peer being added already exists in the org",
-			orgName:  "Org1",
-			configMod: func(gt *GomegaWithT, config *cb.Config) {
-				existingAnchorPeer := &pb.AnchorPeers{
-					AnchorPeers: []*pb.AnchorPeer{
-						{
-							Host: "host1",
-							Port: 123,
-						},
-					},
-				}
-				v, err := proto.Marshal(existingAnchorPeer)
-				gt.Expect(err).NotTo(HaveOccurred())
-
-				config.ChannelGroup.Groups[ApplicationGroupKey].Groups["Org1"].Values[AnchorPeersKey] = &cb.ConfigValue{
-					Value: v,
-				}
-			},
-			newAnchorPeer: Address{Host: "host1", Port: 123},
-			expectedErr:   "application org Org1 already contains anchor peer endpoint host1:123",
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.testName, func(t *testing.T) {
-			t.Parallel()
-
-			gt := NewGomegaWithT(t)
-
-			baseApplicationConf := baseApplication(t)
-
-			applicationGroup, err := newApplicationGroup(baseApplicationConf)
-			gt.Expect(err).NotTo(HaveOccurred())
-
-			config := &cb.Config{
-				ChannelGroup: &cb.ConfigGroup{
-					Groups: map[string]*cb.ConfigGroup{
-						ApplicationGroupKey: applicationGroup,
-					},
-				},
-			}
-
-			c := ConfigTx{
-				original: config,
-				updated:  config,
-			}
-
-			if tt.configMod != nil {
-				tt.configMod(gt, config)
-			}
-
-			err = c.AddAnchorPeer(tt.orgName, tt.newAnchorPeer)
-			gt.Expect(err).To(MatchError(tt.expectedErr))
-		})
-	}
-}
-
 func TestRemoveAnchorPeer(t *testing.T) {
 	t.Parallel()
 
@@ -715,7 +637,7 @@ func TestAnchorPeerFailures(t *testing.T) {
 	}
 }
 
-func TestAddACL(t *testing.T) {
+func TestSetACL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -729,8 +651,15 @@ func TestAddACL(t *testing.T) {
 			testName: "success",
 			newACL:   map[string]string{"acl2": "newACL"},
 			expectedACL: map[string]string{
-				"acl1": "hi",
 				"acl2": "newACL",
+			},
+			expectedErr: "",
+		},
+		{
+			testName: "ACL overwrite",
+			newACL:   map[string]string{"acl1": "overwrite acl"},
+			expectedACL: map[string]string{
+				"acl1": "overwrite acl",
 			},
 			expectedErr: "",
 		},
@@ -750,22 +679,24 @@ func TestAddACL(t *testing.T) {
 			config := &cb.Config{
 				ChannelGroup: channelGroup,
 			}
+			expectedOriginalACL := map[string]string{"acl1": "hi"}
 			if tt.configMod != nil {
 				tt.configMod(config)
 			}
-			c := ConfigTx{
-				original: config,
-				updated:  config,
-			}
+			c := New(config)
 
-			err = c.AddACLs(tt.newACL)
+			err = c.SetACLs(tt.newACL)
 			if tt.expectedErr != "" {
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			} else {
 				gt.Expect(err).NotTo(HaveOccurred())
-				acls, err := getACLs(config)
+				acls, err := getACLs(c.updated)
 				gt.Expect(err).NotTo(HaveOccurred())
 				gt.Expect(acls).To(Equal(tt.expectedACL))
+
+				originalACLs, err := getACLs(c.original)
+				gt.Expect(err).NotTo(HaveOccurred())
+				gt.Expect(originalACLs).To(Equal(expectedOriginalACL))
 			}
 		})
 	}

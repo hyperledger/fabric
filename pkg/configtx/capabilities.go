@@ -28,10 +28,7 @@ func (c *ConfigTx) ChannelCapabilities() ([]string, error) {
 // OrdererCapabilities returns a map of enabled orderer capabilities
 // from a config transaction.
 func (c *ConfigTx) OrdererCapabilities() ([]string, error) {
-	orderer, ok := c.original.ChannelGroup.Groups[OrdererGroupKey]
-	if !ok {
-		return nil, errors.New("orderer missing from config")
-	}
+	orderer := c.original.ChannelGroup.Groups[OrdererGroupKey]
 
 	capabilities, err := getCapabilities(orderer)
 	if err != nil {
@@ -44,10 +41,7 @@ func (c *ConfigTx) OrdererCapabilities() ([]string, error) {
 // ApplicationCapabilities returns a map of enabled application capabilities
 // from a config transaction.
 func (c *ConfigTx) ApplicationCapabilities() ([]string, error) {
-	application, ok := c.original.ChannelGroup.Groups[ApplicationGroupKey]
-	if !ok {
-		return nil, errors.New("application missing from config")
-	}
+	application := c.original.ChannelGroup.Groups[ApplicationGroupKey]
 
 	capabilities, err := getCapabilities(application)
 	if err != nil {
@@ -58,6 +52,8 @@ func (c *ConfigTx) ApplicationCapabilities() ([]string, error) {
 }
 
 // AddChannelCapability adds capability to the provided channel config.
+// If the provided capability already exist in current configuration, this action
+// will be a no-op.
 func (c *ConfigTx) AddChannelCapability(capability string) error {
 	capabilities, err := c.ChannelCapabilities()
 	if err != nil {
@@ -73,6 +69,8 @@ func (c *ConfigTx) AddChannelCapability(capability string) error {
 }
 
 // AddOrdererCapability adds capability to the provided channel config.
+// If the provided capability already exist in current configuration, this action
+// will be a no-op.
 func (c *ConfigTx) AddOrdererCapability(capability string) error {
 	capabilities, err := c.OrdererCapabilities()
 	if err != nil {
@@ -87,7 +85,9 @@ func (c *ConfigTx) AddOrdererCapability(capability string) error {
 	return nil
 }
 
-// AddApplicationCapability adds capability to the provided channel config.
+// AddApplicationCapability sets capability to the provided channel config.
+// If the provided capability already exist in current configuration, this action
+// will be a no-op.
 func (c *ConfigTx) AddApplicationCapability(capability string) error {
 	capabilities, err := c.ApplicationCapabilities()
 	if err != nil {
@@ -147,7 +147,7 @@ func (c *ConfigTx) RemoveApplicationCapability(capability string) error {
 	return nil
 }
 
-// capabilitiesValue returns the config definition for a a set of capabilities.
+// capabilitiesValue returns the config definition for a set of capabilities.
 // It is a value for the /Channel/Orderer, Channel/Application/, and /Channel groups.
 func capabilitiesValue(capabilities []string) *standardConfigValue {
 	c := &cb.Capabilities{
@@ -167,11 +167,13 @@ func capabilitiesValue(capabilities []string) *standardConfigValue {
 func addCapability(configGroup *cb.ConfigGroup, capabilities []string, modPolicy string, capability string) error {
 	for _, c := range capabilities {
 		if c == capability {
-			return errors.New("capability already exists")
+			// if capability already exist, do nothing.
+			return nil
 		}
 	}
+	capabilities = append(capabilities, capability)
 
-	err := setValue(configGroup, capabilitiesValue([]string{capability}), modPolicy)
+	err := setValue(configGroup, capabilitiesValue(capabilities), modPolicy)
 	if err != nil {
 		return fmt.Errorf("adding capability: %v", err)
 	}
