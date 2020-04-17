@@ -43,6 +43,30 @@ After completing this tutorial you should have a basic understanding of how Fabr
 applications and smart contracts work together to manage data on the distributed
 ledger of a blockchain network.
 
+Before you begin
+----------------
+
+In addition to the standard :doc:`prereqs` for Fabric, this tutorial leverages the Hyperledger Fabric SDK for Node.js. See the Node.js SDK `README <https://github.com/hyperledger/fabric-sdk-node#build-and-test>`__ for a up to date list of prerequisites.
+
+- If you are using macOS, complete the following steps:
+
+  1. Install `Homebrew <https://brew.sh/>`_.
+  2. Check the Node SDK `prerequisties <https://github.com/hyperledger/fabric-sdk-node#build-and-test>`_ to find out what level of Node to install.
+  3. Run ``brew install node`` to download the latest version of node or choose a specific version, for example: ``brew install node@10`` according to what is supported in the prerequisites.
+  4. Run ``npm install``.
+
+- If you are on Windows,  you can install the `windows-build-tools <https://github.com/felixrieseberg/windows-build-tools#readme>`_ with npm which installs all required compilers and tooling by running the following command:
+
+  .. code:: bash
+
+    npm install --global windows-build-tools
+
+- If you are on Linux, you need to install `Python v2.7 <https://www.python.org/download/releases/2.7/>`_, `make <https://www.gnu.org/software/make/>`_, and a C/C++ compiler toolchain such as `GCC <https://gcc.gnu.org/>`_. You can run the following command to install the other tools:
+
+  .. code:: bash
+
+    sudo apt install build-essentials
+
 Set up the blockchain network
 -----------------------------
 
@@ -50,8 +74,6 @@ If you've already run through :doc:`test_network` tutorial and have a network up
 and running, this tutorial will bring down your running network network before
 bringing up a new one.
 
-If you are using Mac OS and running Mojave, you will need to `install Xcode
-<./tutorial/installxcode.html>`_.
 
 Launch the network
 ^^^^^^^^^^^^^^^^^^
@@ -128,9 +150,6 @@ You should see the following:
 There are files for other program languages, for example in the
 ``fabcar/java`` directory. You can read these once you've used the
 JavaScript example -- the principles are the same.
-
-If you are using Mac OS and running Mojave, you will need to `install Xcode
-<./tutorial/installxcode.html>`_.
 
 Enrolling the admin user
 ------------------------
