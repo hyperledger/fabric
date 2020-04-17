@@ -13,9 +13,8 @@ Hyperledger Fabric.
           Please visit the :doc:`prereqs` if you haven't previously installed
           it.
 
-          If you are using Docker Toolbox on Windows 7 or macOS, you
-          will need to use a location under ``C:\Users`` (Windows 7) or
-          ``/Users`` (macOS) when installing and running the samples.
+          If you are using Docker Toolbox or macOS, you
+          will need to use a location under ``/Users`` (macOS) when installing and running the samples.
 
           If you are using Docker for Mac, you will need to use a location
           under ``/Users``, ``/Volumes``, ``/private``, or ``/tmp``.  To use a different
