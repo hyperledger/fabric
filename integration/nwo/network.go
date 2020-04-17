@@ -628,13 +628,13 @@ func (n *Network) CACertsBundlePath() string {
 // When this method completes, the resulting tree will look something like
 // this:
 //
-// ${rootDir}/configtx.yaml
-// ${rootDir}/crypto-config.yaml
-// ${rootDir}/orderers/orderer0.orderer-org/orderer.yaml
-// ${rootDir}/peers/peer0.org1/core.yaml
-// ${rootDir}/peers/peer0.org2/core.yaml
-// ${rootDir}/peers/peer1.org1/core.yaml
-// ${rootDir}/peers/peer1.org2/core.yaml
+//    ${rootDir}/configtx.yaml
+//    ${rootDir}/crypto-config.yaml
+//    ${rootDir}/orderers/orderer0.orderer-org/orderer.yaml
+//    ${rootDir}/peers/peer0.org1/core.yaml
+//    ${rootDir}/peers/peer0.org2/core.yaml
+//    ${rootDir}/peers/peer1.org1/core.yaml
+//    ${rootDir}/peers/peer1.org2/core.yaml
 //
 func (n *Network) GenerateConfigTree() {
 	n.GenerateCryptoConfig()
@@ -722,13 +722,13 @@ func (n *Network) createDockerNetwork() {
 //
 // https://github.com/moby/libnetwork/blob/1a17fb36132631a95fe6bb055b91e24a516ad81d/ipamutils/utils.go#L18-L20
 //
-// Docker can be configured to use different addresses by addding an
+// Docker can be configured to use different addresses by adding an
 // appropriate default-address-pools configuration element to "daemon.json".
 //
 // For example:
 //   "default-address-pools":[
-//       {"base":"172.80.0.0/16","size":24},
-//       {"base":"172.81.0.0/16","size":24}
+//       {"base":"172.30.0.0/16","size":24},
+//       {"base":"172.31.0.0/16","size":24}
 //   ]
 func (n *Network) checkDockerNetworks() {
 	hostAddrs := hostIPv4Addrs()
@@ -944,14 +944,14 @@ func (n *Network) UpdateChannelAnchors(o *Orderer, channelName string) {
 	}
 }
 
-// VerifyMembership checks that each peer has discovered the expected
-// peers in the network
+// VerifyMembership checks that each peer has discovered the expected peers in
+// the network.
 func (n *Network) VerifyMembership(expectedPeers []*Peer, channel string, chaincodes ...string) {
 	// all peers currently include _lifecycle as an available chaincode
 	chaincodes = append(chaincodes, "_lifecycle")
 	expectedDiscoveredPeerMatchers := make([]types.GomegaMatcher, len(expectedPeers))
 	for i, peer := range expectedPeers {
-		expectedDiscoveredPeerMatchers[i] = n.DiscoveredPeerMatcher(peer, chaincodes...) //n.DiscoveredPeer(peer, chaincodes...)
+		expectedDiscoveredPeerMatchers[i] = n.DiscoveredPeerMatcher(peer, chaincodes...)
 	}
 	for _, peer := range expectedPeers {
 		Eventually(DiscoverPeers(n, peer, "User1", channel), n.EventuallyTimeout).Should(ConsistOf(expectedDiscoveredPeerMatchers))
@@ -960,9 +960,9 @@ func (n *Network) VerifyMembership(expectedPeers []*Peer, channel string, chainc
 
 // CreateChannel will submit an existing create channel transaction to the
 // specified orderer. The channel transaction must exist at the location
-// returned by CreateChannelTxPath.  Optionally, additional signers may be
-// included in the case where the channel creation tx modifies other
-// aspects of the channel config for the new channel.
+// returned by CreateChannelTxPath. Optionally, additional signers may be
+// included in the case where the channel creation tx modifies other aspects of
+// the channel config for the new channel.
 //
 // The orderer must be running when this is called.
 func (n *Network) CreateChannel(channelName string, o *Orderer, p *Peer, additionalSigners ...interface{}) {
@@ -1123,7 +1123,7 @@ func (n *Network) defaultBrokerReplication() int {
 	return 3
 }
 
-// BrokerRunner returns a runner for an kafka broker instance.
+// BrokerRunner returns a runner for a Kafka broker instance.
 func (n *Network) BrokerRunner(id int, zookeepers []string) *runner.Kafka {
 	colorCode := n.nextColor()
 	name := fmt.Sprintf("kafka-%d-%s", id, n.NetworkID)
@@ -1150,7 +1150,7 @@ func (n *Network) BrokerRunner(id int, zookeepers []string) *runner.Kafka {
 }
 
 // BrokerGroupRunner returns a runner that manages the processes that make up
-// the kafka broker network for fabric.
+// the Kafka broker network for fabric.
 func (n *Network) BrokerGroupRunner() ifrit.Runner {
 	members := grouper.Members{}
 	zookeepers := []string{}
@@ -1259,10 +1259,9 @@ func (n *Network) peerCommand(command Command, tlsDir string, env ...string) *ex
 		cmd.Args = append(cmd.Args, "--keyfile", keyfilePath)
 	}
 
-	// In case we have a peer invoke with multiple certificates,
-	// we need to mimic the correct peer CLI usage,
-	// so we count the number of --peerAddresses usages
-	// we have, and add the same (concatenated TLS CA certificates file)
+	// In case we have a peer invoke with multiple certificates, we need to mimic
+	// the correct peer CLI usage, so we count the number of --peerAddresses
+	// usages we have, and add the same (concatenated TLS CA certificates file)
 	// the same number of times to bypass the peer CLI sanity checks
 	requiredPeerAddresses := flagCount("--peerAddresses", cmd.Args)
 	for i := 0; i < requiredPeerAddresses; i++ {
@@ -1494,7 +1493,7 @@ func (n *Network) AnchorsInOrg(orgName string) []*Peer {
 	return anchors
 }
 
-// OrderersInOrg returns all Orderer instances owned by the named organaiztion.
+// OrderersInOrg returns all Orderer instances owned by the named organization.
 func (n *Network) OrderersInOrg(orgName string) []*Orderer {
 	orderers := []*Orderer{}
 	for _, o := range n.Orderers {
@@ -1663,6 +1662,13 @@ func commandHash(cmd *exec.Cmd) string {
 	return buf.String()
 }
 
+// sessionThrottleDuration returns the time StartSession must wait before
+// starting a command session. The duration is determined by looking at when a
+// command was last executed by the network. If the time between now and the
+// last execution was less than SessionCreateInterval, the difference between
+// now and (execution + SessionCreateInterval) is returned. If more than
+// SessionCreateInterval has elapsed since the last command execution, a
+// duration of 0 is returned.
 func (n *Network) sessionThrottleDuration(cmd *exec.Cmd) time.Duration {
 	h := commandHash(cmd)
 	now := time.Now()
