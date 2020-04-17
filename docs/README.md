@@ -98,7 +98,7 @@ You can then access the html files at `http://localhost/index.html`.
 Updating content in the [Commands Reference](https://hyperledger-fabric.readthedocs.io/en/latest/command_ref.html) topic requires additional steps. Because the information in the Commands Reference topic is generated content, you cannot simply update the associated markdown files.
 - Instead you need to update the `_preamble.md` or `_postscript.md` files under `src/github.com/hyperledger/fabric/docs/wrappers` for the command.
 - To update the command help text, you need to edit the associated `.go` file for the command that is located under `/fabric/internal/peer`.
-- Then you need to run the command `make help-docs` which generates the updated markdown files under `docs/source/commands`. **Tip:** Before running `make help-docs`, ensure that you have the [Go Programming language](/source/prereqs.html#go-programming-language) installed.
+- Then, from the `fabric` folder, you need to run the command `make help-docs` which generates the updated markdown files under `docs/source/commands`. 
 
 Remember that when you push the changes to GitHub, you need to include the `_preamble.md`, `_postscript.md` or `_.go` file that was modified as well as the generated markdown file.
 

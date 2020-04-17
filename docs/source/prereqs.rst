@@ -1,10 +1,9 @@
 Prerequisites
 =============
 
-Before we begin, if you haven't already done so, you may wish to check that
-you have all the prerequisites below installed on the platform(s)
-on which you'll be developing blockchain applications and/or operating
-Hyperledger Fabric.
+Before you begin, you should confirm that you have installed all the prerequisites below on the platform where you will be running Hyperledger Fabric.
+
+.. note:: These prerequisites are recommended for Fabric users. If you are a Fabric developer you should refer to the instructions for :doc:`dev-setup/devenv`.
 
 Install Git
 -----------
@@ -168,41 +167,6 @@ Check your version(s):
 Windows extras
 --------------
 
-If you are developing on Windows 7, you will want to work within the
-Docker Quickstart Terminal. However, by default it uses an old `Git
-Bash <https://git-scm.com/downloads>`__ and experience has shown this
-to be a poor development environment with limited functionality. It is
-suitable to run Docker based scenarios, such as
-:doc:`getting_started`, but you will have difficulties with operations
-involving the ``make`` and ``docker`` commands.
-
-Instead, it is recommended to use the MSYS2 environment and run make
-and docker from the MSYS2 command shell. To do so, `install
-MSYS2 <https://github.com/msys2/msys2/wiki/MSYS2-installation>`__
-(along with the base developer toolchain and gcc packages using
-pacman) and launch Docker Toolbox from the MSYS2 shell with the
-following command:
-
-::
-
-   /c/Program\ Files/Docker\ Toolbox/start.sh
-
-Alternatively, you can change the Docker Quickstart Terminal command
-to use MSYS2 bash by changing the target of the Windows shortcut from:
-
-::
-
-   "C:\Program Files\Git\bin\bash.exe" --login -i "C:\Program Files\Docker Toolbox\start.sh"
-
-to:
-
-::
-
-   "C:\msys64\usr\bin\bash.exe" --login -i "C:\Program Files\Docker Toolbox\start.sh"
-
-With the above change, you can now simply launch the Docker Quickstart
-Terminal and get a suitable environment.
-
 On Windows 10 you should use the native Docker distribution and you
 may use the Windows PowerShell. However, for the ``binaries``
 command to succeed you will still need to have the ``uname`` command
@@ -230,28 +194,6 @@ does not handle properly the redirect used in
 :doc:`getting_started`. Make sure you have and use a newer version
 which can be downloaded from the `cURL downloads page
 <https://curl.haxx.se/download.html>`__
-
-For Node.js you also need the necessary Visual Studio C++ Build Tools
-which are freely available and can be installed with the following
-command:
-
-.. code:: bash
-
-	  npm install --global windows-build-tools
-
-See the `NPM windows-build-tools page
-<https://www.npmjs.com/package/windows-build-tools>`__ for more
-details.
-
-Once this is done, you should also install the NPM GRPC module with the
-following command:
-
-.. code:: bash
-
-	  npm install --global grpc
-
-Your environment should now be ready to go through the
-:doc:`getting_started` samples and tutorials.
 
 .. note:: If you have questions not addressed by this documentation, or run into
           issues with any of the tutorials, please visit the :doc:`questions`
