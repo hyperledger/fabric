@@ -48,18 +48,8 @@ tutorial. We've kept these to a minimum so that you can get going quickly.
 
 You **must** have the following technologies installed:
 
-  * [**Node**](https://nodejs.org/en/about/) version 8.9.0, or higher. Node is
-    a JavaScript runtime that you can use to run applications and smart
-    contracts. You are recommended to use the LTS (Long Term Support) version
-    of node. Install node [here](https://nodejs.org/en/).
-
-
-  * [**Docker**](https://www.docker.com/get-started) version 18.06, or higher.
-    Docker help developers and administrators create standard environments for
-    building and running applications and smart contracts. Hyperledger Fabric is
-    provided as a set of Docker images, and the PaperNet smart contract will run
-    in a Docker container. Install Docker
-    [here](https://www.docker.com/get-started).
+  * [**Node**](https://github.com/hyperledger/fabric-sdk-node#build-and-test)
+    The Node.js SDK README contains the up to date list of prerequisites.
 
 You **will** find it helpful to install the following technologies:
 
