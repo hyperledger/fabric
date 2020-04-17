@@ -36,6 +36,36 @@ the application after installing it:
 
     open /Applications/Docker.app
 
+Developing on Windows
+~~~~~~~~~~~~~~~~~~~~~
+
+On Windows 10 you should use the native Docker distribution and you
+may use the Windows PowerShell. However, for the ``binaries``
+command to succeed you will still need to have the ``uname`` command
+available. You can get it as part of Git but beware that only the
+64bit version is supported.
+
+Before running any ``git clone`` commands, run the following commands:
+
+::
+
+    git config --global core.autocrlf false
+    git config --global core.longpaths true
+
+You can check the setting of these parameters with the following commands:
+
+::
+
+    git config --get core.autocrlf
+    git config --get core.longpaths
+
+These need to be ``false`` and ``true`` respectively.
+
+The ``curl`` command that comes with Git and Docker Toolbox is old and
+does not handle properly the redirect used in
+:doc:`getting_started`. Make sure you have and use a newer version
+which can be downloaded from the `cURL downloads page
+<https://curl.haxx.se/download.html>`__
 
 Clone the Hyperledger Fabric source
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,6 +152,8 @@ few commands.
     ginkgo -r ./integration/nwo
 
 If those commands completely successfully, you're ready to Go!
+
+If you plan to use the Hyperledger Fabric application SDKs then be sure to check out their prerequisites in the Node.js SDK `README <https://github.com/hyperledger/fabric-sdk-node#build-and-test>`__ and Java SDK `README <https://github.com/hyperledger/fabric-gateway-java/blob/master/README.md>`__.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
