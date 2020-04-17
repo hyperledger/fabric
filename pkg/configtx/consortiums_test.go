@@ -908,6 +908,21 @@ func TestGetConsortiums(t *testing.T) {
 	gt.Expect(len(baseConsortiums)).To(Equal(len(consortiums)))
 }
 
+func TestGetConsortiumOrg(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	consortiumGroup, err := baseConsortiumChannelGroup(t)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: consortiumGroup,
+	}
+
+	org1ConfigGroup := getConsortiumOrg(config, "Consortium1", "Org1")
+	gt.Expect(org1ConfigGroup).To(Equal(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]))
+}
+
 func baseConsortiums(t *testing.T) []Consortium {
 	return []Consortium{
 		{
@@ -926,4 +941,18 @@ func baseConsortiums(t *testing.T) []Consortium {
 			},
 		},
 	}
+}
+
+func baseConsortiumChannelGroup(t *testing.T) (*cb.ConfigGroup, error) {
+	channelGroup := newConfigGroup()
+
+	consortiums := baseConsortiums(t)
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	if err != nil {
+		return nil, err
+	}
+
+	channelGroup.Groups[ConsortiumsGroupKey] = consortiumsGroup
+
+	return channelGroup, nil
 }
