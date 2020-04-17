@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -662,13 +664,7 @@ func (n *Network) GenerateConfigTree() {
 // written to ${rootDir}/${Channel.Name}_tx.pb.
 func (n *Network) Bootstrap() {
 	if n.DockerClient != nil {
-		_, err := n.DockerClient.CreateNetwork(
-			docker.CreateNetworkOptions{
-				Name:   n.NetworkID,
-				Driver: "bridge",
-			},
-		)
-		Expect(err).NotTo(HaveOccurred())
+		n.createDockerNetwork()
 	}
 
 	sess, err := n.Cryptogen(commands.Generate{
@@ -702,6 +698,91 @@ func (n *Network) Bootstrap() {
 	}
 
 	n.ConcatenateTLSCACertificates()
+}
+
+func (n *Network) createDockerNetwork() {
+	_, err := n.DockerClient.CreateNetwork(
+		docker.CreateNetworkOptions{
+			Name:   n.NetworkID,
+			Driver: "bridge",
+		},
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	if runtime.GOOS == "darwin" {
+		n.checkDockerNetworks()
+	}
+}
+
+// checkDockerNetworks attempts to discover if the docker network configuration
+// will prevent a container from accessing the host. This commonly happens when
+// using Docker for Mac on home networks because most home routers provide DHCP
+// addresses from 192.168.1.0/24 and the default Docker daemon config uses
+// 192.168.0.0/20 as one of the default local address pools.
+//
+// https://github.com/moby/libnetwork/blob/1a17fb36132631a95fe6bb055b91e24a516ad81d/ipamutils/utils.go#L18-L20
+//
+// Docker can be configured to use different addresses by addding an
+// appropriate default-address-pools configuration element to "daemon.json".
+//
+// For example:
+//   "default-address-pools":[
+//       {"base":"172.80.0.0/16","size":24},
+//       {"base":"172.81.0.0/16","size":24}
+//   ]
+func (n *Network) checkDockerNetworks() {
+	hostAddrs := hostIPv4Addrs()
+	for _, nw := range n.dockerIPNets() {
+		for _, a := range hostAddrs {
+			if nw.Contains(a) {
+				fmt.Fprintf(ginkgo.GinkgoWriter, "\x1b[01;37;41mWARNING: docker network %s overlaps with host address %s.\x1b[0m\n", nw, a)
+				fmt.Fprintf(ginkgo.GinkgoWriter, "\x1b[01;37;41mDocker containers may not have connectivity causing chaincode registration to fail with 'no route to host'.\x1b[0m\n")
+			}
+		}
+	}
+}
+
+func (n *Network) dockerIPNets() []*net.IPNet {
+	dockerNetworks, err := n.DockerClient.ListNetworks()
+	Expect(err).NotTo(HaveOccurred())
+
+	var nets []*net.IPNet
+	for _, nw := range dockerNetworks {
+		for _, ipconf := range nw.IPAM.Config {
+			if ipconf.Subnet != "" {
+				_, ipn, err := net.ParseCIDR(ipconf.Subnet)
+				Expect(err).NotTo(HaveOccurred())
+				nets = append(nets, ipn)
+			}
+		}
+	}
+	return nets
+}
+
+func hostIPv4Addrs() []net.IP {
+	interfaces, err := net.Interfaces()
+	Expect(err).NotTo(HaveOccurred())
+
+	var addresses []net.IP
+	for _, i := range interfaces {
+		addrs, err := i.Addrs()
+		Expect(err).NotTo(HaveOccurred())
+
+		for _, a := range addrs {
+			a := a
+			switch v := a.(type) {
+			case *net.IPAddr:
+				if v.IP.To4() != nil {
+					addresses = append(addresses, v.IP)
+				}
+			case *net.IPNet:
+				if v.IP.To4() != nil {
+					addresses = append(addresses, v.IP)
+				}
+			}
+		}
+	}
+	return addresses
 }
 
 // bootstrapIdemix creates the idemix-related crypto material
