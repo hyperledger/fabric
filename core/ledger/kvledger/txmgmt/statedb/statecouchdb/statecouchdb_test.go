@@ -718,15 +718,20 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 	batch.Put("ns1", "key1", []byte(`{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`), version.NewHeight(1, 1))
 	batch.Put("ns1", "key2", []byte(`{"asset_name": "marble2","color": "blue","size": 2,"owner": "jerry"}`), version.NewHeight(1, 2))
 
-	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
-	indexData := map[string][]byte{
-		"META-INF/statedb/couchdb/indexes/indexSizeSortName.json": []byte(`{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`),
-		"META-INF/statedb/couchdb/indexes/badSyntax.json":         []byte(badSyntaxFileContent),
-	}
-
 	indexCapable, ok := db.(statedb.IndexCapable)
 	if !ok {
 		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
+	}
+
+	indexData := map[string][]byte{
+		"META-INF/statedb/couchdb/indexes/indexSizeSortName.json": []byte(`{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`),
+	}
+
+	assert.NoError(t, indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData))
+
+	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
+	indexData = map[string][]byte{
+		"META-INF/statedb/couchdb/indexes/badSyntax.json": []byte(badSyntaxFileContent),
 	}
 	assert.Error(t, indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData))
 
