@@ -334,8 +334,6 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		}
 	}
 
-	// TODO: We have way more function arguments and it makes the code look ugly.
-	// Need to reduce it - FAB-17683
 	l, err := newKVLedger(
 		ledgerID,
 		blockStore,

@@ -12,13 +12,14 @@ import (
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRebuildDBs(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	numLedgers := 3
 	for i := 0; i < numLedgers; i++ {

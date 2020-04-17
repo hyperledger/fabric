@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +20,7 @@ func TestPauseAndResume(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	numLedgers := 10
 	activeLedgerIDs, err := provider.List()
@@ -46,7 +47,7 @@ func TestPauseAndResume(t *testing.T) {
 	err = PauseChannel(conf.RootFSPath, constructTestLedgerID(1))
 	require.NoError(t, err)
 	// verify ledger status after pause
-	provider = testutilNewProvider(conf, t, false)
+	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	assertLedgerStatus(t, provider, genesisBlocks, numLedgers, pausedLedgers)
 	provider.Close()
 
@@ -61,7 +62,7 @@ func TestPauseAndResume(t *testing.T) {
 	require.NoError(t, err)
 	// verify ledger status after resume
 	pausedLedgersAfterResume := []int{3}
-	provider = testutilNewProvider(conf, t, false)
+	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 	assertLedgerStatus(t, provider, genesisBlocks, numLedgers, pausedLedgersAfterResume)
 
@@ -74,7 +75,7 @@ func TestPauseAndResumeErrors(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	ledgerID := constructTestLedgerID(0)
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(ledgerID)

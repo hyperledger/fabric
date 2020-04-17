@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
@@ -51,7 +52,7 @@ func TestKVLedgerNilHistoryDBProvider(t *testing.T) {
 func TestKVLedgerBlockStorage(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -137,7 +138,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 func TestAddCommitHash(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -191,7 +192,7 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 	t.Skip()
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
@@ -466,7 +467,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
@@ -576,7 +577,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 func TestPvtDataAPIs(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
 	ledgerID := "testLedger"
@@ -585,7 +586,7 @@ func TestPvtDataAPIs(t *testing.T) {
 	lgr, err := provider.Create(gb)
 	assert.NoError(t, err)
 	defer lgr.Close()
-	lgr.(*kvLedger).setBLTPolicyForPvtStore(btlPolicyForSampleData())
+	lgr.(*kvLedger).pvtdataStore.Init(btlPolicyForSampleData())
 
 	bcInfo, _ := lgr.GetBlockchainInfo()
 	assert.Equal(t, &common.BlockchainInfo{
@@ -662,7 +663,9 @@ func TestPvtDataAPIs(t *testing.T) {
 func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, true)
+	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
+	provider := testutilNewProvider(conf, t, ccInfoProvider)
 	defer provider.Close()
 
 	ledgerID := "testLedger"
@@ -692,12 +695,12 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 	// call Commit on pvt data store and mimic a crash before committing the block to block store
 	lgr.(*kvLedger).pvtdataStore.Commit(blockNumAtCrash, pvtdataAtCrash, nil)
 
-	// Now, assume that peer fails here before committing the transaction to the statedb and historydb
+	// Now, assume that peer fails here before committing the block to blockstore.
 	lgr.Close()
 	provider.Close()
 
 	// mimic peer restart
-	provider1 := testutilNewProvider(conf, t, true)
+	provider1 := testutilNewProvider(conf, t, ccInfoProvider)
 	defer provider1.Close()
 	lgr1, err := provider1.Open(ledgerID)
 	assert.NoError(t, err)
@@ -761,7 +764,9 @@ func testVerifyPvtData(t *testing.T, ledger ledger.PeerLedger, blockNum uint64, 
 func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, true)
+	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
+	provider := testutilNewProvider(conf, t, ccInfoProvider)
 	defer provider.Close()
 
 	ledgerID := "testLedger"
@@ -791,11 +796,11 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, isPvtStoreAhead)
 
-	// close and reopen. It mimics peer crash.
+	// close and reopen.
 	lgr.Close()
 	provider.Close()
 
-	provider1 := testutilNewProvider(conf, t, true)
+	provider1 := testutilNewProvider(conf, t, ccInfoProvider)
 	defer provider1.Close()
 	lgr1, err := provider1.Open(ledgerID)
 	assert.NoError(t, err)
@@ -820,11 +825,11 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	err = kvlgr.pvtdataStore.Commit(lastBlkAndPvtData.Block.Header.Number, validTxPvtData, validTxMissingPvtData)
 	assert.NoError(t, err)
 
-	// close and reopen. It mimics peer crash.
+	// close and reopen.
 	lgr1.Close()
 	provider1.Close()
 
-	provider2 := testutilNewProvider(conf, t, false)
+	provider2 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider2.Close()
 	lgr2, err := provider2.Open(ledgerID)
 	assert.NoError(t, err)
@@ -853,6 +858,49 @@ func TestPvtStoreAheadOfBlockStore(t *testing.T) {
 	isPvtStoreAhead, err = kvlgr.isPvtDataStoreAheadOfBlockStore()
 	assert.NoError(t, err)
 	assert.False(t, isPvtStoreAhead)
+}
+
+func TestCommitToPvtAndBlockstoreError(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
+	provider1 := testutilNewProvider(conf, t, ccInfoProvider)
+	defer provider1.Close()
+
+	ledgerID := "testLedger"
+	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	lgr1, err := provider1.Create(gb)
+	assert.NoError(t, err)
+	defer lgr1.Close()
+
+	bcInfo, _ := lgr1.GetBlockchainInfo()
+	assert.Equal(t, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
+	}, bcInfo)
+
+	kvlgr := lgr1.(*kvLedger)
+	sampleData := sampleDataWithPvtdataForSelectiveTx(t, bg)
+	for _, d := range sampleData[0:9] { // commit block number 1 to 9
+		assert.NoError(t, kvlgr.commitToPvtAndBlockStore(d))
+	}
+
+	// try to write the last block again. The function should return an
+	// error from the private data store.
+	err = kvlgr.commitToPvtAndBlockStore(sampleData[8]) // block 9
+	assert.EqualError(t, err, "Expected block number=10, received block number=9")
+
+	lastBlkAndPvtData := sampleData[9] // block 10
+	// Add the block directly to blockstore
+	kvlgr.blockStore.AddBlock(lastBlkAndPvtData.Block)
+	// Adding the same block should cause passing on the error caused by the block storgae
+	err = kvlgr.commitToPvtAndBlockStore(lastBlkAndPvtData)
+	assert.EqualError(t, err, "block number should have been 11 but was 10")
+	// At the end, the pvt store status should be changed
+	pvtStoreCommitHt, err := kvlgr.pvtdataStore.LastCommittedBlockHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(11), pvtStoreCommitHt)
 }
 
 func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerator) []*ledger.BlockAndPvtData {

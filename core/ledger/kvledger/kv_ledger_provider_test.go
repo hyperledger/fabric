@@ -36,7 +36,7 @@ import (
 func TestLedgerProvider(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	numLedgers := 10
 	existingLedgerIDs, err := provider.List()
 	assert.NoError(t, err)
@@ -59,7 +59,7 @@ func TestLedgerProvider(t *testing.T) {
 
 	provider.Close()
 
-	provider = testutilNewProvider(conf, t, false)
+	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 	ledgerIds, _ := provider.List()
 	assert.Len(t, ledgerIds, numLedgers)
@@ -107,7 +107,7 @@ func TestLedgerProvider(t *testing.T) {
 func TestGetActiveLedgerIDsIteratorError(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	for i := 0; i < 2; i++ {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
@@ -123,7 +123,7 @@ func TestGetActiveLedgerIDsIteratorError(t *testing.T) {
 func TestLedgerMetataDataUnmarshalError(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
 	ledgerID := constructTestLedgerID(0)
@@ -160,7 +160,7 @@ func TestNewProviderIdStoreFormatError(t *testing.T) {
 func TestUpgradeIDStoreFormatDBError(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	provider.Close()
 
 	err := provider.idStore.upgradeFormat()
@@ -171,7 +171,7 @@ func TestLedgerProviderHistoryDBDisabled(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	numLedgers := 10
 	existingLedgerIDs, err := provider.List()
 	assert.NoError(t, err)
@@ -188,7 +188,7 @@ func TestLedgerProviderHistoryDBDisabled(t *testing.T) {
 
 	provider.Close()
 
-	provider = testutilNewProvider(conf, t, false)
+	provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 	ledgerIds, _ := provider.List()
 	assert.Len(t, ledgerIds, numLedgers)
@@ -231,7 +231,7 @@ func TestLedgerProviderHistoryDBDisabled(t *testing.T) {
 func TestRecovery(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider1 := testutilNewProvider(conf, t, false)
+	provider1 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider1.Close()
 
 	// now create the genesis block
@@ -246,7 +246,7 @@ func TestRecovery(t *testing.T) {
 	provider1.Close()
 
 	// construct a new provider1 to invoke recovery
-	provider1 = testutilNewProvider(conf, t, false)
+	provider1 = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	// verify the underecoveryflag and open the ledger
 	flag, err := provider1.idStore.getUnderConstructionFlag()
 	assert.NoError(t, err, "Failed to read the underconstruction flag")
@@ -261,7 +261,7 @@ func TestRecovery(t *testing.T) {
 	provider1.Close()
 
 	// construct a new provider to invoke recovery
-	provider2 := testutilNewProvider(conf, t, false)
+	provider2 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider2.Close()
 	assert.NoError(t, err, "Provider failed to recover an underConstructionLedger")
 	flag, err = provider2.idStore.getUnderConstructionFlag()
@@ -273,7 +273,7 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	conf.HistoryDBConfig.Enabled = false
 	defer cleanup()
-	provider1 := testutilNewProvider(conf, t, false)
+	provider1 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider1.Close()
 
 	// now create the genesis block
@@ -289,7 +289,7 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 	provider1.Close()
 
 	// construct a new provider to invoke recovery
-	provider2 := testutilNewProvider(conf, t, false)
+	provider2 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider2.Close()
 	// verify the underecoveryflag and open the ledger
 	flag, err := provider2.idStore.getUnderConstructionFlag()
@@ -305,7 +305,7 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 	provider2.Close()
 
 	// construct a new provider to invoke recovery
-	provider3 := testutilNewProvider(conf, t, false)
+	provider3 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider3.Close()
 	assert.NoError(t, err, "Provider failed to recover an underConstructionLedger")
 	flag, err = provider3.idStore.getUnderConstructionFlag()
@@ -316,7 +316,7 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 func TestMultipleLedgerBasicRW(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider1 := testutilNewProvider(conf, t, false)
+	provider1 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider1.Close()
 
 	numLedgers := 10
@@ -342,7 +342,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 
 	provider1.Close()
 
-	provider2 := testutilNewProvider(conf, t, false)
+	provider2 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider2.Close()
 	ledgers = make([]lgr.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
@@ -382,7 +382,7 @@ func TestLedgerBackup(t *testing.T) {
 			Enabled: true,
 		},
 	}
-	provider := testutilNewProvider(origConf, t, false)
+	provider := testutilNewProvider(origConf, t, &mock.DeployedChaincodeInfoProvider{})
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
 	ledger, _ := provider.Create(gb)
@@ -432,7 +432,7 @@ func TestLedgerBackup(t *testing.T) {
 			Enabled: true,
 		},
 	}
-	provider = testutilNewProvider(restoreConf, t, false)
+	provider = testutilNewProvider(restoreConf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
 	_, err = provider.Create(gb)
@@ -525,14 +525,9 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 	return conf, cleanup
 }
 
-func testutilNewProvider(conf *lgr.Config, t *testing.T, allowAnyCollection bool) *Provider {
+func testutilNewProvider(conf *lgr.Config, t *testing.T, ccInfoProvider *mock.DeployedChaincodeInfoProvider) *Provider {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-
-	ccInfoProvider := &mock.DeployedChaincodeInfoProvider{}
-	if allowAnyCollection {
-		ccInfoProvider.CollectionInfoReturns(&peer.StaticCollectionConfig{BlockToLive: 0}, nil)
-	}
 
 	provider, err := NewProvider(
 		&lgr.Initializer{
@@ -552,7 +547,7 @@ func testutilNewProviderWithCollectionConfig(
 	btlConfigs map[string]uint64,
 	conf *lgr.Config,
 ) *Provider {
-	provider := testutilNewProvider(conf, t, false)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	mockCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
 	collMap := map[string]*peer.StaticCollectionConfig{}
 	var collConf []*peer.CollectionConfig

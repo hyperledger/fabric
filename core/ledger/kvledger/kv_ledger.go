@@ -39,27 +39,21 @@ var logger = flogging.MustGetLogger("kvledger")
 // kvLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
-	ledgerID                  string
-	blockStore                blkstorage.BlockStore
-	pvtdataStore              pvtdatastorage.Store
-	txtmgmt                   txmgr.TxMgr
-	historyDB                 *history.DB
-	configHistoryRetriever    ledger.ConfigHistoryRetriever
-	blockAPIsRWLock           *sync.RWMutex
-	stats                     *ledgerStats
-	commitHash                []byte
+	ledgerID               string
+	blockStore             blkstorage.BlockStore
+	pvtdataStore           pvtdatastorage.Store
+	txtmgmt                txmgr.TxMgr
+	historyDB              *history.DB
+	configHistoryRetriever ledger.ConfigHistoryRetriever
+	blockAPIsRWLock        *sync.RWMutex
+	stats                  *ledgerStats
+	commitHash             []byte
+	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
+	// reconciliation and may be updated during a regular block commit.
+	// Hence, we use atomic value to ensure consistent read.
 	isPvtstoreAheadOfBlkstore atomic.Value
-	// as the value is read during missing pvtData reconciliation
-	// and may be updated during a regular block commit, we use
-	// atomic value to ensure consistent read.
 }
 
-// TODO: we have used terms like blkstorage, blockstorage, blockstore. We need to use
-// a single term consistently. While typing code, it is getting harder to memorize what
-// term to be used when referring to the package or struct or a variable name - FAB-17683.
-
-// TODO: We have way more function arguments and it makes the code look ugly.
-// Need to reduce it - FAB-17683.
 func newKVLedger(
 	ledgerID string,
 	blockStore blkstorage.BlockStore,
@@ -85,7 +79,6 @@ func newKVLedger(
 	}
 
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, ccInfoProvider})
-	l.setBLTPolicyForPvtStore(btlPolicy)
 
 	if err := l.initTxMgr(
 		versionedDB,
@@ -98,6 +91,9 @@ func newKVLedger(
 	); err != nil {
 		return nil, err
 	}
+	// btlPolicy internally uses queryexecuter and indirectly ends up using txmgr.
+	// Hence, we need to init the pvtdataStore once the txmgr is initiated.
+	l.pvtdataStore.Init(btlPolicy)
 
 	var err error
 	l.commitHash, err = l.lastPersistedCommitHash()
@@ -168,10 +164,6 @@ func (l *kvLedger) initTxMgr(
 		}
 	}
 	return err
-}
-
-func (l *kvLedger) setBLTPolicyForPvtStore(btlPolicy pvtdatapolicy.BTLPolicy) {
-	l.pvtdataStore.Init(btlPolicy)
 }
 
 func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
@@ -352,6 +344,8 @@ func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64,
 
 // GetTransactionByID retrieves a transaction by id
 func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, error) {
+	l.blockAPIsRWLock.RLock()
+	defer l.blockAPIsRWLock.RUnlock()
 	tranEnv, err := l.blockStore.RetrieveTxByID(txID)
 	if err != nil {
 		return nil, err
@@ -361,25 +355,23 @@ func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, 
 		return nil, err
 	}
 	processedTran := &peer.ProcessedTransaction{TransactionEnvelope: tranEnv, ValidationCode: int32(txVResult)}
-	l.blockAPIsRWLock.RLock()
-	l.blockAPIsRWLock.RUnlock()
 	return processedTran, nil
 }
 
 // GetBlockchainInfo returns basic info about blockchain
 func (l *kvLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
-	bcInfo, err := l.blockStore.GetBlockchainInfo()
 	l.blockAPIsRWLock.RLock()
 	defer l.blockAPIsRWLock.RUnlock()
+	bcInfo, err := l.blockStore.GetBlockchainInfo()
 	return bcInfo, err
 }
 
 // GetBlockByNumber returns block at a given height
 // blockNumber of  math.MaxUint64 will return last block
 func (l *kvLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
-	block, err := l.blockStore.RetrieveBlockByNumber(blockNumber)
 	l.blockAPIsRWLock.RLock()
-	l.blockAPIsRWLock.RUnlock()
+	defer l.blockAPIsRWLock.RUnlock()
+	block, err := l.blockStore.RetrieveBlockByNumber(blockNumber)
 	return block, err
 }
 
@@ -404,16 +396,16 @@ func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
 
 // GetBlockByTxID returns a block which contains a transaction
 func (l *kvLedger) GetBlockByTxID(txID string) (*common.Block, error) {
-	block, err := l.blockStore.RetrieveBlockByTxID(txID)
 	l.blockAPIsRWLock.RLock()
-	l.blockAPIsRWLock.RUnlock()
+	defer l.blockAPIsRWLock.RUnlock()
+	block, err := l.blockStore.RetrieveBlockByTxID(txID)
 	return block, err
 }
 
 func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
-	txValidationCode, err := l.blockStore.RetrieveTxValidationCodeByTxID(txID)
 	l.blockAPIsRWLock.RLock()
-	l.blockAPIsRWLock.RUnlock()
+	defer l.blockAPIsRWLock.RUnlock()
+	txValidationCode, err := l.blockStore.RetrieveTxValidationCodeByTxID(txID)
 	return txValidationCode, err
 }
 
@@ -626,8 +618,6 @@ func (l *kvLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.PvtNsC
 	var pvtdata []*ledger.TxPvtData
 	var err error
 
-	// TODO: Among retrieve, fetch, and get, we need to use a single
-	// term consistently - FAB-17684
 	if block, err = l.blockStore.RetrieveBlockByNumber(blockNum); err != nil {
 		return nil, err
 	}
