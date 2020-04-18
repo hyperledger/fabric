@@ -27,8 +27,8 @@ const (
 	maxDegreeQueryReadsHashing = uint32(50)
 )
 
-// QueryExecutor is a query executor used in `LockBasedTxMgr`
-type QueryExecutor struct {
+// queryExecutor is a query executor used in `LockBasedTxMgr`
+type queryExecutor struct {
 	txmgr             *LockBasedTxMgr
 	collNameValidator *collNameValidator
 	collectReadset    bool
@@ -40,9 +40,9 @@ type QueryExecutor struct {
 	txid              string
 }
 
-func newQueryExecutor(txmgr *LockBasedTxMgr, txid string, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool, hasher ledger.Hasher) *QueryExecutor {
+func newQueryExecutor(txmgr *LockBasedTxMgr, txid string, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool, hasher ledger.Hasher) *queryExecutor {
 	logger.Debugf("constructing new query executor txid = [%s]", txid)
-	qe := &QueryExecutor{}
+	qe := &queryExecutor{}
 	qe.txid = txid
 	qe.txmgr = txmgr
 	if rwsetBuilder != nil {
@@ -56,12 +56,12 @@ func newQueryExecutor(txmgr *LockBasedTxMgr, txid string, rwsetBuilder *rwsetuti
 }
 
 // GetState implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) GetState(ns, key string) ([]byte, error) {
+func (q *queryExecutor) GetState(ns, key string) ([]byte, error) {
 	val, _, err := q.getState(ns, key)
 	return val, err
 }
 
-func (q *QueryExecutor) getState(ns, key string) ([]byte, []byte, error) {
+func (q *queryExecutor) getState(ns, key string) ([]byte, []byte, error) {
 	if err := q.checkDone(); err != nil {
 		return nil, nil, err
 	}
@@ -77,7 +77,7 @@ func (q *QueryExecutor) getState(ns, key string) ([]byte, []byte, error) {
 }
 
 // GetStateMetadata implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) GetStateMetadata(ns, key string) (map[string][]byte, error) {
+func (q *queryExecutor) GetStateMetadata(ns, key string) (map[string][]byte, error) {
 	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (q *QueryExecutor) GetStateMetadata(ns, key string) (map[string][]byte, err
 }
 
 // GetStateMultipleKeys implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) GetStateMultipleKeys(ns string, keys []string) ([][]byte, error) {
+func (q *queryExecutor) GetStateMultipleKeys(ns string, keys []string) ([][]byte, error) {
 	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (q *QueryExecutor) GetStateMultipleKeys(ns string, keys []string) ([][]byte
 // startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 // and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
 // can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
-func (q *QueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
+func (q *queryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
 	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (q *QueryExecutor) GetStateRangeScanIterator(namespace string, startKey str
 	return itr, nil
 }
 
-func (q *QueryExecutor) GetStateRangeScanIteratorWithPagination(namespace string, startKey string, endKey string, pageSize int32) (ledger.QueryResultsIterator, error) {
+func (q *queryExecutor) GetStateRangeScanIteratorWithPagination(namespace string, startKey string, endKey string, pageSize int32) (ledger.QueryResultsIterator, error) {
 	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (q *QueryExecutor) GetStateRangeScanIteratorWithPagination(namespace string
 }
 
 // ExecuteQuery implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error) {
+func (q *queryExecutor) ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error) {
 	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (q *QueryExecutor) ExecuteQuery(namespace, query string) (commonledger.Resu
 	return &queryResultsItr{DBItr: dbItr, RWSetBuilder: q.rwsetBuilder}, nil
 }
 
-func (q *QueryExecutor) ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (ledger.QueryResultsIterator, error) {
+func (q *queryExecutor) ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (ledger.QueryResultsIterator, error) {
 	if err := q.checkDone(); err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (q *QueryExecutor) ExecuteQueryWithPagination(namespace, query, bookmark st
 }
 
 // GetPrivateData implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) GetPrivateData(ns, coll, key string) ([]byte, error) {
+func (q *queryExecutor) GetPrivateData(ns, coll, key string) ([]byte, error) {
 	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (q *QueryExecutor) GetPrivateData(ns, coll, key string) ([]byte, error) {
 	return val, nil
 }
 
-func (q *QueryExecutor) GetPrivateDataHash(ns, coll, key string) ([]byte, error) {
+func (q *queryExecutor) GetPrivateDataHash(ns, coll, key string) ([]byte, error) {
 	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (q *QueryExecutor) GetPrivateDataHash(ns, coll, key string) ([]byte, error)
 }
 
 // GetPrivateDataMetadata implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) GetPrivateDataMetadata(ns, coll, key string) (map[string][]byte, error) {
+func (q *queryExecutor) GetPrivateDataMetadata(ns, coll, key string) (map[string][]byte, error) {
 	if !q.collectReadset {
 		// reads versions are not getting recorded, retrieve metadata value via optimized path
 		return q.getPrivateDataMetadataByHash(ns, coll, util.ComputeStringHash(key))
@@ -259,7 +259,7 @@ func (q *QueryExecutor) GetPrivateDataMetadata(ns, coll, key string) (map[string
 	return statemetadata.Deserialize(metadataBytes)
 }
 
-func (q *QueryExecutor) getPrivateDataValueHash(ns, coll, key string) (valueHash, metadataBytes []byte, err error) {
+func (q *queryExecutor) getPrivateDataValueHash(ns, coll, key string) (valueHash, metadataBytes []byte, err error) {
 	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, nil, err
 	}
@@ -278,11 +278,11 @@ func (q *QueryExecutor) getPrivateDataValueHash(ns, coll, key string) (valueHash
 }
 
 // GetPrivateDataMetadataByHash implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) GetPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
+func (q *queryExecutor) GetPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
 	return q.getPrivateDataMetadataByHash(ns, coll, keyhash)
 }
 
-func (q *QueryExecutor) getPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
+func (q *queryExecutor) getPrivateDataMetadataByHash(ns, coll string, keyhash []byte) (map[string][]byte, error) {
 	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
@@ -301,7 +301,7 @@ func (q *QueryExecutor) getPrivateDataMetadataByHash(ns, coll string, keyhash []
 }
 
 // GetPrivateDataMultipleKeys implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) GetPrivateDataMultipleKeys(ns, coll string, keys []string) ([][]byte, error) {
+func (q *queryExecutor) GetPrivateDataMultipleKeys(ns, coll string, keys []string) ([][]byte, error) {
 	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (q *QueryExecutor) GetPrivateDataMultipleKeys(ns, coll string, keys []strin
 }
 
 // GetPrivateDataRangeScanIterator implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) GetPrivateDataRangeScanIterator(ns, coll, startKey, endKey string) (commonledger.ResultsIterator, error) {
+func (q *queryExecutor) GetPrivateDataRangeScanIterator(ns, coll, startKey, endKey string) (commonledger.ResultsIterator, error) {
 	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
@@ -339,7 +339,7 @@ func (q *QueryExecutor) GetPrivateDataRangeScanIterator(ns, coll, startKey, endK
 }
 
 // ExecuteQueryOnPrivateData implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) ExecuteQueryOnPrivateData(ns, coll, query string) (commonledger.ResultsIterator, error) {
+func (q *queryExecutor) ExecuteQueryOnPrivateData(ns, coll, query string) (commonledger.ResultsIterator, error) {
 	if err := q.validateCollName(ns, coll); err != nil {
 		return nil, err
 	}
@@ -354,7 +354,7 @@ func (q *QueryExecutor) ExecuteQueryOnPrivateData(ns, coll, query string) (commo
 }
 
 // Done implements method in interface `ledger.QueryExecutor`
-func (q *QueryExecutor) Done() {
+func (q *queryExecutor) Done() {
 	logger.Debugf("Done with transaction simulation / query execution [%s]", q.txid)
 	if q.doneInvoked {
 		return
@@ -369,14 +369,14 @@ func (q *QueryExecutor) Done() {
 	}()
 }
 
-func (q *QueryExecutor) checkDone() error {
+func (q *queryExecutor) checkDone() error {
 	if q.doneInvoked {
 		return errors.New("this instance should not be used after calling Done()")
 	}
 	return nil
 }
 
-func (q *QueryExecutor) validateCollName(ns, coll string) error {
+func (q *queryExecutor) validateCollName(ns, coll string) error {
 	return q.collNameValidator.validateCollName(ns, coll)
 }
 
@@ -557,7 +557,7 @@ func (itr *pvtdataResultsItr) Close() {
 	itr.dbItr.Close()
 }
 
-func (q *QueryExecutor) addRangeQueryInfo() {
+func (q *queryExecutor) addRangeQueryInfo() {
 	if !q.collectReadset {
 		return
 	}

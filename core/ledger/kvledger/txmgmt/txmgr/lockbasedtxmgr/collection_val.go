@@ -16,12 +16,12 @@ import (
 type collNameValidator struct {
 	ledgerID       string
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider
-	queryExecutor  *QueryExecutor
+	queryExecutor  *queryExecutor
 	cache          collConfigCache
 	noop           bool
 }
 
-func newCollNameValidator(ledgerID string, ccInfoProvider ledger.DeployedChaincodeInfoProvider, qe *QueryExecutor, noop bool) *collNameValidator {
+func newCollNameValidator(ledgerID string, ccInfoProvider ledger.DeployedChaincodeInfoProvider, qe *queryExecutor, noop bool) *collNameValidator {
 	return &collNameValidator{ledgerID, ccInfoProvider, qe, make(collConfigCache), noop}
 }
 

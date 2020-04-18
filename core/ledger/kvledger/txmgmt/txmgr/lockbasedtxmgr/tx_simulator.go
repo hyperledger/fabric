@@ -16,9 +16,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TxSimulator is a transaction simulator used in `LockBasedTxMgr`
-type TxSimulator struct {
-	*QueryExecutor
+// txSimulator is a transaction simulator used in `LockBasedTxMgr`
+type txSimulator struct {
+	*queryExecutor
 	rwsetBuilder              *rwsetutil.RWSetBuilder
 	writePerformed            bool
 	pvtdataQueriesPerformed   bool
@@ -26,15 +26,15 @@ type TxSimulator struct {
 	paginatedQueriesPerformed bool
 }
 
-func newTxSimulator(txmgr *LockBasedTxMgr, txid string, hasher ledger.Hasher) (*TxSimulator, error) {
+func newTxSimulator(txmgr *LockBasedTxMgr, txid string, hasher ledger.Hasher) (*txSimulator, error) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	qe := newQueryExecutor(txmgr, txid, rwsetBuilder, true, hasher)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
-	return &TxSimulator{qe, rwsetBuilder, false, false, false, false}, nil
+	return &txSimulator{qe, rwsetBuilder, false, false, false, false}, nil
 }
 
 // SetState implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) SetState(ns string, key string, value []byte) error {
+func (s *txSimulator) SetState(ns string, key string, value []byte) error {
 	if err := s.checkWritePrecondition(key, value); err != nil {
 		return err
 	}
@@ -43,12 +43,12 @@ func (s *TxSimulator) SetState(ns string, key string, value []byte) error {
 }
 
 // DeleteState implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) DeleteState(ns string, key string) error {
+func (s *txSimulator) DeleteState(ns string, key string) error {
 	return s.SetState(ns, key, nil)
 }
 
 // SetStateMultipleKeys implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) SetStateMultipleKeys(namespace string, kvs map[string][]byte) error {
+func (s *txSimulator) SetStateMultipleKeys(namespace string, kvs map[string][]byte) error {
 	for k, v := range kvs {
 		if err := s.SetState(namespace, k, v); err != nil {
 			return err
@@ -58,7 +58,7 @@ func (s *TxSimulator) SetStateMultipleKeys(namespace string, kvs map[string][]by
 }
 
 // SetStateMetadata implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) SetStateMetadata(namespace, key string, metadata map[string][]byte) error {
+func (s *txSimulator) SetStateMetadata(namespace, key string, metadata map[string][]byte) error {
 	if err := s.checkWritePrecondition(key, nil); err != nil {
 		return err
 	}
@@ -67,13 +67,13 @@ func (s *TxSimulator) SetStateMetadata(namespace, key string, metadata map[strin
 }
 
 // DeleteStateMetadata implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) DeleteStateMetadata(namespace, key string) error {
+func (s *txSimulator) DeleteStateMetadata(namespace, key string) error {
 	return s.SetStateMetadata(namespace, key, nil)
 }
 
 // SetPrivateData implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) SetPrivateData(ns, coll, key string, value []byte) error {
-	if err := s.QueryExecutor.validateCollName(ns, coll); err != nil {
+func (s *txSimulator) SetPrivateData(ns, coll, key string, value []byte) error {
+	if err := s.queryExecutor.validateCollName(ns, coll); err != nil {
 		return err
 	}
 	if err := s.checkWritePrecondition(key, value); err != nil {
@@ -85,12 +85,12 @@ func (s *TxSimulator) SetPrivateData(ns, coll, key string, value []byte) error {
 }
 
 // DeletePrivateData implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) DeletePrivateData(ns, coll, key string) error {
+func (s *txSimulator) DeletePrivateData(ns, coll, key string) error {
 	return s.SetPrivateData(ns, coll, key, nil)
 }
 
 // SetPrivateDataMultipleKeys implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) SetPrivateDataMultipleKeys(ns, coll string, kvs map[string][]byte) error {
+func (s *txSimulator) SetPrivateDataMultipleKeys(ns, coll string, kvs map[string][]byte) error {
 	for k, v := range kvs {
 		if err := s.SetPrivateData(ns, coll, k, v); err != nil {
 			return err
@@ -100,16 +100,16 @@ func (s *TxSimulator) SetPrivateDataMultipleKeys(ns, coll string, kvs map[string
 }
 
 // GetPrivateDataRangeScanIterator implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
+func (s *txSimulator) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (commonledger.ResultsIterator, error) {
 	if err := s.checkBeforePvtdataQueries(); err != nil {
 		return nil, err
 	}
-	return s.QueryExecutor.GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey)
+	return s.queryExecutor.GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey)
 }
 
 // SetPrivateDataMetadata implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) SetPrivateDataMetadata(namespace, collection, key string, metadata map[string][]byte) error {
-	if err := s.QueryExecutor.validateCollName(namespace, collection); err != nil {
+func (s *txSimulator) SetPrivateDataMetadata(namespace, collection, key string, metadata map[string][]byte) error {
+	if err := s.queryExecutor.validateCollName(namespace, collection); err != nil {
 		return err
 	}
 	if err := s.checkWritePrecondition(key, nil); err != nil {
@@ -120,55 +120,55 @@ func (s *TxSimulator) SetPrivateDataMetadata(namespace, collection, key string, 
 }
 
 // DeletePrivateMetadata implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) DeletePrivateDataMetadata(namespace, collection, key string) error {
+func (s *txSimulator) DeletePrivateDataMetadata(namespace, collection, key string) error {
 	return s.SetPrivateDataMetadata(namespace, collection, key, nil)
 }
 
 // ExecuteQueryOnPrivateData implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) ExecuteQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
+func (s *txSimulator) ExecuteQueryOnPrivateData(namespace, collection, query string) (commonledger.ResultsIterator, error) {
 	if err := s.checkBeforePvtdataQueries(); err != nil {
 		return nil, err
 	}
-	return s.QueryExecutor.ExecuteQueryOnPrivateData(namespace, collection, query)
+	return s.queryExecutor.ExecuteQueryOnPrivateData(namespace, collection, query)
 }
 
 // GetStateRangeScanIteratorWithPagination implements method in interface `ledger.QueryExecutor`
-func (s *TxSimulator) GetStateRangeScanIteratorWithPagination(namespace string, startKey string,
+func (s *txSimulator) GetStateRangeScanIteratorWithPagination(namespace string, startKey string,
 	endKey string, pageSize int32) (ledger.QueryResultsIterator, error) {
 	if err := s.checkBeforePaginatedQueries(); err != nil {
 		return nil, err
 	}
-	return s.QueryExecutor.GetStateRangeScanIteratorWithPagination(namespace, startKey, endKey, pageSize)
+	return s.queryExecutor.GetStateRangeScanIteratorWithPagination(namespace, startKey, endKey, pageSize)
 }
 
 // ExecuteQueryWithPagination implements method in interface `ledger.QueryExecutor`
-func (s *TxSimulator) ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (ledger.QueryResultsIterator, error) {
+func (s *txSimulator) ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (ledger.QueryResultsIterator, error) {
 	if err := s.checkBeforePaginatedQueries(); err != nil {
 		return nil, err
 	}
-	return s.QueryExecutor.ExecuteQueryWithPagination(namespace, query, bookmark, pageSize)
+	return s.queryExecutor.ExecuteQueryWithPagination(namespace, query, bookmark, pageSize)
 }
 
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
+func (s *txSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, error) {
 	if s.simulationResultsComputed {
 		return nil, errors.New("this function should only be called once on a transaction simulator instance")
 	}
 	defer func() { s.simulationResultsComputed = true }()
 	logger.Debugf("Simulation completed, getting simulation results")
-	if s.QueryExecutor.err != nil {
-		return nil, s.QueryExecutor.err
+	if s.queryExecutor.err != nil {
+		return nil, s.queryExecutor.err
 	}
-	s.QueryExecutor.addRangeQueryInfo()
+	s.queryExecutor.addRangeQueryInfo()
 	return s.rwsetBuilder.GetTxSimulationResults()
 }
 
 // ExecuteUpdate implements method in interface `ledger.TxSimulator`
-func (s *TxSimulator) ExecuteUpdate(query string) error {
+func (s *txSimulator) ExecuteUpdate(query string) error {
 	return errors.New("not supported")
 }
 
-func (s *TxSimulator) checkWritePrecondition(key string, value []byte) error {
+func (s *txSimulator) checkWritePrecondition(key string, value []byte) error {
 	if err := s.checkDone(); err != nil {
 		return err
 	}
@@ -179,13 +179,13 @@ func (s *TxSimulator) checkWritePrecondition(key string, value []byte) error {
 		return err
 	}
 	s.writePerformed = true
-	if err := s.QueryExecutor.txmgr.db.ValidateKeyValue(key, value); err != nil {
+	if err := s.queryExecutor.txmgr.db.ValidateKeyValue(key, value); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *TxSimulator) checkBeforePvtdataQueries() error {
+func (s *txSimulator) checkBeforePvtdataQueries() error {
 	if s.writePerformed {
 		return &txmgr.ErrUnsupportedTransaction{
 			Msg: fmt.Sprintf("txid [%s]: Queries on pvt data is supported only in a read-only transaction", s.txid),
@@ -195,7 +195,7 @@ func (s *TxSimulator) checkBeforePvtdataQueries() error {
 	return nil
 }
 
-func (s *TxSimulator) checkPvtdataQueryPerformed() error {
+func (s *txSimulator) checkPvtdataQueryPerformed() error {
 	if s.pvtdataQueriesPerformed {
 		return &txmgr.ErrUnsupportedTransaction{
 			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed queries on pvt data. Writes are not allowed", s.txid),
@@ -204,7 +204,7 @@ func (s *TxSimulator) checkPvtdataQueryPerformed() error {
 	return nil
 }
 
-func (s *TxSimulator) checkBeforePaginatedQueries() error {
+func (s *txSimulator) checkBeforePaginatedQueries() error {
 	if s.writePerformed {
 		return &txmgr.ErrUnsupportedTransaction{
 			Msg: fmt.Sprintf("txid [%s]: Paginated queries are supported only in a read-only transaction", s.txid),
@@ -214,7 +214,7 @@ func (s *TxSimulator) checkBeforePaginatedQueries() error {
 	return nil
 }
 
-func (s *TxSimulator) checkPaginatedQueryPerformed() error {
+func (s *txSimulator) checkPaginatedQueryPerformed() error {
 	if s.paginatedQueriesPerformed {
 		return &txmgr.ErrUnsupportedTransaction{
 			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed a paginated query. Writes are not allowed", s.txid),

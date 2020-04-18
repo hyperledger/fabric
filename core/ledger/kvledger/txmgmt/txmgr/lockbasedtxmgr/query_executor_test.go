@@ -154,7 +154,7 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 	assert.NoError(t, txMgr.db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 5)))
 
 	s, _ := txMgr.NewTxSimulator("test_tx1")
-	simulator := s.(*TxSimulator)
+	simulator := s.(*txSimulator)
 	hash, err := simulator.GetPrivateDataHash("ns", "coll", "non-existing-key")
 	assert.NoError(t, err)
 	assert.Nil(t, hash)
