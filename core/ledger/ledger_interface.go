@@ -463,6 +463,7 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 // and result in a panic.
 // The function Initialize is invoked only once at the time of opening the ledger.
 type StateListener interface {
+	Name() string
 	Initialize(ledgerID string, qe SimpleQueryExecutor) error
 	InterestedInNamespaces() []string
 	HandleStateUpdates(trigger *StateUpdateTrigger) error

@@ -455,7 +455,7 @@ func (txmgr *LockBasedTxMgr) invokeNamespaceListeners() error {
 		if err := listener.HandleStateUpdates(trigger); err != nil {
 			return err
 		}
-		logger.Debugf("Invoking listener for state changes:%s", listener)
+		logger.Debugf("Invoking listener for state changes:%s", listener.Name())
 	}
 	return nil
 }
