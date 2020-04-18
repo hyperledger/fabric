@@ -90,7 +90,7 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 		namespace,
 		startKey,
 		endKey,
-		nil,
+		0,
 		h.txmgr.db,
 		h.rwsetBuilder,
 		queryReadsHashingEnabled,
@@ -104,7 +104,7 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 	return itr, nil
 }
 
-func (h *queryHelper) getStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+func (h *queryHelper) getStateRangeScanIteratorWithPagination(namespace string, startKey string, endKey string, pageSize int32) (ledger.QueryResultsIterator, error) {
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (h *queryHelper) getStateRangeScanIteratorWithMetadata(namespace string, st
 		namespace,
 		startKey,
 		endKey,
-		metadata,
+		pageSize,
 		h.txmgr.db,
 		h.rwsetBuilder,
 		queryReadsHashingEnabled,
@@ -137,11 +137,11 @@ func (h *queryHelper) executeQuery(namespace, query string) (commonledger.Result
 	return &queryResultsItr{DBItr: dbItr, RWSetBuilder: h.rwsetBuilder}, nil
 }
 
-func (h *queryHelper) executeQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (ledger.QueryResultsIterator, error) {
+func (h *queryHelper) executeQueryWithPagination(namespace, query, bookmark string, pageSize int32) (ledger.QueryResultsIterator, error) {
 	if err := h.checkDone(); err != nil {
 		return nil, err
 	}
-	dbItr, err := h.txmgr.db.ExecuteQueryWithMetadata(namespace, query, metadata)
+	dbItr, err := h.txmgr.db.ExecuteQueryWithPagination(namespace, query, bookmark, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -362,14 +362,14 @@ type resultsItr struct {
 	rangeQueryResultsHelper *rwsetutil.RangeQueryResultsHelper
 }
 
-func newResultsItr(ns string, startKey string, endKey string, metadata map[string]interface{},
+func newResultsItr(ns string, startKey string, endKey string, pageSize int32,
 	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32, hasher ledger.Hasher) (*resultsItr, error) {
 	var err error
 	var dbItr statedb.ResultsIterator
-	if metadata == nil {
+	if pageSize == 0 {
 		dbItr, err = db.GetStateRangeScanIterator(ns, startKey, endKey)
 	} else {
-		dbItr, err = db.GetStateRangeScanIteratorWithMetadata(ns, startKey, endKey, metadata)
+		dbItr, err = db.GetStateRangeScanIteratorWithPagination(ns, startKey, endKey, pageSize)
 	}
 	if err != nil {
 		return nil, err
