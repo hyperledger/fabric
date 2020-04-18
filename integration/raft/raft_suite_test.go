@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -42,6 +43,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(payload []byte) {
 	err := json.Unmarshal(payload, &components)
 	Expect(err).NotTo(HaveOccurred())
+
+	flogging.SetWriter(GinkgoWriter)
 })
 
 var _ = SynchronizedAfterSuite(func() {

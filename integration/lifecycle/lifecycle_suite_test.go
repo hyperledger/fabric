@@ -20,6 +20,7 @@ import (
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -58,6 +59,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(payload []byte) {
 	err := json.Unmarshal(payload, &components)
 	Expect(err).NotTo(HaveOccurred())
+
+	flogging.SetWriter(GinkgoWriter)
 })
 
 var _ = SynchronizedAfterSuite(func() {
