@@ -101,7 +101,7 @@ func (txmgr *LockBasedTxMgr) GetLastSavepoint() (*version.Height, error) {
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, txid, true, txmgr.hasher)
+	qe := newQueryExecutor(txmgr, txid, nil, true, txmgr.hasher)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -117,7 +117,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor
 // querying the ledger state so that the sequence of initialization is explicitly controlled.
 // However that needs a bigger refactoring of code.
 func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, "", false, txmgr.hasher)
+	qe := newQueryExecutor(txmgr, "", nil, false, txmgr.hasher)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -125,7 +125,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecuto
 // NewTxSimulator implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
 	logger.Debugf("constructing new tx simulator")
-	s, err := newLockBasedTxSimulator(txmgr, txid, txmgr.hasher)
+	s, err := newTxSimulator(txmgr, txid, txmgr.hasher)
 	if err != nil {
 		return nil, err
 	}
