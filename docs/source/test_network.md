@@ -368,7 +368,7 @@ peer chaincode query -C mychannel -n fabcar -c '{"Args":["queryCar","CAR9"]}'
 
 The result will show that `"CAR9"` was transferred to Dave:
 ```
-Tou can find he {"make":"Holden","model":"Barina","colour":"brown","owner":"Dave"}
+{"make":"Holden","model":"Barina","colour":"brown","owner":"Dave"}
 ```
 
 ## Bring down the network
