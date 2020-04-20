@@ -6,7 +6,7 @@ What is Chaincode?
 
 Chaincode is a program, written in `Go <https://golang.org>`_, `Node.js <https://nodejs.org>`_,
 or `Java <https://java.com/en/>`_ that implements a prescribed interface.
-Chaincode runs in a seperate process from the peer and initializes and manages
+Chaincode runs in a separate process from the peer and initializes and manages
 the ledger state through transactions submitted by applications.
 
 A chaincode typically handles business logic agreed to by members of the
@@ -24,6 +24,11 @@ are a network operator who is deploying a chaincode to running network,
 visit the :doc:`deploy_chaincode` tutorial and the :doc:`chaincode_lifecycle`
 concept topic.
 
+This tutorial provides an overview of the low level APIs provided by the Fabric
+Chaincode Shim API. You can also use the higher level APIs provided by the
+Fabric Contract API. To learn more about developing smart contracts
+using the Fabric contract API, visit the :doc:`developapps/smartcontract` topic.
+
 Chaincode API
 -------------
 
@@ -39,18 +44,13 @@ In each language, the ``Invoke`` method is called by clients to submit transacti
 proposals. This method allows you to use the chaincode to read and write data on
 the channel ledger.
 
-You also need to include an ``Init`` method that will serve as the initialization
-function for your chaincode. This method will be called in order to initialize
-the chaincode when it is started or upgraded. By default, this function is never
-executed. However, you can use the chaincode definition to request that the ``Init``
-function be executed. If execution of ``Init`` is requested, fabric will ensure
-that ``Init`` is invoked before any other function and is only invoked once.
-This option provides you additional control over which users can initialize the
-chaincode and the ability to add initial data to the ledger. If you are using
-the peer CLI to approve the chaincode definition, use the ``--init-required``
-flag to request the execution of the ``Init`` function. Then call the ``Init``
-function by using the `peer chaincode invoke` command and passing the
-``--isInit`` flag. For more information, see :doc:`chaincode_lifecycle`.
+You also need to include an ``Init`` method in your chaincode that will serve as
+the initialization function. This function is required by the chaincode interface,
+but does not necessarily need to invoked by your applications. You can use the
+Fabric chaincode lifecycle process to specify whether the ``Init`` function must
+be called prior to Invokes. For more information, refer to the initialization
+parameter in the `Approving a chaincode definition <chaincode_lifecycle.html#step-three-approve-a-chaincode-definition-for-your-organization>`__
+step of the Fabric chaincode lifecycle documentation.
 
 The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface``:
 
