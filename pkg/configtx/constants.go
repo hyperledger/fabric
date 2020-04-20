@@ -33,19 +33,11 @@ const (
 	// application, and orderer levels and this constant is used for all three.
 	CapabilitiesKey = "Capabilities"
 
-	ordererAdminsPolicyName = "/Channel/Orderer/Admins"
-
 	// EndpointsKey is the common.ConfigValue key name for the Endpoints message in the OrdererOrgGroup.
 	EndpointsKey = "Endpoints"
 
 	// MSPKey is the key for the MSP definition in orderer groups.
 	MSPKey = "MSP"
-
-	// BatchSizeKey is the common.ConfigValue type key name for the BatchSize message.
-	BatchSizeKey = "BatchSize"
-
-	// BatchTimeoutKey is the common.ConfigValue type key name for the BatchTimeout message.
-	BatchTimeoutKey = "BatchTimeout"
 
 	// AdminsPolicyKey is the key used for the admin policy.
 	AdminsPolicyKey = "Admins"
@@ -68,24 +60,6 @@ const (
 	// ChannelCreationPolicyKey is the key used in the consortium config to denote the policy
 	// to be used in evaluating whether a channel creation request is authorized.
 	ChannelCreationPolicyKey = "ChannelCreationPolicy"
-
-	// ChannelRestrictionsKey is the key name for the ChannelRestrictions message.
-	ChannelRestrictionsKey = "ChannelRestrictions"
-
-	// ConsensusTypeSolo identifies the solo consensus implementation.
-	ConsensusTypeSolo = "solo"
-
-	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
-	ConsensusTypeKafka = "kafka"
-
-	// ConsensusTypeRaft identifies the Raft-based consensus implementation.
-	ConsensusTypeEtcdRaft = "etcdraft"
-
-	// KafkaBrokersKey is the common.ConfigValue type key name for the KafkaBrokers message.
-	KafkaBrokersKey = "KafkaBrokers"
-
-	// ConsensusTypeKey is the common.ConfigValue type key name for the ConsensusType message.
-	ConsensusTypeKey = "ConsensusType"
 
 	// ChannelGroupKey is the group name for the channel config.
 	ChannelGroupKey = "Channel"
@@ -111,9 +85,5 @@ const (
 	// SignaturePolicyType is the 'Type' string for signature policies.
 	SignaturePolicyType = "Signature"
 
-	// ConsensusStateNormal indicates normal orderer operation.
-	ConsensusStateNormal ConsensusState = "STATE_NORMAL"
-
-	// ConsensusStateMaintenance indicates the orderer is in consensus type migration.
-	ConsensusStateMaintenance ConsensusState = "STATE_MAINTENANCE"
+	ordererAdminsPolicyName = "/Channel/Orderer/Admins"
 )

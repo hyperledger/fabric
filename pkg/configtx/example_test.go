@@ -27,6 +27,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/pkg/configtx"
+	"github.com/hyperledger/fabric/pkg/configtx/orderer"
 	. "github.com/onsi/gomega"
 )
 
@@ -492,7 +493,7 @@ func ExampleNewSystemChannelGenesisBlock() {
 					Rule: "ANY Writers",
 				},
 			},
-			OrdererType: configtx.ConsensusTypeSolo,
+			OrdererType: orderer.ConsensusTypeSolo,
 			Organizations: []configtx.Organization{
 				{
 					Name: "OrdererMSP",
@@ -517,7 +518,7 @@ func ExampleNewSystemChannelGenesisBlock() {
 				},
 			},
 			Capabilities: []string{"V1_3"},
-			BatchSize: configtx.BatchSize{
+			BatchSize: orderer.BatchSize{
 				MaxMessageCount:   100,
 				AbsoluteMaxBytes:  100,
 				PreferredMaxBytes: 100,
@@ -529,7 +530,7 @@ func ExampleNewSystemChannelGenesisBlock() {
 					Port: 123,
 				},
 			},
-			State: configtx.ConsensusStateNormal,
+			State: orderer.ConsensusStateNormal,
 		},
 		Capabilities: []string{"V2_0"},
 		Policies: map[string]configtx.Policy{
@@ -1878,13 +1879,13 @@ func fetchChannelConfig() *cb.Config {
 						},
 					},
 					Values: map[string]*cb.ConfigValue{
-						configtx.ConsensusTypeKey: {
+						orderer.ConsensusTypeKey: {
 							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&ob.ConsensusType{
-								Type: configtx.ConsensusTypeKafka,
+								Type: orderer.ConsensusTypeKafka,
 							}),
 						},
-						configtx.ChannelRestrictionsKey: {
+						orderer.ChannelRestrictionsKey: {
 							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&ob.ChannelRestrictions{
 								MaxCount: 1,
@@ -1898,18 +1899,18 @@ func fetchChannelConfig() *cb.Config {
 								},
 							}),
 						},
-						configtx.KafkaBrokersKey: {
+						orderer.KafkaBrokersKey: {
 							ModPolicy: configtx.AdminsPolicyKey,
 							Value: marshalOrPanic(&ob.KafkaBrokers{
 								Brokers: []string{"kafka0:9092", "kafka1:9092"},
 							}),
 						},
-						configtx.BatchTimeoutKey: {
+						orderer.BatchTimeoutKey: {
 							Value: marshalOrPanic(&ob.BatchTimeout{
 								Timeout: "15s",
 							}),
 						},
-						configtx.BatchSizeKey: {
+						orderer.BatchSizeKey: {
 							Value: marshalOrPanic(&ob.BatchSize{
 								MaxMessageCount:   100,
 								AbsoluteMaxBytes:  100,
