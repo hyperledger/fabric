@@ -119,40 +119,8 @@ func TestRemoveApplicationOrg(t *testing.T) {
 		updated:  config,
 	}
 
-	err = c.RemoveApplicationOrg("Org1")
-	gt.Expect(err).NotTo(HaveOccurred())
+	c.RemoveApplicationOrg("Org1")
 	gt.Expect(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups["Org1"]).To(BeNil())
-}
-
-func TestRemoveApplicationOrgFailures(t *testing.T) {
-	t.Parallel()
-	gt := NewGomegaWithT(t)
-
-	channel := Channel{
-		Consortium: "SampleConsortium",
-		Application: Application{
-			Policies:      standardPolicies(),
-			Organizations: []Organization{baseApplicationOrg(t)},
-		},
-	}
-	channelGroup, err := newChannelGroup(channel)
-	gt.Expect(err).NotTo(HaveOccurred())
-	orgGroup, err := newOrgConfigGroup(channel.Application.Organizations[0])
-	gt.Expect(err).NotTo(HaveOccurred())
-	channelGroup.Groups[ApplicationGroupKey].Groups["Org1"] = orgGroup
-
-	config := &cb.Config{
-		ChannelGroup: channelGroup,
-	}
-
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
-
-	err = c.RemoveApplicationOrg("BadOrg")
-	gt.Expect(err).To(MatchError("application org BadOrg does not exist in channel config"))
-	gt.Expect(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups["Org1"]).NotTo(BeNil())
 }
 
 func TestOrdererOrg(t *testing.T) {
@@ -226,31 +194,8 @@ func TestRemoveOrdererOrg(t *testing.T) {
 		updated:  config,
 	}
 
-	err = c.RemoveOrdererOrg("OrdererOrg")
-	gt.Expect(err).ToNot(HaveOccurred())
+	c.RemoveOrdererOrg("OrdererOrg")
 	gt.Expect(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"]).To(BeNil())
-}
-
-func TestRemoveOrdererOrgFailures(t *testing.T) {
-	t.Parallel()
-	gt := NewGomegaWithT(t)
-
-	channel := baseSystemChannelProfile(t)
-	channelGroup, err := newSystemChannelGroup(channel)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	config := &cb.Config{
-		ChannelGroup: channelGroup,
-	}
-
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
-
-	err = c.RemoveOrdererOrg("BadOrg")
-	gt.Expect(err).To(MatchError("orderer org BadOrg does not exist in channel config"))
-	gt.Expect(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"]).NotTo(BeNil())
 }
 
 func TestConsortiumOrg(t *testing.T) {
@@ -333,64 +278,8 @@ func TestRemoveConsortiumOrg(t *testing.T) {
 		updated:  config,
 	}
 
-	err = c.RemoveConsortiumOrg("Consortium1", "Org1")
-	gt.Expect(err).ToNot(HaveOccurred())
+	c.RemoveConsortiumOrg("Consortium1", "Org1")
 	gt.Expect(c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]).To(BeNil())
-}
-
-func TestRemoveConsortiumOrgFailures(t *testing.T) {
-	t.Parallel()
-	gt := NewGomegaWithT(t)
-
-	channel := baseSystemChannelProfile(t)
-	channelGroup, err := newSystemChannelGroup(channel)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	config := &cb.Config{
-		ChannelGroup: channelGroup,
-	}
-
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
-
-	tests := []struct {
-		name           string
-		consortiumName string
-		orgName        string
-		expectedErr    string
-	}{
-		{
-			name:           "consortium not defined",
-			consortiumName: "BadConsortium",
-			orgName:        "Org1",
-			expectedErr:    "consortium BadConsortium does not exist in channel config",
-		},
-		{
-			name:           "organization not defined",
-			consortiumName: "Consortium1",
-			orgName:        "BadOrg",
-			expectedErr:    "consortium org BadOrg does not exist in channel config",
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			gt := NewGomegaWithT(t)
-
-			err := c.RemoveConsortiumOrg(tc.consortiumName, tc.orgName)
-			if tc.expectedErr != "" {
-				gt.Expect(err).To(MatchError(tc.expectedErr))
-				gt.Expect(c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]).NotTo(BeNil())
-			} else {
-				gt.Expect(err).ToNot(HaveOccurred())
-				gt.Expect(c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[tc.consortiumName].Groups[tc.orgName]).To(BeNil())
-			}
-		})
-	}
 }
 
 func TestNewOrgConfigGroup(t *testing.T) {

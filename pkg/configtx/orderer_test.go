@@ -1854,6 +1854,8 @@ func TestRemoveOrdererEndpoint(t *testing.T) {
 func TestRemoveOrdererEndpointFailure(t *testing.T) {
 	t.Parallel()
 
+	gt := NewGomegaWithT(t)
+
 	config := &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
 			Groups: map[string]*cb.ConfigGroup{
@@ -1865,9 +1867,7 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 							Values: map[string]*cb.ConfigValue{
 								EndpointsKey: {
 									ModPolicy: AdminsPolicyKey,
-									Value: marshalOrPanic(&cb.OrdererAddresses{
-										Addresses: []string{"127.0.0.1:7050"},
-									}),
+									Value:     []byte("fire time"),
 								},
 							},
 							Policies: map[string]*cb.ConfigPolicy{},
@@ -1888,37 +1888,8 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 		updated:  config,
 	}
 
-	tests := []struct {
-		testName    string
-		orgName     string
-		endpoint    Address
-		expectedErr string
-	}{
-		{
-			testName:    "When the org for the orderer does not exist",
-			orgName:     "BadOrg",
-			endpoint:    Address{Host: "127.0.0.1", Port: 8050},
-			expectedErr: "orderer org BadOrg does not exist in channel config",
-		},
-		{
-			testName:    "When the endpoint being removed does not exist in the org",
-			orgName:     "OrdererOrg",
-			endpoint:    Address{Host: "127.0.0.1", Port: 8050},
-			expectedErr: "could not find endpoint 127.0.0.1:8050 in orderer org OrdererOrg",
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.testName, func(t *testing.T) {
-			t.Parallel()
-
-			gt := NewGomegaWithT(t)
-
-			err := c.RemoveOrdererEndpoint(tt.orgName, tt.endpoint)
-			gt.Expect(err).To(MatchError(tt.expectedErr))
-		})
-	}
+	err := c.RemoveOrdererEndpoint("OrdererOrg", Address{Host: "127.0.0.1", Port: 8050})
+	gt.Expect(err).To(MatchError("failed unmarshaling orderer org OrdererOrg's endpoints: proto: can't skip unknown wire type 6"))
 }
 
 func baseOrdererOfType(t *testing.T, ordererType string) Orderer {

@@ -25,16 +25,13 @@ func (c *ConfigTx) ApplicationOrg(orgName string) (Organization, error) {
 	return getOrganization(orgGroup, orgName)
 }
 
-// RemoveApplicationOrg remove an org from Application groups
-func (c *ConfigTx) RemoveApplicationOrg(orgName string) error {
+// RemoveApplicationOrg removes an org from the Application group.
+// Removal will panic if the application group does not exist.
+func (c *ConfigTx) RemoveApplicationOrg(orgName string) {
 	applicationGroups := c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups
-	if _, ok := applicationGroups[orgName]; !ok {
-		return fmt.Errorf("application org %s does not exist in channel config", orgName)
-	}
 
 	delete(applicationGroups, orgName)
 
-	return nil
 }
 
 // OrdererOrg retrieves an existing org from an orderer organization config group.
@@ -67,16 +64,13 @@ func (c *ConfigTx) OrdererOrg(orgName string) (Organization, error) {
 	return org, err
 }
 
-// RemoveOredererOrg remove an org from Orderer groups
-func (c *ConfigTx) RemoveOrdererOrg(orgName string) error {
+// RemoveOrdererOrg removes an org from the Orderer group.
+// Removal will panic if the orderer group does not exist.
+func (c *ConfigTx) RemoveOrdererOrg(orgName string) {
 	ordererGroups := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups
-	if _, ok := ordererGroups[orgName]; !ok {
-		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
-	}
 
 	delete(ordererGroups, orgName)
 
-	return nil
 }
 
 // ConsortiumOrg retrieves an existing org from a consortium organization config group.
@@ -101,19 +95,13 @@ func (c *ConfigTx) ConsortiumOrg(consortiumName, orgName string) (Organization, 
 	return org, err
 }
 
-// RemoveConsortiumOrg remove an org in a consortium organization from Consortiums groups
-func (c *ConfigTx) RemoveConsortiumOrg(consortiumName, orgName string) error {
-	consortium, ok := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
-	if !ok {
-		return fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
-	}
-	if _, ok := consortium.Groups[orgName]; !ok {
-		return fmt.Errorf("consortium org %s does not exist in channel config", orgName)
-	}
+// RemoveConsortiumOrg removes an org from a consortium's group.
+// Removal will panic if either the consortiums group or consortium group does not exist.
+func (c *ConfigTx) RemoveConsortiumOrg(consortiumName, orgName string) {
+	consortium := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 
 	delete(consortium.Groups, orgName)
 
-	return nil
 }
 
 // newOrgConfigGroup returns an config group for an organization.

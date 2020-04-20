@@ -585,19 +585,15 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 		testName           string
 		orgName            string
 		anchorPeerToRemove Address
+		configValues       map[string]*cb.ConfigValue
 		expectedErr        string
 	}{
 		{
-			testName:           "When the org for the application does not exist",
-			orgName:            "BadOrg",
-			anchorPeerToRemove: Address{Host: "host1", Port: 123},
-			expectedErr:        "application org BadOrg does not exist in channel config",
-		},
-		{
-			testName:           "When the anchor peer being removed doesn't exist in the org",
+			testName:           "When the unmarshaling existing anchor peer proto fails",
 			orgName:            "Org1",
-			anchorPeerToRemove: Address{Host: "host2", Port: 123},
-			expectedErr:        "could not find anchor peer host2:123 in application org Org1",
+			anchorPeerToRemove: Address{Host: "host1", Port: 123},
+			configValues:       map[string]*cb.ConfigValue{AnchorPeersKey: {Value: []byte("a little fire")}},
+			expectedErr:        "failed unmarshaling Org1's anchor peer endpoints: proto: can't skip unknown wire type 6",
 		},
 	}
 
@@ -612,6 +608,8 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 
 			applicationGroup, err := newApplicationGroup(baseApplicationConf)
 			gt.Expect(err).NotTo(HaveOccurred())
+
+			applicationGroup.Groups["Org1"].Values = tt.configValues
 
 			config := &cb.Config{
 				ChannelGroup: &cb.ConfigGroup{
@@ -736,13 +734,6 @@ func TestAddACL(t *testing.T) {
 			},
 			expectedErr: "",
 		},
-		{
-			testName: "configuration missing application config group",
-			configMod: func(config *cb.Config) {
-				delete(config.ChannelGroup.Groups, ApplicationGroupKey)
-			},
-			expectedErr: "application does not exist in channel config",
-		},
 	}
 
 	for _, tt := range tests {
@@ -807,13 +798,6 @@ func TestRemoveACL(t *testing.T) {
 				"acl3": "acl3Value",
 			},
 			expectedErr: "",
-		},
-		{
-			testName: "configuration missing application config group",
-			configMod: func(config *cb.Config) {
-				delete(config.ChannelGroup.Groups, ApplicationGroupKey)
-			},
-			expectedErr: "application does not exist in channel config",
 		},
 	}
 
@@ -1196,10 +1180,20 @@ func TestApplicationACLsFailure(t *testing.T) {
 
 	gt := NewGomegaWithT(t)
 
+	baseApplicationConf := baseApplication(t)
+	applicationGroup, err := newApplicationGroup(baseApplicationConf)
+	gt.Expect(err).NotTo(HaveOccurred())
+
 	config := &cb.Config{
 		ChannelGroup: &cb.ConfigGroup{
-			Groups: map[string]*cb.ConfigGroup{},
+			Groups: map[string]*cb.ConfigGroup{
+				ApplicationGroupKey: applicationGroup,
+			},
 		},
+	}
+
+	config.ChannelGroup.Groups[ApplicationGroupKey].Values[ACLsKey] = &cb.ConfigValue{
+		Value: []byte("another little fire"),
 	}
 
 	c := &ConfigTx{
@@ -1207,7 +1201,7 @@ func TestApplicationACLsFailure(t *testing.T) {
 	}
 
 	applicationACLs, err := c.ApplicationACLs()
-	gt.Expect(err).To(MatchError("application does not exist in channel config"))
+	gt.Expect(err).To(MatchError("unmarshaling ACLs: unexpected EOF"))
 	gt.Expect(applicationACLs).To(BeNil())
 }
 
