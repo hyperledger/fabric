@@ -22,6 +22,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/tools/protolator"
+	"github.com/hyperledger/fabric/pkg/configtx/membership"
 	. "github.com/onsi/gomega"
 )
 
@@ -1111,39 +1112,39 @@ func baseMSP(t *testing.T) MSP {
 		IntermediateCerts: []*x509.Certificate{cert},
 		Admins:            []*x509.Certificate{cert},
 		RevocationList:    []*pkix.CertificateList{crl},
-		SigningIdentity: SigningIdentityInfo{
+		SigningIdentity: membership.SigningIdentityInfo{
 			PublicSigner: cert,
-			PrivateSigner: KeyInfo{
+			PrivateSigner: membership.KeyInfo{
 				KeyIdentifier: "SKI-1",
 				KeyMaterial:   privKey,
 			},
 		},
-		OrganizationalUnitIdentifiers: []OUIdentifier{
+		OrganizationalUnitIdentifiers: []membership.OUIdentifier{
 			{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
 		},
-		CryptoConfig: CryptoConfig{
+		CryptoConfig: membership.CryptoConfig{
 			SignatureHashFamily:            "SHA3",
 			IdentityIdentifierHashFunction: "SHA256",
 		},
 		TLSRootCerts:         []*x509.Certificate{cert},
 		TLSIntermediateCerts: []*x509.Certificate{cert},
-		NodeOus: NodeOUs{
-			ClientOUIdentifier: OUIdentifier{
+		NodeOus: membership.NodeOUs{
+			ClientOUIdentifier: membership.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			PeerOUIdentifier: OUIdentifier{
+			PeerOUIdentifier: membership.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			AdminOUIdentifier: OUIdentifier{
+			AdminOUIdentifier: membership.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			OrdererOUIdentifier: OUIdentifier{
+			OrdererOUIdentifier: membership.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},

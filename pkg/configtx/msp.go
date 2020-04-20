@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/pkg/configtx/membership"
 )
 
 // MSP is the configuration information for a Fabric MSP.
@@ -56,14 +57,14 @@ type MSP struct {
 	// SigningIdentity holds information on the signing identity
 	// this peer is to use, and which is to be imported by the
 	// MSP defined before.
-	SigningIdentity SigningIdentityInfo
+	SigningIdentity membership.SigningIdentityInfo
 	// OrganizationalUnitIdentifiers holds one or more
 	// fabric organizational unit identifiers that belong to
 	// this MSP configuration.
-	OrganizationalUnitIdentifiers []OUIdentifier
+	OrganizationalUnitIdentifiers []membership.OUIdentifier
 	// CryptoConfig contains the configuration parameters
 	// for the cryptographic algorithms used by this MSP.
-	CryptoConfig CryptoConfig
+	CryptoConfig membership.CryptoConfig
 	// List of TLS root certificates trusted by this MSP.
 	// They are returned by GetTLSRootCerts.
 	TLSRootCerts []*x509.Certificate
@@ -72,81 +73,7 @@ type MSP struct {
 	TLSIntermediateCerts []*x509.Certificate
 	// fabric_node_ous contains the configuration to distinguish clients from peers from orderers
 	// based on the OUs.
-	NodeOus NodeOUs
-}
-
-// SigningIdentityInfo represents the configuration information
-// related to the signing identity the peer is to use for generating
-// endorsements.
-type SigningIdentityInfo struct {
-	// PublicSigner carries the public information of the signing
-	// identity. For an X.509 provider this would be represented by
-	// an X.509 certificate.
-	PublicSigner *x509.Certificate
-	// PrivateSigner denotes a reference to the private key of the
-	// peer's signing identity.
-	PrivateSigner KeyInfo
-}
-
-// KeyInfo represents a (secret) key that is either already stored
-// in the bccsp/keystore or key material to be imported to the
-// bccsp key-store. In later versions it may contain also a
-// keystore identifier.
-type KeyInfo struct {
-	// Identifier of the key inside the default keystore; this for
-	// the case of Software BCCSP as well as the HSM BCCSP would be
-	// the SKI of the key.
-	KeyIdentifier string
-	// KeyMaterial (optional) for the key to be imported; this
-	// must be a supported PKCS#8 private key type of either
-	// *rsa.PrivateKey, *ecdsa.PrivateKey, or ed25519.PrivateKey.
-	KeyMaterial crypto.PrivateKey
-}
-
-// OUIdentifier represents an organizational unit and
-// its related chain of trust identifier.
-type OUIdentifier struct {
-	// Certificate represents the second certificate in a certification chain.
-	// (Notice that the first certificate in a certification chain is supposed
-	// to be the certificate of an identity).
-	// It must correspond to the certificate of root or intermediate CA
-	// recognized by the MSP this message belongs to.
-	// Starting from this certificate, a certification chain is computed
-	// and bound to the OrganizationUnitIdentifier specified.
-	Certificate *x509.Certificate
-	// OrganizationUnitIdentifier defines the organizational unit under the
-	// MSP identified with MSPIdentifier.
-	OrganizationalUnitIdentifier string
-}
-
-// CryptoConfig contains configuration parameters
-// for the cryptographic algorithms used by the MSP
-// this configuration refers to.
-type CryptoConfig struct {
-	// SignatureHashFamily is a string representing the hash family to be used
-	// during sign and verify operations.
-	// Allowed values are "SHA2" and "SHA3".
-	SignatureHashFamily string
-	// IdentityIdentifierHashFunction is a string representing the hash function
-	// to be used during the computation of the identity identifier of an MSP identity.
-	// Allowed values are "SHA256", "SHA384" and "SHA3_256", "SHA3_384".
-	IdentityIdentifierHashFunction string
-}
-
-// NodeOUs contains configuration to tell apart clients from peers from orderers
-// based on OUs. If NodeOUs recognition is enabled then an msp identity
-// that does not contain any of the specified OU will be considered invalid.
-type NodeOUs struct {
-	// If true then an msp identity that does not contain any of the specified OU will be considered invalid.
-	Enable bool
-	// OU Identifier of the clients.
-	ClientOUIdentifier OUIdentifier
-	// OU Identifier of the peers.
-	PeerOUIdentifier OUIdentifier
-	// OU Identifier of the admins.
-	AdminOUIdentifier OUIdentifier
-	// OU Identifier of the orderers.
-	OrdererOUIdentifier OUIdentifier
+	NodeOus membership.NodeOUs
 }
 
 // ApplicationMSP returns the MSP configuration for an existing application
@@ -314,9 +241,9 @@ func getMSPConfig(configGroup *cb.ConfigGroup) (MSP, error) {
 		return MSP{}, fmt.Errorf("parsing signing identity private key: %v", err)
 	}
 
-	signingIdentity := SigningIdentityInfo{
+	signingIdentity := membership.SigningIdentityInfo{
 		PublicSigner: publicSigner,
-		PrivateSigner: KeyInfo{
+		PrivateSigner: membership.KeyInfo{
 			KeyIdentifier: fabricMSPConfig.SigningIdentity.PrivateSigner.KeyIdentifier,
 			KeyMaterial:   keyMaterial,
 		},
@@ -361,21 +288,21 @@ func getMSPConfig(configGroup *cb.ConfigGroup) (MSP, error) {
 		return MSP{}, fmt.Errorf("parsing orderer ou identifier cert: %v", err)
 	}
 
-	nodeOUs := NodeOUs{
+	nodeOUs := membership.NodeOUs{
 		Enable: fabricMSPConfig.FabricNodeOus.Enable,
-		ClientOUIdentifier: OUIdentifier{
+		ClientOUIdentifier: membership.OUIdentifier{
 			Certificate:                  clientOUIdentifierCert,
 			OrganizationalUnitIdentifier: fabricMSPConfig.FabricNodeOus.ClientOuIdentifier.OrganizationalUnitIdentifier,
 		},
-		PeerOUIdentifier: OUIdentifier{
+		PeerOUIdentifier: membership.OUIdentifier{
 			Certificate:                  peerOUIdentifierCert,
 			OrganizationalUnitIdentifier: fabricMSPConfig.FabricNodeOus.PeerOuIdentifier.OrganizationalUnitIdentifier,
 		},
-		AdminOUIdentifier: OUIdentifier{
+		AdminOUIdentifier: membership.OUIdentifier{
 			Certificate:                  adminOUIdentifierCert,
 			OrganizationalUnitIdentifier: fabricMSPConfig.FabricNodeOus.AdminOuIdentifier.OrganizationalUnitIdentifier,
 		},
-		OrdererOUIdentifier: OUIdentifier{
+		OrdererOUIdentifier: membership.OUIdentifier{
 			Certificate:                  ordererOUIdentifierCert,
 			OrganizationalUnitIdentifier: fabricMSPConfig.FabricNodeOus.OrdererOuIdentifier.OrganizationalUnitIdentifier,
 		},
@@ -389,7 +316,7 @@ func getMSPConfig(configGroup *cb.ConfigGroup) (MSP, error) {
 		RevocationList:                revocationList,
 		SigningIdentity:               signingIdentity,
 		OrganizationalUnitIdentifiers: ouIdentifiers,
-		CryptoConfig: CryptoConfig{
+		CryptoConfig: membership.CryptoConfig{
 			SignatureHashFamily:            fabricMSPConfig.CryptoConfig.SignatureHashFamily,
 			IdentityIdentifierHashFunction: fabricMSPConfig.CryptoConfig.IdentityIdentifierHashFunction,
 		},
@@ -457,8 +384,8 @@ func parsePrivateKeyFromBytes(priv []byte) (crypto.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func parseOUIdentifiers(identifiers []*mb.FabricOUIdentifier) ([]OUIdentifier, error) {
-	fabricIdentifiers := []OUIdentifier{}
+func parseOUIdentifiers(identifiers []*mb.FabricOUIdentifier) ([]membership.OUIdentifier, error) {
+	fabricIdentifiers := []membership.OUIdentifier{}
 
 	for _, identifier := range identifiers {
 		cert, err := parseCertificateFromBytes(identifier.Certificate)
@@ -466,7 +393,7 @@ func parseOUIdentifiers(identifiers []*mb.FabricOUIdentifier) ([]OUIdentifier, e
 			return fabricIdentifiers, err
 		}
 
-		fabricOUIdentifier := OUIdentifier{
+		fabricOUIdentifier := membership.OUIdentifier{
 			Certificate:                  cert,
 			OrganizationalUnitIdentifier: identifier.OrganizationalUnitIdentifier,
 		}
@@ -544,7 +471,7 @@ func (m *MSP) toProto() (*mb.FabricMSPConfig, error) {
 	}, nil
 }
 
-func buildOUIdentifiers(identifiers []OUIdentifier) []*mb.FabricOUIdentifier {
+func buildOUIdentifiers(identifiers []membership.OUIdentifier) []*mb.FabricOUIdentifier {
 	fabricIdentifiers := []*mb.FabricOUIdentifier{}
 
 	for _, identifier := range identifiers {
