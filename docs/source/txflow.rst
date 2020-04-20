@@ -122,8 +122,5 @@ transaction was validated or invalidated.
           whether your transaction has actually been ordered, validated, and
           committed to the ledger.
 
-See the :ref:`sequence diagram <swimlane>` to better understand the
-transaction flow.
-
 .. Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/
