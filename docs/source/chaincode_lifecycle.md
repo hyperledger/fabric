@@ -149,13 +149,34 @@ consistent across organizations:
 - **Collection Configuration:** The path to a private data collection definition
   file associated with your chaincode. For more information about private data
   collections, see the [Private Data architecture reference](https://hyperledger-fabric.readthedocs.io/en/{BRANCH}/private-data-arch.html).
-- **Initialization:** All chaincode need to contain an ``Init`` function that is
-  used to initialize the chaincode. By default, this function is never executed.
-  However, you can use the chaincode definition to request that the ``Init``
-  function be callable. If execution of ``Init`` is requested, fabric will ensure
-  that ``Init`` is invoked before any other function and is only invoked once.
 - **ESCC/VSCC Plugins:** The name of a custom endorsement or validation
   plugin to be used by this chaincode.
+- **Initialization:** If you use the low level APIs provided by the Fabric Chaincode
+  Shim API, your chaincode needs to contain an `Init` function that is used to
+  initialize the chaincode. This function is required by the chaincode interface,
+  but does not necessarily need to invoked by your applications. When you approve
+  a chaincode definition, you can specify whether `Init` must be called prior to
+  Invokes. If you specify that `Init` is required, Fabric will ensure that the `Init`
+  function is invoked before any other function in the chaincode and is only invoked
+  once. Requesting the execution of the `Init` function allows you to implement
+  logic that is run when the chaincode is initialized, for example to set some
+  initial state. You will need to call `Init` to initialize the chaincode every
+  time you increment the version of a chaincode, assuming the chaincode definition
+  that increments the version indicates that `Init` is required.
+
+  If you are using the Fabric peer CLI, you can use the `--init-required` flag
+  when you approve and commit the chaincode definition to indicate that the `Init`
+  function must be called to initialize the new chaincode version. To call `Init`
+   using the Fabric peer CLI, use the `peer chaincode invoke` command and pass the
+  `--isInit` flag.
+
+  If you are using the Fabric contract API, you do not need to include an `Init`
+  method in your chaincode. However, you can still use the `--init-required` flag
+  to request that the chaincode be initialized by a call from your applications.
+  If you use the `--init-required` flag, you will need to pass the `--isInit` flag
+  or parameter to a chaincode call in order to initialize the chaincode every time
+  you increment the chaincode version. You can pass `--isInit` and initialize the
+  chaincode using any function in your chaincode.
 
 The chaincode definition also includes the **Package Identifier**. This is a
 required parameter for each organization that wants to use the chaincode. The
