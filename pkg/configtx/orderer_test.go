@@ -888,7 +888,7 @@ func TestNewOrdererGroupFailure(t *testing.T) {
 	}
 }
 
-func TestUpdateOrdererConfiguration(t *testing.T) {
+func TestSetOrdererConfiguration(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -959,7 +959,7 @@ func TestUpdateOrdererConfiguration(t *testing.T) {
 
 	c := New(config)
 
-	err = c.UpdateOrdererConfiguration(updatedOrdererConf)
+	err = c.SetOrdererConfiguration(updatedOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	expectedConfigJSON := fmt.Sprintf(`
@@ -1554,7 +1554,7 @@ func TestAddOrdererOrg(t *testing.T) {
 }
 `, certBase64, crlBase64, pkBase64)
 
-	err = c.AddOrdererOrg(org)
+	err = c.SetOrdererOrg(org)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	actualOrdererConfigGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg2"]
@@ -1564,7 +1564,7 @@ func TestAddOrdererOrg(t *testing.T) {
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
 }
 
-func TestAddOrdererOrgFailures(t *testing.T) {
+func TestSetOrdererOrgFailures(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -1586,11 +1586,11 @@ func TestAddOrdererOrgFailures(t *testing.T) {
 		Name: "OrdererOrg2",
 	}
 
-	err = c.AddOrdererOrg(org)
+	err = c.SetOrdererOrg(org)
 	gt.Expect(err).To(MatchError("failed to create orderer org 'OrdererOrg2': no policies defined"))
 }
 
-func TestAddOrdererEndpoint(t *testing.T) {
+func TestSetOrdererEndpoint(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -1670,77 +1670,10 @@ func TestAddOrdererEndpoint(t *testing.T) {
 	gt.Expect(err).ToNot(HaveOccurred())
 
 	newOrderer1OrgEndpoint := Address{Host: "127.0.0.1", Port: 9050}
-	err = c.AddOrdererEndpoint("Orderer1Org", newOrderer1OrgEndpoint)
+	err = c.SetOrdererEndpoint("Orderer1Org", newOrderer1OrgEndpoint)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(proto.Equal(c.UpdatedConfig(), expectedUpdatedConfig)).To(BeTrue())
-}
-
-func TestAddOrdererEndpointFailure(t *testing.T) {
-	t.Parallel()
-
-	config := &cb.Config{
-		ChannelGroup: &cb.ConfigGroup{
-			Groups: map[string]*cb.ConfigGroup{
-				OrdererGroupKey: {
-					Version: 0,
-					Groups: map[string]*cb.ConfigGroup{
-						"OrdererOrg": {
-							Groups: map[string]*cb.ConfigGroup{},
-							Values: map[string]*cb.ConfigValue{
-								EndpointsKey: {
-									ModPolicy: AdminsPolicyKey,
-									Value: marshalOrPanic(&cb.OrdererAddresses{
-										Addresses: []string{"127.0.0.1:7050"},
-									}),
-								},
-							},
-							Policies: map[string]*cb.ConfigPolicy{},
-						},
-					},
-					Values:   map[string]*cb.ConfigValue{},
-					Policies: map[string]*cb.ConfigPolicy{},
-				},
-			},
-			Values:   map[string]*cb.ConfigValue{},
-			Policies: map[string]*cb.ConfigPolicy{},
-		},
-		Sequence: 0,
-	}
-
-	c := New(config)
-
-	tests := []struct {
-		testName    string
-		orgName     string
-		endpoint    Address
-		expectedErr string
-	}{
-		{
-			testName:    "When the org for the orderer does not exist",
-			orgName:     "BadOrg",
-			endpoint:    Address{Host: "127.0.0.1", Port: 7050},
-			expectedErr: "orderer org BadOrg does not exist in channel config",
-		},
-		{
-			testName:    "When the orderer endpoint being added already exists in the org",
-			orgName:     "OrdererOrg",
-			endpoint:    Address{Host: "127.0.0.1", Port: 7050},
-			expectedErr: "orderer org OrdererOrg already contains endpoint 127.0.0.1:7050",
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.testName, func(t *testing.T) {
-			t.Parallel()
-
-			gt := NewGomegaWithT(t)
-
-			err := c.AddOrdererEndpoint(tt.orgName, tt.endpoint)
-			gt.Expect(err).To(MatchError(tt.expectedErr))
-		})
-	}
 }
 
 func TestRemoveOrdererEndpoint(t *testing.T) {

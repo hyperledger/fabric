@@ -1202,7 +1202,7 @@ func TestUpdateOrdererMSPFailure(t *testing.T) {
 	}
 }
 
-func TestUpdateApplicationMSP(t *testing.T) {
+func TestSetApplicationMSP(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
@@ -1589,7 +1589,7 @@ func TestUpdateApplicationMSP(t *testing.T) {
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
 }
 
-func TestUpdateApplicationMSPFailure(t *testing.T) {
+func TestSetApplicationMSPFailure(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {

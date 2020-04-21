@@ -18,12 +18,11 @@ import (
 	"github.com/hyperledger/fabric/common/policydsl"
 )
 
-// UpdateConsortiumChannelCreationPolicy update a consortium group's channel creation policy value
-func (c *ConfigTx) UpdateConsortiumChannelCreationPolicy(consortiumName string, policy Policy) error {
-	consortium, ok := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
-	if !ok {
-		return fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
-	}
+// SetConsortiumChannelCreationPolicy sets the ConsortiumChannelCreationPolicy for
+// the given configuration Group.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (c *ConfigTx) SetConsortiumChannelCreationPolicy(consortiumName string, policy Policy) error {
+	consortium := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
 
 	imp, err := implicitMetaFromString(policy.Rule)
 	if err != nil {
@@ -100,9 +99,9 @@ func (c *ConfigTx) ChannelPolicies() (map[string]Policy, error) {
 	return getPolicies(c.original.ChannelGroup.Policies)
 }
 
-// AddApplicationPolicy modifies an existing application policy configuration.
-// When the policy exists it will overwrite the existing policy.
-func (c *ConfigTx) AddApplicationPolicy(modPolicy, policyName string, policy Policy) error {
+// SetApplicationPolicy sets the specified policy in the application group's config policy map.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (c *ConfigTx) SetApplicationPolicy(modPolicy, policyName string, policy Policy) error {
 	err := addPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey], modPolicy, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to add policy '%s': %v", policyName, err)
@@ -123,9 +122,9 @@ func (c *ConfigTx) RemoveApplicationPolicy(policyName string) error {
 	return nil
 }
 
-// AddApplicationOrgPolicy modifies an existing organization in a application configuration's policies.
-// When the policy exists it will overwrite the existing policy.
-func (c *ConfigTx) AddApplicationOrgPolicy(orgName, modPolicy, policyName string, policy Policy) error {
+// SetApplicationOrgPolicy sets the specified policy in the application org group's config policy map.
+// If an Organization policy already exist in current configuration, its value will be overwritten.
+func (c *ConfigTx) SetApplicationOrgPolicy(orgName, modPolicy, policyName string, policy Policy) error {
 	err := addPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName], modPolicy, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to add policy '%s': %v", policyName, err)
@@ -146,20 +145,10 @@ func (c *ConfigTx) RemoveApplicationOrgPolicy(orgName, policyName string) error 
 	return nil
 }
 
-// AddConsortiumOrgPolicy modifies an existing organization in a consortiums configuration's policies.
-// When the policy exists it will overwrite the existing policy.
-func (c *ConfigTx) AddConsortiumOrgPolicy(consortiumName, orgName, policyName string, policy Policy) error {
-	groupKey := ConsortiumsGroupKey
-
-	consortiumGroup, ok := c.updated.ChannelGroup.Groups[groupKey].Groups[consortiumName]
-	if !ok {
-		return fmt.Errorf("consortium '%s' does not exist in channel config", consortiumName)
-	}
-
-	orgGroup, ok := consortiumGroup.Groups[orgName]
-	if !ok {
-		return fmt.Errorf("%s org '%s' does not exist in channel config", strings.ToLower(groupKey), orgName)
-	}
+// SetConsortiumOrgPolicy sets the specified policy in the consortium org group's config policy map.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (c *ConfigTx) SetConsortiumOrgPolicy(consortiumName, orgName, policyName string, policy Policy) error {
+	orgGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName].Groups[orgName]
 
 	err := addPolicy(orgGroup, AdminsPolicyKey, policyName, policy)
 	if err != nil {
@@ -178,9 +167,9 @@ func (c *ConfigTx) RemoveConsortiumOrgPolicy(consortiumName, orgName, policyName
 
 }
 
-// AddOrdererPolicy modifies an existing orderer policy configuration.
-// When the policy exists it will overwrite the existing policy.
-func (c *ConfigTx) AddOrdererPolicy(modPolicy, policyName string, policy Policy) error {
+// SetOrdererPolicy sets the specified policy in the orderer group's config policy map.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (c *ConfigTx) SetOrdererPolicy(modPolicy, policyName string, policy Policy) error {
 	err := addPolicy(c.updated.ChannelGroup.Groups[OrdererGroupKey], modPolicy, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to add policy '%s': %v", policyName, err)
@@ -204,9 +193,9 @@ func (c *ConfigTx) RemoveOrdererPolicy(policyName string) error {
 	return nil
 }
 
-// AddOrdererOrgPolicy modifies an existing organization in a orderer configuration's policies.
-// When the policy exists it will overwrite the existing policy.
-func (c *ConfigTx) AddOrdererOrgPolicy(orgName, modPolicy, policyName string, policy Policy) error {
+// SetOrdererOrgPolicy sets the specified policy in the orderer org group's config policy map.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (c *ConfigTx) SetOrdererOrgPolicy(orgName, modPolicy, policyName string, policy Policy) error {
 	return addPolicy(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName], modPolicy, policyName, policy)
 }
 
@@ -221,9 +210,9 @@ func (c *ConfigTx) RemoveOrdererOrgPolicy(orgName, policyName string) error {
 	return nil
 }
 
-// AddChannelPolicy adds a channel level policy.
-// When the policy exists it will overwrite the existing policy.
-func (c *ConfigTx) AddChannelPolicy(modPolicy, policyName string, policy Policy) error {
+// SetChannelPolicy sets the specified policy in the channel group's config policy map.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (c *ConfigTx) SetChannelPolicy(modPolicy, policyName string, policy Policy) error {
 	return addPolicy(c.updated.ChannelGroup, modPolicy, policyName, policy)
 }
 
