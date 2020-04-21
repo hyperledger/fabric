@@ -213,14 +213,18 @@ func (c *ConfigTx) AnchorPeers(orgName string) ([]Address, error) {
 
 	anchorPeerConfigValue, ok := applicationOrgGroup.Values[AnchorPeersKey]
 	if !ok {
-		return nil, fmt.Errorf("application org %s does not have anchor peers", orgName)
+		return nil, nil
 	}
 
 	anchorPeersProto := &pb.AnchorPeers{}
 
 	err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
 	if err != nil {
-		return nil, fmt.Errorf("failed unmarshaling %s's anchor peer endpoints: %v", orgName, err)
+		return nil, fmt.Errorf("failed unmarshaling anchor peer endpoints for org %s: %v", orgName, err)
+	}
+
+	if len(anchorPeersProto.AnchorPeers) == 0 {
+		return nil, nil
 	}
 
 	anchorPeers := []Address{}

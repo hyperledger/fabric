@@ -552,7 +552,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 	}
 }
 
-func TestAnchorPeer(t *testing.T) {
+func TestAnchorPeers(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -567,19 +567,36 @@ func TestAnchorPeer(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	expectedAnchorPeer := Address{Host: "host1", Port: 123}
 	c := ConfigTx{
 		original: config,
 		updated:  config,
 	}
 
+	anchorPeers, err := c.AnchorPeers("Org1")
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(anchorPeers).To(BeNil())
+	gt.Expect(anchorPeers).To(HaveLen(0))
+
+	expectedAnchorPeer := Address{Host: "host1", Port: 123}
 	err = c.AddAnchorPeer("Org1", expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	anchorPeers, err := c.AnchorPeers("Org1")
+	anchorPeers, err = c.AnchorPeers("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
-	gt.Expect(len(anchorPeers)).To(Equal(1))
+	gt.Expect(anchorPeers).To(HaveLen(1))
 	gt.Expect(anchorPeers[0]).To(Equal(expectedAnchorPeer))
+
+	err = c.RemoveAnchorPeer("Org1", expectedAnchorPeer)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	// create new configtx with the updated config to test final anchor peers
+	// to ensure a nil slice is returned when all anchor peers are removed
+	c = New(c.UpdatedConfig())
+
+	anchorPeers, err = c.AnchorPeers("Org1")
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Expect(anchorPeers).To(BeNil())
+	gt.Expect(anchorPeers).To(HaveLen(0))
 }
 
 func TestAnchorPeerFailures(t *testing.T) {
@@ -620,11 +637,6 @@ func TestAnchorPeerFailures(t *testing.T) {
 			name:        "When org does not exist in application channel",
 			orgName:     "bad-org",
 			expectedErr: "application org bad-org does not exist in channel config",
-		},
-		{
-			name:        "When org config group does not have an anchor peers value",
-			orgName:     "Org1",
-			expectedErr: "application org Org1 does not have anchor peers",
 		},
 	} {
 		test := test
