@@ -99,8 +99,8 @@ func TestBrokerConfigTLSConfigEnabled(t *testing.T) {
 		assert.NotNil(t, testBrokerConfig.Net.TLS.Config)
 		assert.Len(t, testBrokerConfig.Net.TLS.Config.Certificates, 1)
 		assert.Len(t, testBrokerConfig.Net.TLS.Config.RootCAs.Subjects(), 1)
-		assert.Equal(t, uint16(0), testBrokerConfig.Net.TLS.Config.MaxVersion)
 		assert.Equal(t, uint16(tls.VersionTLS12), testBrokerConfig.Net.TLS.Config.MinVersion)
+		assert.Equal(t, uint16(tls.VersionTLS13), testBrokerConfig.Net.TLS.Config.MaxVersion)
 	})
 
 	t.Run("Disabled", func(t *testing.T) {

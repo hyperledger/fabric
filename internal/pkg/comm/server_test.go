@@ -635,17 +635,31 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds))
 	assert.NoError(t, err, "client failed to invoke the EmptyCall service")
 
+	// Test TLS versions which should be valid
 	tlsVersions := map[string]uint16{
+		"TLS12": tls.VersionTLS12,
+		"TLS13": tls.VersionTLS13,
+	}
+	for name, tlsVersion := range tlsVersions {
+		t.Run(name, func(t *testing.T) {
+			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: tlsVersion, MaxVersion: tlsVersion})
+			_, err := invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds), grpc.WithBlock())
+			assert.NoError(t, err)
+		})
+	}
+
+	// Test TLS versions which should be invalid
+	tlsVersions = map[string]uint16{
 		"SSL30": tls.VersionSSL30,
 		"TLS10": tls.VersionTLS10,
 		"TLS11": tls.VersionTLS11,
 	}
-	for name, version := range tlsVersions {
-		version := version
+	for name, tlsVersion := range tlsVersions {
+		tlsVersion := tlsVersion
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: version, MaxVersion: version})
+			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: tlsVersion, MaxVersion: tlsVersion})
 			_, err := invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds), grpc.WithBlock())
 			assert.Error(t, err, "should not have been able to connect with TLS version < 1.2")
 			assert.Contains(t, err.Error(), "context deadline exceeded")

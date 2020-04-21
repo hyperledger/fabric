@@ -57,7 +57,7 @@ func newBrokerConfig(
 			Certificates: []tls.Certificate{keyPair},
 			RootCAs:      rootCAs,
 			MinVersion:   tls.VersionTLS12,
-			MaxVersion:   0, // Latest supported TLS version
+			MaxVersion:   tls.VersionTLS13,
 		}
 	}
 	brokerConfig.Net.SASL.Enable = saslPlain.Enabled
