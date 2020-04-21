@@ -114,15 +114,15 @@ type ChaincodeParameters struct {
 func (cp *ChaincodeParameters) Equal(ocp *ChaincodeParameters) error {
 	switch {
 	case cp.EndorsementInfo.Version != ocp.EndorsementInfo.Version:
-		return errors.Errorf("Version '%s' != '%s'", cp.EndorsementInfo.Version, ocp.EndorsementInfo.Version)
+		return errors.Errorf("expected Version '%s' does not match passed Version '%s'", cp.EndorsementInfo.Version, ocp.EndorsementInfo.Version)
 	case cp.EndorsementInfo.EndorsementPlugin != ocp.EndorsementInfo.EndorsementPlugin:
-		return errors.Errorf("EndorsementPlugin '%s' != '%s'", cp.EndorsementInfo.EndorsementPlugin, ocp.EndorsementInfo.EndorsementPlugin)
+		return errors.Errorf("expected EndorsementPlugin '%s' does not match passed EndorsementPlugin '%s'", cp.EndorsementInfo.EndorsementPlugin, ocp.EndorsementInfo.EndorsementPlugin)
 	case cp.EndorsementInfo.InitRequired != ocp.EndorsementInfo.InitRequired:
-		return errors.Errorf("InitRequired '%t' != '%t'", cp.EndorsementInfo.InitRequired, ocp.EndorsementInfo.InitRequired)
+		return errors.Errorf("expected InitRequired '%t' does not match passed InitRequired '%t'", cp.EndorsementInfo.InitRequired, ocp.EndorsementInfo.InitRequired)
 	case cp.ValidationInfo.ValidationPlugin != ocp.ValidationInfo.ValidationPlugin:
-		return errors.Errorf("ValidationPlugin '%s' != '%s'", cp.ValidationInfo.ValidationPlugin, ocp.ValidationInfo.ValidationPlugin)
+		return errors.Errorf("expected ValidationPlugin '%s' does not match passed ValidationPlugin '%s'", cp.ValidationInfo.ValidationPlugin, ocp.ValidationInfo.ValidationPlugin)
 	case !bytes.Equal(cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter):
-		return errors.Errorf("ValidationParameter '%x' != '%x'", cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter)
+		return errors.Errorf("expected ValidationParameter '%x' does not match passed ValidationParameter '%x'", cp.ValidationInfo.ValidationParameter, ocp.ValidationInfo.ValidationParameter)
 	case !proto.Equal(cp.Collections, ocp.Collections):
 		return errors.Errorf("Collections do not match")
 	default:
@@ -432,7 +432,7 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 		}
 
 		if err := definedChaincode.Parameters().Equal(cd.Parameters()); err != nil {
-			return errors.WithMessagef(err, "attempted to define the current sequence (%d) for namespace %s, but", currentSequence, ccname)
+			return errors.WithMessagef(err, "attempted to redefine the current committed sequence (%d) for namespace %s with different parameters", currentSequence, ccname)
 		}
 	}
 
