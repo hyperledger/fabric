@@ -293,7 +293,7 @@ func Example_application() {
 		"peer/Propose": "/Channel/Application/Writers",
 	}
 
-	err := c.AddACLs(acls)
+	err := c.SetACLs(acls)
 	if err != nil {
 		panic(err)
 	}
@@ -1748,7 +1748,7 @@ func ExampleConfigTx_AddApplicationCapability() {
 	baseConfig := fetchChannelConfig()
 	c := configtx.New(baseConfig)
 
-	err := c.AddChannelCapability("V1_3")
+	err := c.AddApplicationCapability("V1_3")
 	if err != nil {
 		panic(err)
 	}

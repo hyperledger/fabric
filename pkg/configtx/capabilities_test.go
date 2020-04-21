@@ -84,27 +84,6 @@ func TestOrdererCapabilities(t *testing.T) {
 	gt.Expect(ordererCapabilities).To(BeNil())
 }
 
-func TestOrdererCapabilitiesFailure(t *testing.T) {
-	t.Parallel()
-
-	gt := NewGomegaWithT(t)
-
-	config := &cb.Config{
-		ChannelGroup: &cb.ConfigGroup{
-			Groups: map[string]*cb.ConfigGroup{},
-		},
-	}
-
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
-
-	ordererCapabilities, err := c.OrdererCapabilities()
-	gt.Expect(err).To(MatchError("orderer missing from config"))
-	gt.Expect(ordererCapabilities).To(BeNil())
-}
-
 func TestApplicationCapabilities(t *testing.T) {
 	t.Parallel()
 
@@ -138,28 +117,7 @@ func TestApplicationCapabilities(t *testing.T) {
 	gt.Expect(applicationCapabilities).To(BeNil())
 }
 
-func TestApplicationCapabilitiesFailure(t *testing.T) {
-	t.Parallel()
-
-	gt := NewGomegaWithT(t)
-
-	config := &cb.Config{
-		ChannelGroup: &cb.ConfigGroup{
-			Groups: map[string]*cb.ConfigGroup{},
-		},
-	}
-
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
-
-	applicationCapabilities, err := c.ApplicationCapabilities()
-	gt.Expect(err).To(MatchError("application missing from config"))
-	gt.Expect(applicationCapabilities).To(BeNil())
-}
-
-func TestAddChannelCapability(t *testing.T) {
+func TestSetChannelCapability(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -203,7 +161,7 @@ func TestAddChannelCapability(t *testing.T) {
 	gt.Expect(buf.String()).To(Equal(expectedConfigGroupJSON))
 }
 
-func TestAddChannelCapabilityFailures(t *testing.T) {
+func TestSetChannelCapabilityFailures(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -212,23 +170,6 @@ func TestAddChannelCapabilityFailures(t *testing.T) {
 		baseConfig  *cb.Config
 		expectedErr string
 	}{
-		{
-			testName:   "when capability already exists",
-			capability: "V2_0",
-			baseConfig: &cb.Config{
-				ChannelGroup: &cb.ConfigGroup{
-					Values: map[string]*cb.ConfigValue{
-						CapabilitiesKey: {
-							Value: marshalOrPanic(&cb.Capabilities{Capabilities: map[string]*cb.Capability{
-								"V2_0": {},
-							}}),
-							ModPolicy: AdminsPolicyKey,
-						},
-					},
-				},
-			},
-			expectedErr: "capability already exists",
-		},
 		{
 			testName:   "when retrieving existing capabilities",
 			capability: "V2_0",
@@ -479,6 +420,7 @@ func TestAddOrdererCapability(t *testing.T) {
 			"mod_policy": "Admins",
 			"value": {
 				"capabilities": {
+					"V1_3": {},
 					"V3_0": {}
 				}
 			},
@@ -524,13 +466,6 @@ func TestAddOrdererCapabilityFailures(t *testing.T) {
 		expectedErr  string
 	}{
 		{
-			testName:   "when capability already exists",
-			capability: "V1_3",
-			ordererGroup: func(og *cb.ConfigGroup) {
-			},
-			expectedErr: "capability already exists",
-		},
-		{
 			testName:   "when retrieving existing capabilities",
 			capability: "V1_3",
 			ordererGroup: func(og *cb.ConfigGroup) {
@@ -575,23 +510,17 @@ func TestAddOrdererCapabilityFailures(t *testing.T) {
 func TestAddApplicationCapability(t *testing.T) {
 	t.Parallel()
 
-	gt := NewGomegaWithT(t)
-
-	baseApp := baseApplication(t)
-	appGroup, err := newApplicationGroup(baseApp)
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	config := &cb.Config{
-		ChannelGroup: &cb.ConfigGroup{
-			Groups: map[string]*cb.ConfigGroup{
-				ApplicationGroupKey: appGroup,
-			},
-		},
-	}
-
-	c := New(config)
-
-	expectedConfigGroupJSON := `{
+	tests := []struct {
+		testName                string
+		capability              string
+		equalToOriginal         bool
+		expectedConfigGroupJSON string
+	}{
+		{
+			testName:        "success -- adding new capability",
+			capability:      "new_capability",
+			equalToOriginal: false,
+			expectedConfigGroupJSON: `{
 	"groups": {
 		"Org1": {
 			"groups": {},
@@ -647,28 +576,153 @@ func TestAddApplicationCapability(t *testing.T) {
 	"values": {
 		"ACLs": {
 			"mod_policy": "Admins",
-			"value": "CgwKBGFjbDESBAoCaGk=",
+			"value": {
+				"acls": {
+					"acl1": {
+						"policy_ref": "hi"
+					}
+				}
+			},
 			"version": "0"
 		},
 		"Capabilities": {
 			"mod_policy": "Admins",
-			"value": "CggKBFYzXzASAA==",
+			"value": {
+				"capabilities": {
+					"V1_3": {},
+					"new_capability": {}
+				}
+			},
 			"version": "0"
 		}
 	},
 	"version": "0"
 }
-`
+`,
+		},
+		{
+			testName:        "success -- when capability already exists",
+			capability:      "V1_3",
+			equalToOriginal: true,
+			expectedConfigGroupJSON: `{
+	"groups": {
+		"Org1": {
+			"groups": {},
+			"mod_policy": "",
+			"policies": {},
+			"values": {},
+			"version": "0"
+		},
+		"Org2": {
+			"groups": {},
+			"mod_policy": "",
+			"policies": {},
+			"values": {},
+			"version": "0"
+		}
+	},
+	"mod_policy": "Admins",
+	"policies": {
+		"Admins": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "MAJORITY",
+					"sub_policy": "Admins"
+				}
+			},
+			"version": "0"
+		},
+		"Readers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Readers"
+				}
+			},
+			"version": "0"
+		},
+		"Writers": {
+			"mod_policy": "Admins",
+			"policy": {
+				"type": 3,
+				"value": {
+					"rule": "ANY",
+					"sub_policy": "Writers"
+				}
+			},
+			"version": "0"
+		}
+	},
+	"values": {
+		"ACLs": {
+			"mod_policy": "Admins",
+			"value": {
+				"acls": {
+					"acl1": {
+						"policy_ref": "hi"
+					}
+				}
+			},
+			"version": "0"
+		},
+		"Capabilities": {
+			"mod_policy": "Admins",
+			"value": {
+				"capabilities": {
+					"V1_3": {}
+				}
+			},
+			"version": "0"
+		}
+	},
+	"version": "0"
+}
+`,
+		},
+	}
 
-	capability := "V3_0"
-	err = c.AddApplicationCapability(capability)
-	gt.Expect(err).NotTo(HaveOccurred())
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+			gt := NewGomegaWithT(t)
 
-	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, c.updated.ChannelGroup.Groups[ApplicationGroupKey])
-	gt.Expect(err).NotTo(HaveOccurred())
+			baseApp := baseApplication(t)
+			appGroup, err := newApplicationGroup(baseApp)
+			gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(buf.String()).To(Equal(expectedConfigGroupJSON))
+			config := &cb.Config{
+				ChannelGroup: &cb.ConfigGroup{
+					Groups: map[string]*cb.ConfigGroup{
+						ApplicationGroupKey: appGroup,
+					},
+				},
+			}
+
+			c := New(config)
+
+			err = c.AddApplicationCapability(tt.capability)
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			updatedApplicationGroupJSON := bytes.Buffer{}
+			err = protolator.DeepMarshalJSON(&updatedApplicationGroupJSON, &peerext.DynamicApplicationGroup{ConfigGroup: c.updated.ChannelGroup.Groups[ApplicationGroupKey]})
+			gt.Expect(err).NotTo(HaveOccurred())
+			originalApplicationGroupJSON := bytes.Buffer{}
+			err = protolator.DeepMarshalJSON(&originalApplicationGroupJSON, &peerext.DynamicApplicationGroup{ConfigGroup: c.original.ChannelGroup.Groups[ApplicationGroupKey]})
+			gt.Expect(err).NotTo(HaveOccurred())
+
+			gt.Expect(updatedApplicationGroupJSON.String()).To(Equal(tt.expectedConfigGroupJSON))
+			if !tt.equalToOriginal {
+				gt.Expect(updatedApplicationGroupJSON).NotTo(Equal(originalApplicationGroupJSON))
+			} else {
+				gt.Expect(updatedApplicationGroupJSON).To(Equal(originalApplicationGroupJSON))
+			}
+		})
+	}
 }
 
 func TestAddApplicationCapabilityFailures(t *testing.T) {
@@ -680,13 +734,6 @@ func TestAddApplicationCapabilityFailures(t *testing.T) {
 		applicationGroup func(ag *cb.ConfigGroup)
 		expectedErr      string
 	}{
-		{
-			testName:   "when capability already exists",
-			capability: "V1_3",
-			applicationGroup: func(ag *cb.ConfigGroup) {
-			},
-			expectedErr: "capability already exists",
-		},
 		{
 			testName:   "when retrieving existing capabilities",
 			capability: "V1_3",
