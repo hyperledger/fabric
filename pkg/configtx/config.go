@@ -82,7 +82,8 @@ type ConfigTx struct {
 	updated *cb.Config
 }
 
-// New returns an config.
+// New creates a new ConfigTx from a Config protobuf.
+// New will panic if given an empty config.
 func New(config *cb.Config) ConfigTx {
 	return ConfigTx{
 		original: config,
