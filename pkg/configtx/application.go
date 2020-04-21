@@ -77,7 +77,7 @@ func (c *ConfigTx) AddAnchorPeer(orgName string, newAnchorPeer Address) error {
 		// Unmarshal existing anchor peers if the config value exists
 		err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshaling %s's anchor peer endpoints: %v", orgName, err)
+			return fmt.Errorf("failed unmarshaling anchor peer endpoints for org %s: %v", orgName, err)
 		}
 	}
 
@@ -118,7 +118,7 @@ func (c *ConfigTx) RemoveAnchorPeer(orgName string, anchorPeerToRemove Address) 
 		// Unmarshal existing anchor peers if the config value exists
 		err := proto.Unmarshal(anchorPeerConfigValue.Value, anchorPeersProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshaling %s's anchor peer endpoints: %v", orgName, err)
+			return fmt.Errorf("failed unmarshaling anchor peer endpoints for org %s: %v", orgName, err)
 		}
 	}
 

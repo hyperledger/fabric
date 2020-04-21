@@ -51,10 +51,7 @@ func TestApplicationOrg(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	expectedOrg := channel.Application.Organizations[0]
 
@@ -114,10 +111,7 @@ func TestRemoveApplicationOrg(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	c.RemoveApplicationOrg("Org1")
 	gt.Expect(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups["Org1"]).To(BeNil())
@@ -135,10 +129,7 @@ func TestOrdererOrg(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	expectedOrg := channel.Orderer.Organizations[0]
 
@@ -189,10 +180,7 @@ func TestRemoveOrdererOrg(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	c.RemoveOrdererOrg("OrdererOrg")
 	gt.Expect(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"]).To(BeNil())
@@ -210,10 +198,7 @@ func TestConsortiumOrg(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	expectedOrg := channel.Consortiums[0].Organizations[0]
 
@@ -273,13 +258,10 @@ func TestRemoveConsortiumOrg(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	c.RemoveConsortiumOrg("Consortium1", "Org1")
-	gt.Expect(c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]).To(BeNil())
+	gt.Expect(c.UpdatedConfig().ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]).To(BeNil())
 }
 
 func TestNewOrgConfigGroup(t *testing.T) {

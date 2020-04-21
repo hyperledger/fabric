@@ -32,10 +32,7 @@ func TestChannelCapabilities(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	err := setValue(config.ChannelGroup, capabilitiesValue(expectedCapabilities), AdminsPolicyKey)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -68,10 +65,7 @@ func TestOrdererCapabilities(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	ordererCapabilities, err := c.OrdererCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -101,10 +95,7 @@ func TestApplicationCapabilities(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	applicationCapabilities, err := c.ApplicationCapabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -155,7 +146,7 @@ func TestSetChannelCapability(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, &commonext.DynamicChannelGroup{ConfigGroup: c.updated.ChannelGroup})
+	err = protolator.DeepMarshalJSON(&buf, &commonext.DynamicChannelGroup{ConfigGroup: c.UpdatedConfig().ChannelGroup})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(Equal(expectedConfigGroupJSON))
@@ -167,13 +158,13 @@ func TestSetChannelCapabilityFailures(t *testing.T) {
 	tests := []struct {
 		testName    string
 		capability  string
-		baseConfig  *cb.Config
+		config      *cb.Config
 		expectedErr string
 	}{
 		{
 			testName:   "when retrieving existing capabilities",
 			capability: "V2_0",
-			baseConfig: &cb.Config{
+			config: &cb.Config{
 				ChannelGroup: &cb.ConfigGroup{
 					Values: map[string]*cb.ConfigValue{
 						CapabilitiesKey: {
@@ -193,7 +184,7 @@ func TestSetChannelCapabilityFailures(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			c := New(tt.baseConfig)
+			c := New(tt.config)
 
 			err := c.AddChannelCapability(tt.capability)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
@@ -450,7 +441,7 @@ func TestAddOrdererCapability(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: c.updated.ChannelGroup.Groups[OrdererGroupKey]})
+	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: c.UpdatedConfig().ChannelGroup.Groups[OrdererGroupKey]})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(Equal(expectedConfigGroupJSON))
@@ -709,10 +700,10 @@ func TestAddApplicationCapability(t *testing.T) {
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			updatedApplicationGroupJSON := bytes.Buffer{}
-			err = protolator.DeepMarshalJSON(&updatedApplicationGroupJSON, &peerext.DynamicApplicationGroup{ConfigGroup: c.updated.ChannelGroup.Groups[ApplicationGroupKey]})
+			err = protolator.DeepMarshalJSON(&updatedApplicationGroupJSON, &peerext.DynamicApplicationGroup{ConfigGroup: c.UpdatedConfig().ChannelGroup.Groups[ApplicationGroupKey]})
 			gt.Expect(err).NotTo(HaveOccurred())
 			originalApplicationGroupJSON := bytes.Buffer{}
-			err = protolator.DeepMarshalJSON(&originalApplicationGroupJSON, &peerext.DynamicApplicationGroup{ConfigGroup: c.original.ChannelGroup.Groups[ApplicationGroupKey]})
+			err = protolator.DeepMarshalJSON(&originalApplicationGroupJSON, &peerext.DynamicApplicationGroup{ConfigGroup: c.OriginalConfig().ChannelGroup.Groups[ApplicationGroupKey]})
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			gt.Expect(updatedApplicationGroupJSON.String()).To(Equal(tt.expectedConfigGroupJSON))
@@ -817,7 +808,7 @@ func TestRemoveChannelCapability(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, &commonext.DynamicChannelGroup{ConfigGroup: c.updated.ChannelGroup})
+	err = protolator.DeepMarshalJSON(&buf, &commonext.DynamicChannelGroup{ConfigGroup: c.UpdatedConfig().ChannelGroup})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(Equal(expectedConfigGroupJSON))
@@ -829,13 +820,13 @@ func TestRemoveChannelCapabilityFailures(t *testing.T) {
 	tests := []struct {
 		testName    string
 		capability  string
-		baseConfig  *cb.Config
+		config      *cb.Config
 		expectedErr string
 	}{
 		{
 			testName:   "when capability does not exist",
 			capability: "V2_0",
-			baseConfig: &cb.Config{
+			config: &cb.Config{
 				ChannelGroup: &cb.ConfigGroup{
 					Values: map[string]*cb.ConfigValue{
 						CapabilitiesKey: {
@@ -849,7 +840,7 @@ func TestRemoveChannelCapabilityFailures(t *testing.T) {
 		{
 			testName:   "when retrieving existing capabilities",
 			capability: "V2_0",
-			baseConfig: &cb.Config{
+			config: &cb.Config{
 				ChannelGroup: &cb.ConfigGroup{
 					Values: map[string]*cb.ConfigValue{
 						CapabilitiesKey: {
@@ -869,7 +860,7 @@ func TestRemoveChannelCapabilityFailures(t *testing.T) {
 
 			gt := NewGomegaWithT(t)
 
-			c := New(tt.baseConfig)
+			c := New(tt.config)
 
 			err := c.RemoveChannelCapability(tt.capability)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
@@ -1123,7 +1114,7 @@ func TestRemoveOrdererCapability(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: c.updated.ChannelGroup.Groups[OrdererGroupKey]})
+	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: c.UpdatedConfig().ChannelGroup.Groups[OrdererGroupKey]})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(Equal(expectedConfigGroupJSON))

@@ -317,6 +317,10 @@ func setValue(cg *cb.ConfigGroup, value *standardConfigValue, modPolicy string) 
 		return fmt.Errorf("marshaling standard config value '%s': %v", value.key, err)
 	}
 
+	if cg.Values == nil {
+		cg.Values = map[string]*cb.ConfigValue{}
+	}
+
 	cg.Values[value.key] = &cb.ConfigValue{
 		Value:     v,
 		ModPolicy: modPolicy,
@@ -487,9 +491,9 @@ func newChannelCreateConfigUpdate(channelID string, channelConfig Channel, templ
 // newConfigGroup creates an empty *cb.ConfigGroup.
 func newConfigGroup() *cb.ConfigGroup {
 	return &cb.ConfigGroup{
-		Groups:   make(map[string]*cb.ConfigGroup),
-		Values:   make(map[string]*cb.ConfigValue),
-		Policies: make(map[string]*cb.ConfigPolicy),
+		Groups:   map[string]*cb.ConfigGroup{},
+		Values:   map[string]*cb.ConfigValue{},
+		Policies: map[string]*cb.ConfigPolicy{},
 	}
 }
 
