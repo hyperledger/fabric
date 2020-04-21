@@ -635,17 +635,33 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds))
 	assert.NoError(t, err, "client failed to invoke the EmptyCall service")
 
+	// Test TLS versions which should be valid
 	tlsVersions := map[string]uint16{
+		"TLS12": tls.VersionTLS12,
+		"TLS13": tls.VersionTLS13,
+	}
+	for name, tlsVersion := range tlsVersions {
+		tlsVersion := tlsVersion
+
+		t.Run(name, func(t *testing.T) {
+			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: tlsVersion, MaxVersion: tlsVersion})
+			_, err := invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds), grpc.WithBlock())
+			assert.NoError(t, err)
+		})
+	}
+
+	// Test TLS versions which should be invalid
+	tlsVersions = map[string]uint16{
 		"SSL30": tls.VersionSSL30,
 		"TLS10": tls.VersionTLS10,
 		"TLS11": tls.VersionTLS11,
 	}
-	for name, version := range tlsVersions {
-		version := version
+	for name, tlsVersion := range tlsVersions {
+		tlsVersion := tlsVersion
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: version, MaxVersion: version})
+			creds := credentials.NewTLS(&tls.Config{RootCAs: certPool, MinVersion: tlsVersion, MaxVersion: tlsVersion})
 			_, err := invokeEmptyCall(testAddress, grpc.WithTransportCredentials(creds), grpc.WithBlock())
 			assert.Error(t, err, "should not have been able to connect with TLS version < 1.2")
 			assert.Contains(t, err.Error(), "context deadline exceeded")
@@ -683,6 +699,8 @@ func TestVerifyCertificateCallback(t *testing.T) {
 		tlsCfg := &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			RootCAs:      x509.NewCertPool(),
+			MinVersion:   tls.VersionTLS12,
+			MaxVersion:   tls.VersionTLS12,
 		}
 		tlsCfg.RootCAs.AppendCertsFromPEM(ca.CertBytes())
 
@@ -1116,34 +1134,6 @@ func TestUpdateTLSCert(t *testing.T) {
 func TestCipherSuites(t *testing.T) {
 	t.Parallel()
 
-	// default cipher suites
-	defaultCipherSuites := []uint16{
-		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-		tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
-		tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-	}
-	// the other cipher suites supported by Go
-	otherCipherSuites := []uint16{
-		tls.TLS_RSA_WITH_RC4_128_SHA,
-		tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
-		tls.TLS_RSA_WITH_AES_128_CBC_SHA,
-		tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-		tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
-		tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA,
-		tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-		tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-		tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA,
-		tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
-		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-		tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-		tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-	}
 	certPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-server1-cert.pem"))
 	assert.NoError(t, err)
 	keyPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-server1-key.pem"))
@@ -1160,24 +1150,48 @@ func TestCipherSuites(t *testing.T) {
 			UseTLS:      true,
 		}}
 
+	fabricDefaultCipherSuite := func(cipher uint16) bool {
+		for _, defaultCipher := range comm.DefaultTLSCipherSuites {
+			if cipher == defaultCipher {
+				return true
+			}
+		}
+		return false
+	}
+
+	var otherCipherSuites []uint16
+	for _, cipher := range append(tls.CipherSuites(), tls.InsecureCipherSuites()...) {
+		if !fabricDefaultCipherSuite(cipher.ID) {
+			otherCipherSuites = append(otherCipherSuites, cipher.ID)
+		}
+	}
+
 	var tests = []struct {
 		name          string
 		clientCiphers []uint16
 		success       bool
+		versions      []uint16
 	}{
 		{
-			name:    "server default / client all",
-			success: true,
+			name:     "server default / client all",
+			success:  true,
+			versions: []uint16{tls.VersionTLS12, tls.VersionTLS13},
 		},
 		{
 			name:          "server default / client match",
-			clientCiphers: defaultCipherSuites,
+			clientCiphers: comm.DefaultTLSCipherSuites,
 			success:       true,
+			// Skip TLS1.3 as it ignores the Fabric DefaultCipherSuites
+			// https://github.com/golang/go/issues/29349
+			versions: []uint16{tls.VersionTLS12},
 		},
 		{
 			name:          "server default / client no match",
 			clientCiphers: otherCipherSuites,
 			success:       false,
+			// Skip TLS1.3 as it ignores the Fabric DefaultCipherSuites
+			// https://github.com/golang/go/issues/29349
+			versions: []uint16{tls.VersionTLS12},
 		},
 	}
 
@@ -1194,16 +1208,20 @@ func TestCipherSuites(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			tlsConfig := &tls.Config{
-				RootCAs:      certPool,
-				CipherSuites: test.clientCiphers,
-			}
-			_, err := tls.Dial("tcp", testAddress, tlsConfig)
-			if test.success {
-				assert.NoError(t, err)
-			} else {
-				assert.Error(t, err, "expected handshake failure")
-				assert.Contains(t, err.Error(), "handshake failure")
+			for _, tlsVersion := range test.versions {
+				tlsConfig := &tls.Config{
+					RootCAs:      certPool,
+					CipherSuites: test.clientCiphers,
+					MinVersion:   tlsVersion,
+					MaxVersion:   tlsVersion,
+				}
+				_, err := tls.Dial("tcp", testAddress, tlsConfig)
+				if test.success {
+					assert.NoError(t, err)
+				} else {
+					assert.Error(t, err, "expected handshake failure")
+					assert.Contains(t, err.Error(), "handshake failure")
+				}
 			}
 		})
 	}
