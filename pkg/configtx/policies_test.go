@@ -692,11 +692,11 @@ func TestRemoveOrdererPolicyFailures(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			gt := NewGomegaWithT(t)
 
-			orderer := tt.ordererGrpMod(*ordererGroup)
-			if orderer == nil {
+			ordererGroup := tt.ordererGrpMod(*ordererGroup)
+			if ordererGroup == nil {
 				delete(config.ChannelGroup.Groups, OrdererGroupKey)
 			} else {
-				config.ChannelGroup.Groups[OrdererGroupKey] = orderer
+				config.ChannelGroup.Groups[OrdererGroupKey] = ordererGroup
 			}
 
 			err = c.RemoveOrdererPolicy(tt.policyName)

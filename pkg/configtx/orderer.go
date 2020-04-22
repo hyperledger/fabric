@@ -17,10 +17,8 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ob "github.com/hyperledger/fabric-protos-go/orderer"
 	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/pkg/configtx/orderer"
 )
-
-// ConsensusState defines the orderer mode of operation.
-type ConsensusState string
 
 // Orderer configures the ordering service behavior for a channel.
 type Orderer struct {
@@ -31,9 +29,9 @@ type Orderer struct {
 	Addresses []Address
 	// BatchTimeout is the wait time between transactions.
 	BatchTimeout  time.Duration
-	BatchSize     BatchSize
-	Kafka         Kafka
-	EtcdRaft      EtcdRaft
+	BatchSize     orderer.BatchSize
+	Kafka         orderer.Kafka
+	EtcdRaft      orderer.EtcdRaft
 	Organizations []Organization
 	// MaxChannels is the maximum count of channels an orderer supports.
 	MaxChannels uint64
@@ -41,49 +39,7 @@ type Orderer struct {
 	Capabilities []string
 	Policies     map[string]Policy
 	// Options: `ConsensusStateNormal` and `ConsensusStateMaintenance`
-	State ConsensusState
-}
-
-// BatchSize is the configuration affecting the size of batches.
-type BatchSize struct {
-	// MaxMessageCount is the max message count.
-	MaxMessageCount uint32
-	// AbsoluteMaxBytes is the max block size (not including headers).
-	AbsoluteMaxBytes uint32
-	// PreferredMaxBytes is the preferred size of blocks.
-	PreferredMaxBytes uint32
-}
-
-// Kafka is a list of Kafka broker endpoints.
-type Kafka struct {
-	// Brokers contains the addresses of *at least two* kafka brokers
-	// Must be in `IP:port` notation
-	Brokers []string
-}
-
-// EtcdRaft is serialized and set as the value of ConsensusType.Metadata in
-// a channel configuration when the ConsensusType.Type is set to "etcdraft".
-type EtcdRaft struct {
-	Consenters []Consenter
-	Options    EtcdRaftOptions
-}
-
-// Consenter represents a consenting node (i.e. replica).
-type Consenter struct {
-	Address       Address
-	ClientTLSCert *x509.Certificate
-	ServerTLSCert *x509.Certificate
-}
-
-// EtcdRaftOptions to be specified for all the etcd/raft nodes.
-// These can be modified on a per-channel basis.
-type EtcdRaftOptions struct {
-	TickInterval      string
-	ElectionTick      uint32
-	HeartbeatTick     uint32
-	MaxInflightBlocks uint32
-	// Take snapshot when cumulative data exceeds certain size in bytes.
-	SnapshotIntervalSize uint32
+	State orderer.ConsensusState
 }
 
 // UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
@@ -118,22 +74,22 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 	}
 
 	// CONSENSUS TYPE, STATE, AND METADATA
-	var etcdRaft EtcdRaft
-	kafkaBrokers := Kafka{}
+	var etcdRaft orderer.EtcdRaft
+	kafkaBrokers := orderer.Kafka{}
 
 	consensusTypeProto := &ob.ConsensusType{}
-	err := unmarshalConfigValueAtKey(ordererGroup, ConsensusTypeKey, consensusTypeProto)
+	err := unmarshalConfigValueAtKey(ordererGroup, orderer.ConsensusTypeKey, consensusTypeProto)
 	if err != nil {
 		return Orderer{}, errors.New("cannot determine consensus type of orderer")
 	}
 
 	ordererType := consensusTypeProto.Type
-	state := ConsensusState(ob.ConsensusType_State_name[int32(consensusTypeProto.State)])
+	state := orderer.ConsensusState(ob.ConsensusType_State_name[int32(consensusTypeProto.State)])
 
 	switch consensusTypeProto.Type {
-	case ConsensusTypeSolo:
-	case ConsensusTypeKafka:
-		kafkaBrokersValue, ok := ordererGroup.Values[KafkaBrokersKey]
+	case orderer.ConsensusTypeSolo:
+	case orderer.ConsensusTypeKafka:
+		kafkaBrokersValue, ok := ordererGroup.Values[orderer.KafkaBrokersKey]
 		if !ok {
 			return Orderer{}, errors.New("unable to find kafka brokers for kafka orderer")
 		}
@@ -145,7 +101,7 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 		}
 
 		kafkaBrokers.Brokers = kafkaBrokersProto.Brokers
-	case ConsensusTypeEtcdRaft:
+	case orderer.ConsensusTypeEtcdRaft:
 		etcdRaft, err = unmarshalEtcdRaftMetadata(consensusTypeProto.Metadata)
 		if err != nil {
 			return Orderer{}, fmt.Errorf("unmarshaling etcd raft metadata: %v", err)
@@ -162,13 +118,13 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 
 	// BATCHSIZE AND TIMEOUT
 	batchSize := &ob.BatchSize{}
-	err = unmarshalConfigValueAtKey(ordererGroup, BatchSizeKey, batchSize)
+	err = unmarshalConfigValueAtKey(ordererGroup, orderer.BatchSizeKey, batchSize)
 	if err != nil {
 		return Orderer{}, err
 	}
 
 	batchTimeoutProto := &ob.BatchTimeout{}
-	err = unmarshalConfigValueAtKey(ordererGroup, BatchTimeoutKey, batchTimeoutProto)
+	err = unmarshalConfigValueAtKey(ordererGroup, orderer.BatchTimeoutKey, batchTimeoutProto)
 	if err != nil {
 		return Orderer{}, err
 	}
@@ -191,7 +147,7 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 
 	// MAX CHANNELS
 	channelRestrictions := &ob.ChannelRestrictions{}
-	err = unmarshalConfigValueAtKey(ordererGroup, ChannelRestrictionsKey, channelRestrictions)
+	err = unmarshalConfigValueAtKey(ordererGroup, orderer.ChannelRestrictionsKey, channelRestrictions)
 	if err != nil {
 		return Orderer{}, err
 	}
@@ -212,7 +168,7 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 		OrdererType:  ordererType,
 		Addresses:    ordererAddresses,
 		BatchTimeout: batchTimeout,
-		BatchSize: BatchSize{
+		BatchSize: orderer.BatchSize{
 			MaxMessageCount:   batchSize.MaxMessageCount,
 			AbsoluteMaxBytes:  batchSize.AbsoluteMaxBytes,
 			PreferredMaxBytes: batchSize.PreferredMaxBytes,
@@ -374,15 +330,15 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 	var consensusMetadata []byte
 
 	switch o.OrdererType {
-	case ConsensusTypeSolo:
-	case ConsensusTypeKafka:
+	case orderer.ConsensusTypeSolo:
+	case orderer.ConsensusTypeKafka:
 		err = setValue(ordererGroup, kafkaBrokersValue(o.Kafka.Brokers), AdminsPolicyKey)
 		if err != nil {
 			return err
 		}
-	case ConsensusTypeEtcdRaft:
+	case orderer.ConsensusTypeEtcdRaft:
 		if consensusMetadata, err = marshalEtcdRaftMetadata(o.EtcdRaft); err != nil {
-			return fmt.Errorf("marshaling etcdraft metadata for orderer type '%s': %v", ConsensusTypeEtcdRaft, err)
+			return fmt.Errorf("marshaling etcdraft metadata for orderer type '%s': %v", orderer.ConsensusTypeEtcdRaft, err)
 		}
 	default:
 		return fmt.Errorf("unknown orderer type '%s'", o.OrdererType)
@@ -418,7 +374,7 @@ func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPoli
 // It is a value for the /Channel/Orderer group.
 func batchSizeValue(maxMessages, absoluteMaxBytes, preferredMaxBytes uint32) *standardConfigValue {
 	return &standardConfigValue{
-		key: BatchSizeKey,
+		key: orderer.BatchSizeKey,
 		value: &ob.BatchSize{
 			MaxMessageCount:   maxMessages,
 			AbsoluteMaxBytes:  absoluteMaxBytes,
@@ -431,7 +387,7 @@ func batchSizeValue(maxMessages, absoluteMaxBytes, preferredMaxBytes uint32) *st
 // It is a value for the /Channel/Orderer group.
 func batchTimeoutValue(timeout string) *standardConfigValue {
 	return &standardConfigValue{
-		key: BatchTimeoutKey,
+		key: orderer.BatchTimeoutKey,
 		value: &ob.BatchTimeout{
 			Timeout: timeout,
 		},
@@ -453,7 +409,7 @@ func endpointsValue(addresses []string) *standardConfigValue {
 // It is a value for the /Channel/Orderer group.
 func channelRestrictionsValue(maxChannelCount uint64) *standardConfigValue {
 	return &standardConfigValue{
-		key: ChannelRestrictionsKey,
+		key: orderer.ChannelRestrictionsKey,
 		value: &ob.ChannelRestrictions{
 			MaxCount: maxChannelCount,
 		},
@@ -464,7 +420,7 @@ func channelRestrictionsValue(maxChannelCount uint64) *standardConfigValue {
 // It is a value for the /Channel/Orderer group.
 func kafkaBrokersValue(brokers []string) *standardConfigValue {
 	return &standardConfigValue{
-		key: KafkaBrokersKey,
+		key: orderer.KafkaBrokersKey,
 		value: &ob.KafkaBrokers{
 			Brokers: brokers,
 		},
@@ -475,7 +431,7 @@ func kafkaBrokersValue(brokers []string) *standardConfigValue {
 // It is a value for the /Channel/Orderer group.
 func consensusTypeValue(consensusType string, consensusMetadata []byte, consensusState int32) *standardConfigValue {
 	return &standardConfigValue{
-		key: ConsensusTypeKey,
+		key: orderer.ConsensusTypeKey,
 		value: &ob.ConsensusType{
 			Type:     consensusType,
 			Metadata: consensusMetadata,
@@ -485,7 +441,7 @@ func consensusTypeValue(consensusType string, consensusMetadata []byte, consensu
 }
 
 // marshalEtcdRaftMetadata serializes etcd RAFT metadata.
-func marshalEtcdRaftMetadata(md EtcdRaft) ([]byte, error) {
+func marshalEtcdRaftMetadata(md orderer.EtcdRaft) ([]byte, error) {
 	var consenters []*eb.Consenter
 
 	if len(md.Consenters) == 0 {
@@ -540,29 +496,29 @@ func marshalEtcdRaftMetadata(md EtcdRaft) ([]byte, error) {
 }
 
 // unmarshalEtcdRaftMetadata deserializes etcd RAFT metadata.
-func unmarshalEtcdRaftMetadata(mdBytes []byte) (EtcdRaft, error) {
+func unmarshalEtcdRaftMetadata(mdBytes []byte) (orderer.EtcdRaft, error) {
 	etcdRaftMetadata := &eb.ConfigMetadata{}
 	err := proto.Unmarshal(mdBytes, etcdRaftMetadata)
 	if err != nil {
-		return EtcdRaft{}, fmt.Errorf("unmarshaling etcd raft metadata: %v", err)
+		return orderer.EtcdRaft{}, fmt.Errorf("unmarshaling etcd raft metadata: %v", err)
 	}
 
-	consenters := []Consenter{}
+	consenters := []orderer.Consenter{}
 
 	for _, c := range etcdRaftMetadata.Consenters {
 		clientTLSCertBlock, _ := pem.Decode(c.ClientTlsCert)
 		clientTLSCert, err := x509.ParseCertificate(clientTLSCertBlock.Bytes)
 		if err != nil {
-			return EtcdRaft{}, fmt.Errorf("unable to parse client tls cert: %v", err)
+			return orderer.EtcdRaft{}, fmt.Errorf("unable to parse client tls cert: %v", err)
 		}
 		serverTLSCertBlock, _ := pem.Decode(c.ServerTlsCert)
 		serverTLSCert, err := x509.ParseCertificate(serverTLSCertBlock.Bytes)
 		if err != nil {
-			return EtcdRaft{}, fmt.Errorf("unable to parse server tls cert: %v", err)
+			return orderer.EtcdRaft{}, fmt.Errorf("unable to parse server tls cert: %v", err)
 		}
 
-		consenter := Consenter{
-			Address: Address{
+		consenter := orderer.Consenter{
+			Address: orderer.EtcdAddress{
 				Host: c.Host,
 				Port: int(c.Port),
 			},
@@ -574,12 +530,12 @@ func unmarshalEtcdRaftMetadata(mdBytes []byte) (EtcdRaft, error) {
 	}
 
 	if etcdRaftMetadata.Options == nil {
-		return EtcdRaft{}, errors.New("missing etcdraft metadata options in config")
+		return orderer.EtcdRaft{}, errors.New("missing etcdraft metadata options in config")
 	}
 
-	return EtcdRaft{
+	return orderer.EtcdRaft{
 		Consenters: consenters,
-		Options: EtcdRaftOptions{
+		Options: orderer.EtcdRaftOptions{
 			TickInterval:         etcdRaftMetadata.Options.TickInterval,
 			ElectionTick:         etcdRaftMetadata.Options.ElectionTick,
 			HeartbeatTick:        etcdRaftMetadata.Options.HeartbeatTick,
