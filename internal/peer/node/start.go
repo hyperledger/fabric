@@ -832,8 +832,6 @@ func serve(args []string) error {
 		syscall.SIGTERM: func() { serve <- nil },
 	}))
 
-	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
-
 	// get a list of ledger IDs and load preResetHeight files for these ledger IDs
 	ledgerIDs, err := peerInstance.LedgerMgr.GetLedgerIDs()
 	if err != nil {
@@ -874,7 +872,14 @@ func serve(args []string) error {
 	}()
 
 	// Block until grpc server exits
-	return <-serve
+	err = <-serve
+	if err != nil {
+		logger.Errorf("Failed to start peer: %s", err)
+		return err
+	}
+
+	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
+	return nil
 }
 
 func handleSignals(handlers map[os.Signal]func()) {
