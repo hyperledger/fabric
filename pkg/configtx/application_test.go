@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/common/tools/protolator/protoext/peerext"
@@ -91,7 +92,8 @@ func TestNewApplicationGroup(t *testing.T) {
 		}
 	},
 	"version": "0"
-}`
+}
+`
 
 	applicationGroup, err := newApplicationGroup(application)
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -219,10 +221,7 @@ func TestAddAnchorPeer(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	newOrg1AnchorPeer := Address{
 		Host: "host3",
@@ -349,7 +348,7 @@ func TestAddAnchorPeer(t *testing.T) {
 	},
 	"sequence": "0"
 }
-	`
+`
 
 	expectedUpdatedConfig := &cb.Config{}
 
@@ -362,7 +361,7 @@ func TestAddAnchorPeer(t *testing.T) {
 	err = c.AddAnchorPeer("Org2", newOrg2AnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(config).To(Equal(expectedUpdatedConfig))
+	gt.Expect(proto.Equal(c.UpdatedConfig(), expectedUpdatedConfig)).To(BeTrue())
 }
 
 func TestRemoveAnchorPeer(t *testing.T) {
@@ -385,10 +384,7 @@ func TestRemoveAnchorPeer(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	expectedUpdatedConfigJSON := `
 {
@@ -485,19 +481,20 @@ func TestRemoveAnchorPeer(t *testing.T) {
 	},
 	"sequence": "0"
 }
-	`
+`
+
 	anchorPeer1 := Address{Host: "host1", Port: 123}
 	err = c.AddAnchorPeer("Org1", anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedUpdatedConfig := &cb.Config{}
 
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
-	gt.Expect(err).ToNot(HaveOccurred())
+	gt.Expect(err).NotTo(HaveOccurred())
 
 	err = c.RemoveAnchorPeer("Org1", anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(config).To(Equal(expectedUpdatedConfig))
+	gt.Expect(proto.Equal(c.UpdatedConfig(), expectedUpdatedConfig)).To(BeTrue())
 }
 
 func TestRemoveAnchorPeerFailure(t *testing.T) {
@@ -515,7 +512,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 			orgName:            "Org1",
 			anchorPeerToRemove: Address{Host: "host1", Port: 123},
 			configValues:       map[string]*cb.ConfigValue{AnchorPeersKey: {Value: []byte("a little fire")}},
-			expectedErr:        "failed unmarshaling Org1's anchor peer endpoints: proto: can't skip unknown wire type 6",
+			expectedErr:        "failed unmarshaling anchor peer endpoints for org Org1: proto: can't skip unknown wire type 6",
 		},
 	}
 
@@ -541,10 +538,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 				},
 			}
 
-			c := ConfigTx{
-				original: config,
-				updated:  config,
-			}
+			c := New(config)
 
 			err = c.RemoveAnchorPeer(tt.orgName, tt.anchorPeerToRemove)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
@@ -567,10 +561,7 @@ func TestAnchorPeers(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	anchorPeers, err := c.AnchorPeers("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -580,6 +571,8 @@ func TestAnchorPeers(t *testing.T) {
 	expectedAnchorPeer := Address{Host: "host1", Port: 123}
 	err = c.AddAnchorPeer("Org1", expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
+
+	c = New(c.UpdatedConfig())
 
 	anchorPeers, err = c.AnchorPeers("Org1")
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -623,10 +616,7 @@ func TestAnchorPeerFailures(t *testing.T) {
 		ChannelGroup: channelGroup,
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	for _, test := range []struct {
 		name        string
@@ -763,17 +753,15 @@ func TestRemoveACL(t *testing.T) {
 			if tt.configMod != nil {
 				tt.configMod(config)
 			}
-			c := &ConfigTx{
-				original: config,
-				updated:  config,
-			}
+
+			c := New(config)
 
 			err = c.RemoveACLs(tt.removeACL)
 			if tt.expectedErr != "" {
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			} else {
 				gt.Expect(err).NotTo(HaveOccurred())
-				acls, err := getACLs(config)
+				acls, err := getACLs(c.UpdatedConfig())
 				gt.Expect(err).NotTo(HaveOccurred())
 				gt.Expect(acls).To(Equal(tt.expectedACL))
 			}
@@ -797,10 +785,7 @@ func TestAddApplicationOrg(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	org := Organization{
 		Name:     "Org3",
@@ -961,7 +946,7 @@ func TestAddApplicationOrg(t *testing.T) {
 	err = c.AddApplicationOrg(org)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	actualApplicationConfigGroup := config.ChannelGroup.Groups[ApplicationGroupKey].Groups["Org3"]
+	actualApplicationConfigGroup := c.UpdatedConfig().ChannelGroup.Groups[ApplicationGroupKey].Groups["Org3"]
 	buf := bytes.Buffer{}
 	err = protolator.DeepMarshalJSON(&buf, &peerext.DynamicApplicationOrgGroup{ConfigGroup: actualApplicationConfigGroup})
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -984,10 +969,7 @@ func TestAddApplicationOrgFailures(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	org := Organization{
 		Name: "Org3",
@@ -1013,14 +995,14 @@ func TestApplicationConfiguration(t *testing.T) {
 		},
 	}
 
-	c := &ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
+
 	for _, org := range baseApplicationConf.Organizations {
 		err = c.AddApplicationOrg(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 	}
+
+	c = New(c.UpdatedConfig())
 
 	applicationConfig, err := c.ApplicationConfiguration()
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -1035,22 +1017,22 @@ func TestApplicationConfigurationFailure(t *testing.T) {
 
 	tests := []struct {
 		testName    string
-		configMod   func(*ConfigTx, Application, *GomegaWithT)
+		configMod   func(ConfigTx, Application, *GomegaWithT)
 		expectedErr string
 	}{
 		{
 			testName: "When the application group does not exist",
-			configMod: func(ct *ConfigTx, appOrg Application, gt *GomegaWithT) {
-				delete(ct.original.ChannelGroup.Groups, ApplicationGroupKey)
+			configMod: func(c ConfigTx, appOrg Application, gt *GomegaWithT) {
+				delete(c.UpdatedConfig().ChannelGroup.Groups, ApplicationGroupKey)
 			},
 			expectedErr: "config does not contain application group",
 		},
 		{
 			testName: "Retrieving application org failed",
-			configMod: func(ct *ConfigTx, appOrg Application, gt *GomegaWithT) {
+			configMod: func(c ConfigTx, appOrg Application, gt *GomegaWithT) {
 				for _, org := range appOrg.Organizations {
 					if org.Name == "Org2" {
-						err := ct.AddApplicationOrg(org)
+						err := c.AddApplicationOrg(org)
 						gt.Expect(err).NotTo(HaveOccurred())
 					}
 				}
@@ -1078,13 +1060,12 @@ func TestApplicationConfigurationFailure(t *testing.T) {
 				},
 			}
 
-			c := &ConfigTx{
-				original: config,
-				updated:  config,
-			}
+			c := New(config)
 			if tt.configMod != nil {
 				tt.configMod(c, baseApplicationConf, gt)
 			}
+
+			c = New(c.UpdatedConfig())
 
 			_, err = c.ApplicationConfiguration()
 			gt.Expect(err).To(MatchError(tt.expectedErr))
@@ -1109,9 +1090,7 @@ func TestApplicationACLs(t *testing.T) {
 		},
 	}
 
-	c := &ConfigTx{
-		original: config,
-	}
+	c := New(config)
 
 	applicationACLs, err := c.ApplicationACLs()
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -1139,9 +1118,7 @@ func TestApplicationACLsFailure(t *testing.T) {
 		Value: []byte("another little fire"),
 	}
 
-	c := &ConfigTx{
-		original: config,
-	}
+	c := New(config)
 
 	applicationACLs, err := c.ApplicationACLs()
 	gt.Expect(err).To(MatchError("unmarshaling ACLs: unexpected EOF"))

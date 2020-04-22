@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/common/tools/protolator/protoext/commonext"
@@ -353,10 +354,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	orgToAdd := Organization{
 		Name:     "Org3",
@@ -783,7 +781,7 @@ func TestAddOrgToConsortium(t *testing.T) {
 	err = c.AddOrgToConsortium(orgToAdd, "Consortium1")
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(config).To(Equal(expectedConfigProto))
+	gt.Expect(proto.Equal(c.UpdatedConfig(), expectedConfigProto)).To(BeTrue())
 }
 
 func TestAddOrgToConsortiumFailures(t *testing.T) {
@@ -849,10 +847,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 				},
 			}
 
-			c := ConfigTx{
-				original: config,
-				updated:  config,
-			}
+			c := New(config)
 
 			err = c.AddOrgToConsortium(test.org, test.consortium)
 			gt.Expect(err).To(MatchError(test.expectedErr))
@@ -879,14 +874,11 @@ func TestRemoveConsortium(t *testing.T) {
 		},
 	}
 
-	c := ConfigTx{
-		original: config,
-		updated:  config,
-	}
+	c := New(config)
 
 	c.RemoveConsortium("Consortium1")
 
-	updatedConsortiumsGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey]
+	updatedConsortiumsGroup := c.UpdatedConfig().ChannelGroup.Groups[ConsortiumsGroupKey]
 	gt.Expect(updatedConsortiumsGroup.Groups["Consortium1"]).To(BeNil())
 }
 
