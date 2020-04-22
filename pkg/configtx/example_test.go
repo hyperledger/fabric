@@ -27,6 +27,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/pkg/configtx"
+	"github.com/hyperledger/fabric/pkg/configtx/membership"
 	"github.com/hyperledger/fabric/pkg/configtx/orderer"
 	. "github.com/onsi/gomega"
 )
@@ -2207,39 +2208,39 @@ func baseMSP(t *testing.T) configtx.MSP {
 		IntermediateCerts: []*x509.Certificate{cert},
 		Admins:            []*x509.Certificate{cert},
 		RevocationList:    []*pkix.CertificateList{crl},
-		SigningIdentity: configtx.SigningIdentityInfo{
+		SigningIdentity: membership.SigningIdentityInfo{
 			PublicSigner: cert,
-			PrivateSigner: configtx.KeyInfo{
+			PrivateSigner: membership.KeyInfo{
 				KeyIdentifier: "SKI-1",
 				KeyMaterial:   privKey.(*ecdsa.PrivateKey),
 			},
 		},
-		OrganizationalUnitIdentifiers: []configtx.OUIdentifier{
+		OrganizationalUnitIdentifiers: []membership.OUIdentifier{
 			{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
 		},
-		CryptoConfig: configtx.CryptoConfig{
+		CryptoConfig: membership.CryptoConfig{
 			SignatureHashFamily:            "SHA3",
 			IdentityIdentifierHashFunction: "SHA256",
 		},
 		TLSRootCerts:         []*x509.Certificate{cert},
 		TLSIntermediateCerts: []*x509.Certificate{cert},
-		NodeOus: configtx.NodeOUs{
-			ClientOUIdentifier: configtx.OUIdentifier{
+		NodeOus: membership.NodeOUs{
+			ClientOUIdentifier: membership.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			PeerOUIdentifier: configtx.OUIdentifier{
+			PeerOUIdentifier: membership.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			AdminOUIdentifier: configtx.OUIdentifier{
+			AdminOUIdentifier: membership.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
-			OrdererOUIdentifier: configtx.OUIdentifier{
+			OrdererOUIdentifier: membership.OUIdentifier{
 				Certificate:                  cert,
 				OrganizationalUnitIdentifier: "OUID",
 			},
