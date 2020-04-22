@@ -98,7 +98,7 @@ func signECDSA(k *ecdsa.PrivateKey, digest []byte) (signature []byte, err error)
 		return nil, err
 	}
 
-	s, _, err = utils.ToLowS(&k.PublicKey, s)
+	s, err = utils.ToLowS(&k.PublicKey, s)
 	if err != nil {
 		return nil, err
 	}
