@@ -597,7 +597,7 @@ Note the following key program lines in `issue.js`:
 * `const { Wallets, Gateway } = require('fabric-network');`
 
   This statement brings two key Hyperledger Fabric SDK classes into scope --
-  `Wallet` and `Gateway`.M
+  `Wallet` and `Gateway`.
 
 
 * `const wallet = await Wallets.newFileSystemWallet('../identity/user/isabella/wallet');`
