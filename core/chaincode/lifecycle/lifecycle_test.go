@@ -56,7 +56,7 @@ var _ = Describe("ChaincodeParameters", func() {
 			})
 
 			It("returns an error", func() {
-				Expect(lhs.Equal(rhs)).To(MatchError("EndorsementPlugin '' != 'different'"))
+				Expect(lhs.Equal(rhs)).To(MatchError("expected EndorsementPlugin '' does not match passed EndorsementPlugin 'different'"))
 			})
 		})
 
@@ -66,7 +66,7 @@ var _ = Describe("ChaincodeParameters", func() {
 			})
 
 			It("returns an error", func() {
-				Expect(lhs.Equal(rhs)).To(MatchError("InitRequired 'false' != 'true'"))
+				Expect(lhs.Equal(rhs)).To(MatchError("expected InitRequired 'false' does not match passed InitRequired 'true'"))
 			})
 		})
 
@@ -76,7 +76,7 @@ var _ = Describe("ChaincodeParameters", func() {
 			})
 
 			It("returns an error", func() {
-				Expect(lhs.Equal(rhs)).To(MatchError("ValidationPlugin '' != 'different'"))
+				Expect(lhs.Equal(rhs)).To(MatchError("expected ValidationPlugin '' does not match passed ValidationPlugin 'different'"))
 			})
 		})
 
@@ -86,7 +86,7 @@ var _ = Describe("ChaincodeParameters", func() {
 			})
 
 			It("returns an error", func() {
-				Expect(lhs.Equal(rhs)).To(MatchError("ValidationParameter '' != '646966666572656e74'"))
+				Expect(lhs.Equal(rhs)).To(MatchError("expected ValidationParameter '' does not match passed ValidationParameter '646966666572656e74'"))
 			})
 		})
 
@@ -817,7 +817,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("attempted to define the current sequence (5) for namespace cc-name, but: Version 'other-version' != 'version'"))
+					Expect(err).To(MatchError("attempted to redefine the current committed sequence (5) for namespace cc-name with different parameters: expected Version 'other-version' does not match passed Version 'version'"))
 				})
 			})
 		})
