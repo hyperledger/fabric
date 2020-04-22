@@ -72,16 +72,12 @@ func SignatureToLowS(k *ecdsa.PublicKey, signature []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	s, modified, err := ToLowS(k, s)
+	s, err = ToLowS(k, s)
 	if err != nil {
 		return nil, err
 	}
 
-	if modified {
-		return MarshalECDSASignature(r, s)
-	}
-
-	return signature, nil
+	return MarshalECDSASignature(r, s)
 }
 
 // IsLow checks that s is a low-S
@@ -95,10 +91,10 @@ func IsLowS(k *ecdsa.PublicKey, s *big.Int) (bool, error) {
 
 }
 
-func ToLowS(k *ecdsa.PublicKey, s *big.Int) (*big.Int, bool, error) {
+func ToLowS(k *ecdsa.PublicKey, s *big.Int) (*big.Int, error) {
 	lowS, err := IsLowS(k, s)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	if !lowS {
@@ -106,8 +102,8 @@ func ToLowS(k *ecdsa.PublicKey, s *big.Int) (*big.Int, bool, error) {
 		// less or equal to half order
 		s.Sub(k.Params().N, s)
 
-		return s, true, nil
+		return s, nil
 	}
 
-	return s, false, nil
+	return s, nil
 }
