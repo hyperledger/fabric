@@ -769,7 +769,7 @@ func TestRemoveACL(t *testing.T) {
 	}
 }
 
-func TestAddApplicationOrg(t *testing.T) {
+func TestSetApplicationOrg(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -943,7 +943,7 @@ func TestAddApplicationOrg(t *testing.T) {
 }
 `, certBase64, crlBase64, pkBase64)
 
-	err = c.AddApplicationOrg(org)
+	err = c.SetApplicationOrg(org)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	actualApplicationConfigGroup := c.UpdatedConfig().ChannelGroup.Groups[ApplicationGroupKey].Groups["Org3"]
@@ -953,7 +953,7 @@ func TestAddApplicationOrg(t *testing.T) {
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
 }
 
-func TestAddApplicationOrgFailures(t *testing.T) {
+func TestSetApplicationOrgFailures(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -975,7 +975,7 @@ func TestAddApplicationOrgFailures(t *testing.T) {
 		Name: "Org3",
 	}
 
-	err = c.AddApplicationOrg(org)
+	err = c.SetApplicationOrg(org)
 	gt.Expect(err).To(MatchError("failed to create application org Org3: no policies defined"))
 }
 
@@ -998,7 +998,7 @@ func TestApplicationConfiguration(t *testing.T) {
 	c := New(config)
 
 	for _, org := range baseApplicationConf.Organizations {
-		err = c.AddApplicationOrg(org)
+		err = c.SetApplicationOrg(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -1032,7 +1032,7 @@ func TestApplicationConfigurationFailure(t *testing.T) {
 			configMod: func(c ConfigTx, appOrg Application, gt *GomegaWithT) {
 				for _, org := range appOrg.Organizations {
 					if org.Name == "Org2" {
-						err := c.AddApplicationOrg(org)
+						err := c.SetApplicationOrg(org)
 						gt.Expect(err).NotTo(HaveOccurred())
 					}
 				}

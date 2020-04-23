@@ -238,9 +238,10 @@ func (c *ConfigTx) AnchorPeers(orgName string) ([]Address, error) {
 	return anchorPeers, nil
 }
 
-// AddApplicationOrg adds an organization to an existing Application configuration.
-// Will not error if organization already exists.
-func (c *ConfigTx) AddApplicationOrg(org Organization) error {
+// SetApplicationOrg sets the organization config group for the given application
+// org key in an existing Application configuration's Groups map.
+// If the application org already exists in the current configuration, its value will be overwritten.
+func (c *ConfigTx) SetApplicationOrg(org Organization) error {
 	appGroup := c.updated.ChannelGroup.Groups[ApplicationGroupKey]
 
 	orgGroup, err := newOrgConfigGroup(org)

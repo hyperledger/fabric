@@ -332,7 +332,7 @@ func TestNewConsortiumsGroupFailure(t *testing.T) {
 	gt.Expect(consortiumsGroup).To(BeNil())
 }
 
-func TestAddOrgToConsortium(t *testing.T) {
+func TestSetConsortiumOrg(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -778,13 +778,13 @@ func TestAddOrgToConsortium(t *testing.T) {
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedConfigJSON), expectedConfigProto)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = c.AddOrgToConsortium(orgToAdd, "Consortium1")
+	err = c.SetConsortiumOrg(orgToAdd, "Consortium1")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(proto.Equal(c.UpdatedConfig(), expectedConfigProto)).To(BeTrue())
 }
 
-func TestAddOrgToConsortiumFailures(t *testing.T) {
+func TestSetConsortiumOrgFailures(t *testing.T) {
 	t.Parallel()
 
 	orgToAdd := Organization{
@@ -804,29 +804,6 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 			org:         orgToAdd,
 			consortium:  "",
 			expectedErr: "consortium is required",
-		},
-		{
-			name:        "When the config doesn't contain the consortium",
-			org:         orgToAdd,
-			consortium:  "what-the-what",
-			expectedErr: "consortium 'what-the-what' does not exist",
-		},
-		{
-			name: "When the config doesn't contain the consortium",
-			org: Organization{
-				Name:     "test-msp",
-				Policies: map[string]Policy{},
-			},
-			consortium:  "Consortium1",
-			expectedErr: "failed to create consortium org: no Admins policy defined",
-		},
-		{
-			name: "When the consortium already contains the org",
-			org: Organization{
-				Name: "Org1",
-			},
-			consortium:  "Consortium1",
-			expectedErr: "org 'Org1' already defined in consortium 'Consortium1'",
 		},
 	} {
 		test := test
@@ -849,7 +826,7 @@ func TestAddOrgToConsortiumFailures(t *testing.T) {
 
 			c := New(config)
 
-			err = c.AddOrgToConsortium(test.org, test.consortium)
+			err = c.SetConsortiumOrg(test.org, test.consortium)
 			gt.Expect(err).To(MatchError(test.expectedErr))
 		})
 	}

@@ -87,7 +87,7 @@ func Example_systemChannel() {
 	baseConfig := fetchSystemChannelConfig()
 	c := configtx.New(baseConfig)
 
-	err := c.UpdateConsortiumChannelCreationPolicy("SampleConsortium",
+	err := c.SetConsortiumChannelCreationPolicy("SampleConsortium",
 		configtx.Policy{Type: configtx.ImplicitMetaPolicyType, Rule: "MAJORITY Admins"})
 	if err != nil {
 		panic(err)
@@ -118,7 +118,7 @@ func Example_systemChannel() {
 		MSP: baseMSP(&testing.T{}),
 	}
 
-	err = c.AddOrgToConsortium(orgToAdd, "SampleConsortium")
+	err = c.SetConsortiumOrg(orgToAdd, "SampleConsortium")
 	if err != nil {
 		panic(err)
 	}
@@ -267,7 +267,7 @@ func Example_orderer() {
 	orderer.Kafka.Brokers = []string{"kafka0:9092", "kafka1:9092", "kafka2:9092"}
 	orderer.BatchSize.MaxMessageCount = 500
 
-	err = c.UpdateOrdererConfiguration(orderer)
+	err = c.SetOrdererConfiguration(orderer)
 	if err != nil {
 		panic(nil)
 	}
@@ -277,7 +277,7 @@ func Example_orderer() {
 		panic(err)
 	}
 
-	err = c.AddOrdererPolicy(configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+	err = c.SetOrdererPolicy(configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
 		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
@@ -307,7 +307,7 @@ func Example_application() {
 		panic(err)
 	}
 
-	err = c.AddApplicationPolicy(configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+	err = c.SetApplicationPolicy(configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
 		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
@@ -376,14 +376,14 @@ func Example_organization() {
 		},
 	}
 
-	err = c.AddApplicationOrg(appOrg)
+	err = c.SetApplicationOrg(appOrg)
 	if err != nil {
 		panic(err)
 	}
 
 	c.RemoveApplicationOrg("Org2")
 
-	err = c.AddApplicationOrgPolicy("Org1", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+	err = c.SetApplicationOrgPolicy("Org1", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
 		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
@@ -401,7 +401,7 @@ func Example_organization() {
 	ordererOrg.Name = "OrdererOrg2"
 	ordererOrg.AnchorPeers = nil
 
-	err = c.AddOrdererOrg(ordererOrg)
+	err = c.SetOrdererOrg(ordererOrg)
 	if err != nil {
 		panic(err)
 	}
@@ -413,7 +413,7 @@ func Example_organization() {
 		panic(err)
 	}
 
-	err = c.AddOrdererOrgPolicy("OrdererOrg", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+	err = c.SetOrdererOrgPolicy("OrdererOrg", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
 		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
@@ -421,7 +421,7 @@ func Example_organization() {
 		panic(err)
 	}
 
-	err = c.AddOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.3", Port: 8050})
+	err = c.SetOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.3", Port: 8050})
 	if err != nil {
 		panic(err)
 	}

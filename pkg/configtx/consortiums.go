@@ -29,25 +29,17 @@ func (c *ConfigTx) RemoveConsortium(consortiumName string) {
 	delete(consortiumGroup, consortiumName)
 }
 
-// AddOrgToConsortium adds an org definition to a named consortium in a given
-// channel configuration.
-func (c *ConfigTx) AddOrgToConsortium(org Organization, consortium string) error {
+// SetConsortiumOrg sets the organization config group for the given org key in a existing
+// Consortium configuration's Groups map.
+// If the consortium org already exists in the current configuration, its value will be overwritten.
+func (c *ConfigTx) SetConsortiumOrg(org Organization, consortium string) error {
 	var err error
 
 	if consortium == "" {
 		return errors.New("consortium is required")
 	}
 
-	consortiumsGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey]
-
-	consortiumGroup, ok := consortiumsGroup.Groups[consortium]
-	if !ok {
-		return fmt.Errorf("consortium '%s' does not exist", consortium)
-	}
-
-	if _, ok := consortiumGroup.Groups[org.Name]; ok {
-		return fmt.Errorf("org '%s' already defined in consortium '%s'", org.Name, consortium)
-	}
+	consortiumGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortium]
 
 	consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org)
 	if err != nil {

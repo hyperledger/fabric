@@ -42,9 +42,9 @@ type Orderer struct {
 	State orderer.ConsensusState
 }
 
-// UpdateOrdererConfiguration modifies an existing config tx's Orderer configuration
+// SetOrdererConfiguration modifies an existing config tx's Orderer configuration
 // via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
-func (c *ConfigTx) UpdateOrdererConfiguration(o Orderer) error {
+func (c *ConfigTx) SetOrdererConfiguration(o Orderer) error {
 	ordererGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey]
 
 	// update orderer addresses
@@ -183,9 +183,10 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 	}, nil
 }
 
-// AddOrdererOrg adds a organization to an existing config's Orderer configuration.
-// Will not error if organization already exists.
-func (c *ConfigTx) AddOrdererOrg(org Organization) error {
+// SetOrdererOrg sets the organization config group for the given orderer
+// org key in an existing Orderer configuration's Groups map.
+// If the orderer org already exists in the current configuration, its value will be overwritten.
+func (c *ConfigTx) SetOrdererOrg(org Organization) error {
 	ordererGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey]
 
 	orgGroup, err := newOrgConfigGroup(org)
@@ -198,14 +199,10 @@ func (c *ConfigTx) AddOrdererOrg(org Organization) error {
 	return nil
 }
 
-// AddOrdererEndpoint adds an orderer's endpoint to an existing channel config transaction.
-// It must add the endpoint to an existing org and the endpoint must not already
-// exist in the org.
-func (c *ConfigTx) AddOrdererEndpoint(orgName string, endpoint Address) error {
-	ordererOrgGroup, ok := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
-	if !ok {
-		return fmt.Errorf("orderer org %s does not exist in channel config", orgName)
-	}
+// SetOrdererEndpoint adds an orderer's endpoint to an existing channel config transaction.
+// If the same endpoint already exist in current configuration, this will be a no-op.
+func (c *ConfigTx) SetOrdererEndpoint(orgName string, endpoint Address) error {
+	ordererOrgGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
 
 	ordererAddrProto := &cb.OrdererAddresses{}
 
@@ -221,8 +218,7 @@ func (c *ConfigTx) AddOrdererEndpoint(orgName string, endpoint Address) error {
 	existingOrdererEndpoints := ordererAddrProto.Addresses
 	for _, e := range existingOrdererEndpoints {
 		if e == endpointToAdd {
-			return fmt.Errorf("orderer org %s already contains endpoint %s",
-				orgName, endpointToAdd)
+			return nil
 		}
 	}
 
