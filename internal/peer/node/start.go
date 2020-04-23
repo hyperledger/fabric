@@ -225,10 +225,7 @@ func serve(args []string) error {
 		MetadataProvider: ccprovider.PersistenceAdapter(ccprovider.MetadataAsTarEntries),
 	}
 
-	peerHost, _, err := net.SplitHostPort(coreConfig.PeerAddress)
-	if err != nil {
-		return fmt.Errorf("peer address is not in the format of host:port: %v", err)
-	}
+	peerHost, _, _ := net.SplitHostPort(coreConfig.PeerAddress)
 
 	listenAddr := coreConfig.ListenAddress
 	serverConfig, err := peer.GetServerConfig()
