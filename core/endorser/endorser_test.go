@@ -12,6 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
@@ -25,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
+	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 )
 
 var _ = Describe("Endorser", func() {
@@ -37,6 +39,7 @@ var _ = Describe("Endorser", func() {
 		fakeInitFailed               *metricsfakes.Counter
 		fakeEndorsementsFailed       *metricsfakes.Counter
 		fakeDuplicateTxsFailure      *metricsfakes.Counter
+		fakeSimulateFailure          *metricsfakes.Counter
 
 		fakeLocalIdentity                *fake.Identity
 		fakeLocalMSPIdentityDeserializer *fake.IdentityDeserializer
@@ -82,6 +85,9 @@ var _ = Describe("Endorser", func() {
 		fakeProposalsReceived = &metricsfakes.Counter{}
 		fakeSuccessfulProposals = &metricsfakes.Counter{}
 		fakeProposalValidationFailed = &metricsfakes.Counter{}
+
+		fakeSimulateFailure = &metricsfakes.Counter{}
+		fakeSimulateFailure.WithReturns(fakeSimulateFailure)
 
 		fakeLocalIdentity = &fake.Identity{}
 		fakeLocalMSPIdentityDeserializer = &fake.IdentityDeserializer{}
@@ -166,6 +172,7 @@ var _ = Describe("Endorser", func() {
 				InitFailed:               fakeInitFailed,
 				EndorsementsFailed:       fakeEndorsementsFailed,
 				DuplicateTxsFailure:      fakeDuplicateTxsFailure,
+				SimulationFailure:        fakeSimulateFailure,
 			},
 			Support:        fakeSupport,
 			ChannelFetcher: fakeChannelFetcher,
@@ -479,6 +486,7 @@ var _ = Describe("Endorser", func() {
 				Status:  500,
 				Message: "error in simulation: fake-chaincode-execution-error",
 			}))
+			Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 		})
 	})
 
@@ -511,6 +519,7 @@ var _ = Describe("Endorser", func() {
 				Status:  500,
 				Message: "error in simulation: fake-private-data-error",
 			}))
+			Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 		})
 	})
 
@@ -533,6 +542,8 @@ var _ = Describe("Endorser", func() {
 				Status:  500,
 				Message: "error in simulation: failed to obtain ledger height for channel 'channel-id': fake-block-height-error",
 			}))
+
+			Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 		})
 	})
 
@@ -844,6 +855,7 @@ var _ = Describe("Endorser", func() {
 					Status:  500,
 					Message: "error in simulation: lscc upgrade/deploy should not include a code packages",
 				}))
+				Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 			})
 		})
 
@@ -865,6 +877,48 @@ var _ = Describe("Endorser", func() {
 					Status:  500,
 					Message: "error in simulation: Private data is forbidden to be used in instantiate",
 				}))
+				Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when retrieving simulation results", func() {
+			BeforeEach(func() {
+				fakeTxSimulator.GetTxSimulationResultsReturns(
+					&ledger.TxSimulationResults{
+						PubSimulationResults: &rwset.TxReadWriteSet{},
+						PvtSimulationResults: &rwset.TxPvtReadWriteSet{},
+					},
+					errors.New("bad simulation"),
+				)
+			})
+
+			It("returns an error to the client", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+					Status:  500,
+					Message: "error in simulation: bad simulation",
+				}))
+				Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when retrieving public simulation results fails", func() {
+			BeforeEach(func() {
+				fakeTxSimulator.GetTxSimulationResultsReturns(
+					&ledger.TxSimulationResults{},
+					nil,
+				)
+			})
+
+			It("returns an error to the client", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+					Status:  500,
+					Message: "error in simulation: proto: Marshal called with nil",
+				}))
+				Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 			})
 		})
 
@@ -886,6 +940,7 @@ var _ = Describe("Endorser", func() {
 					"channel", "channel-id",
 					"chaincode", "deploy-name",
 				}))
+				Expect(fakeInitFailed.AddCallCount()).To(Equal(1))
 			})
 		})
 
@@ -903,7 +958,66 @@ var _ = Describe("Endorser", func() {
 					Status:  500,
 					Message: "error in simulation: attempting to deploy a system chaincode deploy-name/channel-id",
 				}))
+				Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 			})
+		})
+
+		Context("when unmarshalling UnmarshalChaincodeDeploymentSpec fails", func() {
+			BeforeEach(func() {
+				chaincodeInput = &pb.ChaincodeInput{
+					Args: [][]byte{[]byte("deploy"), nil, []byte("arg3")},
+				}
+			})
+
+			It("returns an error to the client", func() {
+				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proposalResponse.Response).To(Equal(&pb.Response{
+					Status:  500,
+					Message: "error in simulation: error unmarshaling ChaincodeDeploymentSpec: unexpected EOF",
+				}))
+				Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
+			})
+		})
+	})
+
+	Context("when retrieving simulation results", func() {
+		BeforeEach(func() {
+
+			mockDeployedCCInfoProvider := &ledgermock.DeployedChaincodeInfoProvider{}
+			fakeSupport.GetDeployedCCInfoProviderReturns(mockDeployedCCInfoProvider)
+
+			pvtSimResults := &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					{
+						Namespace: "myCC",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "mycollection-1",
+								Rwset:          []byte{1, 2, 3, 4, 5, 6, 7, 8},
+							},
+						},
+					},
+				},
+			}
+
+			fakeTxSimulator.GetTxSimulationResultsReturns(
+				&ledger.TxSimulationResults{
+					PvtSimulationResults: pvtSimResults,
+				},
+				nil,
+			)
+		})
+
+		It("returns an error to the client", func() {
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Response).To(Equal(&pb.Response{
+				Status:  500,
+				Message: "error in simulation: failed to obtain collections config: no collection config for chaincode \"myCC\"",
+			}))
+			Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 		})
 	})
 })

@@ -124,6 +124,17 @@ var _ = Describe("Package", func() {
 			})
 		})
 
+		Context("when the label is invalid", func() {
+			BeforeEach(func() {
+				input.Label = "label with spaces"
+			})
+
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(MatchError("invalid label 'label with spaces'. Label must be non-empty, can only consist of alphanumerics, symbols from '.+-_', and can only begin with alphanumerics"))
+			})
+		})
+
 		Context("when the platform registry fails to normalize the path", func() {
 			BeforeEach(func() {
 				mockPlatformRegistry.NormalizePathReturns("", errors.New("cortado"))

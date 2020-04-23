@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -42,6 +43,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(payload []byte) {
 	err := json.Unmarshal(payload, &components)
 	Expect(err).NotTo(HaveOccurred())
+
+	flogging.SetWriter(GinkgoWriter)
 })
 
 var _ = SynchronizedAfterSuite(func() {
@@ -62,7 +65,7 @@ func RunInvoke(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel str
 		Ctor:      `{"Args":["invoke","a","b","10"]}`,
 		PeerAddresses: []string{
 			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
 	})

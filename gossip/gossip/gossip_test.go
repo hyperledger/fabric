@@ -22,7 +22,6 @@ import (
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	corecomm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -33,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	corecomm "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,8 +53,6 @@ var discoveryConfig = discovery.DiscoveryConfig{
 	AliveExpirationCheckInterval: aliveTimeInterval,
 	ReconnectInterval:            aliveTimeInterval,
 }
-
-var expirationTimes = map[string]time.Time{}
 
 var orgInChannelA = api.OrgIdentityType("ORG1")
 
@@ -109,6 +107,7 @@ type naiveCryptoService struct {
 	allowedPkiIDS       map[string]struct{}
 	revokedPkiIDS       map[string]struct{}
 	expirationTimesLock *sync.RWMutex
+	expirationTimes     map[string]time.Time
 }
 
 func (cs *naiveCryptoService) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType {
@@ -120,7 +119,7 @@ func (cs *naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (tim
 		cs.expirationTimesLock.RLock()
 		defer cs.expirationTimesLock.RUnlock()
 	}
-	if exp, exists := expirationTimes[string(peerIdentity)]; exists {
+	if exp, exists := cs.expirationTimes[string(peerIdentity)]; exists {
 		return exp, nil
 	}
 	return time.Now().Add(time.Hour), nil
@@ -262,10 +261,10 @@ func newGossipInstanceWithGRPC(id int, port int, gRPCServer *corecomm.GRPCServer
 	return newGossipInstanceWithGrpcMcsMetrics(id, port, gRPCServer, certs, secureDialOpts, maxMsgCount, mcs, metrics, bootPorts...)
 }
 
-func newGossipInstanceWithGRPCWithLock(lock *sync.RWMutex, id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
+func newGossipInstanceWithExpiration(expirations map[string]time.Time, lock *sync.RWMutex, id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, bootPorts ...int) *gossipGRPC {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{})
-	mcs := &naiveCryptoService{expirationTimesLock: lock}
+	mcs := &naiveCryptoService{expirationTimesLock: lock, expirationTimes: expirations}
 	return newGossipInstanceWithGrpcMcsMetrics(id, port, gRPCServer, certs, secureDialOpts, maxMsgCount, mcs, metrics, bootPorts...)
 }
 
@@ -341,7 +340,6 @@ func (g *gossipGRPC) Stop() {
 }
 
 func TestLeaveChannel(t *testing.T) {
-	t.Parallel()
 	// Scenario: Have 3 peers in a channel and make one of them leave it.
 	// Ensure the peers don't recognize the other peer when it left the channel
 
@@ -387,7 +385,6 @@ func TestLeaveChannel(t *testing.T) {
 }
 
 func TestPull(t *testing.T) {
-	t.Parallel()
 	t1 := time.Now()
 	// Scenario: Turn off forwarding and use only pull-based gossip.
 	// First phase: Ensure full membership view for all nodes
@@ -478,7 +475,6 @@ func TestPull(t *testing.T) {
 }
 
 func TestConnectToAnchorPeers(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn 10 peers, and have them join a channel
 	// of 3 anchor peers that don't exist yet.
 	// Wait 5 seconds, and then spawn a random anchor peer out of the 3.
@@ -555,7 +551,6 @@ func TestConnectToAnchorPeers(t *testing.T) {
 }
 
 func TestMembership(t *testing.T) {
-	t.Parallel()
 	t1 := time.Now()
 	// Scenario: spawn 20 nodes and a single bootstrap node and then:
 	// 1) Check full membership views for all nodes but the bootstrap node.
@@ -643,8 +638,6 @@ func TestMembership(t *testing.T) {
 }
 
 func TestNoMessagesSelfLoop(t *testing.T) {
-	t.Parallel()
-
 	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
 	boot := newGossipInstanceWithGRPC(0, port0, grpc0, certs0, secDialOpts0, 100)
 	boot.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
@@ -704,7 +697,6 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 }
 
 func TestDissemination(t *testing.T) {
-	t.Parallel()
 	t1 := time.Now()
 	// Scenario: 20 nodes and a bootstrap node.
 	// The bootstrap node sends 10 messages and we count
@@ -836,7 +828,6 @@ func TestDissemination(t *testing.T) {
 }
 
 func TestMembershipConvergence(t *testing.T) {
-	t.Parallel()
 	// Scenario: Spawn 12 nodes and 3 bootstrap peers
 	// but assign each node to its bootstrap peer group modulo 3.
 	// Then:
@@ -941,7 +932,6 @@ func TestMembershipConvergence(t *testing.T) {
 }
 
 func TestMembershipRequestSpoofing(t *testing.T) {
-	t.Parallel()
 	// Scenario: g1, g2, g3 are peers, and g2 is malicious, and wants
 	// to impersonate g3 when sending a membership request to g1.
 	// Expected output: g1 should *NOT* respond to g2,
@@ -1016,7 +1006,6 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 }
 
 func TestDataLeakage(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn some nodes and let them all
 	// establish full membership.
 	// Then, have half be in channel A and half be in channel B.
@@ -1154,12 +1143,12 @@ func TestDataLeakage(t *testing.T) {
 }
 
 func TestDisseminateAll2All(t *testing.T) {
+	t.Skip()
+
 	// Scenario: spawn some nodes, have each node
 	// disseminate a block to all nodes.
 	// Ensure all blocks are received
 
-	t.Skip()
-	t.Parallel()
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
 
@@ -1236,8 +1225,6 @@ func TestDisseminateAll2All(t *testing.T) {
 }
 
 func TestSendByCriteria(t *testing.T) {
-	t.Parallel()
-
 	port0, grpc0, certs0, secDialOpts0, _ := util.CreateGRPCLayer()
 	g1 := newGossipInstanceWithGRPC(0, port0, grpc0, certs0, secDialOpts0, 100)
 	port1, grpc1, certs1, secDialOpts1, _ := util.CreateGRPCLayer()
@@ -1394,24 +1381,24 @@ func TestSendByCriteria(t *testing.T) {
 }
 
 func TestIdentityExpiration(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn 5 peers and make the MessageCryptoService revoke one of the first 4.
 	// The last peer's certificate expires after a few seconds.
 	// Eventually, the rest of the peers should not be able to communicate with
 	// the revoked peer at all because its identity would seem to them as expired
 
 	var expirationTimesLock sync.RWMutex
+	expirationTimes := map[string]time.Time{}
 
 	port1, grpc1, certs1, secDialOpts1, _ := util.CreateGRPCLayer()
-	g1 := newGossipInstanceWithGRPCWithLock(&expirationTimesLock, 1, port1, grpc1, certs1, secDialOpts1, 100)
+	g1 := newGossipInstanceWithExpiration(expirationTimes, &expirationTimesLock, 1, port1, grpc1, certs1, secDialOpts1, 100)
 	port2, grpc2, certs2, secDialOpts2, _ := util.CreateGRPCLayer()
-	g2 := newGossipInstanceWithGRPCWithLock(&expirationTimesLock, 2, port2, grpc2, certs2, secDialOpts2, 100, port1)
+	g2 := newGossipInstanceWithExpiration(expirationTimes, &expirationTimesLock, 2, port2, grpc2, certs2, secDialOpts2, 100, port1)
 	port3, grpc3, certs3, secDialOpts3, _ := util.CreateGRPCLayer()
-	g3 := newGossipInstanceWithGRPCWithLock(&expirationTimesLock, 3, port3, grpc3, certs3, secDialOpts3, 100, port1)
+	g3 := newGossipInstanceWithExpiration(expirationTimes, &expirationTimesLock, 3, port3, grpc3, certs3, secDialOpts3, 100, port1)
 	port4, grpc4, certs4, secDialOpts4, _ := util.CreateGRPCLayer()
-	g4 := newGossipInstanceWithGRPCWithLock(&expirationTimesLock, 4, port4, grpc4, certs4, secDialOpts4, 100, port1)
+	g4 := newGossipInstanceWithExpiration(expirationTimes, &expirationTimesLock, 4, port4, grpc4, certs4, secDialOpts4, 100, port1)
 	port5, grpc5, certs5, secDialOpts5, _ := util.CreateGRPCLayer()
-	g5 := newGossipInstanceWithGRPCWithLock(&expirationTimesLock, 5, port5, grpc5, certs5, secDialOpts5, 100, port1)
+	g5 := newGossipInstanceWithExpiration(expirationTimes, &expirationTimesLock, 5, port5, grpc5, certs5, secDialOpts5, 100, port1)
 
 	// Set expiration of the last peer to 5 seconds from now
 	endpointLast := fmt.Sprintf("127.0.0.1:%d", port5)
@@ -1600,8 +1587,6 @@ func checkPeersMembership(t *testing.T, peers []*gossipGRPC, n int) func() bool 
 }
 
 func TestMembershipMetrics(t *testing.T) {
-	t.Parallel()
-
 	wg0 := sync.WaitGroup{}
 	wg0.Add(1)
 	once0 := sync.Once{}
@@ -1662,5 +1647,4 @@ func TestMembershipMetrics(t *testing.T) {
 	pI1.Stop()
 	waitUntilOrFail(t, waitForMembership(0), "waiting for metrics membership of 0")
 	pI0.Stop()
-
 }

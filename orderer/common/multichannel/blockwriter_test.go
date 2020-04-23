@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"
@@ -365,4 +366,22 @@ func TestRaceWriteConfig(t *testing.T) {
 	omd, err := protoutil.GetConsenterMetadataFromBlock(block1)
 	require.NoError(t, err)
 	assert.Equal(t, consenterMetadata1, omd.Value)
+}
+
+func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumber uint64) {
+	metadata := &cb.Metadata{}
+	err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES], metadata)
+	assert.NoError(t, err, "Block should carry SIGNATURES metadata item")
+	obm := &cb.OrdererBlockMetadata{}
+	err = proto.Unmarshal(metadata.Value, obm)
+	assert.NoError(t, err, "Block SIGNATURES should carry OrdererBlockMetadata")
+	assert.Equal(t, expectedBlockNumber, obm.LastConfig.Index, "SIGNATURES value should point to last config block")
+
+	metadata = &cb.Metadata{}
+	err = proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG], metadata)
+	assert.NoError(t, err, "Block should carry LAST_CONFIG metadata item")
+	lastConfig := &cb.LastConfig{}
+	err = proto.Unmarshal(metadata.Value, lastConfig)
+	assert.NoError(t, err, "LAST_CONFIG metadata item should carry last config value")
+	assert.Equal(t, expectedBlockNumber, lastConfig.Index, "LAST_CONFIG value should point to last config block")
 }

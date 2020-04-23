@@ -24,10 +24,9 @@ import (
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
-	"github.com/hyperledger/fabric/core/ledger/util"
-	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/core/mocks/validator"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -76,7 +75,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 
 	tValidator.Validate(block)
 
-	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	for i := 0; i < nBlocks; i++ {
 		assert.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
@@ -85,7 +84,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 
 func TestDetectTXIdDuplicates(t *testing.T) {
 	txids := []string{"", "1", "2", "3", "", "2", ""}
-	txsfltr := ledgerUtil.NewTxValidationFlags(len(txids))
+	txsfltr := txflags.New(len(txids))
 	markTXIdDuplicates(txids, txsfltr)
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_NOT_VALIDATED))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_NOT_VALIDATED))
@@ -96,7 +95,7 @@ func TestDetectTXIdDuplicates(t *testing.T) {
 	assert.True(t, txsfltr.IsSetTo(6, peer.TxValidationCode_NOT_VALIDATED))
 
 	txids = []string{"", "1", "2", "3", "", "21", ""}
-	txsfltr = ledgerUtil.NewTxValidationFlags(len(txids))
+	txsfltr = txflags.New(len(txids))
 	markTXIdDuplicates(txids, txsfltr)
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_NOT_VALIDATED))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_NOT_VALIDATED))
@@ -156,7 +155,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	acv.On("ForbidDuplicateTXIdInBlock").Return(false).Once()
 	tValidator.Validate(block)
 
-	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_VALID))
@@ -164,7 +163,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	acv.On("ForbidDuplicateTXIdInBlock").Return(true)
 	tValidator.Validate(block)
 
-	txsfltr = util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr = txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_DUPLICATE_TXID))
@@ -286,7 +285,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	// Initialize metadata
 	protoutil.InitBlockMetadata(block)
-	txsFilter := util.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
+	txsFilter := txflags.NewWithValues(len(block.Data.Data), peer.TxValidationCode_VALID)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	// Commit block to the ledger
@@ -296,7 +295,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	// because it's already committed
 	tValidator.Validate(block)
 
-	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.True(t, txsfltr.IsInvalid(0))
 
 	// We expect the tx to be invalid because of a bad txid
@@ -393,7 +392,7 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 		7: {ChannelID: "chain1", ChaincodeName: "cc0", ChaincodeVersion: "v3"},
 	}
 
-	txsfltr := ledgerUtil.NewTxValidationFlags(8)
+	txsfltr := txflags.New(8)
 	txsfltr.SetFlag(0, peer.TxValidationCode_VALID)
 	txsfltr.SetFlag(1, peer.TxValidationCode_VALID)
 	txsfltr.SetFlag(2, peer.TxValidationCode_VALID)
@@ -403,7 +402,7 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	txsfltr.SetFlag(6, peer.TxValidationCode_VALID)
 	txsfltr.SetFlag(7, peer.TxValidationCode_VALID)
 
-	expectTxsFltr := ledgerUtil.NewTxValidationFlags(8)
+	expectTxsFltr := txflags.New(8)
 	expectTxsFltr.SetFlag(0, peer.TxValidationCode_VALID)
 	expectTxsFltr.SetFlag(1, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
 	expectTxsFltr.SetFlag(2, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)

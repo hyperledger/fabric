@@ -25,7 +25,7 @@ For example, let's assume we have three organizations --- ``A``, ``B``, ``C`` --
 and a single anchor peer --- ``peer0.orgC`` --- defined for organization ``C``.
 When ``peer1.orgA`` (from organization ``A``) contacts ``peer0.orgC``, it will
 tell ``peer0.orgC`` about ``peer0.orgA``. And when at a later time ``peer1.orgB``
-contacts ``peer0.orgC``, the latter would tell the former about ``peer0.orgA``.
+contacts ``peer0.orgC``, the latter would tell the former about ``peer0.orgB``.
 From that point forward, organizations ``A`` and ``B`` would start exchanging
 membership information directly without any assistance from ``peer0.orgC``.
 

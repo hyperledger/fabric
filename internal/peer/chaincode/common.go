@@ -22,7 +22,7 @@ import (
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
@@ -190,8 +190,8 @@ type endorsementPolicy struct {
 type collectionConfigJson struct {
 	Name              string             `json:"name"`
 	Policy            string             `json:"policy"`
-	RequiredPeerCount int32              `json:"requiredPeerCount"`
-	MaxPeerCount      int32              `json:"maxPeerCount"`
+	RequiredPeerCount *int32             `json:"requiredPeerCount"`
+	MaxPeerCount      *int32             `json:"maxPeerCount"`
 	BlockToLive       uint64             `json:"blockToLive"`
 	MemberOnlyRead    bool               `json:"memberOnlyRead"`
 	MemberOnlyWrite   bool               `json:"memberOnlyWrite"`
@@ -222,7 +222,7 @@ func getCollectionConfigFromBytes(cconfBytes []byte) (*pb.CollectionConfigPackag
 
 	ccarray := make([]*pb.CollectionConfig, 0, len(*cconf))
 	for _, cconfitem := range *cconf {
-		p, err := cauthdsl.FromString(cconfitem.Policy)
+		p, err := policydsl.FromString(cconfitem.Policy)
 		if err != nil {
 			return nil, nil, errors.WithMessagef(err, "invalid policy %s", cconfitem.Policy)
 		}
@@ -243,13 +243,23 @@ func getCollectionConfigFromBytes(cconfBytes []byte) (*pb.CollectionConfigPackag
 			}
 		}
 
+		// Set default requiredPeerCount and MaxPeerCount if not specified in json
+		requiredPeerCount := int32(0)
+		maxPeerCount := int32(1)
+		if cconfitem.RequiredPeerCount != nil {
+			requiredPeerCount = *cconfitem.RequiredPeerCount
+		}
+		if cconfitem.MaxPeerCount != nil {
+			maxPeerCount = *cconfitem.MaxPeerCount
+		}
+
 		cc := &pb.CollectionConfig{
 			Payload: &pb.CollectionConfig_StaticCollectionConfig{
 				StaticCollectionConfig: &pb.StaticCollectionConfig{
 					Name:              cconfitem.Name,
 					MemberOrgsPolicy:  cpc,
-					RequiredPeerCount: cconfitem.RequiredPeerCount,
-					MaximumPeerCount:  cconfitem.MaxPeerCount,
+					RequiredPeerCount: requiredPeerCount,
+					MaximumPeerCount:  maxPeerCount,
 					BlockToLive:       cconfitem.BlockToLive,
 					MemberOnlyRead:    cconfitem.MemberOnlyRead,
 					MemberOnlyWrite:   cconfitem.MemberOnlyWrite,
@@ -279,7 +289,7 @@ func getApplicationPolicy(signaturePolicy, channelConfigPolicy string) (*pb.Appl
 
 	var applicationPolicy *pb.ApplicationPolicy
 	if signaturePolicy != "" {
-		signaturePolicyEnvelope, err := cauthdsl.FromString(signaturePolicy)
+		signaturePolicyEnvelope, err := policydsl.FromString(signaturePolicy)
 		if err != nil {
 			return nil, errors.Errorf("invalid signature policy: %s", signaturePolicy)
 		}
@@ -329,7 +339,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		}
 
 		if policy != common.UndefinedParamValue {
-			p, err := cauthdsl.FromString(policy)
+			p, err := policydsl.FromString(policy)
 			if err != nil {
 				return errors.Errorf("invalid policy %s", policy)
 			}

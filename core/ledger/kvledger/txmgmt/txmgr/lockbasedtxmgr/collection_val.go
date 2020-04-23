@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -15,12 +16,12 @@ import (
 type collNameValidator struct {
 	ledgerID       string
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider
-	queryExecutor  *lockBasedQueryExecutor
+	queryExecutor  *queryExecutor
 	cache          collConfigCache
 	noop           bool
 }
 
-func newCollNameValidator(ledgerID string, ccInfoProvider ledger.DeployedChaincodeInfoProvider, qe *lockBasedQueryExecutor, noop bool) *collNameValidator {
+func newCollNameValidator(ledgerID string, ccInfoProvider ledger.DeployedChaincodeInfoProvider, qe *queryExecutor, noop bool) *collNameValidator {
 	return &collNameValidator{ledgerID, ccInfoProvider, qe, make(collConfigCache), noop}
 }
 

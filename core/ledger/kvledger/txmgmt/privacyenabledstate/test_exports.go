@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package privacyenabledstate
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -18,8 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
-	"github.com/hyperledger/fabric/integration/runner"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -110,40 +107,22 @@ type CouchDBCommonStorageTestEnv struct {
 	bookkeeperTestEnv *bookkeeping.TestEnv
 	redoPath          string
 	couchCleanup      func()
+	couchDBConfig     *ledger.CouchDBConfig
 }
 
 // StartExternalResource starts external couchDB resources.
 func (env *CouchDBCommonStorageTestEnv) StartExternalResource() {
-	if env.couchAddress == "" {
-		env.couchAddress = env.setupCouch()
+	if env.couchAddress != "" {
+		return
 	}
+	env.couchAddress, env.couchCleanup = statecouchdb.StartCouchDB(env.t.(*testing.T), nil)
 }
 
 // StopExternalResource stops external couchDB resources.
 func (env *CouchDBCommonStorageTestEnv) StopExternalResource() {
-	csdbProvider, _ := env.provider.(*CommonStorageDBProvider)
-	if csdbProvider != nil {
-		statecouchdb.CleanupDB(env.t, csdbProvider.VersionedDBProvider)
+	if env.couchAddress != "" {
 		env.couchCleanup()
-		os.Unsetenv("COUCHDB_ADDR")
 	}
-}
-
-func (env *CouchDBCommonStorageTestEnv) setupCouch() string {
-	externalCouch, set := os.LookupEnv("COUCHDB_ADDR")
-	if set {
-		env.couchCleanup = func() {}
-		return externalCouch
-	}
-
-	couchDB := &runner.CouchDB{}
-	if err := couchDB.Start(); err != nil {
-		err := fmt.Errorf("failed to start couchDB: %s", err)
-		panic(err)
-	}
-	env.couchCleanup = func() { couchDB.Stop() }
-	os.Setenv("COUCHDB_ADDR", couchDB.Address())
-	return couchDB.Address()
 }
 
 // Init implements corresponding function from interface TestEnv
@@ -153,12 +132,13 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 		t.Fatalf("Failed to create redo log directory: %s", err)
 	}
 
+	env.t = t
 	env.StartExternalResource()
 
 	stateDBConfig := &StateDBConfig{
 		StateDBConfig: &ledger.StateDBConfig{
 			StateDatabase: "CouchDB",
-			CouchDB: &couchdb.Config{
+			CouchDB: &ledger.CouchDBConfig{
 				Address:             env.couchAddress,
 				Username:            "",
 				Password:            "",
@@ -182,9 +162,9 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 		[]string{"lscc", "_lifecycle"},
 	)
 	assert.NoError(t, err)
-	env.t = t
 	env.provider = dbProvider
 	env.redoPath = redoPath
+	env.couchDBConfig = stateDBConfig.CouchDB
 }
 
 // GetDBHandle implements corresponding function from interface TestEnv
@@ -201,6 +181,10 @@ func (env *CouchDBCommonStorageTestEnv) GetName() string {
 
 // Cleanup implements corresponding function from interface TestEnv
 func (env *CouchDBCommonStorageTestEnv) Cleanup() {
+	csdbProvider := env.provider.(*CommonStorageDBProvider)
+	if csdbProvider != nil {
+		statecouchdb.DeleteApplicationDBs(env.t, env.couchDBConfig)
+	}
 	os.RemoveAll(env.redoPath)
 	env.bookkeeperTestEnv.Cleanup()
 	env.provider.Close()

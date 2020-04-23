@@ -66,11 +66,19 @@ func TestDockerPull(t *testing.T) {
 }
 
 func TestUtil_GetDockerImageFromConfig(t *testing.T) {
-	expected := "FROM " + metadata.DockerNamespace + ":" + runtime.GOARCH + "-" + metadata.Version
+
 	path := "dt"
+
+	expected := "FROM " + metadata.DockerNamespace + ":" + runtime.GOARCH + "-" + metadata.Version
 	viper.Set(path, "FROM $(DOCKER_NS):$(ARCH)-$(PROJECT_VERSION)")
 	actual := GetDockerImageFromConfig(path)
 	assert.Equal(t, expected, actual, `Error parsing Dockerfile Template. Expected "%s", got "%s"`, expected, actual)
+
+	expected = "FROM " + metadata.DockerNamespace + ":" + runtime.GOARCH + "-" + twoDigitVersion(metadata.Version)
+	viper.Set(path, "FROM $(DOCKER_NS):$(ARCH)-$(TWO_DIGIT_VERSION)")
+	actual = GetDockerImageFromConfig(path)
+	assert.Equal(t, expected, actual, `Error parsing Dockerfile Template. Expected "%s", got "%s"`, expected, actual)
+
 }
 
 func TestMain(m *testing.M) {
@@ -84,4 +92,16 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 	os.Exit(m.Run())
+}
+
+func TestTwoDigitVersion(t *testing.T) {
+	version := "2.0.0"
+	expected := "2.0"
+	actual := twoDigitVersion(version)
+	assert.Equal(t, expected, actual, `Error parsing two digit version. Expected "%s", got "%s"`, expected, actual)
+
+	version = "latest"
+	expected = "latest"
+	actual = twoDigitVersion(version)
+	assert.Equal(t, expected, actual, `Error parsing two digit version. Expected "%s", got "%s"`, expected, actual)
 }

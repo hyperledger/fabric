@@ -8,10 +8,12 @@ package e2e
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -33,6 +35,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
 var _ = Describe("EndToEnd", func() {
@@ -55,9 +58,9 @@ var _ = Describe("EndToEnd", func() {
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/module"),
+			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
 			Lang:            "binary",
-			PackageFile:     filepath.Join(testDir, "modulecc.tar.gz"),
+			PackageFile:     filepath.Join(testDir, "simplecc.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,
 			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
 			Sequence:        "1",
@@ -126,6 +129,24 @@ var _ = Describe("EndToEnd", func() {
 			network.CreateAndJoinChannel(orderer, "testchannel")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
+			By("attempting to install unsupported chaincode without docker")
+			badCC := chaincode
+			badCC.Lang = "unsupported-type"
+			badCC.Label = "chaincode-label"
+			badCC.PackageFile = filepath.Join(testDir, "unsupported-type.tar.gz")
+			nwo.PackageChaincodeBinary(badCC)
+			badCC.SetPackageIDFromPackageFile()
+			sess, err := network.PeerAdminSession(
+				network.Peer("Org1", "peer0"),
+				commands.ChaincodeInstall{
+					PackageFile: badCC.PackageFile,
+					ClientAuth:  network.ClientAuthRequired,
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
+			Expect(sess.Err).To(gbytes.Say("docker build is disabled"))
+
 			By("deploying the chaincode")
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
@@ -141,11 +162,11 @@ var _ = Describe("EndToEnd", func() {
 
 			CheckPeerStatsdStreamMetrics(datagramReader.String())
 			CheckPeerStatsdMetrics(datagramReader.String(), "org1_peer0")
-			CheckPeerStatsdMetrics(datagramReader.String(), "org2_peer1")
+			CheckPeerStatsdMetrics(datagramReader.String(), "org2_peer0")
 			CheckOrdererStatsdMetrics(datagramReader.String(), "ordererorg_orderer")
 
 			By("setting up a channel from a base profile")
-			additionalPeer := network.Peer("Org2", "peer1")
+			additionalPeer := network.Peer("Org2", "peer0")
 			network.CreateChannel("baseprofilechannel", orderer, peer, additionalPeer)
 		})
 	})
@@ -195,43 +216,133 @@ var _ = Describe("EndToEnd", func() {
 			}
 
 			orderer := network.Orderer("orderer")
-			peer := network.Peer("Org1", "peer1")
 
 			network.CreateAndJoinChannel(orderer, "testchannel")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			// package, install, and approve by org1 - module chaincode
-			packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"), network.Peer("Org1", "peer1"))
+			packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"))
 
 			// package, install, and approve by org2 - gopath chaincode, same logic
-			packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"), network.Peer("Org2", "peer1"))
+			packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"))
 
 			testPeers := network.PeersWithChannel("testchannel")
 			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
 			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
 			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
 
-			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
+			By("listing the containers after committing the chaincode definition")
+			initialContainerFilter := map[string][]string{
+				"name": {
+					chaincodeContainerNameFilter(network, chaincode),
+					chaincodeContainerNameFilter(network, gopathChaincode),
+				},
+			}
 
-			CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer1"))
+			containers, err := client.ListContainers(docker.ListContainersOptions{Filters: initialContainerFilter})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).To(HaveLen(2))
+
+			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+
+			CheckPeerOperationEndpoints(network, network.Peer("Org2", "peer0"))
 			CheckOrdererOperationEndpoints(network, orderer)
+
+			// upgrade chaincode to v2.0 with different label
+			chaincode.Version = "1.0"
+			chaincode.Sequence = "2"
+			chaincode.Label = "my_module_chaincode_updated"
+			gopathChaincode.Version = "1.0"
+			gopathChaincode.Sequence = "2"
+			gopathChaincode.Label = "my_simple_chaincode_updated"
+
+			// package, install, and approve by org1 - module chaincode
+			packageInstallApproveChaincode(network, "testchannel", orderer, chaincode, network.Peer("Org1", "peer0"))
+
+			// package, install, and approve by org2 - gopath chaincode, same logic
+			packageInstallApproveChaincode(network, "testchannel", orderer, gopathChaincode, network.Peer("Org2", "peer0"))
+
+			nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), testPeers...)
+			nwo.CommitChaincode(network, "testchannel", orderer, chaincode, testPeers[0], testPeers...)
+			nwo.InitChaincode(network, "testchannel", orderer, chaincode, testPeers...)
+
+			By("listing the containers after updating the chaincode definition")
+			// expect the containers for the previous package id to be stopped
+			containers, err = client.ListContainers(docker.ListContainersOptions{Filters: initialContainerFilter})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).To(HaveLen(0))
+			updatedContainerFilter := map[string][]string{
+				"name": {
+					chaincodeContainerNameFilter(network, chaincode),
+					chaincodeContainerNameFilter(network, gopathChaincode),
+				},
+			}
+			containers, err = client.ListContainers(docker.ListContainersOptions{Filters: updatedContainerFilter})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).To(HaveLen(2))
+
+			RunQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+
+			By("retrieving the local mspid of the peer via simple chaincode")
+			sess, err := network.PeerUserSession(network.Peer("Org2", "peer0"), "User1", commands.ChaincodeQuery{
+				ChannelID: "testchannel",
+				Name:      "mycc",
+				Ctor:      `{"Args":["mspid"]}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+			Expect(sess).To(gbytes.Say("Org2MSP"))
 		})
 	})
 
 	Describe("basic single node etcdraft network", func() {
+		var (
+			peerRunners    []*ginkgomon.Runner
+			processes      map[string]ifrit.Process
+			ordererProcess ifrit.Process
+		)
+
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
+			for _, peer := range network.Peers {
+				core := network.ReadPeerConfig(peer)
+				core.Peer.Gossip.UseLeaderElection = false
+				core.Peer.Gossip.OrgLeader = true
+				core.Peer.Deliveryclient.ReconnectTotalTimeThreshold = time.Duration(time.Second)
+				network.WritePeerConfig(peer, core)
+			}
 			network.Bootstrap()
 
-			networkRunner := network.NetworkGroupRunner()
-			process = ifrit.Invoke(networkRunner)
-			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererRunner := network.OrdererGroupRunner()
+			ordererProcess = ifrit.Invoke(ordererRunner)
+			Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			peerRunners = make([]*ginkgomon.Runner, len(network.Peers))
+			processes = map[string]ifrit.Process{}
+			for i, peer := range network.Peers {
+				pr := network.PeerRunner(peer)
+				peerRunners[i] = pr
+				p := ifrit.Invoke(pr)
+				processes[peer.ID()] = p
+				Eventually(p.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+		})
+
+		AfterEach(func() {
+			if ordererProcess != nil {
+				ordererProcess.Signal(syscall.SIGTERM)
+				Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+			for _, p := range processes {
+				p.Signal(syscall.SIGTERM)
+				Eventually(p.Wait(), network.EventuallyTimeout).Should(Receive())
+			}
 		})
 
 		It("creates two channels with two orgs trying to reconfigure and update metadata", func() {
 			orderer := network.Orderer("orderer")
-			peer := network.Peer("Org1", "peer1")
+			peer := network.Peer("Org1", "peer0")
 
 			By("Create first channel and deploy the chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel")
@@ -275,6 +386,12 @@ var _ = Describe("EndToEnd", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(files)).To(Equal(numOfSnaps))
 
+			By("ensuring that static leaders do not give up on retrieving blocks after the orderer goes down")
+			ordererProcess.Signal(syscall.SIGTERM)
+			Eventually(ordererProcess.Wait(), network.EventuallyTimeout).Should(Receive())
+			for _, peerRunner := range peerRunners {
+				Eventually(peerRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("peer is a static leader, ignoring peer.deliveryclient.reconnectTotalTimeThreshold"))
+			}
 		})
 	})
 
@@ -359,9 +476,9 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	Describe("basic solo network with containers being interroped", func() {
+	Describe("basic solo network with containers being interrupted", func() {
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.FullSolo(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
 			network.Bootstrap()
@@ -371,7 +488,7 @@ var _ = Describe("EndToEnd", func() {
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
-		It("kills chaincode containers as unexpected", func() {
+		It("recreates terminated chaincode containers", func() {
 			chaincode := nwo.Chaincode{
 				Name:            "mycc",
 				Version:         "0.0",
@@ -392,7 +509,7 @@ var _ = Describe("EndToEnd", func() {
 			network.CreateAndJoinChannels(orderer)
 
 			By("enabling new lifecycle capabilities")
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer1"), network.Peer("Org2", "peer1"))
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			By("deploying the chaincode")
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
@@ -400,22 +517,26 @@ var _ = Describe("EndToEnd", func() {
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 
 			By("removing chaincode containers from all peers")
+			listChaincodeContainers := docker.ListContainersOptions{
+				Filters: map[string][]string{
+					"name": {chaincodeContainerNameFilter(network, chaincode)},
+				},
+			}
 			ctx := context.Background()
-			containers, err := client.ListContainers(docker.ListContainersOptions{})
+			containers, err := client.ListContainers(listChaincodeContainers)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(containers).NotTo(BeEmpty())
 
-			originalContainerIDs := []string{}
+			var originalContainerIDs []string
 			for _, container := range containers {
-				if strings.Contains(container.Command, "chaincode") {
-					originalContainerIDs = append(originalContainerIDs, container.ID)
-					err = client.RemoveContainer(docker.RemoveContainerOptions{
-						ID:            container.ID,
-						RemoveVolumes: true,
-						Force:         true,
-						Context:       ctx,
-					})
-					Expect(err).NotTo(HaveOccurred())
-				}
+				originalContainerIDs = append(originalContainerIDs, container.ID)
+				err = client.RemoveContainer(docker.RemoveContainerOptions{
+					ID:            container.ID,
+					RemoveVolumes: true,
+					Force:         true,
+					Context:       ctx,
+				})
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			By("invoking chaincode against all peers in test channel")
@@ -436,9 +557,9 @@ var _ = Describe("EndToEnd", func() {
 			}
 
 			By("checking successful removals of all old chaincode containers")
-			newContainers, err := client.ListContainers(docker.ListContainersOptions{})
+			newContainers, err := client.ListContainers(listChaincodeContainers)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(newContainers)).To(BeEquivalentTo(len(containers)))
+			Expect(newContainers).To(HaveLen(len(containers)))
 
 			for _, container := range newContainers {
 				Expect(originalContainerIDs).NotTo(ContainElement(container.ID))
@@ -465,7 +586,7 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, c
 		Ctor:      `{"Args":["invoke","a","b","10"]}`,
 		PeerAddresses: []string{
 			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
 	})
@@ -491,8 +612,8 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 		Name:      "mycc",
 		Ctor:      `{"Args":["respond","300","response-message","response-payload"]}`,
 		PeerAddresses: []string{
-			n.PeerAddress(n.Peer("Org1", "peer1"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
 	})
@@ -507,8 +628,8 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 		Name:      "mycc",
 		Ctor:      `{"Args":["respond","400","response-message","response-payload"]}`,
 		PeerAddresses: []string{
-			n.PeerAddress(n.Peer("Org1", "peer1"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("Org2", "peer1"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
 	})
@@ -694,6 +815,7 @@ func CheckLogspecOperations(client *http.Client, logspecURL string) {
 	resp, err = client.Do(updateReq)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+	resp.Body.Close()
 
 	resp, err = client.Get(logspecURL)
 	Expect(err).NotTo(HaveOccurred())
@@ -702,6 +824,14 @@ func CheckLogspecOperations(client *http.Client, logspecURL string) {
 	resp.Body.Close()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(string(bodyBytes)).To(MatchJSON(`{"spec":"debug"}`))
+
+	By("resetting the logspec")
+	updateReq, err = http.NewRequest(http.MethodPut, logspecURL, strings.NewReader(`{"spec":"info"}`))
+	Expect(err).NotTo(HaveOccurred())
+	resp, err = client.Do(updateReq)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+	resp.Body.Close()
 }
 
 func CheckHealthEndpoint(client *http.Client, url string) {
@@ -729,4 +859,20 @@ func packageInstallApproveChaincode(network *nwo.Network, channel string, ordere
 	nwo.PackageChaincode(network, chaincode, peers[0])
 	nwo.InstallChaincode(network, chaincode, peers...)
 	nwo.ApproveChaincodeForMyOrg(network, channel, orderer, chaincode, peers...)
+}
+
+func hashFile(file string) string {
+	f, err := os.Open(file)
+	Expect(err).NotTo(HaveOccurred())
+	defer f.Close()
+
+	h := sha256.New()
+	_, err = io.Copy(h, f)
+	Expect(err).NotTo(HaveOccurred())
+
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func chaincodeContainerNameFilter(n *nwo.Network, chaincode nwo.Chaincode) string {
+	return fmt.Sprintf("^/%s-.*-%s-%s$", n.NetworkID, chaincode.Label, hashFile(chaincode.PackageFile))
 }

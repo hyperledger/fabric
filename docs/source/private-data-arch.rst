@@ -19,7 +19,7 @@ is committed to the channel. The collection file needs to be the same for all
 channel members. If you are using the peer CLI to approve and commit the
 chaincode definition, use the ``--collections-config`` flag to specify the path
 to the collection definition file. If you are using the Fabric SDK for Node.js,
-visit `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/master/tutorial-chaincode-lifecycle.html>`_.
+visit `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`_.
 To use the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_ to deploy a private data collection,
 use the ``--collections-config`` flag when `instantiating your chaincode <https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html#peer-chaincode-instantiate>`_.
 
@@ -124,13 +124,13 @@ collection definitions:
   }
  ]
 
-This example uses the organizations from the BYFN sample network, ``Org1`` and
-``Org2`` . The policy in the  ``collectionMarbles`` definition authorizes both
+This example uses the organizations from the Fabric test network, ``Org1`` and
+``Org2``. The policy in the  ``collectionMarbles`` definition authorizes both
 organizations to the private data. This is a typical configuration when the
 chaincode data needs to remain private from the ordering service nodes. However,
 the policy in the ``collectionMarblePrivateDetails`` definition restricts access
 to a subset of organizations in the channel (in this case ``Org1`` ). Additionally,
-writing to this collection requires endorsement from a ``Org1`` peer, even
+writing to this collection requires endorsement from an ``Org1`` peer, even
 though the chaincode level endorsement policy may require endorsement from
 ``Org1`` or ``Org2``. And since "memberOnlyWrite" is true, only clients from
 ``Org1`` may invoke chaincode that writes to the private data collection.
@@ -315,7 +315,7 @@ applied to the channel’s state database to enable JSON content queries, by
 packaging indexes in a ``META-INF/statedb/couchdb/indexes`` directory at chaincode
 installation time.  Similarly, indexes can also be applied to private data
 collections, by packaging indexes in a ``META-INF/statedb/couchdb/collections/<collection_name>/indexes``
-directory. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/master/chaincode/marbles02_private/go/META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexOwner.json>`_.
+directory. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02_private/go/META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexOwner.json>`_.
 
 Considerations when using private data
 --------------------------------------

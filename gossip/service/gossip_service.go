@@ -11,7 +11,7 @@ import (
 
 	gproto "github.com/hyperledger/fabric-protos-go/gossip"
 	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
-	corecomm "github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
+	corecomm "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
@@ -123,7 +124,7 @@ type GossipServiceAdapter interface {
 // DeliveryServiceFactory factory to create and initialize delivery service instance
 type DeliveryServiceFactory interface {
 	// Returns an instance of delivery client
-	Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, msc api.MessageCryptoService) deliverservice.DeliverService
+	Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, msc api.MessageCryptoService, isStaticLead bool) deliverservice.DeliverService
 }
 
 type deliveryFactoryImpl struct {
@@ -134,8 +135,9 @@ type deliveryFactoryImpl struct {
 }
 
 // Returns an instance of delivery client
-func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, mcs api.MessageCryptoService) deliverservice.DeliverService {
+func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, ordererSource *orderers.ConnectionSource, mcs api.MessageCryptoService, isStaticLeader bool) deliverservice.DeliverService {
 	return deliverservice.NewDeliverService(&deliverservice.Config{
+		IsStaticLeader:       isStaticLeader,
 		CryptoSvc:            mcs,
 		Gossip:               g,
 		Signer:               df.signer,
@@ -170,6 +172,7 @@ type GossipService struct {
 	secAdv          api.SecurityAdvisor
 	metrics         *gossipmetrics.GossipMetrics
 	serviceConfig   *ServiceConfig
+	privdataConfig  *gossipprivdata.PrivdataConfig
 }
 
 // This is an implementation of api.JoinChannelMessage.
@@ -211,6 +214,7 @@ func New(
 	deliverGRPCClient *corecomm.GRPCClient,
 	gossipConfig *gossip.Config,
 	serviceConfig *ServiceConfig,
+	privdataConfig *gossipprivdata.PrivdataConfig,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 ) (*GossipService, error) {
 	serializedIdentity, err := peerIdentity.Serialize()
@@ -243,10 +247,11 @@ func New(
 			deliverGRPCClient:    deliverGRPCClient,
 			deliverServiceConfig: deliverServiceConfig,
 		},
-		peerIdentity:  serializedIdentity,
-		secAdv:        secAdv,
-		metrics:       gossipMetrics,
-		serviceConfig: serviceConfig,
+		peerIdentity:   serializedIdentity,
+		secAdv:         secAdv,
+		metrics:        gossipMetrics,
+		serviceConfig:  serviceConfig,
+		privdataConfig: privdataConfig,
 	}, nil
 }
 
@@ -260,7 +265,8 @@ func (g *GossipService) DistributePrivateData(channelID string, txID string, pri
 	}
 
 	if err := handler.distributor.Distribute(txID, privData, blkHt); err != nil {
-		logger.Error("Failed to distributed private collection, txID", txID, "channel", channelID, "due to", err)
+		err := errors.WithMessagef(err, "failed to distribute private collection, txID %s, channel %s", txID, channelID)
+		logger.Error(err)
 		return err
 	}
 
@@ -306,22 +312,23 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		PullRetryThreshold:             g.serviceConfig.PvtDataPullRetryThreshold,
 		SkipPullingInvalidTransactions: g.serviceConfig.SkipPullingInvalidTransactionsDuringCommit,
 	}
-	coordinator := gossipprivdata.NewCoordinator(gossipprivdata.Support{
+	selfSignedData := g.createSelfSignedData()
+	mspID := string(g.secAdv.OrgByPeerIdentity(selfSignedData.Identity))
+	coordinator := gossipprivdata.NewCoordinator(mspID, gossipprivdata.Support{
 		ChainID:            channelID,
 		CollectionStore:    support.CollectionStore,
 		Validator:          support.Validator,
 		Committer:          support.Committer,
 		Fetcher:            fetcher,
 		CapabilityProvider: support.CapabilityProvider,
-	}, store, g.createSelfSignedData(), g.metrics.PrivdataMetrics, coordinatorConfig,
+	}, store, selfSignedData, g.metrics.PrivdataMetrics, coordinatorConfig,
 		support.IdDeserializeFactory)
 
-	privdataConfig := gossipprivdata.GlobalConfig()
 	var reconciler gossipprivdata.PvtDataReconciler
 
-	if privdataConfig.ReconciliationEnabled {
+	if g.privdataConfig.ReconciliationEnabled {
 		reconciler = gossipprivdata.NewReconciler(channelID, g.metrics.PrivdataMetrics,
-			support.Committer, fetcher, privdataConfig)
+			support.Committer, fetcher, g.privdataConfig)
 	} else {
 		reconciler = &gossipprivdata.NoOpReconciler{}
 	}
@@ -338,6 +345,7 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 	blockingMode := !g.serviceConfig.NonBlockingCommitMode
 	stateConfig := state.GlobalConfig()
 	g.chains[channelID] = state.NewGossipStateProvider(
+		flogging.MustGetLogger(util.StateLogger),
 		channelID,
 		servicesAdapter,
 		coordinator,
@@ -345,7 +353,7 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 		blockingMode,
 		stateConfig)
 	if g.deliveryService[channelID] == nil {
-		g.deliveryService[channelID] = g.deliveryFactory.Service(g, ordererSource, g.mcs)
+		g.deliveryService[channelID] = g.deliveryFactory.Service(g, ordererSource, g.mcs, g.serviceConfig.OrgLeader)
 	}
 
 	// Delivery service might be nil only if it was not able to get connected

@@ -110,11 +110,12 @@ func TestGetArgs(t *testing.T) {
 func TestGetEnv(t *testing.T) {
 	vm := &DockerVM{
 		LoggingEnv: []string{"LOG_ENV=foo"},
+		MSPID:      "mspid",
 	}
 
 	t.Run("nil TLS config", func(t *testing.T) {
 		env := vm.GetEnv("test", nil)
-		assert.Equal(t, []string{"CORE_CHAINCODE_ID_NAME=test", "LOG_ENV=foo", "CORE_PEER_TLS_ENABLED=false"}, env)
+		assert.Equal(t, []string{"CORE_CHAINCODE_ID_NAME=test", "LOG_ENV=foo", "CORE_PEER_TLS_ENABLED=false", "CORE_PEER_LOCALMSPID=mspid"}, env)
 	})
 
 	t.Run("real TLS config", func(t *testing.T) {
@@ -132,6 +133,7 @@ func TestGetEnv(t *testing.T) {
 			"CORE_TLS_CLIENT_KEY_FILE=/etc/hyperledger/fabric/client_pem.key",
 			"CORE_TLS_CLIENT_CERT_FILE=/etc/hyperledger/fabric/client_pem.crt",
 			"CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/peer.crt",
+			"CORE_PEER_LOCALMSPID=mspid",
 		}, env)
 	})
 }
@@ -223,14 +225,16 @@ func Test_streamOutput(t *testing.T) {
 	gt.Eventually(opts.Success).Should(BeClosed())
 
 	fmt.Fprintf(opts.OutputStream, "message-one\n")
-	fmt.Fprintf(opts.OutputStream, "message-two") // does not get written
+	fmt.Fprintf(opts.OutputStream, "message-two") // does not get written until after stream closed
 	gt.Eventually(containerRecorder).Should(gbytes.Say("message-one"))
 	gt.Consistently(containerRecorder.Entries).Should(HaveLen(1))
 
 	close(errCh)
+
 	gt.Eventually(recorder).Should(gbytes.Say("Container container-name has closed its IO channel"))
 	gt.Consistently(recorder.Entries).Should(HaveLen(1))
-	gt.Consistently(containerRecorder.Entries).Should(HaveLen(1))
+	gt.Eventually(containerRecorder).Should(gbytes.Say("message-two"))
+	gt.Consistently(containerRecorder.Entries).Should(HaveLen(2))
 }
 
 func Test_BuildMetric(t *testing.T) {

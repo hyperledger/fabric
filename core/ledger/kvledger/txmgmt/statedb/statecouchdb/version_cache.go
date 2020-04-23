@@ -1,12 +1,13 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
 package statecouchdb
 
 import (
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 )
 
 type versions map[string]nsVersions

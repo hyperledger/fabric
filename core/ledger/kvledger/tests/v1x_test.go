@@ -16,10 +16,10 @@ import (
 
 	protopeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdbtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -72,11 +72,15 @@ func TestV13WithStateCouchdb(t *testing.T) {
 	testutil.CopyDir("testdata/v13_statecouchdb/couchdb_etc/local.d", localdHostDir, true)
 
 	// start couchdb using couchdbDataUnzipDir and localdHostDir as mount dirs
-	couchAddress, cleanup := couchdbtest.CouchDBSetup(couchdbDataUnzipDir, localdHostDir)
+	couchdbBinds := []string{
+		fmt.Sprintf("%s:%s", couchdbDataUnzipDir, "/opt/couchdb/data"),
+		fmt.Sprintf("%s:%s", localdHostDir, "/opt/couchdb/etc/local.d"),
+	}
+	couchAddress, cleanup := couchDBSetup(t, couchdbBinds)
 	defer cleanup()
 
 	// set required config data to use state couchdb
-	couchdbConfig := &couchdb.Config{
+	couchdbConfig := &ledger.CouchDBConfig{
 		Address:             couchAddress,
 		Username:            "",
 		Password:            "",
@@ -110,7 +114,11 @@ func TestV13WithStateCouchdb(t *testing.T) {
 	dataHelper.verify(h2)
 }
 
-func checkInitLedgerPanicAndDropDBs(t *testing.T, env *env, ledgerFSRoot string, couchdbConfig *couchdb.Config) {
+func couchDBSetup(t *testing.T, binds []string) (addr string, cleanup func()) {
+	return statecouchdb.StartCouchDB(t, binds)
+}
+
+func checkInitLedgerPanicAndDropDBs(t *testing.T, env *env, ledgerFSRoot string, couchdbConfig *ledger.CouchDBConfig) {
 	t.Logf("verifying that a panic occurs because idStore has old format and then reformat the idstore to proceed")
 	idStorePath := kvledger.LedgerProviderPath(ledgerFSRoot)
 	require.PanicsWithValue(

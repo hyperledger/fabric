@@ -15,8 +15,8 @@ import (
 	"github.com/hyperledger/fabric/cmd/common"
 	"github.com/hyperledger/fabric/cmd/common/comm"
 	"github.com/hyperledger/fabric/cmd/common/signer"
-	corecomm "github.com/hyperledger/fabric/core/comm"
 	discovery "github.com/hyperledger/fabric/discovery/client"
+	corecomm "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -35,10 +35,10 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	lifecyclemocks "github.com/hyperledger/fabric/core/cclifecycle/mocks"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/discovery"
 	disc "github.com/hyperledger/fabric/discovery/client"
@@ -54,6 +54,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gexec"
@@ -424,7 +425,7 @@ func createSupport(t *testing.T, dir string, lsccMetadataManager *lsccMetadataMa
 
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
 
-	org1Admin, err := cauthdsl.FromString("OR('Org1MSP.admin')")
+	org1Admin, err := policydsl.FromString("OR('Org1MSP.admin')")
 	assert.NoError(t, err)
 	org1AdminPolicy, _, err := cauthdsl.NewPolicyProvider(org1MSP).NewPolicy(protoutil.MarshalOrPanic(org1Admin))
 	assert.NoError(t, err)
@@ -606,7 +607,7 @@ func createChannelConfigGetter(s *sequenceWrapper, mspMgr msp.MSPManager) discac
 }
 
 func createPolicyManagerGetter(t *testing.T, mspMgr msp.MSPManager) *mocks.ChannelPolicyManagerGetter {
-	org1Org2Members, err := cauthdsl.FromString("OR('Org1MSP.client', 'Org2MSP.client')")
+	org1Org2Members, err := policydsl.FromString("OR('Org1MSP.client', 'Org2MSP.client')")
 	assert.NoError(t, err)
 	org1Org2MembersPolicy, _, err := cauthdsl.NewPolicyProvider(mspMgr).NewPolicy(protoutil.MarshalOrPanic(org1Org2Members))
 	assert.NoError(t, err)
@@ -910,7 +911,7 @@ func orgPrincipal(mspID string) *msprotos.MSPPrincipal {
 }
 
 func policyFromString(s string) *common.SignaturePolicyEnvelope {
-	p, err := cauthdsl.FromString(s)
+	p, err := policydsl.FromString(s)
 	if err != nil {
 		panic(err)
 	}
@@ -973,7 +974,7 @@ func signECDSA(k *ecdsa.PrivateKey, digest []byte) (signature []byte, err error)
 		return nil, err
 	}
 
-	s, _, err = bccsp.ToLowS(&k.PublicKey, s)
+	s, err = bccsp.ToLowS(&k.PublicKey, s)
 	if err != nil {
 		return nil, err
 	}

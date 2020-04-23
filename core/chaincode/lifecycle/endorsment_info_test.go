@@ -20,21 +20,34 @@ import (
 
 var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 	var (
-		cei               *lifecycle.ChaincodeEndorsementInfoSource
-		resources         *lifecycle.Resources
-		fakeLegacyImpl    *mock.LegacyLifecycle
-		fakePublicState   MapLedgerShim
-		fakeQueryExecutor *mock.SimpleQueryExecutor
-		fakeCache         *mock.ChaincodeInfoCache
-		testInfo          *lifecycle.LocalChaincodeInfo
-		builtinSCCs       scc.BuiltinSCCs
+		cei                     *lifecycle.ChaincodeEndorsementInfoSource
+		resources               *lifecycle.Resources
+		fakeLegacyImpl          *mock.LegacyLifecycle
+		fakePublicState         MapLedgerShim
+		fakeQueryExecutor       *mock.SimpleQueryExecutor
+		fakeCache               *mock.ChaincodeInfoCache
+		fakeChannelConfigSource *mock.ChannelConfigSource
+		fakeChannelConfig       *mock.ChannelConfig
+		fakeAppConfig           *mock.ApplicationConfig
+		fakeCapabilities        *mock.ApplicationCapabilities
+		testInfo                *lifecycle.LocalChaincodeInfo
+		builtinSCCs             scc.BuiltinSCCs
 	)
 
 	BeforeEach(func() {
 		fakeLegacyImpl = &mock.LegacyLifecycle{}
+		fakeChannelConfigSource = &mock.ChannelConfigSource{}
+		fakeChannelConfig = &mock.ChannelConfig{}
+		fakeAppConfig = &mock.ApplicationConfig{}
+		fakeCapabilities = &mock.ApplicationCapabilities{}
+		fakeChannelConfigSource.GetStableChannelConfigReturns(fakeChannelConfig)
+		fakeChannelConfig.ApplicationConfigReturns(fakeAppConfig, true)
+		fakeAppConfig.CapabilitiesReturns(fakeCapabilities)
+		fakeCapabilities.LifecycleV20Returns(true)
 
 		resources = &lifecycle.Resources{
-			Serializer: &lifecycle.Serializer{},
+			Serializer:          &lifecycle.Serializer{},
+			ChannelConfigSource: fakeChannelConfigSource,
 		}
 
 		fakePublicState = MapLedgerShim(map[string][]byte{})
@@ -241,6 +254,53 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 				Expect(name).To(Equal("cc-name"))
 				Expect(qe).To(Equal(fakeQueryExecutor))
 			})
+		})
+	})
+
+	Context("when LifecycleV20 capability is not enabled", func() {
+		var ccEndorsementInfo *lifecycle.ChaincodeEndorsementInfo
+
+		BeforeEach(func() {
+			ccEndorsementInfo = &lifecycle.ChaincodeEndorsementInfo{
+				Version:           "legacy-version",
+				EndorsementPlugin: "legacy-plugin",
+				ChaincodeID:       "legacy-id",
+			}
+			fakeCapabilities.LifecycleV20Returns(false)
+			fakeLegacyImpl.ChaincodeEndorsementInfoReturns(ccEndorsementInfo, nil)
+		})
+
+		It("returns the legacy chaincode info", func() {
+			res, err := cei.ChaincodeEndorsementInfo("channel-id", "cc-name", fakeQueryExecutor)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(Equal(ccEndorsementInfo))
+			Expect(fakeLegacyImpl.ChaincodeEndorsementInfoCallCount()).To(Equal(1))
+			channelID, name, qe := fakeLegacyImpl.ChaincodeEndorsementInfoArgsForCall(0)
+			Expect(channelID).To(Equal("channel-id"))
+			Expect(name).To(Equal("cc-name"))
+			Expect(qe).To(Equal(fakeQueryExecutor))
+		})
+	})
+
+	Context("when channel config is not found", func() {
+		BeforeEach(func() {
+			fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
+		})
+
+		It("returns not get channel config error", func() {
+			_, err := cei.ChaincodeEndorsementInfo("channel-id", "cc-name", fakeQueryExecutor)
+			Expect(err).To(MatchError("could not get channel config for channel 'channel-id'"))
+		})
+	})
+
+	Context("when application config is not found", func() {
+		BeforeEach(func() {
+			fakeChannelConfig.ApplicationConfigReturns(nil, false)
+		})
+
+		It("returns not get application config error", func() {
+			_, err := cei.ChaincodeEndorsementInfo("channel-id", "cc-name", fakeQueryExecutor)
+			Expect(err).To(MatchError("could not get application config for channel 'channel-id'"))
 		})
 	})
 })

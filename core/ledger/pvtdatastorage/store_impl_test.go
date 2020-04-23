@@ -32,8 +32,8 @@ func TestEmptyStore(t *testing.T) {
 	env := NewTestStoreEnv(t, "TestEmptyStore", nil, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
-	store := env.TestStore
-	testEmpty(true, assert, store)
+	store := env.TestStore.(*store)
+	assert.True(store.isEmpty)
 }
 
 func TestStoreBasicCommitAndRetrieval(t *testing.T) {
@@ -591,26 +591,6 @@ func TestStoreState(t *testing.T) {
 	assert.True(ok)
 }
 
-func TestInitLastCommittedBlock(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestStoreState", nil, pvtDataConf())
-	defer env.Cleanup()
-	assert := assert.New(t)
-	store := env.TestStore
-	existingLastBlockNum := uint64(25)
-	assert.NoError(store.InitLastCommittedBlock(existingLastBlockNum))
-
-	testEmpty(false, assert, store)
-	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, store)
-
-	env.CloseAndReopen()
-	testEmpty(false, assert, store)
-	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, store)
-
-	err := store.InitLastCommittedBlock(30)
-	_, ok := err.(*ErrIllegalCall)
-	assert.True(ok)
-}
-
 func TestPendingBatch(t *testing.T) {
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
@@ -623,13 +603,17 @@ func TestPendingBatch(t *testing.T) {
 	assert := assert.New(t)
 	s := env.TestStore
 	existingLastBlockNum := uint64(25)
-	assert.NoError(s.InitLastCommittedBlock(existingLastBlockNum))
+	batch := leveldbhelper.NewUpdateBatch()
+	batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(existingLastBlockNum))
+	assert.NoError(s.(*store).db.WriteBatch(batch, true))
+	s.(*store).lastCommittedBlock = existingLastBlockNum
+	s.(*store).isEmpty = false
 	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, s)
 
 	// assume that a block has been prepared in v142 and the peer was
 	// killed for upgrade. When the pvtdataStore is opened again with
 	// v2.0 peer, the pendingBatch should be marked as committed.
-	batch := leveldbhelper.NewUpdateBatch()
+	batch = leveldbhelper.NewUpdateBatch()
 
 	// store pvtData entries
 	dataKey := &dataKey{nsCollBlk{"ns-1", "coll-1", 26}, 1}
@@ -771,12 +755,6 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-2", "coll-2")
 	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
-}
-
-func testEmpty(expectedEmpty bool, assert *assert.Assertions, store Store) {
-	isEmpty, err := store.IsEmpty()
-	assert.NoError(err)
-	assert.Equal(expectedEmpty, isEmpty)
 }
 
 func testLastCommittedBlockHeight(expectedBlockHt uint64, assert *assert.Assertions, store Store) {

@@ -87,7 +87,7 @@ type eligibilityComputer struct {
 
 // computeEligibility computes eligilibity of private data and
 // groups all private data as either eligibleMissing or ineligibleMissing prior to fetching
-func (ec *eligibilityComputer) computeEligibility(pvtdataToRetrieve []*ledger.TxPvtdataInfo) (*pvtdataRetrievalInfo, error) {
+func (ec *eligibilityComputer) computeEligibility(mspID string, pvtdataToRetrieve []*ledger.TxPvtdataInfo) (*pvtdataRetrievalInfo, error) {
 	sources := make(map[rwSetKey][]*peer.Endorsement)
 	eligibleMissingKeys := make(rwsetKeys)
 	ineligibleMissingKeys := make(rwsetKeys)
@@ -125,7 +125,10 @@ func (ec *eligibilityComputer) computeEligibility(pvtdataToRetrieve []*ledger.Tx
 				collection: col,
 			}
 
-			if !policy.AccessFilter()(ec.selfSignedData) {
+			// First check if mspID is found in the MemberOrgs before falling back to AccessFilter policy evaluation
+			memberOrgs := policy.MemberOrgs()
+			if _, ok := memberOrgs[mspID]; !ok &&
+				!policy.AccessFilter()(ec.selfSignedData) {
 				ec.logger.Debugf("Peer is not eligible for collection: chaincode [%s], "+
 					"collection name [%s], txID [%s] the policy is [%#v]. Skipping.",
 					ns, col, txID, policy)
@@ -137,8 +140,7 @@ func (ec *eligibilityComputer) computeEligibility(pvtdataToRetrieve []*ledger.Tx
 			eligibleMissingKeys[key] = rwsetInfo{
 				invalid: invalid,
 			}
-
-			sources[key] = endorsersFromEligibleOrgs(ns, col, endorsers, policy.MemberOrgs())
+			sources[key] = endorsersFromEligibleOrgs(ns, col, endorsers, memberOrgs)
 		}
 	}
 
@@ -151,6 +153,7 @@ func (ec *eligibilityComputer) computeEligibility(pvtdataToRetrieve []*ledger.Tx
 }
 
 type PvtdataProvider struct {
+	mspID                                   string
 	selfSignedData                          protoutil.SignedData
 	logger                                  util.Logger
 	listMissingPrivateDataDurationHistogram metrics.Histogram
@@ -191,7 +194,7 @@ func (pdp *PvtdataProvider) RetrievePvtdata(pvtdataToRetrieve []*ledger.TxPvtdat
 		idDeserializerFactory:   pdp.idDeserializerFactory,
 	}
 
-	pvtdataRetrievalInfo, err := eligibilityComputer.computeEligibility(pvtdataToRetrieve)
+	pvtdataRetrievalInfo, err := eligibilityComputer.computeEligibility(pdp.mspID, pvtdataToRetrieve)
 	if err != nil {
 		return nil, err
 	}
@@ -225,13 +228,9 @@ func (pdp *PvtdataProvider) RetrievePvtdata(pvtdataToRetrieve []*ledger.TxPvtdat
 	pdp.logger.Debugf("Fetching %d collection private write sets from remote peers for a maximum duration of %s", len(pvtdataRetrievalInfo.eligibleMissingKeys), retryThresh)
 	startPull := time.Now()
 	for len(pvtdataRetrievalInfo.eligibleMissingKeys) > 0 && time.Since(startPull) < retryThresh {
-		pdp.populateFromRemotePeers(pvtdata, pvtdataRetrievalInfo)
-
-		// If succeeded to fetch everything, break to skip sleep
-		if len(pvtdataRetrievalInfo.eligibleMissingKeys) == 0 {
+		if needToRetry := pdp.populateFromRemotePeers(pvtdata, pvtdataRetrievalInfo); !needToRetry {
 			break
 		}
-
 		// If there are still missing keys, sleep before retry
 		pdp.sleeper.Sleep(pullRetrySleepInterval)
 	}
@@ -344,13 +343,15 @@ func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, pvtd
 
 // populateFromRemotePeers populates pvtdata with data fetched from remote peers and updates
 // pvtdataRetrievalInfo by removing missing data that was fetched from remote peers
-func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdataRetrievalInfo *pvtdataRetrievalInfo) {
+func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdataRetrievalInfo *pvtdataRetrievalInfo) bool {
 	pdp.logger.Debugf("Attempting to retrieve %d private write sets from remote peers.", len(pvtdataRetrievalInfo.eligibleMissingKeys))
 
 	dig2src := make(map[pvtdatacommon.DigKey][]*peer.Endorsement)
+	var skipped int
 	for k, v := range pvtdataRetrievalInfo.eligibleMissingKeys {
 		if v.invalid && pdp.skipPullingInvalidTransactions {
 			pdp.logger.Debugf("Skipping invalid key [%v] because peer is configured to skip pulling rwsets of invalid transactions.", k)
+			skipped++
 			continue
 		}
 		pdp.logger.Debugf("Fetching [%v] from remote peers", k)
@@ -363,10 +364,15 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdata
 		}
 		dig2src[dig] = pvtdataRetrievalInfo.sources[k]
 	}
+
+	if len(dig2src) == 0 {
+		return false
+	}
+
 	fetchedData, err := pdp.fetcher.fetch(dig2src)
 	if err != nil {
 		pdp.logger.Warningf("Failed fetching private data from remote peers for dig2src:[%v], err: %s", dig2src, err)
-		return
+		return true
 	}
 
 	// Iterate over data fetched from remote peers
@@ -409,6 +415,8 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdata
 			}
 		}
 	}
+
+	return len(pvtdataRetrievalInfo.eligibleMissingKeys) > skipped
 }
 
 // prepareBlockPvtdata consolidates the fetched private data as well as ineligible and eligible
@@ -539,7 +547,7 @@ func getTxIDBySeqInBlock(seqInBlock uint64, pvtdataToRetrieve []*ledger.TxPvtdat
 	return ""
 }
 
-func endorsersFromEligibleOrgs(ns string, col string, endorsers []*peer.Endorsement, orgs []string) []*peer.Endorsement {
+func endorsersFromEligibleOrgs(ns string, col string, endorsers []*peer.Endorsement, orgs map[string]struct{}) []*peer.Endorsement {
 	var res []*peer.Endorsement
 	for _, e := range endorsers {
 		sID := &msp.SerializedIdentity{}
@@ -548,7 +556,7 @@ func endorsersFromEligibleOrgs(ns string, col string, endorsers []*peer.Endorsem
 			logger.Warning("Failed unmarshalling endorser:", err)
 			continue
 		}
-		if !util.Contains(sID.Mspid, orgs) {
+		if _, ok := orgs[sID.Mspid]; !ok {
 			logger.Debug(sID.Mspid, "isn't among the collection's orgs:", orgs, "for namespace", ns, ",collection", col)
 			continue
 		}

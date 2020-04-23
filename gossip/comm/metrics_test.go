@@ -24,8 +24,6 @@ func newCommInstanceWithMetrics(t *testing.T, sec *naiveSecProvider, metrics *me
 }
 
 func TestMetrics(t *testing.T) {
-	t.Parallel()
-
 	testMetricProvider := mocks.TestUtilConstructMetricProvider()
 
 	var overflown uint32
@@ -83,5 +81,4 @@ func TestMetrics(t *testing.T) {
 	)
 
 	assert.Equal(t, uint32(1), atomic.LoadUint32(&overflown))
-
 }

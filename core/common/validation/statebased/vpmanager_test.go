@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -102,7 +102,7 @@ func TestSimple(t *testing.T) {
 	// Scenario: validation parameter is retrieved with no dependency
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{},
@@ -273,7 +273,7 @@ func TestDependencyNoConflict(t *testing.T) {
 	// the ledger.
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -317,7 +317,7 @@ func TestDependencyConflict(t *testing.T) {
 	// to the ledger component because of MVCC checks
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -360,7 +360,7 @@ func TestMultipleDependencyNoConflict(t *testing.T) {
 	// the ledger.
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -410,7 +410,7 @@ func TestMultipleDependencyConflict(t *testing.T) {
 	// to the ledger component because of MVCC checks
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -454,7 +454,7 @@ func TestPvtDependencyNoConflict(t *testing.T) {
 	// Scenario: like TestDependencyNoConflict but for private data
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -492,7 +492,7 @@ func TestPvtDependencyConflict(t *testing.T) {
 	// Scenario: like TestDependencyConflict but for private data
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -532,7 +532,7 @@ func TestBlockValidationTerminatesBeforeNewBlock(t *testing.T) {
 	// (2,0). This cannot happen and so we panic
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -629,7 +629,7 @@ func TestBadRwsetIsNoDependency(t *testing.T) {
 	// that our code doesn't break
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -667,7 +667,7 @@ func TestWritesIntoDifferentNamespaces(t *testing.T) {
 	// parameters for cc. This does not constitute a dependency
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -704,7 +704,7 @@ func TestCombinedCalls(t *testing.T) {
 	// for different keys - one succeeds and one fails.
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}
@@ -764,7 +764,7 @@ func TestForRaces(t *testing.T) {
 	// run with go test -race
 
 	vpMetadataKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
-	spe := cauthdsl.SignedByMspMember("foo")
+	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
 	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{}, StateFetcher: ms}

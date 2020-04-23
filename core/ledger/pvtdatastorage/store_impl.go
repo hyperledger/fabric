@@ -622,29 +622,6 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	return blockPvtdata, nil
 }
 
-// TODO: FAB-16297 -- Remove init() as it is no longer needed. The private data feature
-// became stable from v1.2 onwards. To allow the initiation of pvtdata store with non-zero
-// block height (mainly during a rolling upgrade from an existing v1.1 network to v1.2),
-// we introduced pvtdata init() function which would take the height of block store and
-// set it as a height of pvtdataStore. From v2.0 onwards, it is no longer needed as we do
-// not support a rolling upgrade from v1.1 to v2.0
-
-// InitLastCommittedBlock implements the function in the interface `Store`
-func (s *store) InitLastCommittedBlock(blockNum uint64) error {
-	if !s.isEmpty {
-		return &ErrIllegalCall{"The private data store is not empty. InitLastCommittedBlock() function call is not allowed"}
-	}
-	batch := leveldbhelper.NewUpdateBatch()
-	batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(blockNum))
-	if err := s.db.WriteBatch(batch, true); err != nil {
-		return err
-	}
-	s.isEmpty = false
-	s.lastCommittedBlock = blockNum
-	logger.Debugf("InitLastCommittedBlock set to block [%d]", blockNum)
-	return nil
-}
-
 // GetMissingPvtDataInfoForMostRecentBlocks implements the function in the interface `Store`
 func (s *store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	// we assume that this function would be called by the gossip only after processing the
@@ -879,11 +856,6 @@ func (s *store) LastCommittedBlockHeight() (uint64, error) {
 		return 0, nil
 	}
 	return atomic.LoadUint64(&s.lastCommittedBlock) + 1, nil
-}
-
-// IsEmpty implements the function in the interface `Store`
-func (s *store) IsEmpty() (bool, error) {
-	return s.isEmpty, nil
 }
 
 // Shutdown implements the function in the interface `Store`

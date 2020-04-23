@@ -1,12 +1,10 @@
 Building Your First Network
 ===========================
 
-.. note:: These instructions have been verified to work against the
-          latest stable Docker images and the pre-compiled
-          setup utilities within the supplied tar file. If you run
-          these commands with images or tools from the current master
-          branch, it is possible that you will see configuration and panic
-          errors.
+.. note:: The Build your first network (BYFN) tutorial has been deprecated. If
+          you are getting started with Hyperledger Fabric and would like to deploy
+          a basic network, see :doc:`test_network`. If you are deploying Fabric
+          in production, see the guide for :doc:`deployment_guide_overview`.
 
 The build your first network (BYFN) scenario provisions a sample Hyperledger
 Fabric network consisting of two organizations, each maintaining two peer
@@ -154,24 +152,24 @@ Next, you can bring the network up with one of the following commands:
 
   ./byfn.sh up
 
-The above command will compile Golang chaincode images and spin up the corresponding
+The above command will compile Go chaincode images and spin up the corresponding
 containers. Go is the default chaincode language, however there is also support
-for `Node.js <https://fabric-shim.github.io/>`_ and `Java <https://hyperledger.github.io/fabric-chaincode-java/>`_
+for `Node.js <https://hyperledger.github.io/fabric-chaincode-node/>`_ and `Java <https://hyperledger.github.io/fabric-chaincode-java/>`_
 chaincode. If you'd like to run through this tutorial with node chaincode, pass
 the following command instead:
 
 .. code:: bash
 
   # we use the -l flag to specify the chaincode language
-  # forgoing the -l flag will default to Golang
+  # forgoing the -l flag will default to "golang"
 
   ./byfn.sh up -l javascript
 
 .. note:: For more information on the Node.js shim, please refer to its
-          `documentation <https://fabric-shim.github.io/ChaincodeInterface.html>`_.
+          `documentation <https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-shim.ChaincodeInterface.html>`_.
 
 .. note:: For more information on the Java shim, please refer to its
-          `documentation <https://hyperledger.github.io/fabric-chaincode-java/master/api/org/hyperledger/fabric/shim/Chaincode.html>`_.
+          `documentation <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/Chaincode.html>`_.
 
 Тo make the sample run with Java chaincode, you have to specify ``-l java`` as follows:
 
@@ -412,8 +410,9 @@ Then, we'll invoke the ``configtxgen`` tool to create the orderer genesis block:
   ../bin/configtxgen -profile SampleMultiNodeEtcdRaft -channelID byfn-sys-channel -outputBlock ./channel-artifacts/genesis.block
 
 .. note:: The orderer genesis block and the subsequent artifacts we are about to create
-          will be output into the ``channel-artifacts`` directory at the root of this
-          project. The `channelID` in the above command is the name of the system channel.
+          will be output into the ``channel-artifacts`` directory at the root of the
+          ``first-network`` directory. The `channelID` in the above command is the
+          name of the system channel.
 
 .. _createchanneltx:
 
@@ -473,7 +472,7 @@ First let's start our network:
 
 .. code:: bash
 
-    docker-compose -f docker-compose-cli.yaml up -f docker-compose-etcdraft2.yaml up -d
+    docker-compose -f docker-compose-cli.yaml -f docker-compose-etcdraft2.yaml up -d
 
 If you want to see the realtime logs for your network, then do not supply the ``-d`` flag.
 If you let the logs stream, then you will need to open a second terminal to execute the CLI calls.
@@ -631,18 +630,18 @@ each package you create, you need to provide a chaincode package label as a
 description of the chaincode. Use the following commands to package a sample
 Go, Node.js or Java chaincode.
 
-**Golang**
+**Go**
 
 .. code:: bash
 
-    # before packaging Golang chaincode, vendoring Go dependencies is required like the following commands.
+    # before packaging Go chaincode, vendoring Go dependencies is required like the following commands.
     cd /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/go
     GO111MODULE=on go mod vendor
     cd -
 
-    # this packages a Golang chaincode.
+    # this packages a Go chaincode.
     # make note of the --lang flag to indicate "golang" chaincode
-    # for go chaincode --path takes the relative path from $GOPATH/src
+    # for Go chaincode --path takes the relative path from $GOPATH/src
     # The --label flag is used to create the package label
     peer lifecycle chaincode package mycc.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/abstore/go/ --lang golang --label mycc_1
 
@@ -652,7 +651,7 @@ Go, Node.js or Java chaincode.
 
     # this packages a Node.js chaincode
     # make note of the --lang flag to indicate "node" chaincode
-    # for node chaincode --path takes the absolute path to the node.js chaincode
+    # for node chaincode --path takes the absolute path to the Node.js chaincode
     # The --label flag is used to create the package label
     peer lifecycle chaincode package mycc.tar.gz --path /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/javascript/ --lang node --label mycc_1
 
@@ -662,7 +661,7 @@ Go, Node.js or Java chaincode.
 
     # this packages a java chaincode
     # make note of the --lang flag to indicate "java" chaincode
-    # for java chaincode --path takes the absolute path to the java chaincode
+    # for java chaincode --path takes the absolute path to the Java chaincode
     # The --label flag is used to create the package label
     peer lifecycle chaincode package mycc.tar.gz --path /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/abstore/java/ --lang java --label mycc_1
 
@@ -1194,12 +1193,12 @@ channel, use the following steps to interact with the **marbles02** chaincode:
 
 .. code:: bash
 
-       # before packaging Golang chaincode, vendoring Go dependencies is required like the following commands.
+       # before packaging Go chaincode, vendoring dependencies is required.
        cd /opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode/marbles02/go
        GO111MODULE=on go mod vendor
        cd -
 
-       # packages and installs the Golang chaincode
+       # package and install the Go chaincode
        peer lifecycle chaincode package marbles.tar.gz --path github.com/hyperledger/fabric-samples/chaincode/marbles02/go/ --lang golang --label marbles_1
        peer lifecycle chaincode install marbles.tar.gz
 
@@ -1324,15 +1323,6 @@ since its data content is stored in JSON format and fully queryable. Therefore, 
 
 CouchDB can also enhance the security for compliance and data protection in the blockchain. As it is able to implement field-level security through the filtering and masking of individual attributes within a transaction, and only authorizing the read-only permission if needed.
 
-In addition, CouchDB falls into the AP-type (Availability and Partition Tolerance) of the CAP theorem. It uses a master-master replication model with ``Eventual Consistency``.
-More information can be found on the
-`Eventual Consistency page of the CouchDB documentation <http://docs.couchdb.org/en/latest/intro/consistency.html>`__.
-However, under each fabric peer, there is no database replicas, writes to database are guaranteed consistent and durable (not ``Eventual Consistency``).
-
-CouchDB is the first external pluggable state database for Fabric, and there could and should be other external database options. For example, IBM enables the relational database for its blockchain.
-And the CP-type (Consistency and Partition Tolerance) databases may also in need, so as to enable data consistency without application level guarantee.
-
-
 A Note on Data Persistence
 --------------------------
 
@@ -1398,7 +1388,7 @@ Troubleshooting
 
    .. code:: bash
 
-       docker rmi -f $(docker images | grep peer[0-9]-peer[0-9] | awk '{print $3}')
+       docker rmi -f $(docker images | grep dev-peer[0-9] | awk '{print $3}')
 
 -  If you see something similar to the following:
 

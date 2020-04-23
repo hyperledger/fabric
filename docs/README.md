@@ -93,5 +93,24 @@ sudo cp -r * /var/www/html/
 
 You can then access the html files at `http://localhost/index.html`.
 
+## Updating Commands Reference topic
+
+Updating content in the [Commands Reference](https://hyperledger-fabric.readthedocs.io/en/latest/command_ref.html) topic requires additional steps. Because the information in the Commands Reference topic is generated content, you cannot simply update the associated markdown files.
+- Instead you need to update the `_preamble.md` or `_postscript.md` files under `src/github.com/hyperledger/fabric/docs/wrappers` for the command.
+- To update the command help text, you need to edit the associated `.go` file for the command that is located under `/fabric/internal/peer`.
+- Then you need to run the command `make help-docs` which generates the updated markdown files under `docs/source/commands`. **Tip:** Before running `make help-docs`, ensure that you have the [Go Programming language](/source/prereqs.html#go-programming-language) installed.
+
+Remember that when you push the changes to GitHub, you need to include the `_preamble.md`, `_postscript.md` or `_.go` file that was modified as well as the generated markdown file.
+
+### Adding a new CLI command
+
+To add a new CLI command, perform the following steps:
+
+- Create a new folder under `/fabric/internal/peer` for the new command and the associated help text. See `internal/peer/version` for a simple example to get started.
+- Add a section for your CLI command in `src/github.com/hyperledger/fabric/scripts/generateHelpDoc.sh`.
+- Create two new files under `/src/github.com/hyperledger/fabric/docs/wrappers` with the associated content:
+  - `<command>_preamble.md` (Command name and syntax)
+  - `<command>_postscript.md` (Example usage)
+- Run `make help-docs` to generate the markdown content and push all of the changed files to GitHub.  
+
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
-s

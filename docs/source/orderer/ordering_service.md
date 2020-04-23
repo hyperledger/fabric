@@ -213,7 +213,6 @@ implementation the node will be used in), check out [our documentation on standi
   up and manage than Kafka-based ordering services, and their design allows
   different organizations to contribute nodes to a distributed ordering service.
 
-
 * **Kafka** (deprecated in v2.0)
 
   Similar to Raft-based ordering, Apache Kafka is a CFT implementation that uses

@@ -32,7 +32,7 @@ func writeTarGz(c Chaincode, w io.Writer) {
 	tw := tar.NewWriter(gw)
 	defer closeAll(tw, gw)
 
-	writeMetadataJSON(tw, c.Path, "binary", c.Label)
+	writeMetadataJSON(tw, c.Path, c.Lang, c.Label)
 
 	writeCodeTarGz(tw, c.CodeFiles)
 }

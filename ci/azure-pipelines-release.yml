@@ -11,7 +11,7 @@ variables:
   - name: GOPATH
     value: $(Agent.BuildDirectory)/go
   - name: GOVER
-    value: 1.13.4
+    value: 1.14.1
 
 stages:
   - stage: BuildBinaries
@@ -20,7 +20,7 @@ stages:
     jobs:
       - job: Build
         pool:
-          vmImage: ubuntu-16.04
+          vmImage: ubuntu-18.04
         container: golang:$(GOVER)
         strategy:
           matrix:
@@ -46,7 +46,7 @@ stages:
     jobs:
       - job: Docker
         pool:
-          vmImage: ubuntu-16.04
+          vmImage: ubuntu-18.04
         steps:
           - template: install_deps.yml
           - checkout: self
@@ -66,7 +66,7 @@ stages:
     jobs:
       - job: Release
         pool:
-          vmImage: ubuntu-16.04
+          vmImage: ubuntu-18.04
         steps:
           - download: current
             patterns: '*.tar.gz'

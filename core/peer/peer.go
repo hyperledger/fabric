@@ -21,7 +21,6 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/semaphore"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
@@ -37,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -110,7 +110,7 @@ func (p *Peer) updateTrustedRoots(cm channelconfig.Resources) {
 	trustedRoots = append(trustedRoots, p.ServerConfig.SecOpts.ServerRootCAs...)
 
 	// now update the client roots for the peerServer
-	err := p.Server.SetClientRootCAs(trustedRoots)
+	err := p.server.SetClientRootCAs(trustedRoots)
 	if err != nil {
 		msg := "Failed to update trusted roots from latest config block. " +
 			"This peer may not be able to communicate with members of channel %s (%s)"
@@ -174,7 +174,6 @@ func (c *configSupport) GetChannelConfig(cid string) cc.Config {
 
 // A Peer holds references to subsystems and channels associated with a Fabric peer.
 type Peer struct {
-	Server                   *comm.GRPCServer
 	ServerConfig             comm.ServerConfig
 	CredentialSupport        *comm.CredentialSupport
 	StoreProvider            transientstore.StoreProvider
@@ -187,6 +186,7 @@ type Peer struct {
 	// go routines.
 	validationWorkersSemaphore semaphore.Semaphore
 
+	server             *comm.GRPCServer
 	pluginMapper       plugin.Mapper
 	channelInitializer func(cid string)
 
@@ -216,7 +216,7 @@ func (p *Peer) CreateChannel(
 		return errors.WithMessage(err, "cannot create ledger from genesis block")
 	}
 
-	if err := p.createChannel(cid, l, cb, p.pluginMapper, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
+	if err := p.createChannel(cid, l, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
 		return err
 	}
 
@@ -238,8 +238,6 @@ func retrievePersistedChannelConfig(ledger ledger.PeerLedger) (*common.Config, e
 func (p *Peer) createChannel(
 	cid string,
 	l ledger.PeerLedger,
-	cb *common.Block,
-	pluginMapper plugin.Mapper,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
 	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
@@ -485,6 +483,7 @@ func (p *Peer) GetApplicationConfig(cid string) (channelconfig.Application, bool
 // ready
 func (p *Peer) Initialize(
 	init func(string),
+	server *comm.GRPCServer,
 	pm plugin.Mapper,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
@@ -492,6 +491,7 @@ func (p *Peer) Initialize(
 	nWorkers int,
 ) {
 	// TODO: exported dep fields or constructor
+	p.server = server
 	p.validationWorkersSemaphore = semaphore.New(nWorkers)
 	p.pluginMapper = pm
 	p.channelInitializer = init
@@ -509,14 +509,8 @@ func (p *Peer) Initialize(
 			peerLogger.Debugf("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
-		cb, err := ConfigBlockFromLedger(ledger)
-		if err != nil {
-			peerLogger.Errorf("Failed to find config block on ledger %s(%s)", cid, err)
-			peerLogger.Debugf("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
-			continue
-		}
 		// Create a chain if we get a valid ledger with config block
-		err = p.createChannel(cid, ledger, cb, pm, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
+		err = p.createChannel(cid, ledger, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation)
 		if err != nil {
 			peerLogger.Errorf("Failed to load chain %s(%s)", cid, err)
 			peerLogger.Debugf("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)

@@ -12,6 +12,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -20,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -49,22 +50,32 @@ var (
 
 	// formatKey
 	formatKey = []byte("f")
+
+	attrsToIndex = []blkstorage.IndexableAttr{
+		blkstorage.IndexableAttrBlockHash,
+		blkstorage.IndexableAttrBlockNum,
+		blkstorage.IndexableAttrTxID,
+		blkstorage.IndexableAttrBlockNumTranNum,
+	}
 )
+
+const maxBlockFileSize = 64 * 1024 * 1024
 
 // Provider implements interface ledger.PeerLedgerProvider
 type Provider struct {
-	idStore             *idStore
-	ledgerStoreProvider *ledgerstorage.Provider
-	vdbProvider         privacyenabledstate.DBProvider
-	historydbProvider   *history.DBProvider
-	configHistoryMgr    confighistory.Mgr
-	stateListeners      []ledger.StateListener
-	bookkeepingProvider bookkeeping.Provider
-	initializer         *ledger.Initializer
-	collElgNotifier     *collElgNotifier
-	stats               *stats
-	fileLock            *leveldbhelper.FileLock
-	hasher              ledger.Hasher
+	idStore              *idStore
+	blkStoreProvider     blkstorage.BlockStoreProvider
+	pvtdataStoreProvider pvtdatastorage.Provider
+	vdbProvider          privacyenabledstate.DBProvider
+	historydbProvider    *history.DBProvider
+	configHistoryMgr     confighistory.Mgr
+	stateListeners       []ledger.StateListener
+	bookkeepingProvider  bookkeeping.Provider
+	initializer          *ledger.Initializer
+	collElgNotifier      *collElgNotifier
+	stats                *stats
+	fileLock             *leveldbhelper.FileLock
+	hasher               ledger.Hasher
 }
 
 // NewProvider instantiates a new Provider.
@@ -101,7 +112,11 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 		return nil, err
 	}
 
-	if err := p.initLedgerStorageProvider(); err != nil {
+	if err := p.initBlockStoreProvider(); err != nil {
+		return nil, err
+	}
+
+	if err := p.initPvtDataStoreProvider(); err != nil {
 		return nil, err
 	}
 
@@ -137,22 +152,33 @@ func (p *Provider) initLedgerIDInventory() error {
 	return nil
 }
 
-func (p *Provider) initLedgerStorageProvider() error {
-	// initialize ledger storage
-	privateData := &pvtdatastorage.PrivateDataConfig{
-		PrivateDataConfig: p.initializer.Config.PrivateDataConfig,
-		StorePath:         PvtDataStorePath(p.initializer.Config.RootFSPath),
-	}
-
-	ledgerStoreProvider, err := ledgerstorage.NewProvider(
-		BlockStorePath(p.initializer.Config.RootFSPath),
-		privateData,
+func (p *Provider) initBlockStoreProvider() error {
+	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
+	blkStoreProvider, err := fsblkstorage.NewProvider(
+		fsblkstorage.NewConf(
+			BlockStorePath(p.initializer.Config.RootFSPath),
+			maxBlockFileSize,
+		),
+		indexConfig,
 		p.initializer.MetricsProvider,
 	)
 	if err != nil {
 		return err
 	}
-	p.ledgerStoreProvider = ledgerStoreProvider
+	p.blkStoreProvider = blkStoreProvider
+	return nil
+}
+
+func (p *Provider) initPvtDataStoreProvider() error {
+	privateDataConfig := &pvtdatastorage.PrivateDataConfig{
+		PrivateDataConfig: p.initializer.Config.PrivateDataConfig,
+		StorePath:         PvtDataStorePath(p.initializer.Config.RootFSPath),
+	}
+	pvtdataStoreProvider, err := pvtdatastorage.NewProvider(privateDataConfig)
+	if err != nil {
+		return err
+	}
+	p.pvtdataStoreProvider = pvtdataStoreProvider
 	return nil
 }
 
@@ -233,7 +259,7 @@ func (p *Provider) initLedgerStatistics() {
 // created ledgers list (atomically). If a crash happens in between, the 'recoverUnderConstructionLedger'
 // function is invoked before declaring the provider to be usable
 func (p *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error) {
-	ledgerID, err := protoutil.GetChainIDFromBlock(genesisBlock)
+	ledgerID, err := protoutil.GetChannelIDFromBlock(genesisBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -281,11 +307,17 @@ func (p *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 
 func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 	// Get the block store for a chain/ledger
-	blockStore, err := p.ledgerStoreProvider.Open(ledgerID)
+	blockStore, err := p.blkStoreProvider.OpenBlockStore(ledgerID)
 	if err != nil {
 		return nil, err
 	}
-	p.collElgNotifier.registerListener(ledgerID, blockStore)
+
+	pvtdataStore, err := p.pvtdataStoreProvider.OpenStore(ledgerID)
+	if err != nil {
+		return nil, err
+	}
+
+	p.collElgNotifier.registerListener(ledgerID, pvtdataStore)
 
 	// Get the versioned database (state database) for a chain/ledger
 	vDB, err := p.vdbProvider.GetDBHandle(ledgerID)
@@ -302,11 +334,10 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		}
 	}
 
-	// Create a kvLedger for this chain/ledger, which encapsulates the underlying data stores
-	// (id store, blockstore, state database, history database)
 	l, err := newKVLedger(
 		ledgerID,
 		blockStore,
+		pvtdataStore,
 		vDB,
 		historyDB,
 		p.configHistoryMgr,
@@ -339,8 +370,11 @@ func (p *Provider) Close() {
 	if p.idStore != nil {
 		p.idStore.close()
 	}
-	if p.ledgerStoreProvider != nil {
-		p.ledgerStoreProvider.Close()
+	if p.blkStoreProvider != nil {
+		p.blkStoreProvider.Close()
+	}
+	if p.pvtdataStoreProvider != nil {
+		p.pvtdataStoreProvider.Close()
 	}
 	if p.vdbProvider != nil {
 		p.vdbProvider.Close()

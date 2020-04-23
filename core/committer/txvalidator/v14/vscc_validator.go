@@ -12,8 +12,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
@@ -357,7 +357,7 @@ func (v *VsccValidatorImpl) GetInfoForValidate(chdr *common.ChannelHeader, ccID 
 		// when we are validating a system CC, we use the default
 		// VSCC and a default policy that requires one signature
 		// from any of the members of the channel
-		p := cauthdsl.SignedByAnyMember(v.cr.GetMSPIDs())
+		p := policydsl.SignedByAnyMember(v.cr.GetMSPIDs())
 		policy, err = protoutil.Marshal(p)
 		if err != nil {
 			return nil, nil, nil, err

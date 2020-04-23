@@ -37,7 +37,7 @@ the height of a transaction is represented by a tuple (txNumber is the
 height of the transaction within the block). This scheme has many
 advantages over the incremental number scheme - primarily, it enables
 other components such as statedb, transaction simulation and validation
-for making efficient design choices.
+to make efficient design choices.
 
 Following is an illustration of an example read-write set prepared by
 simulation of a hypothetical transaction. For the sake of simplicity, in
@@ -53,9 +53,9 @@ versions.
           <read key="K2", version="1">
         </read-set>
         <write-set>
-          <write key="K1", value="V1"
-          <write key="K3", value="V2"
-          <write key="K4", isDelete="true"
+          <write key="K1", value="V1">
+          <write key="K3", value="V2">
+          <write key="K4", isDelete="true">
         </write-set>
       </NsReadWriteSet>
     <TxReadWriteSet>

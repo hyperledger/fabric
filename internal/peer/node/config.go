@@ -11,7 +11,6 @@ import (
 
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/spf13/viper"
 )
 
@@ -47,7 +46,7 @@ func ledgerConfig() *ledger.Config {
 		RootFSPath: rootFSPath,
 		StateDBConfig: &ledger.StateDBConfig{
 			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
-			CouchDB:       &couchdb.Config{},
+			CouchDB:       &ledger.CouchDBConfig{},
 		},
 		PrivateDataConfig: &ledger.PrivateDataConfig{
 			MaxBatchSize:    collElgProcMaxDbBatchSize,
@@ -60,7 +59,7 @@ func ledgerConfig() *ledger.Config {
 	}
 
 	if conf.StateDBConfig.StateDatabase == "CouchDB" {
-		conf.StateDBConfig.CouchDB = &couchdb.Config{
+		conf.StateDBConfig.CouchDB = &ledger.CouchDBConfig{
 			Address:                 viper.GetString("ledger.state.couchDBConfig.couchDBAddress"),
 			Username:                viper.GetString("ledger.state.couchDBConfig.username"),
 			Password:                viper.GetString("ledger.state.couchDBConfig.password"),

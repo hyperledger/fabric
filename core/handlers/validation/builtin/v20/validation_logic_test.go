@@ -15,8 +15,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
@@ -75,7 +75,7 @@ func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 }
 
 func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
-	p := cauthdsl.SignedByMspMember(mspID)
+	p := policydsl.SignedByMspMember(mspID)
 
 	b, err := protoutil.Marshal(p)
 	if err != nil {
@@ -234,11 +234,11 @@ func TestToApplicationPolicyTranslator_Translate(t *testing.T) {
 	assert.Contains(t, err.Error(), "could not unmarshal signature policy envelope: unexpected EOF")
 	assert.Nil(t, res)
 
-	res, err = tr.Translate(protoutil.MarshalOrPanic(cauthdsl.SignedByMspMember("the right honourable member for Ipswich")))
+	res, err = tr.Translate(protoutil.MarshalOrPanic(policydsl.SignedByMspMember("the right honourable member for Ipswich")))
 	assert.NoError(t, err)
 	assert.Equal(t, res, protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
 		Type: &peer.ApplicationPolicy_SignaturePolicy{
-			SignaturePolicy: cauthdsl.SignedByMspMember("the right honourable member for Ipswich"),
+			SignaturePolicy: policydsl.SignedByMspMember("the right honourable member for Ipswich"),
 		},
 	}))
 }

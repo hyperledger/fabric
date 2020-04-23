@@ -25,17 +25,18 @@ const (
 	emptyKeySubstitute    = "\x01"
 )
 
+// peer as server
 var peerAddress = flag.String("peer.address", "", "peer address")
 
 //this separates the chaincode stream interface establishment
 //so we can replace it with a mock peer stream
-type peerStreamGetter func(name string) (PeerChaincodeStream, error)
+type peerStreamGetter func(name string) (ClientStream, error)
 
 //UTs to setup mock peer stream getter
 var streamGetter peerStreamGetter
 
 //the non-mock user CC stream establishment func
-func userChaincodeStreamGetter(name string) (PeerChaincodeStream, error) {
+func userChaincodeStreamGetter(name string) (ClientStream, error) {
 	if *peerAddress == "" {
 		return nil, errors.New("flag 'peer.address' must be set")
 	}
@@ -71,21 +72,27 @@ func Start(cc Chaincode) error {
 		return err
 	}
 
-	err = chatWithPeer(chaincodename, stream, cc)
+	err = chaincodeAsClientChat(chaincodename, stream, cc)
 
 	return err
 }
 
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an
 // API for chaincodes.
-func StartInProc(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
+func StartInProc(chaincodename string, stream ClientStream, cc Chaincode) error {
+	return chaincodeAsClientChat(chaincodename, stream, cc)
+}
+
+// this is the chat stream resulting from the chaincode-as-client model where the chaincode initiates connection
+func chaincodeAsClientChat(chaincodename string, stream ClientStream, cc Chaincode) error {
+	defer stream.CloseSend()
 	return chatWithPeer(chaincodename, stream, cc)
 }
 
+// chat stream for peer-chaincode interactions post connection
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
 	// Create the shim handler responsible for all control logic
 	handler := newChaincodeHandler(stream, cc)
-	defer stream.CloseSend()
 
 	// Send the ChaincodeID during register.
 	chaincodeID := &peerpb.ChaincodeID{Name: chaincodename}

@@ -59,8 +59,8 @@ type TransactionRegistry interface {
 // A ContextRegistry is responsible for managing transaction contexts.
 type ContextRegistry interface {
 	Create(txParams *ccprovider.TransactionParams) (*TransactionContext, error)
-	Get(chainID, txID string) *TransactionContext
-	Delete(chainID, txID string)
+	Get(channelID, txID string) *TransactionContext
+	Delete(channelID, txID string)
 	Close()
 }
 
@@ -392,8 +392,8 @@ func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error {
 				chaincodeLogger.Debugf("received EOF, ending chaincode support stream: %s", rmsg.err)
 				return rmsg.err
 			case rmsg.err != nil:
-				err := errors.Wrap(rmsg.err, "receive failed")
-				chaincodeLogger.Errorf("handling chaincode support stream: %+v", err)
+				err := errors.Wrap(rmsg.err, "receive from chaincode support stream failed")
+				chaincodeLogger.Debugf("%+v", err)
 				return err
 			case rmsg.msg == nil:
 				err := errors.New("received nil message, ending chaincode support stream")
@@ -710,14 +710,9 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 	}
 
 	totalReturnLimit := h.calculateTotalReturnLimit(metadata)
-
 	iterID := h.UUIDGenerator.New()
-
 	var rangeIter commonledger.ResultsIterator
-	var paginationInfo map[string]interface{}
-
 	isPaginated := false
-
 	namespaceID := txContext.NamespaceID
 	collection := getStateByRange.Collection
 	if isCollectionSet(collection) {
@@ -730,21 +725,15 @@ func (h *Handler) HandleGetStateByRange(msg *pb.ChaincodeMessage, txContext *Tra
 		rangeIter, err = txContext.TXSimulator.GetPrivateDataRangeScanIterator(namespaceID, collection,
 			getStateByRange.StartKey, getStateByRange.EndKey)
 	} else if isMetadataSetForPagination(metadata) {
-		paginationInfo, err = createPaginationInfoFromMetadata(metadata, totalReturnLimit, pb.ChaincodeMessage_GET_STATE_BY_RANGE)
-		if err != nil {
-			return nil, err
-		}
 		isPaginated = true
-
 		startKey := getStateByRange.StartKey
-
 		if isMetadataSetForPagination(metadata) {
 			if metadata.Bookmark != "" {
 				startKey = metadata.Bookmark
 			}
 		}
-		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithMetadata(namespaceID,
-			startKey, getStateByRange.EndKey, paginationInfo)
+		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIteratorWithPagination(namespaceID,
+			startKey, getStateByRange.EndKey, metadata.PageSize)
 	} else {
 		rangeIter, err = txContext.TXSimulator.GetStateRangeScanIterator(namespaceID, getStateByRange.StartKey, getStateByRange.EndKey)
 	}
@@ -838,10 +827,7 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 
 	totalReturnLimit := h.calculateTotalReturnLimit(metadata)
 	isPaginated := false
-
 	var executeIter commonledger.ResultsIterator
-	var paginationInfo map[string]interface{}
-
 	namespaceID := txContext.NamespaceID
 	collection := getQueryResult.Collection
 	if isCollectionSet(collection) {
@@ -853,13 +839,9 @@ func (h *Handler) HandleGetQueryResult(msg *pb.ChaincodeMessage, txContext *Tran
 		}
 		executeIter, err = txContext.TXSimulator.ExecuteQueryOnPrivateData(namespaceID, collection, getQueryResult.Query)
 	} else if isMetadataSetForPagination(metadata) {
-		paginationInfo, err = createPaginationInfoFromMetadata(metadata, totalReturnLimit, pb.ChaincodeMessage_GET_QUERY_RESULT)
-		if err != nil {
-			return nil, err
-		}
 		isPaginated = true
-		executeIter, err = txContext.TXSimulator.ExecuteQueryWithMetadata(namespaceID,
-			getQueryResult.Query, paginationInfo)
+		executeIter, err = txContext.TXSimulator.ExecuteQueryWithPagination(namespaceID,
+			getQueryResult.Query, metadata.Bookmark, metadata.PageSize)
 
 	} else {
 		executeIter, err = txContext.TXSimulator.ExecuteQuery(namespaceID, getQueryResult.Query)
@@ -952,22 +934,6 @@ func getQueryMetadataFromBytes(metadataBytes []byte) (*pb.QueryMetadata, error) 
 	return nil, nil
 }
 
-func createPaginationInfoFromMetadata(metadata *pb.QueryMetadata, totalReturnLimit int32, queryType pb.ChaincodeMessage_Type) (map[string]interface{}, error) {
-	paginationInfoMap := make(map[string]interface{})
-
-	switch queryType {
-	case pb.ChaincodeMessage_GET_QUERY_RESULT:
-		paginationInfoMap["bookmark"] = metadata.Bookmark
-	case pb.ChaincodeMessage_GET_STATE_BY_RANGE:
-		// this is a no-op for range query
-	default:
-		return nil, errors.New("query type must be either GetQueryResult or GetStateByRange")
-	}
-
-	paginationInfoMap["limit"] = totalReturnLimit
-	return paginationInfoMap, nil
-}
-
 func (h *Handler) calculateTotalReturnLimit(metadata *pb.QueryMetadata) int32 {
 	totalReturnLimit := int32(h.TotalQueryLimit)
 	if metadata != nil {
@@ -1004,7 +970,7 @@ func (h *Handler) getTxContextForInvoke(channelID string, txid string, payload [
 		return h.isValidTxSim("", txid, "could not get valid transaction")
 	}
 
-	// Calling SCC without a ChainID, then the assumption this is an external SCC called by the client (special case) and no UCC involved,
+	// Calling SCC without a ChannelID, then the assumption this is an external SCC called by the client (special case) and no UCC involved,
 	// so no Transaction Simulator validation needed as there are no commits to the ledger, get the txContext directly if it is not nil
 	txContext := h.TXContexts.Get(channelID, txid)
 	if txContext == nil {

@@ -126,8 +126,8 @@ type mockChainManager struct {
 	mock.Mock
 }
 
-func (m *mockChainManager) GetChain(chainID string) deliver.Chain {
-	args := m.Called(chainID)
+func (m *mockChainManager) GetChain(channelID string) deliver.Chain {
+	args := m.Called(channelID)
 	return args.Get(0).(deliver.Chain)
 }
 
@@ -251,14 +251,14 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 					return chainManager, deliverServer
 				}
 			}(testConfig{
-				channelID:     "testChainID",
+				channelID:     "testChannelID",
 				eventName:     "testEvent",
 				chaincodeName: "mycc",
 				txID:          "testID",
 				payload: &common.Payload{
 					Header: &common.Header{
 						ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
-							ChannelId: "testChainID",
+							ChannelId: "testChannelID",
 							Timestamp: util.CreateUtcTimestamp(),
 						}),
 						SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{}),
@@ -324,14 +324,14 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 					return chainManager, deliverServer
 				}
 			}(testConfig{
-				channelID:     "testChainID",
+				channelID:     "testChannelID",
 				eventName:     "testEvent",
 				chaincodeName: "mycc",
 				txID:          "testID",
 				payload: &common.Payload{
 					Header: &common.Header{
 						ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
-							ChannelId: "testChainID",
+							ChannelId: "testChannelID",
 							Timestamp: util.CreateUtcTimestamp(),
 						}),
 						SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{}),
@@ -384,7 +384,7 @@ func TestEventsServer_DeliverFiltered(t *testing.T) {
 					return chainManager, deliverServer
 				}
 			}(testConfig{
-				channelID:     "testChainID",
+				channelID:     "testChannelID",
 				eventName:     "testEvent",
 				chaincodeName: "mycc",
 				txID:          "testID",
@@ -486,14 +486,14 @@ func TestEventsServer_DeliverWithPrivateData(t *testing.T) {
 					return chainManager, deliverServer
 				}
 			}(testConfig{
-				channelID:     "testChainID",
+				channelID:     "testChannelID",
 				eventName:     "testEvent",
 				chaincodeName: "mycc",
 				txID:          "testID",
 				payload: &common.Payload{
 					Header: &common.Header{
 						ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{
-							ChannelId: "testChainID",
+							ChannelId: "testChannelID",
 							Timestamp: util.CreateUtcTimestamp(),
 						}),
 						SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{}),
@@ -541,7 +541,7 @@ func TestEventsServer_DeliverWithPrivateData(t *testing.T) {
 					return chainManager, deliverServer
 				}
 			}(testConfig{
-				channelID:     "testChainID",
+				channelID:     "testChannelID",
 				eventName:     "testEvent",
 				chaincodeName: "mycc",
 				txID:          "testID",

@@ -2767,7 +2767,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				err := handler.ProcessStream(fakeChatStream)
-				Expect(err).To(MatchError("receive failed: chocolate"))
+				Expect(err).To(MatchError("receive from chaincode support stream failed: chocolate"))
 			})
 		})
 

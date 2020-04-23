@@ -26,7 +26,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/tools/protolator"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -651,9 +651,6 @@ func LastConfigBlock(block *common.Block, blockRetriever BlockRetriever) (*commo
 	}
 	if blockRetriever == nil {
 		return nil, errors.New("nil blockRetriever")
-	}
-	if block.Metadata == nil || len(block.Metadata.Metadata) <= int(common.BlockMetadataIndex_LAST_CONFIG) {
-		return nil, errors.New("no metadata in block")
 	}
 	lastConfigBlockNum, err := protoutil.GetLastConfigIndexFromBlock(block)
 	if err != nil {

@@ -354,7 +354,7 @@ func (i *Invocation) QueryInstalledChaincodes(input *lb.QueryInstalledChaincodes
 // to which routes to the underlying lifecycle implementation.
 func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChaincodeDefinitionForMyOrgArgs) (proto.Message, error) {
 	if err := i.validateInput(input.Name, input.Version, input.Collections); err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "error validating chaincode definition")
 	}
 	collectionName := ImplicitCollectionNameForOrg(i.SCC.OrgMSPID)
 	var collectionConfig []*pb.CollectionConfig
@@ -456,7 +456,7 @@ func (i *Invocation) CheckCommitReadiness(input *lb.CheckCommitReadinessArgs) (p
 // to which routes to the underlying lifecycle implementation.
 func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefinitionArgs) (proto.Message, error) {
 	if err := i.validateInput(input.Name, input.Version, input.Collections); err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "error validating chaincode definition")
 	}
 
 	if i.ApplicationConfig == nil {
@@ -513,6 +513,8 @@ func (i *Invocation) CommitChaincodeDefinition(input *lb.CommitChaincodeDefiniti
 	if !approvals[myOrg] {
 		return nil, errors.Errorf("chaincode definition not agreed to by this org (%s)", i.SCC.OrgMSPID)
 	}
+
+	logger.Infof("Successfully endorsed commit for chaincode name '%s' on channel '%s' with definition {%s}", input.Name, i.Stub.GetChannelID(), cd)
 
 	return &lb.CommitChaincodeDefinitionResult{}, nil
 }

@@ -16,6 +16,7 @@ function filterExcludedAndGeneratedFiles {
         '(^|/)go.mod$'
         '(^|/)go.sum$'
         '(^|/)Gopkg\.lock$'
+        '\.html$'
         '\.json$'
         '\.key$'
         '(^|/)LICENSE$'

@@ -8,11 +8,11 @@ package internal
 
 import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/storageutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statemetadata"
 )
 
 func prepareTxOps(rwset *rwsetutil.TxRwSet, txht *version.Height,
@@ -105,7 +105,7 @@ func (txops txOps) applyMetadata(ns, coll string, metadataWrite *kvrwset.KVMetad
 	if metadataWrite.Entries == nil {
 		txops.metadataDelete(compositeKey{ns, coll, metadataWrite.Key})
 	} else {
-		metadataBytes, err := storageutil.SerializeMetadata(metadataWrite.Entries)
+		metadataBytes, err := statemetadata.Serialize(metadataWrite.Entries)
 		if err != nil {
 			return err
 		}

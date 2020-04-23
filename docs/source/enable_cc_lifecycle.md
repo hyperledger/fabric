@@ -109,13 +109,16 @@ Note that the `enable_lifecycle.json` uses sample values, for example `org1Polic
 		}
    },
    "acls": {
+		"_lifecycle/CheckCommitReadiness": {
+			"policy_ref": "/Channel/Application/Writers"
+		},
 		"_lifecycle/CommitChaincodeDefinition": {
 			"policy_ref": "/Channel/Application/Writers"
 		},
 		"_lifecycle/QueryChaincodeDefinition": {
 			"policy_ref": "/Channel/Application/Readers"
 		},
-		"_lifecycle/QueryNamespaceDefinitions": {
+		"_lifecycle/QueryChaincodeDefinitions": {
 			"policy_ref": "/Channel/Application/Readers"
 		}
    }
@@ -208,13 +211,16 @@ The following [Access Control List (ACL)](./access_control.html) in `enable_life
 
 ```
 "acls": {
+ "_lifecycle/CheckCommitReadiness": {
+   "policy_ref": "/Channel/Application/Writers"
+ },
  "_lifecycle/CommitChaincodeDefinition": {
    "policy_ref": "/Channel/Application/Writers"
  },
  "_lifecycle/QueryChaincodeDefinition": {
    "policy_ref": "/Channel/Application/Readers"
  },
- "_lifecycle/QueryNamespaceDefinitions": {
+ "_lifecycle/QueryChaincodeDefinitions": {
    "policy_ref": "/Channel/Application/Readers"
 ```
 

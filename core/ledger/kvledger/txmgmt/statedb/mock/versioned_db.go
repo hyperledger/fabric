@@ -4,8 +4,8 @@ package mock
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 )
 
 type VersionedDB struct {
@@ -49,18 +49,19 @@ type VersionedDB struct {
 		result1 statedb.ResultsIterator
 		result2 error
 	}
-	ExecuteQueryWithMetadataStub        func(string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)
-	executeQueryWithMetadataMutex       sync.RWMutex
-	executeQueryWithMetadataArgsForCall []struct {
+	ExecuteQueryWithPaginationStub        func(string, string, string, int32) (statedb.QueryResultsIterator, error)
+	executeQueryWithPaginationMutex       sync.RWMutex
+	executeQueryWithPaginationArgsForCall []struct {
 		arg1 string
 		arg2 string
-		arg3 map[string]interface{}
+		arg3 string
+		arg4 int32
 	}
-	executeQueryWithMetadataReturns struct {
+	executeQueryWithPaginationReturns struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
-	executeQueryWithMetadataReturnsOnCall map[int]struct {
+	executeQueryWithPaginationReturnsOnCall map[int]struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
@@ -119,19 +120,19 @@ type VersionedDB struct {
 		result1 statedb.ResultsIterator
 		result2 error
 	}
-	GetStateRangeScanIteratorWithMetadataStub        func(string, string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)
-	getStateRangeScanIteratorWithMetadataMutex       sync.RWMutex
-	getStateRangeScanIteratorWithMetadataArgsForCall []struct {
+	GetStateRangeScanIteratorWithPaginationStub        func(string, string, string, int32) (statedb.QueryResultsIterator, error)
+	getStateRangeScanIteratorWithPaginationMutex       sync.RWMutex
+	getStateRangeScanIteratorWithPaginationArgsForCall []struct {
 		arg1 string
 		arg2 string
 		arg3 string
-		arg4 map[string]interface{}
+		arg4 int32
 	}
-	getStateRangeScanIteratorWithMetadataReturns struct {
+	getStateRangeScanIteratorWithPaginationReturns struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
-	getStateRangeScanIteratorWithMetadataReturnsOnCall map[int]struct {
+	getStateRangeScanIteratorWithPaginationReturnsOnCall map[int]struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
@@ -375,66 +376,67 @@ func (fake *VersionedDB) ExecuteQueryReturnsOnCall(i int, result1 statedb.Result
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadata(arg1 string, arg2 string, arg3 map[string]interface{}) (statedb.QueryResultsIterator, error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	ret, specificReturn := fake.executeQueryWithMetadataReturnsOnCall[len(fake.executeQueryWithMetadataArgsForCall)]
-	fake.executeQueryWithMetadataArgsForCall = append(fake.executeQueryWithMetadataArgsForCall, struct {
+func (fake *VersionedDB) ExecuteQueryWithPagination(arg1 string, arg2 string, arg3 string, arg4 int32) (statedb.QueryResultsIterator, error) {
+	fake.executeQueryWithPaginationMutex.Lock()
+	ret, specificReturn := fake.executeQueryWithPaginationReturnsOnCall[len(fake.executeQueryWithPaginationArgsForCall)]
+	fake.executeQueryWithPaginationArgsForCall = append(fake.executeQueryWithPaginationArgsForCall, struct {
 		arg1 string
 		arg2 string
-		arg3 map[string]interface{}
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("ExecuteQueryWithMetadata", []interface{}{arg1, arg2, arg3})
-	fake.executeQueryWithMetadataMutex.Unlock()
-	if fake.ExecuteQueryWithMetadataStub != nil {
-		return fake.ExecuteQueryWithMetadataStub(arg1, arg2, arg3)
+		arg3 string
+		arg4 int32
+	}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("ExecuteQueryWithPagination", []interface{}{arg1, arg2, arg3, arg4})
+	fake.executeQueryWithPaginationMutex.Unlock()
+	if fake.ExecuteQueryWithPaginationStub != nil {
+		return fake.ExecuteQueryWithPaginationStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.executeQueryWithMetadataReturns
+	fakeReturns := fake.executeQueryWithPaginationReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataCallCount() int {
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
-	return len(fake.executeQueryWithMetadataArgsForCall)
+func (fake *VersionedDB) ExecuteQueryWithPaginationCallCount() int {
+	fake.executeQueryWithPaginationMutex.RLock()
+	defer fake.executeQueryWithPaginationMutex.RUnlock()
+	return len(fake.executeQueryWithPaginationArgsForCall)
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataCalls(stub func(string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = stub
+func (fake *VersionedDB) ExecuteQueryWithPaginationCalls(stub func(string, string, string, int32) (statedb.QueryResultsIterator, error)) {
+	fake.executeQueryWithPaginationMutex.Lock()
+	defer fake.executeQueryWithPaginationMutex.Unlock()
+	fake.ExecuteQueryWithPaginationStub = stub
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataArgsForCall(i int) (string, string, map[string]interface{}) {
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
-	argsForCall := fake.executeQueryWithMetadataArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+func (fake *VersionedDB) ExecuteQueryWithPaginationArgsForCall(i int) (string, string, string, int32) {
+	fake.executeQueryWithPaginationMutex.RLock()
+	defer fake.executeQueryWithPaginationMutex.RUnlock()
+	argsForCall := fake.executeQueryWithPaginationArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataReturns(result1 statedb.QueryResultsIterator, result2 error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = nil
-	fake.executeQueryWithMetadataReturns = struct {
+func (fake *VersionedDB) ExecuteQueryWithPaginationReturns(result1 statedb.QueryResultsIterator, result2 error) {
+	fake.executeQueryWithPaginationMutex.Lock()
+	defer fake.executeQueryWithPaginationMutex.Unlock()
+	fake.ExecuteQueryWithPaginationStub = nil
+	fake.executeQueryWithPaginationReturns = struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) ExecuteQueryWithMetadataReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = nil
-	if fake.executeQueryWithMetadataReturnsOnCall == nil {
-		fake.executeQueryWithMetadataReturnsOnCall = make(map[int]struct {
+func (fake *VersionedDB) ExecuteQueryWithPaginationReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
+	fake.executeQueryWithPaginationMutex.Lock()
+	defer fake.executeQueryWithPaginationMutex.Unlock()
+	fake.ExecuteQueryWithPaginationStub = nil
+	if fake.executeQueryWithPaginationReturnsOnCall == nil {
+		fake.executeQueryWithPaginationReturnsOnCall = make(map[int]struct {
 			result1 statedb.QueryResultsIterator
 			result2 error
 		})
 	}
-	fake.executeQueryWithMetadataReturnsOnCall[i] = struct {
+	fake.executeQueryWithPaginationReturnsOnCall[i] = struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
@@ -693,67 +695,67 @@ func (fake *VersionedDB) GetStateRangeScanIteratorReturnsOnCall(i int, result1 s
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadata(arg1 string, arg2 string, arg3 string, arg4 map[string]interface{}) (statedb.QueryResultsIterator, error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	ret, specificReturn := fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)]
-	fake.getStateRangeScanIteratorWithMetadataArgsForCall = append(fake.getStateRangeScanIteratorWithMetadataArgsForCall, struct {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithPagination(arg1 string, arg2 string, arg3 string, arg4 int32) (statedb.QueryResultsIterator, error) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.Lock()
+	ret, specificReturn := fake.getStateRangeScanIteratorWithPaginationReturnsOnCall[len(fake.getStateRangeScanIteratorWithPaginationArgsForCall)]
+	fake.getStateRangeScanIteratorWithPaginationArgsForCall = append(fake.getStateRangeScanIteratorWithPaginationArgsForCall, struct {
 		arg1 string
 		arg2 string
 		arg3 string
-		arg4 map[string]interface{}
+		arg4 int32
 	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("GetStateRangeScanIteratorWithMetadata", []interface{}{arg1, arg2, arg3, arg4})
-	fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	if fake.GetStateRangeScanIteratorWithMetadataStub != nil {
-		return fake.GetStateRangeScanIteratorWithMetadataStub(arg1, arg2, arg3, arg4)
+	fake.recordInvocation("GetStateRangeScanIteratorWithPagination", []interface{}{arg1, arg2, arg3, arg4})
+	fake.getStateRangeScanIteratorWithPaginationMutex.Unlock()
+	if fake.GetStateRangeScanIteratorWithPaginationStub != nil {
+		return fake.GetStateRangeScanIteratorWithPaginationStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getStateRangeScanIteratorWithMetadataReturns
+	fakeReturns := fake.getStateRangeScanIteratorWithPaginationReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataCallCount() int {
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
-	return len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)
+func (fake *VersionedDB) GetStateRangeScanIteratorWithPaginationCallCount() int {
+	fake.getStateRangeScanIteratorWithPaginationMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.RUnlock()
+	return len(fake.getStateRangeScanIteratorWithPaginationArgsForCall)
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataCalls(stub func(string, string, string, map[string]interface{}) (statedb.QueryResultsIterator, error)) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = stub
+func (fake *VersionedDB) GetStateRangeScanIteratorWithPaginationCalls(stub func(string, string, string, int32) (statedb.QueryResultsIterator, error)) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithPaginationStub = stub
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataArgsForCall(i int) (string, string, string, map[string]interface{}) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
-	argsForCall := fake.getStateRangeScanIteratorWithMetadataArgsForCall[i]
+func (fake *VersionedDB) GetStateRangeScanIteratorWithPaginationArgsForCall(i int) (string, string, string, int32) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.RUnlock()
+	argsForCall := fake.getStateRangeScanIteratorWithPaginationArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataReturns(result1 statedb.QueryResultsIterator, result2 error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = nil
-	fake.getStateRangeScanIteratorWithMetadataReturns = struct {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithPaginationReturns(result1 statedb.QueryResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithPaginationStub = nil
+	fake.getStateRangeScanIteratorWithPaginationReturns = struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) GetStateRangeScanIteratorWithMetadataReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = nil
-	if fake.getStateRangeScanIteratorWithMetadataReturnsOnCall == nil {
-		fake.getStateRangeScanIteratorWithMetadataReturnsOnCall = make(map[int]struct {
+func (fake *VersionedDB) GetStateRangeScanIteratorWithPaginationReturnsOnCall(i int, result1 statedb.QueryResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithPaginationStub = nil
+	if fake.getStateRangeScanIteratorWithPaginationReturnsOnCall == nil {
+		fake.getStateRangeScanIteratorWithPaginationReturnsOnCall = make(map[int]struct {
 			result1 statedb.QueryResultsIterator
 			result2 error
 		})
 	}
-	fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[i] = struct {
+	fake.getStateRangeScanIteratorWithPaginationReturnsOnCall[i] = struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
@@ -952,8 +954,8 @@ func (fake *VersionedDB) Invocations() map[string][][]interface{} {
 	defer fake.closeMutex.RUnlock()
 	fake.executeQueryMutex.RLock()
 	defer fake.executeQueryMutex.RUnlock()
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
+	fake.executeQueryWithPaginationMutex.RLock()
+	defer fake.executeQueryWithPaginationMutex.RUnlock()
 	fake.getLatestSavePointMutex.RLock()
 	defer fake.getLatestSavePointMutex.RUnlock()
 	fake.getStateMutex.RLock()
@@ -962,8 +964,8 @@ func (fake *VersionedDB) Invocations() map[string][][]interface{} {
 	defer fake.getStateMultipleKeysMutex.RUnlock()
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
+	fake.getStateRangeScanIteratorWithPaginationMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.RUnlock()
 	fake.getVersionMutex.RLock()
 	defer fake.getVersionMutex.RUnlock()
 	fake.openMutex.RLock()

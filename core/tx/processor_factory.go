@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -105,7 +106,7 @@ func validateProtoAndConstructTxEnv(txEnvelopeBytes []byte) (*tx.Envelope, error
 	//other checks over shdr.Nonce, shdr.Creator can be added if universally applicable
 
 	//what TODO in legacy validation:
-	//   validate cHdr.ChainID ?
+	//   validate cHdr.ChannelId ?
 	//   validate epoch in cHdr.Epoch?
 
 	return &tx.Envelope{

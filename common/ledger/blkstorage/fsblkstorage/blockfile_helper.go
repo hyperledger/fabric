@@ -91,7 +91,7 @@ func binarySearchFileNumForBlock(rootDir string, blockNum uint64) (int, error) {
 
 	for endFile != beginFile {
 		searchFile := beginFile + (endFile-beginFile)/2 + 1
-		n, err := retriveFirstBlockNumFromFile(rootDir, searchFile)
+		n, err := retrieveFirstBlockNumFromFile(rootDir, searchFile)
 		if err != nil {
 			return -1, err
 		}
@@ -107,7 +107,7 @@ func binarySearchFileNumForBlock(rootDir string, blockNum uint64) (int, error) {
 	return beginFile, nil
 }
 
-func retriveFirstBlockNumFromFile(rootDir string, fileNum int) (uint64, error) {
+func retrieveFirstBlockNumFromFile(rootDir string, fileNum int) (uint64, error) {
 	s, err := newBlockfileStream(rootDir, fileNum, 0)
 	if err != nil {
 		return 0, err

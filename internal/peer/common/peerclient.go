@@ -13,8 +13,8 @@ import (
 	"time"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -81,6 +81,8 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 }
 
 func newPeerClientForClientConfig(address, override string, clientConfig comm.ClientConfig) (*PeerClient, error) {
+	// set the default keepalive options to match the server
+	clientConfig.KaOpts = comm.DefaultKeepaliveOptions
 	gClient, err := comm.NewGRPCClient(clientConfig)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create PeerClient from config")

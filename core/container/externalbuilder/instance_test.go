@@ -19,9 +19,9 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 )
 
 var _ = Describe("Instance", func() {
@@ -40,6 +40,7 @@ var _ = Describe("Instance", func() {
 			Builder: &externalbuilder.Builder{
 				Location: "testdata/goodbuilder",
 				Logger:   logger,
+				MSPID:    "mspid",
 			},
 		}
 	})

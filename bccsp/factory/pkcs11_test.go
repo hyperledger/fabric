@@ -1,20 +1,11 @@
 // +build pkcs11
 
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package factory
 
 import (
@@ -25,36 +16,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInitFactories(t *testing.T) {
+func TestExportedInitFactories(t *testing.T) {
 	// Reset errors from previous negative test runs
-	factoriesInitError = nil
+	factoriesInitError = initFactories(nil)
 
 	err := InitFactories(nil)
 	assert.NoError(t, err)
 }
 
-func TestSetFactories(t *testing.T) {
-	err := setFactories(nil)
+func TestInitFactories(t *testing.T) {
+	err := initFactories(nil)
 	assert.NoError(t, err)
 
-	err = setFactories(&FactoryOpts{})
+	err = initFactories(&FactoryOpts{})
 	assert.NoError(t, err)
 }
 
-func TestSetFactoriesInvalidArgs(t *testing.T) {
-	err := setFactories(&FactoryOpts{
+func TestInitFactoriesInvalidArgs(t *testing.T) {
+	err := initFactories(&FactoryOpts{
 		ProviderName: "SW",
 		SwOpts:       &SwOpts{},
 	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed initializing SW.BCCSP")
+	assert.EqualError(t, err, "Failed initializing SW.BCCSP: Could not initialize BCCSP SW [Failed initializing configuration at [0,]: Hash Family not supported []]")
 
-	err = setFactories(&FactoryOpts{
+	err = initFactories(&FactoryOpts{
 		ProviderName: "PKCS11",
 		Pkcs11Opts:   &pkcs11.PKCS11Opts{},
 	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed initializing PKCS11.BCCSP")
+	assert.EqualError(t, err, "Failed initializing PKCS11.BCCSP: Could not initialize BCCSP PKCS11 [Failed initializing configuration: Hash Family not supported []]")
 }
 
 func TestGetBCCSPFromOpts(t *testing.T) {
@@ -83,7 +72,6 @@ func TestGetBCCSPFromOpts(t *testing.T) {
 	csp, err = GetBCCSPFromOpts(&FactoryOpts{
 		ProviderName: "BadName",
 	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Could not find BCCSP, no 'BadName' provider")
+	assert.EqualError(t, err, "Could not find BCCSP, no 'BadName' provider")
 	assert.Nil(t, csp)
 }

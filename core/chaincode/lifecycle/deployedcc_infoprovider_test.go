@@ -19,6 +19,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/hyperledger/fabric/protoutil"
 
 	"github.com/golang/protobuf/proto"
@@ -31,6 +33,7 @@ var _ = Describe("ValidatorCommitter", func() {
 	var (
 		vc                      *lifecycle.ValidatorCommitter
 		resources               *lifecycle.Resources
+		privdataConfig          *privdata.PrivdataConfig
 		fakeLegacyProvider      *mock.LegacyDeployedCCInfoProvider
 		fakeQueryExecutor       *mock.SimpleQueryExecutor
 		fakeChannelConfigSource *mock.ChannelConfigSource
@@ -66,7 +69,15 @@ var _ = Describe("ValidatorCommitter", func() {
 			Serializer:          &lifecycle.Serializer{},
 		}
 
+		privdataConfig = &privdata.PrivdataConfig{
+			ImplicitCollDisseminationPolicy: privdata.ImplicitCollectionDisseminationPolicy{
+				RequiredPeerCount: 1,
+				MaxPeerCount:      2,
+			},
+		}
 		vc = &lifecycle.ValidatorCommitter{
+			CoreConfig:                   &peer.Config{LocalMSPID: "first-mspid"},
+			PrivdataConfig:               privdataConfig,
 			Resources:                    resources,
 			LegacyDeployedCCInfoProvider: fakeLegacyProvider,
 		}
@@ -310,8 +321,14 @@ var _ = Describe("ValidatorCommitter", func() {
 					secondOrg = collection
 				}
 			}
+			// Required/MaxPeerCount should match privdataConfig when the implicit collection is for peer's own org
 			Expect(firstOrg).NotTo(BeNil())
+			Expect(firstOrg.RequiredPeerCount).To(Equal(int32(privdataConfig.ImplicitCollDisseminationPolicy.RequiredPeerCount)))
+			Expect(firstOrg.MaximumPeerCount).To(Equal(int32(privdataConfig.ImplicitCollDisseminationPolicy.MaxPeerCount)))
+			// Required/MaxPeerCount should be 0 when the implicit collection is for other org
 			Expect(secondOrg).NotTo(BeNil())
+			Expect(secondOrg.RequiredPeerCount).To(Equal(int32(0)))
+			Expect(secondOrg.MaximumPeerCount).To(Equal(int32(0)))
 		})
 
 		Context("when the chaincode does not exist", func() {
@@ -473,55 +490,6 @@ var _ = Describe("ValidatorCommitter", func() {
 			It("wraps and returns that error", func() {
 				_, err := vc.AllCollectionsConfigPkg("channel-name", "cc-name", fakeQueryExecutor)
 				Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
-			})
-		})
-	})
-
-	Describe("LifecycleEndorsementPolicyAsBytes", func() {
-		It("returns the endorsement policy for the lifecycle chaincode", func() {
-			b, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(b).NotTo(BeNil())
-			policy := &cb.ApplicationPolicy{}
-			err = proto.Unmarshal(b, policy)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(policy.GetChannelConfigPolicyReference()).To(Equal("/Channel/Application/LifecycleEndorsement"))
-		})
-
-		Context("when the endorsement policy reference is not found", func() {
-			BeforeEach(func() {
-				fakePolicyManager.GetPolicyReturns(nil, false)
-			})
-
-			It("returns an error", func() {
-				b, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
-				Expect(err).NotTo(HaveOccurred())
-				policy := &cb.ApplicationPolicy{}
-				err = proto.Unmarshal(b, policy)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(policy.GetSignaturePolicy()).NotTo(BeNil())
-			})
-
-			Context("when the application config cannot be retrieved", func() {
-				BeforeEach(func() {
-					fakeChannelConfig.ApplicationConfigReturns(nil, false)
-				})
-
-				It("returns an error", func() {
-					_, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
-					Expect(err).To(MatchError("could not get application config for channel 'channel-id'"))
-				})
-			})
-		})
-
-		Context("when the channel config cannot be retrieved", func() {
-			BeforeEach(func() {
-				fakeChannelConfigSource.GetStableChannelConfigReturns(nil)
-			})
-
-			It("returns an error", func() {
-				_, err := vc.LifecycleEndorsementPolicyAsBytes("channel-id")
-				Expect(err).To(MatchError("could not get channel config for channel 'channel-id'"))
 			})
 		})
 	})

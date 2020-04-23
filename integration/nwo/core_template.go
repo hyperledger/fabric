@@ -67,6 +67,9 @@ peer:
       reconcileSleepInterval: 10s
       reconciliationEnabled: true
       skipPullingInvalidTransactionsDuringCommit: false
+      implicitCollectionDisseminationPolicy:
+        requiredPeerCount: 0
+        maxPeerCount: 1
     state:
        enabled: true
        checkInterval: 10s
@@ -136,7 +139,8 @@ peer:
     orgMembersAllowedAccess: false
   limits:
     concurrency:
-      qscc: 500
+      endorserService: 100
+      deliverService: 100
 
 vm:
   endpoint: unix:///var/run/docker.sock

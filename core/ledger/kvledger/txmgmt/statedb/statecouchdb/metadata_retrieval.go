@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -7,17 +8,15 @@ package statecouchdb
 
 import (
 	"fmt"
-
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
 // nsMetadataRetriever implements `batch` interface and wraps the function `retrieveNsMetadata`
 // for allowing parallel execution of this function for different namespaces
 type nsMetadataRetriever struct {
 	ns              string
-	db              *couchdb.CouchDatabase
+	db              *couchDatabase
 	keys            []string
-	executionResult []*couchdb.DocMetadata
+	executionResult []*docMetadata
 }
 
 // subNsMetadataRetriever implements `batch` interface and wraps the function
@@ -29,7 +28,7 @@ type nsMetadataRetriever struct {
 type subNsMetadataRetriever nsMetadataRetriever
 
 // retrievedMetadata retrieves the metadata for a collection of `namespace-keys` combination
-func (vdb *VersionedDB) retrieveMetadata(nsKeysMap map[string][]string) (map[string][]*couchdb.DocMetadata, error) {
+func (vdb *VersionedDB) retrieveMetadata(nsKeysMap map[string][]string) (map[string][]*docMetadata, error) {
 	// construct one batch per namespace
 	nsMetadataRetrievers := []batch{}
 	for ns, keys := range nsKeysMap {
@@ -43,7 +42,7 @@ func (vdb *VersionedDB) retrieveMetadata(nsKeysMap map[string][]string) (map[str
 		return nil, err
 	}
 	// accumulate results from each batch
-	executionResults := make(map[string][]*couchdb.DocMetadata)
+	executionResults := make(map[string][]*docMetadata)
 	for _, r := range nsMetadataRetrievers {
 		nsMetadataRetriever := r.(*nsMetadataRetriever)
 		executionResults[nsMetadataRetriever.ns] = nsMetadataRetriever.executionResult
@@ -52,9 +51,9 @@ func (vdb *VersionedDB) retrieveMetadata(nsKeysMap map[string][]string) (map[str
 }
 
 // retrieveNsMetadata retrieves metadata for a given namespace
-func retrieveNsMetadata(db *couchdb.CouchDatabase, keys []string) ([]*couchdb.DocMetadata, error) {
+func retrieveNsMetadata(db *couchDatabase, keys []string) ([]*docMetadata, error) {
 	// construct one batch per group of keys based on maxBatchSize
-	maxBatchSize := db.CouchInstance.MaxBatchUpdateSize()
+	maxBatchSize := db.couchInstance.maxBatchUpdateSize()
 	batches := []batch{}
 	remainingKeys := keys
 	for {
@@ -70,7 +69,7 @@ func retrieveNsMetadata(db *couchdb.CouchDatabase, keys []string) ([]*couchdb.Do
 		return nil, err
 	}
 	// accumulate results from each batch
-	var executionResults []*couchdb.DocMetadata
+	var executionResults []*docMetadata
 	for _, b := range batches {
 		executionResults = append(executionResults, b.(*subNsMetadataRetriever).executionResult...)
 	}
@@ -91,7 +90,7 @@ func (r *nsMetadataRetriever) String() string {
 
 func (b *subNsMetadataRetriever) execute() error {
 	var err error
-	if b.executionResult, err = b.db.BatchRetrieveDocumentMetadata(b.keys); err != nil {
+	if b.executionResult, err = b.db.batchRetrieveDocumentMetadata(b.keys); err != nil {
 		return err
 	}
 	return nil

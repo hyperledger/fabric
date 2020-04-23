@@ -18,11 +18,11 @@ import (
 
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	utilgossip "github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -159,7 +159,6 @@ func memResp(nonce uint64, endpoint string) *protoext.SignedGossipMessage {
 type msgInspection func(t *testing.T, index int, m *receivedMsg)
 
 func TestAnchorPeer(t *testing.T) {
-	t.Parallel()
 	// Actors:
 	// OrgA: {
 	// 	p:   a real gossip instance
@@ -267,7 +266,6 @@ func TestAnchorPeer(t *testing.T) {
 }
 
 func TestBootstrapPeerMisConfiguration(t *testing.T) {
-	t.Parallel()
 	// Scenario:
 	// The peer 'p' is a peer in orgA
 	// Peers bs1 and bs2 are bootstrap peers.

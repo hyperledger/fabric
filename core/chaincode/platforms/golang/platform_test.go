@@ -14,7 +14,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -23,10 +22,16 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	// Significantly reduce execution time of deployment payload tests.
+	gzipCompressionLevel = gzip.NoCompression
+}
 
 func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploymentSpec, error) {
 	codePackage := bytes.NewBuffer(nil)
@@ -67,15 +72,17 @@ func TestName(t *testing.T) {
 }
 
 func TestValidatePath(t *testing.T) {
+	reset := setupGopath(t, "testdata")
+	defer reset()
+
 	var tests = []struct {
 		path string
 		succ bool
 	}{
-		{path: "http://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
-		{path: "https://github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
-		{path: "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: true},
-		{path: "github.com/hyperledger/fabric/bad/chaincode/golang/testdata/src/chaincodes/noop", succ: false},
-		{path: ":github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop", succ: false},
+		{path: "http://example.com/", succ: false},
+		{path: "./testdata/missing", succ: false},
+		{path: "chaincodes/noop", succ: true},
+		{path: "testdata/ccmodule", succ: true},
 	}
 
 	for _, tt := range tests {
@@ -154,38 +161,27 @@ func TestValidateCodePackage(t *testing.T) {
 	}
 }
 
-func getGopath() (string, error) {
-	output, err := exec.Command("go", "env", "GOPATH").Output()
-	if err != nil {
-		return "", err
-	}
-
-	pathElements := filepath.SplitList(strings.TrimSpace(string(output)))
-	if len(pathElements) == 0 {
-		return "", fmt.Errorf("GOPATH is not set")
-	}
-
-	return pathElements[0], nil
-}
-
 func Test_findSource(t *testing.T) {
 	t.Run("Gopath", func(t *testing.T) {
 		source, err := findSource(&CodeDescriptor{
-			Source:       filepath.Join("testdata/src/chaincodes/noop"),
-			MetadataRoot: filepath.Join("testdata/src/chaincodes/noop/META-INF"),
+			Module:       false,
+			Source:       filepath.FromSlash("testdata/src/chaincodes/noop"),
+			MetadataRoot: filepath.FromSlash("testdata/src/chaincodes/noop/META-INF"),
 			Path:         "chaincodes/noop",
 		})
 		require.NoError(t, err, "failed to find source")
-		assert.Len(t, source, 2)
 		assert.Contains(t, source, "src/chaincodes/noop/chaincode.go")
 		assert.Contains(t, source, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+		assert.NotContains(t, source, "src/chaincodes/noop/go.mod")
+		assert.NotContains(t, source, "src/chaincodes/noop/go.sum")
+		assert.Len(t, source, 2)
 	})
 
 	t.Run("Module", func(t *testing.T) {
 		source, err := findSource(&CodeDescriptor{
 			Module:       true,
-			Source:       filepath.Join("testdata/ccmodule"),
-			MetadataRoot: filepath.Join("testdata/ccmodule/META-INF"),
+			Source:       filepath.FromSlash("testdata/ccmodule"),
+			MetadataRoot: filepath.FromSlash("testdata/ccmodule/META-INF"),
 			Path:         "ccmodule",
 		})
 		require.NoError(t, err, "failed to find source")
@@ -202,7 +198,7 @@ func Test_findSource(t *testing.T) {
 	t.Run("NonExistent", func(t *testing.T) {
 		_, err := findSource(&CodeDescriptor{Path: "acme.com/this/should/not/exist"})
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "no such file or directory")
+		assert.True(t, os.IsNotExist(errors.Cause(err)))
 	})
 }
 
@@ -230,13 +226,43 @@ func tarContents(t *testing.T, payload []byte) []string {
 }
 
 func TestGopathDeploymentPayload(t *testing.T) {
+	reset := setupGopath(t, "testdata")
+	defer reset()
+
 	platform := &Platform{}
 
-	payload, err := platform.GetDeploymentPayload("github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/noop")
-	assert.NoError(t, err)
+	t.Run("IncludesMetadata", func(t *testing.T) {
+		payload, err := platform.GetDeploymentPayload("chaincodes/noop")
+		assert.NoError(t, err)
 
-	contents := tarContents(t, payload)
-	assert.Contains(t, contents, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+		contents := tarContents(t, payload)
+		assert.Contains(t, contents, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+	})
+
+	var tests = []struct {
+		path string
+		succ bool
+	}{
+		{path: "testdata/src/chaincodes/noop", succ: true},
+		{path: "chaincodes/noop", succ: true},
+		{path: "bad/chaincodes/noop", succ: false},
+		{path: "chaincodes/BadImport", succ: false},
+		{path: "chaincodes/BadMetadataInvalidIndex", succ: false},
+		{path: "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
+		{path: "chaincodes/BadMetadataIgnoreHiddenFile", succ: true},
+		{path: "chaincodes/empty", succ: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			_, err := platform.GetDeploymentPayload(tt.path)
+			if tt.succ {
+				assert.NoError(t, err, "expected success for path: %s", tt.path)
+			} else {
+				assert.Errorf(t, err, "expected error for path: %s", tt.path)
+			}
+		})
+	}
 }
 
 func TestModuleDeploymentPayload(t *testing.T) {
@@ -273,55 +299,33 @@ func TestModuleDeploymentPayload(t *testing.T) {
 	})
 }
 
-func updateGopath(t *testing.T, path string) func() {
-	initialGopath, set := os.LookupEnv("GOPATH")
+func setupGopath(t *testing.T, path string) func() {
+	initialGopath, gopathSet := os.LookupEnv("GOPATH")
+	initialGo111Module, go111ModuleSet := os.LookupEnv("GO111MODULE")
 
 	if path == "" {
 		err := os.Unsetenv("GOPATH")
 		require.NoError(t, err)
 	} else {
-		err := os.Setenv("GOPATH", path)
-		require.NoError(t, err)
+		absPath, err := filepath.Abs(path)
+		require.NoErrorf(t, err, "expected to calculate absolute path from %s", path)
+		err = os.Setenv("GOPATH", absPath)
+		require.NoError(t, err, "failed to set GOPATH")
+		err = os.Setenv("GO111MODULE", "off")
+		require.NoError(t, err, "failed set GO111MODULE")
 	}
 
-	if !set {
-		return func() { os.Unsetenv("GOPATH") }
-	}
-	return func() { os.Setenv("GOPATH", initialGopath) }
-}
-
-func TestGetDeploymentPayload(t *testing.T) {
-	const testdata = "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/"
-
-	gopath, err := getGopath()
-	require.NoError(t, err)
-
-	platform := &Platform{}
-
-	var tests = []struct {
-		gopath string
-		path   string
-		succ   bool
-	}{
-		{gopath: gopath, path: testdata + "chaincodes/noop", succ: true},
-		{gopath: gopath, path: testdata + "bad/chaincodes/noop", succ: false},
-		{gopath: gopath, path: testdata + "chaincodes/BadImport", succ: false},
-		{gopath: gopath, path: testdata + "chaincodes/BadMetadataInvalidIndex", succ: false},
-		{gopath: gopath, path: testdata + "chaincodes/BadMetadataUnexpectedFolderContent", succ: false},
-		{gopath: gopath, path: testdata + "chaincodes/BadMetadataIgnoreHiddenFile", succ: true},
-		{gopath: gopath, path: testdata + "chaincodes/empty/", succ: false},
-		{gopath: "", path: "testdata/ccmodule", succ: true},
-	}
-
-	for _, tst := range tests {
-		reset := updateGopath(t, tst.gopath)
-		_, err := platform.GetDeploymentPayload(tst.path)
-		if tst.succ {
-			assert.NoError(t, err, "expected success for path: %s", tst.path)
+	return func() {
+		if !gopathSet {
+			os.Unsetenv("GOPATH")
 		} else {
-			assert.Errorf(t, err, "expected error for path: %s", tst.path)
+			os.Setenv("GOPATH", initialGopath)
 		}
-		reset()
+		if !go111ModuleSet {
+			os.Unsetenv("GO111MODULE")
+		} else {
+			os.Setenv("GO111MODULE", initialGo111Module)
+		}
 	}
 }
 
@@ -427,7 +431,7 @@ echo Done!
 }
 
 func TestDescribeCode(t *testing.T) {
-	abs, err := filepath.Abs("testdata/ccmodule")
+	abs, err := filepath.Abs(filepath.FromSlash("testdata/ccmodule"))
 	assert.NoError(t, err)
 
 	t.Run("TopLevelModulePackage", func(t *testing.T) {
@@ -452,6 +456,24 @@ func TestDescribeCode(t *testing.T) {
 			Module:       true,
 		}
 		assert.Equal(t, expected, cd)
+	})
+}
+
+func TestRegularFileExists(t *testing.T) {
+	t.Run("RegularFile", func(t *testing.T) {
+		ok, err := regularFileExists("testdata/ccmodule/go.mod")
+		assert.NoError(t, err)
+		assert.True(t, ok)
+	})
+	t.Run("MissingFile", func(t *testing.T) {
+		ok, err := regularFileExists("testdata/missing.file")
+		assert.NoError(t, err)
+		assert.False(t, ok)
+	})
+	t.Run("Directory", func(t *testing.T) {
+		ok, err := regularFileExists("testdata")
+		assert.NoError(t, err)
+		assert.False(t, ok)
 	})
 }
 

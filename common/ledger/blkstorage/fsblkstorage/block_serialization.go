@@ -9,7 +9,6 @@ package fsblkstorage
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
-	ledgerutil "github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -47,7 +46,7 @@ func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {
 func deserializeBlock(serializedBlockBytes []byte) (*common.Block, error) {
 	block := &common.Block{}
 	var err error
-	b := ledgerutil.NewBuffer(serializedBlockBytes)
+	b := newBuffer(serializedBlockBytes)
 	if block.Header, err = extractHeader(b); err != nil {
 		return nil, err
 	}
@@ -63,7 +62,7 @@ func deserializeBlock(serializedBlockBytes []byte) (*common.Block, error) {
 func extractSerializedBlockInfo(serializedBlockBytes []byte) (*serializedBlockInfo, error) {
 	info := &serializedBlockInfo{}
 	var err error
-	b := ledgerutil.NewBuffer(serializedBlockBytes)
+	b := newBuffer(serializedBlockBytes)
 	info.blockHeader, err = extractHeader(b)
 	if err != nil {
 		return nil, err
@@ -131,7 +130,7 @@ func addMetadataBytes(blockMetadata *common.BlockMetadata, buf *proto.Buffer) er
 	return nil
 }
 
-func extractHeader(buf *ledgerutil.Buffer) (*common.BlockHeader, error) {
+func extractHeader(buf *buffer) (*common.BlockHeader, error) {
 	header := &common.BlockHeader{}
 	var err error
 	if header.Number, err = buf.DecodeVarint(); err != nil {
@@ -149,7 +148,7 @@ func extractHeader(buf *ledgerutil.Buffer) (*common.BlockHeader, error) {
 	return header, nil
 }
 
-func extractData(buf *ledgerutil.Buffer) (*common.BlockData, []*txindexInfo, error) {
+func extractData(buf *buffer) (*common.BlockData, []*txindexInfo, error) {
 	data := &common.BlockData{}
 	var txOffsets []*txindexInfo
 	var numItems uint64
@@ -177,7 +176,7 @@ func extractData(buf *ledgerutil.Buffer) (*common.BlockData, []*txindexInfo, err
 	return data, txOffsets, nil
 }
 
-func extractMetadata(buf *ledgerutil.Buffer) (*common.BlockMetadata, error) {
+func extractMetadata(buf *buffer) (*common.BlockMetadata, error) {
 	metadata := &common.BlockMetadata{}
 	var numItems uint64
 	var metadataEntry []byte

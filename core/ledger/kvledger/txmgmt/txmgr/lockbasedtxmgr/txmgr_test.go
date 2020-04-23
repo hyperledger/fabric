@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -16,10 +17,10 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/assert"
@@ -445,23 +446,18 @@ func testIteratorPagingInit(t *testing.T, env testEnv, numKeys int) {
 }
 
 func testIteratorPaging(t *testing.T, env testEnv, numKeys int, startKey, endKey string,
-	limit int32, expectedKeys []string) string {
+	pageSize int32, expectedKeys []string) string {
 	cID := "cid"
 	txMgr := env.getTxMgr()
 
-	queryOptions := make(map[string]interface{})
-	if limit != 0 {
-		queryOptions["limit"] = limit
-	}
-
 	queryExecuter, _ := txMgr.NewQueryExecutor("test_tx2")
-	itr, _ := queryExecuter.GetStateRangeScanIteratorWithMetadata(cID, startKey, endKey, queryOptions)
+	itr, _ := queryExecuter.GetStateRangeScanIteratorWithPagination(cID, startKey, endKey, pageSize)
 
 	// Verify the keys returned
 	testItrWithoutClose(t, itr, expectedKeys)
 
 	returnBookmark := ""
-	if limit > 0 {
+	if pageSize > 0 {
 		returnBookmark = itr.GetBookmarkAndClose()
 	}
 
@@ -768,11 +764,7 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 	queryExecuter, _ := txMgr.NewQueryExecutor("test_tx2")
 	queryString := `{"selector":{"owner":{"$eq":"bob"}}}`
 
-	queryOptions := map[string]interface{}{
-		"limit": int32(2),
-	}
-
-	itr, err := queryExecuter.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	itr, err := queryExecuter.ExecuteQueryWithPagination("ns1", queryString, "", 2)
 	assert.NoError(t, err, "Error upon ExecuteQueryWithMetadata()")
 	counter := 0
 	for {
@@ -792,14 +784,7 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 
 	bookmark := itr.GetBookmarkAndClose()
 
-	queryOptions = map[string]interface{}{
-		"limit": int32(2),
-	}
-	if bookmark != "" {
-		queryOptions["bookmark"] = bookmark
-	}
-
-	itr, err = queryExecuter.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	itr, err = queryExecuter.ExecuteQueryWithPagination("ns1", queryString, bookmark, 2)
 	assert.NoError(t, err, "Error upon ExecuteQuery()")
 	counter = 0
 	for {
@@ -839,7 +824,7 @@ func TestValidateKey(t *testing.T) {
 // TestTxSimulatorUnsupportedTx verifies that a simulation must throw an error when an unsupported transaction
 // is perfromed - queries on private data are supported in a read-only tran
 func TestTxSimulatorUnsupportedTx(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "testtxsimulatorunsupportedtx", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
@@ -866,19 +851,15 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
 	assert.True(t, ok)
 
-	queryOptions := map[string]interface{}{
-		"limit": int32(2),
-	}
-
 	simulator, _ = txMgr.NewTxSimulator("txid3")
 	err = simulator.SetState("ns", "key", []byte("value"))
 	assert.NoError(t, err)
-	_, err = simulator.GetStateRangeScanIteratorWithMetadata("ns1", "startKey", "endKey", queryOptions)
+	_, err = simulator.GetStateRangeScanIteratorWithPagination("ns1", "startKey", "endKey", 2)
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
 	assert.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid4")
-	_, err = simulator.GetStateRangeScanIteratorWithMetadata("ns1", "startKey", "endKey", queryOptions)
+	_, err = simulator.GetStateRangeScanIteratorWithPagination("ns1", "startKey", "endKey", 2)
 	assert.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
@@ -915,19 +896,16 @@ func testTxSimulatorQueryUnsupportedTx(t *testing.T, env testEnv) {
 	txMgrHelper.validateAndCommitRWSet(txRWSet.PubSimulationResults)
 
 	queryString := `{"selector":{"owner":{"$eq":"bob"}}}`
-	queryOptions := map[string]interface{}{
-		"limit": int32(2),
-	}
 
 	simulator, _ := txMgr.NewTxSimulator("txid1")
 	err := simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
 	assert.NoError(t, err)
-	_, err = simulator.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	_, err = simulator.ExecuteQueryWithPagination("ns1", queryString, "", 2)
 	_, ok := err.(*txmgr.ErrUnsupportedTransaction)
 	assert.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid2")
-	_, err = simulator.ExecuteQueryWithMetadata("ns1", queryString, queryOptions)
+	_, err = simulator.ExecuteQueryWithPagination("ns1", queryString, "", 2)
 	assert.NoError(t, err)
 	err = simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
 	_, ok = err.(*txmgr.ErrUnsupportedTransaction)
@@ -995,7 +973,7 @@ func TestConstructUniquePvtData(t *testing.T) {
 
 func TestFindAndRemoveStalePvtData(t *testing.T) {
 	ledgerid := "TestFindAndRemoveStalePvtData"
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, ledgerid, nil)
 	defer testEnv.cleanup()
 	db := testEnv.getVDB()
@@ -1178,7 +1156,7 @@ func testValidationAndCommitOfOldPvtData(t *testing.T, env testEnv) {
 }
 
 func TestTxSimulatorMissingPvtdata(t *testing.T) {
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "TestTxSimulatorUnsupportedTxQueries", nil)
 	defer testEnv.cleanup()
 
@@ -1224,7 +1202,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 			{"ns", "coll"}: 1,
 		},
 	)
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, ledgerid, btlPolicy)
 	defer testEnv.cleanup()
 
@@ -1332,7 +1310,7 @@ func testPvtValueEqual(t *testing.T, txMgr txmgr.TxMgr, ns, coll, key string, va
 
 func TestDeleteOnCursor(t *testing.T) {
 	cID := "cid"
-	env := testEnvs[0]
+	env := testEnvsMap[levelDBtestEnvName]
 	env.init(t, "TestDeleteOnCursor", nil)
 	defer env.cleanup()
 
@@ -1380,7 +1358,7 @@ func TestDeleteOnCursor(t *testing.T) {
 
 func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	ledgerid := "TestTxSimulatorMissingPvtdataExpiry"
-	testEnv := testEnvs[0]
+	testEnv := testEnvsMap[levelDBtestEnvName]
 	btlPolicy := btltestutil.SampleBTLPolicy(
 		map[[2]string]uint64{
 			{"ns", "coll"}: 1,

@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
-	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -50,7 +50,7 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 		{
 			name:          "Last config block number cannot be retrieved from last block",
 			blockAtHeight: &common.Block{},
-			expectedError: "no metadata in block",
+			expectedError: "failed to retrieve metadata: no metadata in block",
 			height:        100,
 		},
 		{

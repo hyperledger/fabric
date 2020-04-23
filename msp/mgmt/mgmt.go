@@ -139,12 +139,12 @@ func GetLocalMSP(cryptoProvider bccsp.BCCSP) msp.MSP {
 		return localMsp
 	}
 
-	localMsp = loadLocaMSP(cryptoProvider)
+	localMsp = loadLocalMSP(cryptoProvider)
 
 	return localMsp
 }
 
-func loadLocaMSP(bccsp bccsp.BCCSP) msp.MSP {
+func loadLocalMSP(bccsp bccsp.BCCSP) msp.MSP {
 	// determine the type of MSP (by default, we'll use bccspMSP)
 	mspType := viper.GetString("peer.localMspType")
 	if mspType == "" {

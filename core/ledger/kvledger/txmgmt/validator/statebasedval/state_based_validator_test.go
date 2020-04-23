@@ -25,11 +25,11 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/assert"
 )
@@ -43,11 +43,16 @@ type keyValue struct {
 	version    *version.Height
 }
 
+const (
+	levelDBtestEnvName = "levelDB_LockBasedTxMgr"
+	couchDBtestEnvName = "couchDB_LockBasedTxMgr"
+)
+
 // Tests will be run against each environment in this array
 // For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
-var testEnvs = []privacyenabledstate.TestEnv{
-	&privacyenabledstate.LevelDBCommonStorageTestEnv{},
-	&privacyenabledstate.CouchDBCommonStorageTestEnv{},
+var testEnvs = map[string]privacyenabledstate.TestEnv{
+	levelDBtestEnvName: &privacyenabledstate.LevelDBCommonStorageTestEnv{},
+	couchDBtestEnvName: &privacyenabledstate.CouchDBCommonStorageTestEnv{},
 }
 
 func TestMain(m *testing.M) {
@@ -60,7 +65,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestValidatorBulkLoadingOfCache(t *testing.T) {
-	testDBEnv := testEnvs[1] // couchDB common storage test environment
+	testDBEnv := testEnvs[couchDBtestEnvName]
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("testdb")
@@ -190,7 +195,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 }
 
 func TestValidator(t *testing.T) {
-	testDBEnv := testEnvs[0] // LevelDB common storage test environment
+	testDBEnv := testEnvs[levelDBtestEnvName]
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
@@ -235,7 +240,7 @@ func TestValidator(t *testing.T) {
 }
 
 func TestPhantomValidation(t *testing.T) {
-	testDBEnv := testEnvs[0] // LevelDB common storage test environment
+	testDBEnv := testEnvs[levelDBtestEnvName]
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
@@ -308,7 +313,7 @@ func TestPhantomValidation(t *testing.T) {
 }
 
 func TestPhantomHashBasedValidation(t *testing.T) {
-	testDBEnv := testEnvs[0] // LevelDB common storage test environment
+	testDBEnv := testEnvs[levelDBtestEnvName]
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")

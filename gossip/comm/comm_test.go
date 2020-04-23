@@ -12,7 +12,9 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/tls"
+	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"strconv"
@@ -24,15 +26,17 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/api/mocks"
+	gmocks "github.com/hyperledger/fabric/gossip/comm/mocks"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
@@ -218,7 +222,7 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 		mac := hmac.New(sha256.New, hmacKey)
 		mac.Write(msg)
 		return mac.Sum(nil), nil
-	})
+	}, false)
 	// Mutate connection message to test negative paths
 	msg = connMutator(msg)
 	// Send your own connection message
@@ -241,8 +245,6 @@ func handshaker(port int, endpoint string, comm Comm, t *testing.T, connMutator 
 }
 
 func TestMutualParallelSendWithAck(t *testing.T) {
-	t.Parallel()
-
 	// This test tests concurrent and parallel sending of many (1000) messages
 	// from 2 instances to one another at the same time.
 
@@ -297,7 +299,6 @@ func getAvailablePort(t *testing.T) (port int, endpoint string, ll net.Listener)
 }
 
 func TestHandshake(t *testing.T) {
-	t.Parallel()
 	signer := func(msg []byte) ([]byte, error) {
 		mac := hmac.New(sha256.New, hmacKey)
 		mac.Write(msg)
@@ -443,7 +444,6 @@ func TestHandshake(t *testing.T) {
 }
 
 func TestConnectUnexpectedPeer(t *testing.T) {
-	t.Parallel()
 	// Scenarios: In both scenarios, comm1 connects to comm2 or comm3.
 	// and expects to see a PKI-ID which is equal to comm4's PKI-ID.
 	// The connection attempt would succeed or fail based on whether comm2 or comm3
@@ -512,7 +512,6 @@ func TestConnectUnexpectedPeer(t *testing.T) {
 }
 
 func TestGetConnectionInfo(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, _ := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
@@ -529,7 +528,6 @@ func TestGetConnectionInfo(t *testing.T) {
 }
 
 func TestCloseConn(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
 	acceptChan := comm1.Accept(acceptAll)
@@ -555,7 +553,7 @@ func TestCloseConn(t *testing.T) {
 		mac := hmac.New(sha256.New, hmacKey)
 		mac.Write(msg)
 		return mac.Sum(nil), nil
-	})
+	}, false)
 	assert.NoError(t, stream.Send(connMsg.Envelope))
 	stream.Send(createGossipMsg().Envelope)
 	select {
@@ -586,7 +584,20 @@ func TestCloseConn(t *testing.T) {
 // case assumes some will fail, but that eventually enough messages will get
 // through that the test will end.
 func TestCommSend(t *testing.T) {
-	t.Parallel()
+	sendMessages := func(c Comm, peer *RemotePeer, stopChan <-chan struct{}) {
+		ticker := time.NewTicker(time.Millisecond)
+		defer ticker.Stop()
+		for {
+			emptyMsg := createGossipMsg()
+			select {
+			case <-stopChan:
+				return
+			case <-ticker.C:
+				c.Send(emptyMsg, peer)
+			}
+		}
+	}
+
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
@@ -600,59 +611,40 @@ func TestCommSend(t *testing.T) {
 	stopch1 := make(chan struct{})
 	stopch2 := make(chan struct{})
 
-	go func() {
-		for {
-			emptyMsg := createGossipMsg()
-			select {
-			case <-stopch1:
-				return
-			default:
-				comm1.Send(emptyMsg, remotePeer(port2))
-			}
-		}
-	}()
+	go sendMessages(comm1, remotePeer(port2), stopch1)
+	go sendMessages(comm2, remotePeer(port1), stopch2)
 
-	go func() {
-		for {
-			emptyMsg := createGossipMsg()
-			select {
-			case <-stopch2:
-				return
-			default:
-				comm2.Send(emptyMsg, remotePeer(port1))
-			}
-		}
-	}()
-
-	c1recieved := 0
-	c2recieved := 0
+	c1received := 0
+	c2received := 0
 	// hopefully in some runs we'll fill both send and receive buffers and
 	// drop overflowing messages, but still finish, because the endless
 	// stream of messages inexorably gets through unless something is very
 	// broken.
-	totalMessagesRecieved := (DefSendBuffSize + DefRecvBuffSize) * 2
+	totalMessagesReceived := (DefSendBuffSize + DefRecvBuffSize) * 2
+	timer := time.NewTimer(30 * time.Second)
+	defer timer.Stop()
 RECV:
 	for {
 		select {
 		case <-ch1:
-			c1recieved++
-			if c1recieved == totalMessagesRecieved {
+			c1received++
+			if c1received == totalMessagesReceived {
 				close(stopch2)
 			}
 		case <-ch2:
-			c2recieved++
-			if c2recieved == totalMessagesRecieved {
+			c2received++
+			if c2received == totalMessagesReceived {
 				close(stopch1)
 			}
-		case <-time.After(30 * time.Second):
-			t.Fatalf("timed out waiting for messages to be recieved.\nc1 got %d messages\nc2 got %d messages", c1recieved, c2recieved)
+		case <-timer.C:
+			t.Fatalf("timed out waiting for messages to be received.\nc1 got %d messages\nc2 got %d messages", c1received, c2received)
 		default:
-			if c1recieved > totalMessagesRecieved && c2recieved > totalMessagesRecieved {
+			if c1received >= totalMessagesReceived && c2received >= totalMessagesReceived {
 				break RECV
 			}
 		}
 	}
-	t.Logf("c1 got %d messages\nc2 got %d messages", c1recieved, c2recieved)
+	t.Logf("c1 got %d messages\nc2 got %d messages", c1received, c2received)
 }
 
 type nonResponsivePeer struct {
@@ -684,7 +676,6 @@ func (bp *nonResponsivePeer) stop() {
 }
 
 func TestNonResponsivePing(t *testing.T) {
-	t.Parallel()
 	c, _ := newCommInstance(t, naiveSec)
 	defer c.Stop()
 	nonRespPeer := newNonResponsivePeer(t)
@@ -703,7 +694,6 @@ func TestNonResponsivePing(t *testing.T) {
 }
 
 func TestResponses(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, _ := newCommInstance(t, naiveSec)
 
@@ -744,7 +734,6 @@ func TestResponses(t *testing.T) {
 // TestAccept makes sure that accept filters work. The probability of the parity
 // of all nonces being 0 or 1 is very low.
 func TestAccept(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, _ := newCommInstance(t, naiveSec)
 
@@ -817,7 +806,6 @@ func TestAccept(t *testing.T) {
 }
 
 func TestReConnections(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
 
@@ -855,7 +843,6 @@ func TestReConnections(t *testing.T) {
 }
 
 func TestProbe(t *testing.T) {
-	t.Parallel()
 	comm1, port1 := newCommInstance(t, naiveSec)
 	defer comm1.Stop()
 	comm2, port2 := newCommInstance(t, naiveSec)
@@ -899,7 +886,6 @@ func TestProbe(t *testing.T) {
 }
 
 func TestPresumedDead(t *testing.T) {
-	t.Parallel()
 	comm1, _ := newCommInstance(t, naiveSec)
 	comm2, port2 := newCommInstance(t, naiveSec)
 
@@ -939,6 +925,116 @@ func TestPresumedDead(t *testing.T) {
 	}
 }
 
+func TestReadFromStream(t *testing.T) {
+	stream := &gmocks.MockStream{}
+	stream.On("CloseSend").Return(nil)
+	stream.On("Recv").Return(&proto.Envelope{Payload: []byte{1}}, nil).Once()
+	stream.On("Recv").Return(nil, errors.New("stream closed")).Once()
+
+	conn := newConnection(nil, nil, stream, disabledMetrics, ConnConfig{1, 1})
+	conn.logger = flogging.MustGetLogger("test")
+
+	errChan := make(chan error, 2)
+	msgChan := make(chan *protoext.SignedGossipMessage, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		conn.readFromStream(errChan, msgChan)
+	}()
+
+	select {
+	case <-msgChan:
+		assert.Fail(t, "malformed message shouldn't have been received")
+	case <-time.After(time.Millisecond * 100):
+		assert.Len(t, errChan, 1)
+	}
+
+	conn.close()
+	wg.Wait()
+}
+
+func TestSendBadEnvelope(t *testing.T) {
+	comm1, port := newCommInstance(t, naiveSec)
+	defer comm1.Stop()
+
+	stream, err := establishSession(t, port)
+	assert.NoError(t, err)
+
+	inc := comm1.Accept(acceptAll)
+
+	goodMsg := createGossipMsg()
+	err = stream.Send(goodMsg.Envelope)
+	assert.NoError(t, err)
+
+	select {
+	case goodMsgReceived := <-inc:
+		assert.Equal(t, goodMsg.Envelope.Payload, goodMsgReceived.GetSourceEnvelope().Payload)
+	case <-time.After(time.Minute):
+		assert.Fail(t, "Didn't receive message within a timely manner")
+		return
+	}
+
+	// Next, we corrupt a message and send it until the stream is closed forcefully from the remote peer
+	start := time.Now()
+	for {
+		badMsg := createGossipMsg()
+		badMsg.Envelope.Payload = []byte{1}
+		err = stream.Send(badMsg.Envelope)
+		if err != nil {
+			assert.Equal(t, io.EOF, err)
+			break
+		}
+		if time.Now().After(start.Add(time.Second * 30)) {
+			assert.Fail(t, "Didn't close stream within a timely manner")
+			return
+		}
+	}
+}
+
+func establishSession(t *testing.T, port int) (proto.Gossip_GossipStreamClient, error) {
+	cert := GenerateCertificatesOrPanic()
+	secureOpts := grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{cert},
+	}))
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	endpoint := fmt.Sprintf("127.0.0.1:%d", port)
+	conn, err := grpc.DialContext(ctx, endpoint, secureOpts, grpc.WithBlock())
+	assert.NoError(t, err, "%v", err)
+	if err != nil {
+		return nil, err
+	}
+	cl := proto.NewGossipClient(conn)
+	stream, err := cl.GossipStream(context.Background())
+	assert.NoError(t, err, "%v", err)
+	if err != nil {
+		return nil, err
+	}
+
+	clientCertHash := certHashFromRawCert(cert.Certificate[0])
+	pkiID := common.PKIidType([]byte{1, 2, 3})
+	c := &commImpl{}
+	assert.NoError(t, err, "%v", err)
+	msg, _ := c.createConnectionMsg(pkiID, clientCertHash, []byte{1, 2, 3}, func(msg []byte) ([]byte, error) {
+		mac := hmac.New(sha256.New, hmacKey)
+		mac.Write(msg)
+		return mac.Sum(nil), nil
+	}, false)
+	// Send your own connection message
+	stream.Send(msg.Envelope)
+	// Wait for connection message from the other side
+	envelope, err := stream.Recv()
+	if err != nil {
+		return nil, err
+	}
+	assert.NotNil(t, envelope)
+	return stream, nil
+}
+
 func createGossipMsg() *protoext.SignedGossipMessage {
 	msg, _ := protoext.NoopSign(&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
@@ -974,7 +1070,6 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 }
 
 func TestConcurrentCloseSend(t *testing.T) {
-	t.Parallel()
 	var stopping int32
 
 	comm1, _ := newCommInstance(t, naiveSec)

@@ -73,8 +73,11 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case "respond":
 		// return with an error
 		return t.respond(stub, args)
+	case "mspid":
+		// Checks the shim's GetMSPID() API
+		return t.mspid(args)
 	default:
-		return shim.Error(`Invalid invoke function name. Expecting "invoke", "delete", "query", or "respond"`)
+		return shim.Error(`Invalid invoke function name. Expecting "invoke", "delete", "query", "respond", or "mspid"`)
 	}
 }
 
@@ -198,4 +201,27 @@ func (t *SimpleChaincode) respond(stub shim.ChaincodeStubInterface, args []strin
 		Message: message,
 		Payload: payload,
 	}
+}
+
+// mspid simply calls shim.GetMSPID() to verify the mspid was properly passed from the peer
+// via the CORE_PEER_LOCALMSPID env var
+func (t *SimpleChaincode) mspid(args []string) pb.Response {
+	if len(args) != 0 {
+		return shim.Error("expected no arguments")
+	}
+
+	// Get the mspid from the env var
+	mspid, err := shim.GetMSPID()
+	if err != nil {
+		jsonResp := "{\"Error\":\"Failed to get mspid\"}"
+		return shim.Error(jsonResp)
+	}
+
+	if mspid == "" {
+		jsonResp := "{\"Error\":\"Empty mspid\"}"
+		return shim.Error(jsonResp)
+	}
+
+	fmt.Printf("MSPID:%s\n", mspid)
+	return shim.Success([]byte(mspid))
 }

@@ -45,7 +45,7 @@ func Test_gopathDependencyPackageInfo(t *testing.T) {
 
 	t.Run("TestFailure", func(t *testing.T) {
 		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "./doesnotexist")
-		assert.EqualError(t, err, "listing deps for pacakge ./doesnotexist failed: exit status 1")
+		assert.EqualError(t, err, "listing deps for package ./doesnotexist failed: exit status 1")
 	})
 }
 

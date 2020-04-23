@@ -68,11 +68,11 @@ func TestSpawnEtcdRaft(t *testing.T) {
 		// tests in this suite actually launch process with success, hence we need to avoid
 		// conflicts in listening port, opening files.
 		t.Run("TLS disabled dual listener", func(t *testing.T) {
-			testEtcdRaftOSNNoTLSDualListener(gt, tempDir, orderer, fabricRootDir, configtxgen, cryptoPath)
+			testEtcdRaftOSNNoTLSDualListener(NewGomegaWithT(t), tempDir, orderer, fabricRootDir, configtxgen, cryptoPath)
 		})
 
 		t.Run("TLS enabled single listener", func(t *testing.T) {
-			testEtcdRaftOSNSuccess(gt, tempDir, configtxgen, orderer, fabricRootDir, cryptoPath)
+			testEtcdRaftOSNSuccess(NewGomegaWithT(t), tempDir, configtxgen, orderer, fabricRootDir, cryptoPath)
 		})
 	})
 }
@@ -125,7 +125,7 @@ func testEtcdRaftOSNSuccess(gt *GomegaWithT, tempDir, configtxgen, orderer, fabr
 
 	// Launch the OSN
 	ordererProcess := launchOrderer(gt, orderer, tempDir, genesisBlockPath, fabricRootDir, cryptoPath)
-	defer ordererProcess.Kill()
+	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 	// The following configuration parameters are not specified in the orderer.yaml, so let's ensure
 	// they are really configured autonomously via the localconfig code.
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("General.Cluster.DialTimeout = 5s"))
@@ -159,7 +159,7 @@ func testEtcdRaftOSNFailureInvalidBootstrapBlock(gt *GomegaWithT, tempDir, order
 
 	// Launch the OSN
 	ordererProcess := launchOrderer(gt, orderer, tempDir, genesisBlockPath, fabricRootDir, cryptoPath)
-	defer ordererProcess.Kill()
+	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 
 	expectedErr := "Failed validating bootstrap block: the block isn't a system channel block because it lacks ConsortiumsConfig"
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say(expectedErr))
@@ -179,7 +179,7 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, tempDir, orderer, fabri
 	}
 	ordererProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
-	defer ordererProcess.Kill()
+	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 
 	expectedErr := "TLS is required for running ordering nodes of type etcdraft."
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say(expectedErr))
@@ -212,7 +212,7 @@ func testEtcdRaftOSNNoTLSDualListener(gt *GomegaWithT, tempDir, orderer, fabricR
 	}
 	ordererProcess, err := gexec.Start(cmd, nil, nil)
 	gt.Expect(err).NotTo(HaveOccurred())
-	defer ordererProcess.Kill()
+	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("Beginning to serve requests"))
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say("becomeLeader"))

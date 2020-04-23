@@ -30,6 +30,7 @@ func TestNewMetrics(t *testing.T) {
 		InitFailed:               &metricsfakes.Counter{},
 		EndorsementsFailed:       &metricsfakes.Counter{},
 		DuplicateTxsFailure:      &metricsfakes.Counter{},
+		SimulationFailure:        &metricsfakes.Counter{},
 	}))
 
 	gt.Expect(provider.NewHistogramCallCount()).To(Equal(1))
@@ -37,7 +38,7 @@ func TestNewMetrics(t *testing.T) {
 		{proposalDurationHistogramOpts},
 	}))
 
-	gt.Expect(provider.NewCounterCallCount()).To(Equal(7))
+	gt.Expect(provider.NewCounterCallCount()).To(Equal(8))
 	gt.Expect(provider.Invocations()["NewCounter"]).To(ConsistOf([][]interface{}{
 		{receivedProposalsCounterOpts},
 		{successfulProposalsCounterOpts},
@@ -46,5 +47,6 @@ func TestNewMetrics(t *testing.T) {
 		{initFailureCounterOpts},
 		{endorsementFailureCounterOpts},
 		{duplicateTxsFailureCounterOpts},
+		{simulationFailureCounterOpts},
 	}))
 }

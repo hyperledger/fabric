@@ -10,11 +10,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/configtxlator/update"
@@ -68,6 +68,17 @@ func addPolicy(cg *cb.ConfigGroup, policy policies.ConfigPolicy, modPolicy strin
 	}
 }
 
+func AddOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy, modPolicy string) error {
+	switch {
+	case policyMap == nil:
+		return errors.Errorf("no policies defined")
+	case policyMap[BlockValidationPolicyKey] == nil:
+		return errors.Errorf("no BlockValidation policy defined")
+	}
+
+	return AddPolicies(cg, policyMap, modPolicy)
+}
+
 func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy, modPolicy string) error {
 	switch {
 	case policyMap == nil:
@@ -95,7 +106,7 @@ func AddPolicies(cg *cb.ConfigGroup, policyMap map[string]*genesisconfig.Policy,
 				},
 			}
 		case SignaturePolicyType:
-			sp, err := cauthdsl.FromString(policy.Rule)
+			sp, err := policydsl.FromString(policy.Rule)
 			if err != nil {
 				return errors.Wrapf(err, "invalid signature policy rule '%s'", policy.Rule)
 			}
@@ -169,12 +180,8 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 // It sets the mod_policy of all elements to "Admins".  This group is always present in any channel configuration.
 func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 	ordererGroup := protoutil.NewConfigGroup()
-	if err := AddPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
+	if err := AddOrdererPolicies(ordererGroup, conf.Policies, channelconfig.AdminsPolicyKey); err != nil {
 		return nil, errors.Wrapf(err, "error adding policies to orderer group")
-	}
-	ordererGroup.Policies[BlockValidationPolicyKey] = &cb.ConfigPolicy{
-		Policy:    policies.ImplicitMetaAnyPolicy(channelconfig.WritersPolicyKey).Value(),
-		ModPolicy: channelconfig.AdminsPolicyKey,
 	}
 	addValue(ordererGroup, channelconfig.BatchSizeValue(
 		conf.BatchSize.MaxMessageCount,
@@ -341,7 +348,7 @@ func NewConsortiumsGroup(conf map[string]*genesisconfig.Consortium) (*cb.ConfigG
 	consortiumsGroup := protoutil.NewConfigGroup()
 	// This policy is not referenced anywhere, it is only used as part of the implicit meta policy rule at the channel level, so this setting
 	// effectively degrades control of the ordering system channel to the ordering admins
-	addPolicy(consortiumsGroup, policies.SignaturePolicy(channelconfig.AdminsPolicyKey, cauthdsl.AcceptAllPolicy), ordererAdminsPolicyName)
+	addPolicy(consortiumsGroup, policies.SignaturePolicy(channelconfig.AdminsPolicyKey, policydsl.AcceptAllPolicy), ordererAdminsPolicyName)
 
 	for consortiumName, consortium := range conf {
 		var err error

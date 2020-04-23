@@ -8,6 +8,7 @@ package ledger
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
@@ -18,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
 // Initializer encapsulates dependencies for PeerLedgerProvider
@@ -53,7 +53,45 @@ type StateDBConfig struct {
 	StateDatabase string
 	// CouchDB is the configuration for CouchDB.  It is used when StateDatabase
 	// is set to "CouchDB".
-	CouchDB *couchdb.Config
+	CouchDB *CouchDBConfig
+}
+
+// CouchDBConfig is a structure used to configure a CouchInstance.
+type CouchDBConfig struct {
+	// Address is the hostname:port of the CouchDB database instance.
+	Address string
+	// Username is the username used to authenticate with CouchDB.  This username
+	// must have read and write access permissions.
+	Username string
+	// Password is the password for Username.
+	Password string
+	// MaxRetries is the maximum number of times to retry CouchDB operations on
+	// failure.
+	MaxRetries int
+	// MaxRetriesOnStartup is the maximum number of times to retry CouchDB operations on
+	// failure when initializing the ledger.
+	MaxRetriesOnStartup int
+	// RequestTimeout is the timeout used for CouchDB operations.
+	RequestTimeout time.Duration
+	// InternalQueryLimit is the maximum number of records to return internally
+	// when querying CouchDB.
+	InternalQueryLimit int
+	// MaxBatchUpdateSize is the maximum number of records to included in CouchDB
+	// bulk update operations.
+	MaxBatchUpdateSize int
+	// WarmIndexesAfterNBlocks is the number of blocks after which to warm any
+	// CouchDB indexes.
+	WarmIndexesAfterNBlocks int
+	// CreateGlobalChangesDB determines whether or not to create the "_global_changes"
+	// system database.
+	CreateGlobalChangesDB bool
+	// RedoLogPath is the directory where the CouchDB redo log files are stored.
+	RedoLogPath string
+	// UserCacheSizeMBs denotes the user specified maximum mega bytes (MB) to be allocated
+	// for the user state cache (i.e., all chaincodes deployed by the user). Note that
+	// UserCacheSizeMBs needs to be a multiple of 32 MB. If it is not a multiple of 32 MB,
+	// the peer would round the size to the next multiple of 32 MB.
+	UserCacheSizeMBs int
 }
 
 // PrivateDataConfig is a structure used to configure a private data storage provider.
@@ -170,24 +208,24 @@ type QueryExecutor interface {
 	GetStateMetadata(namespace, key string) (map[string][]byte, error)
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
 	GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error)
-	// GetStateRangeScanIteratorWithMetadata returns an iterator that contains all the key-values between given key ranges.
+	// GetStateRangeScanIteratorWithPagination returns an iterator that contains all the key-values between given key ranges.
 	// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
 	// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
 	// can be supplied as empty strings. However, a full scan should be used judiciously for performance reasons.
-	// metadata is a map of additional query parameters
+	// The page size parameter limits the number of returned results.
 	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.
-	GetStateRangeScanIteratorWithMetadata(namespace string, startKey, endKey string, metadata map[string]interface{}) (QueryResultsIterator, error)
+	GetStateRangeScanIteratorWithPagination(namespace string, startKey, endKey string, pageSize int32) (QueryResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	// Only used for state databases that support query
 	// For a chaincode, the namespace corresponds to the chaincodeId
 	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.
 	ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error)
-	// ExecuteQueryWithMetadata executes the given query and returns an iterator that contains results of type specific to the underlying data store.
-	// metadata is a map of additional query parameters
+	// ExecuteQueryWithPagination executes the given query and returns an iterator that contains results of type specific to the underlying data store.
+	// The bookmark and page size parameters are associated with the pagination.
 	// Only used for state databases that support query
 	// For a chaincode, the namespace corresponds to the chaincodeId
 	// The returned ResultsIterator contains results of type *KV which is defined in fabric-protos/ledger/queryresult.
-	ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (QueryResultsIterator, error)
+	ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (QueryResultsIterator, error)
 	// GetPrivateData gets the value of a private data item identified by a tuple <namespace, collection, key>
 	GetPrivateData(namespace, collection, key string) ([]byte, error)
 	// GetPrivateDataMetadata gets the metadata of a private data item identified by a tuple <namespace, collection, key>
@@ -425,6 +463,7 @@ func (txSim *TxSimulationResults) ContainsPvtWrites() bool {
 // and result in a panic.
 // The function Initialize is invoked only once at the time of opening the ledger.
 type StateListener interface {
+	Name() string
 	Initialize(ledgerID string, qe SimpleQueryExecutor) error
 	InterestedInNamespaces() []string
 	HandleStateUpdates(trigger *StateUpdateTrigger) error

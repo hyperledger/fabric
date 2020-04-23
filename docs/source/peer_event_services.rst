@@ -84,7 +84,7 @@ A filtered block contains:
  * array of filtered transactions.
  * transaction ID.
 
-   * type (e.g. ``ENDORSER_TRANSACTION``, ``CONFIG``.
+   * type (e.g. ``ENDORSER_TRANSACTION``, ``CONFIG``).
    * transaction validation code.
 
  * filtered transaction actions.
@@ -94,7 +94,7 @@ A filtered block contains:
 SDK event documentation
 -----------------------
 
-For further details on using the event services, refer to the `SDK documentation. <https://hyperledger.github.io/fabric-sdk-node/master/tutorial-channel-events.html>`_
+For further details on using the event services, refer to the `SDK documentation. <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-channel-events.html>`_
 
 .. Licensed under Creative Commons Attribution 4.0 International License
     https://creativecommons.org/licenses/by/4.0/

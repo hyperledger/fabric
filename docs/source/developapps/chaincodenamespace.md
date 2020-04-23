@@ -126,8 +126,8 @@ separate, or share all commercial papers and bonds?
 ## Channels
 
 If a peer is joined to multiple channels, then a new blockchain is created
-and managed for each channel. Moreover, every time a chaincode is instantiated
-in a new channel, a new world state database is created for it. It means that
+and managed for each channel. Moreover, every time a chaincode is deployed to
+a new channel, a new world state database is created for it. It means that
 the channel also forms a kind of namespace alongside that of the chaincode for
 the world state.
 
@@ -135,7 +135,7 @@ However, the same peer and chaincode container processes can be simultaneously
 joined to multiple channels -- unlike blockchains, and world state databases,
 these processes do not increase with the number of channels joined.
 
-For example, if the `papers` and `bonds` chaincodes were instantiated on a new
+For example, if you deployed the `papers` and `bonds` chaincode to a new
 channel, there would a totally separate blockchain created, and two new world
 state databases created. However, the peer and chaincode containers would not
 increase; each would just be connected to multiple channels.
@@ -261,7 +261,8 @@ Notice how:
   See interaction points **2a**, **2b**, **2c** and **2d**.
 
 Control is passed between chaincode using the `invokeChaincode()`
-[API](https://fabric-shim.github.io/master/fabric-shim.ChaincodeStub.html#invokeChaincode__anchor).
+[API](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#invokeChaincode__anchor).
+
 This API passes control from one chaincode to another chaincode.
 
 Although we have only discussed query transactions in the example, it is

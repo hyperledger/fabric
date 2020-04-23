@@ -66,6 +66,14 @@ var (
 		LabelNames:   []string{"channel", "chaincode"},
 		StatsdFormat: "%{#fqname}.%{channel}.%{chaincode}",
 	}
+
+	simulationFailureCounterOpts = metrics.CounterOpts{
+		Namespace:    "endorser",
+		Name:         "proposal_simulation_failures",
+		Help:         "The number of failed proposal simulations",
+		LabelNames:   []string{"channel", "chaincode"},
+		StatsdFormat: "%{#fqname}.%{channel}.%{chaincode}",
+	}
 )
 
 type Metrics struct {
@@ -77,6 +85,7 @@ type Metrics struct {
 	InitFailed               metrics.Counter
 	EndorsementsFailed       metrics.Counter
 	DuplicateTxsFailure      metrics.Counter
+	SimulationFailure        metrics.Counter
 }
 
 func NewMetrics(p metrics.Provider) *Metrics {
@@ -89,5 +98,6 @@ func NewMetrics(p metrics.Provider) *Metrics {
 		InitFailed:               p.NewCounter(initFailureCounterOpts),
 		EndorsementsFailed:       p.NewCounter(endorsementFailureCounterOpts),
 		DuplicateTxsFailure:      p.NewCounter(duplicateTxsFailureCounterOpts),
+		SimulationFailure:        p.NewCounter(simulationFailureCounterOpts),
 	}
 }

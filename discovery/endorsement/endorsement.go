@@ -35,12 +35,12 @@ type principalEvaluator interface {
 type chaincodeMetadataFetcher interface {
 	// ChaincodeMetadata returns the metadata of the chaincode as appears in the ledger,
 	// or nil if the channel doesn't exist, or the chaincode isn't found in the ledger
-	Metadata(channel string, cc string, loadCollections bool) *chaincode.Metadata
+	Metadata(channel string, cc string, collections ...string) *chaincode.Metadata
 }
 
 type policyFetcher interface {
-	// PolicyByChaincode returns a policy that can be inquired which identities
-	// satisfy it
+	// PoliciesByChaincode returns the chaincode policy or existing collection level policies that can be
+	// inquired for which identities satisfy them
 	PoliciesByChaincode(channel string, cc string, collections ...string) []policies.InquireablePolicy
 }
 
@@ -168,11 +168,12 @@ func (ea *endorsementAnalyzer) computeEndorsementResponse(ctx *context) (*discov
 }
 
 func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (policies.PrincipalSets, error) {
+	sessionLogger := logger.With("channel", string(channelID))
 	var inquireablePolicies []policies.InquireablePolicy
 	for _, chaincode := range interest.Chaincodes {
 		policies := ea.PoliciesByChaincode(string(channelID), chaincode.Name, chaincode.CollectionNames...)
 		if len(policies) == 0 {
-			logger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
+			sessionLogger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
 
@@ -221,26 +222,32 @@ type metadataAndColFilter struct {
 }
 
 func loadMetadataAndFilters(ctx metadataAndFilterContext) (*metadataAndColFilter, error) {
+	sessionLogger := logger.With("channel", string(ctx.chainID))
 	var metadata []*chaincode.Metadata
 	var filters []identityFilter
 
 	for _, chaincode := range ctx.interest.Chaincodes {
-		ccMD := ctx.fetch.Metadata(string(ctx.chainID), chaincode.Name, len(chaincode.CollectionNames) > 0)
+		ccMD := ctx.fetch.Metadata(string(ctx.chainID), chaincode.Name, chaincode.CollectionNames...)
 		if ccMD == nil {
 			return nil, errors.Errorf("No metadata was found for chaincode %s in channel %s", chaincode.Name, string(ctx.chainID))
 		}
 		metadata = append(metadata, ccMD)
 		if len(chaincode.CollectionNames) == 0 {
+			sessionLogger.Debugf("No collections for %s, skipping", chaincode.Name)
+			continue
+		}
+		if chaincode.NoPrivateReads {
+			sessionLogger.Debugf("No private reads, skipping")
 			continue
 		}
 		principalSetByCollections, err := principalsFromCollectionConfig(ccMD.CollectionsConfig)
 		if err != nil {
-			logger.Warningf("Failed initializing collection filter for chaincode %s: %v", chaincode.Name, err)
+			sessionLogger.Warningf("Failed initializing collection filter for chaincode %s: %v", chaincode.Name, err)
 			return nil, errors.WithStack(err)
 		}
 		filter, err := principalSetByCollections.toIdentityFilter(string(ctx.chainID), ctx.evaluator, chaincode)
 		if err != nil {
-			logger.Warningf("Failed computing collection principal sets for chaincode %s due to %v", chaincode.Name, err)
+			sessionLogger.Warningf("Failed computing collection principal sets for chaincode %s due to %v", chaincode.Name, err)
 			return nil, errors.WithStack(err)
 		}
 		filters = append(filters, filter)
