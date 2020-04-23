@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,8 +60,8 @@ func TestPvtGetNoCollection(t *testing.T) {
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	queryHelper := newQueryHelper(txMgr, nil, true, cryptoProvider)
-	valueHash, metadataBytes, err := queryHelper.getPrivateDataValueHash("cc", "coll", "key")
+	qe := newQueryExecutor(txMgr, "", nil, true, cryptoProvider)
+	valueHash, metadataBytes, err := qe.getPrivateDataValueHash("cc", "coll", "key")
 	assert.Nil(t, valueHash)
 	assert.Nil(t, metadataBytes)
 	assert.Error(t, err)

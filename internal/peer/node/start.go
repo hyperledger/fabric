@@ -48,7 +48,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -91,6 +90,7 @@ import (
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/version"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -101,7 +101,6 @@ import (
 )
 
 const (
-	chaincodeAddrKey       = "peer.chaincodeAddress"
 	chaincodeListenAddrKey = "peer.chaincodeListenAddress"
 	defaultChaincodePort   = 7052
 )
@@ -828,7 +827,7 @@ func serve(args []string) error {
 		}()
 	}
 
-	go handleSignals(addPlatformSignals(map[os.Signal]func(){
+	handleSignals(addPlatformSignals(map[os.Signal]func(){
 		syscall.SIGINT:  func() { serve <- nil },
 		syscall.SIGTERM: func() { serve <- nil },
 	}))
@@ -887,10 +886,12 @@ func handleSignals(handlers map[os.Signal]func()) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, signals...)
 
-	for sig := range signalChan {
-		logger.Infof("Received signal: %d (%s)", sig, sig)
-		handlers[sig]()
-	}
+	go func() {
+		for sig := range signalChan {
+			logger.Infof("Received signal: %d (%s)", sig, sig)
+			handlers[sig]()
+		}
+	}()
 }
 
 func localPolicy(policyObject proto.Message) policies.Policy {

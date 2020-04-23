@@ -45,6 +45,11 @@ func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) 
 	return &mgr{ccInfoProvider, p}, nil
 }
 
+// Name returns the name of the listener
+func (m *mgr) Name() string {
+	return "collection configuration history listener"
+}
+
 func (m *mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
 	// Noop
 	return nil

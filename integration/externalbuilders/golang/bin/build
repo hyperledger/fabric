@@ -27,7 +27,7 @@ if [ -f "$SOURCE/src/go.mod" ]; then
     cd "$SOURCE/src"
     go build -v -mod=readonly -o "$OUTPUT/chaincode" "$GO_PACKAGE_PATH"
 else
-    GO111MODULE=off go build -v  -o "$OUTPUT/chaincode" "$GO_PACKAGE_PATH"
+    GOPATH="$SOURCE" GO111MODULE=off go build -v  -o "$OUTPUT/chaincode" "$GO_PACKAGE_PATH"
 fi
 
 # copy index metadata if present

@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -29,9 +30,9 @@ import (
 	mocktxmgr "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl/mock"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	mocklgr "github.com/hyperledger/fabric/core/ledger/mock"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -156,7 +157,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
-		lutils.NewTxValidationFlagsSetValue(len(gb.Data.Data), peer.TxValidationCode_VALID)
+		txflags.NewWithValues(len(gb.Data.Data), peer.TxValidationCode_VALID)
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
 	assert.Error(t, err)
 	t.Log(err)
@@ -185,7 +186,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	})
 	envBytes, _ = protoutil.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
-	flags := lutils.NewTxValidationFlags(len(gb.Data.Data))
+	flags := txflags.New(len(gb.Data.Data))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
@@ -196,7 +197,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	txid := "testtxid1234"
 	gb = testutil.ConstructBlockWithTxid(t, blockNum, []byte{123},
 		[][]byte{{123}}, []string{txid}, false)
-	flags = lutils.NewTxValidationFlags(len(gb.Data.Data))
+	flags = txflags.New(len(gb.Data.Data))
 	flags.SetFlag(0, peer.TxValidationCode_BAD_HEADER_EXTENSION)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
 
@@ -239,7 +240,7 @@ func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
 
 	block := testutil.ConstructBlock(t, 1, testutil.ConstructRandomBytes(t, 32),
 		[][]byte{simulation1Bytes, simulation2Bytes}, false) // block with two txs
-	txfilter := lutils.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txfilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.True(t, txfilter.IsValid(0))
 	assert.True(t, txfilter.IsValid(1)) // both txs are valid initially at the time of block cutting
 
@@ -450,7 +451,7 @@ func TestTxStatsInfo(t *testing.T) {
 	}
 
 	block := testutil.ConstructBlockFromBlockDetails(t, blockDetails, false)
-	txsFilter := lutils.NewTxValidationFlags(4)
+	txsFilter := txflags.New(4)
 	txsFilter.SetFlag(0, peer.TxValidationCode_VALID)
 	txsFilter.SetFlag(1, peer.TxValidationCode_VALID)
 	txsFilter.SetFlag(2, peer.TxValidationCode_BAD_PAYLOAD)

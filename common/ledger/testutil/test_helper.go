@@ -16,9 +16,9 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil/fakes"
-	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -75,7 +75,7 @@ type signingIdentity interface {
 func NewBlockGenerator(t *testing.T, ledgerID string, signTxs bool) (*BlockGenerator, *common.Block) {
 	gb, err := test.MakeGenesisBlock(ledgerID)
 	assert.NoError(t, err)
-	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = lutils.NewTxValidationFlagsSetValue(len(gb.Data.Data), pb.TxValidationCode_VALID)
+	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(gb.Data.Data), pb.TxValidationCode_VALID)
 	return &BlockGenerator{1, protoutil.BlockHeaderHash(gb.GetHeader()), signTxs, t}, gb
 }
 
@@ -114,7 +114,7 @@ func (bg *BlockGenerator) NextTestBlocks(numBlocks int) []*common.Block {
 	numTx := 10
 	for i := 0; i < numBlocks; i++ {
 		block := bg.NextTestBlock(numTx, 100)
-		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = lutils.NewTxValidationFlagsSetValue(numTx, pb.TxValidationCode_VALID)
+		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(numTx, pb.TxValidationCode_VALID)
 		blocks = append(blocks, block)
 	}
 	return blocks
@@ -305,7 +305,7 @@ func NewBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *com
 	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
 	protoutil.InitBlockMetadata(block)
 
-	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = lutils.NewTxValidationFlagsSetValue(len(env), pb.TxValidationCode_VALID)
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(env), pb.TxValidationCode_VALID)
 
 	return block
 }

@@ -47,6 +47,7 @@ You can now use the script to bring up the test network with one channel named
 
 If the command was successful, you can see the following message printed in your
 logs:
+
 .. code:: bash
 
   ========= Channel successfully joined ===========

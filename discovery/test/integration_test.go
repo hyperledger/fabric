@@ -39,7 +39,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/cclifecycle"
 	lifecyclemocks "github.com/hyperledger/fabric/core/cclifecycle/mocks"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/discovery"
 	disc "github.com/hyperledger/fabric/discovery/client"
@@ -55,6 +54,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gexec"
@@ -974,7 +974,7 @@ func signECDSA(k *ecdsa.PrivateKey, digest []byte) (signature []byte, err error)
 		return nil, err
 	}
 
-	s, _, err = bccsp.ToLowS(&k.PublicKey, s)
+	s, err = bccsp.ToLowS(&k.PublicKey, s)
 	if err != nil {
 		return nil, err
 	}

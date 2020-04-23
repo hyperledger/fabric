@@ -14,7 +14,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 
 	"github.com/pkg/errors"
 )

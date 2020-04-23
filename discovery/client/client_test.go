@@ -28,13 +28,13 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/comm"
 	fabricdisc "github.com/hyperledger/fabric/discovery"
 	"github.com/hyperledger/fabric/discovery/endorsement"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gdisc "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/protoext"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -798,7 +798,7 @@ type ccMetadataFetcher struct {
 	mock.Mock
 }
 
-func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ bool) *chaincode.Metadata {
+func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ ...string) *chaincode.Metadata {
 	return mdf.Called(cc).Get(0).(*chaincode.Metadata)
 }
 

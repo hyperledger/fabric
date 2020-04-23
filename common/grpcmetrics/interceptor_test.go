@@ -104,7 +104,7 @@ var _ = Describe("Interceptor", func() {
 		serveCompleteCh = make(chan error, 1)
 		go func() { serveCompleteCh <- server.Serve(listener) }()
 
-		cc, err := grpc.Dial(listener.Addr().String(), grpc.WithInsecure())
+		cc, err := grpc.Dial(listener.Addr().String(), grpc.WithInsecure(), grpc.WithBlock())
 		Expect(err).NotTo(HaveOccurred())
 		echoServiceClient = testpb.NewEchoServiceClient(cc)
 	})
@@ -276,7 +276,9 @@ var _ = Describe("Interceptor", func() {
 
 			BeforeEach(func() {
 				errCh = make(chan error)
-				fakeEchoService.EchoStreamStub = func(svs testpb.EchoService_EchoStreamServer) error { return <-errCh }
+				fakeEchoService.EchoStreamStub = func(svs testpb.EchoService_EchoStreamServer) error {
+					return <-errCh
+				}
 			})
 
 			It("does not increment the update count", func() {
@@ -292,6 +294,9 @@ var _ = Describe("Interceptor", func() {
 
 				err = streamClient.CloseSend()
 				Expect(err).NotTo(HaveOccurred())
+
+				_, err = streamClient.Recv()
+				Expect(err).To(MatchError(status.Errorf(codes.Unknown, "oh bother")))
 
 				Expect(fakeMessagesReceived.AddCallCount()).To(Equal(0))
 			})

@@ -311,7 +311,6 @@ func newPRWSet() []util.PrivateRWSet {
 }
 
 func TestPullerFromOnly1Peer(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 pulls from p2 and not from p3
 	// and succeeds - p1 asks from p2 (and not from p3!) for the
 	// expected digest
@@ -383,7 +382,6 @@ func TestPullerFromOnly1Peer(t *testing.T) {
 }
 
 func TestPullerDataNotAvailable(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 pulls from p2 and not from p3
 	// but the data in p2 doesn't exist
 	gn := &gossipNetwork{}
@@ -425,7 +423,6 @@ func TestPullerDataNotAvailable(t *testing.T) {
 }
 
 func TestPullerNoPeersKnown(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 doesn't know any peer and therefore fails fetching
 	gn := &gossipNetwork{}
 	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2", "p3")
@@ -442,7 +439,6 @@ func TestPullerNoPeersKnown(t *testing.T) {
 }
 
 func TestPullPeerFilterError(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 attempts to fetch for the wrong channel
 	gn := &gossipNetwork{}
 	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")
@@ -460,7 +456,6 @@ func TestPullPeerFilterError(t *testing.T) {
 }
 
 func TestPullerPeerNotEligible(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 pulls from p2 or from p3
 	// but it's not eligible for pulling data from p2 or from p3
 	gn := &gossipNetwork{}
@@ -527,7 +522,6 @@ func TestPullerPeerNotEligible(t *testing.T) {
 }
 
 func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 pulls from p2 and from p3
 	// and each has different collections
 	gn := &gossipNetwork{}
@@ -627,7 +621,6 @@ func TestPullerDifferentPeersDifferentCollections(t *testing.T) {
 }
 
 func TestPullerRetries(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 pulls from p2, p3, p4 and p5.
 	// Only p3 considers p1 to be eligible to receive the data.
 	// The rest consider p1 as not eligible.
@@ -732,7 +725,6 @@ func TestPullerRetries(t *testing.T) {
 }
 
 func TestPullerPreferEndorsers(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 pulls from p2, p3, p4, p5
 	// and the only endorser for col1 is p3, so it should be selected
 	// at the top priority for col1.
@@ -829,7 +821,6 @@ func TestPullerPreferEndorsers(t *testing.T) {
 }
 
 func TestPullerFetchReconciledItemsPreferPeersFromOriginalConfig(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 pulls from p2, p3, p4, p5
 	// the only peer that was in the collection config while data was created for col1 is p3, so it should be selected
 	// at the top priority for col1.
@@ -950,8 +941,6 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 	// p2 and p3 is suppose to have it, while p3 has more advanced
 	// ledger and based on BTL already purged data for, so p1
 	// suppose to fetch data only from p2
-
-	t.Parallel()
 	gn := &gossipNetwork{}
 	factoryMock := &mocks.CollectionAccessFactory{}
 	accessPolicyMock := &mocks.CollectionAccessPolicy{}
@@ -1060,7 +1049,6 @@ func (c *counterDataRetreiver) getNumberOfCalls() int {
 }
 
 func TestPullerIntegratedWithDataRetreiver(t *testing.T) {
-	t.Parallel()
 	gn := &gossipNetwork{}
 
 	ns1, ns2 := "testChaincodeName1", "testChaincodeName2"
@@ -1168,7 +1156,6 @@ func toDigKey(dig *proto.PvtDataDigest) *privdatacommon.DigKey {
 }
 
 func TestPullerMetrics(t *testing.T) {
-	t.Parallel()
 	// Scenario: p1 pulls from p2 and sends metric reports
 	gn := &gossipNetwork{}
 	policyStore := newCollectionStore().withPolicy("col1", uint64(100)).thatMapsTo("p2")

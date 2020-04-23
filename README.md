@@ -24,49 +24,18 @@ open source architecture; Hyperledger Fabric is your starting point.
 
 ## Releases
 
-- [v2.0.0 - January 29, 2020](https://github.com/hyperledger/fabric/releases/tag/v2.0.0)
-- [v2.0.0-beta - December 12, 2019](https://github.com/hyperledger/fabric/releases/tag/v2.0.0-beta)
-- [v2.0.0-alpha - April 9, 2019](https://github.com/hyperledger/fabric/releases/tag/v2.0.0-alpha)
-- [v1.4.6 - February 25, 2020](https://github.com/hyperledger/fabric/releases/tag/v1.4.6)
-- [v1.4.5 - February 19, 2020](https://github.com/hyperledger/fabric/releases/tag/v1.4.5)
-- [v1.4.4 - November 14, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.4)
-- [v1.4.3 - August 26, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.3)
-- [v1.4.2 - July 17, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.2)
-- [v1.4.1 - April 11, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.1)
-- [v1.4.1-rc1 - March 29, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.1-rc1)
-- [v1.4.0 - January 9, 2019](https://github.com/hyperledger/fabric/releases/tag/v1.4.0)
-- [v1.4.0-rc2 - December 20, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.4.0-rc2)
-- [v1.4.0-rc1 - December 10, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.4.0-rc1)
-- [v1.3.0 - October 10, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.3.0)
-- [v1.3.0-rc1 - September 24, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.3.0-rc1)
-- [v1.2.0 - July 3, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.2.0)
-- [v1.2.0-rc1 - June 22, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.2.0-rc1)
-- [v1.1.0 - March 15, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.1.0)
-- [v1.1.0-rc1 - March 1, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.1.0-rc1)
-- [v1.1.0-alpha - January 25, 2018](https://github.com/hyperledger/fabric/releases/tag/v1.1.0-alpha)
-- [v1.0.5 - December 6, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.5)
-- [v1.1.0-preview - November 1, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.1.0-preview)
-- [v1.0.4 - October 31, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.4)
-- [v1.0.3 - October 3, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.3)
-- [v1.0.2 - September 10, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.2)
-- [v1.0.1 - August 10, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.1)
-- [v1.0.0 - July 11, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0)
-- [v1.0.0-rc1 - June 23, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0-rc1)
-- [v1.0.0-beta - June 8, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0-beta)
-- [v1.0.0-alpha2 - May 14, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha2)
-- [v1.0.0-alpha - March 16, 2017](https://github.com/hyperledger/fabric/releases/tag/v1.0.0-alpha)
-- [v0.6.1-preview - October 15, 2016](https://github.com/hyperledger/fabric/releases/tag/v0.6.0-preview)
-- [v0.6.0-preview - September 16, 2016](https://github.com/hyperledger/fabric/releases/tag/v0.6.0-preview)
+Fabric releases and release notes can be found on the [GitHub releases page](https://github.com/hyperledger/fabric/releases).
 
-## Release Roadmap
-
-Please visit the [Hyperledger Fabric wiki](https://wiki.hyperledger.org/display/fabric/Hyperledger+Fabric+Roadmap) for our release roadmap. We plan on a quarterly release cadence following the v1.1.0 release, delivering on a scoped set of themes and select features. Unless specified otherwise, all releases will be upgradable from the prior minor release.
+Please visit the [Hyperledger Fabric Jira dashboard](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104) for our release roadmap.
+We plan on a quarterly release cadence, delivering on a scoped set of themes and select features.
+Unless specified otherwise, all releases will be upgradable from the prior minor release.
 
 ## Documentation, Getting Started and Developer Guides
 
 Please visit our
 online documentation for
 information on getting started using and developing with the fabric, SDK and chaincode:
+- [v2.1](http://hyperledger-fabric.readthedocs.io/en/release-2.1/)
 - [v2.0](http://hyperledger-fabric.readthedocs.io/en/release-2.0/)
 - [v1.4](http://hyperledger-fabric.readthedocs.io/en/release-1.4/)
 - [v1.3](http://hyperledger-fabric.readthedocs.io/en/release-1.3/)

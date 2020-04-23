@@ -51,12 +51,12 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
-	cut "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -1397,7 +1397,7 @@ func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.Chainco
 			}
 			block := protoutil.NewBlock(blockNumber, bcInfo.CurrentBlockHash)
 			block.Data.Data = [][]byte{envBytes}
-			txsFilter := cut.NewTxValidationFlagsSetValue(len(block.Data.Data), pb.TxValidationCode_VALID)
+			txsFilter := txflags.NewWithValues(len(block.Data.Data), pb.TxValidationCode_VALID)
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 			//commit the block

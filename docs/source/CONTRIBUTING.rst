@@ -105,15 +105,24 @@ Becoming a maintainer
 ~~~~~~~~~~~~~~~~~~~~~
 
 The project's maintainers will, from time-to-time, consider
-adding or removing a maintainer. An existing maintainer can submit a
-change set to the `maintainers <https://github.com/hyperledger/fabric/blob/master/MAINTAINERS.md>`__ file. A nominated
-Contributor may become a Maintainer by a majority approval of the proposal
+adding a maintainer, based on the following criteria:
+
+- Demonstrated track record of PR reviews (both quality and quantity of reviews)
+- Demonstrated thought leadership in the project
+- Demonstrated shepherding of project work and contributors
+
+An existing maintainer can submit a pull request to the
+`maintainers <https://github.com/hyperledger/fabric/blob/master/MAINTAINERS.md>`__ file.
+A nominated Contributor may become a Maintainer by a majority approval of the proposal
 by the existing Maintainers. Once approved, the change set is then merged
-and the individual is added to (or alternatively, removed from) the maintainers
-group. Maintainers may be removed by explicit resignation, for prolonged
-inactivity (3 or more months), or for some infraction of the `code of conduct
+and the individual is added to the maintainers group.
+
+Maintainers may be removed by explicit resignation, for prolonged
+inactivity (e.g. 3 or more months with no review comments),
+or for some infraction of the `code of conduct
 <https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct>`__
-or by consistently demonstrating poor judgement. A maintainer removed for
+or by consistently demonstrating poor judgement. A proposed removal
+also requires a majority approval. A maintainer removed for
 inactivity should be restored following a sustained resumption of contributions
 and reviews (a month or more) demonstrating a renewed commitment to the project.
 
@@ -152,16 +161,16 @@ Getting the support of three or more of the Hyperledger Fabric maintainers for
 the new feature will greatly enhance the probability that the feature's related
 PRs will be included in a subsequent release.
 
-Maintainers meeting
+Contributor meeting
 ~~~~~~~~~~~~~~~~~~~
 
-The maintainers hold regular maintainers meetings.
-The purpose of the maintainers meeting is to plan for and review the progress of
-releases, and to discuss the technical and operational direction of the project
+The maintainers hold regular contributors meetings.
+The purpose of the contributors meeting is to plan for and review the progress of
+releases and contributions, and to discuss the technical and operational direction of the project
 and sub-projects.
 
 Please see the
-`wiki <https://wiki.hyperledger.org/display/fabric/Maintainer+Meetings>`__
+`wiki <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__
 for maintainer meeting details.
 
 New feature/enhancement proposals as described above should be presented to a

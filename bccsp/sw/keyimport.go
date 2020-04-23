@@ -14,7 +14,6 @@ import (
 	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/utils"
 )
 
 type aes256ImportKeyOptsKeyImporter struct{}
@@ -33,7 +32,7 @@ func (*aes256ImportKeyOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.Key
 		return nil, fmt.Errorf("Invalid Key Length [%d]. Must be 32 bytes", len(aesRaw))
 	}
 
-	return &aesPrivateKey{utils.Clone(aesRaw), false}, nil
+	return &aesPrivateKey{aesRaw, false}, nil
 }
 
 type hmacImportKeyOptsKeyImporter struct{}
@@ -48,7 +47,7 @@ func (*hmacImportKeyOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyIm
 		return nil, errors.New("Invalid raw material. It must not be nil.")
 	}
 
-	return &aesPrivateKey{utils.Clone(aesRaw), false}, nil
+	return &aesPrivateKey{aesRaw, false}, nil
 }
 
 type ecdsaPKIXPublicKeyImportOptsKeyImporter struct{}
@@ -63,7 +62,7 @@ func (*ecdsaPKIXPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts 
 		return nil, errors.New("Invalid raw. It must not be nil.")
 	}
 
-	lowLevelKey, err := utils.DERToPublicKey(der)
+	lowLevelKey, err := derToPublicKey(der)
 	if err != nil {
 		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
 	}
@@ -88,7 +87,7 @@ func (*ecdsaPrivateKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bcc
 		return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw. It must not be nil.")
 	}
 
-	lowLevelKey, err := utils.DERToPrivateKey(der)
+	lowLevelKey, err := derToPrivateKey(der)
 	if err != nil {
 		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
 	}

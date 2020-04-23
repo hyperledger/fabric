@@ -212,7 +212,6 @@ The APIs in the stub fall into the following categories:
 
     * [setEvent()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#setEvent__anchor)
 
-
       Smart contracts use this API to add user events to a transaction response.
       See interaction point **(5)**. These events are ultimately recorded on the
       blockchain and sent to listening applications at interaction point

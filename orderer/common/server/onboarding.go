@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -56,7 +56,7 @@ func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, f
 		CryptoProvider:       ri.cryptoProvider,
 	}
 
-	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
+	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}

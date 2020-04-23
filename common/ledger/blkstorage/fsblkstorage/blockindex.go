@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage/msgs"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/pkg/errors"
 )
 
@@ -90,7 +90,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	txOffsets := blockIdxInfo.txOffsets
 	blkNum := blockIdxInfo.blockNum
 	blkHash := blockIdxInfo.blockHash
-	txsfltr := ledgerUtil.TxValidationFlags(blockIdxInfo.metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(blockIdxInfo.metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	batch := leveldbhelper.NewUpdateBatch()
 	flpBytes, err := flp.marshal()
 	if err != nil {

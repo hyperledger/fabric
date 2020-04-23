@@ -36,8 +36,8 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/tools/protolator"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/operations"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
@@ -222,7 +222,7 @@ func Main() {
 	)
 
 	logger.Infof("Starting %s", metadata.GetVersionInfo())
-	go handleSignals(addPlatformSignals(map[os.Signal]func(){
+	handleSignals(addPlatformSignals(map[os.Signal]func(){
 		syscall.SIGTERM: func() {
 			grpcServer.Stop()
 			if clusterGRPCServer != grpcServer {
@@ -277,7 +277,7 @@ func extractSysChanLastConfig(lf blockledger.Factory, bootstrapBlock *cb.Block) 
 	}
 	logger.Infof("Not bootstrapping because of %d existing channels", channelCount)
 
-	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
+	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
 	if err != nil {
 		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}
@@ -329,7 +329,7 @@ func createReplicator(
 		logger:        logger,
 	}
 
-	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
+	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
 	if err != nil {
 		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}
@@ -388,10 +388,12 @@ func handleSignals(handlers map[os.Signal]func()) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, signals...)
 
-	for sig := range signalChan {
-		logger.Infof("Received signal: %d (%s)", sig, sig)
-		handlers[sig]()
-	}
+	go func() {
+		for sig := range signalChan {
+			logger.Infof("Received signal: %d (%s)", sig, sig)
+			handlers[sig]()
+		}
+	}()
 }
 
 type loadPEMFunc func(string) ([]byte, error)
@@ -601,11 +603,11 @@ func extractBootstrapBlock(conf *localconfig.TopLevel) *cb.Block {
 }
 
 func initializeBootstrapChannel(genesisBlock *cb.Block, lf blockledger.Factory) {
-	chainID, err := protoutil.GetChainIDFromBlock(genesisBlock)
+	channelID, err := protoutil.GetChannelIDFromBlock(genesisBlock)
 	if err != nil {
 		logger.Fatal("Failed to parse channel ID from genesis block:", err)
 	}
-	gl, err := lf.GetOrCreate(chainID)
+	gl, err := lf.GetOrCreate(channelID)
 	if err != nil {
 		logger.Fatal("Failed to create the system channel:", err)
 	}
@@ -740,7 +742,7 @@ func initializeEtcdraftConsenter(
 		replicationRefreshInterval = defaultReplicationBackgroundRefreshInterval
 	}
 
-	systemChannelName, err := protoutil.GetChainIDFromBlock(bootstrapBlock)
+	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
 	}

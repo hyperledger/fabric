@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -110,15 +111,21 @@ func TestInstalledCCs(t *testing.T) {
 	}
 }
 
-func TestGetChaincodeInstallPath(t *testing.T) {
+func TestSetGetChaincodeInstallPath(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "ccprovider")
+	defer os.RemoveAll(tempDir)
+
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 	c := &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider}
 	installPath := c.GetChaincodeInstallPath()
 	defer ccprovider.SetChaincodesPath(installPath)
 
-	ccprovider.SetChaincodesPath("blahblah")
-	assert.Equal(t, "blahblah", c.GetChaincodeInstallPath())
+	path := filepath.Join(tempDir, "blahblah")
+	ccprovider.SetChaincodesPath(path)
+	assert.DirExistsf(t, path, "expect %s to be created")
+
+	assert.Equal(t, path, c.GetChaincodeInstallPath())
 }
 
 func setupDirectoryStructure(t *testing.T) (string, map[string][]byte) {

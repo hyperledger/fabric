@@ -24,8 +24,8 @@ const signLabel = "sign"
 // the knowledge of the user secret (and possibly attributes) signed inside a credential
 // that was issued by a certain issuer (referred to with the issuer public key)
 // The signature is verified using the message being signed and the public key of the issuer
-// Some of the attributes from the credential can be selectvely disclosed or different statements can be proven about
-// credential atrributes without diclosing them in the clear
+// Some of the attributes from the credential can be selectively disclosed or different statements can be proven about
+// credential attributes without disclosing them in the clear
 // The difference between a standard signature using X.509 certificates and an Identity Mixer signature is
 // the advanced privacy features provided by Identity Mixer (due to zero-knowledge proofs):
 //  - Unlinkability of the signatures produced with the same credential

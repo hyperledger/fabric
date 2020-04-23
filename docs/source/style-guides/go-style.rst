@@ -60,11 +60,17 @@ in `GoDoc <https://godoc.org/github.com/hyperledger/fabric>`_.
 Adding or updating Go packages
 ------------------------------
 
-Hyperledger Fabric vendors dependencies. This means that all required packages
-reside in the ``$GOPATH/src/github.com/hyperledger/fabric/vendor`` folder. Go
-will use packages in this folder instead of the GOPATH when the ``go install``
-or ``go build`` commands are executed. To manage the packages in the ``vendor``
-folder, we use `dep <https://golang.github.io/dep/>`__.
+Hyperledger Fabric uses go modules to manage and vendor its dependencies. This
+means that all of the external packages required to build our binaries reside
+in the ``vendor`` folder at the top of the repository. Go uses the packages in
+this folder instead of the module cache when ``go`` commands are executed.
+
+If a code change results in a new or updated dependency, please be sure to run
+``go mod tidy`` and ``go mod vendor`` to keep the ``vendor`` folder and
+dependency metadata up to date.
+
+See the `Go Modules Wiki <https://github.com/golang/go/wiki/Modules>`__ for
+additional information.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

@@ -27,7 +27,6 @@ import (
 	hence data should be looked up directly from transient store
 */
 func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -102,7 +101,6 @@ func TestNewDataRetriever_GetDataFromTransientStore(t *testing.T) {
 	from the ledger rather than transient store as data being committed
 */
 func TestNewDataRetriever_GetDataFromLedger(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -163,7 +161,6 @@ func TestNewDataRetriever_GetDataFromLedger(t *testing.T) {
 }
 
 func TestNewDataRetriever_FailGetPvtDataFromLedger(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -194,7 +191,6 @@ func TestNewDataRetriever_FailGetPvtDataFromLedger(t *testing.T) {
 }
 
 func TestNewDataRetriever_GetOnlyRelevantPvtData(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -256,7 +252,6 @@ func TestNewDataRetriever_GetOnlyRelevantPvtData(t *testing.T) {
 }
 
 func TestNewDataRetriever_GetMultipleDigests(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -366,7 +361,6 @@ func TestNewDataRetriever_GetMultipleDigests(t *testing.T) {
 }
 
 func TestNewDataRetriever_EmptyWriteSet(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -414,7 +408,6 @@ func TestNewDataRetriever_EmptyWriteSet(t *testing.T) {
 }
 
 func TestNewDataRetriever_FailedObtainConfigHistoryRetriever(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -455,7 +448,6 @@ func TestNewDataRetriever_FailedObtainConfigHistoryRetriever(t *testing.T) {
 }
 
 func TestNewDataRetriever_NoCollectionConfig(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -521,7 +513,6 @@ func TestNewDataRetriever_NoCollectionConfig(t *testing.T) {
 }
 
 func TestNewDataRetriever_FailedGetLedgerHeight(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
@@ -547,7 +538,6 @@ func TestNewDataRetriever_FailedGetLedgerHeight(t *testing.T) {
 }
 
 func TestNewDataRetriever_EmptyPvtRWSetInTransientStore(t *testing.T) {
-	t.Parallel()
 	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)

@@ -344,7 +344,7 @@ chaincode:
     # the image
     installpath: /opt/gopath/bin/
 
-    #keepalive in seconds. In situations where the communiction goes through a
+    #keepalive in seconds. In situations where the communication goes through a
     #proxy that does not support keep-alive, this parameter will maintain connection
     #between peer and chaincode.
     #A value <= 0 turns keepalive off
@@ -369,7 +369,7 @@ chaincode:
 
 ###############################################################################
 #
-#    Ledger section - ledger configuration encompases both the blockchain
+#    Ledger section - ledger configuration encompasses both the blockchain
 #    and the state
 #
 ###############################################################################

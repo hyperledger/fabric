@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,6 +55,14 @@ func TestWriteFileToPackage(t *testing.T) {
 	header, err := tr.Next()
 	require.NoError(t, err, "Error getting the file from the tar")
 	assert.Equal(t, filename, header.Name, "filename read from archive does not match what was added")
+	assert.Equal(t, time.Time{}, header.AccessTime, "expected zero access time")
+	assert.Equal(t, time.Unix(0, 0), header.ModTime, "expected zero modification time")
+	assert.Equal(t, time.Time{}, header.ChangeTime, "expected zero change time")
+	assert.Equal(t, int64(0100644), header.Mode, "expected regular file mode")
+	assert.Equal(t, 500, header.Uid, "expected 500 uid")
+	assert.Equal(t, 500, header.Gid, "expected 500 gid")
+	assert.Equal(t, "", header.Uname, "expected empty user name")
+	assert.Equal(t, "", header.Gname, "expected empty group name")
 
 	b := make([]byte, 5)
 	n, err := tr.Read(b)

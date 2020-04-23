@@ -20,6 +20,11 @@ type collElgNotifier struct {
 	listeners                     map[string]collElgListener
 }
 
+// Name returns the name of the listener
+func (n *collElgNotifier) Name() string {
+	return "collection eligibility listener"
+}
+
 func (n *collElgNotifier) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
 	// Noop
 	return nil

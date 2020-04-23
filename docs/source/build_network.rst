@@ -1,12 +1,10 @@
 Building Your First Network
 ===========================
 
-.. note:: These instructions have been verified to work against the
-          latest stable Docker images and the pre-compiled
-          setup utilities within the supplied tar file. If you run
-          these commands with images or tools from the current master
-          branch, it is possible that you will see configuration and panic
-          errors.
+.. note:: The Build your first network (BYFN) tutorial has been deprecated. If
+          you are getting started with Hyperledger Fabric and would like to deploy
+          a basic network, see :doc:`test_network`. If you are deploying Fabric
+          in production, see the guide for :doc:`deployment_guide_overview`.
 
 The build your first network (BYFN) scenario provisions a sample Hyperledger
 Fabric network consisting of two organizations, each maintaining two peer
@@ -1390,7 +1388,7 @@ Troubleshooting
 
    .. code:: bash
 
-       docker rmi -f $(docker images | grep peer[0-9]-peer[0-9] | awk '{print $3}')
+       docker rmi -f $(docker images | grep dev-peer[0-9] | awk '{print $3}')
 
 -  If you see something similar to the following:
 

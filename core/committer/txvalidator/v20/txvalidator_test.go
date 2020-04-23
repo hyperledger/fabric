@@ -19,9 +19,8 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/util"
-	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
@@ -77,7 +76,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 
 	tValidator.Validate(block)
 
-	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	for i := 0; i < nBlocks; i++ {
 		assert.True(t, txsfltr.IsSetTo(i, peer.TxValidationCode_VALID))
@@ -86,7 +85,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 
 func TestDetectTXIdDuplicates(t *testing.T) {
 	txids := []string{"", "1", "2", "3", "", "2", ""}
-	txsfltr := ledgerUtil.NewTxValidationFlags(len(txids))
+	txsfltr := txflags.New(len(txids))
 	markTXIdDuplicates(txids, txsfltr)
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_NOT_VALIDATED))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_NOT_VALIDATED))
@@ -97,7 +96,7 @@ func TestDetectTXIdDuplicates(t *testing.T) {
 	assert.True(t, txsfltr.IsSetTo(6, peer.TxValidationCode_NOT_VALIDATED))
 
 	txids = []string{"", "1", "2", "3", "", "21", ""}
-	txsfltr = ledgerUtil.NewTxValidationFlags(len(txids))
+	txsfltr = txflags.New(len(txids))
 	markTXIdDuplicates(txids, txsfltr)
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_NOT_VALIDATED))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_NOT_VALIDATED))
@@ -146,7 +145,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 
 	tValidator.Validate(block)
 
-	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 	assert.True(t, txsfltr.IsSetTo(1, peer.TxValidationCode_DUPLICATE_TXID))
@@ -239,14 +238,14 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 
 	// Initialize metadata
 	protoutil.InitBlockMetadata(block)
-	txsFilter := util.NewTxValidationFlagsSetValue(len(block.Data.Data), peer.TxValidationCode_VALID)
+	txsFilter := txflags.NewWithValues(len(block.Data.Data), peer.TxValidationCode_VALID)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	// Validation should invalidate transaction,
 	// because it's already committed
 	tValidator.Validate(block)
 
-	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.True(t, txsfltr.IsInvalid(0))
 
 	// We expect the tx to be invalid because of a bad txid

@@ -400,12 +400,12 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc-lifecycle"`))
 
 		By("deploying chaincode using org1 and org2")
-		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/module")
+		chaincodePath := components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd")
 		chaincode = nwo.Chaincode{
 			Name:                "mycc-lifecycle",
 			Version:             "1.0",
 			Lang:                "binary",
-			PackageFile:         filepath.Join(testDir, "modulecc.tar.gz"),
+			PackageFile:         filepath.Join(testDir, "simplecc.tar.gz"),
 			Path:                chaincodePath,
 			Ctor:                `{"Args":["init","a","100","b","200"]}`,
 			ChannelConfigPolicy: "/Channel/Application/Endorsement",
@@ -526,7 +526,7 @@ var _ = Describe("DiscoveryService", func() {
 			Name:              "mycc",
 			Version:           "2.0",
 			Lang:              "binary",
-			PackageFile:       filepath.Join(testDir, "modulecc.tar.gz"),
+			PackageFile:       filepath.Join(testDir, "simplecc.tar.gz"),
 			Path:              chaincodePath,
 			SignaturePolicy:   `AND ('Org1MSP.member', 'Org2MSP.member', 'Org3MSP.member')`,
 			Sequence:          "1",
@@ -548,7 +548,7 @@ var _ = Describe("DiscoveryService", func() {
 		Expect(discovered[0].Layouts).To(HaveLen(1))
 		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1), uint32(1)))
 
-		By("discovering endorsers for collection available on all peers")
+		By("discovering endorsers for a collection without collection EP, using chaincode EP")
 		endorsers.Collection = "mycc:collectionMarbles"
 		de = discoverEndorsers(network, endorsers)
 		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
@@ -556,6 +556,18 @@ var _ = Describe("DiscoveryService", func() {
 			ConsistOf(network.DiscoveredPeer(org2Peer0)),
 			ConsistOf(network.DiscoveredPeer(org3Peer0)),
 		))
+
+		By("discovering endorsers for a collection with collection EP, using collection EP")
+		endorsers.Collection = "mycc:collectionDetails"
+		de = discoverEndorsers(network, endorsers)
+		Eventually(endorsersByGroups(de), network.EventuallyTimeout).Should(ConsistOf(
+			ConsistOf(network.DiscoveredPeer(org1Peer0)),
+			ConsistOf(network.DiscoveredPeer(org2Peer0)),
+		))
+		discovered = de()
+		Expect(discovered).To(HaveLen(1))
+		Expect(discovered[0].Layouts).To(HaveLen(1))
+		Expect(discovered[0].Layouts[0].QuantitiesByGroup).To(ConsistOf(uint32(1), uint32(1)))
 
 		By("trying to discover endorsers as an org3 admin")
 		endorsers = commands.Endorsers{

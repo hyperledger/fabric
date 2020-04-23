@@ -13,25 +13,25 @@ import (
 const (
 	applicationTypeName = "Application"
 
-	// ApplicationV1_1 is the capabilties string for standard new non-backwards compatible fabric v1.1 application capabilities.
+	// ApplicationV1_1 is the capabilities string for standard new non-backwards compatible fabric v1.1 application capabilities.
 	ApplicationV1_1 = "V1_1"
 
-	// ApplicationV1_2 is the capabilties string for standard new non-backwards compatible fabric v1.2 application capabilities.
+	// ApplicationV1_2 is the capabilities string for standard new non-backwards compatible fabric v1.2 application capabilities.
 	ApplicationV1_2 = "V1_2"
 
-	// ApplicationV1_3 is the capabilties string for standard new non-backwards compatible fabric v1.3 application capabilities.
+	// ApplicationV1_3 is the capabilities string for standard new non-backwards compatible fabric v1.3 application capabilities.
 	ApplicationV1_3 = "V1_3"
 
-	// ApplicationV1_4_2 is the capabilties string for standard new non-backwards compatible fabric v1.4.2 application capabilities.
+	// ApplicationV1_4_2 is the capabilities string for standard new non-backwards compatible fabric v1.4.2 application capabilities.
 	ApplicationV1_4_2 = "V1_4_2"
 
-	// ApplicationV2_0 is the capabilties string for standard new non-backwards compatible fabric v2.0 application capabilities.
+	// ApplicationV2_0 is the capabilities string for standard new non-backwards compatible fabric v2.0 application capabilities.
 	ApplicationV2_0 = "V2_0"
 
-	// ApplicationPvtDataExperimental is the capabilties string for private data using the experimental feature of collections/sideDB.
+	// ApplicationPvtDataExperimental is the capabilities string for private data using the experimental feature of collections/sideDB.
 	ApplicationPvtDataExperimental = "V1_1_PVTDATA_EXPERIMENTAL"
 
-	// ApplicationResourcesTreeExperimental is the capabilties string for private data using the experimental feature of collections/sideDB.
+	// ApplicationResourcesTreeExperimental is the capabilities string for private data using the experimental feature of collections/sideDB.
 	ApplicationResourcesTreeExperimental = "V1_1_RESOURCETREE_EXPERIMENTAL"
 )
 

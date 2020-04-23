@@ -26,9 +26,9 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -147,7 +147,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			return shim.Error(fmt.Sprintf("Failed to reconstruct the genesis block, %s", err))
 		}
 
-		cid, err := protoutil.GetChainIDFromBlock(block)
+		cid, err := protoutil.GetChannelIDFromBlock(block)
 		if err != nil {
 			return shim.Error(fmt.Sprintf("\"JoinChain\" request failed to extract "+
 				"channel id from the block due to [%s]", err))
@@ -155,7 +155,7 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 
 		// 1. check config block's format and capabilities requirement.
 		if err := validateConfigBlock(block, e.bccsp); err != nil {
-			return shim.Error(fmt.Sprintf("\"JoinChain\" for chainID = %s failed because of validation "+
+			return shim.Error(fmt.Sprintf("\"JoinChain\" for channelID = %s failed because of validation "+
 				"of configuration block, because of %s", cid, err))
 		}
 
@@ -166,10 +166,10 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 
 		// Initialize txsFilter if it does not yet exist. We can do this safely since
 		// it's the genesis block anyway
-		txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+		txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 		if len(txsFilter) == 0 {
 			// add array of validation code hardcoded to valid
-			txsFilter = util.NewTxValidationFlagsSetValue(len(block.Data.Data), pb.TxValidationCode_VALID)
+			txsFilter = txflags.NewWithValues(len(block.Data.Data), pb.TxValidationCode_VALID)
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 		}
 
@@ -236,29 +236,29 @@ func validateConfigBlock(block *common.Block, bccsp bccsp.BCCSP) error {
 // Since it is the first block, it is the genesis block containing configuration
 // for this chain, so we want to update the Chain object with this info
 func (e *PeerConfiger) joinChain(
-	chainID string,
+	channelID string,
 	block *common.Block,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
 ) pb.Response {
-	if err := e.peer.CreateChannel(chainID, block, deployedCCInfoProvider, lr, nr); err != nil {
+	if err := e.peer.CreateChannel(channelID, block, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
 
 	return shim.Success(nil)
 }
 
-// Return the current configuration block for the specified chainID. If the
-// peer doesn't belong to the chain, return error
-func (e *PeerConfiger) getConfigBlock(chainID []byte) pb.Response {
-	if chainID == nil {
-		return shim.Error("ChainID must not be nil.")
+// Return the current configuration block for the specified channelID. If the
+// peer doesn't belong to the channel, return error
+func (e *PeerConfiger) getConfigBlock(channelID []byte) pb.Response {
+	if channelID == nil {
+		return shim.Error("ChannelID must not be nil.")
 	}
 
-	channel := e.peer.Channel(string(chainID))
+	channel := e.peer.Channel(string(channelID))
 	if channel == nil {
-		return shim.Error(fmt.Sprintf("Unknown chain ID, %s", string(chainID)))
+		return shim.Error(fmt.Sprintf("Unknown channel ID, %s", string(channelID)))
 	}
 	block, err := peer.ConfigBlockFromLedger(channel.Ledger())
 	if err != nil {
@@ -273,7 +273,7 @@ func (e *PeerConfiger) getConfigBlock(chainID []byte) pb.Response {
 	return shim.Success(blockBytes)
 }
 
-func (e *PeerConfiger) supportByType(chainID []byte, env *common.Envelope) (config.Config, error) {
+func (e *PeerConfiger) supportByType(channelID []byte, env *common.Envelope) (config.Config, error) {
 	payload := &common.Payload{}
 
 	if err := proto.Unmarshal(env.Payload, payload); err != nil {
@@ -287,7 +287,7 @@ func (e *PeerConfiger) supportByType(chainID []byte, env *common.Envelope) (conf
 
 	switch common.HeaderType(channelHdr.Type) {
 	case common.HeaderType_CONFIG_UPDATE:
-		return e.configMgr.GetChannelConfig(string(chainID)), nil
+		return e.configMgr.GetChannelConfig(string(channelID)), nil
 	}
 	return nil, errors.Errorf("invalid payload header type: %d", channelHdr.Type)
 }

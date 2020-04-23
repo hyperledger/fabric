@@ -10,17 +10,16 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetRevision(t *testing.T) {
-	env := testEnv
-	env.init(t, &statedb.Cache{})
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-get-revisions")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-get-revisions")
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -83,11 +82,10 @@ func TestGetRevision(t *testing.T) {
 }
 
 func TestBuildCommittersForNs(t *testing.T) {
-	env := testEnv
-	env.init(t, &statedb.Cache{})
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-build-committers-for-ns")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-build-committers-for-ns")
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -101,7 +99,7 @@ func TestBuildCommittersForNs(t *testing.T) {
 	nsUpdates = make(map[string]*statedb.VersionedValue)
 	// populate updates with maxBatchSize + 1.
 	dummyHeight := version.NewHeight(1, 1)
-	for i := 0; i <= env.config.MaxBatchUpdateSize; i++ {
+	for i := 0; i <= vdbEnv.config.MaxBatchUpdateSize; i++ {
 		nsUpdates[strconv.Itoa(i)] = &statedb.VersionedValue{
 			Value:    nil,
 			Metadata: nil,
@@ -118,11 +116,10 @@ func TestBuildCommittersForNs(t *testing.T) {
 }
 
 func TestBuildCommitters(t *testing.T) {
-	env := testEnv
-	env.init(t, &statedb.Cache{})
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-build-committers")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-build-committers")
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -130,7 +127,7 @@ func TestBuildCommitters(t *testing.T) {
 	batch := statedb.NewUpdateBatch()
 	batch.Put("ns-1", "key1", []byte("value1"), dummyHeight)
 	batch.Put("ns-2", "key1", []byte("value2"), dummyHeight)
-	for i := 0; i <= env.config.MaxBatchUpdateSize; i++ {
+	for i := 0; i <= vdbEnv.config.MaxBatchUpdateSize; i++ {
 		batch.Put("maxBatch", "key1", []byte("value3"), dummyHeight)
 	}
 	namespaceSet := map[string]bool{
@@ -152,11 +149,10 @@ func TestBuildCommitters(t *testing.T) {
 }
 
 func TestExecuteCommitter(t *testing.T) {
-	env := testEnv
-	env.init(t, &statedb.Cache{})
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-execute-committer")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-execute-committer")
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -180,14 +176,14 @@ func TestExecuteCommitter(t *testing.T) {
 			db:             committerDB,
 			batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDocKey1}},
 			namespace:      "ns",
-			cacheKVs:       make(statedb.CacheKVs),
+			cacheKVs:       make(cacheKVs),
 			cacheEnabled:   true,
 		},
 		{
 			db:             committerDB,
 			batchUpdateMap: map[string]*batchableDocument{"key2": {CouchDoc: *couchDocKey2}},
 			namespace:      "ns",
-			cacheKVs:       make(statedb.CacheKVs),
+			cacheKVs:       make(cacheKVs),
 			cacheEnabled:   true,
 		},
 	}
@@ -204,7 +200,7 @@ func TestExecuteCommitter(t *testing.T) {
 			db:             committerDB,
 			batchUpdateMap: map[string]*batchableDocument{},
 			namespace:      "ns",
-			cacheKVs:       make(statedb.CacheKVs),
+			cacheKVs:       make(cacheKVs),
 			cacheEnabled:   true,
 		},
 	}
@@ -213,11 +209,10 @@ func TestExecuteCommitter(t *testing.T) {
 }
 
 func TestCommitUpdates(t *testing.T) {
-	env := testEnv
-	env.init(t, &statedb.Cache{})
-	defer env.cleanup()
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
 
-	versionedDB, err := testEnv.DBProvider.GetDBHandle("test-commitupdates")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-commitupdates")
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -248,7 +243,7 @@ func TestCommitUpdates(t *testing.T) {
 				db:             committerDB,
 				batchUpdateMap: map[string]*batchableDocument{},
 				namespace:      "ns",
-				cacheKVs:       make(statedb.CacheKVs),
+				cacheKVs:       make(cacheKVs),
 				cacheEnabled:   true,
 			},
 			expectedErr: "error handling CouchDB request. Error:bad_request,  Status Code:400,  Reason:`docs` parameter must be an array.",
@@ -258,7 +253,7 @@ func TestCommitUpdates(t *testing.T) {
 				db:             committerDB,
 				batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDoc}},
 				namespace:      "ns",
-				cacheKVs:       make(statedb.CacheKVs),
+				cacheKVs:       make(cacheKVs),
 				cacheEnabled:   true,
 			},
 			expectedErr: "",
@@ -268,7 +263,7 @@ func TestCommitUpdates(t *testing.T) {
 				db:             committerDB,
 				batchUpdateMap: map[string]*batchableDocument{"key1": {CouchDoc: *couchDoc}},
 				namespace:      "ns",
-				cacheKVs:       make(statedb.CacheKVs),
+				cacheKVs:       make(cacheKVs),
 				cacheEnabled:   true,
 			},
 			expectedErr: "error saving document ID: key1. Error: conflict,  Reason: Document update conflict.: error handling CouchDB request. Error:conflict,  Status Code:409,  Reason:Document update conflict.",
@@ -291,7 +286,7 @@ func TestCommitUpdates(t *testing.T) {
 		db:             committerDB,
 		batchUpdateMap: map[string]*batchableDocument{"key2": {CouchDoc: *couchDoc}},
 		namespace:      "ns",
-		cacheKVs:       statedb.CacheKVs{"key2": &statedb.CacheValue{}},
+		cacheKVs:       cacheKVs{"key2": &CacheValue{}},
 		cacheEnabled:   true,
 	}
 

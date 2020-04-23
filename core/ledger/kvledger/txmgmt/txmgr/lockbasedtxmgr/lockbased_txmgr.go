@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
@@ -23,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
@@ -101,7 +101,7 @@ func (txmgr *LockBasedTxMgr) GetLastSavepoint() (*version.Height, error) {
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, txid, true, txmgr.hasher)
+	qe := newQueryExecutor(txmgr, txid, nil, true, txmgr.hasher)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -117,7 +117,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor
 // querying the ledger state so that the sequence of initialization is explicitly controlled.
 // However that needs a bigger refactoring of code.
 func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, "", false, txmgr.hasher)
+	qe := newQueryExecutor(txmgr, "", nil, false, txmgr.hasher)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -125,7 +125,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecuto
 // NewTxSimulator implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
 	logger.Debugf("constructing new tx simulator")
-	s, err := newLockBasedTxSimulator(txmgr, txid, txmgr.hasher)
+	s, err := newTxSimulator(txmgr, txid, txmgr.hasher)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +455,7 @@ func (txmgr *LockBasedTxMgr) invokeNamespaceListeners() error {
 		if err := listener.HandleStateUpdates(trigger); err != nil {
 			return err
 		}
-		logger.Debugf("Invoking listener for state changes:%s", listener)
+		logger.Debugf("Invoking listener for state changes:%s", listener.Name())
 	}
 	return nil
 }

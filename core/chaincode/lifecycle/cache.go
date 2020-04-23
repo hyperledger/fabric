@@ -179,6 +179,11 @@ func (c *Cache) InitializeLocalChaincodes() error {
 	return nil
 }
 
+// Name returns the name of the listener
+func (c *Cache) Name() string {
+	return "lifecycle cache listener"
+}
+
 // Initialize will populate the set of currently committed chaincode definitions
 // for a channel into the cache.  Note, it this looks like a bit of a DRY violation
 // with respect to 'Update', but, the error handling is quite different and attempting

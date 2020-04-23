@@ -15,7 +15,6 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/viperutil"
 	cf "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/msp"
@@ -77,7 +76,6 @@ type TopLevel struct {
 	Application   *Application               `yaml:"Application"`
 	Orderer       *Orderer                   `yaml:"Orderer"`
 	Capabilities  map[string]map[string]bool `yaml:"Capabilities"`
-	Resources     *Resources                 `yaml:"Resources"`
 }
 
 // Profile encodes orderer/application configuration combinations for the
@@ -108,15 +106,8 @@ type Consortium struct {
 type Application struct {
 	Organizations []*Organization    `yaml:"Organizations"`
 	Capabilities  map[string]bool    `yaml:"Capabilities"`
-	Resources     *Resources         `yaml:"Resources"`
 	Policies      map[string]*Policy `yaml:"Policies"`
 	ACLs          map[string]string  `yaml:"ACLs"`
-}
-
-// Resources encodes the application-level resources configuration needed to
-// seed the resource tree
-type Resources struct {
-	DefaultModPolicy string
 }
 
 // Organization encodes the organization-level configuration needed in
@@ -228,6 +219,7 @@ func LoadTopLevel(configPaths ...string) *TopLevel {
 	if err != nil {
 		logger.Panicf("failed to load configCache: %s", err)
 	}
+	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 	logger.Infof("Loaded configuration: %s", config.ConfigFileUsed())
 
 	return uconf
@@ -285,9 +277,6 @@ func (p *Profile) completeInitialization(configDir string) {
 		for _, org := range p.Application.Organizations {
 			org.completeInitialization(configDir)
 		}
-		if p.Application.Resources != nil {
-			p.Application.Resources.completeInitialization()
-		}
 	}
 
 	if p.Consortiums != nil {
@@ -304,17 +293,6 @@ func (p *Profile) completeInitialization(configDir string) {
 		}
 		// Some profiles will not define orderer parameters
 		p.Orderer.completeInitialization(configDir)
-	}
-}
-
-func (r *Resources) completeInitialization() {
-	for {
-		switch {
-		case r.DefaultModPolicy == "":
-			r.DefaultModPolicy = policies.ChannelApplicationAdmins
-		default:
-			return
-		}
 	}
 }
 
@@ -465,6 +443,7 @@ func (c *configCache) load(config *viper.Viper, configPath string) (*TopLevel, e
 
 	conf := &TopLevel{}
 	serializedConf, ok := c.cache[configPath]
+	logger.Debug("Loading configuration from cache :%v", ok)
 	if !ok {
 		err := viperutil.EnhancedExactUnmarshal(config, conf)
 		if err != nil {
@@ -482,7 +461,5 @@ func (c *configCache) load(config *viper.Viper, configPath string) (*TopLevel, e
 	if err != nil {
 		return nil, err
 	}
-
-	conf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
 	return conf, nil
 }

@@ -255,7 +255,7 @@ to see what's happening from a single window. This can be really helpful for
 administrators when installing smart contracts or for developers when invoking
 smart contracts, for example.
 
-In the MagnetoCorp directory, run the the following command to run the
+In the MagnetoCorp directory, run the following command to run the
 `monitordocker.sh`  script and start the `logspout` tool for the containers
 associated with PaperNet running on `net_test`:
 ```
@@ -362,7 +362,7 @@ designed in the smart contract [topic](../developapps/smartcontract.html).
 
 Before `papercontract` can be invoked by applications, it must be installed onto
 the appropriate peer nodes of the test network and then defined on the channel
-using the [Fabric chaincode lifecycle](../chaincode4noah.html#chaincode-lifecycle). The Fabric chaincode
+using the [Fabric chaincode lifecycle](../chaincode_lifecycle.html#chaincode-lifecycle). The Fabric chaincode
 lifecycle allows multiple organizations to agree to the parameters of a chaincode
 before the chainocde is deployed to a channel. As a result, we need to install
 and approve the chaincode as administrators of both MagnetoCorp and DigiBank.
@@ -518,14 +518,14 @@ DigiBank admin:
 The DigiBank administrator uses the `peer lifecycle chaincode commit` command
 to commit the chaincode definition of `papercontract` to `mychannel`:
 ```
-(magnetocorp admin)$ peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --peerAddresses localhost:7051 --tlsRootCertFiles ${PEER0_ORG1_CA} --peerAddresses localhost:9051 --tlsRootCertFiles ${PEER0_ORG2_CA} --channelID mychannel --name papercontract -v 0 --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
+(digibank admin)$ peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --peerAddresses localhost:7051 --tlsRootCertFiles ${PEER0_ORG1_CA} --peerAddresses localhost:9051 --tlsRootCertFiles ${PEER0_ORG2_CA} --channelID mychannel --name papercontract -v 0 --sequence 1 --tls --cafile $ORDERER_CA --waitForEvent
 ```
 The chaincode container will start after the chaincode definition has been
-committed to the channel. You can use the the `docker ps` command to see
+committed to the channel. You can use the `docker ps` command to see
 `papercontract` container starting on both peers.
 
 ```
-(magnetocorp admin)$ docker ps
+(digibank admin)$ docker ps
 
 CONTAINER ID        IMAGE                                                                                                                                                               COMMAND                  CREATED             STATUS              PORTS                                        NAMES
 d4ba9dc9c55f        dev-peer0.org1.example.com-cp_0-ebef35e7f1f25eea1dcc6fcad5019477cd7f434c6a5dcaf4e81744e282903535-05cf67c20543ee1c24cf7dfe74abce99785374db15b3bc1de2da372700c25608   "docker-entrypoint.s…"   30 seconds ago      Up 28 seconds                                                    dev-peer0.org1.example.com-cp_0-ebef35e7f1f25eea1dcc6fcad5019477cd7f434c6a5dcaf4e81744e282903535
@@ -597,7 +597,7 @@ Note the following key program lines in `issue.js`:
 * `const { Wallets, Gateway } = require('fabric-network');`
 
   This statement brings two key Hyperledger Fabric SDK classes into scope --
-  `Wallet` and `Gateway`.M
+  `Wallet` and `Gateway`.
 
 
 * `const wallet = await Wallets.newFileSystemWallet('../identity/user/isabella/wallet');`

@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
 // ChainID is a type used for the ids for the chains for experiments
@@ -50,7 +49,7 @@ func newChainsMgr(mgrConf *ChainMgrConf, batchConf *BatchConf, initOp chainInitO
 			panic("environment variable 'useCouchDB' is set to true but 'COUCHDB_ADDR' is not set")
 		}
 		ledgermgmtInitializer.Config.StateDBConfig.StateDatabase = "CouchDB"
-		ledgermgmtInitializer.Config.StateDBConfig.CouchDB = &couchdb.Config{
+		ledgermgmtInitializer.Config.StateDBConfig.CouchDB = &ledger.CouchDBConfig{
 			Address:            couchdbAddr,
 			RedoLogPath:        filepath.Join(dataDir, "couchdbRedologs"),
 			UserCacheSizeMBs:   500,

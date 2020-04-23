@@ -8,7 +8,7 @@ information. For example:
  peer:
    Version: 2.1.0
    Commit SHA: b78d79b
-   Go version: go1.13.8
+   Go version: go1.14.1
    OS/Arch: linux/amd64
    Chaincode:
     Base Docker Label: org.hyperledger.fabric

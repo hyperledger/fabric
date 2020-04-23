@@ -204,7 +204,6 @@ func waitForLeaderElection(t *testing.T, peers []*peer) []string {
 }
 
 func TestMetrics(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn a single peer and ensure it reports being a leader after some time.
 	// Then, make it relinquish its leadership and then ensure it reports not being a leader.
 	var wgLeader sync.WaitGroup
@@ -243,7 +242,6 @@ func TestMetrics(t *testing.T) {
 }
 
 func TestInitPeersAtSameTime(t *testing.T) {
-	t.Parallel()
 	// Scenario: Peers are spawned at the same time
 	// expected outcome: the peer that has the lowest ID is the leader
 	peers := createPeers(0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -256,7 +254,6 @@ func TestInitPeersAtSameTime(t *testing.T) {
 }
 
 func TestInitPeersStartAtIntervals(t *testing.T) {
-	t.Parallel()
 	// Scenario: Peers are spawned one by one in a slow rate
 	// expected outcome: the first peer is the leader although its ID is highest
 	peers := createPeers(testStartupGracePeriod+testLeadershipDeclarationInterval, 3, 2, 1, 0)
@@ -265,7 +262,6 @@ func TestInitPeersStartAtIntervals(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	t.Parallel()
 	// Scenario: peers are spawned at the same time
 	// and then are stopped. We count the number of Gossip() invocations they invoke
 	// after they stop, and it should not increase after they are stopped
@@ -297,7 +293,6 @@ func TestConvergence(t *testing.T) {
 	// Scenario: 2 peer group converge their views
 	// expected outcome: only 1 leader is left out of the 2
 	// and that leader is the leader with the lowest ID
-	t.Parallel()
 	peers1 := createPeers(0, 3, 2, 1, 0)
 	peers2 := createPeers(0, 4, 5, 6, 7)
 	leaders1 := waitForLeaderElection(t, peers1)
@@ -345,7 +340,6 @@ func TestConvergence(t *testing.T) {
 }
 
 func TestLeadershipTakeover(t *testing.T) {
-	t.Parallel()
 	// Scenario: Peers spawn one by one in descending order.
 	// After a while, the leader peer stops.
 	// expected outcome: the peer that takes over is the peer with lowest ID
@@ -361,7 +355,6 @@ func TestLeadershipTakeover(t *testing.T) {
 }
 
 func TestYield(t *testing.T) {
-	t.Parallel()
 	// Scenario: Peers spawn and a leader is elected.
 	// After a while, the leader yields.
 	// (Call yield twice to ensure only one callback is called)
@@ -396,7 +389,6 @@ func TestYield(t *testing.T) {
 }
 
 func TestYieldSinglePeer(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn a single peer and have it yield.
 	// Ensure it recovers its leadership after a while.
 	peers := createPeers(0, 0)
@@ -407,7 +399,6 @@ func TestYieldSinglePeer(t *testing.T) {
 }
 
 func TestYieldAllPeers(t *testing.T) {
-	t.Parallel()
 	// Scenario: spawn 2 peers and have them all yield after regaining leadership.
 	// Ensure the first peer is the leader in the end after both peers yield
 	peers := createPeers(0, 0, 1)
@@ -425,7 +416,6 @@ func TestYieldAllPeers(t *testing.T) {
 }
 
 func TestPartition(t *testing.T) {
-	t.Parallel()
 	// Scenario: peers spawn together, and then after a while a network partition occurs
 	// and no peer can communicate with another peer
 	// Expected outcome 1: each peer is a leader

@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
@@ -36,6 +35,7 @@ import (
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/stretchr/testify/assert"
@@ -168,22 +168,22 @@ func TestCreateChannel(t *testing.T) {
 		runtime.NumCPU(),
 	)
 
-	testChainID := fmt.Sprintf("mytestchainid-%d", rand.Int())
-	block, err := configtxtest.MakeGenesisBlock(testChainID)
+	testChannelID := fmt.Sprintf("mytestchannelid-%d", rand.Int())
+	block, err := configtxtest.MakeGenesisBlock(testChannelID)
 	if err != nil {
 		fmt.Printf("Failed to create a config block, err %s\n", err)
 		t.FailNow()
 	}
 
-	err = peerInstance.CreateChannel(testChainID, block, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+	err = peerInstance.CreateChannel(testChannelID, block, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to create chain %s", err)
 	}
 
-	assert.Equal(t, testChainID, initArg)
+	assert.Equal(t, testChannelID, initArg)
 
 	// Correct ledger
-	ledger := peerInstance.GetLedger(testChainID)
+	ledger := peerInstance.GetLedger(testChannelID)
 	if ledger == nil {
 		t.Fatalf("failed to get correct ledger")
 	}
@@ -201,7 +201,7 @@ func TestCreateChannel(t *testing.T) {
 	}
 
 	// Correct PolicyManager
-	pmgr := peerInstance.GetPolicyManager(testChainID)
+	pmgr := peerInstance.GetPolicyManager(testChannelID)
 	if pmgr == nil {
 		t.Fatal("failed to get PolicyManager")
 	}

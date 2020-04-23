@@ -12,9 +12,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/pkg/errors"
 )
 
@@ -66,13 +65,13 @@ func (v jsonValue) toBytes() ([]byte, error) {
 	return jsonBytes, err
 }
 
-func couchDocToKeyValue(doc *couchdb.CouchDoc) (*keyValue, error) {
+func couchDocToKeyValue(doc *couchDoc) (*keyValue, error) {
 	// initialize the return value
 	var returnValue []byte
 	var err error
 	// create a generic map unmarshal the json
 	jsonResult := make(map[string]interface{})
-	decoder := json.NewDecoder(bytes.NewBuffer(doc.JSONValue))
+	decoder := json.NewDecoder(bytes.NewBuffer(doc.jsonValue))
 	decoder.UseNumber()
 	if err = decoder.Decode(&jsonResult); err != nil {
 		return nil, err
@@ -99,9 +98,9 @@ func couchDocToKeyValue(doc *couchdb.CouchDoc) (*keyValue, error) {
 	delete(jsonResult, versionField)
 
 	// handle binary or json data
-	if doc.Attachments != nil { // binary attachment
+	if doc.attachments != nil { // binary attachment
 		// get binary data from attachment
-		for _, attachment := range doc.Attachments {
+		for _, attachment := range doc.attachments {
 			if attachment.Name == binaryWrapper {
 				returnValue = attachment.AttachmentBytes
 			}
@@ -121,7 +120,7 @@ func couchDocToKeyValue(doc *couchdb.CouchDoc) (*keyValue, error) {
 	}, nil
 }
 
-func keyValToCouchDoc(kv *keyValue) (*couchdb.CouchDoc, error) {
+func keyValToCouchDoc(kv *keyValue) (*couchDoc, error) {
 	type kvType int32
 	const (
 		kvTypeDelete = iota
@@ -167,14 +166,14 @@ func keyValToCouchDoc(kv *keyValue) (*couchdb.CouchDoc, error) {
 	if err != nil {
 		return nil, err
 	}
-	couchDoc := &couchdb.CouchDoc{JSONValue: jsonBytes}
+	couchDoc := &couchDoc{jsonValue: jsonBytes}
 	if kvtype == kvTypeAttachment {
-		attachment := &couchdb.AttachmentInfo{}
+		attachment := &attachmentInfo{}
 		attachment.AttachmentBytes = value
 		attachment.ContentType = "application/octet-stream"
 		attachment.Name = binaryWrapper
-		attachments := append([]*couchdb.AttachmentInfo{}, attachment)
-		couchDoc.Attachments = attachments
+		attachments := append([]*attachmentInfo{}, attachment)
+		couchDoc.attachments = attachments
 	}
 	return couchDoc, nil
 }
@@ -185,7 +184,7 @@ type couchSavepointData struct {
 	TxNum    uint64 `json:"TxNum"`
 }
 
-func encodeSavepoint(height *version.Height) (*couchdb.CouchDoc, error) {
+func encodeSavepoint(height *version.Height) (*couchDoc, error) {
 	var err error
 	var savepointDoc couchSavepointData
 	// construct savepoint document
@@ -197,12 +196,12 @@ func encodeSavepoint(height *version.Height) (*couchdb.CouchDoc, error) {
 		logger.Errorf("%+v", err)
 		return nil, err
 	}
-	return &couchdb.CouchDoc{JSONValue: savepointDocJSON, Attachments: nil}, nil
+	return &couchDoc{jsonValue: savepointDocJSON, attachments: nil}, nil
 }
 
-func decodeSavepoint(couchDoc *couchdb.CouchDoc) (*version.Height, error) {
+func decodeSavepoint(couchDoc *couchDoc) (*version.Height, error) {
 	savepointDoc := &couchSavepointData{}
-	if err := json.Unmarshal(couchDoc.JSONValue, &savepointDoc); err != nil {
+	if err := json.Unmarshal(couchDoc.jsonValue, &savepointDoc); err != nil {
 		err = errors.Wrap(err, "failed to unmarshal savepoint data")
 		logger.Errorf("%+v", err)
 		return nil, err
@@ -214,7 +213,7 @@ type dataformatInfo struct {
 	Version string `json:"Version"`
 }
 
-func encodeDataformatInfo(dataFormatVersion string) (*couchdb.CouchDoc, error) {
+func encodeDataformatInfo(dataFormatVersion string) (*couchDoc, error) {
 	var err error
 	dataformatInfo := &dataformatInfo{
 		Version: dataFormatVersion,
@@ -225,13 +224,13 @@ func encodeDataformatInfo(dataFormatVersion string) (*couchdb.CouchDoc, error) {
 		logger.Errorf("%+v", err)
 		return nil, err
 	}
-	return &couchdb.CouchDoc{JSONValue: dataformatInfoJSON, Attachments: nil}, nil
+	return &couchDoc{jsonValue: dataformatInfoJSON, attachments: nil}, nil
 }
 
-func decodeDataformatInfo(couchDoc *couchdb.CouchDoc) (string, error) {
+func decodeDataformatInfo(couchDoc *couchDoc) (string, error) {
 	dataformatInfo := &dataformatInfo{}
-	if err := json.Unmarshal(couchDoc.JSONValue, dataformatInfo); err != nil {
-		err = errors.Wrapf(err, "failed to unmarshal json [%#v] into dataformatInfo", couchDoc.JSONValue)
+	if err := json.Unmarshal(couchDoc.jsonValue, dataformatInfo); err != nil {
+		err = errors.Wrapf(err, "failed to unmarshal json [%#v] into dataformatInfo", couchDoc.jsonValue)
 		logger.Errorf("%+v", err)
 		return "", err
 	}
