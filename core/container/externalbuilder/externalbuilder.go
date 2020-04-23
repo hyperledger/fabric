@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -316,17 +317,19 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 func (b *Builder) Release(buildContext *BuildContext) error {
 	release := filepath.Join(b.Location, "bin", "release")
 
-	_, err := os.Stat(release)
-	if os.IsNotExist(err) {
-		b.Logger.Debugf("Skipping release step for '%s' as no release binary found", buildContext.CCID)
-		return nil
-	}
-	if err != nil {
-		return errors.WithMessagef(err, "could not stat release binary '%s'", release)
+	if runtime.GOOS != "windows" {
+		_, err := os.Stat(release)
+		if os.IsNotExist(err) {
+			b.Logger.Debugf("Skipping release step for '%s' as no release binary found", buildContext.CCID)
+			return nil
+		}
+		if err != nil {
+			return errors.WithMessagef(err, "could not stat release binary '%s'", release)
+		}
 	}
 
 	cmd := b.NewCommand(release, buildContext.BldDir, buildContext.ReleaseDir)
-	err = b.runCommand(cmd)
+	err := b.runCommand(cmd)
 	if err != nil {
 		return errors.Wrapf(err, "builder '%s' release failed", b.Name)
 	}
