@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/miekg/pkcs11"
 	"go.uber.org/zap/zapcore"
@@ -93,6 +94,7 @@ func (csp *impl) getSession() (session pkcs11.SessionHandle) {
 func createSession(ctx *pkcs11.Ctx, slot uint, pin string) pkcs11.SessionHandle {
 	var s pkcs11.SessionHandle
 	var err error
+	// attempt 10 times to open a session with a 100ms delay after each attempt
 	for i := 0; i < 10; i++ {
 		s, err = ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 		if err != nil {
@@ -100,6 +102,7 @@ func createSession(ctx *pkcs11.Ctx, slot uint, pin string) pkcs11.SessionHandle 
 		} else {
 			break
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 	if err != nil {
 		logger.Fatalf("OpenSession failed [%s]", err)
