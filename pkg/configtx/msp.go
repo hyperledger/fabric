@@ -117,19 +117,45 @@ func (c *ConfigTx) ConsortiumMSP(consortiumName, orgName string) (MSP, error) {
 // YEAR is a time duration for a standard 365 day year.
 const YEAR = 365 * 24 * time.Hour
 
+// CreateConsortiumOrgMSPCRL creates a CRL that revokes the provided certificates
+// for the specified consortium org signed by the provided SigningIdentity.
+func (c *ConfigTx) CreateConsortiumOrgMSPCRL(consortiumName string, orgName string, signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
+	msp, err := c.ConsortiumMSP(consortiumName, orgName)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving consortium org msp: %s", err)
+	}
+
+	return msp.newMSPCRL(signingIdentity, certs...)
+}
+
+// CreateOrdererMSPCRL creates a CRL that revokes the provided certificates
+// for the specified orderer org signed by the provided SigningIdentity.
+func (c *ConfigTx) CreateOrdererMSPCRL(orgName string, signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
+	msp, err := c.OrdererMSP(orgName)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving orderer msp: %s", err)
+	}
+
+	return msp.newMSPCRL(signingIdentity, certs...)
+}
+
 // CreateApplicationMSPCRL creates a CRL that revokes the provided certificates
-// for the specified application org signed by the provided SigningIdentity. It
-// returns the CRL as the PEM-encoded bytes. If any of the provided certs were
-// not signed by any of the root/intermediate CA cets in the MSP configuration,
-// it will return an error.
+// for the specified application org signed by the provided SigningIdentity.
 func (c *ConfigTx) CreateApplicationMSPCRL(orgName string, signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
 	msp, err := c.ApplicationMSP(orgName)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving application msp: %s", err)
 	}
 
-	err = msp.validateCertificates(signingIdentity.Certificate, certs...)
-	if err != nil {
+	return msp.newMSPCRL(signingIdentity, certs...)
+}
+
+// newMSPCRL creates a CRL that revokes the provided certificates for the specified org
+// signed by the provided SigningIdentity. If any of the provided certs were
+// not signed by any of the root/intermediate CA cets in the MSP configuration,
+// it will return an error.
+func (m *MSP) newMSPCRL(signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
+	if err := m.validateCertificates(signingIdentity.Certificate, certs...); err != nil {
 		return nil, err
 	}
 
@@ -534,9 +560,57 @@ func pemEncodePKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}), nil
 }
 
-// UpdateApplicationMSP updates the MSP config for the specified application
+// SetConsortiumMSP updates the MSP config for the specified consortium org group.
+func (c *ConfigTx) SetConsortiumMSP(updatedMSP MSP, consortiumName string, orgName string) error {
+	currentMSP, err := c.ConsortiumMSP(consortiumName, orgName)
+	if err != nil {
+		return fmt.Errorf("retrieving msp: %v", err)
+	}
+
+	if currentMSP.Name != updatedMSP.Name {
+		return errors.New("MSP name cannot be changed")
+	}
+
+	err = updatedMSP.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	err = setMSPConfigForConsortium(c.UpdatedConfig(), updatedMSP, consortiumName, orgName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetOrdererMSP updates the MSP config for the specified orderer org group.
+func (c *ConfigTx) SetOrdererMSP(updatedMSP MSP, orgName string) error {
+	currentMSP, err := c.OrdererMSP(orgName)
+	if err != nil {
+		return fmt.Errorf("retrieving msp: %v", err)
+	}
+
+	if currentMSP.Name != updatedMSP.Name {
+		return errors.New("MSP name cannot be changed")
+	}
+
+	err = updatedMSP.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	err = setMSPConfigForOrderer(c.UpdatedConfig(), updatedMSP, orgName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetApplicationMSP updates the MSP config for the specified application
 // org group.
-func (c *ConfigTx) UpdateApplicationMSP(updatedMSP MSP, orgName string) error {
+func (c *ConfigTx) SetApplicationMSP(updatedMSP MSP, orgName string) error {
 	currentMSP, err := c.ApplicationMSP(orgName)
 	if err != nil {
 		return fmt.Errorf("retrieving msp: %v", err)
@@ -559,25 +633,64 @@ func (c *ConfigTx) UpdateApplicationMSP(updatedMSP MSP, orgName string) error {
 	return nil
 }
 
-func setMSPConfigForOrg(config *cb.Config, updatedMSP MSP, orgName string) error {
+// newMSPConfig returns an config for a msp.
+func newMSPConfig(updatedMSP MSP) (*mb.MSPConfig, error) {
 	fabricMSPConfig, err := updatedMSP.toProto()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	conf, err := proto.Marshal(fabricMSPConfig)
 	if err != nil {
-		return fmt.Errorf("marshaling msp config: %v", err)
+		return nil, fmt.Errorf("marshaling msp config: %v", err)
 	}
 
 	mspConfig := &mb.MSPConfig{
 		Config: conf,
 	}
 
-	orgGroup, err := getApplicationOrg(config, orgName)
+	return mspConfig, nil
+}
+
+func setMSPConfigForConsortium(config *cb.Config, updatedMSP MSP, consortiumName string, orgName string) error {
+	mspConfig, err := newMSPConfig(updatedMSP)
+	if err != nil {
+		return fmt.Errorf("new msp config: %v", err)
+	}
+
+	consortiumGroup := getConsortiumOrg(config, consortiumName, orgName)
+
+	err = setValue(consortiumGroup, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func setMSPConfigForOrderer(config *cb.Config, updatedMSP MSP, orgName string) error {
+	mspConfig, err := newMSPConfig(updatedMSP)
+	if err != nil {
+		return fmt.Errorf("new msp config: %v", err)
+	}
+
+	ordererGroup := getOrdererOrg(config, orgName)
+
+	err = setValue(ordererGroup, mspValue(mspConfig), AdminsPolicyKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func setMSPConfigForOrg(config *cb.Config, updatedMSP MSP, orgName string) error {
+	mspConfig, err := newMSPConfig(updatedMSP)
+	if err != nil {
+		return fmt.Errorf("new msp config: %v", err)
+	}
+
+	orgGroup := getApplicationOrg(config, orgName)
 
 	err = setValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {

@@ -1867,6 +1867,21 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 	gt.Expect(err).To(MatchError("failed unmarshaling orderer org OrdererOrg's endpoints: proto: can't skip unknown wire type 6"))
 }
 
+func TestGetOrdererOrg(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	ordererChannelGroup, err := baseOrdererChannelGroup(t, orderer.ConsensusTypeSolo)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: ordererChannelGroup,
+	}
+
+	ordererOrgGroup := getOrdererOrg(config, "OrdererOrg")
+	gt.Expect(ordererOrgGroup).To(Equal(config.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"]))
+}
+
 func baseOrdererOfType(t *testing.T, ordererType string) Orderer {
 	switch ordererType {
 	case orderer.ConsensusTypeKafka:
@@ -1955,6 +1970,21 @@ func baseEtcdRaftOrderer(t *testing.T) Orderer {
 	}
 
 	return soloOrderer
+}
+
+// baseOrdererChannelGroup creates a channel config group
+// that only contains an Orderer group.
+func baseOrdererChannelGroup(t *testing.T, ordererType string) (*cb.ConfigGroup, error) {
+	channelGroup := newConfigGroup()
+
+	ordererConf := baseOrdererOfType(t, ordererType)
+	ordererGroup, err := newOrdererGroup(ordererConf)
+	if err != nil {
+		return nil, err
+	}
+	channelGroup.Groups[OrdererGroupKey] = ordererGroup
+
+	return channelGroup, nil
 }
 
 // marshalOrPanic is a helper for proto marshal.

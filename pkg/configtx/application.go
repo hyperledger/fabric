@@ -313,13 +313,7 @@ func anchorPeersValue(anchorPeers []*pb.AnchorPeer) *standardConfigValue {
 }
 
 // getApplicationOrg returns the organization config group for an org in the
-// provided config. It returns an error if an application org was not found
-// in the config with the specified name.
-func getApplicationOrg(config *cb.Config, orgName string) (*cb.ConfigGroup, error) {
-	org, ok := config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
-	if !ok {
-		return nil, fmt.Errorf("application org with name '%s' not found", orgName)
-	}
-
-	return org, nil
+// provided config. It returns nil if the org doesn't exist in the config.
+func getApplicationOrg(config *cb.Config, orgName string) *cb.ConfigGroup {
+	return config.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
 }

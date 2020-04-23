@@ -565,3 +565,9 @@ func getOrdererAddresses(config *cb.Config) ([]Address, error) {
 
 	return addresses, nil
 }
+
+// getOrdererOrg returns the organization config group for an orderer org in the
+// provided config. It returns nil if the org doesn't exist in the config.
+func getOrdererOrg(config *cb.Config, orgName string) *cb.ConfigGroup {
+	return config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+}
