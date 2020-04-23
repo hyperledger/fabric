@@ -316,13 +316,10 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 func (b *Builder) Release(buildContext *BuildContext) error {
 	release := filepath.Join(b.Location, "bin", "release")
 
-	_, err := os.Stat(release)
-	if os.IsNotExist(err) {
+	_, err := exec.LookPath(release)
+	if err != nil {
 		b.Logger.Debugf("Skipping release step for '%s' as no release binary found", buildContext.CCID)
 		return nil
-	}
-	if err != nil {
-		return errors.WithMessagef(err, "could not stat release binary '%s'", release)
 	}
 
 	cmd := b.NewCommand(release, buildContext.BldDir, buildContext.ReleaseDir)
