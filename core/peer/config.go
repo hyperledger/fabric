@@ -215,14 +215,14 @@ func GlobalConfig() (*Config, error) {
 }
 
 func (c *Config) load() error {
-	preeAddress, err := getLocalAddress()
+	peerAddress, err := getLocalAddress()
 	if err != nil {
 		return err
 	}
 
 	configDir := filepath.Dir(viper.ConfigFileUsed())
 
-	c.PeerAddress = preeAddress
+	c.PeerAddress = peerAddress
 	c.PeerID = viper.GetString("peer.id")
 	c.LocalMSPID = viper.GetString("peer.localMspId")
 	c.ListenAddress = viper.GetString("peer.listenAddress")
