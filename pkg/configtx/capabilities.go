@@ -25,19 +25,6 @@ func (c *ConfigTx) ChannelCapabilities() ([]string, error) {
 	return capabilities, nil
 }
 
-// OrdererCapabilities returns a map of enabled orderer capabilities
-// from a config transaction.
-func (c *ConfigTx) OrdererCapabilities() ([]string, error) {
-	orderer := c.original.ChannelGroup.Groups[OrdererGroupKey]
-
-	capabilities, err := getCapabilities(orderer)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving orderer capabilities: %v", err)
-	}
-
-	return capabilities, nil
-}
-
 // ApplicationCapabilities returns a map of enabled application capabilities
 // from a config transaction.
 func (c *ConfigTx) ApplicationCapabilities() ([]string, error) {
@@ -61,23 +48,6 @@ func (c *ConfigTx) AddChannelCapability(capability string) error {
 	}
 
 	err = addCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// AddOrdererCapability adds capability to the provided channel config.
-// If the provided capability already exist in current configuration, this action
-// will be a no-op.
-func (c *ConfigTx) AddOrdererCapability(capability string) error {
-	capabilities, err := c.OrdererCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = addCapability(c.updated.ChannelGroup.Groups[OrdererGroupKey], capabilities, AdminsPolicyKey, capability)
 	if err != nil {
 		return err
 	}
@@ -110,21 +80,6 @@ func (c *ConfigTx) RemoveChannelCapability(capability string) error {
 	}
 
 	err = removeCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// RemoveOrdererCapability removes capability to the provided channel config.
-func (c *ConfigTx) RemoveOrdererCapability(capability string) error {
-	capabilities, err := c.OrdererCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = removeCapability(c.updated.ChannelGroup.Groups[OrdererGroupKey], capabilities, AdminsPolicyKey, capability)
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,7 @@ const (
 )
 
 const (
-	ConfigBasePort TestPortRange = basePort + portsPerSuite*iota
+	ConfigTxBasePort TestPortRange = basePort + portsPerSuite*iota
 	DiscoveryBasePort
 	E2EBasePort
 	GossipBasePort

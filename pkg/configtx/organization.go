@@ -34,45 +34,6 @@ func (c *ConfigTx) RemoveApplicationOrg(orgName string) {
 
 }
 
-// OrdererOrg retrieves an existing org from an orderer organization config group.
-func (c *ConfigTx) OrdererOrg(orgName string) (Organization, error) {
-	orgGroup, ok := c.original.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
-	if !ok {
-		return Organization{}, fmt.Errorf("orderer org %s does not exist in channel config", orgName)
-	}
-
-	org, err := getOrganization(orgGroup, orgName)
-	if err != nil {
-		return Organization{}, err
-	}
-
-	// Orderer organization requires orderer endpoints.
-	endpointsProtos := &cb.OrdererAddresses{}
-	err = unmarshalConfigValueAtKey(orgGroup, EndpointsKey, endpointsProtos)
-	if err != nil {
-		return Organization{}, err
-	}
-	ordererEndpoints := make([]string, len(endpointsProtos.Addresses))
-	for i, address := range endpointsProtos.Addresses {
-		ordererEndpoints[i] = address
-	}
-	org.OrdererEndpoints = ordererEndpoints
-
-	// Remove AnchorPeers which are application org specific.
-	org.AnchorPeers = nil
-
-	return org, err
-}
-
-// RemoveOrdererOrg removes an org from the Orderer group.
-// Removal will panic if the orderer group does not exist.
-func (c *ConfigTx) RemoveOrdererOrg(orgName string) {
-	ordererGroups := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups
-
-	delete(ordererGroups, orgName)
-
-}
-
 // ConsortiumOrg retrieves an existing org from a consortium organization config group.
 func (c *ConfigTx) ConsortiumOrg(consortiumName, orgName string) (Organization, error) {
 	consortium, ok := c.original.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
@@ -111,7 +72,7 @@ func newOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
 	orgGroup := newConfigGroup()
 	orgGroup.ModPolicy = AdminsPolicyKey
 
-	if err := addPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
+	if err := setPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
 		return nil, err
 	}
 

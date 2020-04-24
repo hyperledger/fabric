@@ -29,7 +29,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("Config", func() {
+var _ = Describe("ConfigTx", func() {
 	var (
 		client  *docker.Client
 		testDir string
@@ -39,7 +39,7 @@ var _ = Describe("Config", func() {
 
 	BeforeEach(func() {
 		var err error
-		testDir, err = ioutil.TempDir("", "config")
+		testDir, err = ioutil.TempDir("", "configtx")
 		Expect(err).NotTo(HaveOccurred())
 
 		client, err = docker.NewClientFromEnv()
@@ -70,7 +70,7 @@ var _ = Describe("Config", func() {
 		os.RemoveAll(testDir)
 	})
 
-	It("creates channels and updates them using pkg/config", func() {
+	It("creates channels and updates them using pkg/configtx", func() {
 		orderer := network.Orderer("orderer")
 		testPeers := network.PeersWithChannel("testchannel")
 		org1peer0 := network.Peer("Org1", "peer0")
@@ -195,7 +195,7 @@ var _ = Describe("Config", func() {
 
 			By("ensuring the active channel config matches the submitted config")
 			finalChannelConfig := nwo.GetConfig(network, peer, orderer, "testchannel")
-			Expect(c.UpdatedConfig()).To(Equal(finalChannelConfig))
+			Expect(c.UpdatedConfig().Config).To(Equal(finalChannelConfig))
 		}
 	})
 })

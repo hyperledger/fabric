@@ -959,7 +959,7 @@ func TestSetOrdererConfiguration(t *testing.T) {
 
 	c := New(config)
 
-	err = c.SetOrdererConfiguration(updatedOrdererConf)
+	err = c.UpdatedConfig().Orderer().SetConfiguration(updatedOrdererConf)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	expectedConfigJSON := fmt.Sprintf(`
@@ -1236,7 +1236,7 @@ func TestSetOrdererConfiguration(t *testing.T) {
 `, certBase64, crlBase64, pkBase64)
 
 	buf := &bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(buf, c.UpdatedConfig())
+	err = protolator.DeepMarshalJSON(buf, c.UpdatedConfig().Config)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
@@ -1293,7 +1293,7 @@ func TestOrdererConfiguration(t *testing.T) {
 
 			c := New(config)
 
-			ordererConf, err := c.OrdererConfiguration()
+			ordererConf, err := c.OriginalConfig().Orderer().Configuration()
 			gt.Expect(err).NotTo(HaveOccurred())
 			gt.Expect(ordererConf).To(Equal(baseOrdererConf))
 		})
@@ -1309,14 +1309,6 @@ func TestOrdererConfigurationFailure(t *testing.T) {
 		configMod   func(*cb.Config, *GomegaWithT)
 		expectedErr string
 	}{
-		{
-			testName:    "When the orderer group does not exist",
-			ordererType: orderer.ConsensusTypeSolo,
-			configMod: func(config *cb.Config, gt *GomegaWithT) {
-				delete(config.ChannelGroup.Groups, OrdererGroupKey)
-			},
-			expectedErr: "config does not contain orderer group",
-		},
 		{
 			testName:    "When the config contains an unknown consensus type",
 			ordererType: orderer.ConsensusTypeSolo,
@@ -1391,13 +1383,13 @@ func TestOrdererConfigurationFailure(t *testing.T) {
 
 			c := New(config)
 
-			_, err = c.OrdererConfiguration()
+			_, err = c.OriginalConfig().Orderer().Configuration()
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
 }
 
-func TestAddOrdererOrg(t *testing.T) {
+func TestSetOrdererOrg(t *testing.T) {
 	t.Parallel()
 
 	gt := NewGomegaWithT(t)
@@ -1554,10 +1546,10 @@ func TestAddOrdererOrg(t *testing.T) {
 }
 `, certBase64, crlBase64, pkBase64)
 
-	err = c.SetOrdererOrg(org)
+	err = c.UpdatedConfig().Orderer().SetOrganization(org)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	actualOrdererConfigGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg2"]
+	actualOrdererConfigGroup := c.UpdatedConfig().Orderer().Organization("OrdererOrg2").orgGroup
 	buf := bytes.Buffer{}
 	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererOrgGroup{ConfigGroup: actualOrdererConfigGroup})
 	gt.Expect(err).NotTo(HaveOccurred())
@@ -1586,8 +1578,8 @@ func TestSetOrdererOrgFailures(t *testing.T) {
 		Name: "OrdererOrg2",
 	}
 
-	err = c.SetOrdererOrg(org)
-	gt.Expect(err).To(MatchError("failed to create orderer org 'OrdererOrg2': no policies defined"))
+	err = c.UpdatedConfig().Orderer().SetOrganization(org)
+	gt.Expect(err).To(MatchError("failed to create orderer org OrdererOrg2: no policies defined"))
 }
 
 func TestSetOrdererEndpoint(t *testing.T) {
@@ -1670,10 +1662,10 @@ func TestSetOrdererEndpoint(t *testing.T) {
 	gt.Expect(err).ToNot(HaveOccurred())
 
 	newOrderer1OrgEndpoint := Address{Host: "127.0.0.1", Port: 9050}
-	err = c.SetOrdererEndpoint("Orderer1Org", newOrderer1OrgEndpoint)
+	err = c.UpdatedConfig().Orderer().Organization("Orderer1Org").SetEndpoint(newOrderer1OrgEndpoint)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(proto.Equal(c.UpdatedConfig(), expectedUpdatedConfig)).To(BeTrue())
+	gt.Expect(proto.Equal(c.UpdatedConfig().Config, expectedUpdatedConfig)).To(BeTrue())
 }
 
 func TestRemoveOrdererEndpoint(t *testing.T) {
@@ -1719,7 +1711,7 @@ func TestRemoveOrdererEndpoint(t *testing.T) {
 		"groups": {
 			"Orderer": {
 				"groups": {
-                    "OrdererOrg": {
+					"OrdererOrg": {
 						"groups": {},
 						"mod_policy": "",
 						"policies": {},
@@ -1737,9 +1729,9 @@ func TestRemoveOrdererEndpoint(t *testing.T) {
 						"version": "0"
 					}
 				},
-                "mod_policy": "",
-		        "policies": {},
-		        "values": {},
+				"mod_policy": "",
+				"policies": {},
+				"values": {},
 				"version": "0"
 			}
 		},
@@ -1750,16 +1742,17 @@ func TestRemoveOrdererEndpoint(t *testing.T) {
 	},
 	"sequence": "0"
 }
-	`
+`
+
 	expectedUpdatedConfig := &cb.Config{}
 	err := protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
 	gt.Expect(err).ToNot(HaveOccurred())
 
 	removedEndpoint := Address{Host: "127.0.0.1", Port: 8050}
-	err = c.RemoveOrdererEndpoint("OrdererOrg", removedEndpoint)
+	err = c.UpdatedConfig().Orderer().Organization("OrdererOrg").RemoveEndpoint(removedEndpoint)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(proto.Equal(c.UpdatedConfig(), expectedUpdatedConfig)).To(BeTrue())
+	gt.Expect(proto.Equal(c.UpdatedConfig().Config, expectedUpdatedConfig)).To(BeTrue())
 }
 
 func TestRemoveOrdererEndpointFailure(t *testing.T) {
@@ -1796,8 +1789,8 @@ func TestRemoveOrdererEndpointFailure(t *testing.T) {
 
 	c := New(config)
 
-	err := c.RemoveOrdererEndpoint("OrdererOrg", Address{Host: "127.0.0.1", Port: 8050})
-	gt.Expect(err).To(MatchError("failed unmarshaling orderer org OrdererOrg's endpoints: proto: can't skip unknown wire type 6"))
+	err := c.UpdatedConfig().Orderer().Organization("OrdererOrg").RemoveEndpoint(Address{Host: "127.0.0.1", Port: 8050})
+	gt.Expect(err).To(MatchError("failed unmarshaling endpoints for orderer org OrdererOrg: proto: can't skip unknown wire type 6"))
 }
 
 func TestGetOrdererOrg(t *testing.T) {

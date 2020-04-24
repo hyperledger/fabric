@@ -93,14 +93,20 @@ func New(config *cb.Config) ConfigTx {
 	}
 }
 
-// OriginalConfig returns the original unedited config.
-func (c *ConfigTx) OriginalConfig() *cb.Config {
-	return c.original
+type Config struct {
+	*cb.Config
 }
 
-// UpdatedConfig returns the modified config.
-func (c *ConfigTx) UpdatedConfig() *cb.Config {
-	return c.updated
+type UpdatedConfig struct {
+	*cb.Config
+}
+
+func (c *ConfigTx) OriginalConfig() *Config {
+	return &Config{Config: c.original}
+}
+
+func (c *ConfigTx) UpdatedConfig() *UpdatedConfig {
+	return &UpdatedConfig{Config: c.updated}
 }
 
 // ComputeUpdate computes the ConfigUpdate from a base and modified config transaction.
@@ -148,7 +154,7 @@ func (c *ConfigTx) ChannelConfiguration() (Channel, error) {
 	}
 
 	if _, ok := channelGroup.Groups[OrdererGroupKey]; ok {
-		orderer, err = c.OrdererConfiguration()
+		orderer, err = c.OriginalConfig().Orderer().Configuration()
 		if err != nil {
 			return Channel{}, err
 		}
@@ -272,7 +278,7 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 
 	channelGroup := newConfigGroup()
 
-	err = addPolicies(channelGroup, channelConfig.Policies, AdminsPolicyKey)
+	err = setPolicies(channelGroup, channelConfig.Policies, AdminsPolicyKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add system channel policies: %v", err)
 	}

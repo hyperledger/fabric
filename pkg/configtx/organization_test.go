@@ -143,11 +143,6 @@ func TestOrdererOrg(t *testing.T) {
 			orgName:     "OrdererOrg",
 			expectedErr: "",
 		},
-		{
-			name:        "organization does not exist",
-			orgName:     "bad-org",
-			expectedErr: "orderer org bad-org does not exist in channel config",
-		},
 	}
 
 	for _, tc := range tests {
@@ -156,12 +151,12 @@ func TestOrdererOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := c.OrdererOrg(tc.orgName)
+			org, err := c.OriginalConfig().Orderer().Organization(tc.orgName).Configuration()
 			if tc.expectedErr != "" {
 				gt.Expect(err).To(MatchError(tc.expectedErr))
 				gt.Expect(Organization{}).To(Equal(org))
 			} else {
-				gt.Expect(err).ToNot(HaveOccurred())
+				gt.Expect(err).NotTo(HaveOccurred())
 				gt.Expect(expectedOrg).To(Equal(org))
 			}
 		})
@@ -182,8 +177,8 @@ func TestRemoveOrdererOrg(t *testing.T) {
 
 	c := New(config)
 
-	c.RemoveOrdererOrg("OrdererOrg")
-	gt.Expect(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups["OrdererOrg"]).To(BeNil())
+	c.UpdatedConfig().Orderer().RemoveOrganization("OrdererOrg")
+	gt.Expect(c.UpdatedConfig().Orderer().Organization("OrdererOrg").OrdererOrg).To(BeNil())
 }
 
 func TestConsortiumOrg(t *testing.T) {

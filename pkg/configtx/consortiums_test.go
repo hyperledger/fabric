@@ -781,7 +781,7 @@ func TestSetConsortiumOrg(t *testing.T) {
 	err = c.SetConsortiumOrg(orgToAdd, "Consortium1")
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	gt.Expect(proto.Equal(c.UpdatedConfig(), expectedConfigProto)).To(BeTrue())
+	gt.Expect(proto.Equal(c.UpdatedConfig().Config, expectedConfigProto)).To(BeTrue())
 }
 
 func TestSetConsortiumOrgFailures(t *testing.T) {

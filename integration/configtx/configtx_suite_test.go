@@ -16,9 +16,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestConfig(t *testing.T) {
+func TestConfigTx(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Config Suite")
+	RunSpecs(t, "ConfigTx Suite")
 }
 
 var (
@@ -46,5 +46,5 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 func StartPort() int {
-	return integration.ConfigBasePort.StartPortForNode()
+	return integration.ConfigTxBasePort.StartPortForNode()
 }

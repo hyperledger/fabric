@@ -132,13 +132,13 @@ func Example_basic() {
 }
 
 // This example updates an existing orderer configuration.
-func ExampleConfigTx_SetOrdererConfiguration() {
+func ExampleUpdatedOrdererGroup_SetConfiguration() {
 	baseConfig := fetchChannelConfig()
 	c := configtx.New(baseConfig)
 
 	// Must retrieve the current orderer configuration from block and modify
 	// the desired values
-	orderer, err := c.OrdererConfiguration()
+	orderer, err := c.UpdatedConfig().Orderer().Configuration()
 	if err != nil {
 		panic(err)
 	}
@@ -146,7 +146,7 @@ func ExampleConfigTx_SetOrdererConfiguration() {
 	orderer.Kafka.Brokers = []string{"kafka0:9092", "kafka1:9092", "kafka2:9092"}
 	orderer.BatchSize.MaxMessageCount = 500
 
-	err = c.SetOrdererConfiguration(orderer)
+	err = c.UpdatedConfig().Orderer().SetConfiguration(orderer)
 	if err != nil {
 		panic(nil)
 	}
@@ -224,12 +224,14 @@ func Example_policies() {
 		panic(err)
 	}
 
-	err = c.RemoveOrdererOrgPolicy("OrdererOrg", configtx.WritersPolicyKey)
+	err = c.UpdatedConfig().Orderer().Organization("OrdererOrg").RemovePolicy(configtx.WritersPolicyKey)
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.SetOrdererOrgPolicy("OrdererOrg", configtx.AdminsPolicyKey, "TestPolicy",
+	err = c.UpdatedConfig().Orderer().Organization("OrdererOrg").SetPolicy(
+		configtx.AdminsPolicyKey,
+		"TestPolicy",
 		configtx.Policy{
 			Type: configtx.ImplicitMetaPolicyType,
 			Rule: "MAJORITY Endorsement",
@@ -238,12 +240,12 @@ func Example_policies() {
 		panic(err)
 	}
 
-	err = c.RemoveOrdererPolicy(configtx.WritersPolicyKey)
+	err = c.UpdatedConfig().Orderer().RemovePolicy(configtx.WritersPolicyKey)
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.SetOrdererPolicy(configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
+	err = c.UpdatedConfig().Orderer().SetPolicy(configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
 		Type: configtx.ImplicitMetaPolicyType,
 		Rule: "MAJORITY Endorsement",
 	})
@@ -258,14 +260,16 @@ func Example_ordererEndpoints() {
 	baseConfig := fetchChannelConfig()
 	c := configtx.New(baseConfig)
 
-	err := c.SetOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.3",
-		Port: 8050})
+	err := c.UpdatedConfig().Orderer().Organization("OrdererOrg").SetEndpoint(
+		configtx.Address{Host: "127.0.0.3", Port: 8050},
+	)
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.RemoveOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.1",
-		Port: 9050})
+	err = c.UpdatedConfig().Orderer().Organization("Orderer").RemoveEndpoint(
+		configtx.Address{Host: "127.0.0.1", Port: 9050},
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -322,12 +326,12 @@ func Example_organizations() {
 	ordererOrg.Name = "OrdererOrg2"
 	ordererOrg.AnchorPeers = nil
 
-	err = c.SetOrdererOrg(ordererOrg)
+	err = c.UpdatedConfig().Orderer().SetOrganization(ordererOrg)
 	if err != nil {
 		panic(err)
 	}
 
-	c.RemoveOrdererOrg("OrdererOrg2")
+	c.UpdatedConfig().Orderer().RemoveOrganization("OrdererOrg2")
 }
 
 func ExampleNewSystemChannelGenesisBlock() {
@@ -518,11 +522,11 @@ func ExampleConfigTx_SetApplicationMSP() {
 
 // This example shows the addition of a certificate to an orderer org's intermediate
 // certificate list.
-func ExampleConfigTx_SetOrdererMSP() {
+func ExampleUpdatedOrdererOrg_SetMSP() {
 	baseConfig := fetchChannelConfig()
 	c := configtx.New(baseConfig)
 
-	msp, err := c.OrdererMSP("OrdererOrg")
+	msp, err := c.UpdatedConfig().Orderer().Organization("OrdererOrg").MSP()
 	if err != nil {
 		panic(err)
 	}
@@ -534,7 +538,7 @@ func ExampleConfigTx_SetOrdererMSP() {
 
 	msp.IntermediateCerts = append(msp.IntermediateCerts, newIntermediateCert)
 
-	err = c.SetOrdererMSP(msp, "OrdererOrg")
+	err = c.UpdatedConfig().Orderer().Organization("OrdererOrg").SetMSP(msp)
 	if err != nil {
 		panic(err)
 	}

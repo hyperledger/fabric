@@ -67,13 +67,13 @@ func TestOrdererCapabilities(t *testing.T) {
 
 	c := New(config)
 
-	ordererCapabilities, err := c.OrdererCapabilities()
+	ordererCapabilities, err := c.OriginalConfig().Orderer().Capabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(ordererCapabilities).To(Equal(baseOrdererConf.Capabilities))
 
 	// Delete the capabilities key and assert retrieval to return nil
-	delete(config.ChannelGroup.Groups[OrdererGroupKey].Values, CapabilitiesKey)
-	ordererCapabilities, err = c.OrdererCapabilities()
+	delete(c.OriginalConfig().Orderer().ordererGroup.Values, CapabilitiesKey)
+	ordererCapabilities, err = c.OriginalConfig().Orderer().Capabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(ordererCapabilities).To(BeNil())
 }
@@ -437,11 +437,11 @@ func TestAddOrdererCapability(t *testing.T) {
 `, orgCertBase64, orgCRLBase64, orgPKBase64)
 
 	capability := "V3_0"
-	err = c.AddOrdererCapability(capability)
+	err = c.UpdatedConfig().Orderer().AddCapability(capability)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: c.UpdatedConfig().ChannelGroup.Groups[OrdererGroupKey]})
+	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: c.UpdatedConfig().Orderer().ordererGroup})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(Equal(expectedConfigGroupJSON))
@@ -492,7 +492,7 @@ func TestAddOrdererCapabilityFailures(t *testing.T) {
 
 			c := New(config)
 
-			err = c.AddOrdererCapability(tt.capability)
+			err = c.UpdatedConfig().Orderer().AddCapability(tt.capability)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
@@ -1110,11 +1110,11 @@ func TestRemoveOrdererCapability(t *testing.T) {
 `, orgCertBase64, orgCRLBase64, orgPKBase64)
 
 	capability := "V1_3"
-	err = c.RemoveOrdererCapability(capability)
+	err = c.UpdatedConfig().Orderer().RemoveCapability(capability)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: c.UpdatedConfig().ChannelGroup.Groups[OrdererGroupKey]})
+	err = protolator.DeepMarshalJSON(&buf, &ordererext.DynamicOrdererGroup{ConfigGroup: c.UpdatedConfig().Orderer().ordererGroup})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(Equal(expectedConfigGroupJSON))
@@ -1172,7 +1172,7 @@ func TestRemoveOrdererCapabilityFailures(t *testing.T) {
 
 			c := New(config)
 
-			err = c.RemoveOrdererCapability(tt.capability)
+			err = c.UpdatedConfig().Orderer().RemoveCapability(tt.capability)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}

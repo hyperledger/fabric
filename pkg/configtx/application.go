@@ -262,7 +262,7 @@ func newApplicationGroup(application Application) (*cb.ConfigGroup, error) {
 	applicationGroup := newConfigGroup()
 	applicationGroup.ModPolicy = AdminsPolicyKey
 
-	if err = addPolicies(applicationGroup, application.Policies, AdminsPolicyKey); err != nil {
+	if err = setPolicies(applicationGroup, application.Policies, AdminsPolicyKey); err != nil {
 		return nil, err
 	}
 

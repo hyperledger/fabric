@@ -1256,7 +1256,7 @@ func TestChannelConfiguration(t *testing.T) {
 					applicationGroup.Groups[org.Name] = orgGroup
 				}
 				channelGroup.Groups[ApplicationGroupKey] = applicationGroup
-				err = addPolicies(channelGroup, standardPolicies(), AdminsPolicyKey)
+				err = setPolicies(channelGroup, standardPolicies(), AdminsPolicyKey)
 				gt.Expect(err).NotTo(HaveOccurred())
 
 				return &cb.Config{

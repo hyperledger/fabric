@@ -95,7 +95,7 @@ func TestOrdererMSP(t *testing.T) {
 		updated:  config,
 	}
 
-	msp, err := c.OrdererMSP("OrdererOrg")
+	msp, err := c.OriginalConfig().Orderer().Organization("OrdererOrg").MSP()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(msp).To(Equal(expectedMSP))
 }
@@ -147,12 +147,6 @@ func TestMSPConfigurationFailures(t *testing.T) {
 			orgType:     ApplicationGroupKey,
 			orgName:     "BadOrg",
 			expectedErr: "application org BadOrg does not exist in config",
-		},
-		{
-			name:        "Orderer Org does not exist",
-			orgType:     OrdererGroupKey,
-			orgName:     "BadOrg",
-			expectedErr: "orderer org BadOrg does not exist in config",
 		},
 		{
 			name:           "Consortium does not exist",
@@ -324,7 +318,7 @@ func TestMSPConfigurationFailures(t *testing.T) {
 				_, err := c.ApplicationMSP(tt.orgName)
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			case OrdererGroupKey:
-				_, err := c.OrdererMSP(tt.orgName)
+				_, err := c.OriginalConfig().Orderer().Organization(tt.orgName).MSP()
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			case ConsortiumsGroupKey:
 				_, err := c.ConsortiumMSP(tt.consortiumName, tt.orgName)
@@ -767,7 +761,7 @@ func TestUpdateConsortiumMsp(t *testing.T) {
 `, consortiumOrg1CertBase64, newIntermediateCertBase64, consortiumOrg1CRLBase64, newCRLBase64, newRootCertBase64, consortiumOrg1PKBase64, consortiumOrg2CertBase64, consortiumOrg2CRLBase64, consortiumOrg2PKBase64)
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, c.UpdatedConfig())
+	err = protolator.DeepMarshalJSON(&buf, c.UpdatedConfig().Config)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
@@ -864,7 +858,7 @@ func TestUpdateOrdererMSP(t *testing.T) {
 	}
 	c := New(config)
 
-	ordererMSP, err := c.OrdererMSP("OrdererOrg")
+	ordererMSP, err := c.OriginalConfig().Orderer().Organization("OrdererOrg").MSP()
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	ordererCertBase64, ordererPKBase64, ordererCRLBase64 := certPrivKeyCRLBase64(t, ordererMSP)
@@ -884,14 +878,14 @@ func TestUpdateOrdererMSP(t *testing.T) {
 		PrivateKey:  privKey,
 		MSPID:       "MSPID",
 	}
-	newCRL, err := c.CreateOrdererMSPCRL("OrdererOrg", signingIdentity, certToRevoke)
+	newCRL, err := c.UpdatedConfig().Orderer().Organization("OrdererOrg").CreateMSPCRL(signingIdentity, certToRevoke)
 	gt.Expect(err).NotTo(HaveOccurred())
 	pemNewCRL, err := pemEncodeCRL(newCRL)
 	gt.Expect(err).NotTo(HaveOccurred())
 	newCRLBase64 := base64.StdEncoding.EncodeToString(pemNewCRL)
 	ordererMSP.RevocationList = append(ordererMSP.RevocationList, newCRL)
 
-	err = c.SetOrdererMSP(ordererMSP, "OrdererOrg")
+	err = c.UpdatedConfig().Orderer().Organization("OrdererOrg").SetMSP(ordererMSP)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	expectedConfigJSON := fmt.Sprintf(`
@@ -1130,7 +1124,7 @@ func TestUpdateOrdererMSP(t *testing.T) {
 }`, ordererCertBase64, newIntermediateCertBase64, ordererCRLBase64, newCRLBase64, newRootCertBase64, ordererPKBase64)
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, c.UpdatedConfig())
+	err = protolator.DeepMarshalJSON(&buf, c.UpdatedConfig().Config)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
@@ -1145,14 +1139,6 @@ func TestUpdateOrdererMSPFailure(t *testing.T) {
 		orgName     string
 		expectedErr string
 	}{
-		{
-			spec: "orderer org msp not defined",
-			mspMod: func(msp MSP) MSP {
-				return msp
-			},
-			orgName:     "undefined-org",
-			expectedErr: "retrieving msp: orderer org undefined-org does not exist in config",
-		},
 		{
 			spec: "updating msp name",
 			mspMod: func(msp MSP) MSP {
@@ -1192,11 +1178,11 @@ func TestUpdateOrdererMSPFailure(t *testing.T) {
 			}
 			c := New(config)
 
-			ordererMSP, err := c.OrdererMSP("OrdererOrg")
+			ordererMSP, err := c.OriginalConfig().Orderer().Organization("OrdererOrg").MSP()
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			ordererMSP = tc.mspMod(ordererMSP)
-			err = c.SetOrdererMSP(ordererMSP, tc.orgName)
+			err = c.UpdatedConfig().Orderer().Organization(tc.orgName).SetMSP(ordererMSP)
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
 	}
@@ -1583,7 +1569,7 @@ func TestSetApplicationMSP(t *testing.T) {
 `, org1CertBase64, newIntermediateCertBase64, org1CRLBase64, newCRLBase64, newRootCertBase64, org1PKBase64, org2CertBase64, org2CRLBase64, org2PKBase64)
 
 	buf := bytes.Buffer{}
-	err = protolator.DeepMarshalJSON(&buf, c.UpdatedConfig())
+	err = protolator.DeepMarshalJSON(&buf, c.UpdatedConfig().Config)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
@@ -1751,7 +1737,7 @@ func TestCreateApplicationMSPCRL(t *testing.T) {
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// create a new ConfigTx with our updated config as the base
-	c := New(originalConfigTx.UpdatedConfig())
+	c := New(originalConfigTx.UpdatedConfig().Config)
 
 	tests := []struct {
 		spec             string
