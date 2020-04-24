@@ -279,17 +279,6 @@ var _ = Describe("externalbuilder", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			When("the release binary is not in the builder", func() {
-				BeforeEach(func() {
-					builder.Location = "bad-builder-location"
-				})
-
-				It("returns no error as release is optional", func() {
-					err := builder.Release(buildContext)
-					Expect(err).NotTo(HaveOccurred())
-				})
-			})
-
 			When("the builder exits with a non-zero status", func() {
 				BeforeEach(func() {
 					builder.Location = "testdata/failbuilder"
