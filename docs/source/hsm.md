@@ -1,10 +1,14 @@
 # Using a Hardware Security Module (HSM)
 
-You can use a Hardware Security Module (HSM) to generate and store the private
-keys used by your Fabric nodes. An HSM protects your private keys and handles
-cryptographic operations, which allows your peers and ordering nodes to sign and
-endorse transactions without exposing their private keys. Currently, Fabric only
-supports the PKCS11 standard to communicate with an HSM.
+The cryptographic operations performed by Fabric nodes can be delegated to
+a Hardware Security Module (HSM).  An HSM protects your private keys and
+handles cryptographic operations, allowing your peers and orderer nodes to
+sign and endorse transactions without exposing their private keys.  If you
+require compliance with government standards such as FIPS 140-2, there are
+multiple certified HSMs from which to choose.
+
+Fabric currently leverages the PKCS11 standard to communicate with an HSM.
+
 
 ## Configuring an HSM
 
