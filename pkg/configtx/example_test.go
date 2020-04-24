@@ -88,7 +88,8 @@ func Example_basic() {
 	c := configtx.New(baseConfig)
 
 	err := c.SetConsortiumChannelCreationPolicy("SampleConsortium",
-		configtx.Policy{Type: configtx.ImplicitMetaPolicyType, Rule: "MAJORITY Admins"})
+		configtx.Policy{Type: configtx.ImplicitMetaPolicyType,
+			Rule: "MAJORITY Admins"})
 	if err != nil {
 		panic(err)
 	}
@@ -123,7 +124,8 @@ func Example_basic() {
 	}
 
 	// Sign the envelope with the list of signatures
-	_, err = peer1SigningIdentity.SignConfigUpdateEnvelope(configUpdate, configSignatures...)
+	_, err = peer1SigningIdentity.SignConfigUpdateEnvelope(configUpdate,
+		configSignatures...)
 	if err != nil {
 		panic(err)
 	}
@@ -208,10 +210,11 @@ func Example_policies() {
 	baseConfig := fetchChannelConfig()
 	c := configtx.New(baseConfig)
 
-	err := c.SetApplicationOrgPolicy("Org1", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
-		Type: configtx.ImplicitMetaPolicyType,
-		Rule: "MAJORITY Endorsement",
-	})
+	err := c.SetApplicationOrgPolicy("Org1", configtx.AdminsPolicyKey, "TestPolicy",
+		configtx.Policy{
+			Type: configtx.ImplicitMetaPolicyType,
+			Rule: "MAJORITY Endorsement",
+		})
 	if err != nil {
 		panic(err)
 	}
@@ -226,10 +229,11 @@ func Example_policies() {
 		panic(err)
 	}
 
-	err = c.SetOrdererOrgPolicy("OrdererOrg", configtx.AdminsPolicyKey, "TestPolicy", configtx.Policy{
-		Type: configtx.ImplicitMetaPolicyType,
-		Rule: "MAJORITY Endorsement",
-	})
+	err = c.SetOrdererOrgPolicy("OrdererOrg", configtx.AdminsPolicyKey, "TestPolicy",
+		configtx.Policy{
+			Type: configtx.ImplicitMetaPolicyType,
+			Rule: "MAJORITY Endorsement",
+		})
 	if err != nil {
 		panic(err)
 	}
@@ -254,12 +258,14 @@ func Example_ordererEndpoints() {
 	baseConfig := fetchChannelConfig()
 	c := configtx.New(baseConfig)
 
-	err := c.SetOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.3", Port: 8050})
+	err := c.SetOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.3",
+		Port: 8050})
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.RemoveOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.1", Port: 9050})
+	err = c.RemoveOrdererEndpoint("OrdererOrg", configtx.Address{Host: "127.0.0.1",
+		Port: 9050})
 	if err != nil {
 		panic(err)
 	}
@@ -335,7 +341,8 @@ func ExampleNewSystemChannelGenesisBlock() {
 						Policies: map[string]configtx.Policy{
 							configtx.ReadersPolicyKey: {
 								Type: configtx.SignaturePolicyType,
-								Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')",
+								Rule: "OR('Org1MSP.admin', 'Org1MSP.peer'," +
+									"'Org1MSP.client')",
 							},
 							configtx.WritersPolicyKey: {
 								Type: configtx.SignaturePolicyType,
@@ -451,7 +458,9 @@ func ExampleNewCreateChannelTx() {
 				},
 			},
 			Capabilities: []string{"V1_3"},
-			ACLs:         map[string]string{"event/Block": "/Channel/Application/Readers"},
+			ACLs: map[string]string{
+				"event/Block": "/Channel/Application/Readers",
+			},
 			Policies: map[string]configtx.Policy{
 				configtx.ReadersPolicyKey: {
 					Type: configtx.ImplicitMetaPolicyType,

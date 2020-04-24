@@ -53,7 +53,8 @@ type Organization struct {
 	Policies map[string]Policy
 	MSP      MSP
 
-	// AnchorPeers contains the endpoints of anchor peers for each application organization.
+	// AnchorPeers contains the endpoints of anchor peers for each
+	// application organization.
 	AnchorPeers      []Address
 	OrdererEndpoints []string
 }
