@@ -200,7 +200,7 @@ Application: &ApplicationDefaults
         # ACL policy for cscc's "SimulateConfigTreeUpdate" function
         cscc/SimulateConfigTreeUpdate: /Channel/Application/Readers
 
-        #---Miscellanesous peer function to policy mapping for access control---#
+        #---Miscellaneous peer function to policy mapping for access control---#
 
         # ACL policy for invoking chaincodes on peer
         peer/Propose: /Channel/Application/Writers
