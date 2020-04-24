@@ -199,7 +199,7 @@ func (c *ConfigTx) SetOrdererOrgPolicy(orgName, modPolicy, policyName string, po
 	return addPolicy(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName], modPolicy, policyName, policy)
 }
 
-// RemoveOrdererOrgPolicy removes an existing policy from a orderer organization.
+// RemoveOrdererOrgPolicy removes an existing policy from an orderer organization.
 func (c *ConfigTx) RemoveOrdererOrgPolicy(orgName, policyName string) error {
 	policies, err := c.OrdererOrgPolicies(orgName)
 	if err != nil {
