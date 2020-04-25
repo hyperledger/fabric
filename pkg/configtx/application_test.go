@@ -355,10 +355,10 @@ func TestAddAnchorPeer(t *testing.T) {
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
 	gt.Expect(err).ToNot(HaveOccurred())
 
-	err = c.AddAnchorPeer("Org1", newOrg1AnchorPeer)
+	err = c.UpdatedConfig().Application().Organization("Org1").AddAnchorPeer(newOrg1AnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = c.AddAnchorPeer("Org2", newOrg2AnchorPeer)
+	err = c.UpdatedConfig().Application().Organization("Org2").AddAnchorPeer(newOrg2AnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(proto.Equal(c.UpdatedConfig().Config, expectedUpdatedConfig)).To(BeTrue())
@@ -484,14 +484,14 @@ func TestRemoveAnchorPeer(t *testing.T) {
 `
 
 	anchorPeer1 := Address{Host: "host1", Port: 123}
-	err = c.AddAnchorPeer("Org1", anchorPeer1)
+	err = c.UpdatedConfig().Application().Organization("Org1").AddAnchorPeer(anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 	expectedUpdatedConfig := &cb.Config{}
 
 	err = protolator.DeepUnmarshalJSON(bytes.NewBufferString(expectedUpdatedConfigJSON), expectedUpdatedConfig)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	err = c.RemoveAnchorPeer("Org1", anchorPeer1)
+	err = c.UpdatedConfig().Application().Organization("Org1").RemoveAnchorPeer(anchorPeer1)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Expect(proto.Equal(c.UpdatedConfig().Config, expectedUpdatedConfig)).To(BeTrue())
@@ -512,7 +512,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 			orgName:            "Org1",
 			anchorPeerToRemove: Address{Host: "host1", Port: 123},
 			configValues:       map[string]*cb.ConfigValue{AnchorPeersKey: {Value: []byte("a little fire")}},
-			expectedErr:        "failed unmarshaling anchor peer endpoints for org Org1: proto: can't skip unknown wire type 6",
+			expectedErr:        "failed unmarshaling anchor peer endpoints for application org Org1: proto: can't skip unknown wire type 6",
 		},
 	}
 
@@ -540,7 +540,7 @@ func TestRemoveAnchorPeerFailure(t *testing.T) {
 
 			c := New(config)
 
-			err = c.RemoveAnchorPeer(tt.orgName, tt.anchorPeerToRemove)
+			err = c.UpdatedConfig().Application().Organization(tt.orgName).RemoveAnchorPeer(tt.anchorPeerToRemove)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
@@ -563,80 +563,27 @@ func TestAnchorPeers(t *testing.T) {
 
 	c := New(config)
 
-	anchorPeers, err := c.AnchorPeers("Org1")
+	anchorPeers, err := c.UpdatedConfig().Application().Organization("Org1").AnchorPeers()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(anchorPeers).To(BeNil())
 	gt.Expect(anchorPeers).To(HaveLen(0))
 
 	expectedAnchorPeer := Address{Host: "host1", Port: 123}
-	err = c.AddAnchorPeer("Org1", expectedAnchorPeer)
+	err = c.UpdatedConfig().Application().Organization("Org1").AddAnchorPeer(expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	c = New(c.UpdatedConfig().Config)
-
-	anchorPeers, err = c.AnchorPeers("Org1")
+	anchorPeers, err = c.UpdatedConfig().Application().Organization("Org1").AnchorPeers()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(anchorPeers).To(HaveLen(1))
 	gt.Expect(anchorPeers[0]).To(Equal(expectedAnchorPeer))
 
-	err = c.RemoveAnchorPeer("Org1", expectedAnchorPeer)
+	err = c.UpdatedConfig().Application().Organization("Org1").RemoveAnchorPeer(expectedAnchorPeer)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	// create new configtx with the updated config to test final anchor peers
-	// to ensure a nil slice is returned when all anchor peers are removed
-	c = New(c.UpdatedConfig().Config)
-
-	anchorPeers, err = c.AnchorPeers("Org1")
+	anchorPeers, err = c.UpdatedConfig().Application().Organization("Org1").AnchorPeers()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(anchorPeers).To(BeNil())
 	gt.Expect(anchorPeers).To(HaveLen(0))
-}
-
-func TestAnchorPeerFailures(t *testing.T) {
-	t.Parallel()
-
-	gt := NewGomegaWithT(t)
-
-	channelGroup := newConfigGroup()
-
-	applicationGroup, err := newApplicationGroup(baseApplication(t))
-	gt.Expect(err).NotTo(HaveOccurred())
-
-	orgNoAnchor := Organization{
-		Name:     "Org1",
-		Policies: applicationOrgStandardPolicies(),
-		MSP:      baseMSP(t),
-	}
-	orgGroup, err := newOrgConfigGroup(orgNoAnchor)
-	gt.Expect(err).NotTo(HaveOccurred())
-	applicationGroup.Groups[orgNoAnchor.Name] = orgGroup
-
-	channelGroup.Groups[ApplicationGroupKey] = applicationGroup
-	config := &cb.Config{
-		ChannelGroup: channelGroup,
-	}
-
-	c := New(config)
-
-	for _, test := range []struct {
-		name        string
-		orgName     string
-		expectedErr string
-	}{
-		{
-			name:        "When org does not exist in application channel",
-			orgName:     "bad-org",
-			expectedErr: "application org bad-org does not exist in channel config",
-		},
-	} {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			gt := NewGomegaWithT(t)
-			_, err := c.AnchorPeers(test.orgName)
-			gt.Expect(err).To(MatchError(test.expectedErr))
-		})
-	}
 }
 
 func TestSetACL(t *testing.T) {
@@ -687,16 +634,16 @@ func TestSetACL(t *testing.T) {
 			}
 			c := New(config)
 
-			err = c.SetACLs(tt.newACL)
+			err = c.UpdatedConfig().Application().SetACLs(tt.newACL)
 			if tt.expectedErr != "" {
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			} else {
 				gt.Expect(err).NotTo(HaveOccurred())
-				acls, err := getACLs(c.updated)
+				acls, err := c.UpdatedConfig().Application().ACLs()
 				gt.Expect(err).NotTo(HaveOccurred())
 				gt.Expect(acls).To(Equal(tt.expectedACL))
 
-				originalACLs, err := getACLs(c.original)
+				originalACLs, err := c.OriginalConfig().Application().ACLs()
 				gt.Expect(err).NotTo(HaveOccurred())
 				gt.Expect(originalACLs).To(Equal(expectedOriginalACL))
 			}
@@ -756,12 +703,12 @@ func TestRemoveACL(t *testing.T) {
 
 			c := New(config)
 
-			err = c.RemoveACLs(tt.removeACL)
+			err = c.UpdatedConfig().Application().RemoveACLs(tt.removeACL)
 			if tt.expectedErr != "" {
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			} else {
 				gt.Expect(err).NotTo(HaveOccurred())
-				acls, err := getACLs(c.UpdatedConfig().Config)
+				acls, err := c.UpdatedConfig().Application().ACLs()
 				gt.Expect(err).NotTo(HaveOccurred())
 				gt.Expect(acls).To(Equal(tt.expectedACL))
 			}
@@ -943,7 +890,7 @@ func TestSetApplicationOrg(t *testing.T) {
 }
 `, certBase64, crlBase64, pkBase64)
 
-	err = c.SetApplicationOrg(org)
+	err = c.UpdatedConfig().Application().SetOrganization(org)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	actualApplicationConfigGroup := c.UpdatedConfig().ChannelGroup.Groups[ApplicationGroupKey].Groups["Org3"]
@@ -975,7 +922,7 @@ func TestSetApplicationOrgFailures(t *testing.T) {
 		Name: "Org3",
 	}
 
-	err = c.SetApplicationOrg(org)
+	err = c.UpdatedConfig().Application().SetOrganization(org)
 	gt.Expect(err).To(MatchError("failed to create application org Org3: no policies defined"))
 }
 
@@ -998,13 +945,13 @@ func TestApplicationConfiguration(t *testing.T) {
 	c := New(config)
 
 	for _, org := range baseApplicationConf.Organizations {
-		err = c.SetApplicationOrg(org)
+		err = c.UpdatedConfig().Application().SetOrganization(org)
 		gt.Expect(err).NotTo(HaveOccurred())
 	}
 
 	c = New(c.UpdatedConfig().Config)
 
-	applicationConfig, err := c.ApplicationConfiguration()
+	applicationConfig, err := c.OriginalConfig().Application().Configuration()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationConfig.ACLs).To(Equal(baseApplicationConf.ACLs))
 	gt.Expect(applicationConfig.Capabilities).To(Equal(baseApplicationConf.Capabilities))
@@ -1021,18 +968,11 @@ func TestApplicationConfigurationFailure(t *testing.T) {
 		expectedErr string
 	}{
 		{
-			testName: "When the application group does not exist",
-			configMod: func(c ConfigTx, appOrg Application, gt *GomegaWithT) {
-				delete(c.UpdatedConfig().ChannelGroup.Groups, ApplicationGroupKey)
-			},
-			expectedErr: "config does not contain application group",
-		},
-		{
 			testName: "Retrieving application org failed",
 			configMod: func(c ConfigTx, appOrg Application, gt *GomegaWithT) {
 				for _, org := range appOrg.Organizations {
 					if org.Name == "Org2" {
-						err := c.SetApplicationOrg(org)
+						err := c.UpdatedConfig().Application().SetOrganization(org)
 						gt.Expect(err).NotTo(HaveOccurred())
 					}
 				}
@@ -1067,7 +1007,7 @@ func TestApplicationConfigurationFailure(t *testing.T) {
 
 			c = New(c.UpdatedConfig().Config)
 
-			_, err = c.ApplicationConfiguration()
+			_, err = c.OriginalConfig().Application().Configuration()
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
@@ -1092,7 +1032,7 @@ func TestApplicationACLs(t *testing.T) {
 
 	c := New(config)
 
-	applicationACLs, err := c.ApplicationACLs()
+	applicationACLs, err := c.UpdatedConfig().Application().ACLs()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(applicationACLs).To(Equal(baseApplicationConf.ACLs))
 }
@@ -1120,7 +1060,7 @@ func TestApplicationACLsFailure(t *testing.T) {
 
 	c := New(config)
 
-	applicationACLs, err := c.ApplicationACLs()
+	applicationACLs, err := c.UpdatedConfig().Application().ACLs()
 	gt.Expect(err).To(MatchError("unmarshaling ACLs: unexpected EOF"))
 	gt.Expect(applicationACLs).To(BeNil())
 }

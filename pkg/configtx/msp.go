@@ -76,17 +76,6 @@ type MSP struct {
 	NodeOus membership.NodeOUs
 }
 
-// ApplicationMSP returns the MSP configuration for an existing application
-// org in a config transaction.
-func (c *ConfigTx) ApplicationMSP(orgName string) (MSP, error) {
-	applicationOrgGroup, ok := c.original.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
-	if !ok {
-		return MSP{}, fmt.Errorf("application org %s does not exist in config", orgName)
-	}
-
-	return getMSPConfig(applicationOrgGroup)
-}
-
 // ConsortiumMSP returns the MSP configuration for an existing consortium
 // org in a config transaction.
 func (c *ConfigTx) ConsortiumMSP(consortiumName, orgName string) (MSP, error) {
@@ -112,17 +101,6 @@ func (c *ConfigTx) CreateConsortiumOrgMSPCRL(consortiumName string, orgName stri
 	msp, err := c.ConsortiumMSP(consortiumName, orgName)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving consortium org msp: %s", err)
-	}
-
-	return msp.newMSPCRL(signingIdentity, certs...)
-}
-
-// CreateApplicationMSPCRL creates a CRL that revokes the provided certificates
-// for the specified application org signed by the provided SigningIdentity.
-func (c *ConfigTx) CreateApplicationMSPCRL(orgName string, signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
-	msp, err := c.ApplicationMSP(orgName)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving application msp: %s", err)
 	}
 
 	return msp.newMSPCRL(signingIdentity, certs...)
@@ -562,31 +540,6 @@ func (c *ConfigTx) SetConsortiumMSP(updatedMSP MSP, consortiumName string, orgNa
 	return nil
 }
 
-// SetApplicationMSP updates the MSP config for the specified application
-// org group.
-func (c *ConfigTx) SetApplicationMSP(updatedMSP MSP, orgName string) error {
-	currentMSP, err := c.ApplicationMSP(orgName)
-	if err != nil {
-		return fmt.Errorf("retrieving msp: %v", err)
-	}
-
-	if currentMSP.Name != updatedMSP.Name {
-		return errors.New("MSP name cannot be changed")
-	}
-
-	err = updatedMSP.validateCACerts()
-	if err != nil {
-		return err
-	}
-
-	err = setMSPConfigForOrg(c.UpdatedConfig().Config, updatedMSP, orgName)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // newMSPConfig returns an config for a msp.
 func newMSPConfig(updatedMSP MSP) (*mb.MSPConfig, error) {
 	fabricMSPConfig, err := updatedMSP.toProto()
@@ -615,22 +568,6 @@ func setMSPConfigForConsortium(config *cb.Config, updatedMSP MSP, consortiumName
 	consortiumGroup := getConsortiumOrg(config, consortiumName, orgName)
 
 	err = setValue(consortiumGroup, mspValue(mspConfig), AdminsPolicyKey)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func setMSPConfigForOrg(config *cb.Config, updatedMSP MSP, orgName string) error {
-	mspConfig, err := newMSPConfig(updatedMSP)
-	if err != nil {
-		return fmt.Errorf("new msp config: %v", err)
-	}
-
-	orgGroup := getApplicationOrg(config, orgName)
-
-	err = setValue(orgGroup, mspValue(mspConfig), AdminsPolicyKey)
 	if err != nil {
 		return err
 	}

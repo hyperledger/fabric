@@ -56,19 +56,12 @@ func TestApplicationOrg(t *testing.T) {
 	expectedOrg := channel.Application.Organizations[0]
 
 	tests := []struct {
-		name        string
-		orgName     string
-		expectedErr string
+		name    string
+		orgName string
 	}{
 		{
-			name:        "success",
-			orgName:     "Org1",
-			expectedErr: "",
-		},
-		{
-			name:        "organization does not exist",
-			orgName:     "bad-org",
-			expectedErr: "application org bad-org does not exist in channel config",
+			name:    "success",
+			orgName: "Org1",
 		},
 	}
 
@@ -78,14 +71,9 @@ func TestApplicationOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := c.ApplicationOrg(tc.orgName)
-			if tc.expectedErr != "" {
-				gt.Expect(Organization{}).To(Equal(org))
-				gt.Expect(err).To(MatchError(tc.expectedErr))
-			} else {
-				gt.Expect(err).ToNot(HaveOccurred())
-				gt.Expect(expectedOrg).To(Equal(org))
-			}
+			org, err := c.UpdatedConfig().Application().Organization(tc.orgName).Configuration()
+			gt.Expect(err).ToNot(HaveOccurred())
+			gt.Expect(expectedOrg).To(Equal(org))
 		})
 	}
 }
@@ -113,7 +101,7 @@ func TestRemoveApplicationOrg(t *testing.T) {
 
 	c := New(config)
 
-	c.RemoveApplicationOrg("Org1")
+	c.UpdatedConfig().Application().RemoveOrganization("Org1")
 	gt.Expect(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups["Org1"]).To(BeNil())
 }
 

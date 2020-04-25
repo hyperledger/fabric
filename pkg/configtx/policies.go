@@ -57,72 +57,9 @@ func (c *ConfigTx) ConsortiumOrgPolicies(consortiumName, orgName string) (map[st
 	return getPolicies(org.Policies)
 }
 
-// ApplicationPolicies returns a map of policies for application config group.
-// Retrieval will panic if application group does not exist.
-func (c *ConfigTx) ApplicationPolicies() (map[string]Policy, error) {
-	application := c.original.ChannelGroup.Groups[ApplicationGroupKey]
-
-	return getPolicies(application.Policies)
-}
-
-// ApplicationOrgPolicies returns a map of policies for a specific application
-// organization.
-// Retrieval will panic if application group or application org group does not exist.
-func (c *ConfigTx) ApplicationOrgPolicies(orgName string) (map[string]Policy, error) {
-	orgGroup := c.original.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
-
-	return getPolicies(orgGroup.Policies)
-}
-
 // ChannelPolicies returns a map of policies for channel configuration.
 func (c *ConfigTx) ChannelPolicies() (map[string]Policy, error) {
 	return getPolicies(c.original.ChannelGroup.Policies)
-}
-
-// SetApplicationPolicy sets the specified policy in the application group's config policy map.
-// If the policy already exist in current configuration, its value will be overwritten.
-func (c *ConfigTx) SetApplicationPolicy(modPolicy, policyName string, policy Policy) error {
-	err := setPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey], modPolicy, policyName, policy)
-	if err != nil {
-		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
-	}
-
-	return nil
-}
-
-// RemoveApplicationPolicy removes an existing policy from an application's configuration.
-// Removal will panic if the application group does not exist.
-func (c *ConfigTx) RemoveApplicationPolicy(policyName string) error {
-	policies, err := c.ApplicationPolicies()
-	if err != nil {
-		return err
-	}
-
-	removePolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey], policyName, policies)
-	return nil
-}
-
-// SetApplicationOrgPolicy sets the specified policy in the application org group's config policy map.
-// If an Organization policy already exist in current configuration, its value will be overwritten.
-func (c *ConfigTx) SetApplicationOrgPolicy(orgName, modPolicy, policyName string, policy Policy) error {
-	err := setPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName], modPolicy, policyName, policy)
-	if err != nil {
-		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
-	}
-
-	return nil
-}
-
-// RemoveApplicationOrgPolicy removes an existing policy from an application organization.
-// Removal will panic if either the application group or application org group does not exist.
-func (c *ConfigTx) RemoveApplicationOrgPolicy(orgName, policyName string) error {
-	policies, err := c.ApplicationOrgPolicies(orgName)
-	if err != nil {
-		return err
-	}
-
-	removePolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName], policyName, policies)
-	return nil
 }
 
 // SetConsortiumOrgPolicy sets the specified policy in the consortium org group's config policy map.

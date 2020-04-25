@@ -3,7 +3,6 @@ Copyright IBM Corp All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-
 package configtx_test
 
 import (
@@ -162,14 +161,14 @@ func Example_aCLs() {
 		"peer/Propose": "/Channel/Application/Writers",
 	}
 
-	err := c.SetACLs(acls)
+	err := c.UpdatedConfig().Application().SetACLs(acls)
 	if err != nil {
 		panic(err)
 	}
 
 	aclsToDelete := []string{"event/Block"}
 
-	err = c.RemoveACLs(aclsToDelete)
+	err = c.UpdatedConfig().Application().RemoveACLs(aclsToDelete)
 	if err != nil {
 		panic(err)
 	}
@@ -187,7 +186,7 @@ func Example_anchorPeers() {
 	}
 
 	// Add a new anchor peer
-	err := c.AddAnchorPeer("Org1", newAnchorPeer)
+	err := c.UpdatedConfig().Application().Organization("Org1").AddAnchorPeer(newAnchorPeer)
 	if err != nil {
 		panic(err)
 	}
@@ -198,7 +197,7 @@ func Example_anchorPeers() {
 	}
 
 	// Remove an anchor peer
-	err = c.RemoveAnchorPeer("Org1", oldAnchorPeer)
+	err = c.UpdatedConfig().Application().Organization("Org1").RemoveAnchorPeer(oldAnchorPeer)
 	if err != nil {
 		panic(err)
 	}
@@ -210,7 +209,9 @@ func Example_policies() {
 	baseConfig := fetchChannelConfig()
 	c := configtx.New(baseConfig)
 
-	err := c.SetApplicationOrgPolicy("Org1", configtx.AdminsPolicyKey, "TestPolicy",
+	err := c.UpdatedConfig().Application().Organization("Org1").SetPolicy(
+		configtx.AdminsPolicyKey,
+		"TestPolicy",
 		configtx.Policy{
 			Type: configtx.ImplicitMetaPolicyType,
 			Rule: "MAJORITY Endorsement",
@@ -219,7 +220,7 @@ func Example_policies() {
 		panic(err)
 	}
 
-	err = c.RemoveApplicationOrgPolicy("Org1", configtx.WritersPolicyKey)
+	err = c.UpdatedConfig().Application().Organization("Org1").RemovePolicy(configtx.WritersPolicyKey)
 	if err != nil {
 		panic(err)
 	}
@@ -314,12 +315,12 @@ func Example_organizations() {
 		},
 	}
 
-	err := c.SetApplicationOrg(appOrg)
+	err := c.UpdatedConfig().Application().SetOrganization(appOrg)
 	if err != nil {
 		panic(err)
 	}
 
-	c.RemoveApplicationOrg("Org2")
+	c.UpdatedConfig().Application().RemoveOrganization("Org2")
 
 	// Orderer Organization
 	ordererOrg := appOrg
@@ -498,11 +499,11 @@ func ExampleNewCreateChannelTx() {
 
 // This example shows the addition of a certificate to an application org's intermediate
 // certificate list.
-func ExampleConfigTx_SetApplicationMSP() {
+func ExampleUpdatedApplicationOrg_SetMSP() {
 	baseConfig := fetchChannelConfig()
 	c := configtx.New(baseConfig)
 
-	msp, err := c.ApplicationMSP("Org1")
+	msp, err := c.UpdatedConfig().Application().Organization("Org1").MSP()
 	if err != nil {
 		panic(err)
 	}
@@ -514,7 +515,7 @@ func ExampleConfigTx_SetApplicationMSP() {
 
 	msp.IntermediateCerts = append(msp.IntermediateCerts, newIntermediateCert)
 
-	err = c.SetApplicationMSP(msp, "Org1")
+	err = c.UpdatedConfig().Application().Organization("Org1").SetMSP(msp)
 	if err != nil {
 		panic(err)
 	}

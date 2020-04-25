@@ -147,7 +147,7 @@ func (c *ConfigTx) ChannelConfiguration() (Channel, error) {
 	}
 
 	if _, ok := channelGroup.Groups[ApplicationGroupKey]; ok {
-		application, err = c.ApplicationConfiguration()
+		application, err = c.OriginalConfig().Application().Configuration()
 		if err != nil {
 			return Channel{}, err
 		}

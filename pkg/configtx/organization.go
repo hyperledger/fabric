@@ -15,25 +15,6 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
-// ApplicationOrg retrieves an existing org from an application organization config group.
-func (c *ConfigTx) ApplicationOrg(orgName string) (Organization, error) {
-	orgGroup, ok := c.original.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName]
-	if !ok {
-		return Organization{}, fmt.Errorf("application org %s does not exist in channel config", orgName)
-	}
-
-	return getOrganization(orgGroup, orgName)
-}
-
-// RemoveApplicationOrg removes an org from the Application group.
-// Removal will panic if the application group does not exist.
-func (c *ConfigTx) RemoveApplicationOrg(orgName string) {
-	applicationGroups := c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups
-
-	delete(applicationGroups, orgName)
-
-}
-
 // ConsortiumOrg retrieves an existing org from a consortium organization config group.
 func (c *ConfigTx) ConsortiumOrg(consortiumName, orgName string) (Organization, error) {
 	consortium, ok := c.original.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]

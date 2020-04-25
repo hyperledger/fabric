@@ -25,19 +25,6 @@ func (c *ConfigTx) ChannelCapabilities() ([]string, error) {
 	return capabilities, nil
 }
 
-// ApplicationCapabilities returns a map of enabled application capabilities
-// from a config transaction.
-func (c *ConfigTx) ApplicationCapabilities() ([]string, error) {
-	application := c.original.ChannelGroup.Groups[ApplicationGroupKey]
-
-	capabilities, err := getCapabilities(application)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving application capabilities: %v", err)
-	}
-
-	return capabilities, nil
-}
-
 // AddChannelCapability adds capability to the provided channel config.
 // If the provided capability already exist in current configuration, this action
 // will be a no-op.
@@ -55,23 +42,6 @@ func (c *ConfigTx) AddChannelCapability(capability string) error {
 	return nil
 }
 
-// AddApplicationCapability sets capability to the provided channel config.
-// If the provided capability already exist in current configuration, this action
-// will be a no-op.
-func (c *ConfigTx) AddApplicationCapability(capability string) error {
-	capabilities, err := c.ApplicationCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = addCapability(c.updated.ChannelGroup.Groups[ApplicationGroupKey], capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // RemoveChannelCapability removes capability to the provided channel config.
 func (c *ConfigTx) RemoveChannelCapability(capability string) error {
 	capabilities, err := c.ChannelCapabilities()
@@ -80,21 +50,6 @@ func (c *ConfigTx) RemoveChannelCapability(capability string) error {
 	}
 
 	err = removeCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// RemoveApplicationCapability removes capability to the provided channel config.
-func (c *ConfigTx) RemoveApplicationCapability(capability string) error {
-	capabilities, err := c.ApplicationCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = removeCapability(c.updated.ChannelGroup.Groups[ApplicationGroupKey], capabilities, AdminsPolicyKey, capability)
 	if err != nil {
 		return err
 	}
