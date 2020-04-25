@@ -71,8 +71,8 @@ type MSP struct {
 	// List of TLS intermediate certificates trusted by this MSP;
 	// They are returned by GetTLSIntermediateCerts.
 	TLSIntermediateCerts []*x509.Certificate
-	// fabric_node_ous contains the configuration to distinguish clients from peers from orderers
-	// based on the OUs.
+	// Contains the configuration to distinguish clients
+	// from peers from orderers based on the OUs.
 	NodeOus membership.NodeOUs
 }
 
