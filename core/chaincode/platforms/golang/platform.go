@@ -171,7 +171,7 @@ func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 	for _, file := range fileMap.Sources() {
 		err = util.WriteFileToPackage(file.Path, file.Name, tw)
 		if err != nil {
-			return nil, fmt.Errorf("Error writing %s to tar: %s", file.Name, err)
+			return nil, fmt.Errorf("error writing %s to tar: %s", file.Name, err)
 		}
 	}
 
