@@ -231,7 +231,7 @@ Once you have the environment variables set, navigate to [Step 1: Pull and trans
 Once you have a `modified_config.json`, add the ACLs (as listed in `enable_lifecycle.json`) using this command:
 
 ```
-jq -s '.[0] * {"channel_group":{"groups":{"Application": {"values": {"ACLs": {"value": {"acls": .[1].acls}}}}}}}' config.json ./scripts/policies.json > modified_config.json
+jq -s '.[0] * {"channel_group":{"groups":{"Application": {"values": {"ACLs": {"value": {"acls": .[1].acls}}}}}}}' config.json ./enable_lifecycle.json > modified_config.json
 ```
 
 Then, follow the steps at [Step 3: Re-encode and submit the config](./config_update.html#step-3-re-encode-and-submit-the-config).
