@@ -705,7 +705,7 @@ func TestTryCastingToJSON(t *testing.T) {
 	assert.False(t, isJSON)
 }
 
-func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
+func TestIndexDeploymentWithOrderAndBadSyntax(t *testing.T) {
 	channelName := "ch1"
 	vdbEnv.init(t, nil)
 	defer vdbEnv.cleanup()
@@ -723,19 +723,23 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
 	}
 
+	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
 	indexData := map[string][]byte{
-		"META-INF/statedb/couchdb/indexes/indexSizeSortName.json": []byte(`{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`),
+		"META-INF/statedb/couchdb/indexes/indexColorSortName.json":                             []byte(`{"index":{"fields":[{"color":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`),
+		"META-INF/statedb/couchdb/indexes/indexSizeSortName.json":                              []byte(`{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`),
+		"META-INF/statedb/couchdb/indexes/badSyntax.json":                                      []byte(badSyntaxFileContent),
+		"META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json": []byte(`{"index":{"fields":["docType","owner"]},"ddoc":"indexCollectionMarbles", "name":"indexCollectionMarbles","type":"json"}`),
 	}
 
+	// as the indexes are sorted by file names, the order of index processing would be
+	// (1) indexCollMarbles.json, (2) badSyntax.json, (3) indexColorSortName, (4) indexSizeSortName.
+	// As the indexColorSortName.json and indexSizeSortName has the same index name but different
+	// index fields, the later would replace the former, i.e., index would be created on size field
+	// rather than the color field. Further, the index with a bad syntax would not stop the processing
+	// of other valid indexes.
 	assert.NoError(t, indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData))
 
-	badSyntaxFileContent := `{"index":{"fields": This is a bad json}`
-	indexData = map[string][]byte{
-		"META-INF/statedb/couchdb/indexes/badSyntax.json": []byte(badSyntaxFileContent),
-	}
-	assert.Error(t, indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData))
-
-	queryString := `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
+	queryString := `{"selector":{"owner":"fred"}, "sort": [{"docType": "desc"}]}`
 	queryUsingIndex := func() bool {
 		_, err = db.ExecuteQuery("ns1", queryString)
 		if err != nil {
@@ -744,6 +748,29 @@ func TestHandleChaincodeDeployErroneousIndexFile(t *testing.T) {
 		return true
 	}
 	assert.Eventually(t, queryUsingIndex, 2*time.Second, 100*time.Millisecond, "error executing query with sort")
+
+	queryString = `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
+	queryUsingIndex = func() bool {
+		_, err = db.ExecuteQuery("ns1", queryString)
+		if err != nil {
+			return false
+		}
+		return true
+	}
+	assert.Eventually(t, queryUsingIndex, 2*time.Second, 100*time.Millisecond, "error executing query with sort")
+
+	// though the indexColorSortName.json is processed before indexSizeSortName.json as per the order,
+	// the later would replace the former as the index names are the same. Hence, a query using the color
+	// field in sort should fail.
+	queryString = `{"selector":{"owner":"fred"}, "sort": [{"color": "desc"}]}`
+	queryUsingIndex = func() bool {
+		_, err = db.ExecuteQuery("ns1", queryString)
+		if err != nil {
+			return false
+		}
+		return true
+	}
+	assert.Never(t, queryUsingIndex, 2*time.Second, 100*time.Millisecond, "error should have occurred as there is no index on color field")
 }
 
 func TestIsBulkOptimizable(t *testing.T) {

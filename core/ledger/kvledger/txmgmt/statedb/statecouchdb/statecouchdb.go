@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"sort"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
@@ -255,10 +256,30 @@ func (vdb *VersionedDB) ProcessIndexesForChaincodeDeploy(namespace string, index
 	if err != nil {
 		return err
 	}
-	for indexFileName, indexData := range indexFilesData {
-		_, err = db.createIndex(string(indexData))
-		if err != nil {
-			return errors.WithMessagef(err, "error creating index from file [%s] for channel [%s]", indexFileName, namespace)
+	// We need to satisfy two requirements while processing the index files.
+	// R1: all valid indexes should be processed.
+	// R2: the order of index creation must be the same in all peers. For example, if user
+	// passes two index files with the same index name but different index fields and we
+	// process these files in different orders in different peers, each peer would
+	// have different indexes (as one index definion could replace another if the index names
+	// are the same).
+	// To satisfy R1, we log the error and continue to process the next index file.
+	// To satisfy R2, we sort the indexFilesData map based on the filenames and process
+	// each index as per the sorted order.
+	var indexFilesName []string
+	for fileName := range indexFilesData {
+		indexFilesName = append(indexFilesName, fileName)
+	}
+	sort.Strings(indexFilesName)
+	for _, fileName := range indexFilesName {
+		_, err = db.createIndex(string(indexFilesData[fileName]))
+		switch {
+		case err != nil:
+			logger.Errorf("error creating index from file [%s] for chaincode [%s] on channel [%s]: %+v",
+				fileName, namespace, vdb.chainName, err)
+		default:
+			logger.Infof("successfully submitted index creation request present in the file [%s] for chaincode [%s] on channel [%s]",
+				fileName, namespace, vdb.chainName)
 		}
 	}
 	return nil
