@@ -32,14 +32,6 @@ const (
 	pvtDataPrefix  = "p"
 	hashDataPrefix = "h"
 	couchDB        = "CouchDB"
-	// Example for chaincode indexes:
-	// "META-INF/statedb/couchdb/indexes/indexColorSortName.json"
-	chaincodeIndexDirDepth = 3
-	// Example for collection scoped indexes:
-	// "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json"
-	collectionDirDepth      = 3
-	collectionNameDepth     = 4
-	collectionIndexDirDepth = 5
 )
 
 // StateDBConfig encapsulates the configuration for stateDB on the ledger.
@@ -399,13 +391,27 @@ type indexInfo struct {
 	collectionName        string
 }
 
+const (
+	// Example for chaincode indexes:
+	// "META-INF/statedb/couchdb/indexes/indexColorSortName.json"
+	chaincodeIndexDirDepth = 3
+	// Example for collection scoped indexes:
+	// "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json"
+	collectionDirDepth      = 3
+	collectionNameDepth     = 4
+	collectionIndexDirDepth = 5
+)
+
 func getIndexInfo(indexPath string) *indexInfo {
 	indexInfo := &indexInfo{}
 	dirsDepth := strings.Split(indexPath, "/")
 	switch {
-	case dirsDepth[chaincodeIndexDirDepth] == "indexes":
+	case len(dirsDepth) > chaincodeIndexDirDepth &&
+		dirsDepth[chaincodeIndexDirDepth] == "indexes":
 		indexInfo.hasIndexForChaincode = true
-	case dirsDepth[collectionDirDepth] == "collections" && dirsDepth[collectionIndexDirDepth] == "indexes":
+	case len(dirsDepth) > collectionDirDepth &&
+		dirsDepth[collectionDirDepth] == "collections" &&
+		dirsDepth[collectionIndexDirDepth] == "indexes":
 		indexInfo.hasIndexForCollection = true
 		indexInfo.collectionName = dirsDepth[collectionNameDepth]
 	}
