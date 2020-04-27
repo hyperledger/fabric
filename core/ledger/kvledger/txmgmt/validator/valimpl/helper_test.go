@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	mocktxmgr "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/internal"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl/mock"
 	mocklgr "github.com/hyperledger/fabric/core/ledger/mock"
@@ -331,7 +330,7 @@ func TestContainsPostOrderWrites(t *testing.T) {
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
 	mockSimulator := &mocklgr.TxSimulator{}
-	mockTxmgr := &mocktxmgr.TxMgr{}
+	mockTxmgr := &mock.TxMgr{}
 	mockTxmgr.NewTxSimulatorReturns(mockSimulator, nil)
 
 	fakeTxProcessor := &mock.Processor{}
