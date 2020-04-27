@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"fmt"
 
@@ -21,45 +23,104 @@ type Consortium struct {
 	Organizations []Organization
 }
 
-// RemoveConsortium removes a consortium from a channel configuration.
-// Removal will panic if the consortiums group does not exist.
-func (c *ConfigTx) RemoveConsortium(consortiumName string) {
-	consortiumGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups
-
-	delete(consortiumGroup, consortiumName)
+type ConsortiumsGroup struct {
+	consortiumsGroup *cb.ConfigGroup
 }
 
-// SetConsortiumOrg sets the organization config group for the given org key in a existing
-// Consortium configuration's Groups map.
-// If the consortium org already exists in the current configuration, its value will be overwritten.
-func (c *ConfigTx) SetConsortiumOrg(org Organization, consortium string) error {
-	var err error
+type UpdatedConsortiumsGroup struct {
+	*ConsortiumsGroup
+}
 
-	if consortium == "" {
-		return errors.New("consortium is required")
+type ConsortiumGroup struct {
+	consortiumGroup *cb.ConfigGroup
+	name            string
+}
+
+type UpdatedConsortiumGroup struct {
+	*ConsortiumGroup
+}
+
+type ConsortiumOrg struct {
+	orgGroup *cb.ConfigGroup
+	name     string
+}
+
+type UpdatedConsortiumOrg struct {
+	*ConsortiumOrg
+}
+
+func (c *Config) Consortiums() *ConsortiumsGroup {
+	consortiumsGroup := c.ChannelGroup.Groups[ConsortiumsGroupKey]
+	return &ConsortiumsGroup{consortiumsGroup: consortiumsGroup}
+}
+
+func (u *UpdatedConfig) Consortiums() *UpdatedConsortiumsGroup {
+	consortiumsGroup := u.ChannelGroup.Groups[ConsortiumsGroupKey]
+	return &UpdatedConsortiumsGroup{&ConsortiumsGroup{consortiumsGroup: consortiumsGroup}}
+}
+
+// consortium returns a value of consortium from the given consortium configGroup
+func (c *ConsortiumsGroup) Consortium(name string) *ConsortiumGroup {
+	consortiumGroup, ok := c.consortiumsGroup.Groups[name]
+	if !ok {
+		return nil
 	}
+	return &ConsortiumGroup{name: name, consortiumGroup: consortiumGroup}
+}
 
-	consortiumGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortium]
+func (u *UpdatedConsortiumsGroup) Consortium(name string) *UpdatedConsortiumGroup {
+	return &UpdatedConsortiumGroup{ConsortiumGroup: u.ConsortiumsGroup.Consortium(name)}
+}
 
-	consortiumGroup.Groups[org.Name], err = newOrgConfigGroup(org)
+// TODO this is missing in the current implementation
+func (u *UpdatedConsortiumsGroup) SetConsortium() {
+}
+
+// RemoveConsortium removes a consortium from a channel configuration.
+// Removal will panic if the consortiums group does not exist.
+func (u *UpdatedConsortiumsGroup) RemoveConsortium(name string) {
+	delete(u.consortiumsGroup.Groups, name)
+}
+
+func (c *ConsortiumGroup) Organization(name string) *ConsortiumOrg {
+	orgGroup, ok := c.consortiumGroup.Groups[name]
+	if !ok {
+		return nil
+	}
+	return &ConsortiumOrg{name: name, orgGroup: orgGroup}
+}
+
+func (u *UpdatedConsortiumGroup) Organization(name string) *UpdatedConsortiumOrg {
+	return &UpdatedConsortiumOrg{ConsortiumOrg: u.ConsortiumGroup.Organization(name)}
+}
+
+// SetOrganization sets the organization config group for the given org key in
+// an existing Consortium configuration's Groups map.
+// If the consortium org already exists in the current configuration, its
+// value will be overwritten.
+func (u *UpdatedConsortiumGroup) SetOrganization(org Organization) error {
+	orgGroup, err := newOrgConfigGroup(org)
 	if err != nil {
-		return fmt.Errorf("failed to create consortium org: %v", err)
+		return fmt.Errorf("failed to create consortium org %s: %v", org.Name, err)
 	}
+
+	u.consortiumGroup.Groups[org.Name] = orgGroup
 
 	return nil
 }
 
+// RemoveOrganization removes an org from a consortium group.
+// Removal will panic if either the consortiums group or consortium group does not exist.
+func (u *UpdatedConsortiumGroup) RemoveOrganization(name string) {
+	delete(u.consortiumGroup.Groups, name)
+}
+
 // Consortiums returns a list of consortiums for the channel configuration.
 // Consortiums is only defined for the ordering system channel.
-func (c *ConfigTx) Consortiums() ([]Consortium, error) {
-	consortiumsGroup, ok := c.original.ChannelGroup.Groups[ConsortiumsGroupKey]
-	if !ok {
-		return nil, errors.New("channel configuration does not have consortiums")
-	}
-
+func (c *ConsortiumsGroup) Configuration() ([]Consortium, error) {
 	consortiums := []Consortium{}
-	for consortiumName, consortiumGroup := range consortiumsGroup.Groups {
-		consortium, err := consortium(consortiumGroup, consortiumName)
+	for consortiumName := range c.consortiumsGroup.Groups {
+		consortium, err := c.Consortium(consortiumName).Configuration()
 		if err != nil {
 			return nil, err
 		}
@@ -69,20 +130,159 @@ func (c *ConfigTx) Consortiums() ([]Consortium, error) {
 	return consortiums, nil
 }
 
-// consortium returns a value of consortium from the given consortium configGroup
-func consortium(consortiumGroup *cb.ConfigGroup, consortiumName string) (Consortium, error) {
+func (u *UpdatedConsortiumsGroup) Configuration() ([]Consortium, error) {
+	return u.ConsortiumsGroup.Configuration()
+}
+
+// Configuration returns the configuration for a consortium group
+func (c *ConsortiumGroup) Configuration() (Consortium, error) {
 	orgs := []Organization{}
-	for orgName, orgGroup := range consortiumGroup.Groups {
+	for orgName, orgGroup := range c.consortiumGroup.Groups {
 		org, err := getOrganization(orgGroup, orgName)
 		if err != nil {
-			return Consortium{}, fmt.Errorf("failed to retrieve organization %s from consortium %s: ", orgName, consortiumName)
+			return Consortium{}, fmt.Errorf("failed to retrieve organization %s from consortium %s: ", orgName, c.name)
 		}
 		orgs = append(orgs, org)
 	}
 	return Consortium{
-		Name:          consortiumName,
+		Name:          c.name,
 		Organizations: orgs,
 	}, nil
+}
+
+// Configuration returns the configuration for a consortium group
+func (u *UpdatedConsortiumGroup) Configuration() (Consortium, error) {
+	return u.ConsortiumGroup.Configuration()
+}
+
+// Configuration retrieves an existing org's configuration from a consortium organization
+// config group in the original config.
+func (c *ConsortiumOrg) Configuration() (Organization, error) {
+	org, err := getOrganization(c.orgGroup, c.name)
+	if err != nil {
+		return Organization{}, err
+	}
+
+	// Remove AnchorPeers which are application org specific.
+	org.AnchorPeers = nil
+
+	return org, err
+}
+
+// Configuration retrieves an existing org's configuration from a consortium organization
+// config group in the updated config.
+func (u *UpdatedConsortiumOrg) Configuration() (Organization, error) {
+	return u.ConsortiumOrg.Configuration()
+}
+
+// MSP returns the MSP configuration for an existing consortium
+// org in a config transaction.
+func (c *ConsortiumOrg) MSP() (MSP, error) {
+	return getMSPConfig(c.orgGroup)
+}
+
+// MSP returns the MSP configuration for an existing consortium
+// org in a config transaction.
+func (u *UpdatedConsortiumOrg) MSP() (MSP, error) {
+	return getMSPConfig(u.ConsortiumOrg.orgGroup)
+}
+
+// CreateMSPCRL creates a CRL that revokes the provided certificates
+// for the specified consortium org signed by the provided SigningIdentity.
+func (u *UpdatedConsortiumOrg) CreateMSPCRL(signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
+	msp, err := u.MSP()
+	if err != nil {
+		return nil, fmt.Errorf("retrieving consortium org msp: %s", err)
+	}
+
+	return msp.newMSPCRL(signingIdentity, certs...)
+}
+
+// SetMSP updates the MSP config for the specified consortium org group.
+func (u *UpdatedConsortiumOrg) SetMSP(updatedMSP MSP) error {
+	currentMSP, err := u.MSP()
+	if err != nil {
+		return fmt.Errorf("retrieving msp: %v", err)
+	}
+
+	if currentMSP.Name != updatedMSP.Name {
+		return errors.New("MSP name cannot be changed")
+	}
+
+	err = updatedMSP.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	err = u.setMSPConfig(updatedMSP)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *UpdatedConsortiumOrg) setMSPConfig(updatedMSP MSP) error {
+	mspConfig, err := newMSPConfig(updatedMSP)
+	if err != nil {
+		return fmt.Errorf("new msp config: %v", err)
+	}
+
+	err = setValue(u.ConsortiumOrg.orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetChannelCreationPolicy sets the ConsortiumChannelCreationPolicy for
+// the given configuration Group.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (u *UpdatedConsortiumGroup) SetChannelCreationPolicy(policy Policy) error {
+	imp, err := implicitMetaFromString(policy.Rule)
+	if err != nil {
+		return fmt.Errorf("invalid implicit meta policy rule '%s': %v", policy.Rule, err)
+	}
+
+	implicitMetaPolicy, err := implicitMetaPolicy(imp.SubPolicy, imp.Rule)
+	if err != nil {
+		return fmt.Errorf("failed to make implicit meta policy: %v", err)
+	}
+
+	// update channel creation policy value back to consortium
+	if err = setValue(u.ConsortiumGroup.consortiumGroup, channelCreationPolicyValue(implicitMetaPolicy), ordererAdminsPolicyName); err != nil {
+		return fmt.Errorf("failed to update channel creation policy to consortium %s: %v", u.name, err)
+	}
+
+	return nil
+}
+
+// Policies returns a map of policies for a specific consortium org.
+func (c *ConsortiumOrg) Policies() (map[string]Policy, error) {
+	return getPolicies(c.orgGroup.Policies)
+}
+
+// Policies returns a map of policies for a specific consortium org.
+func (u *UpdatedConsortiumOrg) Policies() (map[string]Policy, error) {
+	return u.ConsortiumOrg.Policies()
+}
+
+// SetPolicy sets the specified policy in the consortium org group's config policy map.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (u *UpdatedConsortiumOrg) SetPolicy(name string, policy Policy) error {
+	err := setPolicy(u.ConsortiumOrg.orgGroup, AdminsPolicyKey, name, policy)
+	if err != nil {
+		return fmt.Errorf("failed to set policy '%s' to consortium org '%s': %v", name, u.name, err)
+	}
+
+	return nil
+}
+
+// RemovePolicy removes an existing policy from a consortium's organization.
+// Removal will panic if either the consortiums group, consortium group, or consortium org group does not exist.
+func (u *UpdatedConsortiumOrg) RemovePolicy(name string) {
+	delete(u.ConsortiumOrg.orgGroup.Policies, name)
 }
 
 // newConsortiumsGroup returns the consortiums component of the channel configuration. This element is only defined for

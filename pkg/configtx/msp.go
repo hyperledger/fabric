@@ -13,7 +13,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"time"
 
@@ -76,35 +75,8 @@ type MSP struct {
 	NodeOus membership.NodeOUs
 }
 
-// ConsortiumMSP returns the MSP configuration for an existing consortium
-// org in a config transaction.
-func (c *ConfigTx) ConsortiumMSP(consortiumName, orgName string) (MSP, error) {
-	consortiumGroup, ok := c.original.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
-	if !ok {
-		return MSP{}, fmt.Errorf("consortium %s does not exist in config", consortiumName)
-	}
-
-	consortiumOrgGroup, ok := consortiumGroup.Groups[orgName]
-	if !ok {
-		return MSP{}, fmt.Errorf("consortium org %s does not exist in config", orgName)
-	}
-
-	return getMSPConfig(consortiumOrgGroup)
-}
-
 // YEAR is a time duration for a standard 365 day year.
 const YEAR = 365 * 24 * time.Hour
-
-// CreateConsortiumOrgMSPCRL creates a CRL that revokes the provided certificates
-// for the specified consortium org signed by the provided SigningIdentity.
-func (c *ConfigTx) CreateConsortiumOrgMSPCRL(consortiumName string, orgName string, signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
-	msp, err := c.ConsortiumMSP(consortiumName, orgName)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving consortium org msp: %s", err)
-	}
-
-	return msp.newMSPCRL(signingIdentity, certs...)
-}
 
 // newMSPCRL creates a CRL that revokes the provided certificates for the specified org
 // signed by the provided SigningIdentity. If any of the provided certs were
@@ -516,30 +488,6 @@ func pemEncodePKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}), nil
 }
 
-// SetConsortiumMSP updates the MSP config for the specified consortium org group.
-func (c *ConfigTx) SetConsortiumMSP(updatedMSP MSP, consortiumName string, orgName string) error {
-	currentMSP, err := c.ConsortiumMSP(consortiumName, orgName)
-	if err != nil {
-		return fmt.Errorf("retrieving msp: %v", err)
-	}
-
-	if currentMSP.Name != updatedMSP.Name {
-		return errors.New("MSP name cannot be changed")
-	}
-
-	err = updatedMSP.validateCACerts()
-	if err != nil {
-		return err
-	}
-
-	err = setMSPConfigForConsortium(c.UpdatedConfig().Config, updatedMSP, consortiumName, orgName)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // newMSPConfig returns an config for a msp.
 func newMSPConfig(updatedMSP MSP) (*mb.MSPConfig, error) {
 	fabricMSPConfig, err := updatedMSP.toProto()
@@ -557,22 +505,6 @@ func newMSPConfig(updatedMSP MSP) (*mb.MSPConfig, error) {
 	}
 
 	return mspConfig, nil
-}
-
-func setMSPConfigForConsortium(config *cb.Config, updatedMSP MSP, consortiumName string, orgName string) error {
-	mspConfig, err := newMSPConfig(updatedMSP)
-	if err != nil {
-		return fmt.Errorf("new msp config: %v", err)
-	}
-
-	consortiumGroup := getConsortiumOrg(config, consortiumName, orgName)
-
-	err = setValue(consortiumGroup, mspValue(mspConfig), AdminsPolicyKey)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (m *MSP) validateCACerts() error {

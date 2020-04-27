@@ -15,37 +15,6 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
-// ConsortiumOrg retrieves an existing org from a consortium organization config group.
-func (c *ConfigTx) ConsortiumOrg(consortiumName, orgName string) (Organization, error) {
-	consortium, ok := c.original.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
-	if !ok {
-		return Organization{}, fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
-	}
-	orgGroup, ok := consortium.Groups[orgName]
-	if !ok {
-		return Organization{}, fmt.Errorf("consortium org %s does not exist in channel config", orgName)
-	}
-
-	org, err := getOrganization(orgGroup, orgName)
-	if err != nil {
-		return Organization{}, err
-	}
-
-	// Remove AnchorPeers which are application org specific.
-	org.AnchorPeers = nil
-
-	return org, err
-}
-
-// RemoveConsortiumOrg removes an org from a consortium's group.
-// Removal will panic if either the consortiums group or consortium group does not exist.
-func (c *ConfigTx) RemoveConsortiumOrg(consortiumName, orgName string) {
-	consortium := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
-
-	delete(consortium.Groups, orgName)
-
-}
-
 // newOrgConfigGroup returns an config group for an organization.
 // It defines the crypto material for the organization (its MSP).
 // It sets the mod_policy of all elements to "Admins".

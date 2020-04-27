@@ -161,7 +161,7 @@ func (c *ConfigTx) ChannelConfiguration() (Channel, error) {
 	}
 
 	if _, ok := channelGroup.Groups[ConsortiumsGroupKey]; ok {
-		consortiums, err = c.Consortiums()
+		consortiums, err = c.OriginalConfig().Consortiums().Configuration()
 		if err != nil {
 			return Channel{}, err
 		}

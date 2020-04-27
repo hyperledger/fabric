@@ -18,70 +18,9 @@ import (
 	"github.com/hyperledger/fabric/common/policydsl"
 )
 
-// SetConsortiumChannelCreationPolicy sets the ConsortiumChannelCreationPolicy for
-// the given configuration Group.
-// If the policy already exist in current configuration, its value will be overwritten.
-func (c *ConfigTx) SetConsortiumChannelCreationPolicy(consortiumName string, policy Policy) error {
-	consortium := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
-
-	imp, err := implicitMetaFromString(policy.Rule)
-	if err != nil {
-		return fmt.Errorf("invalid implicit meta policy rule '%s': %v", policy.Rule, err)
-	}
-
-	implicitMetaPolicy, err := implicitMetaPolicy(imp.SubPolicy, imp.Rule)
-	if err != nil {
-		return fmt.Errorf("failed to make implicit meta policy: %v", err)
-	}
-
-	// update channel creation policy value back to consortium
-	if err = setValue(consortium, channelCreationPolicyValue(implicitMetaPolicy), ordererAdminsPolicyName); err != nil {
-		return fmt.Errorf("failed to update channel creation policy to consortium %s: %v", consortiumName, err)
-	}
-
-	return nil
-}
-
-// ConsortiumOrgPolicies returns a map of policies for a specific consortium org.
-func (c *ConfigTx) ConsortiumOrgPolicies(consortiumName, orgName string) (map[string]Policy, error) {
-	consortium, ok := c.original.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName]
-	if !ok {
-		return nil, fmt.Errorf("consortium %s does not exist in channel config", consortiumName)
-	}
-
-	org, ok := consortium.Groups[orgName]
-	if !ok {
-		return nil, fmt.Errorf("consortium org %s does not exist in channel config", orgName)
-	}
-
-	return getPolicies(org.Policies)
-}
-
 // ChannelPolicies returns a map of policies for channel configuration.
 func (c *ConfigTx) ChannelPolicies() (map[string]Policy, error) {
 	return getPolicies(c.original.ChannelGroup.Policies)
-}
-
-// SetConsortiumOrgPolicy sets the specified policy in the consortium org group's config policy map.
-// If the policy already exist in current configuration, its value will be overwritten.
-func (c *ConfigTx) SetConsortiumOrgPolicy(consortiumName, orgName, policyName string, policy Policy) error {
-	orgGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName].Groups[orgName]
-
-	err := setPolicy(orgGroup, AdminsPolicyKey, policyName, policy)
-	if err != nil {
-		return fmt.Errorf("failed to set policy '%s' to consortium org '%s': %v", policyName, orgName, err)
-	}
-
-	return nil
-}
-
-// RemoveConsortiumOrgPolicy removes an existing policy from a consortium's organization.
-// Removal will panic if either the consortiums group, consortium group, or consortium org group does not exist.
-func (c *ConfigTx) RemoveConsortiumOrgPolicy(consortiumName, orgName, policyName string) {
-	orgGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName].Groups[orgName]
-
-	delete(orgGroup.Policies, policyName)
-
 }
 
 // SetChannelPolicy sets the specified policy in the channel group's config policy map.

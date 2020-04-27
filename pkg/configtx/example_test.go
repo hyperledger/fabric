@@ -86,7 +86,7 @@ func Example_basic() {
 	baseConfig := fetchSystemChannelConfig()
 	c := configtx.New(baseConfig)
 
-	err := c.SetConsortiumChannelCreationPolicy("SampleConsortium",
+	err := c.UpdatedConfig().Consortiums().Consortium("SampleConsortium").SetChannelCreationPolicy(
 		configtx.Policy{Type: configtx.ImplicitMetaPolicyType,
 			Rule: "MAJORITY Admins"})
 	if err != nil {
@@ -547,11 +547,13 @@ func ExampleUpdatedOrdererOrg_SetMSP() {
 
 // This example shows the addition of a certificate to a consortium org's intermediate
 // certificate list.
-func ExampleConfigTx_SetConsortiumMSP() {
+func ExampleUpdatedConsortiumOrg_SetMSP() {
 	baseConfig := fetchSystemChannelConfig()
 	c := configtx.New(baseConfig)
 
-	msp, err := c.ConsortiumMSP("SampleConsortium", "Org1")
+	sampleConsortiumOrg1 := c.UpdatedConfig().Consortiums().Consortium("SampleConsortium").Organization("Org1")
+
+	msp, err := sampleConsortiumOrg1.MSP()
 	if err != nil {
 		panic(err)
 	}
@@ -563,7 +565,7 @@ func ExampleConfigTx_SetConsortiumMSP() {
 
 	msp.IntermediateCerts = append(msp.IntermediateCerts, newIntermediateCert)
 
-	err = c.SetConsortiumMSP(msp, "SampleConsortium", "Org1")
+	err = sampleConsortiumOrg1.SetMSP(msp)
 	if err != nil {
 		panic(err)
 	}

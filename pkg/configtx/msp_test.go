@@ -124,7 +124,7 @@ func TestConsortiumMSP(t *testing.T) {
 		updated:  config,
 	}
 
-	msp, err := c.ConsortiumMSP("Consortium1", "Org1")
+	msp, err := c.OriginalConfig().Consortiums().Consortium("Consortium1").Organization("Org1").MSP()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(msp).To(Equal(expectedMSP))
 }
@@ -142,19 +142,6 @@ func TestMSPConfigurationFailures(t *testing.T) {
 		mspMod         func(*MSP)
 		expectedErr    string
 	}{
-		{
-			name:           "Consortium does not exist",
-			orgType:        ConsortiumsGroupKey,
-			consortiumName: "BadConsortium",
-			expectedErr:    "consortium BadConsortium does not exist in config",
-		},
-		{
-			name:           "Consortium Org does not exist",
-			orgType:        ConsortiumsGroupKey,
-			consortiumName: "Consortium1",
-			orgName:        "BadOrg",
-			expectedErr:    "consortium org BadOrg does not exist in config",
-		},
 		{
 			name:    "Bad root cert",
 			orgType: OrdererGroupKey,
@@ -315,7 +302,7 @@ func TestMSPConfigurationFailures(t *testing.T) {
 				_, err := c.OriginalConfig().Orderer().Organization(tt.orgName).MSP()
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			case ConsortiumsGroupKey:
-				_, err := c.ConsortiumMSP(tt.consortiumName, tt.orgName)
+				_, err := c.UpdatedConfig().Consortiums().Consortium(tt.consortiumName).Organization(tt.orgName).MSP()
 				gt.Expect(err).To(MatchError(tt.expectedErr))
 			default:
 				t.Fatalf("invalid org type %s", tt.orgType)
@@ -413,7 +400,7 @@ func TestMSPToProtoFailure(t *testing.T) {
 	gt.Expect(fabricMSPConfigProto).To(BeNil())
 }
 
-func TestUpdateConsortiumMsp(t *testing.T) {
+func TestSetConsortiumMSP(t *testing.T) {
 	t.Parallel()
 	gt := NewGomegaWithT(t)
 
@@ -425,9 +412,10 @@ func TestUpdateConsortiumMsp(t *testing.T) {
 	}
 	c := New(config)
 
-	consortiumOrg1MSP, err := c.ConsortiumMSP("Consortium1", "Org1")
+	consortium1 := c.UpdatedConfig().Consortiums().Consortium("Consortium1")
+	consortiumOrg1MSP, err := consortium1.Organization("Org1").MSP()
 	gt.Expect(err).NotTo(HaveOccurred())
-	consortiumOrg2MSP, err := c.ConsortiumMSP("Consortium1", "Org2")
+	consortiumOrg2MSP, err := consortium1.Organization("Org2").MSP()
 	gt.Expect(err).NotTo(HaveOccurred())
 	consortiumOrg1CertBase64, consortiumOrg1PKBase64, consortiumOrg1CRLBase64 := certPrivKeyCRLBase64(t, consortiumOrg1MSP)
 	consortiumOrg2CertBase64, consortiumOrg2PKBase64, consortiumOrg2CRLBase64 := certPrivKeyCRLBase64(t, consortiumOrg2MSP)
@@ -447,14 +435,14 @@ func TestUpdateConsortiumMsp(t *testing.T) {
 		PrivateKey:  privKey,
 		MSPID:       "MSPID",
 	}
-	newCRL, err := c.CreateConsortiumOrgMSPCRL("Consortium1", "Org1", signingIdentity, certToRevoke)
+	newCRL, err := consortium1.Organization("Org1").CreateMSPCRL(signingIdentity, certToRevoke)
 	gt.Expect(err).NotTo(HaveOccurred())
 	pemNewCRL, err := pemEncodeCRL(newCRL)
 	gt.Expect(err).NotTo(HaveOccurred())
 	newCRLBase64 := base64.StdEncoding.EncodeToString(pemNewCRL)
 	consortiumOrg1MSP.RevocationList = append(consortiumOrg1MSP.RevocationList, newCRL)
 
-	err = c.SetConsortiumMSP(consortiumOrg1MSP, "Consortium1", "Org1")
+	err = consortium1.Organization("Org1").SetMSP(consortiumOrg1MSP)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	expectedConfigJSON := fmt.Sprintf(`
@@ -761,7 +749,7 @@ func TestUpdateConsortiumMsp(t *testing.T) {
 	gt.Expect(buf.String()).To(MatchJSON(expectedConfigJSON))
 }
 
-func TestUpdateConsortiumMspFailure(t *testing.T) {
+func TestSetConsortiumMSPFailure(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -771,24 +759,6 @@ func TestUpdateConsortiumMspFailure(t *testing.T) {
 		orgName        string
 		expectedErr    string
 	}{
-		{
-			spec: "consortium not defined",
-			mspMod: func(msp MSP) MSP {
-				return msp
-			},
-			consortiumName: "undefined-consortium",
-			orgName:        "Org1",
-			expectedErr:    "retrieving msp: consortium undefined-consortium does not exist in config",
-		},
-		{
-			spec: "consortium org msp not defined",
-			mspMod: func(msp MSP) MSP {
-				return msp
-			},
-			consortiumName: "Consortium1",
-			orgName:        "undefined-org",
-			expectedErr:    "retrieving msp: consortium org undefined-org does not exist in config",
-		},
 		{
 			spec: "updating msp name",
 			mspMod: func(msp MSP) MSP {
@@ -830,11 +800,12 @@ func TestUpdateConsortiumMspFailure(t *testing.T) {
 			}
 			c := New(config)
 
-			consortiumOrg1MSP, err := c.ConsortiumMSP("Consortium1", "Org1")
+			consortiumOrg1 := c.UpdatedConfig().Consortiums().Consortium("Consortium1").Organization("Org1")
+			consortiumOrg1MSP, err := consortiumOrg1.MSP()
 			gt.Expect(err).NotTo(HaveOccurred())
 
 			consortiumOrg1MSP = tc.mspMod(consortiumOrg1MSP)
-			err = c.SetConsortiumMSP(consortiumOrg1MSP, tc.consortiumName, tc.orgName)
+			err = consortiumOrg1.SetMSP(consortiumOrg1MSP)
 			gt.Expect(err).To(MatchError(tc.expectedErr))
 		})
 	}

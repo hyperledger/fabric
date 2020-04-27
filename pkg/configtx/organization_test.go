@@ -197,18 +197,6 @@ func TestConsortiumOrg(t *testing.T) {
 			orgName:        "Org1",
 			expectedErr:    "",
 		},
-		{
-			name:           "consortium not defined",
-			consortiumName: "bad-consortium",
-			orgName:        "Org1",
-			expectedErr:    "consortium bad-consortium does not exist in channel config",
-		},
-		{
-			name:           "organization not defined",
-			consortiumName: "Consortium1",
-			orgName:        "bad-org",
-			expectedErr:    "consortium org bad-org does not exist in channel config",
-		},
 	}
 
 	for _, tc := range tests {
@@ -217,7 +205,7 @@ func TestConsortiumOrg(t *testing.T) {
 			t.Parallel()
 			gt := NewGomegaWithT(t)
 
-			org, err := c.ConsortiumOrg(tc.consortiumName, tc.orgName)
+			org, err := c.UpdatedConfig().Consortiums().Consortium(tc.consortiumName).Organization(tc.orgName).Configuration()
 			if tc.expectedErr != "" {
 				gt.Expect(Organization{}).To(Equal(org))
 				gt.Expect(err).To(MatchError(tc.expectedErr))
@@ -243,8 +231,8 @@ func TestRemoveConsortiumOrg(t *testing.T) {
 
 	c := New(config)
 
-	c.RemoveConsortiumOrg("Consortium1", "Org1")
-	gt.Expect(c.UpdatedConfig().ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]).To(BeNil())
+	c.UpdatedConfig().Consortiums().Consortium("Consortium1").RemoveOrganization("Org1")
+	gt.Expect(c.UpdatedConfig().Consortiums().Consortium("Consortium1").Organization("Org1").ConsortiumOrg).To(BeNil())
 }
 
 func TestNewOrgConfigGroup(t *testing.T) {
