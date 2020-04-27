@@ -21,6 +21,22 @@ type Consortium struct {
 	Organizations []Organization
 }
 
+// AddConsortium adds a new consortium to a channel configuration.
+func (c *ConfigTx) AddConsortium(consortium Consortium) error {
+	consortiumsGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey]
+
+	consortiumsGroup.Groups[consortium.Name] = newConfigGroup()
+
+	for _, org := range consortium.Organizations {
+		err := c.SetConsortiumOrg(org, consortium.Name)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // RemoveConsortium removes a consortium from a channel configuration.
 // Removal will panic if the consortiums group does not exist.
 func (c *ConfigTx) RemoveConsortium(consortiumName string) {

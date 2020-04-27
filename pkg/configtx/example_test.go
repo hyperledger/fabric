@@ -564,6 +564,29 @@ func ExampleConfigTx_SetConsortiumMSP() {
 	}
 }
 
+// This example shows the addition of a new consortium.
+func ExampleConfigTx_AddConsortium() {
+	baseConfig := fetchChannelConfig()
+	c := configtx.New(baseConfig)
+
+	org, err := c.ApplicationOrg("Org1")
+	if err != nil {
+		panic(err)
+	}
+
+	newConsortium := configtx.Consortium{
+		Name: "SampleConsortium2",
+		Organizations: []configtx.Organization{
+			org,
+		},
+	}
+
+	err = c.AddConsortium(newConsortium)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // fetchChannelConfig mocks retrieving the config transaction from the most recent configuration block.
 func fetchChannelConfig() *cb.Config {
 	return &cb.Config{

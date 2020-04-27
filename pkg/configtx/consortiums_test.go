@@ -900,6 +900,60 @@ func TestGetConsortiumOrg(t *testing.T) {
 	gt.Expect(org1ConfigGroup).To(Equal(config.ChannelGroup.Groups[ConsortiumsGroupKey].Groups["Consortium1"].Groups["Org1"]))
 }
 
+func TestAddConsortium(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums(t)
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Consortiums": consortiumsGroup,
+			},
+		},
+	}
+
+	c := New(config)
+
+	newConsortium := consortiums[0]
+	newConsortium.Name = "Consortium2"
+
+	err = c.AddConsortium(newConsortium)
+	gt.Expect(err).NotTo(HaveOccurred())
+	// err = protolator.DeepMarshalJSON(os.Stdout, c.UpdatedConfig())
+	// gt.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestAddConsortiumFailures(t *testing.T) {
+	t.Parallel()
+
+	gt := NewGomegaWithT(t)
+
+	consortiums := baseConsortiums(t)
+	consortiumsGroup, err := newConsortiumsGroup(consortiums)
+	gt.Expect(err).NotTo(HaveOccurred())
+
+	config := &cb.Config{
+		ChannelGroup: &cb.ConfigGroup{
+			Groups: map[string]*cb.ConfigGroup{
+				"Consortiums": consortiumsGroup,
+			},
+		},
+	}
+
+	c := New(config)
+
+	newConsortium := consortiums[0]
+	newConsortium.Name = ""
+
+	err = c.AddConsortium(newConsortium)
+	gt.Expect(err).To(MatchError("consortium is required"))
+}
+
 func baseConsortiums(t *testing.T) []Consortium {
 	return []Consortium{
 		{
