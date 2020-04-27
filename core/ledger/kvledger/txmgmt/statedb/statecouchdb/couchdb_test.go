@@ -280,15 +280,13 @@ func TestIsEmpty(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, isEmpty)
 
-	defaultAddress := config.Address
-	defaultMaxRetries := config.MaxRetries
-	couchInstance.conf.Address = "junk"
-	couchInstance.conf.MaxRetries = 0
+	configCopy := *config
+	configCopy.Address = "junk"
+	configCopy.MaxRetries = 0
+	couchInstance.conf = &configCopy
 	isEmpty, err = couchInstance.isEmpty(ignore)
 	require.Error(t, err)
 	require.Regexp(t, `unable to connect to CouchDB, check the hostname and port: http error calling couchdb: Get "?http://junk/_all_dbs"?`, err.Error())
-	config.Address = defaultAddress
-	config.MaxRetries = defaultMaxRetries
 }
 
 func TestDBBadDatabaseName(t *testing.T) {
@@ -366,10 +364,9 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 	couchDBEnv.cleanup(config)
 
 	//Test create and persist with 0 retries
-	defaultMaxRetries := config.MaxRetries
-	config.MaxRetries = 0
-	testDBCreateDatabaseAndPersist(t, config)
-	config.MaxRetries = defaultMaxRetries
+	configCopy := *config
+	configCopy.MaxRetries = 0
+	testDBCreateDatabaseAndPersist(t, &configCopy)
 	couchDBEnv.cleanup(config)
 
 	//Test batch operations with default configured maxRetries
@@ -596,28 +593,21 @@ func TestDBRequestTimeout(t *testing.T) {
 	config.Address = couchDBEnv.couchAddress
 	defer couchDBEnv.cleanup(config)
 
-	//create an impossibly short timeout
-	defaultMaxRetries := config.MaxRetries
-	defaultMaxRetriesOnStartup := config.MaxRetriesOnStartup
-	defaultRequestTimeout := config.RequestTimeout
-	impossibleTimeout := time.Nanosecond
-
 	//create a new instance and database object with a timeout that will fail
 	//Also use a maxRetriesOnStartup=3 to reduce the number of retries
-
-	config.MaxRetriesOnStartup = 3
-	config.RequestTimeout = impossibleTimeout
-	_, err := createCouchInstance(config, &disabled.Provider{})
+	configCopy := *config
+	configCopy.MaxRetriesOnStartup = 3
+	//create an impossibly short timeout
+	impossibleTimeout := time.Nanosecond
+	configCopy.RequestTimeout = impossibleTimeout
+	_, err := createCouchInstance(&configCopy, &disabled.Provider{})
 	assert.Error(t, err, "Error should have been thown while trying to create a couchdb instance with a connection timeout")
 
 	//create a new instance and database object
-	config.MaxRetries = -1
-	config.MaxRetriesOnStartup = 3
-	_, err = createCouchInstance(config, &disabled.Provider{})
+	configCopy.MaxRetries = -1
+	configCopy.MaxRetriesOnStartup = 3
+	_, err = createCouchInstance(&configCopy, &disabled.Provider{})
 	assert.Error(t, err, "Error should have been thrown while attempting to create a database")
-	config.MaxRetries = defaultMaxRetries
-	config.RequestTimeout = defaultRequestTimeout
-	config.MaxRetriesOnStartup = defaultMaxRetriesOnStartup
 }
 
 func TestDBTimeoutConflictRetry(t *testing.T) {
@@ -628,9 +618,9 @@ func TestDBTimeoutConflictRetry(t *testing.T) {
 	database := "testdbtimeoutretry"
 
 	//create a new instance and database object
-	defaultMaxRetriesOnStartup := config.MaxRetriesOnStartup
-	config.MaxRetriesOnStartup = 3
-	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
+	configCopy := *config
+	configCopy.MaxRetriesOnStartup = 3
+	couchInstance, err := createCouchInstance(&configCopy, &disabled.Provider{})
 	assert.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
@@ -658,8 +648,6 @@ func TestDBTimeoutConflictRetry(t *testing.T) {
 	//Delete the test document with an invalid rev.  This should cause a retry
 	deleteerr := db.deleteDoc("1", "1-11111111111111111111111111111111")
 	assert.NoError(t, deleteerr, "Error when trying to delete a document with a revision conflict")
-	config.MaxRetriesOnStartup = defaultMaxRetriesOnStartup
-
 }
 
 func TestDBBadNumberOfRetries(t *testing.T) {
@@ -669,14 +657,11 @@ func TestDBBadNumberOfRetries(t *testing.T) {
 	defer couchDBEnv.cleanup(config)
 
 	//create a new instance and database object
-	defaultMaxRetries := config.MaxRetries
-	defaultMaxRetriesOnStartup := config.MaxRetriesOnStartup
-	config.MaxRetries = -1
-	config.MaxRetriesOnStartup = 3
-	_, err := createCouchInstance(config, &disabled.Provider{})
+	configCopy := *config
+	configCopy.MaxRetries = -1
+	configCopy.MaxRetriesOnStartup = 3
+	_, err := createCouchInstance(&configCopy, &disabled.Provider{})
 	assert.Error(t, err, "Error should have been thrown while attempting to create a database")
-	config.MaxRetries = defaultMaxRetries
-	config.MaxRetriesOnStartup = defaultMaxRetriesOnStartup
 }
 
 func TestDBBadJSON(t *testing.T) {
