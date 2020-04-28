@@ -115,7 +115,8 @@ func (env *testCouchDBEnv) stopCouchDB() {
 }
 
 func (env *testCouchDBEnv) cleanup(config *ledger.CouchDBConfig) {
-	DeleteApplicationDBs(env.t, config)
+	err := DropApplicationDBs(config)
+	require.NoError(env.t, err)
 }
 
 // we create two CouchDB instances/containers---one is used to test the
@@ -1150,12 +1151,16 @@ func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedE
 		require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 	}
 	if dataFormat == "" {
-		dropDB(t, dbProvider.couchInstance, fabricInternalDBName)
+		response, err := dropDB(dbProvider.couchInstance, fabricInternalDBName)
+		require.NoError(t, err)
+		require.True(t, response.Ok)
 	} else {
 		require.NoError(t, writeDataFormatVersion(dbProvider.couchInstance, dataFormat))
 	}
 	dbProvider.Close()
-	defer DeleteApplicationDBs(t, vdbEnv.config)
+	defer func() {
+		require.NoError(t, DropApplicationDBs(vdbEnv.config))
+	}()
 
 	// close and reopen with preconditions set and check the expected behavior
 	dbProvider, err = NewVersionedDBProvider(config, &disabled.Provider{}, nil)

@@ -16,6 +16,11 @@ const (
 	Version20 = "2.0"
 )
 
+var (
+	// Version1xBytes defines the []byte for Version1x to be nil
+	Version1xBytes []byte = nil
+)
+
 // ErrVersionMismatch is returned if it is detected that the version of the format recorded in
 // the internal database is different from what is specified in the `Conf` that is used for opening the db
 type ErrVersionMismatch struct {

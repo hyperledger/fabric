@@ -498,30 +498,51 @@ func openIDStore(path string) (s *idStore, e error) {
 	return &idStore{db, path}, nil
 }
 
-func (s *idStore) upgradeFormat() error {
+// checkUpgradeEligibility checks if the format is eligible to upgrade.
+// It returns true if the format is eligible (e.g., the -1 version before current one)
+// to upgrade to the current version. It returns false if either the format is the
+// current version or the db is empty. Otherwise, an ErrVersionMismatch is returned.
+func (s *idStore) checkUpgradeEligibility() (bool, error) {
+	emptydb, err := s.db.IsEmpty()
+	if err != nil {
+		return false, err
+	}
+	if emptydb {
+		logger.Warnf("Ledger database %s is empty, nothing to upgrade.", s.dbPath)
+		return false, nil
+	}
 	format, err := s.db.Get(formatKey)
 	if err != nil {
-		return err
+		return false, err
 	}
-	idStoreFormatBytes := []byte(dataformat.Version20)
-	if bytes.Equal(format, idStoreFormatBytes) {
-		logger.Debug("Format is current, nothing to do")
-		return nil
+	if bytes.Equal(format, []byte(dataformat.Version20)) {
+		logger.Info("Ledger data format is current, nothing to upgrade.")
+		return false, nil
 	}
-	if format != nil {
+	if !bytes.Equal(format, dataformat.Version1xBytes) {
 		err = &dataformat.ErrVersionMismatch{
 			ExpectedVersion: "",
 			Version:         string(format),
 			DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", s.dbPath),
 		}
-		logger.Errorf("Failed to upgrade format [%#v] to new format [%#v]: %s", format, idStoreFormatBytes, err)
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *idStore) upgradeFormat() error {
+	eligible, err := s.checkUpgradeEligibility()
+	if err != nil {
 		return err
 	}
+	if !eligible {
+		return nil
+	}
 
-	logger.Infof("The ledgerProvider db format is old, upgrading to the new format %s", dataformat.Version20)
+	logger.Infof("Upgrading ledgerProvider database to the new format %s", dataformat.Version20)
 
 	batch := &leveldb.Batch{}
-	batch.Put(formatKey, idStoreFormatBytes)
+	batch.Put(formatKey, []byte(dataformat.Version20))
 
 	// add new metadata key for each ledger (channel)
 	metadata, err := protoutil.Marshal(&msgs.LedgerMetadata{Status: msgs.Status_ACTIVE})

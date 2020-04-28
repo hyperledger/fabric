@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
-	"testing"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
@@ -18,9 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policydsl"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/tests/fakes"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 )
@@ -228,8 +224,4 @@ func setBlockFlagsToValid(block *common.Block) {
 	protoutil.InitBlockMetadata(block)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		txflags.NewWithValues(len(block.Data.Data), protopeer.TxValidationCode_VALID)
-}
-
-func dropCouchDBs(t *testing.T, couchdbConfig *ledger.CouchDBConfig) {
-	statecouchdb.DeleteApplicationDBs(t, couchdbConfig)
 }

@@ -183,7 +183,7 @@ func (env *CouchDBCommonStorageTestEnv) GetName() string {
 func (env *CouchDBCommonStorageTestEnv) Cleanup() {
 	csdbProvider := env.provider.(*CommonStorageDBProvider)
 	if csdbProvider != nil {
-		statecouchdb.DeleteApplicationDBs(env.t, env.couchDBConfig)
+		assert.NoError(env.t, statecouchdb.DropApplicationDBs(env.couchDBConfig))
 	}
 	os.RemoveAll(env.redoPath)
 	env.bookkeeperTestEnv.Cleanup()
