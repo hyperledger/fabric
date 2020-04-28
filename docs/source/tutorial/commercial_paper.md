@@ -19,7 +19,7 @@ roles to take the role of Balaji, an employee of DigiBank, who will buy this
 commercial paper, hold it for a period of time, and then redeem it with
 MagnetoCorp for a small profit.
 
-You'll act as an developer, end user, and administrator, each in different
+You'll act as a developer, end user, and administrator, each in different
 organizations, performing the following steps designed to help you understand
 what it's like to collaborate as two different organizations working
 independently, but according to mutually agreed rules in a Hyperledger Fabric
@@ -84,7 +84,7 @@ requirement to install these when you first run the tutorial:
 ## Download samples
 
 The commercial paper tutorial is one of the samples in the `fabric-samples`
-directory. Before you begin this tutorial, ensure that you have followed the
+repository. Before you begin this tutorial, ensure that you have followed the
 instructions to install the Fabric [Prerequisites](../prereqs.html) and
 [Download the Samples, Binaries and Docker Images](../install.html).
 When you are finished, you will have cloned the `fabric-samples` repository that
@@ -140,11 +140,11 @@ be members of.
 
 ![commercialpaper.network](./commercial_paper.diagram.testnet.png)
 *The Fabric test network is comprised of two peer organizations, Org1 and Org2,
-each with one peer and its ledger database, an ordering node. Each of these
-components runs as a Docker container.*
+each with one peer and its ledger state database, and an ordering service node.
+Each of these components runs as a Docker container.*
 
-The two peers, the peer [ledgers](../ledger/ledger.html#world-state-database-options), the
-orderer and the CA each run in the their own Docker container. In production
+The two peers, their [state databases](../ledger/ledger.html#world-state-database-options), the
+ordering service node and the CA each run in the their own Docker container. In production
 environments, organizations typically use existing CAs that are shared with
 other systems; they're not dedicated to the Fabric network.
 
@@ -228,12 +228,12 @@ single Docker network. (We've abbreviated the output for clarity.)
 Because we are operating the test network as DigiBank and MagnetoCorp,
 `peer0.org1.example.com` will belong to the DigiBank organization while
 `peer0.org2.example.com` will be operated by MagnetoCorp. Now that the test
-network is up and running, we can refer our network as PaperNet from this point
+network is up and running, we can refer to our network as PaperNet from this point
 forward.
 
 To recap: you've downloaded the Hyperledger Fabric samples repository from
 GitHub and you've got the test network running on your local machine. Let's now
-start to play the role of MagnetoCorp, who wish to trade commercial paper.
+start to play the role of MagnetoCorp, who wishes to issue and trade commercial paper.
 
 ## Monitor the network as MagnetoCorp
 
@@ -456,18 +456,20 @@ agree to using the chaincode definition is the chaincode [endorsement policy](..
 The endorsement policy describes the set of organizations that must endorse
 (execute and sign) a transaction before it can be determined to be valid. By
 approving the `papercontract` chaincode without the ``--policy`` flag, the
-MagnetoCorp admin agrees to using the default endorsement policy, which requires a
+MagnetoCorp admin agrees to using the channel's default `Endorsement` policy,
+which in the case of the `mychannel` test channel requires a
 majority of organizations on the channel to endorse a transaction. All transactions,
 whether valid or invalid, will be recorded on the [ledger blockchain](../ledger/ledger.html#blockchain),
 but only valid transactions will update the [world state](../ledger/ledger.html#world-state).
 
 ### Install and approve the smart contract as DigiBank
 
-By default, the Fabric Chaincode lifecycle requires a majority of organizations
-on the channel to successfully commit the chaincode definition to the channel.
+Based on the `mychannel` `LifecycleEndorsement` policy, the Fabric Chaincode lifecycle
+will require a majority of organizations on the channel to agree to the chaincode
+definition before the chaincode can be committed to the channel.
 This implies that we need to approve the `papernet` chaincode as both MagnetoCorp
 and DigiBank to get the required majority of 2 out of 2. Open a new terminal
-window in the `fabric-samples` and navigate to the older that contains the
+window in the `fabric-samples` and navigate to the folder that contains the
 DigiBank smart contract and application files:
 ```
 (digibank admin)$ cd commercial-paper/organization/digibank/
@@ -620,7 +622,7 @@ Note the following key program lines in `issue.js`:
 * `const network = await gateway.getNetwork('mychannel');`
 
   This connects the application to the network channel `mychannel`, where the
-  `papercontract` was previously instantiated.
+  `papercontract` was previously deployed.
 
 
 * `const contract = await network.getContract('papercontract');`
@@ -669,16 +671,8 @@ local file system using the `npm install` command. By convention, packages must
 be installed into an application-relative `/node_modules` directory for use at
 runtime.
 
-Examine the `package.json` file to see how `issue.js` identifies the packages to
-download and their exact versions:
-
-```json
-  "dependencies": {
-    "fabric-network": "~1.4.0",
-    "fabric-client": "~1.4.0",
-    "js-yaml": "^3.12.0"
-  },
-```
+Open the `package.json` file to see how `issue.js` identifies the packages to
+download and their exact versions by examining the "dependencies" section of the file.
 
 **npm** versioning is very powerful; you can read more about it
 [here](https://docs.npmjs.com/getting-started/semantic-versioning).
@@ -799,9 +793,8 @@ can see from the program output that MagnetoCorp commercial paper 00001 was
 issued with a face value of 5M USD.
 
 As you've seen, to achieve this, the application invokes the `issue` transaction
-defined in the `CommercialPaper` smart contract within `papercontract.js`. This
-had been installed and instantiated in the network by the MagnetoCorp
-administrator. It's the smart contract which interacts with the ledger via the
+defined in the `CommercialPaper` smart contract within `papercontract.js`.
+The smart contract interacts with the ledger via the
 Fabric APIs, most notably `putState()` and `getState()`, to represent the new
 commercial paper as a vector state within the world state. We'll see how this
 vector state is subsequently manipulated by the `buy` and `redeem` transactions
