@@ -19,13 +19,13 @@ import (
 // validator validates a tx against the latest committed state
 // and preceding valid transactions with in the same block
 type validator struct {
-	DB     privacyenabledstate.DB
-	Hasher ledger.Hasher
+	db     privacyenabledstate.DB
+	hasher ledger.Hasher
 }
 
 // preLoadCommittedVersionOfRSet loads committed version of all keys in each
 // transaction's read set into a cache.
-func (v *validator) preLoadCommittedVersionOfRSet(block *Block) error {
+func (v *validator) preLoadCommittedVersionOfRSet(blk *block) error {
 
 	// Collect both public and hashed keys in read sets of all transactions in a given block
 	var pubKeys []*statedb.CompositeKey
@@ -39,8 +39,8 @@ func (v *validator) preLoadCommittedVersionOfRSet(block *Block) error {
 	pubKeysMap := make(map[statedb.CompositeKey]interface{})
 	hashedKeysMap := make(map[privacyenabledstate.HashedCompositeKey]interface{})
 
-	for _, tx := range block.Txs {
-		for _, nsRWSet := range tx.RWSet.NsRwSets {
+	for _, tx := range blk.txs {
+		for _, nsRWSet := range tx.rwset.NsRwSets {
 			for _, kvRead := range nsRWSet.KvRwSet.Reads {
 				compositeKey := statedb.CompositeKey{
 					Namespace: nsRWSet.NameSpace,
@@ -70,7 +70,7 @@ func (v *validator) preLoadCommittedVersionOfRSet(block *Block) error {
 
 	// Load committed version of all keys into a cache
 	if len(pubKeys) > 0 || len(hashedKeys) > 0 {
-		err := v.DB.LoadCommittedVersionsOfPubAndHashedKeys(pubKeys, hashedKeys)
+		err := v.db.LoadCommittedVersionsOfPubAndHashedKeys(pubKeys, hashedKeys)
 		if err != nil {
 			return err
 		}
@@ -79,34 +79,34 @@ func (v *validator) preLoadCommittedVersionOfRSet(block *Block) error {
 	return nil
 }
 
-// ValidateAndPrepareBatch implements method in Validator interface
-func (v *validator) ValidateAndPrepareBatch(block *Block, doMVCCValidation bool) (*PubAndHashUpdates, error) {
+// validateAndPrepareBatch performs validation and prepares the batch for final writes
+func (v *validator) validateAndPrepareBatch(blk *block, doMVCCValidation bool) (*publicAndHashUpdates, error) {
 	// Check whether statedb implements BulkOptimizable interface. For now,
 	// only CouchDB implements BulkOptimizable to reduce the number of REST
 	// API calls from peer to CouchDB instance.
-	if v.DB.IsBulkOptimizable() {
-		err := v.preLoadCommittedVersionOfRSet(block)
+	if v.db.IsBulkOptimizable() {
+		err := v.preLoadCommittedVersionOfRSet(blk)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	updates := NewPubAndHashUpdates()
-	for _, tx := range block.Txs {
+	updates := newPubAndHashUpdates()
+	for _, tx := range blk.txs {
 		var validationCode peer.TxValidationCode
 		var err error
-		if validationCode, err = v.validateEndorserTX(tx.RWSet, doMVCCValidation, updates); err != nil {
+		if validationCode, err = v.validateEndorserTX(tx.rwset, doMVCCValidation, updates); err != nil {
 			return nil, err
 		}
 
-		tx.ValidationCode = validationCode
+		tx.validationCode = validationCode
 		if validationCode == peer.TxValidationCode_VALID {
-			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", block.Num, tx.IndexInBlock, tx.ID, tx.ContainsPostOrderWrites)
-			committingTxHeight := version.NewHeight(block.Num, uint64(tx.IndexInBlock))
-			updates.ApplyWriteSet(tx.RWSet, committingTxHeight, v.DB, tx.ContainsPostOrderWrites)
+			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", blk.num, tx.indexInBlock, tx.id, tx.containsPostOrderWrites)
+			committingTxHeight := version.NewHeight(blk.num, uint64(tx.indexInBlock))
+			updates.applyWriteSet(tx.rwset, committingTxHeight, v.db, tx.containsPostOrderWrites)
 		} else {
 			logger.Warningf("Block [%d] Transaction index [%d] TxId [%s] marked as invalid by state validator. Reason code [%s]",
-				block.Num, tx.IndexInBlock, tx.ID, validationCode.String())
+				blk.num, tx.indexInBlock, tx.id, validationCode.String())
 		}
 	}
 	return updates, nil
@@ -116,7 +116,7 @@ func (v *validator) ValidateAndPrepareBatch(block *Block, doMVCCValidation bool)
 func (v *validator) validateEndorserTX(
 	txRWSet *rwsetutil.TxRwSet,
 	doMVCCValidation bool,
-	updates *PubAndHashUpdates) (peer.TxValidationCode, error) {
+	updates *publicAndHashUpdates) (peer.TxValidationCode, error) {
 
 	var validationCode = peer.TxValidationCode_VALID
 	var err error
@@ -127,27 +127,27 @@ func (v *validator) validateEndorserTX(
 	return validationCode, err
 }
 
-func (v *validator) validateTx(txRWSet *rwsetutil.TxRwSet, updates *PubAndHashUpdates) (peer.TxValidationCode, error) {
+func (v *validator) validateTx(txRWSet *rwsetutil.TxRwSet, updates *publicAndHashUpdates) (peer.TxValidationCode, error) {
 	// Uncomment the following only for local debugging. Don't want to print data in the logs in production
 	//logger.Debugf("validateTx - validating txRWSet: %s", spew.Sdump(txRWSet))
 	for _, nsRWSet := range txRWSet.NsRwSets {
 		ns := nsRWSet.NameSpace
 		// Validate public reads
-		if valid, err := v.validateReadSet(ns, nsRWSet.KvRwSet.Reads, updates.PubUpdates); !valid || err != nil {
+		if valid, err := v.validateReadSet(ns, nsRWSet.KvRwSet.Reads, updates.publicUpdates); !valid || err != nil {
 			if err != nil {
 				return peer.TxValidationCode(-1), err
 			}
 			return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
 		}
 		// Validate range queries for phantom items
-		if valid, err := v.validateRangeQueries(ns, nsRWSet.KvRwSet.RangeQueriesInfo, updates.PubUpdates); !valid || err != nil {
+		if valid, err := v.validateRangeQueries(ns, nsRWSet.KvRwSet.RangeQueriesInfo, updates.publicUpdates); !valid || err != nil {
 			if err != nil {
 				return peer.TxValidationCode(-1), err
 			}
 			return peer.TxValidationCode_PHANTOM_READ_CONFLICT, nil
 		}
 		// Validate hashes for private reads
-		if valid, err := v.validateNsHashedReadSets(ns, nsRWSet.CollHashedRwSets, updates.HashUpdates); !valid || err != nil {
+		if valid, err := v.validateNsHashedReadSets(ns, nsRWSet.CollHashedRwSets, updates.hashUpdates); !valid || err != nil {
 			if err != nil {
 				return peer.TxValidationCode(-1), err
 			}
@@ -176,7 +176,7 @@ func (v *validator) validateKVRead(ns string, kvRead *kvrwset.KVRead, updates *p
 	if updates.Exists(ns, kvRead.Key) {
 		return false, nil
 	}
-	committedVersion, err := v.DB.GetVersion(ns, kvRead.Key)
+	committedVersion, err := v.db.GetVersion(ns, kvRead.Key)
 	if err != nil {
 		return false, err
 	}
@@ -215,7 +215,7 @@ func (v *validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 	// but rather it is the last key seen by the caller and hence the combinedItr should include the endKey in the results.
 	includeEndKey := !rangeQueryInfo.ItrExhausted
 
-	combinedItr, err := newCombinedIterator(v.DB, updates.UpdateBatch,
+	combinedItr, err := newCombinedIterator(v.db, updates.UpdateBatch,
 		ns, rangeQueryInfo.StartKey, rangeQueryInfo.EndKey, includeEndKey)
 	if err != nil {
 		return false, err
@@ -224,7 +224,7 @@ func (v *validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 	var qv rangeQueryValidator
 	if rangeQueryInfo.GetReadsMerkleHashes() != nil {
 		logger.Debug(`Hashing results are present in the range query info hence, initiating hashing based validation`)
-		qv = &rangeQueryHashValidator{hasher: v.Hasher}
+		qv = &rangeQueryHashValidator{hasher: v.hasher}
 	} else {
 		logger.Debug(`Hashing results are not present in the range query info hence, initiating raw KVReads based validation`)
 		qv = &rangeQueryResultsValidator{}
@@ -264,7 +264,7 @@ func (v *validator) validateKVReadHash(ns, coll string, kvReadHash *kvrwset.KVRe
 	if updates.Contains(ns, coll, kvReadHash.KeyHash) {
 		return false, nil
 	}
-	committedVersion, err := v.DB.GetKeyHashVersion(ns, coll, kvReadHash.KeyHash)
+	committedVersion, err := v.db.GetKeyHashVersion(ns, coll, kvReadHash.KeyHash)
 	if err != nil {
 		return false, err
 	}
