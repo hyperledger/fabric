@@ -18,28 +18,6 @@ import (
 	"github.com/hyperledger/fabric/common/policydsl"
 )
 
-// ChannelPolicies returns a map of policies for channel configuration.
-func (c *ConfigTx) ChannelPolicies() (map[string]Policy, error) {
-	return getPolicies(c.original.ChannelGroup.Policies)
-}
-
-// SetChannelPolicy sets the specified policy in the channel group's config policy map.
-// If the policy already exist in current configuration, its value will be overwritten.
-func (c *ConfigTx) SetChannelPolicy(modPolicy, policyName string, policy Policy) error {
-	return setPolicy(c.updated.ChannelGroup, modPolicy, policyName, policy)
-}
-
-// RemoveChannelPolicy removes an existing channel level policy.
-func (c *ConfigTx) RemoveChannelPolicy(policyName string) error {
-	policies, err := c.ChannelPolicies()
-	if err != nil {
-		return err
-	}
-
-	removePolicy(c.updated.ChannelGroup, policyName, policies)
-	return nil
-}
-
 // getPolicies returns a map of Policy from given map of ConfigPolicy in organization config group.
 func getPolicies(policies map[string]*cb.ConfigPolicy) (map[string]Policy, error) {
 	p := map[string]Policy{}

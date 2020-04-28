@@ -858,7 +858,7 @@ func TestSetChannelPolicy(t *testing.T) {
 		"TestPolicy": {Type: ImplicitMetaPolicyType, Rule: "ANY Readers"},
 	}
 
-	err = c.SetChannelPolicy(AdminsPolicyKey, "TestPolicy", Policy{Type: ImplicitMetaPolicyType, Rule: "ANY Readers"})
+	err = c.UpdatedConfig().Channel().SetPolicy(AdminsPolicyKey, "TestPolicy", Policy{Type: ImplicitMetaPolicyType, Rule: "ANY Readers"})
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	updatedChannelPolicy, err := getPolicies(c.updated.ChannelGroup.Policies)
@@ -896,7 +896,7 @@ func TestRemoveChannelPolicy(t *testing.T) {
 		},
 	}
 
-	err = c.RemoveChannelPolicy(ReadersPolicyKey)
+	err = c.UpdatedConfig().Channel().RemovePolicy(ReadersPolicyKey)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	updatedChannelPolicy, err := getPolicies(c.UpdatedConfig().ChannelGroup.Policies)
@@ -928,7 +928,7 @@ func TestRemoveChannelPolicyFailures(t *testing.T) {
 	}
 	c := New(config)
 
-	err = c.RemoveChannelPolicy(ReadersPolicyKey)
+	err = c.UpdatedConfig().Channel().RemovePolicy(ReadersPolicyKey)
 	gt.Expect(err).To(MatchError("unknown policy type: 15"))
 }
 

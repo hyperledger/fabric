@@ -37,13 +37,13 @@ func TestChannelCapabilities(t *testing.T) {
 	err := setValue(config.ChannelGroup, capabilitiesValue(expectedCapabilities), AdminsPolicyKey)
 	gt.Expect(err).NotTo(HaveOccurred())
 
-	channelCapabilities, err := c.ChannelCapabilities()
+	channelCapabilities, err := c.OriginalConfig().Channel().Capabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(channelCapabilities).To(Equal(expectedCapabilities))
 
 	// Delete the capabilities key and assert retrieval to return nil
 	delete(config.ChannelGroup.Values, CapabilitiesKey)
-	channelCapabilities, err = c.ChannelCapabilities()
+	channelCapabilities, err = c.OriginalConfig().Channel().Capabilities()
 	gt.Expect(err).NotTo(HaveOccurred())
 	gt.Expect(channelCapabilities).To(BeNil())
 }
@@ -142,7 +142,7 @@ func TestSetChannelCapability(t *testing.T) {
 }
 `
 
-	err := c.AddChannelCapability("V3_0")
+	err := c.UpdatedConfig().Channel().AddCapability("V3_0")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	buf := bytes.Buffer{}
@@ -186,7 +186,7 @@ func TestSetChannelCapabilityFailures(t *testing.T) {
 
 			c := New(tt.config)
 
-			err := c.AddChannelCapability(tt.capability)
+			err := c.UpdatedConfig().Channel().AddCapability(tt.capability)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}
@@ -804,7 +804,7 @@ func TestRemoveChannelCapability(t *testing.T) {
 }
 `
 
-	err := c.RemoveChannelCapability("V3_0")
+	err := c.UpdatedConfig().Channel().RemoveCapability("V3_0")
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	buf := bytes.Buffer{}
@@ -862,7 +862,7 @@ func TestRemoveChannelCapabilityFailures(t *testing.T) {
 
 			c := New(tt.config)
 
-			err := c.RemoveChannelCapability(tt.capability)
+			err := c.UpdatedConfig().Channel().RemoveCapability(tt.capability)
 			gt.Expect(err).To(MatchError(tt.expectedErr))
 		})
 	}

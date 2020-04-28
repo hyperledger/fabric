@@ -14,49 +14,6 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 )
 
-// ChannelCapabilities returns a map of enabled channel capabilities
-// from a config transaction.
-func (c *ConfigTx) ChannelCapabilities() ([]string, error) {
-	capabilities, err := getCapabilities(c.original.ChannelGroup)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving channel capabilities: %v", err)
-	}
-
-	return capabilities, nil
-}
-
-// AddChannelCapability adds capability to the provided channel config.
-// If the provided capability already exist in current configuration, this action
-// will be a no-op.
-func (c *ConfigTx) AddChannelCapability(capability string) error {
-	capabilities, err := c.ChannelCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = addCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// RemoveChannelCapability removes capability to the provided channel config.
-func (c *ConfigTx) RemoveChannelCapability(capability string) error {
-	capabilities, err := c.ChannelCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = removeCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // capabilitiesValue returns the config definition for a set of capabilities.
 // It is a value for the /Channel/Orderer, Channel/Application/, and /Channel groups.
 func capabilitiesValue(capabilities []string) *standardConfigValue {

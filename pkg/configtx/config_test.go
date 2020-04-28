@@ -1303,7 +1303,7 @@ func TestChannelConfiguration(t *testing.T) {
 			config := tt.configMod(gt)
 			c := New(config)
 
-			channel, err := c.ChannelConfiguration()
+			channel, err := c.OriginalConfig().Channel().Configuration()
 			gt.Expect(err).NotTo(HaveOccurred())
 			gt.Expect(channel.Consortium).To(Equal(tt.expectedChannel.Consortium))
 			gt.Expect(channel.Application.Organizations).To(ContainElements(tt.expectedChannel.Application.Organizations))
