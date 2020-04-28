@@ -62,7 +62,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 
-	testValidator := &validator{DB: db, Hasher: cryptoProvider}
+	testValidator := &validator{db: db, hasher: cryptoProvider}
 
 	//populate db with initial data
 	batch := privacyenabledstate.NewUpdateBatch()
@@ -102,27 +102,27 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 
 	// Construct internal block
 	transRWSets := getTestPubSimulationRWSet(t, rwsetBuilder1, rwsetBuilder2)
-	var trans []*Transaction
+	var trans []*transaction
 	for i, tranRWSet := range transRWSets {
-		tx := &Transaction{
-			ID:             fmt.Sprintf("txid-%d", i),
-			IndexInBlock:   i,
-			ValidationCode: peer.TxValidationCode_VALID,
-			RWSet:          tranRWSet,
+		tx := &transaction{
+			id:             fmt.Sprintf("txid-%d", i),
+			indexInBlock:   i,
+			validationCode: peer.TxValidationCode_VALID,
+			rwset:          tranRWSet,
 		}
 		trans = append(trans, tx)
 	}
-	block := &Block{Num: 1, Txs: trans}
+	blk := &block{num: 1, txs: trans}
 
-	if testValidator.DB.IsBulkOptimizable() {
+	if testValidator.db.IsBulkOptimizable() {
 
-		commonStorageDB := testValidator.DB.(*privacyenabledstate.CommonStorageDB)
+		commonStorageDB := testValidator.db.(*privacyenabledstate.CommonStorageDB)
 		bulkOptimizable, _ := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
 
 		// Clear cache loaded during ApplyPrivacyAwareUpdates()
-		testValidator.DB.ClearCachedVersions()
+		testValidator.db.ClearCachedVersions()
 
-		testValidator.preLoadCommittedVersionOfRSet(block)
+		testValidator.preLoadCommittedVersionOfRSet(blk)
 
 		// pubKV1 should be found in cache
 		version, keyFound := bulkOptimizable.GetCachedVersion(pubKV1.namespace, pubKV1.key)
@@ -146,30 +146,30 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 		assert.Nil(t, version)
 
 		// hashedKV1 should be found in cache
-		version, keyFound = testValidator.DB.GetCachedKeyHashVersion(hashedKV1.namespace,
+		version, keyFound = testValidator.db.GetCachedKeyHashVersion(hashedKV1.namespace,
 			hashedKV1.collection, hashedKV1.keyHash)
 		assert.True(t, keyFound)
 		assert.Equal(t, hashedKV1.version, version)
 
 		// hashedKV2 should be found in cache
-		version, keyFound = testValidator.DB.GetCachedKeyHashVersion(hashedKV2.namespace,
+		version, keyFound = testValidator.db.GetCachedKeyHashVersion(hashedKV2.namespace,
 			hashedKV2.collection, hashedKV2.keyHash)
 		assert.True(t, keyFound)
 		assert.Equal(t, hashedKV2.version, version)
 
 		// [ns3, col1, hashedPvtKey1] should be found in cache as it was in the readset of transaction 2 though it is
 		// not in the state db
-		version, keyFound = testValidator.DB.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
+		version, keyFound = testValidator.db.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
 		assert.True(t, keyFound)
 		assert.Nil(t, version)
 
 		// [ns4, col, key1] should not be found in cache as it was not loaded
-		version, keyFound = testValidator.DB.GetCachedKeyHashVersion("ns4", "col1", util.ComputeStringHash("key1"))
+		version, keyFound = testValidator.db.GetCachedKeyHashVersion("ns4", "col1", util.ComputeStringHash("key1"))
 		assert.False(t, keyFound)
 		assert.Nil(t, version)
 
 		// Clear cache
-		testValidator.DB.ClearCachedVersions()
+		testValidator.db.ClearCachedVersions()
 
 		// pubKV1 should not be found in cache as cahce got emptied
 		version, keyFound = bulkOptimizable.GetCachedVersion(pubKV1.namespace, pubKV1.key)
@@ -177,7 +177,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 		assert.Nil(t, version)
 
 		// [ns3, col1, key1] should not be found in cache as cahce got emptied
-		version, keyFound = testValidator.DB.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
+		version, keyFound = testValidator.db.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
 		assert.False(t, keyFound)
 		assert.Nil(t, version)
 	}
@@ -200,7 +200,7 @@ func TestValidator(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	testValidator := &validator{DB: db, Hasher: cryptoProvider}
+	testValidator := &validator{db: db, hasher: cryptoProvider}
 
 	//rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
@@ -245,7 +245,7 @@ func TestPhantomValidation(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	testValidator := &validator{DB: db, Hasher: cryptoProvider}
+	testValidator := &validator{db: db, hasher: cryptoProvider}
 
 	//rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
@@ -322,7 +322,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	testValidator := &validator{DB: db, Hasher: cryptoProvider}
+	testValidator := &validator{db: db, hasher: cryptoProvider}
 
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key9", ItrExhausted: true}
@@ -358,24 +358,24 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 }
 
 func checkValidation(t *testing.T, val *validator, transRWSets []*rwsetutil.TxRwSet, expectedInvalidTxIndexes []int) {
-	var trans []*Transaction
+	var trans []*transaction
 	for i, tranRWSet := range transRWSets {
-		tx := &Transaction{
-			ID:             fmt.Sprintf("txid-%d", i),
-			IndexInBlock:   i,
-			ValidationCode: peer.TxValidationCode_VALID,
-			RWSet:          tranRWSet,
+		tx := &transaction{
+			id:             fmt.Sprintf("txid-%d", i),
+			indexInBlock:   i,
+			validationCode: peer.TxValidationCode_VALID,
+			rwset:          tranRWSet,
 		}
 		trans = append(trans, tx)
 	}
-	block := &Block{Num: 1, Txs: trans}
-	_, err := val.ValidateAndPrepareBatch(block, true)
+	blk := &block{num: 1, txs: trans}
+	_, err := val.validateAndPrepareBatch(blk, true)
 	assert.NoError(t, err)
-	t.Logf("block.Txs[0].ValidationCode = %d", block.Txs[0].ValidationCode)
+	t.Logf("block.Txs[0].ValidationCode = %d", blk.txs[0].validationCode)
 	var invalidTxs []int
-	for _, tx := range block.Txs {
-		if tx.ValidationCode != peer.TxValidationCode_VALID {
-			invalidTxs = append(invalidTxs, tx.IndexInBlock)
+	for _, tx := range blk.txs {
+		if tx.validationCode != peer.TxValidationCode_VALID {
+			invalidTxs = append(invalidTxs, tx.indexInBlock)
 		}
 	}
 	assert.Equal(t, len(expectedInvalidTxIndexes), len(invalidTxs))

@@ -66,7 +66,7 @@ func TestTxOpsPreparationValueUpdate(t *testing.T) {
 		version.NewHeight(1, 2))
 
 	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2)) //write the above initial state to db
-	precedingUpdates := NewPubAndHashUpdates()
+	precedingUpdates := newPubAndHashUpdates()
 
 	rwset := testutilBuildRwset( // A sample rwset {upsert key1, key2, key3}
 		t,
@@ -123,7 +123,7 @@ func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
 		version.NewHeight(1, 2))
 
 	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2)) //write the above initial state to db
-	precedingUpdates := NewPubAndHashUpdates()
+	precedingUpdates := newPubAndHashUpdates()
 
 	rwset := testutilBuildRwset( // A sample rwset {update metadta for the three keys}
 		t,
@@ -175,7 +175,7 @@ func TestTxOpsPreparationMetadataDelete(t *testing.T) {
 		version.NewHeight(1, 2))
 
 	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2)) //write the above initial state to db
-	precedingUpdates := NewPubAndHashUpdates()
+	precedingUpdates := newPubAndHashUpdates()
 
 	rwset := testutilBuildRwset( // A sample rwset {delete metadata for the three keys}
 		t,
@@ -233,7 +233,7 @@ func TestTxOpsPreparationMixedUpdates(t *testing.T) {
 
 	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2)) //write the above initial state to db
 
-	precedingUpdates := NewPubAndHashUpdates()
+	precedingUpdates := newPubAndHashUpdates()
 
 	rwset := testutilBuildRwset( // A sample rwset {key1:only value update, key2: value and metadata update, key3: only metadata update, key4: only value update}
 		t,
@@ -321,7 +321,7 @@ func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
 
 	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2)) //write the above initial state to db
 
-	precedingUpdates := NewPubAndHashUpdates()
+	precedingUpdates := newPubAndHashUpdates()
 	rwset := testutilBuildRwset( // A sample rwset {key1:only value update, key2: value and metadata update, key3: only metadata update, key4: only value update}
 		t,
 		map[compositeKey][]byte{
