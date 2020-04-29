@@ -26,7 +26,7 @@ ledgers and which do not. As a result, the application might submit proposals to
 peers whose ledger data is not in sync with the rest of the network, resulting
 in transaction being invalidated upon commit and wasting resources as a consequence.
 
-The **discovery service** improves this process by having the peers compute
+**service discovery** improves this process by having the peers compute
 the needed information dynamically and present it to the SDK in a consumable
 manner.
 
