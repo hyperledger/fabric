@@ -124,44 +124,49 @@ func Main() {
 	var clusterDialer *cluster.PredicateDialer
 	var clusterType, reuseGrpcListener bool
 	var serversToUpdate []*comm.GRPCServer
-	if conf.General.BootstrapMethod == "file" {
+	bootstrapMethod := conf.General.BootstrapMethod
+	if bootstrapMethod == "file" || bootstrapMethod == "none" {
 		bootstrapBlock := extractBootstrapBlock(conf)
-		if err := ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
-			logger.Panicf("Failed validating bootstrap block: %v", err)
+		if bootstrapBlock == nil {
+			bootstrapBlock = extractSystemChannel(lf, cryptoProvider)
 		}
-		sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
-		clusterBootBlock = selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
-
-		typ := consensusType(bootstrapBlock, cryptoProvider)
-		clusterType = isClusterType(clusterBootBlock, cryptoProvider)
-		if clusterType {
-			logger.Infof("Setting up cluster for orderer type %s", typ)
-			clusterClientConfig = initializeClusterClientConfig(conf)
-			clusterDialer = &cluster.PredicateDialer{
-				Config: clusterClientConfig,
+		if bootstrapBlock != nil {
+			if err := ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
+				logger.Panicf("Failed validating bootstrap block: %v", err)
 			}
+			sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
+			clusterBootBlock = selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
 
-			r = createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
-			// Only clusters that are equipped with a recent config block can replicate.
-			if conf.General.BootstrapMethod == "file" {
-				r.replicateIfNeeded(bootstrapBlock)
+			typ := consensusType(bootstrapBlock, cryptoProvider)
+			clusterType = isClusterType(clusterBootBlock, cryptoProvider)
+			if clusterType {
+				logger.Infof("Setting up cluster for orderer type %s", typ)
+				clusterClientConfig = initializeClusterClientConfig(conf)
+				clusterDialer = &cluster.PredicateDialer{
+					Config: clusterClientConfig,
+				}
+
+				r = createReplicator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
+				// Only clusters that are equipped with a recent config block can replicate.
+				if conf.General.BootstrapMethod == "file" {
+					r.replicateIfNeeded(bootstrapBlock)
+				}
+
+				if reuseGrpcListener = reuseListener(conf, typ); !reuseGrpcListener {
+					clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
+				}
+
+				// If we have a separate gRPC server for the cluster,
+				// we need to update its TLS CA certificate pool.
+				serversToUpdate = append(serversToUpdate, clusterGRPCServer)
 			}
-
-			if reuseGrpcListener = reuseListener(conf, typ); !reuseGrpcListener {
-				clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
+			// Are we bootstrapping?
+			if len(lf.ChannelIDs()) == 0 {
+				initializeBootstrapChannel(clusterBootBlock, lf)
+			} else {
+				logger.Info("Not bootstrapping because of existing channels")
 			}
-
-			// If we have a separate gRPC server for the cluster,
-			// we need to update its TLS CA certificate pool.
-			serversToUpdate = append(serversToUpdate, clusterGRPCServer)
 		}
-		// Are we bootstrapping?
-		if len(lf.ChannelIDs()) == 0 {
-			initializeBootstrapChannel(clusterBootBlock, lf)
-		} else {
-			logger.Info("Not bootstrapping because of existing channels")
-		}
-
 	}
 
 	identityBytes, err := signer.Serialize()
@@ -290,6 +295,25 @@ func extractSysChanLastConfig(lf blockledger.Factory, bootstrapBlock *cb.Block) 
 	logger.Infof("System channel: name=%s, height=%d, last config block number=%d",
 		systemChannelName, height, lastConfigBlock.Header.Number)
 	return lastConfigBlock
+}
+
+// extractSystemChannel loops through all channels, and return the last
+// config block for the system channel. Returns nil if no system channel
+// was found.
+func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
+	for _, cID := range lf.ChannelIDs() {
+		channelLedger, err := lf.GetOrCreate(cID)
+		if err != nil {
+			logger.Panicf("Failed getting channel %v's ledger: %v", cID, err)
+		}
+		channelConfigBlock := multichannel.ConfigBlock(channelLedger)
+
+		err = ValidateBootstrapBlock(channelConfigBlock, bccsp)
+		if err == nil {
+			return channelConfigBlock
+		}
+	}
+	return nil
 }
 
 // Select cluster boot block
@@ -703,15 +727,16 @@ func initializeMultichannelRegistrar(
 	bccsp bccsp.BCCSP,
 	callbacks ...channelconfig.BundleActor,
 ) *multichannel.Registrar {
-
 	registrar := multichannel.NewRegistrar(*conf, lf, signer, metricsProvider, bccsp, callbacks...)
 
 	consenters := map[string]consensus.Consenter{}
 
 	var icr etcdraft.InactiveChainRegistry
-	if conf.General.BootstrapMethod == "file" && isClusterType(bootstrapBlock, bccsp) {
-		etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider, bccsp)
-		icr = etcdConsenter.InactiveChainRegistry
+	if conf.General.BootstrapMethod == "file" || conf.General.BootstrapMethod == "none" {
+		if bootstrapBlock != nil && isClusterType(bootstrapBlock, bccsp) {
+			etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider, bccsp)
+			icr = etcdConsenter.InactiveChainRegistry
+		}
 	}
 
 	consenters["solo"] = solo.New()
