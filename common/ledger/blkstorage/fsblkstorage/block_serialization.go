@@ -162,7 +162,7 @@ func extractData(buf *buffer) (*common.BlockData, []*txindexInfo, error) {
 		var txid string
 		txOffset := buf.GetBytesConsumed()
 		if txEnvBytes, err = buf.DecodeRawBytes(false); err != nil {
-			return nil, nil, errors.Wrap(err, "error decoding the transaction enevelope")
+			return nil, nil, errors.Wrap(err, "error decoding the transaction envelope")
 		}
 		if txid, err = protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes); err != nil {
 			logger.Warningf("error while extracting txid from tx envelope bytes during deserialization of block. Ignoring this error as this is caused by a malformed transaction. Error:%s",

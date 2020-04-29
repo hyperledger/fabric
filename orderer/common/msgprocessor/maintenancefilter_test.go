@@ -80,7 +80,7 @@ func TestMaintenanceDisabled(t *testing.T) {
 	})
 }
 
-func TestMaintenanceParseEvelope(t *testing.T) {
+func TestMaintenanceParseEnvelope(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 	}
