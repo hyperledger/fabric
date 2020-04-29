@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	commonledgerutil "github.com/hyperledger/fabric/common/ledger/util"
@@ -21,40 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type noopIndex struct {
-}
-
-func (i *noopIndex) getLastBlockIndexed() (uint64, error) {
-	return 0, nil
-}
-func (i *noopIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
-	return nil
-}
-func (i *noopIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, error) {
-	return nil, nil
-}
-func (i *noopIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error) {
-	return nil, nil
-}
-func (i *noopIndex) getTxLoc(txID string) (*fileLocPointer, error) {
-	return nil, nil
-}
-func (i *noopIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
-	return nil, nil
-}
-
-func (i *noopIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error) {
-	return nil, nil
-}
-
-func (i *noopIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
-	return peer.TxValidationCode(-1), nil
-}
-
-func (i *noopIndex) isAttributeIndexed(attribute blkstorage.IndexableAttr) bool {
-	return true
-}
 
 func TestBlockIndexSync(t *testing.T) {
 	testBlockIndexSync(t, 10, 5, false)
@@ -72,26 +37,26 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 		defer blkfileMgrWrapper.close()
 		blkfileMgr := blkfileMgrWrapper.blockfileMgr
-		origIndex := blkfileMgr.index
+		originalIndexStore := blkfileMgr.index.db
 		// construct blocks for testing
 		blocks := testutil.ConstructTestBlocks(t, numBlocks)
 		// add a few blocks
 		blkfileMgrWrapper.addBlocks(blocks[:numBlocksToIndex])
 
-		// Plug-in a noop index and add remaining blocks
-		blkfileMgr.index = &noopIndex{}
+		// redirect index writes to some random place and add remaining blocks
+		blkfileMgr.index.db = env.provider.leveldbProvider.GetDBHandle("someRandomPlace")
 		blkfileMgrWrapper.addBlocks(blocks[numBlocksToIndex:])
 
-		// Plug-in back the original index
-		blkfileMgr.index = origIndex
-		// The first set of blocks should be present in the original index
+		// Plug-in back the original index store
+		blkfileMgr.index.db = originalIndexStore
+		// Verify that the first set of blocks are indexed in the original index
 		for i := 0; i < numBlocksToIndex; i++ {
 			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
 			assert.NoError(t, err, "block [%d] should have been present in the index", i)
 			assert.Equal(t, blocks[i], block)
 		}
 
-		// The last set of blocks should not be present in the original index
+		// Before, we test for index sync-up, verify that the last set of blocks not indexed in the original index
 		for i := numBlocksToIndex + 1; i <= numBlocks; i++ {
 			_, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
 			assert.Exactly(t, blkstorage.ErrNotFoundInIndex, err)
@@ -107,7 +72,7 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 			blkfileMgr.syncIndex()
 		}
 
-		// Now, last set of blocks should also be present in original index
+		// Now, last set of blocks should also be indexed in the original index
 		for i := numBlocksToIndex; i < numBlocks; i++ {
 			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
 			assert.NoError(t, err, "block [%d] should have been present in the index", i)

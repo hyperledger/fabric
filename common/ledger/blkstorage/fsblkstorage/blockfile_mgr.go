@@ -39,7 +39,7 @@ type blockfileMgr struct {
 	rootDir           string
 	conf              *Conf
 	db                *leveldbhelper.DBHandle
-	index             index
+	index             *blockIndex
 	cpInfo            *checkpointInfo
 	cpInfoCond        *sync.Cond
 	currentFileWriter *blockfileWriter
