@@ -62,7 +62,6 @@ peer node start --peer-chaincodedev
 
 starts a peer node in chaincode development mode. Normally chaincode containers are started
 and maintained by peer. However in chaincode development mode, chaincode is built and started by the user. This mode is useful during chaincode development phase for iterative development.
-See more information on development mode in the [chaincode tutorial](../chaincode4ade.html).
 
 ### peer node reset example
 
