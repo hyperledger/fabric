@@ -32,18 +32,6 @@ const (
 var indexCheckpointKey = []byte(indexCheckpointKeyStr)
 var errIndexEmpty = errors.New("NoBlockIndexed")
 
-type index interface {
-	getLastBlockIndexed() (uint64, error)
-	indexBlock(blockIdxInfo *blockIdxInfo) error
-	getBlockLocByHash(blockHash []byte) (*fileLocPointer, error)
-	getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error)
-	getTxLoc(txID string) (*fileLocPointer, error)
-	getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error)
-	getBlockLocByTxID(txID string) (*fileLocPointer, error)
-	getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error)
-	isAttributeIndexed(attribute blkstorage.IndexableAttr) bool
-}
-
 type blockIdxInfo struct {
 	blockNum  uint64
 	blockHash []byte
