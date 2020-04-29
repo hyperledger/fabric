@@ -1874,6 +1874,73 @@ func TestCreateApplicationMSPCRLFailure(t *testing.T) {
 	}
 }
 
+func TestParseCertificateFromBytesFailure(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	// errCert misses "-----BEGIN CERTIFICATE-----"
+	errCert := `
+MIIDATCCAemgAwIBAgIRAKQkkrFx1T/dgB/Go/xBM5swDQYJKoZIhvcNAQELBQAw
+EjEQMA4GA1UEChMHQWNtZSBDbzAeFw0xNjA4MTcyMDM2MDdaFw0xNzA4MTcyMDM2
+MDdaMBIxEDAOBgNVBAoTB0FjbWUgQ28wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw
+ggEKAoIBAQDAoJtjG7M6InsWwIo+l3qq9u+g2rKFXNu9/mZ24XQ8XhV6PUR+5HQ4
+jUFWC58ExYhottqK5zQtKGkw5NuhjowFUgWB/VlNGAUBHtJcWR/062wYrHBYRxJH
+qVXOpYKbIWwFKoXu3hcpg/CkdOlDWGKoZKBCwQwUBhWE7MDhpVdQ+ZljUJWL+FlK
+yQK5iRsJd5TGJ6VUzLzdT4fmN2DzeK6GLeyMpVpU3sWV90JJbxWQ4YrzkKzYhMmB
+EcpXTG2wm+ujiHU/k2p8zlf8Sm7VBM/scmnMFt0ynNXop4FWvJzEm1G0xD2t+e2I
+5Utr04dOZPCgkm++QJgYhtZvgW7ZZiGTAgMBAAGjUjBQMA4GA1UdDwEB/wQEAwIF
+oDATBgNVHSUEDDAKBggrBgEFBQcDATAMBgNVHRMBAf8EAjAAMBsGA1UdEQQUMBKC
+EHRlc3QuZXhhbXBsZS5jb20wDQYJKoZIhvcNAQELBQADggEBADpqKQxrthH5InC7
+X96UP0OJCu/lLEMkrjoEWYIQaFl7uLPxKH5AmQPH4lYwF7u7gksR7owVG9QU9fs6
+1fK7II9CVgCd/4tZ0zm98FmU4D0lHGtPARrrzoZaqVZcAvRnFTlPX5pFkPhVjjai
+/mkxX9LpD8oK1445DFHxK5UjLMmPIIWd8EOi+v5a+hgGwnJpoW7hntSl8kHMtTmy
+fnnktsblSUV4lRCit0ymC7Ojhe+gzCCwkgs5kDzVVag+tnl/0e2DloIjASwOhpbH
+KVcg7fBd484ht/sS+l0dsB4KDOSpd8JzVDMF8OZqlaydizoJO0yWr9GbCN1+OKq5
+EhLrEqU=
+-----END CERTIFICATE-----
+`
+
+	_, err := parseCertificateFromBytes([]byte(errCert))
+	gt.Expect(err).To(MatchError("failed to decode byte to cert"))
+}
+
+func TestParseCRLFailure(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	// errCRL misses "-----BEGIN X509 CRL-----"
+	errCRL := `
+MIIBYDCBygIBATANBgkqhkiG9w0BAQUFADBDMRMwEQYKCZImiZPyLGQBGRYDY29t
+MRcwFQYKCZImiZPyLGQBGRYHZXhhbXBsZTETMBEGA1UEAxMKRXhhbXBsZSBDQRcN
+MDUwMjA1MTIwMDAwWhcNMDUwMjA2MTIwMDAwWjAiMCACARIXDTA0MTExOTE1NTcw
+M1owDDAKBgNVHRUEAwoBAaAvMC0wHwYDVR0jBBgwFoAUCGivhTPIOUp6+IKTjnBq
+SiCELDIwCgYDVR0UBAMCAQwwDQYJKoZIhvcNAQEFBQADgYEAItwYffcIzsx10NBq
+m60Q9HYjtIFutW2+DvsVFGzIF20f7pAXom9g5L2qjFXejoRvkvifEBInr0rUL4Xi
+NkR9qqNMJTgV/wD9Pn7uPSYS69jnK2LiK8NGgO94gtEVxtCccmrLznrtZ5mLbnCB
+fUNCdMGmr8FVF6IzTNYGmCuk/C4=
+-----END X509 CRL-----
+`
+
+	_, err := parseCRL([][]byte{[]byte(errCRL)})
+	gt.Expect(err).To(MatchError("failed to decode byte to crl"))
+}
+
+func TestParsePrivateKeyFromBytesFailure(t *testing.T) {
+	t.Parallel()
+	gt := NewGomegaWithT(t)
+
+	// errPrivateKey misses "-----BEGIN EC PRIVATE KEY-----"
+	errPrivateKey := `
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgDZUgDvKixfLi8cK8
+/TFLY97TDmQV3J2ygPpvuI8jSdihRANCAARRN3xgbPIR83dr27UuDaf2OJezpEJx
+UC3v06+FD8MUNcRAboqt4akehaNNSh7MMZI+HdnsM4RXN2y8NePUQsPL
+-----END EC PRIVATE KEY-----
+`
+
+	_, err := parsePrivateKeyFromBytes([]byte(errPrivateKey))
+	gt.Expect(err).To(MatchError("failed to decode byte to private key"))
+}
+
 func baseMSP(t *testing.T) MSP {
 	gt := NewGomegaWithT(t)
 

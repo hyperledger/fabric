@@ -947,14 +947,17 @@ func baseMSP(t *testing.T) configtx.MSP {
 	gt := NewGomegaWithT(t)
 
 	certBlock, _ := pem.Decode([]byte(dummyCert))
+	gt.Expect(certBlock).NotTo(BeNil())
 	cert, err := x509.ParseCertificate(certBlock.Bytes)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	privKeyBlock, _ := pem.Decode([]byte(dummyPrivateKey))
+	gt.Expect(privKeyBlock).NotTo(BeNil())
 	privKey, err := x509.ParsePKCS8PrivateKey(privKeyBlock.Bytes)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	crlBlock, _ := pem.Decode([]byte(dummyCRL))
+	gt.Expect(crlBlock).NotTo(BeNil())
 	crl, err := x509.ParseCRL(crlBlock.Bytes)
 	gt.Expect(err).NotTo(HaveOccurred())
 
