@@ -208,7 +208,7 @@ func TestGetMetadataFromBlock(t *testing.T) {
 	})
 }
 
-func TestGetConsenterkMetadataFromBlock(t *testing.T) {
+func TestGetConsenterMetadataFromBlock(t *testing.T) {
 	var cases = []struct {
 		name       string
 		value      []byte
