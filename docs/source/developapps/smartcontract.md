@@ -101,6 +101,9 @@ For more information on the available annotations, consult the available API doc
 * [API documentation for Java smart contracts](https://hyperledger.github.io/fabric-chaincode-java/)
 * [API documentation for Node.js smart contracts](https://hyperledger.github.io/fabric-chaincode-node/)
 
+The Fabric contract class is also available for smart contracts written in Go. While we do not discuss the Go contract API in this topic, it uses similar concepts as the API for Java and JavaScript:
+* [API documentation for Go smart contracts](https://github.com/hyperledger/fabric-contract-api-go)
+
 These classes, annotations, and the `Context` class, were brought into scope earlier:
 
 <details open="true">
