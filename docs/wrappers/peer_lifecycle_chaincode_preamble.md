@@ -5,7 +5,7 @@ Fabric chaincode lifecycle to package a chaincode, install it on your peers,
 approve a chaincode definition for your organization, and then commit the
 definition to a channel. The chaincode is ready to be used after the definition
 has been successfully committed to the channel. For more information, visit
-[Chaincode for Operators](../chaincode4noah.html).
+[Fabric chaincode lifecycle](../chaincode_lifecycle.html).
 
 *Note: These instructions use the Fabric chaincode lifecycle introduced in the
 v2.0 release. If you would like to use the old lifecycle to install and
