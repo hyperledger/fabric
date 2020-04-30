@@ -161,6 +161,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererRunner := network.OrdererGroupRunner()
 			process := ifrit.Invoke(ordererRunner)
 			Eventually(process.Wait, network.EventuallyTimeout).Should(Receive()) // orderer process should exit
+			network.Cleanup()
 			os.RemoveAll(testDir)
 
 			By("Starting orderer with correct genesis block")
