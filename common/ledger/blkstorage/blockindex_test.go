@@ -7,15 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger/util"
 	commonledgerutil "github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -194,7 +198,7 @@ func containsAttr(indexItems []IndexableAttr, attr IndexableAttr) bool {
 	return false
 }
 
-func TestTxIDKeyEncoding(t *testing.T) {
+func TestTxIDKeyEncodingDecoding(t *testing.T) {
 	testcases := []struct {
 		txid   string
 		blkNum uint64
@@ -206,14 +210,156 @@ func TestTxIDKeyEncoding(t *testing.T) {
 		{"txid1", 100, 100},
 	}
 	for i, testcase := range testcases {
+		encodedTxIDKey := constructTxIDKey(testcase.txid, testcase.blkNum, testcase.txNum)
 		t.Run(fmt.Sprintf(" %d", i),
 			func(t *testing.T) {
+				txID, err := retrieveTxID(encodedTxIDKey)
+				require.NoError(t, err)
+				require.Equal(t, testcase.txid, txID)
 				verifyTxIDKeyDecodable(t,
-					constructTxIDKey(testcase.txid, testcase.blkNum, testcase.txNum),
+					encodedTxIDKey,
 					testcase.txid, testcase.blkNum, testcase.txNum,
 				)
 			})
 	}
+}
+
+func TestTxIDKeyDecodingInvalidInputs(t *testing.T) {
+	prefix := []byte{txIDIdxKeyPrefix}
+	txIDLen := util.EncodeOrderPreservingVarUint64(uint64(len("mytxid")))
+	txID := []byte("mytxid")
+
+	// empty byte
+	_, err := retrieveTxID([]byte{})
+	require.EqualError(t, err, "invalid txIDKey - zero-length slice")
+
+	// invalid prefix
+	invalidPrefix := []byte{txIDIdxKeyPrefix + 1}
+	_, err = retrieveTxID(invalidPrefix)
+	require.EqualError(t, err, fmt.Sprintf("invalid txIDKey {%x} - unexpected prefix", invalidPrefix))
+
+	// invalid key - only prefix
+	_, err = retrieveTxID(prefix)
+	require.EqualError(t, err, fmt.Sprintf("invalid txIDKey {%x}: number of consumed bytes from DecodeVarint is invalid, expected 1, but got 0", prefix))
+
+	// invalid key - incomplete length
+	incompleteLength := appendAllAndTrimLastByte(prefix, txIDLen)
+	_, err = retrieveTxID(incompleteLength)
+	require.EqualError(t, err, fmt.Sprintf("invalid txIDKey {%x}: decoded size (1) from DecodeVarint is more than available bytes (0)", incompleteLength))
+
+	// invalid key - incomplete txid
+	incompleteTxID := appendAllAndTrimLastByte(prefix, txIDLen, txID)
+	_, err = retrieveTxID(incompleteTxID)
+	require.EqualError(t, err, fmt.Sprintf("invalid txIDKey {%x}, fewer bytes present", incompleteTxID))
+}
+
+func TestExportUniqueTxIDs(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+	ledgerid := "testledger"
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
+	defer blkfileMgrWrapper.close()
+	blkfileMgr := blkfileMgrWrapper.blockfileMgr
+
+	bg, gb := testutil.NewBlockGenerator(t, "myChannel", false)
+	blkfileMgr.addBlock(gb)
+
+	// add genesis block and test the exported bytes
+	configTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.Data.Data[0])
+	require.NoError(t, err)
+	testWriter := bytes.NewBuffer(nil)
+	err = blkfileMgr.index.exportUniqueTxIDs(testWriter)
+	require.NoError(t, err)
+	verifyExportedTxIDs(t, testWriter.Bytes(), configTxID)
+
+	// add block-1 and test the exported bytes
+	block1 := bg.NextBlockWithTxid(
+		[][]byte{
+			[]byte("tx with id=txid-3"),
+			[]byte("tx with id=txid-1"),
+			[]byte("tx with id=txid-2"),
+			[]byte("another tx with existing id=txid-1"),
+		},
+		[]string{"txid-3", "txid-1", "txid-2", "txid-1"},
+	)
+	err = blkfileMgr.addBlock(block1)
+	require.NoError(t, err)
+	testWriter.Reset()
+	err = blkfileMgr.index.exportUniqueTxIDs(testWriter)
+	require.NoError(t, err)
+	verifyExportedTxIDs(t, testWriter.Bytes(), "txid-1", "txid-2", "txid-3", configTxID) //"txid-1" appears once, Txids appear in radix sort order
+
+	// add block-2 and test the exported bytes
+	block2 := bg.NextBlockWithTxid(
+		[][]byte{
+			[]byte("tx with id=txid-0000000"),
+			[]byte("tx with id=txid-3"),
+			[]byte("tx with id=txid-4"),
+		},
+		[]string{"txid-0000000", "txid-3", "txid-4"},
+	)
+	blkfileMgr.addBlock(block2)
+	require.NoError(t, err)
+	testWriter.Reset()
+	err = blkfileMgr.index.exportUniqueTxIDs(testWriter)
+	require.NoError(t, err)
+	verifyExportedTxIDs(t, testWriter.Bytes(), "txid-1", "txid-2", "txid-3", "txid-4", "txid-0000000", configTxID) // "txid-1", and "txid-3 appears once and Txids appear in radix sort order
+}
+
+func TestExportUniqueTxIDsWhenTxIDsNotIndexed(t *testing.T) {
+	env := newTestEnvSelectiveIndexing(t, NewConf(testPath(), 0), []IndexableAttr{IndexableAttrBlockNum}, &disabled.Provider{})
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testledger")
+	defer blkfileMgrWrapper.close()
+
+	blocks := testutil.ConstructTestBlocks(t, 5)
+	blkfileMgrWrapper.addBlocks(blocks)
+
+	err := blkfileMgrWrapper.blockfileMgr.index.exportUniqueTxIDs(bytes.NewBuffer(nil))
+	require.Equal(t, err, ErrAttrNotIndexed)
+}
+
+func TestExportUniqueTxIDsErrorCases(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+	ledgerid := "testledger"
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
+	defer blkfileMgrWrapper.close()
+
+	blocks := testutil.ConstructTestBlocks(t, 5)
+	blkfileMgrWrapper.addBlocks(blocks)
+	blockfileMgr := blkfileMgrWrapper.blockfileMgr
+	index := blockfileMgr.index
+
+	err := index.exportUniqueTxIDs(&errorThrowingWriter{errors.New("always return error")})
+	require.EqualError(t, err, "always return error")
+
+	index.db.Put([]byte{txIDIdxKeyPrefix}, []byte("some junk value"), true)
+	err = index.exportUniqueTxIDs(bytes.NewBuffer(nil))
+	require.EqualError(t, err, "invalid txIDKey {74}: number of consumed bytes from DecodeVarint is invalid, expected 1, but got 0")
+
+	env.provider.leveldbProvider.Close()
+	err = index.exportUniqueTxIDs(bytes.NewBuffer(nil))
+	require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+}
+
+func verifyExportedTxIDs(t *testing.T, actual []byte, expectedTxIDs ...string) {
+	expectedBytes := []byte{exportFileFormatVersion}
+	buf := make([]byte, binary.MaxVarintLen64)
+	for _, txID := range expectedTxIDs {
+		n := binary.PutUvarint(buf, uint64(len(txID)))
+		expectedBytes = append(expectedBytes, buf[:n]...)
+		expectedBytes = append(expectedBytes, []byte(txID)...)
+	}
+	require.Equal(t, expectedBytes, actual)
+}
+
+func appendAllAndTrimLastByte(input ...[]byte) []byte {
+	r := []byte{}
+	for _, i := range input {
+		r = append(r, i...)
+	}
+	return r[:len(r)-1]
 }
 
 func verifyTxIDKeyDecodable(t *testing.T, txIDKey []byte, expectedTxID string, expectedBlkNum, expectedTxNum uint64) {
@@ -232,4 +378,12 @@ func verifyTxIDKeyDecodable(t *testing.T, txIDKey []byte, expectedTxID string, e
 	require.NoError(t, err)
 	require.Equal(t, expectedTxNum, txNum)
 	require.Len(t, txIDKey, firstIndexTxNum+n)
+}
+
+type errorThrowingWriter struct {
+	err error
+}
+
+func (w *errorThrowingWriter) Write(p []byte) (n int, err error) {
+	return 0, w.err
 }

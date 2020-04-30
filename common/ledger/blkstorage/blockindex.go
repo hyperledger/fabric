@@ -8,7 +8,10 @@ package blkstorage
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
+	"io"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -25,6 +28,7 @@ const (
 	txIDIdxKeyPrefix            = 't'
 	blockNumTranNumIdxKeyPrefix = 'a'
 	indexCheckpointKeyStr       = "indexCheckpointKey"
+	exportFileFormatVersion     = byte(1)
 )
 
 var indexCheckpointKey = []byte(indexCheckpointKeyStr)
@@ -248,6 +252,44 @@ func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint
 	return txFLP, nil
 }
 
+func (index *blockIndex) exportUniqueTxIDs(writer io.Writer) error {
+	if !index.isAttributeIndexed(IndexableAttrTxID) {
+		return ErrAttrNotIndexed
+	}
+	writer.Write([]byte{exportFileFormatVersion})
+	dbItr := index.db.GetIterator([]byte{txIDIdxKeyPrefix}, []byte{txIDIdxKeyPrefix + 1})
+	defer dbItr.Release()
+	if err := dbItr.Error(); err != nil {
+		return errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+	}
+
+	var previousTxID string
+	reusableBuf := make([]byte, binary.MaxVarintLen64)
+	for dbItr.Next() {
+		if err := dbItr.Error(); err != nil {
+			return errors.Wrap(err, "internal leveldb error while iterating for txids")
+		}
+		txID, err := retrieveTxID(dbItr.Key())
+		if err != nil {
+			return err
+		}
+		// duplicate TxID may be present in the index
+		if previousTxID == txID {
+			continue
+		}
+		previousTxID = txID
+
+		n := binary.PutUvarint(reusableBuf, uint64(len(txID)))
+		if _, err := writer.Write(reusableBuf[:n]); err != nil {
+			return err
+		}
+		if _, err := writer.Write([]byte(txID)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func constructBlockNumKey(blockNum uint64) []byte {
 	blkNumBytes := util.EncodeOrderPreservingVarUint64(blockNum)
 	return append([]byte{blockNumIdxKeyPrefix}, blkNumBytes...)
@@ -265,6 +307,28 @@ func constructTxIDKey(txID string, blkNum, txNum uint64) []byte {
 	k = append(k, txID...)
 	k = append(k, util.EncodeOrderPreservingVarUint64(blkNum)...)
 	return append(k, util.EncodeOrderPreservingVarUint64(txNum)...)
+}
+
+// retrieveTxID takes input an encoded txid key of the format `prefix:len(TxID):TxID:BlkNum:TxNum`
+// and returns the TxID from this
+func retrieveTxID(encodedTxIDKey []byte) (string, error) {
+	if len(encodedTxIDKey) == 0 {
+		return "", errors.New("invalid txIDKey - zero-length slice")
+	}
+	if encodedTxIDKey[0] != txIDIdxKeyPrefix {
+		return "", errors.Errorf("invalid txIDKey {%x} - unexpected prefix", encodedTxIDKey)
+	}
+	remainingBytes := encodedTxIDKey[utf8.RuneLen(txIDIdxKeyPrefix):]
+
+	txIDLen, n, err := util.DecodeOrderPreservingVarUint64(remainingBytes)
+	if err != nil {
+		return "", errors.WithMessagef(err, "invalid txIDKey {%x}", encodedTxIDKey)
+	}
+	remainingBytes = remainingBytes[n:]
+	if len(remainingBytes) <= int(txIDLen) {
+		return "", errors.Errorf("invalid txIDKey {%x}, fewer bytes present", encodedTxIDKey)
+	}
+	return string(remainingBytes[:int(txIDLen)]), nil
 }
 
 type rangeScan struct {
@@ -366,7 +430,6 @@ func (flp *fileLocPointer) String() string {
 }
 
 func (blockIdxInfo *blockIdxInfo) String() string {
-
 	var buffer bytes.Buffer
 	for _, txOffset := range blockIdxInfo.txOffsets {
 		buffer.WriteString("txId=")
