@@ -8,8 +8,6 @@ pr: none
 
 variables:
   - group: credentials
-  - name: GOPATH
-    value: $(Agent.BuildDirectory)/go
   - name: GOVER
     value: 1.14.1
 
@@ -32,7 +30,7 @@ stages:
               TARGET: windows-amd64
         steps:
           - checkout: self
-            path: 'go/src/github.com/hyperledger/fabric'
+            path: 'fabric'
             displayName: Checkout Fabric Code
           - script: ./ci/scripts/create_binary_package.sh
             displayName: Compile Binary and Create Tarball
@@ -50,7 +48,7 @@ stages:
         steps:
           - template: install_deps.yml
           - checkout: self
-            path: 'go/src/github.com/hyperledger/fabric'
+            path: 'fabric'
             displayName: Checkout Fabric Code
           - script: ./ci/scripts/publish_docker.sh
             env:

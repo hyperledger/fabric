@@ -3,8 +3,9 @@
 # Copyright IBM Corp. All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
-#
-PATH=build/bin/:${PATH}
+
+fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
+export PATH="${fabric_dir}/build/bin:$PATH"
 
 # Takes in 4 arguments
 # 1. Output doc file

@@ -5,7 +5,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set -eux -o pipefail
+set -eu -o pipefail
+
+gotools_bindir="$(cd "$(dirname "$0")/.." && pwd)/build/gotools/bin"
+export PATH="$gotools_bindir:$PATH"
 
 # Find all proto dirs to be processed
 PROTO_DIRS="$(find "$(pwd)" \

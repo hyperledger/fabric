@@ -13,5 +13,4 @@ steps:
   - task: GoTool@0
     inputs:
       version: $(GOVER)
-      goPath:  $(GOPATH)
-    displayName: Install GoLang
+    displayName: Install Go

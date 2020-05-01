@@ -12,6 +12,7 @@ set -eu
 
 fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$fabric_dir"
+export PATH="$fabric_dir/build/gotools/bin:$PATH"
 
 declare -a test_dirs
 while IFS='' read -r line; do test_dirs+=("$line"); done < <(

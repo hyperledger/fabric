@@ -9,9 +9,9 @@ pr:
 - release-2.*
 
 variables:
-  GOPATH: $(Agent.BuildDirectory)/go
-  PATH: $(Agent.BuildDirectory)/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+  GOBIN: $(Agent.BuildDirectory)/go/bin
   GOVER: 1.14.1
+  PATH: $(Agent.BuildDirectory)/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 
 jobs:
   - job: VerifyBuild
@@ -20,7 +20,7 @@ jobs:
     steps:
       - template: install_deps.yml
       - checkout: self
-        path: 'go/src/github.com/hyperledger/fabric'
+        path: 'fabric'
         displayName: Checkout Fabric Code
       - script: make basic-checks native
         displayName: Run Basic Checks
@@ -36,7 +36,7 @@ jobs:
       image: n42org/tox:3.4.0
     steps:
       - checkout: self
-        path: 'go/src/github.com/hyperledger/fabric'
+        path: 'fabric'
         displayName: Checkout Fabric Code
       - script: tox -edocs
         displayName: Build Documentation
@@ -51,7 +51,7 @@ jobs:
     steps:
       - template: install_deps.yml
       - checkout: self
-        path: 'go/src/github.com/hyperledger/fabric'
+        path: 'fabric'
         displayName: Checkout Fabric Code
       - script: ./ci/scripts/setup_hsm.sh
         displayName: Install SoftHSM
@@ -69,7 +69,7 @@ jobs:
     steps:
       - template: install_deps.yml
       - checkout: self
-        path: 'go/src/github.com/hyperledger/fabric'
+        path: 'fabric'
         displayName: Checkout Fabric Code
       - script: make integration-test
         displayName: Run Integration Tests

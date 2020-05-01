@@ -9,9 +9,9 @@ trigger:
 pr: none
 
 variables:
-  GOPATH: $(Agent.BuildDirectory)/go
-  PATH: $(Agent.BuildDirectory)/go/bin:/usr/local/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+  GOBIN: $(Agent.BuildDirectory)/go/bin
   GOVER: 1.14.1
+  PATH: $(Agent.BuildDirectory)/go/bin:/usr/local/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 
 jobs:
   - job: UnitTests
@@ -20,7 +20,7 @@ jobs:
     steps:
       - template: install_deps.yml
       - checkout: self
-        path: 'go/src/github.com/hyperledger/fabric'
+        path: 'fabric'
         displayName: Checkout Fabric Code
       - script: ./ci/scripts/setup_hsm.sh
         displayName: Install SoftHSM

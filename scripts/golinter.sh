@@ -6,10 +6,13 @@
 
 set -e
 
-# shellcheck source=/dev/null
-source "$(cd "$(dirname "$0")" && pwd)/functions.sh"
-
 fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
+gotools_bindir="$fabric_dir/build/gotools/bin"
+export PATH="$gotools_bindir:$PATH"
+
+# shellcheck source=/dev/null
+source "${fabric_dir}/scripts/functions.sh"
+
 source_dirs=()
 while IFS=$'\n' read -r source_dir; do
     source_dirs+=("$source_dir")

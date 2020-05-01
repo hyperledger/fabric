@@ -11,8 +11,10 @@ filter() {
     done
 }
 
-CHECK=$(git diff --name-only HEAD -- * | filter)
+gotools_bindir="$(cd "$(dirname "$0")/.." && pwd)/build/gotools/bin"
+export PATH="$gotools_bindir:$PATH"
 
+CHECK=$(git diff --name-only HEAD -- * | filter)
 if [[ -z "$CHECK" ]]; then
     CHECK=$(git diff-tree --no-commit-id --name-only -r HEAD^..HEAD | filter)
 fi
