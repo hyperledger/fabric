@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -164,7 +165,79 @@ func TestUpgradeIDStoreFormatDBError(t *testing.T) {
 	provider.Close()
 
 	err := provider.idStore.upgradeFormat()
-	require.EqualError(t, err, "error retrieving leveldb key [[]byte{0x66}]: leveldb: closed")
+	dbPath := LedgerProviderPath(conf.RootFSPath)
+	require.EqualError(t, err, fmt.Sprintf("error while trying to see if the leveldb at path [%s] is empty: leveldb: closed", dbPath))
+}
+
+func TestCheckUpgradeEligibilityV1x(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	dbPath := LedgerProviderPath(conf.RootFSPath)
+	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	idStore := &idStore{db, dbPath}
+	db.Open()
+	defer db.Close()
+
+	// write a tmpKey so that idStore is not be empty
+	err := idStore.db.Put([]byte("tmpKey"), []byte("tmpValue"), true)
+	require.NoError(t, err)
+
+	eligible, err := idStore.checkUpgradeEligibility()
+	require.NoError(t, err)
+	require.True(t, eligible)
+}
+
+func TestCheckUpgradeEligibilityCurrentVersion(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	dbPath := LedgerProviderPath(conf.RootFSPath)
+	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	idStore := &idStore{db, dbPath}
+	db.Open()
+	defer db.Close()
+
+	err := idStore.db.Put(formatKey, []byte(dataformat.Version20), true)
+	require.NoError(t, err)
+
+	eligible, err := idStore.checkUpgradeEligibility()
+	require.NoError(t, err)
+	require.False(t, eligible)
+}
+
+func TestCheckUpgradeEligibilityBadFormat(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	dbPath := LedgerProviderPath(conf.RootFSPath)
+	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	idStore := &idStore{db, dbPath}
+	db.Open()
+	defer db.Close()
+
+	err := idStore.db.Put(formatKey, []byte("x.0"), true)
+	require.NoError(t, err)
+
+	expectedErr := &dataformat.ErrVersionMismatch{
+		ExpectedVersion: dataformat.Version1x,
+		Version:         "x.0",
+		DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", LedgerProviderPath(conf.RootFSPath)),
+	}
+	eligible, err := idStore.checkUpgradeEligibility()
+	require.EqualError(t, err, expectedErr.Error())
+	require.False(t, eligible)
+}
+
+func TestCheckUpgradeEligibilityEmptyDB(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	dbPath := LedgerProviderPath(conf.RootFSPath)
+	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	idStore := &idStore{db, dbPath}
+	db.Open()
+	defer db.Close()
+
+	eligible, err := idStore.checkUpgradeEligibility()
+	require.NoError(t, err)
+	require.False(t, eligible)
 }
 
 func TestLedgerProviderHistoryDBDisabled(t *testing.T) {

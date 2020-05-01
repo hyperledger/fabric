@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
@@ -296,4 +297,32 @@ func escapeUpperCase(dbName string) string {
 	re := regexp.MustCompile(`([A-Z])`)
 	dbName = re.ReplaceAllString(dbName, "$$"+"$1")
 	return strings.ToLower(dbName)
+}
+
+// DropApplicationDBs drops all application databases.
+func DropApplicationDBs(config *ledger.CouchDBConfig) error {
+	logger.Info("Dropping CouchDB application databases ...")
+	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
+	if err != nil {
+		return nil
+	}
+	dbNames, err := couchInstance.retrieveApplicationDBNames()
+	if err != nil {
+		return err
+	}
+	for _, dbName := range dbNames {
+		if _, err = dropDB(couchInstance, dbName); err != nil {
+			logger.Errorf("Error dropping CouchDB database %s", dbName)
+			return err
+		}
+	}
+	return nil
+}
+
+func dropDB(couchInstance *couchInstance, dbName string) (*dbOperationResponse, error) {
+	db := &couchDatabase{
+		couchInstance: couchInstance,
+		dbName:        dbName,
+	}
+	return db.dropDatabase()
 }

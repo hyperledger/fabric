@@ -22,25 +22,11 @@ func StartCouchDB(t *testing.T, binds []string) (addr string, stopCouchDBFunc fu
 	return couchDB.Address(), func() { couchDB.Stop() }
 }
 
-// DeleteApplicationDBs deletes all the databases other than fabric internal database
-func DeleteApplicationDBs(t testing.TB, config *ledger.CouchDBConfig) {
+// IsEmpty returns whether or not the couchdb is empty
+func IsEmpty(t testing.TB, config *ledger.CouchDBConfig) bool {
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 	require.NoError(t, err)
-	dbNames, err := couchInstance.retrieveApplicationDBNames()
+	dbEmpty, err := couchInstance.isEmpty(nil)
 	require.NoError(t, err)
-	for _, dbName := range dbNames {
-		if dbName != fabricInternalDBName {
-			dropDB(t, couchInstance, dbName)
-		}
-	}
-}
-
-func dropDB(t testing.TB, couchInstance *couchInstance, dbName string) {
-	db := &couchDatabase{
-		couchInstance: couchInstance,
-		dbName:        dbName,
-	}
-	response, err := db.dropDatabase()
-	require.NoError(t, err)
-	require.True(t, response.Ok)
+	return dbEmpty
 }

@@ -8,6 +8,7 @@ package statecouchdb
 
 import (
 	"encoding/hex"
+	fmt "fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -183,4 +184,32 @@ func TestConstructedNamespaceDBName(t *testing.T) {
 	constructedDBName = constructNamespaceDBName(chainName, namespace)
 	assert.Equal(t, expectedDBNameLength, len(constructedDBName))
 	assert.Equal(t, expectedDBName, constructedDBName)
+}
+
+func TestDropApplicationDBs(t *testing.T) {
+	config := testConfig()
+	couchDBEnv.startCouchDB(t)
+	config.Address = couchDBEnv.couchAddress
+	defer couchDBEnv.cleanup(config)
+	database := "testdropapplicationdbs"
+
+	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
+	assert.NoError(t, err, "Error when trying to create couch instance")
+
+	numCouchdbs := 10
+	for i := 0; i < numCouchdbs; i++ {
+		db, err := createCouchDatabase(couchInstance, fmt.Sprintf("%s_%d", database, i))
+		assert.NoErrorf(t, err, "Error when trying to create database %s", db.dbName)
+	}
+
+	dbs, err := couchInstance.retrieveApplicationDBNames()
+	assert.NoError(t, err, "Error when retrieving application db names")
+	assert.Equal(t, numCouchdbs, len(dbs), "Expected number of databases are not created")
+
+	err = DropApplicationDBs(config)
+	assert.NoError(t, err, "Error when dropping all application dbs")
+
+	dbs, err = couchInstance.retrieveApplicationDBNames()
+	assert.NoError(t, err, "Error when retrieving application db names")
+	assert.Equal(t, 0, len(dbs), "Databases should be dropped")
 }
