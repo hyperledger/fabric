@@ -146,7 +146,7 @@ func (d *DB) Commit(block *common.Block) error {
 }
 
 // NewQueryExecutor implements method in HistoryDB interface
-func (d *DB) NewQueryExecutor(blockStore blkstorage.BlockStore) (ledger.HistoryQueryExecutor, error) {
+func (d *DB) NewQueryExecutor(blockStore *blkstorage.BlockStore) (ledger.HistoryQueryExecutor, error) {
 	return &QueryExecutor{d.levelDB, blockStore}, nil
 }
 

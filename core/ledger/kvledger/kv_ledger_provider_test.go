@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -489,7 +489,7 @@ func TestLedgerBackup(t *testing.T) {
 	// and rename the originalPath to restorePath
 	assert.NoError(t, os.RemoveAll(StateDBPath(originalPath)))
 	assert.NoError(t, os.RemoveAll(HistoryDBPath(originalPath)))
-	assert.NoError(t, os.RemoveAll(filepath.Join(BlockStorePath(originalPath), fsblkstorage.IndexDir)))
+	assert.NoError(t, os.RemoveAll(filepath.Join(BlockStorePath(originalPath), blkstorage.IndexDir)))
 	assert.NoError(t, os.Rename(originalPath, restorePath))
 
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment

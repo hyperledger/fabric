@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
@@ -51,7 +51,7 @@ func UpgradeDBs(config *ledger.Config) error {
 	if err = dropDBs(rootFSPath); err != nil {
 		return err
 	}
-	if err = fsblkstorage.DeleteBlockStoreIndex(BlockStorePath(rootFSPath)); err != nil {
+	if err = blkstorage.DeleteBlockStoreIndex(BlockStorePath(rootFSPath)); err != nil {
 		return err
 	}
 

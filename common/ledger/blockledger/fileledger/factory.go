@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. 2016 All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-                 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package fileledger
@@ -20,13 +10,18 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics"
 )
 
+type blockStoreProvider interface {
+	Open(ledgerid string) (*blkstorage.BlockStore, error)
+	List() ([]string, error)
+	Close()
+}
+
 type fileLedgerFactory struct {
-	blkstorageProvider blkstorage.BlockStoreProvider
+	blkstorageProvider blockStoreProvider
 	ledgers            map[string]blockledger.ReadWriter
 	mutex              sync.Mutex
 }
@@ -43,7 +38,7 @@ func (flf *fileLedgerFactory) GetOrCreate(chainID string) (blockledger.ReadWrite
 		return ledger, nil
 	}
 	// open fresh
-	blockStore, err := flf.blkstorageProvider.OpenBlockStore(key)
+	blockStore, err := flf.blkstorageProvider.Open(key)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +63,8 @@ func (flf *fileLedgerFactory) Close() {
 
 // New creates a new ledger factory
 func New(directory string, metricsProvider metrics.Provider) (blockledger.Factory, error) {
-	p, err := fsblkstorage.NewProvider(
-		fsblkstorage.NewConf(directory, -1),
+	p, err := blkstorage.NewProvider(
+		blkstorage.NewConf(directory, -1),
 		&blkstorage.IndexConfig{
 			AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum}},
 		metricsProvider,

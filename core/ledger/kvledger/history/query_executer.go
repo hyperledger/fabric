@@ -21,7 +21,7 @@ import (
 // QueryExecutor is a query executor against the LevelDB history DB
 type QueryExecutor struct {
 	levelDB    *leveldbhelper.DBHandle
-	blockStore blkstorage.BlockStore
+	blockStore *blkstorage.BlockStore
 }
 
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
@@ -44,7 +44,7 @@ type historyScanner struct {
 	namespace  string
 	key        string
 	dbItr      iterator.Iterator
-	blockStore blkstorage.BlockStore
+	blockStore *blkstorage.BlockStore
 }
 
 // Next iterates to the next key, in the order of newest to oldest, from history scanner.
