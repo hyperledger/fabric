@@ -19,7 +19,7 @@ import (
 
 // constructValidAndInvalidPvtData computes the valid pvt data and hash mismatch list
 // from a received pvt data list of old blocks.
-func constructValidAndInvalidPvtData(reconciledPvtdata []*ledger.ReconciledPvtdata, blockStore blkstorage.BlockStore) (
+func constructValidAndInvalidPvtData(reconciledPvtdata []*ledger.ReconciledPvtdata, blockStore *blkstorage.BlockStore) (
 	map[uint64][]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
 	// for each block, for each transaction, retrieve the txEnvelope to
@@ -42,7 +42,7 @@ func constructValidAndInvalidPvtData(reconciledPvtdata []*ledger.ReconciledPvtda
 	return validPvtData, invalidPvtData, nil
 }
 
-func findValidAndInvalidPvtdata(reconciledPvtdata *ledger.ReconciledPvtdata, blockStore blkstorage.BlockStore) (
+func findValidAndInvalidPvtdata(reconciledPvtdata *ledger.ReconciledPvtdata, blockStore *blkstorage.BlockStore) (
 	[]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
 	var validPvtData []*ledger.TxPvtData
@@ -70,7 +70,7 @@ func findValidAndInvalidPvtdata(reconciledPvtdata *ledger.ReconciledPvtdata, blo
 	return validPvtData, invalidPvtData, nil
 }
 
-func retrieveRwsetForTx(blkNum uint64, txNum uint64, blockStore blkstorage.BlockStore) (*rwsetutil.TxRwSet, error) {
+func retrieveRwsetForTx(blkNum uint64, txNum uint64, blockStore *blkstorage.BlockStore) (*rwsetutil.TxRwSet, error) {
 	// retrieve the txEnvelope from the block store so that the hash of
 	// the pvtData can be retrieved for comparison
 	txEnvelope, err := blockStore.RetrieveTxByBlockNumTranNum(blkNum, txNum)

@@ -13,7 +13,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -64,7 +63,7 @@ const maxBlockFileSize = 64 * 1024 * 1024
 // Provider implements interface ledger.PeerLedgerProvider
 type Provider struct {
 	idStore              *idStore
-	blkStoreProvider     blkstorage.BlockStoreProvider
+	blkStoreProvider     *blkstorage.BlockStoreProvider
 	pvtdataStoreProvider pvtdatastorage.Provider
 	vdbProvider          privacyenabledstate.DBProvider
 	historydbProvider    *history.DBProvider
@@ -154,8 +153,8 @@ func (p *Provider) initLedgerIDInventory() error {
 
 func (p *Provider) initBlockStoreProvider() error {
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	blkStoreProvider, err := fsblkstorage.NewProvider(
-		fsblkstorage.NewConf(
+	blkStoreProvider, err := blkstorage.NewProvider(
+		blkstorage.NewConf(
 			BlockStorePath(p.initializer.Config.RootFSPath),
 			maxBlockFileSize,
 		),
@@ -307,7 +306,7 @@ func (p *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 
 func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 	// Get the block store for a chain/ledger
-	blockStore, err := p.blkStoreProvider.OpenBlockStore(ledgerID)
+	blockStore, err := p.blkStoreProvider.Open(ledgerID)
 	if err != nil {
 		return nil, err
 	}

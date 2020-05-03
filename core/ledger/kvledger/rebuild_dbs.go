@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/pkg/errors"
 )
@@ -28,5 +28,5 @@ func RebuildDBs(rootFSPath string) error {
 	}
 
 	blockstorePath := BlockStorePath(rootFSPath)
-	return fsblkstorage.DeleteBlockStoreIndex(blockstorePath)
+	return blkstorage.DeleteBlockStoreIndex(blockstorePath)
 }

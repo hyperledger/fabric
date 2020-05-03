@@ -99,7 +99,7 @@ func TestHistory(t *testing.T) {
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
 	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
+	store1, err := provider.Open(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
 	assert.Equal(t, "history", env.testHistoryDB.Name())
@@ -202,7 +202,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
 	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
+	store1, err := provider.Open(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
 
@@ -259,7 +259,7 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
 	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
+	store1, err := provider.Open(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
 
@@ -357,7 +357,7 @@ func TestHistoryWithBlockNumber256(t *testing.T) {
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
 	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
+	store1, err := provider.Open(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
 

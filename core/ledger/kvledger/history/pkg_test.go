@@ -13,7 +13,6 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -96,7 +95,7 @@ func (env *levelDBLockBasedHistoryEnv) cleanup() {
 
 type testBlockStoreEnv struct {
 	t               testing.TB
-	provider        *fsblkstorage.FsBlockstoreProvider
+	provider        *blkstorage.BlockStoreProvider
 	blockStorageDir string
 }
 
@@ -106,7 +105,7 @@ func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
 	if err != nil {
 		panic(err)
 	}
-	conf := fsblkstorage.NewConf(testPath, 0)
+	conf := blkstorage.NewConf(testPath, 0)
 
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockHash,
@@ -116,9 +115,9 @@ func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 
-	p, err := fsblkstorage.NewProvider(conf, indexConfig, &disabled.Provider{})
+	p, err := blkstorage.NewProvider(conf, indexConfig, &disabled.Provider{})
 	assert.NoError(t, err)
-	return &testBlockStoreEnv{t, p.(*fsblkstorage.FsBlockstoreProvider), testPath}
+	return &testBlockStoreEnv{t, p, testPath}
 }
 
 func (env *testBlockStoreEnv) cleanup() {
