@@ -24,12 +24,11 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 	updateBatch.PubUpdates.Put("ns3", "key5", []byte("value5"), version.NewHeight(1, 5))
 	updateBatch.PubUpdates.Delete("ns3", "key6", version.NewHeight(1, 6))
 
-	bb := &UpdatesBytesBuilder{}
-	bytes, err := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	assert.NoError(t, err)
 	assert.True(t, len(bytes) > 0)
 	for i := 0; i < 100; i++ {
-		b, _ := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+		b, _ := deterministicBytesForPubAndHashUpdates(updateBatch)
 		assert.Equal(t, bytes, b)
 	}
 
@@ -85,12 +84,11 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 	updateBatch.HashUpdates.Delete("ns1", "coll2", []byte("key6"), version.NewHeight(1, 6))
 	updateBatch.PubUpdates.Put("ns2", "key7", []byte("value7"), version.NewHeight(1, 7))
 
-	bb := &UpdatesBytesBuilder{}
-	bytes, err := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	assert.NoError(t, err)
 	assert.True(t, len(bytes) > 0)
 	for i := 0; i < 100; i++ {
-		b, _ := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+		b, _ := deterministicBytesForPubAndHashUpdates(updateBatch)
 		assert.Equal(t, bytes, b)
 	}
 
@@ -146,8 +144,7 @@ func TestUpdateBatchBytesBuilderOnlyChannelConfig(t *testing.T) {
 	updateBatch := privacyenabledstate.NewUpdateBatch()
 	updateBatch.PubUpdates.Put("", "resourcesconfigtx.CHANNEL_CONFIG_KEY", []byte("value1"), version.NewHeight(1, 1))
 
-	bb := &UpdatesBytesBuilder{}
-	bytes, err := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	assert.NoError(t, err)
 	expectedProto := &KVWritesBatchProto{}
 	expectedBytes, err := proto.Marshal(expectedProto)
