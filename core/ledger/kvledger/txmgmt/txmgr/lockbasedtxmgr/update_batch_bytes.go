@@ -42,10 +42,10 @@ func deterministicBytesForPubAndHashUpdates(u *privacyenabledstate.UpdateBatch) 
 			// as this proto uses maps and hence is non deterministic
 			continue
 		}
-		kvs := buildForKeys(pubUpdates.GetUpdates(ns))
+		kvs := genKVsFromNsUpdates(pubUpdates.GetUpdates(ns))
 		collsForNs, ok := hashUpdates[ns]
 		if ok {
-			kvs = append(kvs, buildForColls(collsForNs)...)
+			kvs = append(kvs, genKVsFromCollsUpdates(collsForNs)...)
 		}
 		kvs[0].Namespace = ns
 		kvWrites = append(kvWrites, kvs...)
@@ -58,24 +58,28 @@ func deterministicBytesForPubAndHashUpdates(u *privacyenabledstate.UpdateBatch) 
 	return batchBytes, errors.Wrap(err, "error constructing deterministic bytes from update batch")
 }
 
-func buildForColls(colls privacyenabledstate.NsBatch) []*KVWrite {
-	collNames := colls.GetCollectionNames()
+func genKVsFromNsUpdates(nsUpdates map[string]*statedb.VersionedValue) []*KVWrite {
+	return genKVs(nsUpdates)
+}
+
+func genKVsFromCollsUpdates(collsUpdates privacyenabledstate.NsBatch) []*KVWrite {
+	collNames := collsUpdates.GetCollectionNames()
 	sort.Strings(collNames)
 	collsKVWrites := []*KVWrite{}
 	for _, collName := range collNames {
-		collUpdates := colls.GetCollectionUpdates(collName)
-		kvs := buildForKeys(collUpdates)
+		collUpdates := collsUpdates.GetCollectionUpdates(collName)
+		kvs := genKVs(collUpdates)
 		kvs[0].Collection = collName
 		collsKVWrites = append(collsKVWrites, kvs...)
 	}
 	return collsKVWrites
 }
 
-func buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWrite {
-	keys := util.GetSortedKeys(kv)
+func genKVs(updates map[string]*statedb.VersionedValue) []*KVWrite {
+	keys := util.GetSortedKeys(updates)
 	kvWrites := []*KVWrite{}
 	for _, key := range keys {
-		val := kv[key]
+		val := updates[key]
 		kvWrites = append(
 			kvWrites,
 			&KVWrite{
