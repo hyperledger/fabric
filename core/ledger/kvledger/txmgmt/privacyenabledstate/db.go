@@ -88,10 +88,10 @@ type PvtUpdateBatch struct {
 }
 
 // UpdateMap maintains entries of tuple <Namespace, UpdatesForNamespace>
-type UpdateMap map[string]nsBatch
+type UpdateMap map[string]NsBatch
 
 // nsBatch contains updates related to one namespace
-type nsBatch struct {
+type NsBatch struct {
 	*statedb.UpdateBatch
 }
 
@@ -107,12 +107,12 @@ func NewPubUpdateBatch() *PubUpdateBatch {
 
 // NewHashedUpdateBatch creates an empty HashedUpdateBatch
 func NewHashedUpdateBatch() *HashedUpdateBatch {
-	return &HashedUpdateBatch{make(map[string]nsBatch)}
+	return &HashedUpdateBatch{make(map[string]NsBatch)}
 }
 
 // NewPvtUpdateBatch creates an empty PvtUpdateBatch
 func NewPvtUpdateBatch() *PvtUpdateBatch {
-	return &PvtUpdateBatch{make(map[string]nsBatch)}
+	return &PvtUpdateBatch{make(map[string]NsBatch)}
 }
 
 // IsEmpty returns true if there exists any updates
@@ -153,15 +153,15 @@ func (b UpdateMap) Contains(ns, coll, key string) bool {
 	return nsBatch.Exists(coll, key)
 }
 
-func (nsb nsBatch) GetCollectionNames() []string {
+func (nsb NsBatch) GetCollectionNames() []string {
 	return nsb.GetUpdatedNamespaces()
 }
 
-func (nsb nsBatch) getCollectionUpdates(collName string) map[string]*statedb.VersionedValue {
+func (nsb NsBatch) GetCollectionUpdates(collName string) map[string]*statedb.VersionedValue {
 	return nsb.GetUpdates(collName)
 }
 
-func (b UpdateMap) getUpdatedNamespaces() []string {
+func (b UpdateMap) GetUpdatedNamespaces() []string {
 	namespaces := []string{}
 	for ns := range b {
 		namespaces = append(namespaces, ns)
@@ -169,10 +169,10 @@ func (b UpdateMap) getUpdatedNamespaces() []string {
 	return namespaces
 }
 
-func (b UpdateMap) getOrCreateNsBatch(ns string) nsBatch {
+func (b UpdateMap) getOrCreateNsBatch(ns string) NsBatch {
 	batch, ok := b[ns]
 	if !ok {
-		batch = nsBatch{statedb.NewUpdateBatch()}
+		batch = NsBatch{statedb.NewUpdateBatch()}
 		b[ns] = batch
 	}
 	return batch

@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestBatch(t *testing.T) {
-	batch := UpdateMap(make(map[string]nsBatch))
+	batch := UpdateMap(make(map[string]NsBatch))
 	v := version.NewHeight(1, 1)
 	for i := 0; i < 5; i++ {
 		for j := 0; j < 5; j++ {

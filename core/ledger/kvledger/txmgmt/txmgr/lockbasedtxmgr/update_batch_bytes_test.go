@@ -4,18 +4,19 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package privacyenabledstate
+package lockbasedtxmgr
 
 import (
 	"testing"
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
-	updateBatch := NewUpdateBatch()
+	updateBatch := privacyenabledstate.NewUpdateBatch()
 	updateBatch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	updateBatch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
 	updateBatch.PubUpdates.Put("ns2", "key3", []byte("value3"), version.NewHeight(1, 3))
@@ -23,17 +24,16 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 	updateBatch.PubUpdates.Put("ns3", "key5", []byte("value5"), version.NewHeight(1, 5))
 	updateBatch.PubUpdates.Delete("ns3", "key6", version.NewHeight(1, 6))
 
-	bb := &UpdatesBytesBuilder{}
-	bytes, err := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	assert.NoError(t, err)
 	assert.True(t, len(bytes) > 0)
 	for i := 0; i < 100; i++ {
-		b, _ := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+		b, _ := deterministicBytesForPubAndHashUpdates(updateBatch)
 		assert.Equal(t, bytes, b)
 	}
 
-	expectedProto := &KVWritesBatchProto{
-		Kvwrites: []*KVWriteProto{
+	expectedUpdates := &Updates{
+		Kvwrites: []*KVWrite{
 			{
 				Namespace:    "ns1",
 				Key:          []byte("key1"),
@@ -69,13 +69,13 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 			},
 		},
 	}
-	expectedBytes, err := proto.Marshal(expectedProto)
+	expectedBytes, err := proto.Marshal(expectedUpdates)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBytes, bytes)
 }
 
 func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
-	updateBatch := NewUpdateBatch()
+	updateBatch := privacyenabledstate.NewUpdateBatch()
 	updateBatch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	updateBatch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
 	updateBatch.HashUpdates.Put("ns1", "coll1", []byte("key3"), []byte("value3"), version.NewHeight(1, 3))
@@ -84,17 +84,16 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 	updateBatch.HashUpdates.Delete("ns1", "coll2", []byte("key6"), version.NewHeight(1, 6))
 	updateBatch.PubUpdates.Put("ns2", "key7", []byte("value7"), version.NewHeight(1, 7))
 
-	bb := &UpdatesBytesBuilder{}
-	bytes, err := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	assert.NoError(t, err)
 	assert.True(t, len(bytes) > 0)
 	for i := 0; i < 100; i++ {
-		b, _ := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+		b, _ := deterministicBytesForPubAndHashUpdates(updateBatch)
 		assert.Equal(t, bytes, b)
 	}
 
-	expectedProto := &KVWritesBatchProto{
-		Kvwrites: []*KVWriteProto{
+	expectedUpdates := &Updates{
+		Kvwrites: []*KVWrite{
 			{
 				Namespace:    "ns1",
 				Key:          []byte("key1"),
@@ -136,20 +135,19 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 			},
 		},
 	}
-	expectedBytes, err := proto.Marshal(expectedProto)
+	expectedBytes, err := proto.Marshal(expectedUpdates)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBytes, bytes)
 }
 
 func TestUpdateBatchBytesBuilderOnlyChannelConfig(t *testing.T) {
-	updateBatch := NewUpdateBatch()
+	updateBatch := privacyenabledstate.NewUpdateBatch()
 	updateBatch.PubUpdates.Put("", "resourcesconfigtx.CHANNEL_CONFIG_KEY", []byte("value1"), version.NewHeight(1, 1))
 
-	bb := &UpdatesBytesBuilder{}
-	bytes, err := bb.DeterministicBytesForPubAndHashUpdates(updateBatch)
+	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	assert.NoError(t, err)
-	expectedProto := &KVWritesBatchProto{}
-	expectedBytes, err := proto.Marshal(expectedProto)
+	expectedUpdates := &Updates{}
+	expectedBytes, err := proto.Marshal(expectedUpdates)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBytes, bytes)
 }
