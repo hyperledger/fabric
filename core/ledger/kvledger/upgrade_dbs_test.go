@@ -27,10 +27,10 @@ func TestUpgradeWrongFormat(t *testing.T) {
 	require.NoError(t, err)
 
 	err = UpgradeDBs(conf)
-	expectedErr := &dataformat.ErrVersionMismatch{
-		ExpectedVersion: dataformat.Version1x,
-		Version:         "x.0",
-		DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", LedgerProviderPath(conf.RootFSPath)),
+	expectedErr := &dataformat.ErrFormatMismatch{
+		ExpectedFormat: dataformat.PreviousFormat,
+		Format:         "x.0",
+		DBInfo:         fmt.Sprintf("leveldb for channel-IDs at [%s]", LedgerProviderPath(conf.RootFSPath)),
 	}
 	require.EqualError(t, err, expectedErr.Error())
 }

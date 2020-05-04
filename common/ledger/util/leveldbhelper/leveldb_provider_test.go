@@ -94,7 +94,7 @@ func TestFormatCheck(t *testing.T) {
 		dataFormat     string
 		dataExists     bool
 		expectedFormat string
-		expectedErr    *dataformat.ErrVersionMismatch
+		expectedErr    *dataformat.ErrFormatMismatch
 	}{
 		{
 			dataFormat:     "",
@@ -118,7 +118,7 @@ func TestFormatCheck(t *testing.T) {
 			dataFormat:     "",
 			dataExists:     true,
 			expectedFormat: "2.0",
-			expectedErr:    &dataformat.ErrVersionMismatch{Version: "", ExpectedVersion: "2.0"},
+			expectedErr:    &dataformat.ErrFormatMismatch{Format: "", ExpectedFormat: "2.0"},
 		},
 		{
 			dataFormat:     "2.0",
@@ -130,7 +130,7 @@ func TestFormatCheck(t *testing.T) {
 			dataFormat:     "2.0",
 			dataExists:     true,
 			expectedFormat: "3.0",
-			expectedErr:    &dataformat.ErrVersionMismatch{Version: "2.0", ExpectedVersion: "3.0"},
+			expectedErr:    &dataformat.ErrFormatMismatch{Format: "2.0", ExpectedFormat: "3.0"},
 		},
 	}
 
@@ -143,14 +143,14 @@ func TestFormatCheck(t *testing.T) {
 	}
 }
 
-func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *dataformat.ErrVersionMismatch) {
+func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *dataformat.ErrFormatMismatch) {
 	assert.NoError(t, os.RemoveAll(testDBPath))
 	defer func() {
 		assert.NoError(t, os.RemoveAll(testDBPath))
 	}()
 
 	// setup test pre-conditions (create a db with dbformat)
-	p, err := NewProvider(&Conf{DBPath: testDBPath, ExpectedFormatVersion: dataFormat})
+	p, err := NewProvider(&Conf{DBPath: testDBPath, ExpectedFormat: dataFormat})
 	assert.NoError(t, err)
 	f, err := p.GetDataFormat()
 	assert.NoError(t, err)
@@ -161,7 +161,7 @@ func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists
 
 	// close and reopen with new conf
 	p.Close()
-	p, err = NewProvider(&Conf{DBPath: testDBPath, ExpectedFormatVersion: expectedFormat})
+	p, err = NewProvider(&Conf{DBPath: testDBPath, ExpectedFormat: expectedFormat})
 	if expectedErr != nil {
 		expectedErr.DBInfo = fmt.Sprintf("leveldb at [%s]", testDBPath)
 		assert.Equal(t, err, expectedErr)

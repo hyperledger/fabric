@@ -56,7 +56,7 @@ func TestLedgerProvider(t *testing.T) {
 	s := provider.idStore
 	val, err := s.db.Get(formatKey)
 	require.NoError(t, err)
-	require.Equal(t, []byte(dataformat.Version20), val)
+	require.Equal(t, []byte(dataformat.CurrentFormat), val)
 
 	provider.Close()
 
@@ -196,7 +196,7 @@ func TestCheckUpgradeEligibilityCurrentVersion(t *testing.T) {
 	db.Open()
 	defer db.Close()
 
-	err := idStore.db.Put(formatKey, []byte(dataformat.Version20), true)
+	err := idStore.db.Put(formatKey, []byte(dataformat.CurrentFormat), true)
 	require.NoError(t, err)
 
 	eligible, err := idStore.checkUpgradeEligibility()
@@ -216,10 +216,10 @@ func TestCheckUpgradeEligibilityBadFormat(t *testing.T) {
 	err := idStore.db.Put(formatKey, []byte("x.0"), true)
 	require.NoError(t, err)
 
-	expectedErr := &dataformat.ErrVersionMismatch{
-		ExpectedVersion: dataformat.Version1x,
-		Version:         "x.0",
-		DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", LedgerProviderPath(conf.RootFSPath)),
+	expectedErr := &dataformat.ErrFormatMismatch{
+		ExpectedFormat: dataformat.PreviousFormat,
+		Format:         "x.0",
+		DBInfo:         fmt.Sprintf("leveldb for channel-IDs at [%s]", LedgerProviderPath(conf.RootFSPath)),
 	}
 	eligible, err := idStore.checkUpgradeEligibility()
 	require.EqualError(t, err, expectedErr.Error())
