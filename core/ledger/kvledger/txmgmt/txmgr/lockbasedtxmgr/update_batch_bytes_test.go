@@ -32,8 +32,8 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 		assert.Equal(t, bytes, b)
 	}
 
-	expectedProto := &KVWritesBatchProto{
-		Kvwrites: []*KVWriteProto{
+	expectedUpdates := &Updates{
+		Kvwrites: []*KVWrite{
 			{
 				Namespace:    "ns1",
 				Key:          []byte("key1"),
@@ -69,7 +69,7 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 			},
 		},
 	}
-	expectedBytes, err := proto.Marshal(expectedProto)
+	expectedBytes, err := proto.Marshal(expectedUpdates)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBytes, bytes)
 }
@@ -92,8 +92,8 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 		assert.Equal(t, bytes, b)
 	}
 
-	expectedProto := &KVWritesBatchProto{
-		Kvwrites: []*KVWriteProto{
+	expectedUpdates := &Updates{
+		Kvwrites: []*KVWrite{
 			{
 				Namespace:    "ns1",
 				Key:          []byte("key1"),
@@ -135,7 +135,7 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 			},
 		},
 	}
-	expectedBytes, err := proto.Marshal(expectedProto)
+	expectedBytes, err := proto.Marshal(expectedUpdates)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBytes, bytes)
 }
@@ -146,8 +146,8 @@ func TestUpdateBatchBytesBuilderOnlyChannelConfig(t *testing.T) {
 
 	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
 	assert.NoError(t, err)
-	expectedProto := &KVWritesBatchProto{}
-	expectedBytes, err := proto.Marshal(expectedProto)
+	expectedUpdates := &Updates{}
+	expectedBytes, err := proto.Marshal(expectedUpdates)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBytes, bytes)
 }

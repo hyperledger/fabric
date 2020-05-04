@@ -10,7 +10,7 @@ option go_package = "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/t
 
 package lockbasedtxmgr;
 
-message KVWriteProto {
+message KVWrite {
     string namespace = 1;
     string collection = 2;
     bytes key = 3;
@@ -19,6 +19,6 @@ message KVWriteProto {
     bytes version_bytes = 6;
 }
 
-message KVWritesBatchProto {
-    repeated KVWriteProto kvwrites = 1;
+message Updates {
+    repeated KVWrite kvwrites = 1;
 }

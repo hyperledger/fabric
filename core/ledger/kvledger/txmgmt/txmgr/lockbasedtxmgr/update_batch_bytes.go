@@ -19,7 +19,7 @@ import (
 // deterministicBytesForPubAndHashUpdates constructs the bytes for a given UpdateBatch
 // while constructing the bytes, it considers only public writes and hashed writes for
 // the collections. For achieving the determinism, it constructs a slice of proto messages
-// of type 'KVWriteProto'. In the slice, all the writes for a namespace "ns1" appear before
+// of type 'KVWrite'. In the slice, all the writes for a namespace "ns1" appear before
 // the writes for another namespace "ns2" if "ns1" < "ns2" (lexicographically). Within a
 // namespace, all the public writes appear before the collection writes. Like namespaces,
 // the collections writes within a namespace appear in the order of lexicographical order.
@@ -34,7 +34,7 @@ func deterministicBytesForPubAndHashUpdates(u *privacyenabledstate.UpdateBatch) 
 		hashUpdates.GetUpdatedNamespaces(),
 	)
 
-	kvWritesProto := []*KVWriteProto{}
+	kvWrites := []*KVWrite{}
 	for _, ns := range namespaces {
 		if ns == "" {
 			// an empty namespace is used for persisting the channel config
@@ -42,43 +42,43 @@ func deterministicBytesForPubAndHashUpdates(u *privacyenabledstate.UpdateBatch) 
 			// as this proto uses maps and hence is non deterministic
 			continue
 		}
-		p := buildForKeys(pubUpdates.GetUpdates(ns))
+		kvs := buildForKeys(pubUpdates.GetUpdates(ns))
 		collsForNs, ok := hashUpdates[ns]
 		if ok {
-			p = append(p, buildForColls(collsForNs)...)
+			kvs = append(kvs, buildForColls(collsForNs)...)
 		}
-		p[0].Namespace = ns
-		kvWritesProto = append(kvWritesProto, p...)
+		kvs[0].Namespace = ns
+		kvWrites = append(kvWrites, kvs...)
 	}
-	batchProto := &KVWritesBatchProto{
-		Kvwrites: kvWritesProto,
+	updates := &Updates{
+		Kvwrites: kvWrites,
 	}
 
-	batchBytes, err := proto.Marshal(batchProto)
+	batchBytes, err := proto.Marshal(updates)
 	return batchBytes, errors.Wrap(err, "error constructing deterministic bytes from update batch")
 }
 
-func buildForColls(colls privacyenabledstate.NsBatch) []*KVWriteProto {
+func buildForColls(colls privacyenabledstate.NsBatch) []*KVWrite {
 	collNames := colls.GetCollectionNames()
 	sort.Strings(collNames)
-	collsProto := []*KVWriteProto{}
+	collsKVWrites := []*KVWrite{}
 	for _, collName := range collNames {
 		collUpdates := colls.GetCollectionUpdates(collName)
-		p := buildForKeys(collUpdates)
-		p[0].Collection = collName
-		collsProto = append(collsProto, p...)
+		kvs := buildForKeys(collUpdates)
+		kvs[0].Collection = collName
+		collsKVWrites = append(collsKVWrites, kvs...)
 	}
-	return collsProto
+	return collsKVWrites
 }
 
-func buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWriteProto {
+func buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWrite {
 	keys := util.GetSortedKeys(kv)
-	p := []*KVWriteProto{}
+	kvWrites := []*KVWrite{}
 	for _, key := range keys {
 		val := kv[key]
-		p = append(
-			p,
-			&KVWriteProto{
+		kvWrites = append(
+			kvWrites,
+			&KVWrite{
 				Key:          []byte(key),
 				Value:        val.Value,
 				IsDelete:     val.Value == nil,
@@ -86,7 +86,7 @@ func buildForKeys(kv map[string]*statedb.VersionedValue) []*KVWriteProto {
 			},
 		)
 	}
-	return p
+	return kvWrites
 }
 
 func dedupAndSort(a, b []string) []string {
