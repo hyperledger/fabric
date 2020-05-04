@@ -4,18 +4,19 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package privacyenabledstate
+package lockbasedtxmgr
 
 import (
 	"testing"
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
-	updateBatch := NewUpdateBatch()
+	updateBatch := privacyenabledstate.NewUpdateBatch()
 	updateBatch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	updateBatch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
 	updateBatch.PubUpdates.Put("ns2", "key3", []byte("value3"), version.NewHeight(1, 3))
@@ -75,7 +76,7 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 }
 
 func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
-	updateBatch := NewUpdateBatch()
+	updateBatch := privacyenabledstate.NewUpdateBatch()
 	updateBatch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	updateBatch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
 	updateBatch.HashUpdates.Put("ns1", "coll1", []byte("key3"), []byte("value3"), version.NewHeight(1, 3))
@@ -142,7 +143,7 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 }
 
 func TestUpdateBatchBytesBuilderOnlyChannelConfig(t *testing.T) {
-	updateBatch := NewUpdateBatch()
+	updateBatch := privacyenabledstate.NewUpdateBatch()
 	updateBatch.PubUpdates.Put("", "resourcesconfigtx.CHANNEL_CONFIG_KEY", []byte("value1"), version.NewHeight(1, 1))
 
 	bb := &UpdatesBytesBuilder{}

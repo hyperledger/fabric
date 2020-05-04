@@ -165,7 +165,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 		return nil, nil, err
 	}
 
-	updateBytesBuilder := &privacyenabledstate.UpdatesBytesBuilder{}
+	updateBytesBuilder := &UpdatesBytesBuilder{}
 	updateBytes, err := updateBytesBuilder.DeterministicBytesForPubAndHashUpdates(batch)
 	return txstatsInfo, updateBytes, err
 }
