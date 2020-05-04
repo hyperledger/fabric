@@ -52,16 +52,17 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	txMgr, err := lockbasedtxmgr.NewLockBasedTxMgr(
-		testLedgerID,
-		testDB,
-		nil,
-		nil,
-		testBookkeepingEnv.TestProvider,
-		&mock.DeployedChaincodeInfoProvider{},
-		nil,
-		cryptoProvider,
-	)
+	txmgrInitializer := &lockbasedtxmgr.Initializer{
+		LedgerID:            testLedgerID,
+		DB:                  testDB,
+		StateListeners:      nil,
+		BtlPolicy:           nil,
+		BookkeepingProvider: testBookkeepingEnv.TestProvider,
+		CCInfoProvider:      &mock.DeployedChaincodeInfoProvider{},
+		CustomTxProcessors:  nil,
+		Hasher:              cryptoProvider,
+	}
+	txMgr, err := lockbasedtxmgr.NewLockBasedTxMgr(txmgrInitializer)
 
 	assert.NoError(t, err)
 	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath)
