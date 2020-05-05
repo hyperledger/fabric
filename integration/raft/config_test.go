@@ -80,10 +80,6 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 			network.Bootstrap()
-
-			networkRunner := network.NetworkGroupRunner()
-			networkProcess = ifrit.Invoke(networkRunner)
-			Eventually(networkProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 		})
 
 		// This tests:
@@ -93,6 +89,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		// 3. raft orderer processes type A config updates and delivers the
 		//    config blocks to the peers.
 		It("executes an etcdraft network with 2 orgs and three orderer nodes", func() {
+			networkRunner := network.NetworkGroupRunner()
+			networkProcess = ifrit.Invoke(networkRunner)
+			Eventually(networkProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
@@ -135,6 +135,89 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			b3 := nwo.UnmarshalBlockFromFile(blockFile3)
 			Expect(protoutil.BlockHeaderBytes(b1.Header)).To(Equal(protoutil.BlockHeaderBytes(b2.Header)))
 			Expect(protoutil.BlockHeaderBytes(b2.Header)).To(Equal(protoutil.BlockHeaderBytes(b3.Header)))
+		})
+
+		It("Can select leader by adding/removing", func() {
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+			peer = network.Peer("Org1", "peer0")
+
+			By("Launching the orderers")
+			for _, o := range orderers {
+				runner := network.OrdererRunner(o)
+				ordererRunners = append(ordererRunners, runner)
+				process := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			for _, ordererProc := range ordererProcesses {
+				Eventually(ordererProc.Ready()).Should(BeClosed())
+			}
+
+			By("Waiting for them to elect a leader")
+			findLeader(ordererRunners)
+
+			By("0. Creating a channel with o1,o2,o3")
+			network.CreateChannel("testchannel", o3, peer)
+
+			By("assert Block reception")
+			assertBlockReception(map[string]int{
+				"testchannel":   0,
+				"systemchannel": 1,
+			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+
+			fmt.Fprintf(GinkgoWriter, "0. Leader node = %d\n", findLeader(ordererRunners)) // 1,2,3
+
+			extendNetwork(network)
+			certificatesOfOrderers := refreshOrdererPEMs(network)
+
+			By("1. Removing o1")
+			time.Sleep(10 * time.Second)
+			removeConsenter(network, peer, o3, "testchannel", certificatesOfOrderers[0].oldCert) // o2, o3
+
+			By("2. Removing o2")
+			time.Sleep(10 * time.Second)
+			removeConsenter(network, peer, o3, "testchannel", certificatesOfOrderers[1].oldCert) // o3
+
+			By("3. Adding o2") //o2,o3
+			time.Sleep(10 * time.Second)
+			addConsenter(network, peer, o3, "testchannel", etcdraft.Consenter{
+				ServerTlsCert: certificatesOfOrderers[1].oldCert,
+				ClientTlsCert: certificatesOfOrderers[1].oldCert,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderers[1], nwo.ClusterPort)),
+			})
+
+			By("4. Adding o1") //o1,o2,o3
+			time.Sleep(10 * time.Second)
+			addConsenter(network, peer, o3, "testchannel", etcdraft.Consenter{
+				ServerTlsCert: certificatesOfOrderers[0].oldCert,
+				ClientTlsCert: certificatesOfOrderers[0].oldCert,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderers[0], nwo.ClusterPort)),
+			})
+
+			By("5. Removing o2") // o1, o3
+			time.Sleep(10 * time.Second)
+			removeConsenter(network, peer, o3, "testchannel", certificatesOfOrderers[1].oldCert)
+
+			By("6. Removing o1") //o3
+			time.Sleep(10 * time.Second)
+			removeConsenter(network, peer, o3, "testchannel", certificatesOfOrderers[0].oldCert)
+
+			By("7. Adding o2 back") //o2, o3
+			time.Sleep(10 * time.Second)
+			addConsenter(network, peer, o3, "testchannel", etcdraft.Consenter{
+				ServerTlsCert: certificatesOfOrderers[1].oldCert,
+				ClientTlsCert: certificatesOfOrderers[1].oldCert,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderers[1], nwo.ClusterPort)),
+			})
+
+			By("8. Finding leader after add o2")
+			time.Sleep(10 * time.Second)
+			fmt.Fprintf(GinkgoWriter, "Leader node = %d\n", findLeader(ordererRunners)) // 1,2,3
+
 		})
 	})
 
