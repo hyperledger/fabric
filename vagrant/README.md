@@ -25,5 +25,5 @@ The source code from the host machine is mounted inside the Vagrant virtual
 machine so changes to the code can be made on the host or inside the VM.
 
 ```console
-vagrant@ubuntu-xenial:~/go/src/github.com/hyperledger/fabric$ make clean && make
+vagrant@ubuntu-xenial:~/fabric$ make clean && make
 ```
