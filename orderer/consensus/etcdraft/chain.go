@@ -1050,12 +1050,16 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 
 		select {
 		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
-			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
-				"taking snapshot at block [%d] (index: %d), last snapshotted block number is %d, current nodes: %+v",
-				c.accDataSize, c.sizeLimit, b.Header.Number, c.appliedIndex, c.lastSnapBlockNum, c.confState.Nodes)
+			var headerNumber uint64
+			if b.Header != nil {
+				headerNumber = b.Header.Number
+				c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
+					"taking snapshot at block [%d] (index: %d), last snapshotted block number is %d, current nodes: %+v",
+					c.accDataSize, c.sizeLimit, b.Header.Number, c.appliedIndex, c.lastSnapBlockNum, c.confState.Nodes)
+			}
 			c.accDataSize = 0
-			c.lastSnapBlockNum = b.Header.Number
-			c.Metrics.SnapshotBlockNumber.Set(float64(b.Header.Number))
+			c.lastSnapBlockNum = headerNumber
+			c.Metrics.SnapshotBlockNumber.Set(float64(headerNumber))
 		default:
 			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapshotIntervalSize is too small")
 		}

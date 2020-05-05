@@ -237,6 +237,82 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		})
 	})
 
+	When("an orderer node is add/remove repeatedly", func() {
+		BeforeEach(func() {
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+		})
+
+		AfterEach(func() {
+			for _, ordererInstance := range ordererProcesses {
+				ordererInstance.Signal(syscall.SIGTERM)
+				Eventually(ordererInstance.Wait(), network.EventuallyTimeout, time.Second).Should(Receive())
+			}
+		})
+
+		It("Can select leader by adding/removing", func() {
+			o1, o2, o3 := network.Orderer("orderer1"), network.Orderer("orderer2"), network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{o1, o2, o3}
+
+			By("Launching the orderers")
+			for _, o := range orderers {
+				runner := network.OrdererRunner(o)
+				ordererRunners = append(ordererRunners, runner)
+				process := ifrit.Invoke(runner)
+				ordererProcesses = append(ordererProcesses, process)
+			}
+
+			for _, ordererProc := range ordererProcesses {
+				Eventually(ordererProc.Ready()).Should(BeClosed())
+			}
+
+			peer := network.Peer("Org1", "peer0")
+
+			By("Waiting for them to elect a leader")
+			findLeader(ordererRunners)
+
+			By("0. Creating a channel with o1,o2,o3")
+			network.CreateChannel("testchannel", o3, peer)
+
+			By("wait for stablize after creating a channel")
+			assertBlockReception(map[string]int{
+				"testchannel":   0,
+				"systemchannel": 1,
+			}, orderers, peer, network)
+
+			fmt.Fprintf(GinkgoWriter, "0. Leader node = %d\n", findLeader(ordererRunners))
+
+			extendNetwork(network)
+			certificatesOfOrderers := refreshOrdererPEMs(network)
+
+			By("1. Removing o1") // o2, o3
+			removeConsenter(network, peer, o3, "testchannel", certificatesOfOrderers[0].oldCert)
+			assertBlockReception(map[string]int{
+				"testchannel": 1,
+			}, []*nwo.Orderer{o2, o3}, peer, network)
+
+			By("2. Removing o2") // o3
+			removeConsenter(network, peer, o3, "testchannel", certificatesOfOrderers[1].oldCert)
+			assertBlockReception(map[string]int{
+				"testchannel": 2,
+			}, []*nwo.Orderer{o3}, peer, network)
+
+			By("3. Adding o2") //o2,o3
+			addConsenter(network, peer, o3, "testchannel", etcdraft.Consenter{
+				ServerTlsCert: certificatesOfOrderers[1].oldCert,
+				ClientTlsCert: certificatesOfOrderers[1].oldCert,
+				Host:          "127.0.0.1",
+				Port:          uint32(network.OrdererPort(orderers[1], nwo.ClusterPort)),
+			})
+			assertBlockReception(map[string]int{
+				"testchannel": 3,
+			}, []*nwo.Orderer{o2, o3}, peer, network)
+		})
+	})
+
 	When("a single node cluster is expanded", func() {
 		It("is still possible to onboard the new cluster member and then another one with a different TLS root CA", func() {
 			launch := func(o *nwo.Orderer) {
