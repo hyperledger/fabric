@@ -7,8 +7,8 @@
 
 Vagrant.require_version ">= 1.7.4"
 Vagrant.configure('2') do |config|
-  config.vm.box = "bento/ubuntu-18.04"
-  config.vm.synced_folder "..", "/home/vagrant/go/src/github.com/hyperledger/fabric"
+  config.vm.box = "bento/ubuntu-20.04"
+  config.vm.synced_folder "..", "/home/vagrant/fabric"
   config.ssh.forward_agent = true
 
   config.vm.provider :virtualbox do |vb|
@@ -18,7 +18,6 @@ Vagrant.configure('2') do |config|
   end
 
   config.vm.provision :shell, name: "essentials", path: "essentials.sh"
-  config.vm.provision :shell, name: "srcdir", path: "srcdir.sh"
   config.vm.provision :shell, name: "docker", path: "docker.sh"
   config.vm.provision :shell, name: "golang", path: "golang.sh"
   config.vm.provision :shell, name: "limits", path: "limits.sh"
@@ -28,4 +27,3 @@ end
 
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-
