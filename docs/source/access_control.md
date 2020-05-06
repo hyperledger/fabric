@@ -275,7 +275,7 @@ In the default configuration, `Writers` is a signature policy whose `rule` is
 listed above, has a rule of `SampleOrg.admin`, or "any admin of my organization".
 To satisfy these ACLs, the member would have to be both an administrator and a
 member of `SampleOrg`. By default, all administrators are members (though not all
-administrators are members), but it is possible to overwrite these policies to
+members are administrators), but it is possible to overwrite these policies to
 whatever you want them to be. As a result, it's important to keep track of these
 policies to ensure that the ACLs for peer proposals are not impossible to satisfy
 (unless that is the intention).
