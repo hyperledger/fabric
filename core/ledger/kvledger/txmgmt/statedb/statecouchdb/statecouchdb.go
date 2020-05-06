@@ -78,18 +78,18 @@ func checkExpectedDataformatVersion(couchInstance *couchInstance) error {
 		return err
 	}
 	if isEmpty {
-		logger.Debugf("couch instance is empty. Setting dataformat version to %s", dataformat.Version20)
-		return writeDataFormatVersion(couchInstance, dataformat.Version20)
+		logger.Debugf("couch instance is empty. Setting dataformat version to %s", dataformat.CurrentFormat)
+		return writeDataFormatVersion(couchInstance, dataformat.CurrentFormat)
 	}
 	dataformatVersion, err := readDataformatVersion(couchInstance)
 	if err != nil {
 		return err
 	}
-	if dataformatVersion != dataformat.Version20 {
-		return &dataformat.ErrVersionMismatch{
-			DBInfo:          "CouchDB for state database",
-			ExpectedVersion: dataformat.Version20,
-			Version:         dataformatVersion,
+	if dataformatVersion != dataformat.CurrentFormat {
+		return &dataformat.ErrFormatMismatch{
+			DBInfo:         "CouchDB for state database",
+			ExpectedFormat: dataformat.CurrentFormat,
+			Format:         dataformatVersion,
 		}
 	}
 	return nil

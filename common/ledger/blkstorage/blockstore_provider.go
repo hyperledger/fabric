@@ -65,8 +65,8 @@ type BlockStoreProvider struct {
 // NewProvider constructs a filesystem based block store provider
 func NewProvider(conf *Conf, indexConfig *IndexConfig, metricsProvider metrics.Provider) (*BlockStoreProvider, error) {
 	dbConf := &leveldbhelper.Conf{
-		DBPath:                conf.getIndexDir(),
-		ExpectedFormatVersion: dataFormatVersion(indexConfig),
+		DBPath:         conf.getIndexDir(),
+		ExpectedFormat: dataFormatVersion(indexConfig),
 	}
 
 	p, err := leveldbhelper.NewProvider(dbConf)
@@ -117,7 +117,7 @@ func (p *BlockStoreProvider) Close() {
 func dataFormatVersion(indexConfig *IndexConfig) string {
 	// in version 2.0 we merged three indexable into one `IndexableAttrTxID`
 	if indexConfig.Contains(IndexableAttrTxID) {
-		return dataformat.Version20
+		return dataformat.CurrentFormat
 	}
-	return dataformat.Version1x
+	return dataformat.PreviousFormat
 }

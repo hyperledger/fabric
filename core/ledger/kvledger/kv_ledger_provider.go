@@ -88,8 +88,8 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	defer func() {
 		if e != nil {
 			p.Close()
-			if errFormatMismatch, ok := e.(*dataformat.ErrVersionMismatch); ok {
-				if errFormatMismatch.Version == dataformat.Version1x && errFormatMismatch.ExpectedVersion == dataformat.Version20 {
+			if errFormatMismatch, ok := e.(*dataformat.ErrFormatMismatch); ok {
+				if errFormatMismatch.Format == dataformat.PreviousFormat && errFormatMismatch.ExpectedFormat == dataformat.CurrentFormat {
 					logger.Errorf("Please execute the 'peer node upgrade-dbs' command to upgrade the database format: %s", errFormatMismatch)
 				} else {
 					logger.Errorf("Please check the Fabric version matches the ledger data format: %s", errFormatMismatch)
@@ -470,7 +470,7 @@ func openIDStore(path string) (s *idStore, e error) {
 		return nil, err
 	}
 
-	expectedFormatBytes := []byte(dataformat.Version20)
+	expectedFormatBytes := []byte(dataformat.CurrentFormat)
 	if emptyDB {
 		// add format key to a new db
 		err := db.Put(formatKey, expectedFormatBytes, true)
@@ -481,26 +481,26 @@ func openIDStore(path string) (s *idStore, e error) {
 	}
 
 	// verify the format is current for an existing db
-	formatVersion, err := db.Get(formatKey)
+	format, err := db.Get(formatKey)
 	if err != nil {
 		return nil, err
 	}
-	if !bytes.Equal(formatVersion, expectedFormatBytes) {
+	if !bytes.Equal(format, expectedFormatBytes) {
 		logger.Errorf("The db at path [%s] contains data in unexpected format. expected data format = [%s] (%#v), data format = [%s] (%#v).",
-			path, dataformat.Version20, expectedFormatBytes, formatVersion, formatVersion)
-		return nil, &dataformat.ErrVersionMismatch{
-			ExpectedVersion: dataformat.Version20,
-			Version:         string(formatVersion),
-			DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", path),
+			path, dataformat.CurrentFormat, expectedFormatBytes, format, format)
+		return nil, &dataformat.ErrFormatMismatch{
+			ExpectedFormat: dataformat.CurrentFormat,
+			Format:         string(format),
+			DBInfo:         fmt.Sprintf("leveldb for channel-IDs at [%s]", path),
 		}
 	}
 	return &idStore{db, path}, nil
 }
 
 // checkUpgradeEligibility checks if the format is eligible to upgrade.
-// It returns true if the format is eligible (e.g., the -1 version before current one)
-// to upgrade to the current version. It returns false if either the format is the
-// current version or the db is empty. Otherwise, an ErrVersionMismatch is returned.
+// It returns true if the format is eligible to upgrade to the current format.
+// It returns false if either the format is the current format or the db is empty.
+// Otherwise, an ErrFormatMismatch is returned.
 func (s *idStore) checkUpgradeEligibility() (bool, error) {
 	emptydb, err := s.db.IsEmpty()
 	if err != nil {
@@ -514,15 +514,15 @@ func (s *idStore) checkUpgradeEligibility() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if bytes.Equal(format, []byte(dataformat.Version20)) {
+	if bytes.Equal(format, []byte(dataformat.CurrentFormat)) {
 		logger.Info("Ledger data format is current, nothing to upgrade.")
 		return false, nil
 	}
-	if !bytes.Equal(format, dataformat.Version1xBytes) {
-		err = &dataformat.ErrVersionMismatch{
-			ExpectedVersion: "",
-			Version:         string(format),
-			DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", s.dbPath),
+	if !bytes.Equal(format, []byte(dataformat.PreviousFormat)) {
+		err = &dataformat.ErrFormatMismatch{
+			ExpectedFormat: dataformat.PreviousFormat,
+			Format:         string(format),
+			DBInfo:         fmt.Sprintf("leveldb for channel-IDs at [%s]", s.dbPath),
 		}
 		return false, err
 	}
@@ -538,10 +538,10 @@ func (s *idStore) upgradeFormat() error {
 		return nil
 	}
 
-	logger.Infof("Upgrading ledgerProvider database to the new format %s", dataformat.Version20)
+	logger.Infof("Upgrading ledgerProvider database to the new format %s", dataformat.CurrentFormat)
 
 	batch := &leveldb.Batch{}
-	batch.Put(formatKey, []byte(dataformat.Version20))
+	batch.Put(formatKey, []byte(dataformat.CurrentFormat))
 
 	// add new metadata key for each ledger (channel)
 	metadata, err := protoutil.Marshal(&msgs.LedgerMetadata{Status: msgs.Status_ACTIVE})

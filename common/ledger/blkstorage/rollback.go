@@ -61,8 +61,8 @@ func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *IndexConfig, 
 	var err error
 	r.dbProvider, err = leveldbhelper.NewProvider(
 		&leveldbhelper.Conf{
-			DBPath:                r.indexDir,
-			ExpectedFormatVersion: dataFormatVersion(indexConfig),
+			DBPath:         r.indexDir,
+			ExpectedFormat: dataFormatVersion(indexConfig),
 		},
 	)
 	if err != nil {

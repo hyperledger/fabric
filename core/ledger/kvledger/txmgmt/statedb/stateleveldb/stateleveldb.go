@@ -37,8 +37,8 @@ func NewVersionedDBProvider(dbPath string) (*VersionedDBProvider, error) {
 	logger.Debugf("constructing VersionedDBProvider dbPath=%s", dbPath)
 	dbProvider, err := leveldbhelper.NewProvider(
 		&leveldbhelper.Conf{
-			DBPath:                dbPath,
-			ExpectedFormatVersion: dataformat.Version20,
+			DBPath:         dbPath,
+			ExpectedFormat: dataformat.CurrentFormat,
 		})
 	if err != nil {
 		return nil, err
