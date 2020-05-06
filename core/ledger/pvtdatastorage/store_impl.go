@@ -23,12 +23,25 @@ import (
 
 var logger = flogging.MustGetLogger("pvtdatastorage")
 
-type provider struct {
+// Provider provides handle to specific 'Store' that in turn manages
+// private write sets for a ledger
+type Provider struct {
 	dbProvider *leveldbhelper.Provider
 	pvtData    *PrivateDataConfig
 }
 
-type store struct {
+// PrivateDataConfig encapsulates the configuration for private data storage on the ledger
+type PrivateDataConfig struct {
+	// PrivateDataConfig is used to configure a private data storage provider
+	*ledger.PrivateDataConfig
+	// StorePath is the filesystem path for private data storage.
+	// It is internally computed by the ledger component,
+	// so it is not in ledger.PrivateDataConfig and not exposed to other components.
+	StorePath string
+}
+
+// Store manages the permanent storage of private write sets for a ledger
+type Store struct {
 	db              *leveldbhelper.DBHandle
 	ledgerid        string
 	btlPolicy       pvtdatapolicy.BTLPolicy
@@ -107,21 +120,21 @@ type entriesForPvtDataOfOldBlocks struct {
 //////////////////////////////////////////
 
 // NewProvider instantiates a StoreProvider
-func NewProvider(conf *PrivateDataConfig) (Provider, error) {
+func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
 	dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.StorePath})
 	if err != nil {
 		return nil, err
 	}
-	return &provider{
+	return &Provider{
 		dbProvider: dbProvider,
 		pvtData:    conf,
 	}, nil
 }
 
 // OpenStore returns a handle to a store
-func (p *provider) OpenStore(ledgerid string) (Store, error) {
+func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
-	s := &store{
+	s := &Store{
 		db:              dbHandle,
 		ledgerid:        ledgerid,
 		batchesInterval: p.pvtData.BatchesInterval,
@@ -142,14 +155,14 @@ func (p *provider) OpenStore(ledgerid string) (Store, error) {
 }
 
 // Close closes the store
-func (p *provider) Close() {
+func (p *Provider) Close() {
 	p.dbProvider.Close()
 }
 
 //////// store functions  ////////////////
 //////////////////////////////////////////
 
-func (s *store) initState() error {
+func (s *Store) initState() error {
 	var err error
 	var blist lastUpdatedOldBlocksList
 	if s.isEmpty, s.lastCommittedBlock, err = s.getLastCommittedBlockNum(); err != nil {
@@ -186,12 +199,16 @@ func (s *store) initState() error {
 	return nil
 }
 
-func (s *store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
+// Init initializes the store. This function is expected to be invoked before using the store
+func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 	s.btlPolicy = btlPolicy
 }
 
-// Prepare implements the function in the interface `Store`
-func (s *store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error {
+// Commit commits the pvt data as well as both the eligible and ineligible
+// missing private data --- `eligible` denotes that the missing private data belongs to a collection
+// for which this peer is a member; `ineligible` denotes that the missing private data belong to a
+// collection for which this peer is not a member.
+func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error {
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
 		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, received block number=%d", expectedBlockNum, blockNum)}
@@ -253,7 +270,7 @@ func (s *store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtD
 //     from the above created data entries
 // (3) create a db update batch from the update entries
 // (4) commit the update batch to the pvtStore
-func (s *store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
+func (s *Store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
 	if s.isLastUpdatedOldBlocksSet {
 		return &ErrIllegalCall{`The lastUpdatedOldBlocksList is set. It means that the
 		stateDB may not be in sync with the pvtStore`}
@@ -295,7 +312,7 @@ func constructDataEntriesFromBlocksPvtData(blocksPvtData map[uint64][]*ledger.Tx
 	return dataEntries
 }
 
-func (s *store) constructUpdateEntriesFromDataEntries(dataEntries []*dataEntry) (*entriesForPvtDataOfOldBlocks, error) {
+func (s *Store) constructUpdateEntriesFromDataEntries(dataEntries []*dataEntry) (*entriesForPvtDataOfOldBlocks, error) {
 	updateEntries := &entriesForPvtDataOfOldBlocks{
 		dataEntries:        make(map[dataKey]*rwset.CollectionPvtReadWriteSet),
 		expiryEntries:      make(map[expiryKey]*ExpiryData),
@@ -346,7 +363,7 @@ func (s *store) constructUpdateEntriesFromDataEntries(dataEntries []*dataEntry) 
 	return updateEntries, nil
 }
 
-func (s *store) constructExpiryKeyFromDataEntry(dataEntry *dataEntry) (expiryKey, error) {
+func (s *Store) constructExpiryKeyFromDataEntry(dataEntry *dataEntry) (expiryKey, error) {
 	// get the expiryBlk number to construct the expiryKey
 	nsCollBlk := dataEntry.key.nsCollBlk
 	expiringBlk, err := s.btlPolicy.GetExpiringBlock(nsCollBlk.ns, nsCollBlk.coll, nsCollBlk.blkNum)
@@ -356,7 +373,7 @@ func (s *store) constructExpiryKeyFromDataEntry(dataEntry *dataEntry) (expiryKey
 	return expiryKey{expiringBlk, nsCollBlk.blkNum}, nil
 }
 
-func (s *store) getExpiryDataFromUpdateEntriesOrStore(updateEntries *entriesForPvtDataOfOldBlocks, expiryKey expiryKey) (*ExpiryData, error) {
+func (s *Store) getExpiryDataFromUpdateEntriesOrStore(updateEntries *entriesForPvtDataOfOldBlocks, expiryKey expiryKey) (*ExpiryData, error) {
 	expiryData, ok := updateEntries.expiryEntries[expiryKey]
 	if !ok {
 		var err error
@@ -368,7 +385,7 @@ func (s *store) getExpiryDataFromUpdateEntriesOrStore(updateEntries *entriesForP
 	return expiryData, nil
 }
 
-func (s *store) getMissingDataFromUpdateEntriesOrStore(updateEntries *entriesForPvtDataOfOldBlocks, nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
+func (s *Store) getMissingDataFromUpdateEntriesOrStore(updateEntries *entriesForPvtDataOfOldBlocks, nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
 	missingData, ok := updateEntries.missingDataEntries[nsCollBlk]
 	if !ok {
 		var err error
@@ -479,7 +496,7 @@ func addUpdatedMissingDataEntriesToUpdateBatch(batch *leveldbhelper.UpdateBatch,
 	return nil
 }
 
-func (s *store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
+func (s *Store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
 	// commit the batch to the store
 	if err := s.db.WriteBatch(batch, true); err != nil {
 		return err
@@ -493,8 +510,8 @@ func (s *store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
 // care of synching stateDB with pvtdataStore without calling GetLastUpdatedOldBlocksPvtData().
 // Hence, it can be safely removed. Suppose if we decide not to rebuild stateDB in v2.0,
 // we can remove this function in v2.1.
-// GetLastUpdatedOldBlocksPvtData implements the function in the interface `Store`
-func (s *store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error) {
+// GetLastUpdatedOldBlocksPvtData returns the pvtdata of blocks listed in `lastUpdatedOldBlocksList`
+func (s *Store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData, error) {
 	if !s.isLastUpdatedOldBlocksSet {
 		return nil, nil
 	}
@@ -513,7 +530,7 @@ func (s *store) GetLastUpdatedOldBlocksPvtData() (map[uint64][]*ledger.TxPvtData
 	return blksPvtData, nil
 }
 
-func (s *store) getLastUpdatedOldBlocksList() ([]uint64, error) {
+func (s *Store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 	var v []byte
 	var err error
 	if v, err = s.db.Get(lastUpdatedOldBlocksKey); err != nil {
@@ -544,8 +561,8 @@ func (s *store) getLastUpdatedOldBlocksList() ([]uint64, error) {
 // the rolling upgrade from v142 to v2.0, we retain the ResetLastUpdatedOldBlocksList()
 // in v2.0.
 
-// ResetLastUpdatedOldBlocksList implements the function in the interface `Store`
-func (s *store) ResetLastUpdatedOldBlocksList() error {
+// ResetLastUpdatedOldBlocksList removes the `lastUpdatedOldBlocksList` entry from the store
+func (s *Store) ResetLastUpdatedOldBlocksList() error {
 	batch := leveldbhelper.NewUpdateBatch()
 	batch.Delete(lastUpdatedOldBlocksKey)
 	if err := s.db.WriteBatch(batch, true); err != nil {
@@ -555,10 +572,10 @@ func (s *store) ResetLastUpdatedOldBlocksList() error {
 	return nil
 }
 
-// GetPvtDataByBlockNum implements the function in the interface `Store`.
-// If the store is empty or the last committed block number is smaller then the
-// requested block number, an 'ErrOutOfRange' is thrown
-func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
+// GetPvtDataByBlockNum returns only the pvt data  corresponding to the given block number
+// The pvt data is filtered by the list of 'ns/collections' supplied in the filter
+// A nil filter does not filter any results
+func (s *Store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	logger.Debugf("Get private data for block [%d], filter=%#v", blockNum, filter)
 	if s.isEmpty {
 		return nil, &ErrOutOfRange{"The store is empty"}
@@ -622,8 +639,9 @@ func (s *store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFil
 	return blockPvtdata, nil
 }
 
-// GetMissingPvtDataInfoForMostRecentBlocks implements the function in the interface `Store`
-func (s *store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
+// GetMissingPvtDataInfoForMostRecentBlocks returns the missing private data information for the
+// most recent `maxBlock` blocks which miss at least a private data of a eligible collection.
+func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.MissingPvtDataInfo, error) {
 	// we assume that this function would be called by the gossip only after processing the
 	// last retrieved missing pvtdata info and committing the same.
 	if maxBlock < 1 {
@@ -699,8 +717,11 @@ func (s *store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 	return missingPvtDataInfo, nil
 }
 
-// ProcessCollsEligibilityEnabled implements the function in the interface `Store`
-func (s *store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error {
+// ProcessCollsEligibilityEnabled notifies the store when the peer becomes eligible to receive data for an
+// existing collection. Parameter 'committingBlk' refers to the block number that contains the corresponding
+// collection upgrade transaction and the parameter 'nsCollMap' contains the collections for which the peer
+// is now eligible to receive pvt data
+func (s *Store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap map[string][]string) error {
 	key := encodeCollElgKey(committingBlk)
 	m := newCollElgInfo(nsCollMap)
 	val, err := encodeCollElgVal(m)
@@ -716,7 +737,7 @@ func (s *store) ProcessCollsEligibilityEnabled(committingBlk uint64, nsCollMap m
 	return nil
 }
 
-func (s *store) performPurgeIfScheduled(latestCommittedBlk uint64) {
+func (s *Store) performPurgeIfScheduled(latestCommittedBlk uint64) {
 	if latestCommittedBlk%s.purgeInterval != 0 {
 		return
 	}
@@ -732,7 +753,7 @@ func (s *store) performPurgeIfScheduled(latestCommittedBlk uint64) {
 	}()
 }
 
-func (s *store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
+func (s *Store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 	batch := leveldbhelper.NewUpdateBatch()
 	expiryEntries, err := s.retrieveExpiryEntries(minBlkNum, maxBlkNum)
 	if err != nil || len(expiryEntries) == 0 {
@@ -755,7 +776,7 @@ func (s *store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 	return nil
 }
 
-func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEntry, error) {
+func (s *Store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEntry, error) {
 	startKey, endKey := getExpiryKeysForRangeScan(minBlkNum, maxBlkNum)
 	logger.Debugf("retrieveExpiryEntries(): startKey=%#v, endKey=%#v", startKey, endKey)
 	itr := s.db.GetIterator(startKey, endKey)
@@ -778,7 +799,7 @@ func (s *store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 	return expiryEntries, nil
 }
 
-func (s *store) launchCollElgProc() {
+func (s *Store) launchCollElgProc() {
 	go func() {
 		s.processCollElgEvents() // process collection eligibility events when store is opened - in case there is an unprocessed events from previous run
 		for {
@@ -790,7 +811,7 @@ func (s *store) launchCollElgProc() {
 	}()
 }
 
-func (s *store) processCollElgEvents() {
+func (s *Store) processCollElgEvents() {
 	logger.Debugf("Starting to process collection eligibility events")
 	s.purgerLock.Lock()
 	defer s.purgerLock.Unlock()
@@ -850,20 +871,15 @@ func (s *store) processCollElgEvents() {
 	logger.Debugf("Converted [%d] ineligible missing data entries to eligible", totalEntriesConverted)
 }
 
-// LastCommittedBlockHeight implements the function in the interface `Store`
-func (s *store) LastCommittedBlockHeight() (uint64, error) {
+// LastCommittedBlockHeight returns the height of the last committed block
+func (s *Store) LastCommittedBlockHeight() (uint64, error) {
 	if s.isEmpty {
 		return 0, nil
 	}
 	return atomic.LoadUint64(&s.lastCommittedBlock) + 1, nil
 }
 
-// Shutdown implements the function in the interface `Store`
-func (s *store) Shutdown() {
-	// do nothing
-}
-
-func (s *store) nextBlockNum() uint64 {
+func (s *Store) nextBlockNum() uint64 {
 	if s.isEmpty {
 		return 0
 	}
@@ -873,7 +889,7 @@ func (s *store) nextBlockNum() uint64 {
 // TODO: FAB-16298 -- the concept of pendingBatch is no longer valid
 // for pvtdataStore. We can remove it v2.1. We retain the concept in
 // v2.0 to allow rolling upgrade from v142 to v2.0
-func (s *store) hasPendingCommit() (bool, error) {
+func (s *Store) hasPendingCommit() (bool, error) {
 	var v []byte
 	var err error
 	if v, err = s.db.Get(pendingCommitKey); err != nil {
@@ -882,7 +898,7 @@ func (s *store) hasPendingCommit() (bool, error) {
 	return v != nil, nil
 }
 
-func (s *store) getLastCommittedBlockNum() (bool, uint64, error) {
+func (s *Store) getLastCommittedBlockNum() (bool, uint64, error) {
 	var v []byte
 	var err error
 	if v, err = s.db.Get(lastCommittedBlkkey); v == nil || err != nil {
@@ -919,7 +935,7 @@ func (sync *collElgProcSync) waitForDone() {
 	<-sync.procComplete
 }
 
-func (s *store) getBitmapOfMissingDataKey(missingDataKey *missingDataKey) (*bitset.BitSet, error) {
+func (s *Store) getBitmapOfMissingDataKey(missingDataKey *missingDataKey) (*bitset.BitSet, error) {
 	var v []byte
 	var err error
 	if v, err = s.db.Get(encodeMissingDataKey(missingDataKey)); err != nil {
@@ -931,7 +947,7 @@ func (s *store) getBitmapOfMissingDataKey(missingDataKey *missingDataKey) (*bits
 	return decodeMissingDataValue(v)
 }
 
-func (s *store) getExpiryDataOfExpiryKey(expiryKey *expiryKey) (*ExpiryData, error) {
+func (s *Store) getExpiryDataOfExpiryKey(expiryKey *expiryKey) (*ExpiryData, error) {
 	var v []byte
 	var err error
 	if v, err = s.db.Get(encodeExpiryKey(expiryKey)); err != nil {
@@ -941,4 +957,31 @@ func (s *store) getExpiryDataOfExpiryKey(expiryKey *expiryKey) (*ExpiryData, err
 		return nil, nil
 	}
 	return decodeExpiryValue(v)
+}
+
+// ErrIllegalCall is to be thrown by a store impl if the store does not expect a call to Prepare/Commit/Rollback/InitLastCommittedBlock
+type ErrIllegalCall struct {
+	msg string
+}
+
+func (err *ErrIllegalCall) Error() string {
+	return err.msg
+}
+
+// ErrIllegalArgs is to be thrown by a store impl if the args passed are not allowed
+type ErrIllegalArgs struct {
+	msg string
+}
+
+func (err *ErrIllegalArgs) Error() string {
+	return err.msg
+}
+
+// ErrOutOfRange is to be thrown for the request for the data that is not yet committed
+type ErrOutOfRange struct {
+	msg string
+}
+
+func (err *ErrOutOfRange) Error() string {
+	return err.msg
 }

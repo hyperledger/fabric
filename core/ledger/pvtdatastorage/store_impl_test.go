@@ -32,7 +32,7 @@ func TestEmptyStore(t *testing.T) {
 	env := NewTestStoreEnv(t, "TestEmptyStore", nil, pvtDataConf())
 	defer env.Cleanup()
 	assert := assert.New(t)
-	store := env.TestStore.(*store)
+	store := env.TestStore
 	assert.True(store.isEmpty)
 }
 
@@ -605,9 +605,9 @@ func TestPendingBatch(t *testing.T) {
 	existingLastBlockNum := uint64(25)
 	batch := leveldbhelper.NewUpdateBatch()
 	batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(existingLastBlockNum))
-	assert.NoError(s.(*store).db.WriteBatch(batch, true))
-	s.(*store).lastCommittedBlock = existingLastBlockNum
-	s.(*store).isEmpty = false
+	assert.NoError(s.db.WriteBatch(batch, true))
+	s.lastCommittedBlock = existingLastBlockNum
+	s.isEmpty = false
 	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, s)
 
 	// assume that a block has been prepared in v142 and the peer was
@@ -627,11 +627,11 @@ func TestPendingBatch(t *testing.T) {
 	batch.Put(pendingCommitKey, emptyValue)
 
 	// write to the store
-	assert.NoError(s.(*store).db.WriteBatch(batch, true))
+	assert.NoError(s.db.WriteBatch(batch, true))
 	testLastCommittedBlockHeight(existingLastBlockNum+1, assert, s)
 
 	// as the block commit is pending, we cannot read the pvtData
-	hasPendingBatch, err := s.(*store).hasPendingCommit()
+	hasPendingBatch, err := s.hasPendingCommit()
 	assert.NoError(err)
 	assert.Equal(true, hasPendingBatch)
 	pvtData, err := s.GetPvtDataByBlockNum(26, nil)
@@ -644,7 +644,7 @@ func TestPendingBatch(t *testing.T) {
 
 	s = env.TestStore
 	testLastCommittedBlockHeight(existingLastBlockNum+2, assert, s)
-	hasPendingBatch, err = s.(*store).hasPendingCommit()
+	hasPendingBatch, err = s.hasPendingCommit()
 	assert.NoError(err)
 	assert.Equal(false, hasPendingBatch)
 	testDataKeyExists(t, s, dataKey)
@@ -757,34 +757,34 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 }
 
-func testLastCommittedBlockHeight(expectedBlockHt uint64, assert *assert.Assertions, store Store) {
+func testLastCommittedBlockHeight(expectedBlockHt uint64, assert *assert.Assertions, store *Store) {
 	blkHt, err := store.LastCommittedBlockHeight()
 	assert.NoError(err)
 	assert.Equal(expectedBlockHt, blkHt)
 }
 
-func testDataKeyExists(t *testing.T, s Store, dataKey *dataKey) bool {
+func testDataKeyExists(t *testing.T, s *Store, dataKey *dataKey) bool {
 	dataKeyBytes := encodeDataKey(dataKey)
-	val, err := s.(*store).db.Get(dataKeyBytes)
+	val, err := s.db.Get(dataKeyBytes)
 	assert.NoError(t, err)
 	return len(val) != 0
 }
 
-func testMissingDataKeyExists(t *testing.T, s Store, missingDataKey *missingDataKey) bool {
+func testMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey) bool {
 	dataKeyBytes := encodeMissingDataKey(missingDataKey)
-	val, err := s.(*store).db.Get(dataKeyBytes)
+	val, err := s.db.Get(dataKeyBytes)
 	assert.NoError(t, err)
 	return len(val) != 0
 }
 
-func testWaitForPurgerRoutineToFinish(s Store) {
+func testWaitForPurgerRoutineToFinish(s *Store) {
 	time.Sleep(1 * time.Second)
-	s.(*store).purgerLock.Lock()
-	s.(*store).purgerLock.Unlock()
+	s.purgerLock.Lock()
+	s.purgerLock.Unlock()
 }
 
-func testutilWaitForCollElgProcToFinish(s Store) {
-	s.(*store).collElgProcSync.waitForDone()
+func testutilWaitForCollElgProcToFinish(s *Store) {
+	s.collElgProcSync.waitForDone()
 }
 
 func produceSamplePvtdata(t *testing.T, txNum uint64, nsColls []string) *ledger.TxPvtData {

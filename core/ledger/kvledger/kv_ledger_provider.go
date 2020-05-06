@@ -64,7 +64,7 @@ const maxBlockFileSize = 64 * 1024 * 1024
 type Provider struct {
 	idStore              *idStore
 	blkStoreProvider     *blkstorage.BlockStoreProvider
-	pvtdataStoreProvider pvtdatastorage.Provider
+	pvtdataStoreProvider *pvtdatastorage.Provider
 	vdbProvider          privacyenabledstate.DBProvider
 	historydbProvider    *history.DBProvider
 	configHistoryMgr     confighistory.Mgr

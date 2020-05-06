@@ -41,7 +41,7 @@ var logger = flogging.MustGetLogger("kvledger")
 type kvLedger struct {
 	ledgerID               string
 	blockStore             *blkstorage.BlockStore
-	pvtdataStore           pvtdatastorage.Store
+	pvtdataStore           *pvtdatastorage.Store
 	txtmgmt                txmgr.TxMgr
 	historyDB              *history.DB
 	configHistoryRetriever ledger.ConfigHistoryRetriever
@@ -57,7 +57,7 @@ type kvLedger struct {
 func newKVLedger(
 	ledgerID string,
 	blockStore *blkstorage.BlockStore,
-	pvtdataStore pvtdatastorage.Store,
+	pvtdataStore *pvtdatastorage.Store,
 	versionedDB privacyenabledstate.DB,
 	historyDB *history.DB,
 	configHistoryMgr confighistory.Mgr,
