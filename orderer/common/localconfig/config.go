@@ -30,13 +30,14 @@ var logger = flogging.MustGetLogger("localconfig")
 // modify the default mapping, see the "Unmarshal"
 // section of https://github.com/spf13/viper for more info.
 type TopLevel struct {
-	General    General
-	FileLedger FileLedger
-	Kafka      Kafka
-	Debug      Debug
-	Consensus  interface{}
-	Operations Operations
-	Metrics    Metrics
+	General              General
+	FileLedger           FileLedger
+	Kafka                Kafka
+	Debug                Debug
+	Consensus            interface{}
+	Operations           Operations
+	Metrics              Metrics
+	ChannelParticipation ChannelParticipation
 }
 
 // General contains config which should be common among all orderer types.
@@ -185,13 +186,13 @@ type Debug struct {
 	DeliverTraceDir   string
 }
 
-// Operations configures the operations endpont for the orderer.
+// Operations configures the operations endpoint for the orderer.
 type Operations struct {
 	ListenAddress string
 	TLS           TLS
 }
 
-// Operations confiures the metrics provider for the orderer.
+// Metrics configures the metrics provider for the orderer.
 type Metrics struct {
 	Provider string
 	Statsd   Statsd
@@ -203,6 +204,13 @@ type Statsd struct {
 	Address       string
 	WriteInterval time.Duration
 	Prefix        string
+}
+
+// ChannelParticipation provides the channel participation API configuration for the orderer.
+// Channel participation uses the same ListenAddress and TLS settings of the Operations service.
+type ChannelParticipation struct {
+	Enabled       bool
+	RemoveStorage bool // Whether to permanently remove storage on channel removal.
 }
 
 // Defaults carries the default orderer configuration values.
@@ -279,6 +287,10 @@ var Defaults = TopLevel{
 	},
 	Metrics: Metrics{
 		Provider: "disabled",
+	},
+	ChannelParticipation: ChannelParticipation{
+		Enabled:       false,
+		RemoveStorage: false,
 	},
 }
 

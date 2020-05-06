@@ -32,6 +32,8 @@ import (
 )
 
 var _ = Describe("System", func() {
+	const AdditionalTestApiPath = "/some-additional-test-api"
+
 	var (
 		fakeLogger *fakes.Logger
 		tempDir    string
@@ -104,6 +106,41 @@ var _ = Describe("System", func() {
 		Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
 	})
 
+	It("does not host a secure endpoint for additional APIs by default", func() {
+		err := system.Start()
+		Expect(err).NotTo(HaveOccurred())
+
+		addApiURL := fmt.Sprintf("https://%s%s", system.Addr(), AdditionalTestApiPath)
+		resp, err := client.Get(addApiURL)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusNotFound)) // service is not handled by default, i.e. in peer
+		resp.Body.Close()
+
+		resp, err = unauthClient.Get(addApiURL)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+	})
+
+	It("hosts a secure endpoint for additional APIs when added", func() {
+		system.RegisterHandler(AdditionalTestApiPath, &fakes.Handler{Code: http.StatusOK, Text: "secure"})
+		err := system.Start()
+		Expect(err).NotTo(HaveOccurred())
+
+		addApiURL := fmt.Sprintf("https://%s%s", system.Addr(), AdditionalTestApiPath)
+		resp, err := client.Get(addApiURL)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		Expect(resp.Header.Get("Content-Type")).To(Equal("text/plain; charset=utf-8"))
+		buff, err := ioutil.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(buff)).To(Equal("secure"))
+		resp.Body.Close()
+
+		resp, err = unauthClient.Get(addApiURL)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+	})
+
 	Context("when TLS is disabled", func() {
 		BeforeEach(func() {
 			options.TLS.Enabled = false
@@ -117,6 +154,33 @@ var _ = Describe("System", func() {
 			resp, err := client.Get(fmt.Sprintf("http://%s/logspec", system.Addr()))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			resp.Body.Close()
+		})
+
+		It("does not host an insecure endpoint for additional APIs by default", func() {
+			err := system.Start()
+			Expect(err).NotTo(HaveOccurred())
+
+			addApiURL := fmt.Sprintf("http://%s%s", system.Addr(), AdditionalTestApiPath)
+			resp, err := client.Get(addApiURL)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusNotFound)) // service is not handled by default, i.e. in peer
+			resp.Body.Close()
+		})
+
+		It("hosts an insecure endpoint for additional APIs when added", func() {
+			system.RegisterHandler(AdditionalTestApiPath, &fakes.Handler{Code: http.StatusOK, Text: "insecure"})
+			err := system.Start()
+			Expect(err).NotTo(HaveOccurred())
+
+			addApiURL := fmt.Sprintf("http://%s%s", system.Addr(), AdditionalTestApiPath)
+			resp, err := client.Get(addApiURL)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			Expect(resp.Header.Get("Content-Type")).To(Equal("text/plain; charset=utf-8"))
+			buff, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(buff)).To(Equal("insecure"))
 			resp.Body.Close()
 		})
 	})

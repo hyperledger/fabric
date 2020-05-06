@@ -260,3 +260,14 @@ func TestConnectionTimeout(t *testing.T) {
 		assert.Equal(t, cfg.General.ConnectionTimeout, 10*time.Second)
 	})
 }
+
+func TestChannelParticipationDefaults(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	cc := &configCache{}
+	cfg, err := cc.load()
+	assert.NoError(t, err)
+	assert.Equal(t, cfg.ChannelParticipation.Enabled, Defaults.ChannelParticipation.Enabled)
+	assert.Equal(t, cfg.ChannelParticipation.RemoveStorage, Defaults.ChannelParticipation.RemoveStorage)
+}
