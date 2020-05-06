@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -94,10 +95,6 @@ func Main() {
 	}
 
 	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
-	if err = opsSystem.Start(); err != nil {
-		logger.Panicf("failed to initialize operations subsystem: %s", err)
-	}
-	defer opsSystem.Stop()
 	metricsProvider := opsSystem.Provider
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
 	flogging.SetObserver(logObserver)
@@ -215,6 +212,15 @@ func Main() {
 		cryptoProvider,
 		tlsCallback,
 	)
+
+	opsSystem.RegisterHandler(
+		channelparticipation.URLBaseV1,
+		channelparticipation.NewHTTPHandler(conf.ChannelParticipation, manager),
+	)
+	if err = opsSystem.Start(); err != nil {
+		logger.Panicf("failed to start operations subsystem: %s", err)
+	}
+	defer opsSystem.Stop()
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(

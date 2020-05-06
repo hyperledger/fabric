@@ -211,6 +211,19 @@ func (s *System) initializeVersionInfoHandler() {
 	s.mux.Handle("/version", s.handlerChain(versionInfo, false))
 }
 
+// RegisterHandler registers into the ServeMux a handler chain that borrows its security properties from the
+// operations.System. This method is thread safe because ServeMux.Handle() is thread safe, and options are immutable.
+// This method can be called either before or after System.Start(). If the pattern exists the method panics.
+func (s *System) RegisterHandler(pattern string, handler http.Handler) {
+	s.mux.Handle(
+		pattern,
+		s.handlerChain(
+			handler,
+			s.options.TLS.Enabled,
+		),
+	)
+}
+
 func (s *System) startMetricsTickers() error {
 	m := s.options.Metrics
 	if s.statsd != nil {

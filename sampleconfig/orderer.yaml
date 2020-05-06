@@ -340,6 +340,25 @@ Metrics:
       # The prefix is prepended to all emitted statsd metrics
       Prefix:
 
+
+################################################################################
+#
+#   Channel participation API Configuration
+#
+#   - This provides the channel participation API configuration for the orderer.
+#   - Channel participation uses the same ListenAddress and TLS settings of the
+#     Operations service.
+#
+################################################################################
+ChannelParticipation:
+    # Channel participation API is enabled.
+    Enabled: false
+
+    # Permanently remove storage resources when a channel is removed.
+    # Defines the default behavior of channel removal.
+    RemoveStorage: false
+
+
 ################################################################################
 #
 #   Consensus Configuration
