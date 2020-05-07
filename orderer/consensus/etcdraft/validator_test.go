@@ -7,11 +7,17 @@
 package etcdraft_test
 
 import (
+	"io/ioutil"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	raftprotos "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
+	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -19,12 +25,55 @@ import (
 var _ = Describe("Metadata Validation", func() {
 	var (
 		chain *etcdraft.Chain
+		tlsCA tlsgen.CA
 	)
 
 	BeforeEach(func() {
-		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		chain = &etcdraft.Chain{CryptoProvider: cryptoProvider}
-		chain.ActiveNodes.Store([]uint64{})
+		var (
+			channelID         string
+			consenterMetadata *raftprotos.ConfigMetadata
+			consenters        map[uint64]*raftprotos.Consenter
+			support           *consensusmocks.FakeConsenterSupport
+			dataDir           string
+			err               error
+			cryptoProvider    bccsp.BCCSP
+		)
+
+		channelID = "test-channel"
+
+		cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		Expect(err).NotTo(HaveOccurred())
+
+		dataDir, err = ioutil.TempDir("", "wal-")
+		Expect(err).NotTo(HaveOccurred())
+
+		tlsCA, err = tlsgen.NewCA()
+		Expect(err).NotTo(HaveOccurred())
+
+		support = &consensusmocks.FakeConsenterSupport{}
+		support.ChannelIDReturns(channelID)
+		consenterMetadata = createMetadata(1, tlsCA)
+		mockOrdererConfig := mockOrdererWithTLSRootCert(time.Hour, marshalOrPanic(consenterMetadata), tlsCA)
+		support.SharedConfigReturns(mockOrdererConfig)
+
+		meta := &raftprotos.BlockMetadata{
+			ConsenterIds:    make([]uint64, len(consenterMetadata.Consenters)),
+			NextConsenterId: 1,
+		}
+
+		for i := range meta.ConsenterIds {
+			meta.ConsenterIds[i] = meta.NextConsenterId
+			meta.NextConsenterId++
+		}
+
+		consenters = map[uint64]*raftprotos.Consenter{}
+		for i, c := range consenterMetadata.Consenters {
+			consenters[meta.ConsenterIds[i]] = c
+		}
+
+		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support)
+		c.init()
+		chain = c.Chain
 	})
 
 	When("determining parameter well-formedness", func() {
@@ -55,12 +104,10 @@ var _ = Describe("Metadata Validation", func() {
 			oldBytes    []byte
 			oldMetadata *etcdraftproto.ConfigMetadata
 			newMetadata *etcdraftproto.ConfigMetadata
-			tlsCA       tlsgen.CA
 			newChannel  bool
 		)
 
 		BeforeEach(func() {
-			tlsCA, _ = tlsgen.NewCA()
 			oldMetadata = &etcdraftproto.ConfigMetadata{
 				Options: &etcdraftproto.Options{
 					TickInterval:         "500ms",
@@ -103,7 +150,6 @@ var _ = Describe("Metadata Validation", func() {
 		})
 
 		Context("new channel creation", func() {
-
 			BeforeEach(func() {
 				newChannel = true
 			})
@@ -130,11 +176,9 @@ var _ = Describe("Metadata Validation", func() {
 				newBytes, _ := proto.Marshal(newMetadata)
 				Expect(chain.ValidateConsensusMetadata(oldBytes, newBytes, newChannel)).NotTo(Succeed())
 			})
-
 		})
 
 		Context("config update on a channel", func() {
-
 			BeforeEach(func() {
 				newChannel = false
 				chain.ActiveNodes.Store([]uint64{1, 2, 3})

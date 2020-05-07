@@ -942,7 +942,7 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 		c.sizeLimit = configMetadata.Options.SnapshotIntervalSize
 	}
 
-	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters)
+	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters, c.support.SharedConfig())
 	if err != nil {
 		c.logger.Panicf("illegal configuration change detected: %s", err)
 	}
@@ -1306,7 +1306,7 @@ func (c *Chain) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []b
 	// create the dummy parameters for ComputeMembershipChanges
 	dummyOldBlockMetadata, _ := ReadBlockMetadata(nil, oldMetadata)
 	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
-	changes, err := ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters)
+	changes, err := ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters, c.support.SharedConfig())
 	if err != nil {
 		return err
 	}
