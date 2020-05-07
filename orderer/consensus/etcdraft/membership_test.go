@@ -136,16 +136,24 @@ func TestMembershipChanges(t *testing.T) {
 		{ClientTlsCert: []byte("4th")},
 	}
 	tests := []struct {
-		Name                        string
-		OldConsenters               map[uint64]*etcdraftproto.Consenter
-		NewConsenters               []*etcdraftproto.Consenter
-		Changes                     *etcdraft.MembershipChanges
-		HaveError, Changed, Rotated bool
+		Name             string
+		OldConsenters    map[uint64]*etcdraftproto.Consenter
+		NewConsenters    []*etcdraftproto.Consenter
+		Changes          *etcdraft.MembershipChanges
+		Changed, Rotated bool
+		ExpectedErr      string
 	}{
 		{
-			Name:          "Add a node",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{1: c[0], 2: c[1]},
-			NewConsenters: []*etcdraftproto.Consenter{c[0], c[1], c[2]},
+			Name: "Add a node",
+			OldConsenters: map[uint64]*etcdraftproto.Consenter{
+				1: c[0],
+				2: c[1],
+			},
+			NewConsenters: []*etcdraftproto.Consenter{
+				c[0],
+				c[1],
+				c[2],
+			},
 			Changes: &etcdraft.MembershipChanges{
 				NewBlockMetadata: &etcdraftproto.BlockMetadata{
 					ConsenterIds:    []uint64{1, 2, 3},
@@ -159,14 +167,19 @@ func TestMembershipChanges(t *testing.T) {
 					Type:   raftpb.ConfChangeAddNode,
 				},
 			},
-			HaveError: false,
-			Changed:   true,
-			Rotated:   false,
+			Changed:     true,
+			Rotated:     false,
+			ExpectedErr: "",
 		},
 		{
-			Name:          "Remove a node",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{1: c[0], 2: c[1]},
-			NewConsenters: []*etcdraftproto.Consenter{c[1]},
+			Name: "Remove a node",
+			OldConsenters: map[uint64]*etcdraftproto.Consenter{
+				1: c[0],
+				2: c[1],
+			},
+			NewConsenters: []*etcdraftproto.Consenter{
+				c[1],
+			},
 			Changes: &etcdraft.MembershipChanges{
 				NewBlockMetadata: &etcdraftproto.BlockMetadata{
 					ConsenterIds:    []uint64{2},
@@ -180,14 +193,20 @@ func TestMembershipChanges(t *testing.T) {
 					Type:   raftpb.ConfChangeRemoveNode,
 				},
 			},
-			HaveError: false,
-			Changed:   true,
-			Rotated:   false,
+			Changed:     true,
+			Rotated:     false,
+			ExpectedErr: "",
 		},
 		{
-			Name:          "Rotate a certificate",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{1: c[0], 2: c[1]},
-			NewConsenters: []*etcdraftproto.Consenter{c[0], c[2]},
+			Name: "Rotate a certificate",
+			OldConsenters: map[uint64]*etcdraftproto.Consenter{
+				1: c[0],
+				2: c[1],
+			},
+			NewConsenters: []*etcdraftproto.Consenter{
+				c[0],
+				c[2],
+			},
 			Changes: &etcdraft.MembershipChanges{
 				NewBlockMetadata: &etcdraftproto.BlockMetadata{
 					ConsenterIds:    []uint64{1, 2},
@@ -198,14 +217,20 @@ func TestMembershipChanges(t *testing.T) {
 				RemovedNodes:  []*etcdraftproto.Consenter{c[1]},
 				RotatedNode:   2,
 			},
-			HaveError: false,
-			Changed:   true,
-			Rotated:   true,
+			Changed:     true,
+			Rotated:     true,
+			ExpectedErr: "",
 		},
 		{
-			Name:          "No change",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{1: c[0], 2: c[1]},
-			NewConsenters: []*etcdraftproto.Consenter{c[0], c[1]},
+			Name: "No change",
+			OldConsenters: map[uint64]*etcdraftproto.Consenter{
+				1: c[0],
+				2: c[1],
+			},
+			NewConsenters: []*etcdraftproto.Consenter{
+				c[0],
+				c[1],
+			},
 			Changes: &etcdraft.MembershipChanges{
 				NewBlockMetadata: &etcdraftproto.BlockMetadata{
 					ConsenterIds:    []uint64{1, 2},
@@ -215,23 +240,36 @@ func TestMembershipChanges(t *testing.T) {
 				AddedNodes:    []*etcdraftproto.Consenter{},
 				RemovedNodes:  []*etcdraftproto.Consenter{},
 			},
-			HaveError: false,
-			Changed:   false,
-			Rotated:   false,
+			Changed:     false,
+			Rotated:     false,
+			ExpectedErr: "",
 		},
 		{
-			Name:          "Too many adds",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{1: c[0], 2: c[1]},
-			NewConsenters: []*etcdraftproto.Consenter{c[0], c[1], c[2], c[3]},
-			Changes:       nil,
-			HaveError:     true,
+			Name: "More than one consenter added",
+			OldConsenters: map[uint64]*etcdraftproto.Consenter{
+				1: c[0],
+				2: c[1],
+			},
+			NewConsenters: []*etcdraftproto.Consenter{
+				c[0],
+				c[1],
+				c[2],
+				c[3],
+			},
+			Changes:     nil,
+			ExpectedErr: "update of more than one consenter at a time is not supported, requested changes: add 2 node(s), remove 0 node(s)",
 		},
 		{
-			Name:          "Too many removes",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{1: c[0], 2: c[1]},
-			NewConsenters: []*etcdraftproto.Consenter{c[2]},
-			Changes:       nil,
-			HaveError:     true,
+			Name: "More than one consenter removed",
+			OldConsenters: map[uint64]*etcdraftproto.Consenter{
+				1: c[0],
+				2: c[1],
+			},
+			NewConsenters: []*etcdraftproto.Consenter{
+				c[2],
+			},
+			Changes:     nil,
+			ExpectedErr: "update of more than one consenter at a time is not supported, requested changes: add 1 node(s), remove 2 node(s)",
 		},
 	}
 
@@ -239,13 +277,13 @@ func TestMembershipChanges(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			changes, err := etcdraft.ComputeMembershipChanges(blockMetadata, test.OldConsenters, test.NewConsenters)
 
-			if test.HaveError {
-				require.NotNil(t, err)
+			if test.ExpectedErr != "" {
+				require.EqualError(t, err, test.ExpectedErr)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, changes, test.Changes)
-				require.Equal(t, changes.Changed(), test.Changed)
-				require.Equal(t, changes.Rotated(), test.Rotated)
+				require.Equal(t, test.Changes, changes)
+				require.Equal(t, test.Changed, changes.Changed())
+				require.Equal(t, test.Rotated, changes.Rotated())
 			}
 		})
 	}
