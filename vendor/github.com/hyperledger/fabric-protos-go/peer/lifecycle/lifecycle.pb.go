@@ -527,8 +527,10 @@ type QueryInstalledChaincodesResult_References struct {
 func (m *QueryInstalledChaincodesResult_References) Reset() {
 	*m = QueryInstalledChaincodesResult_References{}
 }
-func (m *QueryInstalledChaincodesResult_References) String() string { return proto.CompactTextString(m) }
-func (*QueryInstalledChaincodesResult_References) ProtoMessage()    {}
+func (m *QueryInstalledChaincodesResult_References) String() string {
+	return proto.CompactTextString(m)
+}
+func (*QueryInstalledChaincodesResult_References) ProtoMessage() {}
 func (*QueryInstalledChaincodesResult_References) Descriptor() ([]byte, []int) {
 	return fileDescriptor_6625a5b20951add3, []int{7, 1}
 }

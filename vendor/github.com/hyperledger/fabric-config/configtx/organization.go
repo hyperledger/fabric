@@ -111,7 +111,7 @@ func newOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
 	orgGroup := newConfigGroup()
 	orgGroup.ModPolicy = AdminsPolicyKey
 
-	if err := addPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
+	if err := setPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
 		return nil, err
 	}
 
@@ -135,12 +135,30 @@ func newOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 
+	return orgGroup, nil
+}
+
+func newOrdererOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
+	orgGroup, err := newOrgConfigGroup(org)
+	if err != nil {
+		return nil, err
+	}
+
 	// OrdererEndpoints are orderer org specific and are only added when specified for orderer orgs
 	if len(org.OrdererEndpoints) > 0 {
 		err := setValue(orgGroup, endpointsValue(org.OrdererEndpoints), AdminsPolicyKey)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	return orgGroup, nil
+}
+
+func newApplicationOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
+	orgGroup, err := newOrgConfigGroup(org)
+	if err != nil {
+		return nil, err
 	}
 
 	// AnchorPeers are application org specific and are only added when specified for application orgs

@@ -13,9 +13,9 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-config/configtx/internal/policydsl"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/policydsl"
 )
 
 // SetConsortiumChannelCreationPolicy sets the ConsortiumChannelCreationPolicy for
@@ -102,9 +102,9 @@ func (c *ConfigTx) ChannelPolicies() (map[string]Policy, error) {
 // SetApplicationPolicy sets the specified policy in the application group's config policy map.
 // If the policy already exist in current configuration, its value will be overwritten.
 func (c *ConfigTx) SetApplicationPolicy(modPolicy, policyName string, policy Policy) error {
-	err := addPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey], modPolicy, policyName, policy)
+	err := setPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey], modPolicy, policyName, policy)
 	if err != nil {
-		return fmt.Errorf("failed to add policy '%s': %v", policyName, err)
+		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
 	}
 
 	return nil
@@ -125,9 +125,9 @@ func (c *ConfigTx) RemoveApplicationPolicy(policyName string) error {
 // SetApplicationOrgPolicy sets the specified policy in the application org group's config policy map.
 // If an Organization policy already exist in current configuration, its value will be overwritten.
 func (c *ConfigTx) SetApplicationOrgPolicy(orgName, modPolicy, policyName string, policy Policy) error {
-	err := addPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName], modPolicy, policyName, policy)
+	err := setPolicy(c.updated.ChannelGroup.Groups[ApplicationGroupKey].Groups[orgName], modPolicy, policyName, policy)
 	if err != nil {
-		return fmt.Errorf("failed to add policy '%s': %v", policyName, err)
+		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
 	}
 
 	return nil
@@ -150,9 +150,9 @@ func (c *ConfigTx) RemoveApplicationOrgPolicy(orgName, policyName string) error 
 func (c *ConfigTx) SetConsortiumOrgPolicy(consortiumName, orgName, policyName string, policy Policy) error {
 	orgGroup := c.updated.ChannelGroup.Groups[ConsortiumsGroupKey].Groups[consortiumName].Groups[orgName]
 
-	err := addPolicy(orgGroup, AdminsPolicyKey, policyName, policy)
+	err := setPolicy(orgGroup, AdminsPolicyKey, policyName, policy)
 	if err != nil {
-		return fmt.Errorf("failed to add policy '%s' to consortium org '%s': %v", policyName, orgName, err)
+		return fmt.Errorf("failed to set policy '%s' to consortium org '%s': %v", policyName, orgName, err)
 	}
 
 	return nil
@@ -170,9 +170,9 @@ func (c *ConfigTx) RemoveConsortiumOrgPolicy(consortiumName, orgName, policyName
 // SetOrdererPolicy sets the specified policy in the orderer group's config policy map.
 // If the policy already exist in current configuration, its value will be overwritten.
 func (c *ConfigTx) SetOrdererPolicy(modPolicy, policyName string, policy Policy) error {
-	err := addPolicy(c.updated.ChannelGroup.Groups[OrdererGroupKey], modPolicy, policyName, policy)
+	err := setPolicy(c.updated.ChannelGroup.Groups[OrdererGroupKey], modPolicy, policyName, policy)
 	if err != nil {
-		return fmt.Errorf("failed to add policy '%s': %v", policyName, err)
+		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
 	}
 
 	return nil
@@ -196,7 +196,7 @@ func (c *ConfigTx) RemoveOrdererPolicy(policyName string) error {
 // SetOrdererOrgPolicy sets the specified policy in the orderer org group's config policy map.
 // If the policy already exist in current configuration, its value will be overwritten.
 func (c *ConfigTx) SetOrdererOrgPolicy(orgName, modPolicy, policyName string, policy Policy) error {
-	return addPolicy(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName], modPolicy, policyName, policy)
+	return setPolicy(c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName], modPolicy, policyName, policy)
 }
 
 // RemoveOrdererOrgPolicy removes an existing policy from an orderer organization.
@@ -213,7 +213,7 @@ func (c *ConfigTx) RemoveOrdererOrgPolicy(orgName, policyName string) error {
 // SetChannelPolicy sets the specified policy in the channel group's config policy map.
 // If the policy already exist in current configuration, its value will be overwritten.
 func (c *ConfigTx) SetChannelPolicy(modPolicy, policyName string, policy Policy) error {
-	return addPolicy(c.updated.ChannelGroup, modPolicy, policyName, policy)
+	return setPolicy(c.updated.ChannelGroup, modPolicy, policyName, policy)
 }
 
 // RemoveChannelPolicy removes an existing channel level policy.
@@ -394,7 +394,7 @@ func signaturePolicyToString(sig *cb.SignaturePolicy, IDs []string) (string, err
 }
 
 // TODO: evaluate if modPolicy actually needs to be passed in if all callers pass AdminsPolicyKey.
-func addPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
+func setPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
 	if policyMap == nil {
 		return errors.New("no policies defined")
 	}
@@ -412,7 +412,7 @@ func addPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy stri
 	}
 
 	for policyName, policy := range policyMap {
-		err := addPolicy(cg, modPolicy, policyName, policy)
+		err := setPolicy(cg, modPolicy, policyName, policy)
 		if err != nil {
 			return err
 		}
@@ -421,7 +421,7 @@ func addPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy stri
 	return nil
 }
 
-func addPolicy(cg *cb.ConfigGroup, modPolicy, policyName string, policy Policy) error {
+func setPolicy(cg *cb.ConfigGroup, modPolicy, policyName string, policy Policy) error {
 	if cg.Policies == nil {
 		cg.Policies = make(map[string]*cb.ConfigPolicy)
 	}
