@@ -54,43 +54,49 @@ type kvLedger struct {
 	isPvtstoreAheadOfBlkstore atomic.Value
 }
 
-func newKVLedger(
-	ledgerID string,
-	blockStore *blkstorage.BlockStore,
-	pvtdataStore *pvtdatastorage.Store,
-	versionedDB privacyenabledstate.DB,
-	historyDB *history.DB,
-	configHistoryMgr confighistory.Mgr,
-	stateListeners []ledger.StateListener,
-	bookkeeperProvider bookkeeping.Provider,
-	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
-	ccLifecycleEventProvider ledger.ChaincodeLifecycleEventProvider,
-	stats *ledgerStats,
-	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
-	hasher ledger.Hasher,
-) (*kvLedger, error) {
+type lgrInitializer struct {
+	ledgerID                 string
+	blockStore               *blkstorage.BlockStore
+	pvtdataStore             *pvtdatastorage.Store
+	versionedDB              privacyenabledstate.DB
+	historyDB                *history.DB
+	configHistoryMgr         confighistory.Mgr
+	stateListeners           []ledger.StateListener
+	bookkeeperProvider       bookkeeping.Provider
+	ccInfoProvider           ledger.DeployedChaincodeInfoProvider
+	ccLifecycleEventProvider ledger.ChaincodeLifecycleEventProvider
+	stats                    *ledgerStats
+	customTxProcessors       map[common.HeaderType]ledger.CustomTxProcessor
+	hasher                   ledger.Hasher
+}
+
+func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
+	ledgerID := initializer.ledgerID
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	l := &kvLedger{
 		ledgerID:        ledgerID,
-		blockStore:      blockStore,
-		pvtdataStore:    pvtdataStore,
-		historyDB:       historyDB,
+		blockStore:      initializer.blockStore,
+		pvtdataStore:    initializer.pvtdataStore,
+		historyDB:       initializer.historyDB,
 		blockAPIsRWLock: &sync.RWMutex{},
 	}
 
-	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, ccInfoProvider})
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, initializer.ccInfoProvider})
 
-	if err := l.initTxMgr(
-		versionedDB,
-		stateListeners,
-		btlPolicy,
-		bookkeeperProvider,
-		ccInfoProvider,
-		customTxProcessors,
-		hasher,
-	); err != nil {
+	txmgrInitializer := &lockbasedtxmgr.Initializer{
+		LedgerID:            ledgerID,
+		DB:                  initializer.versionedDB,
+		StateListeners:      initializer.stateListeners,
+		BtlPolicy:           btlPolicy,
+		BookkeepingProvider: initializer.bookkeeperProvider,
+		CCInfoProvider:      initializer.ccInfoProvider,
+		CustomTxProcessors:  initializer.customTxProcessors,
+		Hasher:              initializer.hasher,
+	}
+	if err := l.initTxMgr(txmgrInitializer); err != nil {
 		return nil, err
 	}
+
 	// btlPolicy internally uses queryexecuter and indirectly ends up using txmgr.
 	// Hence, we need to init the pvtdataStore once the txmgr is initiated.
 	l.pvtdataStore.Init(btlPolicy)
@@ -110,43 +116,26 @@ func newKVLedger(
 	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
 	// this functionality of registering for events to ledgermgmt package so that this
 	// is reused across other future ledger implementations
-	ccEventListener := versionedDB.GetChaincodeEventListener()
+	ccEventListener := initializer.versionedDB.GetChaincodeEventListener()
 	logger.Debugf("Register state db for chaincode lifecycle events: %t", ccEventListener != nil)
 	if ccEventListener != nil {
 		cceventmgmt.GetMgr().Register(ledgerID, ccEventListener)
-		ccLifecycleEventProvider.RegisterListener(l.ledgerID, &ccEventListenerAdaptor{ccEventListener})
+		initializer.ccLifecycleEventProvider.RegisterListener(ledgerID, &ccEventListenerAdaptor{ccEventListener})
 	}
 
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := l.recoverDBs(); err != nil {
 		return nil, err
 	}
-	l.configHistoryRetriever = configHistoryMgr.GetRetriever(ledgerID, l)
+	l.configHistoryRetriever = initializer.configHistoryMgr.GetRetriever(ledgerID, l)
 
-	l.stats = stats
+	l.stats = initializer.stats
 	return l, nil
 }
 
-func (l *kvLedger) initTxMgr(
-	versionedDB privacyenabledstate.DB,
-	stateListeners []ledger.StateListener,
-	btlPolicy pvtdatapolicy.BTLPolicy,
-	bookkeeperProvider bookkeeping.Provider,
-	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
-	customtxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
-	hasher ledger.Hasher,
-) error {
+func (l *kvLedger) initTxMgr(initializer *lockbasedtxmgr.Initializer) error {
 	var err error
-	txmgr, err := lockbasedtxmgr.NewLockBasedTxMgr(
-		l.ledgerID,
-		versionedDB,
-		stateListeners,
-		btlPolicy,
-		bookkeeperProvider,
-		ccInfoProvider,
-		customtxProcessors,
-		hasher,
-	)
+	txmgr, err := lockbasedtxmgr.NewLockBasedTxMgr(initializer)
 	if err != nil {
 		return err
 	}
@@ -158,7 +147,7 @@ func (l *kvLedger) initTxMgr(
 		return err
 	}
 	defer qe.Done()
-	for _, sl := range stateListeners {
+	for _, sl := range initializer.StateListeners {
 		if err := sl.Initialize(l.ledgerID, qe); err != nil {
 			return err
 		}

@@ -309,7 +309,7 @@ func TestRecovery(t *testing.T) {
 
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
-	ledger, err := provider1.openInternal(constructTestLedgerID(1))
+	ledger, err := provider1.open(constructTestLedgerID(1))
 	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
 	ledger.Close()
 
@@ -351,7 +351,7 @@ func TestRecoveryHistoryDBDisabled(t *testing.T) {
 
 	// now create the genesis block
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(1))
-	ledger, err := provider1.openInternal(constructTestLedgerID(1))
+	ledger, err := provider1.open(constructTestLedgerID(1))
 	assert.NoError(t, err, "Failed to open the ledger")
 	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: genesisBlock}, &lgr.CommitOptions{})
 	ledger.Close()

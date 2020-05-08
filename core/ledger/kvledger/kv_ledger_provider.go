@@ -272,7 +272,7 @@ func (p *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error)
 	if err = p.idStore.setUnderConstructionFlag(ledgerID); err != nil {
 		return nil, err
 	}
-	lgr, err := p.openInternal(ledgerID)
+	lgr, err := p.open(ledgerID)
 	if err != nil {
 		logger.Errorf("Error opening a new empty ledger. Unsetting under construction flag. Error: %+v", err)
 		panicOnErr(p.runCleanup(ledgerID), "Error running cleanup for ledger id [%s]", ledgerID)
@@ -301,10 +301,10 @@ func (p *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 	if !active {
 		return nil, ErrInactiveLedger
 	}
-	return p.openInternal(ledgerID)
+	return p.open(ledgerID)
 }
 
-func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
+func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 	// Get the block store for a chain/ledger
 	blockStore, err := p.blkStoreProvider.Open(ledgerID)
 	if err != nil {
@@ -333,21 +333,23 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		}
 	}
 
-	l, err := newKVLedger(
-		ledgerID,
-		blockStore,
-		pvtdataStore,
-		vDB,
-		historyDB,
-		p.configHistoryMgr,
-		p.stateListeners,
-		p.bookkeepingProvider,
-		p.initializer.DeployedChaincodeInfoProvider,
-		p.initializer.ChaincodeLifecycleEventProvider,
-		p.stats.ledgerStats(ledgerID),
-		p.initializer.CustomTxProcessors,
-		p.hasher,
-	)
+	initializer := &lgrInitializer{
+		ledgerID:                 ledgerID,
+		blockStore:               blockStore,
+		pvtdataStore:             pvtdataStore,
+		versionedDB:              vDB,
+		historyDB:                historyDB,
+		configHistoryMgr:         p.configHistoryMgr,
+		stateListeners:           p.stateListeners,
+		bookkeeperProvider:       p.bookkeepingProvider,
+		ccInfoProvider:           p.initializer.DeployedChaincodeInfoProvider,
+		ccLifecycleEventProvider: p.initializer.ChaincodeLifecycleEventProvider,
+		stats:                    p.stats.ledgerStats(ledgerID),
+		customTxProcessors:       p.initializer.CustomTxProcessors,
+		hasher:                   p.hasher,
+	}
+
+	l, err := newKVLedger(initializer)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +407,7 @@ func (p *Provider) recoverUnderConstructionLedger() {
 		return
 	}
 	logger.Infof("ledger [%s] found as under construction", ledgerID)
-	ledger, err := p.openInternal(ledgerID)
+	ledger, err := p.open(ledgerID)
 	panicOnErr(err, "Error while opening under construction ledger [%s]", ledgerID)
 	bcInfo, err := ledger.GetBlockchainInfo()
 	panicOnErr(err, "Error while getting blockchain info for the under construction ledger [%s]", ledgerID)

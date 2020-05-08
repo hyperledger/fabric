@@ -103,13 +103,17 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
-	env.txmgr, err = NewLockBasedTxMgr(
-		testLedgerID, env.testDB, nil,
-		btlPolicy, env.testBookkeepingEnv.TestProvider,
-		&mock.DeployedChaincodeInfoProvider{},
-		nil,
-		cryptoProvider,
-	)
+	txmgrInitializer := &Initializer{
+		LedgerID:            testLedgerID,
+		DB:                  env.testDB,
+		StateListeners:      nil,
+		BtlPolicy:           btlPolicy,
+		BookkeepingProvider: env.testBookkeepingEnv.TestProvider,
+		CCInfoProvider:      &mock.DeployedChaincodeInfoProvider{},
+		CustomTxProcessors:  nil,
+		Hasher:              cryptoProvider,
+	}
+	env.txmgr, err = NewLockBasedTxMgr(txmgrInitializer)
 	assert.NoError(t, err)
 
 }

@@ -59,36 +59,46 @@ func (c *current) maxTxNumber() uint64 {
 	return uint64(len(c.block.Data.Data)) - 1
 }
 
-// NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
-func NewLockBasedTxMgr(
-	ledgerid string,
-	db privacyenabledstate.DB,
-	stateListeners []ledger.StateListener,
-	btlPolicy pvtdatapolicy.BTLPolicy,
-	bookkeepingProvider bookkeeping.Provider,
-	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
-	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
-	hasher ledger.Hasher,
-) (*LockBasedTxMgr, error) {
+type Initializer struct {
+	LedgerID            string
+	DB                  privacyenabledstate.DB
+	StateListeners      []ledger.StateListener
+	BtlPolicy           pvtdatapolicy.BTLPolicy
+	BookkeepingProvider bookkeeping.Provider
+	CCInfoProvider      ledger.DeployedChaincodeInfoProvider
+	CustomTxProcessors  map[common.HeaderType]ledger.CustomTxProcessor
+	Hasher              ledger.Hasher
+}
 
-	if hasher == nil {
+// NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
+func NewLockBasedTxMgr(initializer *Initializer) (*LockBasedTxMgr, error) {
+
+	if initializer.Hasher == nil {
 		return nil, errors.New("create new lock based TxMgr failed: passed in nil ledger hasher")
 	}
 
-	db.Open()
+	initializer.DB.Open()
 	txmgr := &LockBasedTxMgr{
-		ledgerid:       ledgerid,
-		db:             db,
-		stateListeners: stateListeners,
-		ccInfoProvider: ccInfoProvider,
-		hasher:         hasher,
+		ledgerid:       initializer.LedgerID,
+		db:             initializer.DB,
+		stateListeners: initializer.StateListeners,
+		ccInfoProvider: initializer.CCInfoProvider,
+		hasher:         initializer.Hasher,
 	}
-	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(ledgerid, db, btlPolicy, bookkeepingProvider)
+	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(
+		initializer.LedgerID,
+		initializer.DB,
+		initializer.BtlPolicy,
+		initializer.BookkeepingProvider)
 	if err != nil {
 		return nil, err
 	}
 	txmgr.pvtdataPurgeMgr = &pvtdataPurgeMgr{pvtstatePurgeMgr, false}
-	txmgr.commitBatchPreparer = validation.NewCommitBatchPreparer(txmgr, db, customTxProcessors, hasher)
+	txmgr.commitBatchPreparer = validation.NewCommitBatchPreparer(
+		txmgr,
+		initializer.DB,
+		initializer.CustomTxProcessors,
+		initializer.Hasher)
 	return txmgr, nil
 }
 
