@@ -1,13 +1,3 @@
-.. note:: Users who are migrating from Gerrit to GitHub: You can follow simple
-          Git workflows to move your development from Gerrit to GitHub. After
-          forking the Fabric repo, simply push the branches you want to save from
-          your current Gerrit-based local repo to your remote forked repository.
-          Once you've pushed the changes you want to save, simply delete your
-          local Gerrit-based repository and clone your fork.
-
-          For a basic Git workflow recommendation please see our doc at
-          :doc:`github/github`.
-
 Contributions Welcome!
 ======================
 
