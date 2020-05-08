@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-// Package config provides utilities to create and modify a channel configuration transaction.
+// Package configtx provides utilities to create and modify a channel configuration transaction.
 // Channel transactions contain the configuration data defining members and policies for a
 // system or application channel and can be used to either create or modify existing channels.
 // Both the creation of a new channel or modification of an existing channel outputs an unsigned
@@ -272,9 +272,19 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 
 	channelGroup := newConfigGroup()
 
-	err = addPolicies(channelGroup, channelConfig.Policies, AdminsPolicyKey)
+	err = setPolicies(channelGroup, channelConfig.Policies, AdminsPolicyKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add system channel policies: %v", err)
+		return nil, fmt.Errorf("failed to set system channel policies: %v", err)
+	}
+
+	err = setValue(channelGroup, hashingAlgorithmValue(), AdminsPolicyKey)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setValue(channelGroup, blockDataHashingStructureValue(), AdminsPolicyKey)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(channelConfig.Orderer.Addresses) == 0 {

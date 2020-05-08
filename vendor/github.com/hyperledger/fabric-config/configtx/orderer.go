@@ -11,13 +11,19 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-config/configtx/orderer"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ob "github.com/hyperledger/fabric-protos-go/orderer"
 	eb "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/pkg/configtx/orderer"
+)
+
+const (
+	defaultHashingAlgorithm               = "SHA256"
+	defaultBlockDataHashingStructureWidth = math.MaxUint32
 )
 
 // Orderer configures the ordering service behavior for a channel.
@@ -189,7 +195,7 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 func (c *ConfigTx) SetOrdererOrg(org Organization) error {
 	ordererGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey]
 
-	orgGroup, err := newOrgConfigGroup(org)
+	orgGroup, err := newOrdererOrgConfigGroup(org)
 	if err != nil {
 		return fmt.Errorf("failed to create orderer org '%s': %v", org.Name, err)
 	}
@@ -274,7 +280,7 @@ func newOrdererGroup(orderer Orderer) (*cb.ConfigGroup, error) {
 	ordererGroup := newConfigGroup()
 	ordererGroup.ModPolicy = AdminsPolicyKey
 
-	if err := addOrdererPolicies(ordererGroup, orderer.Policies, AdminsPolicyKey); err != nil {
+	if err := setOrdererPolicies(ordererGroup, orderer.Policies, AdminsPolicyKey); err != nil {
 		return nil, err
 	}
 
@@ -286,7 +292,7 @@ func newOrdererGroup(orderer Orderer) (*cb.ConfigGroup, error) {
 
 	// add orderer groups
 	for _, org := range orderer.Organizations {
-		ordererGroup.Groups[org.Name], err = newOrgConfigGroup(org)
+		ordererGroup.Groups[org.Name], err = newOrdererOrgConfigGroup(org)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
 		}
@@ -353,9 +359,9 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 	return nil
 }
 
-// addOrdererPolicies adds *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
+// setOrdererPolicies sets *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
 // It checks that the BlockValidation policy is defined alongside the standard policy checks.
-func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
+func setOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
 	if policyMap == nil {
 		return errors.New("no policies defined")
 	}
@@ -363,7 +369,7 @@ func addOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPoli
 		return errors.New("no BlockValidation policy defined")
 	}
 
-	return addPolicies(cg, policyMap, modPolicy)
+	return setPolicies(cg, policyMap, modPolicy)
 }
 
 // batchSizeValue returns the config definition for the orderer batch size.
@@ -503,11 +509,17 @@ func unmarshalEtcdRaftMetadata(mdBytes []byte) (orderer.EtcdRaft, error) {
 
 	for _, c := range etcdRaftMetadata.Consenters {
 		clientTLSCertBlock, _ := pem.Decode(c.ClientTlsCert)
+		if clientTLSCertBlock == nil {
+			return orderer.EtcdRaft{}, fmt.Errorf("no PEM data found in client TLS cert[% x]", c.ClientTlsCert)
+		}
 		clientTLSCert, err := x509.ParseCertificate(clientTLSCertBlock.Bytes)
 		if err != nil {
 			return orderer.EtcdRaft{}, fmt.Errorf("unable to parse client tls cert: %v", err)
 		}
 		serverTLSCertBlock, _ := pem.Decode(c.ServerTlsCert)
+		if serverTLSCertBlock == nil {
+			return orderer.EtcdRaft{}, fmt.Errorf("no PEM data found in server TLS cert[% x]", c.ServerTlsCert)
+		}
 		serverTLSCert, err := x509.ParseCertificate(serverTLSCertBlock.Bytes)
 		if err != nil {
 			return orderer.EtcdRaft{}, fmt.Errorf("unable to parse server tls cert: %v", err)
@@ -566,4 +578,26 @@ func getOrdererAddresses(config *cb.Config) ([]Address, error) {
 // provided config. It returns nil if the org doesn't exist in the config.
 func getOrdererOrg(config *cb.Config, orgName string) *cb.ConfigGroup {
 	return config.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+}
+
+// hashingAlgorithm returns the only currently valid hashing algorithm.
+// It is a value for the /Channel group.
+func hashingAlgorithmValue() *standardConfigValue {
+	return &standardConfigValue{
+		key: HashingAlgorithmKey,
+		value: &cb.HashingAlgorithm{
+			Name: defaultHashingAlgorithm,
+		},
+	}
+}
+
+// blockDataHashingStructureValue returns the only currently valid block data hashing structure.
+// It is a value for the /Channel group.
+func blockDataHashingStructureValue() *standardConfigValue {
+	return &standardConfigValue{
+		key: BlockDataHashingStructureKey,
+		value: &cb.BlockDataHashingStructure{
+			Width: defaultBlockDataHashingStructureWidth,
+		},
+	}
 }
