@@ -8,10 +8,6 @@ package raft
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -338,11 +334,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			nameDomain := fmt.Sprintf("%s.%s", name, domain)
 			ordererTLSPath := filepath.Join(tmpDir, "ordererOrganizations", domain, "orderers", nameDomain, "tls")
 
-			caKeyPath := filepath.Join(tmpDir, "ordererOrganizations", domain, "tlsca", "priv_sk")
 			caCertPath := filepath.Join(tmpDir, "ordererOrganizations", domain, "tlsca", fmt.Sprintf("tlsca.%s-cert.pem", domain))
-
-			caKey, err := ioutil.ReadFile(caKeyPath)
-			Expect(err).NotTo(HaveOccurred())
 
 			caCert, err := ioutil.ReadFile(caCertPath)
 			Expect(err).NotTo(HaveOccurred())
@@ -350,9 +342,6 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			thirdOrdererCertificatePath := filepath.Join(ordererTLSPath, "server.crt")
 			thirdOrdererCertificate, err := ioutil.ReadFile(thirdOrdererCertificatePath)
 			Expect(err).NotTo(HaveOccurred())
-
-			By("Changing its subject name")
-			caCert, thirdOrdererCertificate = changeSubjectName(caCert, caKey, thirdOrdererCertificate, "tlsca2")
 
 			By("Updating it on the file system")
 			err = ioutil.WriteFile(caCertPath, caCert, 0644)
@@ -417,7 +406,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Ensuring TLS handshakes fail with the other orderers")
 			for i, oRunner := range ordererRunners {
 				if i < 2 {
-					Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("TLS handshake failed with error tls: client didn't provide a certificate"))
+					Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("TLS handshake failed with error tls: failed to verify client certificate"))
 					continue
 				}
 				Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("TLS handshake failed with error remote error: tls: bad certificate"))
@@ -1740,45 +1729,4 @@ func updateEtcdRaftMetadata(network *nwo.Network, peer *nwo.Peer, orderer *nwo.O
 		Expect(err).NotTo(HaveOccurred())
 		return newMetadata
 	})
-}
-
-func changeSubjectName(caCertPEM, caKeyPEM, leafPEM []byte, newSubjectName string) (newCA, newLeaf []byte) {
-	keyAsDER, _ := pem.Decode(caKeyPEM)
-	caKeyWithoutType, err := x509.ParsePKCS8PrivateKey(keyAsDER.Bytes)
-	Expect(err).NotTo(HaveOccurred())
-	caKey := caKeyWithoutType.(*ecdsa.PrivateKey)
-
-	caCertAsDER, _ := pem.Decode(caCertPEM)
-	caCert, err := x509.ParseCertificate(caCertAsDER.Bytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Change its subject name
-	caCert.Subject.CommonName = newSubjectName
-	caCert.Issuer.CommonName = newSubjectName
-	caCert.RawTBSCertificate = nil
-	caCert.RawSubjectPublicKeyInfo = nil
-	caCert.Raw = nil
-	caCert.RawSubject = nil
-	caCert.RawIssuer = nil
-
-	// The CA signs its own certificate
-	caCertBytes, err := x509.CreateCertificate(rand.Reader, caCert, caCert, caCert.PublicKey, caKey)
-	Expect(err).NotTo(HaveOccurred())
-
-	// Now it's the turn of the leaf certificate
-	leafAsDER, _ := pem.Decode(leafPEM)
-	leafCert, err := x509.ParseCertificate(leafAsDER.Bytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	leafCert.Raw = nil
-	leafCert.RawIssuer = nil
-	leafCert.RawTBSCertificate = nil
-
-	// The CA signs the leaf cert
-	leafCertBytes, err := x509.CreateCertificate(rand.Reader, leafCert, caCert, leafCert.PublicKey, caKey)
-	Expect(err).NotTo(HaveOccurred())
-
-	newCA = pem.EncodeToMemory(&pem.Block{Bytes: caCertBytes, Type: "CERTIFICATE"})
-	newLeaf = pem.EncodeToMemory(&pem.Block{Bytes: leafCertBytes, Type: "CERTIFICATE"})
-	return
 }
