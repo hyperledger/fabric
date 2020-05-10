@@ -213,3 +213,11 @@ func TestDropApplicationDBs(t *testing.T) {
 	assert.NoError(t, err, "Error when retrieving application db names")
 	assert.Equal(t, 0, len(dbs), "Databases should be dropped")
 }
+
+func TestDropApplicationDBsWhenDBNotStarted(t *testing.T) {
+	config := testConfig()
+	config.MaxRetriesOnStartup = 1
+	config.Address = "127.0.0.1:5984"
+	err := DropApplicationDBs(config)
+	assert.EqualError(t, err, `unable to connect to CouchDB, check the hostname and port: http error calling couchdb: Get "http://127.0.0.1:5984/": dial tcp 127.0.0.1:5984: connect: connection refused`)
+}
