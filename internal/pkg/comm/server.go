@@ -33,9 +33,6 @@ type GRPCServer struct {
 	serverCertificate atomic.Value
 	// lock to protect concurrent access to append / remove
 	lock *sync.Mutex
-	// Set of PEM-encoded X509 certificate authorities used to populate
-	// the tlsConfig.ClientCAs indexed by subject
-	clientRootCAs map[string]*x509.Certificate
 	// TLS configuration used by the grpc server
 	tls *TLSConfig
 	// Server for gRPC Health Check Protocol.
@@ -110,8 +107,6 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 				grpcServer.tls.config.ClientAuth = tls.RequireAndVerifyClientCert
 				//if we have client root CAs, create a certPool
 				if len(secureConfig.ClientRootCAs) > 0 {
-					grpcServer.clientRootCAs = make(map[string]*x509.Certificate)
-
 					grpcServer.tls.config.ClientCAs = x509.NewCertPool()
 					for _, clientRootCA := range secureConfig.ClientRootCAs {
 						err = grpcServer.appendClientRootCA(clientRootCA)
@@ -234,7 +229,7 @@ func (gServer *GRPCServer) Stop() {
 
 // internal function to add a PEM-encoded clientRootCA
 func (gServer *GRPCServer) appendClientRootCA(clientRoot []byte) error {
-	certs, subjects, err := pemToX509Certs(clientRoot)
+	certs, err := pemToX509Certs(clientRoot)
 	if err != nil {
 		return errors.WithMessage(err, "failed to append client root certificate(s)")
 	}
@@ -243,11 +238,8 @@ func (gServer *GRPCServer) appendClientRootCA(clientRoot []byte) error {
 		return errors.New("no client root certificates found")
 	}
 
-	for i, cert := range certs {
-		//first add to the ClientCAs
+	for _, cert := range certs {
 		gServer.tls.AddClientRootCA(cert)
-		//add it to our clientRootCAs map using subject as key
-		gServer.clientRootCAs[subjects[i]] = cert
 	}
 
 	return nil
@@ -259,26 +251,18 @@ func (gServer *GRPCServer) SetClientRootCAs(clientRoots [][]byte) error {
 	gServer.lock.Lock()
 	defer gServer.lock.Unlock()
 
-	//create a new map and CertPool
-	clientRootCAs := make(map[string]*x509.Certificate)
+	certPool := x509.NewCertPool()
+
 	for _, clientRoot := range clientRoots {
-		certs, subjects, err := pemToX509Certs(clientRoot)
+		certs, err := pemToX509Certs(clientRoot)
 		if err != nil {
 			return errors.WithMessage(err, "failed to set client root certificate(s)")
 		}
 
-		for i, cert := range certs {
-			clientRootCAs[subjects[i]] = cert
+		for _, cert := range certs {
+			certPool.AddCert(cert)
 		}
 	}
-
-	//create a new CertPool and populate with the new clientRootCAs
-	certPool := x509.NewCertPool()
-	for _, clientRoot := range clientRootCAs {
-		certPool.AddCert(clientRoot)
-	}
-
-	gServer.clientRootCAs = clientRootCAs
 	gServer.tls.SetClientCAs(certPool)
 	return nil
 }
