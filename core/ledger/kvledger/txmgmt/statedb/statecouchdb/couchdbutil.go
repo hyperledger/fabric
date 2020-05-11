@@ -304,7 +304,7 @@ func DropApplicationDBs(config *ledger.CouchDBConfig) error {
 	logger.Info("Dropping CouchDB application databases ...")
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 	if err != nil {
-		return nil
+		return err
 	}
 	dbNames, err := couchInstance.retrieveApplicationDBNames()
 	if err != nil {
