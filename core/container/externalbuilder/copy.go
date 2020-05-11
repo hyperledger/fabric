@@ -10,47 +10,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
 )
 
-// MoveOrCopyDir attempts to copy src to dest by firstly trying to move, then copy upon failure.
-func MoveOrCopyDir(logger *flogging.FabricLogger, srcroot, destroot string) error {
-	mvErr := os.Rename(srcroot, destroot)
-	if mvErr == nil {
-		return nil
-	}
-
-	logger.Debugf("Failed to move %s to %s: %s, try copy instead", srcroot, destroot, mvErr)
-
-	info, err := os.Stat(srcroot)
-	if err != nil {
-		return errors.WithMessagef(err, "failed to stat dir: %s", srcroot)
-	}
-
-	if err = os.MkdirAll(destroot, info.Mode()); err != nil {
-		return errors.WithMessagef(err, "failed to make dir: %s", destroot)
-	}
-
-	cpErr := CopyDir(srcroot, destroot)
-	if cpErr == nil {
-		return nil
-	}
-
-	logger.Errorf("Failed to copy %s to %s: %s", srcroot, destroot, cpErr)
-
-	rmErr := os.RemoveAll(destroot)
-	if rmErr != nil {
-		logger.Errorf("Failed to clean targeting dir %s: %s", destroot, rmErr)
-	}
-
-	return errors.WithMessagef(cpErr, "failed to copy %s to %s", srcroot, destroot)
-}
-
 // CopyDir creates a copy of a dir
-func CopyDir(srcroot, destroot string) error {
-	return filepath.Walk(srcroot, func(path string, info os.FileInfo, err error) error {
+func CopyDir(logger *flogging.FabricLogger, srcroot, destroot string) error {
+	err := filepath.Walk(srcroot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -61,21 +29,57 @@ func CopyDir(srcroot, destroot string) error {
 		}
 		destpath := filepath.Join(destroot, srcsubpath)
 
-		if info.IsDir() { // its a dir, make corresponding dir in the dest
-			if err = os.MkdirAll(destpath, info.Mode()); err != nil {
-				return err
-			}
-			return nil
+		switch {
+		case info.IsDir():
+			return os.MkdirAll(destpath, info.Mode())
+		case info.Mode()&os.ModeSymlink == os.ModeSymlink:
+			// filepath.Walk does not follow symbolic links; we need to copy
+			// symbolic links as-is because some chaincode types (Node.js) rely
+			// on the use of symbolic links.
+			return copySymlink(srcroot, path, destpath)
+		case info.Mode().IsRegular():
+			// Intermediate directories are ensured to exist because parent
+			// node is always visited before children in `filepath.Walk`.
+			return copyFile(path, destpath)
+		default:
+			// It's something else that we don't support copying (device, socket, etc)
+			return errors.Errorf("refusing to copy unsupported file %s with mode %o", path, info.Mode())
 		}
-
-		// its a file, copy to corresponding path in the dest.
-		// Intermediate directories are ensured to exist because parent
-		// node is always visited before children in `filepath.Walk`.
-		if err = copyFile(path, destpath); err != nil {
-			return err
-		}
-		return nil
 	})
+
+	// If an error occurred, clean up any created files.
+	if err != nil {
+		if err := os.RemoveAll(destroot); err != nil {
+			logger.Errorf("failed to remove destination directory %s after copy error: %s", destroot, err)
+		}
+		return errors.WithMessagef(err, "failed to copy %s to %s", srcroot, destroot)
+	}
+	return nil
+}
+
+func copySymlink(srcroot, srcpath, destpath string) error {
+	// If the symlink is absolute, then we do not want to copy it.
+	symlinkDest, err := os.Readlink(srcpath)
+	if err != nil {
+		return err
+	}
+	if filepath.IsAbs(symlinkDest) {
+		return errors.Errorf("refusing to copy absolute symlink %s -> %s", srcpath, symlinkDest)
+	}
+
+	// Determine where the symlink points to. If it points outside
+	// of the source root, then we do not want to copy it.
+	symlinkDir := filepath.Dir(srcpath)
+	symlinkTarget := filepath.Clean(filepath.Join(symlinkDir, symlinkDest))
+	relativeTarget, err := filepath.Rel(srcroot, symlinkTarget)
+	if err != nil {
+		return err
+	}
+	if relativeTargetElements := strings.Split(relativeTarget, string(os.PathSeparator)); len(relativeTargetElements) >= 1 && relativeTargetElements[0] == ".." {
+		return errors.Errorf("refusing to copy symlink %s -> %s pointing outside of source root", srcpath, symlinkDest)
+	}
+
+	return os.Symlink(symlinkDest, destpath)
 }
 
 func copyFile(srcpath, destpath string) error {

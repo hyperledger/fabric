@@ -151,13 +151,13 @@ func (d *Detector) Build(ccid string, mdBytes []byte, codeStream io.Reader) (*In
 	}
 
 	durableReleaseDir := filepath.Join(durablePath, "release")
-	err = MoveOrCopyDir(logger, buildContext.ReleaseDir, durableReleaseDir)
+	err = CopyDir(logger, buildContext.ReleaseDir, durableReleaseDir)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not move or copy build context release to persistent location '%s'", durablePath)
 	}
 
 	durableBldDir := filepath.Join(durablePath, "bld")
-	err = MoveOrCopyDir(logger, buildContext.BldDir, durableBldDir)
+	err = CopyDir(logger, buildContext.BldDir, durableBldDir)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not move or copy build context bld to persistent location '%s'", durablePath)
 	}
