@@ -8,6 +8,7 @@ package channelparticipation
 
 import (
 	"encoding/json"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"net/http"
 	"strings"
 
@@ -25,11 +26,11 @@ const URLBaseV1Channels = URLBaseV1 + "channels"
 type ChannelManagement interface {
 	// ListAll returns the names of all channels (including the system channel), and the name of the system channel
 	// (empty if does not exist). The URL field is empty, and is to be completed by the caller.
-	ListAllChannels() ([]ChannelInfoShort, string)
+	ListAllChannels() ([]types.ChannelInfoShort, string)
 
 	// ListChannel provides extended status information about a channel.
 	// The URL field is empty, and is to be completed by the caller.
-	ListChannel(channelID string) (*ChannelInfoFull, error)
+	ListChannel(channelID string) (*types.ChannelInfo, error)
 
 	// TODO skeleton
 }
@@ -72,7 +73,7 @@ func (h *HTTPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 		// Asking for a list of all channels
 		if all {
-			var channels *ListAllChannels = &ListAllChannels{}
+			var channels *types.ChannelList = &types.ChannelList{}
 			channels.Channels, channels.SystemChannel = h.registrar.ListAllChannels()
 			channels.Size = len(channels.Channels)
 			for i, info := range channels.Channels {
@@ -142,7 +143,7 @@ func (h *HTTPHandler) sendResponseJsonError(resp http.ResponseWriter, code int, 
 	encoder := json.NewEncoder(resp)
 	resp.WriteHeader(code)
 	resp.Header().Set("Content-Type", "application/json")
-	if err := encoder.Encode(&ErrorResponse{Error: err.Error()}); err != nil {
+	if err := encoder.Encode(&types.ErrorResponse{Error: err.Error()}); err != nil {
 		h.logger.Errorf("failed to encode error, err: %s", err)
 	}
 }

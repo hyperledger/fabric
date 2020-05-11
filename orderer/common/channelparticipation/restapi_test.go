@@ -9,6 +9,7 @@ package channelparticipation_test
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -109,7 +110,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 	require.NotNilf(t, h, "cannot create handler")
 
 	t.Run("two channels", func(t *testing.T) {
-		list := []channelparticipation.ChannelInfoShort{
+		list := []types.ChannelInfoShort{
 			{Name: "app-channel", URL: ""},
 			{Name: "system-channel", URL: ""}}
 		fakeManager.ListAllChannelsReturns(list, "system-channel")
@@ -119,7 +120,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
 
-		listAll := &channelparticipation.ListAllChannels{}
+		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
 		require.NoError(t, err, "cannot be unmarshaled")
 		assert.Equal(t, 2, listAll.Size)
@@ -135,7 +136,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 	})
 
 	t.Run("no channels", func(t *testing.T) {
-		list := []channelparticipation.ChannelInfoShort{}
+		list := []types.ChannelInfoShort{}
 		fakeManager.ListAllChannelsReturns(list, "")
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
@@ -143,7 +144,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
 
-		listAll := &channelparticipation.ListAllChannels{}
+		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
 		require.NoError(t, err, "cannot be unmarshaled")
 		assert.Equal(t, 0, listAll.Size)
@@ -159,7 +160,7 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 	require.NotNilf(t, h, "cannot create handler")
 
 	t.Run("channel exists", func(t *testing.T) {
-		info := channelparticipation.ChannelInfoFull{
+		info := types.ChannelInfo{
 			Name:            "app-channel",
 			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
 			ClusterRelation: "member",
@@ -175,7 +176,7 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
 
-		infoResp := channelparticipation.ChannelInfoFull{}
+		infoResp := types.ChannelInfo{}
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
 		require.NoError(t, err, "cannot be unmarshaled")
 		assert.Equal(t, info, infoResp)
@@ -201,7 +202,7 @@ func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, r
 	assert.Equal(t, "application/json", headerArray[0])
 
 	decoder := json.NewDecoder(resp.Body)
-	respErr := &channelparticipation.ErrorResponse{}
+	respErr := &types.ErrorResponse{}
 	err := decoder.Decode(respErr)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedErrMsg, respErr.Error)

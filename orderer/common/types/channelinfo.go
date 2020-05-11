@@ -4,27 +4,31 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package channelparticipation
+package types
 
+// ErrorResponse carries the error response an HTTP request.
+// This is marshaled into the body of the HTTP response.
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-// ListAllChannels carries the response to a List of all channels.
-type ListAllChannels struct {
+// ChannelList carries the response to an HTTP request to List all the channels.
+// This is marshaled into the body of the HTTP response.
+type ChannelList struct {
 	Size          int                `json:"size"`          // The number of channels
 	SystemChannel string             `json:"systemChannel"` // The system channel name, empty if doesn't exist
 	Channels      []ChannelInfoShort `json:"channels"`      // All channels
 }
 
-// The short info of a single channel.
+// ChannelInfoShort carries a short info of a single channel.
 type ChannelInfoShort struct {
 	Name string `json:"name"` // The channel name
 	URL  string `json:"url"`  // The channel relative URL (no Host:Port)
 }
 
-// ChannelInfoFull carries the response to a List of a single channel.
-type ChannelInfoFull struct {
+// ChannelInfo carries the response to an HTTP request to List a single channel.
+// This is marshaled into the body of the HTTP response.
+type ChannelInfo struct {
 	Name            string `json:"name"`            // The channel name
 	URL             string `json:"url"`             // The channel relative URL (no Host:Port)
 	ClusterRelation string `json:"clusterRelation"` // Whether it is a “member” or ”follower”, case insensitive

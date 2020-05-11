@@ -11,7 +11,6 @@ package multichannel
 
 import (
 	"fmt"
-	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"sync"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -26,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -372,12 +372,12 @@ func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelco
 	return channelconfig.NewBundle(channelID, config, r.bccsp)
 }
 
-func (r *Registrar) ListAllChannels() ([]channelparticipation.ChannelInfoShort, string) {
+func (r *Registrar) ListAllChannels() ([]types.ChannelInfoShort, string) {
 	//TODO
-	return make([]channelparticipation.ChannelInfoShort, 0), ""
+	return make([]types.ChannelInfoShort, 0), ""
 }
 
-func (r *Registrar) ListChannel(channelID string) (*channelparticipation.ChannelInfoFull, error) {
+func (r *Registrar) ListChannel(channelID string) (*types.ChannelInfo, error) {
 	//TODO
 	return nil, errors.New("Not implemented yet")
 }
